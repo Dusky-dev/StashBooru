@@ -351,6 +351,24 @@ const makeImagesPHashMatchUrl = (phash: GQL.Maybe<string> | undefined) => {
   return `/images?${filter.makeQueryParameters()}`;
 };
 
+const makeScenesSimilarityUrl = (id: string | undefined) => {
+  if (!id) return "#";
+  const filter = new ListFilterModel(
+    GQL.FilterMode.Scenes,
+    undefined
+  ).setSimilarityReferenceID(id);
+  return `/scenes?${filter.makeQueryParameters()}`;
+};
+
+const makeImagesSimilarityUrl = (id: string | undefined) => {
+  if (!id) return "#";
+  const filter = new ListFilterModel(
+    GQL.FilterMode.Images,
+    undefined
+  ).setSimilarityReferenceID(id);
+  return `/images?${filter.makeQueryParameters()}`;
+};
+
 const makeGalleryImagesUrl = (
   gallery: Partial<GQL.GalleryDataFragment | GQL.SlimGalleryDataFragment>,
   extraCriteria?: ModifierCriterion<CriterionValue>[]
@@ -501,8 +519,10 @@ const NavUtils = {
   makeTagImagesUrl,
   makeTagGroupsUrl,
   makeScenesPHashMatchUrl,
+  makeScenesSimilarityUrl,
   makeSceneMarkerUrl,
   makeImagesPHashMatchUrl,
+  makeImagesSimilarityUrl,
   makeGroupScenesUrl,
   makeChildStudiosUrl,
   makeGalleryImagesUrl,

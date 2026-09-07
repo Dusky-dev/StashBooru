@@ -10,6 +10,7 @@ import { GridCard } from "src/components/Shared/GridCard/GridCard";
 import { RatingBanner } from "src/components/Shared/RatingBanner";
 import {
   faBox,
+  faFingerprint,
   faImages,
   faSearch,
   faTag,
@@ -19,6 +20,8 @@ import { PatchComponent } from "src/patch";
 import { TruncatedText } from "../Shared/TruncatedText";
 import { StudioOverlay } from "../Shared/GridCard/StudioOverlay";
 import { OCounterButton } from "../Shared/CountButton";
+import NavUtils from "src/utils/navigation";
+import { useIntl } from "react-intl";
 
 interface IImageCardProps {
   image: GQL.SlimImageDataFragment;
@@ -33,6 +36,7 @@ interface IImageCardProps {
 const ImageCardPopovers = PatchComponent(
   "ImageCard.Popovers",
   (props: IImageCardProps) => {
+    const intl = useIntl();
     function maybeRenderTagPopoverButton() {
       if (props.image.tags.length <= 0) return;
 
@@ -104,12 +108,30 @@ const ImageCardPopovers = PatchComponent(
       }
     }
 
+    function renderFindSimilar() {
+      const label = intl.formatMessage({
+        id: "actions.find_similar",
+        defaultMessage: "Find similar",
+      });
+      return (
+        <Button
+          href={NavUtils.makeImagesSimilarityUrl(props.image.id)}
+          className="minimal"
+          title={label}
+          aria-label={label}
+        >
+          <Icon icon={faFingerprint} />
+        </Button>
+      );
+    }
+
     if (
       props.image.tags.length > 0 ||
       props.image.performers.length > 0 ||
       props.image.o_counter ||
       props.image.galleries.length > 0 ||
-      props.image.organized
+      props.image.organized ||
+      Boolean(props.image.id)
     ) {
       return (
         <>
@@ -120,6 +142,7 @@ const ImageCardPopovers = PatchComponent(
             {maybeRenderOCounter()}
             {maybeRenderGallery()}
             {maybeRenderOrganized()}
+            {renderFindSimilar()}
           </ButtonGroup>
         </>
       );

@@ -14,11 +14,12 @@ import { useConfigurationContext } from "src/hooks/Config";
 import { PerformerPopoverButton } from "../Shared/PerformerPopoverButton";
 import { GridCard } from "../Shared/GridCard/GridCard";
 import { RatingBanner } from "../Shared/RatingBanner";
-import { FormattedMessage } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import {
   faBox,
   faCopy,
   faFilm,
+  faFingerprint,
   faImages,
   faMapMarkerAlt,
   faTag,
@@ -137,6 +138,7 @@ const Description: React.FC<{
 
 const SceneCardPopovers = React.memo(
   PatchComponent("SceneCard.Popovers", (props: ISceneCardProps) => {
+    const intl = useIntl();
     const file = useMemo(
       () => (props.scene.files.length > 0 ? props.scene.files[0] : undefined),
       [props.scene]
@@ -291,6 +293,23 @@ const SceneCardPopovers = React.memo(
       }
     }
 
+    function renderFindSimilar() {
+      const label = intl.formatMessage({
+        id: "actions.find_similar",
+        defaultMessage: "Find similar",
+      });
+      return (
+        <Button
+          href={NavUtils.makeScenesSimilarityUrl(props.scene.id)}
+          className="minimal"
+          title={label}
+          aria-label={label}
+        >
+          <Icon icon={faFingerprint} />
+        </Button>
+      );
+    }
+
     function maybeRenderPopoverButtonGroup() {
       if (
         !props.compact &&
@@ -301,7 +320,8 @@ const SceneCardPopovers = React.memo(
           props.scene?.o_counter ||
           props.scene.galleries.length > 0 ||
           props.scene.organized ||
-          sceneNumber !== undefined)
+          sceneNumber !== undefined ||
+          Boolean(props.scene.id))
       ) {
         return (
           <>
@@ -316,6 +336,7 @@ const SceneCardPopovers = React.memo(
               {maybeRenderGallery()}
               {maybeRenderOrganized()}
               {maybeRenderDupeCopies()}
+              {renderFindSimilar()}
             </ButtonGroup>
           </>
         );

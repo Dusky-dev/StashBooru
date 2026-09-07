@@ -33,6 +33,10 @@ interface IEncodedParams {
   c?: string[];
 }
 
+export const PERCEPTUAL_SIMILARITY_SORT = "perceptual_similarity";
+export const DEFAULT_SIMILARITY_DISTANCE = 5;
+export const MAX_SIMILARITY_DISTANCE = 8;
+
 const DEFAULT_PARAMS = {
   sortDirection: SortDirectionEnum.Asc,
   displayMode: DisplayMode.Grid,
@@ -50,6 +54,8 @@ export class ListFilterModel {
   public itemsPerPage = DEFAULT_PARAMS.itemsPerPage;
   public sortDirection: SortDirectionEnum = DEFAULT_PARAMS.sortDirection;
   public sortBy?: string;
+  public similarityDistance = DEFAULT_SIMILARITY_DISTANCE;
+  public similarityReferenceID?: string;
   public displayMode: DisplayMode = DEFAULT_PARAMS.displayMode;
   public zoomIndex: number = 1;
   public criteria: Array<Criterion> = [];
@@ -97,6 +103,24 @@ export class ListFilterModel {
     return ret;
   }
 
+  private configureSimilaritySort(sortBy: string): boolean {
+    const match = sortBy.match(/^perceptual_similarity(?::(\d+))?(?::(\d+))?$/);
+    if (!match) return false;
+
+    const distance = Number.parseInt(
+      match[1] ?? String(DEFAULT_SIMILARITY_DISTANCE),
+      10
+    );
+    this.similarityDistance = Math.min(
+      MAX_SIMILARITY_DISTANCE,
+      Math.max(0, distance)
+    );
+    this.similarityReferenceID = match[2];
+    this.sortBy = PERCEPTUAL_SIMILARITY_SORT;
+    this.sortDirection = SortDirectionEnum.Asc;
+    return true;
+  }
+
   public empty() {
     return new ListFilterModel(this.mode, this.config, {
       defaultZoomIndex: this.defaultZoomIndex,
@@ -129,12 +153,13 @@ export class ListFilterModel {
     }
     if (params.sortby !== undefined) {
       this.sortBy = params.sortby;
-
-      // parse the random seed if provided
-      const match = this.sortBy.match(/^random_(\d+)$/);
-      if (match) {
-        this.sortBy = "random";
-        this.randomSeed = Number.parseInt(match[1], 10);
+      if (!this.configureSimilaritySort(params.sortby)) {
+        // parse the random seed if provided
+        const match = this.sortBy.match(/^random_(\d+)$/);
+        if (match) {
+          this.sortBy = "random";
+          this.randomSeed = Number.parseInt(match[1], 10);
+        }
       }
     }
     if (params.sortdir !== undefined) {
@@ -149,6 +174,9 @@ export class ListFilterModel {
         params.sortby === "date"
           ? SortDirectionEnum.Desc
           : SortDirectionEnum.Asc;
+    }
+    if (this.sortBy === PERCEPTUAL_SIMILARITY_SORT) {
+      this.sortDirection = SortDirectionEnum.Asc;
     }
     if (params.disp !== undefined) {
       this.displayMode = params.disp;
@@ -295,13 +323,20 @@ export class ListFilterModel {
 
     this.itemsPerPage = findFilter?.per_page ?? this.itemsPerPage;
     this.sortBy = findFilter?.sort ?? this.sortBy;
-    // parse the random seed if provided
-    const match = this.sortBy?.match(/^random_(\d+)$/);
-    if (match) {
-      this.sortBy = "random";
-      this.randomSeed = Number.parseInt(match[1], 10);
+    const similarity = this.sortBy
+      ? this.configureSimilaritySort(this.sortBy)
+      : false;
+    if (!similarity) {
+      const match = this.sortBy?.match(/^random_(\d+)$/);
+      if (match) {
+        this.sortBy = "random";
+        this.randomSeed = Number.parseInt(match[1], 10);
+      }
     }
     this.sortDirection = findFilter?.direction ?? this.sortDirection;
+    if (this.sortBy === PERCEPTUAL_SIMILARITY_SORT) {
+      this.sortDirection = SortDirectionEnum.Asc;
+    }
     this.searchTerm = findFilter?.q ?? this.searchTerm;
 
     this.displayMode = uiOptions?.display_mode ?? this.displayMode;
@@ -321,21 +356,14 @@ export class ListFilterModel {
 
   private setRandomSeed() {
     if (this.sortBy === "random") {
-      // #321 - set the random seed if it is not set
-      if (this.randomSeed === -1) {
-        // generate 8-digit seed
-        this.randomSeed = Math.floor(Math.random() * 10 ** 8);
-      }
-    } else {
-      this.randomSeed = -1;
-    }
-  }
-
-  private getSortBy(): string | undefined {
-    this.setRandomSeed();
-
-    if (this.sortBy === "random") {
       return `random_${this.randomSeed.toString()}`;
+    }
+
+    if (this.sortBy === PERCEPTUAL_SIMILARITY_SORT) {
+      const reference = this.similarityReferenceID
+        ? `:${this.similarityReferenceID}`
+        : "";
+      return `${PERCEPTUAL_SIMILARITY_SORT}:${this.similarityDistance}${reference}`;
     }
 
     return this.sortBy;
@@ -552,7 +580,32 @@ export class ListFilterModel {
   public setSortBy(sortBy: string | undefined) {
     const ret = this.clone();
     ret.sortBy = sortBy;
-    ret.currentPage = 1; // reset to first page
+    if (sortBy === PERCEPTUAL_SIMILARITY_SORT) {
+      ret.sortDirection = SortDirectionEnum.Asc;
+    }
+    ret.currentPage = 1;
+    return ret;
+  }
+
+  public setSimilarityDistance(distance: number) {
+    const ret = this.clone();
+    ret.similarityDistance = Math.min(
+      MAX_SIMILARITY_DISTANCE,
+      Math.max(0, Math.round(distance))
+    );
+    ret.sortBy = PERCEPTUAL_SIMILARITY_SORT;
+    ret.sortDirection = SortDirectionEnum.Asc;
+    ret.currentPage = 1;
+    return ret;
+  }
+
+  public setSimilarityReferenceID(referenceID?: string) {
+    const ret = this.clone();
+    ret.similarityReferenceID =
+      referenceID && /^\d+$/.test(referenceID) ? referenceID : undefined;
+    ret.sortBy = PERCEPTUAL_SIMILARITY_SORT;
+    ret.sortDirection = SortDirectionEnum.Asc;
+    ret.currentPage = 1;
     return ret;
   }
 
