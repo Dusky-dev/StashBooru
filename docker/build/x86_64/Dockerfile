@@ -10,7 +10,7 @@ COPY Makefile /stash/
 COPY ./graphql /stash/graphql/
 COPY ./ui /stash/ui/
 # pnpm install with npm
-RUN npm install -g pnpm
+RUN npm install -g pnpm@10.33.0
 RUN make pre-ui
 RUN make generate-ui
 ARG GITHASH
@@ -37,8 +37,21 @@ RUN make flags-release flags-pie stash
 
 # Final Runnable Image
 FROM alpine:latest
-RUN apk add --no-cache ca-certificates vips-tools ffmpeg
+
+RUN apk add --no-cache \
+    ca-certificates \
+    vips-tools \
+    ffmpeg \
+    python3 \
+    py3-pip \
+    && python3 -m pip install \
+        --break-system-packages \
+        --no-cache-dir \
+        yt-dlp
+
 COPY --from=backend /stash/stash /usr/bin/
+
 ENV STASH_CONFIG_FILE=/root/.stash/config.yml
+
 EXPOSE 9999
 ENTRYPOINT ["stash"]
