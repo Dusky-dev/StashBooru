@@ -356,6 +356,20 @@ export class ListFilterModel {
 
   private setRandomSeed() {
     if (this.sortBy === "random") {
+      // #321 - set the random seed if it is not set
+      if (this.randomSeed === -1) {
+        // generate 8-digit seed
+        this.randomSeed = Math.floor(Math.random() * 10 ** 8);
+      }
+    } else {
+      this.randomSeed = -1;
+    }
+  }
+
+  private getSortBy(): string | undefined {
+    this.setRandomSeed();
+
+    if (this.sortBy === "random") {
       return `random_${this.randomSeed.toString()}`;
     }
 
