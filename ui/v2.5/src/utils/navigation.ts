@@ -11,7 +11,11 @@ import {
   TagsCriterion,
   TagsCriterionOption,
 } from "src/models/list-filter/criteria/tags";
-import { ListFilterModel } from "src/models/list-filter/filter";
+import {
+  DEFAULT_SIMILARITY_DISTANCE,
+  ListFilterModel,
+  PERCEPTUAL_SIMILARITY_SORT,
+} from "src/models/list-filter/filter";
 import {
   ContainingGroupsCriterionOption,
   GroupsCriterion,
@@ -353,20 +357,18 @@ const makeImagesPHashMatchUrl = (phash: GQL.Maybe<string> | undefined) => {
 
 const makeScenesSimilarityUrl = (id: string | undefined) => {
   if (!id) return "#";
-  const filter = new ListFilterModel(
-    GQL.FilterMode.Scenes,
-    undefined
-  ).setSimilarityReferenceID(id);
-  return `/scenes?${filter.makeQueryParameters()}`;
+  const sort = encodeURIComponent(
+    `${PERCEPTUAL_SIMILARITY_SORT}:${DEFAULT_SIMILARITY_DISTANCE}:${id}`
+  );
+  return `/scenes?sortby=${sort}`;
 };
 
 const makeImagesSimilarityUrl = (id: string | undefined) => {
   if (!id) return "#";
-  const filter = new ListFilterModel(
-    GQL.FilterMode.Images,
-    undefined
-  ).setSimilarityReferenceID(id);
-  return `/images?${filter.makeQueryParameters()}`;
+  const sort = encodeURIComponent(
+    `${PERCEPTUAL_SIMILARITY_SORT}:${DEFAULT_SIMILARITY_DISTANCE}:${id}`
+  );
+  return `/images?sortby=${sort}`;
 };
 
 const makeGalleryImagesUrl = (

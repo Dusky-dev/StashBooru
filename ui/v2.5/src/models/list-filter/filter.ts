@@ -105,19 +105,24 @@ export class ListFilterModel {
 
   private configureSimilaritySort(sortBy: string): boolean {
     const match = sortBy.match(/^perceptual_similarity(?::(\d+))?(?::(\d+))?$/);
-    if (!match) return false;
 
-    const distance = Number.parseInt(
+    if (!match) {
+      return false;
+    }
+
+    const parsedDistance = Number.parseInt(
       match[1] ?? String(DEFAULT_SIMILARITY_DISTANCE),
       10
     );
+
     this.similarityDistance = Math.min(
       MAX_SIMILARITY_DISTANCE,
-      Math.max(0, distance)
+      Math.max(0, parsedDistance)
     );
     this.similarityReferenceID = match[2];
     this.sortBy = PERCEPTUAL_SIMILARITY_SORT;
     this.sortDirection = SortDirectionEnum.Asc;
+
     return true;
   }
 
@@ -153,8 +158,8 @@ export class ListFilterModel {
     }
     if (params.sortby !== undefined) {
       this.sortBy = params.sortby;
+
       if (!this.configureSimilaritySort(params.sortby)) {
-        // parse the random seed if provided
         const match = this.sortBy.match(/^random_(\d+)$/);
         if (match) {
           this.sortBy = "random";
@@ -377,6 +382,7 @@ export class ListFilterModel {
       const reference = this.similarityReferenceID
         ? `:${this.similarityReferenceID}`
         : "";
+
       return `${PERCEPTUAL_SIMILARITY_SORT}:${this.similarityDistance}${reference}`;
     }
 
