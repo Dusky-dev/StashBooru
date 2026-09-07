@@ -1,4 +1,5 @@
 import React, { MouseEvent, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { Button, ButtonGroup } from "react-bootstrap";
 import cx from "classnames";
 import * as GQL from "src/core/generated-graphql";
@@ -36,7 +37,6 @@ interface IImageCardProps {
 const ImageCardPopovers = PatchComponent(
   "ImageCard.Popovers",
   (props: IImageCardProps) => {
-    const intl = useIntl();
     function maybeRenderTagPopoverButton() {
       if (props.image.tags.length <= 0) return;
 
@@ -130,8 +130,7 @@ const ImageCardPopovers = PatchComponent(
       props.image.performers.length > 0 ||
       props.image.o_counter ||
       props.image.galleries.length > 0 ||
-      props.image.organized ||
-      Boolean(props.image.id)
+      props.image.organized
     ) {
       return (
         <>
@@ -142,7 +141,6 @@ const ImageCardPopovers = PatchComponent(
             {maybeRenderOCounter()}
             {maybeRenderGallery()}
             {maybeRenderOrganized()}
-            {renderFindSimilar()}
           </ButtonGroup>
         </>
       );
@@ -233,12 +231,31 @@ const ImageCardImage = PatchComponent(
 export const ImageCard: React.FC<IImageCardProps> = PatchComponent(
   "ImageCard",
   (props: IImageCardProps) => {
+    const intl = useIntl();
+    const findSimilarLabel = intl.formatMessage({
+      id: "actions.find_similar",
+      defaultMessage: "Find similar",
+    });
+
+    const findSimilarAction = (
+      <Link
+        to={NavUtils.makeImagesSimilarityUrl(props.image.id)}
+        className="btn btn-link minimal"
+        title={findSimilarLabel}
+        aria-label={findSimilarLabel}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <Icon icon={faFingerprint} />
+      </Link>
+    );
+
     return (
       <GridCard
         className={`image-card zoom-${props.zoomIndex}`}
         url={`/images/${props.image.id}`}
         width={props.cardWidth}
         title={imageTitle(props.image)}
+        titleAction={findSimilarAction}
         linkClassName="image-card-link"
         image={<ImageCardImage {...props} />}
         details={<ImageCardDetails {...props} />}

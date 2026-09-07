@@ -8,6 +8,35 @@
     transition: opacity 0.5s;
   }
 
+  .card-section-title-row {
+    align-items: flex-start;
+    display: flex;
+    gap: 0.25rem;
+    min-width: 0;
+
+    > a {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+  }
+
+  .card-title-action {
+    flex: 0 0 auto;
+    margin-left: auto;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+
+    .btn {
+      line-height: 1;
+      padding: 0.2rem 0.35rem;
+    }
+  }
+
+  &:hover .card-title-action,
+  &:focus-within .card-title-action {
+    opacity: 1;
+  }
+
   &:hover,
   &:active {
     .rating-banner,
