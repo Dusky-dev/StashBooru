@@ -1029,12 +1029,14 @@ var imageSortOptions = sortOptions{
 	"path",
 	"performer_age",
 	"performer_count",
+	"perceptual_similarity",
 	"random",
 	"rating",
 	"resolution",
 	"tag_count",
 	"title",
 	"updated_at",
+	"perceptual_similarity",
 }
 
 func (qb *ImageStore) setImageSortAndPagination(q *queryBuilder, findFilter *models.FindFilterType) error {
@@ -1082,6 +1084,18 @@ func (qb *ImageStore) setImageSortAndPagination(q *queryBuilder, findFilter *mod
 			addFilesJoin()
 			addFolderJoin()
 			sortClause = " ORDER BY COALESCE(folders.path, '') || COALESCE(files.basename, '') COLLATE NATURAL_CI " + direction
+		case "perceptual_similarity":
+			// special handling for phash
+			addFilesJoin()
+			q.addJoins(
+				join{
+					sort:     true,
+					table:    fingerprintTable,
+					as:       "fingerprints_phash",
+					onClause: "images_files.file_id = fingerprints_phash.file_id AND fingerprints_phash.type = 'phash'",
+				},
+			)
+			sortClause = " ORDER BY fingerprints_phash.fingerprint " + direction + ", files.size DESC"
 		case "file_count":
 			sortClause = getCountSort(imageTable, imagesFilesTable, imageIDColumn, direction)
 		case "tag_count":

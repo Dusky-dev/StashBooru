@@ -3082,6 +3082,13 @@ func TestImageQuerySorting(t *testing.T) {
 			-1,
 		},
 		{
+			"perceptual_similarity",
+			"perceptual_similarity",
+			models.SortDirectionEnumDesc,
+			-1,
+			-1,
+		},
+		{
 			"date",
 			"date",
 			models.SortDirectionEnumDesc,

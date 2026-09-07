@@ -32,6 +32,7 @@ const sortByOptions = [
   "file_count",
   "date",
   "resolution",
+  "perceptual_similarity",
   "performer_age",
   ...MediaSortByOptions,
 ]
