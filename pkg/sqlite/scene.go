@@ -1095,8 +1095,14 @@ func (qb *SceneStore) Query(ctx context.Context, options models.SceneQueryOption
 	}
 
 	var idsResult []int
-	if similarity != nil && similarity.ReferenceID == nil {
-		idsResult, err = findPHashClusteredIDs(ctx, *query, scenesFilesTable, sceneIDColumn, options.FindFilter, similarity.Distance)
+	if similarity != nil {
+		var similarityCount int
+		idsResult, similarityCount, err = findPHashSimilarityIDs(
+			ctx, *query, scenesFilesTable, sceneIDColumn, options.FindFilter, similarity,
+		)
+		if options.Count {
+			result.Count = similarityCount
+		}
 	} else {
 		idsResult, err = query.findIDs(ctx)
 	}
@@ -1295,20 +1301,8 @@ func (qb *SceneStore) setSceneSort(query *queryBuilder, findFilter *models.FindF
 		addFolderTable()
 		query.sortAndPagination += fmt.Sprintf(" ORDER BY COALESCE(folders.path, '') || COALESCE(files.basename, '') COLLATE NATURAL_CI %s", direction)
 	case "perceptual_similarity":
-		if similarity != nil && similarity.ReferenceID != nil {
-			query.sortAndPagination += applyReferencePHashSimilarity(query, scenesFilesTable, sceneIDColumn, sceneTable, similarity)
-		} else {
-			addFileTable()
-			query.addJoins(
-				join{
-					sort:     true,
-					table:    fingerprintTable,
-					as:       "fingerprints_phash",
-					onClause: "scenes_files.file_id = fingerprints_phash.file_id AND fingerprints_phash.type = 'phash'",
-				},
-			)
-			query.sortAndPagination += " ORDER BY fingerprints_phash.fingerprint " + direction + ", files.size DESC"
-		}
+		// Query() performs similarity ordering before pagination.
+
 	case "bitrate":
 		sort = "bit_rate"
 		addVideoFileTable()
@@ -1376,8 +1370,10 @@ func (qb *SceneStore) setSceneSort(query *queryBuilder, findFilter *models.FindF
 		query.sortAndPagination += getSort(sort, direction, "scenes")
 	}
 
-	// Whatever the sorting, always use title/id as a final sort
-	query.sortAndPagination += ", COALESCE(scenes.title, scenes.id) COLLATE NATURAL_CI ASC"
+	// Perceptual similarity is ordered in Go before pagination.
+	if sort != perceptualSimilaritySort {
+		query.sortAndPagination += ", COALESCE(scenes.title, scenes.id) COLLATE NATURAL_CI ASC"
+	}
 
 	return nil
 }

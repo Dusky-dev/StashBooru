@@ -940,8 +940,14 @@ func (qb *ImageStore) Query(ctx context.Context, options models.ImageQueryOption
 	}
 
 	var idsResult []int
-	if similarity != nil && similarity.ReferenceID == nil {
-		idsResult, err = findPHashClusteredIDs(ctx, *query, imagesFilesTable, imageIDColumn, options.FindFilter, similarity.Distance)
+	if similarity != nil {
+		var similarityCount int
+		idsResult, similarityCount, err = findPHashSimilarityIDs(
+			ctx, *query, imagesFilesTable, imageIDColumn, options.FindFilter, similarity,
+		)
+		if options.Count {
+			result.Count = similarityCount
+		}
 	} else {
 		idsResult, err = query.findIDs(ctx)
 	}
@@ -1104,20 +1110,9 @@ func (qb *ImageStore) setImageSortAndPagination(q *queryBuilder, findFilter *mod
 			addFolderJoin()
 			sortClause = " ORDER BY COALESCE(folders.path, '') || COALESCE(files.basename, '') COLLATE NATURAL_CI " + direction
 		case "perceptual_similarity":
-			if similarity != nil && similarity.ReferenceID != nil {
-				sortClause = applyReferencePHashSimilarity(q, imagesFilesTable, imageIDColumn, imageTable, similarity)
-			} else {
-				addFilesJoin()
-				q.addJoins(
-					join{
-						sort:     true,
-						table:    fingerprintTable,
-						as:       "fingerprints_phash",
-						onClause: "images_files.file_id = fingerprints_phash.file_id AND fingerprints_phash.type = 'phash'",
-					},
-				)
-				sortClause = " ORDER BY fingerprints_phash.fingerprint " + direction + ", files.size DESC"
-			}
+			// Query() performs similarity ordering before pagination.
+			sortClause = ""
+
 		case "file_count":
 			sortClause = getCountSort(imageTable, imagesFilesTable, imageIDColumn, direction)
 		case "tag_count":
@@ -1166,8 +1161,10 @@ func (qb *ImageStore) setImageSortAndPagination(q *queryBuilder, findFilter *mod
 			sortClause = getSort(sort, direction, "images")
 		}
 
-		// Whatever the sorting, always use title/id as a final sort
-		sortClause += ", COALESCE(images.title, images.id) COLLATE NATURAL_CI ASC"
+		// Perceptual similarity is ordered in Go before pagination.
+		if sortClause != "" {
+			sortClause += ", COALESCE(images.title, images.id) COLLATE NATURAL_CI ASC"
+		}
 	}
 
 	q.sortAndPagination = sortClause + getPagination(findFilter)
