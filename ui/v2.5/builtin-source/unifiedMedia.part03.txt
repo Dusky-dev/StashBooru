@@ -1,0 +1,350 @@
+        : undefined,
+    });
+  }
+
+
+  // Match Stash's current scene-wall behaviour: media keeps its own aspect ratio
+  // and rows are justified dynamically rather than forcing every item into a
+  // 16:9 letterbox. These are the same target row-height breakpoints used by
+  // Stash's native SceneWallPanel for this UI generation.
+  const WALL_ZOOM_HEIGHTS = [
+    { minWidth: 576, heights: [100, 120, 240, 360] },
+    { minWidth: 768, heights: [120, 160, 240, 480] },
+    { minWidth: 1200, heights: [120, 160, 240, 300] },
+    { minWidth: 1400, heights: [160, 240, 300, 480] },
+  ];
+
+  function wallTargetRowHeight(containerWidth, zoomIndex) {
+    let height = 280;
+    const zi = Math.max(0, Math.min(3, Number(zoomIndex) || 0));
+    for (const breakpoint of WALL_ZOOM_HEIGHTS) {
+      if (containerWidth >= breakpoint.minWidth) height = breakpoint.heights[zi];
+    }
+    return height;
+  }
+
+  function wallEntryDimensions(entry) {
+    const file = firstFile(entry.item) || {};
+    let width = Number(file.width) || 0;
+    let height = Number(file.height) || 0;
+
+    // Scene preview clips normally preserve the original file aspect ratio.
+    // Use Stash's native SceneWall fallback when dimensions are unavailable.
+    if (!(width > 0 && height > 0)) {
+      if (entry.type === "scene") return { width: 1280, height: 720 };
+      return { width: 1, height: 1 };
+    }
+    return { width, height };
+  }
+
+  function buildJustifiedWallRows(entries, containerWidth, zoomIndex) {
+    if (!entries.length || !(containerWidth > 0)) return [];
+    const gap = 6;
+    const targetHeight = wallTargetRowHeight(containerWidth, zoomIndex);
+    const maxHeight = targetHeight * 1.3;
+    const rows = [];
+    let current = [];
+    let aspectSum = 0;
+
+    const flush = (isLast) => {
+      if (!current.length) return;
+      const gaps = gap * Math.max(0, current.length - 1);
+      const targetWidth = aspectSum * targetHeight + gaps;
+      // Full rows are justified to the available width. An incomplete final
+      // row stays at the normal target height, just like react-photo-gallery.
+      let rowHeight = !isLast || targetWidth >= containerWidth
+        ? (containerWidth - gaps) / Math.max(aspectSum, 0.01)
+        : targetHeight;
+      rowHeight = Math.max(48, Math.min(maxHeight, rowHeight));
+
+      rows.push({
+        height: rowHeight,
+        gap,
+        items: current.map(({ entry, aspect }) => ({
+          entry,
+          width: rowHeight * aspect,
+          height: rowHeight,
+        })),
+      });
+      current = [];
+      aspectSum = 0;
+    };
+
+    entries.forEach((entry, index) => {
+      const d = wallEntryDimensions(entry);
+      const aspect = Math.max(0.1, Math.min(10, d.width / d.height));
+      current.push({ entry, aspect });
+      aspectSum += aspect;
+      const projected = aspectSum * targetHeight + gap * Math.max(0, current.length - 1);
+      const last = index === entries.length - 1;
+      if (projected >= containerWidth || last) flush(last);
+    });
+
+    return rows;
+  }
+
+  function useElementWidth() {
+    const ref = React.useRef(null);
+    const [width, setWidth] = React.useState(0);
+    React.useEffect(() => {
+      const el = ref.current;
+      if (!el) return undefined;
+      const update = () => setWidth(el.clientWidth || 0);
+      update();
+      if (typeof ResizeObserver === "function") {
+        const observer = new ResizeObserver(update);
+        observer.observe(el);
+        return () => observer.disconnect();
+      }
+      window.addEventListener("resize", update);
+      return () => window.removeEventListener("resize", update);
+    }, []);
+    return [ref, width];
+  }
+
+  function MixedWallItem({ entry, width, height, ctx, selectableKeys, openPreviewByKey }) {
+    const Link = api.libraries?.ReactRouterDOM?.Link;
+    const selected = ctx.selectedKeys.has(entry.key);
+    const selecting = ctx.selectedKeys.size > 0;
+    const item = entry.item;
+
+    const onSelect = (selectedValue, shiftKey) =>
+      ctx.onSelectEntry(entry.key, selectedValue, shiftKey, selectableKeys);
+
+    const onContainerClick = (ev) => {
+      if (selecting) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        onSelect(!selected, ev.shiftKey);
+        return;
+      }
+      if ((entry.type === "image" || entry.type === "scene") && openPreviewByKey) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        openPreviewByKey(entry.key);
+      }
+    };
+
+    const href = entry.type === "scene" ? `/scenes/${item.id}` : `/images/${item.id}`;
+    const scenePreview = item.paths?.preview || null;
+    const scenePoster = item.paths?.screenshot || null;
+    const imageSource = item.paths?.preview || item.paths?.thumbnail || null;
+    const imageIsVideo = typeof imageSource === "string" && imageSource.includes("preview");
+
+    let media;
+    if (entry.type === "scene") {
+      media = scenePreview
+        ? React.createElement("video", {
+            className: "unified-media-wall-media",
+            src: scenePreview,
+            poster: scenePoster || undefined,
+            autoPlay: true,
+            loop: true,
+            muted: true,
+            playsInline: true,
+            preload: "none",
+          })
+        : React.createElement("img", {
+            className: "unified-media-wall-media",
+            src: scenePoster || "",
+            alt: entry.title,
+            loading: "lazy",
+          });
+    } else {
+      media = imageIsVideo
+        ? React.createElement("video", {
+            className: "unified-media-wall-media",
+            src: imageSource,
+            autoPlay: true,
+            loop: true,
+            muted: true,
+            playsInline: true,
+          })
+        : React.createElement("img", {
+            className: "unified-media-wall-media",
+            src: imageSource || "",
+            alt: entry.title,
+            loading: "lazy",
+          });
+    }
+
+    // Wall mode intentionally has no preview-button overlay. Clicking either a
+    // scene/video or image opens the shared preview directly (unless selection
+    // mode is active). Grid mode keeps the normal magnifying-glass affordance.
+
+    const anchorProps = {
+      className: "unified-media-wall-anchor",
+      onClick: onContainerClick,
+      style: { width: "100%", height: "100%" },
+    };
+    const anchor = Link
+      ? React.createElement(Link, { ...anchorProps, to: href }, media)
+      : React.createElement("a", { ...anchorProps, href }, media);
+
+    return React.createElement(
+      "div",
+      {
+        className: "unified-media-wall-item",
+        style: { width: `${Math.max(1, width)}px`, height: `${Math.max(1, height)}px` },
+      },
+      React.createElement("input", {
+        type: "checkbox",
+        className: "wall-item-check mousetrap unified-media-wall-check",
+        checked: selected,
+        onChange: (ev) => onSelect(ev.target.checked, false),
+        onClick: (ev) => ev.stopPropagation(),
+        "aria-label": `Select ${entry.title}`,
+      }),
+      entry.type === "image" && isGifImage(item)
+        ? React.createElement(GifBadge, { key: "gif" })
+        : null,
+      anchor
+    );
+  }
+
+  function MixedWall({ pageItems, ctx, selectableKeys, openPreviewByKey, zoomIndex }) {
+    const [containerRef, containerWidth] = useElementWidth();
+    const rows = React.useMemo(
+      () => buildJustifiedWallRows(pageItems, containerWidth, zoomIndex),
+      [pageItems, containerWidth, zoomIndex]
+    );
+
+    return React.createElement(
+      "div",
+      { className: "unified-media-wall", ref: containerRef },
+      rows.map((row, rowIndex) =>
+        React.createElement(
+          "div",
+          {
+            key: `row-${rowIndex}`,
+            className: "unified-media-wall-row",
+            style: { gap: `${row.gap}px`, height: `${row.height}px` },
+          },
+          row.items.map(({ entry, width, height }) =>
+            React.createElement(MixedWallItem, {
+              key: entry.key,
+              entry,
+              width,
+              height,
+              ctx,
+              selectableKeys,
+              openPreviewByKey,
+            })
+          )
+        )
+      )
+    );
+  }
+
+  function NativeScenePlayerPortal({ entry, target, geometry, onNext, onPrevious }) {
+    const portal = api.ReactDOM?.createPortal;
+    const loadables = React.useMemo(
+      () => [api.loadableComponents?.ScenePlayer, api.loadableComponents?.Scenes].filter(Boolean),
+      []
+    );
+    const loadingComponents = api.hooks?.useLoadComponents
+      ? api.hooks.useLoadComponents(loadables)
+      : false;
+
+    const useFindScene = api.utils?.StashService?.useFindScene;
+    const queryResult = useFindScene
+      ? useFindScene(String(entry.item.id))
+      : { data: { findScene: entry.item }, loading: false, error: null };
+
+    const scene = queryResult?.data?.findScene || entry.item;
+    const ScenePlayer = nativeComponent("ScenePlayer");
+    const sendSetTimestamp = React.useCallback(() => {}, []);
+    const noop = React.useCallback(() => {}, []);
+
+    const relayWheelToNativeLightbox = React.useCallback(
+      (ev) => {
+        if (!target) return;
+        const hiddenMedia = target.querySelector(
+          ".Lightbox-carousel-image-wrapper img, .Lightbox-carousel-image-wrapper video"
+        );
+        if (!hiddenMedia) return;
+
+        // Let Stash's own LightboxImage handle scroll mode, zoom increments,
+        // reset-zoom UI and persisted lightbox options. We only relay the wheel
+        // event from the visible native ScenePlayer to its invisible placeholder.
+        ev.preventDefault?.();
+        ev.stopPropagation?.();
+        try {
+          hiddenMedia.dispatchEvent(
+            new WheelEvent("wheel", {
+              bubbles: true,
+              cancelable: true,
+              deltaX: ev.deltaX,
+              deltaY: ev.deltaY,
+              deltaZ: ev.deltaZ,
+              deltaMode: ev.deltaMode,
+              clientX: ev.clientX,
+              clientY: ev.clientY,
+              ctrlKey: ev.ctrlKey,
+              shiftKey: ev.shiftKey,
+              altKey: ev.altKey,
+              metaKey: ev.metaKey,
+            })
+          );
+        } catch (e) {
+          console.warn("[Unified Media] could not relay lightbox zoom event", e);
+        }
+      },
+      [target]
+    );
+
+    if (!target || typeof portal !== "function") return null;
+
+    let content;
+    if (loadingComponents || queryResult?.loading) {
+      const Loading = nativeComponent("LoadingIndicator");
+      content = Loading
+        ? React.createElement(Loading)
+        : React.createElement("div", { className: "text-muted" }, "Loading video…");
+    } else if (!ScenePlayer || !scene?.sceneStreams || !Array.isArray(scene.files)) {
+      content = React.createElement(
+        "div",
+        { className: "alert alert-warning unified-media-native-player-error" },
+        "Stash's native ScenePlayer could not be loaded for this preview."
+      );
+    } else {
+      content = React.createElement(ScenePlayer, {
+        key: `unified-media-scene-player:${scene.id}`,
+        scene,
+        hideScrubberOverride: true,
+        autoplay: true,
+        permitLoop: false,
+        initialTimestamp: 0,
+        sendSetTimestamp,
+        onComplete: noop,
+        onNext: onNext || noop,
+        onPrevious: onPrevious || noop,
+      });
+    }
+
+    const style = geometry
+      ? {
+          left: `${geometry.left}px`,
+          top: `${geometry.top}px`,
+          width: `${geometry.width}px`,
+          height: `${geometry.height}px`,
+        }
+      : undefined;
+
+    return portal(
+      React.createElement(
+        "div",
+        {
+          className: "unified-media-native-scene-player",
+          style,
+          onWheelCapture: relayWheelToNativeLightbox,
+        },
+        content
+      ),
+      document.body
+    );
+  }
+
+  // Page-wide scene preview host. Native scene cards in the normal Videos tab
+  // register themselves with PageMediaContext, so they get the same Stash
+  // Lightbox + native ScenePlayer preview experience as the All tab.
