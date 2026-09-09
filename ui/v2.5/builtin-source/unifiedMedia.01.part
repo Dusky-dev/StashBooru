@@ -1,3 +1,64 @@
+arker: new Set([
+      "tags", "performers", "created_at", "updated_at", "scene_date", "scene_created_at",
+      "scene_updated_at", "duration"
+    ]),
+  });
+
+  function copySupported(source, type) {
+    const allowed = allowedKeys[type];
+    const out = {};
+    if (!source || !allowed) return out;
+    for (const [key, value] of Object.entries(source)) {
+      if (allowed.has(key)) out[key] = value;
+    }
+
+    // A native Scene title/details filter is the closest equivalent for
+    // name/synopsis-based object types.
+    if (source.title && (type === "group" || type === "performer" || type === "studio")) {
+      out.name = source.title;
+    }
+    if (source.details && type === "group") out.synopsis = source.details;
+    return out;
+  }
+
+  function pageRelationFilter(kind, type, entity, includeChildren) {
+    const id = String(entity.id);
+    if (kind === "performer") {
+      return { performers: { value: [id], modifier: Modifier.IncludesAll } };
+    }
+    if (kind === "studio") {
+      if (type === "studio") {
+        return { parents: { value: [id], modifier: Modifier.IncludesAll } };
+      }
+      return {
+        studios: {
+          value: [id],
+          modifier: Modifier.Includes,
+          depth: includeChildren ? -1 : 0,
+        },
+      };
+    }
+    return {
+      tags: {
+        value: [id],
+        modifier: Modifier.IncludesAll,
+        depth: includeChildren ? -1 : 0,
+      },
+    };
+  }
+
+  function mergeObjectFilter(kind, type, entity, includeChildren, nativeSceneFilter) {
+    const out = copySupported(nativeSceneFilter, type);
+    const relation = pageRelationFilter(kind, type, entity, includeChildren);
+
+    // Force the page relation so an advanced filter cannot accidentally make
+    // All escape the current performer/studio/tag.
+    for (const [key, value] of Object.entries(relation)) out[key] = value;
+    return out;
+  }
+
+  function useMixedQueries(ctx, filter) {
+    const { kind, entity, includeChildren } = ctx;
     const sourceObjectFilter = React.useMemo(() => {
       try {
         return filter?.makeFilter ? filter.makeFilter() : {};
@@ -220,109 +281,4 @@
         (q.performers.data?.findPerformers?.performers || []).filter((p) => String(p.id) !== id)
       );
     } else if (kind === "studio") {
-      add("performer", q.performers.data?.findPerformers?.performers);
-      add("studio", q.studios.data?.findStudios?.studios);
-    } else {
-      add("marker", q.markers.data?.findSceneMarkers?.scene_markers);
-      add("performer", q.performers.data?.findPerformers?.performers);
-      add("studio", q.studios.data?.findStudios?.studios);
-    }
-
-    return out;
-  }
-
-  function missing(value) {
-    return value == null || value === "" || (typeof value === "number" && Number.isNaN(value));
-  }
-
-  function hashRandom(entry, seed) {
-    const s = `${seed}:${entry.type}:${entry.id}`;
-    let h = 2166136261;
-    for (let i = 0; i < s.length; i += 1) {
-      h ^= s.charCodeAt(i);
-      h = Math.imul(h, 16777619);
-    }
-    return h >>> 0;
-  }
-
-  function sortValue(entry, sortBy, seed) {
-    const item = entry.item;
-    const file = firstFile(item);
-    switch (sortBy) {
-      case "date": return item.date || item.scene?.date || null;
-      case "production_date": return item.production_date || item.date || null;
-      case "title": return entry.title;
-      case "rating":
-      case "rating100": return item.rating100 ?? null;
-      case "created_at": return item.created_at ?? null;
-      case "updated_at": return item.updated_at ?? null;
-      case "o_counter": return item.o_counter ?? null;
-      case "path": return file?.path ?? null;
-      case "file_mod_time": return file?.mod_time ?? null;
-      case "filesize": return totalFileSize(item);
-      case "file_count": {
-        const files = Array.isArray(item.files) ? item.files : item.visual_files;
-        return Array.isArray(files) ? files.length : null;
-      }
-      case "resolution": return resolutionValue(item);
-      case "tag_count": return Array.isArray(item.tags) ? item.tags.length : null;
-      case "performer_count": return Array.isArray(item.performers) ? item.performers.length : null;
-      case "duration": return item.duration ?? file?.duration ?? null;
-      case "play_count": return item.play_count ?? null;
-      case "random": return hashRandom(entry, seed ?? 0);
-      case "code": return item.code ?? null;
-      default: return item[sortBy] ?? null;
-    }
-  }
-
-  function compareMixed(a, b, filter) {
-    const sortBy = filter?.sortBy || "date";
-    const dir = String(filter?.sortDirection || "DESC").toUpperCase() === "ASC" ? 1 : -1;
-    const av = sortValue(a, sortBy, filter?.randomSeed);
-    const bv = sortValue(b, sortBy, filter?.randomSeed);
-
-    const am = missing(av);
-    const bm = missing(bv);
-    if (am !== bm) return am ? 1 : -1;
-
-    let cmp = 0;
-    if (!am && !bm) {
-      if (typeof av === "number" && typeof bv === "number") cmp = av - bv;
-      else cmp = String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: "base" });
-      cmp *= dir;
-    }
-
-    if (cmp === 0) cmp = a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: "base" });
-    if (cmp === 0) cmp = a.type.localeCompare(b.type);
-    if (cmp === 0) cmp = a.id.localeCompare(b.id, undefined, { numeric: true });
-    return cmp;
-  }
-
-  function queryStatus(q, kind) {
-    const active = [q.scenes, q.images, q.galleries, q.groups, q.performers];
-    if (kind !== "performer") active.push(q.studios);
-    if (kind === "tag") active.push(q.markers);
-    return {
-      loading: active.some((x) => x.loading && !x.data),
-      errors: active.map((x) => x.error).filter(Boolean),
-    };
-  }
-
-  function MixedGalleryCard({ gallery, cardWidth, zoomIndex, selecting, selected, onSelectedChanged }) {
-    const C = nativeComponent("GalleryCard");
-    const showGallery = api.hooks?.useGalleryLightbox
-      ? api.hooks.useGalleryLightbox(String(gallery.id))
-      : null;
-    if (!C) return null;
-    return React.createElement(C, {
-      gallery,
-      cardWidth,
-      zoomIndex,
-      selecting,
-      selected,
-      onSelectedChanged,
-      onPreview: showGallery
-        ? (index, ev) => {
-            ev?.preventDefault?.();
-            showGallery(index || 0);
-          }
+      add("performer", q.performe

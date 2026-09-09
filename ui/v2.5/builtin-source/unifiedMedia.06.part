@@ -1,0 +1,332 @@
+TTR, "tab");
+          tab.textContent = "All";
+          nav.appendChild(tab);
+        }
+        tabRef.current = tab;
+        sync();
+      }
+
+      const scheduleInstall = () => {
+        cancelAnimationFrame(frame);
+        frame = requestAnimationFrame(install);
+      };
+
+      install();
+      observer = new MutationObserver(scheduleInstall);
+      observer.observe(shell, { childList: true, subtree: true });
+
+      return () => {
+        cancelAnimationFrame(frame);
+        observer?.disconnect();
+        attachedNav?.removeEventListener("click", onNavClick);
+        shell.classList.remove("unified-media-all-active");
+        shell.querySelectorAll(`[${TAB_ATTR}="tab"]`).forEach((node) => node.remove());
+        tabRef.current = null;
+      };
+    }, [kind, entity.id, shellClass]);
+
+    React.useEffect(() => {
+      const host = hostRef.current;
+      const shell = host?.closest?.(`.${shellClass}`);
+      if (!shell) return;
+      shell.classList.toggle("unified-media-all-active", active);
+      const tab = tabRef.current;
+      if (tab) {
+        tab.classList.toggle("active", active);
+        tab.setAttribute("aria-selected", active ? "true" : "false");
+      }
+    }, [active, shellClass]);
+
+    return React.createElement(
+      "div",
+      {
+        ref: hostRef,
+        className: "unified-media-inline-pane",
+        hidden: !active,
+        [TAB_ATTR]: "pane",
+      },
+      active
+        ? React.createElement(
+            RenderErrorBoundary,
+            { key: `${kind}:${entity.id}:${includeChildren ? 1 : 0}` },
+            React.createElement(UnifiedController, { kind, entity, includeChildren })
+          )
+        : null
+    );
+  }
+
+  function hasClass(element, className) {
+    const value = element?.props?.className;
+    return typeof value === "string" && value.split(/\s+/).includes(className);
+  }
+
+  function injectIntoClass(node, targetClass, injected) {
+    if (!React.isValidElement(node)) return { node, found: false };
+    if (hasClass(node, targetClass)) {
+      const children = React.Children.toArray(node.props.children);
+      const already = children.some(
+        (child) => React.isValidElement(child) && child.key === "unified-media-inline-host"
+      );
+      return {
+        node: already ? node : React.cloneElement(node, {}, ...children, injected),
+        found: true,
+      };
+    }
+    if (node.props?.children == null) return { node, found: false };
+    let found = false;
+    const children = React.Children.map(node.props.children, (child) => {
+      if (found) return child;
+      const result = injectIntoClass(child, targetClass, injected);
+      if (result.found) found = true;
+      return result.node;
+    });
+    if (!found) return { node, found: false };
+    return { node: React.cloneElement(node, {}, children), found: true };
+  }
+
+  function patchPage(componentName, kind, propName, shellClass) {
+    api.patch.after(componentName, function () {
+      const args = Array.from(arguments);
+      const props = args[0] || {};
+      const rendered = args[args.length - 1];
+      const entity = props[propName];
+      if (!entity || !React.isValidElement(rendered)) return rendered;
+
+      const injected = React.createElement(UnifiedInlineHost, {
+        key: "unified-media-inline-host",
+        kind,
+        entity,
+        shellClass,
+      });
+      const result = injectIntoClass(rendered, shellClass, injected);
+      if (!result.found) {
+        console.warn(`[Unified Media] Could not find .${shellClass} in ${componentName} render tree`);
+      }
+      return result.node;
+    });
+  }
+
+  // App-wide media enhancement host. It lives inside Stash's existing provider
+  // tree via MainNavBar.MenuItems, so native Lightbox/ScenePlayer hooks keep the
+  // Router, Intl, Apollo and configuration contexts they expect. SceneCard.Image
+  // can therefore request a preview from anywhere in the app without wrapping
+  // each performer/studio/tag page in its own competing preview provider.
+  function GlobalMediaEnhancementHost() {
+    const registryRef = React.useRef(new Map(globalSceneRegistry));
+    const registryOrderRef = React.useRef(globalSceneInstanceCounter);
+    const [registryVersion, setRegistryVersion] = React.useState(0);
+    const [request, setRequest] = React.useState(null);
+    const [opener, setOpener] = React.useState(null);
+    const openedTokenRef = React.useRef(0);
+    const tokenRef = React.useRef(0);
+
+    const id = request?.id || "";
+    const sceneQuery = api.GQL?.useFindSceneQuery
+      ? api.GQL.useFindSceneQuery({
+          variables: { id },
+          skip: !id,
+          fetchPolicy: "cache-first",
+        })
+      : null;
+    const requestedScene = sceneQuery?.data?.findScene || request?.scene || null;
+
+    // Keep an ordered registry of scene cards currently mounted in the normal
+    // Stash UI. This gives video previews a real carousel instead of a one-item
+    // lightbox, restoring left/right arrows, keyboard navigation and thumbnails.
+    React.useEffect(() => {
+      const onRegistry = (ev) => {
+        const detail = ev?.detail || {};
+        const token = String(detail.token || "");
+        if (!token) return;
+
+        if (detail.action === "remove") {
+          if (registryRef.current.delete(token)) setRegistryVersion((v) => v + 1);
+          return;
+        }
+        if (detail.action !== "add" || !detail.scene?.id) return;
+
+        const existing = registryRef.current.get(token);
+        const order = existing?.order ?? ++registryOrderRef.current;
+        registryRef.current.set(token, { scene: detail.scene, order });
+        setRegistryVersion((v) => v + 1);
+      };
+      window.addEventListener(GLOBAL_SCENE_REGISTRY_EVENT, onRegistry);
+      return () => window.removeEventListener(GLOBAL_SCENE_REGISTRY_EVENT, onRegistry);
+    }, []);
+
+    React.useEffect(() => {
+      const onRequest = (ev) => {
+        const detail = ev?.detail || {};
+        const nextID = String(detail.id ?? detail.scene?.id ?? "");
+        if (!nextID) return;
+        tokenRef.current += 1;
+        openedTokenRef.current = 0;
+        setRequest({
+          id: nextID,
+          scene: detail.scene || null,
+          token: tokenRef.current,
+        });
+      };
+      window.addEventListener(GLOBAL_SCENE_PREVIEW_EVENT, onRequest);
+      return () => window.removeEventListener(GLOBAL_SCENE_PREVIEW_EVENT, onRequest);
+    }, []);
+
+    const registerOpen = React.useCallback((nextOpener) => {
+      setOpener(() => nextOpener || null);
+      return () => {
+        setOpener((current) => current === nextOpener ? null : current);
+      };
+    }, []);
+
+    const scenes = React.useMemo(() => {
+      const ordered = Array.from(registryRef.current.values())
+        .sort((a, b) => a.order - b.order)
+        .map((value) => value.scene);
+      const deduped = [];
+      const seen = new Set();
+      for (const scene of ordered) {
+        const sceneID = String(scene?.id ?? "");
+        if (!sceneID || seen.has(sceneID)) continue;
+        seen.add(sceneID);
+        deduped.push(scene);
+      }
+
+      if (requestedScene?.id) {
+        const requestedID = String(requestedScene.id);
+        const existingIndex = deduped.findIndex((scene) => String(scene.id) === requestedID);
+        if (existingIndex >= 0) deduped[existingIndex] = requestedScene;
+        else deduped.push(requestedScene);
+      }
+      return deduped;
+    }, [registryVersion, requestedScene, request?.token]);
+
+    React.useEffect(() => {
+      if (!request || !requestedScene || !opener) return undefined;
+      if (openedTokenRef.current === request.token) return undefined;
+      if (!scenes.some((scene) => String(scene.id) === String(request.id))) return undefined;
+
+      let cancelled = false;
+      let frame = 0;
+      let attempts = 0;
+      const openWhenReady = () => {
+        if (cancelled) return;
+        // If the previous native lightbox is still finishing its history-backed
+        // dismiss cycle, wait until its DOM is gone before creating the next one.
+        if (document.querySelector(".Lightbox") && attempts < 120) {
+          attempts += 1;
+          frame = requestAnimationFrame(openWhenReady);
+          return;
+        }
+        const scene = scenes.find((value) => String(value.id) === String(request.id));
+        if (!scene) return;
+        openedTokenRef.current = request.token;
+        opener(scene);
+      };
+      frame = requestAnimationFrame(openWhenReady);
+      return () => {
+        cancelled = true;
+        if (frame) cancelAnimationFrame(frame);
+      };
+    }, [request?.token, requestedScene, opener, scenes]);
+
+    const handlePreviewClosed = React.useCallback(() => {
+      // Unmount our useLightbox caller as soon as the scene preview is closed.
+      // Stash has one shared LightboxProvider; leaving a scene-specific caller
+      // mounted can overwrite the image list owned by native ImageList hooks.
+      setRequest(null);
+      setOpener(null);
+    }, []);
+
+    // Native image walls do not render ImageCard.Image. Add GIF markers to all
+    // native wall surfaces across the application, not just entity detail tabs.
+    React.useEffect(() => {
+      let frame = 0;
+      const scan = () => {
+        frame = 0;
+        document.querySelectorAll(".wall-item").forEach((item) => {
+          if (item.closest(".unified-media-wall")) return;
+          const media = item.querySelector("img, video");
+          const src = media?.currentSrc || media?.getAttribute?.("src") || "";
+          const gif = /\.gif(?:$|[?#])/i.test(String(src));
+          let badge = item.querySelector(":scope > .unified-media-native-wall-gif-badge");
+          if (gif && !badge) {
+            badge = document.createElement("span");
+            badge.className = "unified-media-gif-badge unified-media-native-wall-gif-badge";
+            badge.textContent = "GIF";
+            badge.setAttribute("aria-label", "GIF");
+            badge.setAttribute("title", "GIF");
+            item.appendChild(badge);
+          } else if (!gif && badge) {
+            badge.remove();
+          }
+        });
+      };
+      const schedule = () => {
+        if (frame) return;
+        frame = requestAnimationFrame(scan);
+      };
+      const observer = new MutationObserver(schedule);
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["src"],
+      });
+      schedule();
+      return () => {
+        observer.disconnect();
+        if (frame) cancelAnimationFrame(frame);
+      };
+    }, []);
+
+    // SceneWallPanel is not patchable in this Stash generation. Capture native
+    // scene-wall media clicks everywhere in the app and route them through the
+    // same global native preview host. Keep checkboxes and footer/title links
+    // untouched so selection and normal navigation still behave natively.
+    React.useEffect(() => {
+      const onClick = (ev) => {
+        const item = ev.target?.closest?.(".scene-wall .wall-item");
+        if (!item || item.closest(".unified-media-wall")) return;
+        if (ev.target?.closest?.(".wall-item-check, .wall-item-footer a")) return;
+        if (item.querySelector?.('.wall-item-check:checked')) return;
+
+        const link = item.querySelector('.wall-item-footer a[href*="/scenes/"]');
+        const href = link?.getAttribute?.("href") || "";
+        const match = href.match(/\/scenes\/([^/?#]+)/);
+        if (!match) return;
+
+        ev.preventDefault();
+        ev.stopPropagation();
+        ev.stopImmediatePropagation?.();
+        requestGlobalScenePreview(decodeURIComponent(match[1]));
+      };
+      document.addEventListener("click", onClick, true);
+      return () => document.removeEventListener("click", onClick, true);
+    }, []);
+
+    return request && requestedScene
+      ? React.createElement(PageScenePreviewHost, {
+          scenes,
+          registerOpen,
+          onClosed: handlePreviewClosed,
+        })
+      : null;
+  }
+
+  api.patch.after("MainNavBar.MenuItems", function () {
+    const args = Array.from(arguments);
+    const rendered = args[args.length - 1];
+    return React.createElement(
+      React.Fragment,
+      null,
+      rendered,
+      React.createElement(GlobalMediaEnhancementHost, { key: "unified-media-global-media-host" })
+    );
+  });
+
+  patchPage("PerformerPage", "performer", "performer", "performer-tabs");
+  patchPage("StudioPage", "studio", "studio", "studio-tabs");
+  patchPage("TagPage", "tag", "tag", "tag-tabs");
+
+  console.log(`[Unified Media] v${VERSION} loaded - mixed feed + restart-safe app-wide video previews + restored scene navigation/GIF badges`);
+})();

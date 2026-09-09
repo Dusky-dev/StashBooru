@@ -1,0 +1,605 @@
+eEffect(() => cleanupNativeLightbox, [cleanupNativeLightbox]);
+
+    const lightboxPrevious = React.useCallback(() => {
+      const buttons = document.querySelectorAll(".Lightbox-display > .Lightbox-navbutton");
+      buttons?.[0]?.click?.();
+    }, []);
+    const lightboxNext = React.useCallback(() => {
+      const buttons = document.querySelectorAll(".Lightbox-display > .Lightbox-navbutton");
+      buttons?.[buttons.length - 1]?.click?.();
+    }, []);
+
+    const showLightbox = api.hooks?.useLightbox
+      ? api.hooks.useLightbox({
+          images: lightboxItems,
+          showNavigation: false,
+          page: 1,
+          pages: 1,
+          pageSize: lightboxItems.length || 1,
+          totalCount: lightboxItems.length,
+          slideshowEnabled: true,
+          onClose: cleanupNativeLightbox,
+        })
+      : null;
+
+    const openPreviewByKey = React.useCallback(
+      (key) => {
+        if (!showLightbox) return;
+        const index = visualIndexByKey.get(key);
+        if (index == null) return;
+        startNativeLightboxEnhancements();
+        showLightbox({ initialIndex: index, slideshowEnabled: true });
+      },
+      [showLightbox, visualIndexByKey, startNativeLightboxEnhancements]
+    );
+
+    React.useEffect(
+      () => ctx.registerPreviewOpener?.(openPreviewByKey),
+      [ctx.registerPreviewOpener, openPreviewByKey]
+    );
+
+    if (status.loading || loadingBundles) {
+      const Loading = nativeComponent("LoadingIndicator");
+      return Loading
+        ? React.createElement(Loading)
+        : React.createElement("div", { className: "text-muted text-center" }, "Loading all media…");
+    }
+
+    const cardWidth = CARD_WIDTHS[Math.max(0, Math.min(3, Number(filter?.zoomIndex) || 0))];
+    const SceneCard = nativeComponent("SceneCard");
+    const ImageCard = nativeComponent("ImageCard");
+    const GroupCard = nativeComponent("GroupCard");
+    const PerformerCard = nativeComponent("PerformerCard");
+    const StudioCard = nativeComponent("StudioCard");
+    const MarkerCard = nativeComponent("SceneMarkerCard");
+    const Pagination = nativeComponent("Pagination");
+    const PaginationIndex = nativeComponent("PaginationIndex");
+
+    const hasSelection = ctx.selectedKeys.size > 0;
+
+    function selectionProps(entry) {
+      return {
+        selecting: hasSelection,
+        selected: ctx.selectedKeys.has(entry.key),
+        onSelectedChanged: (selected, shiftKey) =>
+          ctx.onSelectEntry(entry.key, selected, shiftKey, selectableKeys),
+      };
+    }
+
+    function renderEntry(entry) {
+      const key = entry.key;
+      const select = selectionProps(entry);
+      if (entry.type === "scene" && SceneCard) {
+        return React.createElement(SceneCard, {
+          key,
+          scene: entry.item,
+          width: cardWidth,
+          zoomIndex: filter?.zoomIndex ?? 1,
+          ...select,
+        });
+      }
+      if (entry.type === "image" && ImageCard) {
+        return React.createElement(ImageCard, {
+          key,
+          image: entry.item,
+          cardWidth,
+          zoomIndex: filter?.zoomIndex ?? 1,
+          ...select,
+          onPreview: showLightbox
+            ? (ev) => {
+                ev?.preventDefault?.();
+                ev?.stopPropagation?.();
+                openPreviewByKey(entry.key);
+              }
+            : undefined,
+        });
+      }
+      if (entry.type === "gallery") {
+        return React.createElement(MixedGalleryCard, {
+          key,
+          gallery: entry.item,
+          cardWidth,
+          zoomIndex: filter?.zoomIndex ?? 1,
+          ...select,
+        });
+      }
+      if (entry.type === "group" && GroupCard) {
+        return React.createElement(GroupCard, {
+          key,
+          group: entry.item,
+          cardWidth,
+          zoomIndex: filter?.zoomIndex ?? 1,
+          ...select,
+        });
+      }
+      if (entry.type === "performer" && PerformerCard) {
+        const props = {
+          key,
+          performer: entry.item,
+          cardWidth,
+          zoomIndex: filter?.zoomIndex ?? 1,
+          ...select,
+        };
+        if (ctx.kind === "performer") {
+          props.extraCriteria = { performer: entityValue(ctx.entity, "performer") };
+        }
+        return React.createElement(PerformerCard, props);
+      }
+      if (entry.type === "studio" && StudioCard) {
+        return React.createElement(StudioCard, {
+          key,
+          studio: entry.item,
+          cardWidth,
+          zoomIndex: filter?.zoomIndex ?? 1,
+          ...select,
+        });
+      }
+      if (entry.type === "marker" && MarkerCard) {
+        return React.createElement(MarkerCard, {
+          key,
+          marker: entry.item,
+          cardWidth,
+          zoomIndex: filter?.zoomIndex ?? 1,
+          ...select,
+        });
+      }
+      return null;
+    }
+
+    const first = displayItems.length ? (page - 1) * perPage + 1 : 0;
+    const last = Math.min(page * perPage, displayItems.length);
+
+    const activeSceneEntry =
+      activeVisualIndex != null && pageVisualEntries[activeVisualIndex]?.type === "scene"
+        ? pageVisualEntries[activeVisualIndex]
+        : null;
+
+    return React.createElement(
+      React.Fragment,
+      null,
+      activeSceneEntry && scenePortalTarget
+        ? React.createElement(NativeScenePlayerPortal, {
+            key: `unified-media-mixed-scene-player:${activeSceneEntry.id}`,
+            entry: activeSceneEntry,
+            target: scenePortalTarget,
+            geometry: scenePortalGeometry,
+            onNext: lightboxNext,
+            onPrevious: lightboxPrevious,
+          })
+        : null,
+      status.errors.length
+        ? React.createElement(
+            "div",
+            { className: "alert alert-warning unified-media-error" },
+            `Some Unified Media queries failed: ${status.errors.map((e) => e.message).join(" | ")}`
+          )
+        : null,
+      React.createElement(
+        "div",
+        { className: "unified-media-mixed-status text-muted paginationIndex center-text" },
+        `${first}-${last} of ${displayItems.length}`
+      ),
+      displayItems.length === 0
+        ? React.createElement(
+            "div",
+            { className: "unified-media-empty text-muted" },
+            wallMode ? "No matching videos or images." : "No matching content."
+          )
+        : wallMode
+          ? React.createElement(MixedWall, {
+              pageItems,
+              ctx,
+              selectableKeys,
+              openPreviewByKey,
+              zoomIndex: filter?.zoomIndex ?? 1,
+            })
+          : React.createElement(
+              "div",
+              { className: "row justify-content-center unified-media-mixed-grid" },
+              pageItems.map(renderEntry)
+            ),
+      displayItems.length > 0
+        ? React.createElement(
+            "div",
+            { className: "unified-media-mixed-pagination" },
+            Pagination
+              ? React.createElement(Pagination, {
+                  currentPage: page,
+                  itemsPerPage: perPage,
+                  totalItems: displayItems.length,
+                  onChangePage: (next) => {
+                    setPage(next);
+                    requestAnimationFrame(() => {
+                      document.querySelector(`.${ctx.kind}-tabs .unified-media-inline-pane`)?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                      });
+                    });
+                  },
+                })
+              : null,
+            PaginationIndex
+              ? React.createElement(PaginationIndex, {
+                  loading: false,
+                  itemsPerPage: perPage,
+                  currentPage: page,
+                  totalItems: displayItems.length,
+                })
+              : null
+          )
+        : null
+    );
+  }
+
+  // SceneList is the list body produced by our real native FilteredSceneList
+  // controller. Only replace it while it is under MixedContext; every other
+  // SceneList in Stash receives its original rendered result untouched.
+  api.patch.after("SceneList", function () {
+    const args = Array.from(arguments);
+    const props = args[0] || {};
+    const rendered = args[args.length - 1];
+    return React.createElement(SceneListBridge, { props, rendered });
+  });
+
+  function SceneListBridge({ props, rendered }) {
+    const ctx = React.useContext(MixedContext);
+    if (!ctx) return rendered;
+    return React.createElement(MixedGrid, {
+      ctx,
+      filter: props.filter,
+    });
+  }
+
+  // The native FilteredSceneList already builds Stash's real toolbar. Transform
+  // that toolbar element *before it renders* so its selection state targets the
+  // heterogeneous All feed instead of only the controller's scene query.
+  //
+  // Keep Stash's native display-mode controls but expose only Grid and Wall.
+  // Grid renders the full heterogeneous feed. Wall is the native visual-media
+  // style and therefore renders the globally sorted video + image subset.
+  api.patch.after("FilteredSceneList", function () {
+    const args = Array.from(arguments);
+    const rendered = args[args.length - 1];
+    return React.createElement(FilteredSceneListTreeBridge, { rendered });
+  });
+
+  function makeGridWallToolbarFilter(filter) {
+    if (!filter) return filter;
+    let cloned;
+    try {
+      cloned = typeof filter.clone === "function"
+        ? filter.clone()
+        : Object.assign(Object.create(Object.getPrototypeOf(filter)), filter);
+    } catch (_) {
+      cloned = filter;
+    }
+
+    // Do not mutate Stash's live filter model/options object in-place.
+    if (cloned === filter) {
+      try {
+        cloned = Object.assign(Object.create(Object.getPrototypeOf(filter)), filter);
+      } catch (_) {
+        return filter;
+      }
+    }
+
+    try {
+      const currentMode = Number(filter.displayMode);
+      cloned.displayMode = currentMode === DisplayMode.Wall ? DisplayMode.Wall : DisplayMode.Grid;
+      cloned.options = {
+        ...(filter.options || cloned.options || {}),
+        displayModeOptions: [DisplayMode.Grid, DisplayMode.Wall],
+      };
+    } catch (e) {
+      console.warn("[Unified Media] could not configure All display modes", e);
+    }
+    return cloned;
+  }
+
+  function makeSafeOperations(operationComponent, ctx) {
+    if (!React.isValidElement(operationComponent)) return operationComponent;
+
+    const original = Array.isArray(operationComponent.props?.operations)
+      ? operationComponent.props.operations
+      : [];
+
+    // In this exact Stash build the Scene List operation order is:
+    // play, create, select-all, select-none, invert, ...scene-only actions.
+    // Reuse the native ListOperations element and its translated labels, but
+    // replace only the three type-safe selection callbacks.
+    const safe = [];
+    if (original[2]) {
+      safe.push({
+        ...original[2],
+        onClick: ctx.selectAll,
+        isDisplayed: () => ctx.selectionUniverseCount > 0,
+      });
+    }
+    if (original[3]) {
+      safe.push({
+        ...original[3],
+        onClick: ctx.clearSelection,
+        isDisplayed: () => ctx.selectedKeys.size > 0,
+      });
+    }
+    if (original[4]) {
+      safe.push({
+        ...original[4],
+        onClick: ctx.invertSelection,
+        isDisplayed: () => ctx.selectionUniverseCount > 0,
+      });
+    }
+
+    return React.cloneElement(operationComponent, {
+      items: ctx.selectionUniverseCount,
+      hasSelection: ctx.selectedKeys.size > 0,
+      operations: safe,
+      onEdit: undefined,
+      onDelete: undefined,
+      onPlay: undefined,
+    });
+  }
+
+  function transformFilteredSceneTree(node, ctx) {
+    if (!React.isValidElement(node)) return node;
+
+    const p = node.props || {};
+    const looksLikeToolbar =
+      p.filter &&
+      p.listSelect &&
+      typeof p.setFilter === "function" &&
+      typeof p.showEditFilter === "function" &&
+      Object.prototype.hasOwnProperty.call(p, "operationComponent");
+
+    if (looksLikeToolbar) {
+      const selectedIds = new Set(ctx.selectedKeys);
+      const listSelect = {
+        ...p.listSelect,
+        selectedIds,
+        selectedItems: [],
+        hasSelection: selectedIds.size > 0,
+        onSelectAll: ctx.selectAll,
+        onSelectNone: ctx.clearSelection,
+        onInvertSelection: ctx.invertSelection,
+      };
+
+      return React.cloneElement(node, {
+        ...p,
+        filter: makeGridWallToolbarFilter(p.filter),
+        listSelect,
+        operationComponent: makeSafeOperations(p.operationComponent, ctx),
+      });
+    }
+
+    if (p.children == null) return node;
+    const children = React.Children.map(p.children, (child) =>
+      transformFilteredSceneTree(child, ctx)
+    );
+    return React.cloneElement(node, {}, children);
+  }
+
+  function FilteredSceneListTreeBridge({ rendered }) {
+    const ctx = React.useContext(MixedContext);
+    if (!ctx) return rendered;
+    return transformFilteredSceneTree(rendered, ctx);
+  }
+
+
+  function UnifiedController({ kind, entity, includeChildren }) {
+    const FilteredSceneList = nativeComponent("FilteredSceneList");
+    const [selectedKeys, setSelectedKeys] = React.useState(() => new Set());
+    const previewOpenerRef = React.useRef(null);
+    const selectionUniverseRef = React.useRef([]);
+    const [selectionUniverseCount, setSelectionUniverseCount] = React.useState(0);
+    const lastSelectedKeyRef = React.useRef(null);
+
+    const clearSelection = React.useCallback(() => {
+      lastSelectedKeyRef.current = null;
+      setSelectedKeys(new Set());
+    }, []);
+
+    const registerPreviewOpener = React.useCallback((opener) => {
+      previewOpenerRef.current = opener;
+      return () => {
+        if (previewOpenerRef.current === opener) previewOpenerRef.current = null;
+      };
+    }, []);
+
+    const openVisualPreview = React.useCallback((key) => {
+      previewOpenerRef.current?.(key);
+    }, []);
+
+    const setSelectionUniverse = React.useCallback((keys) => {
+      const next = Array.isArray(keys) ? keys : [];
+      selectionUniverseRef.current = next;
+      setSelectionUniverseCount((prev) => prev === next.length ? prev : next.length);
+    }, []);
+
+    const selectAll = React.useCallback(() => {
+      setSelectedKeys(new Set(selectionUniverseRef.current));
+    }, []);
+
+    const invertSelection = React.useCallback(() => {
+      setSelectedKeys((prev) => {
+        const next = new Set();
+        for (const key of selectionUniverseRef.current) {
+          if (!prev.has(key)) next.add(key);
+        }
+        return next;
+      });
+    }, []);
+
+    const onSelectEntry = React.useCallback((key, selected, shiftKey, universe) => {
+      const ordered = Array.isArray(universe) ? universe : selectionUniverseRef.current;
+      setSelectedKeys((prev) => {
+        const next = new Set(prev);
+        if (shiftKey && lastSelectedKeyRef.current) {
+          const a = ordered.indexOf(lastSelectedKeyRef.current);
+          const b = ordered.indexOf(key);
+          if (a >= 0 && b >= 0) {
+            const lo = Math.min(a, b);
+            const hi = Math.max(a, b);
+            for (let i = lo; i <= hi; i += 1) {
+              if (selected) next.add(ordered[i]);
+              else next.delete(ordered[i]);
+            }
+          } else if (selected) next.add(key);
+          else next.delete(key);
+        } else if (selected) {
+          next.add(key);
+        } else {
+          next.delete(key);
+        }
+        return next;
+      });
+      lastSelectedKeyRef.current = key;
+    }, []);
+
+    React.useEffect(() => {
+      clearSelection();
+    }, [kind, entity.id, includeChildren, clearSelection]);
+
+    const filterHook = React.useMemo(
+      () => makeEntityFilterHook(kind, entity, includeChildren),
+      [kind, entity.id, entity.name, includeChildren]
+    );
+    const view = kind === "performer"
+      ? View.PerformerScenes
+      : kind === "studio"
+        ? View.StudioScenes
+        : View.TagScenes;
+
+    if (!FilteredSceneList) {
+      return React.createElement(
+        "div",
+        { className: "alert alert-warning" },
+        "Unified Media could not access Stash's FilteredSceneList component."
+      );
+    }
+
+    const mixedContextValue = React.useMemo(
+      () => ({
+        kind,
+        entity,
+        includeChildren,
+        selectedKeys,
+        selectionUniverseCount,
+        clearSelection,
+        selectAll,
+        invertSelection,
+        onSelectEntry,
+        setSelectionUniverse,
+        registerPreviewOpener,
+        openVisualPreview,
+      }),
+      [
+        kind,
+        entity,
+        includeChildren,
+        selectedKeys,
+        selectionUniverseCount,
+        clearSelection,
+        selectAll,
+        invertSelection,
+        onSelectEntry,
+        setSelectionUniverse,
+        registerPreviewOpener,
+        openVisualPreview,
+      ]
+    );
+
+    return React.createElement(
+      MixedContext.Provider,
+      { value: mixedContextValue },
+      React.createElement(
+        React.Fragment,
+        null,
+        React.createElement(
+          "div",
+          { className: "unified-media-controller" },
+          React.createElement(FilteredSceneList, {
+            filterHook,
+            defaultSort: "date",
+            alterQuery: false,
+            view,
+          })
+        )      )
+    );
+  }
+
+  function UnifiedInlineHost({ kind, entity, shellClass }) {
+    const hostRef = React.useRef(null);
+    const tabRef = React.useRef(null);
+    const activeRef = React.useRef(false);
+    const [active, setActive] = React.useState(false);
+    const [includeChildren, setIncludeChildren] = React.useState(false);
+
+    React.useEffect(() => { activeRef.current = active; }, [active]);
+
+    React.useEffect(() => {
+      const host = hostRef.current;
+      const shell = host?.closest?.(`.${shellClass}`);
+      if (!host || !shell) return undefined;
+
+      let frame = 0;
+      let observer;
+      let attachedNav = null;
+
+      const navElement = () => shell.querySelector(".nav-tabs");
+
+      function sync() {
+        const nav = navElement();
+        const tab = tabRef.current;
+        if (!nav || !tab || !tab.isConnected) return;
+        shell.classList.toggle("unified-media-all-active", activeRef.current);
+        tab.classList.toggle("active", activeRef.current);
+        tab.setAttribute("aria-selected", activeRef.current ? "true" : "false");
+        if (activeRef.current) {
+          nav.querySelectorAll(`.nav-link:not([${TAB_ATTR}])`).forEach((link) => {
+            link.classList.remove("active");
+            link.setAttribute("aria-selected", "false");
+          });
+        }
+      }
+
+      function onNavClick(event) {
+        const nav = navElement();
+        if (!nav) return;
+        const link = event.target?.closest?.(".nav-link");
+        if (!link || !nav.contains(link)) return;
+
+        if (link.hasAttribute(TAB_ATTR)) {
+          event.preventDefault();
+          const nativeSwitch = shell.querySelector('input#showSubContent[type="checkbox"]');
+          if (nativeSwitch && (kind === "studio" || kind === "tag")) {
+            setIncludeChildren(Boolean(nativeSwitch.checked));
+          }
+          activeRef.current = true;
+          setActive(true);
+          requestAnimationFrame(sync);
+        } else if (activeRef.current) {
+          activeRef.current = false;
+          setActive(false);
+          shell.classList.remove("unified-media-all-active");
+        }
+      }
+
+      function attachNav(nav) {
+        if (attachedNav === nav) return;
+        attachedNav?.removeEventListener("click", onNavClick);
+        attachedNav = nav;
+        attachedNav?.addEventListener("click", onNavClick);
+      }
+
+      function install() {
+        const nav = navElement();
+        if (!nav) return;
+        attachNav(nav);
+        let tab = nav.querySelector(`[${TAB_ATTR}="tab"]`);
+        if (!tab) {
+          tab = document.createElement("a");
+          tab.className = "nav-item nav-link";
+          tab.href = "#";
+          tab.setAttribute("role", "tab");
+          tab.setAttribute("aria-selected", "false");
+          tab.setAttribute(TAB_A

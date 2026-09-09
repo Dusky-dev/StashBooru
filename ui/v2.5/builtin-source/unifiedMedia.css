@@ -1,0 +1,259 @@
+/* Unified Media v23 — native toolbar, mixed Grid/Wall rendering, safe mixed
+   selection, shared Stash lightbox navigation, and Stash's native ScenePlayer
+   for video previews. */
+.unified-media-inline-pane {
+  padding-top: 1rem;
+}
+
+.unified-media-controller .pagination-index-container,
+.unified-media-controller .pagination-footer-container {
+  display: none !important;
+}
+
+.unified-media-mixed-status {
+  margin: 0.5rem 0 0.75rem;
+  text-align: center;
+}
+
+.unified-media-mixed-grid {
+  align-items: flex-start;
+}
+
+.unified-media-mixed-pagination {
+  margin-top: 1rem;
+}
+
+.unified-media-mixed-pagination .pagination-index {
+  display: block;
+  margin-top: 0.35rem;
+  text-align: center;
+}
+
+.unified-media-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.unified-media-error {
+  margin: 1rem 0;
+}
+
+.nav-tabs .nav-link[data-unified-media-all] {
+  cursor: pointer;
+}
+
+.performer-tabs.unified-media-all-active > .tab-content,
+.studio-tabs.unified-media-all-active > .tab-content,
+.tag-tabs.unified-media-all-active > .tab-content {
+  display: none !important;
+}
+
+/* Scene/video grid preview button: mirror ImageCard's magnifying-glass affordance. */
+.unified-media-scene-image-wrap {
+  position: relative;
+}
+
+.unified-media-scene-image-wrap .unified-media-video-preview-button {
+  opacity: 0;
+  position: absolute;
+  right: 0.45rem;
+  top: 0.45rem;
+  transition: opacity 0.15s ease-in-out;
+  z-index: 8;
+}
+
+.unified-media-scene-image-wrap:hover .unified-media-video-preview-button,
+.unified-media-scene-image-wrap:focus-within .unified-media-video-preview-button {
+  opacity: 1;
+}
+
+.unified-media-video-preview-button .btn {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  min-height: 2rem;
+  min-width: 2rem;
+  padding: 0.3rem 0.45rem;
+}
+
+/* Animated images get an explicit GIF badge, so a moving image is not mistaken
+   for a scene/video. Works in both native ImageCard grid previews and Wall. */
+.unified-media-gif-badge {
+  align-items: center;
+  background: rgba(0, 0, 0, 0.72);
+  border-radius: 0.2rem;
+  bottom: 0.4rem;
+  color: #fff;
+  display: inline-flex;
+  font-size: 0.96rem;
+  font-weight: 700;
+  left: 0.4rem;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  padding: 0.40rem 0.52rem;
+  pointer-events: none;
+  position: absolute;
+  z-index: 12;
+}
+
+/* Wall mode: keep each file's own aspect ratio and dynamically justify rows.
+   No fixed 16:9 frames, no black letterboxing, no hover enlargement. */
+.unified-media-wall {
+  margin: 0 auto;
+  max-width: 2250px;
+  width: 100%;
+}
+
+.unified-media-wall-row {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 6px;
+  overflow: visible;
+  width: 100%;
+}
+
+.unified-media-wall-item {
+  flex: 0 0 auto;
+  line-height: 0;
+  overflow: hidden;
+  position: relative;
+  transform: none !important;
+  transition: none !important;
+}
+
+.unified-media-wall-anchor {
+  display: block;
+  height: 100%;
+  text-decoration: none !important;
+  width: 100%;
+}
+
+.unified-media-wall-media {
+  display: block;
+  height: 100%;
+  max-height: 100%;
+  max-width: 100%;
+  object-fit: cover;
+  transform: none !important;
+  transition: none !important;
+  width: 100%;
+}
+
+.unified-media-wall .unified-media-wall-check {
+  cursor: pointer;
+  height: 1.1rem;
+  left: 0.4rem;
+  opacity: 0;
+  position: absolute;
+  top: 0.4rem;
+  transition: opacity 0.15s ease-in-out;
+  width: 1.1rem;
+  z-index: 20;
+}
+
+.unified-media-wall .unified-media-wall-item:hover .unified-media-wall-check,
+.unified-media-wall .unified-media-wall-check:checked {
+  opacity: 0.85;
+}
+
+/* Wall uses click-to-preview directly; no magnifying-glass overlay. */
+.unified-media-wall .preview-button,
+.unified-media-wall .unified-media-wall-preview-button {
+  display: none !important;
+}
+
+@media (max-width: 576px) {
+  .unified-media-wall-row {
+    align-items: center;
+    flex-direction: column;
+    height: auto !important;
+  }
+
+  .unified-media-wall-item {
+    height: auto !important;
+    max-width: 100%;
+    width: 100% !important;
+  }
+
+  .unified-media-wall-media {
+    height: auto;
+    width: 100%;
+  }
+}
+
+/* Scene entries stay inside Stash's stock Lightbox shell/navigation. The
+   invisible native LightboxImage placeholder continues to own display-mode,
+   fit, zoom and pan calculations. Unified Media mirrors that exact media rect
+   and places Stash's real ScenePlayer over it. */
+.Lightbox-carousel-image.unified-media-native-scene-slide {
+  overflow: visible;
+  position: relative;
+}
+
+.Lightbox-carousel-image.unified-media-native-scene-slide > .Lightbox-carousel-image {
+  visibility: hidden;
+}
+
+.unified-media-native-scene-player {
+  overflow: visible;
+  position: fixed;
+  z-index: 1042;
+}
+
+.unified-media-native-scene-player > .VideoPlayer,
+.unified-media-native-scene-player .VideoPlayer {
+  height: 100% !important;
+  max-height: 100% !important;
+  padding-bottom: 0 !important;
+  width: 100% !important;
+}
+
+.unified-media-native-scene-player .video-wrapper {
+  height: 100% !important;
+  max-height: 100% !important;
+  width: 100% !important;
+}
+
+.unified-media-native-scene-player .video-js {
+  height: 100% !important;
+  inset: 0 !important;
+  max-height: 100% !important;
+  max-width: 100% !important;
+  position: absolute !important;
+  width: 100% !important;
+}
+
+.unified-media-native-scene-player .video-js .vjs-tech {
+  height: 100% !important;
+  object-fit: contain !important;
+  width: 100% !important;
+}
+
+.unified-media-native-player-error {
+  margin: 1rem;
+  max-width: 42rem;
+}
+
+/* Scene previews use the same centered footer-link styling as images, but the
+   link is retargeted to /scenes/:id and displays the actual video filename. */
+body.unified-media-native-lightbox-open .unified-media-scene-lightbox-title {
+  cursor: pointer;
+}
+
+/* v23: apply the Wall hover behavior app-wide. Stash's native Wall is used
+   by Scenes, Images, Galleries and nested media lists, so this removes the
+   delayed 2x zoom/dimming everywhere rather than only on entity detail tabs. */
+.wall .wall-item:hover .wall-item-container {
+  transform: none !important;
+  transition-delay: 0s !important;
+}
+
+.wall .wall-item:hover::before {
+  opacity: 0 !important;
+  transition-delay: 0s !important;
+}
+
+.wall .wall-item:hover .wall-item-media {
+  transition-delay: 0s !important;
+  z-index: 0 !important;
+}

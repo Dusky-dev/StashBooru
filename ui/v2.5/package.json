@@ -7,8 +7,9 @@
     "node": ">= 20"
   },
   "scripts": {
-    "start": "vite",
-    "build": "vite build",
+    "start": "pnpm run prepare-builtins && vite",
+    "build": "pnpm run prepare-builtins && vite build",
+    "prepare-builtins": "node scripts/prepare-builtins.mjs",
     "build-ci": "pnpm run validate && pnpm run build",
     "validate": "pnpm run lint && pnpm run check && pnpm run format-check",
     "lint": "pnpm run lint:js && pnpm run lint:css",
