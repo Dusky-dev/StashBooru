@@ -1,0 +1,328 @@
+    const sourceObjectFilter = React.useMemo(() => {
+      try {
+        return filter?.makeFilter ? filter.makeFilter() : {};
+      } catch (e) {
+        console.warn("[Unified Media] could not read native filter criteria", e);
+        return {};
+      }
+    }, [filter]);
+
+    const findFilter = React.useMemo(
+      () => ({ q: filter?.searchTerm || "", per_page: -1 }),
+      [filter?.searchTerm]
+    );
+
+    const sceneFilter = React.useMemo(
+      () => mergeObjectFilter(kind, "scene", entity, includeChildren, sourceObjectFilter),
+      [kind, entity.id, includeChildren, sourceObjectFilter]
+    );
+    const imageFilter = React.useMemo(
+      () => mergeObjectFilter(kind, "image", entity, includeChildren, sourceObjectFilter),
+      [kind, entity.id, includeChildren, sourceObjectFilter]
+    );
+    const galleryFilter = React.useMemo(
+      () => mergeObjectFilter(kind, "gallery", entity, includeChildren, sourceObjectFilter),
+      [kind, entity.id, includeChildren, sourceObjectFilter]
+    );
+    const groupFilter = React.useMemo(
+      () => mergeObjectFilter(kind, "group", entity, includeChildren, sourceObjectFilter),
+      [kind, entity.id, includeChildren, sourceObjectFilter]
+    );
+    const performerFilter = React.useMemo(
+      () => mergeObjectFilter(kind, "performer", entity, includeChildren, sourceObjectFilter),
+      [kind, entity.id, includeChildren, sourceObjectFilter]
+    );
+    const studioFilter = React.useMemo(
+      () => mergeObjectFilter(kind, "studio", entity, includeChildren, sourceObjectFilter),
+      [kind, entity.id, includeChildren, sourceObjectFilter]
+    );
+    const markerFilter = React.useMemo(
+      () => mergeObjectFilter(kind, "marker", entity, includeChildren, sourceObjectFilter),
+      [kind, entity.id, includeChildren, sourceObjectFilter]
+    );
+
+    const common = { fetchPolicy: "cache-and-network", notifyOnNetworkStatusChange: true };
+
+    const scenes = api.GQL.useFindScenesQuery({
+      ...common,
+      variables: { filter: findFilter, scene_filter: sceneFilter },
+    });
+    const images = api.GQL.useFindImagesQuery({
+      ...common,
+      variables: { filter: findFilter, image_filter: imageFilter },
+    });
+    const galleries = api.GQL.useFindGalleriesQuery({
+      ...common,
+      variables: { filter: findFilter, gallery_filter: galleryFilter },
+    });
+    const groups = api.GQL.useFindGroupsQuery({
+      ...common,
+      variables: { filter: findFilter, group_filter: groupFilter },
+    });
+    const performers = api.GQL.useFindPerformersQuery({
+      ...common,
+      variables: { filter: findFilter, performer_filter: performerFilter },
+    });
+    const studios = api.GQL.useFindStudiosQuery({
+      ...common,
+      skip: kind === "performer",
+      variables: { filter: findFilter, studio_filter: studioFilter },
+    });
+    const markers = api.GQL.useFindSceneMarkersQuery({
+      ...common,
+      skip: kind !== "tag",
+      variables: { filter: findFilter, scene_marker_filter: markerFilter },
+    });
+
+    return { scenes, images, galleries, groups, performers, studios, markers };
+  }
+
+  function itemTitle(type, item) {
+    if (type === "scene" || type === "image" || type === "gallery") {
+      return item.title || item.code || `${type} ${item.id}`;
+    }
+    if (type === "marker") return item.title || item.primary_tag?.name || `Marker ${item.id}`;
+    return item.name || `${type} ${item.id}`;
+  }
+
+  function firstFile(item) {
+    if (Array.isArray(item.files) && item.files.length) return item.files[0];
+    if (Array.isArray(item.visual_files) && item.visual_files.length) return item.visual_files[0];
+    return null;
+  }
+
+  function isGifImage(image) {
+    if (!image) return false;
+    const file = firstFile(image) || {};
+    const candidates = [
+      file.path,
+      file.basename,
+      file.name,
+      image.paths?.image,
+      image.paths?.thumbnail,
+    ].filter(Boolean);
+    return candidates.some((value) => /\.gif(?:$|[?#])/i.test(String(value)));
+  }
+
+  function GifBadge() {
+    return React.createElement(
+      "span",
+      { className: "unified-media-gif-badge", title: "GIF", "aria-label": "GIF" },
+      "GIF"
+    );
+  }
+
+  function sceneFilename(scene) {
+    const file = firstFile(scene) || {};
+    if (file.basename) return String(file.basename);
+    if (file.name) return String(file.name);
+    if (file.path) {
+      const parts = String(file.path).replace(/\\/g, "/").split("/");
+      if (parts.length) return parts[parts.length - 1] || itemTitle("scene", scene);
+    }
+    return itemTitle("scene", scene);
+  }
+
+  function sceneLightboxPlaceholder(scene) {
+    const file = firstFile(scene) || {};
+    const width = Math.max(1, Number(file.width) || 1280);
+    const height = Math.max(1, Number(file.height) || 720);
+    // A transparent SVG with the original video's intrinsic dimensions lets
+    // Stash's native LightboxImage calculate display-mode, fit and zoom exactly
+    // as it does for a real image. The ScenePlayer is laid over this geometry.
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"></svg>`;
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}#scene-${scene.id}`;
+  }
+
+  // Scenes remain safe synthetic image-like entries so they can participate in
+  // Stash's native Lightbox carousel. The invisible placeholder has the same
+  // intrinsic dimensions as the source video, which means LightboxImage keeps
+  // ownership of display mode, Fit-to-Screen, zoom/reset and pan calculations.
+  // The current scene slide is then covered by Stash's real ScenePlayer.
+  function sceneToLightboxImage(scene) {
+    const sourceFile = firstFile(scene) || {};
+    const screenshot = scene.paths?.screenshot || scene.paths?.sprite || scene.paths?.preview || "";
+    const placeholder = sceneLightboxPlaceholder(scene);
+    return {
+      title: sceneFilename(scene),
+      paths: {
+        image: placeholder,
+        thumbnail: screenshot,
+        preview: "",
+      },
+      visual_files: [
+        {
+          __typename: "ImageFile",
+          path: placeholder,
+          width: Math.max(1, Number(sourceFile.width) || 1280),
+          height: Math.max(1, Number(sourceFile.height) || 720),
+        },
+      ],
+      __unified_media_scene_id: String(scene.id),
+      __unified_media_scene_filename: sceneFilename(scene),
+    };
+  }
+
+  function entryToLightboxImage(entry) {
+    return entry.type === "scene" ? sceneToLightboxImage(entry.item) : entry.item;
+  }
+
+  function normalizeMediaUrl(value) {
+    if (!value) return "";
+    try {
+      return new URL(value, window.location.href).href;
+    } catch (_) {
+      return String(value);
+    }
+  }
+
+  function totalFileSize(item) {
+    const files = Array.isArray(item.files)
+      ? item.files
+      : Array.isArray(item.visual_files)
+        ? item.visual_files
+        : [];
+    if (!files.length) return null;
+    return files.reduce((sum, f) => sum + (Number(f?.size) || 0), 0);
+  }
+
+  function resolutionValue(item) {
+    const file = firstFile(item);
+    const w = Number(file?.width) || 0;
+    const h = Number(file?.height) || 0;
+    return w && h ? w * h : null;
+  }
+
+  function wrap(type, item) {
+    return {
+      key: `${type}:${item.id}`,
+      type,
+      id: String(item.id),
+      title: itemTitle(type, item),
+      item,
+    };
+  }
+
+  function collectItems(ctx, q) {
+    const { kind, entity } = ctx;
+    const out = [];
+    const add = (type, values) => (values || []).forEach((x) => out.push(wrap(type, x)));
+
+    add("scene", q.scenes.data?.findScenes?.scenes);
+    add("image", q.images.data?.findImages?.images);
+    add("gallery", q.galleries.data?.findGalleries?.galleries);
+    add("group", q.groups.data?.findGroups?.groups);
+
+    if (kind === "performer") {
+      const id = String(entity.id);
+      add(
+        "performer",
+        (q.performers.data?.findPerformers?.performers || []).filter((p) => String(p.id) !== id)
+      );
+    } else if (kind === "studio") {
+      add("performer", q.performers.data?.findPerformers?.performers);
+      add("studio", q.studios.data?.findStudios?.studios);
+    } else {
+      add("marker", q.markers.data?.findSceneMarkers?.scene_markers);
+      add("performer", q.performers.data?.findPerformers?.performers);
+      add("studio", q.studios.data?.findStudios?.studios);
+    }
+
+    return out;
+  }
+
+  function missing(value) {
+    return value == null || value === "" || (typeof value === "number" && Number.isNaN(value));
+  }
+
+  function hashRandom(entry, seed) {
+    const s = `${seed}:${entry.type}:${entry.id}`;
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i += 1) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  function sortValue(entry, sortBy, seed) {
+    const item = entry.item;
+    const file = firstFile(item);
+    switch (sortBy) {
+      case "date": return item.date || item.scene?.date || null;
+      case "production_date": return item.production_date || item.date || null;
+      case "title": return entry.title;
+      case "rating":
+      case "rating100": return item.rating100 ?? null;
+      case "created_at": return item.created_at ?? null;
+      case "updated_at": return item.updated_at ?? null;
+      case "o_counter": return item.o_counter ?? null;
+      case "path": return file?.path ?? null;
+      case "file_mod_time": return file?.mod_time ?? null;
+      case "filesize": return totalFileSize(item);
+      case "file_count": {
+        const files = Array.isArray(item.files) ? item.files : item.visual_files;
+        return Array.isArray(files) ? files.length : null;
+      }
+      case "resolution": return resolutionValue(item);
+      case "tag_count": return Array.isArray(item.tags) ? item.tags.length : null;
+      case "performer_count": return Array.isArray(item.performers) ? item.performers.length : null;
+      case "duration": return item.duration ?? file?.duration ?? null;
+      case "play_count": return item.play_count ?? null;
+      case "random": return hashRandom(entry, seed ?? 0);
+      case "code": return item.code ?? null;
+      default: return item[sortBy] ?? null;
+    }
+  }
+
+  function compareMixed(a, b, filter) {
+    const sortBy = filter?.sortBy || "date";
+    const dir = String(filter?.sortDirection || "DESC").toUpperCase() === "ASC" ? 1 : -1;
+    const av = sortValue(a, sortBy, filter?.randomSeed);
+    const bv = sortValue(b, sortBy, filter?.randomSeed);
+
+    const am = missing(av);
+    const bm = missing(bv);
+    if (am !== bm) return am ? 1 : -1;
+
+    let cmp = 0;
+    if (!am && !bm) {
+      if (typeof av === "number" && typeof bv === "number") cmp = av - bv;
+      else cmp = String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: "base" });
+      cmp *= dir;
+    }
+
+    if (cmp === 0) cmp = a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: "base" });
+    if (cmp === 0) cmp = a.type.localeCompare(b.type);
+    if (cmp === 0) cmp = a.id.localeCompare(b.id, undefined, { numeric: true });
+    return cmp;
+  }
+
+  function queryStatus(q, kind) {
+    const active = [q.scenes, q.images, q.galleries, q.groups, q.performers];
+    if (kind !== "performer") active.push(q.studios);
+    if (kind === "tag") active.push(q.markers);
+    return {
+      loading: active.some((x) => x.loading && !x.data),
+      errors: active.map((x) => x.error).filter(Boolean),
+    };
+  }
+
+  function MixedGalleryCard({ gallery, cardWidth, zoomIndex, selecting, selected, onSelectedChanged }) {
+    const C = nativeComponent("GalleryCard");
+    const showGallery = api.hooks?.useGalleryLightbox
+      ? api.hooks.useGalleryLightbox(String(gallery.id))
+      : null;
+    if (!C) return null;
+    return React.createElement(C, {
+      gallery,
+      cardWidth,
+      zoomIndex,
+      selecting,
+      selected,
+      onSelectedChanged,
+      onPreview: showGallery
+        ? (index, ev) => {
+            ev?.preventDefault?.();
+            showGallery(index || 0);
+          }
