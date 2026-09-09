@@ -5,6 +5,7 @@ import { App } from "./App";
 import { getClient } from "./core/StashService";
 import { baseURL, getPlatformURL } from "./core/createClient";
 import "./index.scss";
+import "./booru-ui.scss";
 import * as serviceWorker from "./serviceWorker";
 
 function loadBuiltinStylesheet(name: string) {

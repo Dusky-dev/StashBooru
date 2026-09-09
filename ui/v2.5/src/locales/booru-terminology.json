@@ -1,0 +1,16 @@
+{
+  "scene": "Video",
+  "scenes": "Videos",
+  "performer": "Character",
+  "performers": "Characters",
+  "studio": "Artist",
+  "studios": "Artists",
+  "group": "Collection",
+  "groups": "Collections",
+  "countables": {
+    "scenes": "{count, plural, one {Video} other {Videos}}",
+    "performers": "{count, plural, one {Character} other {Characters}}",
+    "studios": "{count, plural, one {Artist} other {Artists}}",
+    "groups": "{count, plural, one {Collection} other {Collections}}"
+  }
+}
