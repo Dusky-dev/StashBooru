@@ -22,6 +22,7 @@ FROM golang:1.25.9-alpine AS backend
 RUN apk add --no-cache make alpine-sdk
 WORKDIR /stash
 COPY ./go* ./*.go Makefile gqlgen.yml .gqlgenc.yml /stash/
+RUN go mod download github.com/asg017/sqlite-vec-go-bindings@v0.1.6
 COPY ./graphql /stash/graphql/
 COPY ./scripts /stash/scripts/
 COPY ./pkg /stash/pkg/
