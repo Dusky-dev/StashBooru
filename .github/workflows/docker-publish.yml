@@ -5,6 +5,7 @@ on:
     branches:
       - develop
       - feature/phash-similarity
+      - feature/embedding-similarity
     tags:
       - "v*"
   workflow_dispatch:
@@ -66,6 +67,7 @@ jobs:
           tags: |
             type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
             type=raw,value=feature-phash-similarity,enable=${{ github.ref == 'refs/heads/feature/phash-similarity' }}
+            type=raw,value=feature-embedding-similarity,enable=${{ github.ref == 'refs/heads/feature/embedding-similarity' }}
             type=sha,prefix=sha-
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}

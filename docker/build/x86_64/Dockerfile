@@ -44,14 +44,19 @@ RUN apk add --no-cache \
     ffmpeg \
     python3 \
     py3-pip \
+    py3-numpy \
+    py3-pillow \
+    py3-onnxruntime \
     && python3 -m pip install \
         --break-system-packages \
         --no-cache-dir \
         yt-dlp
 
 COPY --from=backend /stash/stash /usr/bin/
+COPY --from=backend /stash/scripts/visual_embedding_worker.py /usr/lib/stash/visual_embedding_worker.py
 
 ENV STASH_CONFIG_FILE=/root/.stash/config.yml
+ENV STASH_VISUAL_EMBEDDING_WORKER=/usr/lib/stash/visual_embedding_worker.py
 
 EXPOSE 9999
 ENTRYPOINT ["stash"]

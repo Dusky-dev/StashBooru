@@ -8,6 +8,7 @@ require (
 	github.com/Yamashou/gqlgenc v0.32.1
 	github.com/anacrolix/dms v1.2.2
 	github.com/antchfx/htmlquery v1.3.5
+	github.com/asg017/sqlite-vec-go-bindings v0.1.6
 	github.com/asticode/go-astisub v0.25.1
 	github.com/chromedp/cdproto v0.0.0-20250803210736-d308e07a266d
 	github.com/chromedp/chromedp v0.14.2
@@ -93,7 +94,7 @@ require (
 	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/gobwas/ws v1.4.0 // indirect
 	github.com/goccy/go-yaml v1.18.0 // indirect
-	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
+	github.com/golang/groupcache v0.0.0-20210331205529-41bb18bfe9da // indirect
 	github.com/google/pprof v0.0.0-20230207041349-798e818bf904 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
