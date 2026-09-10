@@ -32,6 +32,9 @@ MODEL_URL = (
     f"{MODEL_REVISION}/SmilingWolf/wd-eva02-large-tagger-v3/model.onnx?download=true"
 )
 MODEL_SHA256 = "983f026df23214ba55f78cd5898f76f434fa9230837a4e93f1aaa6c37e284835"
+MODEL_SIZE_BYTES = 1_260_436_067
+MODEL_FILENAME = "model.onnx"
+LEGACY_MODEL_FILENAME = "wd-eva02-large-tagger-v3-embedding.onnx"
 EMBEDDING_DIMENSIONS = 1024
 DOWNLOAD_CHUNK = 8 * 1024 * 1024
 
@@ -44,14 +47,29 @@ def _log(message: str) -> None:
     print(f"[visual-embedding] {message}", file=sys.stderr, flush=True)
 
 
+def _legacy_config_cache_dir() -> Path | None:
+    stash_config = os.environ.get("STASH_CONFIG_FILE")
+    if not stash_config:
+        return None
+    return Path(stash_config).expanduser().resolve().parent / "cache" / "visual-embeddings"
+
+
 def _default_cache_dir() -> Path:
     configured = os.environ.get("STASH_EMBEDDING_CACHE_DIR")
     if configured:
         return Path(configured).expanduser()
 
-    stash_config = os.environ.get("STASH_CONFIG_FILE")
-    if stash_config:
-        return Path(stash_config).expanduser().resolve().parent / "cache" / "visual-embeddings"
+    # Stash's Docker configuration exposes its cache through STASH_CACHE. Honor
+    # that before deriving a private cache next to config.yml, otherwise the
+    # worker downloads into /root/.stash/cache while the application and its
+    # persistent cache volume live somewhere else (normally /cache).
+    stash_cache = os.environ.get("STASH_CACHE")
+    if stash_cache:
+        return Path(stash_cache).expanduser() / "visual-embeddings"
+
+    legacy = _legacy_config_cache_dir()
+    if legacy is not None:
+        return legacy
 
     xdg_cache = os.environ.get("XDG_CACHE_HOME")
     if xdg_cache:
@@ -60,11 +78,54 @@ def _default_cache_dir() -> Path:
     return Path.home() / ".cache" / "stashbooru" / "visual-embeddings"
 
 
-def _model_path() -> Path:
+def _model_candidates() -> list[Path]:
+    override = os.environ.get("STASH_EMBEDDING_MODEL_PATH")
+    if override:
+        return [Path(override).expanduser()]
+
+    directories = [_default_cache_dir()]
+    legacy = _legacy_config_cache_dir()
+    if legacy is not None and legacy not in directories:
+        directories.append(legacy)
+
+    candidates: list[Path] = []
+    for directory in directories:
+        # model.onnx is the filename users get when downloading directly from
+        # Hugging Face. Keep accepting the old StashBooru-specific filename so
+        # existing installations continue to work after this cache fix.
+        candidates.append(directory / MODEL_FILENAME)
+        candidates.append(directory / LEGACY_MODEL_FILENAME)
+        candidates.append(directory / "wd-eva02-large-tagger-v3" / MODEL_FILENAME)
+    return candidates
+
+
+def _installed_model_path() -> Path | None:
+    for path in _model_candidates():
+        try:
+            if not path.is_file():
+                continue
+            size = path.stat().st_size
+            if size != MODEL_SIZE_BYTES:
+                _log(
+                    f"ignoring model candidate with unexpected size: {path} "
+                    f"({size} bytes, expected {MODEL_SIZE_BYTES})"
+                )
+                continue
+            return path
+        except OSError as error:
+            _log(f"unable to inspect model candidate {path}: {error}")
+    return None
+
+
+def _download_destination() -> Path:
     override = os.environ.get("STASH_EMBEDDING_MODEL_PATH")
     if override:
         return Path(override).expanduser()
-    return _default_cache_dir() / "wd-eva02-large-tagger-v3-embedding.onnx"
+    return _default_cache_dir() / MODEL_FILENAME
+
+
+def _model_path() -> Path:
+    return _installed_model_path() or _download_destination()
 
 
 def _sha256(path: Path) -> str:
@@ -89,9 +150,9 @@ def _download_model(destination: Path) -> None:
         )
         with urllib.request.urlopen(request, timeout=60) as response, temp_path.open("wb") as output:
             expected = response.headers.get("Content-Length")
-            expected_bytes = int(expected) if expected and expected.isdigit() else None
+            expected_bytes = int(expected) if expected and expected.isdigit() else MODEL_SIZE_BYTES
             downloaded = 0
-            next_report = 256 * 1024 * 1024
+            next_report = 64 * 1024 * 1024
             while True:
                 chunk = response.read(DOWNLOAD_CHUNK)
                 if not chunk:
@@ -99,11 +160,17 @@ def _download_model(destination: Path) -> None:
                 output.write(chunk)
                 downloaded += len(chunk)
                 if downloaded >= next_report:
-                    if expected_bytes:
-                        _log(f"model download: {downloaded / 1024**3:.2f}/{expected_bytes / 1024**3:.2f} GiB")
-                    else:
-                        _log(f"model download: {downloaded / 1024**3:.2f} GiB")
-                    next_report += 256 * 1024 * 1024
+                    _log(
+                        f"model download: {downloaded / 1024**3:.2f}/"
+                        f"{expected_bytes / 1024**3:.2f} GiB"
+                    )
+                    next_report += 64 * 1024 * 1024
+
+        actual_size = temp_path.stat().st_size
+        if actual_size != MODEL_SIZE_BYTES:
+            raise RuntimeError(
+                f"downloaded model size mismatch: expected {MODEL_SIZE_BYTES}, got {actual_size}"
+            )
 
         actual_hash = _sha256(temp_path)
         if actual_hash != MODEL_SHA256:
@@ -120,10 +187,11 @@ def _download_model(destination: Path) -> None:
 
 
 def _ensure_model() -> Path:
-    path = _model_path()
-    if not path.is_file():
+    path = _installed_model_path()
+    if path is None:
+        expected = _download_destination()
         raise FileNotFoundError(
-            f"visual embedding model is not installed: {path}. "
+            f"visual embedding model is not installed: {expected}. "
             "Install it explicitly from StashBooru settings or set STASH_EMBEDDING_MODEL_PATH."
         )
 
@@ -137,13 +205,14 @@ def _ensure_model() -> Path:
 
 
 def _status_payload() -> dict[str, Any]:
-    path = _model_path()
+    installed_path = _installed_model_path()
+    path = installed_path or _download_destination()
     return {
         "model": MODEL_ID,
         "model_revision": MODEL_REVISION,
         "dimensions": EMBEDDING_DIMENSIONS,
         "model_path": str(path),
-        "installed": path.is_file(),
+        "installed": installed_path is not None,
         "loaded": _session is not None,
     }
 
@@ -307,11 +376,10 @@ def _handle(request: dict[str, Any]) -> None:
         return
 
     if operation == "download":
-        destination = _model_path()
-        if destination.is_file():
+        if _installed_model_path() is not None:
             _response(request_id, ok=True, **_status_payload())
             return
-        _download_model(destination)
+        _download_model(_download_destination())
         _response(request_id, ok=True, **_status_payload())
         return
 
