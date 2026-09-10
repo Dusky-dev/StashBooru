@@ -37,6 +37,8 @@ func (rs imageRoutes) Routes() chi.Router {
 
 	r.Route("/visual-similarity", func(r chi.Router) {
 		r.Get("/status", rs.VisualSimilarityStatus)
+		r.Get("/remote-config", rs.VisualSimilarityRemoteConfig)
+		r.Post("/remote-config", rs.VisualSimilarityRemoteConfigUpdate)
 		r.Post("/download", rs.VisualSimilarityDownload)
 		r.Post("/index", rs.VisualSimilarityIndexImages)
 	})
@@ -93,7 +95,6 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 		data, err := encoder.GetThumbnail(f, models.DefaultGthumbWidth)
 		if err != nil {
 			// don't log for unsupported image format
-			// don't log for file not found - can optionally be logged in serveImage
 			if !errors.Is(err, image.ErrNotSupportedForThumbnail) && !errors.Is(err, fs.ErrNotExist) {
 				logger.Errorf("error generating thumbnail for %s: %v", f.Base().Path, err)
 

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/stashapp/stash/internal/manager"
@@ -24,6 +25,8 @@ type visualSimilarityStatusResponse struct {
 	Loaded        bool   `json:"loaded"`
 	WorkerOK      bool   `json:"workerOK"`
 	WorkerError   string `json:"workerError,omitempty"`
+	Backend       string `json:"backend"`
+	RemoteURL     string `json:"remoteURL,omitempty"`
 	ModelPath     string `json:"modelPath,omitempty"`
 	Model         string `json:"model"`
 	Revision      string `json:"revision"`
@@ -50,23 +53,30 @@ func writeVisualSimilarityJSON(w http.ResponseWriter, value any) {
 
 func (rs imageRoutes) VisualSimilarityStatus(w http.ResponseWriter, r *http.Request) {
 	response := visualSimilarityStatusResponse{
+		Backend:    "local",
 		Model:      sqlite.VisualEmbeddingModel,
 		Dimensions: sqlite.VisualEmbeddingDimensions,
 	}
 
-	client := visualembedding.New("")
-	status, err := client.Status(r.Context())
-	_ = client.Close()
+	client, backend, remoteURL, err := newVisualSimilarityEmbedder()
+	response.Backend = backend
+	response.RemoteURL = remoteURL
 	if err != nil {
 		response.WorkerError = err.Error()
 	} else {
-		response.WorkerOK = true
-		response.Installed = status.Installed
-		response.Loaded = status.Loaded
-		response.ModelPath = status.ModelPath
-		response.Model = status.Model
-		response.Revision = status.Revision
-		response.Dimensions = status.Dimensions
+		status, statusErr := client.Status(r.Context())
+		_ = client.Close()
+		if statusErr != nil {
+			response.WorkerError = statusErr.Error()
+		} else {
+			response.WorkerOK = true
+			response.Installed = status.Installed
+			response.Loaded = status.Loaded
+			response.ModelPath = status.ModelPath
+			response.Model = status.Model
+			response.Revision = status.Revision
+			response.Dimensions = status.Dimensions
+		}
 	}
 
 	if err := rs.withReadTxn(r, func(ctx context.Context) error {
@@ -90,6 +100,16 @@ func (rs imageRoutes) VisualSimilarityStatus(w http.ResponseWriter, r *http.Requ
 }
 
 func (rs imageRoutes) VisualSimilarityDownload(w http.ResponseWriter, r *http.Request) {
+	remoteConfig, err := loadVisualSimilarityRemoteConfig()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if strings.TrimSpace(remoteConfig.URL) != "" {
+		http.Error(w, "model downloads are managed on the remote visual embedding worker", http.StatusBadRequest)
+		return
+	}
+
 	mgr := manager.GetInstance()
 	jobID := mgr.JobManager.Add(r.Context(), "Downloading visual similarity model...", job.MakeJobExec(
 		func(ctx context.Context, progress *job.Progress) error {
@@ -185,13 +205,20 @@ func (rs imageRoutes) VisualSimilarityIndexImages(w http.ResponseWriter, r *http
 				return nil
 			}
 
-			client := visualembedding.New("")
+			client, backend, _, err := newVisualSimilarityEmbedder()
+			if err != nil {
+				return fmt.Errorf("initializing %s visual embedding worker: %w", backend, err)
+			}
 			defer client.Close()
+
 			status, err := client.Status(ctx)
 			if err != nil {
-				return fmt.Errorf("checking visual similarity model: %w", err)
+				return fmt.Errorf("checking %s visual similarity worker: %w", backend, err)
 			}
 			if !status.Installed {
+				if backend == "remote" {
+					return fmt.Errorf("remote visual similarity worker does not have the embedding model installed")
+				}
 				return fmt.Errorf("visual similarity model is not installed; download it from Settings > System > Visual Similarity first")
 			}
 
@@ -226,7 +253,7 @@ func (rs imageRoutes) VisualSimilarityIndexImages(w http.ResponseWriter, r *http
 				embedding, err := client.Embed(ctx, source.Path)
 				if err != nil {
 					failures++
-					logger.Warnf("visual similarity: embedding image %d (%s): %v", source.ID, source.Path, err)
+					logger.Warnf("visual similarity: %s embedding image %d (%s): %v", backend, source.ID, source.Path, err)
 					progress.Increment()
 					continue
 				}
