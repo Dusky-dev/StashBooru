@@ -20,12 +20,12 @@ const (
 )
 
 type ModelStatus struct {
-	Installed bool   `json:"installed"`
-	Loaded    bool   `json:"loaded"`
-	ModelPath string `json:"modelPath"`
-	Model     string `json:"model"`
-	Revision  string `json:"revision"`
-	Dimensions int   `json:"dimensions"`
+	Installed  bool   `json:"installed"`
+	Loaded     bool   `json:"loaded"`
+	ModelPath  string `json:"modelPath"`
+	Model      string `json:"model"`
+	Revision   string `json:"revision"`
+	Dimensions int    `json:"dimensions"`
 }
 
 type Client struct {
@@ -142,7 +142,10 @@ func (c *Client) Close() error {
 	// Best effort graceful shutdown. If the protocol is already broken, killing
 	// the worker below is still safe because it is a disposable helper process.
 	c.nextID++
-	_ = json.NewEncoder(c.stdin).Encode(request{ID: c.nextID, Op: "shutdown"})
+	if err := json.NewEncoder(c.stdin).Encode(request{ID: c.nextID, Op: "shutdown"}); err != nil {
+		_ = c.stopLocked(true)
+		return fmt.Errorf("sending shutdown request to visual embedding worker: %w", err)
+	}
 	return c.stopLocked(false)
 }
 

@@ -222,13 +222,13 @@ type orderedPHashCluster struct {
 	score          int
 }
 
-func samplePHashMembers(members []int, max int) []int {
-	if len(members) <= max {
+func samplePHashMembers(members []int, maxMembers int) []int {
+	if len(members) <= maxMembers {
 		return members
 	}
-	ret := make([]int, 0, max)
-	for i := 0; i < max; i++ {
-		ret = append(ret, members[i*len(members)/max])
+	ret := make([]int, 0, maxMembers)
+	for i := 0; i < maxMembers; i++ {
+		ret = append(ret, members[i*len(members)/maxMembers])
 	}
 	return ret
 }

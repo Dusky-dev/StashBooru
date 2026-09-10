@@ -108,23 +108,6 @@ const ImageCardPopovers = PatchComponent(
       }
     }
 
-    function renderFindSimilar() {
-      const label = intl.formatMessage({
-        id: "actions.find_similar",
-        defaultMessage: "Find similar",
-      });
-      return (
-        <Button
-          href={NavUtils.makeImagesSimilarityUrl(props.image.id)}
-          className="minimal"
-          title={label}
-          aria-label={label}
-        >
-          <Icon icon={faFingerprint} />
-        </Button>
-      );
-    }
-
     if (
       props.image.tags.length > 0 ||
       props.image.performers.length > 0 ||
