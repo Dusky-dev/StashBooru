@@ -1,0 +1,278 @@
+rs.data?.findPerformers?.performers);
+      add("studio", q.studios.data?.findStudios?.studios);
+    } else {
+      add("marker", q.markers.data?.findSceneMarkers?.scene_markers);
+      add("performer", q.performers.data?.findPerformers?.performers);
+      add("studio", q.studios.data?.findStudios?.studios);
+    }
+
+    return out;
+  }
+
+  function missing(value) {
+    return value == null || value === "" || (typeof value === "number" && Number.isNaN(value));
+  }
+
+  function hashRandom(entry, seed) {
+    const s = `${seed}:${entry.type}:${entry.id}`;
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i += 1) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  function sortValue(entry, sortBy, seed) {
+    const item = entry.item;
+    const file = firstFile(item);
+    switch (sortBy) {
+      case "date": return item.date || item.scene?.date || null;
+      case "production_date": return item.production_date || item.date || null;
+      case "title": return entry.title;
+      case "rating":
+      case "rating100": return item.rating100 ?? null;
+      case "created_at": return item.created_at ?? null;
+      case "updated_at": return item.updated_at ?? null;
+      case "o_counter": return item.o_counter ?? null;
+      case "path": return file?.path ?? null;
+      case "file_mod_time": return file?.mod_time ?? null;
+      case "filesize": return totalFileSize(item);
+      case "file_count": {
+        const files = Array.isArray(item.files) ? item.files : item.visual_files;
+        return Array.isArray(files) ? files.length : null;
+      }
+      case "resolution": return resolutionValue(item);
+      case "tag_count": return Array.isArray(item.tags) ? item.tags.length : null;
+      case "performer_count": return Array.isArray(item.performers) ? item.performers.length : null;
+      case "duration": return item.duration ?? file?.duration ?? null;
+      case "play_count": return item.play_count ?? null;
+      case "random": return hashRandom(entry, seed ?? 0);
+      case "code": return item.code ?? null;
+      default: return item[sortBy] ?? null;
+    }
+  }
+
+  function compareMixed(a, b, filter) {
+    const sortBy = filter?.sortBy || "date";
+    const dir = String(filter?.sortDirection || "DESC").toUpperCase() === "ASC" ? 1 : -1;
+    const av = sortValue(a, sortBy, filter?.randomSeed);
+    const bv = sortValue(b, sortBy, filter?.randomSeed);
+
+    const am = missing(av);
+    const bm = missing(bv);
+    if (am !== bm) return am ? 1 : -1;
+
+    let cmp = 0;
+    if (!am && !bm) {
+      if (typeof av === "number" && typeof bv === "number") cmp = av - bv;
+      else cmp = String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: "base" });
+      cmp *= dir;
+    }
+
+    if (cmp === 0) cmp = a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: "base" });
+    if (cmp === 0) cmp = a.type.localeCompare(b.type);
+    if (cmp === 0) cmp = a.id.localeCompare(b.id, undefined, { numeric: true });
+    return cmp;
+  }
+
+  function queryStatus(q, kind) {
+    const active = [q.scenes, q.images, q.galleries, q.groups, q.performers];
+    if (kind !== "performer") active.push(q.studios);
+    if (kind === "tag") active.push(q.markers);
+    return {
+      loading: active.some((x) => x.loading && !x.data),
+      errors: active.map((x) => x.error).filter(Boolean),
+    };
+  }
+
+  function MixedGalleryCard({ gallery, cardWidth, zoomIndex, selecting, selected, onSelectedChanged }) {
+    const C = nativeComponent("GalleryCard");
+    const showGallery = api.hooks?.useGalleryLightbox
+      ? api.hooks.useGalleryLightbox(String(gallery.id))
+      : null;
+    if (!C) return null;
+    return React.createElement(C, {
+      gallery,
+      cardWidth,
+      zoomIndex,
+      selecting,
+      selected,
+      onSelectedChanged,
+      onPreview: showGallery
+        ? (index, ev) => {
+            ev?.preventDefault?.();
+            showGallery(index || 0);
+          }
+        : undefined,
+    });
+  }
+
+
+  // Match Stash's current scene-wall behaviour: media keeps its own aspect ratio
+  // and rows are justified dynamically rather than forcing every item into a
+  // 16:9 letterbox. These are the same target row-height breakpoints used by
+  // Stash's native SceneWallPanel for this UI generation.
+  const WALL_ZOOM_HEIGHTS = [
+    { minWidth: 576, heights: [100, 120, 240, 360] },
+    { minWidth: 768, heights: [120, 160, 240, 480] },
+    { minWidth: 1200, heights: [120, 160, 240, 300] },
+    { minWidth: 1400, heights: [160, 240, 300, 480] },
+  ];
+
+  function wallTargetRowHeight(containerWidth, zoomIndex) {
+    let height = 280;
+    const zi = Math.max(0, Math.min(3, Number(zoomIndex) || 0));
+    for (const breakpoint of WALL_ZOOM_HEIGHTS) {
+      if (containerWidth >= breakpoint.minWidth) height = breakpoint.heights[zi];
+    }
+    return height;
+  }
+
+  function wallEntryDimensions(entry) {
+    const file = firstFile(entry.item) || {};
+    let width = Number(file.width) || 0;
+    let height = Number(file.height) || 0;
+
+    // Scene preview clips normally preserve the original file aspect ratio.
+    // Use Stash's native SceneWall fallback when dimensions are unavailable.
+    if (!(width > 0 && height > 0)) {
+      if (entry.type === "scene") return { width: 1280, height: 720 };
+      return { width: 1, height: 1 };
+    }
+    return { width, height };
+  }
+
+  function buildJustifiedWallRows(entries, containerWidth, zoomIndex) {
+    if (!entries.length || !(containerWidth > 0)) return [];
+    const gap = 6;
+    const targetHeight = wallTargetRowHeight(containerWidth, zoomIndex);
+    const maxHeight = targetHeight * 1.3;
+    const rows = [];
+    let current = [];
+    let aspectSum = 0;
+
+    const flush = (isLast) => {
+      if (!current.length) return;
+      const gaps = gap * Math.max(0, current.length - 1);
+      const targetWidth = aspectSum * targetHeight + gaps;
+      // Full rows are justified to the available width. An incomplete final
+      // row stays at the normal target height, just like react-photo-gallery.
+      let rowHeight = !isLast || targetWidth >= containerWidth
+        ? (containerWidth - gaps) / Math.max(aspectSum, 0.01)
+        : targetHeight;
+      rowHeight = Math.max(48, Math.min(maxHeight, rowHeight));
+
+      rows.push({
+        height: rowHeight,
+        gap,
+        items: current.map(({ entry, aspect }) => ({
+          entry,
+          width: rowHeight * aspect,
+          height: rowHeight,
+        })),
+      });
+      current = [];
+      aspectSum = 0;
+    };
+
+    entries.forEach((entry, index) => {
+      const d = wallEntryDimensions(entry);
+      const aspect = Math.max(0.1, Math.min(10, d.width / d.height));
+      current.push({ entry, aspect });
+      aspectSum += aspect;
+      const projected = aspectSum * targetHeight + gap * Math.max(0, current.length - 1);
+      const last = index === entries.length - 1;
+      if (projected >= containerWidth || last) flush(last);
+    });
+
+    return rows;
+  }
+
+  function useElementWidth() {
+    const ref = React.useRef(null);
+    const [width, setWidth] = React.useState(0);
+    React.useEffect(() => {
+      const el = ref.current;
+      if (!el) return undefined;
+      const update = () => setWidth(el.clientWidth || 0);
+      update();
+      if (typeof ResizeObserver === "function") {
+        const observer = new ResizeObserver(update);
+        observer.observe(el);
+        return () => observer.disconnect();
+      }
+      window.addEventListener("resize", update);
+      return () => window.removeEventListener("resize", update);
+    }, []);
+    return [ref, width];
+  }
+
+  function MixedWallItem({ entry, width, height, ctx, selectableKeys, openPreviewByKey }) {
+    const Link = api.libraries?.ReactRouterDOM?.Link;
+    const selected = ctx.selectedKeys.has(entry.key);
+    const selecting = ctx.selectedKeys.size > 0;
+    const item = entry.item;
+
+    const onSelect = (selectedValue, shiftKey) =>
+      ctx.onSelectEntry(entry.key, selectedValue, shiftKey, selectableKeys);
+
+    const onContainerClick = (ev) => {
+      if (selecting) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        onSelect(!selected, ev.shiftKey);
+        return;
+      }
+      if ((entry.type === "image" || entry.type === "scene") && openPreviewByKey) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        openPreviewByKey(entry.key);
+      }
+    };
+
+    const href = entry.type === "scene" ? `/scenes/${item.id}` : `/images/${item.id}`;
+    const scenePreview = item.paths?.preview || null;
+    const scenePoster = item.paths?.screenshot || null;
+    const imageSource = item.paths?.preview || item.paths?.thumbnail || null;
+    const imageIsVideo = typeof imageSource === "string" && imageSource.includes("preview");
+
+    let media;
+    if (entry.type === "scene") {
+      media = scenePreview
+        ? React.createElement("video", {
+            className: "unified-media-wall-media",
+            src: scenePreview,
+            poster: scenePoster || undefined,
+            autoPlay: true,
+            loop: true,
+            muted: true,
+            playsInline: true,
+            preload: "none",
+          })
+        : React.createElement("img", {
+            className: "unified-media-wall-media",
+            src: scenePoster || "",
+            alt: entry.title,
+            loading: "lazy",
+          });
+    } else {
+      media = imageIsVideo
+        ? React.createElement("video", {
+            className: "unified-media-wall-media",
+            src: imageSource,
+            autoPlay: true,
+            loop: true,
+            muted: true,
+            playsInline: true,
+          })
+        : React.createElement("img", {
+            className: "unified-media-wall-media",
+            src: imageSource || "",
+            alt: entry.title,
+            loading: "lazy",
+          });
+    }
+
+    // Wall mode intentionally has no preview-button overlay. Clicking either a
+    // scene/video or image opens the shared preview directly (unless select

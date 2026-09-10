@@ -8,6 +8,7 @@ require (
 	github.com/Yamashou/gqlgenc v0.32.1
 	github.com/anacrolix/dms v1.2.2
 	github.com/antchfx/htmlquery v1.3.5
+	github.com/asg017/sqlite-vec-go-bindings v0.1.6
 	github.com/asticode/go-astisub v0.25.1
 	github.com/chromedp/cdproto v0.0.0-20250803210736-d308e07a266d
 	github.com/chromedp/chromedp v0.14.2

@@ -167,23 +167,27 @@ export const SortBySelect: React.FC<{
 
         {dropdownItems}
       </Dropdown.Menu>
-      <OverlayTrigger
-        overlay={
-          <Tooltip id="sort-direction-tooltip">
-            {sortDirection === SortDirectionEnum.Asc
-              ? intl.formatMessage({ id: "ascending" })
-              : intl.formatMessage({ id: "descending" })}
-          </Tooltip>
-        }
-      >
-        <Button variant="secondary" onClick={onChangeSortDirection}>
-          <Icon
-            icon={
-              sortDirection === SortDirectionEnum.Asc ? faCaretUp : faCaretDown
-            }
-          />
-        </Button>
-      </OverlayTrigger>
+      {sortBy !== "perceptual_similarity" && (
+        <OverlayTrigger
+          overlay={
+            <Tooltip id="sort-direction-tooltip">
+              {sortDirection === SortDirectionEnum.Asc
+                ? intl.formatMessage({ id: "ascending" })
+                : intl.formatMessage({ id: "descending" })}
+            </Tooltip>
+          }
+        >
+          <Button variant="secondary" onClick={onChangeSortDirection}>
+            <Icon
+              icon={
+                sortDirection === SortDirectionEnum.Asc
+                  ? faCaretUp
+                  : faCaretDown
+              }
+            />
+          </Button>
+        </OverlayTrigger>
+      )}
       {sortBy === "random" && (
         <OverlayTrigger
           overlay={

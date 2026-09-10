@@ -1,4 +1,5 @@
 import Countries, { LocaleData } from "i18n-iso-countries";
+import booruTerminology from "./booru-terminology.json";
 
 export type NestedMessage = { [key: string]: NestedMessage | string };
 
@@ -56,6 +57,30 @@ export async function registerCountry(locale: string) {
   Countries.registerLocale(countries);
 }
 
+function withBooruTerminology(
+  loader: () => Promise<{ default: NestedMessage }>
+): () => Promise<{ default: NestedMessage }> {
+  return async () => {
+    const locale = await loader();
+    const overrides = booruTerminology as NestedMessage;
+    const localeCountables =
+      typeof locale.default.countables === "object"
+        ? locale.default.countables
+        : {};
+
+    return {
+      default: {
+        ...locale.default,
+        ...overrides,
+        countables: {
+          ...localeCountables,
+          ...(overrides.countables as NestedMessage),
+        },
+      },
+    };
+  };
+}
+
 export const localeLoader = {
   afZA: () => import("./af-ZA.json"),
   ar: () => import("./ar.json"),
@@ -65,8 +90,8 @@ export const localeLoader = {
   csCZ: () => import("./cs-CZ.json"),
   daDK: () => import("./da-DK.json"),
   deDE: () => import("./de-DE.json"),
-  enGB: () => import("./en-GB.json"),
-  enUS: () => import("./en-US.json"),
+  enGB: withBooruTerminology(() => import("./en-GB.json")),
+  enUS: withBooruTerminology(() => import("./en-US.json")),
   esES: () => import("./es-ES.json"),
   etEE: () => import("./et-EE.json"),
   faIR: () => import("./fa-IR.json"),

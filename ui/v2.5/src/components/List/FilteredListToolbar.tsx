@@ -4,6 +4,7 @@ import { ListFilterModel } from "src/models/list-filter/filter";
 import { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { PageSizeSelector, SearchTermInput } from "./ListFilter";
 import { SortBySelect } from "./SortBySelect";
+import { PerceptualSimilarityControls } from "./PerceptualSimilarityControls";
 import { ListViewButtonGroup } from "./ListViewOptions";
 import {
   IListFilterOperation,
@@ -231,6 +232,12 @@ export const FilteredListToolbar: React.FC<IFilteredListToolbar> = ({
               onReshuffleRandomSort={() =>
                 setFilter(filter.reshuffleRandomSort())
               }
+            />
+          )}
+          {sortable && filter.sortBy === "perceptual_similarity" && (
+            <PerceptualSimilarityControls
+              filter={filter}
+              setFilter={setFilter}
             />
           )}
 

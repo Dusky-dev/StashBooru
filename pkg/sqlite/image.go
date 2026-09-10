@@ -934,7 +934,23 @@ func (qb *ImageStore) Query(ctx context.Context, options models.ImageQueryOption
 		return nil, fmt.Errorf("error querying aggregate fields: %w", err)
 	}
 
-	idsResult, err := query.findIDs(ctx)
+	similarity, err := getPHashSimilarityOptions(options.FindFilter)
+	if err != nil {
+		return nil, fmt.Errorf("reading perceptual similarity options: %w", err)
+	}
+
+	var idsResult []int
+	if similarity != nil {
+		var similarityCount int
+		idsResult, similarityCount, err = findPHashSimilarityIDs(
+			ctx, *query, imagesFilesTable, imageIDColumn, options.FindFilter, similarity,
+		)
+		if options.Count {
+			result.Count = similarityCount
+		}
+	} else {
+		idsResult, err = query.findIDs(ctx)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("error finding IDs: %w", err)
 	}
@@ -1046,6 +1062,15 @@ func (qb *ImageStore) setImageSortAndPagination(q *queryBuilder, findFilter *mod
 		sort := findFilter.GetSort("title")
 		direction := findFilter.GetDirection()
 
+		parsedSort, similarity, err := parsePHashSimilaritySort(sort)
+		if err != nil {
+			return err
+		}
+		sort = parsedSort
+		if similarity != nil {
+			direction = "ASC"
+		}
+
 		// CVE-2024-32231 - ensure sort is in the list of allowed sorts
 		if err := imageSortOptions.validateSort(sort); err != nil {
 			return err
@@ -1085,17 +1110,9 @@ func (qb *ImageStore) setImageSortAndPagination(q *queryBuilder, findFilter *mod
 			addFolderJoin()
 			sortClause = " ORDER BY COALESCE(folders.path, '') || COALESCE(files.basename, '') COLLATE NATURAL_CI " + direction
 		case "perceptual_similarity":
-			// special handling for phash
-			addFilesJoin()
-			q.addJoins(
-				join{
-					sort:     true,
-					table:    fingerprintTable,
-					as:       "fingerprints_phash",
-					onClause: "images_files.file_id = fingerprints_phash.file_id AND fingerprints_phash.type = 'phash'",
-				},
-			)
-			sortClause = " ORDER BY fingerprints_phash.fingerprint " + direction + ", files.size DESC"
+			// Query() performs similarity ordering before pagination.
+			sortClause = ""
+
 		case "file_count":
 			sortClause = getCountSort(imageTable, imagesFilesTable, imageIDColumn, direction)
 		case "tag_count":
@@ -1144,8 +1161,10 @@ func (qb *ImageStore) setImageSortAndPagination(q *queryBuilder, findFilter *mod
 			sortClause = getSort(sort, direction, "images")
 		}
 
-		// Whatever the sorting, always use title/id as a final sort
-		sortClause += ", COALESCE(images.title, images.id) COLLATE NATURAL_CI ASC"
+		// Perceptual similarity is ordered in Go before pagination.
+		if sortClause != "" {
+			sortClause += ", COALESCE(images.title, images.id) COLLATE NATURAL_CI ASC"
+		}
 	}
 
 	q.sortAndPagination = sortClause + getPagination(findFilter)

@@ -1,0 +1,509 @@
+
+
+        if (entry) {
+          const scene = entry.item;
+          const scenePath = `/scenes/${scene.id}`;
+          footerLink.setAttribute("href", scenePath);
+          footerLink.textContent = sceneFilename(scene);
+          footerLink.removeAttribute("aria-disabled");
+          footerLink.removeAttribute("tabindex");
+          footerLink.style.pointerEvents = "";
+          footerLink.classList.add("unified-media-scene-lightbox-title");
+
+          const handler = (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            ev.stopImmediatePropagation?.();
+            if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey || ev.button === 1) {
+              window.open(scenePath, "_blank", "noopener");
+              return;
+            }
+            window.location.replace(scenePath);
+          };
+          footerLink.__unifiedMediaSceneNavigateHandler = handler;
+          footerLink.addEventListener("click", handler, true);
+        }
+      }
+    }, [entries]);
+
+    const start = React.useCallback(() => {
+      cleanup();
+      const schedule = () => {
+        if (syncFrameRef.current) return;
+        syncFrameRef.current = requestAnimationFrame(() => {
+          syncFrameRef.current = null;
+          sync();
+        });
+      };
+      const observer = new MutationObserver(schedule);
+      observerRef.current = observer;
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["style", "href", "class"],
+      });
+      schedule();
+      setTimeout(schedule, 50);
+      setTimeout(schedule, 250);
+      setTimeout(schedule, 450);
+    }, [cleanup, sync]);
+
+    React.useEffect(() => cleanup, [cleanup]);
+
+    const lightboxPrevious = React.useCallback(() => {
+      const buttons = document.querySelectorAll(".Lightbox-display > .Lightbox-navbutton");
+      buttons?.[0]?.click?.();
+    }, []);
+    const lightboxNext = React.useCallback(() => {
+      const buttons = document.querySelectorAll(".Lightbox-display > .Lightbox-navbutton");
+      buttons?.[buttons.length - 1]?.click?.();
+    }, []);
+
+    const handleClose = React.useCallback(() => {
+      cleanup();
+      onClosed?.();
+    }, [cleanup, onClosed]);
+
+    const showLightbox = api.hooks?.useLightbox
+      ? api.hooks.useLightbox({
+          images: lightboxItems,
+          // Keep Stash's left/right preview navigation, but hide the lower
+          // thumbnail/scene selector strip. `showNavigation` only controls
+          // that strip; the Lightbox arrow buttons and keyboard navigation
+          // remain available for multi-scene previews.
+          showNavigation: false,
+          page: 1,
+          pages: 1,
+          pageSize: lightboxItems.length || 1,
+          totalCount: lightboxItems.length,
+          slideshowEnabled: true,
+          onClose: handleClose,
+        })
+      : null;
+
+    const openScene = React.useCallback((scene) => {
+      if (!showLightbox || !scene) return;
+      const index = indexByID.get(String(scene.id));
+      if (index == null) return;
+      start();
+      showLightbox({ initialIndex: index, slideshowEnabled: true });
+    }, [showLightbox, indexByID, start]);
+
+    React.useEffect(
+      () => registerOpen?.(openScene),
+      [registerOpen, openScene]
+    );
+
+    const activeEntry = activeIndex != null ? entries[activeIndex] : null;
+    return activeEntry && portalTarget
+      ? React.createElement(NativeScenePlayerPortal, {
+          key: `unified-media-page-scene-player:${activeEntry.id}`,
+          entry: activeEntry,
+          target: portalTarget,
+          geometry: portalGeometry,
+          onNext: lightboxNext,
+          onPrevious: lightboxPrevious,
+        })
+      : null;
+  }
+
+  function PageMediaEnhancementProvider({ children }) {
+    const registryRef = React.useRef(new Map());
+    const countsRef = React.useRef(new Map());
+    const [registryVersion, setRegistryVersion] = React.useState(0);
+    const openerRef = React.useRef(null);
+    const [wallSceneID, setWallSceneID] = React.useState(null);
+    const [pendingOpenID, setPendingOpenID] = React.useState(null);
+    const [transientScene, setTransientScene] = React.useState(null);
+
+    const wallSceneQuery = api.GQL?.useFindSceneQuery
+      ? api.GQL.useFindSceneQuery({
+          variables: { id: wallSceneID || "" },
+          skip: !wallSceneID,
+          fetchPolicy: "cache-first",
+        })
+      : null;
+
+    const registerScene = React.useCallback((scene) => {
+      if (!scene?.id) return undefined;
+      const id = String(scene.id);
+      registryRef.current.set(id, scene);
+      countsRef.current.set(id, (countsRef.current.get(id) || 0) + 1);
+      setRegistryVersion((v) => v + 1);
+      return () => {
+        const nextCount = Math.max(0, (countsRef.current.get(id) || 1) - 1);
+        if (nextCount === 0) {
+          countsRef.current.delete(id);
+          registryRef.current.delete(id);
+        } else {
+          countsRef.current.set(id, nextCount);
+        }
+        setRegistryVersion((v) => v + 1);
+      };
+    }, []);
+
+    const registerOpen = React.useCallback((opener) => {
+      openerRef.current = opener;
+      return () => {
+        if (openerRef.current === opener) openerRef.current = null;
+      };
+    }, []);
+
+    const openScenePreview = React.useCallback((scene) => {
+      openerRef.current?.(scene);
+    }, []);
+
+    React.useEffect(() => {
+      const scene = wallSceneQuery?.data?.findScene;
+      if (!scene || !wallSceneID || String(scene.id) !== String(wallSceneID)) return;
+      setTransientScene(scene);
+      setPendingOpenID(String(scene.id));
+      setWallSceneID(null);
+    }, [wallSceneQuery?.data, wallSceneID]);
+
+    const scenes = React.useMemo(() => {
+      const values = Array.from(registryRef.current.values());
+      if (transientScene && !values.some((scene) => String(scene.id) === String(transientScene.id))) {
+        values.push(transientScene);
+      }
+      return values;
+    }, [registryVersion, transientScene]);
+
+    React.useEffect(() => {
+      if (!pendingOpenID) return;
+      const scene = scenes.find((value) => String(value.id) === String(pendingOpenID));
+      if (!scene || !openerRef.current) return;
+      openerRef.current(scene);
+      setPendingOpenID(null);
+    }, [scenes, pendingOpenID]);
+
+    // Native image walls don't use ImageCard.Image, so add the GIF marker to
+    // their rendered wall items as a DOM enhancement. Also keep Stash's delayed
+    // 2x wall hover zoom disabled on these detail-page tabs, matching All.
+    React.useEffect(() => {
+      let frame = 0;
+      const scan = () => {
+        frame = 0;
+        document.querySelectorAll(
+          ".performer-tabs .wall-item, .studio-tabs .wall-item, .tag-tabs .wall-item"
+        ).forEach((item) => {
+          const media = item.querySelector("img, video");
+          const src = media?.currentSrc || media?.getAttribute?.("src") || "";
+          const gif = /\.gif(?:$|[?#])/i.test(String(src));
+          let badge = item.querySelector(":scope > .unified-media-native-wall-gif-badge");
+          if (gif && !badge) {
+            badge = document.createElement("span");
+            badge.className = "unified-media-gif-badge unified-media-native-wall-gif-badge";
+            badge.textContent = "GIF";
+            badge.setAttribute("aria-label", "GIF");
+            badge.setAttribute("title", "GIF");
+            item.appendChild(badge);
+          } else if (!gif && badge) {
+            badge.remove();
+          }
+        });
+      };
+      const schedule = () => {
+        if (frame) return;
+        frame = requestAnimationFrame(scan);
+      };
+      const observer = new MutationObserver(schedule);
+      observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["src"] });
+      schedule();
+      return () => {
+        observer.disconnect();
+        if (frame) cancelAnimationFrame(frame);
+      };
+    }, []);
+
+    // SceneWallPanel is not a patchable component in this Stash generation.
+    // Capture clicks on its media area so Wall view on the normal Videos tab
+    // opens the same native preview instead of navigating straight to the scene.
+    // Footer/title links remain normal navigation, and selection mode is left
+    // entirely to Stash.
+    React.useEffect(() => {
+      const onClick = (ev) => {
+        const item = ev.target?.closest?.(".scene-wall .wall-item");
+        if (!item) return;
+        const shell = item.closest(".performer-tabs, .studio-tabs, .tag-tabs");
+        if (!shell) return;
+        if (ev.target?.closest?.(".wall-item-check, .wall-item-footer a")) return;
+        if (item.closest(".unified-media-wall")) return;
+        if (item.parentElement?.querySelector?.('.wall-item-check:checked')) return;
+
+        const link = item.querySelector('.wall-item-footer a[href*="/scenes/"]');
+        const href = link?.getAttribute?.("href") || "";
+        const match = href.match(/\/scenes\/([^/?#]+)/);
+        if (!match) return;
+        const id = decodeURIComponent(match[1]);
+
+        ev.preventDefault();
+        ev.stopPropagation();
+        ev.stopImmediatePropagation?.();
+
+        const registered = registryRef.current.get(String(id));
+        if (registered) {
+          openerRef.current?.(registered);
+        } else if (api.GQL?.useFindSceneQuery) {
+          setWallSceneID(String(id));
+        }
+      };
+      document.addEventListener("click", onClick, true);
+      return () => document.removeEventListener("click", onClick, true);
+    }, []);
+
+    const value = React.useMemo(
+      () => ({ registerScene, openScenePreview }),
+      [registerScene, openScenePreview]
+    );
+
+    return React.createElement(
+      PageMediaContext.Provider,
+      { value },
+      children,
+      React.createElement(PageScenePreviewHost, { scenes, registerOpen })
+    );
+  }
+
+  function MixedGrid({ ctx, filter }) {
+    const loadingBundles = useNativeBundles();
+    const q = useMixedQueries(ctx, filter);
+    const status = queryStatus(q, ctx.kind);
+    const allItems = React.useMemo(
+      () => collectItems(ctx, q),
+      [
+        ctx.kind,
+        ctx.entity.id,
+        q.scenes.data,
+        q.images.data,
+        q.galleries.data,
+        q.groups.data,
+        q.performers.data,
+        q.studios.data,
+        q.markers.data,
+      ]
+    );
+    const sorted = React.useMemo(
+      () => [...allItems].sort((a, b) => compareMixed(a, b, filter)),
+      [allItems, filter?.sortBy, filter?.sortDirection, filter?.randomSeed]
+    );
+    const wallMode = Number(filter?.displayMode) === DisplayMode.Wall;
+    const displayItems = React.useMemo(
+      () => wallMode ? sorted.filter((x) => x.type === "scene" || x.type === "image") : sorted,
+      [sorted, wallMode]
+    );
+    const selectableKeys = React.useMemo(() => displayItems.map((x) => x.key), [displayItems]);
+    React.useEffect(() => {
+      ctx.setSelectionUniverse(selectableKeys);
+    }, [ctx, selectableKeys]);
+
+    const [page, setPage] = React.useState(1);
+    const perPage = Math.max(1, Number(filter?.itemsPerPage) || 40);
+    const criteriaSignature = React.useMemo(() => {
+      try { return JSON.stringify(filter?.makeFilter?.() || {}); } catch (_) { return ""; }
+    }, [filter]);
+
+    React.useEffect(() => setPage(1), [
+      ctx.kind,
+      ctx.entity.id,
+      ctx.includeChildren,
+      filter?.searchTerm,
+      filter?.sortBy,
+      filter?.sortDirection,
+      filter?.randomSeed,
+      filter?.displayMode,
+      perPage,
+      criteriaSignature,
+    ]);
+    React.useEffect(() => {
+      ctx.clearSelection();
+    }, [ctx.kind, ctx.entity.id, ctx.includeChildren, filter?.searchTerm, filter?.displayMode, criteriaSignature]);
+
+    const pages = Math.max(1, Math.ceil(displayItems.length / perPage));
+    React.useEffect(() => {
+      if (page > pages) setPage(pages);
+    }, [page, pages]);
+
+    const pageItems = React.useMemo(
+      () => displayItems.slice((page - 1) * perPage, page * perPage),
+      [displayItems, page, perPage]
+    );
+
+    // One native Stash lightbox sequence for all visual media on this mixed
+    // page. Images remain their real Image objects; scenes are safe synthetic
+    // ILightboxImage-compatible entries backed by Stash's generated preview.
+    const pageVisualEntries = React.useMemo(
+      () => pageItems.filter((x) => x.type === "scene" || x.type === "image"),
+      [pageItems]
+    );
+    const lightboxItems = React.useMemo(
+      () => pageVisualEntries.map(entryToLightboxImage),
+      [pageVisualEntries]
+    );
+    const visualIndexByKey = React.useMemo(
+      () => new Map(pageVisualEntries.map((entry, index) => [entry.key, index])),
+      [pageVisualEntries]
+    );
+
+    // The Lightbox remains Stash's native image/lightbox shell and owns mixed
+    // next/previous navigation. For scene entries, replace only the current
+    // carousel slide's media area with Stash's real ScenePlayer via a React
+    // portal. This avoids the HTML <video> sizing/transform mismatch entirely.
+    const [activeVisualIndex, setActiveVisualIndex] = React.useState(null);
+    const [scenePortalTarget, setScenePortalTarget] = React.useState(null);
+    const [scenePortalGeometry, setScenePortalGeometry] = React.useState(null);
+    const lightboxObserverRef = React.useRef(null);
+    const lightboxSyncFrameRef = React.useRef(null);
+
+    const cleanupNativeLightbox = React.useCallback(() => {
+      document.body.classList.remove("unified-media-native-lightbox-open");
+      document.querySelectorAll(".Lightbox-carousel-image.unified-media-native-scene-slide").forEach((node) =>
+        node.classList.remove("unified-media-native-scene-slide")
+      );
+      document.querySelectorAll(".Lightbox-footer-center .image-link").forEach((link) => {
+        const handler = link.__unifiedMediaSceneNavigateHandler;
+        if (handler) link.removeEventListener("click", handler, true);
+        delete link.__unifiedMediaSceneNavigateHandler;
+        link.classList.remove("unified-media-scene-lightbox-title");
+      });
+      if (lightboxObserverRef.current) {
+        lightboxObserverRef.current.disconnect();
+        lightboxObserverRef.current = null;
+      }
+      if (lightboxSyncFrameRef.current) {
+        cancelAnimationFrame(lightboxSyncFrameRef.current);
+        lightboxSyncFrameRef.current = null;
+      }
+      setActiveVisualIndex(null);
+      setScenePortalTarget(null);
+      setScenePortalGeometry(null);
+    }, []);
+
+    const syncNativeLightbox = React.useCallback(() => {
+      const lightbox = document.querySelector(".Lightbox");
+      const carousel = lightbox?.querySelector(".Lightbox-carousel");
+      if (!lightbox || !carousel) return;
+
+      document.body.classList.add("unified-media-native-lightbox-open");
+      const match = String(carousel.style.left || "").match(/(-?\d+(?:\.\d+)?)vw/);
+      const index = match ? Math.max(0, Math.round(Math.abs(Number(match[1])) / 100)) : 0;
+      const entry = pageVisualEntries[index];
+      const target = carousel.children?.[index] || null;
+
+      carousel.querySelectorAll(".Lightbox-carousel-image.unified-media-native-scene-slide").forEach((node) => {
+        if (node !== target) node.classList.remove("unified-media-native-scene-slide");
+      });
+
+      if (entry?.type === "scene" && target) {
+        target.classList.add("unified-media-native-scene-slide");
+        setActiveVisualIndex((old) => old === index ? old : index);
+        setScenePortalTarget((old) => old === target ? old : target);
+
+        // Mirror the exact visible geometry calculated by Stash's native
+        // LightboxImage. That makes ScenePlayer obey Original/Fit X/Fit Y/Fit
+        // Screen and the native zoom/pan transform without reimplementing it.
+        const nativeMedia = target.querySelector(
+          ".Lightbox-carousel-image-wrapper img, .Lightbox-carousel-image-wrapper video"
+        );
+        if (nativeMedia) {
+          const mediaRect = nativeMedia.getBoundingClientRect();
+          const nextGeometry = {
+            left: mediaRect.left,
+            top: mediaRect.top,
+            width: mediaRect.width,
+            height: mediaRect.height,
+          };
+          setScenePortalGeometry((old) => {
+            if (
+              old &&
+              Math.abs(old.left - nextGeometry.left) < 0.5 &&
+              Math.abs(old.top - nextGeometry.top) < 0.5 &&
+              Math.abs(old.width - nextGeometry.width) < 0.5 &&
+              Math.abs(old.height - nextGeometry.height) < 0.5
+            ) return old;
+            return nextGeometry;
+          });
+        }
+      } else {
+        target?.classList?.remove("unified-media-native-scene-slide");
+        setActiveVisualIndex((old) => old === index ? old : index);
+        setScenePortalTarget(null);
+        setScenePortalGeometry(null);
+      }
+
+      const footerLink = lightbox.querySelector(".Lightbox-footer-center .image-link");
+      if (footerLink) {
+        const oldHandler = footerLink.__unifiedMediaSceneNavigateHandler;
+        if (oldHandler) {
+          footerLink.removeEventListener("click", oldHandler, true);
+          delete footerLink.__unifiedMediaSceneNavigateHandler;
+        }
+
+        if (entry?.type === "scene") {
+          const scene = entry.item;
+          const scenePath = `/scenes/${scene.id}`;
+          const filename = sceneFilename(scene);
+          footerLink.setAttribute("href", scenePath);
+          footerLink.textContent = filename;
+          footerLink.removeAttribute("aria-disabled");
+          footerLink.removeAttribute("tabindex");
+          footerLink.style.pointerEvents = "";
+          footerLink.classList.add("unified-media-scene-lightbox-title");
+
+          const handler = (ev) => {
+            // The footer node is still a React-Router <Link> whose React props
+            // point at /images/undefined (scene entries intentionally have no
+            // image id). Trying to close the Lightbox and then perform an SPA
+            // route change races ScenePlayer/Video.js teardown against the
+            // provider tree unmount. In this Stash build that can leave the
+            // disposed player with player.el() === null and can also leave the
+            // Lightbox rendering during route teardown.
+            //
+            // Intercept in the capture phase and perform a full-document
+            // replace instead. This matches the native footer's replace-history
+            // semantics while letting the browser tear the preview/player down
+            // atomically rather than asking React to unmount it mid-navigation.
+            ev.preventDefault();
+            ev.stopPropagation();
+            ev.stopImmediatePropagation?.();
+
+            if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey || ev.button === 1) {
+              window.open(scenePath, "_blank", "noopener");
+              return;
+            }
+
+            window.location.replace(scenePath);
+          };
+          footerLink.__unifiedMediaSceneNavigateHandler = handler;
+          footerLink.addEventListener("click", handler, true);
+        } else {
+          footerLink.classList.remove("unified-media-scene-lightbox-title");
+        }
+      }
+    }, [pageVisualEntries]);
+
+
+    const startNativeLightboxEnhancements = React.useCallback(() => {
+      cleanupNativeLightbox();
+      const scheduleSync = () => {
+        if (lightboxSyncFrameRef.current) return;
+        lightboxSyncFrameRef.current = requestAnimationFrame(() => {
+          lightboxSyncFrameRef.current = null;
+          syncNativeLightbox();
+        });
+      };
+      const observer = new MutationObserver(scheduleSync);
+      lightboxObserverRef.current = observer;
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["style", "href", "class"],
+      });
+      scheduleSync();
+      setTimeout(scheduleSync, 50);
+      setTimeout(scheduleSync, 250);
+    }, [cleanupNativeLightbox, syncNativeLightbox]);
+
+    React.us

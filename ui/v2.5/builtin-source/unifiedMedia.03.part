@@ -1,0 +1,274 @@
+ion
+    // mode is active). Grid mode keeps the normal magnifying-glass affordance.
+
+    const anchorProps = {
+      className: "unified-media-wall-anchor",
+      onClick: onContainerClick,
+      style: { width: "100%", height: "100%" },
+    };
+    const anchor = Link
+      ? React.createElement(Link, { ...anchorProps, to: href }, media)
+      : React.createElement("a", { ...anchorProps, href }, media);
+
+    return React.createElement(
+      "div",
+      {
+        className: "unified-media-wall-item",
+        style: { width: `${Math.max(1, width)}px`, height: `${Math.max(1, height)}px` },
+      },
+      React.createElement("input", {
+        type: "checkbox",
+        className: "wall-item-check mousetrap unified-media-wall-check",
+        checked: selected,
+        onChange: (ev) => onSelect(ev.target.checked, false),
+        onClick: (ev) => ev.stopPropagation(),
+        "aria-label": `Select ${entry.title}`,
+      }),
+      entry.type === "image" && isGifImage(item)
+        ? React.createElement(GifBadge, { key: "gif" })
+        : null,
+      anchor
+    );
+  }
+
+  function MixedWall({ pageItems, ctx, selectableKeys, openPreviewByKey, zoomIndex }) {
+    const [containerRef, containerWidth] = useElementWidth();
+    const rows = React.useMemo(
+      () => buildJustifiedWallRows(pageItems, containerWidth, zoomIndex),
+      [pageItems, containerWidth, zoomIndex]
+    );
+
+    return React.createElement(
+      "div",
+      { className: "unified-media-wall", ref: containerRef },
+      rows.map((row, rowIndex) =>
+        React.createElement(
+          "div",
+          {
+            key: `row-${rowIndex}`,
+            className: "unified-media-wall-row",
+            style: { gap: `${row.gap}px`, height: `${row.height}px` },
+          },
+          row.items.map(({ entry, width, height }) =>
+            React.createElement(MixedWallItem, {
+              key: entry.key,
+              entry,
+              width,
+              height,
+              ctx,
+              selectableKeys,
+              openPreviewByKey,
+            })
+          )
+        )
+      )
+    );
+  }
+
+  function NativeScenePlayerPortal({ entry, target, geometry, onNext, onPrevious }) {
+    const portal = api.ReactDOM?.createPortal;
+    const loadables = React.useMemo(
+      () => [api.loadableComponents?.ScenePlayer, api.loadableComponents?.Scenes].filter(Boolean),
+      []
+    );
+    const loadingComponents = api.hooks?.useLoadComponents
+      ? api.hooks.useLoadComponents(loadables)
+      : false;
+
+    const useFindScene = api.utils?.StashService?.useFindScene;
+    const queryResult = useFindScene
+      ? useFindScene(String(entry.item.id))
+      : { data: { findScene: entry.item }, loading: false, error: null };
+
+    const scene = queryResult?.data?.findScene || entry.item;
+    const ScenePlayer = nativeComponent("ScenePlayer");
+    const sendSetTimestamp = React.useCallback(() => {}, []);
+    const noop = React.useCallback(() => {}, []);
+
+    const relayWheelToNativeLightbox = React.useCallback(
+      (ev) => {
+        if (!target) return;
+        const hiddenMedia = target.querySelector(
+          ".Lightbox-carousel-image-wrapper img, .Lightbox-carousel-image-wrapper video"
+        );
+        if (!hiddenMedia) return;
+
+        // Let Stash's own LightboxImage handle scroll mode, zoom increments,
+        // reset-zoom UI and persisted lightbox options. We only relay the wheel
+        // event from the visible native ScenePlayer to its invisible placeholder.
+        ev.preventDefault?.();
+        ev.stopPropagation?.();
+        try {
+          hiddenMedia.dispatchEvent(
+            new WheelEvent("wheel", {
+              bubbles: true,
+              cancelable: true,
+              deltaX: ev.deltaX,
+              deltaY: ev.deltaY,
+              deltaZ: ev.deltaZ,
+              deltaMode: ev.deltaMode,
+              clientX: ev.clientX,
+              clientY: ev.clientY,
+              ctrlKey: ev.ctrlKey,
+              shiftKey: ev.shiftKey,
+              altKey: ev.altKey,
+              metaKey: ev.metaKey,
+            })
+          );
+        } catch (e) {
+          console.warn("[Unified Media] could not relay lightbox zoom event", e);
+        }
+      },
+      [target]
+    );
+
+    if (!target || typeof portal !== "function") return null;
+
+    let content;
+    if (loadingComponents || queryResult?.loading) {
+      const Loading = nativeComponent("LoadingIndicator");
+      content = Loading
+        ? React.createElement(Loading)
+        : React.createElement("div", { className: "text-muted" }, "Loading video…");
+    } else if (!ScenePlayer || !scene?.sceneStreams || !Array.isArray(scene.files)) {
+      content = React.createElement(
+        "div",
+        { className: "alert alert-warning unified-media-native-player-error" },
+        "Stash's native ScenePlayer could not be loaded for this preview."
+      );
+    } else {
+      content = React.createElement(ScenePlayer, {
+        key: `unified-media-scene-player:${scene.id}`,
+        scene,
+        hideScrubberOverride: true,
+        autoplay: true,
+        permitLoop: false,
+        initialTimestamp: 0,
+        sendSetTimestamp,
+        onComplete: noop,
+        onNext: onNext || noop,
+        onPrevious: onPrevious || noop,
+      });
+    }
+
+    const style = geometry
+      ? {
+          left: `${geometry.left}px`,
+          top: `${geometry.top}px`,
+          width: `${geometry.width}px`,
+          height: `${geometry.height}px`,
+        }
+      : undefined;
+
+    return portal(
+      React.createElement(
+        "div",
+        {
+          className: "unified-media-native-scene-player",
+          style,
+          onWheelCapture: relayWheelToNativeLightbox,
+        },
+        content
+      ),
+      document.body
+    );
+  }
+
+  // Page-wide scene preview host. Native scene cards in the normal Videos tab
+  // register themselves with PageMediaContext, so they get the same Stash
+  // Lightbox + native ScenePlayer preview experience as the All tab.
+  function PageScenePreviewHost({ scenes, registerOpen, onClosed }) {
+    const entries = React.useMemo(
+      () => (scenes || []).map((scene) => wrap("scene", scene)),
+      [scenes]
+    );
+    const lightboxItems = React.useMemo(
+      () => entries.map(entryToLightboxImage),
+      [entries]
+    );
+    const indexByID = React.useMemo(
+      () => new Map(entries.map((entry, index) => [String(entry.id), index])),
+      [entries]
+    );
+
+    const [activeIndex, setActiveIndex] = React.useState(null);
+    const [portalTarget, setPortalTarget] = React.useState(null);
+    const [portalGeometry, setPortalGeometry] = React.useState(null);
+    const observerRef = React.useRef(null);
+    const syncFrameRef = React.useRef(null);
+
+    const cleanup = React.useCallback(() => {
+      document.body.classList.remove("unified-media-native-lightbox-open");
+      document.querySelectorAll(".Lightbox-carousel-image.unified-media-native-scene-slide").forEach((node) =>
+        node.classList.remove("unified-media-native-scene-slide")
+      );
+      document.querySelectorAll(".Lightbox-footer-center .image-link").forEach((link) => {
+        const handler = link.__unifiedMediaSceneNavigateHandler;
+        if (handler) link.removeEventListener("click", handler, true);
+        delete link.__unifiedMediaSceneNavigateHandler;
+        link.classList.remove("unified-media-scene-lightbox-title");
+      });
+      observerRef.current?.disconnect?.();
+      observerRef.current = null;
+      if (syncFrameRef.current) cancelAnimationFrame(syncFrameRef.current);
+      syncFrameRef.current = null;
+      setActiveIndex(null);
+      setPortalTarget(null);
+      setPortalGeometry(null);
+    }, []);
+
+    const sync = React.useCallback(() => {
+      const lightbox = document.querySelector(".Lightbox");
+      const carousel = lightbox?.querySelector(".Lightbox-carousel");
+      if (!lightbox || !carousel) return;
+
+      document.body.classList.add("unified-media-native-lightbox-open");
+      const match = String(carousel.style.left || "").match(/(-?\d+(?:\.\d+)?)vw/);
+      const index = match ? Math.max(0, Math.round(Math.abs(Number(match[1])) / 100)) : 0;
+      const entry = entries[index];
+      const target = carousel.children?.[index] || null;
+
+      carousel.querySelectorAll(".Lightbox-carousel-image.unified-media-native-scene-slide").forEach((node) => {
+        if (node !== target) node.classList.remove("unified-media-native-scene-slide");
+      });
+
+      if (entry && target) {
+        target.classList.add("unified-media-native-scene-slide");
+        setActiveIndex((old) => old === index ? old : index);
+        setPortalTarget((old) => old === target ? old : target);
+
+        const nativeMedia = target.querySelector(
+          ".Lightbox-carousel-image-wrapper img, .Lightbox-carousel-image-wrapper video"
+        );
+        if (nativeMedia) {
+          const mediaRect = nativeMedia.getBoundingClientRect();
+          const nextGeometry = {
+            left: mediaRect.left,
+            top: mediaRect.top,
+            width: mediaRect.width,
+            height: mediaRect.height,
+          };
+          setPortalGeometry((old) => {
+            if (
+              old &&
+              Math.abs(old.left - nextGeometry.left) < 0.5 &&
+              Math.abs(old.top - nextGeometry.top) < 0.5 &&
+              Math.abs(old.width - nextGeometry.width) < 0.5 &&
+              Math.abs(old.height - nextGeometry.height) < 0.5
+            ) return old;
+            return nextGeometry;
+          });
+        }
+      } else {
+        target?.classList?.remove("unified-media-native-scene-slide");
+        setPortalTarget(null);
+        setPortalGeometry(null);
+      }
+
+      const footerLink = lightbox.querySelector(".Lightbox-footer-center .image-link");
+      if (footerLink) {
+        const oldHandler = footerLink.__unifiedMediaSceneNavigateHandler;
+        if (oldHandler) {
+          footerLink.removeEventListener("click", oldHandler, true);
+          delete footerLink.__unifiedMediaSceneNavigateHandler;
+        }

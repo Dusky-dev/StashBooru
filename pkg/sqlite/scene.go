@@ -1089,7 +1089,23 @@ func (qb *SceneStore) Query(ctx context.Context, options models.SceneQueryOption
 		return nil, fmt.Errorf("error querying aggregate fields: %w", err)
 	}
 
-	idsResult, err := query.findIDs(ctx)
+	similarity, err := getPHashSimilarityOptions(options.FindFilter)
+	if err != nil {
+		return nil, fmt.Errorf("reading perceptual similarity options: %w", err)
+	}
+
+	var idsResult []int
+	if similarity != nil {
+		var similarityCount int
+		idsResult, similarityCount, err = findPHashSimilarityIDs(
+			ctx, *query, scenesFilesTable, sceneIDColumn, options.FindFilter, similarity,
+		)
+		if options.Count {
+			result.Count = similarityCount
+		}
+	} else {
+		idsResult, err = query.findIDs(ctx)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("error finding IDs: %w", err)
 	}
@@ -1215,6 +1231,12 @@ func (qb *SceneStore) setSceneSort(query *queryBuilder, findFilter *models.FindF
 	}
 	sort := findFilter.GetSort("title")
 
+	parsedSort, similarity, err := parsePHashSimilaritySort(sort)
+	if err != nil {
+		return err
+	}
+	sort = parsedSort
+
 	// CVE-2024-32231 - ensure sort is in the list of allowed sorts
 	if err := sceneSortOptions.validateSort(sort); err != nil {
 		return err
@@ -1257,6 +1279,9 @@ func (qb *SceneStore) setSceneSort(query *queryBuilder, findFilter *models.FindF
 	}
 
 	direction := findFilter.GetDirection()
+	if similarity != nil {
+		direction = "ASC"
+	}
 	switch sort {
 	case "movie_scene_number":
 		query.joinSort(groupsScenesTable, "", "scenes.id = groups_scenes.scene_id")
@@ -1276,18 +1301,8 @@ func (qb *SceneStore) setSceneSort(query *queryBuilder, findFilter *models.FindF
 		addFolderTable()
 		query.sortAndPagination += fmt.Sprintf(" ORDER BY COALESCE(folders.path, '') || COALESCE(files.basename, '') COLLATE NATURAL_CI %s", direction)
 	case "perceptual_similarity":
-		// special handling for phash
-		addFileTable()
-		query.addJoins(
-			join{
-				sort:     true,
-				table:    fingerprintTable,
-				as:       "fingerprints_phash",
-				onClause: "scenes_files.file_id = fingerprints_phash.file_id AND fingerprints_phash.type = 'phash'",
-			},
-		)
+		// Query() performs similarity ordering before pagination.
 
-		query.sortAndPagination += " ORDER BY fingerprints_phash.fingerprint " + direction + ", files.size DESC"
 	case "bitrate":
 		sort = "bit_rate"
 		addVideoFileTable()
@@ -1355,8 +1370,10 @@ func (qb *SceneStore) setSceneSort(query *queryBuilder, findFilter *models.FindF
 		query.sortAndPagination += getSort(sort, direction, "scenes")
 	}
 
-	// Whatever the sorting, always use title/id as a final sort
-	query.sortAndPagination += ", COALESCE(scenes.title, scenes.id) COLLATE NATURAL_CI ASC"
+	// Perceptual similarity is ordered in Go before pagination.
+	if sort != perceptualSimilaritySort {
+		query.sortAndPagination += ", COALESCE(scenes.title, scenes.id) COLLATE NATURAL_CI ASC"
+	}
 
 	return nil
 }

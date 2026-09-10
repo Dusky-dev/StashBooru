@@ -11,7 +11,11 @@ import {
   TagsCriterion,
   TagsCriterionOption,
 } from "src/models/list-filter/criteria/tags";
-import { ListFilterModel } from "src/models/list-filter/filter";
+import {
+  DEFAULT_SIMILARITY_DISTANCE,
+  ListFilterModel,
+  PERCEPTUAL_SIMILARITY_SORT,
+} from "src/models/list-filter/filter";
 import {
   ContainingGroupsCriterionOption,
   GroupsCriterion,
@@ -351,6 +355,22 @@ const makeImagesPHashMatchUrl = (phash: GQL.Maybe<string> | undefined) => {
   return `/images?${filter.makeQueryParameters()}`;
 };
 
+const makeScenesSimilarityUrl = (id: string | undefined) => {
+  if (!id) return "#";
+  const sort = encodeURIComponent(
+    `${PERCEPTUAL_SIMILARITY_SORT}:${DEFAULT_SIMILARITY_DISTANCE}:${id}`
+  );
+  return `/scenes?sortby=${sort}`;
+};
+
+const makeImagesSimilarityUrl = (id: string | undefined) => {
+  if (!id) return "#";
+  const sort = encodeURIComponent(
+    `${PERCEPTUAL_SIMILARITY_SORT}:${DEFAULT_SIMILARITY_DISTANCE}:${id}`
+  );
+  return `/images?sortby=${sort}`;
+};
+
 const makeGalleryImagesUrl = (
   gallery: Partial<GQL.GalleryDataFragment | GQL.SlimGalleryDataFragment>,
   extraCriteria?: ModifierCriterion<CriterionValue>[]
@@ -501,8 +521,10 @@ const NavUtils = {
   makeTagImagesUrl,
   makeTagGroupsUrl,
   makeScenesPHashMatchUrl,
+  makeScenesSimilarityUrl,
   makeSceneMarkerUrl,
   makeImagesPHashMatchUrl,
+  makeImagesSimilarityUrl,
   makeGroupScenesUrl,
   makeChildStudiosUrl,
   makeGalleryImagesUrl,

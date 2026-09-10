@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { Button, ButtonGroup, OverlayTrigger, Tooltip } from "react-bootstrap";
-import { useHistory } from "react-router-dom";
+import { Link, useHistory } from "react-router-dom";
 import cx from "classnames";
 import * as GQL from "src/core/generated-graphql";
 import { Icon } from "../Shared/Icon";
@@ -14,11 +14,12 @@ import { useConfigurationContext } from "src/hooks/Config";
 import { PerformerPopoverButton } from "../Shared/PerformerPopoverButton";
 import { GridCard } from "../Shared/GridCard/GridCard";
 import { RatingBanner } from "../Shared/RatingBanner";
-import { FormattedMessage } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import {
   faBox,
   faCopy,
   faFilm,
+  faFingerprint,
   faImages,
   faMapMarkerAlt,
   faTag,
@@ -291,6 +292,23 @@ const SceneCardPopovers = React.memo(
       }
     }
 
+    function renderFindSimilar() {
+      const label = intl.formatMessage({
+        id: "actions.find_similar",
+        defaultMessage: "Find similar",
+      });
+      return (
+        <Button
+          href={NavUtils.makeScenesSimilarityUrl(props.scene.id)}
+          className="minimal"
+          title={label}
+          aria-label={label}
+        >
+          <Icon icon={faFingerprint} />
+        </Button>
+      );
+    }
+
     function maybeRenderPopoverButtonGroup() {
       if (
         !props.compact &&
@@ -452,6 +470,23 @@ const SceneCardImage = React.memo(
 export const SceneCard = React.memo(
   PatchComponent("SceneCard", (props: ISceneCardProps) => {
     const { configuration } = useConfigurationContext();
+    const intl = useIntl();
+
+    const findSimilarLabel = intl.formatMessage({
+      id: "actions.find_similar",
+      defaultMessage: "Find similar",
+    });
+    const findSimilarAction = (
+      <Link
+        to={NavUtils.makeScenesSimilarityUrl(props.scene.id)}
+        className="btn btn-link minimal"
+        title={findSimilarLabel}
+        aria-label={findSimilarLabel}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <Icon icon={faFingerprint} />
+      </Link>
+    );
 
     const file = useMemo(
       () => (props.scene.files.length > 0 ? props.scene.files[0] : undefined),
@@ -488,6 +523,7 @@ export const SceneCard = React.memo(
         className={`scene-card ${zoomIndex()} ${filelessClass()}`}
         url={sceneLink}
         title={objectTitle(props.scene)}
+        titleAction={findSimilarAction}
         width={props.width}
         linkClassName="scene-card-link"
         thumbnailSectionClassName="video-section"

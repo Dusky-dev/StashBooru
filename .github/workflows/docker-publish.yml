@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - develop
+      - feature/phash-similarity
+      - feature/embedding-similarity
     tags:
       - "v*"
   workflow_dispatch:
@@ -29,7 +31,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Prepare image metadata
+      - name: Prepare build variables
         id: vars
         shell: bash
         run: |
@@ -39,7 +41,8 @@ jobs:
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             VERSION="${GITHUB_REF_NAME}"
           else
-            VERSION="develop-${SHORT_SHA}"
+            BRANCH="${GITHUB_REF_NAME//\//-}"
+            VERSION="${BRANCH}-${SHORT_SHA}"
           fi
 
           echo "image=${IMAGE}" >> "${GITHUB_OUTPUT}"
@@ -63,7 +66,9 @@ jobs:
           images: ${{ steps.vars.outputs.image }}
           tags: |
             type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
-            type=raw,value=sha-${{ steps.vars.outputs.githash }}
+            type=raw,value=feature-phash-similarity,enable=${{ github.ref == 'refs/heads/feature/phash-similarity' }}
+            type=raw,value=feature-embedding-similarity,enable=${{ github.ref == 'refs/heads/feature/embedding-similarity' }}
+            type=sha,prefix=sha-
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
@@ -73,6 +78,7 @@ jobs:
         with:
           context: .
           file: ./docker/build/x86_64/Dockerfile
+          platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

@@ -1,0 +1,125 @@
+/* Fork UI ordering. Internal Stash route/component identifiers intentionally remain unchanged. */
+
+/* Navigation: Images → Videos → Characters → Artists → Tags → Galleries → Collections */
+nav .navbar-nav:first-child {
+  display: flex;
+  flex-direction: row;
+}
+
+div.nav-link[data-rb-event-key="/images"] {
+  order: -7;
+}
+
+div.nav-link[data-rb-event-key="/scenes"] {
+  order: -6;
+}
+
+div.nav-link[data-rb-event-key="/performers"] {
+  order: -5;
+}
+
+div.nav-link[data-rb-event-key="/studios"] {
+  order: -4;
+}
+
+div.nav-link[data-rb-event-key="/tags"] {
+  order: -3;
+}
+
+div.nav-link[data-rb-event-key="/galleries"] {
+  order: -2;
+}
+
+div.nav-link[data-rb-event-key="/groups"] {
+  order: -1;
+}
+
+div.nav-link[data-rb-event-key="/scenes/markers"] {
+  display: none !important;
+}
+
+/* Character / Performer profile: Images → Videos → Galleries → Collections → Appears With */
+#performer-tabs-tab-images {
+  order: 1;
+}
+
+#performer-tabs-tab-scenes {
+  order: 2;
+}
+
+#performer-tabs-tab-galleries {
+  order: 3;
+}
+
+#performer-tabs-tab-groups {
+  order: 4;
+}
+
+#performer-tabs-tab-appearswith {
+  order: 5;
+}
+
+/* Artist / Studio profile: Images → Videos → Characters → Galleries → Collections */
+#studio-tabs-tab-images {
+  order: 1;
+}
+
+#studio-tabs-tab-scenes {
+  order: 2;
+}
+
+#studio-tabs-tab-performers {
+  order: 3;
+}
+
+#studio-tabs-tab-galleries {
+  order: 4;
+}
+
+#studio-tabs-tab-groups {
+  order: 5;
+}
+
+#studio-tabs-tab-childstudios {
+  display: none !important;
+  order: 6;
+}
+
+/* Tag page: Images → Videos → Characters → Artists → Galleries → Collections */
+#tag-tabs {
+  display: flex;
+  flex-direction: column;
+}
+
+#tag-tabs > .nav-tabs {
+  display: flex;
+  flex-direction: row;
+}
+
+#tag-tabs-tab-images {
+  order: 1;
+}
+
+#tag-tabs-tab-scenes {
+  order: 2;
+}
+
+#tag-tabs-tab-performers {
+  order: 3;
+}
+
+#tag-tabs-tab-studios {
+  order: 4;
+}
+
+#tag-tabs-tab-galleries {
+  order: 5;
+}
+
+#tag-tabs-tab-groups {
+  order: 6;
+}
+
+#tag-tabs-tab-markers {
+  display: none !important;
+}

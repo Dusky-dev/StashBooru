@@ -1,4 +1,5 @@
 import React, { MouseEvent, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { Button, ButtonGroup } from "react-bootstrap";
 import cx from "classnames";
 import * as GQL from "src/core/generated-graphql";
@@ -10,6 +11,7 @@ import { GridCard } from "src/components/Shared/GridCard/GridCard";
 import { RatingBanner } from "src/components/Shared/RatingBanner";
 import {
   faBox,
+  faFingerprint,
   faImages,
   faSearch,
   faTag,
@@ -19,6 +21,8 @@ import { PatchComponent } from "src/patch";
 import { TruncatedText } from "../Shared/TruncatedText";
 import { StudioOverlay } from "../Shared/GridCard/StudioOverlay";
 import { OCounterButton } from "../Shared/CountButton";
+import NavUtils from "src/utils/navigation";
+import { useIntl } from "react-intl";
 
 interface IImageCardProps {
   image: GQL.SlimImageDataFragment;
@@ -102,6 +106,23 @@ const ImageCardPopovers = PatchComponent(
           </div>
         );
       }
+    }
+
+    function renderFindSimilar() {
+      const label = intl.formatMessage({
+        id: "actions.find_similar",
+        defaultMessage: "Find similar",
+      });
+      return (
+        <Button
+          href={NavUtils.makeImagesSimilarityUrl(props.image.id)}
+          className="minimal"
+          title={label}
+          aria-label={label}
+        >
+          <Icon icon={faFingerprint} />
+        </Button>
+      );
     }
 
     if (
@@ -210,12 +231,31 @@ const ImageCardImage = PatchComponent(
 export const ImageCard: React.FC<IImageCardProps> = PatchComponent(
   "ImageCard",
   (props: IImageCardProps) => {
+    const intl = useIntl();
+    const findSimilarLabel = intl.formatMessage({
+      id: "actions.find_similar",
+      defaultMessage: "Find similar",
+    });
+
+    const findSimilarAction = (
+      <Link
+        to={NavUtils.makeImagesSimilarityUrl(props.image.id)}
+        className="btn btn-link minimal"
+        title={findSimilarLabel}
+        aria-label={findSimilarLabel}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <Icon icon={faFingerprint} />
+      </Link>
+    );
+
     return (
       <GridCard
         className={`image-card zoom-${props.zoomIndex}`}
         url={`/images/${props.image.id}`}
         width={props.cardWidth}
         title={imageTitle(props.image)}
+        titleAction={findSimilarAction}
         linkClassName="image-card-link"
         image={<ImageCardImage {...props} />}
         details={<ImageCardDetails {...props} />}

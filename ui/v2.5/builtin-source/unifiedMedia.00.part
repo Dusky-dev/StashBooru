@@ -1,0 +1,286 @@
+(() => {
+  "use strict";
+
+  const api = window.PluginApi;
+  if (!api?.React || !api?.patch?.after) {
+    console.error("[Unified Media] PluginApi React/patch API is not available");
+    return;
+  }
+
+  if (window.__unifiedMediaV24Loaded) {
+    console.warn("[Unified Media] v24 already registered. Hard-refresh after plugin changes.");
+    return;
+  }
+  window.__unifiedMediaV24Loaded = true;
+
+  const React = api.React;
+  const VERSION = "24.0.0";
+  const TAB_ATTR = "data-unified-media-all";
+  const MixedContext = React.createContext(null);
+  const PageMediaContext = React.createContext(null);
+  const GLOBAL_SCENE_PREVIEW_EVENT = "unified-media:preview-scene";
+  const GLOBAL_SCENE_REGISTRY_EVENT = "unified-media:scene-registry";
+  let globalSceneInstanceCounter = 0;
+  const globalSceneRegistry = new Map();
+
+  function publishGlobalSceneRegistration(action, token, scene) {
+    if (action === "remove") {
+      globalSceneRegistry.delete(token);
+    } else if (action === "add" && scene?.id) {
+      const match = String(token).match(/:(\d+)$/);
+      globalSceneRegistry.set(token, {
+        scene,
+        order: match ? Number(match[1]) : ++globalSceneInstanceCounter,
+      });
+    }
+    window.dispatchEvent(
+      new CustomEvent(GLOBAL_SCENE_REGISTRY_EVENT, {
+        detail: { action, token, scene },
+      })
+    );
+  }
+
+  function requestGlobalScenePreview(sceneOrID) {
+    const scene = sceneOrID && typeof sceneOrID === "object" ? sceneOrID : null;
+    const id = String(scene?.id ?? sceneOrID ?? "");
+    if (!id) return;
+    window.dispatchEvent(
+      new CustomEvent(GLOBAL_SCENE_PREVIEW_EVENT, { detail: { id, scene } })
+    );
+  }
+
+  const View = Object.freeze({
+    PerformerScenes: "performer_scenes",
+    StudioScenes: "studio_scenes",
+    TagScenes: "tag_scenes",
+  });
+
+  const Modifier = Object.freeze({
+    Includes: "INCLUDES",
+    IncludesAll: "INCLUDES_ALL",
+  });
+
+  const DisplayMode = Object.freeze({
+    Grid: 0,
+    Wall: 2,
+  });
+
+  const CARD_WIDTHS = [280, 340, 480, 640];
+
+  function nativeComponent(name) {
+    return api.components?.[name] || null;
+  }
+
+  class RenderErrorBoundary extends React.Component {
+    constructor(props) {
+      super(props);
+      this.state = { error: null };
+    }
+    static getDerivedStateFromError(error) {
+      return { error };
+    }
+    componentDidCatch(error, info) {
+      console.error("[Unified Media] render failed", error, info);
+    }
+    render() {
+      if (!this.state.error) return this.props.children;
+      return React.createElement(
+        "div",
+        { className: "alert alert-danger unified-media-error" },
+        `Unified Media could not load this tab: ${this.state.error?.message || String(this.state.error)}`
+      );
+    }
+  }
+
+
+  // Scene cards do not expose the ImageCard-style preview callback. Patch only
+  // the scene-card image subtree inside Unified Media so videos get the same
+  // magnifying-glass affordance without changing scene cards elsewhere.
+  api.patch.after("SceneCard.Image", function () {
+    const args = Array.from(arguments);
+    const props = args[0] || {};
+    const rendered = args[args.length - 1];
+    return React.createElement(SceneCardImagePreviewBridge, { props, rendered });
+  });
+
+  function SceneCardImagePreviewBridge({ props, rendered }) {
+    const mixedCtx = React.useContext(MixedContext);
+    const scene = props?.scene;
+    const registrationTokenRef = React.useRef(null);
+    if (!registrationTokenRef.current) {
+      globalSceneInstanceCounter += 1;
+      registrationTokenRef.current = `scene-card:${globalSceneInstanceCounter}`;
+    }
+
+    React.useEffect(() => {
+      if (!scene?.id || mixedCtx) return undefined;
+      const token = registrationTokenRef.current;
+      publishGlobalSceneRegistration("add", token, scene);
+      return () => publishGlobalSceneRegistration("remove", token, scene);
+    }, [scene?.id, mixedCtx]);
+
+    if (!scene) return rendered;
+
+    const Button = api.libraries?.Bootstrap?.Button;
+    const Icon = nativeComponent("Icon");
+    const searchIcon = api.libraries?.FontAwesomeSolid?.faSearch;
+
+    const onClick = (ev) => {
+      ev?.preventDefault?.();
+      ev?.stopPropagation?.();
+      if (mixedCtx) mixedCtx.openVisualPreview(`scene:${scene.id}`);
+      else requestGlobalScenePreview(scene);
+    };
+
+    const button = Button && Icon && searchIcon
+      ? React.createElement(
+          Button,
+          { onClick, title: "Preview video", "aria-label": "Preview video" },
+          React.createElement(Icon, { icon: searchIcon })
+        )
+      : React.createElement(
+          "button",
+          {
+            type: "button",
+            className: "btn btn-secondary",
+            onClick,
+            title: "Preview video",
+            "aria-label": "Preview video",
+          },
+          "Preview"
+        );
+
+    return React.createElement(
+      "div",
+      { className: "unified-media-scene-image-wrap" },
+      rendered,
+      React.createElement(
+        "div",
+        { className: "preview-button unified-media-video-preview-button" },
+        button
+      )
+    );
+  }
+
+  // Stash treats animated GIF images as visual video files for playback. Add a
+  // small explicit GIF badge in Unified Media so they are not mistaken for
+  // scene/video entries. Keep the stock ImageCard preview/lightbox behavior.
+  api.patch.after("ImageCard.Image", function () {
+    const args = Array.from(arguments);
+    const props = args[0] || {};
+    const rendered = args[args.length - 1];
+    return React.createElement(ImageCardGifBridge, { props, rendered });
+  });
+
+  function ImageCardGifBridge({ props, rendered }) {
+    if (!isGifImage(props?.image) || !React.isValidElement(rendered)) return rendered;
+
+    const children = React.Children.toArray(rendered.props?.children);
+    if (!children.length || !React.isValidElement(children[0])) return rendered;
+    const preview = children[0];
+    const previewChildren = React.Children.toArray(preview.props?.children);
+    const patchedPreview = React.cloneElement(
+      preview,
+      {},
+      ...previewChildren,
+      React.createElement(GifBadge, { key: "unified-media-gif-badge" })
+    );
+    return React.cloneElement(rendered, {}, patchedPreview, ...children.slice(1));
+  }
+
+  function entityValue(entity, fallbackKind) {
+    return {
+      id: String(entity.id),
+      label: entity.name ?? `${fallbackKind} ${entity.id}`,
+    };
+  }
+
+  // Mirrors the native page filter hooks closely enough to let a real
+  // FilteredSceneList own all toolbar/filter state.
+  function makeEntityFilterHook(kind, entity, includeChildren = false) {
+    const type = kind === "performer" ? "performers" : kind === "studio" ? "studios" : "tags";
+    const value = entityValue(entity, kind);
+
+    return (filter) => {
+      let criterion = filter.criteria.find((c) => c?.criterionOption?.type === type);
+      const created = !criterion;
+      if (!criterion) criterion = filter.makeCriterion(type);
+      if (!criterion) return filter;
+
+      if (kind === "studio") {
+        criterion.value = criterion.value || {};
+        criterion.value.items = [value];
+        criterion.value.excluded = [];
+        criterion.value.depth = includeChildren ? -1 : 0;
+        criterion.modifier = Modifier.Includes;
+      } else {
+        criterion.value = criterion.value || {};
+        criterion.value.items = [value];
+        criterion.value.excluded = [];
+        if (kind === "tag") criterion.value.depth = includeChildren ? -1 : 0;
+        criterion.modifier = Modifier.IncludesAll;
+      }
+
+      if (created) filter.criteria.push(criterion);
+      return filter;
+    };
+  }
+
+  function useNativeBundles() {
+    const loaders = React.useMemo(
+      () => ["Scenes", "Images", "Galleries", "Groups", "Performers", "Studios", "Tags", "ScenePlayer"]
+        .map((n) => api.loadableComponents?.[n])
+        .filter(Boolean),
+      []
+    );
+
+    if (api.hooks?.useLoadComponents) {
+      return api.hooks.useLoadComponents(loaders);
+    }
+
+    const [loading, setLoading] = React.useState(loaders.length > 0);
+    React.useEffect(() => {
+      let cancelled = false;
+      if (!loaders.length || !api.utils?.loadComponents) {
+        setLoading(false);
+        return undefined;
+      }
+      Promise.resolve(api.utils.loadComponents(loaders)).finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+      return () => { cancelled = true; };
+    }, [loaders]);
+    return loading;
+  }
+
+  const allowedKeys = Object.freeze({
+    scene: new Set([
+      "title", "code", "details", "path", "rating100", "organized", "o_counter",
+      "resolution", "orientation", "performer_age", "performer_favorite", "performers",
+      "studios", "tags", "tag_count", "performer_count", "date", "created_at", "updated_at",
+      "file_count", "groups", "galleries", "interactive", "play_count", "duration"
+    ]),
+    image: new Set([
+      "title", "code", "details", "path", "rating100", "organized", "o_counter",
+      "resolution", "orientation", "performer_age", "performer_favorite", "performers",
+      "studios", "tags", "tag_count", "performer_count", "date", "created_at", "updated_at",
+      "file_count", "galleries", "photographer"
+    ]),
+    gallery: new Set([
+      "title", "code", "details", "path", "rating100", "organized", "performer_age",
+      "performer_favorite", "performers", "studios", "tags", "tag_count", "performer_count",
+      "date", "created_at", "updated_at", "file_count", "photographer"
+    ]),
+    group: new Set([
+      "rating100", "performers", "studios", "tags", "tag_count", "date", "created_at",
+      "updated_at", "o_counter", "duration", "scene_count"
+    ]),
+    performer: new Set([
+      "rating100", "studios", "tags", "performers", "created_at", "updated_at", "o_counter",
+      "scene_count", "image_count", "gallery_count"
+    ]),
+    studio: new Set([
+      "rating100", "tags", "parents", "created_at", "updated_at", "scene_count", "image_count",
+      "gallery_count", "group_count", "organized"
+    ]),
+    m
