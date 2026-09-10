@@ -56,7 +56,7 @@ func serializeVisualEmbedding(embedding []float32) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return sqlite_vec.SerializeFloat32(normalized), nil
+	return sqlite_vec.SerializeFloat32(normalized)
 }
 
 func (s *VisualEmbeddingStore) UpsertImage(ctx context.Context, imageID int, embedding []float32, sourceKey string) error {
