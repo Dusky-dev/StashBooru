@@ -55,7 +55,8 @@ export const VisualSimilaritySettings: React.FC = () => {
         fetch("image/visual-similarity/status"),
         fetch("image/visual-similarity/remote-config"),
       ]);
-      const nextStatus = await readResponse<VisualSimilarityStatus>(statusResponse);
+      const nextStatus =
+        await readResponse<VisualSimilarityStatus>(statusResponse);
       const remoteConfig =
         await readResponse<VisualSimilarityRemoteConfig>(configResponse);
       setStatus(nextStatus);
@@ -93,7 +94,8 @@ export const VisualSimilaritySettings: React.FC = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        const saved = await readResponse<VisualSimilarityRemoteConfig>(response);
+        const saved =
+          await readResponse<VisualSimilarityRemoteConfig>(response);
         setRemoteURL(saved.url);
         setTokenConfigured(saved.tokenConfigured);
         setRemoteToken("");
