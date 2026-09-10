@@ -22,7 +22,18 @@ FROM golang:1.25.9-alpine AS backend
 RUN apk add --no-cache make alpine-sdk sqlite-dev
 WORKDIR /stash
 COPY ./go* ./*.go Makefile gqlgen.yml .gqlgenc.yml /stash/
-RUN go mod download github.com/asg017/sqlite-vec-go-bindings@v0.1.6
+# sqlite-vec-go-bindings v0.1.6 vendors an older sqlite-vec C snapshot whose
+# redundant BSD u_int*_t typedefs fail on musl/Alpine. Apply the upstream
+# sqlite-vec musl fix (PR #199) to the module cache before CGO compiles it.
+RUN go mod download github.com/asg017/sqlite-vec-go-bindings@v0.1.6 \
+    && SQLITE_VEC_C="$(go env GOMODCACHE)/github.com/asg017/sqlite-vec-go-bindings@v0.1.6/cgo/sqlite-vec.c" \
+    && chmod u+w "$SQLITE_VEC_C" \
+    && awk '\
+        /^typedef u_int8_t uint8_t;$/ { print "#ifndef UINT8_MAX" } \
+        { print } \
+        /^typedef u_int64_t uint64_t;$/ { print "#endif" } \
+    ' "$SQLITE_VEC_C" > "$SQLITE_VEC_C.patched" \
+    && mv "$SQLITE_VEC_C.patched" "$SQLITE_VEC_C"
 COPY ./graphql /stash/graphql/
 COPY ./scripts /stash/scripts/
 COPY ./pkg /stash/pkg/
