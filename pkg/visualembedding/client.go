@@ -19,6 +19,15 @@ const (
 	Model      = "deepghs/wd14_tagger_with_embeddings@02fcdebd8afb52d5697a91efa4ca1c522b632581:SmilingWolf/wd-eva02-large-tagger-v3"
 )
 
+type ModelStatus struct {
+	Installed bool   `json:"installed"`
+	Loaded    bool   `json:"loaded"`
+	ModelPath string `json:"modelPath"`
+	Model     string `json:"model"`
+	Revision  string `json:"revision"`
+	Dimensions int   `json:"dimensions"`
+}
+
 type Client struct {
 	mu         sync.Mutex
 	workerPath string
@@ -42,6 +51,9 @@ type response struct {
 	ModelRevision string    `json:"model_revision,omitempty"`
 	Dimensions    int       `json:"dimensions,omitempty"`
 	Embedding     []float32 `json:"embedding,omitempty"`
+	Installed     bool      `json:"installed,omitempty"`
+	Loaded        bool      `json:"loaded,omitempty"`
+	ModelPath     string    `json:"model_path,omitempty"`
 }
 
 func DefaultWorkerPath() string {
@@ -64,6 +76,41 @@ func (c *Client) Ping(ctx context.Context) error {
 		return err
 	}
 	return validateWorker(res)
+}
+
+func (c *Client) Status(ctx context.Context) (ModelStatus, error) {
+	res, err := c.call(ctx, "status", "")
+	if err != nil {
+		return ModelStatus{}, err
+	}
+	if err := validateWorker(res); err != nil {
+		return ModelStatus{}, err
+	}
+	return statusFromResponse(res), nil
+}
+
+// Download explicitly downloads the pinned default embedding model. Nothing in
+// the worker or client calls this implicitly; callers must opt in deliberately.
+func (c *Client) Download(ctx context.Context) (ModelStatus, error) {
+	res, err := c.call(ctx, "download", "")
+	if err != nil {
+		return ModelStatus{}, err
+	}
+	if err := validateWorker(res); err != nil {
+		return ModelStatus{}, err
+	}
+	return statusFromResponse(res), nil
+}
+
+func statusFromResponse(res response) ModelStatus {
+	return ModelStatus{
+		Installed:  res.Installed,
+		Loaded:     res.Loaded,
+		ModelPath:  res.ModelPath,
+		Model:      res.Model,
+		Revision:   res.ModelRevision,
+		Dimensions: res.Dimensions,
+	}
 }
 
 func (c *Client) Embed(ctx context.Context, path string) ([]float32, error) {
