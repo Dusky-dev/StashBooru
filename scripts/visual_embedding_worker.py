@@ -3,6 +3,9 @@
 
 Protocol: one JSON object per stdin line, one JSON object per stdout line.
 Logs and download progress are written to stderr so stdout stays machine-readable.
+
+The model is deliberately optional. Status/ping never downloads or loads it.
+Only the explicit ``download`` operation downloads the pinned default model.
 """
 
 from __future__ import annotations
@@ -118,19 +121,31 @@ def _download_model(destination: Path) -> None:
 
 def _ensure_model() -> Path:
     path = _model_path()
-    if path.exists():
-        if os.environ.get("STASH_EMBEDDING_VERIFY_MODEL", "0") == "1":
-            actual_hash = _sha256(path)
-            if actual_hash != MODEL_SHA256:
-                _log("cached model checksum is invalid; downloading a clean copy")
-                path.unlink()
-            else:
-                return path
-        else:
-            return path
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"visual embedding model is not installed: {path}. "
+            "Install it explicitly from StashBooru settings or set STASH_EMBEDDING_MODEL_PATH."
+        )
 
-    _download_model(path)
+    if os.environ.get("STASH_EMBEDDING_VERIFY_MODEL", "0") == "1":
+        actual_hash = _sha256(path)
+        if actual_hash != MODEL_SHA256:
+            raise RuntimeError(
+                f"visual embedding model checksum mismatch: expected {MODEL_SHA256}, got {actual_hash}"
+            )
     return path
+
+
+def _status_payload() -> dict[str, Any]:
+    path = _model_path()
+    return {
+        "model": MODEL_ID,
+        "model_revision": MODEL_REVISION,
+        "dimensions": EMBEDDING_DIMENSIONS,
+        "model_path": str(path),
+        "installed": path.is_file(),
+        "loaded": _session is not None,
+    }
 
 
 def _providers() -> list[str] | None:
@@ -287,15 +302,17 @@ def _handle(request: dict[str, Any]) -> None:
     request_id = request.get("id")
     operation = request.get("op")
 
-    if operation == "ping":
-        _response(
-            request_id,
-            ok=True,
-            model=MODEL_ID,
-            model_revision=MODEL_REVISION,
-            dimensions=EMBEDDING_DIMENSIONS,
-            loaded=_session is not None,
-        )
+    if operation in ("ping", "status"):
+        _response(request_id, ok=True, **_status_payload())
+        return
+
+    if operation == "download":
+        destination = _model_path()
+        if destination.is_file():
+            _response(request_id, ok=True, **_status_payload())
+            return
+        _download_model(destination)
+        _response(request_id, ok=True, **_status_payload())
         return
 
     if operation == "embed":
@@ -306,9 +323,7 @@ def _handle(request: dict[str, Any]) -> None:
         _response(
             request_id,
             ok=True,
-            model=MODEL_ID,
-            model_revision=MODEL_REVISION,
-            dimensions=EMBEDDING_DIMENSIONS,
+            **_status_payload(),
             embedding=vector,
         )
         return
