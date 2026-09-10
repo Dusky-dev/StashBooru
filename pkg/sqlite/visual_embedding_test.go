@@ -58,14 +58,18 @@ func TestSQLiteVecCosineKNN(t *testing.T) {
 		3: {0, 1, 0},
 	}
 	for id, vector := range vectors {
-		_, err = db.Exec("INSERT INTO vectors(rowid, embedding) VALUES (?, ?)", id, sqlite_vec.SerializeFloat32(vector))
+		serialized, serializeErr := sqlite_vec.SerializeFloat32(vector)
+		require.NoError(t, serializeErr)
+		_, err = db.Exec("INSERT INTO vectors(rowid, embedding) VALUES (?, ?)", id, serialized)
 		require.NoError(t, err)
 	}
 
+	queryVector, err := sqlite_vec.SerializeFloat32([]float32{1, 0, 0})
+	require.NoError(t, err)
 	rows, err := db.Query(`SELECT rowid, distance
 FROM vectors
 WHERE embedding MATCH ? AND k = 3
-ORDER BY distance`, sqlite_vec.SerializeFloat32([]float32{1, 0, 0}))
+ORDER BY distance`, queryVector)
 	require.NoError(t, err)
 	defer rows.Close()
 
