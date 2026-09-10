@@ -74,7 +74,10 @@ func (c *RemoteClient) Close() error {
 }
 
 func (c *RemoteClient) Status(ctx context.Context) (ModelStatus, error) {
-	res, err := c.do(ctx, http.MethodGet, "/v1/status", nil, -1)
+	statusCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	res, err := c.do(statusCtx, http.MethodGet, "/v1/status", nil, -1)
 	if err != nil {
 		return ModelStatus{}, err
 	}
