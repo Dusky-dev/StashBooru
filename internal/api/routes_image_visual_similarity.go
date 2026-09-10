@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/stashapp/stash/internal/manager"
 	"github.com/stashapp/stash/pkg/job"
@@ -14,6 +16,8 @@ import (
 	"github.com/stashapp/stash/pkg/txn"
 	"github.com/stashapp/stash/pkg/visualembedding"
 )
+
+const visualEmbeddingModelSizeBytes = 1_260_436_067
 
 type visualSimilarityStatusResponse struct {
 	Installed     bool   `json:"installed"`
@@ -89,12 +93,59 @@ func (rs imageRoutes) VisualSimilarityDownload(w http.ResponseWriter, r *http.Re
 	mgr := manager.GetInstance()
 	jobID := mgr.JobManager.Add(r.Context(), "Downloading visual similarity model...", job.MakeJobExec(
 		func(ctx context.Context, progress *job.Progress) error {
-			progress.Indefinite()
 			client := visualembedding.New("")
 			defer client.Close()
 
-			_, err := client.Download(ctx)
-			return err
+			status, err := client.Status(ctx)
+			if err != nil {
+				return fmt.Errorf("checking visual similarity model before download: %w", err)
+			}
+			if status.Installed {
+				progress.SetPercent(1)
+				return nil
+			}
+
+			progress.SetTotal(visualEmbeddingModelSizeBytes)
+			downloadDone := make(chan error, 1)
+			go func() {
+				_, downloadErr := client.Download(ctx)
+				downloadDone <- downloadErr
+			}()
+
+			ticker := time.NewTicker(500 * time.Millisecond)
+			defer ticker.Stop()
+			partPattern := filepath.Join(
+				filepath.Dir(status.ModelPath),
+				filepath.Base(status.ModelPath)+".*.part",
+			)
+
+			for {
+				select {
+				case downloadErr := <-downloadDone:
+					if downloadErr == nil {
+						progress.SetProcessed(visualEmbeddingModelSizeBytes)
+					}
+					return downloadErr
+				case <-ticker.C:
+					matches, globErr := filepath.Glob(partPattern)
+					if globErr != nil {
+						logger.Warnf("visual similarity: checking model download progress: %v", globErr)
+						continue
+					}
+					var downloaded int64
+					for _, match := range matches {
+						stat, statErr := os.Stat(match)
+						if statErr == nil && stat.Size() > downloaded {
+							downloaded = stat.Size()
+						}
+					}
+					if downloaded > 0 {
+						progress.SetProcessed(int(downloaded))
+					}
+				case <-ctx.Done():
+					return ctx.Err()
+				}
+			}
 		},
 	))
 
