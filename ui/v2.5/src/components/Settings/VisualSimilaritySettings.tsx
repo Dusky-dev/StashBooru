@@ -93,10 +93,20 @@ export const VisualSimilaritySettings: React.FC = () => {
           }
         >
           <div className="d-flex align-items-center flex-wrap justify-content-end">
-            <Badge className="mr-2" variant={status?.workerOK ? "success" : "secondary"}>
-              {loading ? "Checking" : status?.workerOK ? "Worker ready" : "Worker unavailable"}
+            <Badge
+              className="mr-2"
+              variant={status?.workerOK ? "success" : "secondary"}
+            >
+              {loading
+                ? "Checking"
+                : status?.workerOK
+                  ? "Worker ready"
+                  : "Worker unavailable"}
             </Badge>
-            <Badge className="mr-2" variant={status?.installed ? "success" : "secondary"}>
+            <Badge
+              className="mr-2"
+              variant={status?.installed ? "success" : "secondary"}
+            >
               {status?.installed ? "Model installed" : "Model not installed"}
             </Badge>
             <Button
@@ -115,7 +125,15 @@ export const VisualSimilaritySettings: React.FC = () => {
         >
           <div className="d-flex align-items-center flex-wrap justify-content-end">
             {status ? (
-              <Badge className="mr-2" variant={status.indexedImages === status.totalImages && status.totalImages > 0 ? "success" : "secondary"}>
+              <Badge
+                className="mr-2"
+                variant={
+                  status.indexedImages === status.totalImages &&
+                  status.totalImages > 0
+                    ? "success"
+                    : "secondary"
+                }
+              >
                 {status.dimensions}D EVA02
               </Badge>
             ) : null}
@@ -133,7 +151,11 @@ export const VisualSimilaritySettings: React.FC = () => {
           heading="Image Find similar"
           subHeading="After indexing, the Find similar button on image cards uses the EVA02 embedding index and returns nearest matches first. pHash remains separate for perceptual duplicate-style matching."
         >
-          <Button variant="secondary" disabled={loading} onClick={() => void refresh()}>
+          <Button
+            variant="secondary"
+            disabled={loading}
+            onClick={() => void refresh()}
+          >
             Refresh status
           </Button>
         </Setting>

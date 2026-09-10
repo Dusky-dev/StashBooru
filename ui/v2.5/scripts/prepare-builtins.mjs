@@ -1,10 +1,5 @@
 import { createHash } from "node:crypto";
-import {
-  mkdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -48,7 +43,10 @@ for (const file of [
   "universal-file-info.js",
   "bundle-extra.js",
 ]) {
-  writeFileSync(resolve(outputDir, file), readFileSync(resolve(sourceDir, file)));
+  writeFileSync(
+    resolve(outputDir, file),
+    readFileSync(resolve(sourceDir, file))
+  );
 }
 
 console.log(
