@@ -20,14 +20,18 @@ func TestRemoteClientStatusAndEmbed(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if got := r.Header.Get("Authorization"); got != "Bearer "+token {
-			t.Fatalf("unexpected authorization header %q", got)
+			t.Errorf("unexpected authorization header %q", got)
+			http.Error(w, "bad auth", http.StatusUnauthorized)
+			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v1/status":
 			if r.Method != http.MethodGet {
-				t.Fatalf("unexpected status method %s", r.Method)
+				t.Errorf("unexpected status method %s", r.Method)
+				http.Error(w, "bad method", http.StatusMethodNotAllowed)
+				return
 			}
 			_ = json.NewEncoder(w).Encode(response{
 				OK:            true,
@@ -40,14 +44,20 @@ func TestRemoteClientStatusAndEmbed(t *testing.T) {
 			})
 		case "/v1/embed":
 			if r.Method != http.MethodPost {
-				t.Fatalf("unexpected embed method %s", r.Method)
+				t.Errorf("unexpected embed method %s", r.Method)
+				http.Error(w, "bad method", http.StatusMethodNotAllowed)
+				return
 			}
 			body, err := io.ReadAll(r.Body)
 			if err != nil {
-				t.Fatal(err)
+				t.Errorf("reading request body: %v", err)
+				http.Error(w, "body error", http.StatusBadRequest)
+				return
 			}
 			if string(body) != string(imageBytes) {
-				t.Fatalf("unexpected image body %q", string(body))
+				t.Errorf("unexpected image body %q", string(body))
+				http.Error(w, "bad body", http.StatusBadRequest)
+				return
 			}
 			embedding := make([]float32, Dimensions)
 			embedding[0] = 1
