@@ -65,19 +65,20 @@ func (rs imageRoutes) VisualSimilarityStatus(w http.ResponseWriter, r *http.Requ
 		response.Dimensions = status.Dimensions
 	}
 
-	indexedImages, err := sqlite.VisualEmbeddings.CountImages(r.Context())
-	if err != nil {
-		http.Error(w, fmt.Sprintf("counting image visual embeddings: %v", err), http.StatusInternalServerError)
-		return
-	}
-	response.IndexedImages = indexedImages
-
 	if err := rs.withReadTxn(r, func(ctx context.Context) error {
 		var countErr error
+		response.IndexedImages, countErr = sqlite.VisualEmbeddings.CountImages(ctx)
+		if countErr != nil {
+			return fmt.Errorf("counting image visual embeddings: %w", countErr)
+		}
+
 		response.TotalImages, countErr = manager.GetInstance().Repository.Image.Count(ctx)
-		return countErr
+		if countErr != nil {
+			return fmt.Errorf("counting images: %w", countErr)
+		}
+		return nil
 	}); err != nil {
-		http.Error(w, fmt.Sprintf("counting images: %v", err), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -158,8 +159,12 @@ func (rs imageRoutes) VisualSimilarityIndexImages(w http.ResponseWriter, r *http
 				}
 				sourceKey := fmt.Sprintf("%s:%d:%d", source.Path, stat.Size(), stat.ModTime().UnixNano())
 
-				current, err := sqlite.VisualEmbeddings.HasCurrentImage(ctx, source.ID, sourceKey)
-				if err != nil {
+				var current bool
+				if err := txn.WithReadTxn(ctx, mgr.Repository.TxnManager, func(ctx context.Context) error {
+					var checkErr error
+					current, checkErr = sqlite.VisualEmbeddings.HasCurrentImage(ctx, source.ID, sourceKey)
+					return checkErr
+				}); err != nil {
 					return fmt.Errorf("checking visual embedding for image %d: %w", source.ID, err)
 				}
 				if current {
@@ -174,7 +179,9 @@ func (rs imageRoutes) VisualSimilarityIndexImages(w http.ResponseWriter, r *http
 					progress.Increment()
 					continue
 				}
-				if err := sqlite.VisualEmbeddings.UpsertImage(ctx, source.ID, embedding, sourceKey); err != nil {
+				if err := txn.WithTxn(ctx, mgr.Repository.TxnManager, func(ctx context.Context) error {
+					return sqlite.VisualEmbeddings.UpsertImage(ctx, source.ID, embedding, sourceKey)
+				}); err != nil {
 					return fmt.Errorf("storing visual embedding for image %d: %w", source.ID, err)
 				}
 				progress.Increment()
