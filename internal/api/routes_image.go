@@ -35,6 +35,12 @@ type imageRoutes struct {
 func (rs imageRoutes) Routes() chi.Router {
 	r := chi.NewRouter()
 
+	r.Route("/visual-similarity", func(r chi.Router) {
+		r.Get("/status", rs.VisualSimilarityStatus)
+		r.Post("/download", rs.VisualSimilarityDownload)
+		r.Post("/index", rs.VisualSimilarityIndexImages)
+	})
+
 	r.Route("/{imageId}", func(r chi.Router) {
 		r.Use(rs.ImageCtx)
 
