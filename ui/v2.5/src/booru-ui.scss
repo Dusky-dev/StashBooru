@@ -35,7 +35,7 @@ div.nav-link[data-rb-event-key="/groups"] {
 }
 
 div.nav-link[data-rb-event-key="/scenes/markers"] {
-  display: none !important;
+  display: none;
 }
 
 /* Character / Performer profile: Images → Videos → Galleries → Collections → Appears With */
@@ -81,7 +81,7 @@ div.nav-link[data-rb-event-key="/scenes/markers"] {
 }
 
 #studio-tabs-tab-childstudios {
-  display: none !important;
+  display: none;
   order: 6;
 }
 
@@ -121,5 +121,5 @@ div.nav-link[data-rb-event-key="/scenes/markers"] {
 }
 
 #tag-tabs-tab-markers {
-  display: none !important;
+  display: none;
 }

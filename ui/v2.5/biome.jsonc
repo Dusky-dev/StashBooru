@@ -11,6 +11,7 @@
     "includes": [
       "**",
       "../../graphql/**",
+      "!builtin-source",
       "!src/core/generated-graphql.ts",
       "!src/pluginApi.d.ts",
       "!src/@types/videojs-vr.d.ts",

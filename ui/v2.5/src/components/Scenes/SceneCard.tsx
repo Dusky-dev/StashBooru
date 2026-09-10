@@ -292,23 +292,6 @@ const SceneCardPopovers = React.memo(
       }
     }
 
-    function renderFindSimilar() {
-      const label = intl.formatMessage({
-        id: "actions.find_similar",
-        defaultMessage: "Find similar",
-      });
-      return (
-        <Button
-          href={NavUtils.makeScenesSimilarityUrl(props.scene.id)}
-          className="minimal"
-          title={label}
-          aria-label={label}
-        >
-          <Icon icon={faFingerprint} />
-        </Button>
-      );
-    }
-
     function maybeRenderPopoverButtonGroup() {
       if (
         !props.compact &&

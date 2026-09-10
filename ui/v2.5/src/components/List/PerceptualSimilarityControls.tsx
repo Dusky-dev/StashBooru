@@ -3,6 +3,7 @@ import { Button } from "react-bootstrap";
 import { useIntl } from "react-intl";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
 
+import { FilterMode } from "src/core/generated-graphql";
 import {
   ListFilterModel,
   MAX_SIMILARITY_DISTANCE,
@@ -30,6 +31,30 @@ export const PerceptualSimilarityControls: React.FC<{
     defaultMessage: "Clear similarity reference",
   });
 
+  const referenceButton = filter.similarityReferenceID ? (
+    <Button
+      className="ml-2"
+      variant="secondary"
+      size="sm"
+      title={clearReferenceLabel}
+      onClick={() => setFilter(filter.setSimilarityReferenceID(undefined))}
+    >
+      {referenceLabel} #{filter.similarityReferenceID}
+      <Icon icon={faTimes} className="ml-2" />
+    </Button>
+  ) : null;
+
+  if (filter.mode === FilterMode.Images && filter.similarityReferenceID) {
+    return (
+      <div className="similarity-controls d-flex align-items-center flex-wrap">
+        <span className="mb-0 mx-2">
+          <strong>Visual similarity</strong> · EVA02 embeddings · nearest first
+        </span>
+        {referenceButton}
+      </div>
+    );
+  }
+
   return (
     <div className="similarity-controls d-flex align-items-center flex-wrap">
       <label className="mb-0 mx-2" htmlFor="phash-similarity-distance">
@@ -53,18 +78,7 @@ export const PerceptualSimilarityControls: React.FC<{
         }
       />
 
-      {filter.similarityReferenceID ? (
-        <Button
-          className="ml-2"
-          variant="secondary"
-          size="sm"
-          title={clearReferenceLabel}
-          onClick={() => setFilter(filter.setSimilarityReferenceID(undefined))}
-        >
-          {referenceLabel} #{filter.similarityReferenceID}
-          <Icon icon={faTimes} className="ml-2" />
-        </Button>
-      ) : null}
+      {referenceButton}
     </div>
   );
 };

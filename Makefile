@@ -103,6 +103,14 @@ flags-static-windows:
 	$(eval GO_BUILD_FLAGS += -buildmode=pie)
 	$(eval GO_BUILD_TAGS += sqlite_omit_load_extension osusergo)
 
+# sqlite-vec's cgo bindings include sqlite3.h, but Stash links SQLite through
+# mattn/go-sqlite3. Use the matching bundled SQLite declarations instead of
+# relying on platform-specific sqlite development packages.
+SQLITE3_GO_VERSION := $(shell go list -m -f '{{.Version}}' github.com/mattn/go-sqlite3)
+SQLITE3_GO_INCLUDE := $(shell go env GOMODCACHE)/github.com/mattn/go-sqlite3@$(SQLITE3_GO_VERSION)
+CGO_CPPFLAGS += -I$(CURDIR)/pkg/sqlite/sqlite3-compat -I$(SQLITE3_GO_INCLUDE)
+export CGO_CPPFLAGS
+
 .PHONY: build-info
 build-info:
 ifndef BUILD_DATE

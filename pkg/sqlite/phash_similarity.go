@@ -222,13 +222,13 @@ type orderedPHashCluster struct {
 	score          int
 }
 
-func samplePHashMembers(members []int, max int) []int {
-	if len(members) <= max {
+func samplePHashMembers(members []int, maxMembers int) []int {
+	if len(members) <= maxMembers {
 		return members
 	}
-	ret := make([]int, 0, max)
-	for i := 0; i < max; i++ {
-		ret = append(ret, members[i*len(members)/max])
+	ret := make([]int, 0, maxMembers)
+	for i := 0; i < maxMembers; i++ {
+		ret = append(ret, members[i*len(members)/maxMembers])
 	}
 	return ret
 }
@@ -382,6 +382,10 @@ func findPHashSimilarityCandidates(ctx context.Context, query queryBuilder, rela
 }
 
 func findPHashSimilarityIDs(ctx context.Context, query queryBuilder, relationTable, relationIDColumn string, findFilter *models.FindFilterType, options *pHashSimilarityOptions) ([]int, int, error) {
+	if options.ReferenceID != nil && relationTable == imagesFilesTable {
+		return findImageEmbeddingSimilarityIDs(ctx, query, findFilter, *options.ReferenceID)
+	}
+
 	candidates, err := findPHashSimilarityCandidates(ctx, query, relationTable, relationIDColumn)
 	if err != nil {
 		return nil, 0, err
