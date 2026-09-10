@@ -382,6 +382,10 @@ func findPHashSimilarityCandidates(ctx context.Context, query queryBuilder, rela
 }
 
 func findPHashSimilarityIDs(ctx context.Context, query queryBuilder, relationTable, relationIDColumn string, findFilter *models.FindFilterType, options *pHashSimilarityOptions) ([]int, int, error) {
+	if options.ReferenceID != nil && relationTable == imagesFilesTable {
+		return findImageEmbeddingSimilarityIDs(ctx, query, findFilter, *options.ReferenceID)
+	}
+
 	candidates, err := findPHashSimilarityCandidates(ctx, query, relationTable, relationIDColumn)
 	if err != nil {
 		return nil, 0, err
