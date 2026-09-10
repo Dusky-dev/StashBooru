@@ -19,7 +19,7 @@ RUN BUILD_DATE=$(date +"%Y-%m-%d %H:%M:%S") make ui-only
 
 # Build Backend
 FROM golang:1.25.9-alpine AS backend
-RUN apk add --no-cache make alpine-sdk
+RUN apk add --no-cache make alpine-sdk sqlite-dev
 WORKDIR /stash
 COPY ./go* ./*.go Makefile gqlgen.yml .gqlgenc.yml /stash/
 RUN go mod download github.com/asg017/sqlite-vec-go-bindings@v0.1.6
