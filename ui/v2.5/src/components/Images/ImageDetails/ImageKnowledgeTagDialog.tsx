@@ -285,8 +285,12 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   const history = useHistory();
   const [threshold, setThreshold] = useState("0.492");
   const [limit, setLimit] = useState("50");
-  const [camiePredictions, setCamiePredictions] = useState<CamiePrediction[]>([]);
-  const [booruPredictions, setBooruPredictions] = useState<CamiePrediction[]>([]);
+  const [camiePredictions, setCamiePredictions] = useState<CamiePrediction[]>(
+    []
+  );
+  const [booruPredictions, setBooruPredictions] = useState<CamiePrediction[]>(
+    []
+  );
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [backend, setBackend] = useState<string>();
   const [booruMetadata, setBooruMetadata] = useState<BooruMetadataResponse>();
