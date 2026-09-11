@@ -42,7 +42,7 @@ import { StudioLogo } from "src/components/Shared/StudioLogo";
 
 interface IProps {
   image: GQL.ImageDataFragment;
-  onMetadataApplied: () => void | Promise<unknown>;
+  onMetadataApplied: () => Promise<unknown>;
 }
 
 interface IImageParams {
@@ -436,10 +436,7 @@ const ImageLoader: React.FC<RouteComponentProps<IImageParams>> = ({
   if (!data?.findImage)
     return <ErrorMessage error={`No image found with id ${id}.`} />;
   return (
-    <ImagePage
-      image={data.findImage}
-      onMetadataApplied={() => refetch()}
-    />
+    <ImagePage image={data.findImage} onMetadataApplied={() => refetch()} />
   );
 };
 
