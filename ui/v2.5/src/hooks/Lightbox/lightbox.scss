@@ -306,6 +306,15 @@
       font-size: 0.82rem;
       margin-bottom: 0.12rem;
     }
+
+    &-filename {
+      color: rgba(255, 255, 255, 0.82);
+      margin-bottom: 0.18rem;
+      max-width: 26rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   }
 
   &-info-right {
