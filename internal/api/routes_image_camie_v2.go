@@ -369,7 +369,7 @@ func (rs imageRoutes) CamieTagImagesV2(w http.ResponseWriter, r *http.Request) {
 			return fmt.Errorf("checking %s Camie worker: %w", backend, err)
 		}
 		if !status.Installed {
-			return fmt.Errorf("Camie Tagger v2 is not installed; place camie-tagger-v2.onnx at %s and camie-tagger-v2-metadata.json at %s", status.ModelPath, status.MetadataPath)
+			return fmt.Errorf("camie Tagger v2 is not installed; place camie-tagger-v2.onnx at %s and camie-tagger-v2-metadata.json at %s", status.ModelPath, status.MetadataPath)
 		}
 
 		failures := 0
@@ -410,7 +410,7 @@ func (rs imageRoutes) CamieTagImagesV2(w http.ResponseWriter, r *http.Request) {
 			progress.Increment()
 		}
 		if failures > 0 {
-			return fmt.Errorf("Camie tagging skipped %d image(s); see the logs for details", failures)
+			return fmt.Errorf("camie tagging skipped %d image(s); see the logs for details", failures)
 		}
 		return nil
 	}))
