@@ -44,7 +44,8 @@ export const ImageDetailPanel: React.FC<IImageDetailProps> = PatchComponent(
                 {intl.formatMessage({
                   id: "copyrights",
                   defaultMessage: "Copyrights",
-                })} ({copyrights.length})
+                })}{" "}
+                ({copyrights.length})
               </h6>
               {copyrights.map((tag) => (
                 <TagLink key={tag.id} tag={tag} linkType="image" />
