@@ -16,6 +16,20 @@ interface CamiePrediction {
   targetExists?: boolean;
 }
 
+type MetadataOrigin = "camie" | "booru";
+type MetadataSourceKind = "local" | "booru" | "filename" | "camie";
+
+interface MetadataSource {
+  kind: MetadataSourceKind;
+  label: string;
+  detail?: string;
+  priority: number;
+}
+
+interface MetadataPrediction extends CamiePrediction {
+  provenance: MetadataSource[];
+}
+
 interface CamieTagsResponse {
   backend: "local" | "remote";
   model: string;
@@ -68,8 +82,161 @@ interface IProps {
   onApplied: () => Promise<unknown>;
 }
 
+const CATEGORY_ORDER = ["character", "artist", "copyright", "general", "meta"];
+const SOURCE_PRIORITY: Record<MetadataSourceKind, number> = {
+  local: 0,
+  booru: 10,
+  filename: 20,
+  camie: 30,
+};
+
+function normalizePredictionValue(value?: string) {
+  return (value ?? "")
+    .trim()
+    .replaceAll("_", " ")
+    .replace(/\s+/g, " ")
+    .toLocaleLowerCase();
+}
+
+function predictionIdentityKeys(prediction: CamiePrediction) {
+  const category = prediction.category.trim().toLocaleLowerCase();
+  const values = [prediction.name, prediction.rawName]
+    .map(normalizePredictionValue)
+    .filter(Boolean);
+  return [...new Set(values)].map((value) => `${category}\u0000${value}`);
+}
+
 function predictionKey(prediction: CamiePrediction) {
-  return `${prediction.category}\u0000${prediction.name}`;
+  return (
+    predictionIdentityKeys(prediction)[0] ??
+    `${prediction.category}\u0000${prediction.name}`
+  );
+}
+
+function sourceKey(source: MetadataSource) {
+  return `${source.kind}\u0000${source.detail ?? ""}`;
+}
+
+function predictionSources(
+  prediction: CamiePrediction,
+  origin: MetadataOrigin
+): MetadataSource[] {
+  const result: MetadataSource[] = [];
+  if (prediction.targetExists) {
+    result.push({
+      kind: "local",
+      label: "local",
+      detail: "Existing Stash metadata entity",
+      priority: SOURCE_PRIORITY.local,
+    });
+  }
+
+  if (origin === "booru") {
+    const provider = prediction.source?.startsWith("booru:")
+      ? prediction.source.slice("booru:".length)
+      : undefined;
+    result.push({
+      kind: "booru",
+      label: "booru",
+      detail: provider ? `Booru: ${provider}` : "Booru metadata",
+      priority: SOURCE_PRIORITY.booru,
+    });
+    return result;
+  }
+
+  const source = prediction.source ?? "model";
+  if (source.includes("filename")) {
+    result.push({
+      kind: "filename",
+      label: "filename",
+      detail: "Parsed from filename metadata",
+      priority: SOURCE_PRIORITY.filename,
+    });
+  }
+  if (source.includes("model") || !source.includes("filename")) {
+    result.push({
+      kind: "camie",
+      label: "Camie",
+      detail: "Camie model prediction",
+      priority: SOURCE_PRIORITY.camie,
+    });
+  }
+  return result;
+}
+
+function mergeSources(
+  current: MetadataSource[],
+  incoming: MetadataSource[]
+): MetadataSource[] {
+  const merged = new Map<string, MetadataSource>();
+  for (const source of [...current, ...incoming]) {
+    merged.set(sourceKey(source), source);
+  }
+  return [...merged.values()].sort((left, right) => {
+    if (left.priority !== right.priority) return left.priority - right.priority;
+    return left.label.localeCompare(right.label);
+  });
+}
+
+function mergeMetadataPredictions(
+  camiePredictions: CamiePrediction[],
+  booruPredictions: CamiePrediction[]
+): MetadataPrediction[] {
+  const merged: MetadataPrediction[] = [];
+  const indexByKey = new Map<string, number>();
+
+  const add = (prediction: CamiePrediction, origin: MetadataOrigin) => {
+    const keys = predictionIdentityKeys(prediction);
+    let existingIndex: number | undefined;
+    for (const key of keys) {
+      const index = indexByKey.get(key);
+      if (index !== undefined) {
+        existingIndex = index;
+        break;
+      }
+    }
+
+    const provenance = predictionSources(prediction, origin);
+    if (existingIndex === undefined) {
+      const next: MetadataPrediction = {
+        ...prediction,
+        provenance: mergeSources([], provenance),
+      };
+      const index = merged.length;
+      merged.push(next);
+      for (const key of keys) indexByKey.set(key, index);
+      return;
+    }
+
+    const current = merged[existingIndex];
+    const next: MetadataPrediction = {
+      ...current,
+      score: Math.max(current.score, prediction.score),
+      rawName: current.rawName || prediction.rawName,
+      targetExists: current.targetExists || prediction.targetExists,
+      targetPath:
+        prediction.targetExists && prediction.targetPath
+          ? prediction.targetPath
+          : current.targetPath || prediction.targetPath,
+      provenance: mergeSources(current.provenance, provenance),
+    };
+    merged[existingIndex] = next;
+
+    for (const key of [
+      ...predictionIdentityKeys(current),
+      ...keys,
+      ...predictionIdentityKeys(next),
+    ]) {
+      indexByKey.set(key, existingIndex);
+    }
+  };
+
+  // Exact booru metadata is the preferred external representation when the
+  // same item is also inferred by Camie. Local existence is displayed as the
+  // highest-priority provenance badge independently of the representative.
+  for (const prediction of booruPredictions) add(prediction, "booru");
+  for (const prediction of camiePredictions) add(prediction, "camie");
+  return merged;
 }
 
 async function readResponse<T>(response: Response): Promise<T> {
@@ -96,7 +263,18 @@ function categoryLabel(category: string) {
   }
 }
 
-const CATEGORY_ORDER = ["character", "artist", "copyright", "general", "meta"];
+function sourceBadgeVariant(source: MetadataSourceKind) {
+  switch (source) {
+    case "local":
+      return "success";
+    case "booru":
+      return "info";
+    case "filename":
+      return "secondary";
+    case "camie":
+      return "warning";
+  }
+}
 
 export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   imageId,
@@ -107,7 +285,8 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   const history = useHistory();
   const [threshold, setThreshold] = useState("0.492");
   const [limit, setLimit] = useState("50");
-  const [predictions, setPredictions] = useState<CamiePrediction[]>([]);
+  const [camiePredictions, setCamiePredictions] = useState<CamiePrediction[]>([]);
+  const [booruPredictions, setBooruPredictions] = useState<CamiePrediction[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [backend, setBackend] = useState<string>();
   const [booruMetadata, setBooruMetadata] = useState<BooruMetadataResponse>();
@@ -115,6 +294,19 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   const [applying, setApplying] = useState(false);
   const [replaceArtist, setReplaceArtist] = useState(false);
   const [error, setError] = useState<string>();
+
+  const predictions = useMemo(
+    () => mergeMetadataPredictions(camiePredictions, booruPredictions),
+    [booruPredictions, camiePredictions]
+  );
+
+  const addSelected = useCallback((items: CamiePrediction[]) => {
+    setSelected((current) => {
+      const next = new Set(current);
+      for (const item of items) next.add(predictionKey(item));
+      return next;
+    });
+  }, []);
 
   const loadPredictions = useCallback(
     async (nextThreshold: string, nextLimit: string) => {
@@ -131,46 +323,39 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
 
       setLoading(true);
       setError(undefined);
-      setBooruMetadata(undefined);
       try {
         const response = await fetch(
           `image/${imageId}/knowledge-tags?threshold=${encodeURIComponent(parsedThreshold)}&limit=${encodeURIComponent(parsedLimit)}`,
           { method: "POST" }
         );
         const result = await readResponse<CamieTagsResponse>(response);
-        setPredictions(result.tags);
+        setCamiePredictions(result.tags);
         setBackend(result.backend);
-        setSelected(new Set(result.tags.map(predictionKey)));
+        addSelected(result.tags);
       } catch (cause) {
-        setPredictions([]);
-        setSelected(new Set());
         setError(cause instanceof Error ? cause.message : String(cause));
       } finally {
         setLoading(false);
       }
     },
-    [imageId]
+    [addSelected, imageId]
   );
 
   const loadBooruMetadata = useCallback(async () => {
     setLoading(true);
     setError(undefined);
-    setBackend(undefined);
     try {
       const response = await fetch(`image/${imageId}/booru-metadata`);
       const result = await readResponse<BooruMetadataResponse>(response);
       setBooruMetadata(result);
-      setPredictions(result.tags);
-      setSelected(new Set(result.tags.map(predictionKey)));
+      setBooruPredictions(result.tags);
+      addSelected(result.tags);
     } catch (cause) {
-      setBooruMetadata(undefined);
-      setPredictions([]);
-      setSelected(new Set());
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setLoading(false);
     }
-  }, [imageId]);
+  }, [addSelected, imageId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -197,7 +382,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   }, [loadPredictions]);
 
   const grouped = useMemo(() => {
-    const groups = new Map<string, CamiePrediction[]>();
+    const groups = new Map<string, MetadataPrediction[]>();
     for (const prediction of predictions) {
       const items = groups.get(prediction.category) ?? [];
       items.push(prediction);
@@ -216,6 +401,14 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
     });
   }, [predictions]);
 
+  const visibleSelectedCount = useMemo(
+    () =>
+      predictions.filter((prediction) =>
+        selected.has(predictionKey(prediction))
+      ).length,
+    [predictions, selected]
+  );
+
   const togglePrediction = useCallback((prediction: CamiePrediction) => {
     const key = predictionKey(prediction);
     setSelected((current) => {
@@ -227,9 +420,9 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   }, []);
 
   const applySelected = useCallback(async () => {
-    const tags = predictions.filter((prediction) =>
-      selected.has(predictionKey(prediction))
-    );
+    const tags = predictions
+      .filter((prediction) => selected.has(predictionKey(prediction)))
+      .map(({ provenance: _provenance, ...prediction }) => prediction);
     if (!tags.length) {
       setError("Select at least one metadata item to apply.");
       return;
@@ -322,7 +515,9 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
           </Button>
           {backend ? (
             <Badge className="ml-2 mb-2" variant="secondary">
-              {backend === "remote" ? "Remote worker" : "Local worker"}
+              {backend === "remote"
+                ? "Camie remote worker"
+                : "Camie local worker"}
             </Badge>
           ) : null}
         </div>
@@ -351,12 +546,12 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         ) : null}
 
         <div className="mb-3 text-muted">
-          Analyze locally/remotely with Camie, or look up the image on supported
-          boorus by MD5 and re-extract the post metadata. A filename MD5 is
-          tried first; if it is stale or unmatched, StashBooru hashes the actual
-          file and retries. Characters become Characters, the highest selected
-          artist becomes the image Artist, Copyright stays in the Copyright
-          namespace, and general/meta entries become Tags.
+          Matching metadata from different methods is merged into one row. Its
+          provenance badges are shown in priority order: local Stash metadata,
+          booru metadata, filename metadata, then Camie. Fetching from a booru
+          keeps the current Camie results so overlaps remain visible. Characters
+          with a trailing copyright in parentheses use that value as their
+          disambiguation when a new Character is created.
         </div>
 
         <Form.Check
@@ -397,7 +592,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                 Clear selection
               </Button>
               <span className="ml-auto text-muted align-self-center">
-                {selected.size} / {predictions.length} selected
+                {visibleSelectedCount} / {predictions.length} selected
               </span>
             </div>
 
@@ -425,15 +620,16 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                           onChange={() => togglePrediction(prediction)}
                           label={prediction.name}
                         />
-                        {prediction.source?.includes("filename") ? (
-                          <Badge className="ml-2" variant="info">
-                            filename
+                        {prediction.provenance.map((source) => (
+                          <Badge
+                            className="ml-2"
+                            key={sourceKey(source)}
+                            title={source.detail}
+                            variant={sourceBadgeVariant(source.kind)}
+                          >
+                            {source.label}
                           </Badge>
-                        ) : prediction.source?.startsWith("booru:") ? (
-                          <Badge className="ml-2" variant="info">
-                            {prediction.source.slice("booru:".length)}
-                          </Badge>
-                        ) : null}
+                        ))}
                         {prediction.rawName &&
                         prediction.rawName !== prediction.name ? (
                           <span className="ml-2 small text-muted">
@@ -479,7 +675,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         </Button>
         <Button
           variant="primary"
-          disabled={loading || applying || selected.size === 0}
+          disabled={loading || applying || visibleSelectedCount === 0}
           onClick={() => void applySelected()}
         >
           {applying ? "Applying…" : "Apply selected metadata"}
