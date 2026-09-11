@@ -67,6 +67,7 @@ export const ReferenceComparison: React.FC<IProps> = ({
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const dragState = useRef<IDragState | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset pan whenever the compared pair, view mode, or parent reset signal changes
   useEffect(() => {
     setPan({ x: 0, y: 0 });
   }, [mode, referenceImage.id, resetPosition, selectedImage.id]);
