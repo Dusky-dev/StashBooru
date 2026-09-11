@@ -235,8 +235,7 @@ const _TagSelect: React.FC<TagSelectProps> = (props) => {
     return {
       value: result.data!.tagCreate!.id,
       item: result.data!.tagCreate!,
-      message:
-        namespace === "copyrights" ? "Created copyright" : "Created tag",
+      message: namespace === "copyrights" ? "Created copyright" : "Created tag",
     };
   };
 
@@ -377,6 +376,6 @@ export const CopyrightSelect: React.FC<TagSelectProps> = (props) => (
   <TagSelect {...props} namespace="copyrights" />
 );
 
-export const CopyrightIDSelect: React.FC<
-  IFilterProps & IFilterIDProps<Tag>
-> = (props) => <TagIDSelect {...props} namespace="copyrights" />;
+export const CopyrightIDSelect: React.FC<IFilterProps & IFilterIDProps<Tag>> = (
+  props
+) => <TagIDSelect {...props} namespace="copyrights" />;
