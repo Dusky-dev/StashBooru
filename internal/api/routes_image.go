@@ -41,6 +41,7 @@ func (rs imageRoutes) Routes() chi.Router {
 		r.Post("/remote-config", rs.VisualSimilarityRemoteConfigUpdate)
 		r.Post("/download", rs.VisualSimilarityDownload)
 		r.Post("/index", rs.VisualSimilarityIndexImages)
+		r.Get("/camie/status", rs.CamieStatus)
 	})
 
 	r.Route("/{imageId}", func(r chi.Router) {
@@ -49,6 +50,7 @@ func (rs imageRoutes) Routes() chi.Router {
 		r.Get("/image", rs.Image)
 		r.Get("/thumbnail", rs.Thumbnail)
 		r.Get("/preview", rs.Preview)
+		r.Post("/knowledge-tags", rs.ImageKnowledgeTags)
 	})
 
 	return r
@@ -73,7 +75,6 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 		}
 	} else {
 		const useDefault = true
-
 		f := img.Files.Primary()
 		if f == nil {
 			rs.serveImage(w, r, img, useDefault)

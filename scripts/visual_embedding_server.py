@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""HTTP inference server for StashBooru visual embeddings.
+"""HTTP inference server for StashBooru visual embeddings and optional Camie tags.
 
-The server intentionally owns no Stash metadata or embedding database. It only
-reports model status and converts uploaded image bytes into the same normalized
-1024-D EVA02 vectors produced by visual_embedding_worker.py.
+The server intentionally owns no Stash metadata, embedding database, or tag
+assignments. It receives image bytes, performs inference, and returns results.
 """
 
 from __future__ import annotations
@@ -18,8 +17,17 @@ from pathlib import Path
 import tempfile
 import threading
 from typing import Any
+from urllib.parse import parse_qs, urlsplit
 
 import visual_embedding_worker as worker
+
+try:
+    import camie_tagger_worker as camie
+
+    _camie_import_error = ""
+except Exception as error:  # Camie is deliberately optional.
+    camie = None
+    _camie_import_error = str(error)
 
 DEFAULT_HOST = os.environ.get("STASH_EMBEDDING_SERVER_HOST", "0.0.0.0")
 DEFAULT_PORT = int(os.environ.get("STASH_EMBEDDING_SERVER_PORT", "8000"))
@@ -43,7 +51,7 @@ def _authorized(header_value: str | None) -> bool:
 
 
 class VisualEmbeddingHandler(BaseHTTPRequestHandler):
-    server_version = "StashBooruVisualEmbedding/1"
+    server_version = "StashBooruVisualEmbedding/2"
 
     def log_message(self, format: str, *args: Any) -> None:
         _log(format % args)
@@ -59,10 +67,19 @@ class VisualEmbeddingHandler(BaseHTTPRequestHandler):
     def _reject_unauthorized(self) -> None:
         self._send_json(HTTPStatus.UNAUTHORIZED, {"ok": False, "error": "unauthorized"})
 
-    def _status(self) -> dict[str, Any]:
+    def _embedding_status(self) -> dict[str, Any]:
         return {
             "ok": True,
             **worker._status_payload(),
+            "available_providers": worker.ort.get_available_providers(),
+        }
+
+    def _camie_status(self) -> dict[str, Any] | None:
+        if camie is None:
+            return None
+        return {
+            "ok": True,
+            **camie._status_payload(),
             "available_providers": worker.ort.get_available_providers(),
         }
 
@@ -71,21 +88,27 @@ class VisualEmbeddingHandler(BaseHTTPRequestHandler):
             self._reject_unauthorized()
             return
 
-        if self.path.rstrip("/") == "/v1/status":
-            self._send_json(HTTPStatus.OK, self._status())
+        path = urlsplit(self.path).path.rstrip("/")
+        if path == "/v1/status":
+            self._send_json(HTTPStatus.OK, self._embedding_status())
+            return
+        if path == "/v1/camie/status":
+            status = self._camie_status()
+            if status is None:
+                self._send_json(
+                    HTTPStatus.SERVICE_UNAVAILABLE,
+                    {
+                        "ok": False,
+                        "error": f"Camie worker is unavailable: {_camie_import_error or 'not installed'}",
+                    },
+                )
+            else:
+                self._send_json(HTTPStatus.OK, status)
             return
 
         self._send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not found"})
 
-    def do_POST(self) -> None:
-        if not _authorized(self.headers.get("Authorization")):
-            self._reject_unauthorized()
-            return
-
-        if self.path.rstrip("/") != "/v1/embed":
-            self._send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not found"})
-            return
-
+    def _read_upload_to_temp(self) -> Path | None:
         raw_length = self.headers.get("Content-Length")
         try:
             content_length = int(raw_length or "")
@@ -98,7 +121,7 @@ class VisualEmbeddingHandler(BaseHTTPRequestHandler):
                 HTTPStatus.LENGTH_REQUIRED,
                 {"ok": False, "error": "Content-Length is required"},
             )
-            return
+            return None
         if content_length > max_upload_bytes:
             self._send_json(
                 HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
@@ -107,7 +130,7 @@ class VisualEmbeddingHandler(BaseHTTPRequestHandler):
                     "error": f"image is too large ({content_length} bytes; limit {max_upload_bytes})",
                 },
             )
-            return
+            return None
 
         temp_dir = os.environ.get("STASH_EMBEDDING_SERVER_TEMP_DIR")
         fd, temp_name = tempfile.mkstemp(prefix="stashbooru-remote-", suffix=".img", dir=temp_dir)
@@ -121,29 +144,82 @@ class VisualEmbeddingHandler(BaseHTTPRequestHandler):
                         raise RuntimeError("client disconnected before the complete image was received")
                     output.write(chunk)
                     remaining -= len(chunk)
+            return temp_path
+        except Exception:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+            try:
+                temp_path.unlink()
+            except FileNotFoundError:
+                pass
+            raise
 
-            with _inference_lock:
-                embedding = worker.embed(str(temp_path))
+    def do_POST(self) -> None:
+        if not _authorized(self.headers.get("Authorization")):
+            self._reject_unauthorized()
+            return
 
+        parsed = urlsplit(self.path)
+        path = parsed.path.rstrip("/")
+        if path not in ("/v1/embed", "/v1/camie/tag"):
+            self._send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not found"})
+            return
+
+        if path == "/v1/camie/tag" and camie is None:
             self._send_json(
-                HTTPStatus.OK,
+                HTTPStatus.SERVICE_UNAVAILABLE,
                 {
-                    "ok": True,
-                    **worker._status_payload(),
-                    "embedding": embedding,
+                    "ok": False,
+                    "error": f"Camie worker is unavailable: {_camie_import_error or 'not installed'}",
                 },
             )
+            return
+
+        temp_path: Path | None = None
+        try:
+            temp_path = self._read_upload_to_temp()
+            if temp_path is None:
+                return
+
+            with _inference_lock:
+                if path == "/v1/embed":
+                    embedding = worker.embed(str(temp_path))
+                    payload = {
+                        "ok": True,
+                        **worker._status_payload(),
+                        "embedding": embedding,
+                    }
+                else:
+                    assert camie is not None
+                    query = parse_qs(parsed.query)
+                    threshold = float(query.get("threshold", [camie.DEFAULT_THRESHOLD])[0])
+                    limit = int(query.get("limit", [camie.DEFAULT_LIMIT])[0])
+                    tags = camie.tag(str(temp_path), threshold=threshold, limit=limit)
+                    payload = {
+                        "ok": True,
+                        **camie._status_payload(),
+                        "threshold": threshold,
+                        "tags": tags,
+                    }
+
+            self._send_json(HTTPStatus.OK, payload)
+        except ValueError as error:
+            _log(f"invalid inference request: {error}")
+            self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(error)})
         except Exception as error:
-            _log(f"embedding request failed: {error}")
+            _log(f"inference request failed: {error}")
             self._send_json(
                 HTTPStatus.INTERNAL_SERVER_ERROR,
                 {"ok": False, "error": str(error)},
             )
         finally:
-            try:
-                temp_path.unlink()
-            except FileNotFoundError:
-                pass
+            if temp_path is not None:
+                try:
+                    temp_path.unlink()
+                except FileNotFoundError:
+                    pass
 
 
 class VisualEmbeddingHTTPServer(ThreadingHTTPServer):
@@ -155,14 +231,14 @@ class VisualEmbeddingHTTPServer(ThreadingHTTPServer):
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="StashBooru remote visual embedding inference worker")
+    parser = argparse.ArgumentParser(description="StashBooru remote ML inference worker")
     parser.add_argument("--host", default=DEFAULT_HOST)
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--max-upload-mb", type=int, default=DEFAULT_MAX_UPLOAD_MB)
     parser.add_argument(
         "--download-model",
         action="store_true",
-        help="download the pinned model before starting if it is not installed",
+        help="download the pinned EVA02 embedding model before starting if it is not installed",
     )
     args = parser.parse_args()
 
@@ -177,6 +253,15 @@ def main() -> int:
         f"starting on {args.host}:{args.port}; installed={status['installed']}; "
         f"model_path={status['model_path']}; available_providers={worker.ort.get_available_providers()}"
     )
+    if camie is not None:
+        camie_status = camie._status_payload()
+        _log(
+            f"Camie optional tagger: installed={camie_status['installed']}; "
+            f"model_path={camie_status['model_path']}; metadata_path={camie_status['metadata_path']}"
+        )
+    elif _camie_import_error:
+        _log(f"Camie optional tagger unavailable: {_camie_import_error}")
+
     if not SERVER_TOKEN:
         _log("warning: STASH_EMBEDDING_SERVER_TOKEN is not set; server accepts unauthenticated requests")
 

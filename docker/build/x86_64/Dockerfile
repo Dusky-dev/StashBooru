@@ -66,9 +66,11 @@ RUN apk add --no-cache \
 
 COPY --from=backend /stash/stash /usr/bin/
 COPY --from=backend /stash/scripts/visual_embedding_worker.py /usr/lib/stash/visual_embedding_worker.py
+COPY --from=backend /stash/scripts/camie_tagger_worker.py /usr/lib/stash/camie_tagger_worker.py
 
 ENV STASH_CONFIG_FILE=/root/.stash/config.yml
 ENV STASH_VISUAL_EMBEDDING_WORKER=/usr/lib/stash/visual_embedding_worker.py
+ENV STASH_CAMIE_TAGGER_WORKER=/usr/lib/stash/camie_tagger_worker.py
 
 EXPOSE 9999
 ENTRYPOINT ["stash"]

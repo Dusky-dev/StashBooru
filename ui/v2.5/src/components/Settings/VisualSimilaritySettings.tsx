@@ -20,6 +20,21 @@ interface VisualSimilarityStatus {
   totalImages: number;
 }
 
+interface CamieStatus {
+  installed: boolean;
+  loaded: boolean;
+  workerOK: boolean;
+  workerError?: string;
+  backend: "local" | "remote";
+  remoteURL?: string;
+  modelExists: boolean;
+  metadataExists: boolean;
+  modelPath?: string;
+  metadataPath?: string;
+  model: string;
+  tagCount: number;
+}
+
 interface VisualSimilarityJobResponse {
   jobID: number;
 }
@@ -41,6 +56,8 @@ export const VisualSimilaritySettings: React.FC = () => {
   const history = useHistory();
   const [status, setStatus] = useState<VisualSimilarityStatus>();
   const [statusError, setStatusError] = useState<string>();
+  const [camieStatus, setCamieStatus] = useState<CamieStatus>();
+  const [camieStatusError, setCamieStatusError] = useState<string>();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [savingWorker, setSavingWorker] = useState(false);
@@ -65,6 +82,18 @@ export const VisualSimilaritySettings: React.FC = () => {
       setStatusError(undefined);
     } catch (error) {
       setStatusError(error instanceof Error ? error.message : String(error));
+    }
+
+    try {
+      const camieResponse = await fetch("image/visual-similarity/camie/status");
+      const nextCamieStatus = await readResponse<CamieStatus>(camieResponse);
+      setCamieStatus(nextCamieStatus);
+      setCamieStatusError(undefined);
+    } catch (error) {
+      setCamieStatus(undefined);
+      setCamieStatusError(
+        error instanceof Error ? error.message : String(error)
+      );
     } finally {
       setLoading(false);
     }
@@ -130,6 +159,11 @@ export const VisualSimilaritySettings: React.FC = () => {
     ? `${status.indexedImages.toLocaleString()} / ${status.totalImages.toLocaleString()} images indexed`
     : "Index status unavailable";
   const isRemote = status?.backend === "remote";
+  const isCamieRemote = camieStatus?.backend === "remote";
+  const camieSubHeading =
+    camieStatusError ??
+    camieStatus?.workerError ??
+    "Optional anime knowledge model for character, copyright, artist, general, and meta tag predictions. StashBooru never downloads or bundles Camie; supply the model and metadata files yourself.";
 
   return (
     <div className="setting-section" id="visual-similarity">
@@ -143,7 +177,7 @@ export const VisualSimilaritySettings: React.FC = () => {
         <Setting
           className="flex-column align-items-stretch"
           heading="Inference worker"
-          subHeading="Leave the URL empty to use the local worker. Set a remote URL to stream images to another machine for inference while keeping all metadata and embeddings in StashBooru."
+          subHeading="Leave the URL empty to use the local worker. Set a remote URL to stream images to another machine for inference while keeping all metadata and embeddings in StashBooru. The same remote worker is used for optional Camie inference."
         >
           <div className="mt-3 w-100">
             <Form.Control
@@ -167,6 +201,7 @@ export const VisualSimilaritySettings: React.FC = () => {
             <div className="d-flex flex-wrap justify-content-end">
               {tokenConfigured ? (
                 <Button
+                  className="mr-2 mb-2"
                   variant="outline-secondary"
                   disabled={savingWorker}
                   onClick={() => void saveRemoteWorker(true)}
@@ -175,6 +210,7 @@ export const VisualSimilaritySettings: React.FC = () => {
                 </Button>
               ) : null}
               <Button
+                className="mb-2"
                 variant="secondary"
                 disabled={savingWorker}
                 onClick={() => void saveRemoteWorker(false)}
@@ -225,6 +261,62 @@ export const VisualSimilaritySettings: React.FC = () => {
                 {status?.installed ? "Re-download model" : "Download model"}
               </Button>
             )}
+          </div>
+        </Setting>
+
+        <Setting
+          className="flex-column align-items-stretch"
+          heading="Camie Tagger v2 (optional)"
+          subHeading={camieSubHeading}
+        >
+          <div className="mt-3 w-100">
+            <div className="d-flex align-items-center flex-wrap mb-2">
+              <Badge
+                className="mr-2 mb-1"
+                variant={isCamieRemote ? "info" : "secondary"}
+              >
+                {isCamieRemote ? "Remote" : "Local"}
+              </Badge>
+              <Badge
+                className="mr-2 mb-1"
+                variant={camieStatus?.workerOK ? "success" : "secondary"}
+              >
+                {loading
+                  ? "Checking"
+                  : camieStatus?.workerOK
+                    ? "Worker ready"
+                    : "Worker unavailable"}
+              </Badge>
+              <Badge
+                className="mr-2 mb-1"
+                variant={camieStatus?.installed ? "success" : "secondary"}
+              >
+                {camieStatus?.installed ? "Model ready" : "Model files missing"}
+              </Badge>
+              {camieStatus?.tagCount ? (
+                <Badge className="mb-1" variant="secondary">
+                  {camieStatus.tagCount.toLocaleString()} tags
+                </Badge>
+              ) : null}
+            </div>
+            {camieStatus?.modelPath ? (
+              <div className="mb-2 text-break">
+                <strong>Model:</strong> <code>{camieStatus.modelPath}</code>
+              </div>
+            ) : null}
+            {camieStatus?.metadataPath ? (
+              <div className="text-break">
+                <strong>Metadata:</strong>{" "}
+                <code>{camieStatus.metadataPath}</code>
+              </div>
+            ) : null}
+            {!camieStatus?.installed && camieStatus?.workerOK ? (
+              <div className="mt-2 text-muted">
+                Place <code>camie-tagger-v2.onnx</code> and{" "}
+                <code>camie-tagger-v2-metadata.json</code> at the paths above,
+                then refresh status. Camie is never downloaded automatically.
+              </div>
+            ) : null}
           </div>
         </Setting>
 
