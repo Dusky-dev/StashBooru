@@ -8,7 +8,17 @@ import { useToast } from "src/hooks/Toast";
 import { tagRelationHook } from "src/core/tags";
 import { TagEditPanel } from "./TagEditPanel";
 
-const TagCreate: React.FC = () => {
+interface IProps {
+  basePath?: string;
+  requiredParentId?: string;
+  entityName?: string;
+}
+
+const TagCreate: React.FC<IProps> = ({
+  basePath = "/tags",
+  requiredParentId,
+  entityName,
+}) => {
   const intl = useIntl();
   const history = useHistory();
   const Toast = useToast();
@@ -30,8 +40,16 @@ const TagCreate: React.FC = () => {
       parents: [],
       children: [],
     };
+    const createInput = requiredParentId
+      ? {
+          ...input,
+          parent_ids: Array.from(
+            new Set([...(input.parent_ids ?? []), requiredParentId])
+          ),
+        }
+      : input;
     const result = await createTag({
-      variables: { input },
+      variables: { input: createInput },
     });
     if (result.data?.tagCreate?.id) {
       const created = result.data.tagCreate;
@@ -40,12 +58,16 @@ const TagCreate: React.FC = () => {
         children: created.children,
       });
       if (!andNew) {
-        history.push(`/tags/${created.id}`);
+        history.push(`${basePath}/${created.id}`);
       }
       Toast.success(
         intl.formatMessage(
           { id: "toast.created_entity" },
-          { entity: intl.formatMessage({ id: "tag" }).toLocaleLowerCase() }
+          {
+            entity: (
+              entityName ?? intl.formatMessage({ id: "tag" })
+            ).toLocaleLowerCase(),
+          }
         )
       );
     }
@@ -72,10 +94,12 @@ const TagCreate: React.FC = () => {
         <TagEditPanel
           tag={tag}
           onSubmit={onSave}
-          onCancel={() => history.push("/tags")}
+          onCancel={() => history.push(basePath)}
           onDelete={() => {}}
           setImage={setImage}
           setEncodingImage={setEncodingImage}
+          basePath={basePath}
+          entityName={entityName}
         />
       </div>
     </div>

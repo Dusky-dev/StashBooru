@@ -33,6 +33,8 @@ interface ITagEditPanel {
   onDelete: () => void;
   setImage: (image?: string | null) => void;
   setEncodingImage: (loading: boolean) => void;
+  basePath?: string;
+  entityName?: string;
 }
 
 export const TagEditPanel: React.FC<ITagEditPanel> = ({
@@ -42,10 +44,13 @@ export const TagEditPanel: React.FC<ITagEditPanel> = ({
   onDelete,
   setImage,
   setEncodingImage,
+  basePath = "/tags",
+  entityName,
 }) => {
   const intl = useIntl();
   const Toast = useToast();
   const { configuration: stashConfig } = useConfigurationContext();
+  const displayEntityName = entityName ?? intl.formatMessage({ id: "tag" });
 
   const isNew = tag.id === undefined;
 
@@ -251,7 +256,7 @@ export const TagEditPanel: React.FC<ITagEditPanel> = ({
           <h2>
             <FormattedMessage
               id="actions.add_entity"
-              values={{ entityType: intl.formatMessage({ id: "tag" }) }}
+              values={{ entityType: displayEntityName }}
             />
           </h2>
         )}
@@ -259,8 +264,11 @@ export const TagEditPanel: React.FC<ITagEditPanel> = ({
         <Prompt
           when={formik.dirty}
           message={(location, action) => {
-            // Check if it's a redirect after tag creation
-            if (action === "PUSH" && location.pathname.startsWith("/tags/")) {
+            // Check if it's a redirect after tag/copyright creation.
+            if (
+              action === "PUSH" &&
+              location.pathname.startsWith(`${basePath}/`)
+            ) {
               return true;
             }
 
@@ -303,7 +311,7 @@ export const TagEditPanel: React.FC<ITagEditPanel> = ({
         </Form>
 
         <DetailsEditNavbar
-          objectName={tag?.name ?? intl.formatMessage({ id: "tag" })}
+          objectName={tag?.name ?? displayEntityName}
           classNames="col-xl-9 mt-3"
           isNew={isNew}
           isEditing

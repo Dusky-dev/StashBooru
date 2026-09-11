@@ -149,19 +149,20 @@ const allMenuItems: IMenuItem[] = [
     userCreatable: true,
   },
   {
+    name: "copyrights",
+    message: messages.copyrights,
+    href: "/copyrights",
+    icon: faCopyright,
+    hotkey: "g c",
+    userCreatable: true,
+  },
+  {
     name: "studios",
     message: messages.studios,
     href: "/studios",
     icon: faVideo,
     hotkey: "g u",
     userCreatable: true,
-  },
-  {
-    name: "copyrights",
-    message: messages.copyrights,
-    href: "/copyrights",
-    icon: faCopyright,
-    hotkey: "g c",
   },
   {
     name: "tags",
@@ -200,7 +201,7 @@ export const MainNavbar: React.FC = () => {
   const [expanded, setExpanded] = useState(false);
 
   // Show all menu items by default, unless config says otherwise.
-  // Copyrights follows Tags for existing custom navbar configurations.
+  // Keep Copyrights enabled with Tags for existing custom navbar configurations.
   const menuItems = useMemo(() => {
     let cfgMenuItems = configuration?.interface.menuItems;
     if (!cfgMenuItems) {

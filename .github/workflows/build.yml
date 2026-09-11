@@ -34,9 +34,9 @@ jobs:
         go-version-file: 'go.mod'
 
     # pnpm version is read from the packageManager field in package.json
-    # very broken (4.3, 4.4)
     - name: Install pnpm
-      uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+      # pnpm/action-setup v6.1.0 (Node 24 action runtime)
+      uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
       with:
         package_json_file: ui/v2.5/package.json
 
