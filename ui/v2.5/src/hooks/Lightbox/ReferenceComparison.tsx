@@ -150,9 +150,15 @@ function comparisonMetrics(
     },
     {
       label: "Resolution",
-      referenceText: formatResolution(referenceFile?.width, referenceFile?.height),
+      referenceText: formatResolution(
+        referenceFile?.width,
+        referenceFile?.height
+      ),
       selectedText: formatResolution(selectedFile?.width, selectedFile?.height),
-      referenceValue: resolutionValue(referenceFile?.width, referenceFile?.height),
+      referenceValue: resolutionValue(
+        referenceFile?.width,
+        referenceFile?.height
+      ),
       selectedValue: resolutionValue(selectedFile?.width, selectedFile?.height),
     },
   ];
@@ -194,7 +200,8 @@ const ComparisonInfo: React.FC<{
     <strong className={`${CLASSNAME}-info-title`}>{title}</strong>
     {metrics.map((metric) => {
       const comparable =
-        metric.referenceValue !== undefined && metric.selectedValue !== undefined;
+        metric.referenceValue !== undefined &&
+        metric.selectedValue !== undefined;
       const selectedClass =
         side === "selected" && comparable
           ? metric.selectedValue! >= metric.referenceValue!
@@ -285,7 +292,11 @@ export const ReferenceComparison: React.FC<IProps> = ({
     return (
       <div className={cx(CLASSNAME, `${CLASSNAME}-both`)} {...interactionProps}>
         <div className={`${CLASSNAME}-pane`}>
-          <ComparisonInfo title="Reference" side="reference" metrics={metrics} />
+          <ComparisonInfo
+            title="Reference"
+            side="reference"
+            metrics={metrics}
+          />
           <div className={`${CLASSNAME}-viewport`} style={{ transform }}>
             <ComparisonMedia image={referenceImage} />
           </div>
