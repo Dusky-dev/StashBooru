@@ -24,6 +24,13 @@ interface CamieBulkResponse {
   jobID: number;
 }
 
+interface CamieConfig {
+  threshold: number;
+  limit: number;
+  filenameEnabled: boolean;
+  filenameLayout: string;
+}
+
 export const GenerateDialog: React.FC<IGenerateDialog> = ({
   selectedIds,
   onClose,
@@ -59,6 +66,7 @@ export const GenerateDialog: React.FC<IGenerateDialog> = ({
   const [camieLimit, setCamieLimit] = useState("50");
   const [camieCharacters, setCamieCharacters] = useState(true);
   const [camieArtist, setCamieArtist] = useState(true);
+  const [camieCopyright, setCamieCopyright] = useState(true);
   const [camieTags, setCamieTags] = useState(true);
   const [camieReplaceArtist, setCamieReplaceArtist] = useState(false);
   const [camieStarting, setCamieStarting] = useState(false);
@@ -102,6 +110,21 @@ export const GenerateDialog: React.FC<IGenerateDialog> = ({
       setConfigRead(true);
     }
   }, [configuration, configRead]);
+
+  useEffect(() => {
+    if (type !== "image") return;
+    void (async () => {
+      try {
+        const response = await fetch("image/visual-similarity/camie/config");
+        if (!response.ok) return;
+        const config = (await response.json()) as CamieConfig;
+        setCamieThreshold(String(config.threshold));
+        setCamieLimit(String(config.limit));
+      } catch {
+        // Keep built-in defaults if the optional config endpoint is unavailable.
+      }
+    })();
+  }, [type]);
 
   const selectionStatus = useMemo(() => {
     const countableIds: Record<typeof type, string> = {
@@ -195,7 +218,7 @@ export const GenerateDialog: React.FC<IGenerateDialog> = ({
       );
       return;
     }
-    if (!camieCharacters && !camieArtist && !camieTags) {
+    if (!camieCharacters && !camieArtist && !camieCopyright && !camieTags) {
       Toast.error(new Error("Enable at least one Camie metadata category."));
       return;
     }
@@ -212,6 +235,7 @@ export const GenerateDialog: React.FC<IGenerateDialog> = ({
           limit,
           applyCharacters: camieCharacters,
           applyArtist: camieArtist,
+          applyCopyright: camieCopyright,
           applyTags: camieTags,
           replaceArtist: camieReplaceArtist,
         }),
@@ -220,7 +244,9 @@ export const GenerateDialog: React.FC<IGenerateDialog> = ({
         throw new Error((await response.text()) || response.statusText);
       }
       const result = (await response.json()) as CamieBulkResponse;
-      Toast.success(`Started Camie tagging job #${result.jobID}.`);
+      Toast.success(
+        `Started Camie tagging job #${result.jobID}. Threshold ${threshold} and limit ${limit} are now the manual Camie defaults.`
+      );
       onClose();
     } catch (e) {
       Toast.error(e);
@@ -288,6 +314,8 @@ export const GenerateDialog: React.FC<IGenerateDialog> = ({
                 Run the optional Camie Tagger v2 on these images and apply its
                 predictions as StashBooru metadata. This starts a separate
                 background task and does not run the generation options above.
+                The threshold and per-category limit used here are saved as the
+                defaults for every manual Camie analysis.
               </p>
               <div className="d-flex flex-wrap align-items-end mb-3">
                 <Form.Group className="mr-3 mb-2">
@@ -341,10 +369,20 @@ export const GenerateDialog: React.FC<IGenerateDialog> = ({
               <Form.Check
                 className="mb-2"
                 type="checkbox"
+                id="camie-generate-copyright"
+                checked={camieCopyright}
+                onChange={(event) =>
+                  setCamieCopyright(event.currentTarget.checked)
+                }
+                label="Apply copyright / series predictions as Copyright"
+              />
+              <Form.Check
+                className="mb-2"
+                type="checkbox"
                 id="camie-generate-tags"
                 checked={camieTags}
                 onChange={(event) => setCamieTags(event.currentTarget.checked)}
-                label="Apply copyright, general, meta and other predictions as Tags"
+                label="Apply general, meta and other predictions as Tags"
               />
               <Form.Check
                 className="mb-3"
