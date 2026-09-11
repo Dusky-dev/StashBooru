@@ -275,6 +275,7 @@ func applyCamieMetadataV2(ctx context.Context, imageID int, predictions []camiet
 				if created {
 					response.CreatedArtists++
 				}
+			}
 		}
 
 		partial := models.NewImagePartial()
