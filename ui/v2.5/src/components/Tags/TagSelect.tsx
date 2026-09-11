@@ -99,10 +99,10 @@ const _TagSelect: React.FC<TagSelectProps> = (props) => {
     [namespace, props.values]
   );
 
-  function filterExcluded(tag: Tag) {
-    // HACK - we should probably exclude these in the backend query, but
-    // this will do in the short-term
-    return !exclude.includes(tag.id.toString());
+  function filterResult(tag: Tag) {
+    return (
+      !exclude.includes(tag.id.toString()) && matchesNamespace(tag, namespace)
+    );
   }
 
   async function makeFilter() {
@@ -132,7 +132,7 @@ const _TagSelect: React.FC<TagSelectProps> = (props) => {
       filterByStashID(filter, input);
 
       const query = await queryFindTagsForSelect(filter);
-      const matches = query.data.findTags.tags.filter(filterExcluded);
+      const matches = query.data.findTags.tags.filter(filterResult);
 
       if (matches.length > 0) {
         return matches.map(toOption);
@@ -143,7 +143,7 @@ const _TagSelect: React.FC<TagSelectProps> = (props) => {
     filter.searchTerm = input;
 
     const query = await queryFindTagsForSelect(filter);
-    const ret = query.data.findTags.tags.filter(filterExcluded);
+    const ret = query.data.findTags.tags.filter(filterResult);
 
     return tagSelectSort(input, ret).map(toOption);
   }
@@ -220,6 +220,10 @@ const _TagSelect: React.FC<TagSelectProps> = (props) => {
 
   const onCreate = async (name: string) => {
     const root = namespace === "copyrights" ? await fetchCopyrightRoot() : null;
+    if (namespace === "copyrights" && !root) {
+      throw new Error("Unable to initialize the Copyright namespace");
+    }
+
     const result = await createTag({
       variables: {
         input: {
