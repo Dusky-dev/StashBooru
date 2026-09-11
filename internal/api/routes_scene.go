@@ -80,6 +80,10 @@ func (rs sceneRoutes) Routes() chi.Router {
 		r.Get("/interactive_heatmap", rs.InteractiveHeatmap)
 		r.Get("/caption", rs.CaptionLang)
 
+		r.Get("/metadata", rs.SceneLocalMetadata)
+		r.Post("/metadata", rs.SceneMetadataApply)
+		r.Get("/booru-metadata", rs.SceneBooruMetadata)
+
 		r.Get("/scene_marker/{sceneMarkerId}/stream", rs.SceneMarkerStream)
 		r.Get("/scene_marker/{sceneMarkerId}/preview", rs.SceneMarkerPreview)
 		r.Get("/scene_marker/{sceneMarkerId}/screenshot", rs.SceneMarkerScreenshot)
