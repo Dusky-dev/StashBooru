@@ -52,20 +52,14 @@ extend type Mutation {
   copyrightCreate(input: CopyrightCreateInput!): Copyright!
   copyrightUpdate(input: CopyrightUpdateInput!): Copyright!
   copyrightDestroy(input: CopyrightDestroyInput!): Boolean!
+  imageCopyrightsUpdate(image_id: ID!, copyright_ids: [ID!]!): Image!
+  sceneCopyrightsUpdate(scene_id: ID!, copyright_ids: [ID!]!): Scene!
 }
 
 extend type Image {
   copyrights: [Copyright!]!
 }
 
-extend input ImageUpdateInput {
-  copyright_ids: [ID!]
-}
-
 extend type Scene {
   copyrights: [Copyright!]!
-}
-
-extend input SceneUpdateInput {
-  copyright_ids: [ID!]
 }
