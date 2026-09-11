@@ -68,7 +68,8 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
 
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState<boolean>(false);
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
-  const [isKnowledgeTagDialogOpen, setIsKnowledgeTagDialogOpen] = useState(false);
+  const [isKnowledgeTagDialogOpen, setIsKnowledgeTagDialogOpen] =
+    useState(false);
 
   async function onSave(input: GQL.ImageUpdateInput) {
     await updateImage({
