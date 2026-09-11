@@ -23,6 +23,7 @@ import { OrganizedButton } from "src/components/Scenes/SceneDetails/OrganizedBut
 import { ImageFileInfoPanel } from "./ImageFileInfoPanel";
 import { ImageEditPanel } from "./ImageEditPanel";
 import { ImageDetailPanel } from "./ImageDetailPanel";
+import { ImageKnowledgeTagDialog } from "./ImageKnowledgeTagDialog";
 import { DeleteImagesDialog } from "../DeleteImagesDialog";
 import { faEllipsisV } from "@fortawesome/free-solid-svg-icons";
 import { imagePath, imageTitle } from "src/core/files";
@@ -41,13 +42,14 @@ import { StudioLogo } from "src/components/Shared/StudioLogo";
 
 interface IProps {
   image: GQL.ImageDataFragment;
+  onMetadataApplied: () => Promise<unknown>;
 }
 
 interface IImageParams {
   id: string;
 }
 
-const ImagePage: React.FC<IProps> = ({ image }) => {
+const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
   const history = useHistory();
   const Toast = useToast();
   const intl = useIntl();
@@ -66,6 +68,8 @@ const ImagePage: React.FC<IProps> = ({ image }) => {
 
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState<boolean>(false);
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
+  const [isKnowledgeTagDialogOpen, setIsKnowledgeTagDialogOpen] =
+    useState(false);
 
   async function onSave(input: GQL.ImageUpdateInput) {
     await updateImage({
@@ -188,6 +192,20 @@ const ImagePage: React.FC<IProps> = ({ image }) => {
     }
   }
 
+  function maybeRenderKnowledgeTagDialog() {
+    if (!isKnowledgeTagDialogOpen) {
+      return;
+    }
+
+    return (
+      <ImageKnowledgeTagDialog
+        imageId={image.id}
+        onHide={() => setIsKnowledgeTagDialogOpen(false)}
+        onApplied={onMetadataApplied}
+      />
+    );
+  }
+
   function renderOperations() {
     return (
       <Dropdown>
@@ -213,6 +231,13 @@ const ImagePage: React.FC<IProps> = ({ image }) => {
             onClick={() => setIsGenerateDialogOpen(true)}
           >
             <FormattedMessage id="actions.generate" />…
+          </Dropdown.Item>
+          <Dropdown.Item
+            key="camie-metadata"
+            className="bg-secondary text-white"
+            onClick={() => setIsKnowledgeTagDialogOpen(true)}
+          >
+            Camie metadata…
           </Dropdown.Item>
           <Dropdown.Item
             key="delete-image"
@@ -325,6 +350,7 @@ const ImagePage: React.FC<IProps> = ({ image }) => {
 
       {maybeRenderDeleteDialog()}
       {maybeRenderSceneGenerateDialog()}
+      {maybeRenderKnowledgeTagDialog()}
       <div className="image-tabs order-xl-first order-last">
         <div>
           <div className="image-header-container">
@@ -402,7 +428,7 @@ const ImageLoader: React.FC<RouteComponentProps<IImageParams>> = ({
   match,
 }) => {
   const { id } = match.params;
-  const { data, loading, error } = useFindImage(id);
+  const { data, loading, error, refetch } = useFindImage(id);
 
   useScrollToTopOnMount();
 
@@ -410,8 +436,9 @@ const ImageLoader: React.FC<RouteComponentProps<IImageParams>> = ({
   if (error) return <ErrorMessage error={error.message} />;
   if (!data?.findImage)
     return <ErrorMessage error={`No image found with id ${id}.`} />;
-
-  return <ImagePage image={data.findImage} />;
+  return (
+    <ImagePage image={data.findImage} onMetadataApplied={() => refetch()} />
+  );
 };
 
 export default ImageLoader;
