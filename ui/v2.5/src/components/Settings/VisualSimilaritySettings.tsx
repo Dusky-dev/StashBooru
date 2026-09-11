@@ -141,10 +141,11 @@ export const VisualSimilaritySettings: React.FC = () => {
       </div>
       <Card>
         <Setting
+          className="flex-column align-items-stretch"
           heading="Inference worker"
           subHeading="Leave the URL empty to use the local worker. Set a remote URL to stream images to another machine for inference while keeping all metadata and embeddings in StashBooru."
         >
-          <div style={{ minWidth: "24rem", maxWidth: "42rem", width: "100%" }}>
+          <div className="mt-3 w-100">
             <Form.Control
               className="mb-2"
               type="url"
@@ -163,10 +164,9 @@ export const VisualSimilaritySettings: React.FC = () => {
               }
               onChange={(event) => setRemoteToken(event.currentTarget.value)}
             />
-            <div className="d-flex align-items-center justify-content-end">
+            <div className="d-flex flex-wrap justify-content-end">
               {tokenConfigured ? (
                 <Button
-                  className="mr-2"
                   variant="outline-secondary"
                   disabled={savingWorker}
                   onClick={() => void saveRemoteWorker(true)}
