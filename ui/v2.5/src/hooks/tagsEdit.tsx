@@ -174,15 +174,6 @@ export function useTagsEdit(
     return ret;
   }
 
-  function tagsControl(props?: TagSelectProps) {
-    return (
-      <>
-        <TagSelect isMulti onSelect={onSetTags} values={tags} {...props} />
-        {renderNewTags()}
-      </>
-    );
-  }
-
   function copyrightsControl(props?: TagSelectProps) {
     return (
       <CopyrightSelect
@@ -191,6 +182,24 @@ export function useTagsEdit(
         values={copyrights}
         {...props}
       />
+    );
+  }
+
+  function tagsControl(props?: TagSelectProps) {
+    return (
+      <>
+        <TagSelect isMulti onSelect={onSetTags} values={tags} {...props} />
+        {renderNewTags()}
+        <div className="mt-2">
+          <small className="text-muted d-block mb-1">
+            {intl.formatMessage({
+              id: "copyrights",
+              defaultMessage: "Copyrights",
+            })}
+          </small>
+          {copyrightsControl(props)}
+        </div>
+      </>
     );
   }
 
