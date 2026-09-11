@@ -104,9 +104,8 @@ export const VisualSimilaritySettings: React.FC = () => {
         fetch("image/visual-similarity/camie/config"),
       ]);
       const nextCamieStatus = await readResponse<CamieStatus>(camieResponse);
-      const nextCamieConfig = await readResponse<CamieConfig>(
-        camieConfigResponse
-      );
+      const nextCamieConfig =
+        await readResponse<CamieConfig>(camieConfigResponse);
       setCamieStatus(nextCamieStatus);
       setCamieConfig(nextCamieConfig);
       setCamieStatusError(undefined);
@@ -417,10 +416,7 @@ export const VisualSimilaritySettings: React.FC = () => {
                 <code>%copyright%</code>, <code>%character%</code>,{" "}
                 <code>%md5%</code>, and <code>%ext%</code>. The default matches
                 Imgbrd-style names such as{" "}
-                <code>
-                  [%artist%](%copyright%).%character%_%md5%.%ext%
-                </code>
-                .
+                <code>[%artist%](%copyright%).%character%_%md5%.%ext%</code>.
               </Form.Text>
             </Form.Group>
             <div className="d-flex justify-content-end mb-2">
