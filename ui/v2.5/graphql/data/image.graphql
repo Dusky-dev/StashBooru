@@ -30,6 +30,10 @@ fragment ImageData on Image {
     ...SlimTagData
   }
 
+  copyrights {
+    ...SlimCopyrightData
+  }
+
   performers {
     ...PerformerData
   }
