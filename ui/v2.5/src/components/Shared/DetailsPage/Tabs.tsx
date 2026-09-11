@@ -4,6 +4,31 @@ import { useCallback, useEffect } from "react";
 import { useHistory } from "react-router-dom";
 import { PatchComponent } from "src/patch";
 
+const LAST_MEDIA_TAB_STORAGE_KEY = "stashbooru.details.lastMediaTab";
+const rememberedMediaTabs = new Set(["scenes", "galleries", "images", "groups"]);
+
+function readRememberedMediaTab(validTabs: readonly string[]) {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const tab = window.localStorage.getItem(LAST_MEDIA_TAB_STORAGE_KEY);
+    if (tab && rememberedMediaTabs.has(tab) && validTabs.includes(tab)) {
+      return tab;
+    }
+  } catch {
+    // localStorage can be unavailable in hardened/private browser contexts.
+  }
+  return undefined;
+}
+
+function rememberMediaTab(tab: string) {
+  if (typeof window === "undefined" || !rememberedMediaTabs.has(tab)) return;
+  try {
+    window.localStorage.setItem(LAST_MEDIA_TAB_STORAGE_KEY, tab);
+  } catch {
+    // Treat persistence as best-effort; navigation should still work normally.
+  }
+}
+
 export const TabTitleCounter: React.FC<{
   messageID: string;
   count: number;
@@ -29,10 +54,12 @@ export function useTabKey(props: {
   const { tabKey, validTabs, defaultTabKey, baseURL } = props;
 
   const history = useHistory();
-  const activeTabKey =
+  const explicitTabKey =
     tabKey && tabKey !== "default" && validTabs.includes(tabKey)
       ? tabKey
-      : defaultTabKey;
+      : undefined;
+  const activeTabKey =
+    explicitTabKey ?? readRememberedMediaTab(validTabs) ?? defaultTabKey;
 
   const setTabKey = useCallback(
     (newTabKey: string | null) => {
@@ -43,6 +70,7 @@ export function useTabKey(props: {
       ) {
         newTabKey = defaultTabKey;
       }
+      rememberMediaTab(newTabKey);
       if (newTabKey === activeTabKey) return;
 
       history.replace(`${baseURL}/${newTabKey}`);
@@ -51,6 +79,7 @@ export function useTabKey(props: {
   );
 
   useEffect(() => {
+    rememberMediaTab(activeTabKey);
     if (tabKey !== activeTabKey) {
       history.replace(`${baseURL}/${activeTabKey}`);
     }
