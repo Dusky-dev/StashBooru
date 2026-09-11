@@ -133,9 +133,7 @@ export const LightboxComponent: React.FC<IProps> = ({
   const location = useLocation();
   const referenceImageID = useMemo(() => {
     const sortBy = new URLSearchParams(location.search).get("sortby") ?? "";
-    const match = sortBy.match(
-      /^perceptual_similarity(?::(\d+))?(?::(\d+))?$/
-    );
+    const match = sortBy.match(/^perceptual_similarity(?::(\d+))?(?::(\d+))?$/);
     return match?.[2];
   }, [location.search]);
   const { data: referenceImageData } = GQL.useFindImageQuery({
