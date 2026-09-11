@@ -1,0 +1,71 @@
+type Copyright {
+  id: ID!
+  name: String!
+  sort_name: String!
+  description: String!
+  favorite: Boolean!
+  aliases: [String!]!
+  created_at: Time!
+  updated_at: Time!
+  parents: [Copyright!]!
+  children: [Copyright!]!
+  image_count: Int!
+  scene_count: Int!
+}
+
+input CopyrightCreateInput {
+  name: String!
+  sort_name: String
+  description: String
+  favorite: Boolean
+  aliases: [String!]
+  parent_ids: [ID!]
+  child_ids: [ID!]
+}
+
+input CopyrightUpdateInput {
+  id: ID!
+  name: String
+  sort_name: String
+  description: String
+  favorite: Boolean
+  aliases: [String!]
+  parent_ids: [ID!]
+  child_ids: [ID!]
+}
+
+input CopyrightDestroyInput {
+  id: ID!
+}
+
+type FindCopyrightsResultType {
+  count: Int!
+  copyrights: [Copyright!]!
+}
+
+extend type Query {
+  findCopyright(id: ID!): Copyright
+  findCopyrights(filter: FindFilterType, ids: [ID!]): FindCopyrightsResultType!
+}
+
+extend type Mutation {
+  copyrightCreate(input: CopyrightCreateInput!): Copyright!
+  copyrightUpdate(input: CopyrightUpdateInput!): Copyright!
+  copyrightDestroy(input: CopyrightDestroyInput!): Boolean!
+}
+
+extend type Image {
+  copyrights: [Copyright!]!
+}
+
+extend input ImageUpdateInput {
+  copyright_ids: [ID!]
+}
+
+extend type Scene {
+  copyrights: [Copyright!]!
+}
+
+extend input SceneUpdateInput {
+  copyright_ids: [ID!]
+}
