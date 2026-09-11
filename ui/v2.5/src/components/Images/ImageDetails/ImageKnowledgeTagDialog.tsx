@@ -40,7 +40,7 @@ interface CamieApplyResponse {
 interface IProps {
   imageId: string;
   onHide: () => void;
-  onApplied: () => void | Promise<unknown>;
+  onApplied: () => Promise<unknown>;
 }
 
 const DEFAULT_THRESHOLD = "0.492";
@@ -93,7 +93,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   const [error, setError] = useState<string>();
 
   const loadPredictions = useCallback(
-    async (nextThreshold = threshold, nextLimit = limit) => {
+    async (nextThreshold: string, nextLimit: string) => {
       const parsedThreshold = Number.parseFloat(nextThreshold);
       const parsedLimit = Number.parseInt(nextLimit, 10);
       if (!(parsedThreshold > 0 && parsedThreshold < 1)) {
@@ -124,14 +124,12 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         setLoading(false);
       }
     },
-    [imageId, limit, threshold]
+    [imageId]
   );
 
   useEffect(() => {
     void loadPredictions(DEFAULT_THRESHOLD, DEFAULT_LIMIT);
-    // Only run the initial inference once for this mounted dialog/image.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [imageId]);
+  }, [loadPredictions]);
 
   const grouped = useMemo(() => {
     const groups = new Map<string, CamiePrediction[]>();
@@ -231,7 +229,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
             className="mb-2"
             variant="secondary"
             disabled={loading || applying}
-            onClick={() => void loadPredictions()}
+            onClick={() => void loadPredictions(threshold, limit)}
           >
             {loading ? "Analyzing…" : "Analyze again"}
           </Button>
@@ -295,7 +293,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                       Images support one Artist. If several artists stay selected, the highest-confidence one is used.
                     </div>
                   ) : null}
-                  {items.map((prediction) => {
+                  {items.map((prediction, index) => {
                     const key = predictionKey(prediction);
                     return (
                       <div
@@ -304,7 +302,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                       >
                         <Form.Check
                           type="checkbox"
-                          id={`camie-${key}`}
+                          id={`camie-${category}-${index}`}
                           checked={selected.has(key)}
                           onChange={() => togglePrediction(prediction)}
                           label={prediction.name}
