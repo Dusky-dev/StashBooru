@@ -1,12 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge, Button, Form, Modal, Spinner } from "react-bootstrap";
+import { faSearch } from "@fortawesome/free-solid-svg-icons";
+import { useHistory } from "react-router-dom";
 
+import { Icon } from "src/components/Shared/Icon";
 import { useToast } from "src/hooks/Toast";
 
 interface CamiePrediction {
   name: string;
   category: string;
   score: number;
+  rawName?: string;
+  source?: string;
+  targetPath?: string;
+  targetExists?: boolean;
 }
 
 interface CamieTagsResponse {
@@ -15,6 +22,13 @@ interface CamieTagsResponse {
   threshold: number;
   limit: number;
   tags: CamiePrediction[];
+}
+
+interface CamieConfig {
+  threshold: number;
+  limit: number;
+  filenameEnabled: boolean;
+  filenameLayout: string;
 }
 
 interface CamieAppliedEntity {
@@ -29,11 +43,13 @@ interface CamieApplyResponse {
   imageID: number;
   characters: CamieAppliedEntity[];
   artist?: CamieAppliedEntity;
+  copyrights: CamieAppliedEntity[];
   tags: CamieAppliedEntity[];
   skippedArtists?: CamiePrediction[];
   preservedArtist: boolean;
   createdCharacters: number;
   createdArtists: number;
+  createdCopyrights: number;
   createdTags: number;
 }
 
@@ -42,9 +58,6 @@ interface IProps {
   onHide: () => void;
   onApplied: () => Promise<unknown>;
 }
-
-const DEFAULT_THRESHOLD = "0.492";
-const DEFAULT_LIMIT = "50";
 
 function predictionKey(prediction: CamiePrediction) {
   return `${prediction.category}\u0000${prediction.name}`;
@@ -64,7 +77,7 @@ function categoryLabel(category: string) {
     case "artist":
       return "Artist";
     case "copyright":
-      return "Copyright / series tags";
+      return "Copyright";
     case "general":
       return "General tags";
     case "meta":
@@ -82,8 +95,9 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   onApplied,
 }) => {
   const Toast = useToast();
-  const [threshold, setThreshold] = useState(DEFAULT_THRESHOLD);
-  const [limit, setLimit] = useState(DEFAULT_LIMIT);
+  const history = useHistory();
+  const [threshold, setThreshold] = useState("0.492");
+  const [limit, setLimit] = useState("50");
   const [predictions, setPredictions] = useState<CamiePrediction[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [backend, setBackend] = useState<string>();
@@ -128,7 +142,27 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   );
 
   useEffect(() => {
-    void loadPredictions(DEFAULT_THRESHOLD, DEFAULT_LIMIT);
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch("image/visual-similarity/camie/config");
+        const config = await readResponse<CamieConfig>(response);
+        if (cancelled) return;
+        const savedThreshold = String(config.threshold);
+        const savedLimit = String(config.limit);
+        setThreshold(savedThreshold);
+        setLimit(savedLimit);
+        await loadPredictions(savedThreshold, savedLimit);
+      } catch (cause) {
+        if (!cancelled) {
+          setLoading(false);
+          setError(cause instanceof Error ? cause.message : String(cause));
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [loadPredictions]);
 
   const grouped = useMemo(() => {
@@ -182,9 +216,15 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
       );
       const result = await readResponse<CamieApplyResponse>(response);
       const appliedCount =
-        result.characters.length + result.tags.length + (result.artist ? 1 : 0);
+        result.characters.length +
+        result.copyrights.length +
+        result.tags.length +
+        (result.artist ? 1 : 0);
       const createdCount =
-        result.createdCharacters + result.createdArtists + result.createdTags;
+        result.createdCharacters +
+        result.createdArtists +
+        result.createdCopyrights +
+        result.createdTags;
       const preserved = result.preservedArtist
         ? " Existing Artist was preserved."
         : "";
@@ -249,9 +289,9 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
 
         <div className="mb-3 text-muted">
           Characters become Characters, the highest-confidence selected artist
-          becomes the image Artist, and copyright/general/meta predictions
-          become Tags. Existing Characters and Tags are only added to, never
-          removed.
+          becomes the image Artist, Copyright stays in the separate Copyright
+          namespace, and general/meta predictions become Tags. Underscores are
+          shown as spaces while the original model name is kept as an alias.
         </div>
 
         <Form.Check
@@ -322,7 +362,39 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                           onChange={() => togglePrediction(prediction)}
                           label={prediction.name}
                         />
-                        <Badge className="ml-auto" variant="secondary">
+                        {prediction.source?.includes("filename") ? (
+                          <Badge className="ml-2" variant="info">
+                            filename
+                          </Badge>
+                        ) : null}
+                        {prediction.rawName &&
+                        prediction.rawName !== prediction.name ? (
+                          <span className="ml-2 small text-muted">
+                            alias: {prediction.rawName}
+                          </span>
+                        ) : null}
+                        {prediction.targetPath ? (
+                          <Button
+                            className="ml-auto mr-2 py-0 px-2"
+                            size="sm"
+                            variant="outline-secondary"
+                            title={
+                              prediction.targetExists
+                                ? "Open metadata page"
+                                : "Search for this metadata"
+                            }
+                            onClick={() => {
+                              onHide();
+                              history.push(prediction.targetPath!);
+                            }}
+                          >
+                            <Icon icon={faSearch} />
+                          </Button>
+                        ) : null}
+                        <Badge
+                          className={prediction.targetPath ? "" : "ml-auto"}
+                          variant="secondary"
+                        >
                           {(prediction.score * 100).toFixed(1)}%
                         </Badge>
                       </div>
