@@ -30,7 +30,7 @@ export const SceneDetailPanel: React.FC<ISceneDetailProps> = (props) => {
   }
 
   function renderTags() {
-    const copyrights = props.scene.tags.filter(isCopyrightTag);
+    const copyrights = props.scene.tags.filter((tag) => isCopyrightTag(tag));
     const tags = props.scene.tags.filter((tag) => !isCopyrightTag(tag));
     if (tags.length === 0 && copyrights.length === 0) return;
 
