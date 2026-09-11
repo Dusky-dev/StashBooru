@@ -16,6 +16,11 @@ const (
 
 	visualEmbeddingEntityImage = "image"
 	visualEmbeddingEntityScene = "scene"
+
+	// sqlite-vec caps vec0 KNN queries at k=4096. Similarity sorting can
+	// legitimately request more rows than that, so larger searches fall back
+	// to an exact cosine-distance scan instead of truncating the result set.
+	sqliteVecKNNMaxK = 4096
 )
 
 type VisualSimilarityMatch struct {
@@ -155,25 +160,44 @@ func (s *VisualEmbeddingStore) findSimilar(ctx context.Context, vectorTable stri
 		return nil, err
 	}
 
-	query := fmt.Sprintf(`SELECT rowid AS id, distance
+	// The vec0 MATCH query includes the reference row itself, so request one
+	// extra candidate while it fits within sqlite-vec's hard k limit.
+	if limit+1 <= sqliteVecKNNMaxK {
+		query := fmt.Sprintf(`SELECT rowid AS id, distance
 FROM %s
 WHERE embedding MATCH ? AND k = ?
 ORDER BY distance`, vectorTable)
 
-	var candidates []VisualSimilarityMatch
-	if err := dbWrapper.Select(ctx, &candidates, query, reference, limit+1); err != nil {
-		return nil, err
+		var candidates []VisualSimilarityMatch
+		if err := dbWrapper.Select(ctx, &candidates, query, reference, limit+1); err != nil {
+			return nil, err
+		}
+
+		matches := make([]VisualSimilarityMatch, 0, limit)
+		for _, candidate := range candidates {
+			if candidate.ID == referenceID {
+				continue
+			}
+			matches = append(matches, candidate)
+			if len(matches) == limit {
+				break
+			}
+		}
+		return matches, nil
 	}
 
-	matches := make([]VisualSimilarityMatch, 0, limit)
-	for _, candidate := range candidates {
-		if candidate.ID == referenceID {
-			continue
-		}
-		matches = append(matches, candidate)
-		if len(matches) == limit {
-			break
-		}
+	// sqlite-vec rejects k values above 4096. For large libraries we still
+	// need the complete ordering so filters and pagination remain correct;
+	// use its scalar cosine-distance function for an exact brute-force scan.
+	query := fmt.Sprintf(`SELECT rowid AS id, vec_distance_cosine(embedding, ?) AS distance
+FROM %s
+WHERE rowid != ?
+ORDER BY distance
+LIMIT ?`, vectorTable)
+
+	var matches []VisualSimilarityMatch
+	if err := dbWrapper.Select(ctx, &matches, query, reference, referenceID, limit); err != nil {
+		return nil, err
 	}
 	return matches, nil
 }
