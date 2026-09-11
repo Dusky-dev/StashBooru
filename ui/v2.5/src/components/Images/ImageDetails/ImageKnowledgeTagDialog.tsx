@@ -142,7 +142,8 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
     return [...groups.entries()].sort(([left], [right]) => {
       const leftIndex = CATEGORY_ORDER.indexOf(left);
       const rightIndex = CATEGORY_ORDER.indexOf(right);
-      if (leftIndex === -1 && rightIndex === -1) return left.localeCompare(right);
+      if (leftIndex === -1 && rightIndex === -1)
+        return left.localeCompare(right);
       if (leftIndex === -1) return 1;
       if (rightIndex === -1) return -1;
       return leftIndex - rightIndex;
@@ -171,16 +172,22 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
     setApplying(true);
     setError(undefined);
     try {
-      const response = await fetch(`image/${imageId}/knowledge-tags?apply=true`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tags, replaceArtist }),
-      });
+      const response = await fetch(
+        `image/${imageId}/knowledge-tags?apply=true`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tags, replaceArtist }),
+        }
+      );
       const result = await readResponse<CamieApplyResponse>(response);
-      const appliedCount = result.characters.length + result.tags.length + (result.artist ? 1 : 0);
+      const appliedCount =
+        result.characters.length + result.tags.length + (result.artist ? 1 : 0);
       const createdCount =
         result.createdCharacters + result.createdArtists + result.createdTags;
-      const preserved = result.preservedArtist ? " Existing Artist was preserved." : "";
+      const preserved = result.preservedArtist
+        ? " Existing Artist was preserved."
+        : "";
       Toast.success(
         `Applied ${appliedCount} Camie metadata item${appliedCount === 1 ? "" : "s"}; created ${createdCount} new entr${createdCount === 1 ? "y" : "ies"}.${preserved}`
       );
@@ -241,7 +248,10 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         </div>
 
         <div className="mb-3 text-muted">
-          Characters become Characters, the highest-confidence selected artist becomes the image Artist, and copyright/general/meta predictions become Tags. Existing Characters and Tags are only added to, never removed.
+          Characters become Characters, the highest-confidence selected artist
+          becomes the image Artist, and copyright/general/meta predictions
+          become Tags. Existing Characters and Tags are only added to, never
+          removed.
         </div>
 
         <Form.Check
@@ -260,7 +270,9 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
             <Spinner animation="border" role="status" />
           </div>
         ) : predictions.length === 0 && !error ? (
-          <div className="text-muted">Camie returned no predictions at this threshold.</div>
+          <div className="text-muted">
+            Camie returned no predictions at this threshold.
+          </div>
         ) : (
           <>
             <div className="d-flex mb-3">
@@ -268,7 +280,9 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                 className="mr-2"
                 size="sm"
                 variant="outline-secondary"
-                onClick={() => setSelected(new Set(predictions.map(predictionKey)))}
+                onClick={() =>
+                  setSelected(new Set(predictions.map(predictionKey)))
+                }
               >
                 Select all
               </Button>
@@ -290,7 +304,8 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                   <h5>{categoryLabel(category)}</h5>
                   {category === "artist" && items.length > 1 ? (
                     <div className="small text-muted mb-2">
-                      Images support one Artist. If several artists stay selected, the highest-confidence one is used.
+                      Images support one Artist. If several artists stay
+                      selected, the highest-confidence one is used.
                     </div>
                   ) : null}
                   {items.map((prediction, index) => {
