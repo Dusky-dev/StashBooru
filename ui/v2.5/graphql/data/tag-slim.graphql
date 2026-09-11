@@ -7,6 +7,12 @@ fragment SlimTagData on Tag {
   parent_count
   child_count
 
+  parents {
+    id
+    name
+    sort_name
+  }
+
   stash_ids {
     endpoint
     stash_id

@@ -32,6 +32,11 @@ import { sortByRelevance } from "src/utils/query";
 import { PatchComponent, PatchFunction } from "src/patch";
 import { isUUID } from "src/utils/stashIds";
 import { filterByStashID } from "src/models/list-filter/utils";
+import {
+  applyCopyrightNamespaceFilter,
+  fetchCopyrightRoot,
+  isCopyrightTag,
+} from "./copyrightFilter";
 
 export type SelectObject = {
   id: string;
@@ -42,8 +47,12 @@ export type SelectObject = {
 export type Tag = Pick<
   GQL.Tag,
   "id" | "name" | "sort_name" | "aliases" | "image_path" | "stash_ids"
->;
+> & {
+  parents?: Array<Pick<GQL.Tag, "id" | "name" | "sort_name">> | null;
+};
 type Option = SelectOption<Tag>;
+
+export type TagNamespace = "tags" | "copyrights" | "all";
 
 type FindTagsResult = Awaited<
   ReturnType<typeof queryFindTagsForSelect>
@@ -65,7 +74,14 @@ export type TagSelectProps = IFilterProps &
     hoverPlacement?: Placement;
     hoverPlacementLabel?: Placement;
     excludeIds?: string[];
+    namespace?: TagNamespace;
   };
+
+function matchesNamespace(tag: Tag, namespace: TagNamespace) {
+  if (namespace === "all") return true;
+  const copyright = isCopyrightTag(tag);
+  return namespace === "copyrights" ? copyright : !copyright;
+}
 
 const _TagSelect: React.FC<TagSelectProps> = (props) => {
   const [createTag] = useTagCreate();
@@ -75,41 +91,59 @@ const _TagSelect: React.FC<TagSelectProps> = (props) => {
   const maxOptionsShown =
     configuration?.ui.maxOptionsShown ?? defaultMaxOptionsShown;
   const defaultCreatable = !configuration?.interface.disableDropdownCreate.tag;
+  const namespace = props.namespace ?? "tags";
 
   const exclude = useMemo(() => props.excludeIds ?? [], [props.excludeIds]);
+  const visibleValues = useMemo(
+    () => props.values?.filter((tag) => matchesNamespace(tag, namespace)),
+    [namespace, props.values]
+  );
 
-  function filterExcluded(tag: Tag) {
-    // HACK - we should probably exclude these in the backend query, but
-    // this will do in the short-term
-    return !exclude.includes(tag.id.toString());
+  function filterResult(tag: Tag) {
+    return (
+      !exclude.includes(tag.id.toString()) && matchesNamespace(tag, namespace)
+    );
   }
 
-  async function loadTags(input: string): Promise<Option[]> {
-    const filter = new ListFilterModel(GQL.FilterMode.Tags);
+  async function makeFilter() {
+    let filter = new ListFilterModel(GQL.FilterMode.Tags);
     filter.currentPage = 1;
     filter.itemsPerPage = maxOptionsShown;
     filter.sortBy = "name";
     filter.sortDirection = GQL.SortDirectionEnum.Asc;
 
+    if (namespace !== "all") {
+      const root = await fetchCopyrightRoot();
+      if (root) {
+        filter = applyCopyrightNamespaceFilter(
+          filter,
+          root,
+          namespace === "copyrights"
+        );
+      }
+    }
+
+    return filter;
+  }
+
+  async function loadTags(input: string): Promise<Option[]> {
     if (isUUID(input)) {
+      const filter = await makeFilter();
       filterByStashID(filter, input);
 
       const query = await queryFindTagsForSelect(filter);
-      const matches = query.data.findTags.tags.filter(filterExcluded);
+      const matches = query.data.findTags.tags.filter(filterResult);
 
       if (matches.length > 0) {
-        // Matches found, return them immediately.
         return matches.map(toOption);
       }
-
-      // If no stash_id matches found, continue with standard name/alias search.
-      filter.criteria = []; // Clear stash_id criterion to search by name/alias below.
     }
 
+    const filter = await makeFilter();
     filter.searchTerm = input;
 
     const query = await queryFindTagsForSelect(filter);
-    const ret = query.data.findTags.tags.filter(filterExcluded);
+    const ret = query.data.findTags.tags.filter(filterResult);
 
     return tagSelectSort(input, ret).map(toOption);
   }
@@ -120,6 +154,8 @@ const _TagSelect: React.FC<TagSelectProps> = (props) => {
     const { object } = optionProps.data;
 
     const { name } = object;
+
+    if (!matchesNamespace(object, namespace)) return null;
 
     // if name does not match the input value but an alias does, show the alias
     const { inputValue } = optionProps.selectProps;
@@ -135,25 +171,6 @@ const _TagSelect: React.FC<TagSelectProps> = (props) => {
       children: (
         <TagPopover id={object.id} placement={props.hoverPlacement ?? "right"}>
           <span className="react-select-image-option">
-            {/* the following code causes re-rendering issues when selecting tags */}
-            {/* <TagPopover
-              id={object.id}
-              placement={props.hoverPlacement}
-              target={targetRef}
-            >
-              <a
-                href={`/tags/${object.id}`}
-                target="_blank"
-                rel="noreferrer"
-                className="tag-select-image-link"
-              >
-                <img
-                  className="tag-select-image"
-                  src={object.image_path ?? ""}
-                  loading="lazy"
-                />
-              </a>
-            </TagPopover> */}
             <span>{name}</span>
             {alias && <span className="alias">&nbsp;({alias})</span>}
           </span>
@@ -202,13 +219,23 @@ const _TagSelect: React.FC<TagSelectProps> = (props) => {
   };
 
   const onCreate = async (name: string) => {
+    const root = namespace === "copyrights" ? await fetchCopyrightRoot() : null;
+    if (namespace === "copyrights" && !root) {
+      throw new Error("Unable to initialize the Copyright namespace");
+    }
+
     const result = await createTag({
-      variables: { input: { name } },
+      variables: {
+        input: {
+          name,
+          ...(root ? { parent_ids: [String(root.id)] } : {}),
+        },
+      },
     });
     return {
       value: result.data!.tagCreate!.id,
       item: result.data!.tagCreate!,
-      message: "Created tag",
+      message: namespace === "copyrights" ? "Created copyright" : "Created tag",
     };
   };
 
@@ -218,6 +245,7 @@ const _TagSelect: React.FC<TagSelectProps> = (props) => {
       name,
       aliases: [],
       stash_ids: [],
+      parents: [],
     };
   };
 
@@ -240,9 +268,17 @@ const _TagSelect: React.FC<TagSelectProps> = (props) => {
     return true;
   };
 
+  const entityLabel =
+    namespace === "copyrights"
+      ? props.isMulti
+        ? "Copyrights"
+        : "Copyright"
+      : intl.formatMessage({ id: props.isMulti ? "tags" : "tag" });
+
   return (
     <FilterSelectComponent<Tag, boolean>
       {...props}
+      values={visibleValues}
       className={cx(
         "tag-select",
         {
@@ -265,11 +301,7 @@ const _TagSelect: React.FC<TagSelectProps> = (props) => {
         props.noSelectionString ??
         intl.formatMessage(
           { id: "actions.select_entity" },
-          {
-            entityType: intl.formatMessage({
-              id: props.isMulti ? "tags" : "tag",
-            }),
-          }
+          { entityType: entityLabel }
         )
       }
       closeMenuOnSelect={!props.isMulti}
@@ -279,8 +311,11 @@ const _TagSelect: React.FC<TagSelectProps> = (props) => {
 
 export const TagSelect = PatchComponent("TagSelect", _TagSelect);
 
-const _TagIDSelect: React.FC<IFilterProps & IFilterIDProps<Tag>> = (props) => {
+const _TagIDSelect: React.FC<
+  IFilterProps & IFilterIDProps<Tag> & { namespace?: TagNamespace }
+> = (props) => {
   const { ids, onSelect: onSelectValues } = props;
+  const namespace = props.namespace ?? "tags";
 
   const [values, setValues] = useState<Tag[]>([]);
   const idsChanged = useCompare(ids);
@@ -295,7 +330,7 @@ const _TagIDSelect: React.FC<IFilterProps & IFilterIDProps<Tag>> = (props) => {
       const query = await queryFindTagsByIDForSelect(idsToLoad);
       const { tags: loadedTags } = query.data.findTags;
 
-      return loadedTags;
+      return loadedTags.filter((tag) => matchesNamespace(tag, namespace));
     }
 
     if (!idsChanged) {
@@ -307,7 +342,6 @@ const _TagIDSelect: React.FC<IFilterProps & IFilterIDProps<Tag>> = (props) => {
       return;
     }
 
-    // load the values if we have ids and they haven't been loaded yet
     const filteredValues = values.filter((v) => ids.includes(v.id.toString()));
     if (filteredValues.length === ids.length) {
       return;
@@ -316,7 +350,6 @@ const _TagIDSelect: React.FC<IFilterProps & IFilterIDProps<Tag>> = (props) => {
     const load = async () => {
       const items = await loadObjectsByID(ids);
 
-      // #4684 - sort items by sort name/name
       const sortedItems = [...items];
       sortedItems.sort((a, b) => {
         const aName = a.sort_name || a.name;
@@ -332,9 +365,17 @@ const _TagIDSelect: React.FC<IFilterProps & IFilterIDProps<Tag>> = (props) => {
     };
 
     load();
-  }, [ids, idsChanged, values]);
+  }, [ids, idsChanged, namespace, values]);
 
   return <TagSelect {...props} values={values} onSelect={onSelect} />;
 };
 
 export const TagIDSelect = PatchComponent("TagIDSelect", _TagIDSelect);
+
+export const CopyrightSelect: React.FC<TagSelectProps> = (props) => (
+  <TagSelect {...props} namespace="copyrights" />
+);
+
+export const CopyrightIDSelect: React.FC<IFilterProps & IFilterIDProps<Tag>> = (
+  props
+) => <TagIDSelect {...props} namespace="copyrights" />;

@@ -1,13 +1,28 @@
 import * as GQL from "src/core/generated-graphql";
 import { useTagCreate } from "src/core/StashService";
 import { useEffect, useState } from "react";
-import { Tag, TagSelect, TagSelectProps } from "src/components/Tags/TagSelect";
+import {
+  CopyrightSelect,
+  Tag,
+  TagSelect,
+  TagSelectProps,
+} from "src/components/Tags/TagSelect";
+import { isCopyrightTag } from "src/components/Tags/copyrightFilter";
 import { useToast } from "src/hooks/Toast";
 import { useIntl } from "react-intl";
 import { Badge, Button } from "react-bootstrap";
 import { Icon } from "src/components/Shared/Icon";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { CollapseButton } from "src/components/Shared/CollapseButton";
+
+function splitTags(srcTags: Tag[] | undefined) {
+  const tags: Tag[] = [];
+  const copyrights: Tag[] = [];
+  for (const tag of srcTags ?? []) {
+    (isCopyrightTag(tag) ? copyrights : tags).push(tag);
+  }
+  return { tags, copyrights };
+}
 
 export function useTagsEdit(
   srcTags: Tag[] | undefined,
@@ -17,21 +32,38 @@ export function useTagsEdit(
   const Toast = useToast();
   const [createTag] = useTagCreate();
 
-  const [tags, setTags] = useState<Tag[]>([]);
+  const initial = splitTags(srcTags);
+  const [tags, setTags] = useState<Tag[]>(initial.tags);
+  const [copyrights, setCopyrights] = useState<Tag[]>(initial.copyrights);
   const [newTags, setNewTags] = useState<GQL.ScrapedTag[]>();
+
+  function publish(nextTags: Tag[], nextCopyrights: Tag[]) {
+    setFieldValue(
+      [...nextTags, ...nextCopyrights].map((item) => item.id.toString())
+    );
+  }
 
   function onSetTags(items: Tag[]) {
     setTags(items);
-    setFieldValue(items.map((item) => item.id));
+    publish(items, copyrights);
+  }
+
+  function onSetCopyrights(items: Tag[]) {
+    setCopyrights(items);
+    publish(tags, items);
   }
 
   function resetTagsState() {
-    setTags(srcTags ?? []);
+    const next = splitTags(srcTags);
+    setTags(next.tags);
+    setCopyrights(next.copyrights);
     setNewTags(undefined);
   }
 
   useEffect(() => {
-    setTags(srcTags ?? []);
+    const next = splitTags(srcTags);
+    setTags(next.tags);
+    setCopyrights(next.copyrights);
   }, [srcTags]);
 
   async function createNewTag(toCreate: GQL.ScrapedTag) {
@@ -48,7 +80,6 @@ export function useTagsEdit(
         return;
       }
 
-      // add the new tag to the new tags value
       onSetTags(
         tags.concat([
           {
@@ -56,11 +87,11 @@ export function useTagsEdit(
             name: toCreate.name ?? "",
             aliases: [],
             stash_ids: result.data.tagCreate.stash_ids,
+            parents: [],
           },
         ])
       );
 
-      // remove the tag from the list
       const newTagsClone = newTags!.concat();
       const pIndex = newTagsClone.indexOf(toCreate);
       newTagsClone.splice(pIndex, 1);
@@ -88,7 +119,6 @@ export function useTagsEdit(
       return;
     }
 
-    // map tags to their ids and filter out those not found
     const idTags = scrapedTags.filter(
       (t) => t.stored_id !== undefined && t.stored_id !== null
     );
@@ -100,6 +130,7 @@ export function useTagsEdit(
           name: p.name ?? "",
           aliases: [],
           stash_ids: [],
+          parents: [],
         };
       })
     );
@@ -143,20 +174,43 @@ export function useTagsEdit(
     return ret;
   }
 
+  function copyrightsControl(props?: TagSelectProps) {
+    return (
+      <CopyrightSelect
+        isMulti
+        onSelect={onSetCopyrights}
+        values={copyrights}
+        {...props}
+      />
+    );
+  }
+
   function tagsControl(props?: TagSelectProps) {
     return (
       <>
         <TagSelect isMulti onSelect={onSetTags} values={tags} {...props} />
         {renderNewTags()}
+        <div className="mt-2">
+          <small className="text-muted d-block mb-1">
+            {intl.formatMessage({
+              id: "copyrights",
+              defaultMessage: "Copyrights",
+            })}
+          </small>
+          {copyrightsControl(props)}
+        </div>
       </>
     );
   }
 
   return {
     tags,
+    copyrights,
     onSetTags,
+    onSetCopyrights,
     resetTagsState,
     tagsControl,
+    copyrightsControl,
     updateTagsStateFromScraper,
   };
 }

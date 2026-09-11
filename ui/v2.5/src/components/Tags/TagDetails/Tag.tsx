@@ -1,6 +1,11 @@
 import { Button, Tabs, Tab, Form } from "react-bootstrap";
 import React, { useEffect, useMemo, useState } from "react";
-import { useHistory, Redirect, RouteComponentProps } from "react-router-dom";
+import {
+  useHistory,
+  useLocation,
+  Redirect,
+  RouteComponentProps,
+} from "react-router-dom";
 import { FormattedMessage, useIntl } from "react-intl";
 import { Helmet } from "react-helmet";
 import cx from "classnames";
@@ -46,6 +51,7 @@ import { AliasList } from "src/components/Shared/DetailsPage/AliasList";
 import { HeaderImage } from "src/components/Shared/DetailsPage/HeaderImage";
 import { goBackOrReplace } from "src/utils/history";
 import { PatchComponent } from "src/patch";
+import { isCopyrightTag } from "../copyrightFilter";
 
 interface IProps {
   tag: GQL.TagDataFragment;
@@ -78,7 +84,8 @@ const TagTabs: React.FC<{
   tag: GQL.TagDataFragment;
   abbreviateCounter: boolean;
   showAllCounts?: boolean;
-}> = ({ tabKey, tag, abbreviateCounter, showAllCounts = false }) => {
+  basePath: string;
+}> = ({ tabKey, tag, abbreviateCounter, showAllCounts = false, basePath }) => {
   const [showAllDetails, setShowAllDetails] = useState<boolean>(
     showAllCounts && tag.children.length > 0
   );
@@ -131,7 +138,7 @@ const TagTabs: React.FC<{
     tabKey,
     validTabs,
     defaultTabKey: populatedDefaultTab,
-    baseURL: `/tags/${tag.id}`,
+    baseURL: `${basePath}/${tag.id}`,
   });
 
   const contentSwitch = useMemo(() => {
@@ -287,8 +294,20 @@ const TagPage: React.FC<IProps> = PatchComponent(
   "TagPage",
   ({ tag, tabKey }) => {
     const history = useHistory();
+    const location = useLocation();
     const Toast = useToast();
     const intl = useIntl();
+    const copyright =
+      location.pathname.startsWith("/copyrights/") || isCopyrightTag(tag);
+    const basePath = copyright ? "/copyrights" : "/tags";
+    const entityName = copyright
+      ? "Copyright"
+      : intl.formatMessage({ id: "tag" });
+    const requiredParentId = copyright
+      ? tag.parents.find(
+          (parent) => parent.name.trim().toLocaleLowerCase() === "copyright"
+        )?.id
+      : undefined;
 
     // Configuration settings
     const { configuration } = useConfigurationContext();
@@ -343,7 +362,6 @@ const TagPage: React.FC<IProps> = PatchComponent(
       }
     }
 
-    // set up hotkeys
     useEffect(() => {
       Mousetrap.bind("e", () => toggleEditing());
       Mousetrap.bind("d d", () => {
@@ -369,11 +387,19 @@ const TagPage: React.FC<IProps> = PatchComponent(
         parents: tag.parents ?? [],
         children: tag.children ?? [],
       };
+      const normalizedInput = requiredParentId
+        ? {
+            ...input,
+            parent_ids: Array.from(
+              new Set([...(input.parent_ids ?? []), requiredParentId])
+            ),
+          }
+        : input;
       const result = await updateTag({
         variables: {
           input: {
             id: tag.id,
-            ...input,
+            ...normalizedInput,
           },
         },
       });
@@ -387,7 +413,7 @@ const TagPage: React.FC<IProps> = PatchComponent(
         Toast.success(
           intl.formatMessage(
             { id: "toast.updated_entity" },
-            { entity: intl.formatMessage({ id: "tag" }).toLocaleLowerCase() }
+            { entity: entityName.toLocaleLowerCase() }
           )
         );
       }
@@ -419,7 +445,7 @@ const TagPage: React.FC<IProps> = PatchComponent(
         return;
       }
 
-      goBackOrReplace(history, "/tags");
+      goBackOrReplace(history, basePath);
     }
 
     function renderDeleteAlert() {
@@ -438,9 +464,7 @@ const TagPage: React.FC<IProps> = PatchComponent(
             <FormattedMessage
               id="dialogs.delete_confirm"
               values={{
-                entityName:
-                  tag.name ??
-                  intl.formatMessage({ id: "tag" }).toLocaleLowerCase(),
+                entityName: tag.name ?? entityName.toLocaleLowerCase(),
               }}
             />
           </p>
@@ -474,9 +498,7 @@ const TagPage: React.FC<IProps> = PatchComponent(
           onClose={(mergedId) => {
             setIsMerging(false);
             if (mergedId !== undefined && mergedId !== tag.id) {
-              // By default, the merge destination is the current tag, but
-              // the user can change it, in which case we need to redirect.
-              history.replace(`/tags/${mergedId}`);
+              history.replace(`${basePath}/${mergedId}`);
             }
           }}
           tags={[tag]}
@@ -539,6 +561,8 @@ const TagPage: React.FC<IProps> = PatchComponent(
                     onDelete={onDelete}
                     setImage={setImage}
                     setEncodingImage={setEncodingImage}
+                    basePath={basePath}
+                    entityName={entityName}
                   />
                 ) : (
                   <DetailsEditNavbar
@@ -574,6 +598,7 @@ const TagPage: React.FC<IProps> = PatchComponent(
                   tag={tag}
                   abbreviateCounter={abbreviateCounter}
                   showAllCounts={showAllCounts}
+                  basePath={basePath}
                 />
               )}
             </div>
@@ -600,12 +625,28 @@ const TagLoader: React.FC<RouteComponentProps<ITagParams>> = ({
   if (!data?.findTag)
     return <ErrorMessage error={`No tag found with id ${id}.`} />;
 
+  const basePath =
+    location.pathname.startsWith("/copyrights/") || isCopyrightTag(data.findTag)
+      ? "/copyrights"
+      : "/tags";
+
   if (tab && !isTabKey(tab)) {
     return (
       <Redirect
         to={{
           ...location,
-          pathname: `/tags/${id}`,
+          pathname: `${basePath}/${id}`,
+        }}
+      />
+    );
+  }
+
+  if (basePath === "/copyrights" && location.pathname.startsWith("/tags/")) {
+    return (
+      <Redirect
+        to={{
+          ...location,
+          pathname: `${basePath}/${id}${tab ? `/${tab}` : ""}`,
         }}
       />
     );

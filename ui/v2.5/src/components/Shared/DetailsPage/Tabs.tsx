@@ -6,6 +6,7 @@ import { PatchComponent } from "src/patch";
 
 const LAST_MEDIA_TAB_STORAGE_KEY = "stashbooru.details.lastMediaTab";
 const rememberedMediaTabs = new Set([
+  "all",
   "scenes",
   "galleries",
   "images",

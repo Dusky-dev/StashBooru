@@ -8,6 +8,7 @@ import { PerformerCard } from "src/components/Performers/PerformerCard";
 import { sortPerformers } from "src/core/performers";
 import { DirectorLink } from "src/components/Shared/Link";
 import { CustomFields } from "src/components/Shared/CustomFields";
+import { isCopyrightTag } from "src/components/Tags/copyrightFilter";
 
 interface ISceneDetailProps {
   scene: GQL.SceneDataFragment;
@@ -29,19 +30,39 @@ export const SceneDetailPanel: React.FC<ISceneDetailProps> = (props) => {
   }
 
   function renderTags() {
-    if (props.scene.tags.length === 0) return;
-    const tags = props.scene.tags.map((tag) => (
-      <TagLink key={tag.id} tag={tag} />
-    ));
+    const copyrights = props.scene.tags.filter((tag) => isCopyrightTag(tag));
+    const tags = props.scene.tags.filter((tag) => !isCopyrightTag(tag));
+    if (tags.length === 0 && copyrights.length === 0) return;
+
     return (
       <>
-        <h6>
-          <FormattedMessage
-            id="countables.tags"
-            values={{ count: props.scene.tags.length }}
-          />
-        </h6>
-        {tags}
+        {copyrights.length > 0 && (
+          <>
+            <h6>
+              {intl.formatMessage({
+                id: "copyrights",
+                defaultMessage: "Copyrights",
+              })}{" "}
+              ({copyrights.length})
+            </h6>
+            {copyrights.map((tag) => (
+              <TagLink key={tag.id} tag={tag} />
+            ))}
+          </>
+        )}
+        {tags.length > 0 && (
+          <>
+            <h6>
+              <FormattedMessage
+                id="countables.tags"
+                values={{ count: tags.length }}
+              />
+            </h6>
+            {tags.map((tag) => (
+              <TagLink key={tag.id} tag={tag} />
+            ))}
+          </>
+        )}
       </>
     );
   }
