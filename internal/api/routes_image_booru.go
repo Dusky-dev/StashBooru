@@ -324,10 +324,11 @@ func booruTags(post *booruPost, source string, categories map[string]string) []c
 			if rawName == "" {
 				continue
 			}
+			itemCategory := category
 			if resolved := categories[strings.ToLower(rawName)]; resolved != "" {
-				category = resolved
+				itemCategory = resolved
 			}
-			key := category + "\x00" + strings.ToLower(rawName)
+			key := itemCategory + "\x00" + strings.ToLower(rawName)
 			if seen[key] {
 				continue
 			}
@@ -335,7 +336,7 @@ func booruTags(post *booruPost, source string, categories map[string]string) []c
 			result = append(result, camietagger.Tag{
 				Name:     rawName,
 				RawName:  rawName,
-				Category: category,
+				Category: itemCategory,
 				Score:    1,
 				Source:   "booru:" + strings.ToLower(source),
 			})
@@ -399,7 +400,14 @@ func fetchBooruProvider(ctx context.Context, provider booruProvider, hash string
 	if err != nil {
 		return nil, err
 	}
-	return provider.parse(data)
+	post, err := provider.parse(data)
+	if err != nil {
+		return nil, err
+	}
+	if post.MD5 != "" && !strings.EqualFold(post.MD5, hash) {
+		return nil, errBooruNoMatch
+	}
+	return post, nil
 }
 
 type booruLookupResult struct {
@@ -424,18 +432,19 @@ func lookupBooruPost(ctx context.Context, hash string) (booruProvider, *booruPos
 	completed := make([]bool, len(booruProviders))
 	successes := make([]*booruLookupResult, len(booruProviders))
 	var providerErrors []string
-	atLeastOneLookupSucceeded := false
+	noMatchCount := 0
 
 	for received := 0; received < len(booruProviders); received++ {
 		select {
 		case result := <-results:
 			completed[result.index] = true
-			if result.err == nil {
+			switch {
+			case result.err == nil:
 				copyResult := result
 				successes[result.index] = &copyResult
-			} else if errors.Is(result.err, errBooruNoMatch) {
-				atLeastOneLookupSucceeded = true
-			} else {
+			case errors.Is(result.err, errBooruNoMatch):
+				noMatchCount++
+			default:
 				providerErrors = append(providerErrors, result.provider.name+": "+result.err.Error())
 			}
 
@@ -467,11 +476,11 @@ func lookupBooruPost(ctx context.Context, hash string) (booruProvider, *booruPos
 		}
 	}
 
-	if atLeastOneLookupSucceeded {
+	if noMatchCount == len(booruProviders) {
 		return booruProvider{}, nil, errBooruNoMatch
 	}
 	if len(providerErrors) > 0 {
-		return booruProvider{}, nil, fmt.Errorf("all booru lookups failed: %s", strings.Join(providerErrors, "; "))
+		return booruProvider{}, nil, fmt.Errorf("booru lookups failed: %s", strings.Join(providerErrors, "; "))
 	}
 	return booruProvider{}, nil, errBooruNoMatch
 }
