@@ -89,6 +89,31 @@ func compileCamieFilenameLayout(layout string) (*camieFilenameLayout, error) {
 	return &camieFilenameLayout{expression: compiled, groups: groups}, nil
 }
 
+func splitCamieFilenameValue(category string, value string) []string {
+	value = strings.TrimSpace(value)
+	if category != "copyright" || !strings.Contains(value, "+") {
+		return []string{value}
+	}
+
+	parts := strings.Split(value, "+")
+	values := make([]string, 0, len(parts))
+	seen := make(map[string]bool, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			// Preserve names containing literal repeated/trailing plus signs, such as C++.
+			return []string{value}
+		}
+		key := strings.ToLower(part)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		values = append(values, part)
+	}
+	return values
+}
+
 func parseCamieFilename(path string, layout string) ([]camietagger.Tag, error) {
 	compiled, err := compileCamieFilenameLayout(layout)
 	if err != nil {
@@ -110,12 +135,14 @@ func parseCamieFilename(path string, layout string) ([]camietagger.Tag, error) {
 		if value == "" {
 			continue
 		}
-		predictions = append(predictions, camietagger.Tag{
-			Name:     value,
-			Category: category,
-			Score:    1,
-			Source:   "filename",
-		})
+		for _, item := range splitCamieFilenameValue(category, value) {
+			predictions = append(predictions, camietagger.Tag{
+				Name:     item,
+				Category: category,
+				Score:    1,
+				Source:   "filename",
+			})
+		}
 	}
 	return predictions, nil
 }
