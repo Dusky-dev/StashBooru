@@ -112,3 +112,67 @@ func TestMergeCamiePredictionsPreservesRawAlias(t *testing.T) {
 		}
 	}
 }
+
+func TestMergeCamiePredictionsFilenameOwnsIdentityCategories(t *testing.T) {
+	model := []camietagger.Tag{
+		{Name: "darkness_(konosuba)", Category: "character", Score: 0.98},
+		{Name: "megumin_(konosuba)", Category: "character", Score: 0.97},
+		{Name: "other_artist", Category: "artist", Score: 0.96},
+		{Name: "rebuild_of_evangelion", Category: "copyright", Score: 0.95},
+		{Name: "long_hair", Category: "general", Score: 0.94},
+	}
+	filename := []camietagger.Tag{
+		{Name: "darkness_(konosuba)", Category: "character", Score: 1, Source: "filename"},
+		{Name: "afrobull", Category: "artist", Score: 1, Source: "filename"},
+		{Name: "kono_subarashii_sekai_ni_shukufuku_wo!", Category: "copyright", Score: 1, Source: "filename"},
+	}
+
+	merged := mergeCamiePredictions(model, filename)
+	found := map[string]camietagger.Tag{}
+	for _, prediction := range merged {
+		found[prediction.Category+"\x00"+prediction.Name] = prediction
+	}
+
+	darkness, ok := found["character\x00Darkness (Konosuba)"]
+	if !ok {
+		t.Fatal("expected authoritative local character Darkness")
+	}
+	if darkness.Source != "model+filename" {
+		t.Fatalf("expected matching Camie character to confirm local value, got source %q", darkness.Source)
+	}
+	if _, ok := found["character\x00Megumin (Konosuba)"]; ok {
+		t.Fatal("conflicting Camie-only character must not mix with local characters")
+	}
+	if _, ok := found["artist\x00other_artist"]; ok {
+		t.Fatal("conflicting Camie-only artist must not mix with local artist")
+	}
+	if _, ok := found["copyright\x00Rebuild Of Evangelion"]; ok {
+		t.Fatal("conflicting Camie-only copyright must not mix with local copyrights")
+	}
+	if _, ok := found["artist\x00afrobull"]; !ok {
+		t.Fatal("expected local artist to be preserved")
+	}
+	if _, ok := found["copyright\x00Kono Subarashii Sekai Ni Shukufuku Wo!"]; !ok {
+		t.Fatal("expected local copyright to be preserved")
+	}
+	if _, ok := found["general\x00long hair"]; !ok {
+		t.Fatal("general Camie tags should still mix with local identity metadata")
+	}
+}
+
+func TestMergeCamiePredictionsFillsMissingLocalCategory(t *testing.T) {
+	model := []camietagger.Tag{
+		{Name: "rebuild_of_evangelion", Category: "copyright", Score: 0.95},
+	}
+	filename := []camietagger.Tag{
+		{Name: "darkness_(konosuba)", Category: "character", Score: 1, Source: "filename"},
+	}
+
+	merged := mergeCamiePredictions(model, filename)
+	for _, prediction := range merged {
+		if prediction.Category == "copyright" && prediction.Name == "Rebuild Of Evangelion" {
+			return
+		}
+	}
+	t.Fatal("Camie should fill a Character/Artist/Copyright category missing from local metadata")
+}
