@@ -96,18 +96,13 @@ func (s *CopyrightStore) FindMany(ctx context.Context, ids []int) ([]*models.Cop
 }
 
 func (s *CopyrightStore) FindByName(ctx context.Context, name string, nocase bool) (*models.Copyright, error) {
-	operator := "="
+	operator := "= ?"
 	if nocase {
-		operator = "= ? COLLATE NOCASE"
+		operator += " COLLATE NOCASE"
 	}
 	var row copyrightRow
-	var err error
-	if nocase {
-		err = dbWrapper.Get(ctx, &row, "SELECT id, name, sort_name, description, favorite, created_at, updated_at FROM copyrights WHERE name "+operator+" LIMIT 1", name)
-	} else {
-		err = dbWrapper.Get(ctx, &row, "SELECT id, name, sort_name, description, favorite, created_at, updated_at FROM copyrights WHERE name "+operator+" ? LIMIT 1", name)
-	}
-	if err != nil {
+	query := "SELECT id, name, sort_name, description, favorite, created_at, updated_at FROM copyrights WHERE name " + operator + " LIMIT 1"
+	if err := dbWrapper.Get(ctx, &row, query, name); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
@@ -349,12 +344,12 @@ func (s *CopyrightStore) Update(ctx context.Context, input models.CopyrightUpdat
 		}
 	}
 	if input.Aliases != nil {
-		if err := replaceCopyrightAliases(ctx, id, normalizeCopyrightAliases(name, *input.Aliases)); err != nil {
+		if err := replaceCopyrightAliases(ctx, id, normalizeCopyrightAliases(name, input.Aliases)); err != nil {
 			return nil, err
 		}
 	}
 	if input.ParentIDs != nil {
-		parentIDs, err := stringIDsToInts(*input.ParentIDs)
+		parentIDs, err := stringIDsToInts(input.ParentIDs)
 		if err != nil {
 			return nil, err
 		}
@@ -363,7 +358,7 @@ func (s *CopyrightStore) Update(ctx context.Context, input models.CopyrightUpdat
 		}
 	}
 	if input.ChildIDs != nil {
-		childIDs, err := stringIDsToInts(*input.ChildIDs)
+		childIDs, err := stringIDsToInts(input.ChildIDs)
 		if err != nil {
 			return nil, err
 		}
@@ -406,6 +401,7 @@ WHERE r.` + whereColumn + ` = ? ORDER BY COALESCE(NULLIF(c.sort_name, ''), c.nam
 func (s *CopyrightStore) FindParents(ctx context.Context, id int) ([]*models.Copyright, error) {
 	return s.findRelated(ctx, id, true)
 }
+
 func (s *CopyrightStore) FindChildren(ctx context.Context, id int) ([]*models.Copyright, error) {
 	return s.findRelated(ctx, id, false)
 }
@@ -415,9 +411,11 @@ func copyrightRelationCount(ctx context.Context, table, idColumn string, id int)
 	err := dbWrapper.Get(ctx, &count, "SELECT COUNT(*) FROM "+table+" WHERE "+idColumn+" = ?", id)
 	return count, err
 }
+
 func (s *CopyrightStore) ImageCount(ctx context.Context, id int) (int, error) {
 	return copyrightRelationCount(ctx, imagesCopyrightsTable, "copyright_id", id)
 }
+
 func (s *CopyrightStore) SceneCount(ctx context.Context, id int) (int, error) {
 	return copyrightRelationCount(ctx, scenesCopyrightsTable, "copyright_id", id)
 }
@@ -440,9 +438,11 @@ WHERE j.` + mediaColumn + ` = ? ORDER BY COALESCE(NULLIF(c.sort_name, ''), c.nam
 	}
 	return ret, nil
 }
+
 func (s *CopyrightStore) FindByImageID(ctx context.Context, imageID int) ([]*models.Copyright, error) {
 	return s.findForMedia(ctx, imagesCopyrightsTable, "image_id", imageID)
 }
+
 func (s *CopyrightStore) FindBySceneID(ctx context.Context, sceneID int) ([]*models.Copyright, error) {
 	return s.findForMedia(ctx, scenesCopyrightsTable, "scene_id", sceneID)
 }
@@ -460,15 +460,19 @@ func setMediaCopyrights(ctx context.Context, table, mediaColumn string, mediaID 
 	}
 	return nil
 }
+
 func (s *CopyrightStore) SetImageCopyrights(ctx context.Context, imageID int, copyrightIDs []int) error {
 	return setMediaCopyrights(ctx, imagesCopyrightsTable, "image_id", imageID, copyrightIDs, true)
 }
+
 func (s *CopyrightStore) AddImageCopyrights(ctx context.Context, imageID int, copyrightIDs []int) error {
 	return setMediaCopyrights(ctx, imagesCopyrightsTable, "image_id", imageID, copyrightIDs, false)
 }
+
 func (s *CopyrightStore) SetSceneCopyrights(ctx context.Context, sceneID int, copyrightIDs []int) error {
 	return setMediaCopyrights(ctx, scenesCopyrightsTable, "scene_id", sceneID, copyrightIDs, true)
 }
+
 func (s *CopyrightStore) AddSceneCopyrights(ctx context.Context, sceneID int, copyrightIDs []int) error {
 	return setMediaCopyrights(ctx, scenesCopyrightsTable, "scene_id", sceneID, copyrightIDs, false)
 }
