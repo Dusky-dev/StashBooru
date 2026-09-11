@@ -25,9 +25,7 @@ let copyrightRootPromise: Promise<CopyrightRoot | null> | undefined;
 
 export function fetchCopyrightRoot() {
   if (!copyrightRootPromise) {
-    copyrightRootPromise = fetch(
-      "image/visual-similarity/camie/copyright-root"
-    )
+    copyrightRootPromise = fetch("image/visual-similarity/camie/copyright-root")
       .then(async (response) => {
         if (!response.ok) throw new Error(await response.text());
         return (await response.json()) as CopyrightRoot;
