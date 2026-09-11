@@ -73,9 +73,7 @@ const Galleries = lazyComponent(
 
 const Groups = lazyComponent(() => import("./components/Groups/Groups"));
 const Tags = lazyComponent(() => import("./components/Tags/Tags"));
-const Copyrights = lazyComponent(
-  () => import("./components/Tags/Copyrights")
-);
+const Copyrights = lazyComponent(() => import("./components/Tags/Copyrights"));
 const Images = lazyComponent(() => import("./components/Images/Images"));
 const Setup = lazyComponent(() => import("./components/Setup/Setup"));
 const Migrate = lazyComponent(() => import("./components/Setup/Migrate"));
