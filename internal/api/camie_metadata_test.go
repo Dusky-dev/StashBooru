@@ -143,7 +143,7 @@ func TestMergeCamiePredictionsFilenameOwnsIdentityCategories(t *testing.T) {
 	if _, ok := found["character\x00Megumin (Konosuba)"]; ok {
 		t.Fatal("conflicting Camie-only character must not mix with local characters")
 	}
-	if _, ok := found["artist\x00other_artist"]; ok {
+	if _, ok := found["artist\x00other artist"]; ok {
 		t.Fatal("conflicting Camie-only artist must not mix with local artist")
 	}
 	if _, ok := found["copyright\x00Rebuild Of Evangelion"]; ok {
