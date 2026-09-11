@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge, Button, Form, Modal, Spinner } from "react-bootstrap";
-import { faSearch } from "@fortawesome/free-solid-svg-icons";
+import {
+  faExternalLinkAlt,
+  faSearch,
+} from "@fortawesome/free-solid-svg-icons";
 import { useHistory } from "react-router-dom";
 
 import { Icon } from "src/components/Shared/Icon";
@@ -21,6 +24,15 @@ interface CamieTagsResponse {
   model: string;
   threshold: number;
   limit: number;
+  tags: CamiePrediction[];
+}
+
+interface BooruMetadataResponse {
+  source: string;
+  postID: string;
+  postURL?: string;
+  md5: string;
+  md5Source: "filename" | "file";
   tags: CamiePrediction[];
 }
 
@@ -101,6 +113,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   const [predictions, setPredictions] = useState<CamiePrediction[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [backend, setBackend] = useState<string>();
+  const [booruMetadata, setBooruMetadata] = useState<BooruMetadataResponse>();
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [replaceArtist, setReplaceArtist] = useState(false);
@@ -121,6 +134,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
 
       setLoading(true);
       setError(undefined);
+      setBooruMetadata(undefined);
       try {
         const response = await fetch(
           `image/${imageId}/knowledge-tags?threshold=${encodeURIComponent(parsedThreshold)}&limit=${encodeURIComponent(parsedLimit)}`,
@@ -140,6 +154,26 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
     },
     [imageId]
   );
+
+  const loadBooruMetadata = useCallback(async () => {
+    setLoading(true);
+    setError(undefined);
+    setBackend(undefined);
+    try {
+      const response = await fetch(`image/${imageId}/booru-metadata`);
+      const result = await readResponse<BooruMetadataResponse>(response);
+      setBooruMetadata(result);
+      setPredictions(result.tags);
+      setSelected(new Set(result.tags.map(predictionKey)));
+    } catch (cause) {
+      setBooruMetadata(undefined);
+      setPredictions([]);
+      setSelected(new Set());
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setLoading(false);
+    }
+  }, [imageId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -176,8 +210,9 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
     return [...groups.entries()].sort(([left], [right]) => {
       const leftIndex = CATEGORY_ORDER.indexOf(left);
       const rightIndex = CATEGORY_ORDER.indexOf(right);
-      if (leftIndex === -1 && rightIndex === -1)
+      if (leftIndex === -1 && rightIndex === -1) {
         return left.localeCompare(right);
+      }
       if (leftIndex === -1) return 1;
       if (rightIndex === -1) return -1;
       return leftIndex - rightIndex;
@@ -199,7 +234,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
       selected.has(predictionKey(prediction))
     );
     if (!tags.length) {
-      setError("Select at least one prediction to apply.");
+      setError("Select at least one metadata item to apply.");
       return;
     }
 
@@ -229,7 +264,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         ? " Existing Artist was preserved."
         : "";
       Toast.success(
-        `Applied ${appliedCount} Camie metadata item${appliedCount === 1 ? "" : "s"}; created ${createdCount} new entr${createdCount === 1 ? "y" : "ies"}.${preserved}`
+        `Applied ${appliedCount} metadata item${appliedCount === 1 ? "" : "s"}; created ${createdCount} new entr${createdCount === 1 ? "y" : "ies"}.${preserved}`
       );
       await onApplied();
       onHide();
@@ -245,12 +280,12 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   return (
     <Modal show onHide={onHide} size="lg" centered>
       <Modal.Header closeButton>
-        <Modal.Title>Camie metadata</Modal.Title>
+        <Modal.Title>Image metadata</Modal.Title>
       </Modal.Header>
       <Modal.Body>
         <div className="d-flex flex-wrap align-items-end mb-3">
           <Form.Group className="mr-3 mb-2">
-            <Form.Label>Threshold</Form.Label>
+            <Form.Label>Camie threshold</Form.Label>
             <Form.Control
               type="number"
               min="0.001"
@@ -273,12 +308,20 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
             />
           </Form.Group>
           <Button
-            className="mb-2"
+            className="mr-2 mb-2"
             variant="secondary"
             disabled={loading || applying}
             onClick={() => void loadPredictions(threshold, limit)}
           >
-            {loading ? "Analyzing…" : "Analyze again"}
+            Analyze with Camie
+          </Button>
+          <Button
+            className="mb-2"
+            variant="secondary"
+            disabled={loading || applying}
+            onClick={() => void loadBooruMetadata()}
+          >
+            Fetch from booru
           </Button>
           {backend ? (
             <Badge className="ml-2 mb-2" variant="secondary">
@@ -287,11 +330,36 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
           ) : null}
         </div>
 
+        {booruMetadata ? (
+          <div className="alert alert-info py-2">
+            <div className="d-flex flex-wrap align-items-center">
+              <strong>{booruMetadata.source}</strong>
+              <Badge className="ml-2" variant="secondary">
+                MD5 from {booruMetadata.md5Source}
+              </Badge>
+              <code className="ml-2">{booruMetadata.md5}</code>
+              {booruMetadata.postURL ? (
+                <a
+                  className="ml-auto"
+                  href={booruMetadata.postURL}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Post {booruMetadata.postID || "match"}{" "}
+                  <Icon icon={faExternalLinkAlt} />
+                </a>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
         <div className="mb-3 text-muted">
-          Characters become Characters, the highest-confidence selected artist
-          becomes the image Artist, Copyright stays in the separate Copyright
-          namespace, and general/meta predictions become Tags. Underscores are
-          shown as spaces while the original model name is kept as an alias.
+          Analyze locally/remotely with Camie, or look up the image on supported
+          boorus by MD5 and re-extract the post metadata. A filename MD5 is tried
+          first; if it is stale or unmatched, StashBooru hashes the actual file
+          and retries. Characters become Characters, the highest selected artist
+          becomes the image Artist, Copyright stays in the Copyright namespace,
+          and general/meta entries become Tags.
         </div>
 
         <Form.Check
@@ -310,9 +378,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
             <Spinner animation="border" role="status" />
           </div>
         ) : predictions.length === 0 && !error ? (
-          <div className="text-muted">
-            Camie returned no predictions at this threshold.
-          </div>
+          <div className="text-muted">No metadata was returned.</div>
         ) : (
           <>
             <div className="d-flex mb-3">
@@ -357,7 +423,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                       >
                         <Form.Check
                           type="checkbox"
-                          id={`camie-${category}-${index}`}
+                          id={`metadata-${category}-${index}`}
                           checked={selected.has(key)}
                           onChange={() => togglePrediction(prediction)}
                           label={prediction.name}
@@ -365,6 +431,10 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                         {prediction.source?.includes("filename") ? (
                           <Badge className="ml-2" variant="info">
                             filename
+                          </Badge>
+                        ) : prediction.source?.startsWith("booru:") ? (
+                          <Badge className="ml-2" variant="info">
+                            {prediction.source.slice("booru:".length)}
                           </Badge>
                         ) : null}
                         {prediction.rawName &&
