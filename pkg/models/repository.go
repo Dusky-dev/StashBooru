@@ -26,6 +26,7 @@ type Repository struct {
 	SceneMarker    SceneMarkerReaderWriter
 	Studio         StudioReaderWriter
 	Tag            TagReaderWriter
+	Copyright      CopyrightReaderWriter
 	SavedFilter    SavedFilterReaderWriter
 }
 
