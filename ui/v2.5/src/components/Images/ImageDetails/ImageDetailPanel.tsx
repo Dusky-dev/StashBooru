@@ -32,7 +32,7 @@ export const ImageDetailPanel: React.FC<IImageDetailProps> = PatchComponent(
     }
 
     function renderTags() {
-      const copyrights = props.image.tags.filter(isCopyrightTag);
+      const copyrights = props.image.tags.filter((tag) => isCopyrightTag(tag));
       const tags = props.image.tags.filter((tag) => !isCopyrightTag(tag));
       if (tags.length === 0 && copyrights.length === 0) return;
 
