@@ -126,7 +126,7 @@ models:
   ScraperSource:
     model: github.com/stashapp/stash/pkg/scraper.Source
   IdentifySourceInput:
-    model: github.com/stashapp/stash/internal/identify.Source
+    model: github.com/stashapp/stash/pkg/scraper.Source
   IdentifyFieldOptionsInput:
     model: github.com/stashapp/stash/internal/identify.FieldOptions
   IdentifyMetadataOptionsInput:
@@ -144,4 +144,21 @@ models:
     fields:
       career_length:
         resolver: true
-  
+  Copyright:
+    fields:
+      parents:
+        resolver: true
+      children:
+        resolver: true
+      image_count:
+        resolver: true
+      scene_count:
+        resolver: true
+  Image:
+    fields:
+      copyrights:
+        resolver: true
+  Scene:
+    fields:
+      copyrights:
+        resolver: true
