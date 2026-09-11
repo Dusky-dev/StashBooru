@@ -42,7 +42,9 @@ func (rs imageRoutes) Routes() chi.Router {
 		r.Post("/download", rs.VisualSimilarityDownload)
 		r.Post("/index", rs.VisualSimilarityIndexImages)
 		r.Get("/camie/status", rs.CamieStatus)
-		r.Post("/camie/tag", rs.CamieTagImages)
+		r.Get("/camie/config", rs.CamieConfig)
+		r.Post("/camie/config", rs.CamieConfigUpdate)
+		r.Post("/camie/tag", rs.CamieTagImagesV2)
 	})
 
 	r.Route("/{imageId}", func(r chi.Router) {
@@ -51,7 +53,7 @@ func (rs imageRoutes) Routes() chi.Router {
 		r.Get("/image", rs.Image)
 		r.Get("/thumbnail", rs.Thumbnail)
 		r.Get("/preview", rs.Preview)
-		r.Post("/knowledge-tags", rs.ImageKnowledgeTags)
+		r.Post("/knowledge-tags", rs.ImageKnowledgeTagsV2)
 	})
 
 	return r
