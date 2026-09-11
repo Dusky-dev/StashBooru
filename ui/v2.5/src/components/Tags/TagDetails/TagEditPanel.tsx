@@ -51,6 +51,7 @@ export const TagEditPanel: React.FC<ITagEditPanel> = ({
   const Toast = useToast();
   const { configuration: stashConfig } = useConfigurationContext();
   const displayEntityName = entityName ?? intl.formatMessage({ id: "tag" });
+  const isCopyright = basePath === "/copyrights";
 
   const isNew = tag.id === undefined;
 
@@ -211,6 +212,7 @@ export const TagEditPanel: React.FC<ITagEditPanel> = ({
         excludeIds={[...(tag?.id ? [tag.id] : []), ...formik.values.child_ids]}
         creatable={false}
         hoverPlacement="right"
+        namespace={isCopyright ? "all" : "tags"}
       />
     );
 
@@ -227,6 +229,7 @@ export const TagEditPanel: React.FC<ITagEditPanel> = ({
         excludeIds={[...(tag?.id ? [tag.id] : []), ...formik.values.parent_ids]}
         creatable={false}
         hoverPlacement="right"
+        namespace={isCopyright ? "copyrights" : "tags"}
       />
     );
 
