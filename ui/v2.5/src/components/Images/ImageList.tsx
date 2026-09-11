@@ -138,7 +138,7 @@ const ImageWall: React.FC<IImageWallProps> = ({
   function columns(containerWidth: number) {
     const preferredSize = zoomWidths[zoomIndex];
     const columnCount = containerWidth / preferredSize;
-    return Math.round(columnCount);
+    return Math.max(1, Math.round(columnCount));
   }
 
   const targetRowHeight = useCallback(

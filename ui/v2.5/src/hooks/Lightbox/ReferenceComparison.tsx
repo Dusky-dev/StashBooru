@@ -6,6 +6,8 @@ import { ILightboxImage } from "./types";
 
 const CLASSNAME = "Lightbox-reference-comparison";
 const ZOOM_STEP = 1.1;
+const SPLIT_KEY_STEP = 1;
+const SPLIT_KEY_LARGE_STEP = 10;
 
 export type ReferenceComparisonMode = "selected" | "both" | "slider";
 export type ReferenceComparisonDirection = "left" | "right";
@@ -230,6 +232,10 @@ const ComparisonInfo: React.FC<{
   </div>
 );
 
+function clampSplit(value: number) {
+  return Math.max(0, Math.min(100, value));
+}
+
 export const ReferenceComparison: React.FC<IProps> = ({
   referenceImage,
   selectedImage,
@@ -243,15 +249,17 @@ export const ReferenceComparison: React.FC<IProps> = ({
   const [split, setSplit] = useState(50);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const dragState = useRef<IDragState | null>(null);
+  const sliderRef = useRef<HTMLDivElement>(null);
   const metrics = comparisonMetrics(referenceImage, selectedImage);
   const referenceFilename = comparisonFilename(referenceImage);
   const selectedFilename = comparisonFilename(selectedImage);
 
   // Keep the reference fixed when only the selected match changes. Reset only
   // for an explicit parent reset, a view-mode change, or a different reference.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reset pan only for reference/view resets, not selected-image navigation
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset pan/split only for reference/view resets, not selected-image navigation
   useEffect(() => {
     setPan({ x: 0, y: 0 });
+    setSplit(50);
   }, [mode, referenceImage.id, resetPosition]);
 
   const transform = `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`;
@@ -290,6 +298,60 @@ export const ReferenceComparison: React.FC<IProps> = ({
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
+  }
+
+  function updateSplitFromPointer(clientX: number) {
+    const rect = sliderRef.current?.getBoundingClientRect();
+    if (!rect || rect.width <= 0) return;
+    setSplit(clampSplit(((clientX - rect.left) / rect.width) * 100));
+  }
+
+  function onDividerPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    updateSplitFromPointer(event.clientX);
+  }
+
+  function onDividerPointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    updateSplitFromPointer(event.clientX);
+  }
+
+  function onDividerPointerUp(event: React.PointerEvent<HTMLDivElement>) {
+    event.stopPropagation();
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  function onDividerKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    const step = event.shiftKey ? SPLIT_KEY_LARGE_STEP : SPLIT_KEY_STEP;
+    let next = split;
+    switch (event.key) {
+      case "ArrowLeft":
+      case "ArrowDown":
+        next -= step;
+        break;
+      case "ArrowRight":
+      case "ArrowUp":
+        next += step;
+        break;
+      case "Home":
+        next = 0;
+        break;
+      case "End":
+        next = 100;
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    setSplit(clampSplit(next));
   }
 
   const interactionProps = {
@@ -334,7 +396,11 @@ export const ReferenceComparison: React.FC<IProps> = ({
   }
 
   return (
-    <div className={cx(CLASSNAME, `${CLASSNAME}-slider`)} {...interactionProps}>
+    <div
+      ref={sliderRef}
+      className={cx(CLASSNAME, `${CLASSNAME}-slider`)}
+      {...interactionProps}
+    >
       <div className={`${CLASSNAME}-layer`}>
         <div className={`${CLASSNAME}-viewport`} style={{ transform }}>
           <SelectedComparisonMedia
@@ -369,21 +435,23 @@ export const ReferenceComparison: React.FC<IProps> = ({
       <div
         className={`${CLASSNAME}-divider`}
         style={{ left: `${split}%` }}
-        aria-hidden="true"
-      />
-      <input
-        className={`${CLASSNAME}-range`}
-        type="range"
-        min={0}
-        max={100}
-        value={split}
-        aria-label="Reference comparison slider"
-        onPointerDown={(event) => event.stopPropagation()}
-        onPointerMove={(event) => event.stopPropagation()}
-        onPointerUp={(event) => event.stopPropagation()}
+        role="slider"
+        tabIndex={0}
+        aria-label="Reference comparison split"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(split)}
+        aria-valuetext={`${Math.round(split)}% reference`}
+        onPointerDown={onDividerPointerDown}
+        onPointerMove={onDividerPointerMove}
+        onPointerUp={onDividerPointerUp}
+        onPointerCancel={onDividerPointerUp}
         onWheel={(event) => event.stopPropagation()}
-        onChange={(event) => setSplit(Number(event.currentTarget.value))}
-      />
+        onKeyDown={onDividerKeyDown}
+      >
+        <span className={`${CLASSNAME}-divider-line`} aria-hidden="true" />
+        <span className={`${CLASSNAME}-divider-handle`} aria-hidden="true" />
+      </div>
     </div>
   );
 };
