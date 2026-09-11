@@ -83,3 +83,44 @@ ORDER BY distance`, queryVector)
 	require.NoError(t, rows.Err())
 	require.Equal(t, []int{1, 2, 3}, ids)
 }
+
+func TestSQLiteVecCosineBruteForceAllowsLargeLimit(t *testing.T) {
+	db, err := sql.Open(sqlite3Driver, ":memory:")
+	require.NoError(t, err)
+	defer db.Close()
+
+	_, err = db.Exec("CREATE VIRTUAL TABLE vectors USING vec0(embedding FLOAT[3] DISTANCE_METRIC=cosine)")
+	require.NoError(t, err)
+
+	vectors := map[int][]float32{
+		1: {1, 0, 0},
+		2: {0.9, 0.1, 0},
+		3: {0, 1, 0},
+	}
+	for id, vector := range vectors {
+		serialized, serializeErr := sqlite_vec.SerializeFloat32(vector)
+		require.NoError(t, serializeErr)
+		_, err = db.Exec("INSERT INTO vectors(rowid, embedding) VALUES (?, ?)", id, serialized)
+		require.NoError(t, err)
+	}
+
+	queryVector, err := sqlite_vec.SerializeFloat32([]float32{1, 0, 0})
+	require.NoError(t, err)
+	rows, err := db.Query(`SELECT rowid, vec_distance_cosine(embedding, ?) AS distance
+FROM vectors
+WHERE rowid != ?
+ORDER BY distance
+LIMIT ?`, queryVector, 1, sqliteVecKNNMaxK+1)
+	require.NoError(t, err)
+	defer rows.Close()
+
+	var ids []int
+	for rows.Next() {
+		var id int
+		var distance float64
+		require.NoError(t, rows.Scan(&id, &distance))
+		ids = append(ids, id)
+	}
+	require.NoError(t, rows.Err())
+	require.Equal(t, []int{2, 3}, ids)
+}
