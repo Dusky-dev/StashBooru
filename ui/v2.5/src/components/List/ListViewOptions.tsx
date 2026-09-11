@@ -46,7 +46,8 @@ function readRememberedListView(): IRememberedListView {
       displayMode:
         typeof parsed.displayMode === "number" ? parsed.displayMode : undefined,
       zoomIndex:
-        typeof parsed.zoomIndex === "number" && Number.isFinite(parsed.zoomIndex)
+        typeof parsed.zoomIndex === "number" &&
+        Number.isFinite(parsed.zoomIndex)
           ? parsed.zoomIndex
           : undefined,
     };
@@ -98,13 +99,7 @@ function useRememberedListView({
     ) {
       onSetZoom(remembered.zoomIndex);
     }
-  }, [
-    displayMode,
-    displayModeOptions,
-    onSetDisplayMode,
-    onSetZoom,
-    zoomIndex,
-  ]);
+  }, [displayMode, displayModeOptions, onSetDisplayMode, onSetZoom, zoomIndex]);
 
   useEffect(() => {
     if (skipDisplaySave.current) {
