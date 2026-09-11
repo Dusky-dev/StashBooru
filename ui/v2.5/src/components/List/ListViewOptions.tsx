@@ -29,6 +29,94 @@ interface IListViewOptionsProps {
   displayModeOptions: DisplayMode[];
 }
 
+interface IRememberedListView {
+  displayMode?: DisplayMode;
+  zoomIndex?: number;
+}
+
+const LIST_VIEW_STORAGE_KEY = "stashbooru.listView.preferences";
+
+function readRememberedListView(): IRememberedListView {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(LIST_VIEW_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as IRememberedListView;
+    return {
+      displayMode:
+        typeof parsed.displayMode === "number" ? parsed.displayMode : undefined,
+      zoomIndex:
+        typeof parsed.zoomIndex === "number" && Number.isFinite(parsed.zoomIndex)
+          ? parsed.zoomIndex
+          : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
+function saveRememberedListView(update: IRememberedListView) {
+  if (typeof window === "undefined") return;
+  try {
+    const current = readRememberedListView();
+    window.localStorage.setItem(
+      LIST_VIEW_STORAGE_KEY,
+      JSON.stringify({ ...current, ...update })
+    );
+  } catch {
+    // Persistence is best-effort in hardened/private browser contexts.
+  }
+}
+
+function useRememberedListView({
+  zoomIndex,
+  onSetZoom,
+  displayMode,
+  onSetDisplayMode,
+  displayModeOptions,
+}: IListViewOptionsProps) {
+  const skipDisplaySave = useRef(true);
+  const skipZoomSave = useRef(true);
+
+  useEffect(() => {
+    const remembered = readRememberedListView();
+    if (
+      remembered.displayMode !== undefined &&
+      remembered.displayMode !== displayMode &&
+      displayModeOptions.includes(remembered.displayMode)
+    ) {
+      onSetDisplayMode(remembered.displayMode);
+    }
+    if (
+      onSetZoom &&
+      remembered.zoomIndex !== undefined &&
+      remembered.zoomIndex !== zoomIndex
+    ) {
+      onSetZoom(remembered.zoomIndex);
+    }
+    // Apply stored preferences only once when this list toolbar mounts.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only preference restore
+  }, []);
+
+  useEffect(() => {
+    if (skipDisplaySave.current) {
+      skipDisplaySave.current = false;
+      return;
+    }
+    saveRememberedListView({ displayMode });
+  }, [displayMode]);
+
+  useEffect(() => {
+    if (skipZoomSave.current) {
+      skipZoomSave.current = false;
+      return;
+    }
+    if (zoomIndex !== undefined) {
+      saveRememberedListView({ zoomIndex });
+    }
+  }, [zoomIndex]);
+}
+
 function getIcon(option: DisplayMode) {
   switch (option) {
     case DisplayMode.Grid:
@@ -73,6 +161,14 @@ export const ListViewOptions: React.FC<IListViewOptionsProps> = ({
   displayModeOptions,
 }) => {
   const intl = useIntl();
+
+  useRememberedListView({
+    zoomIndex,
+    onSetZoom,
+    displayMode,
+    onSetDisplayMode,
+    displayModeOptions,
+  });
 
   const overlayTarget = useRef(null);
   const [showOptions, setShowOptions] = useState(false);
@@ -179,6 +275,14 @@ export const ListViewButtonGroup: React.FC<IListViewOptionsProps> = ({
   displayModeOptions,
 }) => {
   const intl = useIntl();
+
+  useRememberedListView({
+    zoomIndex,
+    onSetZoom,
+    displayMode,
+    onSetDisplayMode,
+    displayModeOptions,
+  });
 
   return (
     <>
