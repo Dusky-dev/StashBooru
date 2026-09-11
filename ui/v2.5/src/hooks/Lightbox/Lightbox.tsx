@@ -83,6 +83,7 @@ const CLASSNAME_DISPLAY = `${CLASSNAME}-display`;
 const CLASSNAME_CAROUSEL = `${CLASSNAME}-carousel`;
 const CLASSNAME_INSTANT = `${CLASSNAME_CAROUSEL}-instant`;
 const CLASSNAME_IMAGE = `${CLASSNAME_CAROUSEL}-image`;
+const CLASSNAME_REFERENCE_STATIC = `${CLASSNAME}-reference-static`;
 const CLASSNAME_NAVBUTTON = `${CLASSNAME}-navbutton`;
 const CLASSNAME_NAV = `${CLASSNAME}-nav`;
 const CLASSNAME_NAVIMAGE = `${CLASSNAME_NAV}-image`;
@@ -94,6 +95,32 @@ const MIN_VALID_INTERVAL_SECONDS = 1;
 const MIN_ZOOM = 0.1;
 const SCROLL_ZOOM_TIMEOUT = 250;
 const ZOOM_NONE_EPSILON = 0.015;
+const REFERENCE_COMPARISON_MODE_STORAGE_KEY =
+  "stashbooru.lightbox.referenceComparisonMode";
+
+function loadReferenceComparisonMode(): ReferenceComparisonMode {
+  if (typeof window === "undefined") return "both";
+  try {
+    const value = window.localStorage.getItem(
+      REFERENCE_COMPARISON_MODE_STORAGE_KEY
+    );
+    if (value === "selected" || value === "both" || value === "slider") {
+      return value;
+    }
+  } catch {
+    // Persistence is best-effort; the lightbox should still work without it.
+  }
+  return "both";
+}
+
+function saveReferenceComparisonMode(value: ReferenceComparisonMode) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(REFERENCE_COMPARISON_MODE_STORAGE_KEY, value);
+  } catch {
+    // Ignore storage failures in hardened/private browser contexts.
+  }
+}
 
 interface IProps {
   images: ILightboxImage[];
@@ -143,8 +170,15 @@ export const LightboxComponent: React.FC<IProps> = ({
   const referenceImage = referenceImageData?.findImage as
     | ILightboxImage
     | undefined;
-  const [referenceComparisonMode, setReferenceComparisonMode] =
-    useState<ReferenceComparisonMode>("both");
+  const [referenceComparisonMode, setReferenceComparisonModeState] =
+    useState<ReferenceComparisonMode>(loadReferenceComparisonMode);
+  const setReferenceComparisonMode = useCallback(
+    (value: ReferenceComparisonMode) => {
+      setReferenceComparisonModeState(value);
+      saveReferenceComparisonMode(value);
+    },
+    []
+  );
 
   // zero-based
   const [index, setIndex] = useState<number | null>(null);
@@ -383,16 +417,23 @@ export const LightboxComponent: React.FC<IProps> = ({
     if (index === oldIndex.current) return;
     if (index === null) return;
 
-    // reset zoom status
-    // setResetZoom((r) => !r);
-    // setZoomed(false);
-    if (resetZoomOnNav) {
-      setZoom(1);
+    const comparisonNavigation =
+      referenceImage !== undefined && referenceComparisonMode !== "selected";
+    if (!comparisonNavigation) {
+      if (resetZoomOnNav) {
+        setZoom(1);
+      }
+      setResetPosition((r) => !r);
     }
-    setResetPosition((r) => !r);
 
     oldIndex.current = index;
-  }, [index, images.length, resetZoomOnNav]);
+  }, [
+    index,
+    images.length,
+    resetZoomOnNav,
+    referenceComparisonMode,
+    referenceImage,
+  ]);
 
   const getNavOffset = useCallback(() => {
     if (images.length < 2) return;
@@ -434,6 +475,7 @@ export const LightboxComponent: React.FC<IProps> = ({
   }, [displayMode, resetZoomOnNav]);
 
   const selectIndex = (e: React.MouseEvent, i: number) => {
+    setMovingLeft(i < (index ?? initialIndex));
     setIndex(i);
     e.stopPropagation();
   };
@@ -690,6 +732,7 @@ export const LightboxComponent: React.FC<IProps> = ({
     // it once the new page loads, so a chapter jump lands on the right image of
     // the new page rather than its first/last.
     const indexInPage = (imageIndex - 1) % pageSize;
+    setMovingLeft(indexInPage < currentIndex);
     if (pageCallback) {
       const jumppage = Math.floor((imageIndex - 1) / pageSize) + 1;
       if (page !== jumppage) {
@@ -908,25 +951,6 @@ export const LightboxComponent: React.FC<IProps> = ({
       return undefined;
     }
 
-    const comparisonActive =
-      imageIndex === currentIndex &&
-      referenceImage !== undefined &&
-      referenceImage.id !== image.id &&
-      referenceComparisonMode !== "selected";
-
-    if (comparisonActive) {
-      return (
-        <ReferenceComparison
-          referenceImage={referenceImage}
-          selectedImage={image}
-          mode={referenceComparisonMode === "slider" ? "slider" : "both"}
-          zoom={zoom}
-          resetPosition={resetPosition}
-          setZoom={updateZoom}
-        />
-      );
-    }
-
     return (
       <LightboxImage
         src={image.paths.image ?? ""}
@@ -958,6 +982,11 @@ export const LightboxComponent: React.FC<IProps> = ({
 
     const currentImage: ILightboxImage | undefined = images[currentIndex];
     const title = currentImage ? imageTitle(currentImage) : undefined;
+    const referenceComparisonActive =
+      currentImage !== undefined &&
+      referenceImage !== undefined &&
+      referenceImage.id !== currentImage.id &&
+      referenceComparisonMode !== "selected";
 
     function setRating(v: number | null) {
       if (currentImage?.id) {
@@ -1106,19 +1135,34 @@ export const LightboxComponent: React.FC<IProps> = ({
             </Button>
           )}
 
-          <div
-            className={cx(CLASSNAME_CAROUSEL, {
-              [CLASSNAME_INSTANT]: instantTransition,
-            })}
-            style={{ left: `${currentIndex * -100}vw` }}
-            ref={carouselRef}
-          >
-            {images.map((image, imageIndex) => (
-              <div className={`${CLASSNAME_IMAGE}`} key={image.paths.image}>
-                {renderCarouselImage(image, imageIndex)}
-              </div>
-            ))}
-          </div>
+          {referenceComparisonActive ? (
+            <div className={CLASSNAME_REFERENCE_STATIC}>
+              <ReferenceComparison
+                referenceImage={referenceImage}
+                selectedImage={currentImage}
+                mode={referenceComparisonMode === "slider" ? "slider" : "both"}
+                direction={movingLeft ? "left" : "right"}
+                animateSelected={!disableAnimation && !instantTransition}
+                zoom={zoom}
+                resetPosition={resetPosition}
+                setZoom={updateZoom}
+              />
+            </div>
+          ) : (
+            <div
+              className={cx(CLASSNAME_CAROUSEL, {
+                [CLASSNAME_INSTANT]: instantTransition,
+              })}
+              style={{ left: `${currentIndex * -100}vw` }}
+              ref={carouselRef}
+            >
+              {images.map((image, imageIndex) => (
+                <div className={`${CLASSNAME_IMAGE}`} key={image.paths.image}>
+                  {renderCarouselImage(image, imageIndex)}
+                </div>
+              ))}
+            </div>
+          )}
 
           {allowNavigation && (
             <Button
@@ -1134,7 +1178,10 @@ export const LightboxComponent: React.FC<IProps> = ({
           <div className={CLASSNAME_NAV} style={navOffset} ref={navRef}>
             <Button
               variant="link"
-              onClick={() => setIndex(images.length - 1)}
+              onClick={() => {
+                setMovingLeft(true);
+                setIndex(images.length - 1);
+              }}
               className={CLASSNAME_NAVBUTTON}
             >
               <Icon icon={faArrowLeft} className="mr-4" />
@@ -1142,7 +1189,10 @@ export const LightboxComponent: React.FC<IProps> = ({
             {navItems}
             <Button
               variant="link"
-              onClick={() => setIndex(0)}
+              onClick={() => {
+                setMovingLeft(false);
+                setIndex(0);
+              }}
               className={CLASSNAME_NAVBUTTON}
             >
               <Icon icon={faArrowRight} className="ml-4" />

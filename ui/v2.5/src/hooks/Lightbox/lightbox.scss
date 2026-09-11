@@ -164,6 +164,14 @@
     }
   }
 
+  &-reference-static {
+    bottom: 0;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+  }
+
   &-navzone {
     cursor: pointer;
     width: 50%;
@@ -257,6 +265,19 @@
     will-change: transform;
   }
 
+  &-selected-media {
+    height: 100%;
+    width: 100%;
+  }
+
+  &-selected-enter-left {
+    animation: lightbox-reference-enter-left 400ms ease;
+  }
+
+  &-selected-enter-right {
+    animation: lightbox-reference-enter-right 400ms ease;
+  }
+
   &-media {
     height: 100%;
     object-fit: contain;
@@ -315,5 +336,28 @@
     touch-action: auto;
     width: 90%;
     z-index: 5;
+  }
+}
+
+@keyframes lightbox-reference-enter-left {
+  from {
+    opacity: 0.4;
+    transform: translateX(-100%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes lightbox-reference-enter-right {
+  from {
+    opacity: 0.4;
+    transform: translateX(100%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
