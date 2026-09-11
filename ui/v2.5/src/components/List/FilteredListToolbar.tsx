@@ -256,6 +256,7 @@ export const FilteredListToolbar: React.FC<IFilteredListToolbar> = ({
         onSetDisplayMode={setDisplayMode}
         zoomIndex={zoomable ? filter.zoomIndex : undefined}
         onSetZoom={zoomable ? setZoom : undefined}
+        preferenceKey={String(view ?? filter.mode)}
       />
     </ButtonToolbar>
   );
