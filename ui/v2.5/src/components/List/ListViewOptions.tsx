@@ -75,10 +75,14 @@ function useRememberedListView({
   onSetDisplayMode,
   displayModeOptions,
 }: IListViewOptionsProps) {
+  const restored = useRef(false);
   const skipDisplaySave = useRef(true);
   const skipZoomSave = useRef(true);
 
   useEffect(() => {
+    if (restored.current) return;
+    restored.current = true;
+
     const remembered = readRememberedListView();
     if (
       remembered.displayMode !== undefined &&
@@ -94,9 +98,13 @@ function useRememberedListView({
     ) {
       onSetZoom(remembered.zoomIndex);
     }
-    // Apply stored preferences only once when this list toolbar mounts.
-    // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only preference restore
-  }, []);
+  }, [
+    displayMode,
+    displayModeOptions,
+    onSetDisplayMode,
+    onSetZoom,
+    zoomIndex,
+  ]);
 
   useEffect(() => {
     if (skipDisplaySave.current) {
