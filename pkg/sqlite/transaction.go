@@ -130,6 +130,7 @@ func (db *Database) Repository() models.Repository {
 		SceneMarker:    db.SceneMarker,
 		Studio:         db.Studio,
 		Tag:            db.Tag,
+		Copyright:      NewCopyrightStore(),
 		SavedFilter:    db.SavedFilter,
 	}
 }
