@@ -44,6 +44,7 @@ func (rs imageRoutes) Routes() chi.Router {
 		r.Get("/camie/status", rs.CamieStatus)
 		r.Get("/camie/config", rs.CamieConfig)
 		r.Post("/camie/config", rs.CamieConfigUpdate)
+		r.Get("/camie/copyright-root", rs.CamieCopyrightRoot)
 		r.Post("/camie/tag", rs.CamieTagImagesV2)
 	})
 
