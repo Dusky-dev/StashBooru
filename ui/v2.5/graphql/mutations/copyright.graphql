@@ -1,0 +1,33 @@
+mutation CopyrightCreate($input: CopyrightCreateInput!) {
+  copyrightCreate(input: $input) {
+    ...CopyrightData
+  }
+}
+
+mutation CopyrightUpdate($input: CopyrightUpdateInput!) {
+  copyrightUpdate(input: $input) {
+    ...CopyrightData
+  }
+}
+
+mutation CopyrightDestroy($id: ID!) {
+  copyrightDestroy(input: { id: $id })
+}
+
+mutation ImageCopyrightsUpdate($imageID: ID!, $copyrightIDs: [ID!]!) {
+  imageCopyrightsUpdate(image_id: $imageID, copyright_ids: $copyrightIDs) {
+    id
+    copyrights {
+      ...SlimCopyrightData
+    }
+  }
+}
+
+mutation SceneCopyrightsUpdate($sceneID: ID!, $copyrightIDs: [ID!]!) {
+  sceneCopyrightsUpdate(scene_id: $sceneID, copyright_ids: $copyrightIDs) {
+    id
+    copyrights {
+      ...SlimCopyrightData
+    }
+  }
+}
