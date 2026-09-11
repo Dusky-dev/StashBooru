@@ -13,6 +13,10 @@ type Copyright struct {
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 	Aliases     []string  `json:"aliases"`
+	Parents     []*Copyright `json:"parents"`
+	Children    []*Copyright `json:"children"`
+	ImageCount  int       `json:"image_count"`
+	SceneCount  int       `json:"scene_count"`
 }
 
 type CopyrightCreateInput struct {
