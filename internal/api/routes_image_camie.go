@@ -44,7 +44,7 @@ type camieTagsResponse struct {
 
 type camieApplyRequest struct {
 	Tags          []camietagger.Tag `json:"tags"`
-	ReplaceArtist bool               `json:"replaceArtist"`
+	ReplaceArtist bool              `json:"replaceArtist"`
 }
 
 type camieAppliedEntity struct {
@@ -233,10 +233,10 @@ func validateCamieApplyTags(tags []camietagger.Tag) ([]camietagger.Tag, error) {
 		prediction.Name = strings.TrimSpace(prediction.Name)
 		prediction.Category = strings.ToLower(strings.TrimSpace(prediction.Category))
 		if prediction.Name == "" {
-			return nil, fmt.Errorf("Camie prediction name cannot be empty")
+			return nil, fmt.Errorf("camie prediction name cannot be empty")
 		}
 		if len(prediction.Name) > 512 {
-			return nil, fmt.Errorf("Camie prediction name is too long")
+			return nil, fmt.Errorf("camie prediction name is too long")
 		}
 		if prediction.Category == "" {
 			prediction.Category = "general"
