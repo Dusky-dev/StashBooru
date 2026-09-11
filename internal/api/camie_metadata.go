@@ -163,9 +163,20 @@ func normalizeCamiePrediction(prediction camietagger.Tag) camietagger.Tag {
 	return prediction
 }
 
+func camieFilenameAuthoritativeCategory(category string) bool {
+	switch category {
+	case "character", "artist", "copyright":
+		return true
+	default:
+		return false
+	}
+}
+
 func mergeCamiePredictions(modelPredictions, filenamePredictions []camietagger.Tag) []camietagger.Tag {
 	merged := make([]camietagger.Tag, 0, len(modelPredictions)+len(filenamePredictions))
 	seen := make(map[string]int, len(modelPredictions)+len(filenamePredictions))
+	authoritativeCategories := make(map[string]bool, 3)
+
 	add := func(prediction camietagger.Tag) {
 		prediction = normalizeCamiePrediction(prediction)
 		if prediction.Name == "" {
@@ -189,10 +200,29 @@ func mergeCamiePredictions(modelPredictions, filenamePredictions []camietagger.T
 		seen[key] = len(merged)
 		merged = append(merged, prediction)
 	}
-	for _, prediction := range modelPredictions {
+
+	for _, prediction := range filenamePredictions {
+		prediction = normalizeCamiePrediction(prediction)
+		if prediction.Name == "" {
+			continue
+		}
+		if camieFilenameAuthoritativeCategory(prediction.Category) {
+			authoritativeCategories[prediction.Category] = true
+		}
 		add(prediction)
 	}
-	for _, prediction := range filenamePredictions {
+
+	for _, prediction := range modelPredictions {
+		prediction = normalizeCamiePrediction(prediction)
+		if prediction.Name == "" {
+			continue
+		}
+		key := prediction.Category + "\x00" + strings.ToLower(prediction.Name)
+		if authoritativeCategories[prediction.Category] {
+			if _, ok := seen[key]; !ok {
+				continue
+			}
+		}
 		add(prediction)
 	}
 	return merged
