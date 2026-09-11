@@ -1,17 +1,16 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Route, Switch } from "react-router-dom";
 import { Helmet } from "react-helmet";
-import { useTitleProps } from "src/hooks/title";
+import { Route, Switch } from "react-router-dom";
+
 import { ListFilterModel } from "src/models/list-filter/filter";
 import Tag from "./TagDetails/Tag";
-import TagCreate from "./TagDetails/TagCreate";
 import { FilteredTagList } from "./TagList";
 import {
   applyCopyrightNamespaceFilter,
   CopyrightRoot,
 } from "./copyrightFilter";
 
-const Tags: React.FC = () => {
+const CopyrightList: React.FC = () => {
   const [copyrightRoot, setCopyrightRoot] = useState<CopyrightRoot | null>();
 
   useEffect(() => {
@@ -31,7 +30,7 @@ const Tags: React.FC = () => {
   const filterHook = useCallback(
     (filter: ListFilterModel) =>
       copyrightRoot
-        ? applyCopyrightNamespaceFilter(filter, copyrightRoot, false)
+        ? applyCopyrightNamespaceFilter(filter, copyrightRoot, true)
         : filter,
     [copyrightRoot]
   );
@@ -40,18 +39,14 @@ const Tags: React.FC = () => {
   return <FilteredTagList filterHook={filterHook} />;
 };
 
-const TagRoutes: React.FC = () => {
-  const titleProps = useTitleProps({ id: "tags" });
-  return (
-    <>
-      <Helmet {...titleProps} />
-      <Switch>
-        <Route exact path="/tags" component={Tags} />
-        <Route exact path="/tags/new" component={TagCreate} />
-        <Route path="/tags/:id/:tab?" component={Tag} />
-      </Switch>
-    </>
-  );
-};
+const CopyrightRoutes: React.FC = () => (
+  <>
+    <Helmet title="Copyrights" />
+    <Switch>
+      <Route exact path="/copyrights" component={CopyrightList} />
+      <Route path="/copyrights/:id/:tab?" component={Tag} />
+    </Switch>
+  </>
+);
 
-export default TagRoutes;
+export default CopyrightRoutes;
