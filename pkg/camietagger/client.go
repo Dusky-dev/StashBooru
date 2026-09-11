@@ -35,9 +35,13 @@ type Status struct {
 }
 
 type Tag struct {
-	Name     string  `json:"name"`
-	Category string  `json:"category"`
-	Score    float64 `json:"score"`
+	Name         string  `json:"name"`
+	Category     string  `json:"category"`
+	Score        float64 `json:"score"`
+	RawName      string  `json:"rawName,omitempty"`
+	Source       string  `json:"source,omitempty"`
+	TargetPath   string  `json:"targetPath,omitempty"`
+	TargetExists bool    `json:"targetExists,omitempty"`
 }
 
 type Tagger interface {
