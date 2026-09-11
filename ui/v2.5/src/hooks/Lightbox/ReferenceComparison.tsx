@@ -8,11 +8,14 @@ const CLASSNAME = "Lightbox-reference-comparison";
 const ZOOM_STEP = 1.1;
 
 export type ReferenceComparisonMode = "selected" | "both" | "slider";
+export type ReferenceComparisonDirection = "left" | "right";
 
 interface IProps {
   referenceImage: ILightboxImage;
   selectedImage: ILightboxImage;
   mode: Exclude<ReferenceComparisonMode, "selected">;
+  direction: ReferenceComparisonDirection;
+  animateSelected: boolean;
   zoom: number;
   resetPosition: boolean;
   setZoom: (zoom: number) => void;
@@ -55,10 +58,33 @@ const ComparisonMedia: React.FC<{ image: ILightboxImage }> = ({ image }) => {
   );
 };
 
+const SelectedComparisonMedia: React.FC<{
+  image: ILightboxImage;
+  direction: ReferenceComparisonDirection;
+  animate: boolean;
+}> = ({ image, direction, animate }) => {
+  const source =
+    image.paths.image ?? image.paths.preview ?? image.paths.thumbnail ?? "";
+  const key = image.id ?? source;
+  return (
+    <div
+      key={key}
+      className={cx(`${CLASSNAME}-selected-media`, {
+        [`${CLASSNAME}-selected-enter-left`]: animate && direction === "left",
+        [`${CLASSNAME}-selected-enter-right`]: animate && direction === "right",
+      })}
+    >
+      <ComparisonMedia image={image} />
+    </div>
+  );
+};
+
 export const ReferenceComparison: React.FC<IProps> = ({
   referenceImage,
   selectedImage,
   mode,
+  direction,
+  animateSelected,
   zoom,
   resetPosition,
   setZoom,
@@ -67,10 +93,12 @@ export const ReferenceComparison: React.FC<IProps> = ({
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const dragState = useRef<IDragState | null>(null);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reset pan whenever the compared pair, view mode, or parent reset signal changes
+  // Keep the reference fixed when only the selected match changes. Reset only
+  // for an explicit parent reset, a view-mode change, or a different reference.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset pan only for reference/view resets, not selected-image navigation
   useEffect(() => {
     setPan({ x: 0, y: 0 });
-  }, [mode, referenceImage.id, resetPosition, selectedImage.id]);
+  }, [mode, referenceImage.id, resetPosition]);
 
   const transform = `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`;
 
@@ -130,7 +158,11 @@ export const ReferenceComparison: React.FC<IProps> = ({
         <div className={`${CLASSNAME}-pane`}>
           <span className={`${CLASSNAME}-label`}>Selected</span>
           <div className={`${CLASSNAME}-viewport`} style={{ transform }}>
-            <ComparisonMedia image={selectedImage} />
+            <SelectedComparisonMedia
+              image={selectedImage}
+              direction={direction}
+              animate={animateSelected}
+            />
           </div>
         </div>
       </div>
@@ -141,7 +173,11 @@ export const ReferenceComparison: React.FC<IProps> = ({
     <div className={cx(CLASSNAME, `${CLASSNAME}-slider`)} {...interactionProps}>
       <div className={`${CLASSNAME}-layer`}>
         <div className={`${CLASSNAME}-viewport`} style={{ transform }}>
-          <ComparisonMedia image={selectedImage} />
+          <SelectedComparisonMedia
+            image={selectedImage}
+            direction={direction}
+            animate={animateSelected}
+          />
         </div>
       </div>
       <div
