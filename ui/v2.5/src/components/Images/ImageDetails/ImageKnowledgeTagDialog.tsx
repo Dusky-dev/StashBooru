@@ -17,7 +17,7 @@ interface CamiePrediction {
 }
 
 type MetadataOrigin = "camie" | "booru";
-type MetadataSourceKind = "local" | "booru" | "filename" | "camie";
+type MetadataSourceKind = "file" | "booru" | "camie";
 
 interface MetadataSource {
   kind: MetadataSourceKind;
@@ -83,11 +83,15 @@ interface IProps {
 }
 
 const CATEGORY_ORDER = ["character", "artist", "copyright", "general", "meta"];
+const LOCAL_AUTHORITY_CATEGORIES = new Set([
+  "character",
+  "artist",
+  "copyright",
+]);
 const SOURCE_PRIORITY: Record<MetadataSourceKind, number> = {
-  local: 0,
+  file: 0,
   booru: 10,
-  filename: 20,
-  camie: 30,
+  camie: 20,
 };
 
 function normalizePredictionValue(value?: string) {
@@ -117,43 +121,66 @@ function sourceKey(source: MetadataSource) {
   return `${source.kind}\u0000${source.detail ?? ""}`;
 }
 
+function hasFilenameSource(prediction: CamiePrediction) {
+  return prediction.source?.includes("filename") ?? false;
+}
+
+function hasCamieModelSource(prediction: CamiePrediction) {
+  const source = prediction.source ?? "model";
+  return source.includes("model") || !source.includes("filename");
+}
+
+function applyLocalAuthority(predictions: CamiePrediction[]) {
+  const authoritativeCategories = new Set<string>();
+  for (const prediction of predictions) {
+    const category = prediction.category.trim().toLocaleLowerCase();
+    if (
+      LOCAL_AUTHORITY_CATEGORIES.has(category) &&
+      hasFilenameSource(prediction)
+    ) {
+      authoritativeCategories.add(category);
+    }
+  }
+
+  return predictions.filter((prediction) => {
+    const category = prediction.category.trim().toLocaleLowerCase();
+    if (!authoritativeCategories.has(category)) return true;
+
+    // Filename/local metadata owns Character, Artist and Copyright as a whole
+    // category. Camie may confirm a local value (model+filename), but a
+    // different model-only value is not mixed into that category.
+    return hasFilenameSource(prediction);
+  });
+}
+
 function predictionSources(
   prediction: CamiePrediction,
   origin: MetadataOrigin
 ): MetadataSource[] {
-  const result: MetadataSource[] = [];
-  if (prediction.targetExists) {
-    result.push({
-      kind: "local",
-      label: "local",
-      detail: "Existing Stash metadata entity",
-      priority: SOURCE_PRIORITY.local,
-    });
-  }
-
   if (origin === "booru") {
     const provider = prediction.source?.startsWith("booru:")
       ? prediction.source.slice("booru:".length)
       : undefined;
-    result.push({
-      kind: "booru",
-      label: "booru",
-      detail: provider ? `Booru: ${provider}` : "Booru metadata",
-      priority: SOURCE_PRIORITY.booru,
-    });
-    return result;
+    return [
+      {
+        kind: "booru",
+        label: "booru",
+        detail: provider ? `Booru: ${provider}` : "Booru metadata",
+        priority: SOURCE_PRIORITY.booru,
+      },
+    ];
   }
 
-  const source = prediction.source ?? "model";
-  if (source.includes("filename")) {
+  const result: MetadataSource[] = [];
+  if (hasFilenameSource(prediction)) {
     result.push({
-      kind: "filename",
-      label: "filename",
-      detail: "Parsed from filename metadata",
-      priority: SOURCE_PRIORITY.filename,
+      kind: "file",
+      label: "local",
+      detail: "Local filename metadata",
+      priority: SOURCE_PRIORITY.file,
     });
   }
-  if (source.includes("model") || !source.includes("filename")) {
+  if (hasCamieModelSource(prediction)) {
     result.push({
       kind: "camie",
       label: "Camie",
@@ -184,6 +211,7 @@ function mergeMetadataPredictions(
 ): MetadataPrediction[] {
   const merged: MetadataPrediction[] = [];
   const indexByKey = new Map<string, number>();
+  const authoritativeCamie = applyLocalAuthority(camiePredictions);
 
   const add = (prediction: CamiePrediction, origin: MetadataOrigin) => {
     const keys = predictionIdentityKeys(prediction);
@@ -215,9 +243,9 @@ function mergeMetadataPredictions(
       rawName: current.rawName || prediction.rawName,
       targetExists: current.targetExists || prediction.targetExists,
       targetPath:
-        prediction.targetExists && prediction.targetPath
-          ? prediction.targetPath
-          : current.targetPath || prediction.targetPath,
+        current.targetExists && current.targetPath
+          ? current.targetPath
+          : prediction.targetPath || current.targetPath,
       provenance: mergeSources(current.provenance, provenance),
     };
     merged[existingIndex] = next;
@@ -231,11 +259,16 @@ function mergeMetadataPredictions(
     }
   };
 
-  // Exact booru metadata is the preferred external representation when the
-  // same item is also inferred by Camie. Local existence is displayed as the
-  // highest-priority provenance badge independently of the representative.
+  // Local filename metadata is the preferred representation. Booru is still
+  // shown for provenance/overlap, followed by Camie-only categories where no
+  // authoritative local Character/Artist/Copyright value exists.
+  for (const prediction of authoritativeCamie) {
+    if (hasFilenameSource(prediction)) add(prediction, "camie");
+  }
   for (const prediction of booruPredictions) add(prediction, "booru");
-  for (const prediction of camiePredictions) add(prediction, "camie");
+  for (const prediction of authoritativeCamie) {
+    if (!hasFilenameSource(prediction)) add(prediction, "camie");
+  }
   return merged;
 }
 
@@ -265,12 +298,10 @@ function categoryLabel(category: string) {
 
 function sourceBadgeVariant(source: MetadataSourceKind) {
   switch (source) {
-    case "local":
+    case "file":
       return "success";
     case "booru":
       return "info";
-    case "filename":
-      return "secondary";
     case "camie":
       return "warning";
   }
@@ -550,12 +581,13 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         ) : null}
 
         <div className="mb-3 text-muted">
-          Matching metadata from different methods is merged into one row. Its
-          provenance badges are shown in priority order: local Stash metadata,
-          booru metadata, filename metadata, then Camie. Fetching from a booru
-          keeps the current Camie results so overlaps remain visible. Characters
-          with a trailing copyright in parentheses use that value as their
-          disambiguation when a new Character is created.
+          Matching metadata from different methods is merged into one row.
+          Local means metadata parsed from this file's filename; an existing
+          Stash entry is not treated as a source. For Characters, Artist and
+          Copyright, local values are authoritative: Camie can confirm those
+          exact values, but conflicting Camie-only values in that category are
+          ignored. If the filename has no value for a category, Camie can supply
+          it. Booru overlap remains visible separately.
         </div>
 
         <Form.Check
@@ -601,74 +633,99 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
             </div>
 
             <div style={{ maxHeight: "55vh", overflowY: "auto" }}>
-              {grouped.map(([category, items]) => (
-                <div className="mb-4" key={category}>
-                  <h5>{categoryLabel(category)}</h5>
-                  {category === "artist" && items.length > 1 ? (
-                    <div className="small text-muted mb-2">
-                      Images support one Artist. If several artists stay
-                      selected, the highest-confidence one is used.
-                    </div>
-                  ) : null}
-                  {items.map((prediction, index) => {
-                    const key = predictionKey(prediction);
-                    return (
-                      <div
-                        className="d-flex align-items-center py-1 border-bottom"
-                        key={key}
-                      >
-                        <Form.Check
-                          type="checkbox"
-                          id={`metadata-${category}-${index}`}
-                          checked={selected.has(key)}
-                          onChange={() => togglePrediction(prediction)}
-                          label={prediction.name}
-                        />
-                        {prediction.provenance.map((source) => (
-                          <Badge
-                            className="ml-2"
-                            key={sourceKey(source)}
-                            title={source.detail}
-                            variant={sourceBadgeVariant(source.kind)}
-                          >
-                            {source.label}
-                          </Badge>
-                        ))}
-                        {prediction.rawName &&
-                        prediction.rawName !== prediction.name ? (
-                          <span className="ml-2 small text-muted">
-                            alias: {prediction.rawName}
-                          </span>
-                        ) : null}
-                        {prediction.targetPath ? (
-                          <Button
-                            className="ml-auto mr-2 py-0 px-2"
-                            size="sm"
-                            variant="outline-secondary"
-                            title={
-                              prediction.targetExists
-                                ? "Open metadata page"
-                                : "Search for this metadata"
-                            }
-                            onClick={() => {
-                              onHide();
-                              history.push(prediction.targetPath!);
-                            }}
-                          >
-                            <Icon icon={faSearch} />
-                          </Button>
-                        ) : null}
-                        <Badge
-                          className={prediction.targetPath ? "" : "ml-auto"}
-                          variant="secondary"
-                        >
-                          {(prediction.score * 100).toFixed(1)}%
-                        </Badge>
+              {grouped.map(([category, items]) => {
+                const localAuthority =
+                  LOCAL_AUTHORITY_CATEGORIES.has(category) &&
+                  items.some((prediction) =>
+                    prediction.provenance.some(
+                      (source) => source.kind === "file"
+                    )
+                  );
+                return (
+                  <div className="mb-4" key={category}>
+                    <h5>{categoryLabel(category)}</h5>
+                    {localAuthority ? (
+                      <div className="small text-muted mb-2">
+                        Local filename metadata is authoritative for this
+                        category; conflicting Camie predictions are ignored.
                       </div>
-                    );
-                  })}
-                </div>
-              ))}
+                    ) : null}
+                    {category === "artist" && items.length > 1 ? (
+                      <div className="small text-muted mb-2">
+                        Images support one Artist. If several non-local sources
+                        disagree, the selected metadata is reviewed here before
+                        applying.
+                      </div>
+                    ) : null}
+                    {items.map((prediction, index) => {
+                      const key = predictionKey(prediction);
+                      return (
+                        <div
+                          className="d-flex align-items-center py-1 border-bottom"
+                          key={key}
+                        >
+                          <Form.Check
+                            type="checkbox"
+                            id={`metadata-${category}-${index}`}
+                            checked={selected.has(key)}
+                            onChange={() => togglePrediction(prediction)}
+                            label={prediction.name}
+                          />
+                          {prediction.provenance.map((source) => (
+                            <Badge
+                              className="ml-2"
+                              key={sourceKey(source)}
+                              title={source.detail}
+                              variant={sourceBadgeVariant(source.kind)}
+                            >
+                              {source.label}
+                            </Badge>
+                          ))}
+                          {prediction.targetExists ? (
+                            <Badge
+                              className="ml-2"
+                              variant="secondary"
+                              title="This metadata entity already exists in Stash"
+                            >
+                              exists
+                            </Badge>
+                          ) : null}
+                          {prediction.rawName &&
+                          prediction.rawName !== prediction.name ? (
+                            <span className="ml-2 small text-muted">
+                              alias: {prediction.rawName}
+                            </span>
+                          ) : null}
+                          {prediction.targetPath ? (
+                            <Button
+                              className="ml-auto mr-2 py-0 px-2"
+                              size="sm"
+                              variant="outline-secondary"
+                              title={
+                                prediction.targetExists
+                                  ? "Open metadata page"
+                                  : "Search for this metadata"
+                              }
+                              onClick={() => {
+                                onHide();
+                                history.push(prediction.targetPath!);
+                              }}
+                            >
+                              <Icon icon={faSearch} />
+                            </Button>
+                          ) : null}
+                          <Badge
+                            className={prediction.targetPath ? "" : "ml-auto"}
+                            variant="secondary"
+                          >
+                            {(prediction.score * 100).toFixed(1)}%
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
             </div>
           </>
         )}
