@@ -9,8 +9,11 @@ interface IImagePaths {
 interface IFiles {
   __typename?: string;
   path: string;
+  size?: number;
   width: number;
   height: number;
+  duration?: GQL.Maybe<number>;
+  bit_rate?: GQL.Maybe<number>;
   video_codec?: GQL.Maybe<string>;
 }
 
