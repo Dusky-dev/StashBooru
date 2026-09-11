@@ -184,11 +184,15 @@ export const GenerateDialog: React.FC<IGenerateDialog> = ({
     const threshold = Number.parseFloat(camieThreshold);
     const limit = Number.parseInt(camieLimit, 10);
     if (!(threshold > 0 && threshold < 1)) {
-      Toast.error(new Error("Camie threshold must be greater than 0 and less than 1."));
+      Toast.error(
+        new Error("Camie threshold must be greater than 0 and less than 1.")
+      );
       return;
     }
     if (!(limit >= 1 && limit <= 200)) {
-      Toast.error(new Error("Camie per-category limit must be between 1 and 200."));
+      Toast.error(
+        new Error("Camie per-category limit must be between 1 and 200.")
+      );
       return;
     }
     if (!camieCharacters && !camieArtist && !camieTags) {
@@ -307,7 +311,9 @@ export const GenerateDialog: React.FC<IGenerateDialog> = ({
                     min="1"
                     max="200"
                     value={camieLimit}
-                    onChange={(event) => setCamieLimit(event.currentTarget.value)}
+                    onChange={(event) =>
+                      setCamieLimit(event.currentTarget.value)
+                    }
                     style={{ width: "8rem" }}
                   />
                 </Form.Group>
@@ -327,7 +333,9 @@ export const GenerateDialog: React.FC<IGenerateDialog> = ({
                 type="checkbox"
                 id="camie-generate-artist"
                 checked={camieArtist}
-                onChange={(event) => setCamieArtist(event.currentTarget.checked)}
+                onChange={(event) =>
+                  setCamieArtist(event.currentTarget.checked)
+                }
                 label="Apply the highest-confidence artist as Artist"
               />
               <Form.Check
