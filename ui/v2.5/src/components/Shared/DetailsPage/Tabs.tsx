@@ -5,7 +5,12 @@ import { useHistory } from "react-router-dom";
 import { PatchComponent } from "src/patch";
 
 const LAST_MEDIA_TAB_STORAGE_KEY = "stashbooru.details.lastMediaTab";
-const rememberedMediaTabs = new Set(["scenes", "galleries", "images", "groups"]);
+const rememberedMediaTabs = new Set([
+  "scenes",
+  "galleries",
+  "images",
+  "groups",
+]);
 
 function readRememberedMediaTab(validTabs: readonly string[]) {
   if (typeof window === "undefined") return undefined;
