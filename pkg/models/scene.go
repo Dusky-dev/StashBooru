@@ -164,7 +164,6 @@ type SceneQueryResult struct {
 	resolveErr error
 }
 
-// SceneMovieInput is used for groups and movies
 type SceneMovieInput struct {
 	MovieID    string `json:"movie_id"`
 	SceneIndex *int   `json:"scene_index"`
@@ -222,6 +221,7 @@ type SceneUpdateInput struct {
 	Movies           []SceneMovieInput `json:"movies"`
 	Groups           []SceneGroupInput `json:"groups"`
 	TagIds           []string          `json:"tag_ids"`
+	CopyrightIds     []string          `json:"copyright_ids"`
 	// This should be a URL or a base64 encoded data URL
 	CoverImage    *string        `json:"cover_image"`
 	StashIds      []StashIDInput `json:"stash_ids"`
