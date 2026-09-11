@@ -56,15 +56,15 @@ type camieAppliedEntity struct {
 }
 
 type camieApplyResponse struct {
-	ImageID          int                  `json:"imageID"`
-	Characters       []camieAppliedEntity `json:"characters"`
-	Artist           *camieAppliedEntity  `json:"artist,omitempty"`
-	Tags             []camieAppliedEntity `json:"tags"`
-	SkippedArtists   []camietagger.Tag    `json:"skippedArtists,omitempty"`
-	PreservedArtist  bool                 `json:"preservedArtist"`
-	CreatedCharacters int                 `json:"createdCharacters"`
-	CreatedArtists    int                 `json:"createdArtists"`
-	CreatedTags       int                 `json:"createdTags"`
+	ImageID           int                  `json:"imageID"`
+	Characters        []camieAppliedEntity `json:"characters"`
+	Artist            *camieAppliedEntity  `json:"artist,omitempty"`
+	Tags              []camieAppliedEntity `json:"tags"`
+	SkippedArtists    []camietagger.Tag    `json:"skippedArtists,omitempty"`
+	PreservedArtist   bool                 `json:"preservedArtist"`
+	CreatedCharacters int                  `json:"createdCharacters"`
+	CreatedArtists    int                  `json:"createdArtists"`
+	CreatedTags       int                  `json:"createdTags"`
 }
 
 func newCamieTagger() (camietagger.Tagger, string, string, error) {
@@ -386,7 +386,7 @@ func applyCamieMetadata(ctx context.Context, imageID int, predictions []camietag
 	return response, err
 }
 
-func findOrCreateCamiePerformer(ctx context.Context, repository *models.Repository, name string) (*models.Performer, bool, error) {
+func findOrCreateCamiePerformer(ctx context.Context, repository models.Repository, name string) (*models.Performer, bool, error) {
 	matches, err := repository.Performer.FindByNames(ctx, []string{name}, true)
 	if err != nil {
 		return nil, false, err
@@ -409,7 +409,7 @@ func findOrCreateCamiePerformer(ctx context.Context, repository *models.Reposito
 	return &newPerformer, true, nil
 }
 
-func findOrCreateCamieStudio(ctx context.Context, repository *models.Repository, name string) (*models.Studio, bool, error) {
+func findOrCreateCamieStudio(ctx context.Context, repository models.Repository, name string) (*models.Studio, bool, error) {
 	existing, err := repository.Studio.FindByName(ctx, name, true)
 	if err != nil {
 		return nil, false, err
@@ -431,7 +431,7 @@ func findOrCreateCamieStudio(ctx context.Context, repository *models.Repository,
 	return newStudio.Studio, true, nil
 }
 
-func findOrCreateCamieTag(ctx context.Context, repository *models.Repository, name string) (*models.Tag, bool, error) {
+func findOrCreateCamieTag(ctx context.Context, repository models.Repository, name string) (*models.Tag, bool, error) {
 	existing, err := repository.Tag.FindByName(ctx, name, true)
 	if err != nil {
 		return nil, false, err
