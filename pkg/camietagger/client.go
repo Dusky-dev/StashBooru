@@ -66,19 +66,19 @@ type request struct {
 }
 
 type response struct {
-	ID             uint64 `json:"id"`
-	OK             bool   `json:"ok"`
-	Error          string `json:"error,omitempty"`
-	Model          string `json:"model,omitempty"`
-	ModelPath      string `json:"model_path,omitempty"`
-	MetadataPath   string `json:"metadata_path,omitempty"`
-	ModelExists    bool   `json:"model_exists,omitempty"`
-	MetadataExists bool   `json:"metadata_exists,omitempty"`
-	Installed      bool   `json:"installed,omitempty"`
-	Loaded         bool   `json:"loaded,omitempty"`
-	TagCount       int    `json:"tag_count,omitempty"`
+	ID             uint64  `json:"id"`
+	OK             bool    `json:"ok"`
+	Error          string  `json:"error,omitempty"`
+	Model          string  `json:"model,omitempty"`
+	ModelPath      string  `json:"model_path,omitempty"`
+	MetadataPath   string  `json:"metadata_path,omitempty"`
+	ModelExists    bool    `json:"model_exists,omitempty"`
+	MetadataExists bool    `json:"metadata_exists,omitempty"`
+	Installed      bool    `json:"installed,omitempty"`
+	Loaded         bool    `json:"loaded,omitempty"`
+	TagCount       int     `json:"tag_count,omitempty"`
 	Threshold      float64 `json:"threshold,omitempty"`
-	Tags           []Tag  `json:"tags,omitempty"`
+	Tags           []Tag   `json:"tags,omitempty"`
 }
 
 func DefaultWorkerPath() string {
@@ -108,7 +108,7 @@ func (c *Client) Status(ctx context.Context) (Status, error) {
 
 func (c *Client) Tag(ctx context.Context, path string, threshold float64, limit int) ([]Tag, error) {
 	if strings.TrimSpace(path) == "" {
-		return nil, errors.New("Camie tagger image path is empty")
+		return nil, errors.New("camie tagger image path is empty")
 	}
 	if err := validateOptions(threshold, limit); err != nil {
 		return nil, err
@@ -143,10 +143,10 @@ func statusFromResponse(res response) Status {
 
 func validateOptions(threshold float64, limit int) error {
 	if threshold <= 0 || threshold >= 1 || math.IsNaN(threshold) || math.IsInf(threshold, 0) {
-		return fmt.Errorf("Camie threshold must be greater than 0 and less than 1")
+		return fmt.Errorf("camie threshold must be greater than 0 and less than 1")
 	}
 	if limit < 1 || limit > MaxLimit {
-		return fmt.Errorf("Camie category limit must be between 1 and %d", MaxLimit)
+		return fmt.Errorf("camie category limit must be between 1 and %d", MaxLimit)
 	}
 	return nil
 }
@@ -156,7 +156,7 @@ func validateResponse(res response) error {
 		return fmt.Errorf("unexpected Camie model %q", res.Model)
 	}
 	if res.Installed && res.TagCount <= 0 {
-		return fmt.Errorf("Camie worker reports an installed model but no metadata tags")
+		return fmt.Errorf("camie worker reports an installed model but no metadata tags")
 	}
 	return nil
 }
@@ -164,10 +164,10 @@ func validateResponse(res response) error {
 func validateTags(tags []Tag) error {
 	for _, tag := range tags {
 		if strings.TrimSpace(tag.Name) == "" {
-			return fmt.Errorf("Camie worker returned an empty tag name")
+			return fmt.Errorf("camie worker returned an empty tag name")
 		}
 		if tag.Score < 0 || tag.Score > 1 || math.IsNaN(tag.Score) || math.IsInf(tag.Score, 0) {
-			return fmt.Errorf("Camie worker returned invalid score %v for tag %q", tag.Score, tag.Name)
+			return fmt.Errorf("camie worker returned invalid score %v for tag %q", tag.Score, tag.Name)
 		}
 	}
 	return nil
@@ -234,13 +234,13 @@ func (c *Client) call(ctx context.Context, req request) (response, error) {
 		}
 		if res.ID != req.ID {
 			_ = c.stopLocked(true)
-			return response{}, fmt.Errorf("Camie tagger worker response id %d does not match request id %d", res.ID, req.ID)
+			return response{}, fmt.Errorf("camie tagger worker response id %d does not match request id %d", res.ID, req.ID)
 		}
 		if !res.OK {
 			if res.Error == "" {
 				res.Error = "unknown worker error"
 			}
-			return response{}, fmt.Errorf("Camie tagger worker: %s", res.Error)
+			return response{}, fmt.Errorf("camie tagger worker: %s", res.Error)
 		}
 		return res, nil
 	}

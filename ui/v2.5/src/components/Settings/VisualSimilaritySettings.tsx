@@ -301,8 +301,7 @@ export const VisualSimilaritySettings: React.FC = () => {
             </div>
             {camieStatus?.modelPath ? (
               <div className="mb-2 text-break">
-                <strong>Model:</strong>{" "}
-                <code>{camieStatus.modelPath}</code>
+                <strong>Model:</strong> <code>{camieStatus.modelPath}</code>
               </div>
             ) : null}
             {camieStatus?.metadataPath ? (

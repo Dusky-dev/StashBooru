@@ -26,10 +26,10 @@ type camieStatusResponse struct {
 }
 
 type camieTagsResponse struct {
-	Backend   string             `json:"backend"`
-	Model     string             `json:"model"`
-	Threshold float64            `json:"threshold"`
-	Limit     int                `json:"limit"`
+	Backend   string            `json:"backend"`
+	Model     string            `json:"model"`
+	Threshold float64           `json:"threshold"`
+	Limit     int               `json:"limit"`
 	Tags      []camietagger.Tag `json:"tags"`
 }
 

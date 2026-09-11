@@ -78,7 +78,7 @@ func (c *RemoteClient) Status(ctx context.Context) (Status, error) {
 
 func (c *RemoteClient) Tag(ctx context.Context, path string, threshold float64, limit int) ([]Tag, error) {
 	if strings.TrimSpace(path) == "" {
-		return nil, fmt.Errorf("Camie tagger image path is empty")
+		return nil, fmt.Errorf("camie tagger image path is empty")
 	}
 	if err := validateOptions(threshold, limit); err != nil {
 		return nil, err
