@@ -53,8 +53,8 @@ func TestParseCamieFilenameSplitsCopyrightList(t *testing.T) {
 
 	want := map[string]bool{
 		"Evangelion 3.0 You Can (Not) Redo": false,
-		"Neon Genesis Evangelion":          false,
-		"Rebuild Of Evangelion":            false,
+		"Neon Genesis Evangelion":           false,
+		"Rebuild Of Evangelion":             false,
 	}
 	copyrightCount := 0
 	for _, prediction := range merged {
