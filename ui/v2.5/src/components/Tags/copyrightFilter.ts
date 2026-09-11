@@ -14,6 +14,39 @@ export interface CopyrightRoot {
   name: string;
 }
 
+export interface TagWithParents {
+  parents?: Array<{
+    id: string;
+    name?: string | null;
+  }> | null;
+}
+
+let copyrightRootPromise: Promise<CopyrightRoot | null> | undefined;
+
+export function fetchCopyrightRoot() {
+  if (!copyrightRootPromise) {
+    copyrightRootPromise = fetch(
+      "image/visual-similarity/camie/copyright-root"
+    )
+      .then(async (response) => {
+        if (!response.ok) throw new Error(await response.text());
+        return (await response.json()) as CopyrightRoot;
+      })
+      .catch(() => null);
+  }
+  return copyrightRootPromise;
+}
+
+export function isCopyrightTag(
+  tag: TagWithParents,
+  root?: CopyrightRoot | null
+) {
+  return (tag.parents ?? []).some((parent) => {
+    if (root) return parent.id === String(root.id);
+    return parent.name?.trim().toLocaleLowerCase() === "copyright";
+  });
+}
+
 const nameCriterionOption = createMandatoryStringCriterionOption("name");
 
 export function applyCopyrightNamespaceFilter(
