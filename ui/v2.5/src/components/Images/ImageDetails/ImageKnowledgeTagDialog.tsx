@@ -581,9 +581,9 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         ) : null}
 
         <div className="mb-3 text-muted">
-          Matching metadata from different methods is merged into one row.
-          Local means metadata parsed from this file's filename; an existing
-          Stash entry is not treated as a source. For Characters, Artist and
+          Matching metadata from different methods is merged into one row. Local
+          means metadata parsed from this file's filename; an existing Stash
+          entry is not treated as a source. For Characters, Artist and
           Copyright, local values are authoritative: Camie can confirm those
           exact values, but conflicting Camie-only values in that category are
           ignored. If the filename has no value for a category, Camie can supply
