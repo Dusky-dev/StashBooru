@@ -1,9 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge, Button, Form, Modal, Spinner } from "react-bootstrap";
-import {
-  faExternalLinkAlt,
-  faSearch,
-} from "@fortawesome/free-solid-svg-icons";
+import { faExternalLinkAlt, faSearch } from "@fortawesome/free-solid-svg-icons";
 import { useHistory } from "react-router-dom";
 
 import { Icon } from "src/components/Shared/Icon";
@@ -355,11 +352,11 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
 
         <div className="mb-3 text-muted">
           Analyze locally/remotely with Camie, or look up the image on supported
-          boorus by MD5 and re-extract the post metadata. A filename MD5 is tried
-          first; if it is stale or unmatched, StashBooru hashes the actual file
-          and retries. Characters become Characters, the highest selected artist
-          becomes the image Artist, Copyright stays in the Copyright namespace,
-          and general/meta entries become Tags.
+          boorus by MD5 and re-extract the post metadata. A filename MD5 is
+          tried first; if it is stale or unmatched, StashBooru hashes the actual
+          file and retries. Characters become Characters, the highest selected
+          artist becomes the image Artist, Copyright stays in the Copyright
+          namespace, and general/meta entries become Tags.
         </div>
 
         <Form.Check
