@@ -14,6 +14,7 @@ import { faFolderTree } from "@fortawesome/free-solid-svg-icons";
 import { Icon } from "../Shared/Icon";
 import { FormattedMessage } from "react-intl";
 import { PatchComponent } from "src/patch";
+import { isCopyrightTag } from "../Tags/copyrightFilter";
 
 type SceneMarkerFragment = Pick<GQL.SceneMarker, "id" | "title" | "seconds"> & {
   scene: Pick<GQL.Scene, "id">;
@@ -227,8 +228,15 @@ export const GalleryLink: React.FC<IGalleryLinkProps> = ({
   );
 };
 
+interface ITagLinkObject extends INamedObject {
+  parents?: Array<{
+    id: string;
+    name?: string | null;
+  }> | null;
+}
+
 interface ITagLinkProps {
-  tag: INamedObject;
+  tag: ITagLinkObject;
   linkType?:
     | "scene"
     | "gallery"
@@ -255,24 +263,37 @@ export const TagLink: React.FC<ITagLinkProps> = PatchComponent(
     hierarchyTooltipID,
   }) => {
     const link = useMemo(() => {
+      let tagLink: string;
       switch (linkType) {
         case "scene":
-          return NavUtils.makeTagScenesUrl(tag);
+          tagLink = NavUtils.makeTagScenesUrl(tag);
+          break;
         case "performer":
-          return NavUtils.makeTagPerformersUrl(tag);
+          tagLink = NavUtils.makeTagPerformersUrl(tag);
+          break;
         case "studio":
-          return NavUtils.makeTagStudiosUrl(tag);
+          tagLink = NavUtils.makeTagStudiosUrl(tag);
+          break;
         case "gallery":
-          return NavUtils.makeTagGalleriesUrl(tag);
+          tagLink = NavUtils.makeTagGalleriesUrl(tag);
+          break;
         case "image":
-          return NavUtils.makeTagImagesUrl(tag);
+          tagLink = NavUtils.makeTagImagesUrl(tag);
+          break;
         case "group":
-          return NavUtils.makeTagGroupsUrl(tag);
+          tagLink = NavUtils.makeTagGroupsUrl(tag);
+          break;
         case "scene_marker":
-          return NavUtils.makeTagSceneMarkersUrl(tag);
+          tagLink = NavUtils.makeTagSceneMarkersUrl(tag);
+          break;
         case "details":
-          return NavUtils.makeTagUrl(tag.id ?? "");
+          tagLink = NavUtils.makeTagUrl(tag.id ?? "");
+          break;
       }
+
+      return isCopyrightTag(tag)
+        ? tagLink.replace(/^\/tags\//, "/copyrights/")
+        : tagLink;
     }, [tag, linkType]);
 
     const title = tag.name || "";
