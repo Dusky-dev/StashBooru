@@ -119,7 +119,7 @@ func (rs imageRoutes) ImageKnowledgeTagsV2(w http.ResponseWriter, r *http.Reques
 		http.Error(w, fmt.Sprintf("tagging image %d with %s Camie worker: %v", image.ID, backend, err), http.StatusBadGateway)
 		return
 	}
-	predictions = enrichCamiePredictionTargets(r.Context(), predictions)
+	predictions = enrichNativeCamiePredictionTargets(r.Context(), predictions)
 
 	writeVisualSimilarityJSON(w, camieTagsResponse{
 		Backend:   backend,
@@ -236,18 +236,20 @@ func applyCamieMetadataV2(ctx context.Context, imageID int, predictions []camiet
 			}
 		}
 
-		tagIDs := make([]int, 0, len(copyrights)+len(metadataTags))
+		copyrightIDs := make([]int, 0, len(copyrights))
 		for _, prediction := range copyrights {
-			entity, created, err := findOrCreateCamieCopyright(ctx, repository, prediction)
+			entity, created, err := findOrCreateNativeCamieCopyright(ctx, repository, prediction)
 			if err != nil {
 				return fmt.Errorf("resolving copyright %q: %w", prediction.Name, err)
 			}
-			tagIDs = append(tagIDs, entity.ID)
+			copyrightIDs = append(copyrightIDs, entity.ID)
 			response.Copyrights = append(response.Copyrights, camieAppliedEntity{ID: entity.ID, Name: entity.Name, Category: prediction.Category, Score: prediction.Score, Created: created})
 			if created {
 				response.CreatedCopyrights++
 			}
 		}
+
+		tagIDs := make([]int, 0, len(metadataTags))
 		for _, prediction := range metadataTags {
 			entity, created, err := findOrCreateCamieTagPrediction(ctx, repository, prediction)
 			if err != nil {
@@ -294,6 +296,11 @@ func applyCamieMetadataV2(ctx context.Context, imageID int, predictions []camiet
 		}
 		if changed {
 			if _, err := repository.Image.UpdatePartial(ctx, imageID, partial); err != nil {
+				return err
+			}
+		}
+		if len(copyrightIDs) > 0 {
+			if err := repository.Copyright.AddImageCopyrights(ctx, imageID, copyrightIDs); err != nil {
 				return err
 			}
 		}
