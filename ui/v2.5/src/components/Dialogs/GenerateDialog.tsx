@@ -20,6 +20,10 @@ interface IGenerateDialog {
   type: "scene" | "image" | "gallery";
 }
 
+interface CamieBulkResponse {
+  jobID: number;
+}
+
 export const GenerateDialog: React.FC<IGenerateDialog> = ({
   selectedIds,
   onClose,
@@ -51,6 +55,13 @@ export const GenerateDialog: React.FC<IGenerateDialog> = ({
   const [configRead, setConfigRead] = useState(false);
   const [showManual, setShowManual] = useState(false);
   const [animation, setAnimation] = useState(true);
+  const [camieThreshold, setCamieThreshold] = useState("0.492");
+  const [camieLimit, setCamieLimit] = useState("50");
+  const [camieCharacters, setCamieCharacters] = useState(true);
+  const [camieArtist, setCamieArtist] = useState(true);
+  const [camieTags, setCamieTags] = useState(true);
+  const [camieReplaceArtist, setCamieReplaceArtist] = useState(false);
+  const [camieStarting, setCamieStarting] = useState(false);
 
   const intl = useIntl();
   const Toast = useToast();
@@ -169,6 +180,51 @@ export const GenerateDialog: React.FC<IGenerateDialog> = ({
     }
   }
 
+  async function onCamieTag() {
+    const threshold = Number.parseFloat(camieThreshold);
+    const limit = Number.parseInt(camieLimit, 10);
+    if (!(threshold > 0 && threshold < 1)) {
+      Toast.error(new Error("Camie threshold must be greater than 0 and less than 1."));
+      return;
+    }
+    if (!(limit >= 1 && limit <= 200)) {
+      Toast.error(new Error("Camie per-category limit must be between 1 and 200."));
+      return;
+    }
+    if (!camieCharacters && !camieArtist && !camieTags) {
+      Toast.error(new Error("Enable at least one Camie metadata category."));
+      return;
+    }
+
+    setCamieStarting(true);
+    try {
+      const response = await fetch("image/visual-similarity/camie/tag", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageIDs: imageIDs?.map((id) => Number.parseInt(id, 10)) ?? [],
+          all: imageIDs === undefined,
+          threshold,
+          limit,
+          applyCharacters: camieCharacters,
+          applyArtist: camieArtist,
+          applyTags: camieTags,
+          replaceArtist: camieReplaceArtist,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error((await response.text()) || response.statusText);
+      }
+      const result = (await response.json()) as CamieBulkResponse;
+      Toast.success(`Started Camie tagging job #${result.jobID}.`);
+      onClose();
+    } catch (e) {
+      Toast.error(e);
+    } finally {
+      setCamieStarting(false);
+    }
+  }
+
   function onShowManual() {
     setAnimation(false);
     setShowManual(true);
@@ -221,6 +277,87 @@ export const GenerateDialog: React.FC<IGenerateDialog> = ({
               selection
             />
           </SettingSection>
+          {type === "image" ? (
+            <SettingSection>
+              <h4>Camie metadata</h4>
+              <p className="text-muted">
+                Run the optional Camie Tagger v2 on these images and apply its
+                predictions as StashBooru metadata. This starts a separate
+                background task and does not run the generation options above.
+              </p>
+              <div className="d-flex flex-wrap align-items-end mb-3">
+                <Form.Group className="mr-3 mb-2">
+                  <Form.Label>Threshold</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min="0.001"
+                    max="0.999"
+                    step="0.01"
+                    value={camieThreshold}
+                    onChange={(event) =>
+                      setCamieThreshold(event.currentTarget.value)
+                    }
+                    style={{ width: "8rem" }}
+                  />
+                </Form.Group>
+                <Form.Group className="mb-2">
+                  <Form.Label>Per-category limit</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min="1"
+                    max="200"
+                    value={camieLimit}
+                    onChange={(event) => setCamieLimit(event.currentTarget.value)}
+                    style={{ width: "8rem" }}
+                  />
+                </Form.Group>
+              </div>
+              <Form.Check
+                className="mb-2"
+                type="checkbox"
+                id="camie-generate-characters"
+                checked={camieCharacters}
+                onChange={(event) =>
+                  setCamieCharacters(event.currentTarget.checked)
+                }
+                label="Apply character predictions as Characters"
+              />
+              <Form.Check
+                className="mb-2"
+                type="checkbox"
+                id="camie-generate-artist"
+                checked={camieArtist}
+                onChange={(event) => setCamieArtist(event.currentTarget.checked)}
+                label="Apply the highest-confidence artist as Artist"
+              />
+              <Form.Check
+                className="mb-2"
+                type="checkbox"
+                id="camie-generate-tags"
+                checked={camieTags}
+                onChange={(event) => setCamieTags(event.currentTarget.checked)}
+                label="Apply copyright, general, meta and other predictions as Tags"
+              />
+              <Form.Check
+                className="mb-3"
+                type="checkbox"
+                id="camie-generate-replace-artist"
+                checked={camieReplaceArtist}
+                disabled={!camieArtist}
+                onChange={(event) =>
+                  setCamieReplaceArtist(event.currentTarget.checked)
+                }
+                label="Replace an existing Artist when Camie predicts one"
+              />
+              <Button
+                variant="primary"
+                disabled={camieStarting}
+                onClick={() => void onCamieTag()}
+              >
+                {camieStarting ? "Starting Camie…" : "Tag with Camie"}
+              </Button>
+            </SettingSection>
+          ) : null}
         </SettingsContext>
       </Form>
     </ModalComponent>
