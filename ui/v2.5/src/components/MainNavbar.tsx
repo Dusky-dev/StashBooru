@@ -25,6 +25,7 @@ import { SettingsButton } from "./SettingsButton";
 import {
   faBars,
   faChartColumn,
+  faCopyright,
   faFilm,
   faHeart,
   faImage,
@@ -77,6 +78,10 @@ const messages = defineMessages({
   tags: {
     id: "tags",
     defaultMessage: "Tags",
+  },
+  copyrights: {
+    id: "copyrights",
+    defaultMessage: "Copyrights",
   },
   galleries: {
     id: "galleries",
@@ -152,6 +157,13 @@ const allMenuItems: IMenuItem[] = [
     userCreatable: true,
   },
   {
+    name: "copyrights",
+    message: messages.copyrights,
+    href: "/copyrights",
+    icon: faCopyright,
+    hotkey: "g c",
+  },
+  {
     name: "tags",
     message: messages.tags,
     href: "/tags",
@@ -187,14 +199,14 @@ export const MainNavbar: React.FC = () => {
 
   const [expanded, setExpanded] = useState(false);
 
-  // Show all menu items by default, unless config says otherwise
+  // Show all menu items by default, unless config says otherwise.
+  // Copyrights follows Tags for existing custom navbar configurations.
   const menuItems = useMemo(() => {
     let cfgMenuItems = configuration?.interface.menuItems;
     if (!cfgMenuItems) {
       return allMenuItems;
     }
 
-    // translate old movies menu item to groups
     cfgMenuItems = cfgMenuItems.map((item) => {
       if (item === "movies") {
         return "groups";
@@ -202,9 +214,11 @@ export const MainNavbar: React.FC = () => {
       return item;
     });
 
-    return allMenuItems.filter((menuItem) =>
-      cfgMenuItems!.includes(menuItem.name)
-    );
+    const enabled = new Set(cfgMenuItems);
+    if (enabled.has("tags")) {
+      enabled.add("copyrights");
+    }
+    return allMenuItems.filter((menuItem) => enabled.has(menuItem.name));
   }, [configuration]);
 
   // react-bootstrap typing bug
