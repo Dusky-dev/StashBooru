@@ -54,6 +54,7 @@ RUN apk add --no-cache \
     ca-certificates \
     vips-tools \
     ffmpeg \
+    libjxl-tools \
     python3 \
     py3-pip \
     py3-numpy \
