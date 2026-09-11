@@ -85,6 +85,7 @@ type ImageUpdateInput struct {
 	SceneIds         []string           `json:"scene_ids"`
 	StudioID         *string            `json:"studio_id"`
 	TagIds           []string           `json:"tag_ids"`
+	CopyrightIds     []string           `json:"copyright_ids"`
 	PerformerIds     []string           `json:"performer_ids"`
 	GalleryIds       []string           `json:"gallery_ids"`
 	PrimaryFileID    *string            `json:"primary_file_id"`
