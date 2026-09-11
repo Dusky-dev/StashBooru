@@ -265,7 +265,10 @@ export const TagEditPanel: React.FC<ITagEditPanel> = ({
           when={formik.dirty}
           message={(location, action) => {
             // Check if it's a redirect after tag/copyright creation.
-            if (action === "PUSH" && location.pathname.startsWith(`${basePath}/`)) {
+            if (
+              action === "PUSH" &&
+              location.pathname.startsWith(`${basePath}/`)
+            ) {
               return true;
             }
 
