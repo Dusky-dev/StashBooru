@@ -39,6 +39,11 @@ import {
   CustomFieldsInput,
   formatCustomFieldInput,
 } from "src/components/Shared/CustomFields";
+import { CollapseButton } from "src/components/Shared/CollapseButton";
+import {
+  Copyright,
+  CopyrightSelect,
+} from "src/components/Copyrights/CopyrightSelect";
 import cloneDeep from "lodash-es/cloneDeep";
 
 interface IProps {
@@ -56,13 +61,15 @@ export const ImageEditPanel: React.FC<IProps> = ({
 }) => {
   const intl = useIntl();
   const Toast = useToast();
+  const [updateCopyrights] = GQL.useImageCopyrightsUpdateMutation();
 
-  // Network state
   const [isLoading, setIsLoading] = useState(false);
-
   const [galleries, setGalleries] = useState<Gallery[]>([]);
   const [performers, setPerformers] = useState<Performer[]>([]);
   const [studio, setStudio] = useState<Studio | null>(null);
+  const [copyrights, setCopyrights] = useState<Copyright[]>(
+    image.copyrights ?? []
+  );
 
   const isNew = image.id === undefined;
 
@@ -76,6 +83,10 @@ export const ImageEditPanel: React.FC<IProps> = ({
       })) ?? []
     );
   }, [image.galleries]);
+
+  useEffect(() => {
+    setCopyrights(image.copyrights ?? []);
+  }, [image.copyrights]);
 
   const scrapers = useListImageScrapers();
   const [scrapedImage, setScrapedImage] = useState<GQL.ScrapedImage | null>();
@@ -91,6 +102,7 @@ export const ImageEditPanel: React.FC<IProps> = ({
     studio_id: yup.string().required().nullable(),
     performer_ids: yup.array(yup.string().required()).defined(),
     tag_ids: yup.array(yup.string().required()).defined(),
+    copyright_ids: yup.array(yup.string().required()).defined(),
     custom_fields: yup.object().required().defined(),
   });
 
@@ -105,6 +117,7 @@ export const ImageEditPanel: React.FC<IProps> = ({
     studio_id: image.studio?.id ?? null,
     performer_ids: (image.performers ?? []).map((p) => p.id),
     tag_ids: (image.tags ?? []).map((t) => t.id),
+    copyright_ids: (image.copyrights ?? []).map((item) => item.id),
     custom_fields: cloneDeep(image.custom_fields ?? {}),
   };
 
@@ -117,7 +130,7 @@ export const ImageEditPanel: React.FC<IProps> = ({
       ...schema.cast(values),
       custom_fields: formatCustomFieldInput(isNew, values.custom_fields),
     };
-    onSave(input);
+    void onSave(input);
   }
 
   const formik = useFormik<InputValues>({
@@ -151,6 +164,14 @@ export const ImageEditPanel: React.FC<IProps> = ({
   function onSetStudio(item: Studio | null) {
     setStudio(item);
     formik.setFieldValue("studio_id", item ? item.id : null);
+  }
+
+  function onSetCopyrights(items: Copyright[]) {
+    setCopyrights(items);
+    formik.setFieldValue(
+      "copyright_ids",
+      items.map((item) => item.id)
+    );
   }
 
   useEffect(() => {
@@ -188,11 +209,17 @@ export const ImageEditPanel: React.FC<IProps> = ({
   async function onSave(input: InputValues) {
     setIsLoading(true);
     try {
+      const { copyright_ids: copyrightIDs, ...imageInput } = input;
       await onSubmit({
         id: image.id,
-        ...input,
+        ...imageInput,
       });
-      formik.resetForm();
+      if (image.id) {
+        await updateCopyrights({
+          variables: { imageID: image.id, copyrightIDs },
+        });
+      }
+      formik.resetForm({ values: input });
     } catch (e) {
       Toast.error(e);
     }
@@ -226,29 +253,14 @@ export const ImageEditPanel: React.FC<IProps> = ({
   function updateImageFromScrapedGallery(
     imageData: GQL.ScrapedImageDataFragment
   ) {
-    if (imageData.title) {
-      formik.setFieldValue("title", imageData.title);
-    }
-
-    if (imageData.code) {
-      formik.setFieldValue("code", imageData.code);
-    }
-
-    if (imageData.details) {
-      formik.setFieldValue("details", imageData.details);
-    }
-
+    if (imageData.title) formik.setFieldValue("title", imageData.title);
+    if (imageData.code) formik.setFieldValue("code", imageData.code);
+    if (imageData.details) formik.setFieldValue("details", imageData.details);
     if (imageData.photographer) {
       formik.setFieldValue("photographer", imageData.photographer);
     }
-
-    if (imageData.date) {
-      formik.setFieldValue("date", imageData.date);
-    }
-
-    if (imageData.urls) {
-      formik.setFieldValue("urls", imageData.urls);
-    }
+    if (imageData.date) formik.setFieldValue("date", imageData.date);
+    if (imageData.urls) formik.setFieldValue("urls", imageData.urls);
 
     if (imageData.studio?.stored_id) {
       onSetStudio({
@@ -259,19 +271,17 @@ export const ImageEditPanel: React.FC<IProps> = ({
     }
 
     if (imageData.performers?.length) {
-      const idPerfs = imageData.performers.filter((p) => {
-        return p.stored_id !== undefined && p.stored_id !== null;
-      });
+      const idPerfs = imageData.performers.filter(
+        (p) => p.stored_id !== undefined && p.stored_id !== null
+      );
 
       if (idPerfs.length > 0) {
         onSetPerformers(
-          idPerfs.map((p) => {
-            return {
-              id: p.stored_id!,
-              name: p.name ?? "",
-              alias_list: [],
-            };
-          })
+          idPerfs.map((p) => ({
+            id: p.stored_id!,
+            name: p.name ?? "",
+            alias_list: [],
+          }))
         );
       }
     }
@@ -291,22 +301,16 @@ export const ImageEditPanel: React.FC<IProps> = ({
   }
 
   async function onScrapeDialogClosed(data?: GQL.ScrapedImageDataFragment) {
-    if (data) {
-      updateImageFromScrapedGallery(data);
-    }
+    if (data) updateImageFromScrapedGallery(data);
     setScrapedImage(undefined);
   }
 
   async function onScrapeImageURL(url: string) {
-    if (!url) {
-      return;
-    }
+    if (!url) return;
     setIsLoading(true);
     try {
       const result = await queryScrapeImageURL(url);
-      if (!result.data?.scrapeImageURL) {
-        return;
-      }
+      if (!result.data?.scrapeImageURL) return;
       setScrapedImage(result.data.scrapeImageURL);
     } catch (e) {
       Toast.error(e);
@@ -318,65 +322,46 @@ export const ImageEditPanel: React.FC<IProps> = ({
   if (isLoading) return <LoadingIndicator />;
 
   const splitProps = {
-    labelProps: {
-      column: true,
-      sm: 3,
-    },
-    fieldProps: {
-      sm: 9,
-    },
+    labelProps: { column: true, sm: 3 },
+    fieldProps: { sm: 9 },
   };
   const fullWidthProps = {
-    labelProps: {
-      column: true,
-      sm: 3,
-      xl: 12,
-    },
-    fieldProps: {
-      sm: 9,
-      xl: 12,
-    },
+    labelProps: { column: true, sm: 3, xl: 12 },
+    fieldProps: { sm: 9, xl: 12 },
   };
   const urlProps = isNew
     ? splitProps
     : {
-        labelProps: {
-          column: true,
-          md: 3,
-          lg: 12,
-        },
-        fieldProps: {
-          md: 9,
-          lg: 12,
-        },
+        labelProps: { column: true, md: 3, lg: 12 },
+        fieldProps: { md: 9, lg: 12 },
       };
   const { renderField, renderInputField, renderDateField, renderURLListField } =
     formikUtils(intl, formik, splitProps);
 
   function renderGalleriesField() {
     const title = intl.formatMessage({ id: "galleries" });
-    const control = (
+    return renderField(
+      "gallery_ids",
+      title,
       <GallerySelect
         values={galleries}
-        onSelect={(items) => onSetGalleries(items)}
+        onSelect={onSetGalleries}
         isMulti
         extraCriteria={excludeFileBasedGalleries}
       />
     );
-
-    return renderField("gallery_ids", title, control);
   }
 
   function renderStudioField() {
     const title = intl.formatMessage({ id: "studio" });
-    const control = (
+    return renderField(
+      "studio_id",
+      title,
       <StudioSelect
         onSelect={(items) => onSetStudio(items.length > 0 ? items[0] : null)}
         values={studio ? [studio] : []}
       />
     );
-
-    return renderField("studio_id", title, control);
   }
 
   function renderPerformersField() {
@@ -389,43 +374,47 @@ export const ImageEditPanel: React.FC<IProps> = ({
     })();
 
     const title = intl.formatMessage({ id: "performers" });
-    const control = (
+    return renderField(
+      "performer_ids",
+      title,
       <PerformerSelect
         isMulti
         onSelect={onSetPerformers}
         values={performers}
         ageFromDate={date}
-      />
+      />,
+      fullWidthProps
     );
+  }
 
-    return renderField("performer_ids", title, control, fullWidthProps);
+  function renderCopyrightsField() {
+    return renderField(
+      "copyright_ids",
+      intl.formatMessage({ id: "copyrights", defaultMessage: "Copyrights" }),
+      <CopyrightSelect isMulti onSelect={onSetCopyrights} values={copyrights} />,
+      fullWidthProps
+    );
   }
 
   function renderTagsField() {
-    const title = intl.formatMessage({ id: "tags" });
-    return renderField("tag_ids", title, tagsControl(), fullWidthProps);
+    return renderField(
+      "tag_ids",
+      intl.formatMessage({ id: "tags" }),
+      tagsControl(),
+      fullWidthProps
+    );
   }
 
   function renderDetailsField() {
     const props = {
-      labelProps: {
-        column: true,
-        sm: 3,
-        lg: 12,
-      },
-      fieldProps: {
-        sm: 9,
-        lg: 12,
-      },
+      labelProps: { column: true, sm: 3, lg: 12 },
+      fieldProps: { sm: 9, lg: 12 },
     };
-
     return renderInputField("details", "textarea", "details", props);
   }
 
   function maybeRenderScrapeDialog() {
-    if (!scrapedImage) {
-      return;
-    }
+    if (!scrapedImage) return;
 
     const currentImage = {
       id: image.id!,
@@ -439,9 +428,7 @@ export const ImageEditPanel: React.FC<IProps> = ({
         imageTags={tags}
         imagePerformers={performers}
         scraped={scrapedImage}
-        onClose={(data) => {
-          onScrapeDialogClosed(data);
-        }}
+        onClose={onScrapeDialogClosed}
       />
     );
   }
@@ -472,7 +459,7 @@ export const ImageEditPanel: React.FC<IProps> = ({
             <Button
               className="edit-button"
               variant="danger"
-              onClick={() => onDelete()}
+              onClick={onDelete}
             >
               <FormattedMessage id="actions.delete" />
             </Button>
@@ -491,8 +478,6 @@ export const ImageEditPanel: React.FC<IProps> = ({
         <Row className="form-container px-3">
           <Col lg={7} xl={12}>
             {renderInputField("title")}
-            {renderInputField("code", "text", "scene_code")}
-
             {renderURLListField(
               "urls",
               onScrapeImageURL,
@@ -500,23 +485,24 @@ export const ImageEditPanel: React.FC<IProps> = ({
               "urls",
               urlProps
             )}
-
             {renderDateField("date")}
             {renderInputField("photographer")}
-
             {renderGalleriesField()}
             {renderStudioField()}
             {renderPerformersField()}
+            {renderCopyrightsField()}
             {renderTagsField()}
+            <CollapseButton className="mt-2" text="Advanced">
+              {renderInputField("code", "text", "scene_code")}
+            </CollapseButton>
           </Col>
           <Col lg={5} xl={12}>
             {renderDetailsField()}
-
             <CustomFieldsInput
               values={formik.values.custom_fields}
               onChange={(v) => formik.setFieldValue("custom_fields", v)}
               error={customFieldsError}
-              setError={(e) => setCustomFieldsError(e)}
+              setError={setCustomFieldsError}
             />
           </Col>
         </Row>
