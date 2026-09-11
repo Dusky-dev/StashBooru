@@ -29,7 +29,7 @@ type camieFilenameLayout struct {
 }
 
 var (
-	camieFilenameTokenPattern            = regexp.MustCompile(`%([a-zA-Z0-9_]+)%`)
+	camieFilenameTokenPattern           = regexp.MustCompile(`%([a-zA-Z0-9_]+)%`)
 	camieCharacterDisambiguationPattern = regexp.MustCompile(`^(.+?)\s*\(([^()]*)\)\s*$`)
 )
 
