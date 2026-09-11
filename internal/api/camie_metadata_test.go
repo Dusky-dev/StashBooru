@@ -1,6 +1,10 @@
 package api
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stashapp/stash/pkg/camietagger"
+)
 
 func TestParseCamieFilenameDefaultLayout(t *testing.T) {
 	predictions, err := parseCamieFilename(
@@ -47,7 +51,11 @@ func TestMergeCamiePredictionsPreservesRawAlias(t *testing.T) {
 	}
 
 	for _, test := range model {
-		prediction := normalizeCamiePrediction(newCamieTestPrediction(test.name, test.category))
+		prediction := normalizeCamiePrediction(camietagger.Tag{
+			Name:     test.name,
+			Category: test.category,
+			Score:    0.9,
+		})
 		if prediction.RawName != test.name {
 			t.Fatalf("expected raw alias %q, got %q", test.name, prediction.RawName)
 		}
