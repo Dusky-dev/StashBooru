@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Button,
   Col,
@@ -20,7 +26,7 @@ import { useToast } from "../Toast";
 import { FormattedMessage, useIntl } from "react-intl";
 import { LightboxImage } from "./LightboxImage";
 import { useConfigurationContext } from "../Config";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { OCounterButton } from "src/components/Scenes/SceneDetails/OCounterButton";
 import {
   mutateImageIncrementO,
@@ -54,6 +60,10 @@ import { isVideo } from "src/utils/visualFile";
 import { imageTitle } from "src/core/files";
 import { galleryTitle } from "src/core/galleries";
 import type { LightboxHideReason } from "./context";
+import {
+  ReferenceComparison,
+  type ReferenceComparisonMode,
+} from "./ReferenceComparison";
 
 const CLASSNAME = "Lightbox";
 const CLASSNAME_HEADER = `${CLASSNAME}-header`;
@@ -120,6 +130,21 @@ export const LightboxComponent: React.FC<IProps> = ({
   onDeleteImage,
 }) => {
   const [updateImage] = useImageUpdate();
+  const location = useLocation();
+  const referenceImageID = useMemo(() => {
+    const sortBy = new URLSearchParams(location.search).get("sortby") ?? "";
+    const match = sortBy.match(/^perceptual_similarity(?::(\d+))?(?::(\d+))?$/);
+    return match?.[2];
+  }, [location.search]);
+  const { data: referenceImageData } = GQL.useFindImageQuery({
+    variables: { id: referenceImageID ?? "" },
+    skip: !referenceImageID,
+  });
+  const referenceImage = referenceImageData?.findImage as
+    | ILightboxImage
+    | undefined;
+  const [referenceComparisonMode, setReferenceComparisonMode] =
+    useState<ReferenceComparisonMode>("both");
 
   // zero-based
   const [index, setIndex] = useState<number | null>(null);
@@ -748,6 +773,30 @@ export const LightboxComponent: React.FC<IProps> = ({
           </Form.Group>
         ) : undefined}
 
+        {referenceImage ? (
+          <Form.Group controlId="referenceComparisonMode" as={Row}>
+            <Col xs={4}>
+              <Form.Label className="col-form-label">Reference view</Form.Label>
+            </Col>
+            <Col xs={8}>
+              <Form.Control
+                as="select"
+                onChange={(event) =>
+                  setReferenceComparisonMode(
+                    event.target.value as ReferenceComparisonMode
+                  )
+                }
+                value={referenceComparisonMode}
+                className="btn-secondary mx-1 mb-1"
+              >
+                <option value="selected">Selected image</option>
+                <option value="both">Both images</option>
+                <option value="slider">Slider</option>
+              </Form.Control>
+            </Col>
+          </Form.Group>
+        ) : null}
+
         <Form.Group controlId="displayMode" as={Row}>
           <Col xs={4}>
             <Form.Label className="col-form-label">
@@ -851,6 +900,54 @@ export const LightboxComponent: React.FC<IProps> = ({
           </Form.Text>
         </Form.Group>
       </>
+    );
+  }
+
+  function renderCarouselImage(image: ILightboxImage, imageIndex: number) {
+    if (imageIndex < currentIndex - 1 || imageIndex > currentIndex + 1) {
+      return undefined;
+    }
+
+    const comparisonActive =
+      imageIndex === currentIndex &&
+      referenceImage !== undefined &&
+      referenceImage.id !== image.id &&
+      referenceComparisonMode !== "selected";
+
+    if (comparisonActive) {
+      return (
+        <ReferenceComparison
+          referenceImage={referenceImage}
+          selectedImage={image}
+          mode={referenceComparisonMode === "slider" ? "slider" : "both"}
+          zoom={zoom}
+          resetPosition={resetPosition}
+          setZoom={updateZoom}
+        />
+      );
+    }
+
+    return (
+      <LightboxImage
+        src={image.paths.image ?? ""}
+        width={image.visual_files?.[0]?.width ?? 0}
+        height={image.visual_files?.[0]?.height ?? 0}
+        displayMode={displayMode}
+        scaleUp={scaleUp}
+        scrollMode={scrollMode}
+        resetPosition={resetPosition}
+        zoom={imageIndex === currentIndex ? zoom : 1}
+        scrollAttemptsBeforeChange={scrollAttemptsBeforeChange}
+        firstScroll={firstScroll}
+        inScrollGroup={inScrollGroup}
+        current={imageIndex === currentIndex}
+        alignBottom={movingLeft}
+        setZoom={updateZoom}
+        debouncedScrollReset={debouncedScrollReset}
+        onLeft={handleLeft}
+        onRight={handleRight}
+        isVideo={isVideo(image.visual_files?.[0] ?? {})}
+      />
     );
   }
 
@@ -1016,30 +1113,9 @@ export const LightboxComponent: React.FC<IProps> = ({
             style={{ left: `${currentIndex * -100}vw` }}
             ref={carouselRef}
           >
-            {images.map((image, i) => (
+            {images.map((image, imageIndex) => (
               <div className={`${CLASSNAME_IMAGE}`} key={image.paths.image}>
-                {i >= currentIndex - 1 && i <= currentIndex + 1 ? (
-                  <LightboxImage
-                    src={image.paths.image ?? ""}
-                    width={image.visual_files?.[0]?.width ?? 0}
-                    height={image.visual_files?.[0]?.height ?? 0}
-                    displayMode={displayMode}
-                    scaleUp={scaleUp}
-                    scrollMode={scrollMode}
-                    resetPosition={resetPosition}
-                    zoom={i === currentIndex ? zoom : 1}
-                    scrollAttemptsBeforeChange={scrollAttemptsBeforeChange}
-                    firstScroll={firstScroll}
-                    inScrollGroup={inScrollGroup}
-                    current={i === currentIndex}
-                    alignBottom={movingLeft}
-                    setZoom={updateZoom}
-                    debouncedScrollReset={debouncedScrollReset}
-                    onLeft={handleLeft}
-                    onRight={handleRight}
-                    isVideo={isVideo(image.visual_files?.[0] ?? {})}
-                  />
-                ) : undefined}
+                {renderCarouselImage(image, imageIndex)}
               </div>
             ))}
           </div>
