@@ -126,7 +126,7 @@ models:
   ScraperSource:
     model: github.com/stashapp/stash/pkg/scraper.Source
   IdentifySourceInput:
-    model: github.com/stashapp/stash/pkg/scraper.Source
+    model: github.com/stashapp/stash/internal/identify.Source
   IdentifyFieldOptionsInput:
     model: github.com/stashapp/stash/internal/identify.FieldOptions
   IdentifyMetadataOptionsInput:
