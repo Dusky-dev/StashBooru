@@ -28,7 +28,10 @@ type camieFilenameLayout struct {
 	groups     map[string]int
 }
 
-var camieFilenameTokenPattern = regexp.MustCompile(`%([a-zA-Z0-9_]+)%`)
+var (
+	camieFilenameTokenPattern            = regexp.MustCompile(`%([a-zA-Z0-9_]+)%`)
+	camieCharacterDisambiguationPattern = regexp.MustCompile(`^(.+?)\s*\(([^()]*)\)\s*$`)
+)
 
 func compileCamieFilenameLayout(layout string) (*camieFilenameLayout, error) {
 	layout = strings.TrimSpace(layout)
@@ -203,6 +206,77 @@ func camieAliases(prediction camietagger.Tag) []string {
 	return []string{raw}
 }
 
+func camieCharacterIdentity(prediction camietagger.Tag) (string, string) {
+	prediction = normalizeCamiePrediction(prediction)
+	name := strings.TrimSpace(prediction.Name)
+	match := camieCharacterDisambiguationPattern.FindStringSubmatch(name)
+	if len(match) != 3 {
+		return name, ""
+	}
+
+	characterName := strings.TrimSpace(match[1])
+	disambiguation := strings.TrimSpace(match[2])
+	if characterName == "" || disambiguation == "" {
+		return name, ""
+	}
+	return characterName, disambiguation
+}
+
+func camieCharacterAliases(prediction camietagger.Tag, characterName string) []string {
+	prediction = normalizeCamiePrediction(prediction)
+	seen := map[string]bool{strings.ToLower(strings.TrimSpace(characterName)): true}
+	aliases := make([]string, 0, 2)
+	for _, candidate := range []string{prediction.Name, prediction.RawName} {
+		candidate = strings.TrimSpace(candidate)
+		if candidate == "" {
+			continue
+		}
+		key := strings.ToLower(candidate)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		aliases = append(aliases, candidate)
+	}
+	return aliases
+}
+
+func findCamiePerformerPrediction(ctx context.Context, repository models.Repository, prediction camietagger.Tag) (*models.Performer, error) {
+	prediction = normalizeCamiePrediction(prediction)
+	characterName, disambiguation := camieCharacterIdentity(prediction)
+
+	names := []string{prediction.Name}
+	if prediction.RawName != "" && !strings.EqualFold(prediction.RawName, prediction.Name) {
+		names = append(names, prediction.RawName)
+	}
+	if characterName != "" && !strings.EqualFold(characterName, prediction.Name) {
+		names = append(names, characterName)
+	}
+
+	matches, err := repository.Performer.FindByNames(ctx, names, true)
+	if err != nil {
+		return nil, err
+	}
+	if disambiguation == "" {
+		if len(matches) > 0 {
+			return matches[0], nil
+		}
+		return nil, nil
+	}
+
+	for _, match := range matches {
+		if strings.EqualFold(strings.TrimSpace(match.Disambiguation), disambiguation) {
+			return match, nil
+		}
+	}
+	for _, match := range matches {
+		if strings.EqualFold(strings.TrimSpace(match.Name), prediction.Name) {
+			return match, nil
+		}
+	}
+	return nil, nil
+}
+
 func findCamieTag(ctx context.Context, repository models.Repository, prediction camietagger.Tag) (*models.Tag, error) {
 	for _, name := range []string{prediction.Name, prediction.RawName} {
 		name = strings.TrimSpace(name)
@@ -316,21 +390,19 @@ func findOrCreateCamieCopyright(ctx context.Context, repository models.Repositor
 
 func findOrCreateCamiePerformerPrediction(ctx context.Context, repository models.Repository, prediction camietagger.Tag) (*models.Performer, bool, error) {
 	prediction = normalizeCamiePrediction(prediction)
-	names := []string{prediction.Name}
-	if prediction.RawName != "" && !strings.EqualFold(prediction.RawName, prediction.Name) {
-		names = append(names, prediction.RawName)
-	}
-	matches, err := repository.Performer.FindByNames(ctx, names, true)
+	existing, err := findCamiePerformerPrediction(ctx, repository, prediction)
 	if err != nil {
 		return nil, false, err
 	}
-	if len(matches) > 0 {
-		return matches[0], false, nil
+	if existing != nil {
+		return existing, false, nil
 	}
 
+	characterName, disambiguation := camieCharacterIdentity(prediction)
 	newPerformer := models.NewPerformer()
-	newPerformer.Name = prediction.Name
-	newPerformer.Aliases = models.NewRelatedStrings(camieAliases(prediction))
+	newPerformer.Name = characterName
+	newPerformer.Disambiguation = disambiguation
+	newPerformer.Aliases = models.NewRelatedStrings(camieCharacterAliases(prediction, characterName))
 	newPerformer.URLs = models.NewRelatedStrings([]string{})
 	if err := performer.ValidateCreate(ctx, newPerformer, repository.Performer); err != nil {
 		return nil, false, err
@@ -407,18 +479,15 @@ func enrichCamiePredictionTargets(ctx context.Context, predictions []camietagger
 			var targetID int
 			switch prediction.Category {
 			case "character":
-				names := []string{prediction.Name}
-				if prediction.RawName != "" {
-					names = append(names, prediction.RawName)
-				}
-				matches, _ := repository.Performer.FindByNames(ctx, names, true)
-				if len(matches) > 0 {
-					targetID = matches[0].ID
+				performerEntity, _ := findCamiePerformerPrediction(ctx, repository, prediction)
+				if performerEntity != nil {
+					targetID = performerEntity.ID
 				}
 				if targetID > 0 {
 					prediction.TargetPath = fmt.Sprintf("/performers/%d", targetID)
 				} else {
-					prediction.TargetPath = "/performers?q=" + url.QueryEscape(prediction.Name)
+					characterName, _ := camieCharacterIdentity(prediction)
+					prediction.TargetPath = "/performers?q=" + url.QueryEscape(characterName)
 				}
 			case "artist":
 				for _, name := range []string{prediction.Name, prediction.RawName} {
