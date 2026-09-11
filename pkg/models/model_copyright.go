@@ -5,18 +5,18 @@ import "time"
 // Copyright is a first-class series/franchise metadata entity. It deliberately
 // does not share Tag storage or require a synthetic root Tag.
 type Copyright struct {
-	ID          int       `json:"id"`
-	Name        string    `json:"name"`
-	SortName    string    `json:"sort_name"`
-	Description string    `json:"description"`
-	Favorite    bool      `json:"favorite"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	Aliases     []string  `json:"aliases"`
+	ID          int          `json:"id"`
+	Name        string       `json:"name"`
+	SortName    string       `json:"sort_name"`
+	Description string       `json:"description"`
+	Favorite    bool         `json:"favorite"`
+	CreatedAt   time.Time    `json:"created_at"`
+	UpdatedAt   time.Time    `json:"updated_at"`
+	Aliases     []string     `json:"aliases"`
 	Parents     []*Copyright `json:"parents"`
 	Children    []*Copyright `json:"children"`
-	ImageCount  int       `json:"image_count"`
-	SceneCount  int       `json:"scene_count"`
+	ImageCount  int          `json:"image_count"`
+	SceneCount  int          `json:"scene_count"`
 }
 
 type CopyrightCreateInput struct {
@@ -30,14 +30,14 @@ type CopyrightCreateInput struct {
 }
 
 type CopyrightUpdateInput struct {
-	ID          string    `json:"id"`
-	Name        *string   `json:"name"`
-	SortName    *string   `json:"sort_name"`
-	Description *string   `json:"description"`
-	Favorite    *bool     `json:"favorite"`
-	Aliases     *[]string `json:"aliases"`
-	ParentIDs   *[]string `json:"parent_ids"`
-	ChildIDs    *[]string `json:"child_ids"`
+	ID          string   `json:"id"`
+	Name        *string  `json:"name"`
+	SortName    *string  `json:"sort_name"`
+	Description *string  `json:"description"`
+	Favorite    *bool    `json:"favorite"`
+	Aliases     []string `json:"aliases"`
+	ParentIDs   []string `json:"parent_ids"`
+	ChildIDs    []string `json:"child_ids"`
 }
 
 type CopyrightDestroyInput struct {
