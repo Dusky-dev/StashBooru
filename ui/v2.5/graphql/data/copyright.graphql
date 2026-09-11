@@ -1,0 +1,26 @@
+fragment SlimCopyrightData on Copyright {
+  id
+  name
+  sort_name
+  aliases
+  favorite
+}
+
+fragment CopyrightData on Copyright {
+  id
+  name
+  sort_name
+  description
+  aliases
+  favorite
+  created_at
+  updated_at
+  image_count
+  scene_count
+  parents {
+    ...SlimCopyrightData
+  }
+  children {
+    ...SlimCopyrightData
+  }
+}
