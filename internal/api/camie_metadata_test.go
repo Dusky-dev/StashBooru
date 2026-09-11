@@ -34,6 +34,54 @@ func TestParseCamieFilenameDefaultLayout(t *testing.T) {
 	}
 }
 
+func TestCamieCharacterIdentityUsesTrailingCopyright(t *testing.T) {
+	prediction := camietagger.Tag{
+		Name:     "darkness_(konosuba)",
+		Category: "character",
+		Score:    0.99,
+	}
+
+	name, disambiguation := camieCharacterIdentity(prediction)
+	if name != "Darkness" {
+		t.Fatalf("expected character name Darkness, got %q", name)
+	}
+	if disambiguation != "Konosuba" {
+		t.Fatalf("expected disambiguation Konosuba, got %q", disambiguation)
+	}
+
+	aliases := camieCharacterAliases(prediction, name)
+	wantAliases := map[string]bool{
+		"Darkness (Konosuba)": false,
+		"darkness_(konosuba)": false,
+	}
+	for _, alias := range aliases {
+		if _, ok := wantAliases[alias]; ok {
+			wantAliases[alias] = true
+		}
+	}
+	for alias, found := range wantAliases {
+		if !found {
+			t.Fatalf("expected character alias %q", alias)
+		}
+	}
+}
+
+func TestCamieCharacterIdentityLeavesPlainNamesAlone(t *testing.T) {
+	prediction := camietagger.Tag{
+		Name:     "frieren",
+		Category: "character",
+		Score:    0.99,
+	}
+
+	name, disambiguation := camieCharacterIdentity(prediction)
+	if name != "Frieren" {
+		t.Fatalf("expected character name Frieren, got %q", name)
+	}
+	if disambiguation != "" {
+		t.Fatalf("expected empty disambiguation, got %q", disambiguation)
+	}
+}
+
 func TestCompileCamieFilenameLayoutRejectsUnknownToken(t *testing.T) {
 	if _, err := compileCamieFilenameLayout("%artist%_%unknown%.%ext%"); err == nil {
 		t.Fatal("expected unknown filename token to fail validation")
