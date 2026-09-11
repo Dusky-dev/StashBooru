@@ -87,6 +87,12 @@ const SelectedComparisonMedia: React.FC<{
   );
 };
 
+function comparisonFilename(image: ILightboxImage) {
+  const path = image.visual_files?.[0]?.path;
+  if (!path) return "—";
+  return path.split(/[\\/]/).pop() || path;
+}
+
 function formatBytes(bytes?: number) {
   if (bytes === undefined || !Number.isFinite(bytes)) return "—";
   const units = ["B", "KiB", "MiB", "GiB", "TiB"];
@@ -192,12 +198,16 @@ function comparisonMetrics(
 
 const ComparisonInfo: React.FC<{
   title: string;
+  filename: string;
   side: "reference" | "selected";
   metrics: IComparisonMetric[];
   className?: string;
-}> = ({ title, side, metrics, className }) => (
+}> = ({ title, filename, side, metrics, className }) => (
   <div className={cx(`${CLASSNAME}-info`, className)}>
     <strong className={`${CLASSNAME}-info-title`}>{title}</strong>
+    <span className={`${CLASSNAME}-info-filename`} title={filename}>
+      {filename}
+    </span>
     {metrics.map((metric) => {
       const comparable =
         metric.referenceValue !== undefined &&
@@ -234,6 +244,8 @@ export const ReferenceComparison: React.FC<IProps> = ({
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const dragState = useRef<IDragState | null>(null);
   const metrics = comparisonMetrics(referenceImage, selectedImage);
+  const referenceFilename = comparisonFilename(referenceImage);
+  const selectedFilename = comparisonFilename(selectedImage);
 
   // Keep the reference fixed when only the selected match changes. Reset only
   // for an explicit parent reset, a view-mode change, or a different reference.
@@ -294,6 +306,7 @@ export const ReferenceComparison: React.FC<IProps> = ({
         <div className={`${CLASSNAME}-pane`}>
           <ComparisonInfo
             title="Reference"
+            filename={referenceFilename}
             side="reference"
             metrics={metrics}
           />
@@ -302,7 +315,12 @@ export const ReferenceComparison: React.FC<IProps> = ({
           </div>
         </div>
         <div className={`${CLASSNAME}-pane`}>
-          <ComparisonInfo title="Selected" side="selected" metrics={metrics} />
+          <ComparisonInfo
+            title="Selected"
+            filename={selectedFilename}
+            side="selected"
+            metrics={metrics}
+          />
           <div className={`${CLASSNAME}-viewport`} style={{ transform }}>
             <SelectedComparisonMedia
               image={selectedImage}
@@ -336,12 +354,14 @@ export const ReferenceComparison: React.FC<IProps> = ({
       </div>
       <ComparisonInfo
         title="Reference"
+        filename={referenceFilename}
         side="reference"
         metrics={metrics}
         className={`${CLASSNAME}-info-left`}
       />
       <ComparisonInfo
         title="Selected"
+        filename={selectedFilename}
         side="selected"
         metrics={metrics}
         className={`${CLASSNAME}-info-right`}
