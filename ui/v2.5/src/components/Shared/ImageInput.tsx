@@ -59,34 +59,19 @@ export const ImageInput: React.FC<IImageInput> = PatchComponent(
     const Toast = useToast();
     if (!isEditing) return <div />;
 
-    function chooseFile() {
-      fileInputRef.current?.click();
-    }
-
-    function handleImageChange(event: React.ChangeEvent<HTMLInputElement>) {
-      onImageChange(event);
-      // Allow choosing the same file again after clearing/changing the image.
-      event.currentTarget.value = "";
-    }
-
-    const fileInput = (
-      <input
-        ref={fileInputRef}
-        className="d-none"
-        type="file"
-        onChange={handleImageChange}
-        accept={acceptExtensions(acceptSVG)}
-      />
-    );
-
     if (!onImageURL) {
+      // just return the file input
       return (
-        <span className="image-input">
-          <Button variant="secondary" onClick={chooseFile}>
+        <Form.Label className="image-input">
+          <Button variant="secondary">
             {text ?? <FormattedMessage id="actions.browse_for_image" />}
           </Button>
-          {fileInput}
-        </span>
+          <Form.Control
+            type="file"
+            onChange={onImageChange}
+            accept={acceptExtensions(acceptSVG)}
+          />
+        </Form.Label>
       );
     }
 
@@ -162,12 +147,24 @@ export const ImageInput: React.FC<IImageInput> = PatchComponent(
       <Popover id="set-image-popover">
         <Popover.Content>
           <div>
-            <Button className="minimal" onClick={chooseFile}>
-              <Icon icon={faFile} className="fa-fw" />
-              <span>
-                <FormattedMessage id="actions.from_file" />
-              </span>
-            </Button>
+            <span className="image-input">
+              <Button
+                type="button"
+                className="minimal"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Icon icon={faFile} className="fa-fw" />
+                <span>
+                  <FormattedMessage id="actions.from_file" />
+                </span>
+              </Button>
+              <Form.Control
+                ref={fileInputRef}
+                type="file"
+                onChange={onImageChange}
+                accept={acceptExtensions(acceptSVG)}
+              />
+            </span>
           </div>
           <div>
             <Button className="minimal" onClick={showDialog}>
@@ -220,7 +217,6 @@ export const ImageInput: React.FC<IImageInput> = PatchComponent(
     return (
       <>
         {renderDialog()}
-        {fileInput}
         <OverlayTrigger
           trigger="click"
           placement="top"
