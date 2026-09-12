@@ -16,7 +16,10 @@ const unifiedParts = [
   "unifiedMedia.05.part",
   "unifiedMedia.06.part",
 ];
-const unifiedExtension = "unifiedMedia.copyright.part";
+const unifiedExtensions = [
+  "unifiedMedia.copyright.part",
+  "unifiedMedia.copyright.guard.part",
+];
 const unifiedClose = Buffer.from("})();\n");
 
 const expectedUnifiedSha256 =
@@ -34,7 +37,7 @@ if (!unifiedCore.subarray(-unifiedClose.length).equals(unifiedClose)) {
 
 const unifiedMedia = Buffer.concat([
   unifiedCore.subarray(0, -unifiedClose.length),
-  readFileSync(resolve(sourceDir, unifiedExtension)),
+  ...unifiedExtensions.map((part) => readFileSync(resolve(sourceDir, part))),
   unifiedClose,
 ]);
 const actualUnifiedSha256 = createHash("sha256")
