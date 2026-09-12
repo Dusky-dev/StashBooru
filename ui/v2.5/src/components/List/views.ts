@@ -16,6 +16,10 @@ export enum View {
   TagPerformers = "tag_performers",
   TagGroups = "tag_groups",
 
+  CopyrightScenes = "copyright_scenes",
+  CopyrightImages = "copyright_images",
+  CopyrightPerformers = "copyright_performers",
+
   PerformerScenes = "performer_scenes",
   PerformerGalleries = "performer_galleries",
   PerformerImages = "performer_images",
