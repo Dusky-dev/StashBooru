@@ -28,6 +28,14 @@ type ModelStatus struct {
 	Dimensions int    `json:"dimensions"`
 }
 
+type Tag struct {
+	Name     string  `json:"name"`
+	RawName  string  `json:"raw_name,omitempty"`
+	Category string  `json:"category"`
+	Score    float64 `json:"score"`
+	Source   string  `json:"source,omitempty"`
+}
+
 type Client struct {
 	mu         sync.Mutex
 	workerPath string
@@ -51,6 +59,7 @@ type response struct {
 	ModelRevision string    `json:"model_revision,omitempty"`
 	Dimensions    int       `json:"dimensions,omitempty"`
 	Embedding     []float32 `json:"embedding,omitempty"`
+	Tags          []Tag     `json:"tags,omitempty"`
 	Installed     bool      `json:"installed,omitempty"`
 	Loaded        bool      `json:"loaded,omitempty"`
 	ModelPath     string    `json:"model_path,omitempty"`
@@ -89,8 +98,9 @@ func (c *Client) Status(ctx context.Context) (ModelStatus, error) {
 	return statusFromResponse(res), nil
 }
 
-// Download explicitly downloads the pinned default embedding model. Nothing in
-// the worker or client calls this implicitly; callers must opt in deliberately.
+// Download explicitly downloads the pinned default embedding/tagger model.
+// Nothing in the worker or client downloads the heavyweight model implicitly;
+// callers must opt in deliberately.
 func (c *Client) Download(ctx context.Context) (ModelStatus, error) {
 	res, err := c.call(ctx, "download", "")
 	if err != nil {
@@ -131,6 +141,24 @@ func (c *Client) Embed(ctx context.Context, path string) ([]float32, error) {
 	return res.Embedding, nil
 }
 
+// Tag runs the WD classification head exposed by the same EVA02 model used for
+// embeddings. The caller decides how these low-authority suggestions merge
+// with stronger metadata sources.
+func (c *Client) Tag(ctx context.Context, path string) ([]Tag, error) {
+	if strings.TrimSpace(path) == "" {
+		return nil, errors.New("EVA02 tagger path is empty")
+	}
+
+	res, err := c.call(ctx, "tag", path)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateWorker(res); err != nil {
+		return nil, err
+	}
+	return res.Tags, nil
+}
+
 func (c *Client) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -139,8 +167,6 @@ func (c *Client) Close() error {
 		return nil
 	}
 
-	// Best effort graceful shutdown. If the protocol is already broken, killing
-	// the worker below is still safe because it is a disposable helper process.
 	c.nextID++
 	if err := json.NewEncoder(c.stdin).Encode(request{ID: c.nextID, Op: "shutdown"}); err != nil {
 		_ = c.stopLocked(true)
