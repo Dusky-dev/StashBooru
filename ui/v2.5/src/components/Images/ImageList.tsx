@@ -100,6 +100,13 @@ const ImageWall: React.FC<IImageWallProps> = ({
   const uiConfig = configuration?.ui;
 
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const safeZoomIndex = Math.max(
+    0,
+    Math.min(
+      Number.isFinite(zoomIndex) ? Math.round(zoomIndex) : 1,
+      zoomWidths.length - 1
+    )
+  );
 
   const photos: {
     src: string;
@@ -112,13 +119,21 @@ const ImageWall: React.FC<IImageWallProps> = ({
   }[] = [];
 
   images.forEach((image, index) => {
+    const width = image.visual_files?.[0]?.width;
+    const height = image.visual_files?.[0]?.height;
     const imageData = {
       src:
         image.paths.preview !== ""
           ? image.paths.preview!
           : image.paths.thumbnail!,
-      width: image.visual_files?.[0]?.width ?? 0,
-      height: image.visual_files?.[0]?.height ?? 0,
+      width:
+        typeof width === "number" && Number.isFinite(width) && width > 0
+          ? width
+          : 1,
+      height:
+        typeof height === "number" && Number.isFinite(height) && height > 0
+          ? height
+          : 1,
       tabIndex: index,
       key: image.id,
       loading: "lazy",
@@ -136,7 +151,8 @@ const ImageWall: React.FC<IImageWallProps> = ({
   );
 
   function columns(containerWidth: number) {
-    const preferredSize = zoomWidths[zoomIndex];
+    if (!Number.isFinite(containerWidth) || containerWidth <= 0) return 1;
+    const preferredSize = zoomWidths[safeZoomIndex] ?? zoomWidths[1];
     const columnCount = containerWidth / preferredSize;
     return Math.max(1, Math.round(columnCount));
   }
@@ -146,12 +162,15 @@ const ImageWall: React.FC<IImageWallProps> = ({
       let zoomHeight = 280;
       breakpointZoomHeights.forEach((e) => {
         if (containerWidth >= e.minWidth) {
-          zoomHeight = e.heights[zoomIndex];
+          const nextHeight = e.heights[safeZoomIndex];
+          if (Number.isFinite(nextHeight) && nextHeight > 0) {
+            zoomHeight = nextHeight;
+          }
         }
       });
       return zoomHeight;
     },
-    [zoomIndex]
+    [safeZoomIndex]
   );
 
   // set the max height as a factor of the targetRowHeight
