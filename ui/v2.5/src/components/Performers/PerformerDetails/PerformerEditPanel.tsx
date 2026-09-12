@@ -1,12 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  Button,
-  Col,
-  Dropdown,
-  Form,
-  Row,
-  SplitButton,
-} from "react-bootstrap";
+import { Button, Col, Dropdown, Form, Row, SplitButton } from "react-bootstrap";
 import { FormattedMessage, useIntl } from "react-intl";
 import Mousetrap from "mousetrap";
 import * as GQL from "src/core/generated-graphql";
