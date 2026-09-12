@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""HTTP inference server for StashBooru visual embeddings and optional Camie tags.
+"""HTTP inference server for StashBooru visual embeddings and optional taggers.
 
 The server intentionally owns no Stash metadata, embedding database, or tag
 assignments. It receives image bytes, performs inference, and returns results.
@@ -51,7 +51,7 @@ def _authorized(header_value: str | None) -> bool:
 
 
 class VisualEmbeddingHandler(BaseHTTPRequestHandler):
-    server_version = "StashBooruVisualEmbedding/2"
+    server_version = "StashBooruVisualEmbedding/3"
 
     def log_message(self, format: str, *args: Any) -> None:
         _log(format % args)
@@ -163,7 +163,7 @@ class VisualEmbeddingHandler(BaseHTTPRequestHandler):
 
         parsed = urlsplit(self.path)
         path = parsed.path.rstrip("/")
-        if path not in ("/v1/embed", "/v1/camie/tag"):
+        if path not in ("/v1/embed", "/v1/tag", "/v1/camie/tag"):
             self._send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not found"})
             return
 
@@ -190,6 +190,20 @@ class VisualEmbeddingHandler(BaseHTTPRequestHandler):
                         "ok": True,
                         **worker._status_payload(),
                         "embedding": embedding,
+                    }
+                elif path == "/v1/tag":
+                    query = parse_qs(parsed.query)
+                    threshold = float(
+                        query.get("threshold", [worker.DEFAULT_TAG_THRESHOLD])[0]
+                    )
+                    limit = int(query.get("limit", [worker.DEFAULT_TAG_LIMIT])[0])
+                    tags = worker.tag(str(temp_path), threshold=threshold, limit=limit)
+                    payload = {
+                        "ok": True,
+                        **worker._status_payload(),
+                        "threshold": threshold,
+                        "limit": limit,
+                        "tags": tags,
                     }
                 else:
                     assert camie is not None
@@ -238,15 +252,18 @@ def main() -> int:
     parser.add_argument(
         "--download-model",
         action="store_true",
-        help="download the pinned EVA02 embedding model before starting if it is not installed",
+        help="download the pinned EVA02 embedding/tagging model before starting if it is not installed",
     )
     args = parser.parse_args()
 
     if args.max_upload_mb <= 0:
         parser.error("--max-upload-mb must be greater than zero")
 
-    if args.download_model and worker._installed_model_path() is None:
-        worker._download_model(worker._download_destination())
+    if args.download_model:
+        if worker._installed_model_path() is None:
+            worker._download_model(worker._download_destination())
+        if worker._installed_tags_info_path() is None:
+            worker._download_tags_info(worker._tags_info_destination())
 
     status = worker._status_payload()
     _log(
