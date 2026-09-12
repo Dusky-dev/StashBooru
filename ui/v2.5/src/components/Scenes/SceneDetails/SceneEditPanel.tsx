@@ -81,6 +81,11 @@ interface IProps {
   onDelete?: () => void;
 }
 
+function sceneArtists(scene: Partial<GQL.SceneDataFragment>): Studio[] {
+  if (scene.artists?.length) return scene.artists;
+  return scene.studio ? [scene.studio] : [];
+}
+
 export const SceneEditPanel: React.FC<IProps> = ({
   scene,
   initialCoverImage,
@@ -94,11 +99,12 @@ export const SceneEditPanel: React.FC<IProps> = ({
   const intl = useIntl();
   const Toast = useToast();
   const [updateCopyrights] = GQL.useSceneCopyrightsUpdateMutation();
+  const [updateArtists] = GQL.useSceneArtistsUpdateMutation();
 
   const [galleries, setGalleries] = useState<Gallery[]>([]);
   const [performers, setPerformers] = useState<Performer[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
-  const [studio, setStudio] = useState<Studio | null>(null);
+  const [artists, setArtists] = useState<Studio[]>(sceneArtists(scene));
   const [copyrights, setCopyrights] = useState<Copyright[]>(
     scene.copyrights ?? []
   );
@@ -149,8 +155,8 @@ export const SceneEditPanel: React.FC<IProps> = ({
   }, [scene.groups]);
 
   useEffect(() => {
-    setStudio(scene.studio ?? null);
-  }, [scene.studio]);
+    setArtists(sceneArtists(scene));
+  }, [scene]);
 
   useEffect(() => {
     setCopyrights(scene.copyrights ?? []);
@@ -169,7 +175,7 @@ export const SceneEditPanel: React.FC<IProps> = ({
     production_date: yupDateString(intl),
     director: yup.string().ensure(),
     gallery_ids: yup.array(yup.string().required()).defined(),
-    studio_id: yup.string().required().nullable(),
+    artist_ids: yup.array(yup.string().required()).defined(),
     performer_ids: yup.array(yup.string().required()).defined(),
     groups: yup
       .array(
@@ -196,7 +202,7 @@ export const SceneEditPanel: React.FC<IProps> = ({
       production_date: scene.production_date ?? "",
       director: scene.director ?? "",
       gallery_ids: (scene.galleries ?? []).map((g) => g.id),
-      studio_id: scene.studio?.id ?? null,
+      artist_ids: sceneArtists(scene).map((item) => item.id),
       performer_ids: (scene.performers ?? []).map((p) => p.id),
       groups: (scene.groups ?? []).map((m) => {
         return { group_id: m.group.id, scene_index: m.scene_index ?? null };
@@ -273,9 +279,12 @@ export const SceneEditPanel: React.FC<IProps> = ({
     );
   }
 
-  function onSetStudio(item: Studio | null) {
-    setStudio(item);
-    formik.setFieldValue("studio_id", item ? item.id : null);
+  function onSetArtists(items: Studio[]) {
+    setArtists(items);
+    formik.setFieldValue(
+      "artist_ids",
+      items.map((item) => item.id)
+    );
   }
 
   function onSetCopyrights(items: Copyright[]) {
@@ -329,12 +338,29 @@ export const SceneEditPanel: React.FC<IProps> = ({
   async function onSave(input: InputValues, andNew?: boolean) {
     setIsLoading(true);
     try {
-      const { copyright_ids: copyrightIDs, ...sceneInput } = input;
-      await onSubmit(sceneInput, andNew);
+      const {
+        copyright_ids: copyrightIDs,
+        artist_ids: artistIDs,
+        ...sceneInput
+      } = input;
+      await onSubmit(
+        {
+          ...sceneInput,
+          // Keep the legacy single-Studio field synchronized with the primary
+          // Artist so existing plugins and queries continue to work.
+          studio_id: artistIDs[0] ?? null,
+        },
+        andNew
+      );
       if (!isNew && scene.id) {
-        await updateCopyrights({
-          variables: { sceneID: scene.id, copyrightIDs },
-        });
+        await Promise.all([
+          updateCopyrights({
+            variables: { sceneID: scene.id, copyrightIDs },
+          }),
+          updateArtists({
+            variables: { sceneID: scene.id, artistIDs },
+          }),
+        ]);
       }
       formik.resetForm({ values: input });
       if (andNew) {
@@ -348,7 +374,7 @@ export const SceneEditPanel: React.FC<IProps> = ({
         );
         setPerformers(scene.performers ?? []);
         setGroups(scene.groups?.map((m) => m.group) ?? []);
-        setStudio(scene.studio ?? null);
+        setArtists(sceneArtists(scene));
         setCopyrights([]);
         resetTagsState();
       }
@@ -456,10 +482,15 @@ export const SceneEditPanel: React.FC<IProps> = ({
       return;
     }
 
-    const { copyright_ids: _copyrightIDs, ...sceneValues } = formik.values;
+    const {
+      artist_ids: _artistIDs,
+      copyright_ids: _copyrightIDs,
+      ...sceneValues
+    } = formik.values;
     const currentScene = {
       id: scene.id!,
       ...sceneValues,
+      studio_id: artists[0]?.id ?? null,
     };
 
     if (!currentScene.cover_image) {
@@ -469,7 +500,7 @@ export const SceneEditPanel: React.FC<IProps> = ({
     return (
       <SceneScrapeDialog
         scene={currentScene}
-        sceneStudio={studio}
+        sceneStudio={artists[0] ?? null}
         sceneTags={tags}
         scenePerformers={performers}
         sceneGroups={groups}
@@ -545,12 +576,16 @@ export const SceneEditPanel: React.FC<IProps> = ({
     }
 
     if (updatedScene.studio?.stored_id) {
-      onSetStudio({
+      const scrapedArtist: Studio = {
         id: updatedScene.studio.stored_id,
         name: updatedScene.studio.name ?? "",
         aliases: [],
         image_path: null,
-      });
+      };
+      onSetArtists([
+        scrapedArtist,
+        ...artists.filter((item) => item.id !== scrapedArtist.id),
+      ]);
     }
 
     if (updatedScene.performers && updatedScene.performers.length > 0) {
@@ -729,16 +764,16 @@ export const SceneEditPanel: React.FC<IProps> = ({
     return renderField("gallery_ids", title, control);
   }
 
-  function renderStudioField() {
-    const title = intl.formatMessage({ id: "studio" });
+  function renderArtistsField() {
+    const title = intl.formatMessage({
+      id: "artists",
+      defaultMessage: "Artists",
+    });
     const control = (
-      <StudioSelect
-        onSelect={(items) => onSetStudio(items.length > 0 ? items[0] : null)}
-        values={studio ? [studio] : []}
-      />
+      <StudioSelect isMulti onSelect={onSetArtists} values={artists} />
     );
 
-    return renderField("studio_id", title, control);
+    return renderField("artist_ids", title, control, fullWidthProps);
   }
 
   function renderPerformersField() {
@@ -796,11 +831,7 @@ export const SceneEditPanel: React.FC<IProps> = ({
     return renderField(
       "copyright_ids",
       title,
-      <CopyrightSelect
-        isMulti
-        values={copyrights}
-        onSelect={onSetCopyrights}
-      />,
+      <CopyrightSelect isMulti values={copyrights} onSelect={onSetCopyrights} />,
       fullWidthProps
     );
   }
@@ -928,7 +959,7 @@ export const SceneEditPanel: React.FC<IProps> = ({
             {renderDateField("date")}
             {renderDateField("production_date")}
             {renderGalleriesField()}
-            {renderStudioField()}
+            {renderArtistsField()}
             {renderPerformersField()}
             {renderGroupsField()}
             {!isNew && renderCopyrightsField()}
