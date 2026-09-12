@@ -58,14 +58,16 @@ const BooruSection: React.FC<{
   kind: EntityKind;
   title: string;
   items: BooruEntity[];
+  indexRoute: string;
   route: (id: string) => string;
-}> = ({ kind, title, items, route }) => {
+}> = ({ kind, title, items, indexRoute, route }) => {
   if (items.length === 0) return null;
 
   return (
     <section className={`booru-tag-section booru-tag-section-${kind}`}>
       <h6 className="booru-tag-section-title">
-        {title} <span className="booru-tag-count">{items.length}</span>
+        <Link to={indexRoute}>{title}</Link>
+        <span className="booru-tag-count">{items.length}</span>
       </h6>
       <div className="booru-tag-list">
         {items.map((item) => (
@@ -116,24 +118,28 @@ export const BooruTagSidebar: React.FC<BooruTagSidebarProps> = ({
         kind="copyright"
         title="Copyrights"
         items={sortedCopyrights}
+        indexRoute="/copyrights"
         route={(id) => `/copyrights/${id}`}
       />
       <BooruSection
         kind="character"
         title="Characters"
         items={sortedCharacters}
+        indexRoute="/performers"
         route={(id) => `/performers/${id}`}
       />
       <BooruSection
         kind="artist"
         title="Artists"
         items={sortedArtists}
+        indexRoute="/studios"
         route={(id) => `/studios/${id}`}
       />
       <BooruSection
         kind="general"
         title="Tags"
         items={sortedTags}
+        indexRoute="/tags"
         route={(id) => `/tags/${id}`}
       />
     </aside>
