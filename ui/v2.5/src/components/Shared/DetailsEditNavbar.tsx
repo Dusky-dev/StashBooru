@@ -1,9 +1,6 @@
 import { Button, Dropdown, Modal, SplitButton } from "react-bootstrap";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useLocation } from "react-router-dom";
-import { getClient } from "src/core/StashService";
-import { useToast } from "src/hooks/Toast";
 import { useAutoTagTrigger } from "src/hooks/useAutoTagTrigger";
 import { ImageInput } from "./ImageInput";
 import { AutoTagConfirmDialog } from "./AutoTagConfirmDialog";
@@ -34,44 +31,11 @@ interface IProps {
 
 export const DetailsEditNavbar: React.FC<IProps> = (props: IProps) => {
   const intl = useIntl();
-  const location = useLocation();
-  const Toast = useToast();
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState<boolean>(false);
   const [isAutoTagAlertOpen, setIsAutoTagAlertOpen] = useState<boolean>(false);
-  const [copyrightAutoTagRunning, setCopyrightAutoTagRunning] = useState(false);
-
-  const copyrightID = useMemo(() => {
-    const match = /^\/copyrights\/(\d+)(?:\/|$)/.exec(location.pathname);
-    return match?.[1];
-  }, [location.pathname]);
-
-  const defaultCopyrightAutoTag = useCallback(async () => {
-    if (!copyrightID || copyrightAutoTagRunning) return;
-
-    setCopyrightAutoTagRunning(true);
-    try {
-      const response = await fetch(`/tag/copyright/${copyrightID}/auto-tag`, {
-        method: "POST",
-      });
-      if (!response.ok) {
-        throw new Error((await response.text()) || response.statusText);
-      }
-      await getClient().refetchQueries({ include: ["FindCopyright"] });
-      Toast.success("Copyright auto-tag completed");
-    } catch (cause) {
-      Toast.error(cause);
-    } finally {
-      setCopyrightAutoTagRunning(false);
-    }
-  }, [Toast, copyrightAutoTagRunning, copyrightID]);
-
-  // Copyrights are first-class metadata but do not use the legacy Tag detail
-  // component, so give their detail route the same native Auto Tag control here.
-  const effectiveAutoTag =
-    props.onAutoTag ?? (copyrightID ? defaultCopyrightAutoTag : undefined);
 
   const onAutoTagClick = useAutoTagTrigger(
-    () => effectiveAutoTag?.(),
+    () => props.onAutoTag?.(),
     () => setIsAutoTagAlertOpen(true)
   );
 
@@ -150,27 +114,29 @@ export const DetailsEditNavbar: React.FC<IProps> = (props: IProps) => {
   }
 
   function renderAutoTagButton() {
-    if (props.isNew || props.isEditing || !effectiveAutoTag) return;
+    if (props.isNew || props.isEditing) return;
 
-    return (
-      <div>
-        <Button
-          variant="secondary"
-          disabled={props.autoTagDisabled || copyrightAutoTagRunning}
-          onClick={onAutoTagClick}
-        >
-          <FormattedMessage id="actions.auto_tag" />…
-        </Button>
-        <AutoTagConfirmDialog
-          show={isAutoTagAlertOpen}
-          onConfirm={() => {
-            setIsAutoTagAlertOpen(false);
-            effectiveAutoTag();
-          }}
-          onCancel={() => setIsAutoTagAlertOpen(false)}
-        />
-      </div>
-    );
+    if (props.onAutoTag) {
+      return (
+        <div>
+          <Button
+            variant="secondary"
+            disabled={props.autoTagDisabled}
+            onClick={onAutoTagClick}
+          >
+            <FormattedMessage id="actions.auto_tag" />…
+          </Button>
+          <AutoTagConfirmDialog
+            show={isAutoTagAlertOpen}
+            onConfirm={() => {
+              setIsAutoTagAlertOpen(false);
+              props.onAutoTag?.();
+            }}
+            onCancel={() => setIsAutoTagAlertOpen(false)}
+          />
+        </div>
+      );
+    }
   }
 
   function renderDeleteAlert() {
