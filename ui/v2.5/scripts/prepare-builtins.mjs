@@ -32,7 +32,9 @@ const unifiedCore = Buffer.concat(
   unifiedParts.map((part) => readFileSync(resolve(sourceDir, part)))
 );
 if (!unifiedCore.subarray(-unifiedClose.length).equals(unifiedClose)) {
-  throw new Error("Unified Media core no longer ends at the expected IIFE boundary");
+  throw new Error(
+    "Unified Media core no longer ends at the expected IIFE boundary"
+  );
 }
 
 const unifiedMedia = Buffer.concat([
