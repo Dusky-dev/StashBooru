@@ -4,6 +4,7 @@ fragment SlimCopyrightData on Copyright {
   sort_name
   aliases
   favorite
+  image_path
 }
 
 fragment CopyrightData on Copyright {
@@ -13,14 +14,37 @@ fragment CopyrightData on Copyright {
   description
   aliases
   favorite
+  image_path
   created_at
   updated_at
   image_count
   scene_count
+  performer_count
   parents {
     ...SlimCopyrightData
   }
   children {
     ...SlimCopyrightData
+  }
+  images {
+    id
+    title
+    paths {
+      thumbnail
+      image
+    }
+  }
+  scenes {
+    id
+    title
+    paths {
+      screenshot
+    }
+  }
+  performers {
+    id
+    name
+    disambiguation
+    image_path
   }
 }
