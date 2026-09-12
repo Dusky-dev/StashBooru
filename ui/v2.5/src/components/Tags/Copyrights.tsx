@@ -1,19 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
-import {
-  Button,
-  Card,
-  Col,
-  Form,
-  Row,
-  Spinner,
-  Tab,
-  Tabs,
-} from "react-bootstrap";
-import { Link, Route, Switch, useHistory, useParams } from "react-router-dom";
+import { Col, Form, Row, Spinner, Tab, Tabs } from "react-bootstrap";
+import { Route, Switch, useHistory, useParams } from "react-router-dom";
 import cx from "classnames";
 
 import * as GQL from "src/core/generated-graphql";
+import { evictQueries } from "src/core/StashService";
 import {
   Copyright,
   CopyrightSelect,
@@ -28,11 +20,14 @@ import { AliasList } from "src/components/Shared/DetailsPage/AliasList";
 import { DetailTitle } from "src/components/Shared/DetailsPage/DetailTitle";
 import { HeaderImage } from "src/components/Shared/DetailsPage/HeaderImage";
 import { ExpandCollapseButton } from "src/components/Shared/CollapseButton";
-import { TruncatedText } from "src/components/Shared/TruncatedText";
 import {
   Performer,
   PerformerSelect,
 } from "src/components/Performers/PerformerSelect";
+import { FilteredPerformerList } from "src/components/Performers/PerformerList";
+import { FilteredSceneList } from "src/components/Scenes/SceneList";
+import { FilteredImageList } from "src/components/Images/ImageList";
+import { View } from "src/components/List/views";
 import { useConfigurationContext } from "src/hooks/Config";
 import { useToast } from "src/hooks/Toast";
 import ImageUtils from "src/utils/image";
@@ -59,79 +54,6 @@ function aliasesFromText(value: string) {
     .map((item) => item.trim())
     .filter(Boolean);
 }
-
-const CopyrightList: React.FC = () => {
-  const [search, setSearch] = useState("");
-  const { data, loading } = GQL.useFindCopyrightsQuery({
-    variables: {
-      filter: {
-        q: search || undefined,
-        page: 1,
-        per_page: -1,
-        sort: "name",
-        direction: GQL.SortDirectionEnum.Asc,
-      },
-    },
-  });
-
-  const copyrights = data?.findCopyrights.copyrights ?? [];
-
-  return (
-    <div className="container-fluid py-3">
-      <div className="d-flex align-items-center mb-3">
-        <h2 className="mb-0">Copyrights</h2>
-        <Button as={Link} to="/copyrights/new" className="ml-auto">
-          New Copyright
-        </Button>
-      </div>
-      <Form.Control
-        className="mb-3"
-        value={search}
-        onChange={(event) => setSearch(event.currentTarget.value)}
-        placeholder="Search Copyrights"
-      />
-      {loading ? (
-        <Spinner animation="border" />
-      ) : (
-        <Row className="justify-content-center">
-          {copyrights.map((copyright) => (
-            <Col key={copyright.id} sm={6} lg={4} xl={3} className="mb-3">
-              <Card
-                as={Link}
-                to={`/copyrights/${copyright.id}`}
-                className="tag-card h-100 text-reset text-decoration-none"
-              >
-                <img
-                  className="tag-card-image"
-                  src={copyright.image_path}
-                  alt={copyright.name}
-                  loading="lazy"
-                />
-                <Card.Body>
-                  <Card.Title>{copyright.name}</Card.Title>
-                  {copyright.description ? (
-                    <TruncatedText
-                      className="tag-description"
-                      text={copyright.description}
-                      lineCount={3}
-                    />
-                  ) : null}
-                  <small className="text-muted d-block mt-2">
-                    {copyright.scene_count} Videos · {copyright.image_count}{" "}
-                    Images · {copyright.performer_count} Characters
-                  </small>
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-          {copyrights.length === 0 ? (
-            <Col className="text-muted">No Copyrights found.</Col>
-          ) : null}
-        </Row>
-      )}
-    </div>
-  );
-};
 
 const CopyrightDetailsPanel: React.FC<{
   copyright: GQL.CopyrightDataFragment;
@@ -188,10 +110,26 @@ const CopyrightEditPanel: React.FC<{
 }) => {
   const history = useHistory();
   const Toast = useToast();
-  const [createCopyright] = GQL.useCopyrightCreateMutation();
-  const [updateCopyright] = GQL.useCopyrightUpdateMutation();
-  const [destroyCopyright] = GQL.useCopyrightDestroyMutation();
-  const [updatePerformers] = GQL.useCopyrightPerformersUpdateMutation();
+  const [createCopyright] = GQL.useCopyrightCreateMutation({
+    update(cache) {
+      evictQueries(cache, [GQL.FindCopyrightsDocument]);
+    },
+  });
+  const [updateCopyright] = GQL.useCopyrightUpdateMutation({
+    update(cache) {
+      evictQueries(cache, [GQL.FindCopyrightsDocument]);
+    },
+  });
+  const [destroyCopyright] = GQL.useCopyrightDestroyMutation({
+    update(cache) {
+      evictQueries(cache, [GQL.FindCopyrightsDocument]);
+    },
+  });
+  const [updatePerformers] = GQL.useCopyrightPerformersUpdateMutation({
+    update(cache) {
+      evictQueries(cache, [GQL.FindCopyrightsDocument]);
+    },
+  });
   const [values, setValues] = useState<CopyrightFormValues>(emptyValues);
   const [performers, setPerformers] = useState<Performer[]>([]);
   const [imageValue, setImageValue] = useState<string | null>();
@@ -234,7 +172,7 @@ const CopyrightEditPanel: React.FC<{
     setImageTouched(true);
   }
 
-  function onImageChange(event: React.FormEvent<HTMLInputElement>) {
+  function onImageChange(event: React.ChangeEvent<HTMLInputElement>) {
     ImageUtils.onImageChange(event, setEditedImage);
   }
 
@@ -316,6 +254,7 @@ const CopyrightEditPanel: React.FC<{
         {field(
           "Name",
           <Form.Control
+            className="text-input"
             value={values.name}
             onChange={(event) =>
               setValues({ ...values, name: event.currentTarget.value })
@@ -325,6 +264,7 @@ const CopyrightEditPanel: React.FC<{
         {field(
           "Aliases",
           <Form.Control
+            className="text-input"
             as="textarea"
             rows={3}
             value={values.aliases}
@@ -337,6 +277,7 @@ const CopyrightEditPanel: React.FC<{
         {field(
           "Details",
           <Form.Control
+            className="text-input"
             as="textarea"
             rows={5}
             value={values.description}
@@ -417,6 +358,19 @@ const CopyrightMediaTabs: React.FC<{
     ? initialTab
     : "videos";
 
+  const sceneIDs = useMemo(
+    () => copyright.scenes.map((scene) => Number(scene.id)),
+    [copyright.scenes]
+  );
+  const imageIDs = useMemo(
+    () => copyright.images.map((image) => Number(image.id)),
+    [copyright.images]
+  );
+  const performerIDs = useMemo(
+    () => copyright.performers.map((performer) => Number(performer.id)),
+    [copyright.performers]
+  );
+
   return (
     <Tabs
       id="copyright-media-tabs"
@@ -428,103 +382,28 @@ const CopyrightMediaTabs: React.FC<{
       unmountOnExit
     >
       <Tab eventKey="videos" title={`Videos (${copyright.scene_count})`}>
-        <Row className="pt-3">
-          {copyright.scenes.map((scene) => (
-            <Col key={scene.id} sm={6} lg={4} xl={3} className="mb-3">
-              <Card
-                as={Link}
-                to={`/scenes/${scene.id}`}
-                className="h-100 text-reset"
-              >
-                {scene.paths.screenshot ? (
-                  <img
-                    src={scene.paths.screenshot}
-                    alt=""
-                    style={{
-                      width: "100%",
-                      aspectRatio: "16 / 9",
-                      objectFit: "cover",
-                    }}
-                  />
-                ) : null}
-                <Card.Body>
-                  <TruncatedText text={scene.title || `Video #${scene.id}`} />
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-          {copyright.scenes.length === 0 ? (
-            <Col className="text-muted">No Videos assigned.</Col>
-          ) : null}
-        </Row>
+        <FilteredSceneList
+          sceneIDs={sceneIDs}
+          alterQuery
+          view={View.CopyrightScenes}
+        />
       </Tab>
       <Tab eventKey="images" title={`Images (${copyright.image_count})`}>
-        <Row className="pt-3">
-          {copyright.images.map((image) => (
-            <Col key={image.id} sm={6} lg={4} xl={3} className="mb-3">
-              <Card
-                as={Link}
-                to={`/images/${image.id}`}
-                className="h-100 text-reset"
-              >
-                <img
-                  src={image.paths.thumbnail ?? image.paths.image ?? ""}
-                  alt=""
-                  style={{
-                    width: "100%",
-                    aspectRatio: "1 / 1",
-                    objectFit: "cover",
-                  }}
-                />
-                <Card.Body>
-                  <TruncatedText text={image.title || `Image #${image.id}`} />
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-          {copyright.images.length === 0 ? (
-            <Col className="text-muted">No Images assigned.</Col>
-          ) : null}
-        </Row>
+        <FilteredImageList
+          imageIDs={imageIDs}
+          alterQuery
+          view={View.CopyrightImages}
+        />
       </Tab>
       <Tab
         eventKey="characters"
         title={`Characters (${copyright.performer_count})`}
       >
-        <Row className="pt-3">
-          {copyright.performers.map((performer) => (
-            <Col key={performer.id} sm={6} lg={4} xl={3} className="mb-3">
-              <Card
-                as={Link}
-                to={`/performers/${performer.id}`}
-                className="h-100 text-reset"
-              >
-                {performer.image_path ? (
-                  <img
-                    src={performer.image_path}
-                    alt=""
-                    style={{
-                      width: "100%",
-                      aspectRatio: "3 / 4",
-                      objectFit: "cover",
-                    }}
-                  />
-                ) : null}
-                <Card.Body>
-                  <strong>{performer.name}</strong>
-                  {performer.disambiguation ? (
-                    <small className="text-muted d-block">
-                      {performer.disambiguation}
-                    </small>
-                  ) : null}
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-          {copyright.performers.length === 0 ? (
-            <Col className="text-muted">No Characters assigned.</Col>
-          ) : null}
-        </Row>
+        <FilteredPerformerList
+          performerIDs={performerIDs}
+          alterQuery
+          view={View.CopyrightPerformers}
+        />
       </Tab>
     </Tabs>
   );
@@ -543,8 +422,16 @@ const CopyrightDetail: React.FC = () => {
   const [editing, setEditing] = useState(false);
   const [image, setImage] = useState<string | null>();
   const [encodingImage, setEncodingImage] = useState(false);
-  const [updateCopyright] = GQL.useCopyrightUpdateMutation();
-  const [destroyCopyright] = GQL.useCopyrightDestroyMutation();
+  const [updateCopyright] = GQL.useCopyrightUpdateMutation({
+    update(cache) {
+      evictQueries(cache, [GQL.FindCopyrightsDocument]);
+    },
+  });
+  const [destroyCopyright] = GQL.useCopyrightDestroyMutation({
+    update(cache) {
+      evictQueries(cache, [GQL.FindCopyrightsDocument]);
+    },
+  });
   const { data, loading, refetch } = GQL.useFindCopyrightQuery({
     variables: { id },
   });
@@ -708,7 +595,6 @@ const CopyrightRoutes: React.FC = () => (
   <>
     <Helmet title="Copyrights" />
     <Switch>
-      <Route exact path="/copyrights" component={CopyrightList} />
       <Route exact path="/copyrights/new" component={CopyrightCreate} />
       <Route path="/copyrights/:id/:tab?" component={CopyrightDetail} />
     </Switch>
