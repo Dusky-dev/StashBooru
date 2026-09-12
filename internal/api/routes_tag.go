@@ -65,6 +65,7 @@ func (rs tagRoutes) CopyrightImage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(image) == 0 {
+		disableEntityFallbackCaching(w)
 		var fallbackID int
 		readTxnErr := rs.withReadTxn(r, func(ctx context.Context) error {
 			ids, findErr := repository.Copyright.FindImageIDs(ctx, copyrightID)
@@ -109,6 +110,7 @@ func (rs tagRoutes) Image(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(image) == 0 {
+		disableEntityFallbackCaching(w)
 		var fallback *models.Image
 		readTxnErr := rs.withReadTxn(r, func(ctx context.Context) error {
 			filter := &models.ImageFilterType{
