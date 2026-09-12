@@ -343,8 +343,16 @@ const CopyrightMediaTabs: React.FC<{
   abbreviateCounter: boolean;
 }> = ({ copyright, initialTab, abbreviateCounter }) => {
   const history = useHistory();
-  const validTabs = ["all", "images", "videos", "characters"];
-  const active = validTabs.includes(initialTab ?? "") ? initialTab : "all";
+  const validTabs = ["images", "videos", "characters"];
+  const populatedDefaultTab =
+    copyright.image_count > 0
+      ? "images"
+      : copyright.scene_count > 0
+        ? "videos"
+        : "characters";
+  const active = validTabs.includes(initialTab ?? "")
+    ? initialTab
+    : populatedDefaultTab;
 
   const sceneIDs = useMemo(
     () => copyright.scenes.map((scene) => Number(scene.id)),
@@ -385,25 +393,6 @@ const CopyrightMediaTabs: React.FC<{
       mountOnEnter
       unmountOnExit
     >
-      <Tab eventKey="all" title="All">
-        <div className="copyright-all-media">
-          {copyright.image_count > 0 ? (
-            <section className="copyright-all-media-section">
-              <h5>Images</h5>
-              {renderImages()}
-            </section>
-          ) : null}
-          {copyright.scene_count > 0 ? (
-            <section className="copyright-all-media-section">
-              <h5>Videos</h5>
-              {renderVideos()}
-            </section>
-          ) : null}
-          {copyright.image_count === 0 && copyright.scene_count === 0 ? (
-            <div className="text-muted p-3">No media assigned.</div>
-          ) : null}
-        </div>
-      </Tab>
       <Tab
         eventKey="images"
         title={
