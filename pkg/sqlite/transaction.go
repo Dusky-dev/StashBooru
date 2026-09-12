@@ -124,6 +124,7 @@ func (db *Database) Repository() models.Repository {
 		Gallery:        db.Gallery,
 		GalleryChapter: db.GalleryChapter,
 		Image:          db.Image,
+		ImageArtist:    NewImageArtistStore(db.Studio),
 		Group:          db.Group,
 		Performer:      db.Performer,
 		Scene:          db.Scene,
