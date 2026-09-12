@@ -343,17 +343,8 @@ const CopyrightMediaTabs: React.FC<{
   abbreviateCounter: boolean;
 }> = ({ copyright, initialTab, abbreviateCounter }) => {
   const history = useHistory();
-
-  const populatedDefaultTab = useMemo(() => {
-    if (copyright.scene_count !== 0) return "videos";
-    if (copyright.image_count !== 0) return "images";
-    if (copyright.performer_count !== 0) return "characters";
-    return "videos";
-  }, [copyright.scene_count, copyright.image_count, copyright.performer_count]);
-
-  const active = ["videos", "images", "characters"].includes(initialTab ?? "")
-    ? initialTab
-    : populatedDefaultTab;
+  const validTabs = ["all", "images", "videos", "characters"];
+  const active = validTabs.includes(initialTab ?? "") ? initialTab : "all";
 
   const sceneIDs = useMemo(
     () => copyright.scenes.map((scene) => Number(scene.id)),
@@ -368,6 +359,22 @@ const CopyrightMediaTabs: React.FC<{
     [copyright.performers]
   );
 
+  const renderImages = () => (
+    <FilteredImageList
+      imageIDs={imageIDs}
+      alterQuery
+      view={View.CopyrightImages}
+    />
+  );
+
+  const renderVideos = () => (
+    <FilteredSceneList
+      sceneIDs={sceneIDs}
+      alterQuery
+      view={View.CopyrightScenes}
+    />
+  );
+
   return (
     <Tabs
       id="copyright-media-tabs"
@@ -378,21 +385,24 @@ const CopyrightMediaTabs: React.FC<{
       mountOnEnter
       unmountOnExit
     >
-      <Tab
-        eventKey="videos"
-        title={
-          <TabTitleCounter
-            messageID="scenes"
-            count={copyright.scene_count}
-            abbreviateCounter={abbreviateCounter}
-          />
-        }
-      >
-        <FilteredSceneList
-          sceneIDs={sceneIDs}
-          alterQuery
-          view={View.CopyrightScenes}
-        />
+      <Tab eventKey="all" title="All">
+        <div className="copyright-all-media">
+          {copyright.image_count > 0 ? (
+            <section className="copyright-all-media-section">
+              <h5>Images</h5>
+              {renderImages()}
+            </section>
+          ) : null}
+          {copyright.scene_count > 0 ? (
+            <section className="copyright-all-media-section">
+              <h5>Videos</h5>
+              {renderVideos()}
+            </section>
+          ) : null}
+          {copyright.image_count === 0 && copyright.scene_count === 0 ? (
+            <div className="text-muted p-3">No media assigned.</div>
+          ) : null}
+        </div>
       </Tab>
       <Tab
         eventKey="images"
@@ -404,11 +414,19 @@ const CopyrightMediaTabs: React.FC<{
           />
         }
       >
-        <FilteredImageList
-          imageIDs={imageIDs}
-          alterQuery
-          view={View.CopyrightImages}
-        />
+        {renderImages()}
+      </Tab>
+      <Tab
+        eventKey="videos"
+        title={
+          <TabTitleCounter
+            messageID="scenes"
+            count={copyright.scene_count}
+            abbreviateCounter={abbreviateCounter}
+          />
+        }
+      >
+        {renderVideos()}
       </Tab>
       <Tab
         eventKey="characters"
