@@ -3,7 +3,6 @@ import { Route, Switch } from "react-router-dom";
 
 import CopyrightRoutes from "src/components/Tags/Copyrights";
 import CopyrightList from "./CopyrightList";
-import "./copyrightUIPatches";
 
 const CopyrightsRouter: React.FC = () => (
   <Switch>
