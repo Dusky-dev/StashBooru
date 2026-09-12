@@ -8,15 +8,18 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
 
-// Embedder is the inference surface used by visual similarity indexing. Both
-// the local stdin/stdout worker and the remote HTTP worker implement it.
+// Embedder is the inference surface used by visual similarity indexing and
+// EVA02 fallback tagging. Both the local stdin/stdout worker and the remote
+// HTTP worker implement it, so the same loaded model can provide both outputs.
 type Embedder interface {
 	Status(ctx context.Context) (ModelStatus, error)
 	Embed(ctx context.Context, path string) ([]float32, error)
+	Tag(ctx context.Context, path string, threshold float64, limit int) ([]TagPrediction, error)
 	Close() error
 }
 
@@ -92,18 +95,7 @@ func (c *RemoteClient) Embed(ctx context.Context, path string) ([]float32, error
 		return nil, fmt.Errorf("visual embedding path is empty")
 	}
 
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("opening image for remote visual embedding: %w", err)
-	}
-	defer file.Close()
-
-	stat, err := file.Stat()
-	if err != nil {
-		return nil, fmt.Errorf("stat image for remote visual embedding: %w", err)
-	}
-
-	res, err := c.do(ctx, http.MethodPost, "/v1/embed", file, stat.Size())
+	res, err := c.upload(ctx, "/v1/embed", path)
 	if err != nil {
 		return nil, err
 	}
@@ -114,6 +106,41 @@ func (c *RemoteClient) Embed(ctx context.Context, path string) ([]float32, error
 		return nil, fmt.Errorf("remote visual embedding worker returned %d dimensions, expected %d", len(res.Embedding), Dimensions)
 	}
 	return res.Embedding, nil
+}
+
+func (c *RemoteClient) Tag(ctx context.Context, path string, threshold float64, limit int) ([]TagPrediction, error) {
+	if strings.TrimSpace(path) == "" {
+		return nil, fmt.Errorf("EVA02 tagger path is empty")
+	}
+	if err := validateTagOptions(threshold, limit); err != nil {
+		return nil, err
+	}
+
+	query := url.Values{}
+	query.Set("threshold", strconv.FormatFloat(threshold, 'g', -1, 64))
+	query.Set("limit", strconv.Itoa(limit))
+	res, err := c.upload(ctx, "/v1/tag?"+query.Encode(), path)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateWorker(res); err != nil {
+		return nil, err
+	}
+	return res.Tags, nil
+}
+
+func (c *RemoteClient) upload(ctx context.Context, endpoint, path string) (response, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return response{}, fmt.Errorf("opening image for remote visual inference: %w", err)
+	}
+	defer file.Close()
+
+	stat, err := file.Stat()
+	if err != nil {
+		return response{}, fmt.Errorf("stat image for remote visual inference: %w", err)
+	}
+	return c.do(ctx, http.MethodPost, endpoint, file, stat.Size())
 }
 
 func (c *RemoteClient) do(ctx context.Context, method, path string, body io.Reader, contentLength int64) (response, error) {

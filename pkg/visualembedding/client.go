@@ -15,8 +15,12 @@ import (
 )
 
 const (
-	Dimensions = 1024
-	Model      = "deepghs/wd14_tagger_with_embeddings@02fcdebd8afb52d5697a91efa4ca1c522b632581:SmilingWolf/wd-eva02-large-tagger-v3"
+	Dimensions          = 1024
+	TagCount            = 10861
+	DefaultTagThreshold = 0.35
+	DefaultTagLimit     = 50
+	MaxTagLimit         = 200
+	Model               = "deepghs/wd14_tagger_with_embeddings@02fcdebd8afb52d5697a91efa4ca1c522b632581:SmilingWolf/wd-eva02-large-tagger-v3"
 )
 
 type ModelStatus struct {
@@ -26,6 +30,12 @@ type ModelStatus struct {
 	Model      string `json:"model"`
 	Revision   string `json:"revision"`
 	Dimensions int    `json:"dimensions"`
+}
+
+type TagPrediction struct {
+	Name     string  `json:"name"`
+	Category string  `json:"category"`
+	Score    float64 `json:"score"`
 }
 
 type Client struct {
@@ -38,22 +48,27 @@ type Client struct {
 }
 
 type request struct {
-	ID   uint64 `json:"id"`
-	Op   string `json:"op"`
-	Path string `json:"path,omitempty"`
+	ID        uint64  `json:"id"`
+	Op        string  `json:"op"`
+	Path      string  `json:"path,omitempty"`
+	Threshold float64 `json:"threshold,omitempty"`
+	Limit     int     `json:"limit,omitempty"`
 }
 
 type response struct {
-	ID            uint64    `json:"id"`
-	OK            bool      `json:"ok"`
-	Error         string    `json:"error,omitempty"`
-	Model         string    `json:"model,omitempty"`
-	ModelRevision string    `json:"model_revision,omitempty"`
-	Dimensions    int       `json:"dimensions,omitempty"`
-	Embedding     []float32 `json:"embedding,omitempty"`
-	Installed     bool      `json:"installed,omitempty"`
-	Loaded        bool      `json:"loaded,omitempty"`
-	ModelPath     string    `json:"model_path,omitempty"`
+	ID            uint64          `json:"id"`
+	OK            bool            `json:"ok"`
+	Error         string          `json:"error,omitempty"`
+	Model         string          `json:"model,omitempty"`
+	ModelRevision string          `json:"model_revision,omitempty"`
+	Dimensions    int             `json:"dimensions,omitempty"`
+	Embedding     []float32       `json:"embedding,omitempty"`
+	Tags          []TagPrediction `json:"tags,omitempty"`
+	Threshold     float64         `json:"threshold,omitempty"`
+	Limit         int             `json:"limit,omitempty"`
+	Installed     bool            `json:"installed,omitempty"`
+	Loaded        bool            `json:"loaded,omitempty"`
+	ModelPath     string          `json:"model_path,omitempty"`
 }
 
 func DefaultWorkerPath() string {
@@ -131,6 +146,39 @@ func (c *Client) Embed(ctx context.Context, path string) ([]float32, error) {
 	return res.Embedding, nil
 }
 
+func (c *Client) Tag(ctx context.Context, path string, threshold float64, limit int) ([]TagPrediction, error) {
+	if strings.TrimSpace(path) == "" {
+		return nil, errors.New("EVA02 tagger path is empty")
+	}
+	if err := validateTagOptions(threshold, limit); err != nil {
+		return nil, err
+	}
+
+	res, err := c.callRequest(ctx, request{
+		Op:        "tag",
+		Path:      path,
+		Threshold: threshold,
+		Limit:     limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := validateWorker(res); err != nil {
+		return nil, err
+	}
+	return res.Tags, nil
+}
+
+func validateTagOptions(threshold float64, limit int) error {
+	if threshold <= 0 || threshold >= 1 {
+		return fmt.Errorf("EVA02 threshold must be greater than 0 and less than 1")
+	}
+	if limit < 1 || limit > MaxTagLimit {
+		return fmt.Errorf("EVA02 per-category limit must be between 1 and %d", MaxTagLimit)
+	}
+	return nil
+}
+
 func (c *Client) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -165,6 +213,10 @@ func validateWorker(res response) error {
 }
 
 func (c *Client) call(ctx context.Context, op, path string) (response, error) {
+	return c.callRequest(ctx, request{Op: op, Path: path})
+}
+
+func (c *Client) callRequest(ctx context.Context, req request) (response, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -177,7 +229,8 @@ func (c *Client) call(ctx context.Context, op, path string) (response, error) {
 
 	c.nextID++
 	id := c.nextID
-	if err := json.NewEncoder(c.stdin).Encode(request{ID: id, Op: op, Path: path}); err != nil {
+	req.ID = id
+	if err := json.NewEncoder(c.stdin).Encode(req); err != nil {
 		_ = c.stopLocked(true)
 		return response{}, fmt.Errorf("sending request to visual embedding worker: %w", err)
 	}

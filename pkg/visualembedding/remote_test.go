@@ -14,7 +14,7 @@ import (
 const testModelID = "deepghs/wd14_tagger_with_embeddings:SmilingWolf/wd-eva02-large-tagger-v3"
 const testModelRevision = "02fcdebd8afb52d5697a91efa4ca1c522b632581"
 
-func TestRemoteClientStatusAndEmbed(t *testing.T) {
+func TestRemoteClientStatusEmbedAndTag(t *testing.T) {
 	const token = "secret-token"
 	imageBytes := []byte("fake-image-bytes")
 
@@ -71,6 +71,42 @@ func TestRemoteClientStatusAndEmbed(t *testing.T) {
 				ModelPath:     "/models/model.onnx",
 				Embedding:     embedding,
 			})
+		case "/v1/tag":
+			if r.Method != http.MethodPost {
+				t.Errorf("unexpected tag method %s", r.Method)
+				http.Error(w, "bad method", http.StatusMethodNotAllowed)
+				return
+			}
+			if got := r.URL.Query().Get("threshold"); got != "0.42" {
+				t.Errorf("unexpected tag threshold %q", got)
+			}
+			if got := r.URL.Query().Get("limit"); got != "17" {
+				t.Errorf("unexpected tag limit %q", got)
+			}
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				t.Errorf("reading tag request body: %v", err)
+				http.Error(w, "body error", http.StatusBadRequest)
+				return
+			}
+			if string(body) != string(imageBytes) {
+				t.Errorf("unexpected tag image body %q", string(body))
+				http.Error(w, "bad body", http.StatusBadRequest)
+				return
+			}
+			_ = json.NewEncoder(w).Encode(response{
+				OK:            true,
+				Model:         testModelID,
+				ModelRevision: testModelRevision,
+				Dimensions:    Dimensions,
+				Installed:     true,
+				Loaded:        true,
+				ModelPath:     "/models/model.onnx",
+				Tags: []TagPrediction{
+					{Name: "1girl", Category: "general", Score: 0.93},
+					{Name: "example_character", Category: "character", Score: 0.88},
+				},
+			})
 		default:
 			http.NotFound(w, r)
 		}
@@ -102,6 +138,14 @@ func TestRemoteClientStatusAndEmbed(t *testing.T) {
 	}
 	if len(embedding) != Dimensions || embedding[0] != 1 {
 		t.Fatalf("unexpected embedding: len=%d first=%f", len(embedding), embedding[0])
+	}
+
+	tags, err := client.Tag(context.Background(), imagePath, 0.42, 17)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tags) != 2 || tags[0].Name != "1girl" || tags[1].Category != "character" {
+		t.Fatalf("unexpected tags: %+v", tags)
 	}
 }
 
