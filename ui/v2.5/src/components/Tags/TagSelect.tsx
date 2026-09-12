@@ -67,6 +67,7 @@ export type TagSelectProps = IFilterProps &
     hoverPlacement?: Placement;
     hoverPlacementLabel?: Placement;
     excludeIds?: string[];
+    namespace?: "tags" | "copyrights" | "all";
   };
 
 const _TagSelect: React.FC<TagSelectProps> = (props) => {
