@@ -262,7 +262,7 @@ func (r *mutationResolver) CopyrightPerformersUpdate(ctx context.Context, copyri
 
 func (r *copyrightResolver) ImagePath(ctx context.Context, obj *models.Copyright) (string, error) {
 	baseURL, _ := ctx.Value(BaseURLCtxKey).(string)
-	return fmt.Sprintf("%s/copyright/%d/image", strings.TrimRight(baseURL, "/"), obj.ID), nil
+	return fmt.Sprintf("%s/tag/copyright/%d/image", strings.TrimRight(baseURL, "/"), obj.ID), nil
 }
 
 func (r *copyrightResolver) Parents(ctx context.Context, obj *models.Copyright) (ret []*models.Copyright, err error) {
