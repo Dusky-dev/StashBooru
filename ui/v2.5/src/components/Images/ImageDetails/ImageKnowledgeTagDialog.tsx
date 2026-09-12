@@ -312,12 +312,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         camiePredictions,
         eva02Predictions
       ),
-    [
-      booruPredictions,
-      camiePredictions,
-      eva02Predictions,
-      localPredictions,
-    ]
+    [booruPredictions, camiePredictions, eva02Predictions, localPredictions]
   );
 
   const addSelected = useCallback((items: TagPrediction[]) => {
@@ -612,8 +607,8 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
           model source is explicit. When the same metadata item is predicted by
           multiple sources, the earlier source keeps its value and score while
           later sources are shown as additional provenance. EVA02 is the
-          fallback source. Multiple selected Artists can be attached to the
-          same image.
+          fallback source. Multiple selected Artists can be attached to the same
+          image.
         </div>
 
         <Form.Check
