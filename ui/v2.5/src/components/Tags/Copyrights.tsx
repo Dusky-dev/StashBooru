@@ -687,7 +687,7 @@ const CopyrightDetail: React.FC = () => {
                   className="h-100 text-reset"
                 >
                   <img
-                    src={performer.image_path}
+                    src={performer.image_path ?? undefined}
                     alt=""
                     style={{ width: "100%", aspectRatio: "3 / 4", objectFit: "cover" }}
                   />
