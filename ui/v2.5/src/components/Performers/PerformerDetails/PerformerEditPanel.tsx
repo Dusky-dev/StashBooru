@@ -103,7 +103,7 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
   useEffect(() => {
     setCopyrights(performer.copyrights ?? []);
     setCopyrightsDirty(false);
-  }, [performer.copyrights, performer.id]);
+  }, [performer.copyrights]);
 
   const Scrapers = useListPerformerScrapers();
   const [queryableScrapers, setQueryableScrapers] = useState<GQL.Scraper[]>([]);
