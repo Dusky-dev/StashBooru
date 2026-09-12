@@ -6,7 +6,7 @@ import { useHistory } from "react-router-dom";
 import { Icon } from "src/components/Shared/Icon";
 import { useToast } from "src/hooks/Toast";
 
-interface CamiePrediction {
+interface TagPrediction {
   name: string;
   category: string;
   score: number;
@@ -16,8 +16,7 @@ interface CamiePrediction {
   targetExists?: boolean;
 }
 
-type MetadataOrigin = "camie" | "booru";
-type MetadataSourceKind = "file" | "booru" | "camie";
+type MetadataSourceKind = "local" | "booru" | "camie" | "eva02";
 
 interface MetadataSource {
   kind: MetadataSourceKind;
@@ -26,16 +25,16 @@ interface MetadataSource {
   priority: number;
 }
 
-interface MetadataPrediction extends CamiePrediction {
+interface MetadataPrediction extends TagPrediction {
   provenance: MetadataSource[];
 }
 
-interface CamieTagsResponse {
+interface TagSourceResponse {
   backend: "local" | "remote";
   model: string;
   threshold: number;
   limit: number;
-  tags: CamiePrediction[];
+  tags: TagPrediction[];
 }
 
 interface BooruMetadataResponse {
@@ -44,7 +43,7 @@ interface BooruMetadataResponse {
   postURL?: string;
   md5: string;
   md5Source: "filename" | "file";
-  tags: CamiePrediction[];
+  tags: TagPrediction[];
 }
 
 interface CamieConfig {
@@ -54,7 +53,7 @@ interface CamieConfig {
   filenameLayout: string;
 }
 
-interface CamieAppliedEntity {
+interface AppliedEntity {
   id: number;
   name: string;
   category: string;
@@ -64,10 +63,10 @@ interface CamieAppliedEntity {
 
 interface ImageTaggingApplyResponse {
   imageID: number;
-  characters: CamieAppliedEntity[];
-  artists: CamieAppliedEntity[];
-  copyrights: CamieAppliedEntity[];
-  tags: CamieAppliedEntity[];
+  characters: AppliedEntity[];
+  artists: AppliedEntity[];
+  copyrights: AppliedEntity[];
+  tags: AppliedEntity[];
   createdCharacters: number;
   createdArtists: number;
   createdCopyrights: number;
@@ -81,15 +80,11 @@ interface IProps {
 }
 
 const CATEGORY_ORDER = ["character", "artist", "copyright", "general", "meta"];
-const LOCAL_AUTHORITY_CATEGORIES = new Set([
-  "character",
-  "artist",
-  "copyright",
-]);
 const SOURCE_PRIORITY: Record<MetadataSourceKind, number> = {
-  file: 0,
+  local: 0,
   booru: 10,
   camie: 20,
+  eva02: 30,
 };
 
 function normalizePredictionValue(value?: string) {
@@ -100,7 +95,7 @@ function normalizePredictionValue(value?: string) {
     .toLocaleLowerCase();
 }
 
-function predictionIdentityKeys(prediction: CamiePrediction) {
+function predictionIdentityKeys(prediction: TagPrediction) {
   const category = prediction.category.trim().toLocaleLowerCase();
   const values = [prediction.name, prediction.rawName]
     .map(normalizePredictionValue)
@@ -108,7 +103,7 @@ function predictionIdentityKeys(prediction: CamiePrediction) {
   return [...new Set(values)].map((value) => `${category}\u0000${value}`);
 }
 
-function predictionKey(prediction: CamiePrediction) {
+function predictionKey(prediction: TagPrediction) {
   return (
     predictionIdentityKeys(prediction)[0] ??
     `${prediction.category}\u0000${prediction.name}`
@@ -119,74 +114,44 @@ function sourceKey(source: MetadataSource) {
   return `${source.kind}\u0000${source.detail ?? ""}`;
 }
 
-function hasFilenameSource(prediction: CamiePrediction) {
-  return prediction.source?.includes("filename") ?? false;
-}
-
-function hasCamieModelSource(prediction: CamiePrediction) {
-  const source = prediction.source ?? "model";
-  return source.includes("model") || !source.includes("filename");
-}
-
-function applyLocalAuthority(predictions: CamiePrediction[]) {
-  const authoritativeCategories = new Set<string>();
-  for (const prediction of predictions) {
-    const category = prediction.category.trim().toLocaleLowerCase();
-    if (
-      LOCAL_AUTHORITY_CATEGORIES.has(category) &&
-      hasFilenameSource(prediction)
-    ) {
-      authoritativeCategories.add(category);
-    }
-  }
-
-  return predictions.filter((prediction) => {
-    const category = prediction.category.trim().toLocaleLowerCase();
-    if (!authoritativeCategories.has(category)) return true;
-
-    // Filename metadata owns Character, Artist and Copyright as a whole
-    // category. Camie may confirm a filename value, but a different model-only
-    // value is not mixed into that category.
-    return hasFilenameSource(prediction);
-  });
-}
-
-function predictionSources(
-  prediction: CamiePrediction,
-  origin: MetadataOrigin
-): MetadataSource[] {
-  if (origin === "booru") {
-    const provider = prediction.source?.startsWith("booru:")
-      ? prediction.source.slice("booru:".length)
-      : undefined;
-    return [
-      {
-        kind: "booru",
-        label: "booru",
-        detail: provider ? `Booru: ${provider}` : "Booru metadata",
+function predictionSource(
+  prediction: TagPrediction,
+  kind: MetadataSourceKind
+): MetadataSource {
+  switch (kind) {
+    case "local":
+      return {
+        kind,
+        label: "Local",
+        detail: "Local filename metadata",
+        priority: SOURCE_PRIORITY.local,
+      };
+    case "booru": {
+      const provider = prediction.source?.startsWith("booru:")
+        ? prediction.source.slice("booru:".length)
+        : undefined;
+      return {
+        kind,
+        label: provider || "Danbooru",
+        detail: provider ? `Booru metadata: ${provider}` : "Danbooru metadata",
         priority: SOURCE_PRIORITY.booru,
-      },
-    ];
+      };
+    }
+    case "camie":
+      return {
+        kind,
+        label: "Camie",
+        detail: "Camie model prediction",
+        priority: SOURCE_PRIORITY.camie,
+      };
+    case "eva02":
+      return {
+        kind,
+        label: "EVA02",
+        detail: "WD EVA02 fallback prediction",
+        priority: SOURCE_PRIORITY.eva02,
+      };
   }
-
-  const result: MetadataSource[] = [];
-  if (hasFilenameSource(prediction)) {
-    result.push({
-      kind: "file",
-      label: "filename",
-      detail: "Local filename metadata",
-      priority: SOURCE_PRIORITY.file,
-    });
-  }
-  if (hasCamieModelSource(prediction)) {
-    result.push({
-      kind: "camie",
-      label: "Camie",
-      detail: "Camie model prediction",
-      priority: SOURCE_PRIORITY.camie,
-    });
-  }
-  return result;
 }
 
 function mergeSources(
@@ -204,14 +169,15 @@ function mergeSources(
 }
 
 function mergeMetadataPredictions(
-  camiePredictions: CamiePrediction[],
-  booruPredictions: CamiePrediction[]
+  localPredictions: TagPrediction[],
+  booruPredictions: TagPrediction[],
+  camiePredictions: TagPrediction[],
+  eva02Predictions: TagPrediction[]
 ): MetadataPrediction[] {
   const merged: MetadataPrediction[] = [];
   const indexByKey = new Map<string, number>();
-  const authoritativeCamie = applyLocalAuthority(camiePredictions);
 
-  const add = (prediction: CamiePrediction, origin: MetadataOrigin) => {
+  const add = (prediction: TagPrediction, sourceKind: MetadataSourceKind) => {
     const keys = predictionIdentityKeys(prediction);
     let existingIndex: number | undefined;
     for (const key of keys) {
@@ -222,11 +188,11 @@ function mergeMetadataPredictions(
       }
     }
 
-    const provenance = predictionSources(prediction, origin);
+    const provenance = [predictionSource(prediction, sourceKind)];
     if (existingIndex === undefined) {
       const next: MetadataPrediction = {
         ...prediction,
-        provenance: mergeSources([], provenance),
+        provenance,
       };
       const index = merged.length;
       merged.push(next);
@@ -234,16 +200,18 @@ function mergeMetadataPredictions(
       return;
     }
 
+    // Sources are added in priority order. Preserve the earlier source's
+    // prediction and score; later sources only contribute provenance and fill
+    // optional target information that was missing from the winning source.
     const current = merged[existingIndex];
     const next: MetadataPrediction = {
       ...current,
-      score: Math.max(current.score, prediction.score),
       rawName: current.rawName || prediction.rawName,
-      targetExists: current.targetExists || prediction.targetExists,
-      targetPath:
-        current.targetExists && current.targetPath
-          ? current.targetPath
-          : prediction.targetPath || current.targetPath,
+      targetExists:
+        current.targetExists === undefined
+          ? prediction.targetExists
+          : current.targetExists,
+      targetPath: current.targetPath || prediction.targetPath,
       provenance: mergeSources(current.provenance, provenance),
     };
     merged[existingIndex] = next;
@@ -257,13 +225,10 @@ function mergeMetadataPredictions(
     }
   };
 
-  for (const prediction of authoritativeCamie) {
-    if (hasFilenameSource(prediction)) add(prediction, "camie");
-  }
+  for (const prediction of localPredictions) add(prediction, "local");
   for (const prediction of booruPredictions) add(prediction, "booru");
-  for (const prediction of authoritativeCamie) {
-    if (!hasFilenameSource(prediction)) add(prediction, "camie");
-  }
+  for (const prediction of camiePredictions) add(prediction, "camie");
+  for (const prediction of eva02Predictions) add(prediction, "eva02");
   return merged;
 }
 
@@ -293,13 +258,27 @@ function categoryLabel(category: string) {
 
 function sourceBadgeVariant(source: MetadataSourceKind) {
   switch (source) {
-    case "file":
+    case "local":
       return "success";
     case "booru":
       return "info";
     case "camie":
       return "warning";
+    case "eva02":
+      return "secondary";
   }
+}
+
+function parseInferenceOptions(threshold: string, limit: string) {
+  const parsedThreshold = Number.parseFloat(threshold);
+  const parsedLimit = Number.parseInt(limit, 10);
+  if (!(parsedThreshold > 0 && parsedThreshold < 1)) {
+    throw new Error("Threshold must be greater than 0 and less than 1.");
+  }
+  if (!(parsedLimit >= 1 && parsedLimit <= 200)) {
+    throw new Error("Per-category limit must be between 1 and 200.");
+  }
+  return { parsedThreshold, parsedLimit };
 }
 
 export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
@@ -311,26 +290,37 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   const history = useHistory();
   const [threshold, setThreshold] = useState("0.492");
   const [limit, setLimit] = useState("50");
-  const [camiePredictions, setCamiePredictions] = useState<CamiePrediction[]>(
-    []
-  );
-  const [booruPredictions, setBooruPredictions] = useState<CamiePrediction[]>(
-    []
-  );
+  const [localPredictions, setLocalPredictions] = useState<TagPrediction[]>([]);
+  const [booruPredictions, setBooruPredictions] = useState<TagPrediction[]>([]);
+  const [camiePredictions, setCamiePredictions] = useState<TagPrediction[]>([]);
+  const [eva02Predictions, setEva02Predictions] = useState<TagPrediction[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [backend, setBackend] = useState<string>();
+  const [camieBackend, setCamieBackend] = useState<string>();
+  const [eva02Backend, setEva02Backend] = useState<string>();
   const [booruMetadata, setBooruMetadata] = useState<BooruMetadataResponse>();
   const [loading, setLoading] = useState(true);
+  const [loadingSource, setLoadingSource] = useState<MetadataSourceKind>();
   const [applying, setApplying] = useState(false);
   const [replaceArtist, setReplaceArtist] = useState(false);
   const [error, setError] = useState<string>();
 
   const predictions = useMemo(
-    () => mergeMetadataPredictions(camiePredictions, booruPredictions),
-    [booruPredictions, camiePredictions]
+    () =>
+      mergeMetadataPredictions(
+        localPredictions,
+        booruPredictions,
+        camiePredictions,
+        eva02Predictions
+      ),
+    [
+      booruPredictions,
+      camiePredictions,
+      eva02Predictions,
+      localPredictions,
+    ]
   );
 
-  const addSelected = useCallback((items: CamiePrediction[]) => {
+  const addSelected = useCallback((items: TagPrediction[]) => {
     setSelected((current) => {
       const next = new Set(current);
       for (const item of items) next.add(predictionKey(item));
@@ -338,41 +328,8 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
     });
   }, []);
 
-  const loadPredictions = useCallback(
-    async (nextThreshold: string, nextLimit: string) => {
-      const parsedThreshold = Number.parseFloat(nextThreshold);
-      const parsedLimit = Number.parseInt(nextLimit, 10);
-      if (!(parsedThreshold > 0 && parsedThreshold < 1)) {
-        setError("Threshold must be greater than 0 and less than 1.");
-        return;
-      }
-      if (!(parsedLimit >= 1 && parsedLimit <= 200)) {
-        setError("Per-category limit must be between 1 and 200.");
-        return;
-      }
-
-      setLoading(true);
-      setError(undefined);
-      try {
-        const response = await fetch(
-          `image/${imageId}/knowledge-tags?threshold=${encodeURIComponent(parsedThreshold)}&limit=${encodeURIComponent(parsedLimit)}`,
-          { method: "POST" }
-        );
-        const result = await readResponse<CamieTagsResponse>(response);
-        setCamiePredictions(result.tags);
-        setBackend(result.backend);
-        addSelected(result.tags);
-      } catch (cause) {
-        setError(cause instanceof Error ? cause.message : String(cause));
-      } finally {
-        setLoading(false);
-      }
-    },
-    [addSelected, imageId]
-  );
-
   const loadBooruMetadata = useCallback(async () => {
-    setLoading(true);
+    setLoadingSource("booru");
     setError(undefined);
     try {
       const response = await fetch(`image/${imageId}/booru-metadata`);
@@ -383,33 +340,85 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
-      setLoading(false);
+      setLoadingSource(undefined);
     }
   }, [addSelected, imageId]);
 
+  const loadModelPredictions = useCallback(
+    async (source: "camie" | "eva02") => {
+      let options: ReturnType<typeof parseInferenceOptions>;
+      try {
+        options = parseInferenceOptions(threshold, limit);
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : String(cause));
+        return;
+      }
+
+      setLoadingSource(source);
+      setError(undefined);
+      try {
+        const endpoint = source === "camie" ? "camie-tags" : "eva02-tags";
+        const response = await fetch(
+          `image/${imageId}/${endpoint}?threshold=${encodeURIComponent(options.parsedThreshold)}&limit=${encodeURIComponent(options.parsedLimit)}`,
+          { method: "POST" }
+        );
+        const result = await readResponse<TagSourceResponse>(response);
+        if (source === "camie") {
+          setCamiePredictions(result.tags);
+          setCamieBackend(result.backend);
+        } else {
+          setEva02Predictions(result.tags);
+          setEva02Backend(result.backend);
+        }
+        addSelected(result.tags);
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : String(cause));
+      } finally {
+        setLoadingSource(undefined);
+      }
+    },
+    [addSelected, imageId, limit, threshold]
+  );
+
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
+    setError(undefined);
+
     void (async () => {
+      try {
+        const response = await fetch(`image/${imageId}/local-metadata`);
+        const result = await readResponse<TagSourceResponse>(response);
+        if (!cancelled) {
+          setLocalPredictions(result.tags);
+          addSelected(result.tags);
+        }
+      } catch (cause) {
+        if (!cancelled) {
+          setError(cause instanceof Error ? cause.message : String(cause));
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+
+      // Camie's saved inference defaults are only used to initialize the
+      // controls. Reading them is not inference and does not start Camie.
       try {
         const response = await fetch("image/visual-similarity/camie/config");
         const config = await readResponse<CamieConfig>(response);
-        if (cancelled) return;
-        const savedThreshold = String(config.threshold);
-        const savedLimit = String(config.limit);
-        setThreshold(savedThreshold);
-        setLimit(savedLimit);
-        await loadPredictions(savedThreshold, savedLimit);
-      } catch (cause) {
         if (!cancelled) {
-          setLoading(false);
-          setError(cause instanceof Error ? cause.message : String(cause));
+          setThreshold(String(config.threshold));
+          setLimit(String(config.limit));
         }
+      } catch {
+        // Keep the UI defaults if the optional Camie config is unavailable.
       }
     })();
+
     return () => {
       cancelled = true;
     };
-  }, [loadPredictions]);
+  }, [addSelected, imageId]);
 
   const grouped = useMemo(() => {
     const groups = new Map<string, MetadataPrediction[]>();
@@ -440,8 +449,9 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   );
   const allVisibleSelected =
     predictions.length > 0 && visibleSelectedCount === predictions.length;
+  const busy = loading || loadingSource !== undefined;
 
-  const togglePrediction = useCallback((prediction: CamiePrediction) => {
+  const togglePrediction = useCallback((prediction: TagPrediction) => {
     const key = predictionKey(prediction);
     setSelected((current) => {
       const next = new Set(current);
@@ -504,7 +514,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
       <Modal.Body>
         <div className="d-flex flex-wrap align-items-end mb-3">
           <Form.Group className="mr-3 mb-2">
-            <Form.Label>Camie threshold</Form.Label>
+            <Form.Label>Inference threshold</Form.Label>
             <Form.Control
               type="number"
               min="0.001"
@@ -529,24 +539,46 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
           <Button
             className="mr-2 mb-2"
             variant="secondary"
-            disabled={loading || applying}
-            onClick={() => void loadPredictions(threshold, limit)}
+            disabled={busy || applying}
+            onClick={() => void loadBooruMetadata()}
           >
-            Analyze with Camie
+            {loadingSource === "booru" ? "Fetching…" : "Fetch from Danbooru"}
+          </Button>
+          <Button
+            className="mr-2 mb-2"
+            variant="secondary"
+            disabled={busy || applying}
+            onClick={() => void loadModelPredictions("camie")}
+          >
+            {loadingSource === "camie" ? "Analyzing…" : "Analyze with Camie"}
           </Button>
           <Button
             className="mb-2"
             variant="secondary"
-            disabled={loading || applying}
-            onClick={() => void loadBooruMetadata()}
+            disabled={busy || applying}
+            onClick={() => void loadModelPredictions("eva02")}
           >
-            Fetch from booru
+            {loadingSource === "eva02" ? "Analyzing…" : "Analyze with EVA02"}
           </Button>
-          {backend ? (
-            <Badge className="ml-2 mb-2" variant="secondary">
-              {backend === "remote"
-                ? "Camie remote worker"
-                : "Camie local worker"}
+        </div>
+
+        <div className="d-flex flex-wrap align-items-center mb-3">
+          <Badge className="mr-2 mb-1" variant="success">
+            Local loaded
+          </Badge>
+          {booruMetadata ? (
+            <Badge className="mr-2 mb-1" variant="info">
+              {booruMetadata.source}
+            </Badge>
+          ) : null}
+          {camieBackend ? (
+            <Badge className="mr-2 mb-1" variant="warning">
+              Camie {camieBackend}
+            </Badge>
+          ) : null}
+          {eva02Backend ? (
+            <Badge className="mb-1" variant="secondary">
+              EVA02 {eva02Backend}
             </Badge>
           ) : null}
         </div>
@@ -575,12 +607,12 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         ) : null}
 
         <div className="mb-3 text-muted">
-          Matching metadata from different tagging methods is merged into one
-          row. Filename values are authoritative for Characters, Artists and
-          Copyrights: Camie can confirm those exact values, while conflicting
-          Camie-only values in that category are ignored. If the filename has no
-          value for a category, Camie can supply it. Booru overlap remains
-          visible separately. Multiple selected Artists can be attached to the
+          Sources are merged in priority order: Local → Danbooru → Camie →
+          EVA02. Opening this dialog loads Local metadata only; every network or
+          model source is explicit. When the same metadata item is predicted by
+          multiple sources, the earlier source keeps its value and score while
+          later sources are shown as additional provenance. EVA02 is the
+          fallback source. Multiple selected Artists can be attached to the
           same image.
         </div>
 
@@ -595,12 +627,15 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
 
         {error ? <div className="alert alert-danger">{error}</div> : null}
 
-        {loading ? (
+        {busy ? (
           <div className="text-center py-5">
             <Spinner animation="border" role="status" />
           </div>
         ) : predictions.length === 0 && !error ? (
-          <div className="text-muted">No metadata was returned.</div>
+          <div className="text-muted">
+            No Local metadata was found. Fetch Danbooru or run Camie/EVA02
+            explicitly to add predictions.
+          </div>
         ) : (
           <>
             <div className="d-flex mb-3">
@@ -623,92 +658,77 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
             </div>
 
             <div style={{ maxHeight: "55vh", overflowY: "auto" }}>
-              {grouped.map(([category, items]) => {
-                const localAuthority =
-                  LOCAL_AUTHORITY_CATEGORIES.has(category) &&
-                  items.some((prediction) =>
-                    prediction.provenance.some(
-                      (source) => source.kind === "file"
-                    )
-                  );
-                return (
-                  <div className="mb-4" key={category}>
-                    <h5>{categoryLabel(category)}</h5>
-                    {localAuthority ? (
-                      <div className="small text-muted mb-2">
-                        Filename metadata is authoritative for this category;
-                        conflicting Camie predictions are ignored.
-                      </div>
-                    ) : null}
-                    {items.map((prediction, index) => {
-                      const key = predictionKey(prediction);
-                      return (
-                        <div
-                          className="d-flex align-items-center py-1 border-bottom"
-                          key={key}
-                        >
-                          <Form.Check
-                            type="checkbox"
-                            id={`metadata-${category}-${index}`}
-                            checked={selected.has(key)}
-                            onChange={() => togglePrediction(prediction)}
-                            label={prediction.name}
-                          />
-                          {prediction.provenance.map((source) => (
-                            <Badge
-                              className="ml-2"
-                              key={sourceKey(source)}
-                              title={source.detail}
-                              variant={sourceBadgeVariant(source.kind)}
-                            >
-                              {source.label}
-                            </Badge>
-                          ))}
-                          {prediction.targetExists ? (
-                            <Badge
-                              className="ml-2"
-                              variant="secondary"
-                              title="This metadata entity already exists in Stash"
-                            >
-                              exists
-                            </Badge>
-                          ) : null}
-                          {prediction.rawName &&
-                          prediction.rawName !== prediction.name ? (
-                            <span className="ml-2 small text-muted">
-                              alias: {prediction.rawName}
-                            </span>
-                          ) : null}
-                          {prediction.targetPath ? (
-                            <Button
-                              className="ml-auto mr-2 py-0 px-2"
-                              size="sm"
-                              variant="outline-secondary"
-                              title={
-                                prediction.targetExists
-                                  ? "Open metadata page"
-                                  : "Search for this metadata"
-                              }
-                              onClick={() => {
-                                onHide();
-                                history.push(prediction.targetPath!);
-                              }}
-                            >
-                              <Icon icon={faSearch} />
-                            </Button>
-                          ) : null}
+              {grouped.map(([category, items]) => (
+                <div className="mb-4" key={category}>
+                  <h5>{categoryLabel(category)}</h5>
+                  {items.map((prediction, index) => {
+                    const key = predictionKey(prediction);
+                    return (
+                      <div
+                        className="d-flex align-items-center py-1 border-bottom"
+                        key={key}
+                      >
+                        <Form.Check
+                          type="checkbox"
+                          id={`metadata-${category}-${index}`}
+                          checked={selected.has(key)}
+                          onChange={() => togglePrediction(prediction)}
+                          label={prediction.name}
+                        />
+                        {prediction.provenance.map((source) => (
                           <Badge
-                            className={prediction.targetPath ? "" : "ml-auto"}
-                            variant="secondary"
+                            className="ml-2"
+                            key={sourceKey(source)}
+                            title={source.detail}
+                            variant={sourceBadgeVariant(source.kind)}
                           >
-                            {(prediction.score * 100).toFixed(1)}%
+                            {source.label}
                           </Badge>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })}
+                        ))}
+                        {prediction.targetExists ? (
+                          <Badge
+                            className="ml-2"
+                            variant="secondary"
+                            title="This metadata entity already exists in Stash"
+                          >
+                            exists
+                          </Badge>
+                        ) : null}
+                        {prediction.rawName &&
+                        prediction.rawName !== prediction.name ? (
+                          <span className="ml-2 small text-muted">
+                            alias: {prediction.rawName}
+                          </span>
+                        ) : null}
+                        {prediction.targetPath ? (
+                          <Button
+                            className="ml-auto mr-2 py-0 px-2"
+                            size="sm"
+                            variant="outline-secondary"
+                            title={
+                              prediction.targetExists
+                                ? "Open metadata page"
+                                : "Search for this metadata"
+                            }
+                            onClick={() => {
+                              onHide();
+                              history.push(prediction.targetPath!);
+                            }}
+                          >
+                            <Icon icon={faSearch} />
+                          </Button>
+                        ) : null}
+                        <Badge
+                          className={prediction.targetPath ? "" : "ml-auto"}
+                          variant="secondary"
+                        >
+                          {(prediction.score * 100).toFixed(1)}%
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
           </>
         )}
@@ -719,7 +739,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         </Button>
         <Button
           variant="primary"
-          disabled={loading || applying || visibleSelectedCount === 0}
+          disabled={busy || applying || visibleSelectedCount === 0}
           onClick={() => void applySelected()}
         >
           {applying ? "Applying…" : "Apply selected metadata"}
