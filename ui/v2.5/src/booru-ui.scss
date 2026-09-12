@@ -134,7 +134,7 @@ div.nav-link[data-rb-event-key="/scenes/markers"] {
   margin: 0.75rem 0 1rem;
   max-width: 100%;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   padding: 0.75rem;
   width: 100%;
 }
@@ -171,6 +171,18 @@ div.nav-link[data-rb-event-key="/scenes/markers"] {
   max-width: 100%;
   min-width: 0;
   width: 100%;
+}
+
+.booru-character-card-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(10rem, 100%), 1fr));
+}
+
+.booru-character-card-shell {
+  display: flex;
+  justify-content: center;
+  max-width: 100%;
+  min-width: 0;
+  overflow: visible;
 }
 
 .booru-entity-card-grid-copyright {
@@ -309,6 +321,10 @@ div.nav-link[data-rb-event-key="/scenes/markers"] {
 @media (max-width: 575.98px) {
   .booru-entity-card-grid {
     grid-template-columns: repeat(auto-fill, minmax(min(5.6rem, 100%), 1fr));
+  }
+
+  .booru-character-card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(9.4rem, 100%), 1fr));
   }
 
   .booru-entity-card-grid-copyright {
