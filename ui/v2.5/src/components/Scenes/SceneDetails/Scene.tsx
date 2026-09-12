@@ -941,11 +941,7 @@ const SceneLoader: React.FC<RouteComponentProps<ISceneParams>> = ({
       const loadedScenes = await onQueueLessScenes();
       if (loadedScenes && loadedScenes.length > 0) {
         const newPage = (sceneQueue.query?.currentPage ?? 0) - 1;
-        loadScene(
-          loadedScenes[loadedScenes.length - 1].id,
-          autoPlay,
-          newPage
-        );
+        loadScene(loadedScenes[loadedScenes.length - 1].id, autoPlay, newPage);
       }
     }
   }
