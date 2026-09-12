@@ -99,8 +99,8 @@ const CopyrightList: React.FC = () => {
                   />
                 ) : null}
                 <small className="text-muted d-block mt-2">
-                  {copyright.scene_count} Videos · {copyright.image_count} Images ·{" "}
-                  {copyright.performer_count} Characters
+                  {copyright.scene_count} Videos · {copyright.image_count}{" "}
+                  Images · {copyright.performer_count} Characters
                 </small>
               </Card.Body>
             </Card>
