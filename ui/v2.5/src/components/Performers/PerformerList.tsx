@@ -6,7 +6,6 @@ import Mousetrap from "mousetrap";
 import * as GQL from "src/core/generated-graphql";
 import {
   queryFindPerformers,
-  useFindPerformers,
   usePerformersDestroy,
 } from "src/core/StashService";
 import { useFilteredItemList } from "../List/ItemList";
@@ -197,6 +196,7 @@ interface IPerformerList {
   alterQuery?: boolean;
   extraCriteria?: IPerformerCardExtraCriteria;
   extraOperations?: IItemListOperation<GQL.FindPerformersQueryResult>[];
+  performerIDs?: number[];
 }
 
 const PerformerList: React.FC<{
@@ -347,10 +347,16 @@ function useViewRandom(filter: ListFilterModel, count: number) {
   return viewRandom;
 }
 
-function useAddKeybinds(filter: ListFilterModel, count: number) {
+function useAddKeybinds(
+  filter: ListFilterModel,
+  count: number,
+  randomEnabled = true
+) {
   const viewRandom = useViewRandom(filter, count);
 
   useEffect(() => {
+    if (!randomEnabled) return;
+
     Mousetrap.bind("p r", () => {
       viewRandom();
     });
@@ -358,7 +364,7 @@ function useAddKeybinds(filter: ListFilterModel, count: number) {
     return () => {
       Mousetrap.unbind("p r");
     };
-  }, [viewRandom]);
+  }, [viewRandom, randomEnabled]);
 }
 
 export const FilteredPerformerList = PatchComponent(
@@ -375,7 +381,19 @@ export const FilteredPerformerList = PatchComponent(
       alterQuery,
       extraCriteria,
       extraOperations = [],
+      performerIDs,
     } = props;
+
+    function useResult(filter: ListFilterModel) {
+      return GQL.useFindPerformersQuery({
+        skip: performerIDs !== undefined && performerIDs.length === 0,
+        variables: {
+          filter: filter.makeFindFilter(),
+          performer_filter: filter.makeFilter(),
+          performer_ids: performerIDs,
+        },
+      });
+    }
 
     // States
     const {
@@ -394,7 +412,7 @@ export const FilteredPerformerList = PatchComponent(
           useURL: alterQuery,
         },
         queryResultProps: {
-          useResult: useFindPerformers,
+          useResult,
           getCount: (r) => r.data?.findPerformers.count ?? 0,
           getItems: (r) => r.data?.findPerformers.performers ?? [],
           filterHook,
@@ -424,7 +442,7 @@ export const FilteredPerformerList = PatchComponent(
       setFilter,
     });
 
-    useAddKeybinds(effectiveFilter, totalCount);
+    useAddKeybinds(effectiveFilter, totalCount, performerIDs === undefined);
     useFilteredSidebarKeybinds({
       showSidebar,
       setShowSidebar,
@@ -458,12 +476,15 @@ export const FilteredPerformerList = PatchComponent(
     const viewRandom = useViewRandom(effectiveFilter, totalCount);
 
     function onExport(all: boolean) {
+      const exportAllRestricted = all && performerIDs !== undefined;
       showModal(
         <ExportDialog
           exportInput={{
             performers: {
-              ids: Array.from(selectedIds.values()),
-              all,
+              ids: exportAllRestricted
+                ? performerIDs.map(String)
+                : Array.from(selectedIds.values()),
+              all: all && !exportAllRestricted,
             },
           }}
           onClose={() => closeModal()}
@@ -538,6 +559,7 @@ export const FilteredPerformerList = PatchComponent(
       {
         text: intl.formatMessage({ id: "actions.open_random" }),
         onClick: viewRandom,
+        isDisplayed: () => performerIDs === undefined && totalCount > 0,
       },
       {
         text: `${intl.formatMessage({ id: "actions.merge" })}…`,
