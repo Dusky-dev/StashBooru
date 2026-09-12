@@ -14,6 +14,7 @@ import {
 import { ErrorMessage } from "src/components/Shared/ErrorMessage";
 import { LoadingIndicator } from "src/components/Shared/LoadingIndicator";
 import { Icon } from "src/components/Shared/Icon";
+import { BooruTagSidebar } from "src/components/Shared/BooruTagSidebar";
 import { useToast } from "src/hooks/Toast";
 import * as Mousetrap from "mousetrap";
 import * as GQL from "src/core/generated-graphql";
@@ -344,6 +345,12 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
             <span>{renderOperations()}</span>
           </span>
         </div>
+        <BooruTagSidebar
+          tags={image.tags}
+          artists={image.artists}
+          characters={image.performers}
+          copyrights={image.copyrights}
+        />
         {renderTabs()}
       </div>
       <div className="image-container">
