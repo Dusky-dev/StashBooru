@@ -53,6 +53,11 @@ interface IProps {
   onDelete: () => void;
 }
 
+function imageArtists(image: GQL.ImageDataFragment): Studio[] {
+  if (image.artists?.length) return image.artists;
+  return image.studio ? [image.studio] : [];
+}
+
 export const ImageEditPanel: React.FC<IProps> = ({
   image,
   isVisible,
@@ -62,11 +67,12 @@ export const ImageEditPanel: React.FC<IProps> = ({
   const intl = useIntl();
   const Toast = useToast();
   const [updateCopyrights] = GQL.useImageCopyrightsUpdateMutation();
+  const [updateArtists] = GQL.useImageArtistsUpdateMutation();
 
   const [isLoading, setIsLoading] = useState(false);
   const [galleries, setGalleries] = useState<Gallery[]>([]);
   const [performers, setPerformers] = useState<Performer[]>([]);
-  const [studio, setStudio] = useState<Studio | null>(null);
+  const [artists, setArtists] = useState<Studio[]>(imageArtists(image));
   const [copyrights, setCopyrights] = useState<Copyright[]>(
     image.copyrights ?? []
   );
@@ -88,6 +94,10 @@ export const ImageEditPanel: React.FC<IProps> = ({
     setCopyrights(image.copyrights ?? []);
   }, [image.copyrights]);
 
+  useEffect(() => {
+    setArtists(imageArtists(image));
+  }, [image]);
+
   const scrapers = useListImageScrapers();
   const [scrapedImage, setScrapedImage] = useState<GQL.ScrapedImage | null>();
 
@@ -99,7 +109,7 @@ export const ImageEditPanel: React.FC<IProps> = ({
     details: yup.string().ensure(),
     photographer: yup.string().ensure(),
     gallery_ids: yup.array(yup.string().required()).defined(),
-    studio_id: yup.string().required().nullable(),
+    artist_ids: yup.array(yup.string().required()).defined(),
     performer_ids: yup.array(yup.string().required()).defined(),
     tag_ids: yup.array(yup.string().required()).defined(),
     copyright_ids: yup.array(yup.string().required()).defined(),
@@ -114,7 +124,7 @@ export const ImageEditPanel: React.FC<IProps> = ({
     details: image.details ?? "",
     photographer: image.photographer ?? "",
     gallery_ids: (image.galleries ?? []).map((g) => g.id),
-    studio_id: image.studio?.id ?? null,
+    artist_ids: imageArtists(image).map((item) => item.id),
     performer_ids: (image.performers ?? []).map((p) => p.id),
     tag_ids: (image.tags ?? []).map((t) => t.id),
     copyright_ids: (image.copyrights ?? []).map((item) => item.id),
@@ -161,9 +171,12 @@ export const ImageEditPanel: React.FC<IProps> = ({
     );
   }
 
-  function onSetStudio(item: Studio | null) {
-    setStudio(item);
-    formik.setFieldValue("studio_id", item ? item.id : null);
+  function onSetArtists(items: Studio[]) {
+    setArtists(items);
+    formik.setFieldValue(
+      "artist_ids",
+      items.map((item) => item.id)
+    );
   }
 
   function onSetCopyrights(items: Copyright[]) {
@@ -177,10 +190,6 @@ export const ImageEditPanel: React.FC<IProps> = ({
   useEffect(() => {
     setPerformers(image.performers ?? []);
   }, [image.performers]);
-
-  useEffect(() => {
-    setStudio(image.studio ?? null);
-  }, [image.studio]);
 
   useEffect(() => {
     if (isVisible) {
@@ -209,15 +218,27 @@ export const ImageEditPanel: React.FC<IProps> = ({
   async function onSave(input: InputValues) {
     setIsLoading(true);
     try {
-      const { copyright_ids: copyrightIDs, ...imageInput } = input;
+      const {
+        copyright_ids: copyrightIDs,
+        artist_ids: artistIDs,
+        ...imageInput
+      } = input;
       await onSubmit({
         id: image.id,
         ...imageInput,
+        // Keep the legacy single-Studio field synchronized with the primary
+        // Artist so existing plugins and queries continue to work.
+        studio_id: artistIDs[0] ?? null,
       });
       if (image.id) {
-        await updateCopyrights({
-          variables: { imageID: image.id, copyrightIDs },
-        });
+        await Promise.all([
+          updateCopyrights({
+            variables: { imageID: image.id, copyrightIDs },
+          }),
+          updateArtists({
+            variables: { imageID: image.id, artistIDs },
+          }),
+        ]);
       }
       formik.resetForm({ values: input });
     } catch (e) {
@@ -263,11 +284,15 @@ export const ImageEditPanel: React.FC<IProps> = ({
     if (imageData.urls) formik.setFieldValue("urls", imageData.urls);
 
     if (imageData.studio?.stored_id) {
-      onSetStudio({
+      const scrapedArtist: Studio = {
         id: imageData.studio.stored_id,
         name: imageData.studio.name ?? "",
         aliases: [],
-      });
+      };
+      onSetArtists([
+        scrapedArtist,
+        ...artists.filter((item) => item.id !== scrapedArtist.id),
+      ]);
     }
 
     if (imageData.performers?.length) {
@@ -352,15 +377,12 @@ export const ImageEditPanel: React.FC<IProps> = ({
     );
   }
 
-  function renderStudioField() {
-    const title = intl.formatMessage({ id: "studio" });
+  function renderArtistsField() {
     return renderField(
-      "studio_id",
-      title,
-      <StudioSelect
-        onSelect={(items) => onSetStudio(items.length > 0 ? items[0] : null)}
-        values={studio ? [studio] : []}
-      />
+      "artist_ids",
+      intl.formatMessage({ id: "artists", defaultMessage: "Artists" }),
+      <StudioSelect isMulti onSelect={onSetArtists} values={artists} />,
+      fullWidthProps
     );
   }
 
@@ -416,15 +438,21 @@ export const ImageEditPanel: React.FC<IProps> = ({
   function maybeRenderScrapeDialog() {
     if (!scrapedImage) return;
 
+    const {
+      artist_ids: _artistIDs,
+      copyright_ids: _copyrightIDs,
+      ...imageValues
+    } = formik.values;
     const currentImage = {
       id: image.id!,
-      ...formik.values,
+      ...imageValues,
+      studio_id: artists[0]?.id ?? null,
     };
 
     return (
       <ImageScrapeDialog
         image={currentImage}
-        imageStudio={studio}
+        imageStudio={artists[0] ?? null}
         imageTags={tags}
         imagePerformers={performers}
         scraped={scrapedImage}
@@ -488,7 +516,7 @@ export const ImageEditPanel: React.FC<IProps> = ({
             {renderDateField("date")}
             {renderInputField("photographer")}
             {renderGalleriesField()}
-            {renderStudioField()}
+            {renderArtistsField()}
             {renderPerformersField()}
             {renderCopyrightsField()}
             {renderTagsField()}
