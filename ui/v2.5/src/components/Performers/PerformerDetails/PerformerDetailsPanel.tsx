@@ -1,6 +1,12 @@
-import React, { PropsWithChildren } from "react";
+import React, { PropsWithChildren, useEffect, useState } from "react";
+import { Button } from "react-bootstrap";
 import { useIntl } from "react-intl";
 import { TagLink } from "src/components/Shared/TagLink";
+import { CopyrightLink } from "src/components/Copyrights/CopyrightLink";
+import {
+  Copyright,
+  CopyrightSelect,
+} from "src/components/Copyrights/CopyrightSelect";
 import * as GQL from "src/core/generated-graphql";
 import TextUtils from "src/utils/text";
 import { DetailItem } from "src/components/Shared/DetailItem";
@@ -16,6 +22,7 @@ import {
 } from "../PerformerList";
 import { PatchComponent } from "src/patch";
 import { CustomFields } from "src/components/Shared/CustomFields";
+import { useToast } from "src/hooks/Toast";
 
 interface IPerformerDetails {
   performer: GQL.PerformerDataFragment;
@@ -31,9 +38,17 @@ const PerformerDetailGroup: React.FC<PropsWithChildren<IPerformerDetails>> =
 export const PerformerDetailsPanel: React.FC<IPerformerDetails> =
   PatchComponent("PerformerDetailsPanel", (props) => {
     const { performer, fullWidth, collapsed } = props;
-
-    // Network state
     const intl = useIntl();
+    const Toast = useToast();
+    const [updateCopyrights] = GQL.usePerformerCopyrightsUpdateMutation();
+    const [editingCopyrights, setEditingCopyrights] = useState(false);
+    const [copyrights, setCopyrights] = useState<Copyright[]>(
+      performer.copyrights ?? []
+    );
+
+    useEffect(() => {
+      setCopyrights(performer.copyrights ?? []);
+    }, [performer.copyrights]);
 
     function renderTagsField() {
       if (!performer.tags.length) {
@@ -45,6 +60,71 @@ export const PerformerDetailsPanel: React.FC<IPerformerDetails> =
             <TagLink key={tag.id} linkType="performer" tag={tag} />
           ))}
         </ul>
+      );
+    }
+
+    async function saveCopyrights() {
+      try {
+        await updateCopyrights({
+          variables: {
+            performerID: performer.id,
+            copyrightIDs: copyrights.map((item) => item.id),
+          },
+        });
+        setEditingCopyrights(false);
+        Toast.success("Updated Character Copyrights.");
+      } catch (error) {
+        Toast.error(error);
+      }
+    }
+
+    function renderCopyrightsField() {
+      if (editingCopyrights) {
+        return (
+          <div className="w-100">
+            <CopyrightSelect
+              isMulti
+              values={copyrights}
+              onSelect={setCopyrights}
+            />
+            <div className="mt-2">
+              <Button size="sm" variant="primary" onClick={saveCopyrights}>
+                Save
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="ml-2"
+                onClick={() => {
+                  setCopyrights(performer.copyrights ?? []);
+                  setEditingCopyrights(false);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="w-100">
+          <div className="mb-2">
+            {(performer.copyrights ?? []).map((copyright) => (
+              <CopyrightLink key={copyright.id} copyright={copyright} />
+            ))}
+            {(performer.copyrights ?? []).length === 0 ? (
+              <span className="text-muted">None</span>
+            ) : null}
+          </div>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setEditingCopyrights(true)}
+          >
+            Edit Copyrights
+          </Button>
+        </div>
       );
     }
 
@@ -182,6 +262,11 @@ export const PerformerDetailsPanel: React.FC<IPerformerDetails> =
           fullWidth={fullWidth}
         />
         <DetailItem id="details" value={details} fullWidth={fullWidth} />
+        <DetailItem
+          id="copyrights"
+          value={renderCopyrightsField()}
+          fullWidth={fullWidth}
+        />
         <DetailItem id="tags" value={renderTagsField()} fullWidth={fullWidth} />
         <DetailItem
           id="stash_ids"
@@ -197,7 +282,6 @@ export const PerformerDetailsPanel: React.FC<IPerformerDetails> =
 
 export const CompressedPerformerDetailsPanel: React.FC<IPerformerDetails> =
   PatchComponent("CompressedPerformerDetailsPanel", ({ performer }) => {
-    // Network state
     const intl = useIntl();
 
     function scrollToTop() {
