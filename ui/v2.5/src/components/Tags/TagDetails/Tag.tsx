@@ -12,11 +12,7 @@ import cx from "classnames";
 import Mousetrap from "mousetrap";
 
 import * as GQL from "src/core/generated-graphql";
-import {
-  useFindTag,
-  useTagUpdate,
-  useTagDestroy,
-} from "src/core/StashService";
+import { useFindTag, useTagUpdate, useTagDestroy } from "src/core/StashService";
 import { DetailsEditNavbar } from "src/components/Shared/DetailsEditNavbar";
 import { ErrorMessage } from "src/components/Shared/ErrorMessage";
 import { ModalComponent } from "src/components/Shared/Modal";
