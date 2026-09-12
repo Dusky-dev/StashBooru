@@ -1,6 +1,8 @@
 import { faImage, faPlayCircle } from "@fortawesome/free-solid-svg-icons";
 import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
+import * as GQL from "src/core/generated-graphql";
+import { PerformerCard } from "../Performers/PerformerCard";
 import { Icon } from "./Icon";
 
 interface BooruEntity {
@@ -14,13 +16,13 @@ interface BooruEntity {
 interface BooruTagSidebarProps {
   tags?: BooruEntity[] | null;
   artists?: BooruEntity[] | null;
-  characters?: BooruEntity[] | null;
+  characters?: GQL.PerformerDataFragment[] | null;
   copyrights?: BooruEntity[] | null;
 }
 
-type CardKind = "artist" | "character" | "copyright";
+type CardKind = "artist" | "copyright";
 
-function sortByName<T extends BooruEntity>(items?: T[] | null): T[] {
+function sortByName<T extends { name: string }>(items?: T[] | null): T[] {
   return [...(items ?? [])].sort((a, b) =>
     a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
   );
@@ -91,6 +93,28 @@ const CardSection: React.FC<{
   );
 };
 
+const CharacterSection: React.FC<{
+  items: GQL.PerformerDataFragment[];
+}> = ({ items }) => {
+  if (items.length === 0) return null;
+
+  return (
+    <section className="booru-tag-section booru-tag-section-character">
+      <h6 className="booru-tag-section-title">
+        <Link to="/performers">Characters</Link>
+        <span className="booru-tag-count">{items.length}</span>
+      </h6>
+      <div className="booru-character-card-grid">
+        {items.map((performer) => (
+          <div className="booru-character-card-shell" key={performer.id}>
+            <PerformerCard performer={performer} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+};
+
 const GeneralTagName: React.FC<{ entity: BooruEntity }> = ({ entity }) => (
   <span className="booru-general-tag-name-wrap">
     <Link
@@ -155,13 +179,7 @@ export const BooruTagSidebar: React.FC<BooruTagSidebarProps> = ({
         indexRoute="/studios"
         route={(id) => `/studios/${id}`}
       />
-      <CardSection
-        kind="character"
-        title="Characters"
-        items={sortedCharacters}
-        indexRoute="/performers"
-        route={(id) => `/performers/${id}`}
-      />
+      <CharacterSection items={sortedCharacters} />
       <CardSection
         kind="copyright"
         title="Copyrights"
