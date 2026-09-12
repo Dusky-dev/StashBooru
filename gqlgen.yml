@@ -164,3 +164,5 @@ models:
     fields:
       copyrights:
         resolver: true
+      artists:
+        resolver: true
