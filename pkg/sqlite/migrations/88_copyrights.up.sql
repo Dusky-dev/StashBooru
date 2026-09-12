@@ -43,3 +43,17 @@ CREATE TABLE `scenes_copyrights` (
     FOREIGN KEY (`copyright_id`) REFERENCES `copyrights` (`id`) ON DELETE CASCADE
 );
 CREATE INDEX `index_scenes_copyrights_copyright` ON `scenes_copyrights` (`copyright_id`);
+
+-- Images historically had a single studio_id. Keep that column as the primary
+-- Artist for backwards compatibility and store the ordered multi-Artist set
+-- here. Existing images need no data migration: reads include studio_id and the
+-- first Artist written here is mirrored back to studio_id.
+CREATE TABLE `images_artists` (
+    `image_id` INTEGER NOT NULL,
+    `studio_id` INTEGER NOT NULL,
+    `position` INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (`image_id`, `studio_id`),
+    FOREIGN KEY (`image_id`) REFERENCES `images` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`studio_id`) REFERENCES `studios` (`id`) ON DELETE CASCADE
+);
+CREATE INDEX `index_images_artists_studio` ON `images_artists` (`studio_id`);
