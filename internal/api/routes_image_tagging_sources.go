@@ -169,6 +169,12 @@ func (rs imageRoutes) ImageEva02Predictions(w http.ResponseWriter, r *http.Reque
 	}
 	predictions := make([]camietagger.Tag, 0, len(tagPredictions))
 	for _, prediction := range tagPredictions {
+		// WD EVA02 category 9 is the image rating (general/sensitive/
+		// questionable/explicit), not booru metadata. Only expose the model's
+		// real metadata classes here so ratings cannot be applied as Tags.
+		if prediction.Category != "general" && prediction.Category != "character" {
+			continue
+		}
 		predictions = append(predictions, camietagger.Tag{
 			Name:     prediction.Name,
 			RawName:  prediction.Name,
