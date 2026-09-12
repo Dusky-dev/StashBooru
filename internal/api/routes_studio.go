@@ -56,6 +56,7 @@ func (rs studioRoutes) Image(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(image) == 0 {
+		disableEntityFallbackCaching(w)
 		var fallback *models.Image
 		readTxnErr := rs.withReadTxn(r, func(ctx context.Context) error {
 			filter := &models.ImageFilterType{
