@@ -438,6 +438,8 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
       ).length,
     [predictions, selected]
   );
+  const allVisibleSelected =
+    predictions.length > 0 && visibleSelectedCount === predictions.length;
 
   const togglePrediction = useCallback((prediction: CamiePrediction) => {
     const key = predictionKey(prediction);
@@ -603,21 +605,17 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
           <>
             <div className="d-flex mb-3">
               <Button
-                className="mr-2"
                 size="sm"
                 variant="outline-secondary"
                 onClick={() =>
-                  setSelected(new Set(predictions.map(predictionKey)))
+                  setSelected(
+                    allVisibleSelected
+                      ? new Set()
+                      : new Set(predictions.map(predictionKey))
+                  )
                 }
               >
-                Select all
-              </Button>
-              <Button
-                size="sm"
-                variant="outline-secondary"
-                onClick={() => setSelected(new Set())}
-              >
-                Clear selection
+                {allVisibleSelected ? "Unselect all" : "Select all"}
               </Button>
               <span className="ml-auto text-muted align-self-center">
                 {visibleSelectedCount} / {predictions.length} selected
