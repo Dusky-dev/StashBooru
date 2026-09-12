@@ -54,6 +54,10 @@ fragment SceneData on Scene {
     ...SlimStudioData
   }
 
+  artists {
+    ...SlimStudioData
+  }
+
   groups {
     group {
       ...GroupData
