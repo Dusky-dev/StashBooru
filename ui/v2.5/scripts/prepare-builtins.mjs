@@ -14,6 +14,7 @@ const unifiedParts = [
   "unifiedMedia.03.part",
   "unifiedMedia.04.part",
   "unifiedMedia.05.part",
+  "unifiedMedia.copyright.part",
   "unifiedMedia.06.part",
 ];
 
