@@ -194,14 +194,7 @@ const SceneList: React.FC<{
   sceneIDs?: number[];
 }> = PatchComponent(
   "SceneList",
-  ({
-    scenes,
-    filter,
-    selectedIds,
-    onSelectChange,
-    fromGroupId,
-    sceneIDs,
-  }) => {
+  ({ scenes, filter, selectedIds, onSelectChange, fromGroupId, sceneIDs }) => {
     const queue = useMemo(
       () =>
         sceneIDs
@@ -387,14 +380,8 @@ export const FilteredSceneList = PatchComponent(
 
     const searchFocus = useFocus();
 
-    const {
-      filterHook,
-      defaultSort,
-      view,
-      alterQuery,
-      fromGroupId,
-      sceneIDs,
-    } = props;
+    const { filterHook, defaultSort, view, alterQuery, fromGroupId, sceneIDs } =
+      props;
 
     function useResult(filter: ListFilterModel) {
       return GQL.useFindScenesQuery({
