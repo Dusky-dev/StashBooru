@@ -32,12 +32,10 @@ import { useRatingKeybinds } from "src/hooks/keybinds";
 import { useConfigurationContext } from "src/hooks/Config";
 import TextUtils from "src/utils/text";
 import { RatingSystem } from "src/components/Shared/Rating/RatingSystem";
-import cx from "classnames";
 import { TruncatedText } from "src/components/Shared/TruncatedText";
 import { goBackOrReplace } from "src/utils/history";
 import { FormattedDate } from "src/components/Shared/Date";
 import { GenerateDialog } from "src/components/Dialogs/GenerateDialog";
-import { StudioLogo } from "src/components/Shared/StudioLogo";
 
 interface IProps {
   image: GQL.ImageDataFragment;
@@ -53,7 +51,6 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
   const Toast = useToast();
   const intl = useIntl();
   const { configuration } = useConfigurationContext();
-  const { showStudioText } = configuration?.ui ?? {};
 
   const [incrementO] = useImageIncrementO(image.id);
   const [decrementO] = useImageDecrementO(image.id);
@@ -299,8 +296,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
       <div className="image-tabs order-xl-first order-last">
         <div>
           <div className="image-header-container">
-            <StudioLogo studio={image.studio} showText={showStudioText} />
-            <h3 className={cx("image-header", { "no-studio": !image.studio })}>
+            <h3 className="image-header no-studio">
               <TruncatedText lineCount={2} text={title} />
             </h3>
           </div>
