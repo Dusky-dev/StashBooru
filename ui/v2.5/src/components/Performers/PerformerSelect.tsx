@@ -353,6 +353,7 @@ const _PerformerSelect: React.FC<
           : undefined),
       }}
       isMulti={props.isMulti ?? false}
+      closeMenuOnSelect={!props.isMulti}
       creatable={props.creatable ?? defaultCreatable}
       onCreate={onCreate}
       placeholder={

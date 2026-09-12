@@ -5,6 +5,7 @@ export enum View {
   Groups = "groups",
   Performers = "performers",
   Tags = "tags",
+  Copyrights = "copyrights",
   SceneMarkers = "scene_markers",
   Studios = "studios",
 

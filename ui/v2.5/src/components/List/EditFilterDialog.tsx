@@ -222,6 +222,7 @@ const FilterModeToConfigKey = {
   [FilterMode.Scenes]: "scenes",
   [FilterMode.Studios]: "studios",
   [FilterMode.Tags]: "tags",
+  [FilterMode.Copyrights]: "copyrights",
 };
 
 function filterModeToConfigKey(filterMode: FilterMode) {

@@ -1,4 +1,5 @@
 import { FilterMode } from "src/core/generated-graphql";
+import { CopyrightListFilterOptions } from "./copyrights";
 import { ListFilterOptions } from "./filter-options";
 import { GalleryListFilterOptions } from "./galleries";
 import { ImageListFilterOptions } from "./images";
@@ -26,6 +27,8 @@ export function getFilterOptions(mode: FilterMode): ListFilterOptions {
       return GroupListFilterOptions;
     case FilterMode.Tags:
       return TagListFilterOptions;
+    case FilterMode.Copyrights:
+      return CopyrightListFilterOptions;
     case FilterMode.Images:
       return ImageListFilterOptions;
   }
