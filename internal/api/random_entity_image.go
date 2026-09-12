@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"net/http"
 	"strings"
 
 	"github.com/stashapp/stash/pkg/image"
@@ -55,4 +56,14 @@ func imageThumbnailURL(baseURL string, imageID int) string {
 		strings.TrimRight(baseURL, "/"),
 		imageID,
 	)
+}
+
+// Fallback images depend on entity relationships, not only the entity row's
+// updated_at value. A newly-created Artist/Character/Tag/Copyright can gain its
+// first related image without its image URL changing, so browsers must not pin
+// the old generic fallback response.
+func disableEntityFallbackCaching(w http.ResponseWriter) {
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
 }
