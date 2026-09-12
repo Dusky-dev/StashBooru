@@ -291,21 +291,32 @@ const CopyrightEditPanel: React.FC<{
     }
   }
 
+  const field = (label: React.ReactNode, control: React.ReactNode) => (
+    <Form.Group as={Row}>
+      <Form.Label column sm={3} xl={2}>
+        {label}
+      </Form.Label>
+      <Col sm={9} xl={7}>
+        {control}
+      </Col>
+    </Form.Group>
+  );
+
   return (
     <>
       {create ? <h2>New Copyright</h2> : null}
       <Form noValidate onSubmit={(event) => event.preventDefault()} id="copyright-edit">
-        <Form.Group>
-          <Form.Label>Name</Form.Label>
+        {field(
+          "Name",
           <Form.Control
             value={values.name}
             onChange={(event) =>
               setValues({ ...values, name: event.currentTarget.value })
             }
           />
-        </Form.Group>
-        <Form.Group>
-          <Form.Label>Aliases</Form.Label>
+        )}
+        {field(
+          "Aliases",
           <Form.Control
             as="textarea"
             rows={3}
@@ -315,9 +326,9 @@ const CopyrightEditPanel: React.FC<{
             }
             placeholder="One alias per line"
           />
-        </Form.Group>
-        <Form.Group>
-          <Form.Label>Details</Form.Label>
+        )}
+        {field(
+          "Details",
           <Form.Control
             as="textarea"
             rows={5}
@@ -326,9 +337,9 @@ const CopyrightEditPanel: React.FC<{
               setValues({ ...values, description: event.currentTarget.value })
             }
           />
-        </Form.Group>
-        <Form.Group>
-          <Form.Label>Parent Series</Form.Label>
+        )}
+        {field(
+          "Parent Series",
           <CopyrightSelect
             isMulti
             values={values.parents}
@@ -339,9 +350,9 @@ const CopyrightEditPanel: React.FC<{
             onSelect={(parents) => setValues({ ...values, parents })}
             creatable={false}
           />
-        </Form.Group>
-        <Form.Group>
-          <Form.Label>Sub-series</Form.Label>
+        )}
+        {field(
+          "Sub-series",
           <CopyrightSelect
             isMulti
             values={values.children}
@@ -352,7 +363,7 @@ const CopyrightEditPanel: React.FC<{
             onSelect={(children) => setValues({ ...values, children })}
             creatable={false}
           />
-        </Form.Group>
+        )}
       </Form>
 
       <Tabs defaultActiveKey="characters" id="copyright-edit-tabs" className="mt-3">
