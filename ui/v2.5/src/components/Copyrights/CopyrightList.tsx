@@ -31,7 +31,7 @@ function useFindCopyrightsForList(filter: ListFilterModel) {
 
 interface CopyrightCardProps {
   copyright: GQL.CopyrightListDataFragment;
-  cardWidth: number;
+  cardWidth?: number;
   zoomIndex: number;
   selecting: boolean;
   selected: boolean;
