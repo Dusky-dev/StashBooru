@@ -10,7 +10,6 @@ import {
   useFindPerformer,
   usePerformerUpdate,
   usePerformerDestroy,
-  mutateMetadataAutoTag,
 } from "src/core/StashService";
 import { DetailsEditNavbar } from "src/components/Shared/DetailsEditNavbar";
 import { ErrorMessage } from "src/components/Shared/ErrorMessage";
@@ -50,6 +49,7 @@ import { PatchComponent } from "src/patch";
 import { ILightboxImage } from "src/hooks/Lightbox/types";
 import { goBackOrReplace } from "src/utils/history";
 import { OCounterButton } from "src/components/Shared/CountButton";
+import { runEntityAutoTag } from "src/utils/entityAutoTag";
 
 interface IProps {
   performer: GQL.PerformerDataFragment;
@@ -252,6 +252,7 @@ const PerformerPage: React.FC<IProps> = PatchComponent(
     const [collapsed, setCollapsed] = useState<boolean>(!showAllDetails);
     const [isEditing, setIsEditing] = useState<boolean>(false);
     const [isMerging, setIsMerging] = useState<boolean>(false);
+    const [autoTagRunning, setAutoTagRunning] = useState(false);
     const [image, setImage] = useState<string | null>();
     const [encodingImage, setEncodingImage] = useState<boolean>(false);
     const loadStickyHeader = useLoadStickyHeader();
@@ -279,11 +280,16 @@ const PerformerPage: React.FC<IProps> = PatchComponent(
     const [deletePerformer, { loading: isDestroying }] = usePerformerDestroy();
 
     async function onAutoTag() {
+      if (!performer.id || autoTagRunning) return;
+
+      setAutoTagRunning(true);
       try {
-        await mutateMetadataAutoTag({ performers: [performer.id] });
-        Toast.success(intl.formatMessage({ id: "toast.started_auto_tagging" }));
+        await runEntityAutoTag("performer", performer.id);
+        Toast.success("Character auto-tag completed");
       } catch (e) {
         Toast.error(e);
+      } finally {
+        setAutoTagRunning(false);
       }
     }
 
@@ -491,7 +497,9 @@ const PerformerPage: React.FC<IProps> = PatchComponent(
                         onToggleEdit={() => toggleEditing()}
                         onDelete={onDelete}
                         onAutoTag={onAutoTag}
-                        autoTagDisabled={performer.ignore_auto_tag}
+                        autoTagDisabled={
+                          performer.ignore_auto_tag || autoTagRunning
+                        }
                         isNew={false}
                         isEditing={false}
                         onSave={() => {}}
