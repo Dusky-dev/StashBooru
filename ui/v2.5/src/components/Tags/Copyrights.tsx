@@ -1,13 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
-import { Button, Card, Col, Form, Row, Spinner, Tab, Tabs } from "react-bootstrap";
 import {
-  Link,
-  Route,
-  Switch,
-  useHistory,
-  useParams,
-} from "react-router-dom";
+  Button,
+  Card,
+  Col,
+  Form,
+  Row,
+  Spinner,
+  Tab,
+  Tabs,
+} from "react-bootstrap";
+import { Link, Route, Switch, useHistory, useParams } from "react-router-dom";
 import cx from "classnames";
 
 import * as GQL from "src/core/generated-graphql";
@@ -305,7 +308,11 @@ const CopyrightEditPanel: React.FC<{
   return (
     <>
       {create ? <h2>New Copyright</h2> : null}
-      <Form noValidate onSubmit={(event) => event.preventDefault()} id="copyright-edit">
+      <Form
+        noValidate
+        onSubmit={(event) => event.preventDefault()}
+        id="copyright-edit"
+      >
         {field(
           "Name",
           <Form.Control
@@ -366,11 +373,12 @@ const CopyrightEditPanel: React.FC<{
         )}
       </Form>
 
-      <Tabs defaultActiveKey="characters" id="copyright-edit-tabs" className="mt-3">
-        <Tab
-          eventKey="characters"
-          title={`Characters (${performers.length})`}
-        >
+      <Tabs
+        defaultActiveKey="characters"
+        id="copyright-edit-tabs"
+        className="mt-3"
+      >
+        <Tab eventKey="characters" title={`Characters (${performers.length})`}>
           <div className="pt-3">
             <PerformerSelect
               isMulti
