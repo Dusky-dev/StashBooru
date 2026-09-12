@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   Button,
   Col,
@@ -54,6 +54,7 @@ export const ImageInput: React.FC<IImageInput> = PatchComponent(
   }) => {
     const [isShowDialog, setIsShowDialog] = useState(false);
     const [url, setURL] = useState("");
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const intl = useIntl();
     const Toast = useToast();
     if (!isEditing) return <div />;
@@ -147,17 +148,22 @@ export const ImageInput: React.FC<IImageInput> = PatchComponent(
         <Popover.Content>
           <div>
             <span className="image-input">
-              <Button className="minimal">
+              <Button
+                type="button"
+                className="minimal"
+                onClick={() => fileInputRef.current?.click()}
+              >
                 <Icon icon={faFile} className="fa-fw" />
                 <span>
                   <FormattedMessage id="actions.from_file" />
                 </span>
-                <Form.Control
-                  type="file"
-                  onChange={onImageChange}
-                  accept={acceptExtensions(acceptSVG)}
-                />
               </Button>
+              <Form.Control
+                ref={fileInputRef}
+                type="file"
+                onChange={onImageChange}
+                accept={acceptExtensions(acceptSVG)}
+              />
             </span>
           </div>
           <div>

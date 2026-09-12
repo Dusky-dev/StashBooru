@@ -1,15 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
-import {
-  Button,
-  Card,
-  Col,
-  Form,
-  Row,
-  Spinner,
-  Tab,
-  Tabs,
-} from "react-bootstrap";
+import { Card, Col, Form, Row, Spinner, Tab, Tabs } from "react-bootstrap";
 import { Link, Route, Switch, useHistory, useParams } from "react-router-dom";
 import cx from "classnames";
 
@@ -27,6 +18,7 @@ import { BackgroundImage } from "src/components/Shared/DetailsPage/BackgroundIma
 import { AliasList } from "src/components/Shared/DetailsPage/AliasList";
 import { DetailTitle } from "src/components/Shared/DetailsPage/DetailTitle";
 import { HeaderImage } from "src/components/Shared/DetailsPage/HeaderImage";
+import { TabTitleCounter } from "src/components/Shared/DetailsPage/Tabs";
 import { ExpandCollapseButton } from "src/components/Shared/CollapseButton";
 import { TruncatedText } from "src/components/Shared/TruncatedText";
 import {
@@ -59,79 +51,6 @@ function aliasesFromText(value: string) {
     .map((item) => item.trim())
     .filter(Boolean);
 }
-
-const CopyrightList: React.FC = () => {
-  const [search, setSearch] = useState("");
-  const { data, loading } = GQL.useFindCopyrightsQuery({
-    variables: {
-      filter: {
-        q: search || undefined,
-        page: 1,
-        per_page: -1,
-        sort: "name",
-        direction: GQL.SortDirectionEnum.Asc,
-      },
-    },
-  });
-
-  const copyrights = data?.findCopyrights.copyrights ?? [];
-
-  return (
-    <div className="container-fluid py-3">
-      <div className="d-flex align-items-center mb-3">
-        <h2 className="mb-0">Copyrights</h2>
-        <Button as={Link} to="/copyrights/new" className="ml-auto">
-          New Copyright
-        </Button>
-      </div>
-      <Form.Control
-        className="mb-3"
-        value={search}
-        onChange={(event) => setSearch(event.currentTarget.value)}
-        placeholder="Search Copyrights"
-      />
-      {loading ? (
-        <Spinner animation="border" />
-      ) : (
-        <Row className="justify-content-center">
-          {copyrights.map((copyright) => (
-            <Col key={copyright.id} sm={6} lg={4} xl={3} className="mb-3">
-              <Card
-                as={Link}
-                to={`/copyrights/${copyright.id}`}
-                className="tag-card h-100 text-reset text-decoration-none"
-              >
-                <img
-                  className="tag-card-image"
-                  src={copyright.image_path}
-                  alt={copyright.name}
-                  loading="lazy"
-                />
-                <Card.Body>
-                  <Card.Title>{copyright.name}</Card.Title>
-                  {copyright.description ? (
-                    <TruncatedText
-                      className="tag-description"
-                      text={copyright.description}
-                      lineCount={3}
-                    />
-                  ) : null}
-                  <small className="text-muted d-block mt-2">
-                    {copyright.scene_count} Videos · {copyright.image_count}{" "}
-                    Images · {copyright.performer_count} Characters
-                  </small>
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-          {copyrights.length === 0 ? (
-            <Col className="text-muted">No Copyrights found.</Col>
-          ) : null}
-        </Row>
-      )}
-    </div>
-  );
-};
 
 const CopyrightDetailsPanel: React.FC<{
   copyright: GQL.CopyrightDataFragment;
@@ -255,7 +174,11 @@ const CopyrightEditPanel: React.FC<{
 
       let saved: GQL.CopyrightDataFragment | undefined;
       if (create) {
-        const result = await createCopyright({ variables: { input } });
+        const result = await createCopyright({
+          variables: { input },
+          refetchQueries: ["FindCopyrights"],
+          awaitRefetchQueries: true,
+        });
         saved = result.data?.copyrightCreate;
       } else if (copyright) {
         const result = await updateCopyright({
@@ -316,6 +239,7 @@ const CopyrightEditPanel: React.FC<{
         {field(
           "Name",
           <Form.Control
+            className="text-input"
             value={values.name}
             onChange={(event) =>
               setValues({ ...values, name: event.currentTarget.value })
@@ -325,6 +249,7 @@ const CopyrightEditPanel: React.FC<{
         {field(
           "Aliases",
           <Form.Control
+            className="text-input"
             as="textarea"
             rows={3}
             value={values.aliases}
@@ -337,6 +262,7 @@ const CopyrightEditPanel: React.FC<{
         {field(
           "Details",
           <Form.Control
+            className="text-input"
             as="textarea"
             rows={5}
             value={values.description}
@@ -411,11 +337,20 @@ const CopyrightEditPanel: React.FC<{
 const CopyrightMediaTabs: React.FC<{
   copyright: GQL.CopyrightDataFragment;
   initialTab?: string;
-}> = ({ copyright, initialTab }) => {
+  abbreviateCounter: boolean;
+}> = ({ copyright, initialTab, abbreviateCounter }) => {
   const history = useHistory();
+
+  const populatedDefaultTab = useMemo(() => {
+    if (copyright.scene_count !== 0) return "videos";
+    if (copyright.image_count !== 0) return "images";
+    if (copyright.performer_count !== 0) return "characters";
+    return "videos";
+  }, [copyright.scene_count, copyright.image_count, copyright.performer_count]);
+
   const active = ["videos", "images", "characters"].includes(initialTab ?? "")
     ? initialTab
-    : "videos";
+    : populatedDefaultTab;
 
   return (
     <Tabs
@@ -427,104 +362,134 @@ const CopyrightMediaTabs: React.FC<{
       mountOnEnter
       unmountOnExit
     >
-      <Tab eventKey="videos" title={`Videos (${copyright.scene_count})`}>
-        <Row className="pt-3">
-          {copyright.scenes.map((scene) => (
-            <Col key={scene.id} sm={6} lg={4} xl={3} className="mb-3">
-              <Card
-                as={Link}
-                to={`/scenes/${scene.id}`}
-                className="h-100 text-reset"
-              >
-                {scene.paths.screenshot ? (
+      <Tab
+        eventKey="videos"
+        title={
+          <TabTitleCounter
+            messageID="scenes"
+            count={copyright.scene_count}
+            abbreviateCounter={abbreviateCounter}
+          />
+        }
+      >
+        <div className="item-list-container pt-3">
+          <Row className="justify-content-center">
+            {copyright.scenes.map((scene) => (
+              <Col key={scene.id} sm={6} lg={4} xl={3} className="mb-3">
+                <Card
+                  as={Link}
+                  to={`/scenes/${scene.id}`}
+                  className="h-100 text-reset"
+                >
+                  {scene.paths.screenshot ? (
+                    <img
+                      src={scene.paths.screenshot}
+                      alt=""
+                      style={{
+                        width: "100%",
+                        aspectRatio: "16 / 9",
+                        objectFit: "cover",
+                      }}
+                    />
+                  ) : null}
+                  <Card.Body>
+                    <TruncatedText text={scene.title || `Video #${scene.id}`} />
+                  </Card.Body>
+                </Card>
+              </Col>
+            ))}
+            {copyright.scenes.length === 0 ? (
+              <Col className="text-muted">No Videos assigned.</Col>
+            ) : null}
+          </Row>
+        </div>
+      </Tab>
+      <Tab
+        eventKey="images"
+        title={
+          <TabTitleCounter
+            messageID="images"
+            count={copyright.image_count}
+            abbreviateCounter={abbreviateCounter}
+          />
+        }
+      >
+        <div className="item-list-container pt-3">
+          <Row className="justify-content-center">
+            {copyright.images.map((image) => (
+              <Col key={image.id} sm={6} lg={4} xl={3} className="mb-3">
+                <Card
+                  as={Link}
+                  to={`/images/${image.id}`}
+                  className="h-100 text-reset"
+                >
                   <img
-                    src={scene.paths.screenshot}
+                    src={image.paths.thumbnail ?? image.paths.image ?? ""}
                     alt=""
                     style={{
                       width: "100%",
-                      aspectRatio: "16 / 9",
+                      aspectRatio: "1 / 1",
                       objectFit: "cover",
                     }}
                   />
-                ) : null}
-                <Card.Body>
-                  <TruncatedText text={scene.title || `Video #${scene.id}`} />
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-          {copyright.scenes.length === 0 ? (
-            <Col className="text-muted">No Videos assigned.</Col>
-          ) : null}
-        </Row>
-      </Tab>
-      <Tab eventKey="images" title={`Images (${copyright.image_count})`}>
-        <Row className="pt-3">
-          {copyright.images.map((image) => (
-            <Col key={image.id} sm={6} lg={4} xl={3} className="mb-3">
-              <Card
-                as={Link}
-                to={`/images/${image.id}`}
-                className="h-100 text-reset"
-              >
-                <img
-                  src={image.paths.thumbnail ?? image.paths.image ?? ""}
-                  alt=""
-                  style={{
-                    width: "100%",
-                    aspectRatio: "1 / 1",
-                    objectFit: "cover",
-                  }}
-                />
-                <Card.Body>
-                  <TruncatedText text={image.title || `Image #${image.id}`} />
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-          {copyright.images.length === 0 ? (
-            <Col className="text-muted">No Images assigned.</Col>
-          ) : null}
-        </Row>
+                  <Card.Body>
+                    <TruncatedText text={image.title || `Image #${image.id}`} />
+                  </Card.Body>
+                </Card>
+              </Col>
+            ))}
+            {copyright.images.length === 0 ? (
+              <Col className="text-muted">No Images assigned.</Col>
+            ) : null}
+          </Row>
+        </div>
       </Tab>
       <Tab
         eventKey="characters"
-        title={`Characters (${copyright.performer_count})`}
+        title={
+          <TabTitleCounter
+            messageID="performers"
+            count={copyright.performer_count}
+            abbreviateCounter={abbreviateCounter}
+          />
+        }
       >
-        <Row className="pt-3">
-          {copyright.performers.map((performer) => (
-            <Col key={performer.id} sm={6} lg={4} xl={3} className="mb-3">
-              <Card
-                as={Link}
-                to={`/performers/${performer.id}`}
-                className="h-100 text-reset"
-              >
-                {performer.image_path ? (
-                  <img
-                    src={performer.image_path}
-                    alt=""
-                    style={{
-                      width: "100%",
-                      aspectRatio: "3 / 4",
-                      objectFit: "cover",
-                    }}
-                  />
-                ) : null}
-                <Card.Body>
-                  <strong>{performer.name}</strong>
-                  {performer.disambiguation ? (
-                    <small className="text-muted d-block">
-                      {performer.disambiguation}
-                    </small>
+        <div className="item-list-container pt-3">
+          <Row className="justify-content-center">
+            {copyright.performers.map((performer) => (
+              <Col key={performer.id} sm={6} lg={4} xl={3} className="mb-3">
+                <Card
+                  as={Link}
+                  to={`/performers/${performer.id}`}
+                  className="h-100 text-reset"
+                >
+                  {performer.image_path ? (
+                    <img
+                      src={performer.image_path}
+                      alt=""
+                      style={{
+                        width: "100%",
+                        aspectRatio: "3 / 4",
+                        objectFit: "cover",
+                      }}
+                    />
                   ) : null}
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-          {copyright.performers.length === 0 ? (
-            <Col className="text-muted">No Characters assigned.</Col>
-          ) : null}
-        </Row>
+                  <Card.Body>
+                    <strong>{performer.name}</strong>
+                    {performer.disambiguation ? (
+                      <small className="text-muted d-block">
+                        {performer.disambiguation}
+                      </small>
+                    ) : null}
+                  </Card.Body>
+                </Card>
+              </Col>
+            ))}
+            {copyright.performers.length === 0 ? (
+              <Col className="text-muted">No Characters assigned.</Col>
+            ) : null}
+          </Row>
+        </div>
       </Tab>
     </Tabs>
   );
@@ -536,6 +501,7 @@ const CopyrightDetail: React.FC = () => {
   const Toast = useToast();
   const { configuration } = useConfigurationContext();
   const uiConfig = configuration?.ui;
+  const abbreviateCounter = uiConfig?.abbreviateCounters ?? false;
   const enableBackgroundImage = uiConfig?.enableTagBackgroundImage ?? false;
   const showAllDetails = uiConfig?.showAllDetails ?? true;
   const compactExpandedDetails = uiConfig?.compactExpandedDetails ?? false;
@@ -600,7 +566,7 @@ const CopyrightDetail: React.FC = () => {
       <div className={headerClassName}>
         <BackgroundImage
           imagePath={copyright.image_path ?? undefined}
-          show={enableBackgroundImage && !editing}
+          show={enableBackgroundImage && !editing && !!copyright.image_path}
         />
         <div className="detail-container">
           <HeaderImage encodingImage={encodingImage}>
@@ -668,7 +634,11 @@ const CopyrightDetail: React.FC = () => {
         <div className="tag-body">
           <div className="tag-tabs">
             {!editing ? (
-              <CopyrightMediaTabs copyright={copyright} initialTab={tab} />
+              <CopyrightMediaTabs
+                copyright={copyright}
+                initialTab={tab}
+                abbreviateCounter={abbreviateCounter}
+              />
             ) : null}
           </div>
         </div>
@@ -708,7 +678,6 @@ const CopyrightRoutes: React.FC = () => (
   <>
     <Helmet title="Copyrights" />
     <Switch>
-      <Route exact path="/copyrights" component={CopyrightList} />
       <Route exact path="/copyrights/new" component={CopyrightCreate} />
       <Route path="/copyrights/:id/:tab?" component={CopyrightDetail} />
     </Switch>
