@@ -125,6 +125,8 @@ const CopyrightList: React.FC = () => {
   const { result, cachedResult, items: copyrights, totalCount } = queryResult;
   const { modal } = modalState;
   const { selectedIds, onSelectChange } = listSelect;
+  const [componentRef, { width: containerWidth }] = useContainerDimensions();
+  const cardWidth = useCardWidth(containerWidth, filter.zoomIndex, zoomWidths);
 
   function viewRandom() {
     if (copyrights.length === 0) return;
@@ -147,9 +149,6 @@ const CopyrightList: React.FC = () => {
   );
 
   function renderGrid() {
-    const [componentRef, { width: containerWidth }] = useContainerDimensions();
-    const cardWidth = useCardWidth(containerWidth, filter.zoomIndex, zoomWidths);
-
     return (
       <div className="row justify-content-center" ref={componentRef}>
         {copyrights.map((copyright) => (
