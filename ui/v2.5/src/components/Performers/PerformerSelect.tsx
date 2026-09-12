@@ -413,8 +413,8 @@ const _PerformerIDSelect: React.FC<IFilterProps & IFilterIDProps<Performer>> = (
     }
 
     const load = async () => {
-      const items = await queryFindPerformersByIDForSelect(ids);
-      setValues(items.data.findPerformers.performers);
+      const items = await loadObjectsByID(ids);
+      setValues(items);
     };
 
     load();
