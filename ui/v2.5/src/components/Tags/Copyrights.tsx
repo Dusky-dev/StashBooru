@@ -534,17 +534,18 @@ const CopyrightDetail: React.FC = () => {
   if (!copyright) {
     return <div className="alert alert-warning">Copyright not found.</div>;
   }
+  const copyrightID = copyright.id;
 
   async function setFavorite(value: boolean) {
     await updateCopyright({
-      variables: { input: { id: copyright.id, favorite: value } },
+      variables: { input: { id: copyrightID, favorite: value } },
     });
     void refetch();
   }
 
   async function destroy() {
     try {
-      await destroyCopyright({ variables: { id: copyright.id } });
+      await destroyCopyright({ variables: { id: copyrightID } });
       history.replace("/copyrights");
     } catch (error) {
       Toast.error(error);
