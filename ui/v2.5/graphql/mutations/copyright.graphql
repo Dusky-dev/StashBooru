@@ -32,10 +32,7 @@ mutation SceneCopyrightsUpdate($sceneID: ID!, $copyrightIDs: [ID!]!) {
   }
 }
 
-mutation PerformerCopyrightsUpdate(
-  $performerID: ID!
-  $copyrightIDs: [ID!]!
-) {
+mutation PerformerCopyrightsUpdate($performerID: ID!, $copyrightIDs: [ID!]!) {
   performerCopyrightsUpdate(
     performer_id: $performerID
     copyright_ids: $copyrightIDs
@@ -59,10 +56,7 @@ mutation CopyrightScenesUpdate($copyrightID: ID!, $sceneIDs: [ID!]!) {
   }
 }
 
-mutation CopyrightPerformersUpdate(
-  $copyrightID: ID!
-  $performerIDs: [ID!]!
-) {
+mutation CopyrightPerformersUpdate($copyrightID: ID!, $performerIDs: [ID!]!) {
   copyrightPerformersUpdate(
     copyright_id: $copyrightID
     performer_ids: $performerIDs
