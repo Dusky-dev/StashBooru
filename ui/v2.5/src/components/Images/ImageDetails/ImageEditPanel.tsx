@@ -413,7 +413,11 @@ export const ImageEditPanel: React.FC<IProps> = ({
     return renderField(
       "copyright_ids",
       intl.formatMessage({ id: "copyrights", defaultMessage: "Copyrights" }),
-      <CopyrightSelect isMulti onSelect={onSetCopyrights} values={copyrights} />,
+      <CopyrightSelect
+        isMulti
+        onSelect={onSetCopyrights}
+        values={copyrights}
+      />,
       fullWidthProps
     );
   }
@@ -484,11 +488,7 @@ export const ImageEditPanel: React.FC<IProps> = ({
             >
               <FormattedMessage id="actions.save" />
             </Button>
-            <Button
-              className="edit-button"
-              variant="danger"
-              onClick={onDelete}
-            >
+            <Button className="edit-button" variant="danger" onClick={onDelete}>
               <FormattedMessage id="actions.delete" />
             </Button>
           </div>
