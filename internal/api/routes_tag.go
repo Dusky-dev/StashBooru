@@ -48,9 +48,9 @@ func (rs tagRoutes) CopyrightImage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defaultParam := r.URL.Query().Get("default")
+	repository := manager.GetInstance().Repository
 	var image []byte
 	if defaultParam != "true" {
-		repository := manager.GetInstance().Repository
 		readTxnErr := rs.withReadTxn(r, func(ctx context.Context) error {
 			var err error
 			image, err = repository.Copyright.GetImage(ctx, copyrightID)
@@ -65,6 +65,25 @@ func (rs tagRoutes) CopyrightImage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(image) == 0 {
+		var fallbackID int
+		readTxnErr := rs.withReadTxn(r, func(ctx context.Context) error {
+			ids, findErr := repository.Copyright.FindImageIDs(ctx, copyrightID)
+			if findErr != nil {
+				return findErr
+			}
+			fallbackID = randomID(ids)
+			return nil
+		})
+		if errors.Is(readTxnErr, context.Canceled) {
+			return
+		}
+		if readTxnErr != nil {
+			logger.Warnf("read transaction error on copyright fallback image: %v", readTxnErr)
+		} else if fallbackID != 0 {
+			http.Redirect(w, r, imageThumbnailURL("", fallbackID), http.StatusFound)
+			return
+		}
+
 		image = static.ReadAll(static.DefaultTagImage)
 	}
 	utils.ServeImage(w, r, image)
@@ -89,8 +108,29 @@ func (rs tagRoutes) Image(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// fallback to default image
 	if len(image) == 0 {
+		var fallback *models.Image
+		readTxnErr := rs.withReadTxn(r, func(ctx context.Context) error {
+			filter := &models.ImageFilterType{
+				Tags: &models.HierarchicalMultiCriterionInput{
+					Value:    []string{strconv.Itoa(tag.ID)},
+					Modifier: models.CriterionModifierIncludes,
+				},
+			}
+			var err error
+			fallback, err = randomRelatedImage(ctx, manager.GetInstance().Repository.Image, filter)
+			return err
+		})
+		if errors.Is(readTxnErr, context.Canceled) {
+			return
+		}
+		if readTxnErr != nil {
+			logger.Warnf("read transaction error on tag fallback image: %v", readTxnErr)
+		} else if fallback != nil {
+			http.Redirect(w, r, imageThumbnailURL("", fallback.ID), http.StatusFound)
+			return
+		}
+
 		image = static.ReadAll(static.DefaultTagImage)
 	}
 

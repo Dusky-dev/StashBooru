@@ -124,18 +124,28 @@ div.nav-link[data-rb-event-key="/scenes/markers"] {
   display: none;
 }
 
-/* Booru-style taxonomy sidebar for Image and Video pages. */
+/* Booru-style taxonomy block for Image and Video pages. */
 .booru-metadata-sidebar {
   background: rgb(0 0 0 / 14%);
   border: 1px solid rgb(255 255 255 / 8%);
   border-radius: 0.25rem;
+  box-sizing: border-box;
   font-size: 0.9rem;
   margin: 0.75rem 0 1rem;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
   padding: 0.75rem;
+  width: 100%;
+}
+
+.booru-tag-section {
+  max-width: 100%;
+  min-width: 0;
 }
 
 .booru-tag-section + .booru-tag-section {
-  margin-top: 0.75rem;
+  margin-top: 0.9rem;
 }
 
 .booru-tag-section-title {
@@ -144,7 +154,7 @@ div.nav-link[data-rb-event-key="/scenes/markers"] {
   font-size: 0.82rem;
   font-weight: 700;
   gap: 0.35rem;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.4rem;
   text-transform: uppercase;
 }
 
@@ -154,54 +164,114 @@ div.nav-link[data-rb-event-key="/scenes/markers"] {
   opacity: 0.55;
 }
 
-.booru-tag-list {
+.booru-entity-card-grid {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(6.5rem, 100%), 1fr));
+  max-width: 100%;
+  min-width: 0;
+  width: 100%;
+}
+
+.booru-entity-card-grid-copyright {
+  grid-template-columns: repeat(auto-fill, minmax(min(11rem, 100%), 1fr));
+}
+
+.booru-entity-card {
+  background: rgb(255 255 255 / 4%);
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 0.2rem;
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.booru-entity-card-image-link {
+  background: rgb(0 0 0 / 18%);
+  display: block;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.booru-entity-card-artist .booru-entity-card-image-link {
+  aspect-ratio: 1 / 1;
+}
+
+.booru-entity-card-character .booru-entity-card-image-link {
+  aspect-ratio: 3 / 4;
+}
+
+.booru-entity-card-copyright .booru-entity-card-image-link {
+  aspect-ratio: 16 / 9;
+}
+
+.booru-entity-card-image,
+.booru-entity-card-placeholder {
+  display: block;
+  height: 100%;
+  width: 100%;
+}
+
+.booru-entity-card-image {
+  object-fit: cover;
+}
+
+.booru-entity-card-placeholder {
+  background: rgb(255 255 255 / 5%);
+}
+
+.booru-entity-card-name {
+  display: block;
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0.35rem 0.4rem 0.15rem;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.booru-entity-card-stats {
+  align-items: center;
+  display: flex;
+  font-size: 0.78rem;
+  gap: 0.7rem;
+  justify-content: center;
+  min-width: 0;
+  opacity: 0.82;
+  padding: 0.15rem 0.35rem 0.4rem;
+}
+
+.booru-entity-card-stats span {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+/* General tags remain a text list. Their image preview is attached to the
+ * text hover/focus target instead of living behind a separate icon button. */
+.booru-general-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.55rem;
+  max-width: 100%;
   min-width: 0;
 }
 
-.booru-tag-row {
-  align-items: center;
-  display: flex;
-  gap: 0.4rem;
-  min-height: 1.6rem;
+.booru-general-tag-name-wrap {
+  max-width: 100%;
   min-width: 0;
   position: relative;
 }
 
 .booru-tag-name {
+  display: block;
+  max-width: 100%;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.booru-tag-preview-trigger {
-  background: transparent;
-  border: 0;
-  color: inherit;
-  cursor: pointer;
-  flex: 0 0 auto;
-  line-height: 1;
-  margin-left: auto;
-  opacity: 0.7;
-  padding: 0 0.15rem;
-  position: relative;
-}
-
-.booru-tag-preview-trigger:hover,
-.booru-tag-preview-trigger:focus {
-  opacity: 1;
-}
-
-.booru-general-preview-trigger {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 100ms ease-in-out;
-}
-
-.booru-tag-row-general:hover .booru-general-preview-trigger,
-.booru-general-preview-trigger:focus {
-  opacity: 0.75;
-  pointer-events: auto;
 }
 
 .booru-tag-preview {
@@ -210,18 +280,23 @@ div.nav-link[data-rb-event-key="/scenes/markers"] {
   border: 1px solid rgb(255 255 255 / 18%);
   border-radius: 0.25rem;
   box-shadow: 0 0.4rem 1rem rgb(0 0 0 / 45%);
-  display: flex;
+  display: none;
   justify-content: center;
-  left: calc(100% + 0.5rem);
   max-height: 240px;
+  max-width: min(180px, calc(100vw - 2rem));
   min-height: 80px;
   overflow: hidden;
   padding: 0.35rem;
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
+  right: 0;
+  top: calc(100% + 0.25rem);
   width: 180px;
   z-index: 1080;
+}
+
+.booru-general-tag-name-wrap:hover .booru-tag-preview,
+.booru-general-tag-name-wrap:focus-within .booru-tag-preview {
+  display: flex;
 }
 
 .booru-tag-preview img {
@@ -231,17 +306,12 @@ div.nav-link[data-rb-event-key="/scenes/markers"] {
   object-fit: contain;
 }
 
-.booru-tag-preview-loading,
-.booru-tag-preview-empty {
-  opacity: 0.7;
-  padding: 0.75rem;
-  text-align: center;
-}
+@media (max-width: 575.98px) {
+  .booru-entity-card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(5.6rem, 100%), 1fr));
+  }
 
-@media (max-width: 1199.98px) {
-  .booru-tag-preview {
-    left: auto;
-    right: 0;
-    transform: translateY(-50%);
+  .booru-entity-card-grid-copyright {
+    grid-template-columns: repeat(auto-fill, minmax(min(9.5rem, 100%), 1fr));
   }
 }

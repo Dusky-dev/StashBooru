@@ -10,11 +10,7 @@ import cloneDeep from "lodash-es/cloneDeep";
 import { useHistory } from "react-router-dom";
 import Mousetrap from "mousetrap";
 import * as GQL from "src/core/generated-graphql";
-import {
-  queryFindImages,
-  useFindImages,
-  useFindImagesMetadata,
-} from "src/core/StashService";
+import { queryFindImages } from "src/core/StashService";
 import { useFilteredItemList } from "../List/ItemList";
 import { useLightbox } from "src/hooks/Lightbox/hooks";
 import { ListFilterModel } from "src/models/list-filter/filter";
@@ -510,10 +506,16 @@ function useViewRandom(filter: ListFilterModel, count: number) {
   return viewRandom;
 }
 
-function useAddKeybinds(filter: ListFilterModel, count: number) {
+function useAddKeybinds(
+  filter: ListFilterModel,
+  count: number,
+  randomEnabled = true
+) {
   const viewRandom = useViewRandom(filter, count);
 
   useEffect(() => {
+    if (!randomEnabled) return;
+
     Mousetrap.bind("p r", () => {
       viewRandom();
     });
@@ -521,7 +523,7 @@ function useAddKeybinds(filter: ListFilterModel, count: number) {
     return () => {
       Mousetrap.unbind("p r");
     };
-  }, [viewRandom]);
+  }, [viewRandom, randomEnabled]);
 }
 
 interface IImageList {
@@ -530,6 +532,7 @@ interface IImageList {
   alterQuery?: boolean;
   extraOperations?: IItemListOperation<GQL.FindImagesQueryResult>[];
   chapters?: GQL.GalleryChapterDataFragment[];
+  imageIDs?: number[];
 }
 
 export const FilteredImageList = PatchComponent(
@@ -549,7 +552,30 @@ export const FilteredImageList = PatchComponent(
       alterQuery,
       extraOperations: providedOperations = [],
       chapters,
+      imageIDs,
     } = props;
+
+    function useResult(filter: ListFilterModel) {
+      return GQL.useFindImagesQuery({
+        skip: imageIDs !== undefined && imageIDs.length === 0,
+        variables: {
+          filter: filter.makeFindFilter(),
+          image_filter: filter.makeFilter(),
+          image_ids: imageIDs,
+        },
+      });
+    }
+
+    function useMetadataInfo(filter: ListFilterModel) {
+      return GQL.useFindImagesMetadataQuery({
+        skip: imageIDs !== undefined && imageIDs.length === 0,
+        variables: {
+          filter: filter.makeFindFilter(),
+          image_filter: filter.makeFilter(),
+          image_ids: imageIDs,
+        },
+      });
+    }
 
     // States
     const {
@@ -574,8 +600,8 @@ export const FilteredImageList = PatchComponent(
         useURL: alterQuery,
       },
       queryResultProps: {
-        useResult: useFindImages,
-        useMetadataInfo: useFindImagesMetadata,
+        useResult,
+        useMetadataInfo,
         getCount: (r) => r.data?.findImages.count ?? 0,
         getItems: (r) => r.data?.findImages.images ?? [],
         filterHook,
@@ -611,7 +637,7 @@ export const FilteredImageList = PatchComponent(
       setFilter,
     });
 
-    useAddKeybinds(filter, totalCount);
+    useAddKeybinds(filter, totalCount, imageIDs === undefined);
     useFilteredSidebarKeybinds({
       showSidebar,
       setShowSidebar,
@@ -626,12 +652,15 @@ export const FilteredImageList = PatchComponent(
     const viewRandom = useViewRandom(effectiveFilter, totalCount);
 
     function onExport(all: boolean) {
+      const exportAllRestricted = all && imageIDs !== undefined;
       showModal(
         <ExportDialog
           exportInput={{
             images: {
-              ids: Array.from(selectedIds.values()),
-              all: all,
+              ids: exportAllRestricted
+                ? imageIDs.map(String)
+                : Array.from(selectedIds.values()),
+              all: all && !exportAllRestricted,
             },
           }}
           onClose={() => closeModal()}
@@ -707,6 +736,7 @@ export const FilteredImageList = PatchComponent(
       {
         text: intl.formatMessage({ id: "actions.view_random" }),
         onClick: viewRandom,
+        isDisplayed: () => imageIDs === undefined && totalCount > 0,
       },
       {
         text: `${intl.formatMessage({ id: "actions.generate" })}…`,

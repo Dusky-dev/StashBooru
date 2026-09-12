@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/stashapp/stash/internal/manager"
 	"github.com/stashapp/stash/internal/static"
 	"github.com/stashapp/stash/pkg/logger"
 	"github.com/stashapp/stash/pkg/models"
@@ -54,8 +55,29 @@ func (rs studioRoutes) Image(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// fallback to default image
 	if len(image) == 0 {
+		var fallback *models.Image
+		readTxnErr := rs.withReadTxn(r, func(ctx context.Context) error {
+			filter := &models.ImageFilterType{
+				Studios: &models.HierarchicalMultiCriterionInput{
+					Value:    []string{strconv.Itoa(studio.ID)},
+					Modifier: models.CriterionModifierIncludes,
+				},
+			}
+			var err error
+			fallback, err = randomRelatedImage(ctx, manager.GetInstance().Repository.Image, filter)
+			return err
+		})
+		if errors.Is(readTxnErr, context.Canceled) {
+			return
+		}
+		if readTxnErr != nil {
+			logger.Warnf("read transaction error on studio fallback image: %v", readTxnErr)
+		} else if fallback != nil {
+			http.Redirect(w, r, imageThumbnailURL("", fallback.ID), http.StatusFound)
+			return
+		}
+
 		image = static.ReadAll(static.DefaultStudioImage)
 	}
 

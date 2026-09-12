@@ -4,7 +4,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
 import Mousetrap from "mousetrap";
 import * as GQL from "src/core/generated-graphql";
-import { queryFindScenes, useFindScenes } from "src/core/StashService";
+import { queryFindScenes } from "src/core/StashService";
 import { ListFilterModel } from "src/models/list-filter/filter";
 import { DisplayMode } from "src/models/list-filter/types";
 import { Tagger } from "../Tagger/scenes/SceneTagger";
@@ -165,10 +165,16 @@ function usePlayRandom(filter: ListFilterModel, count: number) {
   return playRandom;
 }
 
-function useAddKeybinds(filter: ListFilterModel, count: number) {
+function useAddKeybinds(
+  filter: ListFilterModel,
+  count: number,
+  randomEnabled = true
+) {
   const playRandom = usePlayRandom(filter, count);
 
   useEffect(() => {
+    if (!randomEnabled) return;
+
     Mousetrap.bind("p r", () => {
       playRandom();
     });
@@ -176,7 +182,7 @@ function useAddKeybinds(filter: ListFilterModel, count: number) {
     return () => {
       Mousetrap.unbind("p r");
     };
-  }, [playRandom]);
+  }, [playRandom, randomEnabled]);
 }
 
 const SceneList: React.FC<{
@@ -185,12 +191,16 @@ const SceneList: React.FC<{
   selectedIds: Set<string>;
   onSelectChange: (id: string, selected: boolean, shiftKey: boolean) => void;
   fromGroupId?: string;
+  sceneIDs?: number[];
 }> = PatchComponent(
   "SceneList",
-  ({ scenes, filter, selectedIds, onSelectChange, fromGroupId }) => {
+  ({ scenes, filter, selectedIds, onSelectChange, fromGroupId, sceneIDs }) => {
     const queue = useMemo(
-      () => SceneQueue.fromListFilterModel(filter),
-      [filter]
+      () =>
+        sceneIDs
+          ? SceneQueue.fromSceneIDList(sceneIDs.map(String))
+          : SceneQueue.fromListFilterModel(filter),
+      [filter, sceneIDs]
     );
 
     if (scenes.length === 0 && filter.displayMode !== DisplayMode.Tagger) {
@@ -358,6 +368,7 @@ interface IFilteredScenes {
   view?: View;
   alterQuery?: boolean;
   fromGroupId?: string;
+  sceneIDs?: number[];
 }
 
 export const FilteredSceneList = PatchComponent(
@@ -369,7 +380,19 @@ export const FilteredSceneList = PatchComponent(
 
     const searchFocus = useFocus();
 
-    const { filterHook, defaultSort, view, alterQuery, fromGroupId } = props;
+    const { filterHook, defaultSort, view, alterQuery, fromGroupId, sceneIDs } =
+      props;
+
+    function useResult(filter: ListFilterModel) {
+      return GQL.useFindScenesQuery({
+        skip: sceneIDs !== undefined && sceneIDs.length === 0,
+        variables: {
+          filter: filter.makeFindFilter(),
+          scene_filter: filter.makeFilter(),
+          scene_ids: sceneIDs,
+        },
+      });
+    }
 
     // States
     const {
@@ -389,7 +412,7 @@ export const FilteredSceneList = PatchComponent(
           useURL: alterQuery,
         },
         queryResultProps: {
-          useResult: useFindScenes,
+          useResult,
           getCount: (r) => r.data?.findScenes.count ?? 0,
           getItems: (r) => r.data?.findScenes.scenes ?? [],
           filterHook,
@@ -419,7 +442,7 @@ export const FilteredSceneList = PatchComponent(
       setFilter,
     });
 
-    useAddKeybinds(effectiveFilter, totalCount);
+    useAddKeybinds(effectiveFilter, totalCount, sceneIDs === undefined);
     useFilteredSidebarKeybinds({
       showSidebar,
       setShowSidebar,
@@ -480,8 +503,11 @@ export const FilteredSceneList = PatchComponent(
     }, [cachedResult]);
 
     const queue = useMemo(
-      () => SceneQueue.fromListFilterModel(filter),
-      [filter]
+      () =>
+        sceneIDs
+          ? SceneQueue.fromSceneIDList(sceneIDs.map(String))
+          : SceneQueue.fromListFilterModel(filter),
+      [filter, sceneIDs]
     );
 
     const playRandom = usePlayRandom(effectiveFilter, totalCount);
@@ -514,12 +540,15 @@ export const FilteredSceneList = PatchComponent(
     }
 
     function onExport(all: boolean) {
+      const exportAllRestricted = all && sceneIDs !== undefined;
       showModal(
         <ExportDialog
           exportInput={{
             scenes: {
-              ids: Array.from(selectedIds.values()),
-              all: all,
+              ids: exportAllRestricted
+                ? sceneIDs.map(String)
+                : Array.from(selectedIds.values()),
+              all: all && !exportAllRestricted,
             },
           }}
           onClose={() => closeModal()}
@@ -583,7 +612,7 @@ export const FilteredSceneList = PatchComponent(
       {
         text: intl.formatMessage({ id: "actions.play_random" }),
         onClick: playRandom,
-        isDisplayed: () => totalCount > 1,
+        isDisplayed: () => sceneIDs === undefined && totalCount > 1,
       },
       {
         text: `${intl.formatMessage({ id: "actions.generate" })}…`,
@@ -711,6 +740,7 @@ export const FilteredSceneList = PatchComponent(
                     selectedIds={selectedIds}
                     onSelectChange={onSelectChange}
                     fromGroupId={fromGroupId}
+                    sceneIDs={sceneIDs}
                   />
                 </LoadedContent>
 

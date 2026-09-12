@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
-import { Card, Col, Form, Row, Spinner, Tab, Tabs } from "react-bootstrap";
-import { Link, Route, Switch, useHistory, useParams } from "react-router-dom";
+import { Col, Form, Row, Spinner, Tab, Tabs } from "react-bootstrap";
+import { Route, Switch, useHistory, useParams } from "react-router-dom";
 import cx from "classnames";
 
 import * as GQL from "src/core/generated-graphql";
@@ -20,11 +20,14 @@ import { DetailTitle } from "src/components/Shared/DetailsPage/DetailTitle";
 import { HeaderImage } from "src/components/Shared/DetailsPage/HeaderImage";
 import { TabTitleCounter } from "src/components/Shared/DetailsPage/Tabs";
 import { ExpandCollapseButton } from "src/components/Shared/CollapseButton";
-import { TruncatedText } from "src/components/Shared/TruncatedText";
 import {
   Performer,
   PerformerSelect,
 } from "src/components/Performers/PerformerSelect";
+import { FilteredPerformerList } from "src/components/Performers/PerformerList";
+import { FilteredSceneList } from "src/components/Scenes/SceneList";
+import { FilteredImageList } from "src/components/Images/ImageList";
+import { View } from "src/components/List/views";
 import { useConfigurationContext } from "src/hooks/Config";
 import { useToast } from "src/hooks/Toast";
 import ImageUtils from "src/utils/image";
@@ -352,6 +355,19 @@ const CopyrightMediaTabs: React.FC<{
     ? initialTab
     : populatedDefaultTab;
 
+  const sceneIDs = useMemo(
+    () => copyright.scenes.map((scene) => Number(scene.id)),
+    [copyright.scenes]
+  );
+  const imageIDs = useMemo(
+    () => copyright.images.map((image) => Number(image.id)),
+    [copyright.images]
+  );
+  const performerIDs = useMemo(
+    () => copyright.performers.map((performer) => Number(performer.id)),
+    [copyright.performers]
+  );
+
   return (
     <Tabs
       id="copyright-media-tabs"
@@ -372,37 +388,11 @@ const CopyrightMediaTabs: React.FC<{
           />
         }
       >
-        <div className="item-list-container pt-3">
-          <Row className="justify-content-center">
-            {copyright.scenes.map((scene) => (
-              <Col key={scene.id} sm={6} lg={4} xl={3} className="mb-3">
-                <Card
-                  as={Link}
-                  to={`/scenes/${scene.id}`}
-                  className="h-100 text-reset"
-                >
-                  {scene.paths.screenshot ? (
-                    <img
-                      src={scene.paths.screenshot}
-                      alt=""
-                      style={{
-                        width: "100%",
-                        aspectRatio: "16 / 9",
-                        objectFit: "cover",
-                      }}
-                    />
-                  ) : null}
-                  <Card.Body>
-                    <TruncatedText text={scene.title || `Video #${scene.id}`} />
-                  </Card.Body>
-                </Card>
-              </Col>
-            ))}
-            {copyright.scenes.length === 0 ? (
-              <Col className="text-muted">No Videos assigned.</Col>
-            ) : null}
-          </Row>
-        </div>
+        <FilteredSceneList
+          sceneIDs={sceneIDs}
+          alterQuery
+          view={View.CopyrightScenes}
+        />
       </Tab>
       <Tab
         eventKey="images"
@@ -414,35 +404,11 @@ const CopyrightMediaTabs: React.FC<{
           />
         }
       >
-        <div className="item-list-container pt-3">
-          <Row className="justify-content-center">
-            {copyright.images.map((image) => (
-              <Col key={image.id} sm={6} lg={4} xl={3} className="mb-3">
-                <Card
-                  as={Link}
-                  to={`/images/${image.id}`}
-                  className="h-100 text-reset"
-                >
-                  <img
-                    src={image.paths.thumbnail ?? image.paths.image ?? ""}
-                    alt=""
-                    style={{
-                      width: "100%",
-                      aspectRatio: "1 / 1",
-                      objectFit: "cover",
-                    }}
-                  />
-                  <Card.Body>
-                    <TruncatedText text={image.title || `Image #${image.id}`} />
-                  </Card.Body>
-                </Card>
-              </Col>
-            ))}
-            {copyright.images.length === 0 ? (
-              <Col className="text-muted">No Images assigned.</Col>
-            ) : null}
-          </Row>
-        </div>
+        <FilteredImageList
+          imageIDs={imageIDs}
+          alterQuery
+          view={View.CopyrightImages}
+        />
       </Tab>
       <Tab
         eventKey="characters"
@@ -454,42 +420,11 @@ const CopyrightMediaTabs: React.FC<{
           />
         }
       >
-        <div className="item-list-container pt-3">
-          <Row className="justify-content-center">
-            {copyright.performers.map((performer) => (
-              <Col key={performer.id} sm={6} lg={4} xl={3} className="mb-3">
-                <Card
-                  as={Link}
-                  to={`/performers/${performer.id}`}
-                  className="h-100 text-reset"
-                >
-                  {performer.image_path ? (
-                    <img
-                      src={performer.image_path}
-                      alt=""
-                      style={{
-                        width: "100%",
-                        aspectRatio: "3 / 4",
-                        objectFit: "cover",
-                      }}
-                    />
-                  ) : null}
-                  <Card.Body>
-                    <strong>{performer.name}</strong>
-                    {performer.disambiguation ? (
-                      <small className="text-muted d-block">
-                        {performer.disambiguation}
-                      </small>
-                    ) : null}
-                  </Card.Body>
-                </Card>
-              </Col>
-            ))}
-            {copyright.performers.length === 0 ? (
-              <Col className="text-muted">No Characters assigned.</Col>
-            ) : null}
-          </Row>
-        </div>
+        <FilteredPerformerList
+          performerIDs={performerIDs}
+          alterQuery
+          view={View.CopyrightPerformers}
+        />
       </Tab>
     </Tabs>
   );
