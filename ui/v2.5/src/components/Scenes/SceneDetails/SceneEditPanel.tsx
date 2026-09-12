@@ -831,7 +831,11 @@ export const SceneEditPanel: React.FC<IProps> = ({
     return renderField(
       "copyright_ids",
       title,
-      <CopyrightSelect isMulti values={copyrights} onSelect={onSetCopyrights} />,
+      <CopyrightSelect
+        isMulti
+        values={copyrights}
+        onSelect={onSetCopyrights}
+      />,
       fullWidthProps
     );
   }
