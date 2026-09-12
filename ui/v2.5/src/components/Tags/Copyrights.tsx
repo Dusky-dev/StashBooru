@@ -104,7 +104,9 @@ const CopyrightList: React.FC = () => {
   );
 };
 
-const CopyrightEditor: React.FC<{ create?: boolean }> = ({ create = false }) => {
+const CopyrightEditor: React.FC<{ create?: boolean }> = ({
+  create = false,
+}) => {
   const params = useParams<{ id?: string }>();
   const id = params.id ?? "";
   const history = useHistory();
@@ -211,7 +213,10 @@ const CopyrightEditor: React.FC<{ create?: boolean }> = ({ create = false }) => 
                 <Form.Control
                   value={values.sortName}
                   onChange={(event) =>
-                    setValues({ ...values, sortName: event.currentTarget.value })
+                    setValues({
+                      ...values,
+                      sortName: event.currentTarget.value,
+                    })
                   }
                 />
               </Form.Group>
@@ -246,7 +251,10 @@ const CopyrightEditor: React.FC<{ create?: boolean }> = ({ create = false }) => 
                 label="Favorite"
                 checked={values.favorite}
                 onChange={(event) =>
-                  setValues({ ...values, favorite: event.currentTarget.checked })
+                  setValues({
+                    ...values,
+                    favorite: event.currentTarget.checked,
+                  })
                 }
               />
             </Col>
