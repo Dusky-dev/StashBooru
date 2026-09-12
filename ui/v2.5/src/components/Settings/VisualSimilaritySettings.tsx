@@ -376,7 +376,10 @@ export const VisualSimilaritySettings: React.FC = () => {
                   max="200"
                   value={camieConfig.limit}
                   onChange={(event) => {
-                    const value = Number.parseInt(event.currentTarget.value, 10);
+                    const value = Number.parseInt(
+                      event.currentTarget.value,
+                      10
+                    );
                     setCamieConfig((current) => ({
                       ...current,
                       limit: value,
