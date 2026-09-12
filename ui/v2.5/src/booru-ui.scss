@@ -124,14 +124,31 @@ div.nav-link[data-rb-event-key="/scenes/markers"] {
   display: none;
 }
 
-/* Booru-style taxonomy block for Image and Video pages. */
+/* Booru-style taxonomy for Image and Video pages. Artist, Character and
+ * Copyright cards deliberately live outside the boxed general-tag list. */
+.booru-metadata {
+  box-sizing: border-box;
+  font-size: 0.9rem;
+  margin: 0.75rem 0 1rem;
+  max-width: 100%;
+  min-width: 0;
+  overflow: visible;
+  width: 100%;
+}
+
+.booru-entity-metadata {
+  max-width: 100%;
+  min-width: 0;
+  overflow: visible;
+  width: 100%;
+}
+
 .booru-metadata-sidebar {
   background: rgb(0 0 0 / 14%);
   border: 1px solid rgb(255 255 255 / 8%);
   border-radius: 0.25rem;
   box-sizing: border-box;
-  font-size: 0.9rem;
-  margin: 0.75rem 0 1rem;
+  margin-top: 0.9rem;
   max-width: 100%;
   min-width: 0;
   overflow: visible;
@@ -179,10 +196,15 @@ div.nav-link[data-rb-event-key="/scenes/markers"] {
 
 .booru-character-card-shell {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   max-width: 100%;
   min-width: 0;
   overflow: visible;
+}
+
+.booru-character-card-shell .performer-card {
+  max-width: 100%;
+  min-width: 0;
 }
 
 .booru-entity-card-grid-copyright {

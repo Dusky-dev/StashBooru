@@ -12,12 +12,7 @@ import cx from "classnames";
 import Mousetrap from "mousetrap";
 
 import * as GQL from "src/core/generated-graphql";
-import {
-  useFindTag,
-  useTagUpdate,
-  useTagDestroy,
-  mutateMetadataAutoTag,
-} from "src/core/StashService";
+import { useFindTag, useTagUpdate, useTagDestroy } from "src/core/StashService";
 import { DetailsEditNavbar } from "src/components/Shared/DetailsEditNavbar";
 import { ErrorMessage } from "src/components/Shared/ErrorMessage";
 import { ModalComponent } from "src/components/Shared/Modal";
@@ -51,6 +46,7 @@ import { AliasList } from "src/components/Shared/DetailsPage/AliasList";
 import { HeaderImage } from "src/components/Shared/DetailsPage/HeaderImage";
 import { goBackOrReplace } from "src/utils/history";
 import { PatchComponent } from "src/patch";
+import { runEntityAutoTag } from "src/utils/entityAutoTag";
 import { isCopyrightTag } from "../copyrightFilter";
 
 interface IProps {
@@ -324,6 +320,7 @@ const TagPage: React.FC<IProps> = PatchComponent(
     const [isEditing, setIsEditing] = useState<boolean>(false);
     const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState<boolean>(false);
     const [isMerging, setIsMerging] = useState<boolean>(false);
+    const [autoTagRunning, setAutoTagRunning] = useState(false);
 
     // Editing tag state
     const [image, setImage] = useState<string | null>();
@@ -420,12 +417,16 @@ const TagPage: React.FC<IProps> = PatchComponent(
     }
 
     async function onAutoTag() {
-      if (!tag.id) return;
+      if (!tag.id || autoTagRunning) return;
+
+      setAutoTagRunning(true);
       try {
-        await mutateMetadataAutoTag({ tags: [tag.id] });
-        Toast.success(intl.formatMessage({ id: "toast.started_auto_tagging" }));
+        await runEntityAutoTag("tag", tag.id);
+        Toast.success("Tag auto-tag completed");
       } catch (e) {
         Toast.error(e);
+      } finally {
+        setAutoTagRunning(false);
       }
     }
 
@@ -574,7 +575,7 @@ const TagPage: React.FC<IProps> = PatchComponent(
                     onImageChange={() => {}}
                     onClearImage={() => {}}
                     onAutoTag={onAutoTag}
-                    autoTagDisabled={tag.ignore_auto_tag}
+                    autoTagDisabled={tag.ignore_auto_tag || autoTagRunning}
                     onDelete={onDelete}
                     classNames="mb-2"
                     customButtons={renderMergeButton()}

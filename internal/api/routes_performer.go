@@ -8,8 +8,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/stashapp/stash/internal/autotag"
 	"github.com/stashapp/stash/internal/manager"
 	"github.com/stashapp/stash/pkg/logger"
+	"github.com/stashapp/stash/pkg/match"
 	"github.com/stashapp/stash/pkg/models"
 	"github.com/stashapp/stash/pkg/utils"
 )
@@ -35,9 +37,39 @@ func (rs performerRoutes) Routes() chi.Router {
 	r.Route("/{performerId}", func(r chi.Router) {
 		r.Use(rs.PerformerCtx)
 		r.Get("/image", rs.Image)
+		r.Post("/auto-tag", rs.AutoTag)
 	})
 
 	return r
+}
+
+func (rs performerRoutes) AutoTag(w http.ResponseWriter, r *http.Request) {
+	performer := r.Context().Value(performerKey).(*models.Performer)
+	repository := manager.GetInstance().Repository
+
+	err := repository.WithDB(r.Context(), func(ctx context.Context) error {
+		tagger := autotag.Tagger{
+			TxnManager: repository.TxnManager,
+			Cache:      &match.Cache{},
+		}
+		if err := tagger.PerformerScenes(ctx, performer, nil, repository.Scene); err != nil {
+			return err
+		}
+		if err := tagger.PerformerImages(ctx, performer, nil, repository.Image); err != nil {
+			return err
+		}
+		return tagger.PerformerGalleries(ctx, performer, nil, repository.Gallery)
+	})
+	if errors.Is(err, context.Canceled) {
+		return
+	}
+	if err != nil {
+		logger.Errorf("performer auto-tag error: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (rs performerRoutes) Image(w http.ResponseWriter, r *http.Request) {

@@ -38,9 +38,44 @@ func (rs tagRoutes) Routes() chi.Router {
 	r.Route("/{tagId}", func(r chi.Router) {
 		r.Use(rs.TagCtx)
 		r.Get("/image", rs.Image)
+		r.Post("/auto-tag", rs.AutoTag)
 	})
 
 	return r
+}
+
+func (rs tagRoutes) AutoTag(w http.ResponseWriter, r *http.Request) {
+	tag := r.Context().Value(tagKey).(*models.Tag)
+	repository := manager.GetInstance().Repository
+
+	err := repository.WithDB(r.Context(), func(ctx context.Context) error {
+		if err := tag.LoadAliases(ctx, repository.Tag); err != nil {
+			return err
+		}
+
+		tagger := autotag.Tagger{
+			TxnManager: repository.TxnManager,
+			Cache:      &match.Cache{},
+		}
+		aliases := tag.Aliases.List()
+		if err := tagger.TagScenes(ctx, tag, nil, aliases, repository.Scene); err != nil {
+			return err
+		}
+		if err := tagger.TagImages(ctx, tag, nil, aliases, repository.Image); err != nil {
+			return err
+		}
+		return tagger.TagGalleries(ctx, tag, nil, aliases, repository.Gallery)
+	})
+	if errors.Is(err, context.Canceled) {
+		return
+	}
+	if err != nil {
+		logger.Errorf("tag auto-tag error: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (rs tagRoutes) CopyrightAutoTag(w http.ResponseWriter, r *http.Request) {

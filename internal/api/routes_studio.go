@@ -8,9 +8,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/stashapp/stash/internal/autotag"
 	"github.com/stashapp/stash/internal/manager"
 	"github.com/stashapp/stash/internal/static"
 	"github.com/stashapp/stash/pkg/logger"
+	"github.com/stashapp/stash/pkg/match"
 	"github.com/stashapp/stash/pkg/models"
 	"github.com/stashapp/stash/pkg/utils"
 )
@@ -31,9 +33,44 @@ func (rs studioRoutes) Routes() chi.Router {
 	r.Route("/{studioId}", func(r chi.Router) {
 		r.Use(rs.StudioCtx)
 		r.Get("/image", rs.Image)
+		r.Post("/auto-tag", rs.AutoTag)
 	})
 
 	return r
+}
+
+func (rs studioRoutes) AutoTag(w http.ResponseWriter, r *http.Request) {
+	studio := r.Context().Value(studioKey).(*models.Studio)
+	repository := manager.GetInstance().Repository
+
+	err := repository.WithDB(r.Context(), func(ctx context.Context) error {
+		if err := studio.LoadAliases(ctx, repository.Studio); err != nil {
+			return err
+		}
+
+		tagger := autotag.Tagger{
+			TxnManager: repository.TxnManager,
+			Cache:      &match.Cache{},
+		}
+		aliases := studio.Aliases.List()
+		if err := tagger.StudioScenes(ctx, studio, nil, aliases, repository.Scene); err != nil {
+			return err
+		}
+		if err := tagger.StudioImages(ctx, studio, nil, aliases, repository.Image); err != nil {
+			return err
+		}
+		return tagger.StudioGalleries(ctx, studio, nil, aliases, repository.Gallery)
+	})
+	if errors.Is(err, context.Canceled) {
+		return
+	}
+	if err != nil {
+		logger.Errorf("studio auto-tag error: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (rs studioRoutes) Image(w http.ResponseWriter, r *http.Request) {

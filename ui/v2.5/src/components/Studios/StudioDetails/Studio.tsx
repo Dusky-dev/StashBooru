@@ -11,7 +11,6 @@ import {
   useFindStudio,
   useStudioUpdate,
   useStudioDestroy,
-  mutateMetadataAutoTag,
 } from "src/core/StashService";
 import { DetailsEditNavbar } from "src/components/Shared/DetailsEditNavbar";
 import { ModalComponent } from "src/components/Shared/Modal";
@@ -51,6 +50,7 @@ import { goBackOrReplace } from "src/utils/history";
 import { PatchComponent } from "src/patch";
 import { OCounterButton } from "src/components/Shared/CountButton";
 import { OrganizedButton } from "src/components/Scenes/SceneDetails/OrganizedButton";
+import { runEntityAutoTag } from "src/utils/entityAutoTag";
 
 interface IProps {
   studio: GQL.StudioDataFragment;
@@ -283,6 +283,7 @@ const StudioPage: React.FC<IProps> = PatchComponent(
     // Editing state
     const [isEditing, setIsEditing] = useState<boolean>(false);
     const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState<boolean>(false);
+    const [autoTagRunning, setAutoTagRunning] = useState(false);
 
     // Editing studio state
     const [image, setImage] = useState<string | null>();
@@ -385,12 +386,16 @@ const StudioPage: React.FC<IProps> = PatchComponent(
     }
 
     async function onAutoTag() {
-      if (!studio.id) return;
+      if (!studio.id || autoTagRunning) return;
+
+      setAutoTagRunning(true);
       try {
-        await mutateMetadataAutoTag({ studios: [studio.id] });
-        Toast.success(intl.formatMessage({ id: "toast.started_auto_tagging" }));
+        await runEntityAutoTag("studio", studio.id);
+        Toast.success("Artist auto-tag completed");
       } catch (e) {
         Toast.error(e);
+      } finally {
+        setAutoTagRunning(false);
       }
     }
 
@@ -545,7 +550,7 @@ const StudioPage: React.FC<IProps> = PatchComponent(
                     onImageChange={() => {}}
                     onClearImage={() => {}}
                     onAutoTag={onAutoTag}
-                    autoTagDisabled={studio.ignore_auto_tag}
+                    autoTagDisabled={studio.ignore_auto_tag || autoTagRunning}
                     onDelete={onDelete}
                   />
                 )}
