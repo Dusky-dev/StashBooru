@@ -67,8 +67,8 @@ export const DetailsEditNavbar: React.FC<IProps> = (props: IProps) => {
 
   // Copyrights are first-class metadata but do not use the legacy Tag detail
   // component, so give their detail route the same native Auto Tag control here.
-  const effectiveAutoTag = props.onAutoTag ??
-    (copyrightID ? defaultCopyrightAutoTag : undefined);
+  const effectiveAutoTag =
+    props.onAutoTag ?? (copyrightID ? defaultCopyrightAutoTag : undefined);
 
   const onAutoTagClick = useAutoTagTrigger(
     () => effectiveAutoTag?.(),
