@@ -1,0 +1,11 @@
+mutation ImageArtistsUpdate($imageID: ID!, $artistIDs: [ID!]!) {
+  imageArtistsUpdate(image_id: $imageID, artist_ids: $artistIDs) {
+    id
+    artists {
+      ...SlimStudioData
+    }
+    studio {
+      ...SlimStudioData
+    }
+  }
+}
