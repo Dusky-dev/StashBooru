@@ -24,6 +24,7 @@ type Repository struct {
 	Group          GroupReaderWriter
 	Performer      PerformerReaderWriter
 	Scene          SceneReaderWriter
+	SceneArtist    SceneArtistReaderWriter
 	SceneMarker    SceneMarkerReaderWriter
 	Studio         StudioReaderWriter
 	Tag            TagReaderWriter
