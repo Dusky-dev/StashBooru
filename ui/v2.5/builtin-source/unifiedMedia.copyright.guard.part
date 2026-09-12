@@ -1,0 +1,39 @@
+
+
+  // Copyright keeps its outer .tag-tabs shell mounted while the edit form is
+  // open, but removes the media Tabs themselves. Only mount the Copyright
+  // Unified Media portal while that native tab nav exists so an active All view
+  // cannot remain rendered beneath the editor.
+  const unifiedMediaBaseCopyrightPortalHost = CopyrightUnifiedMediaPortalHost;
+  CopyrightUnifiedMediaPortalHost = function CopyrightUnifiedMediaPortalHostGuard() {
+    const isReady = React.useCallback(() => {
+      if (!/^\/copyrights\/[^/?#]+/.test(window.location.pathname)) return false;
+      return Boolean(document.querySelector("#tag-page .tag-tabs .nav-tabs"));
+    }, []);
+    const [ready, setReady] = React.useState(isReady);
+
+    React.useEffect(() => {
+      let frame = 0;
+      const update = () => {
+        if (frame) return;
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          const next = isReady();
+          setReady((old) => (old === next ? old : next));
+        });
+      };
+      const observer = new MutationObserver(update);
+      observer.observe(document.body, { childList: true, subtree: true });
+      window.addEventListener("popstate", update);
+      update();
+      return () => {
+        observer.disconnect();
+        window.removeEventListener("popstate", update);
+        if (frame) cancelAnimationFrame(frame);
+      };
+    }, [isReady]);
+
+    return ready
+      ? React.createElement(unifiedMediaBaseCopyrightPortalHost)
+      : null;
+  };
