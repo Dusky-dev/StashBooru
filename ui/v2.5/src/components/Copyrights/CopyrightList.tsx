@@ -1,96 +1,48 @@
-import React, { useMemo, useState } from "react";
-import {
-  ButtonToolbar,
-  Card,
-  Col,
-  Row,
-  Spinner,
-  Table,
-} from "react-bootstrap";
-import { Link, useHistory, useLocation } from "react-router-dom";
+import React from "react";
+import { Card, Col, Row, Table } from "react-bootstrap";
+import { Link, useHistory } from "react-router-dom";
 import { useIntl } from "react-intl";
 
 import * as GQL from "src/core/generated-graphql";
 import { ListFilterModel } from "src/models/list-filter/filter";
 import { DisplayMode } from "src/models/list-filter/types";
-import { PageSizeSelector, SearchTermInput } from "src/components/List/ListFilter";
-import { SortBySelect } from "src/components/List/SortBySelect";
-import { ListViewButtonGroup } from "src/components/List/ListViewOptions";
+import { useFilteredItemList } from "src/components/List/ItemList";
+import { FilteredListToolbar } from "src/components/List/FilteredListToolbar";
 import { ListOperations } from "src/components/List/ListOperationButtons";
 import { Pagination, PaginationIndex } from "src/components/List/Pagination";
+import { LoadedContent } from "src/components/List/PagedList";
+import { View } from "src/components/List/views";
 import { TruncatedText } from "src/components/Shared/TruncatedText";
 
-const copyrightDisplayModes = [DisplayMode.Grid, DisplayMode.List];
-const copyrightSorts = new Set(["name", "created_at", "updated_at"]);
 const zoomWidths = [250, 310, 390, 500];
 
-function makeInitialFilter(search: string) {
-  const filter = new ListFilterModel(GQL.FilterMode.Tags, undefined, {
-    defaultSortBy: "name",
-    defaultSortDir: GQL.SortDirectionEnum.Asc,
+function useFindCopyrightsForList(filter: ListFilterModel) {
+  return GQL.useFindCopyrightsQuery({
+    variables: { filter: filter.makeFindFilter() },
   });
-  filter.configureFromQueryString(search);
-
-  if (!filter.sortBy || !copyrightSorts.has(filter.sortBy)) {
-    filter.sortBy = "name";
-    filter.sortDirection = GQL.SortDirectionEnum.Asc;
-  }
-  if (!copyrightDisplayModes.includes(filter.displayMode)) {
-    filter.displayMode = DisplayMode.Grid;
-  }
-
-  return filter;
 }
 
 const CopyrightList: React.FC = () => {
   const intl = useIntl();
   const history = useHistory();
-  const location = useLocation();
-  const [filter, setFilterState] = useState(() =>
-    makeInitialFilter(location.search)
-  );
+  const view = View.Copyrights;
 
-  const sortOptions = useMemo(
-    () =>
-      filter.options.sortByOptions.filter((option) =>
-        copyrightSorts.has(option.value)
-      ),
-    [filter.options.sortByOptions]
-  );
-
-  const { data, loading, error } = GQL.useFindCopyrightsQuery({
-    variables: { filter: filter.makeFindFilter() },
-  });
-
-  const copyrights = data?.findCopyrights.copyrights ?? [];
-  const totalCount = data?.findCopyrights.count ?? 0;
-
-  function setFilter(next: ListFilterModel) {
-    setFilterState(next);
-    const query = next.makeQueryParameters();
-    history.replace({
-      pathname: location.pathname,
-      search: query ? `?${query}` : "",
+  const { filterState, queryResult, modalState, listSelect, showEditFilter } =
+    useFilteredItemList({
+      filterStateProps: {
+        filterMode: GQL.FilterMode.Copyrights,
+        view,
+      },
+      queryResultProps: {
+        useResult: useFindCopyrightsForList,
+        getCount: (result) => result.data?.findCopyrights.count ?? 0,
+        getItems: (result) => result.data?.findCopyrights.copyrights ?? [],
+      },
     });
-  }
 
-  function setPage(page: number) {
-    const next = filter.clone();
-    next.currentPage = page;
-    setFilter(next);
-  }
-
-  function setDisplayMode(displayMode: DisplayMode) {
-    const next = filter.clone();
-    next.displayMode = displayMode;
-    setFilter(next);
-  }
-
-  function setZoom(zoomIndex: number) {
-    const next = filter.clone();
-    next.zoomIndex = zoomIndex;
-    setFilter(next);
-  }
+  const { filter, setFilter } = filterState;
+  const { result, cachedResult, items: copyrights, totalCount } = queryResult;
+  const { modal } = modalState;
 
   function viewRandom() {
     if (copyrights.length === 0) return;
@@ -98,8 +50,24 @@ const CopyrightList: React.FC = () => {
     history.push(`/copyrights/${item.id}`);
   }
 
+  const operations = (
+    <ListOperations
+      items={copyrights.length}
+      operations={[
+        {
+          text: intl.formatMessage({ id: "actions.view_random" }),
+          onClick: viewRandom,
+          isDisplayed: () => totalCount > 0,
+        },
+      ]}
+    />
+  );
+
   function renderGrid() {
-    const zoomIndex = Math.max(0, Math.min(filter.zoomIndex, zoomWidths.length - 1));
+    const zoomIndex = Math.max(
+      0,
+      Math.min(filter.zoomIndex, zoomWidths.length - 1)
+    );
     const cardWidth = zoomWidths[zoomIndex];
 
     return (
@@ -171,62 +139,49 @@ const CopyrightList: React.FC = () => {
 
   return (
     <div className="item-list-container copyright-list">
-      <ButtonToolbar className="filtered-list-toolbar">
-        <SearchTermInput filter={filter} onFilterUpdate={setFilter} />
-        <SortBySelect
-          sortBy={filter.sortBy}
-          sortDirection={filter.sortDirection}
-          options={sortOptions}
-          onChangeSortBy={(sortBy) => setFilter(filter.setSortBy(sortBy ?? undefined))}
-          onChangeSortDirection={() => setFilter(filter.toggleSortDirection())}
-          onReshuffleRandomSort={() => {}}
-        />
-        <PageSizeSelector
-          pageSize={filter.itemsPerPage}
-          setPageSize={(pageSize) => setFilter(filter.setPageSize(pageSize))}
-        />
-        <ListOperations
-          items={copyrights.length}
-          operations={[
-            {
-              text: intl.formatMessage({ id: "actions.view_random" }),
-              onClick: viewRandom,
-              isDisplayed: () => totalCount > 0,
-            },
-          ]}
-        />
-        <ListViewButtonGroup
-          displayMode={filter.displayMode}
-          displayModeOptions={copyrightDisplayModes}
-          onSetDisplayMode={setDisplayMode}
-          zoomIndex={filter.zoomIndex}
-          onSetZoom={setZoom}
-          preferenceKey="copyrights"
-        />
-      </ButtonToolbar>
+      {modal}
+
+      <FilteredListToolbar
+        filter={filter}
+        listSelect={listSelect}
+        setFilter={setFilter}
+        showEditFilter={showEditFilter}
+        operationComponent={operations}
+        view={view}
+        zoomable
+      />
 
       <div className="pagination-index-container">
         <Pagination
           currentPage={filter.currentPage}
           itemsPerPage={filter.itemsPerPage}
           totalItems={totalCount}
-          onChangePage={setPage}
+          onChangePage={(page) => setFilter(filter.changePage(page))}
         />
         <PaginationIndex
-          loading={loading}
+          loading={cachedResult.loading}
           currentPage={filter.currentPage}
           itemsPerPage={filter.itemsPerPage}
           totalItems={totalCount}
         />
       </div>
 
-      {error ? <div className="alert alert-danger">{error.message}</div> : null}
-      {loading ? (
-        <Spinner animation="border" />
-      ) : filter.displayMode === DisplayMode.List ? (
-        renderList()
-      ) : (
-        renderGrid()
+      <LoadedContent loading={result.loading} error={result.error}>
+        {filter.displayMode === DisplayMode.List ? renderList() : renderGrid()}
+      </LoadedContent>
+
+      {totalCount > filter.itemsPerPage && (
+        <div className="pagination-footer-container">
+          <div className="pagination-footer">
+            <Pagination
+              currentPage={filter.currentPage}
+              itemsPerPage={filter.itemsPerPage}
+              totalItems={totalCount}
+              onChangePage={(page) => setFilter(filter.changePage(page))}
+              pagePopupPlacement="top"
+            />
+          </div>
+        </div>
       )}
     </div>
   );
