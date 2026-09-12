@@ -52,6 +52,10 @@ import {
   CustomFieldsInput,
   formatCustomFieldInput,
 } from "src/components/Shared/CustomFields";
+import {
+  Copyright,
+  CopyrightSelect,
+} from "src/components/Copyrights/CopyrightSelect";
 import cloneDeep from "lodash-es/cloneDeep";
 
 const isScraper = (
@@ -90,6 +94,16 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
 
   // Network state
   const [isLoading, setIsLoading] = useState(false);
+  const [copyrights, setCopyrights] = useState<Copyright[]>(
+    performer.copyrights ?? []
+  );
+  const [copyrightsDirty, setCopyrightsDirty] = useState(false);
+  const [updateCopyrights] = GQL.usePerformerCopyrightsUpdateMutation();
+
+  useEffect(() => {
+    setCopyrights(performer.copyrights ?? []);
+    setCopyrightsDirty(false);
+  }, [performer.copyrights, performer.id]);
 
   const Scrapers = useListPerformerScrapers();
   const [queryableScrapers, setQueryableScrapers] = useState<GQL.Scraper[]>([]);
@@ -347,7 +361,16 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
   async function onSave(input: InputValues, andNew?: boolean) {
     setIsLoading(true);
     try {
+      if (!isNew && performer.id && copyrightsDirty) {
+        await updateCopyrights({
+          variables: {
+            performerID: performer.id,
+            copyrightIDs: copyrights.map((item) => item.id),
+          },
+        });
+      }
       await onSubmit(input, andNew);
+      setCopyrightsDirty(false);
       formik.resetForm();
       if (andNew) {
         resetTagsState();
@@ -371,7 +394,7 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
   useEffect(() => {
     if (isVisible) {
       Mousetrap.bind("s s", () => {
-        if (formik.dirty) {
+        if (formik.dirty || copyrightsDirty) {
           formik.submitForm();
         }
       });
@@ -632,7 +655,7 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
           <Button
             variant="success"
             disabled={
-              (!isNew && !formik.dirty) ||
+              (!isNew && !formik.dirty && !copyrightsDirty) ||
               !isEqual(formik.errors, {}) ||
               customFieldsError !== undefined
             }
@@ -693,6 +716,24 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
     return renderField("tag_ids", title, tagsControl());
   }
 
+  function renderCopyrightsField() {
+    if (isNew) return;
+
+    return (
+      <Form.Group>
+        <Form.Label>Copyrights</Form.Label>
+        <CopyrightSelect
+          isMulti
+          values={copyrights}
+          onSelect={(items) => {
+            setCopyrights(items);
+            setCopyrightsDirty(true);
+          }}
+        />
+      </Form.Group>
+    );
+  }
+
   return (
     <>
       {renderScrapeModal()}
@@ -713,7 +754,7 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
       )}
 
       <Prompt
-        when={formik.dirty}
+        when={formik.dirty || copyrightsDirty}
         message={intl.formatMessage({ id: "dialogs.unsaved_changes" })}
       />
       {renderButtons("mb-3")}
@@ -752,6 +793,7 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
         {renderURLListField("urls", onScrapePerformerURL, urlScrapable)}
 
         {renderInputField("details", "textarea")}
+        {renderCopyrightsField()}
         {renderTagsField()}
 
         {renderStashIDsField(
