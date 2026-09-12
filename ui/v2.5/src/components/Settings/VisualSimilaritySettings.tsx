@@ -358,12 +358,13 @@ export const VisualSimilaritySettings: React.FC = () => {
                   max="0.999"
                   step="0.01"
                   value={camieConfig.threshold}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    const value = Number.parseFloat(event.currentTarget.value);
                     setCamieConfig((current) => ({
                       ...current,
-                      threshold: Number.parseFloat(event.currentTarget.value),
-                    }))
-                  }
+                      threshold: value,
+                    }));
+                  }}
                   style={{ width: "9rem" }}
                 />
               </Form.Group>
@@ -374,12 +375,13 @@ export const VisualSimilaritySettings: React.FC = () => {
                   min="1"
                   max="200"
                   value={camieConfig.limit}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    const value = Number.parseInt(event.currentTarget.value, 10);
                     setCamieConfig((current) => ({
                       ...current,
-                      limit: Number.parseInt(event.currentTarget.value, 10),
-                    }))
-                  }
+                      limit: value,
+                    }));
+                  }}
                   style={{ width: "9rem" }}
                 />
               </Form.Group>
@@ -390,12 +392,13 @@ export const VisualSimilaritySettings: React.FC = () => {
               type="checkbox"
               id="camie-filename-enabled"
               checked={camieConfig.filenameEnabled}
-              onChange={(event) =>
+              onChange={(event) => {
+                const checked = event.currentTarget.checked;
                 setCamieConfig((current) => ({
                   ...current,
-                  filenameEnabled: event.currentTarget.checked,
-                }))
-              }
+                  filenameEnabled: checked,
+                }));
+              }}
               label="Use filename metadata together with Camie predictions"
             />
             <Form.Group className="mb-2">
@@ -404,12 +407,13 @@ export const VisualSimilaritySettings: React.FC = () => {
                 type="text"
                 disabled={!camieConfig.filenameEnabled}
                 value={camieConfig.filenameLayout}
-                onChange={(event) =>
+                onChange={(event) => {
+                  const value = event.currentTarget.value;
                   setCamieConfig((current) => ({
                     ...current,
-                    filenameLayout: event.currentTarget.value,
-                  }))
-                }
+                    filenameLayout: value,
+                  }));
+                }}
               />
               <Form.Text className="text-muted">
                 Supported tokens: <code>%artist%</code>,{" "}
