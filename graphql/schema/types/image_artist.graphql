@@ -1,0 +1,8 @@
+extend type Image {
+  "Ordered Artists attached to this image. The first Artist is mirrored to studio for compatibility."
+  artists: [Studio!]!
+}
+
+extend type Mutation {
+  imageArtistsUpdate(image_id: ID!, artist_ids: [ID!]!): Image!
+}

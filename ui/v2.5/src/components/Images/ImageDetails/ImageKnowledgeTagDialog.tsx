@@ -62,14 +62,12 @@ interface CamieAppliedEntity {
   created: boolean;
 }
 
-interface CamieApplyResponse {
+interface ImageTaggingApplyResponse {
   imageID: number;
   characters: CamieAppliedEntity[];
-  artist?: CamieAppliedEntity;
+  artists: CamieAppliedEntity[];
   copyrights: CamieAppliedEntity[];
   tags: CamieAppliedEntity[];
-  skippedArtists?: CamiePrediction[];
-  preservedArtist: boolean;
   createdCharacters: number;
   createdArtists: number;
   createdCopyrights: number;
@@ -146,9 +144,9 @@ function applyLocalAuthority(predictions: CamiePrediction[]) {
     const category = prediction.category.trim().toLocaleLowerCase();
     if (!authoritativeCategories.has(category)) return true;
 
-    // Filename/local metadata owns Character, Artist and Copyright as a whole
-    // category. Camie may confirm a local value (model+filename), but a
-    // different model-only value is not mixed into that category.
+    // Filename metadata owns Character, Artist and Copyright as a whole
+    // category. Camie may confirm a filename value, but a different model-only
+    // value is not mixed into that category.
     return hasFilenameSource(prediction);
   });
 }
@@ -175,7 +173,7 @@ function predictionSources(
   if (hasFilenameSource(prediction)) {
     result.push({
       kind: "file",
-      label: "local",
+      label: "filename",
       detail: "Local filename metadata",
       priority: SOURCE_PRIORITY.file,
     });
@@ -259,9 +257,6 @@ function mergeMetadataPredictions(
     }
   };
 
-  // Local filename metadata is the preferred representation. Booru is still
-  // shown for provenance/overlap, followed by Camie-only categories where no
-  // authoritative local Character/Artist/Copyright value exists.
   for (const prediction of authoritativeCamie) {
     if (hasFilenameSource(prediction)) add(prediction, "camie");
   }
@@ -284,9 +279,9 @@ function categoryLabel(category: string) {
     case "character":
       return "Characters";
     case "artist":
-      return "Artist";
+      return "Artists";
     case "copyright":
-      return "Copyright";
+      return "Copyrights";
     case "general":
       return "General tags";
     case "meta":
@@ -474,22 +469,19 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
           body: JSON.stringify({ tags, replaceArtist }),
         }
       );
-      const result = await readResponse<CamieApplyResponse>(response);
+      const result = await readResponse<ImageTaggingApplyResponse>(response);
       const appliedCount =
         result.characters.length +
+        result.artists.length +
         result.copyrights.length +
-        result.tags.length +
-        (result.artist ? 1 : 0);
+        result.tags.length;
       const createdCount =
         result.createdCharacters +
         result.createdArtists +
         result.createdCopyrights +
         result.createdTags;
-      const preserved = result.preservedArtist
-        ? " Existing Artist was preserved."
-        : "";
       Toast.success(
-        `Applied ${appliedCount} metadata item${appliedCount === 1 ? "" : "s"}; created ${createdCount} new entr${createdCount === 1 ? "y" : "ies"}.${preserved}`
+        `Applied ${appliedCount} metadata item${appliedCount === 1 ? "" : "s"}; created ${createdCount} new entr${createdCount === 1 ? "y" : "ies"}.`
       );
       await onApplied();
       onHide();
@@ -505,7 +497,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   return (
     <Modal show onHide={onHide} size="lg" centered>
       <Modal.Header closeButton>
-        <Modal.Title>Image metadata</Modal.Title>
+        <Modal.Title>Image tagging</Modal.Title>
       </Modal.Header>
       <Modal.Body>
         <div className="d-flex flex-wrap align-items-end mb-3">
@@ -581,22 +573,22 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         ) : null}
 
         <div className="mb-3 text-muted">
-          Matching metadata from different methods is merged into one row. Local
-          means metadata parsed from this file's filename; an existing Stash
-          entry is not treated as a source. For Characters, Artist and
-          Copyright, local values are authoritative: Camie can confirm those
-          exact values, but conflicting Camie-only values in that category are
-          ignored. If the filename has no value for a category, Camie can supply
-          it. Booru overlap remains visible separately.
+          Matching metadata from different tagging methods is merged into one
+          row. Filename values are authoritative for Characters, Artists and
+          Copyrights: Camie can confirm those exact values, while conflicting
+          Camie-only values in that category are ignored. If the filename has no
+          value for a category, Camie can supply it. Booru overlap remains
+          visible separately. Multiple selected Artists can be attached to the
+          same image.
         </div>
 
         <Form.Check
           className="mb-3"
           type="checkbox"
-          id="camie-replace-artist"
+          id="image-tagging-replace-artists"
           checked={replaceArtist}
           onChange={(event) => setReplaceArtist(event.currentTarget.checked)}
-          label="Replace the existing Artist if this image already has one"
+          label="Replace existing Artists instead of adding the selected Artists"
         />
 
         {error ? <div className="alert alert-danger">{error}</div> : null}
@@ -646,15 +638,8 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                     <h5>{categoryLabel(category)}</h5>
                     {localAuthority ? (
                       <div className="small text-muted mb-2">
-                        Local filename metadata is authoritative for this
-                        category; conflicting Camie predictions are ignored.
-                      </div>
-                    ) : null}
-                    {category === "artist" && items.length > 1 ? (
-                      <div className="small text-muted mb-2">
-                        Images support one Artist. If several non-local sources
-                        disagree, the selected metadata is reviewed here before
-                        applying.
+                        Filename metadata is authoritative for this category;
+                        conflicting Camie predictions are ignored.
                       </div>
                     ) : null}
                     {items.map((prediction, index) => {

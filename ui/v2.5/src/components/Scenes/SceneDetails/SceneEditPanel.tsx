@@ -22,6 +22,7 @@ import {
 import { Icon } from "src/components/Shared/Icon";
 import { LoadingIndicator } from "src/components/Shared/LoadingIndicator";
 import { ImageInput } from "src/components/Shared/ImageInput";
+import { CollapseButton } from "src/components/Shared/CollapseButton";
 import { useToast } from "src/hooks/Toast";
 import ImageUtils from "src/utils/image";
 import { addUpdateStashID, getStashIDs } from "src/utils/stashIds";
@@ -53,6 +54,10 @@ import { formikUtils } from "src/utils/form";
 import { Studio, StudioSelect } from "src/components/Studios/StudioSelect";
 import { Gallery, GallerySelect } from "src/components/Galleries/GallerySelect";
 import { Group } from "src/components/Groups/GroupSelect";
+import {
+  Copyright,
+  CopyrightSelect,
+} from "src/components/Copyrights/CopyrightSelect";
 import { useTagsEdit } from "src/hooks/tagsEdit";
 import { ScraperMenu } from "src/components/Shared/ScraperMenu";
 import StashBoxIDSearchModal from "src/components/Shared/StashBoxIDSearchModal";
@@ -76,6 +81,11 @@ interface IProps {
   onDelete?: () => void;
 }
 
+function sceneArtists(scene: Partial<GQL.SceneDataFragment>): Studio[] {
+  if (scene.artists?.length) return scene.artists;
+  return scene.studio ? [scene.studio] : [];
+}
+
 export const SceneEditPanel: React.FC<IProps> = ({
   scene,
   initialCoverImage,
@@ -88,11 +98,16 @@ export const SceneEditPanel: React.FC<IProps> = ({
 }) => {
   const intl = useIntl();
   const Toast = useToast();
+  const [updateCopyrights] = GQL.useSceneCopyrightsUpdateMutation();
+  const [updateArtists] = GQL.useSceneArtistsUpdateMutation();
 
   const [galleries, setGalleries] = useState<Gallery[]>([]);
   const [performers, setPerformers] = useState<Performer[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
-  const [studio, setStudio] = useState<Studio | null>(null);
+  const [artists, setArtists] = useState<Studio[]>(sceneArtists(scene));
+  const [copyrights, setCopyrights] = useState<Copyright[]>(
+    scene.copyrights ?? []
+  );
 
   const Scrapers = useListSceneScrapers();
 
@@ -140,8 +155,12 @@ export const SceneEditPanel: React.FC<IProps> = ({
   }, [scene.groups]);
 
   useEffect(() => {
-    setStudio(scene.studio ?? null);
-  }, [scene.studio]);
+    setArtists(sceneArtists(scene));
+  }, [scene]);
+
+  useEffect(() => {
+    setCopyrights(scene.copyrights ?? []);
+  }, [scene.copyrights]);
 
   const { configuration: stashConfig } = useConfigurationContext();
 
@@ -156,7 +175,7 @@ export const SceneEditPanel: React.FC<IProps> = ({
     production_date: yupDateString(intl),
     director: yup.string().ensure(),
     gallery_ids: yup.array(yup.string().required()).defined(),
-    studio_id: yup.string().required().nullable(),
+    artist_ids: yup.array(yup.string().required()).defined(),
     performer_ids: yup.array(yup.string().required()).defined(),
     groups: yup
       .array(
@@ -167,6 +186,7 @@ export const SceneEditPanel: React.FC<IProps> = ({
       )
       .defined(),
     tag_ids: yup.array(yup.string().required()).defined(),
+    copyright_ids: yup.array(yup.string().required()).defined(),
     stash_ids: yup.mixed<GQL.StashIdInput[]>().defined(),
     details: yup.string().ensure(),
     cover_image: yup.string().nullable().optional(),
@@ -182,12 +202,13 @@ export const SceneEditPanel: React.FC<IProps> = ({
       production_date: scene.production_date ?? "",
       director: scene.director ?? "",
       gallery_ids: (scene.galleries ?? []).map((g) => g.id),
-      studio_id: scene.studio?.id ?? null,
+      artist_ids: sceneArtists(scene).map((item) => item.id),
       performer_ids: (scene.performers ?? []).map((p) => p.id),
       groups: (scene.groups ?? []).map((m) => {
         return { group_id: m.group.id, scene_index: m.scene_index ?? null };
       }),
       tag_ids: (scene.tags ?? []).map((t) => t.id),
+      copyright_ids: (scene.copyrights ?? []).map((item) => item.id),
       stash_ids: getStashIDs(scene.stash_ids),
       details: scene.details ?? "",
       cover_image: initialCoverImage,
@@ -205,7 +226,7 @@ export const SceneEditPanel: React.FC<IProps> = ({
       ...schema.cast(values),
       custom_fields: formatCustomFieldInput(isNew, values.custom_fields),
     };
-    onSave(input);
+    void onSave(input);
   }
 
   const formik = useFormik<InputValues>({
@@ -258,9 +279,20 @@ export const SceneEditPanel: React.FC<IProps> = ({
     );
   }
 
-  function onSetStudio(item: Studio | null) {
-    setStudio(item);
-    formik.setFieldValue("studio_id", item ? item.id : null);
+  function onSetArtists(items: Studio[]) {
+    setArtists(items);
+    formik.setFieldValue(
+      "artist_ids",
+      items.map((item) => item.id)
+    );
+  }
+
+  function onSetCopyrights(items: Copyright[]) {
+    setCopyrights(items);
+    formik.setFieldValue(
+      "copyright_ids",
+      items.map((item) => item.id)
+    );
   }
 
   useEffect(() => {
@@ -306,8 +338,31 @@ export const SceneEditPanel: React.FC<IProps> = ({
   async function onSave(input: InputValues, andNew?: boolean) {
     setIsLoading(true);
     try {
-      await onSubmit(input, andNew);
-      formik.resetForm();
+      const {
+        copyright_ids: copyrightIDs,
+        artist_ids: artistIDs,
+        ...sceneInput
+      } = input;
+      await onSubmit(
+        {
+          ...sceneInput,
+          // Keep the legacy single-Studio field synchronized with the primary
+          // Artist so existing plugins and queries continue to work.
+          studio_id: artistIDs[0] ?? null,
+        },
+        andNew
+      );
+      if (!isNew && scene.id) {
+        await Promise.all([
+          updateCopyrights({
+            variables: { sceneID: scene.id, copyrightIDs },
+          }),
+          updateArtists({
+            variables: { sceneID: scene.id, artistIDs },
+          }),
+        ]);
+      }
+      formik.resetForm({ values: input });
       if (andNew) {
         setGalleries(
           scene.galleries?.map((g) => ({
@@ -319,7 +374,8 @@ export const SceneEditPanel: React.FC<IProps> = ({
         );
         setPerformers(scene.performers ?? []);
         setGroups(scene.groups?.map((m) => m.group) ?? []);
-        setStudio(scene.studio ?? null);
+        setArtists(sceneArtists(scene));
+        setCopyrights([]);
         resetTagsState();
       }
     } catch (e) {
@@ -333,7 +389,7 @@ export const SceneEditPanel: React.FC<IProps> = ({
       ...schema.cast(formik.values),
       custom_fields: formatCustomFieldInput(isNew, formik.values.custom_fields),
     };
-    onSave(input, true);
+    void onSave(input, true);
   }
 
   const encodingImage = ImageUtils.usePasteImage(onImageLoad);
@@ -355,10 +411,9 @@ export const SceneEditPanel: React.FC<IProps> = ({
     try {
       const result = await queryScrapeScene(s, scene.id!);
       if (!result.data?.scrapeSingleScene?.length) {
-        Toast.success("No scenes found");
+        Toast.success("No videos found");
         return;
       }
-      // assume one returned scene
       setScrapedScene(result.data.scrapeSingleScene[0]);
       setEndpoint(s.stash_box_endpoint ?? undefined);
     } catch (e) {
@@ -387,10 +442,9 @@ export const SceneEditPanel: React.FC<IProps> = ({
 
       const result = await queryScrapeSceneQueryFragment(s, input);
       if (!result.data?.scrapeSingleScene?.length) {
-        Toast.success("No scenes found");
+        Toast.success("No videos found");
         return;
       }
-      // assume one returned scene
       setScrapedScene(result.data.scrapeSingleScene[0]);
     } catch (e) {
       Toast.error(e);
@@ -428,9 +482,15 @@ export const SceneEditPanel: React.FC<IProps> = ({
       return;
     }
 
+    const {
+      artist_ids: _artistIDs,
+      copyright_ids: _copyrightIDs,
+      ...sceneValues
+    } = formik.values;
     const currentScene = {
       id: scene.id!,
-      ...formik.values,
+      ...sceneValues,
+      studio_id: artists[0]?.id ?? null,
     };
 
     if (!currentScene.cover_image) {
@@ -440,7 +500,7 @@ export const SceneEditPanel: React.FC<IProps> = ({
     return (
       <SceneScrapeDialog
         scene={currentScene}
-        sceneStudio={studio}
+        sceneStudio={artists[0] ?? null}
         sceneTags={tags}
         scenePerformers={performers}
         sceneGroups={groups}
@@ -455,11 +515,9 @@ export const SceneEditPanel: React.FC<IProps> = ({
     if (!scraper) return;
 
     if (scraper?.stash_box_endpoint !== undefined) {
-      // must be stash-box - assume full scene
       setScrapedScene(s);
     } else {
-      // must be scraper
-      scrapeFromQuery(scraper, s);
+      void scrapeFromQuery(scraper, s);
     }
   }
 
@@ -518,11 +576,16 @@ export const SceneEditPanel: React.FC<IProps> = ({
     }
 
     if (updatedScene.studio?.stored_id) {
-      onSetStudio({
+      const scrapedArtist: Studio = {
         id: updatedScene.studio.stored_id,
         name: updatedScene.studio.name ?? "",
         aliases: [],
-      });
+        image_path: null,
+      };
+      onSetArtists([
+        scrapedArtist,
+        ...artists.filter((item) => item.id !== scrapedArtist.id),
+      ]);
     }
 
     if (updatedScene.performers && updatedScene.performers.length > 0) {
@@ -563,7 +626,6 @@ export const SceneEditPanel: React.FC<IProps> = ({
     updateTagsStateFromScraper(updatedScene.tags ?? undefined);
 
     if (updatedScene.image) {
-      // image is a base64 string
       formik.setFieldValue("cover_image", updatedScene.image);
     }
 
@@ -702,16 +764,16 @@ export const SceneEditPanel: React.FC<IProps> = ({
     return renderField("gallery_ids", title, control);
   }
 
-  function renderStudioField() {
-    const title = intl.formatMessage({ id: "studio" });
+  function renderArtistsField() {
+    const title = intl.formatMessage({
+      id: "artists",
+      defaultMessage: "Artists",
+    });
     const control = (
-      <StudioSelect
-        onSelect={(items) => onSetStudio(items.length > 0 ? items[0] : null)}
-        values={studio ? [studio] : []}
-      />
+      <StudioSelect isMulti onSelect={onSetArtists} values={artists} />
     );
 
-    return renderField("studio_id", title, control);
+    return renderField("artist_ids", title, control, fullWidthProps);
   }
 
   function renderPerformersField() {
@@ -759,6 +821,23 @@ export const SceneEditPanel: React.FC<IProps> = ({
     );
 
     return renderField("groups", title, control, fullWidthProps);
+  }
+
+  function renderCopyrightsField() {
+    const title = intl.formatMessage({
+      id: "copyrights",
+      defaultMessage: "Copyrights",
+    });
+    return renderField(
+      "copyright_ids",
+      title,
+      <CopyrightSelect
+        isMulti
+        values={copyrights}
+        onSelect={onSetCopyrights}
+      />,
+      fullWidthProps
+    );
   }
 
   function renderTagsField() {
@@ -819,7 +898,7 @@ export const SceneEditPanel: React.FC<IProps> = ({
                 title={intl.formatMessage({ id: "actions.save" })}
                 onClick={() => formik.submitForm()}
               >
-                <Dropdown.Item onClick={() => onSaveAndNewClick()}>
+                <Dropdown.Item onClick={() => void onSaveAndNewClick()}>
                   <FormattedMessage id="actions.save_and_new" />
                 </Dropdown.Item>
               </SplitButton>
@@ -872,7 +951,6 @@ export const SceneEditPanel: React.FC<IProps> = ({
         <Row className="form-container px-3">
           <Col lg={7} xl={12}>
             {renderInputField("title")}
-            {renderInputField("code", "text", "scene_code")}
 
             {renderURLListField(
               "urls",
@@ -884,12 +962,11 @@ export const SceneEditPanel: React.FC<IProps> = ({
 
             {renderDateField("date")}
             {renderDateField("production_date")}
-            {renderInputField("director")}
-
             {renderGalleriesField()}
-            {renderStudioField()}
+            {renderArtistsField()}
             {renderPerformersField()}
             {renderGroupsField()}
+            {!isNew && renderCopyrightsField()}
             {renderTagsField()}
 
             {renderStashIDsField(
@@ -907,6 +984,11 @@ export const SceneEditPanel: React.FC<IProps> = ({
                 <Icon icon={faPlus} />
               </Button>
             )}
+
+            <CollapseButton className="mt-2" text="Advanced">
+              {renderInputField("code", "text", "scene_code")}
+              {renderInputField("director")}
+            </CollapseButton>
           </Col>
           <Col lg={5} xl={12}>
             {renderDetailsField()}
@@ -919,7 +1001,6 @@ export const SceneEditPanel: React.FC<IProps> = ({
                 isEditing
                 onImageChange={onCoverImageChange}
                 onImageURL={onImageLoad}
-                // Generate-from-server actions require a saved scene.
                 extraActions={
                   !isNew
                     ? [

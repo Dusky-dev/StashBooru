@@ -14,7 +14,6 @@ import { faFolderTree } from "@fortawesome/free-solid-svg-icons";
 import { Icon } from "../Shared/Icon";
 import { FormattedMessage } from "react-intl";
 import { PatchComponent } from "src/patch";
-import { isCopyrightTag } from "../Tags/copyrightFilter";
 
 type SceneMarkerFragment = Pick<GQL.SceneMarker, "id" | "title" | "seconds"> & {
   scene: Pick<GQL.Scene, "id">;
@@ -263,37 +262,24 @@ export const TagLink: React.FC<ITagLinkProps> = PatchComponent(
     hierarchyTooltipID,
   }) => {
     const link = useMemo(() => {
-      let tagLink: string;
       switch (linkType) {
         case "scene":
-          tagLink = NavUtils.makeTagScenesUrl(tag);
-          break;
+          return NavUtils.makeTagScenesUrl(tag);
         case "performer":
-          tagLink = NavUtils.makeTagPerformersUrl(tag);
-          break;
+          return NavUtils.makeTagPerformersUrl(tag);
         case "studio":
-          tagLink = NavUtils.makeTagStudiosUrl(tag);
-          break;
+          return NavUtils.makeTagStudiosUrl(tag);
         case "gallery":
-          tagLink = NavUtils.makeTagGalleriesUrl(tag);
-          break;
+          return NavUtils.makeTagGalleriesUrl(tag);
         case "image":
-          tagLink = NavUtils.makeTagImagesUrl(tag);
-          break;
+          return NavUtils.makeTagImagesUrl(tag);
         case "group":
-          tagLink = NavUtils.makeTagGroupsUrl(tag);
-          break;
+          return NavUtils.makeTagGroupsUrl(tag);
         case "scene_marker":
-          tagLink = NavUtils.makeTagSceneMarkersUrl(tag);
-          break;
+          return NavUtils.makeTagSceneMarkersUrl(tag);
         case "details":
-          tagLink = NavUtils.makeTagUrl(tag.id ?? "");
-          break;
+          return NavUtils.makeTagUrl(tag.id ?? "");
       }
-
-      return isCopyrightTag(tag)
-        ? tagLink.replace(/^\/tags\//, "/copyrights/")
-        : tagLink;
     }, [tag, linkType]);
 
     const title = tag.name || "";

@@ -26,7 +26,6 @@ import { SceneEditPanel } from "./SceneEditPanel";
 import { ErrorMessage } from "src/components/Shared/ErrorMessage";
 import { LoadingIndicator } from "src/components/Shared/LoadingIndicator";
 import { Icon } from "src/components/Shared/Icon";
-import { Counter } from "src/components/Shared/Counter";
 import { useToast } from "src/hooks/Toast";
 import SceneQueue, { QueuedScene } from "src/models/sceneQueue";
 import { ListFilterModel } from "src/models/list-filter/filter";
@@ -76,7 +75,6 @@ const ExternalPlayerButton = lazyComponent(
 
 const QueueViewer = lazyComponent(() => import("./QueueViewer"));
 const SceneMarkersPanel = lazyComponent(() => import("./SceneMarkersPanel"));
-const SceneFileInfoPanel = lazyComponent(() => import("./SceneFileInfoPanel"));
 const SceneDetailPanel = lazyComponent(() => import("./SceneDetailPanel"));
 const SceneHistoryPanel = lazyComponent(() => import("./SceneHistoryPanel"));
 const SceneGroupPanel = lazyComponent(() => import("./SceneGroupPanel"));
@@ -273,7 +271,6 @@ const ScenePage: React.FC<IProps> = PatchComponent("ScenePage", (props) => {
     Mousetrap.bind("q", () => setActiveTabKey("scene-queue-panel"));
     Mousetrap.bind("e", () => setActiveTabKey("scene-edit-panel"));
     Mousetrap.bind("k", () => setActiveTabKey("scene-markers-panel"));
-    Mousetrap.bind("i", () => setActiveTabKey("scene-file-info-panel"));
     Mousetrap.bind("h", () => setActiveTabKey("scene-history-panel"));
     Mousetrap.bind("o", () => {
       onIncrementOClick();
@@ -295,7 +292,6 @@ const ScenePage: React.FC<IProps> = PatchComponent("ScenePage", (props) => {
       Mousetrap.unbind("q");
       Mousetrap.unbind("e");
       Mousetrap.unbind("k");
-      Mousetrap.unbind("i");
       Mousetrap.unbind("h");
       Mousetrap.unbind("o");
       Mousetrap.unbind("d d");
@@ -443,8 +439,6 @@ const ScenePage: React.FC<IProps> = PatchComponent("ScenePage", (props) => {
         onClose={(mergedId) => {
           setIsMerging(false);
           if (mergedId !== undefined && mergedId !== scene.id) {
-            // By default, the merge destination is the current scene, but
-            // the user can change it, in which case we need to redirect.
             history.replace(`/scenes/${mergedId}`);
           }
         }}
@@ -588,12 +582,6 @@ const ScenePage: React.FC<IProps> = PatchComponent("ScenePage", (props) => {
               </Nav.Link>
             </Nav.Item>
             <Nav.Item>
-              <Nav.Link eventKey="scene-file-info-panel">
-                <FormattedMessage id="file_info" />
-                <Counter count={scene.files.length} hideZero hideOne />
-              </Nav.Link>
-            </Nav.Item>
-            <Nav.Item>
               <Nav.Link eventKey="scene-history-panel">
                 <FormattedMessage id="history" />
               </Nav.Link>
@@ -649,12 +637,6 @@ const ScenePage: React.FC<IProps> = PatchComponent("ScenePage", (props) => {
           )}
           <Tab.Pane eventKey="scene-video-filter-panel">
             <SceneVideoFilterPanel scene={scene} />
-          </Tab.Pane>
-          <Tab.Pane
-            className="file-info-panel"
-            eventKey="scene-file-info-panel"
-          >
-            <SceneFileInfoPanel scene={scene} />
           </Tab.Pane>
           <Tab.Pane eventKey="scene-edit-panel" mountOnEnter>
             <SceneEditPanel
@@ -791,9 +773,7 @@ const SceneLoader: React.FC<RouteComponentProps<ISceneParams>> = ({
     }
   }, [refetch]);
 
-  // useLayoutEffect to update before paint
   useLayoutEffect(() => {
-    // only update scene when loading is done
     if (!loading) {
       setScene(data?.findScene ?? undefined);
     }
@@ -856,7 +836,6 @@ const SceneLoader: React.FC<RouteComponentProps<ISceneParams>> = ({
     }
   }
 
-  // set up hotkeys
   useEffect(() => {
     Mousetrap.bind(".", () => setHideScrubber((value) => !value));
 
@@ -900,7 +879,6 @@ const SceneLoader: React.FC<RouteComponentProps<ISceneParams>> = ({
     const query = await queryFindScenes(filterCopy);
     const { scenes } = query.data.findScenes;
 
-    // prepend scenes to scene list
     const newScenes = (scenes as QueuedScene[]).concat(queueScenes);
     setQueueScenes(newScenes);
     setQueueStart(newStart);
@@ -923,10 +901,8 @@ const SceneLoader: React.FC<RouteComponentProps<ISceneParams>> = ({
     const query = await queryFindScenes(filterCopy);
     const { scenes } = query.data.findScenes;
 
-    // append scenes to scene list
     const newScenes = queueScenes.concat(scenes);
     setQueueScenes(newScenes);
-    // don't change queue start
     return scenes;
   }
 
@@ -944,15 +920,14 @@ const SceneLoader: React.FC<RouteComponentProps<ISceneParams>> = ({
 
     if (currentQueueIndex < queueScenes.length - 1) {
       loadScene(queueScenes[currentQueueIndex + 1].id, autoPlay);
-    } else {
-      // if we're at the end of the queue, load more scenes
-      if (currentQueueIndex === queueScenes.length - 1 && queueHasMoreScenes) {
-        const loadedScenes = await onQueueMoreScenes();
-        if (loadedScenes && loadedScenes.length > 0) {
-          // set the page to the next page
-          const newPage = (sceneQueue.query?.currentPage ?? 0) + 1;
-          loadScene(loadedScenes[0].id, autoPlay, newPage);
-        }
+    } else if (
+      currentQueueIndex === queueScenes.length - 1 &&
+      queueHasMoreScenes
+    ) {
+      const loadedScenes = await onQueueMoreScenes();
+      if (loadedScenes && loadedScenes.length > 0) {
+        const newPage = (sceneQueue.query?.currentPage ?? 0) + 1;
+        loadScene(loadedScenes[0].id, autoPlay, newPage);
       }
     }
   }
@@ -962,18 +937,11 @@ const SceneLoader: React.FC<RouteComponentProps<ISceneParams>> = ({
 
     if (currentQueueIndex > 0) {
       loadScene(queueScenes[currentQueueIndex - 1].id, autoPlay);
-    } else {
-      // if we're at the beginning of the queue, load the previous page
-      if (queueStart > 1) {
-        const loadedScenes = await onQueueLessScenes();
-        if (loadedScenes && loadedScenes.length > 0) {
-          const newPage = (sceneQueue.query?.currentPage ?? 0) - 1;
-          loadScene(
-            loadedScenes[loadedScenes.length - 1].id,
-            autoPlay,
-            newPage
-          );
-        }
+    } else if (queueStart > 1) {
+      const loadedScenes = await onQueueLessScenes();
+      if (loadedScenes && loadedScenes.length > 0) {
+        const newPage = (sceneQueue.query?.currentPage ?? 0) - 1;
+        loadScene(loadedScenes[loadedScenes.length - 1].id, autoPlay, newPage);
       }
     }
   }
@@ -991,7 +959,6 @@ const SceneLoader: React.FC<RouteComponentProps<ISceneParams>> = ({
       const queryResults = await queryFindScenes(filterCopy);
       if (queryResults.data.findScenes.scenes.length > index) {
         const { id: sceneID } = queryResults.data.findScenes.scenes[index];
-        // navigate to the image player page
         loadScene(sceneID, autoPlay, page);
       }
     } else if (queueTotal !== 0) {
@@ -1001,7 +968,6 @@ const SceneLoader: React.FC<RouteComponentProps<ISceneParams>> = ({
   }
 
   function onComplete() {
-    // load the next scene if we're continuing
     if (continuePlaylist) {
       queueNext(true);
     }
@@ -1022,9 +988,7 @@ const SceneLoader: React.FC<RouteComponentProps<ISceneParams>> = ({
   function getScenePage(sceneID: string) {
     if (!sceneQueue.query) return;
 
-    // find the page that the scene is on
     const index = queueScenes.findIndex((s) => s.id === sceneID);
-
     if (index === -1) return;
 
     const perPage = sceneQueue.query.itemsPerPage;

@@ -1,14 +1,16 @@
 import React from "react";
 import { FormattedMessage, useIntl } from "react-intl";
+import { Link } from "react-router-dom";
 import * as GQL from "src/core/generated-graphql";
 import TextUtils from "src/utils/text";
 import { sceneAgeFromDate } from "src/utils/scene";
 import { TagLink } from "src/components/Shared/TagLink";
+import { CopyrightLink } from "src/components/Copyrights/CopyrightLink";
 import { PerformerCard } from "src/components/Performers/PerformerCard";
 import { sortPerformers } from "src/core/performers";
 import { DirectorLink } from "src/components/Shared/Link";
 import { CustomFields } from "src/components/Shared/CustomFields";
-import { isCopyrightTag } from "src/components/Tags/copyrightFilter";
+import { SceneFileInfoPanel } from "./SceneFileInfoPanel";
 
 interface ISceneDetailProps {
   scene: GQL.SceneDataFragment;
@@ -29,9 +31,31 @@ export const SceneDetailPanel: React.FC<ISceneDetailProps> = (props) => {
     );
   }
 
-  function renderTags() {
-    const copyrights = props.scene.tags.filter((tag) => isCopyrightTag(tag));
-    const tags = props.scene.tags.filter((tag) => !isCopyrightTag(tag));
+  function renderArtists() {
+    const artists = props.scene.artists ?? [];
+    if (artists.length === 0) return;
+
+    return (
+      <>
+        <h6>
+          {intl.formatMessage({ id: "artists", defaultMessage: "Artists" })} (
+          {artists.length})
+        </h6>
+        <div className="mb-3">
+          {artists.map((artist, index) => (
+            <React.Fragment key={artist.id}>
+              {index > 0 ? ", " : null}
+              <Link to={`/studios/${artist.id}`}>{artist.name}</Link>
+            </React.Fragment>
+          ))}
+        </div>
+      </>
+    );
+  }
+
+  function renderMetadata() {
+    const copyrights = props.scene.copyrights ?? [];
+    const tags = props.scene.tags;
     if (tags.length === 0 && copyrights.length === 0) return;
 
     return (
@@ -45,8 +69,8 @@ export const SceneDetailPanel: React.FC<ISceneDetailProps> = (props) => {
               })}{" "}
               ({copyrights.length})
             </h6>
-            {copyrights.map((tag) => (
-              <TagLink key={tag.id} tag={tag} />
+            {copyrights.map((copyright) => (
+              <CopyrightLink key={copyright.id} copyright={copyright} />
             ))}
           </>
         )}
@@ -117,8 +141,6 @@ export const SceneDetailPanel: React.FC<ISceneDetailProps> = (props) => {
           {props.scene.production_date && (
             <h6>
               <FormattedMessage id="production_date" />:{" "}
-              {/* fuzzy, so that a year- or month-only production date isn't
-                  rendered as the first of the month */}
               {TextUtils.formatFuzzyDate(intl, props.scene.production_date)}
             </h6>
           )}
@@ -138,9 +160,13 @@ export const SceneDetailPanel: React.FC<ISceneDetailProps> = (props) => {
       <div className="row">
         <div className="col-12">
           {renderDetails()}
-          {renderTags()}
+          {renderArtists()}
+          {renderMetadata()}
           {renderPerformers()}
           <CustomFields values={props.scene.custom_fields} fullWidth />
+          <hr />
+          <h6>File info</h6>
+          <SceneFileInfoPanel scene={props.scene} />
         </div>
       </div>
     </>

@@ -14,13 +14,11 @@ import {
 import { ErrorMessage } from "src/components/Shared/ErrorMessage";
 import { LoadingIndicator } from "src/components/Shared/LoadingIndicator";
 import { Icon } from "src/components/Shared/Icon";
-import { Counter } from "src/components/Shared/Counter";
 import { useToast } from "src/hooks/Toast";
 import * as Mousetrap from "mousetrap";
 import * as GQL from "src/core/generated-graphql";
 import { OCounterButton } from "src/components/Scenes/SceneDetails/OCounterButton";
 import { OrganizedButton } from "src/components/Scenes/SceneDetails/OrganizedButton";
-import { ImageFileInfoPanel } from "./ImageFileInfoPanel";
 import { ImageEditPanel } from "./ImageEditPanel";
 import { ImageDetailPanel } from "./ImageDetailPanel";
 import { ImageKnowledgeTagDialog } from "./ImageKnowledgeTagDialog";
@@ -59,22 +57,16 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
   const [incrementO] = useImageIncrementO(image.id);
   const [decrementO] = useImageDecrementO(image.id);
   const [resetO] = useImageResetO(image.id);
-
   const [updateImage] = useImageUpdate();
-
   const [organizedLoading, setOrganizedLoading] = useState(false);
-
   const [activeTabKey, setActiveTabKey] = useState("image-details-panel");
-
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState<boolean>(false);
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
   const [isKnowledgeTagDialogOpen, setIsKnowledgeTagDialogOpen] =
     useState(false);
 
   async function onSave(input: GQL.ImageUpdateInput) {
-    await updateImage({
-      variables: { input },
-    });
+    await updateImage({ variables: { input } });
     Toast.success(
       intl.formatMessage(
         { id: "toast.updated_entity" },
@@ -84,22 +76,12 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
   }
 
   async function onRescan() {
-    if (!image?.visual_files.length) {
-      return;
-    }
-
-    await mutateMetadataScan({
-      paths: [imagePath(image)],
-      rescan: true,
-    });
-
+    if (!image?.visual_files.length) return;
+    await mutateMetadataScan({ paths: [imagePath(image)], rescan: true });
     Toast.success(
       intl.formatMessage(
         { id: "toast.rescanning_entity" },
-        {
-          count: 1,
-          singularEntity: intl.formatMessage({ id: "image" }),
-        }
+        { count: 1, singularEntity: intl.formatMessage({ id: "image" }) }
       )
     );
   }
@@ -108,12 +90,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
     try {
       setOrganizedLoading(true);
       await updateImage({
-        variables: {
-          input: {
-            id: image.id,
-            organized: !image.organized,
-          },
-        },
+        variables: { input: { id: image.id, organized: !image.organized } },
       });
     } catch (e) {
       Toast.error(e);
@@ -147,14 +124,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
   };
 
   function setRating(v: number | null) {
-    updateImage({
-      variables: {
-        input: {
-          id: image.id,
-          rating100: v,
-        },
-      },
-    });
+    updateImage({ variables: { input: { id: image.id, rating100: v } } });
   }
 
   useRatingKeybinds(
@@ -165,9 +135,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
 
   function onDeleteDialogClosed(deleted: boolean) {
     setIsDeleteAlertOpen(false);
-    if (deleted) {
-      goBackOrReplace(history, "/images");
-    }
+    if (deleted) goBackOrReplace(history, "/images");
   }
 
   function maybeRenderDeleteDialog() {
@@ -183,9 +151,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
       return (
         <GenerateDialog
           selectedIds={[image.id]}
-          onClose={() => {
-            setIsGenerateDialogOpen(false);
-          }}
+          onClose={() => setIsGenerateDialogOpen(false)}
           type="image"
         />
       );
@@ -193,10 +159,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
   }
 
   function maybeRenderKnowledgeTagDialog() {
-    if (!isKnowledgeTagDialogOpen) {
-      return;
-    }
-
+    if (!isKnowledgeTagDialogOpen) return;
     return (
       <ImageKnowledgeTagDialog
         imageId={image.id}
@@ -233,11 +196,11 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
             <FormattedMessage id="actions.generate" />…
           </Dropdown.Item>
           <Dropdown.Item
-            key="camie-metadata"
+            key="image-tagging"
             className="bg-secondary text-white"
             onClick={() => setIsKnowledgeTagDialogOpen(true)}
           >
-            Camie metadata…
+            Image tagging…
           </Dropdown.Item>
           <Dropdown.Item
             key="delete-image"
@@ -255,9 +218,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
   }
 
   function renderTabs() {
-    if (!image) {
-      return;
-    }
+    if (!image) return;
 
     return (
       <Tab.Container
@@ -272,12 +233,6 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
               </Nav.Link>
             </Nav.Item>
             <Nav.Item>
-              <Nav.Link eventKey="image-file-info-panel">
-                <FormattedMessage id="file_info" />
-                <Counter count={image.visual_files.length} hideZero hideOne />
-              </Nav.Link>
-            </Nav.Item>
-            <Nav.Item>
               <Nav.Link eventKey="image-edit-panel">
                 <FormattedMessage id="actions.edit" />
               </Nav.Link>
@@ -288,12 +243,6 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
         <Tab.Content>
           <Tab.Pane eventKey="image-details-panel">
             <ImageDetailPanel image={image} />
-          </Tab.Pane>
-          <Tab.Pane
-            className="file-info-panel"
-            eventKey="image-file-info-panel"
-          >
-            <ImageFileInfoPanel image={image} />
           </Tab.Pane>
           <Tab.Pane eventKey="image-edit-panel" mountOnEnter>
             <ImageEditPanel
@@ -308,11 +257,9 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
     );
   }
 
-  // set up hotkeys
   useEffect(() => {
     Mousetrap.bind("a", () => setActiveTabKey("image-details-panel"));
     Mousetrap.bind("e", () => setActiveTabKey("image-edit-panel"));
-    Mousetrap.bind("f", () => setActiveTabKey("image-file-info-panel"));
     Mousetrap.bind("o", () => {
       onIncrementClick();
     });
@@ -320,7 +267,6 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
     return () => {
       Mousetrap.unbind("a");
       Mousetrap.unbind("e");
-      Mousetrap.unbind("f");
       Mousetrap.unbind("o");
     };
   });
@@ -329,13 +275,11 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
     () => (image.visual_files.length > 0 ? image.visual_files[0] : undefined),
     [image]
   );
-
   const title = imageTitle(image);
   const ImageView =
     image.visual_files.length > 0 && isVideo(image.visual_files[0])
       ? "video"
       : "img";
-
   const resolution = useMemo(() => {
     return file?.width && file?.height
       ? TextUtils.resolution(file?.width, file?.height)

@@ -1,0 +1,8 @@
+extend type Scene {
+  "Ordered Artists attached to this video. The first Artist is mirrored to studio for compatibility."
+  artists: [Studio!]!
+}
+
+extend type Mutation {
+  sceneArtistsUpdate(scene_id: ID!, artist_ids: [ID!]!): Scene!
+}

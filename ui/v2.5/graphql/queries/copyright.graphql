@@ -1,0 +1,23 @@
+query FindCopyright($id: ID!) {
+  findCopyright(id: $id) {
+    ...CopyrightData
+  }
+}
+
+query FindCopyrights($filter: FindFilterType, $ids: [ID!]) {
+  findCopyrights(filter: $filter, ids: $ids) {
+    count
+    copyrights {
+      ...CopyrightData
+    }
+  }
+}
+
+query FindCopyrightsForSelect($filter: FindFilterType, $ids: [ID!]) {
+  findCopyrights(filter: $filter, ids: $ids) {
+    count
+    copyrights {
+      ...SlimCopyrightData
+    }
+  }
+}

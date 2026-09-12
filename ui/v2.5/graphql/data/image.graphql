@@ -26,8 +26,16 @@ fragment ImageData on Image {
     ...SlimStudioData
   }
 
+  artists {
+    ...SlimStudioData
+  }
+
   tags {
     ...SlimTagData
+  }
+
+  copyrights {
+    ...SlimCopyrightData
   }
 
   performers {

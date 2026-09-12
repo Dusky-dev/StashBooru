@@ -20,12 +20,15 @@ type Repository struct {
 	Gallery        GalleryReaderWriter
 	GalleryChapter GalleryChapterReaderWriter
 	Image          ImageReaderWriter
+	ImageArtist    ImageArtistReaderWriter
 	Group          GroupReaderWriter
 	Performer      PerformerReaderWriter
 	Scene          SceneReaderWriter
+	SceneArtist    SceneArtistReaderWriter
 	SceneMarker    SceneMarkerReaderWriter
 	Studio         StudioReaderWriter
 	Tag            TagReaderWriter
+	Copyright      CopyrightReaderWriter
 	SavedFilter    SavedFilterReaderWriter
 }
 

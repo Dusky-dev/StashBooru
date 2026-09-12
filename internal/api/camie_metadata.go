@@ -3,24 +3,17 @@ package api
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/stashapp/stash/internal/manager"
 	"github.com/stashapp/stash/pkg/camietagger"
 	"github.com/stashapp/stash/pkg/models"
 	"github.com/stashapp/stash/pkg/performer"
 	"github.com/stashapp/stash/pkg/studio"
 	"github.com/stashapp/stash/pkg/tag"
-)
-
-const (
-	camieCopyrightRootName  = "Copyright"
-	camieCopyrightRootAlias = "__stashbooru_copyright_root__"
 )
 
 type camieFilenameLayout struct {
@@ -91,7 +84,7 @@ func compileCamieFilenameLayout(layout string) (*camieFilenameLayout, error) {
 
 func splitCamieFilenameValue(category string, value string) []string {
 	value = strings.TrimSpace(value)
-	if category != "copyright" || !strings.Contains(value, "+") {
+	if (category != "copyright" && category != "artist") || !strings.Contains(value, "+") {
 		return []string{value}
 	}
 
@@ -358,93 +351,6 @@ func findCamieTag(ctx context.Context, repository models.Repository, prediction 
 	return nil, nil
 }
 
-func ensureCamieCopyrightRoot(ctx context.Context, repository models.Repository) (*models.Tag, error) {
-	root, err := repository.Tag.FindByAlias(ctx, camieCopyrightRootAlias, true)
-	if err != nil {
-		return nil, err
-	}
-	if root != nil {
-		return root, nil
-	}
-
-	root, err = repository.Tag.FindByName(ctx, camieCopyrightRootName, true)
-	if err != nil {
-		return nil, err
-	}
-	if root != nil {
-		if err := root.LoadAliases(ctx, repository.Tag); err != nil {
-			return nil, err
-		}
-		aliases := append([]string{}, root.Aliases.List()...)
-		aliases = append(aliases, camieCopyrightRootAlias)
-		if err := repository.Tag.UpdateAliases(ctx, root.ID, aliases); err != nil {
-			return nil, err
-		}
-		return root, nil
-	}
-
-	newTag := models.CreateTagInput{Tag: &models.Tag{}}
-	*newTag.Tag = models.NewTag()
-	newTag.Name = camieCopyrightRootName
-	newTag.Aliases = models.NewRelatedStrings([]string{camieCopyrightRootAlias})
-	newTag.ParentIDs = models.NewRelatedIDs([]int{})
-	newTag.ChildIDs = models.NewRelatedIDs([]int{})
-	if err := tag.ValidateCreate(ctx, *newTag.Tag, repository.Tag); err != nil {
-		return nil, err
-	}
-	if err := repository.Tag.Create(ctx, &newTag); err != nil {
-		return nil, err
-	}
-	return newTag.Tag, nil
-}
-
-func findOrCreateCamieCopyright(ctx context.Context, repository models.Repository, prediction camietagger.Tag) (*models.Tag, bool, error) {
-	prediction = normalizeCamiePrediction(prediction)
-	root, err := ensureCamieCopyrightRoot(ctx, repository)
-	if err != nil {
-		return nil, false, err
-	}
-
-	existing, err := findCamieTag(ctx, repository, prediction)
-	if err != nil {
-		return nil, false, err
-	}
-	if existing != nil {
-		if err := existing.LoadParentIDs(ctx, repository.Tag); err != nil {
-			return nil, false, err
-		}
-		parents := append([]int{}, existing.ParentIDs.List()...)
-		found := false
-		for _, id := range parents {
-			if id == root.ID {
-				found = true
-				break
-			}
-		}
-		if !found {
-			parents = append(parents, root.ID)
-			if err := repository.Tag.UpdateParentTags(ctx, existing.ID, parents); err != nil {
-				return nil, false, err
-			}
-		}
-		return existing, false, nil
-	}
-
-	newTag := models.CreateTagInput{Tag: &models.Tag{}}
-	*newTag.Tag = models.NewTag()
-	newTag.Name = prediction.Name
-	newTag.Aliases = models.NewRelatedStrings(camieAliases(prediction))
-	newTag.ParentIDs = models.NewRelatedIDs([]int{root.ID})
-	newTag.ChildIDs = models.NewRelatedIDs([]int{})
-	if err := tag.ValidateCreate(ctx, *newTag.Tag, repository.Tag); err != nil {
-		return nil, false, err
-	}
-	if err := repository.Tag.Create(ctx, &newTag); err != nil {
-		return nil, false, err
-	}
-	return newTag.Tag, true, nil
-}
-
 func findOrCreateCamiePerformerPrediction(ctx context.Context, repository models.Repository, prediction camietagger.Tag) (*models.Performer, bool, error) {
 	prediction = normalizeCamiePrediction(prediction)
 	existing, err := findCamiePerformerPrediction(ctx, repository, prediction)
@@ -525,68 +431,8 @@ func findOrCreateCamieTagPrediction(ctx context.Context, repository models.Repos
 	return newTag.Tag, true, nil
 }
 
+// Kept as a compatibility shim for booru callers while all metadata sources
+// move under the Image Tagging umbrella. Copyrights are resolved natively.
 func enrichCamiePredictionTargets(ctx context.Context, predictions []camietagger.Tag) []camietagger.Tag {
-	repository := manager.GetInstance().Repository
-	result := make([]camietagger.Tag, len(predictions))
-	copy(result, predictions)
-
-	_ = repository.WithTxn(ctx, func(ctx context.Context) error {
-		for index := range result {
-			prediction := normalizeCamiePrediction(result[index])
-			var targetID int
-			switch prediction.Category {
-			case "character":
-				performerEntity, _ := findCamiePerformerPrediction(ctx, repository, prediction)
-				if performerEntity != nil {
-					targetID = performerEntity.ID
-				}
-				if targetID > 0 {
-					prediction.TargetPath = fmt.Sprintf("/performers/%d", targetID)
-				} else {
-					characterName, _ := camieCharacterIdentity(prediction)
-					prediction.TargetPath = "/performers?q=" + url.QueryEscape(characterName)
-				}
-			case "artist":
-				for _, name := range []string{prediction.Name, prediction.RawName} {
-					if strings.TrimSpace(name) == "" {
-						continue
-					}
-					studioEntity, _ := repository.Studio.FindByName(ctx, name, true)
-					if studioEntity != nil {
-						targetID = studioEntity.ID
-						break
-					}
-				}
-				if targetID > 0 {
-					prediction.TargetPath = fmt.Sprintf("/studios/%d", targetID)
-				} else {
-					prediction.TargetPath = "/studios?q=" + url.QueryEscape(prediction.Name)
-				}
-			case "copyright":
-				tagEntity, _ := findCamieTag(ctx, repository, prediction)
-				if tagEntity != nil {
-					targetID = tagEntity.ID
-				}
-				if targetID > 0 {
-					prediction.TargetPath = fmt.Sprintf("/tags/%d", targetID)
-				} else {
-					prediction.TargetPath = "/copyrights?q=" + url.QueryEscape(prediction.Name)
-				}
-			default:
-				tagEntity, _ := findCamieTag(ctx, repository, prediction)
-				if tagEntity != nil {
-					targetID = tagEntity.ID
-				}
-				if targetID > 0 {
-					prediction.TargetPath = fmt.Sprintf("/tags/%d", targetID)
-				} else {
-					prediction.TargetPath = "/tags?q=" + url.QueryEscape(prediction.Name)
-				}
-			}
-			prediction.TargetExists = targetID > 0
-			result[index] = prediction
-		}
-		return nil
-	})
-	return result
+	return enrichNativeCamiePredictionTargets(ctx, predictions)
 }
