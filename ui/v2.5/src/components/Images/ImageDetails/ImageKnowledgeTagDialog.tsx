@@ -576,8 +576,8 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
           Matching metadata from different tagging methods is merged into one
           row. Filename values are authoritative for Characters, Artists and
           Copyrights: Camie can confirm those exact values, while conflicting
-          Camie-only values in that category are ignored. If the filename has
-          no value for a category, Camie can supply it. Booru overlap remains
+          Camie-only values in that category are ignored. If the filename has no
+          value for a category, Camie can supply it. Booru overlap remains
           visible separately. Multiple selected Artists can be attached to the
           same image.
         </div>
