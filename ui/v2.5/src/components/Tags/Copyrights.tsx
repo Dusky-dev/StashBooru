@@ -118,7 +118,11 @@ const CopyrightList: React.FC = () => {
                     src={copyright.image_path}
                     alt=""
                     loading="lazy"
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
                   />
                 </div>
                 <Card.Body>
@@ -136,8 +140,8 @@ const CopyrightList: React.FC = () => {
                     </small>
                   ) : null}
                   <small className="text-muted d-block mt-2">
-                    {copyright.scene_count} Videos · {copyright.image_count} Images ·{" "}
-                    {copyright.performer_count} Characters
+                    {copyright.scene_count} Videos · {copyright.image_count}{" "}
+                    Images · {copyright.performer_count} Characters
                   </small>
                 </Card.Body>
               </Card>
@@ -336,7 +340,10 @@ const CopyrightEditor: React.FC<{
     <div className="container-fluid py-3">
       {create ? (
         <div className="d-flex align-items-center mb-3">
-          <Button variant="secondary" onClick={() => history.push("/copyrights")}>
+          <Button
+            variant="secondary"
+            onClick={() => history.push("/copyrights")}
+          >
             Back
           </Button>
           <h2 className="mb-0 ml-3">New Copyright</h2>
@@ -463,8 +470,12 @@ const CopyrightEditor: React.FC<{
                   isMulti
                   isLoading={imageChoices.loading}
                   options={imageOptions}
-                  value={imageOptions.filter((item) => imageIDs.includes(item.value))}
-                  onChange={(items) => setImageIDs(items.map((item) => item.value))}
+                  value={imageOptions.filter((item) =>
+                    imageIDs.includes(item.value)
+                  )}
+                  onChange={(items) =>
+                    setImageIDs(items.map((item) => item.value))
+                  }
                   placeholder="Select Images"
                   classNamePrefix="react-select"
                 />
@@ -475,8 +486,12 @@ const CopyrightEditor: React.FC<{
                   isMulti
                   isLoading={sceneChoices.loading}
                   options={sceneOptions}
-                  value={sceneOptions.filter((item) => sceneIDs.includes(item.value))}
-                  onChange={(items) => setSceneIDs(items.map((item) => item.value))}
+                  value={sceneOptions.filter((item) =>
+                    sceneIDs.includes(item.value)
+                  )}
+                  onChange={(items) =>
+                    setSceneIDs(items.map((item) => item.value))
+                  }
                   placeholder="Select Videos"
                   classNamePrefix="react-select"
                 />
@@ -566,7 +581,12 @@ const CopyrightDetail: React.FC = () => {
             <img
               src={copyright.image_path}
               alt=""
-              style={{ width: "100%", height: "100%", minHeight: 260, objectFit: "cover" }}
+              style={{
+                width: "100%",
+                height: "100%",
+                minHeight: 260,
+                objectFit: "cover",
+              }}
             />
           </Col>
           <Col md={8} xl={9}>
@@ -575,7 +595,9 @@ const CopyrightDetail: React.FC = () => {
                 <div>
                   <h2 className="mb-1">{copyright.name}</h2>
                   {copyright.aliases.length > 0 ? (
-                    <div className="text-muted">{copyright.aliases.join(" · ")}</div>
+                    <div className="text-muted">
+                      {copyright.aliases.join(" · ")}
+                    </div>
                   ) : null}
                 </div>
                 <div className="ml-auto d-flex align-items-center">
@@ -632,12 +654,20 @@ const CopyrightDetail: React.FC = () => {
           <Row className="pt-3">
             {copyright.scenes.map((scene) => (
               <Col key={scene.id} sm={6} lg={4} xl={3} className="mb-3">
-                <Card as={Link} to={`/scenes/${scene.id}`} className="h-100 text-reset">
+                <Card
+                  as={Link}
+                  to={`/scenes/${scene.id}`}
+                  className="h-100 text-reset"
+                >
                   {scene.paths.screenshot ? (
                     <img
                       src={scene.paths.screenshot}
                       alt=""
-                      style={{ width: "100%", aspectRatio: "16 / 9", objectFit: "cover" }}
+                      style={{
+                        width: "100%",
+                        aspectRatio: "16 / 9",
+                        objectFit: "cover",
+                      }}
                     />
                   ) : null}
                   <Card.Body>
@@ -655,11 +685,21 @@ const CopyrightDetail: React.FC = () => {
           <Row className="pt-3">
             {copyright.images.map((imageItem) => (
               <Col key={imageItem.id} sm={6} lg={4} xl={3} className="mb-3">
-                <Card as={Link} to={`/images/${imageItem.id}`} className="h-100 text-reset">
+                <Card
+                  as={Link}
+                  to={`/images/${imageItem.id}`}
+                  className="h-100 text-reset"
+                >
                   <img
-                    src={imageItem.paths.thumbnail ?? imageItem.paths.image ?? ""}
+                    src={
+                      imageItem.paths.thumbnail ?? imageItem.paths.image ?? ""
+                    }
                     alt=""
-                    style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover" }}
+                    style={{
+                      width: "100%",
+                      aspectRatio: "1 / 1",
+                      objectFit: "cover",
+                    }}
                   />
                   <Card.Body>
                     <TruncatedText
@@ -689,7 +729,11 @@ const CopyrightDetail: React.FC = () => {
                   <img
                     src={performer.image_path ?? undefined}
                     alt=""
-                    style={{ width: "100%", aspectRatio: "3 / 4", objectFit: "cover" }}
+                    style={{
+                      width: "100%",
+                      aspectRatio: "3 / 4",
+                      objectFit: "cover",
+                    }}
                   />
                   <Card.Body>
                     <strong>{performer.name}</strong>
