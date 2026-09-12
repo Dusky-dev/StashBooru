@@ -57,3 +57,16 @@ CREATE TABLE `images_artists` (
     FOREIGN KEY (`studio_id`) REFERENCES `studios` (`id`) ON DELETE CASCADE
 );
 CREATE INDEX `index_images_artists_studio` ON `images_artists` (`studio_id`);
+
+-- Videos historically had a single studio_id too. Use the same compatibility
+-- model as Images: ordered Artists live here and the first Artist is mirrored
+-- to scenes.studio_id for existing APIs/plugins.
+CREATE TABLE `scenes_artists` (
+    `scene_id` INTEGER NOT NULL,
+    `studio_id` INTEGER NOT NULL,
+    `position` INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (`scene_id`, `studio_id`),
+    FOREIGN KEY (`scene_id`) REFERENCES `scenes` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`studio_id`) REFERENCES `studios` (`id`) ON DELETE CASCADE
+);
+CREATE INDEX `index_scenes_artists_studio` ON `scenes_artists` (`studio_id`);
