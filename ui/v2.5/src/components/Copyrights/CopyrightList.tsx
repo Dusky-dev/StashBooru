@@ -25,7 +25,7 @@ const zoomWidths = [280, 340, 480, 640];
 function useFindCopyrightsForList(filter: ListFilterModel) {
   return GQL.useFindCopyrightsQuery({
     variables: { filter: filter.makeFindFilter() },
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "network-only",
   });
 }
 
