@@ -11,7 +11,6 @@ const (
 	studioKey
 	groupKey
 	tagKey
-	copyrightKey
 	downloadKey
 	imageKey
 	pluginKey
