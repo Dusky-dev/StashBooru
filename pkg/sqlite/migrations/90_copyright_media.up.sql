@@ -1,4 +1,4 @@
-ALTER TABLE `copyrights` ADD COLUMN `image_blob` VARCHAR(32) REFERENCES `blobs` (`checksum`);
+ALTER TABLE `copyrights` ADD COLUMN `image_blob` BLOB;
 
 CREATE TABLE `performers_copyrights` (
     `performer_id` INTEGER NOT NULL,
