@@ -2,13 +2,13 @@ import React from "react";
 import * as GQL from "src/core/generated-graphql";
 import TextUtils from "src/utils/text";
 import { GalleryLink, TagLink } from "src/components/Shared/TagLink";
+import { CopyrightLink } from "src/components/Copyrights/CopyrightLink";
 import { PerformerCard } from "src/components/Performers/PerformerCard";
 import { sortPerformers } from "src/core/performers";
 import { FormattedMessage, useIntl } from "react-intl";
 import { PhotographerLink } from "src/components/Shared/Link";
 import { PatchComponent } from "../../../patch";
 import { CustomFields } from "src/components/Shared/CustomFields";
-import { isCopyrightTag } from "src/components/Tags/copyrightFilter";
 
 interface IImageDetailProps {
   image: GQL.ImageDataFragment;
@@ -31,9 +31,9 @@ export const ImageDetailPanel: React.FC<IImageDetailProps> = PatchComponent(
       );
     }
 
-    function renderTags() {
-      const copyrights = props.image.tags.filter((tag) => isCopyrightTag(tag));
-      const tags = props.image.tags.filter((tag) => !isCopyrightTag(tag));
+    function renderMetadata() {
+      const copyrights = props.image.copyrights ?? [];
+      const tags = props.image.tags;
       if (tags.length === 0 && copyrights.length === 0) return;
 
       return (
@@ -47,8 +47,8 @@ export const ImageDetailPanel: React.FC<IImageDetailProps> = PatchComponent(
                 })}{" "}
                 ({copyrights.length})
               </h6>
-              {copyrights.map((tag) => (
-                <TagLink key={tag.id} tag={tag} linkType="image" />
+              {copyrights.map((copyright) => (
+                <CopyrightLink key={copyright.id} copyright={copyright} />
               ))}
             </>
           )}
@@ -153,7 +153,7 @@ export const ImageDetailPanel: React.FC<IImageDetailProps> = PatchComponent(
         <div className="row">
           <div className="col-12">
             {renderDetails()}
-            {renderTags()}
+            {renderMetadata()}
             {renderPerformers()}
             <CustomFields values={props.image.custom_fields} fullWidth />
           </div>
