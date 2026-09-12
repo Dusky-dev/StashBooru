@@ -7,6 +7,14 @@ fragment SlimCopyrightData on Copyright {
   image_path
 }
 
+fragment CopyrightListData on Copyright {
+  ...SlimCopyrightData
+  description
+  image_count
+  scene_count
+  performer_count
+}
+
 fragment CopyrightData on Copyright {
   id
   name
