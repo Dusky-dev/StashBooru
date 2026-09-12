@@ -1,119 +1,160 @@
-# Stash
+# StashBooru
 
-[![Build](https://github.com/stashapp/stash/actions/workflows/build.yml/badge.svg?branch=develop&event=push)](https://github.com/stashapp/stash/actions/workflows/build.yml)
-[![Docker pulls](https://img.shields.io/docker/pulls/stashapp/stash?logo=docker)](https://hub.docker.com/r/stashapp/stash 'DockerHub')
-[![GitHub Sponsors](https://img.shields.io/github/sponsors/stashapp?logo=github)](https://github.com/sponsors/stashapp)
-[![Open Collective backers](https://img.shields.io/opencollective/backers/stashapp?logo=opencollective)](https://opencollective.com/stashapp)
-[![Go Report Card](https://goreportcard.com/badge/github.com/stashapp/stash)](https://goreportcard.com/report/github.com/stashapp/stash)
-[![Discord](https://img.shields.io/discord/559159668438728723.svg?logo=discord)](https://discord.gg/2TsNFKt)
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/stashapp/stash?logo=github)](https://github.com/stashapp/stash/releases/latest)
-[![Codeberg Translate](https://img.shields.io/weblate/progress/stash?server=https%3A%2F%2Ftranslate.codeberg.org&logo=weblate)](https://translate.codeberg.org/engage/stash/)
-[![GitHub issues by-label](https://img.shields.io/github/issues-raw/stashapp/stash/bounty?logo=github)](https://github.com/stashapp/stash/labels/bounty)
+[![Build](https://github.com/Dusky-dev/StashBooru/actions/workflows/build.yml/badge.svg?branch=develop)](https://github.com/Dusky-dev/StashBooru/actions/workflows/build.yml)
+[![Development builds](https://img.shields.io/badge/builds-latest__develop-blue?logo=github)](https://github.com/Dusky-dev/StashBooru/releases/tag/latest_develop)
+[![Docker](https://img.shields.io/badge/docker-GHCR-blue?logo=docker)](https://github.com/Dusky-dev/StashBooru/pkgs/container/stashbooru)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 
-<h3>Stash is a self-hosted webapp written in Go which organizes and serves your diverse content collection, catering to both your SFW and NSFW needs.</h3>
+**StashBooru is an anime/cartoon-oriented fork of [Stash](https://github.com/stashapp/stash), focused on booru-style metadata, mixed image/video libraries, visual similarity, and assisted tagging.**
 
-![Screenshot of Stash web application interface](docs/readme_assets/demo_image.png)
+It keeps Stash's self-hosted Go backend, media scanning, player, galleries, plugins, scrapers, jobs, and general library-management foundation, while changing the UI and metadata model around anime/cartoon collections.
 
-- Stash gathers information about videos in your collection from the internet, and is extensible through the use of community-built plugins for a large number of content producers and sites.
-- Stash supports a wide variety of both video and image formats.
-- You can tag videos and find them later.
-- Stash provides statistics about performers, tags, studios and more.
+> [!IMPORTANT]
+> StashBooru is an independent fork and is under active development. Fork-specific database migrations and metadata types may diverge from upstream Stash. Back up your database before testing new development builds or moving a library between StashBooru and upstream Stash.
 
-You can [watch a SFW demo video](https://vimeo.com/545323354) to see it in action.
+## Terminology
 
-For further information see [Support & Resources](#support--resources) section.
+StashBooru uses anime/booru-oriented names in the UI while some upstream-compatible API and internal names remain unchanged.
 
-## Installing Stash
+| StashBooru | Upstream / internal Stash term |
+| --- | --- |
+| **Video** | Scene |
+| **Character** | Performer |
+| **Artist** | Studio |
+| **Collection** | Group |
+| **Copyright** | Series / franchise / source work |
 
-> [!tip]
-Step-by-step instructions are available at [docs.stashapp.cc/installation](https://docs.stashapp.cc/installation/).
+`Copyright` follows common booru tagging terminology: it means the work, series, franchise, or source a Character/media item belongs to. It is not a legal-rights-holder field.
 
-> [!important]
-> **Windows Users**
->
-> As of version 0.27.0, Stash no longer supports _Windows 7, 8, Server 2008 and Server 2012._  
-> At least Windows 10 or Server 2016 is required.
->
-> **macOS Users**
->
-> As of version 0.29.0, Stash requires _macOS 11 Big Sur_ or later.  
-> As of version 0.32.0, Stash requires _macOS 12 Monterey_ or later.  
-> Older versions can still be run through Docker.
+## What StashBooru adds
 
-<img src="docs/readme_assets/windows_logo.svg" width="100%" height="75"> Windows | <img src="docs/readme_assets/mac_logo.svg" width="100%" height="75"> macOS | <img src="docs/readme_assets/linux_logo.svg" width="100%" height="75"> Linux | <img src="docs/readme_assets/docker_logo.svg" width="100%" height="75"> Docker
-:---:|:---:|:---:|:---:
-[Latest Release](https://github.com/stashapp/stash/releases/latest/download/stash-win.exe) <br /> <sup><sub>[Development Preview](https://github.com/stashapp/stash/releases/download/latest_develop/stash-win.exe)</sub></sup> | [Latest Release](https://github.com/stashapp/stash/releases/latest/download/Stash.app.zip) <br /> <sup><sub>[Development Preview](https://github.com/stashapp/stash/releases/download/latest_develop/Stash.app.zip)</sub></sup> | [Latest Release (amd64)](https://github.com/stashapp/stash/releases/latest/download/stash-linux) <br /> <sup><sub>[Development Preview (amd64)](https://github.com/stashapp/stash/releases/download/latest_develop/stash-linux)</sub></sup> <br /> [More Architectures...](https://github.com/stashapp/stash/releases/latest) | [Instructions](docker/production/README.md) <br /> <sup><sub>[Sample docker-compose.yml](docker/production/docker-compose.yml)</sub></sup>
+### Native anime/booru metadata
 
-Download links for other platforms and architectures are available on the [Releases](https://github.com/stashapp/stash/releases) page.
+- **Copyrights are a first-class metadata category**, separate from ordinary Tags.
+- Copyrights have artwork, names, aliases, details, **Parent Series** and **Sub-series** relationships.
+- Copyrights can be assigned directly to Images, Videos, and Characters.
+- Characters can belong to one or more Copyrights, and Copyright Edit includes bulk Character assignment.
+- Images and Videos can have **multiple Artists**. The first Artist is still mirrored to the legacy primary Studio field where upstream compatibility requires it.
+- Character names such as `Darkness (Konosuba)` can use the suffix as real disambiguation instead of collapsing same-name Characters from different series.
 
-### First Run
+### Unified media browsing
 
-#### Windows/macOS Users: Security Prompt
+StashBooru is designed around mixed libraries rather than treating every media type as a separate island.
 
-On Windows or macOS, running the app might present a security prompt since the application binary isn't yet signed. 
+- Unified **All** media views combine relevant Images, Videos, Galleries, and Collections on supported entity pages.
+- Grid, List, Wall, and Tagger-style views are available where supported.
+- View mode, zoom, media tabs, and reference-comparison preferences are remembered per view.
+- Image and Video file information is shown directly in **Details** instead of living in a redundant File Info tab.
 
-- On Windows, bypass this by clicking "more info" and then the "run anyway" button.
-- On macOS, Control+Click the app, click "Open", and then "Open" again.
+### Image Tagging
 
-#### ffmpeg
+The old Camie-only metadata workflow has grown into **Image Tagging**, where several sources can be reviewed together before anything is applied.
 
-Stash requires FFmpeg. If you don't have it installed, Stash will prompt you to download a copy during setup. It is recommended that Linux users install `ffmpeg` from their distro's package manager.
+Supported sources include:
 
-## Usage
+- **Local filename metadata** using a configurable filename layout. Supported tokens include `%artist%`, `%copyright%`, `%character%`, `%md5%`, and `%ext%`.
+- **Booru MD5 lookup** against Danbooru, Gelbooru, Yande.re, Konachan, and Safebooru.
+- Optional **Camie Tagger v2** inference for Character, Artist, Copyright, general, and meta predictions.
 
-### Quickstart Guide
+Image Tagging keeps source provenance visible (`local`, `booru`, `Camie`, and existing local entities), lets you choose exactly what to apply, can create missing metadata, and supports bulk tagging jobs. Local filename identity metadata is authoritative for Characters, Artists, and Copyrights when it is present, preventing conflicting Camie identity predictions from being mixed into the same category.
 
-Stash is a web-based application. Once the application is running, the interface is available (by default) from `http://localhost:9999`.
+Filename-derived Copyright values can also represent multiple series with `+`, while names containing literal repeated/trailing plus signs such as `C++` are preserved.
 
-On first run, Stash will prompt you for some configuration options and media directories to index, called "Scanning" in Stash. After scanning, your media will be available for browsing, curating, editing, and tagging.
+### Visual similarity and reference comparison
 
-Stash can pull metadata (performers, tags, descriptions, studios, and more) directly from many sites through the use of [scrapers](https://github.com/stashapp/stash/blob/develop/ui/v2.5/src/docs/en/Manual/Scraping.md), which integrate directly into Stash. Identifying an entire collection will typically require a mix of multiple sources:
-- The stashapp team maintains [StashDB](https://stashdb.org/), a crowd-sourced repository of scene, studio, and performer information. Connecting it to Stash will allow you to automatically identify much of a typical media collection. It runs on our stash-box software and is primarily focused on mainstream digital scenes and studios. Instructions, invite codes, and more can be found in this guide to [Accessing StashDB](https://guidelines.stashdb.org/docs/faq_getting-started/stashdb/accessing-stashdb/).
-- Several community-managed stash-box databases can also be connected to Stash in a similar manner. Each one serves a slightly different niche and follows their own methodology. A rundown of each stash-box, their differences, and the information you need to sign up can be found in the [Metadata Sources](https://docs.stashapp.cc/metadata-sources/stash-box-instances/) section of the documentation.
-- Many community-maintained scrapers can also be downloaded, installed, and updated from within Stash, allowing you to pull data from a wide range of other websites and databases. They can be found by navigating to `Settings → Metadata Providers → Available Scrapers → Community (stable)`. These can be trickier to use than a stash-box because every scraper works a little differently. For more information, please visit the [CommunityScrapers repository](https://github.com/stashapp/CommunityScrapers).
-- All of the above methods of scraping data into Stash are also covered in more detail in our [Guide to Scraping](https://docs.stashapp.cc/beginner-guides/guide-to-scraping/).
+Image similarity uses an optional **EVA02 embedding index** instead of relying only on pHash.
 
-<sub>[StashDB](http://stashdb.org) is the canonical instance of our open source metadata API, [stash-box](https://github.com/stashapp/stash-box).</sub>
+- Local ONNX inference or a separate remote inference worker.
+- Embeddings and Stash metadata remain stored in StashBooru even when inference is remote.
+- Image-card **Find similar** uses cosine similarity over the embedding index.
+- Large libraries are supported beyond sqlite-vec's 4096-result KNN limit.
+- Reference previews support **Selected image**, **Both images**, and a draggable **Slider** comparison mode.
+- Comparison pan/zoom is synchronized and the reference remains stationary while browsing matches.
+- File size, resolution, duration, and bitrate are shown in comparison views when applicable.
 
-## Support & Resources
+The visual-similarity model is opt-in and is never downloaded silently.
 
-Need help or want to get involved? Start with the documentation, then reach out to the community if you need further assistance.
+## Installation
 
-### Documentation
+### Development builds
 
-- [Official documentation](https://docs.stashapp.cc) - official guides guides and troubleshooting.
-- [In-app manual](https://docs.stashapp.cc/in-app-manual) press <kbd>Shift</kbd> + <kbd>?</kbd> in the app or view the manual online.
-- [FAQ](https://discourse.stashapp.cc/c/support/faq/28) - common questions and answers.
-- [Community wiki](https://discourse.stashapp.cc/tags/c/community-wiki/22/stash) - guides, how-to’s and tips.
-  
-### Community & Discussion
+StashBooru currently publishes development builds from `develop` to the [`latest_develop`](https://github.com/Dusky-dev/StashBooru/releases/tag/latest_develop) prerelease.
 
-- [Community forum](https://discourse.stashapp.cc) - community support, feature requests and discussions.
-- [Discord](https://discord.gg/2TsNFKt) - real-time chat and community support.
-- [GitHub discussions](https://github.com/stashapp/stash/discussions) - community support and feature discussions.
-- [Lemmy community](https://discuss.online/c/stashapp) - board-style community space.
+| Platform | Development build |
+| --- | --- |
+| Windows | [stash-win.exe](https://github.com/Dusky-dev/StashBooru/releases/download/latest_develop/stash-win.exe) |
+| macOS | [Stash.app.zip](https://github.com/Dusky-dev/StashBooru/releases/download/latest_develop/Stash.app.zip) |
+| Linux x86_64 | [stash-linux](https://github.com/Dusky-dev/StashBooru/releases/download/latest_develop/stash-linux) |
+| Other Linux architectures / FreeBSD | [Development release assets](https://github.com/Dusky-dev/StashBooru/releases/tag/latest_develop) |
 
-### Community Scrapers & Plugins
+Once running, the web UI is available at `http://localhost:9999` by default, just like upstream Stash.
 
-- [Metadata sources](https://docs.stashapp.cc/metadata-sources/)
-- [Plugins](https://docs.stashapp.cc/plugins/)
-- [Themes](https://docs.stashapp.cc/themes/)
-- [Other projects](https://docs.stashapp.cc/other-projects/)
+### Docker
 
-## Architecture
+The `develop` branch publishes an amd64 image to GitHub Container Registry:
 
-You can find an overview of Stash's architecture in the [ARCHITECTURE.md](docs/ARCHITECTURE.md) document.
+```text
+ghcr.io/dusky-dev/stashbooru:develop
+```
 
-## Contributing
+For an existing Stash Docker setup, keep your normal mounts/configuration and replace the image with the StashBooru image. The upstream [Docker documentation](docker/production/README.md) is still useful for the base container layout, but use the StashBooru image above instead of `stashapp/stash`.
 
-We welcome contributions and help from all humans who want to improve the project.
+### FFmpeg
 
-Before contributing, please read the [Contributing](docs/CONTRIBUTING.md) document to understand our guidelines and processes for contributing to the project.
+StashBooru retains Stash's FFmpeg dependency. Linux users should normally install FFmpeg from their distribution package manager; container builds include the runtime pieces expected by the fork.
 
-You can learn about setting up a local development environment in the [Development](docs/DEVELOPMENT.md) document. 
+## Optional tagging and similarity models
 
-## Translation
+### EVA02 visual similarity
 
-The widget below shows the current translation status of Stash across all supported languages. If you want to help us translate Stash, you can make an account at [Codeberg Translate](https://translate.codeberg.org/projects/stash/stash/) to contribute to new or existing languages. Thanks!
+Open **Settings → System → Visual Similarity** to see worker/model/index status. The model can be installed explicitly from the UI and the image library can then be indexed. A remote embedding worker can also be configured if inference should run on another machine/GPU.
 
-[![Translation status](https://translate.codeberg.org/widget/stash/stash/multi-auto.svg)](https://translate.codeberg.org/engage/stash/)
+### Camie Tagger v2
+
+Camie is optional and is **not bundled or automatically downloaded**. For local inference provide:
+
+```text
+camie-tagger-v2.onnx
+camie-tagger-v2-metadata.json
+```
+
+With the standard Docker cache layout, the local worker expects these under:
+
+```text
+/cache/visual-embeddings/camie/
+```
+
+The Visual Similarity/Image Tagging UI reports the paths and readiness detected by the running server. Remote inference can be used instead when configured.
+
+## Using StashBooru
+
+The normal Stash workflow still applies: add your media directories, scan the library, then browse, curate, edit, tag, and organize it from the web UI. Stash scrapers, plugins, galleries, jobs, media playback, and most configuration concepts remain relevant.
+
+Because the fork changes terminology and adds native Copyright/series relationships, upstream documentation may still use **Scene**, **Performer**, **Studio**, and **Group** where StashBooru displays **Video**, **Character**, **Artist**, and **Collection**.
+
+## Support and documentation
+
+For **StashBooru-specific bugs and feature work**, use this repository's [Issues](https://github.com/Dusky-dev/StashBooru/issues) and [Pull Requests](https://github.com/Dusky-dev/StashBooru/pulls).
+
+For the underlying Stash server, configuration, scrapers, plugins, and general usage, the upstream resources remain valuable:
+
+- [Stash documentation](https://docs.stashapp.cc/)
+- [Stash repository](https://github.com/stashapp/stash)
+- [Community scrapers](https://github.com/stashapp/CommunityScrapers)
+- [Plugins documentation](https://docs.stashapp.cc/plugins/)
+
+## Development
+
+StashBooru follows the Stash codebase closely enough that the existing developer documentation remains the starting point:
+
+- [Development setup](docs/DEVELOPMENT.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Contributing](docs/CONTRIBUTING.md)
+
+The fork intentionally preserves upstream/internal API names in a number of places for compatibility, so contributors should not mechanically rename every `scene`, `performer`, `studio`, or `group` symbol just because the UI uses different terminology.
+
+## Upstream and license
+
+StashBooru is forked from [stashapp/stash](https://github.com/stashapp/stash) and remains licensed under the **GNU Affero General Public License v3.0**. See [LICENSE](LICENSE).
+
+Thanks to the Stash project and its contributors for the foundation this fork builds on.
