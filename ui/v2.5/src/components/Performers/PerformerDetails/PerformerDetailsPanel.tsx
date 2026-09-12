@@ -1,12 +1,7 @@
-import React, { PropsWithChildren, useEffect, useState } from "react";
-import { Button } from "react-bootstrap";
+import React, { PropsWithChildren } from "react";
 import { useIntl } from "react-intl";
 import { TagLink } from "src/components/Shared/TagLink";
 import { CopyrightLink } from "src/components/Copyrights/CopyrightLink";
-import {
-  Copyright,
-  CopyrightSelect,
-} from "src/components/Copyrights/CopyrightSelect";
 import * as GQL from "src/core/generated-graphql";
 import TextUtils from "src/utils/text";
 import { DetailItem } from "src/components/Shared/DetailItem";
@@ -22,7 +17,6 @@ import {
 } from "../PerformerList";
 import { PatchComponent } from "src/patch";
 import { CustomFields } from "src/components/Shared/CustomFields";
-import { useToast } from "src/hooks/Toast";
 
 interface IPerformerDetails {
   performer: GQL.PerformerDataFragment;
@@ -39,16 +33,6 @@ export const PerformerDetailsPanel: React.FC<IPerformerDetails> =
   PatchComponent("PerformerDetailsPanel", (props) => {
     const { performer, fullWidth, collapsed } = props;
     const intl = useIntl();
-    const Toast = useToast();
-    const [updateCopyrights] = GQL.usePerformerCopyrightsUpdateMutation();
-    const [editingCopyrights, setEditingCopyrights] = useState(false);
-    const [copyrights, setCopyrights] = useState<Copyright[]>(
-      performer.copyrights ?? []
-    );
-
-    useEffect(() => {
-      setCopyrights(performer.copyrights ?? []);
-    }, [performer.copyrights]);
 
     function renderTagsField() {
       if (!performer.tags.length) {
@@ -63,68 +47,17 @@ export const PerformerDetailsPanel: React.FC<IPerformerDetails> =
       );
     }
 
-    async function saveCopyrights() {
-      try {
-        await updateCopyrights({
-          variables: {
-            performerID: performer.id,
-            copyrightIDs: copyrights.map((item) => item.id),
-          },
-        });
-        setEditingCopyrights(false);
-        Toast.success("Updated Character Copyrights.");
-      } catch (error) {
-        Toast.error(error);
-      }
-    }
-
     function renderCopyrightsField() {
-      if (editingCopyrights) {
-        return (
-          <div className="w-100">
-            <CopyrightSelect
-              isMulti
-              values={copyrights}
-              onSelect={setCopyrights}
-            />
-            <div className="mt-2">
-              <Button size="sm" variant="primary" onClick={saveCopyrights}>
-                Save
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                className="ml-2"
-                onClick={() => {
-                  setCopyrights(performer.copyrights ?? []);
-                  setEditingCopyrights(false);
-                }}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        );
+      if (!(performer.copyrights ?? []).length) {
+        return;
       }
 
       return (
-        <div className="w-100">
-          <div className="mb-2">
-            {(performer.copyrights ?? []).map((copyright) => (
-              <CopyrightLink key={copyright.id} copyright={copyright} />
-            ))}
-            {(performer.copyrights ?? []).length === 0 ? (
-              <span className="text-muted">None</span>
-            ) : null}
-          </div>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => setEditingCopyrights(true)}
-          >
-            Edit Copyrights
-          </Button>
-        </div>
+        <>
+          {(performer.copyrights ?? []).map((copyright) => (
+            <CopyrightLink key={copyright.id} copyright={copyright} />
+          ))}
+        </>
       );
     }
 

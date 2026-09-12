@@ -53,6 +53,9 @@ fragment CopyrightData on Copyright {
     id
     name
     disambiguation
+    alias_list
     image_path
+    birthdate
+    death_date
   }
 }

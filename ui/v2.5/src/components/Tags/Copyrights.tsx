@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import {
-  Badge,
   Button,
   Card,
   Col,
@@ -12,40 +11,44 @@ import {
   Tabs,
 } from "react-bootstrap";
 import { Link, Route, Switch, useHistory, useParams } from "react-router-dom";
-import Select from "react-select";
+import cx from "classnames";
 
 import * as GQL from "src/core/generated-graphql";
 import {
   Copyright,
   CopyrightSelect,
 } from "src/components/Copyrights/CopyrightSelect";
-import { ImageInput } from "src/components/Shared/ImageInput";
+import { CopyrightLink } from "src/components/Copyrights/CopyrightLink";
+import { DetailsEditNavbar } from "src/components/Shared/DetailsEditNavbar";
+import { DetailImage } from "src/components/Shared/DetailImage";
+import { DetailItem } from "src/components/Shared/DetailItem";
 import { FavoriteIcon } from "src/components/Shared/FavoriteIcon";
+import { BackgroundImage } from "src/components/Shared/DetailsPage/BackgroundImage";
+import { AliasList } from "src/components/Shared/DetailsPage/AliasList";
+import { DetailTitle } from "src/components/Shared/DetailsPage/DetailTitle";
+import { HeaderImage } from "src/components/Shared/DetailsPage/HeaderImage";
+import { ExpandCollapseButton } from "src/components/Shared/CollapseButton";
 import { TruncatedText } from "src/components/Shared/TruncatedText";
+import {
+  Performer,
+  PerformerSelect,
+} from "src/components/Performers/PerformerSelect";
+import { useConfigurationContext } from "src/hooks/Config";
 import { useToast } from "src/hooks/Toast";
 import ImageUtils from "src/utils/image";
 
 interface CopyrightFormValues {
   name: string;
-  sortName: string;
   description: string;
   aliases: string;
-  favorite: boolean;
   parents: Copyright[];
   children: Copyright[];
 }
 
-interface SelectOption {
-  value: string;
-  label: string;
-}
-
 const emptyValues: CopyrightFormValues = {
   name: "",
-  sortName: "",
   description: "",
   aliases: "",
-  favorite: false,
   parents: [],
   children: [],
 };
@@ -55,15 +58,6 @@ function aliasesFromText(value: string) {
     .split(/[,\n]/)
     .map((item) => item.trim())
     .filter(Boolean);
-}
-
-function relationFilter(sort: string): GQL.FindFilterType {
-  return {
-    page: 1,
-    per_page: -1,
-    sort,
-    direction: GQL.SortDirectionEnum.Asc,
-  };
 }
 
 const CopyrightList: React.FC = () => {
@@ -99,45 +93,28 @@ const CopyrightList: React.FC = () => {
       {loading ? (
         <Spinner animation="border" />
       ) : (
-        <Row>
+        <Row className="justify-content-center">
           {copyrights.map((copyright) => (
             <Col key={copyright.id} sm={6} lg={4} xl={3} className="mb-3">
               <Card
                 as={Link}
                 to={`/copyrights/${copyright.id}`}
-                className="h-100 text-reset text-decoration-none"
+                className="tag-card h-100 text-reset text-decoration-none"
               >
-                <div
-                  style={{
-                    aspectRatio: "16 / 9",
-                    overflow: "hidden",
-                    background: "var(--secondary)",
-                  }}
-                >
-                  <img
-                    src={copyright.image_path}
-                    alt=""
-                    loading="lazy"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
-                  />
-                </div>
+                <img
+                  className="tag-card-image"
+                  src={copyright.image_path}
+                  alt={copyright.name}
+                  loading="lazy"
+                />
                 <Card.Body>
-                  <div className="d-flex align-items-center">
-                    <strong>{copyright.name}</strong>
-                    {copyright.favorite ? (
-                      <span className="ml-auto">
-                        <FavoriteIcon favorite />
-                      </span>
-                    ) : null}
-                  </div>
-                  {copyright.aliases.length > 0 ? (
-                    <small className="text-muted d-block mt-1">
-                      {copyright.aliases.join(", ")}
-                    </small>
+                  <Card.Title>{copyright.name}</Card.Title>
+                  {copyright.description ? (
+                    <TruncatedText
+                      className="tag-description"
+                      text={copyright.description}
+                      lineCount={3}
+                    />
                   ) : null}
                   <small className="text-muted d-block mt-2">
                     {copyright.scene_count} Videos · {copyright.image_count}{" "}
@@ -148,9 +125,7 @@ const CopyrightList: React.FC = () => {
             </Col>
           ))}
           {copyrights.length === 0 ? (
-            <Col>
-              <div className="text-muted">No Copyrights found.</div>
-            </Col>
+            <Col className="text-muted">No Copyrights found.</Col>
           ) : null}
         </Row>
       )}
@@ -158,162 +133,148 @@ const CopyrightList: React.FC = () => {
   );
 };
 
-const CopyrightEditor: React.FC<{
+const CopyrightDetailsPanel: React.FC<{
+  copyright: GQL.CopyrightDataFragment;
+  fullWidth?: boolean;
+}> = ({ copyright, fullWidth }) => {
+  function renderRelations(items: Copyright[]) {
+    if (items.length === 0) return;
+    return (
+      <>
+        {items.map((item) => (
+          <CopyrightLink key={item.id} copyright={item} />
+        ))}
+      </>
+    );
+  }
+
+  return (
+    <div className="detail-group">
+      <DetailItem
+        id="details"
+        value={copyright.description}
+        fullWidth={fullWidth}
+      />
+      <DetailItem
+        id="parent-series"
+        label="Parent Series"
+        value={renderRelations(copyright.parents)}
+        fullWidth={fullWidth}
+      />
+      <DetailItem
+        id="sub-series"
+        label="Sub-series"
+        value={renderRelations(copyright.children)}
+        fullWidth={fullWidth}
+      />
+    </div>
+  );
+};
+
+const CopyrightEditPanel: React.FC<{
   copyright?: GQL.CopyrightDataFragment;
   create?: boolean;
-  onSaved?: (copyright: GQL.CopyrightDataFragment) => void;
-  onCancel?: () => void;
-}> = ({ copyright, create = false, onSaved, onCancel }) => {
+  onSaved: (copyright: GQL.CopyrightDataFragment) => void;
+  onCancel: () => void;
+  setImage: (image?: string | null) => void;
+  setEncodingImage: (loading: boolean) => void;
+}> = ({
+  copyright,
+  create = false,
+  onSaved,
+  onCancel,
+  setImage,
+  setEncodingImage,
+}) => {
   const history = useHistory();
   const Toast = useToast();
   const [createCopyright] = GQL.useCopyrightCreateMutation();
   const [updateCopyright] = GQL.useCopyrightUpdateMutation();
   const [destroyCopyright] = GQL.useCopyrightDestroyMutation();
-  const [updateImages] = GQL.useCopyrightImagesUpdateMutation();
-  const [updateScenes] = GQL.useCopyrightScenesUpdateMutation();
   const [updatePerformers] = GQL.useCopyrightPerformersUpdateMutation();
-
   const [values, setValues] = useState<CopyrightFormValues>(emptyValues);
-  const [image, setImage] = useState<string | null>();
+  const [performers, setPerformers] = useState<Performer[]>([]);
+  const [imageValue, setImageValue] = useState<string | null>();
   const [imageTouched, setImageTouched] = useState(false);
-  const [imageIDs, setImageIDs] = useState<string[]>([]);
-  const [sceneIDs, setSceneIDs] = useState<string[]>([]);
-  const [performerIDs, setPerformerIDs] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
-  const imageChoices = GQL.useFindImagesQuery({
-    variables: { filter: relationFilter("title") },
-  });
-  const sceneChoices = GQL.useFindScenesQuery({
-    variables: { filter: relationFilter("title") },
-  });
-  const performerChoices = GQL.useFindPerformersQuery({
-    variables: { filter: relationFilter("name") },
-  });
-
   useEffect(() => {
-    if (create || !copyright) {
+    if (!copyright) {
       setValues(emptyValues);
-      setImageIDs([]);
-      setSceneIDs([]);
-      setPerformerIDs([]);
-      setImage(undefined);
+      setPerformers([]);
+      setImageValue(undefined);
       setImageTouched(false);
       return;
     }
     setValues({
       name: copyright.name,
-      sortName: copyright.sort_name,
       description: copyright.description,
       aliases: copyright.aliases.join("\n"),
-      favorite: copyright.favorite,
       parents: copyright.parents,
       children: copyright.children,
     });
-    setImageIDs(copyright.images.map((item) => item.id));
-    setSceneIDs(copyright.scenes.map((item) => item.id));
-    setPerformerIDs(copyright.performers.map((item) => item.id));
-    setImage(undefined);
+    setPerformers(copyright.performers);
+    setImageValue(undefined);
     setImageTouched(false);
-  }, [copyright, create]);
-
-  const imageOptions = useMemo<SelectOption[]>(
-    () =>
-      (imageChoices.data?.findImages.images ?? []).map((item) => ({
-        value: item.id,
-        label: item.title?.trim() || `Image #${item.id}`,
-      })),
-    [imageChoices.data]
-  );
-  const sceneOptions = useMemo<SelectOption[]>(
-    () =>
-      (sceneChoices.data?.findScenes.scenes ?? []).map((item) => ({
-        value: item.id,
-        label: item.title?.trim() || `Video #${item.id}`,
-      })),
-    [sceneChoices.data]
-  );
-  const performerOptions = useMemo<SelectOption[]>(
-    () =>
-      (performerChoices.data?.findPerformers.performers ?? []).map((item) => ({
-        value: item.id,
-        label: item.disambiguation
-          ? `${item.name} (${item.disambiguation})`
-          : item.name,
-      })),
-    [performerChoices.data]
-  );
+  }, [copyright]);
 
   const encodingImage = ImageUtils.usePasteImage((data) => {
+    setImageValue(data);
     setImage(data);
     setImageTouched(true);
   });
 
+  useEffect(() => {
+    setEncodingImage(encodingImage);
+  }, [encodingImage, setEncodingImage]);
+
+  function setEditedImage(data: string | null) {
+    setImageValue(data);
+    setImage(data);
+    setImageTouched(true);
+  }
+
   function onImageChange(event: React.FormEvent<HTMLInputElement>) {
-    ImageUtils.onImageChange(event, (data) => {
-      setImage(data);
-      setImageTouched(true);
-    });
+    ImageUtils.onImageChange(event, setEditedImage);
   }
 
   async function save() {
     const name = values.name.trim();
     if (!name) return;
+
     setSaving(true);
     try {
-      const common = {
+      const input = {
         name,
-        sort_name: values.sortName.trim(),
         description: values.description,
-        favorite: values.favorite,
         aliases: aliasesFromText(values.aliases),
         parent_ids: values.parents.map((item) => item.id),
         child_ids: values.children.map((item) => item.id),
+        ...(imageTouched ? { image: imageValue } : {}),
       };
 
       let saved: GQL.CopyrightDataFragment | undefined;
       if (create) {
-        const result = await createCopyright({
-          variables: {
-            input: {
-              ...common,
-              image: imageTouched ? image : undefined,
-            },
-          },
-        });
+        const result = await createCopyright({ variables: { input } });
         saved = result.data?.copyrightCreate;
       } else if (copyright) {
         const result = await updateCopyright({
-          variables: {
-            input: {
-              id: copyright.id,
-              ...common,
-              ...(imageTouched ? { image } : {}),
-            },
-          },
+          variables: { input: { id: copyright.id, ...input } },
         });
         saved = result.data?.copyrightUpdate;
       }
 
       if (!saved) return;
-      await Promise.all([
-        updateImages({
-          variables: { copyrightID: saved.id, imageIDs },
-        }),
-        updateScenes({
-          variables: { copyrightID: saved.id, sceneIDs },
-        }),
-        updatePerformers({
-          variables: { copyrightID: saved.id, performerIDs },
-        }),
-      ]);
+
+      await updatePerformers({
+        variables: {
+          copyrightID: saved.id,
+          performerIDs: performers.map((item) => item.id),
+        },
+      });
 
       Toast.success(`Saved Copyright “${saved.name}”.`);
-      if (create) {
-        history.replace(`/copyrights/${saved.id}`);
-      } else {
-        onSaved?.(saved);
-      }
+      onSaved(saved);
     } catch (error) {
       Toast.error(error);
     } finally {
@@ -323,7 +284,6 @@ const CopyrightEditor: React.FC<{
 
   async function destroy() {
     if (!copyright) return;
-    if (!window.confirm(`Delete Copyright “${values.name}”?`)) return;
     setSaving(true);
     try {
       await destroyCopyright({ variables: { id: copyright.id } });
@@ -334,400 +294,214 @@ const CopyrightEditor: React.FC<{
     }
   }
 
-  const currentImage = imageTouched ? image : copyright?.image_path;
+  const field = (label: React.ReactNode, control: React.ReactNode) => (
+    <Form.Group as={Row}>
+      <Form.Label column sm={3} xl={2}>
+        {label}
+      </Form.Label>
+      <Col sm={9} xl={7}>
+        {control}
+      </Col>
+    </Form.Group>
+  );
 
   return (
-    <div className="container-fluid py-3">
-      {create ? (
-        <div className="d-flex align-items-center mb-3">
-          <Button
-            variant="secondary"
-            onClick={() => history.push("/copyrights")}
-          >
-            Back
-          </Button>
-          <h2 className="mb-0 ml-3">New Copyright</h2>
-        </div>
-      ) : null}
-      <Row>
-        <Col md={4} xl={3} className="mb-3">
-          <Card>
-            <div
-              style={{
-                aspectRatio: "3 / 4",
-                overflow: "hidden",
-                background: "var(--secondary)",
-              }}
-            >
-              {currentImage ? (
-                <img
-                  src={currentImage}
-                  alt=""
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
-              ) : null}
-            </div>
-            <Card.Body>
-              {encodingImage ? <Spinner animation="border" size="sm" /> : null}
-              <ImageInput
-                isEditing
-                onImageChange={onImageChange}
-                onImageURL={(url) => {
-                  setImage(url);
-                  setImageTouched(true);
-                }}
-                onReset={() => {
-                  setImage(null);
-                  setImageTouched(true);
-                }}
-              />
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={8} xl={9}>
-          <Form.Group>
-            <Form.Label>Name</Form.Label>
-            <Form.Control
-              value={values.name}
-              onChange={(event) =>
-                setValues({ ...values, name: event.currentTarget.value })
-              }
-            />
-          </Form.Group>
-          <Form.Group>
-            <Form.Label>Aliases</Form.Label>
-            <Form.Control
-              as="textarea"
-              rows={3}
-              value={values.aliases}
-              onChange={(event) =>
-                setValues({ ...values, aliases: event.currentTarget.value })
-              }
-              placeholder="One alias per line"
-            />
-          </Form.Group>
-          <Form.Group>
-            <Form.Label>Details</Form.Label>
-            <Form.Control
-              as="textarea"
-              rows={6}
-              value={values.description}
-              onChange={(event) =>
-                setValues({ ...values, description: event.currentTarget.value })
-              }
-            />
-          </Form.Group>
-          <Form.Group>
-            <Form.Label>Sort name</Form.Label>
-            <Form.Control
-              value={values.sortName}
-              onChange={(event) =>
-                setValues({ ...values, sortName: event.currentTarget.value })
-              }
-            />
-          </Form.Group>
-          <Form.Check
-            className="mb-3"
-            type="checkbox"
-            label="Favorite"
-            checked={values.favorite}
+    <>
+      {create ? <h2>New Copyright</h2> : null}
+      <Form
+        noValidate
+        onSubmit={(event) => event.preventDefault()}
+        id="copyright-edit"
+      >
+        {field(
+          "Name",
+          <Form.Control
+            value={values.name}
             onChange={(event) =>
-              setValues({ ...values, favorite: event.currentTarget.checked })
+              setValues({ ...values, name: event.currentTarget.value })
             }
           />
+        )}
+        {field(
+          "Aliases",
+          <Form.Control
+            as="textarea"
+            rows={3}
+            value={values.aliases}
+            onChange={(event) =>
+              setValues({ ...values, aliases: event.currentTarget.value })
+            }
+            placeholder="One alias per line"
+          />
+        )}
+        {field(
+          "Details",
+          <Form.Control
+            as="textarea"
+            rows={5}
+            value={values.description}
+            onChange={(event) =>
+              setValues({ ...values, description: event.currentTarget.value })
+            }
+          />
+        )}
+        {field(
+          "Parent Series",
+          <CopyrightSelect
+            isMulti
+            values={values.parents}
+            excludeIds={[
+              ...(copyright ? [copyright.id] : []),
+              ...values.children.map((item) => item.id),
+            ]}
+            onSelect={(parents) => setValues({ ...values, parents })}
+            creatable={false}
+          />
+        )}
+        {field(
+          "Sub-series",
+          <CopyrightSelect
+            isMulti
+            values={values.children}
+            excludeIds={[
+              ...(copyright ? [copyright.id] : []),
+              ...values.parents.map((item) => item.id),
+            ]}
+            onSelect={(children) => setValues({ ...values, children })}
+            creatable={false}
+          />
+        )}
+      </Form>
 
-          <Row>
-            <Col lg={6}>
-              <Form.Group>
-                <Form.Label>Parent Copyrights</Form.Label>
-                <CopyrightSelect
-                  isMulti
-                  values={values.parents}
-                  excludeIds={copyright ? [copyright.id] : []}
-                  onSelect={(parents) => setValues({ ...values, parents })}
-                />
-              </Form.Group>
-            </Col>
-            <Col lg={6}>
-              <Form.Group>
-                <Form.Label>Child Copyrights</Form.Label>
-                <CopyrightSelect
-                  isMulti
-                  values={values.children}
-                  excludeIds={copyright ? [copyright.id] : []}
-                  onSelect={(children) => setValues({ ...values, children })}
-                />
-              </Form.Group>
-            </Col>
-          </Row>
-
-          <Card className="mt-3">
-            <Card.Header>Associated media</Card.Header>
-            <Card.Body>
-              <Form.Group>
-                <Form.Label>Images</Form.Label>
-                <Select<SelectOption, true>
-                  isMulti
-                  isLoading={imageChoices.loading}
-                  options={imageOptions}
-                  value={imageOptions.filter((item) =>
-                    imageIDs.includes(item.value)
-                  )}
-                  onChange={(items) =>
-                    setImageIDs(items.map((item) => item.value))
-                  }
-                  placeholder="Select Images"
-                  classNamePrefix="react-select"
-                />
-              </Form.Group>
-              <Form.Group>
-                <Form.Label>Videos</Form.Label>
-                <Select<SelectOption, true>
-                  isMulti
-                  isLoading={sceneChoices.loading}
-                  options={sceneOptions}
-                  value={sceneOptions.filter((item) =>
-                    sceneIDs.includes(item.value)
-                  )}
-                  onChange={(items) =>
-                    setSceneIDs(items.map((item) => item.value))
-                  }
-                  placeholder="Select Videos"
-                  classNamePrefix="react-select"
-                />
-              </Form.Group>
-              <Form.Group className="mb-0">
-                <Form.Label>Characters</Form.Label>
-                <Select<SelectOption, true>
-                  isMulti
-                  isLoading={performerChoices.loading}
-                  options={performerOptions}
-                  value={performerOptions.filter((item) =>
-                    performerIDs.includes(item.value)
-                  )}
-                  onChange={(items) =>
-                    setPerformerIDs(items.map((item) => item.value))
-                  }
-                  placeholder="Select Characters"
-                  classNamePrefix="react-select"
-                />
-              </Form.Group>
-            </Card.Body>
-          </Card>
-
-          <div className="mt-3 d-flex">
-            <Button disabled={saving || !values.name.trim()} onClick={save}>
-              Save
-            </Button>
-            {!create ? (
-              <Button
-                variant="secondary"
-                className="ml-2"
-                disabled={saving}
-                onClick={onCancel}
-              >
-                Cancel
-              </Button>
-            ) : null}
-            {copyright ? (
-              <Button
-                variant="danger"
-                className="ml-auto"
-                disabled={saving}
-                onClick={destroy}
-              >
-                Delete
-              </Button>
-            ) : null}
+      <Tabs
+        defaultActiveKey="characters"
+        id="copyright-edit-tabs"
+        className="mt-3"
+      >
+        <Tab eventKey="characters" title={`Characters (${performers.length})`}>
+          <div className="pt-3">
+            <PerformerSelect
+              isMulti
+              values={performers}
+              onSelect={setPerformers}
+              noSelectionString="Select Characters"
+            />
           </div>
-        </Col>
-      </Row>
-    </div>
+        </Tab>
+      </Tabs>
+
+      <DetailsEditNavbar
+        objectName={values.name || "Copyright"}
+        classNames="col-xl-9 mt-3"
+        isNew={create}
+        isEditing
+        onToggleEdit={onCancel}
+        onSave={save}
+        saveDisabled={saving || !values.name.trim()}
+        onImageChange={onImageChange}
+        onImageChangeURL={setEditedImage}
+        onClearImage={() => setEditedImage(null)}
+        onDelete={destroy}
+        acceptSVG
+      />
+    </>
   );
 };
 
-const CopyrightDetail: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-  const [editing, setEditing] = useState(false);
-  const { data, loading, refetch } = GQL.useFindCopyrightQuery({
-    variables: { id },
-  });
-
-  const copyright = data?.findCopyright;
-  if (loading) return <Spinner animation="border" />;
-  if (!copyright) {
-    return <div className="alert alert-warning">Copyright not found.</div>;
-  }
-
-  if (editing) {
-    return (
-      <CopyrightEditor
-        copyright={copyright}
-        onCancel={() => setEditing(false)}
-        onSaved={() => {
-          void refetch();
-          setEditing(false);
-        }}
-      />
-    );
-  }
+const CopyrightMediaTabs: React.FC<{
+  copyright: GQL.CopyrightDataFragment;
+  initialTab?: string;
+}> = ({ copyright, initialTab }) => {
+  const history = useHistory();
+  const active = ["videos", "images", "characters"].includes(initialTab ?? "")
+    ? initialTab
+    : "videos";
 
   return (
-    <div className="container-fluid py-3">
-      <Helmet title={copyright.name} />
-      <Card className="mb-3 overflow-hidden">
-        <Row noGutters>
-          <Col md={4} xl={3}>
-            <img
-              src={copyright.image_path}
-              alt=""
-              style={{
-                width: "100%",
-                height: "100%",
-                minHeight: 260,
-                objectFit: "cover",
-              }}
-            />
-          </Col>
-          <Col md={8} xl={9}>
-            <Card.Body className="h-100 d-flex flex-column">
-              <div className="d-flex align-items-start">
-                <div>
-                  <h2 className="mb-1">{copyright.name}</h2>
-                  {copyright.aliases.length > 0 ? (
-                    <div className="text-muted">
-                      {copyright.aliases.join(" · ")}
-                    </div>
-                  ) : null}
-                </div>
-                <div className="ml-auto d-flex align-items-center">
-                  {copyright.favorite ? <FavoriteIcon favorite /> : null}
-                  <Button className="ml-2" onClick={() => setEditing(true)}>
-                    Edit
-                  </Button>
-                </div>
-              </div>
-              {copyright.description ? (
-                <p className="pre mt-3 mb-0">{copyright.description}</p>
-              ) : null}
-              <div className="mt-auto pt-3">
-                {copyright.parents.length > 0 ? (
-                  <div className="mb-1">
-                    <span className="text-muted mr-2">Parents</span>
-                    {copyright.parents.map((item) => (
-                      <Badge
-                        as={Link}
-                        to={`/copyrights/${item.id}`}
-                        variant="secondary"
-                        className="mr-1"
-                        key={item.id}
-                      >
-                        {item.name}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : null}
-                {copyright.children.length > 0 ? (
-                  <div>
-                    <span className="text-muted mr-2">Children</span>
-                    {copyright.children.map((item) => (
-                      <Badge
-                        as={Link}
-                        to={`/copyrights/${item.id}`}
-                        variant="secondary"
-                        className="mr-1"
-                        key={item.id}
-                      >
-                        {item.name}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            </Card.Body>
-          </Col>
-        </Row>
-      </Card>
-
-      <Tabs defaultActiveKey="videos" id="copyright-media-tabs" mountOnEnter>
-        <Tab eventKey="videos" title={`Videos (${copyright.scene_count})`}>
-          <Row className="pt-3">
-            {copyright.scenes.map((scene) => (
-              <Col key={scene.id} sm={6} lg={4} xl={3} className="mb-3">
-                <Card
-                  as={Link}
-                  to={`/scenes/${scene.id}`}
-                  className="h-100 text-reset"
-                >
-                  {scene.paths.screenshot ? (
-                    <img
-                      src={scene.paths.screenshot}
-                      alt=""
-                      style={{
-                        width: "100%",
-                        aspectRatio: "16 / 9",
-                        objectFit: "cover",
-                      }}
-                    />
-                  ) : null}
-                  <Card.Body>
-                    <TruncatedText text={scene.title || `Video #${scene.id}`} />
-                  </Card.Body>
-                </Card>
-              </Col>
-            ))}
-            {copyright.scenes.length === 0 ? (
-              <Col className="text-muted">No Videos assigned.</Col>
-            ) : null}
-          </Row>
-        </Tab>
-        <Tab eventKey="images" title={`Images (${copyright.image_count})`}>
-          <Row className="pt-3">
-            {copyright.images.map((imageItem) => (
-              <Col key={imageItem.id} sm={6} lg={4} xl={3} className="mb-3">
-                <Card
-                  as={Link}
-                  to={`/images/${imageItem.id}`}
-                  className="h-100 text-reset"
-                >
+    <Tabs
+      id="copyright-media-tabs"
+      activeKey={active}
+      onSelect={(key) => {
+        if (key) history.replace(`/copyrights/${copyright.id}/${key}`);
+      }}
+      mountOnEnter
+      unmountOnExit
+    >
+      <Tab eventKey="videos" title={`Videos (${copyright.scene_count})`}>
+        <Row className="pt-3">
+          {copyright.scenes.map((scene) => (
+            <Col key={scene.id} sm={6} lg={4} xl={3} className="mb-3">
+              <Card
+                as={Link}
+                to={`/scenes/${scene.id}`}
+                className="h-100 text-reset"
+              >
+                {scene.paths.screenshot ? (
                   <img
-                    src={
-                      imageItem.paths.thumbnail ?? imageItem.paths.image ?? ""
-                    }
+                    src={scene.paths.screenshot}
                     alt=""
                     style={{
                       width: "100%",
-                      aspectRatio: "1 / 1",
+                      aspectRatio: "16 / 9",
                       objectFit: "cover",
                     }}
                   />
-                  <Card.Body>
-                    <TruncatedText
-                      text={imageItem.title || `Image #${imageItem.id}`}
-                    />
-                  </Card.Body>
-                </Card>
-              </Col>
-            ))}
-            {copyright.images.length === 0 ? (
-              <Col className="text-muted">No Images assigned.</Col>
-            ) : null}
-          </Row>
-        </Tab>
-        <Tab
-          eventKey="characters"
-          title={`Characters (${copyright.performer_count})`}
-        >
-          <Row className="pt-3">
-            {copyright.performers.map((performer) => (
-              <Col key={performer.id} sm={6} lg={4} xl={3} className="mb-3">
-                <Card
-                  as={Link}
-                  to={`/performers/${performer.id}`}
-                  className="h-100 text-reset"
-                >
+                ) : null}
+                <Card.Body>
+                  <TruncatedText text={scene.title || `Video #${scene.id}`} />
+                </Card.Body>
+              </Card>
+            </Col>
+          ))}
+          {copyright.scenes.length === 0 ? (
+            <Col className="text-muted">No Videos assigned.</Col>
+          ) : null}
+        </Row>
+      </Tab>
+      <Tab eventKey="images" title={`Images (${copyright.image_count})`}>
+        <Row className="pt-3">
+          {copyright.images.map((image) => (
+            <Col key={image.id} sm={6} lg={4} xl={3} className="mb-3">
+              <Card
+                as={Link}
+                to={`/images/${image.id}`}
+                className="h-100 text-reset"
+              >
+                <img
+                  src={image.paths.thumbnail ?? image.paths.image ?? ""}
+                  alt=""
+                  style={{
+                    width: "100%",
+                    aspectRatio: "1 / 1",
+                    objectFit: "cover",
+                  }}
+                />
+                <Card.Body>
+                  <TruncatedText text={image.title || `Image #${image.id}`} />
+                </Card.Body>
+              </Card>
+            </Col>
+          ))}
+          {copyright.images.length === 0 ? (
+            <Col className="text-muted">No Images assigned.</Col>
+          ) : null}
+        </Row>
+      </Tab>
+      <Tab
+        eventKey="characters"
+        title={`Characters (${copyright.performer_count})`}
+      >
+        <Row className="pt-3">
+          {copyright.performers.map((performer) => (
+            <Col key={performer.id} sm={6} lg={4} xl={3} className="mb-3">
+              <Card
+                as={Link}
+                to={`/performers/${performer.id}`}
+                className="h-100 text-reset"
+              >
+                {performer.image_path ? (
                   <img
-                    src={performer.image_path ?? undefined}
+                    src={performer.image_path}
                     alt=""
                     style={{
                       width: "100%",
@@ -735,23 +509,197 @@ const CopyrightDetail: React.FC = () => {
                       objectFit: "cover",
                     }}
                   />
-                  <Card.Body>
-                    <strong>{performer.name}</strong>
-                    {performer.disambiguation ? (
-                      <small className="text-muted d-block">
-                        {performer.disambiguation}
-                      </small>
-                    ) : null}
-                  </Card.Body>
-                </Card>
-              </Col>
-            ))}
-            {copyright.performers.length === 0 ? (
-              <Col className="text-muted">No Characters assigned.</Col>
+                ) : null}
+                <Card.Body>
+                  <strong>{performer.name}</strong>
+                  {performer.disambiguation ? (
+                    <small className="text-muted d-block">
+                      {performer.disambiguation}
+                    </small>
+                  ) : null}
+                </Card.Body>
+              </Card>
+            </Col>
+          ))}
+          {copyright.performers.length === 0 ? (
+            <Col className="text-muted">No Characters assigned.</Col>
+          ) : null}
+        </Row>
+      </Tab>
+    </Tabs>
+  );
+};
+
+const CopyrightDetail: React.FC = () => {
+  const { id, tab } = useParams<{ id: string; tab?: string }>();
+  const history = useHistory();
+  const Toast = useToast();
+  const { configuration } = useConfigurationContext();
+  const uiConfig = configuration?.ui;
+  const enableBackgroundImage = uiConfig?.enableTagBackgroundImage ?? false;
+  const showAllDetails = uiConfig?.showAllDetails ?? true;
+  const compactExpandedDetails = uiConfig?.compactExpandedDetails ?? false;
+  const [collapsed, setCollapsed] = useState(!showAllDetails);
+  const [editing, setEditing] = useState(false);
+  const [image, setImage] = useState<string | null>();
+  const [encodingImage, setEncodingImage] = useState(false);
+  const [updateCopyright] = GQL.useCopyrightUpdateMutation();
+  const [destroyCopyright] = GQL.useCopyrightDestroyMutation();
+  const { data, loading, refetch } = GQL.useFindCopyrightQuery({
+    variables: { id },
+  });
+
+  const copyright = data?.findCopyright;
+
+  const activeImage = useMemo(() => {
+    if (!copyright) return undefined;
+    if (editing) {
+      if (image === null) return undefined;
+      if (image) return image;
+    }
+    return copyright.image_path;
+  }, [copyright, editing, image]);
+
+  if (loading) return <Spinner animation="border" />;
+  if (!copyright) {
+    return <div className="alert alert-warning">Copyright not found.</div>;
+  }
+  const copyrightID = copyright.id;
+
+  async function setFavorite(value: boolean) {
+    await updateCopyright({
+      variables: { input: { id: copyrightID, favorite: value } },
+    });
+    void refetch();
+  }
+
+  async function destroy() {
+    try {
+      await destroyCopyright({ variables: { id: copyrightID } });
+      history.replace("/copyrights");
+    } catch (error) {
+      Toast.error(error);
+    }
+  }
+
+  function finishEdit() {
+    setEditing(false);
+    setImage(undefined);
+    void refetch();
+  }
+
+  const headerClassName = cx("detail-header", {
+    edit: editing,
+    collapsed,
+    "full-width": !collapsed && !compactExpandedDetails,
+  });
+
+  return (
+    <div id="tag-page" className="row">
+      <Helmet title={copyright.name} />
+      <div className={headerClassName}>
+        <BackgroundImage
+          imagePath={copyright.image_path ?? undefined}
+          show={enableBackgroundImage && !editing}
+        />
+        <div className="detail-container">
+          <HeaderImage encodingImage={encodingImage}>
+            {activeImage ? (
+              <DetailImage
+                className="logo"
+                alt={copyright.name}
+                src={activeImage}
+              />
             ) : null}
-          </Row>
-        </Tab>
-      </Tabs>
+          </HeaderImage>
+          <div className="row">
+            <div className="tag-head col">
+              <DetailTitle name={copyright.name} classNamePrefix="tag">
+                {!editing ? (
+                  <ExpandCollapseButton
+                    collapsed={collapsed}
+                    setCollapsed={(value) => setCollapsed(value)}
+                  />
+                ) : null}
+                <span className="name-icons">
+                  <FavoriteIcon
+                    favorite={copyright.favorite}
+                    onToggleFavorite={setFavorite}
+                  />
+                </span>
+              </DetailTitle>
+              <AliasList aliases={copyright.aliases} />
+              {editing ? (
+                <CopyrightEditPanel
+                  copyright={copyright}
+                  onSaved={finishEdit}
+                  onCancel={() => {
+                    setEditing(false);
+                    setImage(undefined);
+                  }}
+                  setImage={setImage}
+                  setEncodingImage={setEncodingImage}
+                />
+              ) : (
+                <>
+                  <CopyrightDetailsPanel
+                    copyright={copyright}
+                    fullWidth={!collapsed && !compactExpandedDetails}
+                  />
+                  <DetailsEditNavbar
+                    objectName={copyright.name}
+                    isNew={false}
+                    isEditing={false}
+                    onToggleEdit={() => setEditing(true)}
+                    onSave={() => {}}
+                    onImageChange={() => {}}
+                    onClearImage={() => {}}
+                    onDelete={destroy}
+                    classNames="mb-2"
+                  />
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="detail-body">
+        <div className="tag-body">
+          <div className="tag-tabs">
+            {!editing ? (
+              <CopyrightMediaTabs copyright={copyright} initialTab={tab} />
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const CopyrightCreate: React.FC = () => {
+  const history = useHistory();
+  const [image, setImage] = useState<string | null>();
+  const [encodingImage, setEncodingImage] = useState(false);
+
+  return (
+    <div className="row new-view" id="tag-page">
+      <div className="tag-details col-md-8">
+        <div className="text-center logo-container">
+          {encodingImage ? (
+            <Spinner animation="border" />
+          ) : image ? (
+            <img className="logo" alt="" src={image} />
+          ) : null}
+        </div>
+        <CopyrightEditPanel
+          create
+          onSaved={(created) => history.replace(`/copyrights/${created.id}`)}
+          onCancel={() => history.push("/copyrights")}
+          setImage={setImage}
+          setEncodingImage={setEncodingImage}
+        />
+      </div>
     </div>
   );
 };
@@ -761,10 +709,8 @@ const CopyrightRoutes: React.FC = () => (
     <Helmet title="Copyrights" />
     <Switch>
       <Route exact path="/copyrights" component={CopyrightList} />
-      <Route exact path="/copyrights/new">
-        <CopyrightEditor create />
-      </Route>
-      <Route exact path="/copyrights/:id" component={CopyrightDetail} />
+      <Route exact path="/copyrights/new" component={CopyrightCreate} />
+      <Route path="/copyrights/:id/:tab?" component={CopyrightDetail} />
     </Switch>
   </>
 );
