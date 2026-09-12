@@ -353,6 +353,7 @@ const _PerformerSelect: React.FC<
           : undefined),
       }}
       isMulti={props.isMulti ?? false}
+      closeMenuOnSelect={!props.isMulti}
       creatable={props.creatable ?? defaultCreatable}
       onCreate={onCreate}
       placeholder={
@@ -412,8 +413,8 @@ const _PerformerIDSelect: React.FC<IFilterProps & IFilterIDProps<Performer>> = (
     }
 
     const load = async () => {
-      const items = await loadObjectsByID(ids);
-      setValues(items);
+      const items = await queryFindPerformersByIDForSelect(ids);
+      setValues(items.data.findPerformers.performers);
     };
 
     load();
