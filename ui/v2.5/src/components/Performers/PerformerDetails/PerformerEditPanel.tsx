@@ -1,5 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { Button, Form, Dropdown, SplitButton } from "react-bootstrap";
+import {
+  Button,
+  Col,
+  Dropdown,
+  Form,
+  Row,
+  SplitButton,
+} from "react-bootstrap";
 import { FormattedMessage, useIntl } from "react-intl";
 import Mousetrap from "mousetrap";
 import * as GQL from "src/core/generated-graphql";
@@ -286,7 +293,7 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
       }
     }
     if (state.circumcised) {
-      // circumcised is a string in the scraper data
+      // gender is a string in the scraper data
       const newCircumcised = translateScrapedCircumcised(state.circumcised);
       if (newCircumcised) {
         formik.setFieldValue("circumcised", newCircumcised);
@@ -720,16 +727,20 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
     if (isNew) return;
 
     return (
-      <Form.Group>
-        <Form.Label>Copyrights</Form.Label>
-        <CopyrightSelect
-          isMulti
-          values={copyrights}
-          onSelect={(items) => {
-            setCopyrights(items);
-            setCopyrightsDirty(true);
-          }}
-        />
+      <Form.Group as={Row} data-field="copyrights">
+        <Form.Label column sm={3} xl={2}>
+          Copyrights
+        </Form.Label>
+        <Col sm={9} xl={7}>
+          <CopyrightSelect
+            isMulti
+            values={copyrights}
+            onSelect={(items) => {
+              setCopyrights(items);
+              setCopyrightsDirty(true);
+            }}
+          />
+        </Col>
       </Form.Group>
     );
   }
