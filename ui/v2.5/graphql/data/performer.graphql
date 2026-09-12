@@ -32,6 +32,10 @@ fragment PerformerData on Performer {
     ...SlimTagData
   }
 
+  copyrights {
+    ...SlimCopyrightData
+  }
+
   stash_ids {
     stash_id
     endpoint
