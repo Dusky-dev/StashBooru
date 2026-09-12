@@ -16,8 +16,8 @@ interface CamiePrediction {
   targetExists?: boolean;
 }
 
-type MetadataOrigin = "camie" | "booru";
-type MetadataSourceKind = "file" | "booru" | "camie";
+type MetadataOrigin = "local" | "booru" | "camie" | "eva02";
+type MetadataSourceKind = "file" | "booru" | "camie" | "eva02";
 
 interface MetadataSource {
   kind: MetadataSourceKind;
@@ -81,15 +81,12 @@ interface IProps {
 }
 
 const CATEGORY_ORDER = ["character", "artist", "copyright", "general", "meta"];
-const LOCAL_AUTHORITY_CATEGORIES = new Set([
-  "character",
-  "artist",
-  "copyright",
-]);
+const AUTHORITATIVE_CATEGORIES = new Set(["character", "artist", "copyright"]);
 const SOURCE_PRIORITY: Record<MetadataSourceKind, number> = {
   file: 0,
   booru: 10,
   camie: 20,
+  eva02: 30,
 };
 
 function normalizePredictionValue(value?: string) {
@@ -128,33 +125,21 @@ function hasCamieModelSource(prediction: CamiePrediction) {
   return source.includes("model") || !source.includes("filename");
 }
 
-function applyLocalAuthority(predictions: CamiePrediction[]) {
-  const authoritativeCategories = new Set<string>();
-  for (const prediction of predictions) {
-    const category = prediction.category.trim().toLocaleLowerCase();
-    if (
-      LOCAL_AUTHORITY_CATEGORIES.has(category) &&
-      hasFilenameSource(prediction)
-    ) {
-      authoritativeCategories.add(category);
-    }
-  }
-
-  return predictions.filter((prediction) => {
-    const category = prediction.category.trim().toLocaleLowerCase();
-    if (!authoritativeCategories.has(category)) return true;
-
-    // Filename metadata owns Character, Artist and Copyright as a whole
-    // category. Camie may confirm a filename value, but a different model-only
-    // value is not mixed into that category.
-    return hasFilenameSource(prediction);
-  });
-}
-
 function predictionSources(
   prediction: CamiePrediction,
   origin: MetadataOrigin
 ): MetadataSource[] {
+  if (origin === "local") {
+    return [
+      {
+        kind: "file",
+        label: "Local",
+        detail: "Local filename metadata",
+        priority: SOURCE_PRIORITY.file,
+      },
+    ];
+  }
+
   if (origin === "booru") {
     const provider = prediction.source?.startsWith("booru:")
       ? prediction.source.slice("booru:".length)
@@ -162,9 +147,20 @@ function predictionSources(
     return [
       {
         kind: "booru",
-        label: "booru",
-        detail: provider ? `Booru: ${provider}` : "Booru metadata",
+        label: "Danbooru",
+        detail: provider ? `Booru: ${provider}` : "Danbooru/Booru metadata",
         priority: SOURCE_PRIORITY.booru,
+      },
+    ];
+  }
+
+  if (origin === "eva02") {
+    return [
+      {
+        kind: "eva02",
+        label: "EVA02",
+        detail: "WD EVA02 prediction",
+        priority: SOURCE_PRIORITY.eva02,
       },
     ];
   }
@@ -173,7 +169,7 @@ function predictionSources(
   if (hasFilenameSource(prediction)) {
     result.push({
       kind: "file",
-      label: "filename",
+      label: "Local",
       detail: "Local filename metadata",
       priority: SOURCE_PRIORITY.file,
     });
@@ -204,12 +200,14 @@ function mergeSources(
 }
 
 function mergeMetadataPredictions(
+  localPredictions: CamiePrediction[],
+  booruPredictions: CamiePrediction[],
   camiePredictions: CamiePrediction[],
-  booruPredictions: CamiePrediction[]
+  eva02Predictions: CamiePrediction[]
 ): MetadataPrediction[] {
   const merged: MetadataPrediction[] = [];
   const indexByKey = new Map<string, number>();
-  const authoritativeCamie = applyLocalAuthority(camiePredictions);
+  const authoritativeKeys = new Map<string, Set<string>>();
 
   const add = (prediction: CamiePrediction, origin: MetadataOrigin) => {
     const keys = predictionIdentityKeys(prediction);
@@ -257,13 +255,41 @@ function mergeMetadataPredictions(
     }
   };
 
-  for (const prediction of authoritativeCamie) {
-    if (hasFilenameSource(prediction)) add(prediction, "camie");
-  }
-  for (const prediction of booruPredictions) add(prediction, "booru");
-  for (const prediction of authoritativeCamie) {
-    if (!hasFilenameSource(prediction)) add(prediction, "camie");
-  }
+  const addSource = (
+    predictions: CamiePrediction[],
+    origin: MetadataOrigin
+  ) => {
+    const categoryKeys = new Map<string, Set<string>>();
+    for (const prediction of predictions) {
+      const category = prediction.category.trim().toLocaleLowerCase();
+      if (!AUTHORITATIVE_CATEGORIES.has(category)) continue;
+      const keys = categoryKeys.get(category) ?? new Set<string>();
+      for (const key of predictionIdentityKeys(prediction)) keys.add(key);
+      categoryKeys.set(category, keys);
+    }
+
+    for (const prediction of predictions) {
+      const category = prediction.category.trim().toLocaleLowerCase();
+      const authority = authoritativeKeys.get(category);
+      if (authority && AUTHORITATIVE_CATEGORIES.has(category)) {
+        const agrees = predictionIdentityKeys(prediction).some((key) =>
+          authority.has(key)
+        );
+        if (!agrees) continue;
+      }
+      add(prediction, origin);
+    }
+
+    for (const [category, keys] of categoryKeys) {
+      if (!authoritativeKeys.has(category)) authoritativeKeys.set(category, keys);
+    }
+  };
+
+  // Explicit source precedence. EVA02 is deliberately the lowest denominator.
+  addSource(localPredictions, "local");
+  addSource(booruPredictions, "booru");
+  addSource(camiePredictions, "camie");
+  addSource(eva02Predictions, "eva02");
   return merged;
 }
 
@@ -299,6 +325,8 @@ function sourceBadgeVariant(source: MetadataSourceKind) {
       return "info";
     case "camie":
       return "warning";
+    case "eva02":
+      return "secondary";
   }
 }
 
@@ -311,10 +339,16 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   const history = useHistory();
   const [threshold, setThreshold] = useState("0.492");
   const [limit, setLimit] = useState("50");
-  const [camiePredictions, setCamiePredictions] = useState<CamiePrediction[]>(
+  const [localPredictions, setLocalPredictions] = useState<CamiePrediction[]>(
     []
   );
   const [booruPredictions, setBooruPredictions] = useState<CamiePrediction[]>(
+    []
+  );
+  const [camiePredictions, setCamiePredictions] = useState<CamiePrediction[]>(
+    []
+  );
+  const [eva02Predictions, setEva02Predictions] = useState<CamiePrediction[]>(
     []
   );
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -326,8 +360,14 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   const [error, setError] = useState<string>();
 
   const predictions = useMemo(
-    () => mergeMetadataPredictions(camiePredictions, booruPredictions),
-    [booruPredictions, camiePredictions]
+    () =>
+      mergeMetadataPredictions(
+        localPredictions,
+        booruPredictions,
+        camiePredictions,
+        eva02Predictions
+      ),
+    [booruPredictions, camiePredictions, eva02Predictions, localPredictions]
   );
 
   const addSelected = useCallback((items: CamiePrediction[]) => {
@@ -338,7 +378,22 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
     });
   }, []);
 
-  const loadPredictions = useCallback(
+  const loadLocalMetadata = useCallback(async () => {
+    setLoading(true);
+    setError(undefined);
+    try {
+      const response = await fetch(`image/${imageId}/local-tags`);
+      const result = await readResponse<CamieTagsResponse>(response);
+      setLocalPredictions(result.tags);
+      addSelected(result.tags);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setLoading(false);
+    }
+  }, [addSelected, imageId]);
+
+  const loadCamiePredictions = useCallback(
     async (nextThreshold: string, nextLimit: string) => {
       const parsedThreshold = Number.parseFloat(nextThreshold);
       const parsedLimit = Number.parseInt(nextLimit, 10);
@@ -387,6 +442,23 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
     }
   }, [addSelected, imageId]);
 
+  const loadEva02Predictions = useCallback(async () => {
+    setLoading(true);
+    setError(undefined);
+    try {
+      const response = await fetch(`image/${imageId}/eva02-tags`, {
+        method: "POST",
+      });
+      const result = await readResponse<CamieTagsResponse>(response);
+      setEva02Predictions(result.tags);
+      addSelected(result.tags);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setLoading(false);
+    }
+  }, [addSelected, imageId]);
+
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -394,22 +466,17 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         const response = await fetch("image/visual-similarity/camie/config");
         const config = await readResponse<CamieConfig>(response);
         if (cancelled) return;
-        const savedThreshold = String(config.threshold);
-        const savedLimit = String(config.limit);
-        setThreshold(savedThreshold);
-        setLimit(savedLimit);
-        await loadPredictions(savedThreshold, savedLimit);
-      } catch (cause) {
-        if (!cancelled) {
-          setLoading(false);
-          setError(cause instanceof Error ? cause.message : String(cause));
-        }
+        setThreshold(String(config.threshold));
+        setLimit(String(config.limit));
+      } catch {
+        // Camie configuration is optional for the initial local-only view.
       }
+      if (!cancelled) await loadLocalMetadata();
     })();
     return () => {
       cancelled = true;
     };
-  }, [loadPredictions]);
+  }, [loadLocalMetadata]);
 
   const grouped = useMemo(() => {
     const groups = new Map<string, MetadataPrediction[]>();
@@ -433,9 +500,8 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
 
   const visibleSelectedCount = useMemo(
     () =>
-      predictions.filter((prediction) =>
-        selected.has(predictionKey(prediction))
-      ).length,
+      predictions.filter((prediction) => selected.has(predictionKey(prediction)))
+        .length,
     [predictions, selected]
   );
   const allVisibleSelected =
@@ -463,14 +529,11 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
     setApplying(true);
     setError(undefined);
     try {
-      const response = await fetch(
-        `image/${imageId}/knowledge-tags?apply=true`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tags, replaceArtist }),
-        }
-      );
+      const response = await fetch(`image/${imageId}/knowledge-tags?apply=true`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags, replaceArtist }),
+      });
       const result = await readResponse<ImageTaggingApplyResponse>(response);
       const appliedCount =
         result.characters.length +
@@ -530,7 +593,15 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
             className="mr-2 mb-2"
             variant="secondary"
             disabled={loading || applying}
-            onClick={() => void loadPredictions(threshold, limit)}
+            onClick={() => void loadBooruMetadata()}
+          >
+            Fetch Danbooru
+          </Button>
+          <Button
+            className="mr-2 mb-2"
+            variant="secondary"
+            disabled={loading || applying}
+            onClick={() => void loadCamiePredictions(threshold, limit)}
           >
             Analyze with Camie
           </Button>
@@ -538,9 +609,9 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
             className="mb-2"
             variant="secondary"
             disabled={loading || applying}
-            onClick={() => void loadBooruMetadata()}
+            onClick={() => void loadEva02Predictions()}
           >
-            Fetch from booru
+            Analyze with EVA02
           </Button>
           {backend ? (
             <Badge className="ml-2 mb-2" variant="secondary">
@@ -575,13 +646,12 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         ) : null}
 
         <div className="mb-3 text-muted">
-          Matching metadata from different tagging methods is merged into one
-          row. Filename values are authoritative for Characters, Artists and
-          Copyrights: Camie can confirm those exact values, while conflicting
-          Camie-only values in that category are ignored. If the filename has no
-          value for a category, Camie can supply it. Booru overlap remains
-          visible separately. Multiple selected Artists can be attached to the
-          same image.
+          Image Tagging opens with Local filename metadata only. Additional
+          sources are opt-in and merged in this order: Local, Danbooru, Camie,
+          EVA02. For Characters, Artists and Copyrights, the first source that
+          supplies the category is authoritative; lower-priority sources may
+          confirm it but cannot add a conflicting entity. General tags remain
+          additive. EVA02 is deliberately the lowest-priority fallback.
         </div>
 
         <Form.Check
@@ -600,7 +670,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
             <Spinner animation="border" role="status" />
           </div>
         ) : predictions.length === 0 && !error ? (
-          <div className="text-muted">No metadata was returned.</div>
+          <div className="text-muted">No local metadata was returned.</div>
         ) : (
           <>
             <div className="d-flex mb-3">
@@ -624,20 +694,18 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
 
             <div style={{ maxHeight: "55vh", overflowY: "auto" }}>
               {grouped.map(([category, items]) => {
-                const localAuthority =
-                  LOCAL_AUTHORITY_CATEGORIES.has(category) &&
-                  items.some((prediction) =>
-                    prediction.provenance.some(
-                      (source) => source.kind === "file"
-                    )
-                  );
+                const authority = AUTHORITATIVE_CATEGORIES.has(category)
+                  ? items
+                      .flatMap((prediction) => prediction.provenance)
+                      .sort((left, right) => left.priority - right.priority)[0]
+                  : undefined;
                 return (
                   <div className="mb-4" key={category}>
                     <h5>{categoryLabel(category)}</h5>
-                    {localAuthority ? (
+                    {authority ? (
                       <div className="small text-muted mb-2">
-                        Filename metadata is authoritative for this category;
-                        conflicting Camie predictions are ignored.
+                        {authority.label} is authoritative for this category;
+                        conflicting lower-priority predictions are ignored.
                       </div>
                     ) : null}
                     {items.map((prediction, index) => {
