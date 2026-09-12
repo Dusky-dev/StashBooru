@@ -10,6 +10,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { PhotographerLink } from "src/components/Shared/Link";
 import { PatchComponent } from "../../../patch";
 import { CustomFields } from "src/components/Shared/CustomFields";
+import { ImageFileInfoPanel } from "./ImageFileInfoPanel";
 
 interface IImageDetailProps {
   image: GQL.ImageDataFragment;
@@ -180,6 +181,9 @@ export const ImageDetailPanel: React.FC<IImageDetailProps> = PatchComponent(
             {renderMetadata()}
             {renderPerformers()}
             <CustomFields values={props.image.custom_fields} fullWidth />
+            <hr />
+            <h6>File info</h6>
+            <ImageFileInfoPanel image={props.image} />
           </div>
         </div>
       </>
