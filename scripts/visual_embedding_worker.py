@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-"""Persistent visual embedding worker for StashBooru.
+"""Persistent EVA02 visual-embedding and WD tagging worker for StashBooru.
 
 Protocol: one JSON object per stdin line, one JSON object per stdout line.
 Logs and download progress are written to stderr so stdout stays machine-readable.
 
 The model is deliberately optional. Status/ping never downloads or loads it.
 Only the explicit ``download`` operation downloads the pinned default model.
+The tiny tag-label CSV may be fetched on first explicit ``tag`` request when
+an already-installed model predates tagging support.
 """
 
 from __future__ import annotations
 
+import csv
 import hashlib
 import io
 import json
@@ -31,16 +34,43 @@ MODEL_URL = (
     "https://huggingface.co/deepghs/wd14_tagger_with_embeddings/resolve/"
     f"{MODEL_REVISION}/SmilingWolf/wd-eva02-large-tagger-v3/model.onnx?download=true"
 )
+TAGS_URL = (
+    "https://huggingface.co/deepghs/wd14_tagger_with_embeddings/resolve/"
+    f"{MODEL_REVISION}/SmilingWolf/wd-eva02-large-tagger-v3/tags_info.csv?download=true"
+)
 MODEL_SHA256 = "983f026df23214ba55f78cd5898f76f434fa9230837a4e93f1aaa6c37e284835"
 MODEL_SIZE_BYTES = 1_260_436_067
 MODEL_FILENAME = "model.onnx"
 LEGACY_MODEL_FILENAME = "wd-eva02-large-tagger-v3-embedding.onnx"
+TAGS_FILENAME = "tags_info.csv"
 EMBEDDING_DIMENSIONS = 1024
 DOWNLOAD_CHUNK = 8 * 1024 * 1024
+
+# WD/Danbooru categories. Rating/meta labels are deliberately not exposed to
+# Image Tagging: EVA02 is the lowest-authority source and should contribute
+# useful taxonomy, not overwrite richer local/Danbooru/Camie metadata.
+TAG_CATEGORIES = {
+    "0": "general",
+    "general": "general",
+    "1": "artist",
+    "artist": "artist",
+    "3": "copyright",
+    "copyright": "copyright",
+    "4": "character",
+    "character": "character",
+}
+TAG_THRESHOLDS = {
+    "general": 0.35,
+    "artist": 0.50,
+    "copyright": 0.50,
+    "character": 0.85,
+}
+MAX_TAGS = 200
 
 _session: ort.InferenceSession | None = None
 _input_name: str | None = None
 _target_size: int | None = None
+_tag_rows: list[tuple[str, str]] | None = None
 
 
 def _log(message: str) -> None:
@@ -59,10 +89,6 @@ def _default_cache_dir() -> Path:
     if configured:
         return Path(configured).expanduser()
 
-    # Stash's Docker configuration exposes its cache through STASH_CACHE. Honor
-    # that before deriving a private cache next to config.yml, otherwise the
-    # worker downloads into /root/.stash/cache while the application and its
-    # persistent cache volume live somewhere else (normally /cache).
     stash_cache = os.environ.get("STASH_CACHE")
     if stash_cache:
         return Path(stash_cache).expanduser() / "visual-embeddings"
@@ -90,9 +116,6 @@ def _model_candidates() -> list[Path]:
 
     candidates: list[Path] = []
     for directory in directories:
-        # model.onnx is the filename users get when downloading directly from
-        # Hugging Face. Keep accepting the old StashBooru-specific filename so
-        # existing installations continue to work after this cache fix.
         candidates.append(directory / MODEL_FILENAME)
         candidates.append(directory / LEGACY_MODEL_FILENAME)
         candidates.append(directory / "wd-eva02-large-tagger-v3" / MODEL_FILENAME)
@@ -128,6 +151,16 @@ def _model_path() -> Path:
     return _installed_model_path() or _download_destination()
 
 
+def _tags_path() -> Path:
+    configured = os.environ.get("STASH_EVA02_TAGS_PATH")
+    if configured:
+        return Path(configured).expanduser()
+    model = _installed_model_path()
+    if model is not None:
+        return model.parent / TAGS_FILENAME
+    return _download_destination().parent / TAGS_FILENAME
+
+
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -143,7 +176,7 @@ def _download_model(destination: Path) -> None:
     temp_path = Path(temp_name)
 
     try:
-        _log(f"downloading EVA02-Large embedding model to {destination}")
+        _log(f"downloading EVA02-Large embedding/tagger model to {destination}")
         request = urllib.request.Request(
             MODEL_URL,
             headers={"User-Agent": "StashBooru visual-embedding-worker/1"},
@@ -179,6 +212,30 @@ def _download_model(destination: Path) -> None:
             )
         os.replace(temp_path, destination)
         _log("model download complete")
+    finally:
+        try:
+            temp_path.unlink()
+        except FileNotFoundError:
+            pass
+
+
+def _download_tags(destination: Path) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    fd, temp_name = tempfile.mkstemp(prefix=destination.name + ".", suffix=".part", dir=destination.parent)
+    os.close(fd)
+    temp_path = Path(temp_name)
+    try:
+        _log(f"downloading EVA02 tag labels to {destination}")
+        request = urllib.request.Request(
+            TAGS_URL,
+            headers={"User-Agent": "StashBooru visual-embedding-worker/1"},
+        )
+        with urllib.request.urlopen(request, timeout=60) as response, temp_path.open("wb") as output:
+            while chunk := response.read(1024 * 1024):
+                output.write(chunk)
+        if temp_path.stat().st_size == 0:
+            raise RuntimeError("downloaded EVA02 tag labels are empty")
+        os.replace(temp_path, destination)
     finally:
         try:
             temp_path.unlink()
@@ -234,11 +291,11 @@ def _load_session() -> tuple[ort.InferenceSession, str, int]:
     session_options.log_severity_level = 3
     providers = _providers()
     _log(f"loading {MODEL_ID} from {model_path}")
-    _session = ort.InferenceSession(
-        str(model_path),
-        sess_options=session_options,
-        providers=providers,
-    ) if providers else ort.InferenceSession(str(model_path), sess_options=session_options)
+    _session = (
+        ort.InferenceSession(str(model_path), sess_options=session_options, providers=providers)
+        if providers
+        else ort.InferenceSession(str(model_path), sess_options=session_options)
+    )
 
     inputs = _session.get_inputs()
     if len(inputs) != 1:
@@ -349,16 +406,94 @@ def _embedding_from_outputs(outputs: list[np.ndarray]) -> np.ndarray:
     return normalized
 
 
-def embed(path_value: str) -> list[float]:
+def _load_tag_rows() -> list[tuple[str, str]]:
+    global _tag_rows
+    if _tag_rows is not None:
+        return _tag_rows
+
+    path = _tags_path()
+    if not path.is_file():
+        # This is intentionally the only implicit download: the heavyweight
+        # model must already have been installed explicitly; labels are only a
+        # small companion file required to interpret its existing tag output.
+        _download_tags(path)
+
+    rows: list[tuple[str, str]] = []
+    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        fieldnames = {str(name).strip().lower(): name for name in (reader.fieldnames or [])}
+        name_field = fieldnames.get("name") or fieldnames.get("tag")
+        category_field = fieldnames.get("category")
+        if name_field is None or category_field is None:
+            raise RuntimeError(
+                f"unexpected EVA02 tag label columns: {reader.fieldnames}; expected name/tag and category"
+            )
+        for row in reader:
+            raw_name = str(row.get(name_field, "")).strip()
+            raw_category = str(row.get(category_field, "")).strip().lower()
+            if raw_name:
+                rows.append((raw_name, raw_category))
+
+    if not rows:
+        raise RuntimeError("EVA02 tag label file contains no labels")
+    _tag_rows = rows
+    return rows
+
+
+def _tag_scores_from_outputs(outputs: list[np.ndarray], count: int) -> np.ndarray:
+    candidates: list[np.ndarray] = []
+    for output in outputs:
+        array = np.asarray(output)
+        if array.size == count:
+            candidates.append(array.reshape(-1))
+    if len(candidates) != 1:
+        shapes = [list(np.asarray(output).shape) for output in outputs]
+        raise RuntimeError(
+            f"expected exactly one EVA02 tag output with {count} values, got shapes {shapes}"
+        )
+    return candidates[0].astype(np.float32, copy=False)
+
+
+def _run_model(path_value: str) -> tuple[list[np.ndarray], Path]:
     path = Path(path_value).expanduser()
     if not path.is_file():
         raise FileNotFoundError(f"image does not exist: {path}")
-
     session, input_name, target_size = _load_session()
     tensor = _prepare_image(path, target_size)
-    outputs = session.run(None, {input_name: tensor})
+    return session.run(None, {input_name: tensor}), path
+
+
+def embed(path_value: str) -> list[float]:
+    outputs, _ = _run_model(path_value)
     embedding = _embedding_from_outputs(outputs)
     return embedding.tolist()
+
+
+def tag(path_value: str) -> list[dict[str, Any]]:
+    rows = _load_tag_rows()
+    outputs, _ = _run_model(path_value)
+    scores = _tag_scores_from_outputs(outputs, len(rows))
+
+    tags: list[dict[str, Any]] = []
+    for (raw_name, raw_category), score_value in zip(rows, scores, strict=True):
+        category = TAG_CATEGORIES.get(raw_category)
+        if category is None:
+            continue
+        score = float(score_value)
+        if not np.isfinite(score) or score < TAG_THRESHOLDS[category]:
+            continue
+        tags.append(
+            {
+                "name": raw_name.replace("_", " "),
+                "raw_name": raw_name,
+                "category": category,
+                "score": score,
+                "source": "eva02",
+            }
+        )
+
+    tags.sort(key=lambda item: float(item["score"]), reverse=True)
+    return tags[:MAX_TAGS]
 
 
 def _response(request_id: Any, **payload: Any) -> None:
@@ -376,10 +511,10 @@ def _handle(request: dict[str, Any]) -> None:
         return
 
     if operation == "download":
-        if _installed_model_path() is not None:
-            _response(request_id, ok=True, **_status_payload())
-            return
-        _download_model(_download_destination())
+        if _installed_model_path() is None:
+            _download_model(_download_destination())
+        if not _tags_path().is_file():
+            _download_tags(_tags_path())
         _response(request_id, ok=True, **_status_payload())
         return
 
@@ -388,12 +523,15 @@ def _handle(request: dict[str, Any]) -> None:
         if not isinstance(path, str) or not path:
             raise ValueError("embed requires a non-empty path")
         vector = embed(path)
-        _response(
-            request_id,
-            ok=True,
-            **_status_payload(),
-            embedding=vector,
-        )
+        _response(request_id, ok=True, **_status_payload(), embedding=vector)
+        return
+
+    if operation == "tag":
+        path = request.get("path")
+        if not isinstance(path, str) or not path:
+            raise ValueError("tag requires a non-empty path")
+        tags = tag(path)
+        _response(request_id, ok=True, **_status_payload(), tags=tags)
         return
 
     if operation == "shutdown":
