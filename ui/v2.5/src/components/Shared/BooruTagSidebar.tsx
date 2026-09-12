@@ -1,8 +1,6 @@
 import { faImage } from "@fortawesome/free-solid-svg-icons";
 import React, { useMemo, useState } from "react";
-import { Spinner } from "react-bootstrap";
 import { Link } from "react-router-dom";
-import { queryFindTag } from "src/core/StashService";
 import { Icon } from "./Icon";
 
 interface BooruEntity {
@@ -27,78 +25,32 @@ function sortByName<T extends BooruEntity>(items?: T[] | null): T[] {
 }
 
 const Preview: React.FC<{
-  imagePath?: string | null;
-  className?: string;
-}> = ({ imagePath, className }) => {
+  entity: BooruEntity;
+  general?: boolean;
+}> = ({ entity, general = false }) => {
   const [active, setActive] = useState(false);
 
-  if (!imagePath) return null;
+  if (!entity.image_path) return null;
 
   return (
-    <span
-      className={`booru-tag-preview-trigger${className ? ` ${className}` : ""}`}
+    <button
+      type="button"
+      className={`booru-tag-preview-trigger minimal${
+        general ? " booru-general-preview-trigger" : ""
+      }`}
       onMouseEnter={() => setActive(true)}
       onMouseLeave={() => setActive(false)}
-      tabIndex={0}
       onFocus={() => setActive(true)}
       onBlur={() => setActive(false)}
-      aria-label="Preview image"
+      aria-label={`Preview ${entity.name}`}
     >
       <Icon icon={faImage} />
       {active ? (
         <span className="booru-tag-preview">
-          <img src={imagePath} alt="" loading="lazy" />
+          <img src={entity.image_path} alt={entity.name} loading="lazy" />
         </span>
       ) : null}
-    </span>
-  );
-};
-
-const LazyGeneralTagPreview: React.FC<{ tag: BooruEntity }> = ({ tag }) => {
-  const [active, setActive] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-  const [imagePath, setImagePath] = useState<string | null>(null);
-
-  async function loadPreview() {
-    setActive(true);
-    if (loaded || loading) return;
-
-    setLoading(true);
-    try {
-      const result = await queryFindTag(tag.id);
-      setImagePath(result.data.findTag?.image_path ?? null);
-    } finally {
-      setLoading(false);
-      setLoaded(true);
-    }
-  }
-
-  return (
-    <span
-      className="booru-tag-preview-trigger booru-general-preview-trigger"
-      onMouseEnter={() => void loadPreview()}
-      onMouseLeave={() => setActive(false)}
-      tabIndex={0}
-      onFocus={() => void loadPreview()}
-      onBlur={() => setActive(false)}
-      aria-label={`Preview ${tag.name}`}
-    >
-      <Icon icon={faImage} />
-      {active ? (
-        <span className="booru-tag-preview">
-          {loading ? (
-            <span className="booru-tag-preview-loading">
-              <Spinner animation="border" size="sm" />
-            </span>
-          ) : imagePath ? (
-            <img src={imagePath} alt={tag.name} loading="lazy" />
-          ) : (
-            <span className="booru-tag-preview-empty">No image</span>
-          )}
-        </span>
-      ) : null}
-    </span>
+    </button>
   );
 };
 
@@ -124,11 +76,7 @@ const BooruSection: React.FC<{
             <Link className="booru-tag-name" to={route(item.id)}>
               {item.name}
             </Link>
-            {kind === "general" ? (
-              <LazyGeneralTagPreview tag={item} />
-            ) : (
-              <Preview imagePath={item.image_path} />
-            )}
+            <Preview entity={item} general={kind === "general"} />
           </div>
         ))}
       </div>
