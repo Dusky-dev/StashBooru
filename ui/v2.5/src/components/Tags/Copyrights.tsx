@@ -24,6 +24,7 @@ import { BackgroundImage } from "src/components/Shared/DetailsPage/BackgroundIma
 import { AliasList } from "src/components/Shared/DetailsPage/AliasList";
 import { DetailTitle } from "src/components/Shared/DetailsPage/DetailTitle";
 import { HeaderImage } from "src/components/Shared/DetailsPage/HeaderImage";
+import { ExpandCollapseButton } from "src/components/Shared/CollapseButton";
 import { TruncatedText } from "src/components/Shared/TruncatedText";
 import {
   Performer,
@@ -131,7 +132,8 @@ const CopyrightList: React.FC = () => {
 
 const CopyrightDetailsPanel: React.FC<{
   copyright: GQL.CopyrightDataFragment;
-}> = ({ copyright }) => {
+  fullWidth?: boolean;
+}> = ({ copyright, fullWidth }) => {
   function renderRelations(items: Copyright[]) {
     if (items.length === 0) return;
     return (
@@ -145,16 +147,22 @@ const CopyrightDetailsPanel: React.FC<{
 
   return (
     <div className="detail-group">
-      <DetailItem id="details" value={copyright.description} />
+      <DetailItem
+        id="details"
+        value={copyright.description}
+        fullWidth={fullWidth}
+      />
       <DetailItem
         id="parent-series"
         label="Parent Series"
         value={renderRelations(copyright.parents)}
+        fullWidth={fullWidth}
       />
       <DetailItem
         id="sub-series"
         label="Sub-series"
         value={renderRelations(copyright.children)}
+        fullWidth={fullWidth}
       />
     </div>
   );
@@ -508,6 +516,11 @@ const CopyrightDetail: React.FC = () => {
   const history = useHistory();
   const Toast = useToast();
   const { configuration } = useConfigurationContext();
+  const uiConfig = configuration?.ui;
+  const enableBackgroundImage = uiConfig?.enableTagBackgroundImage ?? false;
+  const showAllDetails = uiConfig?.showAllDetails ?? true;
+  const compactExpandedDetails = uiConfig?.compactExpandedDetails ?? false;
+  const [collapsed, setCollapsed] = useState(!showAllDetails);
   const [editing, setEditing] = useState(false);
   const [image, setImage] = useState<string | null>();
   const [encodingImage, setEncodingImage] = useState(false);
@@ -518,8 +531,6 @@ const CopyrightDetail: React.FC = () => {
   });
 
   const copyright = data?.findCopyright;
-  const compactExpandedDetails =
-    configuration?.ui.compactExpandedDetails ?? false;
 
   const activeImage = useMemo(() => {
     if (!copyright) return undefined;
@@ -560,7 +571,8 @@ const CopyrightDetail: React.FC = () => {
 
   const headerClassName = cx("detail-header", {
     edit: editing,
-    "full-width": !compactExpandedDetails,
+    collapsed,
+    "full-width": !collapsed && !compactExpandedDetails,
   });
 
   return (
@@ -569,7 +581,7 @@ const CopyrightDetail: React.FC = () => {
       <div className={headerClassName}>
         <BackgroundImage
           imagePath={copyright.image_path ?? undefined}
-          show={!editing}
+          show={enableBackgroundImage && !editing}
         />
         <div className="detail-container">
           <HeaderImage encodingImage={encodingImage}>
@@ -584,6 +596,12 @@ const CopyrightDetail: React.FC = () => {
           <div className="row">
             <div className="tag-head col">
               <DetailTitle name={copyright.name} classNamePrefix="tag">
+                {!editing ? (
+                  <ExpandCollapseButton
+                    collapsed={collapsed}
+                    setCollapsed={(value) => setCollapsed(value)}
+                  />
+                ) : null}
                 <span className="name-icons">
                   <FavoriteIcon
                     favorite={copyright.favorite}
@@ -605,7 +623,10 @@ const CopyrightDetail: React.FC = () => {
                 />
               ) : (
                 <>
-                  <CopyrightDetailsPanel copyright={copyright} />
+                  <CopyrightDetailsPanel
+                    copyright={copyright}
+                    fullWidth={!collapsed && !compactExpandedDetails}
+                  />
                   <DetailsEditNavbar
                     objectName={copyright.name}
                     isNew={false}
