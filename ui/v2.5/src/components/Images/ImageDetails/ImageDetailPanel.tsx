@@ -1,5 +1,4 @@
 import React from "react";
-import { Link } from "react-router-dom";
 import * as GQL from "src/core/generated-graphql";
 import TextUtils from "src/utils/text";
 import { GalleryLink, TagLink } from "src/components/Shared/TagLink";
@@ -29,28 +28,6 @@ export const ImageDetailPanel: React.FC<IImageDetailProps> = PatchComponent(
             <FormattedMessage id="details" />:{" "}
           </h6>
           <p className="pre">{props.image.details}</p>
-        </>
-      );
-    }
-
-    function renderArtists() {
-      const artists = props.image.artists ?? [];
-      if (artists.length === 0) return;
-
-      return (
-        <>
-          <h6>
-            {intl.formatMessage({ id: "artists", defaultMessage: "Artists" })} (
-            {artists.length})
-          </h6>
-          <div className="mb-3">
-            {artists.map((artist, index) => (
-              <React.Fragment key={artist.id}>
-                {index > 0 ? ", " : null}
-                <Link to={`/studios/${artist.id}`}>{artist.name}</Link>
-              </React.Fragment>
-            ))}
-          </div>
         </>
       );
     }
@@ -177,7 +154,6 @@ export const ImageDetailPanel: React.FC<IImageDetailProps> = PatchComponent(
         <div className="row">
           <div className="col-12">
             {renderDetails()}
-            {renderArtists()}
             {renderMetadata()}
             {renderPerformers()}
             <CustomFields values={props.image.custom_fields} fullWidth />
