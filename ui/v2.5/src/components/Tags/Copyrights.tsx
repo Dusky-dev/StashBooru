@@ -5,7 +5,6 @@ import { Route, Switch, useHistory, useParams } from "react-router-dom";
 import cx from "classnames";
 
 import * as GQL from "src/core/generated-graphql";
-import { evictQueries } from "src/core/StashService";
 import {
   Copyright,
   CopyrightSelect,
@@ -19,6 +18,7 @@ import { BackgroundImage } from "src/components/Shared/DetailsPage/BackgroundIma
 import { AliasList } from "src/components/Shared/DetailsPage/AliasList";
 import { DetailTitle } from "src/components/Shared/DetailsPage/DetailTitle";
 import { HeaderImage } from "src/components/Shared/DetailsPage/HeaderImage";
+import { TabTitleCounter } from "src/components/Shared/DetailsPage/Tabs";
 import { ExpandCollapseButton } from "src/components/Shared/CollapseButton";
 import {
   Performer,
@@ -110,26 +110,10 @@ const CopyrightEditPanel: React.FC<{
 }) => {
   const history = useHistory();
   const Toast = useToast();
-  const [createCopyright] = GQL.useCopyrightCreateMutation({
-    update(cache) {
-      evictQueries(cache, [GQL.FindCopyrightsDocument]);
-    },
-  });
-  const [updateCopyright] = GQL.useCopyrightUpdateMutation({
-    update(cache) {
-      evictQueries(cache, [GQL.FindCopyrightsDocument]);
-    },
-  });
-  const [destroyCopyright] = GQL.useCopyrightDestroyMutation({
-    update(cache) {
-      evictQueries(cache, [GQL.FindCopyrightsDocument]);
-    },
-  });
-  const [updatePerformers] = GQL.useCopyrightPerformersUpdateMutation({
-    update(cache) {
-      evictQueries(cache, [GQL.FindCopyrightsDocument]);
-    },
-  });
+  const [createCopyright] = GQL.useCopyrightCreateMutation();
+  const [updateCopyright] = GQL.useCopyrightUpdateMutation();
+  const [destroyCopyright] = GQL.useCopyrightDestroyMutation();
+  const [updatePerformers] = GQL.useCopyrightPerformersUpdateMutation();
   const [values, setValues] = useState<CopyrightFormValues>(emptyValues);
   const [performers, setPerformers] = useState<Performer[]>([]);
   const [imageValue, setImageValue] = useState<string | null>();
@@ -172,7 +156,7 @@ const CopyrightEditPanel: React.FC<{
     setImageTouched(true);
   }
 
-  function onImageChange(event: React.ChangeEvent<HTMLInputElement>) {
+  function onImageChange(event: React.FormEvent<HTMLInputElement>) {
     ImageUtils.onImageChange(event, setEditedImage);
   }
 
@@ -193,7 +177,11 @@ const CopyrightEditPanel: React.FC<{
 
       let saved: GQL.CopyrightDataFragment | undefined;
       if (create) {
-        const result = await createCopyright({ variables: { input } });
+        const result = await createCopyright({
+          variables: { input },
+          refetchQueries: ["FindCopyrights"],
+          awaitRefetchQueries: true,
+        });
         saved = result.data?.copyrightCreate;
       } else if (copyright) {
         const result = await updateCopyright({
@@ -352,11 +340,20 @@ const CopyrightEditPanel: React.FC<{
 const CopyrightMediaTabs: React.FC<{
   copyright: GQL.CopyrightDataFragment;
   initialTab?: string;
-}> = ({ copyright, initialTab }) => {
+  abbreviateCounter: boolean;
+}> = ({ copyright, initialTab, abbreviateCounter }) => {
   const history = useHistory();
+
+  const populatedDefaultTab = useMemo(() => {
+    if (copyright.scene_count !== 0) return "videos";
+    if (copyright.image_count !== 0) return "images";
+    if (copyright.performer_count !== 0) return "characters";
+    return "videos";
+  }, [copyright.scene_count, copyright.image_count, copyright.performer_count]);
+
   const active = ["videos", "images", "characters"].includes(initialTab ?? "")
     ? initialTab
-    : "videos";
+    : populatedDefaultTab;
 
   const sceneIDs = useMemo(
     () => copyright.scenes.map((scene) => Number(scene.id)),
@@ -381,14 +378,32 @@ const CopyrightMediaTabs: React.FC<{
       mountOnEnter
       unmountOnExit
     >
-      <Tab eventKey="videos" title={`Videos (${copyright.scene_count})`}>
+      <Tab
+        eventKey="videos"
+        title={
+          <TabTitleCounter
+            messageID="scenes"
+            count={copyright.scene_count}
+            abbreviateCounter={abbreviateCounter}
+          />
+        }
+      >
         <FilteredSceneList
           sceneIDs={sceneIDs}
           alterQuery
           view={View.CopyrightScenes}
         />
       </Tab>
-      <Tab eventKey="images" title={`Images (${copyright.image_count})`}>
+      <Tab
+        eventKey="images"
+        title={
+          <TabTitleCounter
+            messageID="images"
+            count={copyright.image_count}
+            abbreviateCounter={abbreviateCounter}
+          />
+        }
+      >
         <FilteredImageList
           imageIDs={imageIDs}
           alterQuery
@@ -397,7 +412,13 @@ const CopyrightMediaTabs: React.FC<{
       </Tab>
       <Tab
         eventKey="characters"
-        title={`Characters (${copyright.performer_count})`}
+        title={
+          <TabTitleCounter
+            messageID="performers"
+            count={copyright.performer_count}
+            abbreviateCounter={abbreviateCounter}
+          />
+        }
       >
         <FilteredPerformerList
           performerIDs={performerIDs}
@@ -415,6 +436,7 @@ const CopyrightDetail: React.FC = () => {
   const Toast = useToast();
   const { configuration } = useConfigurationContext();
   const uiConfig = configuration?.ui;
+  const abbreviateCounter = uiConfig?.abbreviateCounters ?? false;
   const enableBackgroundImage = uiConfig?.enableTagBackgroundImage ?? false;
   const showAllDetails = uiConfig?.showAllDetails ?? true;
   const compactExpandedDetails = uiConfig?.compactExpandedDetails ?? false;
@@ -422,16 +444,8 @@ const CopyrightDetail: React.FC = () => {
   const [editing, setEditing] = useState(false);
   const [image, setImage] = useState<string | null>();
   const [encodingImage, setEncodingImage] = useState(false);
-  const [updateCopyright] = GQL.useCopyrightUpdateMutation({
-    update(cache) {
-      evictQueries(cache, [GQL.FindCopyrightsDocument]);
-    },
-  });
-  const [destroyCopyright] = GQL.useCopyrightDestroyMutation({
-    update(cache) {
-      evictQueries(cache, [GQL.FindCopyrightsDocument]);
-    },
-  });
+  const [updateCopyright] = GQL.useCopyrightUpdateMutation();
+  const [destroyCopyright] = GQL.useCopyrightDestroyMutation();
   const { data, loading, refetch } = GQL.useFindCopyrightQuery({
     variables: { id },
   });
@@ -487,7 +501,7 @@ const CopyrightDetail: React.FC = () => {
       <div className={headerClassName}>
         <BackgroundImage
           imagePath={copyright.image_path ?? undefined}
-          show={enableBackgroundImage && !editing}
+          show={enableBackgroundImage && !editing && !!copyright.image_path}
         />
         <div className="detail-container">
           <HeaderImage encodingImage={encodingImage}>
@@ -555,7 +569,11 @@ const CopyrightDetail: React.FC = () => {
         <div className="tag-body">
           <div className="tag-tabs">
             {!editing ? (
-              <CopyrightMediaTabs copyright={copyright} initialTab={tab} />
+              <CopyrightMediaTabs
+                copyright={copyright}
+                initialTab={tab}
+                abbreviateCounter={abbreviateCounter}
+              />
             ) : null}
           </div>
         </div>
