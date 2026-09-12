@@ -179,24 +179,37 @@ export const BooruTagSidebar: React.FC<BooruTagSidebarProps> = ({
     return null;
   }
 
+  const hasEntityCards =
+    sortedArtists.length > 0 ||
+    sortedCharacters.length > 0 ||
+    sortedCopyrights.length > 0;
+
   return (
-    <aside className="booru-metadata-sidebar" aria-label="Booru metadata">
-      <CardSection
-        kind="artist"
-        title="Artists"
-        items={sortedArtists}
-        indexRoute="/studios"
-        route={(id) => `/studios/${id}`}
-      />
-      <CharacterSection items={sortedCharacters} />
-      <CardSection
-        kind="copyright"
-        title="Copyrights"
-        items={sortedCopyrights}
-        indexRoute="/copyrights"
-        route={(id) => `/copyrights/${id}`}
-      />
-      <GeneralTags items={sortedTags} />
-    </aside>
+    <div className="booru-metadata" aria-label="Booru metadata">
+      {hasEntityCards ? (
+        <div className="booru-entity-metadata">
+          <CardSection
+            kind="artist"
+            title="Artists"
+            items={sortedArtists}
+            indexRoute="/studios"
+            route={(id) => `/studios/${id}`}
+          />
+          <CharacterSection items={sortedCharacters} />
+          <CardSection
+            kind="copyright"
+            title="Copyrights"
+            items={sortedCopyrights}
+            indexRoute="/copyrights"
+            route={(id) => `/copyrights/${id}`}
+          />
+        </div>
+      ) : null}
+      {sortedTags.length > 0 ? (
+        <aside className="booru-metadata-sidebar">
+          <GeneralTags items={sortedTags} />
+        </aside>
+      ) : null}
+    </div>
   );
 };
