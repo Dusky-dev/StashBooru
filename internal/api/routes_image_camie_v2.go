@@ -365,7 +365,7 @@ func (rs imageRoutes) CamieTagImagesV2(w http.ResponseWriter, r *http.Request) {
 			return fmt.Errorf("checking %s Camie worker: %w", backend, err)
 		}
 		if !status.Installed {
-			return fmt.Errorf("Camie Tagger v2 is not installed; place camie-tagger-v2.onnx at %s and camie-tagger-v2-metadata.json at %s", status.ModelPath, status.MetadataPath)
+			return fmt.Errorf("camie tagger v2 is not installed; place camie-tagger-v2.onnx at %s and camie-tagger-v2-metadata.json at %s", status.ModelPath, status.MetadataPath)
 		}
 
 		failures := 0
