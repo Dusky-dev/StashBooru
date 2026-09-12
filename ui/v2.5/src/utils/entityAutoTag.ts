@@ -2,12 +2,6 @@ import { getClient } from "src/core/StashService";
 
 type EntityAutoTagKind = "studio" | "performer" | "tag";
 
-const refetchQueries: Record<EntityAutoTagKind, string> = {
-  studio: "FindStudio",
-  performer: "FindPerformer",
-  tag: "FindTag",
-};
-
 export async function runEntityAutoTag(
   kind: EntityAutoTagKind,
   id: string
@@ -17,5 +11,9 @@ export async function runEntityAutoTag(
     throw new Error((await response.text()) || response.statusText);
   }
 
-  await getClient().refetchQueries({ include: [refetchQueries[kind]] });
+  // Copyright auto-tag refetches its live detail query after the synchronous
+  // matcher finishes. Do the same for every first-class entity instead of
+  // relying on a query-name lookup that can leave the currently mounted page
+  // rendering stale fragment data.
+  await getClient().refetchQueries({ include: "active" });
 }
