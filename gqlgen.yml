@@ -144,15 +144,27 @@ models:
     fields:
       career_length:
         resolver: true
+      copyrights:
+        resolver: true
   Copyright:
     fields:
       parents:
         resolver: true
       children:
         resolver: true
+      image_path:
+        resolver: true
       image_count:
         resolver: true
       scene_count:
+        resolver: true
+      performer_count:
+        resolver: true
+      images:
+        resolver: true
+      scenes:
+        resolver: true
+      performers:
         resolver: true
   Image:
     fields:
