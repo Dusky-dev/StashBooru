@@ -5,7 +5,7 @@
 [![Docker](https://img.shields.io/badge/docker-GHCR-blue?logo=docker)](https://github.com/Dusky-dev/StashBooru/pkgs/container/stashbooru)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 
-**StashBooru is an anime/cartoon-oriented fork of [Stash](https://github.com/stashapp/stash), focused on booru-style metadata, mixed image/video libraries, visual similarity, and assisted tagging.**
+**StashBooru is an anime/cartoon oriented fork of [Stash](https://github.com/stashapp/stash), focused on booru-style metadata, mixed image/video libraries, visual similarity, and assisted tagging.**
 
 It keeps Stash's self-hosted Go backend, media scanning, player, galleries, plugins, scrapers, jobs, and general library-management foundation, while changing the UI and metadata model around anime/cartoon collections.
 
