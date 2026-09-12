@@ -273,7 +273,6 @@ const CopyrightEditPanel: React.FC<{
 
   async function destroy() {
     if (!copyright) return;
-    if (!window.confirm(`Delete Copyright “${copyright.name}”?`)) return;
     setSaving(true);
     try {
       await destroyCopyright({ variables: { id: copyright.id } });
@@ -375,7 +374,7 @@ const CopyrightEditPanel: React.FC<{
         onImageChange={onImageChange}
         onImageChangeURL={setEditedImage}
         onClearImage={() => setEditedImage(null)}
-        onDelete={copyright ? destroy : undefined}
+        onDelete={destroy}
         acceptSVG
       />
     </>
@@ -506,11 +505,14 @@ const CopyrightMediaTabs: React.FC<{
 
 const CopyrightDetail: React.FC = () => {
   const { id, tab } = useParams<{ id: string; tab?: string }>();
+  const history = useHistory();
+  const Toast = useToast();
   const { configuration } = useConfigurationContext();
   const [editing, setEditing] = useState(false);
   const [image, setImage] = useState<string | null>();
   const [encodingImage, setEncodingImage] = useState(false);
   const [updateCopyright] = GQL.useCopyrightUpdateMutation();
+  const [destroyCopyright] = GQL.useCopyrightDestroyMutation();
   const { data, loading, refetch } = GQL.useFindCopyrightQuery({
     variables: { id },
   });
@@ -538,6 +540,15 @@ const CopyrightDetail: React.FC = () => {
       variables: { input: { id: copyright.id, favorite: value } },
     });
     void refetch();
+  }
+
+  async function destroy() {
+    try {
+      await destroyCopyright({ variables: { id: copyright.id } });
+      history.replace("/copyrights");
+    } catch (error) {
+      Toast.error(error);
+    }
   }
 
   function finishEdit() {
@@ -602,7 +613,7 @@ const CopyrightDetail: React.FC = () => {
                     onSave={() => {}}
                     onImageChange={() => {}}
                     onClearImage={() => {}}
-                    onDelete={() => setEditing(true)}
+                    onDelete={destroy}
                     classNames="mb-2"
                   />
                 </>
