@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/stashapp/stash/pkg/models"
@@ -39,7 +40,7 @@ func (s *ImageArtistStore) findIDs(ctx context.Context, imageID int) ([]int, err
 		ID int `db:"studio_id"`
 	}
 	if err := dbWrapper.Select(ctx, &rows,
-		"SELECT studio_id FROM images_artists WHERE image_id = ? ORDER BY position, studio_id", imageID); err != nil && err != sql.ErrNoRows {
+		"SELECT studio_id FROM images_artists WHERE image_id = ? ORDER BY position, studio_id", imageID); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
 
