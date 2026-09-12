@@ -123,3 +123,121 @@ div.nav-link[data-rb-event-key="/scenes/markers"] {
 #tag-tabs-tab-markers {
   display: none;
 }
+
+/* Booru-style taxonomy sidebar for Image and Video pages. */
+.booru-metadata-sidebar {
+  margin: 0.75rem 0 1rem;
+  padding: 0.75rem;
+  background: rgb(0 0 0 / 14%);
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.booru-tag-section + .booru-tag-section {
+  margin-top: 0.75rem;
+}
+
+.booru-tag-section-title {
+  display: flex;
+  gap: 0.35rem;
+  align-items: baseline;
+  margin-bottom: 0.25rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.booru-tag-count {
+  opacity: 0.55;
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.booru-tag-list {
+  min-width: 0;
+}
+
+.booru-tag-row {
+  position: relative;
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  min-height: 1.6rem;
+  min-width: 0;
+}
+
+.booru-tag-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.booru-tag-preview-trigger {
+  position: relative;
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 0 0.15rem;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.booru-tag-preview-trigger:hover,
+.booru-tag-preview-trigger:focus {
+  opacity: 1;
+}
+
+.booru-general-preview-trigger {
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 100ms ease-in-out;
+}
+
+.booru-tag-row-general:hover .booru-general-preview-trigger,
+.booru-general-preview-trigger:focus {
+  pointer-events: auto;
+  opacity: 0.75;
+}
+
+.booru-tag-preview {
+  position: absolute;
+  z-index: 1080;
+  top: 50%;
+  left: calc(100% + 0.5rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 180px;
+  min-height: 80px;
+  max-height: 240px;
+  padding: 0.35rem;
+  overflow: hidden;
+  background: #171d22;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 0.25rem;
+  box-shadow: 0 0.4rem 1rem rgb(0 0 0 / 45%);
+  transform: translateY(-50%);
+}
+
+.booru-tag-preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 230px;
+  object-fit: contain;
+}
+
+.booru-tag-preview-loading,
+.booru-tag-preview-empty {
+  padding: 0.75rem;
+  text-align: center;
+  opacity: 0.7;
+}
+
+@media (max-width: 1199.98px) {
+  .booru-tag-preview {
+    right: 0;
+    left: auto;
+    transform: translateY(-50%);
+  }
+}
