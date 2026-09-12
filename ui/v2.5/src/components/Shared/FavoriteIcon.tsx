@@ -7,7 +7,7 @@ import { SizeProp } from "@fortawesome/fontawesome-svg-core";
 
 export const FavoriteIcon: React.FC<{
   favorite: boolean;
-  onToggleFavorite: (v: boolean) => void;
+  onToggleFavorite?: (v: boolean) => void;
   size?: SizeProp;
   className?: string;
 }> = ({ favorite, onToggleFavorite, size, className }) => {
@@ -20,7 +20,8 @@ export const FavoriteIcon: React.FC<{
         className,
         favorite ? "favorite" : "not-favorite"
       )}
-      onClick={() => onToggleFavorite!(!favorite)}
+      disabled={!onToggleFavorite}
+      onClick={() => onToggleFavorite?.(!favorite)}
     >
       <Icon icon={faHeart} size={size} />
     </Button>
