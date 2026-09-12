@@ -87,15 +87,12 @@ export const CopyrightSelect: React.FC<CopyrightSelectProps> = (props) => {
     }
 
     return (
-      <reactSelectComponents.Option
-        {...optionProps}
-        children={
-          <span className="react-select-image-option">
-            <span>{object.name}</span>
-            {alias && <span className="alias">&nbsp;({alias})</span>}
-          </span>
-        }
-      />
+      <reactSelectComponents.Option {...optionProps}>
+        <span className="react-select-image-option">
+          <span>{object.name}</span>
+          {alias && <span className="alias">&nbsp;({alias})</span>}
+        </span>
+      </reactSelectComponents.Option>
     );
   };
 
