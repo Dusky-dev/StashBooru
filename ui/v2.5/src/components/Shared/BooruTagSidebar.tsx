@@ -94,14 +94,8 @@ export const BooruTagSidebar: React.FC<BooruTagSidebarProps> = ({
 }) => {
   const sortedTags = useMemo(() => sortByName(tags), [tags]);
   const sortedArtists = useMemo(() => sortByName(artists), [artists]);
-  const sortedCharacters = useMemo(
-    () => sortByName(characters),
-    [characters]
-  );
-  const sortedCopyrights = useMemo(
-    () => sortByName(copyrights),
-    [copyrights]
-  );
+  const sortedCharacters = useMemo(() => sortByName(characters), [characters]);
+  const sortedCopyrights = useMemo(() => sortByName(copyrights), [copyrights]);
 
   if (
     sortedTags.length === 0 &&
