@@ -444,6 +444,7 @@ const CopyrightDetail: React.FC = () => {
   const [editing, setEditing] = useState(false);
   const [image, setImage] = useState<string | null>();
   const [encodingImage, setEncodingImage] = useState(false);
+  const [autoTagRunning, setAutoTagRunning] = useState(false);
   const [updateCopyright] = GQL.useCopyrightUpdateMutation();
   const [destroyCopyright] = GQL.useCopyrightDestroyMutation();
   const { data, loading, refetch } = GQL.useFindCopyrightQuery({
@@ -480,6 +481,26 @@ const CopyrightDetail: React.FC = () => {
       history.replace("/copyrights");
     } catch (error) {
       Toast.error(error);
+    }
+  }
+
+  async function onAutoTag() {
+    if (autoTagRunning) return;
+
+    setAutoTagRunning(true);
+    try {
+      const response = await fetch(`/tag/copyright/${copyrightID}/auto-tag`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        throw new Error((await response.text()) || response.statusText);
+      }
+      await refetch();
+      Toast.success("Copyright auto-tag completed");
+    } catch (error) {
+      Toast.error(error);
+    } finally {
+      setAutoTagRunning(false);
     }
   }
 
@@ -555,6 +576,8 @@ const CopyrightDetail: React.FC = () => {
                     onSave={() => {}}
                     onImageChange={() => {}}
                     onClearImage={() => {}}
+                    onAutoTag={onAutoTag}
+                    autoTagDisabled={autoTagRunning}
                     onDelete={destroy}
                     classNames="mb-2"
                   />
