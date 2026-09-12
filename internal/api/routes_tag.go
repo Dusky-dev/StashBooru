@@ -8,9 +8,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/stashapp/stash/internal/autotag"
 	"github.com/stashapp/stash/internal/manager"
 	"github.com/stashapp/stash/internal/static"
 	"github.com/stashapp/stash/pkg/logger"
+	"github.com/stashapp/stash/pkg/match"
 	"github.com/stashapp/stash/pkg/models"
 	"github.com/stashapp/stash/pkg/utils"
 )
@@ -28,9 +30,10 @@ type tagRoutes struct {
 func (rs tagRoutes) Routes() chi.Router {
 	r := chi.NewRouter()
 
-	// Copyright is a separate metadata category, but this lightweight image
-	// endpoint shares the already-mounted metadata-image router.
+	// Copyright is a separate metadata category, but these lightweight endpoints
+	// share the already-mounted metadata router.
 	r.Get("/copyright/{copyrightId}/image", rs.CopyrightImage)
+	r.Post("/copyright/{copyrightId}/auto-tag", rs.CopyrightAutoTag)
 
 	r.Route("/{tagId}", func(r chi.Router) {
 		r.Use(rs.TagCtx)
@@ -38,6 +41,49 @@ func (rs tagRoutes) Routes() chi.Router {
 	})
 
 	return r
+}
+
+func (rs tagRoutes) CopyrightAutoTag(w http.ResponseWriter, r *http.Request) {
+	copyrightID, err := strconv.Atoi(chi.URLParam(r, "copyrightId"))
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
+	repository := manager.GetInstance().Repository
+	err = repository.WithDB(r.Context(), func(ctx context.Context) error {
+		copyright, findErr := repository.Copyright.Find(ctx, copyrightID)
+		if findErr != nil {
+			return findErr
+		}
+		if copyright == nil {
+			return models.ErrNotFound
+		}
+
+		cache := &match.Cache{}
+		tagger := autotag.Tagger{
+			TxnManager: repository.TxnManager,
+			Cache:      cache,
+		}
+		if tagErr := tagger.CopyrightScenes(ctx, copyright, nil, repository.Scene, repository.Copyright); tagErr != nil {
+			return tagErr
+		}
+		return tagger.CopyrightImages(ctx, copyright, nil, repository.Image, repository.Copyright)
+	})
+	if errors.Is(err, context.Canceled) {
+		return
+	}
+	if errors.Is(err, models.ErrNotFound) {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		logger.Errorf("copyright auto-tag error: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (rs tagRoutes) CopyrightImage(w http.ResponseWriter, r *http.Request) {
@@ -65,6 +111,7 @@ func (rs tagRoutes) CopyrightImage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(image) == 0 {
+		disableEntityFallbackCaching(w)
 		var fallbackID int
 		readTxnErr := rs.withReadTxn(r, func(ctx context.Context) error {
 			ids, findErr := repository.Copyright.FindImageIDs(ctx, copyrightID)
@@ -109,6 +156,7 @@ func (rs tagRoutes) Image(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(image) == 0 {
+		disableEntityFallbackCaching(w)
 		var fallback *models.Image
 		readTxnErr := rs.withReadTxn(r, func(ctx context.Context) error {
 			filter := &models.ImageFilterType{

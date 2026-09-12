@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, Col, Row, Table } from "react-bootstrap";
+import { ButtonGroup, Table } from "react-bootstrap";
 import { Link, useHistory } from "react-router-dom";
 import { useIntl } from "react-intl";
 
@@ -13,14 +13,95 @@ import { Pagination, PaginationIndex } from "src/components/List/Pagination";
 import { LoadedContent } from "src/components/List/PagedList";
 import { View } from "src/components/List/views";
 import { TruncatedText } from "src/components/Shared/TruncatedText";
+import {
+  GridCard,
+  useCardWidth,
+  useContainerDimensions,
+} from "src/components/Shared/GridCard/GridCard";
+import { PopoverCountButton } from "src/components/Shared/PopoverCountButton";
 
-const zoomWidths = [250, 310, 390, 500];
+const zoomWidths = [280, 340, 480, 640];
 
 function useFindCopyrightsForList(filter: ListFilterModel) {
   return GQL.useFindCopyrightsQuery({
     variables: { filter: filter.makeFindFilter() },
+    fetchPolicy: "network-only",
   });
 }
+
+interface CopyrightCardProps {
+  copyright: GQL.CopyrightListDataFragment;
+  cardWidth?: number;
+  zoomIndex: number;
+  selecting: boolean;
+  selected: boolean;
+  onSelectedChanged: (selected: boolean, shiftKey: boolean) => void;
+}
+
+const CopyrightCard: React.FC<CopyrightCardProps> = ({
+  copyright,
+  cardWidth,
+  zoomIndex,
+  selecting,
+  selected,
+  onSelectedChanged,
+}) => (
+  <GridCard
+    className={`tag-card copyright-card zoom-${zoomIndex}`}
+    url={`/copyrights/${copyright.id}`}
+    width={cardWidth}
+    title={copyright.name}
+    linkClassName="tag-card-header copyright-card-header"
+    image={
+      <img
+        loading="lazy"
+        className="tag-card-image copyright-card-image"
+        alt={copyright.name}
+        src={copyright.image_path ?? ""}
+      />
+    }
+    details={
+      copyright.description ? (
+        <TruncatedText
+          className="tag-description"
+          text={copyright.description}
+          lineCount={3}
+        />
+      ) : undefined
+    }
+    popovers={
+      <>
+        <hr />
+        <ButtonGroup className="card-popovers">
+          <PopoverCountButton
+            className="scene-count"
+            type="scene"
+            count={copyright.scene_count}
+            url={`/copyrights/${copyright.id}/videos`}
+            showZero={false}
+          />
+          <PopoverCountButton
+            className="image-count"
+            type="image"
+            count={copyright.image_count}
+            url={`/copyrights/${copyright.id}/images`}
+            showZero={false}
+          />
+          <PopoverCountButton
+            className="performer-count"
+            type="performer"
+            count={copyright.performer_count}
+            url={`/copyrights/${copyright.id}/characters`}
+            showZero={false}
+          />
+        </ButtonGroup>
+      </>
+    }
+    selected={selected}
+    selecting={selecting}
+    onSelectedChanged={onSelectedChanged}
+  />
+);
 
 const CopyrightList: React.FC = () => {
   const intl = useIntl();
@@ -43,6 +124,9 @@ const CopyrightList: React.FC = () => {
   const { filter, setFilter } = filterState;
   const { result, cachedResult, items: copyrights, totalCount } = queryResult;
   const { modal } = modalState;
+  const { selectedIds, onSelectChange } = listSelect;
+  const [componentRef, { width: containerWidth }] = useContainerDimensions();
+  const cardWidth = useCardWidth(containerWidth, filter.zoomIndex, zoomWidths);
 
   function viewRandom() {
     if (copyrights.length === 0) return;
@@ -53,60 +137,34 @@ const CopyrightList: React.FC = () => {
   const operations = (
     <ListOperations
       items={copyrights.length}
+      hasSelection={selectedIds.size > 0}
       operations={[
         {
           text: intl.formatMessage({ id: "actions.view_random" }),
           onClick: viewRandom,
-          isDisplayed: () => totalCount > 0,
+          isDisplayed: () => totalCount > 0 && selectedIds.size === 0,
         },
       ]}
     />
   );
 
   function renderGrid() {
-    const zoomIndex = Math.max(
-      0,
-      Math.min(filter.zoomIndex, zoomWidths.length - 1)
-    );
-    const cardWidth = zoomWidths[zoomIndex];
-
     return (
-      <Row className="justify-content-center">
+      <div className="row justify-content-center" ref={componentRef}>
         {copyrights.map((copyright) => (
-          <Col
+          <CopyrightCard
             key={copyright.id}
-            className="mb-3"
-            style={{ flex: `0 0 ${cardWidth}px`, maxWidth: `${cardWidth}px` }}
-          >
-            <Card
-              as={Link}
-              to={`/copyrights/${copyright.id}`}
-              className={`tag-card zoom-${zoomIndex} h-100 text-reset text-decoration-none`}
-            >
-              <img
-                className="tag-card-image"
-                src={copyright.image_path}
-                alt={copyright.name}
-                loading="lazy"
-              />
-              <Card.Body>
-                <Card.Title>{copyright.name}</Card.Title>
-                {copyright.description ? (
-                  <TruncatedText
-                    className="tag-description"
-                    text={copyright.description}
-                    lineCount={3}
-                  />
-                ) : null}
-                <small className="text-muted d-block mt-2">
-                  {copyright.scene_count} Videos · {copyright.image_count}{" "}
-                  Images · {copyright.performer_count} Characters
-                </small>
-              </Card.Body>
-            </Card>
-          </Col>
+            copyright={copyright}
+            cardWidth={cardWidth}
+            zoomIndex={filter.zoomIndex}
+            selecting={selectedIds.size > 0}
+            selected={selectedIds.has(copyright.id)}
+            onSelectedChanged={(selected, shiftKey) =>
+              onSelectChange(copyright.id, selected, shiftKey)
+            }
+          />
         ))}
-      </Row>
+      </div>
     );
   }
 

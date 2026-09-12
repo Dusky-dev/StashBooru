@@ -34,6 +34,8 @@ fragment PerformerData on Performer {
 
   copyrights {
     ...SlimCopyrightData
+    scene_count
+    image_count
   }
 
   stash_ids {

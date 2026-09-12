@@ -28,6 +28,10 @@ function sortByName<T extends { name: string }>(items?: T[] | null): T[] {
   );
 }
 
+function uniqueByID<T extends { id: string }>(items: T[]): T[] {
+  return [...new Map(items.map((item) => [item.id, item])).values()];
+}
+
 const EntityStats: React.FC<{ entity: BooruEntity }> = ({ entity }) => (
   <div className="booru-entity-card-stats">
     <span title="Videos">
@@ -104,19 +108,9 @@ const CharacterSection: React.FC<{
         <Link to="/performers">Characters</Link>
         <span className="booru-tag-count">{items.length}</span>
       </h6>
-      <div
-        className="booru-entity-card-grid booru-character-card-grid"
-        style={{
-          gridTemplateColumns:
-            "repeat(auto-fill, minmax(min(9rem, 100%), 1fr))",
-        }}
-      >
+      <div className="booru-entity-card-grid booru-character-card-grid">
         {items.map((performer) => (
-          <div
-            className="booru-character-card-shell"
-            key={performer.id}
-            style={{ display: "flex", justifyContent: "center", minWidth: 0 }}
-          >
+          <div className="booru-character-card-shell" key={performer.id}>
             <PerformerCard performer={performer} cardWidth={140} />
           </div>
         ))}
@@ -169,7 +163,12 @@ export const BooruTagSidebar: React.FC<BooruTagSidebarProps> = ({
   const sortedTags = useMemo(() => sortByName(tags), [tags]);
   const sortedArtists = useMemo(() => sortByName(artists), [artists]);
   const sortedCharacters = useMemo(() => sortByName(characters), [characters]);
-  const sortedCopyrights = useMemo(() => sortByName(copyrights), [copyrights]);
+  const sortedCopyrights = useMemo(() => {
+    const inherited = (characters ?? []).flatMap(
+      (character) => character.copyrights ?? []
+    );
+    return sortByName(uniqueByID([...(copyrights ?? []), ...inherited]));
+  }, [characters, copyrights]);
 
   if (
     sortedTags.length === 0 &&

@@ -130,9 +130,7 @@ export const DetailsEditNavbar: React.FC<IProps> = (props: IProps) => {
             show={isAutoTagAlertOpen}
             onConfirm={() => {
               setIsAutoTagAlertOpen(false);
-              if (props.onAutoTag) {
-                props.onAutoTag();
-              }
+              props.onAutoTag?.();
             }}
             onCancel={() => setIsAutoTagAlertOpen(false)}
           />

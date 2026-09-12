@@ -54,6 +54,7 @@ export const CopyrightSelect: React.FC<CopyrightSelectProps> = (props) => {
   async function loadCopyrights(input: string): Promise<Option[]> {
     const result = await client.query<GQL.FindCopyrightsForSelectQuery>({
       query: GQL.FindCopyrightsForSelectDocument,
+      fetchPolicy: "network-only",
       variables: {
         filter: {
           q: input || undefined,
@@ -115,6 +116,10 @@ export const CopyrightSelect: React.FC<CopyrightSelectProps> = (props) => {
   const onCreate = async (name: string) => {
     const result = await createCopyright({
       variables: { input: { name } },
+      update(cache) {
+        cache.evict({ fieldName: "findCopyrights" });
+        cache.gc();
+      },
     });
     const created = result.data?.copyrightCreate;
     if (!created) throw new Error("Failed to create Copyright");
@@ -190,6 +195,7 @@ export const CopyrightIDSelect: React.FC<
     void client
       .query<GQL.FindCopyrightsForSelectQuery>({
         query: GQL.FindCopyrightsForSelectDocument,
+        fetchPolicy: "network-only",
         variables: { ids },
       })
       .then((result) => {
