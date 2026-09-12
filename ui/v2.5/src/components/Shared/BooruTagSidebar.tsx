@@ -104,10 +104,20 @@ const CharacterSection: React.FC<{
         <Link to="/performers">Characters</Link>
         <span className="booru-tag-count">{items.length}</span>
       </h6>
-      <div className="booru-character-card-grid">
+      <div
+        className="booru-entity-card-grid booru-character-card-grid"
+        style={{
+          gridTemplateColumns:
+            "repeat(auto-fill, minmax(min(9rem, 100%), 1fr))",
+        }}
+      >
         {items.map((performer) => (
-          <div className="booru-character-card-shell" key={performer.id}>
-            <PerformerCard performer={performer} />
+          <div
+            className="booru-character-card-shell"
+            key={performer.id}
+            style={{ display: "flex", justifyContent: "center", minWidth: 0 }}
+          >
+            <PerformerCard performer={performer} cardWidth={140} />
           </div>
         ))}
       </div>
