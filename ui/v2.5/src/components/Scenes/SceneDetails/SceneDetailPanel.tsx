@@ -38,7 +38,8 @@ export const SceneDetailPanel: React.FC<ISceneDetailProps> = (props) => {
     return (
       <>
         <h6>
-          {intl.formatMessage({ id: "artists", defaultMessage: "Artists" })} ({artists.length})
+          {intl.formatMessage({ id: "artists", defaultMessage: "Artists" })} (
+          {artists.length})
         </h6>
         <div className="mb-3">
           {artists.map((artist, index) => (
