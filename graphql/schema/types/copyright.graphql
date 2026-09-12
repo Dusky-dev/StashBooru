@@ -5,12 +5,17 @@ type Copyright {
   description: String!
   favorite: Boolean!
   aliases: [String!]!
+  image_path: String!
   created_at: Time!
   updated_at: Time!
   parents: [Copyright!]!
   children: [Copyright!]!
   image_count: Int!
   scene_count: Int!
+  performer_count: Int!
+  images: [Image!]!
+  scenes: [Scene!]!
+  performers: [Performer!]!
 }
 
 input CopyrightCreateInput {
@@ -21,6 +26,7 @@ input CopyrightCreateInput {
   aliases: [String!]
   parent_ids: [ID!]
   child_ids: [ID!]
+  image: String
 }
 
 input CopyrightUpdateInput {
@@ -32,6 +38,7 @@ input CopyrightUpdateInput {
   aliases: [String!]
   parent_ids: [ID!]
   child_ids: [ID!]
+  image: String
 }
 
 input CopyrightDestroyInput {
@@ -54,6 +61,10 @@ extend type Mutation {
   copyrightDestroy(input: CopyrightDestroyInput!): Boolean!
   imageCopyrightsUpdate(image_id: ID!, copyright_ids: [ID!]!): Image!
   sceneCopyrightsUpdate(scene_id: ID!, copyright_ids: [ID!]!): Scene!
+  performerCopyrightsUpdate(performer_id: ID!, copyright_ids: [ID!]!): Performer!
+  copyrightImagesUpdate(copyright_id: ID!, image_ids: [ID!]!): Copyright!
+  copyrightScenesUpdate(copyright_id: ID!, scene_ids: [ID!]!): Copyright!
+  copyrightPerformersUpdate(copyright_id: ID!, performer_ids: [ID!]!): Copyright!
 }
 
 extend type Image {
@@ -61,5 +72,9 @@ extend type Image {
 }
 
 extend type Scene {
+  copyrights: [Copyright!]!
+}
+
+extend type Performer {
   copyrights: [Copyright!]!
 }

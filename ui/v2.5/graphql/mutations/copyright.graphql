@@ -31,3 +31,36 @@ mutation SceneCopyrightsUpdate($sceneID: ID!, $copyrightIDs: [ID!]!) {
     }
   }
 }
+
+mutation PerformerCopyrightsUpdate($performerID: ID!, $copyrightIDs: [ID!]!) {
+  performerCopyrightsUpdate(
+    performer_id: $performerID
+    copyright_ids: $copyrightIDs
+  ) {
+    id
+    copyrights {
+      ...SlimCopyrightData
+    }
+  }
+}
+
+mutation CopyrightImagesUpdate($copyrightID: ID!, $imageIDs: [ID!]!) {
+  copyrightImagesUpdate(copyright_id: $copyrightID, image_ids: $imageIDs) {
+    ...CopyrightData
+  }
+}
+
+mutation CopyrightScenesUpdate($copyrightID: ID!, $sceneIDs: [ID!]!) {
+  copyrightScenesUpdate(copyright_id: $copyrightID, scene_ids: $sceneIDs) {
+    ...CopyrightData
+  }
+}
+
+mutation CopyrightPerformersUpdate($copyrightID: ID!, $performerIDs: [ID!]!) {
+  copyrightPerformersUpdate(
+    copyright_id: $copyrightID
+    performer_ids: $performerIDs
+  ) {
+    ...CopyrightData
+  }
+}
