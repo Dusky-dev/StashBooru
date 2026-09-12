@@ -1,5 +1,6 @@
 import React from "react";
 import { FormattedMessage, useIntl } from "react-intl";
+import { Link } from "react-router-dom";
 import * as GQL from "src/core/generated-graphql";
 import TextUtils from "src/utils/text";
 import { sceneAgeFromDate } from "src/utils/scene";
@@ -9,6 +10,7 @@ import { PerformerCard } from "src/components/Performers/PerformerCard";
 import { sortPerformers } from "src/core/performers";
 import { DirectorLink } from "src/components/Shared/Link";
 import { CustomFields } from "src/components/Shared/CustomFields";
+import { SceneFileInfoPanel } from "./SceneFileInfoPanel";
 
 interface ISceneDetailProps {
   scene: GQL.SceneDataFragment;
@@ -25,6 +27,27 @@ export const SceneDetailPanel: React.FC<ISceneDetailProps> = (props) => {
           <FormattedMessage id="details" />:{" "}
         </h6>
         <p className="pre">{props.scene.details}</p>
+      </>
+    );
+  }
+
+  function renderArtists() {
+    const artists = props.scene.artists ?? [];
+    if (artists.length === 0) return;
+
+    return (
+      <>
+        <h6>
+          {intl.formatMessage({ id: "artists", defaultMessage: "Artists" })} ({artists.length})
+        </h6>
+        <div className="mb-3">
+          {artists.map((artist, index) => (
+            <React.Fragment key={artist.id}>
+              {index > 0 ? ", " : null}
+              <Link to={`/studios/${artist.id}`}>{artist.name}</Link>
+            </React.Fragment>
+          ))}
+        </div>
       </>
     );
   }
@@ -136,9 +159,13 @@ export const SceneDetailPanel: React.FC<ISceneDetailProps> = (props) => {
       <div className="row">
         <div className="col-12">
           {renderDetails()}
+          {renderArtists()}
           {renderMetadata()}
           {renderPerformers()}
           <CustomFields values={props.scene.custom_fields} fullWidth />
+          <hr />
+          <h6>File info</h6>
+          <SceneFileInfoPanel scene={props.scene} />
         </div>
       </div>
     </>
