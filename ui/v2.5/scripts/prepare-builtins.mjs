@@ -20,6 +20,7 @@ const unifiedExtensions = [
   "unifiedMedia.copyright.part",
   "unifiedMedia.copyright.guard.part",
   "unifiedMedia.visual-only.part",
+  "unifiedMedia.copyright-native-all.part",
 ];
 const unifiedClose = Buffer.from("})();\n");
 
