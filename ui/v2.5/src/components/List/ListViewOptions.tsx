@@ -27,113 +27,10 @@ interface IListViewOptionsProps {
   displayMode: DisplayMode;
   onSetDisplayMode: (m: DisplayMode) => void;
   displayModeOptions: DisplayMode[];
+  // Kept for plugin/backwards compatibility. Persistence now lives in
+  // useFilterState so it is tied to the logical page rather than this control's
+  // mount lifecycle.
   preferenceKey?: string;
-}
-
-interface IRememberedListView {
-  displayMode?: DisplayMode;
-  zoomIndex?: number;
-}
-
-const LIST_VIEW_STORAGE_PREFIX = "stashbooru.listView.preferences.v2";
-
-function storageKey(preferenceKey: string) {
-  return `${LIST_VIEW_STORAGE_PREFIX}.${preferenceKey}`;
-}
-
-function readRememberedListView(preferenceKey: string): IRememberedListView {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = window.localStorage.getItem(storageKey(preferenceKey));
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as IRememberedListView;
-    return {
-      displayMode:
-        typeof parsed.displayMode === "number" ? parsed.displayMode : undefined,
-      zoomIndex:
-        typeof parsed.zoomIndex === "number" &&
-        Number.isFinite(parsed.zoomIndex)
-          ? parsed.zoomIndex
-          : undefined,
-    };
-  } catch {
-    return {};
-  }
-}
-
-function saveRememberedListView(
-  preferenceKey: string,
-  update: IRememberedListView
-) {
-  if (typeof window === "undefined") return;
-  try {
-    const current = readRememberedListView(preferenceKey);
-    window.localStorage.setItem(
-      storageKey(preferenceKey),
-      JSON.stringify({ ...current, ...update })
-    );
-  } catch {
-    // Persistence is best-effort in hardened/private browser contexts.
-  }
-}
-
-function useRememberedListView({
-  zoomIndex,
-  onSetZoom,
-  displayMode,
-  onSetDisplayMode,
-  displayModeOptions,
-  preferenceKey = "default",
-}: IListViewOptionsProps) {
-  const restored = useRef(false);
-  const skipDisplaySave = useRef(true);
-  const skipZoomSave = useRef(true);
-
-  useEffect(() => {
-    if (restored.current) return;
-    restored.current = true;
-
-    const remembered = readRememberedListView(preferenceKey);
-    if (
-      remembered.displayMode !== undefined &&
-      remembered.displayMode !== displayMode &&
-      displayModeOptions.includes(remembered.displayMode)
-    ) {
-      onSetDisplayMode(remembered.displayMode);
-    }
-    if (
-      onSetZoom &&
-      remembered.zoomIndex !== undefined &&
-      remembered.zoomIndex !== zoomIndex
-    ) {
-      onSetZoom(remembered.zoomIndex);
-    }
-  }, [
-    displayMode,
-    displayModeOptions,
-    onSetDisplayMode,
-    onSetZoom,
-    preferenceKey,
-    zoomIndex,
-  ]);
-
-  useEffect(() => {
-    if (skipDisplaySave.current) {
-      skipDisplaySave.current = false;
-      return;
-    }
-    saveRememberedListView(preferenceKey, { displayMode });
-  }, [displayMode, preferenceKey]);
-
-  useEffect(() => {
-    if (skipZoomSave.current) {
-      skipZoomSave.current = false;
-      return;
-    }
-    if (zoomIndex !== undefined) {
-      saveRememberedListView(preferenceKey, { zoomIndex });
-    }
-  }, [preferenceKey, zoomIndex]);
 }
 
 function getIcon(option: DisplayMode) {
@@ -178,19 +75,8 @@ export const ListViewOptions: React.FC<IListViewOptionsProps> = ({
   displayMode,
   onSetDisplayMode,
   displayModeOptions,
-  preferenceKey,
 }) => {
   const intl = useIntl();
-
-  useRememberedListView({
-    zoomIndex,
-    onSetZoom,
-    displayMode,
-    onSetDisplayMode,
-    displayModeOptions,
-    preferenceKey,
-  });
-
   const overlayTarget = useRef(null);
   const [showOptions, setShowOptions] = useState(false);
 
@@ -294,18 +180,8 @@ export const ListViewButtonGroup: React.FC<IListViewOptionsProps> = ({
   displayMode,
   onSetDisplayMode,
   displayModeOptions,
-  preferenceKey,
 }) => {
   const intl = useIntl();
-
-  useRememberedListView({
-    zoomIndex,
-    onSetZoom,
-    displayMode,
-    onSetDisplayMode,
-    displayModeOptions,
-    preferenceKey,
-  });
 
   return (
     <>
