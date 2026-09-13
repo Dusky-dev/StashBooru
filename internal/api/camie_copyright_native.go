@@ -72,7 +72,7 @@ func enrichNativeCamiePredictionTargets(ctx context.Context, predictions []camie
 			var targetID int
 			switch prediction.Category {
 			case "character":
-				performerEntity, _ := findCamiePerformerPrediction(ctx, repository, prediction)
+				performerEntity, _ := findCamiePerformerPredictionWithCopyrightContext(ctx, repository, prediction, result)
 				if performerEntity != nil {
 					targetID = performerEntity.ID
 				}
