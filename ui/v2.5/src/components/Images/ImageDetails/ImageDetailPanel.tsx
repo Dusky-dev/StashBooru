@@ -73,7 +73,6 @@ export const ImageDetailPanel: React.FC<IImageDetailProps> = PatchComponent(
             {renderDetails()}
             <CustomFields values={props.image.custom_fields} fullWidth />
             <hr />
-            <h6>File info</h6>
             <ImageFileInfoPanel image={props.image} />
           </div>
         </div>
