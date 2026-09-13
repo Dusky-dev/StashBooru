@@ -302,7 +302,9 @@ function possibleBareCharacterMatch(prediction: TagPrediction) {
   return { bareName, disambiguation };
 }
 
-function resolvePossibleBareCharacter(prediction: TagPrediction): TagPrediction {
+function resolvePossibleBareCharacter(
+  prediction: TagPrediction
+): TagPrediction {
   const possible = possibleBareCharacterMatch(prediction);
   if (!possible) return prediction;
 
@@ -724,7 +726,8 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                   <h5>{categoryLabel(category)}</h5>
                   {items.map((prediction, index) => {
                     const key = predictionKey(prediction);
-                    const possibleMatch = possibleBareCharacterMatch(prediction);
+                    const possibleMatch =
+                      possibleBareCharacterMatch(prediction);
                     return (
                       <div
                         className="d-flex align-items-center py-1 border-bottom"
