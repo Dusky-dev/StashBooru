@@ -21,6 +21,7 @@ import {
 import { PopoverCountButton } from "src/components/Shared/PopoverCountButton";
 
 const zoomWidths = [280, 340, 480, 640];
+const COPYRIGHT_LIST_ZOOM_PREFERENCE_KEY = "copyrights-list";
 
 function useFindCopyrightsForList(filter: ListFilterModel) {
   return GQL.useFindCopyrightsQuery({
@@ -113,6 +114,7 @@ const CopyrightList: React.FC = () => {
       filterStateProps: {
         filterMode: GQL.FilterMode.Copyrights,
         view,
+        zoomPreferenceKey: COPYRIGHT_LIST_ZOOM_PREFERENCE_KEY,
       },
       queryResultProps: {
         useResult: useFindCopyrightsForList,

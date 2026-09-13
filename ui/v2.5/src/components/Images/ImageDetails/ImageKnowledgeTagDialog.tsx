@@ -4,6 +4,7 @@ import { faExternalLinkAlt, faSearch } from "@fortawesome/free-solid-svg-icons";
 import { useHistory } from "react-router-dom";
 
 import { Icon } from "src/components/Shared/Icon";
+import { ModalComponent } from "src/components/Shared/Modal";
 import { useToast } from "src/hooks/Toast";
 
 interface TagPrediction {
@@ -71,6 +72,11 @@ interface ImageTaggingApplyResponse {
   createdArtists: number;
   createdCopyrights: number;
   createdTags: number;
+}
+
+interface PendingCharacterResolution {
+  tags: TagPrediction[];
+  index: number;
 }
 
 interface IProps {
@@ -302,18 +308,9 @@ function possibleBareCharacterMatch(prediction: TagPrediction) {
   return { bareName, disambiguation };
 }
 
-function resolvePossibleBareCharacter(
-  prediction: TagPrediction
-): TagPrediction {
+function reusePossibleBareCharacter(prediction: TagPrediction): TagPrediction {
   const possible = possibleBareCharacterMatch(prediction);
   if (!possible) return prediction;
-
-  const sameCharacter = window.confirm(
-    `Image Tagging found “${prediction.name}”, but “${possible.bareName}” already exists without a disambiguation.\n\n` +
-      `Is this the same Character?\n\n` +
-      `OK: reuse “${possible.bareName}”\nCancel: keep “${prediction.name}” as a separate Character.`
-  );
-  if (!sameCharacter) return prediction;
 
   return {
     ...prediction,
@@ -346,6 +343,8 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   const [applying, setApplying] = useState(false);
   const [replaceArtist, setReplaceArtist] = useState(false);
   const [error, setError] = useState<string>();
+  const [pendingCharacterResolution, setPendingCharacterResolution] =
+    useState<PendingCharacterResolution>();
 
   const predictions = useMemo(
     () =>
@@ -499,12 +498,84 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
     });
   }, []);
 
-  const applySelected = useCallback(async () => {
+  const submitTags = useCallback(
+    async (tags: TagPrediction[]) => {
+      setApplying(true);
+      setError(undefined);
+      try {
+        const response = await fetch(
+          `image/${imageId}/knowledge-tags?apply=true`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tags, replaceArtist }),
+          }
+        );
+        const result = await readResponse<ImageTaggingApplyResponse>(response);
+        const characters = result.characters ?? [];
+        const artists = result.artists ?? [];
+        const copyrights = result.copyrights ?? [];
+        const appliedTags = result.tags ?? [];
+        const appliedCount =
+          characters.length +
+          artists.length +
+          copyrights.length +
+          appliedTags.length;
+        const createdCount =
+          (result.createdCharacters ?? 0) +
+          (result.createdArtists ?? 0) +
+          (result.createdCopyrights ?? 0) +
+          (result.createdTags ?? 0);
+        Toast.success(
+          `Applied ${appliedCount} metadata item${appliedCount === 1 ? "" : "s"}; created ${createdCount} new entr${createdCount === 1 ? "y" : "ies"}.`
+        );
+        await onApplied();
+        onHide();
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : String(cause);
+        setError(message);
+        Toast.error(cause);
+      } finally {
+        setApplying(false);
+      }
+    },
+    [Toast, imageId, onApplied, onHide, replaceArtist]
+  );
+
+  const continueCharacterResolution = useCallback(
+    (tags: TagPrediction[], startIndex: number) => {
+      const nextIndex = tags.findIndex(
+        (prediction, index) =>
+          index >= startIndex && possibleBareCharacterMatch(prediction)
+      );
+      if (nextIndex === -1) {
+        setPendingCharacterResolution(undefined);
+        void submitTags(tags);
+        return;
+      }
+      setPendingCharacterResolution({ tags, index: nextIndex });
+    },
+    [submitTags]
+  );
+
+  const resolvePendingCharacter = useCallback(
+    (reuseExisting: boolean) => {
+      if (!pendingCharacterResolution) return;
+
+      const { tags, index } = pendingCharacterResolution;
+      const nextTags = [...tags];
+      if (reuseExisting) {
+        nextTags[index] = reusePossibleBareCharacter(nextTags[index]);
+      }
+      continueCharacterResolution(nextTags, index + 1);
+    },
+    [continueCharacterResolution, pendingCharacterResolution]
+  );
+
+  const applySelected = useCallback(() => {
     const tags = predictions
       .filter((prediction) => selected.has(predictionKey(prediction)))
-      .map(({ provenance: _provenance, ...prediction }) =>
-        resolvePossibleBareCharacter(prediction)
-      );
+      .map(({ provenance: _provenance, ...prediction }) => prediction);
     if (!tags.length) {
       setError("Select at least one metadata item to apply.");
       return;
@@ -512,315 +583,331 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
 
     setApplying(true);
     setError(undefined);
-    try {
-      const response = await fetch(
-        `image/${imageId}/knowledge-tags?apply=true`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tags, replaceArtist }),
-        }
-      );
-      const result = await readResponse<ImageTaggingApplyResponse>(response);
-      const characters = result.characters ?? [];
-      const artists = result.artists ?? [];
-      const copyrights = result.copyrights ?? [];
-      const appliedTags = result.tags ?? [];
-      const appliedCount =
-        characters.length +
-        artists.length +
-        copyrights.length +
-        appliedTags.length;
-      const createdCount =
-        (result.createdCharacters ?? 0) +
-        (result.createdArtists ?? 0) +
-        (result.createdCopyrights ?? 0) +
-        (result.createdTags ?? 0);
-      Toast.success(
-        `Applied ${appliedCount} metadata item${appliedCount === 1 ? "" : "s"}; created ${createdCount} new entr${createdCount === 1 ? "y" : "ies"}.`
-      );
-      await onApplied();
-      onHide();
-    } catch (cause) {
-      const message = cause instanceof Error ? cause.message : String(cause);
-      setError(message);
-      Toast.error(cause);
-    } finally {
-      setApplying(false);
-    }
-  }, [Toast, imageId, onApplied, onHide, predictions, replaceArtist, selected]);
+    continueCharacterResolution(tags, 0);
+  }, [continueCharacterResolution, predictions, selected]);
+
+  const pendingPrediction = pendingCharacterResolution
+    ? pendingCharacterResolution.tags[pendingCharacterResolution.index]
+    : undefined;
+  const pendingMatch = pendingPrediction
+    ? possibleBareCharacterMatch(pendingPrediction)
+    : undefined;
 
   return (
-    <Modal show onHide={onHide} size="lg" centered>
-      <Modal.Header closeButton>
-        <Modal.Title>Image tagging</Modal.Title>
-      </Modal.Header>
-      <Modal.Body>
-        <div className="d-flex flex-wrap align-items-end mb-3">
-          <Form.Group className="mr-3 mb-2">
-            <Form.Label>Camie threshold</Form.Label>
-            <Form.Control
-              type="number"
-              min="0.001"
-              max="0.999"
-              step="0.01"
-              value={camieThreshold}
-              onChange={(event) => setCamieThreshold(event.currentTarget.value)}
-              style={{ width: "8rem" }}
-            />
-          </Form.Group>
-          <Form.Group className="mr-3 mb-2">
-            <Form.Label>EVA02 threshold</Form.Label>
-            <Form.Control
-              type="number"
-              min="0.001"
-              max="0.999"
-              step="0.01"
-              value={eva02Threshold}
-              onChange={(event) => setEva02Threshold(event.currentTarget.value)}
-              style={{ width: "8rem" }}
-            />
-          </Form.Group>
-          <Form.Group className="mr-3 mb-2">
-            <Form.Label>Per-category limit</Form.Label>
-            <Form.Control
-              type="number"
-              min="1"
-              max="200"
-              value={limit}
-              onChange={(event) => setLimit(event.currentTarget.value)}
-              style={{ width: "8rem" }}
-            />
-          </Form.Group>
-          <Button
-            className="mr-2 mb-2"
-            variant="secondary"
-            disabled={busy || applying}
-            onClick={() => void loadBooruMetadata()}
-          >
-            {loadingSource === "booru" ? "Fetching…" : "Fetch from Danbooru"}
-          </Button>
-          <Button
-            className="mr-2 mb-2"
-            variant="secondary"
-            disabled={busy || applying}
-            onClick={() => void loadModelPredictions("camie")}
-          >
-            {loadingSource === "camie" ? "Analyzing…" : "Analyze with Camie"}
-          </Button>
-          <Button
-            className="mb-2"
-            variant="secondary"
-            disabled={busy || applying}
-            onClick={() => void loadModelPredictions("eva02")}
-          >
-            {loadingSource === "eva02" ? "Analyzing…" : "Analyze with EVA02"}
-          </Button>
-        </div>
-
-        <div className="d-flex flex-wrap align-items-center mb-3">
-          <Badge className="mr-2 mb-1" variant="success">
-            Local loaded
-          </Badge>
-          {booruMetadata ? (
-            <Badge className="mr-2 mb-1" variant="info">
-              {booruMetadata.source}
-            </Badge>
-          ) : null}
-          {camieBackend ? (
-            <Badge className="mr-2 mb-1" variant="warning">
-              Camie {camieBackend}
-            </Badge>
-          ) : null}
-          {eva02Backend ? (
-            <Badge className="mb-1" variant="danger">
-              EVA02 {eva02Backend}
-            </Badge>
-          ) : null}
-        </div>
-
-        {booruMetadata ? (
-          <div className="alert alert-info py-2">
-            <div className="d-flex flex-wrap align-items-center">
-              <strong>{booruMetadata.source}</strong>
-              <Badge className="ml-2" variant="secondary">
-                MD5 from {booruMetadata.md5Source}
-              </Badge>
-              <code className="ml-2">{booruMetadata.md5}</code>
-              {booruMetadata.postURL ? (
-                <a
-                  className="ml-auto"
-                  href={booruMetadata.postURL}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Post {booruMetadata.postID || "match"}{" "}
-                  <Icon icon={faExternalLinkAlt} />
-                </a>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
-
-        <div className="mb-3 text-muted">
-          Sources are merged in priority order: Local → Danbooru → Camie →
-          EVA02. Opening this dialog loads Local metadata only; every network or
-          model source is explicit. Camie and EVA02 use independent thresholds;
-          EVA02 defaults to 0.35. When the same metadata item is predicted by
-          multiple sources, the earlier source keeps its value and score while
-          later sources are shown as additional provenance. EVA02 is the
-          fallback source. Multiple selected Artists can be attached to the same
-          image.
-        </div>
-
-        <Form.Check
-          className="mb-3"
-          type="checkbox"
-          id="image-tagging-replace-artists"
-          checked={replaceArtist}
-          onChange={(event) => setReplaceArtist(event.currentTarget.checked)}
-          label="Replace existing Artists instead of adding the selected Artists"
-        />
-
-        {error ? <div className="alert alert-danger">{error}</div> : null}
-
-        {busy ? (
-          <div className="text-center py-5">
-            <Spinner animation="border" role="status" />
-          </div>
-        ) : predictions.length === 0 && !error ? (
-          <div className="text-muted">
-            No Local metadata was found. Fetch Danbooru or run Camie/EVA02
-            explicitly to add predictions.
-          </div>
-        ) : (
-          <>
-            <div className="d-flex mb-3">
-              <Button
-                className="mr-2"
-                size="sm"
-                variant="outline-secondary"
-                disabled={visibleSelectedCount === predictions.length}
-                onClick={() =>
-                  setSelected(new Set(predictions.map(predictionKey)))
+    <>
+      <Modal
+        show={!pendingCharacterResolution}
+        onHide={onHide}
+        size="lg"
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Image tagging</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div className="d-flex flex-wrap align-items-end mb-3">
+            <Form.Group className="mr-3 mb-2">
+              <Form.Label>Camie threshold</Form.Label>
+              <Form.Control
+                type="number"
+                min="0.001"
+                max="0.999"
+                step="0.01"
+                value={camieThreshold}
+                onChange={(event) =>
+                  setCamieThreshold(event.currentTarget.value)
                 }
-              >
-                Select all
-              </Button>
-              <Button
-                size="sm"
-                variant="outline-secondary"
-                disabled={visibleSelectedCount === 0}
-                onClick={() => setSelected(new Set())}
-              >
-                Unselect all
-              </Button>
-              <span className="ml-auto text-muted align-self-center">
-                {visibleSelectedCount} / {predictions.length} selected
-              </span>
-            </div>
+                style={{ width: "8rem" }}
+              />
+            </Form.Group>
+            <Form.Group className="mr-3 mb-2">
+              <Form.Label>EVA02 threshold</Form.Label>
+              <Form.Control
+                type="number"
+                min="0.001"
+                max="0.999"
+                step="0.01"
+                value={eva02Threshold}
+                onChange={(event) =>
+                  setEva02Threshold(event.currentTarget.value)
+                }
+                style={{ width: "8rem" }}
+              />
+            </Form.Group>
+            <Form.Group className="mr-3 mb-2">
+              <Form.Label>Per-category limit</Form.Label>
+              <Form.Control
+                type="number"
+                min="1"
+                max="200"
+                value={limit}
+                onChange={(event) => setLimit(event.currentTarget.value)}
+                style={{ width: "8rem" }}
+              />
+            </Form.Group>
+            <Button
+              className="mr-2 mb-2"
+              variant="secondary"
+              disabled={busy || applying}
+              onClick={() => void loadBooruMetadata()}
+            >
+              {loadingSource === "booru" ? "Fetching…" : "Fetch from Danbooru"}
+            </Button>
+            <Button
+              className="mr-2 mb-2"
+              variant="secondary"
+              disabled={busy || applying}
+              onClick={() => void loadModelPredictions("camie")}
+            >
+              {loadingSource === "camie" ? "Analyzing…" : "Analyze with Camie"}
+            </Button>
+            <Button
+              className="mb-2"
+              variant="secondary"
+              disabled={busy || applying}
+              onClick={() => void loadModelPredictions("eva02")}
+            >
+              {loadingSource === "eva02" ? "Analyzing…" : "Analyze with EVA02"}
+            </Button>
+          </div>
 
-            <div style={{ maxHeight: "55vh", overflowY: "auto" }}>
-              {grouped.map(([category, items]) => (
-                <div className="mb-4" key={category}>
-                  <h5>{categoryLabel(category)}</h5>
-                  {items.map((prediction, index) => {
-                    const key = predictionKey(prediction);
-                    const possibleMatch =
-                      possibleBareCharacterMatch(prediction);
-                    return (
-                      <div
-                        className="d-flex align-items-center py-1 border-bottom"
-                        key={key}
-                      >
-                        <Form.Check
-                          type="checkbox"
-                          id={`metadata-${category}-${index}`}
-                          checked={selected.has(key)}
-                          onChange={() => togglePrediction(prediction)}
-                          label={prediction.name}
-                        />
-                        {prediction.provenance.map((source) => (
-                          <Badge
-                            className="ml-2"
-                            key={sourceKey(source)}
-                            title={source.detail}
-                            variant={sourceBadgeVariant(source.kind)}
-                          >
-                            {source.label}
-                          </Badge>
-                        ))}
-                        {prediction.targetExists ? (
-                          <Badge
-                            className="ml-2"
-                            variant="primary"
-                            title="This metadata entity already exists in Stash"
-                          >
-                            exists
-                          </Badge>
-                        ) : null}
-                        {possibleMatch ? (
-                          <Badge
-                            className="ml-2"
-                            variant="secondary"
-                            title={`Possible existing Character: ${possibleMatch.bareName}`}
-                          >
-                            possible match
-                          </Badge>
-                        ) : null}
-                        {prediction.rawName &&
-                        prediction.rawName !== prediction.name ? (
-                          <span className="ml-2 small text-muted">
-                            alias: {prediction.rawName}
-                          </span>
-                        ) : null}
-                        {prediction.targetPath ? (
-                          <Button
-                            className="ml-auto mr-2 py-0 px-2"
-                            size="sm"
-                            variant="outline-secondary"
-                            title={
-                              prediction.targetExists
-                                ? "Open metadata page"
-                                : possibleMatch
-                                  ? `Open possible existing Character “${possibleMatch.bareName}”`
-                                  : "Search for this metadata"
-                            }
-                            onClick={() => {
-                              onHide();
-                              history.push(prediction.targetPath!);
-                            }}
-                          >
-                            <Icon icon={faSearch} />
-                          </Button>
-                        ) : null}
-                        <Badge
-                          className={prediction.targetPath ? "" : "ml-auto"}
-                          variant="secondary"
-                        >
-                          {(prediction.score * 100).toFixed(1)}%
-                        </Badge>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
+          <div className="d-flex flex-wrap align-items-center mb-3">
+            <Badge className="mr-2 mb-1" variant="success">
+              Local loaded
+            </Badge>
+            {booruMetadata ? (
+              <Badge className="mr-2 mb-1" variant="info">
+                {booruMetadata.source}
+              </Badge>
+            ) : null}
+            {camieBackend ? (
+              <Badge className="mr-2 mb-1" variant="warning">
+                Camie {camieBackend}
+              </Badge>
+            ) : null}
+            {eva02Backend ? (
+              <Badge className="mb-1" variant="danger">
+                EVA02 {eva02Backend}
+              </Badge>
+            ) : null}
+          </div>
+
+          {booruMetadata ? (
+            <div className="alert alert-info py-2">
+              <div className="d-flex flex-wrap align-items-center">
+                <strong>{booruMetadata.source}</strong>
+                <Badge className="ml-2" variant="secondary">
+                  MD5 from {booruMetadata.md5Source}
+                </Badge>
+                <code className="ml-2">{booruMetadata.md5}</code>
+                {booruMetadata.postURL ? (
+                  <a
+                    className="ml-auto"
+                    href={booruMetadata.postURL}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Post {booruMetadata.postID || "match"}{" "}
+                    <Icon icon={faExternalLinkAlt} />
+                  </a>
+                ) : null}
+              </div>
             </div>
+          ) : null}
+
+          <div className="mb-3 text-muted">
+            Sources are merged in priority order: Local → Danbooru → Camie →
+            EVA02. Opening this dialog loads Local metadata only; every network
+            or model source is explicit. Camie and EVA02 use independent
+            thresholds; EVA02 defaults to 0.35. When the same metadata item is
+            predicted by multiple sources, the earlier source keeps its value
+            and score while later sources are shown as additional provenance.
+            EVA02 is the fallback source. Multiple selected Artists can be
+            attached to the same image.
+          </div>
+
+          <Form.Check
+            className="mb-3"
+            type="checkbox"
+            id="image-tagging-replace-artists"
+            checked={replaceArtist}
+            onChange={(event) => setReplaceArtist(event.currentTarget.checked)}
+            label="Replace existing Artists instead of adding the selected Artists"
+          />
+
+          {error ? <div className="alert alert-danger">{error}</div> : null}
+
+          {busy ? (
+            <div className="text-center py-5">
+              <Spinner animation="border" role="status" />
+            </div>
+          ) : predictions.length === 0 && !error ? (
+            <div className="text-muted">
+              No Local metadata was found. Fetch Danbooru or run Camie/EVA02
+              explicitly to add predictions.
+            </div>
+          ) : (
+            <>
+              <div className="d-flex mb-3">
+                <Button
+                  className="mr-2"
+                  size="sm"
+                  variant="outline-secondary"
+                  disabled={visibleSelectedCount === predictions.length}
+                  onClick={() =>
+                    setSelected(new Set(predictions.map(predictionKey)))
+                  }
+                >
+                  Select all
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline-secondary"
+                  disabled={visibleSelectedCount === 0}
+                  onClick={() => setSelected(new Set())}
+                >
+                  Unselect all
+                </Button>
+                <span className="ml-auto text-muted align-self-center">
+                  {visibleSelectedCount} / {predictions.length} selected
+                </span>
+              </div>
+
+              <div style={{ maxHeight: "55vh", overflowY: "auto" }}>
+                {grouped.map(([category, items]) => (
+                  <div className="mb-4" key={category}>
+                    <h5>{categoryLabel(category)}</h5>
+                    {items.map((prediction, index) => {
+                      const key = predictionKey(prediction);
+                      const possibleMatch =
+                        possibleBareCharacterMatch(prediction);
+                      return (
+                        <div
+                          className="d-flex align-items-center py-1 border-bottom"
+                          key={key}
+                        >
+                          <Form.Check
+                            type="checkbox"
+                            id={`metadata-${category}-${index}`}
+                            checked={selected.has(key)}
+                            onChange={() => togglePrediction(prediction)}
+                            label={prediction.name}
+                          />
+                          {prediction.provenance.map((source) => (
+                            <Badge
+                              className="ml-2"
+                              key={sourceKey(source)}
+                              title={source.detail}
+                              variant={sourceBadgeVariant(source.kind)}
+                            >
+                              {source.label}
+                            </Badge>
+                          ))}
+                          {prediction.targetExists ? (
+                            <Badge
+                              className="ml-2"
+                              variant="primary"
+                              title="This metadata entity already exists in Stash"
+                            >
+                              exists
+                            </Badge>
+                          ) : null}
+                          {possibleMatch ? (
+                            <Badge
+                              className="ml-2"
+                              variant="secondary"
+                              title={`Possible existing Character: ${possibleMatch.bareName}`}
+                            >
+                              possible match
+                            </Badge>
+                          ) : null}
+                          {prediction.rawName &&
+                          prediction.rawName !== prediction.name ? (
+                            <span className="ml-2 small text-muted">
+                              alias: {prediction.rawName}
+                            </span>
+                          ) : null}
+                          {prediction.targetPath ? (
+                            <Button
+                              className="ml-auto mr-2 py-0 px-2"
+                              size="sm"
+                              variant="outline-secondary"
+                              title={
+                                prediction.targetExists
+                                  ? "Open metadata page"
+                                  : possibleMatch
+                                    ? `Open possible existing Character “${possibleMatch.bareName}”`
+                                    : "Search for this metadata"
+                              }
+                              onClick={() => {
+                                onHide();
+                                history.push(prediction.targetPath!);
+                              }}
+                            >
+                              <Icon icon={faSearch} />
+                            </Button>
+                          ) : null}
+                          <Badge
+                            className={prediction.targetPath ? "" : "ml-auto"}
+                            variant="secondary"
+                          >
+                            {(prediction.score * 100).toFixed(1)}%
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" disabled={applying} onClick={onHide}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            disabled={busy || applying || visibleSelectedCount === 0}
+            onClick={applySelected}
+          >
+            {applying ? "Applying…" : "Apply selected metadata"}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      <ModalComponent
+        show={
+          !!pendingCharacterResolution && !!pendingPrediction && !!pendingMatch
+        }
+        header="Resolve Character"
+        modalProps={{ centered: true }}
+        cancel={{
+          text: "Keep separate",
+          variant: "secondary",
+          onClick: () => resolvePendingCharacter(false),
+        }}
+        accept={{
+          text: "Reuse existing Character",
+          onClick: () => resolvePendingCharacter(true),
+        }}
+      >
+        {pendingPrediction && pendingMatch ? (
+          <>
+            <p>
+              Image Tagging found <strong>{pendingPrediction.name}</strong>, but
+              an existing Character named{" "}
+              <strong>{pendingMatch.bareName}</strong> has no disambiguation.
+            </p>
+            <p>Is this the same Character?</p>
+            <p className="text-muted mb-0">
+              Reuse existing keeps the current Character entry. Keep separate
+              preserves <strong>{pendingPrediction.name}</strong> as its own
+              disambiguated Character.
+            </p>
           </>
-        )}
-      </Modal.Body>
-      <Modal.Footer>
-        <Button variant="secondary" disabled={applying} onClick={onHide}>
-          Cancel
-        </Button>
-        <Button
-          variant="primary"
-          disabled={busy || applying || visibleSelectedCount === 0}
-          onClick={() => void applySelected()}
-        >
-          {applying ? "Applying…" : "Apply selected metadata"}
-        </Button>
-      </Modal.Footer>
-    </Modal>
+        ) : null}
+      </ModalComponent>
+    </>
   );
 };

@@ -128,11 +128,12 @@ function restoreRememberedZoom(filter: ListFilterModel, preferenceKey: string) {
 
 function restoreRememberedViewState(
   filter: ListFilterModel,
-  preferenceKey: string
+  displayPreferenceKey: string,
+  zoomPreferenceKey: string
 ) {
   return restoreRememberedZoom(
-    restoreRememberedDisplayMode(filter, preferenceKey),
-    preferenceKey
+    restoreRememberedDisplayMode(filter, displayPreferenceKey),
+    zoomPreferenceKey
   );
 }
 
@@ -260,6 +261,7 @@ export interface IFilterStateHook {
   defaultSort?: string;
   view?: View;
   useURL?: boolean;
+  zoomPreferenceKey?: string;
 }
 
 export function useFilterState(
@@ -273,14 +275,18 @@ export function useFilterState(
     config,
     view,
     useURL,
+    zoomPreferenceKey: propZoomPreferenceKey,
     defaultFilter: propDefaultFilter,
   } = props;
   const preferenceKey = String(view ?? filterMode);
+  const zoomPreferenceKey = propZoomPreferenceKey ?? preferenceKey;
+  const restorationKey = `${preferenceKey}\u0000${zoomPreferenceKey}`;
 
   const [filter, setFilterState] = useState<ListFilterModel>(() =>
     restoreRememberedViewState(
       new ListFilterModel(filterMode, config, { defaultSortBy: defaultSort }),
-      preferenceKey
+      preferenceKey,
+      zoomPreferenceKey
     )
   );
 
@@ -295,9 +301,15 @@ export function useFilterState(
     () =>
       restoreRememberedViewState(
         propDefaultFilter ?? defaultFilterFromConfig,
-        preferenceKey
+        preferenceKey,
+        zoomPreferenceKey
       ),
-    [propDefaultFilter, defaultFilterFromConfig, preferenceKey]
+    [
+      propDefaultFilter,
+      defaultFilterFromConfig,
+      preferenceKey,
+      zoomPreferenceKey,
+    ]
   );
 
   const { setFilter } = useFilterURL(filter, setFilterState, {
@@ -305,34 +317,40 @@ export function useFilterState(
     active: useURL,
   });
 
-  const restoredPreferenceKey = useRef(preferenceKey);
+  const restoredPreferenceKey = useRef(restorationKey);
   useEffect(() => {
-    if (restoredPreferenceKey.current === preferenceKey) return;
+    if (restoredPreferenceKey.current === restorationKey) return;
 
     setFilterState((current) => {
-      const restored = restoreRememberedViewState(current, preferenceKey);
+      const restored = restoreRememberedViewState(
+        current,
+        preferenceKey,
+        zoomPreferenceKey
+      );
       // Set the key only inside the state update. The save effect therefore
       // cannot write the previous page's state under the new key during the
       // navigation render.
-      restoredPreferenceKey.current = preferenceKey;
+      restoredPreferenceKey.current = restorationKey;
       return restored;
     });
-  }, [preferenceKey]);
+  }, [preferenceKey, restorationKey, zoomPreferenceKey]);
 
   useEffect(() => {
-    if (restoredPreferenceKey.current !== preferenceKey) return;
+    if (restoredPreferenceKey.current !== restorationKey) return;
 
     if (filter.options.displayModeOptions.includes(filter.displayMode)) {
       saveRememberedDisplayMode(preferenceKey, filter.displayMode);
     }
     if (filter.zoomIndex >= 0 && filter.zoomIndex <= 3) {
-      saveRememberedZoom(preferenceKey, filter.zoomIndex);
+      saveRememberedZoom(zoomPreferenceKey, filter.zoomIndex);
     }
   }, [
     filter.displayMode,
     filter.options.displayModeOptions,
     filter.zoomIndex,
     preferenceKey,
+    restorationKey,
+    zoomPreferenceKey,
   ]);
 
   return { filter, setFilter };
