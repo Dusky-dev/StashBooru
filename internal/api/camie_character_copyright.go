@@ -260,10 +260,6 @@ func camieCopyrightMatchesValue(entity *models.Copyright, value string) bool {
 }
 
 func findCamieCopyrightForCharacter(ctx context.Context, repository models.Repository, prediction camietagger.Tag, performerEntity *models.Performer, selected []*models.Copyright) (*models.Copyright, error) {
-	if len(selected) == 1 {
-		return selected[0], nil
-	}
-
 	_, disambiguation := camieCharacterIdentity(prediction)
 	if disambiguation == "" && performerEntity != nil {
 		disambiguation = strings.TrimSpace(performerEntity.Disambiguation)
@@ -283,8 +279,8 @@ func findCamieCopyrightForCharacter(ctx context.Context, repository models.Repos
 			return matched, nil
 		}
 
-		// Even when the Copyright row was not selected in this apply operation,
-		// an explicit Character disambiguation may safely attach to an already
+		// An explicit/reliable Character disambiguation outranks a generic
+		// single-Copyright assumption. It may safely attach to an already
 		// existing Copyright through its canonical name or alias.
 		existing, err := findNativeCamieCopyright(ctx, repository, camietagger.Tag{
 			Name:     disambiguation,
@@ -294,15 +290,25 @@ func findCamieCopyrightForCharacter(ctx context.Context, repository models.Repos
 		if err != nil {
 			return nil, err
 		}
-		return existing, nil
+		if existing != nil {
+			return existing, nil
+		}
+
+		// Do not attach a conflicting sole Copyright (for example Fire Emblem)
+		// to an explicitly disambiguated Character such as Lana (Pokemon).
+		return nil, nil
+	}
+
+	if len(selected) == 1 {
+		return selected[0], nil
 	}
 	return nil, nil
 }
 
 // linkCamieCharacterCopyrights persists the series context learned while
-// tagging. One selected Copyright is safe for all selected Characters. With
-// crossover/multi-Copyright metadata, a Character is linked only when its
-// disambiguation identifies exactly one Copyright (canonical name or alias).
+// tagging. One selected Copyright is safe for Characters without their own
+// series disambiguation. With crossover/multi-Copyright metadata, or when a
+// Character already identifies its series, only a matching Copyright is linked.
 func linkCamieCharacterCopyrights(ctx context.Context, repository models.Repository, characterPredictions []camietagger.Tag, performerIDs, copyrightIDs []int) error {
 	if len(characterPredictions) == 0 || len(performerIDs) == 0 {
 		return nil
