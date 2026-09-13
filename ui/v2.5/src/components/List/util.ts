@@ -12,11 +12,70 @@ import * as GQL from "src/core/generated-graphql";
 import { DisplayMode } from "src/models/list-filter/types";
 import { Criterion } from "src/models/list-filter/criteria/criterion";
 
+const LIST_DISPLAY_STORAGE_PREFIX = "stashbooru.listView.displayMode.v3";
+
 function locationEquals(
   loc1: ReturnType<typeof useLocation> | undefined,
   loc2: ReturnType<typeof useLocation>
 ) {
   return loc1 && loc1.pathname === loc2.pathname && loc1.search === loc2.search;
+}
+
+function listDisplayStorageKey(preferenceKey: string) {
+  return `${LIST_DISPLAY_STORAGE_PREFIX}.${preferenceKey}`;
+}
+
+function hasExplicitDisplayMode() {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).has("disp");
+}
+
+function readRememberedDisplayMode(
+  preferenceKey: string,
+  options: DisplayMode[]
+): DisplayMode | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const raw = window.localStorage.getItem(listDisplayStorageKey(preferenceKey));
+    if (raw === null) return undefined;
+    const parsed = Number.parseInt(raw, 10) as DisplayMode;
+    return options.includes(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function saveRememberedDisplayMode(
+  preferenceKey: string,
+  displayMode: DisplayMode
+) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      listDisplayStorageKey(preferenceKey),
+      String(displayMode)
+    );
+  } catch {
+    // Persistence is best-effort in hardened/private browser contexts.
+  }
+}
+
+function restoreRememberedDisplayMode(
+  filter: ListFilterModel,
+  preferenceKey: string
+) {
+  // A display mode explicitly supplied in the URL is authoritative for that
+  // navigation. Otherwise restore the last valid mode for this logical page.
+  if (hasExplicitDisplayMode()) return filter;
+
+  const remembered = readRememberedDisplayMode(
+    preferenceKey,
+    filter.options.displayModeOptions
+  );
+  if (remembered === undefined || remembered === filter.displayMode) {
+    return filter;
+  }
+  return filter.setDisplayMode(remembered);
 }
 
 export function useFilterURL(
@@ -158,10 +217,13 @@ export function useFilterState(
     useURL,
     defaultFilter: propDefaultFilter,
   } = props;
+  const preferenceKey = String(view ?? filterMode);
 
-  const [filter, setFilterState] = useState<ListFilterModel>(
-    () =>
-      new ListFilterModel(filterMode, config, { defaultSortBy: defaultSort })
+  const [filter, setFilterState] = useState<ListFilterModel>(() =>
+    restoreRememberedDisplayMode(
+      new ListFilterModel(filterMode, config, { defaultSortBy: defaultSort }),
+      preferenceKey
+    )
   );
 
   const emptyFilter = useEmptyFilter({ filterMode, defaultSort, config });
@@ -171,10 +233,34 @@ export function useFilterState(
     view
   );
 
+  const effectiveDefaultFilter = useMemo(
+    () =>
+      restoreRememberedDisplayMode(
+        propDefaultFilter ?? defaultFilterFromConfig,
+        preferenceKey
+      ),
+    [propDefaultFilter, defaultFilterFromConfig, preferenceKey]
+  );
+
   const { setFilter } = useFilterURL(filter, setFilterState, {
-    defaultFilter: propDefaultFilter ?? defaultFilterFromConfig,
+    defaultFilter: effectiveDefaultFilter,
     active: useURL,
   });
+
+  const restoredPreferenceKey = useRef(preferenceKey);
+  useEffect(() => {
+    if (restoredPreferenceKey.current !== preferenceKey) {
+      restoredPreferenceKey.current = preferenceKey;
+      setFilterState((current) =>
+        restoreRememberedDisplayMode(current, preferenceKey)
+      );
+      return;
+    }
+
+    if (filter.options.displayModeOptions.includes(filter.displayMode)) {
+      saveRememberedDisplayMode(preferenceKey, filter.displayMode);
+    }
+  }, [filter.displayMode, filter.options.displayModeOptions, preferenceKey]);
 
   return { filter, setFilter };
 }
