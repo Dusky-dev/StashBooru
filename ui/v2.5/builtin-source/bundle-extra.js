@@ -195,7 +195,17 @@
         });
     }
 
+    function markImageTaggingDialog() {
+        document.querySelectorAll(".modal-dialog").forEach(function (dialog) {
+            const title = dialog.querySelector(".modal-title");
+            const isImageTagging = title && title.textContent.trim() === "Image tagging";
+            dialog.classList.toggle("image-tagging-dialog", !!isImageTagging);
+        });
+    }
+
     function init() {
+        markImageTaggingDialog();
+
         const customFields = document.querySelector(".custom-fields-input");
 
         if (!customFields) {
