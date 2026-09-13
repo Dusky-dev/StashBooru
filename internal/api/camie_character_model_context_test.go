@@ -10,9 +10,9 @@ import (
 )
 
 type lanaCharacterContextFixture struct {
-	repository      models.Repository
-	pokemonLana     *models.Performer
-	fireEmblemLana  *models.Performer
+	repository     models.Repository
+	pokemonLana    *models.Performer
+	fireEmblemLana *models.Performer
 }
 
 func lanaCharacterContextTestRepository() lanaCharacterContextFixture {
