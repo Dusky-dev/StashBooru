@@ -1,7 +1,12 @@
 import React from "react";
 import { Form } from "react-bootstrap";
+import { Link } from "react-router-dom";
+import { faFingerprint } from "@fortawesome/free-solid-svg-icons";
 import type { RenderImageProps } from "react-photo-gallery";
+import { useIntl } from "react-intl";
+import { Icon } from "../Shared/Icon";
 import { useDragMoveSelect } from "../Shared/GridCard/dragMoveSelect";
+import NavUtils from "src/utils/navigation";
 
 interface IExtraProps {
   maxHeight: number;
@@ -13,6 +18,7 @@ interface IExtraProps {
 export const ImageWallItem: React.FC<RenderImageProps & IExtraProps> = (
   props: RenderImageProps & IExtraProps
 ) => {
+  const intl = useIntl();
   const { dragProps } = useDragMoveSelect({
     selecting: props.selecting || false,
     selected: props.selected || false,
@@ -57,6 +63,11 @@ export const ImageWallItem: React.FC<RenderImageProps & IExtraProps> = (
   const source = typeof props.photo.src === "string" ? props.photo.src : "";
   const video = source.includes("preview");
   const ImagePreview = video ? "video" : "img";
+  const imageID = props.photo.key;
+  const findSimilarLabel = intl.formatMessage({
+    id: "actions.find_similar",
+    defaultMessage: "Find similar",
+  });
 
   let shiftKey = false;
 
@@ -79,6 +90,23 @@ export const ImageWallItem: React.FC<RenderImageProps & IExtraProps> = (
           }}
         />
       )}
+      {!props.selecting && imageID ? (
+        <Link
+          to={NavUtils.makeImagesSimilarityUrl(String(imageID))}
+          className="btn btn-secondary minimal"
+          title={findSimilarLabel}
+          aria-label={findSimilarLabel}
+          style={{
+            position: "absolute",
+            right: "0.35rem",
+            bottom: "0.35rem",
+            zIndex: 2,
+          }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <Icon icon={faFingerprint} />
+        </Link>
+      ) : null}
       <ImagePreview
         loop={video}
         muted={video}
