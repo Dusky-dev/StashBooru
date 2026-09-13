@@ -143,7 +143,7 @@ func TestCamieCharacterResolutionUsesCopyrightAlias(t *testing.T) {
 
 func TestCamieCharacterResolutionRejectsUnresolvedDuplicateName(t *testing.T) {
 	repository := camieCharacterCopyrightTestRepository(
-		[]*models.Performformer{
+		[]*models.Performer{
 			{ID: 1, Name: "Lana", Disambiguation: "Pokemon"},
 			{ID: 2, Name: "Lana", Disambiguation: "Fire Emblem"},
 		},
