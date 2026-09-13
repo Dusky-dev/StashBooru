@@ -68,21 +68,27 @@ const EntityCard: React.FC<{
   </article>
 );
 
+const SectionTitle: React.FC<{ title: string; count: number }> = ({
+  title,
+  count,
+}) => (
+  <h6 className="booru-tag-section-title">
+    <span>{title}</span>
+    <span className="booru-tag-count">{count}</span>
+  </h6>
+);
+
 const CardSection: React.FC<{
   kind: CardKind;
   title: string;
   items: BooruEntity[];
-  indexRoute: string;
   route: (id: string) => string;
-}> = ({ kind, title, items, indexRoute, route }) => {
+}> = ({ kind, title, items, route }) => {
   if (items.length === 0) return null;
 
   return (
     <section className={`booru-tag-section booru-tag-section-${kind}`}>
-      <h6 className="booru-tag-section-title">
-        <Link to={indexRoute}>{title}</Link>
-        <span className="booru-tag-count">{items.length}</span>
-      </h6>
+      <SectionTitle title={title} count={items.length} />
       <div className={`booru-entity-card-grid booru-entity-card-grid-${kind}`}>
         {items.map((item) => (
           <EntityCard
@@ -102,16 +108,26 @@ const CharacterSection: React.FC<{
 }> = ({ items }) => {
   if (items.length === 0) return null;
 
+  const cardWidth =
+    items.length === 1
+      ? 320
+      : items.length === 2
+        ? 240
+        : items.length <= 4
+          ? 180
+          : 140;
+
   return (
     <section className="booru-tag-section booru-tag-section-character">
-      <h6 className="booru-tag-section-title">
-        <Link to="/performers">Characters</Link>
-        <span className="booru-tag-count">{items.length}</span>
-      </h6>
+      <SectionTitle title="Characters" count={items.length} />
       <div className="booru-entity-card-grid booru-character-card-grid">
         {items.map((performer) => (
-          <div className="booru-character-card-shell" key={performer.id}>
-            <PerformerCard performer={performer} cardWidth={140} />
+          <div
+            className="booru-character-card-shell"
+            key={performer.id}
+            style={{ maxWidth: `${cardWidth}px`, width: "100%" }}
+          >
+            <PerformerCard performer={performer} cardWidth={cardWidth} />
           </div>
         ))}
       </div>
@@ -141,10 +157,7 @@ const GeneralTags: React.FC<{ items: BooruEntity[] }> = ({ items }) => {
 
   return (
     <section className="booru-tag-section booru-tag-section-general">
-      <h6 className="booru-tag-section-title">
-        <Link to="/tags">Tags</Link>
-        <span className="booru-tag-count">{items.length}</span>
-      </h6>
+      <SectionTitle title="Tags" count={items.length} />
       <div className="booru-general-tags">
         {items.map((item) => (
           <GeneralTagName key={`general-${item.id}`} entity={item} />
@@ -192,7 +205,6 @@ export const BooruTagSidebar: React.FC<BooruTagSidebarProps> = ({
             kind="artist"
             title="Artists"
             items={sortedArtists}
-            indexRoute="/studios"
             route={(id) => `/studios/${id}`}
           />
           <CharacterSection items={sortedCharacters} />
@@ -200,7 +212,6 @@ export const BooruTagSidebar: React.FC<BooruTagSidebarProps> = ({
             kind="copyright"
             title="Copyrights"
             items={sortedCopyrights}
-            indexRoute="/copyrights"
             route={(id) => `/copyrights/${id}`}
           />
         </div>
