@@ -327,6 +327,48 @@ func findCamiePerformerPrediction(ctx context.Context, repository models.Reposit
 	return nil, nil
 }
 
+func findCamieStudioPrediction(ctx context.Context, repository models.Repository, prediction camietagger.Tag) (*models.Studio, error) {
+	prediction = normalizeCamiePrediction(prediction)
+	candidates := make(map[string]struct{}, 2)
+	for _, name := range []string{prediction.Name, prediction.RawName} {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		candidates[strings.ToLower(name)] = struct{}{}
+		existing, err := repository.Studio.FindByName(ctx, name, true)
+		if err != nil {
+			return nil, err
+		}
+		if existing != nil {
+			return existing, nil
+		}
+	}
+	if len(candidates) == 0 {
+		return nil, nil
+	}
+
+	// StudioRepository has no FindByAlias API. Use its existing AliasLoader so
+	// Image Tagging resolves an Artist alias to the canonical Studio instead of
+	// trying to create a duplicate and failing validation.
+	studios, err := repository.Studio.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, studioEntity := range studios {
+		aliases, err := repository.Studio.GetAliases(ctx, studioEntity.ID)
+		if err != nil {
+			return nil, err
+		}
+		for _, alias := range aliases {
+			if _, ok := candidates[strings.ToLower(strings.TrimSpace(alias))]; ok {
+				return studioEntity, nil
+			}
+		}
+	}
+	return nil, nil
+}
+
 func findCamieTag(ctx context.Context, repository models.Repository, prediction camietagger.Tag) (*models.Tag, error) {
 	for _, name := range []string{prediction.Name, prediction.RawName} {
 		name = strings.TrimSpace(name)
@@ -379,18 +421,12 @@ func findOrCreateCamiePerformerPrediction(ctx context.Context, repository models
 
 func findOrCreateCamieStudioPrediction(ctx context.Context, repository models.Repository, prediction camietagger.Tag) (*models.Studio, bool, error) {
 	prediction = normalizeCamiePrediction(prediction)
-	for _, name := range []string{prediction.Name, prediction.RawName} {
-		name = strings.TrimSpace(name)
-		if name == "" {
-			continue
-		}
-		existing, err := repository.Studio.FindByName(ctx, name, true)
-		if err != nil {
-			return nil, false, err
-		}
-		if existing != nil {
-			return existing, false, nil
-		}
+	existing, err := findCamieStudioPrediction(ctx, repository, prediction)
+	if err != nil {
+		return nil, false, err
+	}
+	if existing != nil {
+		return existing, false, nil
 	}
 
 	newStudio := models.NewCreateStudioInput()
