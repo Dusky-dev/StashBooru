@@ -651,9 +651,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
               disabled={busy || applying}
               onClick={() => void loadBooruMetadata()}
             >
-              {loadingSource === "booru"
-                ? "Fetching…"
-                : "Fetch from Danbooru"}
+              {loadingSource === "booru" ? "Fetching…" : "Fetch from Danbooru"}
             </Button>
             <Button
               className="mr-2 mb-2"
@@ -661,9 +659,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
               disabled={busy || applying}
               onClick={() => void loadModelPredictions("camie")}
             >
-              {loadingSource === "camie"
-                ? "Analyzing…"
-                : "Analyze with Camie"}
+              {loadingSource === "camie" ? "Analyzing…" : "Analyze with Camie"}
             </Button>
             <Button
               className="mb-2"
@@ -671,9 +667,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
               disabled={busy || applying}
               onClick={() => void loadModelPredictions("eva02")}
             >
-              {loadingSource === "eva02"
-                ? "Analyzing…"
-                : "Analyze with EVA02"}
+              {loadingSource === "eva02" ? "Analyzing…" : "Analyze with EVA02"}
             </Button>
           </div>
 
@@ -883,7 +877,9 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
       </Modal>
 
       <ModalComponent
-        show={!!pendingCharacterResolution && !!pendingPrediction && !!pendingMatch}
+        show={
+          !!pendingCharacterResolution && !!pendingPrediction && !!pendingMatch
+        }
         header="Resolve Character"
         modalProps={{ centered: true }}
         cancel={{
@@ -900,8 +896,8 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
           <>
             <p>
               Image Tagging found <strong>{pendingPrediction.name}</strong>, but
-              an existing Character named <strong>{pendingMatch.bareName}</strong>{" "}
-              has no disambiguation.
+              an existing Character named{" "}
+              <strong>{pendingMatch.bareName}</strong> has no disambiguation.
             </p>
             <p>Is this the same Character?</p>
             <p className="text-muted mb-0">
