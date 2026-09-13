@@ -334,7 +334,7 @@ func findCamiePerformerPrediction(ctx context.Context, repository models.Reposit
 		if len(matches) > 0 {
 			return matches[0], nil
 		}
-		return nil, nil
+		return findCamiePerformerAliasPrediction(ctx, repository, prediction)
 	}
 
 	for _, match := range matches {
@@ -347,7 +347,7 @@ func findCamiePerformerPrediction(ctx context.Context, repository models.Reposit
 			return match, nil
 		}
 	}
-	return nil, nil
+	return findCamiePerformerAliasPrediction(ctx, repository, prediction)
 }
 
 func findCamieStudioPrediction(ctx context.Context, repository models.Repository, prediction camietagger.Tag) (*models.Studio, error) {
