@@ -52,6 +52,22 @@ func (c camieCopyrightContext) empty() bool {
 	return len(c.names) == 0 && len(c.ids) == 0
 }
 
+func camieCopyrightSourceTrustedForCharacterIdentity(source string) bool {
+	source = strings.ToLower(strings.TrimSpace(source))
+	if source == "" {
+		// Preserve compatibility with explicit/manual callers that predate
+		// source provenance. Current model endpoints always identify themselves.
+		return true
+	}
+	for _, part := range strings.Split(source, "+") {
+		part = strings.TrimSpace(part)
+		if part == "filename" || part == "local" || part == "existing" || strings.HasPrefix(part, "booru:") {
+			return true
+		}
+	}
+	return false
+}
+
 func buildCamieCopyrightContext(ctx context.Context, repository models.Repository, predictions []camietagger.Tag, extraName string) (camieCopyrightContext, error) {
 	result := newCamieCopyrightContext()
 	if strings.TrimSpace(extraName) != "" {
@@ -69,7 +85,7 @@ func buildCamieCopyrightContext(ctx context.Context, repository models.Repositor
 
 	for _, rawPrediction := range predictions {
 		prediction := normalizeCamiePrediction(rawPrediction)
-		if prediction.Category != "copyright" {
+		if prediction.Category != "copyright" || !camieCopyrightSourceTrustedForCharacterIdentity(rawPrediction.Source) {
 			continue
 		}
 		result.addName(prediction.Name)
