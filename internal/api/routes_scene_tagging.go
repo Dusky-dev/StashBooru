@@ -177,7 +177,7 @@ func applySceneTaggingMetadata(ctx context.Context, sceneID int, predictions []c
 
 		performerIDs := make([]int, 0, len(characters))
 		for _, prediction := range characters {
-			entity, created, err := findOrCreateCamiePerformerPrediction(ctx, repository, prediction)
+			entity, created, err := findOrCreateCamiePerformerPredictionWithCopyrightContext(ctx, repository, prediction, predictions)
 			if err != nil {
 				return fmt.Errorf("resolving character %q: %w", prediction.Name, err)
 			}
@@ -272,6 +272,9 @@ func applySceneTaggingMetadata(ctx context.Context, sceneID int, predictions []c
 			if err := repository.Copyright.AddSceneCopyrights(ctx, sceneID, copyrightIDs); err != nil {
 				return err
 			}
+		}
+		if err := linkCamieCharacterCopyrights(ctx, repository, characters, performerIDs, copyrightIDs); err != nil {
+			return fmt.Errorf("linking Character Copyrights: %w", err)
 		}
 		return nil
 	})
