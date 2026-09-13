@@ -5,7 +5,29 @@ import (
 	"testing"
 
 	"github.com/stashapp/stash/pkg/camietagger"
+	"github.com/stashapp/stash/pkg/models"
 )
+
+type camieExplicitTargetPerformerRepository struct {
+	*camieTestPerformerRepository
+}
+
+func (r *camieExplicitTargetPerformerRepository) Find(_ context.Context, id int) (*models.Performer, error) {
+	for _, performerEntity := range r.performers {
+		if performerEntity != nil && performerEntity.ID == id {
+			return performerEntity, nil
+		}
+	}
+	return nil, nil
+}
+
+func withCamieExplicitTargetLookup(fixture lanaCharacterContextFixture) lanaCharacterContextFixture {
+	base := fixture.repository.Performer.(*camieTestPerformerRepository)
+	fixture.repository.Performer = &camieExplicitTargetPerformerRepository{
+		camieTestPerformerRepository: base,
+	}
+	return fixture
+}
 
 func TestCamieBareSameNameCharacterReturnsReviewCandidates(t *testing.T) {
 	fixture := lanaCharacterContextTestRepository()
@@ -65,7 +87,7 @@ func TestCamieDisambiguatedCharacterDoesNotReturnAmbiguousCandidateList(t *testi
 }
 
 func TestCamieExplicitSameNameCharacterTargetWinsAmbiguity(t *testing.T) {
-	fixture := lanaCharacterContextTestRepository()
+	fixture := withCamieExplicitTargetLookup(lanaCharacterContextTestRepository())
 	prediction := camietagger.Tag{
 		Name:         "lana",
 		RawName:      "lana",
@@ -90,7 +112,7 @@ func TestCamieExplicitSameNameCharacterTargetWinsAmbiguity(t *testing.T) {
 }
 
 func TestCamieExplicitCharacterTargetRejectsDifferentName(t *testing.T) {
-	fixture := lanaCharacterContextTestRepository()
+	fixture := withCamieExplicitTargetLookup(lanaCharacterContextTestRepository())
 	prediction := camietagger.Tag{
 		Name:         "not lana",
 		RawName:      "not lana",
