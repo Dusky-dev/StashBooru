@@ -47,7 +47,7 @@
 
     function getAvailableFields() {
         return fields
-        .map(function (field) {
+            .map(function (field) {
             return {
                 name: field[0],
                 label: field[1],
@@ -195,7 +195,17 @@
         });
     }
 
+    function markImageTaggingDialog() {
+        document.querySelectorAll(".modal-dialog").forEach(function (dialog) {
+            const title = dialog.querySelector(".modal-title");
+            const isImageTagging = title && title.textContent.trim() === "Image tagging";
+            dialog.classList.toggle("image-tagging-dialog", !!isImageTagging);
+        });
+    }
+
     function init() {
+        markImageTaggingDialog();
+
         const customFields = document.querySelector(".custom-fields-input");
 
         if (!customFields) {
@@ -229,4 +239,95 @@
     });
 
     init();
+
+    // Character identity is unique on (name, disambiguation). The native merge
+    // dialog can otherwise copy a source disambiguation onto a same-name
+    // destination before deleting the source, which trips SQLite's unique
+    // constraint. Intercept the merge-detail result and ask before resolving
+    // that identity collision.
+    const api = window.PluginApi;
+    const React = api && api.React;
+
+    function normalizedIdentityPart(value) {
+        return String(value == null ? "" : value).trim().toLocaleLowerCase();
+    }
+
+    function displayDisambiguation(value) {
+        const text = String(value == null ? "" : value).trim();
+        return text || "(none)";
+    }
+
+    if (React && api.patch && api.patch.after) {
+        api.patch.after("PerformerMergeModal", function () {
+            const args = Array.from(arguments);
+            const rendered = args[args.length - 1];
+            if (!React.isValidElement(rendered)) return rendered;
+
+            const detailProps = rendered.props || {};
+            const sources = detailProps.sources;
+            const destination = detailProps.dest;
+            const onClose = detailProps.onClose;
+            if (!Array.isArray(sources) || !destination || typeof onClose !== "function") {
+                return rendered;
+            }
+
+            const patchedOnClose = function (options) {
+                if (!options || !options.values) return onClose(options);
+
+                const values = options.values;
+                const finalName = values.name == null ? destination.name : values.name;
+                const finalDisambiguation =
+                    values.disambiguation == null
+                        ? destination.disambiguation
+                        : values.disambiguation;
+                const normalizedName = normalizedIdentityPart(finalName);
+                const normalizedDisambiguation = normalizedIdentityPart(finalDisambiguation);
+
+                const sameNameSources = sources.filter(function (source) {
+                    return normalizedIdentityPart(source.name) === normalizedName;
+                });
+                const exactCollision = sameNameSources.find(function (source) {
+                    return normalizedIdentityPart(source.disambiguation) === normalizedDisambiguation;
+                });
+
+                if (exactCollision) {
+                    const keepDestination = window.confirm(
+                        `The merge would create the same Character identity as a source entry:\n\n` +
+                        `${finalName} — ${displayDisambiguation(finalDisambiguation)}\n\n` +
+                        `That causes the UNIQUE constraint error. Press OK to merge while keeping the destination disambiguation ` +
+                        `(${displayDisambiguation(destination.disambiguation)}), or Cancel to return to the merge choices.`
+                    );
+                    if (!keepDestination) return;
+
+                    return onClose({
+                        ...options,
+                        values: {
+                            ...values,
+                            disambiguation: destination.disambiguation,
+                        },
+                    });
+                }
+
+                const differentDisambiguation = sameNameSources.find(function (source) {
+                    return (
+                        normalizedIdentityPart(source.disambiguation) !==
+                        normalizedIdentityPart(destination.disambiguation)
+                    );
+                });
+                if (differentDisambiguation) {
+                    const proceed = window.confirm(
+                        `Characters named “${finalName}” have different disambiguation values ` +
+                        `(${displayDisambiguation(destination.disambiguation)} and ` +
+                        `${displayDisambiguation(differentDisambiguation.disambiguation)}).\n\n` +
+                        `Continue merging them?`
+                    );
+                    if (!proceed) return;
+                }
+
+                return onClose(options);
+            };
+
+            return React.cloneElement(rendered, { onClose: patchedOnClose });
+        });
+    }
 })();

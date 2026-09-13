@@ -35,8 +35,28 @@
     color: $text-muted;
   }
 
+  .image-subheader-media {
+    align-items: flex-end;
+    display: flex;
+    flex-direction: column;
+    margin-left: auto;
+    min-width: 0;
+  }
+
   .resolution {
     font-weight: bold;
+  }
+
+  .image-file-summary {
+    color: $text-muted;
+    display: flex;
+    gap: 0.45rem;
+    line-height: 1.2;
+    margin-top: 0.15rem;
+  }
+
+  .image-file-format {
+    font-weight: 600;
   }
 }
 

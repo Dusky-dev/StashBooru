@@ -27,10 +27,65 @@ interface IListViewOptionsProps {
   displayMode: DisplayMode;
   onSetDisplayMode: (m: DisplayMode) => void;
   displayModeOptions: DisplayMode[];
-  // Kept for plugin/backwards compatibility. Persistence now lives in
-  // useFilterState so it is tied to the logical page rather than this control's
-  // mount lifecycle.
   preferenceKey?: string;
+}
+
+const LIST_ZOOM_STORAGE_PREFIX = "stashbooru.listView.zoomIndex.v1";
+
+function readRememberedZoom(preferenceKey: string): number | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const raw = window.localStorage.getItem(
+      `${LIST_ZOOM_STORAGE_PREFIX}.${preferenceKey}`
+    );
+    if (raw === null) return undefined;
+    const value = Number.parseInt(raw, 10);
+    return value >= 0 && value <= 3 ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function saveRememberedZoom(preferenceKey: string, zoomIndex: number) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      `${LIST_ZOOM_STORAGE_PREFIX}.${preferenceKey}`,
+      String(zoomIndex)
+    );
+  } catch {
+    // Persistence is best-effort in hardened/private browser contexts.
+  }
+}
+
+function useRememberedZoom(
+  preferenceKey: string | undefined,
+  zoomIndex: number | undefined,
+  onSetZoom: ((zoomIndex: number) => void) | undefined
+) {
+  const restoredPreferenceKey = useRef<string>();
+
+  useEffect(() => {
+    if (!preferenceKey || zoomIndex === undefined || !onSetZoom) return;
+
+    const keyChanged = restoredPreferenceKey.current !== preferenceKey;
+    if (keyChanged) {
+      restoredPreferenceKey.current = preferenceKey;
+
+      const explicitZoom =
+        typeof window !== "undefined" &&
+        new URLSearchParams(window.location.search).has("z");
+      if (!explicitZoom) {
+        const remembered = readRememberedZoom(preferenceKey);
+        if (remembered !== undefined && remembered !== zoomIndex) {
+          onSetZoom(remembered);
+          return;
+        }
+      }
+    }
+
+    saveRememberedZoom(preferenceKey, zoomIndex);
+  }, [onSetZoom, preferenceKey, zoomIndex]);
 }
 
 function getIcon(option: DisplayMode) {
@@ -75,10 +130,13 @@ export const ListViewOptions: React.FC<IListViewOptionsProps> = ({
   displayMode,
   onSetDisplayMode,
   displayModeOptions,
+  preferenceKey,
 }) => {
   const intl = useIntl();
   const overlayTarget = useRef(null);
   const [showOptions, setShowOptions] = useState(false);
+
+  useRememberedZoom(preferenceKey, zoomIndex, onSetZoom);
 
   useEffect(() => {
     Mousetrap.bind("v g", () => {
@@ -180,8 +238,11 @@ export const ListViewButtonGroup: React.FC<IListViewOptionsProps> = ({
   displayMode,
   onSetDisplayMode,
   displayModeOptions,
+  preferenceKey,
 }) => {
   const intl = useIntl();
+
+  useRememberedZoom(preferenceKey, zoomIndex, onSetZoom);
 
   return (
     <>

@@ -1,0 +1,100 @@
+
+
+  // Copyright now owns a real React-Bootstrap All tab. Replace the older
+  // synthetic-tab portal with a controlled pane that follows the native route,
+  // leaving React-Bootstrap in sole ownership of tab selection and navigation.
+  function CopyrightUnifiedNativeAllPortalHost() {
+    const portal = api.ReactDOM?.createPortal;
+    const readRoute = React.useCallback(() => {
+      const match = window.location.pathname.match(
+        /^\/copyrights\/([^/?#]+)(?:\/([^/?#]+))?\/?$/
+      );
+      if (!match || match[1] === "new") return { id: "", tab: "" };
+      let id = match[1];
+      let tab = match[2] || "";
+      try { id = decodeURIComponent(id); } catch (_) {}
+      try { tab = decodeURIComponent(tab); } catch (_) {}
+      return { id, tab };
+    }, []);
+    const [route, setRoute] = React.useState(readRoute);
+    const [shell, setShell] = React.useState(null);
+
+    React.useEffect(() => {
+      let frame = 0;
+      const update = () => {
+        if (frame) return;
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          const nextRoute = readRoute();
+          setRoute((current) =>
+            current.id === nextRoute.id && current.tab === nextRoute.tab
+              ? current
+              : nextRoute
+          );
+
+          const candidate = document.querySelector("#tag-page .tag-tabs");
+          const nextShell = candidate?.querySelector(".nav-tabs")
+            ? candidate
+            : null;
+          setShell((current) => (current === nextShell ? current : nextShell));
+        });
+      };
+
+      const observer = new MutationObserver(update);
+      observer.observe(document.body, { childList: true, subtree: true });
+      window.addEventListener("popstate", update);
+      document.addEventListener("click", update, true);
+      update();
+
+      return () => {
+        observer.disconnect();
+        window.removeEventListener("popstate", update);
+        document.removeEventListener("click", update, true);
+        if (frame) cancelAnimationFrame(frame);
+      };
+    }, [readRoute]);
+
+    const useFindCopyright = api.GQL?.useFindCopyrightQuery;
+    const copyrightQuery = useFindCopyright
+      ? useFindCopyright({
+          variables: { id: route.id || "" },
+          skip: !route.id,
+          fetchPolicy: "cache-and-network",
+        })
+      : { data: undefined };
+    const copyright = copyrightQuery?.data?.findCopyright || null;
+    const active = route.tab === "all";
+
+    React.useEffect(() => {
+      if (!shell) return undefined;
+      shell.classList.toggle("unified-media-all-active", active);
+      return () => shell.classList.remove("unified-media-all-active");
+    }, [active, shell]);
+
+    if (typeof portal !== "function" || !shell || !copyright) return null;
+
+    return portal(
+      React.createElement(
+        "div",
+        {
+          className: "unified-media-inline-pane",
+          hidden: !active,
+          [TAB_ATTR]: "pane",
+        },
+        active
+          ? React.createElement(
+              RenderErrorBoundary,
+              { key: `copyright:${copyright.id}` },
+              React.createElement(UnifiedController, {
+                kind: "copyright",
+                entity: copyright,
+                includeChildren: false,
+              })
+            )
+          : null
+      ),
+      shell
+    );
+  }
+
+  CopyrightUnifiedMediaPortalHost = CopyrightUnifiedNativeAllPortalHost;

@@ -14,6 +14,7 @@ import NavUtils from "src/utils/navigation";
 
 interface IFileInfoPanelProps {
   file: GQL.ImageFileDataFragment | GQL.VideoFileDataFragment;
+  image?: GQL.ImageDataFragment;
   primary?: boolean;
   ofMany?: boolean;
   onSetPrimaryFile?: () => void;
@@ -60,6 +61,19 @@ const FileInfoPanel: React.FC<IFileInfoPanelProps> = (
             <FileSize size={props.file.size} />
           </span>
         </TextField>
+        {props.image ? (
+          <>
+            <URLsField id="urls" urls={props.image.urls} truncate />
+            <TextField
+              id="created_at"
+              value={TextUtils.formatDateTime(intl, props.image.created_at)}
+            />
+            <TextField
+              id="updated_at"
+              value={TextUtils.formatDateTime(intl, props.image.updated_at)}
+            />
+          </>
+        ) : null}
         <TextField id="file_mod_time">
           <FormattedTime
             dateStyle="medium"
@@ -109,30 +123,25 @@ export const ImageFileInfoPanel: React.FC<IImageFileInfoPanelProps> = (
     GQL.ImageFileDataFragment | GQL.VideoFileDataFragment | undefined
   >();
 
-  const imageMetadata = (
-    <dl className="container image-file-info details-list">
-      <TextField
-        id="created_at"
-        value={TextUtils.formatDateTime(intl, props.image.created_at)}
-      />
-      <TextField
-        id="updated_at"
-        value={TextUtils.formatDateTime(intl, props.image.updated_at)}
-      />
-      <URLsField id="urls" urls={props.image.urls} truncate />
-    </dl>
-  );
-
   if (props.image.visual_files.length === 0) {
-    return imageMetadata;
+    return (
+      <dl className="container image-file-info details-list">
+        <URLsField id="urls" urls={props.image.urls} truncate />
+        <TextField
+          id="created_at"
+          value={TextUtils.formatDateTime(intl, props.image.created_at)}
+        />
+        <TextField
+          id="updated_at"
+          value={TextUtils.formatDateTime(intl, props.image.updated_at)}
+        />
+      </dl>
+    );
   }
 
   if (props.image.visual_files.length === 1) {
     return (
-      <>
-        {imageMetadata}
-        <FileInfoPanel file={props.image.visual_files[0]} />
-      </>
+      <FileInfoPanel file={props.image.visual_files[0]} image={props.image} />
     );
   }
 
@@ -148,35 +157,33 @@ export const ImageFileInfoPanel: React.FC<IImageFileInfoPanelProps> = (
   }
 
   return (
-    <>
-      {imageMetadata}
-      <Accordion defaultActiveKey={props.image.visual_files[0].id}>
-        {deletingFile && (
-          <DeleteFilesDialog
-            onClose={() => setDeletingFile(undefined)}
-            selected={[deletingFile]}
-          />
-        )}
-        {props.image.visual_files.map((file, index) => (
-          <Card key={file.id} className="image-file-card">
-            <Accordion.Toggle as={Card.Header} eventKey={file.id}>
-              <TruncatedText text={TextUtils.fileNameFromPath(file.path)} />
-            </Accordion.Toggle>
-            <Accordion.Collapse eventKey={file.id}>
-              <Card.Body>
-                <FileInfoPanel
-                  file={file}
-                  primary={index === 0}
-                  ofMany
-                  onSetPrimaryFile={() => onSetPrimaryFile(file.id)}
-                  onDeleteFile={() => setDeletingFile(file)}
-                  loading={loading}
-                />
-              </Card.Body>
-            </Accordion.Collapse>
-          </Card>
-        ))}
-      </Accordion>
-    </>
+    <Accordion defaultActiveKey={props.image.visual_files[0].id}>
+      {deletingFile && (
+        <DeleteFilesDialog
+          onClose={() => setDeletingFile(undefined)}
+          selected={[deletingFile]}
+        />
+      )}
+      {props.image.visual_files.map((file, index) => (
+        <Card key={file.id} className="image-file-card">
+          <Accordion.Toggle as={Card.Header} eventKey={file.id}>
+            <TruncatedText text={TextUtils.fileNameFromPath(file.path)} />
+          </Accordion.Toggle>
+          <Accordion.Collapse eventKey={file.id}>
+            <Card.Body>
+              <FileInfoPanel
+                file={file}
+                image={index === 0 ? props.image : undefined}
+                primary={index === 0}
+                ofMany
+                onSetPrimaryFile={() => onSetPrimaryFile(file.id)}
+                onDeleteFile={() => setDeletingFile(file)}
+                loading={loading}
+              />
+            </Card.Body>
+          </Accordion.Collapse>
+        </Card>
+      ))}
+    </Accordion>
   );
 };
