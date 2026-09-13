@@ -141,10 +141,7 @@ export const ImageFileInfoPanel: React.FC<IImageFileInfoPanelProps> = (
 
   if (props.image.visual_files.length === 1) {
     return (
-      <FileInfoPanel
-        file={props.image.visual_files[0]}
-        image={props.image}
-      />
+      <FileInfoPanel file={props.image.visual_files[0]} image={props.image} />
     );
   }
 
