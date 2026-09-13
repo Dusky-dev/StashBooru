@@ -114,10 +114,7 @@ function restoreRememberedDisplayMode(
   return filter.setDisplayMode(remembered);
 }
 
-function restoreRememberedZoom(
-  filter: ListFilterModel,
-  preferenceKey: string
-) {
+function restoreRememberedZoom(filter: ListFilterModel, preferenceKey: string) {
   // As with display mode, an explicit z query parameter wins for this
   // navigation. Only restore local preference state when the URL is silent.
   if (hasExplicitZoomIndex()) return filter;
