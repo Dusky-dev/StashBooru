@@ -240,94 +240,80 @@
 
     init();
 
-    // Character identity is unique on (name, disambiguation). The native merge
-    // dialog can otherwise copy a source disambiguation onto a same-name
-    // destination before deleting the source, which trips SQLite's unique
-    // constraint. Intercept the merge-detail result and ask before resolving
-    // that identity collision.
-    const api = window.PluginApi;
-    const React = api && api.React;
+    // Image Tagging can expose a possible existing bare Character by returning
+    // a direct /performers/:id target while leaving targetExists=false. Ask at
+    // apply time whether the disambiguated prediction is that existing
+    // Character. Confirming rewrites only the outgoing prediction identity to
+    // the bare name, so the normal server resolver reuses it. Declining keeps
+    // the original disambiguated identity and normal create/resolve behavior.
+    const FETCH_PATCH_FLAG = "__stashbooruImageTaggingCharacterPromptV1";
+    const characterIdentityPattern = /^(.+?)\s*\(([^()]*)\)\s*$/;
+    const possibleCharacterTargetPattern = /^\/performers\/\d+\/?$/;
 
-    function normalizedIdentityPart(value) {
-        return String(value == null ? "" : value).trim().toLocaleLowerCase();
+    function imageTaggingApplyURL(input) {
+        const value = typeof input === "string" ? input : input && input.url;
+        return typeof value === "string" &&
+            value.includes("/knowledge-tags") &&
+            value.includes("apply=true");
     }
 
-    function displayDisambiguation(value) {
-        const text = String(value == null ? "" : value).trim();
-        return text || "(none)";
+    function resolvePossibleCharacter(tag) {
+        if (!tag || tag.category !== "character" || tag.targetExists) {
+            return tag;
+        }
+        if (!possibleCharacterTargetPattern.test(String(tag.targetPath || ""))) {
+            return tag;
+        }
+
+        const match = String(tag.name || "").match(characterIdentityPattern);
+        if (!match) {
+            return tag;
+        }
+        const bareName = match[1].trim();
+        const disambiguation = match[2].trim();
+        if (!bareName || !disambiguation) {
+            return tag;
+        }
+
+        const sameCharacter = window.confirm(
+            `Image Tagging found “${tag.name}”, but “${bareName}” already exists without a disambiguation.\n\n` +
+            `Is this the same Character?\n\n` +
+            `OK: reuse “${bareName}”\nCancel: keep “${tag.name}” as a separate Character.`
+        );
+        if (!sameCharacter) {
+            return tag;
+        }
+
+        return {
+            ...tag,
+            name: bareName,
+            rawName: bareName,
+            targetExists: true
+        };
     }
 
-    if (React && api.patch && api.patch.after) {
-        api.patch.after("PerformerMergeModal", function () {
-            const args = Array.from(arguments);
-            const rendered = args[args.length - 1];
-            if (!React.isValidElement(rendered)) return rendered;
-
-            const detailProps = rendered.props || {};
-            const sources = detailProps.sources;
-            const destination = detailProps.dest;
-            const onClose = detailProps.onClose;
-            if (!Array.isArray(sources) || !destination || typeof onClose !== "function") {
-                return rendered;
+    if (!window[FETCH_PATCH_FLAG]) {
+        window[FETCH_PATCH_FLAG] = true;
+        const nativeFetch = window.fetch.bind(window);
+        window.fetch = function (input, init) {
+            if (!imageTaggingApplyURL(input) || !init || typeof init.body !== "string") {
+                return nativeFetch(input, init);
             }
 
-            const patchedOnClose = function (options) {
-                if (!options || !options.values) return onClose(options);
-
-                const values = options.values;
-                const finalName = values.name == null ? destination.name : values.name;
-                const finalDisambiguation =
-                    values.disambiguation == null
-                        ? destination.disambiguation
-                        : values.disambiguation;
-                const normalizedName = normalizedIdentityPart(finalName);
-                const normalizedDisambiguation = normalizedIdentityPart(finalDisambiguation);
-
-                const sameNameSources = sources.filter(function (source) {
-                    return normalizedIdentityPart(source.name) === normalizedName;
-                });
-                const exactCollision = sameNameSources.find(function (source) {
-                    return normalizedIdentityPart(source.disambiguation) === normalizedDisambiguation;
-                });
-
-                if (exactCollision) {
-                    const keepDestination = window.confirm(
-                        `The merge would create the same Character identity as a source entry:\n\n` +
-                        `${finalName} — ${displayDisambiguation(finalDisambiguation)}\n\n` +
-                        `That causes the UNIQUE constraint error. Press OK to merge while keeping the destination disambiguation ` +
-                        `(${displayDisambiguation(destination.disambiguation)}), or Cancel to return to the merge choices.`
-                    );
-                    if (!keepDestination) return;
-
-                    return onClose({
-                        ...options,
-                        values: {
-                            ...values,
-                            disambiguation: destination.disambiguation,
-                        },
+            try {
+                const payload = JSON.parse(init.body);
+                if (payload && Array.isArray(payload.tags)) {
+                    payload.tags = payload.tags.map(resolvePossibleCharacter);
+                    return nativeFetch(input, {
+                        ...init,
+                        body: JSON.stringify(payload)
                     });
                 }
+            } catch (_error) {
+                // Leave malformed/non-JSON requests to the normal request path.
+            }
 
-                const differentDisambiguation = sameNameSources.find(function (source) {
-                    return (
-                        normalizedIdentityPart(source.disambiguation) !==
-                        normalizedIdentityPart(destination.disambiguation)
-                    );
-                });
-                if (differentDisambiguation) {
-                    const proceed = window.confirm(
-                        `Characters named “${finalName}” have different disambiguation values ` +
-                        `(${displayDisambiguation(destination.disambiguation)} and ` +
-                        `${displayDisambiguation(differentDisambiguation.disambiguation)}).\n\n` +
-                        `Continue merging them?`
-                    );
-                    if (!proceed) return;
-                }
-
-                return onClose(options);
-            };
-
-            return React.cloneElement(rendered, { onClose: patchedOnClose });
-        });
+            return nativeFetch(input, init);
+        };
     }
 })();
