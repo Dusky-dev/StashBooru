@@ -86,6 +86,8 @@ const SOURCE_PRIORITY: Record<MetadataSourceKind, number> = {
   camie: 20,
   eva02: 30,
 };
+const CHARACTER_IDENTITY_PATTERN = /^(.+?)\s*\(([^()]*)\)\s*$/;
+const POSSIBLE_CHARACTER_TARGET_PATTERN = /^\/performers\/\d+\/?$/;
 
 function normalizePredictionValue(value?: string) {
   return (value ?? "")
@@ -281,6 +283,46 @@ function parseInferenceOptions(threshold: string, limit: string) {
   return { parsedThreshold, parsedLimit };
 }
 
+function possibleBareCharacterMatch(prediction: TagPrediction) {
+  if (
+    prediction.category !== "character" ||
+    prediction.targetExists ||
+    !POSSIBLE_CHARACTER_TARGET_PATTERN.test(prediction.targetPath ?? "")
+  ) {
+    return undefined;
+  }
+
+  const match = prediction.name.match(CHARACTER_IDENTITY_PATTERN);
+  if (!match) return undefined;
+
+  const bareName = match[1].trim();
+  const disambiguation = match[2].trim();
+  if (!bareName || !disambiguation) return undefined;
+
+  return { bareName, disambiguation };
+}
+
+function resolvePossibleBareCharacter(
+  prediction: TagPrediction
+): TagPrediction {
+  const possible = possibleBareCharacterMatch(prediction);
+  if (!possible) return prediction;
+
+  const sameCharacter = window.confirm(
+    `Image Tagging found “${prediction.name}”, but “${possible.bareName}” already exists without a disambiguation.\n\n` +
+      `Is this the same Character?\n\n` +
+      `OK: reuse “${possible.bareName}”\nCancel: keep “${prediction.name}” as a separate Character.`
+  );
+  if (!sameCharacter) return prediction;
+
+  return {
+    ...prediction,
+    name: possible.bareName,
+    rawName: possible.bareName,
+    targetExists: true,
+  };
+}
+
 export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   imageId,
   onHide,
@@ -460,7 +502,9 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   const applySelected = useCallback(async () => {
     const tags = predictions
       .filter((prediction) => selected.has(predictionKey(prediction)))
-      .map(({ provenance: _provenance, ...prediction }) => prediction);
+      .map(({ provenance: _provenance, ...prediction }) =>
+        resolvePossibleBareCharacter(prediction)
+      );
     if (!tags.length) {
       setError("Select at least one metadata item to apply.");
       return;
@@ -682,6 +726,8 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                   <h5>{categoryLabel(category)}</h5>
                   {items.map((prediction, index) => {
                     const key = predictionKey(prediction);
+                    const possibleMatch =
+                      possibleBareCharacterMatch(prediction);
                     return (
                       <div
                         className="d-flex align-items-center py-1 border-bottom"
@@ -713,6 +759,15 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                             exists
                           </Badge>
                         ) : null}
+                        {possibleMatch ? (
+                          <Badge
+                            className="ml-2"
+                            variant="secondary"
+                            title={`Possible existing Character: ${possibleMatch.bareName}`}
+                          >
+                            possible match
+                          </Badge>
+                        ) : null}
                         {prediction.rawName &&
                         prediction.rawName !== prediction.name ? (
                           <span className="ml-2 small text-muted">
@@ -727,7 +782,9 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                             title={
                               prediction.targetExists
                                 ? "Open metadata page"
-                                : "Search for this metadata"
+                                : possibleMatch
+                                  ? `Open possible existing Character “${possibleMatch.bareName}”`
+                                  : "Search for this metadata"
                             }
                             onClick={() => {
                               onHide();

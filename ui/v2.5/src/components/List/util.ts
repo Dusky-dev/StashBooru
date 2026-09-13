@@ -13,6 +13,7 @@ import { DisplayMode } from "src/models/list-filter/types";
 import { Criterion } from "src/models/list-filter/criteria/criterion";
 
 const LIST_DISPLAY_STORAGE_PREFIX = "stashbooru.listView.displayMode.v3";
+const LIST_ZOOM_STORAGE_PREFIX = "stashbooru.listView.zoomIndex.v2";
 
 function locationEquals(
   loc1: ReturnType<typeof useLocation> | undefined,
@@ -25,9 +26,18 @@ function listDisplayStorageKey(preferenceKey: string) {
   return `${LIST_DISPLAY_STORAGE_PREFIX}.${preferenceKey}`;
 }
 
+function listZoomStorageKey(preferenceKey: string) {
+  return `${LIST_ZOOM_STORAGE_PREFIX}.${preferenceKey}`;
+}
+
 function hasExplicitDisplayMode() {
   if (typeof window === "undefined") return false;
   return new URLSearchParams(window.location.search).has("disp");
+}
+
+function hasExplicitZoomIndex() {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).has("z");
 }
 
 function readRememberedDisplayMode(
@@ -47,6 +57,18 @@ function readRememberedDisplayMode(
   }
 }
 
+function readRememberedZoom(preferenceKey: string): number | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const raw = window.localStorage.getItem(listZoomStorageKey(preferenceKey));
+    if (raw === null) return undefined;
+    const parsed = Number.parseInt(raw, 10);
+    return parsed >= 0 && parsed <= 3 ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function saveRememberedDisplayMode(
   preferenceKey: string,
   displayMode: DisplayMode
@@ -56,6 +78,18 @@ function saveRememberedDisplayMode(
     window.localStorage.setItem(
       listDisplayStorageKey(preferenceKey),
       String(displayMode)
+    );
+  } catch {
+    // Persistence is best-effort in hardened/private browser contexts.
+  }
+}
+
+function saveRememberedZoom(preferenceKey: string, zoomIndex: number) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      listZoomStorageKey(preferenceKey),
+      String(zoomIndex)
     );
   } catch {
     // Persistence is best-effort in hardened/private browser contexts.
@@ -78,6 +112,28 @@ function restoreRememberedDisplayMode(
     return filter;
   }
   return filter.setDisplayMode(remembered);
+}
+
+function restoreRememberedZoom(filter: ListFilterModel, preferenceKey: string) {
+  // As with display mode, an explicit z query parameter wins for this
+  // navigation. Only restore local preference state when the URL is silent.
+  if (hasExplicitZoomIndex()) return filter;
+
+  const remembered = readRememberedZoom(preferenceKey);
+  if (remembered === undefined || remembered === filter.zoomIndex) {
+    return filter;
+  }
+  return filter.setZoom(remembered);
+}
+
+function restoreRememberedViewState(
+  filter: ListFilterModel,
+  preferenceKey: string
+) {
+  return restoreRememberedZoom(
+    restoreRememberedDisplayMode(filter, preferenceKey),
+    preferenceKey
+  );
 }
 
 export function useFilterURL(
@@ -222,7 +278,7 @@ export function useFilterState(
   const preferenceKey = String(view ?? filterMode);
 
   const [filter, setFilterState] = useState<ListFilterModel>(() =>
-    restoreRememberedDisplayMode(
+    restoreRememberedViewState(
       new ListFilterModel(filterMode, config, { defaultSortBy: defaultSort }),
       preferenceKey
     )
@@ -237,7 +293,7 @@ export function useFilterState(
 
   const effectiveDefaultFilter = useMemo(
     () =>
-      restoreRememberedDisplayMode(
+      restoreRememberedViewState(
         propDefaultFilter ?? defaultFilterFromConfig,
         preferenceKey
       ),
@@ -251,18 +307,33 @@ export function useFilterState(
 
   const restoredPreferenceKey = useRef(preferenceKey);
   useEffect(() => {
-    if (restoredPreferenceKey.current !== preferenceKey) {
+    if (restoredPreferenceKey.current === preferenceKey) return;
+
+    setFilterState((current) => {
+      const restored = restoreRememberedViewState(current, preferenceKey);
+      // Set the key only inside the state update. The save effect therefore
+      // cannot write the previous page's state under the new key during the
+      // navigation render.
       restoredPreferenceKey.current = preferenceKey;
-      setFilterState((current) =>
-        restoreRememberedDisplayMode(current, preferenceKey)
-      );
-      return;
-    }
+      return restored;
+    });
+  }, [preferenceKey]);
+
+  useEffect(() => {
+    if (restoredPreferenceKey.current !== preferenceKey) return;
 
     if (filter.options.displayModeOptions.includes(filter.displayMode)) {
       saveRememberedDisplayMode(preferenceKey, filter.displayMode);
     }
-  }, [filter.displayMode, filter.options.displayModeOptions, preferenceKey]);
+    if (filter.zoomIndex >= 0 && filter.zoomIndex <= 3) {
+      saveRememberedZoom(preferenceKey, filter.zoomIndex);
+    }
+  }, [
+    filter.displayMode,
+    filter.options.displayModeOptions,
+    filter.zoomIndex,
+    preferenceKey,
+  ]);
 
   return { filter, setFilter };
 }
@@ -340,7 +411,6 @@ export function useListKeyboardShortcuts(props: {
     onInvertSelection,
   } = props;
 
-  // set up hotkeys
   useEffect(() => {
     if (showEditFilter) {
       Mousetrap.bind("f", (e) => {
