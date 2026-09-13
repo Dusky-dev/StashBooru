@@ -15,6 +15,7 @@ import { ErrorMessage } from "src/components/Shared/ErrorMessage";
 import { LoadingIndicator } from "src/components/Shared/LoadingIndicator";
 import { Icon } from "src/components/Shared/Icon";
 import { BooruTagSidebar } from "src/components/Shared/BooruTagSidebar";
+import { FileSize } from "src/components/Shared/FileSize";
 import { useToast } from "src/hooks/Toast";
 import * as Mousetrap from "mousetrap";
 import * as GQL from "src/core/generated-graphql";
@@ -286,9 +287,18 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
       : "img";
   const resolution = useMemo(() => {
     return file?.width && file?.height
-      ? TextUtils.resolution(file?.width, file?.height)
+      ? TextUtils.resolution(file.width, file.height)
       : undefined;
   }, [file?.width, file?.height]);
+  const dimensions = useMemo(() => {
+    return file?.width && file?.height
+      ? `${file.width} × ${file.height}`
+      : undefined;
+  }, [file?.width, file?.height]);
+  const fileFormat = useMemo(() => {
+    const match = file?.path?.match(/\.([^.\\/]+)$/);
+    return match?.[1]?.toLocaleUpperCase();
+  }, [file?.path]);
 
   return (
     <div className="row">
@@ -311,11 +321,22 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
             <span className="date" data-value={image.date}>
               {!!image.date && <FormattedDate value={image.date} />}
             </span>
-            {resolution ? (
-              <span className="resolution" data-value={resolution}>
-                {resolution}
-              </span>
-            ) : undefined}
+            <span className="image-subheader-media">
+              {resolution ? (
+                <span className="resolution" data-value={resolution}>
+                  {resolution}
+                  {dimensions ? ` (${dimensions})` : ""}
+                </span>
+              ) : null}
+              {file ? (
+                <span className="image-file-summary">
+                  <FileSize size={file.size} />
+                  {fileFormat ? (
+                    <span className="image-file-format">{fileFormat}</span>
+                  ) : null}
+                </span>
+              ) : null}
+            </span>
           </div>
         </div>
 
