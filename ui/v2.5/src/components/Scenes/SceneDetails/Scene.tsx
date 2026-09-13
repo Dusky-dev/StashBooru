@@ -23,6 +23,7 @@ import {
 } from "src/core/StashService";
 
 import { SceneEditPanel } from "./SceneEditPanel";
+import { VideoTaggingDialog } from "./VideoTaggingDialog";
 import { ErrorMessage } from "src/components/Shared/ErrorMessage";
 import { LoadingIndicator } from "src/components/Shared/LoadingIndicator";
 import { Icon } from "src/components/Shared/Icon";
@@ -218,6 +219,7 @@ const ScenePage: React.FC<IProps> = PatchComponent("ScenePage", (props) => {
   const [isMerging, setIsMerging] = useState(false);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState<boolean>(false);
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
+  const [isVideoTaggingOpen, setIsVideoTaggingOpen] = useState(false);
 
   const onScreenshotJobComplete = useCallback(
     async (job?: JobFragment) => {
@@ -490,6 +492,13 @@ const ScenePage: React.FC<IProps> = PatchComponent("ScenePage", (props) => {
           </Dropdown.Item>
         )}
         <Dropdown.Item
+          key="video-tagging"
+          className="bg-secondary text-white"
+          onClick={() => setIsVideoTaggingOpen(true)}
+        >
+          Video Tagging…
+        </Dropdown.Item>
+        <Dropdown.Item
           key="generate"
           className="bg-secondary text-white"
           onClick={() => setIsGenerateDialogOpen(true)}
@@ -674,6 +683,13 @@ const ScenePage: React.FC<IProps> = PatchComponent("ScenePage", (props) => {
       <Helmet>
         <title>{title}</title>
       </Helmet>
+      {isVideoTaggingOpen && (
+        <VideoTaggingDialog
+          sceneId={scene.id}
+          onHide={() => setIsVideoTaggingOpen(false)}
+          onApplied={onRefreshScene}
+        />
+      )}
       {maybeRenderSceneGenerateDialog()}
       {maybeRenderMergeDialog()}
       {maybeRenderDeleteDialog()}
