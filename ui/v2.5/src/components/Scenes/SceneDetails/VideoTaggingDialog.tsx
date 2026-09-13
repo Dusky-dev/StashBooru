@@ -307,7 +307,8 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
     return [...groups.entries()].sort(([left], [right]) => {
       const leftIndex = CATEGORY_ORDER.indexOf(left);
       const rightIndex = CATEGORY_ORDER.indexOf(right);
-      if (leftIndex === -1 && rightIndex === -1) return left.localeCompare(right);
+      if (leftIndex === -1 && rightIndex === -1)
+        return left.localeCompare(right);
       if (leftIndex === -1) return 1;
       if (rightIndex === -1) return -1;
       return leftIndex - rightIndex;
@@ -316,8 +317,9 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
 
   const visibleSelectedCount = useMemo(
     () =>
-      predictions.filter((prediction) => selected.has(predictionKey(prediction)))
-        .length,
+      predictions.filter((prediction) =>
+        selected.has(predictionKey(prediction))
+      ).length,
     [predictions, selected]
   );
 
@@ -374,7 +376,15 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
     } finally {
       setApplying(false);
     }
-  }, [Toast, onApplied, onHide, predictions, replaceArtists, sceneId, selected]);
+  }, [
+    Toast,
+    onApplied,
+    onHide,
+    predictions,
+    replaceArtists,
+    sceneId,
+    selected,
+  ]);
 
   return (
     <Modal show onHide={onHide} size="lg" centered>
@@ -436,7 +446,8 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
           </div>
         ) : predictions.length === 0 && !error ? (
           <div className="text-muted">
-            No local metadata was found. You can still try an exact booru lookup.
+            No local metadata was found. You can still try an exact booru
+            lookup.
           </div>
         ) : (
           <>
