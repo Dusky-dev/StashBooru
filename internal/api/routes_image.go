@@ -57,7 +57,7 @@ func (rs imageRoutes) Routes() chi.Router {
 		r.Get("/local-metadata", rs.ImageLocalMetadata)
 		r.Post("/camie-tags", rs.ImageCamiePredictions)
 		r.Post("/eva02-tags", rs.ImageEva02Predictions)
-		r.Post("/knowledge-tags", rs.ImageKnowledgeTagsV2)
+		r.Post("/knowledge-tags", rs.ImageKnowledgeTagsWithLocalPriorityV2)
 	})
 
 	return r
