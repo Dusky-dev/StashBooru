@@ -84,7 +84,7 @@ func compileCamieFilenameLayout(layout string) (*camieFilenameLayout, error) {
 
 func splitCamieFilenameValue(category string, value string) []string {
 	value = strings.TrimSpace(value)
-	if (category != "copyright" && category != "artist") || !strings.Contains(value, "+") {
+	if (category != "copyright" && category != "artist" && category != "character") || !strings.Contains(value, "+") {
 		return []string{value}
 	}
 

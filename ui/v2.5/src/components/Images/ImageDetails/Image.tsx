@@ -240,6 +240,12 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
 
         <Tab.Content>
           <Tab.Pane eventKey="image-details-panel">
+            <BooruTagSidebar
+              tags={image.tags}
+              artists={image.artists}
+              characters={image.performers}
+              copyrights={image.copyrights}
+            />
             <ImageDetailPanel image={image} />
           </Tab.Pane>
           <Tab.Pane eventKey="image-edit-panel" mountOnEnter>
@@ -341,12 +347,6 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
             <span>{renderOperations()}</span>
           </span>
         </div>
-        <BooruTagSidebar
-          tags={image.tags}
-          artists={image.artists}
-          characters={image.performers}
-          copyrights={image.copyrights}
-        />
         {renderTabs()}
       </div>
       <div className="image-container">

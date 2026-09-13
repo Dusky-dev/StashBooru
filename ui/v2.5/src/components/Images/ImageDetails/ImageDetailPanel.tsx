@@ -1,8 +1,7 @@
 import React from "react";
 import * as GQL from "src/core/generated-graphql";
-import TextUtils from "src/utils/text";
 import { GalleryLink } from "src/components/Shared/TagLink";
-import { FormattedMessage, useIntl } from "react-intl";
+import { FormattedMessage } from "react-intl";
 import { PhotographerLink } from "src/components/Shared/Link";
 import { PatchComponent } from "../../../patch";
 import { CustomFields } from "src/components/Shared/CustomFields";
@@ -15,8 +14,6 @@ interface IImageDetailProps {
 export const ImageDetailPanel: React.FC<IImageDetailProps> = PatchComponent(
   "ImageDetailPanel",
   (props) => {
-    const intl = useIntl();
-
     function renderDetails() {
       if (!props.image.details) return;
       return (
@@ -55,19 +52,6 @@ export const ImageDetailPanel: React.FC<IImageDetailProps> = PatchComponent(
         <div className="row">
           <div className={`${imageDetailsWidth} col-12 image-details`}>
             {renderGalleries()}
-            {
-              <h6>
-                {" "}
-                <FormattedMessage id="created_at" />:{" "}
-                {TextUtils.formatDateTime(intl, props.image.created_at)}{" "}
-              </h6>
-            }
-            {
-              <h6>
-                <FormattedMessage id="updated_at" />:{" "}
-                {TextUtils.formatDateTime(intl, props.image.updated_at)}{" "}
-              </h6>
-            }
             {props.image.code && (
               <h6>
                 <FormattedMessage id="scene_code" />: {props.image.code}{" "}

@@ -102,23 +102,35 @@ export const ImageFileInfoPanel: React.FC<IImageFileInfoPanelProps> = (
   props: IImageFileInfoPanelProps
 ) => {
   const Toast = useToast();
+  const intl = useIntl();
 
   const [loading, setLoading] = useState(false);
   const [deletingFile, setDeletingFile] = useState<
     GQL.ImageFileDataFragment | GQL.VideoFileDataFragment | undefined
   >();
 
+  const imageMetadata = (
+    <dl className="container image-file-info details-list">
+      <TextField
+        id="created_at"
+        value={TextUtils.formatDateTime(intl, props.image.created_at)}
+      />
+      <TextField
+        id="updated_at"
+        value={TextUtils.formatDateTime(intl, props.image.updated_at)}
+      />
+      <URLsField id="urls" urls={props.image.urls} truncate />
+    </dl>
+  );
+
   if (props.image.visual_files.length === 0) {
-    return null;
+    return imageMetadata;
   }
 
   if (props.image.visual_files.length === 1) {
     return (
       <>
-        <dl className="container image-file-info details-list">
-          <URLsField id="urls" urls={props.image.urls} truncate />
-        </dl>
-
+        {imageMetadata}
         <FileInfoPanel file={props.image.visual_files[0]} />
       </>
     );
@@ -136,32 +148,35 @@ export const ImageFileInfoPanel: React.FC<IImageFileInfoPanelProps> = (
   }
 
   return (
-    <Accordion defaultActiveKey={props.image.visual_files[0].id}>
-      {deletingFile && (
-        <DeleteFilesDialog
-          onClose={() => setDeletingFile(undefined)}
-          selected={[deletingFile]}
-        />
-      )}
-      {props.image.visual_files.map((file, index) => (
-        <Card key={file.id} className="image-file-card">
-          <Accordion.Toggle as={Card.Header} eventKey={file.id}>
-            <TruncatedText text={TextUtils.fileNameFromPath(file.path)} />
-          </Accordion.Toggle>
-          <Accordion.Collapse eventKey={file.id}>
-            <Card.Body>
-              <FileInfoPanel
-                file={file}
-                primary={index === 0}
-                ofMany
-                onSetPrimaryFile={() => onSetPrimaryFile(file.id)}
-                onDeleteFile={() => setDeletingFile(file)}
-                loading={loading}
-              />
-            </Card.Body>
-          </Accordion.Collapse>
-        </Card>
-      ))}
-    </Accordion>
+    <>
+      {imageMetadata}
+      <Accordion defaultActiveKey={props.image.visual_files[0].id}>
+        {deletingFile && (
+          <DeleteFilesDialog
+            onClose={() => setDeletingFile(undefined)}
+            selected={[deletingFile]}
+          />
+        )}
+        {props.image.visual_files.map((file, index) => (
+          <Card key={file.id} className="image-file-card">
+            <Accordion.Toggle as={Card.Header} eventKey={file.id}>
+              <TruncatedText text={TextUtils.fileNameFromPath(file.path)} />
+            </Accordion.Toggle>
+            <Accordion.Collapse eventKey={file.id}>
+              <Card.Body>
+                <FileInfoPanel
+                  file={file}
+                  primary={index === 0}
+                  ofMany
+                  onSetPrimaryFile={() => onSetPrimaryFile(file.id)}
+                  onDeleteFile={() => setDeletingFile(file)}
+                  loading={loading}
+                />
+              </Card.Body>
+            </Accordion.Collapse>
+          </Card>
+        ))}
+      </Accordion>
+    </>
   );
 };

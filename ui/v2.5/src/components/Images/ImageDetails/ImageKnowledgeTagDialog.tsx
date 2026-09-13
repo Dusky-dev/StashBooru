@@ -288,7 +288,8 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
 }) => {
   const Toast = useToast();
   const history = useHistory();
-  const [threshold, setThreshold] = useState("0.492");
+  const [camieThreshold, setCamieThreshold] = useState("0.492");
+  const [eva02Threshold, setEva02Threshold] = useState("0.35");
   const [limit, setLimit] = useState("50");
   const [localPredictions, setLocalPredictions] = useState<TagPrediction[]>([]);
   const [booruPredictions, setBooruPredictions] = useState<TagPrediction[]>([]);
@@ -341,9 +342,11 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
 
   const loadModelPredictions = useCallback(
     async (source: "camie" | "eva02") => {
+      const sourceThreshold =
+        source === "camie" ? camieThreshold : eva02Threshold;
       let options: ReturnType<typeof parseInferenceOptions>;
       try {
-        options = parseInferenceOptions(threshold, limit);
+        options = parseInferenceOptions(sourceThreshold, limit);
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : String(cause));
         return;
@@ -372,7 +375,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         setLoadingSource(undefined);
       }
     },
-    [addSelected, imageId, limit, threshold]
+    [addSelected, camieThreshold, eva02Threshold, imageId, limit]
   );
 
   useEffect(() => {
@@ -402,7 +405,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         const response = await fetch("image/visual-similarity/camie/config");
         const config = await readResponse<CamieConfig>(response);
         if (!cancelled) {
-          setThreshold(String(config.threshold));
+          setCamieThreshold(String(config.threshold));
           setLimit(String(config.limit));
         }
       } catch {
@@ -511,14 +514,26 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
       <Modal.Body>
         <div className="d-flex flex-wrap align-items-end mb-3">
           <Form.Group className="mr-3 mb-2">
-            <Form.Label>Inference threshold</Form.Label>
+            <Form.Label>Camie threshold</Form.Label>
             <Form.Control
               type="number"
               min="0.001"
               max="0.999"
               step="0.01"
-              value={threshold}
-              onChange={(event) => setThreshold(event.currentTarget.value)}
+              value={camieThreshold}
+              onChange={(event) => setCamieThreshold(event.currentTarget.value)}
+              style={{ width: "8rem" }}
+            />
+          </Form.Group>
+          <Form.Group className="mr-3 mb-2">
+            <Form.Label>EVA02 threshold</Form.Label>
+            <Form.Control
+              type="number"
+              min="0.001"
+              max="0.999"
+              step="0.01"
+              value={eva02Threshold}
+              onChange={(event) => setEva02Threshold(event.currentTarget.value)}
               style={{ width: "8rem" }}
             />
           </Form.Group>
@@ -606,7 +621,8 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         <div className="mb-3 text-muted">
           Sources are merged in priority order: Local → Danbooru → Camie →
           EVA02. Opening this dialog loads Local metadata only; every network or
-          model source is explicit. When the same metadata item is predicted by
+          model source is explicit. Camie and EVA02 use independent thresholds;
+          EVA02 defaults to 0.35. When the same metadata item is predicted by
           multiple sources, the earlier source keeps its value and score while
           later sources are shown as additional provenance. EVA02 is the
           fallback source. Multiple selected Artists can be attached to the same

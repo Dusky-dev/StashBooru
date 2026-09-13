@@ -83,6 +83,46 @@ func TestParseCamieFilenameSplitsCopyrightList(t *testing.T) {
 	}
 }
 
+func TestParseCamieFilenameSplitsCharacterList(t *testing.T) {
+	const composite = "Aqua (Konosuba)+darkness (Konosuba)+megumin (Konosuba)"
+	predictions, err := parseCamieFilename(
+		"[artist](konosuba)."+composite+"_8e12eeba08d10de8d5e05253388f9cca.jpg",
+		defaultCamieFilenameLayout,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := map[string]bool{
+		"Aqua (Konosuba)":     false,
+		"Darkness (Konosuba)": false,
+		"Megumin (Konosuba)":  false,
+	}
+	merged := mergeCamiePredictions(nil, predictions)
+	characterCount := 0
+	for _, prediction := range merged {
+		if prediction.Category != "character" {
+			continue
+		}
+		characterCount++
+		if strings.Contains(prediction.Name, "+") {
+			t.Fatalf("filename character was not split: %q", prediction.Name)
+		}
+		if _, ok := want[prediction.Name]; !ok {
+			t.Fatalf("unexpected character %q", prediction.Name)
+		}
+		want[prediction.Name] = true
+	}
+	if characterCount != len(want) {
+		t.Fatalf("expected %d local characters, got %d", len(want), characterCount)
+	}
+	for name, found := range want {
+		if !found {
+			t.Fatalf("missing split character %q", name)
+		}
+	}
+}
+
 func TestCamieCharacterIdentityUsesTrailingCopyright(t *testing.T) {
 	prediction := camietagger.Tag{
 		Name:     "darkness_(konosuba)",

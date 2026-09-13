@@ -32,6 +32,10 @@ function uniqueByID<T extends { id: string }>(items: T[]): T[] {
   return [...new Map(items.map((item) => [item.id, item])).values()];
 }
 
+function countLabel(singular: string, plural: string, count: number) {
+  return count === 1 ? singular : plural;
+}
+
 const EntityStats: React.FC<{ entity: BooruEntity }> = ({ entity }) => (
   <div className="booru-entity-card-stats">
     <span title="Videos">
@@ -80,15 +84,19 @@ const SectionTitle: React.FC<{ title: string; count: number }> = ({
 
 const CardSection: React.FC<{
   kind: CardKind;
-  title: string;
+  singularTitle: string;
+  pluralTitle: string;
   items: BooruEntity[];
   route: (id: string) => string;
-}> = ({ kind, title, items, route }) => {
+}> = ({ kind, singularTitle, pluralTitle, items, route }) => {
   if (items.length === 0) return null;
 
   return (
     <section className={`booru-tag-section booru-tag-section-${kind}`}>
-      <SectionTitle title={title} count={items.length} />
+      <SectionTitle
+        title={countLabel(singularTitle, pluralTitle, items.length)}
+        count={items.length}
+      />
       <div className={`booru-entity-card-grid booru-entity-card-grid-${kind}`}>
         {items.map((item) => (
           <EntityCard
@@ -119,7 +127,10 @@ const CharacterSection: React.FC<{
 
   return (
     <section className="booru-tag-section booru-tag-section-character">
-      <SectionTitle title="Characters" count={items.length} />
+      <SectionTitle
+        title={countLabel("Character", "Characters", items.length)}
+        count={items.length}
+      />
       <div className="booru-entity-card-grid booru-character-card-grid">
         {items.map((performer) => (
           <div
@@ -157,7 +168,10 @@ const GeneralTags: React.FC<{ items: BooruEntity[] }> = ({ items }) => {
 
   return (
     <section className="booru-tag-section booru-tag-section-general">
-      <SectionTitle title="Tags" count={items.length} />
+      <SectionTitle
+        title={countLabel("Tag", "Tags", items.length)}
+        count={items.length}
+      />
       <div className="booru-general-tags">
         {items.map((item) => (
           <GeneralTagName key={`general-${item.id}`} entity={item} />
@@ -203,14 +217,16 @@ export const BooruTagSidebar: React.FC<BooruTagSidebarProps> = ({
         <div className="booru-entity-metadata">
           <CardSection
             kind="artist"
-            title="Artists"
+            singularTitle="Artist"
+            pluralTitle="Artists"
             items={sortedArtists}
             route={(id) => `/studios/${id}`}
           />
           <CharacterSection items={sortedCharacters} />
           <CardSection
             kind="copyright"
-            title="Copyrights"
+            singularTitle="Copyright"
+            pluralTitle="Copyrights"
             items={sortedCopyrights}
             route={(id) => `/copyrights/${id}`}
           />
