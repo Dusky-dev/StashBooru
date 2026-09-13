@@ -32,10 +32,6 @@
       () => (entity.images || []).map((item) => Number(item.id)).filter(Number.isFinite),
       [entity.images]
     );
-    const performerIDs = React.useMemo(
-      () => (entity.performers || []).map((item) => Number(item.id)).filter(Number.isFinite),
-      [entity.performers]
-    );
 
     const sceneFilter = React.useMemo(
       () => copySupported(sourceObjectFilter, "scene"),
@@ -43,10 +39,6 @@
     );
     const imageFilter = React.useMemo(
       () => copySupported(sourceObjectFilter, "image"),
-      [sourceObjectFilter]
-    );
-    const performerFilter = React.useMemo(
-      () => copySupported(sourceObjectFilter, "performer"),
       [sourceObjectFilter]
     );
     const common = { fetchPolicy: "cache-and-network", notifyOnNetworkStatusChange: true };
@@ -69,15 +61,6 @@
         image_ids: imageIDs,
       },
     });
-    const performers = api.GQL.useFindPerformersQuery({
-      ...common,
-      skip: performerIDs.length === 0,
-      variables: {
-        filter: findFilter,
-        performer_filter: performerFilter,
-        performer_ids: performerIDs,
-      },
-    });
     const idle = { data: undefined, loading: false, error: undefined };
 
     return {
@@ -85,7 +68,7 @@
       images,
       galleries: idle,
       groups: idle,
-      performers,
+      performers: idle,
       studios: idle,
       markers: idle,
     };
@@ -100,14 +83,13 @@
       (values || []).forEach((item) => out.push(wrap(type, item)));
     add("scene", q.scenes.data?.findScenes?.scenes);
     add("image", q.images.data?.findImages?.images);
-    add("performer", q.performers.data?.findPerformers?.performers);
     return out;
   };
 
   const unifiedMediaBaseQueryStatus = queryStatus;
   queryStatus = function queryStatusWithCopyright(q, kind) {
     if (kind !== "copyright") return unifiedMediaBaseQueryStatus(q, kind);
-    const active = [q.scenes, q.images, q.performers];
+    const active = [q.scenes, q.images];
     return {
       loading: active.some((result) => result.loading && !result.data),
       errors: active.map((result) => result.error).filter(Boolean),
@@ -234,9 +216,8 @@
           filterHook,
           defaultSort: "date",
           alterQuery: false,
-          // Keep All independent from the native Videos tab when remembering
-          // Grid/Wall mode. useFilterState accepts this logical view key at
-          // runtime even though Unified Media is bundled JavaScript.
+          // Keep All independent from the native Videos/Images tabs when
+          // remembering Grid/Wall mode.
           view: "copyright_all",
           sceneIDs,
         })
@@ -366,14 +347,27 @@
     }, [route.id]);
 
     // Keep the synthetic All tab and React Router's Copyright route in sync.
-    // The old implementation only toggled DOM classes, leaving /all, browser
-    // navigation, and native tab state able to drift apart.
     React.useEffect(() => {
       if (!shell || !route.id) return undefined;
       const nav = shell.querySelector(".nav-tabs");
       if (!nav) return undefined;
 
       let frame = 0;
+      const searchWithoutDisplayMode = () => {
+        const params = new URLSearchParams(window.location.search);
+        params.delete("disp");
+        const value = params.toString();
+        return value ? `?${value}` : "";
+      };
+      const clearDisplayModeQuery = () => {
+        const nextSearch = searchWithoutDisplayMode();
+        if (nextSearch === window.location.search) return;
+        window.history.replaceState(
+          window.history.state,
+          "",
+          `${window.location.pathname}${nextSearch}${window.location.hash}`
+        );
+      };
       const syncPath = () => {
         if (frame) cancelAnimationFrame(frame);
         frame = requestAnimationFrame(() => {
@@ -388,16 +382,24 @@
 
         if (link.hasAttribute(TAB_ATTR)) {
           const nextPath = `/copyrights/${encodeURIComponent(route.id)}/all`;
-          if (window.location.pathname !== nextPath) {
+          const nextSearch = searchWithoutDisplayMode();
+          if (
+            window.location.pathname !== nextPath ||
+            window.location.search !== nextSearch
+          ) {
             window.history.replaceState(
               window.history.state,
               "",
-              `${nextPath}${window.location.search}${window.location.hash}`
+              `${nextPath}${nextSearch}${window.location.hash}`
             );
             setPathname(nextPath);
             window.dispatchEvent(new PopStateEvent("popstate"));
           }
         } else {
+          // A remembered display mode belongs to the destination tab. Do not
+          // carry All's explicit ?disp= override into Images/Videos (or vice
+          // versa), otherwise it wins over per-page remembered state.
+          clearDisplayModeQuery();
           // React-Bootstrap/React Router handles native tabs. Read the resulting
           // location on the next frame instead of guessing from translated text.
           syncPath();
@@ -412,7 +414,10 @@
     }, [shell, route.id, readPathname]);
 
     React.useEffect(() => {
-      if (!shell || (route.tab && route.tab !== "all")) return undefined;
+      // The Copyright base route is the native Images view. Only /all should
+      // activate the synthetic Unified Media pane; treating an empty tab as All
+      // caused Images clicks to immediately bounce back into All.
+      if (!shell || route.tab !== "all") return undefined;
       let frame = 0;
       let attempts = 0;
       const activate = () => {
