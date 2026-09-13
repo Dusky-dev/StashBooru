@@ -343,7 +343,7 @@ const CopyrightMediaTabs: React.FC<{
   abbreviateCounter: boolean;
 }> = ({ copyright, initialTab, abbreviateCounter }) => {
   const history = useHistory();
-  const validTabs = ["images", "videos", "characters"];
+  const validTabs = ["all", "images", "videos", "characters"];
   const populatedDefaultTab =
     copyright.image_count > 0
       ? "images"
@@ -393,6 +393,9 @@ const CopyrightMediaTabs: React.FC<{
       mountOnEnter
       unmountOnExit
     >
+      <Tab eventKey="all" title="All">
+        <div />
+      </Tab>
       <Tab
         eventKey="images"
         title={
