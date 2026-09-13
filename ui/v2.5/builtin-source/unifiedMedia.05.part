@@ -154,6 +154,42 @@ eEffect(() => cleanupNativeLightbox, [cleanupNativeLightbox]);
         ? pageVisualEntries[activeVisualIndex]
         : null;
 
+    function changePage(next, scrollToTop) {
+      setPage(next);
+      if (!scrollToTop) return;
+      requestAnimationFrame(() => {
+        document.querySelector(`.${ctx.kind}-tabs .unified-media-inline-pane`)?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
+    }
+
+    function renderPagination(position) {
+      if (displayItems.length === 0) return null;
+      return React.createElement(
+        "div",
+        { className: `unified-media-mixed-pagination unified-media-mixed-pagination-${position}` },
+        Pagination
+          ? React.createElement(Pagination, {
+              currentPage: page,
+              itemsPerPage: perPage,
+              totalItems: displayItems.length,
+              onChangePage: (next) => changePage(next, position === "bottom"),
+              ...(position === "bottom" ? { pagePopupPlacement: "top" } : {}),
+            })
+          : null,
+        PaginationIndex
+          ? React.createElement(PaginationIndex, {
+              loading: false,
+              itemsPerPage: perPage,
+              currentPage: page,
+              totalItems: displayItems.length,
+            })
+          : null
+      );
+    }
+
     return React.createElement(
       React.Fragment,
       null,
@@ -174,11 +210,7 @@ eEffect(() => cleanupNativeLightbox, [cleanupNativeLightbox]);
             `Some Unified Media queries failed: ${status.errors.map((e) => e.message).join(" | ")}`
           )
         : null,
-      React.createElement(
-        "div",
-        { className: "unified-media-mixed-status text-muted paginationIndex center-text" },
-        `${first}-${last} of ${displayItems.length}`
-      ),
+      renderPagination("top"),
       displayItems.length === 0
         ? React.createElement(
             "div",
@@ -198,36 +230,7 @@ eEffect(() => cleanupNativeLightbox, [cleanupNativeLightbox]);
               { className: "row justify-content-center unified-media-mixed-grid" },
               pageItems.map(renderEntry)
             ),
-      displayItems.length > 0
-        ? React.createElement(
-            "div",
-            { className: "unified-media-mixed-pagination" },
-            Pagination
-              ? React.createElement(Pagination, {
-                  currentPage: page,
-                  itemsPerPage: perPage,
-                  totalItems: displayItems.length,
-                  onChangePage: (next) => {
-                    setPage(next);
-                    requestAnimationFrame(() => {
-                      document.querySelector(`.${ctx.kind}-tabs .unified-media-inline-pane`)?.scrollIntoView({
-                        behavior: "smooth",
-                        block: "start",
-                      });
-                    });
-                  },
-                })
-              : null,
-            PaginationIndex
-              ? React.createElement(PaginationIndex, {
-                  loading: false,
-                  itemsPerPage: perPage,
-                  currentPage: page,
-                  totalItems: displayItems.length,
-                })
-              : null
-          )
-        : null
+      renderPagination("bottom")
     );
   }
 
