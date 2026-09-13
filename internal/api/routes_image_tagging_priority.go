@@ -65,13 +65,17 @@ func (rs imageRoutes) ImageKnowledgeTagsWithLocalPriorityV2(w http.ResponseWrite
 		http.Error(w, fmt.Sprintf("decoding Image Tagging selection: %v", err), http.StatusBadRequest)
 		return
 	}
+	if len(request.Tags) > maxCamieApplyTags {
+		http.Error(w, fmt.Sprintf("cannot apply more than %d metadata predictions at once", maxCamieApplyTags), http.StatusBadRequest)
+		return
+	}
 
-	selected, err := validateCamiePredictionsV2(request.Tags)
+	prioritized := filterCamieFilenameAuthoritativeSelections(request.Tags)
+	selected, err := validateCamiePredictionsV2(prioritized)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	selected = filterCamieFilenameAuthoritativeSelections(selected)
 	if len(selected) == 0 {
 		http.Error(w, "select at least one metadata item to apply", http.StatusBadRequest)
 		return
