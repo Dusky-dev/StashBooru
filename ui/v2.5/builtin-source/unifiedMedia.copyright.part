@@ -1,0 +1,397 @@
+
+
+  // Native Copyrights are not represented by a Scene/Image filter criterion,
+  // but the Copyright detail query already exposes the exact associated media
+  // IDs. Extend Unified Media with an ID-constrained controller so Copyright
+  // uses the same mixed Grid/Wall implementation as Characters and Artists.
+  const unifiedMediaBaseUseMixedQueries = useMixedQueries;
+  useMixedQueries = function useMixedQueriesWithCopyright(ctx, filter) {
+    if (ctx.kind !== "copyright") {
+      return unifiedMediaBaseUseMixedQueries(ctx, filter);
+    }
+
+    const { entity } = ctx;
+    const sourceObjectFilter = React.useMemo(() => {
+      try {
+        return filter?.makeFilter ? filter.makeFilter() : {};
+      } catch (e) {
+        console.warn("[Unified Media] could not read Copyright filter criteria", e);
+        return {};
+      }
+    }, [filter]);
+
+    const findFilter = React.useMemo(
+      () => ({ q: filter?.searchTerm || "", per_page: -1 }),
+      [filter?.searchTerm]
+    );
+    const sceneIDs = React.useMemo(
+      () => (entity.scenes || []).map((item) => Number(item.id)).filter(Number.isFinite),
+      [entity.scenes]
+    );
+    const imageIDs = React.useMemo(
+      () => (entity.images || []).map((item) => Number(item.id)).filter(Number.isFinite),
+      [entity.images]
+    );
+    const performerIDs = React.useMemo(
+      () => (entity.performers || []).map((item) => Number(item.id)).filter(Number.isFinite),
+      [entity.performers]
+    );
+
+    const sceneFilter = React.useMemo(
+      () => copySupported(sourceObjectFilter, "scene"),
+      [sourceObjectFilter]
+    );
+    const imageFilter = React.useMemo(
+      () => copySupported(sourceObjectFilter, "image"),
+      [sourceObjectFilter]
+    );
+    const performerFilter = React.useMemo(
+      () => copySupported(sourceObjectFilter, "performer"),
+      [sourceObjectFilter]
+    );
+    const common = { fetchPolicy: "cache-and-network", notifyOnNetworkStatusChange: true };
+
+    const scenes = api.GQL.useFindScenesQuery({
+      ...common,
+      skip: sceneIDs.length === 0,
+      variables: {
+        filter: findFilter,
+        scene_filter: sceneFilter,
+        scene_ids: sceneIDs,
+      },
+    });
+    const images = api.GQL.useFindImagesQuery({
+      ...common,
+      skip: imageIDs.length === 0,
+      variables: {
+        filter: findFilter,
+        image_filter: imageFilter,
+        image_ids: imageIDs,
+      },
+    });
+    const performers = api.GQL.useFindPerformersQuery({
+      ...common,
+      skip: performerIDs.length === 0,
+      variables: {
+        filter: findFilter,
+        performer_filter: performerFilter,
+        performer_ids: performerIDs,
+      },
+    });
+    const idle = { data: undefined, loading: false, error: undefined };
+
+    return {
+      scenes,
+      images,
+      galleries: idle,
+      groups: idle,
+      performers,
+      studios: idle,
+      markers: idle,
+    };
+  };
+
+  const unifiedMediaBaseCollectItems = collectItems;
+  collectItems = function collectItemsWithCopyright(ctx, q) {
+    if (ctx.kind !== "copyright") return unifiedMediaBaseCollectItems(ctx, q);
+
+    const out = [];
+    const add = (type, values) =>
+      (values || []).forEach((item) => out.push(wrap(type, item)));
+    add("scene", q.scenes.data?.findScenes?.scenes);
+    add("image", q.images.data?.findImages?.images);
+    add("performer", q.performers.data?.findPerformers?.performers);
+    return out;
+  };
+
+  const unifiedMediaBaseQueryStatus = queryStatus;
+  queryStatus = function queryStatusWithCopyright(q, kind) {
+    if (kind !== "copyright") return unifiedMediaBaseQueryStatus(q, kind);
+    const active = [q.scenes, q.images, q.performers];
+    return {
+      loading: active.some((result) => result.loading && !result.data),
+      errors: active.map((result) => result.error).filter(Boolean),
+    };
+  };
+
+  function CopyrightUnifiedController({ kind, entity, includeChildren }) {
+    const FilteredSceneList = nativeComponent("FilteredSceneList");
+    const [selectedKeys, setSelectedKeys] = React.useState(() => new Set());
+    const previewOpenerRef = React.useRef(null);
+    const selectionUniverseRef = React.useRef([]);
+    const [selectionUniverseCount, setSelectionUniverseCount] = React.useState(0);
+    const lastSelectedKeyRef = React.useRef(null);
+
+    const clearSelection = React.useCallback(() => {
+      lastSelectedKeyRef.current = null;
+      setSelectedKeys(new Set());
+    }, []);
+    const registerPreviewOpener = React.useCallback((opener) => {
+      previewOpenerRef.current = opener;
+      return () => {
+        if (previewOpenerRef.current === opener) previewOpenerRef.current = null;
+      };
+    }, []);
+    const openVisualPreview = React.useCallback((key) => {
+      previewOpenerRef.current?.(key);
+    }, []);
+    const setSelectionUniverse = React.useCallback((keys) => {
+      const next = Array.isArray(keys) ? keys : [];
+      selectionUniverseRef.current = next;
+      setSelectionUniverseCount((old) => (old === next.length ? old : next.length));
+    }, []);
+    const selectAll = React.useCallback(() => {
+      setSelectedKeys(new Set(selectionUniverseRef.current));
+    }, []);
+    const invertSelection = React.useCallback(() => {
+      setSelectedKeys((previous) => {
+        const next = new Set();
+        for (const key of selectionUniverseRef.current) {
+          if (!previous.has(key)) next.add(key);
+        }
+        return next;
+      });
+    }, []);
+    const onSelectEntry = React.useCallback((key, selected, shiftKey, universe) => {
+      const ordered = Array.isArray(universe) ? universe : selectionUniverseRef.current;
+      setSelectedKeys((previous) => {
+        const next = new Set(previous);
+        if (shiftKey && lastSelectedKeyRef.current) {
+          const a = ordered.indexOf(lastSelectedKeyRef.current);
+          const b = ordered.indexOf(key);
+          if (a >= 0 && b >= 0) {
+            const lo = Math.min(a, b);
+            const hi = Math.max(a, b);
+            for (let index = lo; index <= hi; index += 1) {
+              if (selected) next.add(ordered[index]);
+              else next.delete(ordered[index]);
+            }
+          } else if (selected) next.add(key);
+          else next.delete(key);
+        } else if (selected) next.add(key);
+        else next.delete(key);
+        return next;
+      });
+      lastSelectedKeyRef.current = key;
+    }, []);
+
+    React.useEffect(() => {
+      clearSelection();
+    }, [kind, entity.id, includeChildren, clearSelection]);
+
+    const sceneIDs = React.useMemo(
+      () => (entity.scenes || []).map((item) => Number(item.id)).filter(Number.isFinite),
+      [entity.scenes]
+    );
+    const filterHook = React.useCallback((filter) => filter, []);
+
+    if (!FilteredSceneList) {
+      return React.createElement(
+        "div",
+        { className: "alert alert-warning" },
+        "Unified Media could not access Stash's FilteredSceneList component."
+      );
+    }
+
+    const mixedContextValue = React.useMemo(
+      () => ({
+        kind,
+        entity,
+        includeChildren,
+        selectedKeys,
+        selectionUniverseCount,
+        clearSelection,
+        selectAll,
+        invertSelection,
+        onSelectEntry,
+        setSelectionUniverse,
+        registerPreviewOpener,
+        openVisualPreview,
+      }),
+      [
+        kind,
+        entity,
+        includeChildren,
+        selectedKeys,
+        selectionUniverseCount,
+        clearSelection,
+        selectAll,
+        invertSelection,
+        onSelectEntry,
+        setSelectionUniverse,
+        registerPreviewOpener,
+        openVisualPreview,
+      ]
+    );
+
+    return React.createElement(
+      MixedContext.Provider,
+      { value: mixedContextValue },
+      React.createElement(
+        "div",
+        { className: "unified-media-controller" },
+        React.createElement(FilteredSceneList, {
+          filterHook,
+          defaultSort: "date",
+          alterQuery: false,
+          view: "copyright_scenes",
+          sceneIDs,
+        })
+      )
+    );
+  }
+
+  const unifiedMediaBaseController = UnifiedController;
+  UnifiedController = function UnifiedControllerWithCopyright(props) {
+    return props.kind === "copyright"
+      ? React.createElement(CopyrightUnifiedController, props)
+      : React.createElement(unifiedMediaBaseController, props);
+  };
+
+  function CopyrightUnifiedMediaPortalHost() {
+    const portal = api.ReactDOM?.createPortal;
+    const readPathname = React.useCallback(() => window.location.pathname, []);
+    const [pathname, setPathname] = React.useState(readPathname);
+    const [shell, setShell] = React.useState(null);
+
+    React.useEffect(() => {
+      let frame = 0;
+      const update = () => {
+        if (frame) return;
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          const next = readPathname();
+          setPathname((old) => (old === next ? old : next));
+        });
+      };
+      const observer = new MutationObserver(update);
+      observer.observe(document.body, { childList: true, subtree: true });
+      window.addEventListener("popstate", update);
+      update();
+      return () => {
+        observer.disconnect();
+        window.removeEventListener("popstate", update);
+        if (frame) cancelAnimationFrame(frame);
+      };
+    }, [readPathname]);
+
+    const route = React.useMemo(() => {
+      const match = pathname.match(/^\/copyrights\/([^/?#]+)(?:\/([^/?#]+))?\/?$/);
+      if (!match || match[1] === "new") return { id: "", tab: "" };
+      let id = match[1];
+      let tab = match[2] || "";
+      try { id = decodeURIComponent(id); } catch (_) {}
+      try { tab = decodeURIComponent(tab); } catch (_) {}
+      return { id, tab };
+    }, [pathname]);
+
+    const useFindCopyright = api.GQL?.useFindCopyrightQuery;
+    const copyrightQuery = useFindCopyright
+      ? useFindCopyright({
+          variables: { id: route.id || "" },
+          skip: !route.id,
+          fetchPolicy: "cache-and-network",
+        })
+      : { data: undefined, loading: false, error: undefined };
+    const copyright = copyrightQuery?.data?.findCopyright || null;
+
+    React.useEffect(() => {
+      if (!route.id) {
+        setShell(null);
+        return undefined;
+      }
+
+      let current = null;
+      let frame = 0;
+      const prepare = (next) => {
+        if (!next) return;
+        next.classList.add("copyright-tabs");
+        next.querySelectorAll(".nav-tabs .nav-link").forEach((link) => {
+          if (link.hasAttribute(TAB_ATTR)) return;
+          if (link.textContent?.trim() !== "All") return;
+          link.setAttribute("data-unified-media-copyright-native-all", "true");
+          link.style.display = "none";
+        });
+      };
+      const scan = () => {
+        frame = 0;
+        const next = document.querySelector("#tag-page .tag-tabs");
+        if (next !== current) {
+          if (current) {
+            current.classList.remove("copyright-tabs", "unified-media-all-active");
+            current
+              .querySelectorAll('[data-unified-media-copyright-native-all="true"]')
+              .forEach((link) => {
+                link.style.removeProperty("display");
+                link.removeAttribute("data-unified-media-copyright-native-all");
+              });
+          }
+          current = next;
+          setShell(next);
+        }
+        prepare(next);
+      };
+      const schedule = () => {
+        if (!frame) frame = requestAnimationFrame(scan);
+      };
+      const observer = new MutationObserver(schedule);
+      observer.observe(document.body, { childList: true, subtree: true });
+      scan();
+
+      return () => {
+        observer.disconnect();
+        if (frame) cancelAnimationFrame(frame);
+        if (current) {
+          current.classList.remove("copyright-tabs", "unified-media-all-active");
+          current
+            .querySelectorAll('[data-unified-media-copyright-native-all="true"]')
+            .forEach((link) => {
+              link.style.removeProperty("display");
+              link.removeAttribute("data-unified-media-copyright-native-all");
+            });
+        }
+      };
+    }, [route.id]);
+
+    React.useEffect(() => {
+      if (!shell || (route.tab && route.tab !== "all")) return undefined;
+      let frame = 0;
+      let attempts = 0;
+      const activate = () => {
+        if (!shell.isConnected) return;
+        const allTab = shell.querySelector(`[${TAB_ATTR}="tab"]`);
+        if (allTab) {
+          if (!shell.classList.contains("unified-media-all-active")) allTab.click();
+          return;
+        }
+        attempts += 1;
+        if (attempts < 120) frame = requestAnimationFrame(activate);
+      };
+      frame = requestAnimationFrame(activate);
+      return () => {
+        if (frame) cancelAnimationFrame(frame);
+      };
+    }, [shell, route.id, route.tab, copyright?.id]);
+
+    if (typeof portal !== "function" || !shell || !copyright) return null;
+    return portal(
+      React.createElement(UnifiedInlineHost, {
+        kind: "copyright",
+        entity: copyright,
+        shellClass: "tag-tabs",
+      }),
+      shell
+    );
+  }
+
+  // Reuse the already-mounted global Unified Media host instead of installing a
+  // parallel app-level patch just for Copyrights.
+  const unifiedMediaBaseGlobalHost = GlobalMediaEnhancementHost;
+  GlobalMediaEnhancementHost = function GlobalMediaEnhancementHostWithCopyright() {
+    return React.createElement(
+      React.Fragment,
+      null,
+      React.createElement(unifiedMediaBaseGlobalHost),
+      React.createElement(CopyrightUnifiedMediaPortalHost)
+    );
+  };

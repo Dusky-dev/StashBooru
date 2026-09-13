@@ -50,7 +50,12 @@ export const ImageWallItem: React.FC<RenderImageProps & IExtraProps> = (
     }
   };
 
-  const video = props.photo.src.includes("preview");
+  // Image path fields are nullable in GraphQL. The wall photo type says src is
+  // always a string, but older/generated records can still reach this render
+  // boundary with a null preview path. Normalize it here before any string
+  // operations so one missing preview cannot crash the entire wall.
+  const source = typeof props.photo.src === "string" ? props.photo.src : "";
+  const video = source.includes("preview");
   const ImagePreview = video ? "video" : "img";
 
   let shiftKey = false;
@@ -80,7 +85,7 @@ export const ImageWallItem: React.FC<RenderImageProps & IExtraProps> = (
         playsInline={video}
         autoPlay={video}
         key={props.photo.key}
-        src={props.photo.src}
+        src={source}
         width={width}
         height={height}
         alt={props.photo.alt}

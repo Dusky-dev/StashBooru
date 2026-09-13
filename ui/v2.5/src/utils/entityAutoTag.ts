@@ -2,12 +2,6 @@ import { getClient } from "src/core/StashService";
 
 type EntityAutoTagKind = "studio" | "performer" | "tag";
 
-const refetchQueries: Record<EntityAutoTagKind, string> = {
-  studio: "FindStudio",
-  performer: "FindPerformer",
-  tag: "FindTag",
-};
-
 export async function runEntityAutoTag(
   kind: EntityAutoTagKind,
   id: string
@@ -17,5 +11,9 @@ export async function runEntityAutoTag(
     throw new Error((await response.text()) || response.statusText);
   }
 
-  await getClient().refetchQueries({ include: [refetchQueries[kind]] });
+  // Copyright explicitly refetches the live detail query after auto-tagging.
+  // Do the same for the shared Artist / Character / Tag path by refetching the
+  // queries that are actually active on the current page, rather than relying
+  // on fragile operation-name strings that may not match the mounted query.
+  await getClient().refetchQueries({ include: "active" });
 }

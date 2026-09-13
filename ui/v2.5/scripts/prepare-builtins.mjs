@@ -16,16 +16,32 @@ const unifiedParts = [
   "unifiedMedia.05.part",
   "unifiedMedia.06.part",
 ];
+const unifiedExtensions = [
+  "unifiedMedia.copyright.part",
+  "unifiedMedia.copyright.guard.part",
+];
+const unifiedClose = Buffer.from("})();\n");
 
 const expectedUnifiedSha256 =
-  "dbfd1ea8487f8fe17dc6701572d984733aa33d6be54192d4b1e2f1d47c299336";
+  "ec98261b6de21d9de51c30265682fdfaf61240cba90a76666f8a47f9dc580e3b";
 
 rmSync(outputDir, { recursive: true, force: true });
 mkdirSync(outputDir, { recursive: true });
 
-const unifiedMedia = Buffer.concat(
+const unifiedCore = Buffer.concat(
   unifiedParts.map((part) => readFileSync(resolve(sourceDir, part)))
 );
+if (!unifiedCore.subarray(-unifiedClose.length).equals(unifiedClose)) {
+  throw new Error(
+    "Unified Media core no longer ends at the expected IIFE boundary"
+  );
+}
+
+const unifiedMedia = Buffer.concat([
+  unifiedCore.subarray(0, -unifiedClose.length),
+  ...unifiedExtensions.map((part) => readFileSync(resolve(sourceDir, part))),
+  unifiedClose,
+]);
 const actualUnifiedSha256 = createHash("sha256")
   .update(unifiedMedia)
   .digest("hex");

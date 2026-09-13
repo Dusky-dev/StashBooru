@@ -54,6 +54,9 @@ func (rs imageRoutes) Routes() chi.Router {
 		r.Get("/thumbnail", rs.Thumbnail)
 		r.Get("/preview", rs.Preview)
 		r.Get("/booru-metadata", rs.ImageBooruMetadata)
+		r.Get("/local-metadata", rs.ImageLocalMetadata)
+		r.Post("/camie-tags", rs.ImageCamiePredictions)
+		r.Post("/eva02-tags", rs.ImageEva02Predictions)
 		r.Post("/knowledge-tags", rs.ImageKnowledgeTagsV2)
 	})
 

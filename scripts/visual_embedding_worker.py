@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-"""Persistent visual embedding worker for StashBooru.
+"""Persistent visual embedding and EVA02 tagging worker for StashBooru.
 
 Protocol: one JSON object per stdin line, one JSON object per stdout line.
 Logs and download progress are written to stderr so stdout stays machine-readable.
 
 The model is deliberately optional. Status/ping never downloads or loads it.
 Only the explicit ``download`` operation downloads the pinned default model.
+The small pinned tag-label CSV may also be fetched when the user explicitly
+requests EVA02 tagging so existing embedding-only installs remain usable.
 """
 
 from __future__ import annotations
 
+import csv
 import hashlib
 import io
 import json
@@ -31,16 +34,26 @@ MODEL_URL = (
     "https://huggingface.co/deepghs/wd14_tagger_with_embeddings/resolve/"
     f"{MODEL_REVISION}/SmilingWolf/wd-eva02-large-tagger-v3/model.onnx?download=true"
 )
+TAGS_INFO_URL = (
+    "https://huggingface.co/deepghs/wd14_tagger_with_embeddings/resolve/"
+    f"{MODEL_REVISION}/SmilingWolf/wd-eva02-large-tagger-v3/tags_info.csv?download=true"
+)
 MODEL_SHA256 = "983f026df23214ba55f78cd5898f76f434fa9230837a4e93f1aaa6c37e284835"
 MODEL_SIZE_BYTES = 1_260_436_067
 MODEL_FILENAME = "model.onnx"
 LEGACY_MODEL_FILENAME = "wd-eva02-large-tagger-v3-embedding.onnx"
+TAGS_INFO_FILENAME = "tags_info.csv"
 EMBEDDING_DIMENSIONS = 1024
+TAG_COUNT = 10861
+DEFAULT_TAG_THRESHOLD = 0.35
+DEFAULT_TAG_LIMIT = 50
+MAX_TAG_LIMIT = 200
 DOWNLOAD_CHUNK = 8 * 1024 * 1024
 
 _session: ort.InferenceSession | None = None
 _input_name: str | None = None
 _target_size: int | None = None
+_tags_info: list[tuple[str, int]] | None = None
 
 
 def _log(message: str) -> None:
@@ -128,6 +141,58 @@ def _model_path() -> Path:
     return _installed_model_path() or _download_destination()
 
 
+def _tags_info_candidates() -> list[Path]:
+    override = os.environ.get("STASH_EMBEDDING_TAGS_PATH")
+    if override:
+        return [Path(override).expanduser()]
+
+    candidates: list[Path] = []
+    model_path = _installed_model_path()
+    if model_path is not None:
+        candidates.append(model_path.parent / TAGS_INFO_FILENAME)
+        candidates.append(model_path.parent / "selected_tags.csv")
+
+    directories = [_default_cache_dir()]
+    legacy = _legacy_config_cache_dir()
+    if legacy is not None and legacy not in directories:
+        directories.append(legacy)
+    for directory in directories:
+        candidates.append(directory / TAGS_INFO_FILENAME)
+        candidates.append(directory / "wd-eva02-large-tagger-v3" / TAGS_INFO_FILENAME)
+        candidates.append(directory / "wd-eva02-large-tagger-v3" / "selected_tags.csv")
+
+    # Preserve order while removing duplicate paths.
+    unique: list[Path] = []
+    seen: set[str] = set()
+    for candidate in candidates:
+        key = str(candidate)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(candidate)
+    return unique
+
+
+def _installed_tags_info_path() -> Path | None:
+    for path in _tags_info_candidates():
+        try:
+            if path.is_file():
+                return path
+        except OSError as error:
+            _log(f"unable to inspect tag metadata candidate {path}: {error}")
+    return None
+
+
+def _tags_info_destination() -> Path:
+    override = os.environ.get("STASH_EMBEDDING_TAGS_PATH")
+    if override:
+        return Path(override).expanduser()
+    model_path = _installed_model_path()
+    if model_path is not None:
+        return model_path.parent / TAGS_INFO_FILENAME
+    return _default_cache_dir() / TAGS_INFO_FILENAME
+
+
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -143,7 +208,7 @@ def _download_model(destination: Path) -> None:
     temp_path = Path(temp_name)
 
     try:
-        _log(f"downloading EVA02-Large embedding model to {destination}")
+        _log(f"downloading EVA02-Large embedding/tagging model to {destination}")
         request = urllib.request.Request(
             MODEL_URL,
             headers={"User-Agent": "StashBooru visual-embedding-worker/1"},
@@ -186,6 +251,63 @@ def _download_model(destination: Path) -> None:
             pass
 
 
+def _read_tags_info(path: Path) -> list[tuple[str, int]]:
+    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        fieldnames = set(reader.fieldnames or [])
+        if "name" not in fieldnames or "category" not in fieldnames:
+            raise RuntimeError(
+                f"EVA02 tag metadata {path} must contain name and category columns; got {sorted(fieldnames)}"
+            )
+
+        tags: list[tuple[str, int]] = []
+        for row in reader:
+            name = (row.get("name") or "").strip()
+            raw_category = (row.get("category") or "").strip()
+            if not name:
+                raise RuntimeError(f"EVA02 tag metadata {path} contains an empty tag name")
+            try:
+                category = int(raw_category)
+            except ValueError as error:
+                raise RuntimeError(
+                    f"EVA02 tag metadata {path} has invalid category {raw_category!r} for {name!r}"
+                ) from error
+            tags.append((name, category))
+
+    if len(tags) != TAG_COUNT:
+        raise RuntimeError(
+            f"EVA02 tag metadata contains {len(tags)} rows, expected {TAG_COUNT}"
+        )
+    return tags
+
+
+def _download_tags_info(destination: Path) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    fd, temp_name = tempfile.mkstemp(prefix=destination.name + ".", suffix=".part", dir=destination.parent)
+    os.close(fd)
+    temp_path = Path(temp_name)
+    try:
+        _log(f"downloading pinned EVA02 tag metadata to {destination}")
+        request = urllib.request.Request(
+            TAGS_INFO_URL,
+            headers={"User-Agent": "StashBooru visual-embedding-worker/1"},
+        )
+        with urllib.request.urlopen(request, timeout=60) as response, temp_path.open("wb") as output:
+            while True:
+                chunk = response.read(DOWNLOAD_CHUNK)
+                if not chunk:
+                    break
+                output.write(chunk)
+        _read_tags_info(temp_path)
+        os.replace(temp_path, destination)
+        _log("tag metadata download complete")
+    finally:
+        try:
+            temp_path.unlink()
+        except FileNotFoundError:
+            pass
+
+
 def _ensure_model() -> Path:
     path = _installed_model_path()
     if path is None:
@@ -204,9 +326,29 @@ def _ensure_model() -> Path:
     return path
 
 
+def _load_tags_info(*, download_missing: bool) -> list[tuple[str, int]]:
+    global _tags_info
+    if _tags_info is not None:
+        return _tags_info
+
+    path = _installed_tags_info_path()
+    if path is None and download_missing:
+        path = _tags_info_destination()
+        _download_tags_info(path)
+    if path is None:
+        raise FileNotFoundError(
+            f"EVA02 tag metadata is not installed: {_tags_info_destination()}"
+        )
+
+    _tags_info = _read_tags_info(path)
+    _log(f"loaded {len(_tags_info)} EVA02 tag labels from {path}")
+    return _tags_info
+
+
 def _status_payload() -> dict[str, Any]:
     installed_path = _installed_model_path()
     path = installed_path or _download_destination()
+    tags_path = _installed_tags_info_path()
     return {
         "model": MODEL_ID,
         "model_revision": MODEL_REVISION,
@@ -214,6 +356,9 @@ def _status_payload() -> dict[str, Any]:
         "model_path": str(path),
         "installed": installed_path is not None,
         "loaded": _session is not None,
+        "tag_metadata_installed": tags_path is not None,
+        "tag_metadata_path": str(tags_path or _tags_info_destination()),
+        "tag_count": TAG_COUNT,
     }
 
 
@@ -349,16 +494,89 @@ def _embedding_from_outputs(outputs: list[np.ndarray]) -> np.ndarray:
     return normalized
 
 
-def embed(path_value: str) -> list[float]:
+def _tag_scores_from_outputs(outputs: list[np.ndarray]) -> np.ndarray:
+    candidates: list[np.ndarray] = []
+    for output in outputs:
+        array = np.asarray(output)
+        if array.ndim >= 1 and array.shape[-1] == TAG_COUNT:
+            candidates.append(array)
+    if len(candidates) != 1:
+        shapes = [list(np.asarray(output).shape) for output in outputs]
+        raise RuntimeError(
+            f"expected exactly one {TAG_COUNT}-tag model output, got shapes {shapes}"
+        )
+
+    scores = np.asarray(candidates[0]).reshape(-1, TAG_COUNT)[0].astype(np.float32, copy=False)
+    if not np.all(np.isfinite(scores)):
+        raise RuntimeError("EVA02 tag scores contain non-finite values")
+    if float(np.min(scores)) < -1e-5 or float(np.max(scores)) > 1.00001:
+        raise RuntimeError(
+            f"EVA02 tag scores are outside probability range: {float(np.min(scores))}..{float(np.max(scores))}"
+        )
+    return scores
+
+
+def _run_model(path_value: str) -> list[np.ndarray]:
     path = Path(path_value).expanduser()
     if not path.is_file():
         raise FileNotFoundError(f"image does not exist: {path}")
 
     session, input_name, target_size = _load_session()
     tensor = _prepare_image(path, target_size)
-    outputs = session.run(None, {input_name: tensor})
-    embedding = _embedding_from_outputs(outputs)
-    return embedding.tolist()
+    return session.run(None, {input_name: tensor})
+
+
+def embed(path_value: str) -> list[float]:
+    outputs = _run_model(path_value)
+    return _embedding_from_outputs(outputs).tolist()
+
+
+def _tag_category(raw_category: int) -> str:
+    if raw_category == 4:
+        return "character"
+    if raw_category == 9:
+        return "meta"
+    return "general"
+
+
+def tag(
+    path_value: str,
+    threshold: float = DEFAULT_TAG_THRESHOLD,
+    limit: int = DEFAULT_TAG_LIMIT,
+) -> list[dict[str, Any]]:
+    if not 0 < threshold < 1:
+        raise ValueError("threshold must be greater than 0 and less than 1")
+    if not 1 <= limit <= MAX_TAG_LIMIT:
+        raise ValueError(f"per-category limit must be between 1 and {MAX_TAG_LIMIT}")
+
+    # This operation is only reached after an explicit EVA02 user action. It is
+    # safe to fetch the small pinned label CSV here for older installations that
+    # already have the model but predate tag-logit support; no second model is
+    # downloaded or loaded.
+    tags_info = _load_tags_info(download_missing=True)
+    scores = _tag_scores_from_outputs(_run_model(path_value))
+
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for index, score_value in enumerate(scores):
+        score = float(score_value)
+        if score < threshold:
+            continue
+        name, raw_category = tags_info[index]
+        category = _tag_category(raw_category)
+        grouped.setdefault(category, []).append(
+            {"name": name, "category": category, "score": score}
+        )
+
+    result: list[dict[str, Any]] = []
+    for category in ("character", "general", "meta"):
+        items = grouped.get(category, [])
+        items.sort(key=lambda item: (-float(item["score"]), str(item["name"])))
+        result.extend(items[:limit])
+    for category in sorted(set(grouped) - {"character", "general", "meta"}):
+        items = grouped[category]
+        items.sort(key=lambda item: (-float(item["score"]), str(item["name"])))
+        result.extend(items[:limit])
+    return result
 
 
 def _response(request_id: Any, **payload: Any) -> None:
@@ -376,10 +594,10 @@ def _handle(request: dict[str, Any]) -> None:
         return
 
     if operation == "download":
-        if _installed_model_path() is not None:
-            _response(request_id, ok=True, **_status_payload())
-            return
-        _download_model(_download_destination())
+        if _installed_model_path() is None:
+            _download_model(_download_destination())
+        if _installed_tags_info_path() is None:
+            _download_tags_info(_tags_info_destination())
         _response(request_id, ok=True, **_status_payload())
         return
 
@@ -393,6 +611,23 @@ def _handle(request: dict[str, Any]) -> None:
             ok=True,
             **_status_payload(),
             embedding=vector,
+        )
+        return
+
+    if operation == "tag":
+        path = request.get("path")
+        if not isinstance(path, str) or not path:
+            raise ValueError("tag requires a non-empty path")
+        threshold = float(request.get("threshold", DEFAULT_TAG_THRESHOLD))
+        limit = int(request.get("limit", DEFAULT_TAG_LIMIT))
+        predictions = tag(path, threshold=threshold, limit=limit)
+        _response(
+            request_id,
+            ok=True,
+            **_status_payload(),
+            threshold=threshold,
+            limit=limit,
+            tags=predictions,
         )
         return
 
