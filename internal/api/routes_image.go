@@ -57,7 +57,7 @@ func (rs imageRoutes) Routes() chi.Router {
 		r.Get("/local-metadata", rs.ImageLocalMetadata)
 		r.Post("/camie-tags", rs.ImageCamiePredictions)
 		r.Post("/eva02-tags", rs.ImageEva02Predictions)
-		r.Post("/knowledge-tags", rs.ImageKnowledgeTagsV2)
+		r.Post("/knowledge-tags", rs.ImageKnowledgeTagsWithLocalPriorityV2)
 	})
 
 	return r
@@ -117,7 +117,7 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 			return
 		}
 
-		// write the generated thumbnail to disk if enabled
+		// write the generated image to disk if enabled
 		if manager.GetInstance().Config.IsWriteImageThumbnails() {
 			logger.Debugf("writing thumbnail to disk: %s", img.Path)
 			if err := fsutil.WriteFile(filepath, data); err == nil {
