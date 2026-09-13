@@ -1,0 +1,12 @@
+
+
+  // StashBooru's All tab is a visual-media union, not a union of every entity
+  // related to the current page. Keep Characters/Artists/Galleries/Collections
+  // in their native tabs and mix only Videos + Images here.
+  const stashbooruUnifiedMediaCollectItems = collectItems;
+  collectItems = function collectVisualMediaItems(ctx, q) {
+    const items = stashbooruUnifiedMediaCollectItems(ctx, q);
+    return (items || []).filter(
+      (item) => item.type === "scene" || item.type === "image"
+    );
+  };
