@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -24,6 +25,7 @@ type camieFilenameLayout struct {
 var (
 	camieFilenameTokenPattern           = regexp.MustCompile(`%([a-zA-Z0-9_]+)%`)
 	camieCharacterDisambiguationPattern = regexp.MustCompile(`^(.+?)\s*\(([^()]*)\)\s*$`)
+	camiePerformerTargetPattern         = regexp.MustCompile(`^/performers/(\d+)/?$`)
 )
 
 func compileCamieFilenameLayout(layout string) (*camieFilenameLayout, error) {
@@ -294,6 +296,27 @@ func camieCharacterAliases(prediction camietagger.Tag, characterName string) []s
 func findCamiePerformerPrediction(ctx context.Context, repository models.Repository, prediction camietagger.Tag) (*models.Performer, error) {
 	prediction = normalizeCamiePrediction(prediction)
 	characterName, disambiguation := camieCharacterIdentity(prediction)
+
+	// Image Tagging sets targetExists=true only after the user explicitly
+	// confirms that a disambiguated prediction should reuse the suggested bare
+	// Character. Honor that exact target instead of falling back to an arbitrary
+	// same-name match, while still validating the target identity server-side.
+	if disambiguation == "" && prediction.TargetExists {
+		targetMatch := camiePerformerTargetPattern.FindStringSubmatch(strings.TrimSpace(prediction.TargetPath))
+		if len(targetMatch) == 2 {
+			if targetID, parseErr := strconv.Atoi(targetMatch[1]); parseErr == nil {
+				target, findErr := repository.Performer.Find(ctx, targetID)
+				if findErr != nil {
+					return nil, findErr
+				}
+				if target != nil &&
+					strings.EqualFold(strings.TrimSpace(target.Name), characterName) &&
+					strings.TrimSpace(target.Disambiguation) == "" {
+					return target, nil
+				}
+			}
+		}
+	}
 
 	names := []string{prediction.Name}
 	if prediction.RawName != "" && !strings.EqualFold(prediction.RawName, prediction.Name) {
