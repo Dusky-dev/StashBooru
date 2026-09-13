@@ -36,7 +36,9 @@ function readRememberedDisplayMode(
 ): DisplayMode | undefined {
   if (typeof window === "undefined") return undefined;
   try {
-    const raw = window.localStorage.getItem(listDisplayStorageKey(preferenceKey));
+    const raw = window.localStorage.getItem(
+      listDisplayStorageKey(preferenceKey)
+    );
     if (raw === null) return undefined;
     const parsed = Number.parseInt(raw, 10) as DisplayMode;
     return options.includes(parsed) ? parsed : undefined;
