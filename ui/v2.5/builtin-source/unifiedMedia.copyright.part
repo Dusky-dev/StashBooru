@@ -234,7 +234,10 @@
           filterHook,
           defaultSort: "date",
           alterQuery: false,
-          view: "copyright_scenes",
+          // Keep All independent from the native Videos tab when remembering
+          // Grid/Wall mode. useFilterState accepts this logical view key at
+          // runtime even though Unified Media is bundled JavaScript.
+          view: "copyright_all",
           sceneIDs,
         })
       )
@@ -306,12 +309,21 @@
       const prepare = (next) => {
         if (!next) return;
         next.classList.add("copyright-tabs");
+        const nav = next.querySelector(".nav-tabs");
         next.querySelectorAll(".nav-tabs .nav-link").forEach((link) => {
           if (link.hasAttribute(TAB_ATTR)) return;
           if (link.textContent?.trim() !== "All") return;
           link.setAttribute("data-unified-media-copyright-native-all", "true");
           link.style.display = "none";
         });
+
+        // UnifiedInlineHost creates its All tab dynamically. Keep it first like
+        // the native Character/Artist All tab rather than appending it after
+        // Images/Videos/Characters.
+        const allTab = nav?.querySelector(`[${TAB_ATTR}="tab"]`);
+        if (allTab && nav.firstElementChild !== allTab) {
+          nav.insertBefore(allTab, nav.firstElementChild);
+        }
       };
       const scan = () => {
         frame = 0;
@@ -352,6 +364,52 @@
         }
       };
     }, [route.id]);
+
+    // Keep the synthetic All tab and React Router's Copyright route in sync.
+    // The old implementation only toggled DOM classes, leaving /all, browser
+    // navigation, and native tab state able to drift apart.
+    React.useEffect(() => {
+      if (!shell || !route.id) return undefined;
+      const nav = shell.querySelector(".nav-tabs");
+      if (!nav) return undefined;
+
+      let frame = 0;
+      const syncPath = () => {
+        if (frame) cancelAnimationFrame(frame);
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          const next = readPathname();
+          setPathname((old) => (old === next ? old : next));
+        });
+      };
+      const onClick = (event) => {
+        const link = event.target?.closest?.(".nav-link");
+        if (!link || !nav.contains(link)) return;
+
+        if (link.hasAttribute(TAB_ATTR)) {
+          const nextPath = `/copyrights/${encodeURIComponent(route.id)}/all`;
+          if (window.location.pathname !== nextPath) {
+            window.history.replaceState(
+              window.history.state,
+              "",
+              `${nextPath}${window.location.search}${window.location.hash}`
+            );
+            setPathname(nextPath);
+            window.dispatchEvent(new PopStateEvent("popstate"));
+          }
+        } else {
+          // React-Bootstrap/React Router handles native tabs. Read the resulting
+          // location on the next frame instead of guessing from translated text.
+          syncPath();
+        }
+      };
+
+      nav.addEventListener("click", onClick, true);
+      return () => {
+        nav.removeEventListener("click", onClick, true);
+        if (frame) cancelAnimationFrame(frame);
+      };
+    }, [shell, route.id, readPathname]);
 
     React.useEffect(() => {
       if (!shell || (route.tab && route.tab !== "all")) return undefined;

@@ -185,7 +185,13 @@ func validateCamiePredictionsV2(predictions []camietagger.Tag) ([]camietagger.Ta
 }
 
 func applyCamieMetadataV2(ctx context.Context, imageID int, predictions []camietagger.Tag, replaceArtists bool) (camieApplyResponseV2, error) {
-	response := camieApplyResponseV2{ImageID: imageID}
+	response := camieApplyResponseV2{
+		ImageID:    imageID,
+		Characters: []camieAppliedEntity{},
+		Artists:    []camieAppliedEntity{},
+		Copyrights: []camieAppliedEntity{},
+		Tags:       []camieAppliedEntity{},
+	}
 	repository := manager.GetInstance().Repository
 
 	var characters, artists, copyrights, metadataTags []camietagger.Tag
