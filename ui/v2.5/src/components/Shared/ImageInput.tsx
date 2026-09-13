@@ -38,7 +38,7 @@ interface IImageInput {
 }
 
 function acceptExtensions(acceptSVG: boolean = false) {
-  return `.jpg,.jpeg,.png,.webp,.gif${acceptSVG ? ",.svg" : ""}`;
+  return `.jpg,.jpeg,.png,.webp,.gif,.jxl,.avif${acceptSVG ? ",.svg" : ""}`;
 }
 
 export const ImageInput: React.FC<IImageInput> = PatchComponent(
