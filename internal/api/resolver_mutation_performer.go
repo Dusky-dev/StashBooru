@@ -225,7 +225,7 @@ func (r *mutationResolver) handleLegacyURLs(ctx context.Context, performerID int
 	if legacyURLs.Instagram.Set {
 		found := false
 		value := utils.URLFromHandle(legacyURLs.Instagram.Value, instagramURL)
-		// find and replace the first instagram URL
+		// find and replace any existing instagram URL
 		for i, url := range existingURLs {
 			if performer.IsInstagramURL(url) {
 				existingURLs[i] = value
@@ -683,12 +683,16 @@ func (r *mutationResolver) PerformerMerge(ctx context.Context, input PerformerMe
 			return fmt.Errorf("finding source performers: %w", err)
 		}
 
-		if _, err := qb.UpdatePartial(ctx, destID, *values); err != nil {
-			return fmt.Errorf("updating performer: %w", err)
-		}
-
+		// Merge source rows first. Updating the destination identity before this
+		// can temporarily duplicate a source (name, disambiguation) pair and trip
+		// SQLite's unique constraint even though that source is about to vanish.
 		if err := qb.Merge(ctx, srcIDs, destID); err != nil {
 			return fmt.Errorf("merging performers: %w", err)
+		}
+
+		dest, err = qb.UpdatePartial(ctx, destID, *values)
+		if err != nil {
+			return fmt.Errorf("updating performer: %w", err)
 		}
 
 		if len(imageData) > 0 {
