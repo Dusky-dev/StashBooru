@@ -184,7 +184,9 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
           <Dropdown.Item
             key="find-similar"
             className="bg-secondary text-white"
-            onClick={() => history.push(NavUtils.makeImagesSimilarityUrl(image.id))}
+            onClick={() =>
+              history.push(NavUtils.makeImagesSimilarityUrl(image.id))
+            }
           >
             {intl.formatMessage({
               id: "actions.find_similar",
