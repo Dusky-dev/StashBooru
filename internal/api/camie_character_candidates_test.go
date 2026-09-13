@@ -63,3 +63,52 @@ func TestCamieDisambiguatedCharacterDoesNotReturnAmbiguousCandidateList(t *testi
 		t.Fatalf("explicitly disambiguated Character must not need a candidate chooser: %#v", candidates)
 	}
 }
+
+func TestCamieExplicitSameNameCharacterTargetWinsAmbiguity(t *testing.T) {
+	fixture := lanaCharacterContextTestRepository()
+	prediction := camietagger.Tag{
+		Name:         "lana",
+		RawName:      "lana",
+		Category:     "character",
+		Source:       "model",
+		TargetPath:   "/performers/2",
+		TargetExists: true,
+	}
+
+	resolved, err := findCamiePerformerPredictionWithCopyrightContext(
+		context.Background(),
+		fixture.repository,
+		prediction,
+		[]camietagger.Tag{prediction},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved == nil || resolved.ID != fixture.fireEmblemLana.ID {
+		t.Fatalf("expected explicit target %d, got %#v", fixture.fireEmblemLana.ID, resolved)
+	}
+}
+
+func TestCamieExplicitCharacterTargetRejectsDifferentName(t *testing.T) {
+	fixture := lanaCharacterContextTestRepository()
+	prediction := camietagger.Tag{
+		Name:         "not lana",
+		RawName:      "not lana",
+		Category:     "character",
+		Source:       "model",
+		TargetPath:   "/performers/2",
+		TargetExists: true,
+	}
+
+	resolved, err := findCamieExplicitCharacterTarget(
+		context.Background(),
+		fixture.repository,
+		prediction,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved != nil {
+		t.Fatalf("different-name target must not be accepted: %#v", resolved)
+	}
+}
