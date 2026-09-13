@@ -4,6 +4,7 @@ import { faExternalLinkAlt, faSearch } from "@fortawesome/free-solid-svg-icons";
 import { useHistory } from "react-router-dom";
 
 import { Icon } from "src/components/Shared/Icon";
+import { ModalComponent } from "src/components/Shared/Modal";
 import { useToast } from "src/hooks/Toast";
 
 interface TagPrediction {
@@ -66,6 +67,11 @@ interface VideoTaggingApplyResponse {
   createdTags: number;
 }
 
+interface PendingCharacterResolution {
+  tags: TagPrediction[];
+  index: number;
+}
+
 interface IProps {
   sceneId: string;
   onHide: () => void;
@@ -77,6 +83,8 @@ const SOURCE_PRIORITY: Record<MetadataSourceKind, number> = {
   local: 0,
   booru: 10,
 };
+const CHARACTER_IDENTITY_PATTERN = /^(.+?)\s*\(([^()]*)\)\s*$/;
+const POSSIBLE_CHARACTER_TARGET_PATTERN = /^\/performers\/\d+\/?$/;
 
 function normalizePredictionValue(value?: string) {
   return (value ?? "")
@@ -224,6 +232,37 @@ function sourceBadgeVariant(source: MetadataSourceKind) {
   return source === "local" ? "success" : "info";
 }
 
+function possibleBareCharacterMatch(prediction: TagPrediction) {
+  if (
+    prediction.category !== "character" ||
+    prediction.targetExists ||
+    !POSSIBLE_CHARACTER_TARGET_PATTERN.test(prediction.targetPath ?? "")
+  ) {
+    return undefined;
+  }
+
+  const match = prediction.name.match(CHARACTER_IDENTITY_PATTERN);
+  if (!match) return undefined;
+
+  const bareName = match[1].trim();
+  const disambiguation = match[2].trim();
+  if (!bareName || !disambiguation) return undefined;
+
+  return { bareName, disambiguation };
+}
+
+function reusePossibleBareCharacter(prediction: TagPrediction): TagPrediction {
+  const possible = possibleBareCharacterMatch(prediction);
+  if (!possible) return prediction;
+
+  return {
+    ...prediction,
+    name: possible.bareName,
+    rawName: possible.bareName,
+    targetExists: true,
+  };
+}
+
 export const VideoTaggingDialog: React.FC<IProps> = ({
   sceneId,
   onHide,
@@ -240,6 +279,8 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
   const [loadingBooru, setLoadingBooru] = useState(false);
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string>();
+  const [pendingCharacterResolution, setPendingCharacterResolution] =
+    useState<PendingCharacterResolution>();
 
   const predictions = useMemo(
     () => mergeMetadataPredictions(localPredictions, booruPredictions),
@@ -333,7 +374,77 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
     });
   }, []);
 
-  const applySelected = useCallback(async () => {
+  const submitTags = useCallback(
+    async (tags: TagPrediction[]) => {
+      setApplying(true);
+      setError(undefined);
+      try {
+        const response = await fetch(`scene/${sceneId}/knowledge-tags`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tags, replaceArtist: replaceArtists }),
+        });
+        const result = await readResponse<VideoTaggingApplyResponse>(response);
+        const characters = result.characters ?? [];
+        const artists = result.artists ?? [];
+        const copyrights = result.copyrights ?? [];
+        const appliedTags = result.tags ?? [];
+        const appliedCount =
+          characters.length +
+          artists.length +
+          copyrights.length +
+          appliedTags.length;
+        const createdCount =
+          (result.createdCharacters ?? 0) +
+          (result.createdArtists ?? 0) +
+          (result.createdCopyrights ?? 0) +
+          (result.createdTags ?? 0);
+        Toast.success(
+          `Applied ${appliedCount} metadata item${appliedCount === 1 ? "" : "s"}; created ${createdCount} new entr${createdCount === 1 ? "y" : "ies"}.`
+        );
+        await onApplied();
+        onHide();
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : String(cause));
+        Toast.error(cause);
+      } finally {
+        setApplying(false);
+      }
+    },
+    [Toast, onApplied, onHide, replaceArtists, sceneId]
+  );
+
+  const continueCharacterResolution = useCallback(
+    (tags: TagPrediction[], startIndex: number) => {
+      const nextIndex = tags.findIndex(
+        (prediction, index) =>
+          index >= startIndex && possibleBareCharacterMatch(prediction)
+      );
+      if (nextIndex === -1) {
+        setPendingCharacterResolution(undefined);
+        void submitTags(tags);
+        return;
+      }
+      setPendingCharacterResolution({ tags, index: nextIndex });
+    },
+    [submitTags]
+  );
+
+  const resolvePendingCharacter = useCallback(
+    (reuseExisting: boolean) => {
+      if (!pendingCharacterResolution) return;
+
+      const { tags, index } = pendingCharacterResolution;
+      const nextTags = [...tags];
+      if (reuseExisting) {
+        nextTags[index] = reusePossibleBareCharacter(nextTags[index]);
+      }
+      continueCharacterResolution(nextTags, index + 1);
+    },
+    [continueCharacterResolution, pendingCharacterResolution]
+  );
+
+  const applySelected = useCallback(() => {
     const tags = predictions
       .filter((prediction) => selected.has(predictionKey(prediction)))
       .map(({ provenance: _provenance, ...prediction }) => prediction);
@@ -344,214 +455,247 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
 
     setApplying(true);
     setError(undefined);
-    try {
-      const response = await fetch(`scene/${sceneId}/knowledge-tags`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tags, replaceArtist: replaceArtists }),
-      });
-      const result = await readResponse<VideoTaggingApplyResponse>(response);
-      const characters = result.characters ?? [];
-      const artists = result.artists ?? [];
-      const copyrights = result.copyrights ?? [];
-      const appliedTags = result.tags ?? [];
-      const appliedCount =
-        characters.length +
-        artists.length +
-        copyrights.length +
-        appliedTags.length;
-      const createdCount =
-        (result.createdCharacters ?? 0) +
-        (result.createdArtists ?? 0) +
-        (result.createdCopyrights ?? 0) +
-        (result.createdTags ?? 0);
-      Toast.success(
-        `Applied ${appliedCount} metadata item${appliedCount === 1 ? "" : "s"}; created ${createdCount} new entr${createdCount === 1 ? "y" : "ies"}.`
-      );
-      await onApplied();
-      onHide();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
-      Toast.error(cause);
-    } finally {
-      setApplying(false);
-    }
-  }, [
-    Toast,
-    onApplied,
-    onHide,
-    predictions,
-    replaceArtists,
-    sceneId,
-    selected,
-  ]);
+    continueCharacterResolution(tags, 0);
+  }, [continueCharacterResolution, predictions, selected]);
+
+  const pendingPrediction = pendingCharacterResolution
+    ? pendingCharacterResolution.tags[pendingCharacterResolution.index]
+    : undefined;
+  const pendingMatch = pendingPrediction
+    ? possibleBareCharacterMatch(pendingPrediction)
+    : undefined;
 
   return (
-    <Modal show onHide={onHide} size="lg" centered>
-      <Modal.Header closeButton>
-        <Modal.Title>Video Tagging</Modal.Title>
-      </Modal.Header>
-      <Modal.Body>
-        <div className="d-flex flex-wrap align-items-center mb-3">
-          <Button
-            variant="secondary"
-            disabled={loading || loadingBooru || applying}
-            onClick={() => void loadBooruMetadata()}
-          >
-            {loadingBooru ? "Loading booru…" : "Load booru metadata"}
-          </Button>
-          <span className="ml-3 text-muted">
-            Local filename metadata loads automatically. Camie and EVA02 image
-            inference are not run for Videos.
-          </span>
-        </div>
+    <>
+      <Modal
+        show={!pendingCharacterResolution}
+        onHide={onHide}
+        size="lg"
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Video Tagging</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div className="d-flex flex-wrap align-items-center mb-3">
+            <Button
+              variant="secondary"
+              disabled={loading || loadingBooru || applying}
+              onClick={() => void loadBooruMetadata()}
+            >
+              {loadingBooru ? "Loading booru…" : "Load booru metadata"}
+            </Button>
+            <span className="ml-3 text-muted">
+              Local filename metadata loads automatically. Camie and EVA02 image
+              inference are not run for Videos.
+            </span>
+          </div>
 
-        {booruMetadata ? (
-          <div className="alert alert-info py-2">
-            <div className="d-flex flex-wrap align-items-center">
-              <strong>{booruMetadata.source}</strong>
-              <Badge className="ml-2" variant="secondary">
-                MD5 from {booruMetadata.md5Source}
-              </Badge>
-              <code className="ml-2">{booruMetadata.md5}</code>
-              {booruMetadata.postURL ? (
-                <a
-                  className="ml-auto"
-                  href={booruMetadata.postURL}
-                  target="_blank"
-                  rel="noreferrer"
+          {booruMetadata ? (
+            <div className="alert alert-info py-2">
+              <div className="d-flex flex-wrap align-items-center">
+                <strong>{booruMetadata.source}</strong>
+                <Badge className="ml-2" variant="secondary">
+                  MD5 from {booruMetadata.md5Source}
+                </Badge>
+                <code className="ml-2">{booruMetadata.md5}</code>
+                {booruMetadata.postURL ? (
+                  <a
+                    className="ml-auto"
+                    href={booruMetadata.postURL}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Post {booruMetadata.postID || "match"}{" "}
+                    <Icon icon={faExternalLinkAlt} />
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
+          <Form.Check
+            className="mb-3"
+            type="checkbox"
+            id="video-tagging-replace-artists"
+            checked={replaceArtists}
+            onChange={(event) => setReplaceArtists(event.currentTarget.checked)}
+            label="Replace existing Artists instead of adding selected Artists"
+          />
+
+          {error ? <div className="alert alert-danger">{error}</div> : null}
+
+          {loading ? (
+            <div className="text-center py-5">
+              <Spinner animation="border" role="status" />
+            </div>
+          ) : predictions.length === 0 && !error ? (
+            <div className="text-muted">
+              No local metadata was found. You can still try an exact booru
+              lookup.
+            </div>
+          ) : (
+            <>
+              <div className="d-flex mb-3">
+                <Button
+                  className="mr-2"
+                  size="sm"
+                  variant="outline-secondary"
+                  disabled={visibleSelectedCount === predictions.length}
+                  onClick={() =>
+                    setSelected(new Set(predictions.map(predictionKey)))
+                  }
                 >
-                  Post {booruMetadata.postID || "match"}{" "}
-                  <Icon icon={faExternalLinkAlt} />
-                </a>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
+                  Select all
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline-secondary"
+                  disabled={visibleSelectedCount === 0}
+                  onClick={() => setSelected(new Set())}
+                >
+                  Unselect all
+                </Button>
+                <span className="ml-auto text-muted align-self-center">
+                  {visibleSelectedCount} / {predictions.length} selected
+                </span>
+              </div>
 
-        <Form.Check
-          className="mb-3"
-          type="checkbox"
-          id="video-tagging-replace-artists"
-          checked={replaceArtists}
-          onChange={(event) => setReplaceArtists(event.currentTarget.checked)}
-          label="Replace existing Artists instead of adding selected Artists"
-        />
-
-        {error ? <div className="alert alert-danger">{error}</div> : null}
-
-        {loading ? (
-          <div className="text-center py-5">
-            <Spinner animation="border" role="status" />
-          </div>
-        ) : predictions.length === 0 && !error ? (
-          <div className="text-muted">
-            No local metadata was found. You can still try an exact booru
-            lookup.
-          </div>
-        ) : (
-          <>
-            <div className="d-flex mb-3">
-              <Button
-                className="mr-2"
-                size="sm"
-                variant="outline-secondary"
-                onClick={() =>
-                  setSelected(new Set(predictions.map(predictionKey)))
-                }
-              >
-                Select all
-              </Button>
-              <Button
-                size="sm"
-                variant="outline-secondary"
-                onClick={() => setSelected(new Set())}
-              >
-                Unselect all
-              </Button>
-              <span className="ml-auto text-muted align-self-center">
-                {visibleSelectedCount} / {predictions.length} selected
-              </span>
-            </div>
-
-            <div style={{ maxHeight: "55vh", overflowY: "auto" }}>
-              {grouped.map(([category, items]) => (
-                <div className="mb-4" key={category}>
-                  <h5>{categoryLabel(category)}</h5>
-                  {items.map((prediction, index) => {
-                    const key = predictionKey(prediction);
-                    return (
-                      <div
-                        className="d-flex align-items-center py-1 border-bottom"
-                        key={key}
-                      >
-                        <Form.Check
-                          type="checkbox"
-                          id={`video-tagging-${category}-${index}`}
-                          checked={selected.has(key)}
-                          onChange={() => toggle(prediction)}
-                          label={prediction.name}
-                        />
-                        {prediction.provenance.map((source) => (
+              <div style={{ maxHeight: "55vh", overflowY: "auto" }}>
+                {grouped.map(([category, items]) => (
+                  <div className="mb-4" key={category}>
+                    <h5>{categoryLabel(category)}</h5>
+                    {items.map((prediction, index) => {
+                      const key = predictionKey(prediction);
+                      const possibleMatch =
+                        possibleBareCharacterMatch(prediction);
+                      return (
+                        <div
+                          className="d-flex align-items-center py-1 border-bottom"
+                          key={key}
+                        >
+                          <Form.Check
+                            type="checkbox"
+                            id={`video-tagging-${category}-${index}`}
+                            checked={selected.has(key)}
+                            onChange={() => toggle(prediction)}
+                            label={prediction.name}
+                          />
+                          {prediction.provenance.map((source) => (
+                            <Badge
+                              className="ml-2"
+                              key={sourceKey(source)}
+                              variant={sourceBadgeVariant(source.kind)}
+                              title={source.detail}
+                            >
+                              {source.label}
+                            </Badge>
+                          ))}
+                          {prediction.targetExists ? (
+                            <Badge
+                              className="ml-2"
+                              variant="primary"
+                              title="This metadata entity already exists in Stash"
+                            >
+                              exists
+                            </Badge>
+                          ) : null}
+                          {possibleMatch ? (
+                            <Badge
+                              className="ml-2"
+                              variant="secondary"
+                              title={`Possible existing Character: ${possibleMatch.bareName}`}
+                            >
+                              possible match
+                            </Badge>
+                          ) : null}
+                          {prediction.rawName &&
+                          prediction.rawName !== prediction.name ? (
+                            <span className="ml-2 small text-muted">
+                              alias: {prediction.rawName}
+                            </span>
+                          ) : null}
+                          {prediction.targetPath ? (
+                            <Button
+                              className="ml-auto mr-2 py-0 px-2"
+                              size="sm"
+                              variant="outline-secondary"
+                              title={
+                                prediction.targetExists
+                                  ? "Open metadata page"
+                                  : possibleMatch
+                                    ? `Open possible existing Character “${possibleMatch.bareName}”`
+                                    : "Search for this metadata"
+                              }
+                              onClick={() => {
+                                onHide();
+                                history.push(prediction.targetPath!);
+                              }}
+                            >
+                              <Icon icon={faSearch} />
+                            </Button>
+                          ) : null}
                           <Badge
-                            className="ml-2"
-                            key={sourceKey(source)}
-                            variant={sourceBadgeVariant(source.kind)}
-                            title={source.detail}
+                            className={prediction.targetPath ? "" : "ml-auto"}
+                            variant="secondary"
                           >
-                            {source.label}
+                            {(prediction.score * 100).toFixed(1)}%
                           </Badge>
-                        ))}
-                        {prediction.targetExists ? (
-                          <Badge className="ml-2" variant="primary">
-                            exists
-                          </Badge>
-                        ) : null}
-                        {prediction.rawName &&
-                        prediction.rawName !== prediction.name ? (
-                          <span className="ml-2 small text-muted">
-                            alias: {prediction.rawName}
-                          </span>
-                        ) : null}
-                        {prediction.targetPath ? (
-                          <Button
-                            className="ml-auto mr-2 py-0 px-2"
-                            size="sm"
-                            variant="outline-secondary"
-                            title={
-                              prediction.targetExists
-                                ? "Open metadata page"
-                                : "Search for this metadata"
-                            }
-                            onClick={() => {
-                              onHide();
-                              history.push(prediction.targetPath!);
-                            }}
-                          >
-                            <Icon icon={faSearch} />
-                          </Button>
-                        ) : null}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" disabled={applying} onClick={onHide}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            disabled={loading || loadingBooru || applying || visibleSelectedCount === 0}
+            onClick={applySelected}
+          >
+            {applying ? "Applying…" : "Apply selected metadata"}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      <ModalComponent
+        show={
+          !!pendingCharacterResolution && !!pendingPrediction && !!pendingMatch
+        }
+        header="Resolve Character"
+        modalProps={{ centered: true }}
+        cancel={{
+          text: "Keep separate",
+          variant: "secondary",
+          onClick: () => resolvePendingCharacter(false),
+        }}
+        accept={{
+          text: "Reuse existing Character",
+          onClick: () => resolvePendingCharacter(true),
+        }}
+      >
+        {pendingPrediction && pendingMatch ? (
+          <>
+            <p>
+              Video Tagging found <strong>{pendingPrediction.name}</strong>, but
+              an existing Character named <strong>{pendingMatch.bareName}</strong>{" "}
+              has no disambiguation.
+            </p>
+            <p>Is this the same Character?</p>
+            <p className="text-muted mb-0">
+              Reuse existing keeps the current Character entry. Keep separate
+              preserves <strong>{pendingPrediction.name}</strong> as its own
+              disambiguated Character.
+            </p>
           </>
-        )}
-      </Modal.Body>
-      <Modal.Footer>
-        <Button variant="secondary" disabled={applying} onClick={onHide}>
-          Cancel
-        </Button>
-        <Button
-          variant="primary"
-          disabled={loading || applying || visibleSelectedCount === 0}
-          onClick={() => void applySelected()}
-        >
-          {applying ? "Applying…" : "Apply selected metadata"}
-        </Button>
-      </Modal.Footer>
-    </Modal>
+        ) : null}
+      </ModalComponent>
+    </>
   );
 };
