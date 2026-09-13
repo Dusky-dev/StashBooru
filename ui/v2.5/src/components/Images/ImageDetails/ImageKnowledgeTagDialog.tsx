@@ -480,7 +480,10 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
       const copyrights = result.copyrights ?? [];
       const appliedTags = result.tags ?? [];
       const appliedCount =
-        characters.length + artists.length + copyrights.length + appliedTags.length;
+        characters.length +
+        artists.length +
+        copyrights.length +
+        appliedTags.length;
       const createdCount =
         (result.createdCharacters ?? 0) +
         (result.createdArtists ?? 0) +
@@ -638,7 +641,9 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                 size="sm"
                 variant="outline-secondary"
                 disabled={visibleSelectedCount === predictions.length}
-                onClick={() => setSelected(new Set(predictions.map(predictionKey)))}
+                onClick={() =>
+                  setSelected(new Set(predictions.map(predictionKey)))
+                }
               >
                 Select all
               </Button>
