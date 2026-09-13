@@ -143,7 +143,7 @@ func TestCamieCharacterResolutionUsesCopyrightAlias(t *testing.T) {
 
 func TestCamieCharacterResolutionRejectsUnresolvedDuplicateName(t *testing.T) {
 	repository := camieCharacterCopyrightTestRepository(
-		[]*models.Performer{
+		[]*models.Performformer{
 			{ID: 1, Name: "Lana", Disambiguation: "Pokemon"},
 			{ID: 2, Name: "Lana", Disambiguation: "Fire Emblem"},
 		},
@@ -183,5 +183,34 @@ func TestFindCamieCopyrightForCharacterAvoidsCrossoverGuess(t *testing.T) {
 	}
 	if resolved == nil || resolved.ID != pokemon.ID {
 		t.Fatalf("expected only Pokemon Copyright, got %#v", resolved)
+	}
+}
+
+func TestFindCamieCopyrightForCharacterDisambiguationOutranksSoleConflictingCopyright(t *testing.T) {
+	pokemon := &models.Copyright{ID: 10, Name: "Pokemon"}
+	fireEmblem := &models.Copyright{ID: 11, Name: "Fire Emblem"}
+	repository := camieCharacterCopyrightTestRepository(nil, []*models.Copyright{pokemon, fireEmblem}, nil)
+
+	prediction := camietagger.Tag{Name: "lana_(pokemon)", RawName: "lana_(pokemon)", Category: "character"}
+	resolved, err := findCamieCopyrightForCharacter(context.Background(), repository, prediction, nil, []*models.Copyright{fireEmblem})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved == nil || resolved.ID != pokemon.ID {
+		t.Fatalf("expected disambiguated Pokemon Copyright instead of conflicting Fire Emblem, got %#v", resolved)
+	}
+}
+
+func TestFindCamieCopyrightForCharacterDoesNotAttachUnknownConflictingCopyright(t *testing.T) {
+	fireEmblem := &models.Copyright{ID: 11, Name: "Fire Emblem"}
+	repository := camieCharacterCopyrightTestRepository(nil, []*models.Copyright{fireEmblem}, nil)
+
+	prediction := camietagger.Tag{Name: "lana_(pokemon)", RawName: "lana_(pokemon)", Category: "character"}
+	resolved, err := findCamieCopyrightForCharacter(context.Background(), repository, prediction, nil, []*models.Copyright{fireEmblem})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved != nil {
+		t.Fatalf("expected no Copyright link rather than conflicting Fire Emblem, got %#v", resolved)
 	}
 }
