@@ -63,10 +63,10 @@ interface AppliedEntity {
 
 interface ImageTaggingApplyResponse {
   imageID: number;
-  characters: AppliedEntity[];
-  artists: AppliedEntity[];
-  copyrights: AppliedEntity[];
-  tags: AppliedEntity[];
+  characters: AppliedEntity[] | null;
+  artists: AppliedEntity[] | null;
+  copyrights: AppliedEntity[] | null;
+  tags: AppliedEntity[] | null;
   createdCharacters: number;
   createdArtists: number;
   createdCopyrights: number;
@@ -265,7 +265,7 @@ function sourceBadgeVariant(source: MetadataSourceKind) {
     case "camie":
       return "warning";
     case "eva02":
-      return "secondary";
+      return "danger";
   }
 }
 
@@ -442,8 +442,6 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
       ).length,
     [predictions, selected]
   );
-  const allVisibleSelected =
-    predictions.length > 0 && visibleSelectedCount === predictions.length;
   const busy = loading || loadingSource !== undefined;
 
   const togglePrediction = useCallback((prediction: TagPrediction) => {
@@ -477,16 +475,17 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         }
       );
       const result = await readResponse<ImageTaggingApplyResponse>(response);
+      const characters = result.characters ?? [];
+      const artists = result.artists ?? [];
+      const copyrights = result.copyrights ?? [];
+      const appliedTags = result.tags ?? [];
       const appliedCount =
-        result.characters.length +
-        result.artists.length +
-        result.copyrights.length +
-        result.tags.length;
+        characters.length + artists.length + copyrights.length + appliedTags.length;
       const createdCount =
-        result.createdCharacters +
-        result.createdArtists +
-        result.createdCopyrights +
-        result.createdTags;
+        (result.createdCharacters ?? 0) +
+        (result.createdArtists ?? 0) +
+        (result.createdCopyrights ?? 0) +
+        (result.createdTags ?? 0);
       Toast.success(
         `Applied ${appliedCount} metadata item${appliedCount === 1 ? "" : "s"}; created ${createdCount} new entr${createdCount === 1 ? "y" : "ies"}.`
       );
@@ -572,7 +571,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
             </Badge>
           ) : null}
           {eva02Backend ? (
-            <Badge className="mb-1" variant="secondary">
+            <Badge className="mb-1" variant="danger">
               EVA02 {eva02Backend}
             </Badge>
           ) : null}
@@ -635,17 +634,21 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
           <>
             <div className="d-flex mb-3">
               <Button
+                className="mr-2"
                 size="sm"
                 variant="outline-secondary"
-                onClick={() =>
-                  setSelected(
-                    allVisibleSelected
-                      ? new Set()
-                      : new Set(predictions.map(predictionKey))
-                  )
-                }
+                disabled={visibleSelectedCount === predictions.length}
+                onClick={() => setSelected(new Set(predictions.map(predictionKey)))}
               >
-                {allVisibleSelected ? "Unselect all" : "Select all"}
+                Select all
+              </Button>
+              <Button
+                size="sm"
+                variant="outline-secondary"
+                disabled={visibleSelectedCount === 0}
+                onClick={() => setSelected(new Set())}
+              >
+                Unselect all
               </Button>
               <span className="ml-auto text-muted align-self-center">
                 {visibleSelectedCount} / {predictions.length} selected
@@ -683,7 +686,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                         {prediction.targetExists ? (
                           <Badge
                             className="ml-2"
-                            variant="secondary"
+                            variant="primary"
                             title="This metadata entity already exists in Stash"
                           >
                             exists
