@@ -28,6 +28,7 @@ import { DeleteImagesDialog } from "../DeleteImagesDialog";
 import { faEllipsisV } from "@fortawesome/free-solid-svg-icons";
 import { imagePath, imageTitle } from "src/core/files";
 import { isVideo } from "src/utils/visualFile";
+import NavUtils from "src/utils/navigation";
 import { useScrollToTopOnMount } from "src/hooks/scrollToTop";
 import { useRatingKeybinds } from "src/hooks/keybinds";
 import { useConfigurationContext } from "src/hooks/Config";
@@ -180,6 +181,16 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
           <Icon icon={faEllipsisV} />
         </Dropdown.Toggle>
         <Dropdown.Menu className="bg-secondary text-white">
+          <Dropdown.Item
+            key="find-similar"
+            className="bg-secondary text-white"
+            onClick={() => history.push(NavUtils.makeImagesSimilarityUrl(image.id))}
+          >
+            {intl.formatMessage({
+              id: "actions.find_similar",
+              defaultMessage: "Find similar",
+            })}
+          </Dropdown.Item>
           <Dropdown.Item
             key="rescan"
             className="bg-secondary text-white"
