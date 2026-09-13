@@ -79,8 +79,18 @@ func enrichNativeCamiePredictionTargets(ctx context.Context, predictions []camie
 				if targetID > 0 {
 					prediction.TargetPath = fmt.Sprintf("/performers/%d", targetID)
 				} else {
-					characterName, _ := camieCharacterIdentity(prediction)
-					prediction.TargetPath = "/performers?q=" + url.QueryEscape(characterName)
+					// If a disambiguated prediction has no exact match but a bare
+					// same-name Character exists, expose that Character as a possible
+					// match. TargetExists deliberately remains false so the review UI
+					// must ask before reusing it. Differently-disambiguated Characters
+					// are excluded by findCamieBarePerformerSuggestion.
+					suggestion, _ := findCamieBarePerformerSuggestion(ctx, repository, prediction)
+					if suggestion != nil {
+						prediction.TargetPath = fmt.Sprintf("/performers/%d", suggestion.ID)
+					} else {
+						characterName, _ := camieCharacterIdentity(prediction)
+						prediction.TargetPath = "/performers?q=" + url.QueryEscape(characterName)
+					}
 				}
 			case "artist":
 				studioEntity, _ := findCamieStudioPrediction(ctx, repository, prediction)
