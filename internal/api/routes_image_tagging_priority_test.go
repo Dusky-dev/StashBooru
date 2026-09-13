@@ -73,3 +73,23 @@ func TestFilterCamieFilenameAuthoritativeSelectionsKeepsCombinedFilenameSource(t
 		t.Fatalf("unexpected surviving Character: %#v", filtered[0])
 	}
 }
+
+func TestFilterCamieFilenameAuthoritativeSelectionsPrefersFilenameBeforeDeduplication(t *testing.T) {
+	predictions := []camietagger.Tag{
+		{Name: "lana_(pokemon)", Category: "character", Score: 1, Source: "model"},
+		{Name: "lana_(pokemon)", Category: "character", Score: 1, Source: "filename"},
+		{Name: "lana_(fire_emblem)", Category: "character", Score: 0.95, Source: "eva02"},
+	}
+
+	prioritized := filterCamieFilenameAuthoritativeSelections(predictions)
+	selected, err := validateCamiePredictionsV2(prioritized)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(selected) != 1 {
+		t.Fatalf("expected only the Local Character after priority and deduplication, got %#v", selected)
+	}
+	if selected[0].Source != "filename" || selected[0].Name != "Lana (Pokemon)" {
+		t.Fatalf("expected filename Character to win regardless of input order, got %#v", selected[0])
+	}
+}
