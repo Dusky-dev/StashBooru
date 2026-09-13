@@ -7,6 +7,12 @@ import { Icon } from "src/components/Shared/Icon";
 import { ModalComponent } from "src/components/Shared/Modal";
 import { useToast } from "src/hooks/Toast";
 
+interface TargetCandidate {
+  id: number;
+  name: string;
+  disambiguation?: string;
+}
+
 interface TagPrediction {
   name: string;
   category: string;
@@ -15,6 +21,7 @@ interface TagPrediction {
   source?: string;
   targetPath?: string;
   targetExists?: boolean;
+  targetCandidates?: TargetCandidate[];
 }
 
 type MetadataSourceKind = "local" | "booru" | "camie" | "eva02";
@@ -220,6 +227,10 @@ function mergeMetadataPredictions(
           ? prediction.targetExists
           : current.targetExists,
       targetPath: current.targetPath || prediction.targetPath,
+      targetCandidates:
+        current.targetCandidates?.length
+          ? current.targetCandidates
+          : prediction.targetCandidates,
       provenance: mergeSources(current.provenance, provenance),
     };
     merged[existingIndex] = next;
@@ -308,6 +319,20 @@ function possibleBareCharacterMatch(prediction: TagPrediction) {
   return { bareName, disambiguation };
 }
 
+function ambiguousCharacterCandidates(prediction: TagPrediction) {
+  if (prediction.category !== "character" || prediction.targetExists) {
+    return [];
+  }
+  return prediction.targetCandidates ?? [];
+}
+
+function characterCandidateLabel(candidate: TargetCandidate) {
+  const disambiguation = candidate.disambiguation?.trim();
+  return disambiguation
+    ? `${candidate.name} (${disambiguation})`
+    : candidate.name;
+}
+
 function reusePossibleBareCharacter(prediction: TagPrediction): TagPrediction {
   const possible = possibleBareCharacterMatch(prediction);
   if (!possible) return prediction;
@@ -317,6 +342,22 @@ function reusePossibleBareCharacter(prediction: TagPrediction): TagPrediction {
     name: possible.bareName,
     rawName: possible.bareName,
     targetExists: true,
+    targetCandidates: undefined,
+  };
+}
+
+function reuseCharacterCandidate(
+  prediction: TagPrediction,
+  candidate: TargetCandidate
+): TagPrediction {
+  const name = characterCandidateLabel(candidate);
+  return {
+    ...prediction,
+    name,
+    rawName: name,
+    targetPath: `/performers/${candidate.id}`,
+    targetExists: true,
+    targetCandidates: undefined,
   };
 }
 
@@ -546,10 +587,17 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
     (tags: TagPrediction[], startIndex: number) => {
       const nextIndex = tags.findIndex(
         (prediction, index) =>
-          index >= startIndex && possibleBareCharacterMatch(prediction)
+          index >= startIndex &&
+          (possibleBareCharacterMatch(prediction) ||
+            ambiguousCharacterCandidates(prediction).length > 1)
       );
       if (nextIndex === -1) {
         setPendingCharacterResolution(undefined);
+        if (tags.length === 0) {
+          setApplying(false);
+          setError("No metadata items remain to apply.");
+          return;
+        }
         void submitTags(tags);
         return;
       }
@@ -572,6 +620,29 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
     [continueCharacterResolution, pendingCharacterResolution]
   );
 
+  const choosePendingCharacterCandidate = useCallback(
+    (candidate: TargetCandidate) => {
+      if (!pendingCharacterResolution) return;
+      const { tags, index } = pendingCharacterResolution;
+      const nextTags = [...tags];
+      nextTags[index] = reuseCharacterCandidate(nextTags[index], candidate);
+      continueCharacterResolution(nextTags, index + 1);
+    },
+    [continueCharacterResolution, pendingCharacterResolution]
+  );
+
+  const skipPendingAmbiguousCharacter = useCallback(() => {
+    if (!pendingCharacterResolution) return;
+    const { tags, index } = pendingCharacterResolution;
+    const nextTags = tags.filter((_, tagIndex) => tagIndex !== index);
+    continueCharacterResolution(nextTags, index);
+  }, [continueCharacterResolution, pendingCharacterResolution]);
+
+  const cancelCharacterResolution = useCallback(() => {
+    setPendingCharacterResolution(undefined);
+    setApplying(false);
+  }, []);
+
   const applySelected = useCallback(() => {
     const tags = predictions
       .filter((prediction) => selected.has(predictionKey(prediction)))
@@ -592,6 +663,9 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   const pendingMatch = pendingPrediction
     ? possibleBareCharacterMatch(pendingPrediction)
     : undefined;
+  const pendingCandidates = pendingPrediction
+    ? ambiguousCharacterCandidates(pendingPrediction)
+    : [];
 
   return (
     <>
@@ -781,6 +855,8 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                       const key = predictionKey(prediction);
                       const possibleMatch =
                         possibleBareCharacterMatch(prediction);
+                      const candidates =
+                        ambiguousCharacterCandidates(prediction);
                       return (
                         <div
                           className="d-flex align-items-center py-1 border-bottom"
@@ -819,6 +895,15 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                               title={`Possible existing Character: ${possibleMatch.bareName}`}
                             >
                               possible match
+                            </Badge>
+                          ) : null}
+                          {candidates.length > 1 ? (
+                            <Badge
+                              className="ml-2"
+                              variant="warning"
+                              title={`${candidates.length} existing Characters share this name`}
+                            >
+                              choose Character
                             </Badge>
                           ) : null}
                           {prediction.rawName &&
@@ -878,7 +963,10 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
 
       <ModalComponent
         show={
-          !!pendingCharacterResolution && !!pendingPrediction && !!pendingMatch
+          !!pendingCharacterResolution &&
+          !!pendingPrediction &&
+          !!pendingMatch &&
+          pendingCandidates.length === 0
         }
         header="Resolve Character"
         modalProps={{ centered: true }}
@@ -908,6 +996,55 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
           </>
         ) : null}
       </ModalComponent>
+
+      <Modal
+        show={
+          !!pendingCharacterResolution &&
+          !!pendingPrediction &&
+          pendingCandidates.length > 1
+        }
+        onHide={cancelCharacterResolution}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Resolve Character</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>
+            Image Tagging found <strong>{pendingPrediction?.name}</strong>, but
+            multiple existing Characters share that name. Choose the Character
+            this metadata refers to.
+          </p>
+          <div className="d-flex flex-column">
+            {pendingCandidates.map((candidate) => (
+              <Button
+                className="mb-2 text-left"
+                key={candidate.id}
+                variant="outline-primary"
+                onClick={() => choosePendingCharacterCandidate(candidate)}
+              >
+                {characterCandidateLabel(candidate)}
+                <span className="ml-2 text-muted">#{candidate.id}</span>
+              </Button>
+            ))}
+          </div>
+          <p className="text-muted mb-0">
+            The selected existing Character is reused explicitly; StashBooru no
+            longer guesses between same-name Characters.
+          </p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={cancelCharacterResolution}>
+            Back
+          </Button>
+          <Button
+            variant="outline-secondary"
+            onClick={skipPendingAmbiguousCharacter}
+          >
+            Skip this Character
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </>
   );
 };
