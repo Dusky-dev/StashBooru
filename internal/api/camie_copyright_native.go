@@ -83,15 +83,16 @@ func enrichNativeCamiePredictionTargets(ctx context.Context, predictions []camie
 					prediction.TargetPath = "/performers?q=" + url.QueryEscape(characterName)
 				}
 			case "artist":
-				for _, name := range []string{prediction.Name, prediction.RawName} {
-					if strings.TrimSpace(name) == "" {
-						continue
+				studioEntity, _ := findCamieStudioPrediction(ctx, repository, prediction)
+				if studioEntity != nil {
+					targetID = studioEntity.ID
+					// Display the canonical Artist while keeping the source value as
+					// an alias beside it in the review row. Exact case-insensitive
+					// name matches do not need a redundant alias label.
+					if strings.EqualFold(strings.TrimSpace(prediction.RawName), studioEntity.Name) {
+						prediction.RawName = ""
 					}
-					studioEntity, _ := repository.Studio.FindByName(ctx, name, true)
-					if studioEntity != nil {
-						targetID = studioEntity.ID
-						break
-					}
+					prediction.Name = studioEntity.Name
 				}
 				if targetID > 0 {
 					prediction.TargetPath = fmt.Sprintf("/studios/%d", targetID)
