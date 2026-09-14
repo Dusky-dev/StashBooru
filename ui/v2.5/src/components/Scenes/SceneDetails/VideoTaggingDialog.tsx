@@ -73,6 +73,7 @@ interface IProps {
 }
 
 const CATEGORY_ORDER = ["character", "artist", "copyright", "general", "meta"];
+const IDENTITY_CATEGORIES = new Set(["character", "artist", "copyright"]);
 const SOURCE_PRIORITY: Record<MetadataSourceKind, number> = {
   local: 0,
   booru: 10,
@@ -99,6 +100,30 @@ function predictionKey(prediction: TagPrediction) {
     predictionIdentityKeys(prediction)[0] ??
     `${prediction.category}\u0000${prediction.name}`
   );
+}
+
+function filterBooruPredictionsForLocalPriority(
+  localPredictions: TagPrediction[],
+  booruPredictions: TagPrediction[]
+) {
+  const localIdentityCategories = new Set(
+    localPredictions
+      .map((prediction) => prediction.category.trim().toLocaleLowerCase())
+      .filter((category) => IDENTITY_CATEGORIES.has(category))
+  );
+  const localIdentityKeys = new Set(
+    localPredictions.flatMap(predictionIdentityKeys)
+  );
+
+  return booruPredictions.filter((prediction) => {
+    const category = prediction.category.trim().toLocaleLowerCase();
+    if (!IDENTITY_CATEGORIES.has(category)) return true;
+    if (!localIdentityCategories.has(category)) return true;
+
+    return predictionIdentityKeys(prediction).some((key) =>
+      localIdentityKeys.has(key)
+    );
+  });
 }
 
 function predictionSource(
@@ -287,15 +312,19 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
     try {
       const response = await fetch(`scene/${sceneId}/booru-metadata`);
       const result = await readResponse<BooruMetadataResponse>(response);
+      const allowedTags = filterBooruPredictionsForLocalPriority(
+        localPredictions,
+        result.tags
+      );
       setBooruMetadata(result);
-      setBooruPredictions(result.tags);
-      addSelected(result.tags);
+      setBooruPredictions(allowedTags);
+      addSelected(allowedTags);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setLoadingBooru(false);
     }
-  }, [addSelected, sceneId]);
+  }, [addSelected, localPredictions, sceneId]);
 
   const grouped = useMemo(() => {
     const groups = new Map<string, MetadataPrediction[]>();
