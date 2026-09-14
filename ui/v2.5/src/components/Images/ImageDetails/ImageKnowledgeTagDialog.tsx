@@ -11,6 +11,7 @@ import {
   characterCandidateLabel,
   mergeMetadataPredictions as mergeTaggingMetadataPredictions,
   nextCharacterResolutionIndex,
+  possibleBareCharacterMatch,
   predictionKey,
   reuseCharacterCandidate,
   reusePossibleBareCharacter,
@@ -322,8 +323,6 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         if (!cancelled) setLoading(false);
       }
 
-      // Camie's saved inference defaults are only used to initialize the
-      // controls. Reading them is not inference and does not start Camie.
       try {
         const response = await fetch("image/visual-similarity/camie/config");
         const config = await readResponse<CamieConfig>(response);
