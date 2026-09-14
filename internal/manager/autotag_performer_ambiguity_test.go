@@ -23,6 +23,8 @@ func TestPerformerNameIsAmbiguous(t *testing.T) {
 	t.Parallel()
 
 	lana := &models.Performer{ID: 1, Name: "Lana"}
+	lanaDuplicate := &models.Performer{ID: 2, Name: "Lana"}
+	lanaLower := &models.Performer{ID: 3, Name: "lana"}
 
 	t.Run("unique name", func(t *testing.T) {
 		ambiguous, err := performerNameIsAmbiguous(context.Background(), performerNameFinderStub{
@@ -34,7 +36,7 @@ func TestPerformerNameIsAmbiguous(t *testing.T) {
 
 	t.Run("duplicate name", func(t *testing.T) {
 		ambiguous, err := performerNameIsAmbiguous(context.Background(), performerNameFinderStub{
-			matches: []*models.Performer{lana, {ID: 2, Name: "Lana"}},
+			matches: []*models.Performer{lana, lanaDuplicate},
 		}, lana)
 		require.NoError(t, err)
 		assert.True(t, ambiguous)
@@ -42,7 +44,7 @@ func TestPerformerNameIsAmbiguous(t *testing.T) {
 
 	t.Run("case-only duplicate", func(t *testing.T) {
 		ambiguous, err := performerNameIsAmbiguous(context.Background(), performerNameFinderStub{
-			matches: []*models.Performer{lana, {ID: 2, Name: "lana"}},
+			matches: []*models.Performer{lana, lanaLower},
 		}, lana)
 		require.NoError(t, err)
 		assert.True(t, ambiguous)
