@@ -3,10 +3,47 @@ package api
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/stashapp/stash/pkg/camietagger"
 	"github.com/stashapp/stash/pkg/models"
 )
+
+func camiePredictionIncludesFilenameSource(source string) bool {
+	for _, part := range strings.Split(strings.ToLower(strings.TrimSpace(source)), "+") {
+		if strings.TrimSpace(part) == "filename" {
+			return true
+		}
+	}
+	return false
+}
+
+// filterCamieFilenameAuthoritativeSelections enforces local filename authority
+// for native identity categories at apply time. Metadata sources are loaded
+// independently, so a stale or custom client can otherwise submit lower-priority
+// Character, Artist, or Copyright predictions alongside authoritative Local data.
+func filterCamieFilenameAuthoritativeSelections(predictions []camietagger.Tag) []camietagger.Tag {
+	authoritativeCategories := make(map[string]bool, 3)
+	for _, rawPrediction := range predictions {
+		prediction := normalizeCamiePrediction(rawPrediction)
+		if camieFilenameAuthoritativeCategory(prediction.Category) && camiePredictionIncludesFilenameSource(prediction.Source) {
+			authoritativeCategories[prediction.Category] = true
+		}
+	}
+	if len(authoritativeCategories) == 0 {
+		return predictions
+	}
+
+	filtered := make([]camietagger.Tag, 0, len(predictions))
+	for _, rawPrediction := range predictions {
+		prediction := normalizeCamiePrediction(rawPrediction)
+		if authoritativeCategories[prediction.Category] && !camiePredictionIncludesFilenameSource(prediction.Source) {
+			continue
+		}
+		filtered = append(filtered, prediction)
+	}
+	return filtered
+}
 
 type taggingResolvedEntities struct {
 	Characters []camieAppliedEntity
