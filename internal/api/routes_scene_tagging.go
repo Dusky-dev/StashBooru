@@ -123,7 +123,7 @@ func (rs sceneRoutes) SceneKnowledgeTags(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	selected, err := validateCamiePredictionsV2(request.Tags)
+	selected, err := validateSceneTaggingPredictions(request.Tags)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
