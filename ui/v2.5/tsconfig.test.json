@@ -5,8 +5,5 @@
     "module": "esnext",
     "types": ["node"]
   },
-  "include": [
-    "tests/**/*.ts",
-    "src/components/Tagging/taggingReviewPolicy.ts"
-  ]
+  "include": ["tests/**/*.ts", "src/components/Tagging/taggingReviewPolicy.ts"]
 }
