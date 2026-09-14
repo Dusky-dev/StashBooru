@@ -34,14 +34,21 @@ type Status struct {
 	Error          string `json:"error,omitempty"`
 }
 
+type TargetCandidate struct {
+	ID             int    `json:"id"`
+	Name           string `json:"name"`
+	Disambiguation string `json:"disambiguation,omitempty"`
+}
+
 type Tag struct {
-	Name         string  `json:"name"`
-	Category     string  `json:"category"`
-	Score        float64 `json:"score"`
-	RawName      string  `json:"rawName,omitempty"`
-	Source       string  `json:"source,omitempty"`
-	TargetPath   string  `json:"targetPath,omitempty"`
-	TargetExists bool    `json:"targetExists,omitempty"`
+	Name             string            `json:"name"`
+	Category         string            `json:"category"`
+	Score            float64           `json:"score"`
+	RawName          string            `json:"rawName,omitempty"`
+	Source           string            `json:"source,omitempty"`
+	TargetPath       string            `json:"targetPath,omitempty"`
+	TargetExists     bool              `json:"targetExists,omitempty"`
+	TargetCandidates []TargetCandidate `json:"targetCandidates,omitempty"`
 }
 
 type Tagger interface {

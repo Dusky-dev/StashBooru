@@ -78,7 +78,15 @@ func enrichNativeCamiePredictionTargets(ctx context.Context, predictions []camie
 				}
 				if targetID > 0 {
 					prediction.TargetPath = fmt.Sprintf("/performers/%d", targetID)
+					prediction.TargetCandidates = nil
 				} else {
+					// A bare Character with multiple existing same-name Characters is
+					// genuinely ambiguous when Copyright context cannot resolve it.
+					// Return those candidates to the review UI instead of silently
+					// choosing a database row or waiting until apply to fail.
+					candidates, _ := findCamieCharacterTargetCandidates(ctx, repository, prediction)
+					prediction.TargetCandidates = candidates
+
 					// If a disambiguated prediction has no exact match but a bare
 					// same-name Character exists, expose that Character as a possible
 					// match. TargetExists deliberately remains false so the review UI

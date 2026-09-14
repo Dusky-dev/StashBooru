@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/stashapp/stash/pkg/camietagger"
@@ -166,6 +167,39 @@ func camieSameNamePerformers(ctx context.Context, repository models.Repository, 
 	return result, nil
 }
 
+// findCamieExplicitCharacterTarget honors an exact Character target selected in
+// the review UI. The target ID is accepted only when it still resolves to the
+// same canonical Character name, so a stale or manipulated target cannot turn
+// one Character prediction into an unrelated Character.
+func findCamieExplicitCharacterTarget(ctx context.Context, repository models.Repository, prediction camietagger.Tag) (*models.Performer, error) {
+	prediction = normalizeCamiePrediction(prediction)
+	if prediction.Category != "character" || !prediction.TargetExists {
+		return nil, nil
+	}
+
+	targetMatch := camiePerformerTargetPattern.FindStringSubmatch(strings.TrimSpace(prediction.TargetPath))
+	if len(targetMatch) != 2 {
+		return nil, nil
+	}
+	targetID, err := strconv.Atoi(targetMatch[1])
+	if err != nil {
+		return nil, nil
+	}
+	target, err := repository.Performer.Find(ctx, targetID)
+	if err != nil {
+		return nil, err
+	}
+	if target == nil {
+		return nil, nil
+	}
+
+	characterName, _ := camieCharacterIdentity(prediction)
+	if !strings.EqualFold(strings.TrimSpace(target.Name), strings.TrimSpace(characterName)) {
+		return nil, nil
+	}
+	return target, nil
+}
+
 func camieAmbiguousCharacterError(characterName string, matches []*models.Performer) error {
 	labels := make([]string, 0, len(matches))
 	for _, match := range matches {
@@ -189,6 +223,15 @@ func camieAmbiguousCharacterError(characterName string, matches []*models.Perfor
 func findCamiePerformerPredictionWithCopyrightContext(ctx context.Context, repository models.Repository, prediction camietagger.Tag, predictions []camietagger.Tag) (*models.Performer, error) {
 	prediction = normalizeCamiePrediction(prediction)
 	characterName, disambiguation := camieCharacterIdentity(prediction)
+
+	explicitTarget, err := findCamieExplicitCharacterTarget(ctx, repository, prediction)
+	if err != nil {
+		return nil, err
+	}
+	if explicitTarget != nil {
+		return explicitTarget, nil
+	}
+
 	matches, err := camieSameNamePerformers(ctx, repository, characterName)
 	if err != nil {
 		return nil, err
