@@ -57,7 +57,11 @@ func (rs sceneRoutes) SceneLocalMetadata(w http.ResponseWriter, r *http.Request)
 			return
 		}
 	}
-	predictions = enrichNativeCamiePredictionTargets(r.Context(), predictions)
+	predictions, err = enrichNativeCamiePredictionTargets(r.Context(), predictions)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("enriching local Video Tagging metadata targets: %v", err), http.StatusInternalServerError)
+		return
+	}
 
 	writeVisualSimilarityJSON(w, camieTagsResponse{
 		Backend:   "local",
@@ -97,7 +101,11 @@ func (rs sceneRoutes) SceneBooruMetadata(w http.ResponseWriter, r *http.Request)
 	for index := range predictions {
 		predictions[index] = normalizeCamiePrediction(predictions[index])
 	}
-	predictions = enrichNativeCamiePredictionTargets(r.Context(), predictions)
+	predictions, err = enrichNativeCamiePredictionTargets(r.Context(), predictions)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("enriching booru Video Tagging targets: %v", err), http.StatusInternalServerError)
+		return
+	}
 
 	postURL := ""
 	if post.ID != "" && provider.postURL != nil {
