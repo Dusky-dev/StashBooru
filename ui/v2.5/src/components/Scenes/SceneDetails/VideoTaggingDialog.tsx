@@ -194,10 +194,9 @@ function mergeMetadataPredictions(
           ? prediction.targetExists
           : current.targetExists,
       targetPath: current.targetPath || prediction.targetPath,
-      targetCandidates:
-        current.targetCandidates?.length
-          ? current.targetCandidates
-          : prediction.targetCandidates,
+      targetCandidates: current.targetCandidates?.length
+        ? current.targetCandidates
+        : prediction.targetCandidates,
       provenance: mergeSources(current.provenance, provenance),
     };
     merged[existingIndex] = next;
@@ -774,8 +773,8 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
           <>
             <p>
               Video Tagging found <strong>{pendingPrediction.name}</strong>, but
-              an existing Character named <strong>{pendingMatch.bareName}</strong>{" "}
-              has no disambiguation.
+              an existing Character named{" "}
+              <strong>{pendingMatch.bareName}</strong> has no disambiguation.
             </p>
             <p>Is this the same Character?</p>
             <p className="text-muted mb-0">
