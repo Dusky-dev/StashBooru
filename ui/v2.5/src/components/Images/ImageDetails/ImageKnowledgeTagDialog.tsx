@@ -227,10 +227,9 @@ function mergeMetadataPredictions(
           ? prediction.targetExists
           : current.targetExists,
       targetPath: current.targetPath || prediction.targetPath,
-      targetCandidates:
-        current.targetCandidates?.length
-          ? current.targetCandidates
-          : prediction.targetCandidates,
+      targetCandidates: current.targetCandidates?.length
+        ? current.targetCandidates
+        : prediction.targetCandidates,
       provenance: mergeSources(current.provenance, provenance),
     };
     merged[existingIndex] = next;
