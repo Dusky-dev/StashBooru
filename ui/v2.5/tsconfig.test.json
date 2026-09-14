@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "module": "esnext",
+    "types": ["node"]
+  },
+  "include": [
+    "tests/**/*.ts",
+    "src/components/Tagging/taggingReviewPolicy.ts"
+  ]
+}
