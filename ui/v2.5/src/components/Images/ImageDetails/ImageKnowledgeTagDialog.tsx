@@ -5,37 +5,26 @@ import { useHistory } from "react-router-dom";
 
 import { Icon } from "src/components/Shared/Icon";
 import { ModalComponent } from "src/components/Shared/Modal";
+import {
+  addPredictionSelection,
+  ambiguousCharacterCandidates,
+  characterCandidateLabel,
+  mergeMetadataPredictions as mergeTaggingMetadataPredictions,
+  nextCharacterResolutionIndex,
+  predictionKey,
+  reuseCharacterCandidate,
+  reusePossibleBareCharacter,
+  selectedPredictionCount,
+  sourceKey,
+  togglePredictionSelection,
+  type MetadataPrediction,
+  type MetadataSource,
+  type TagPrediction,
+  type TargetCandidate,
+} from "src/components/Tagging/taggingReviewPolicy";
 import { useToast } from "src/hooks/Toast";
 
-interface TargetCandidate {
-  id: number;
-  name: string;
-  disambiguation?: string;
-}
-
-interface TagPrediction {
-  name: string;
-  category: string;
-  score: number;
-  rawName?: string;
-  source?: string;
-  targetPath?: string;
-  targetExists?: boolean;
-  targetCandidates?: TargetCandidate[];
-}
-
 type MetadataSourceKind = "local" | "booru" | "camie" | "eva02";
-
-interface MetadataSource {
-  kind: MetadataSourceKind;
-  label: string;
-  detail?: string;
-  priority: number;
-}
-
-interface MetadataPrediction extends TagPrediction {
-  provenance: MetadataSource[];
-}
 
 interface TagSourceResponse {
   backend: "local" | "remote";
@@ -99,35 +88,6 @@ const SOURCE_PRIORITY: Record<MetadataSourceKind, number> = {
   camie: 20,
   eva02: 30,
 };
-const CHARACTER_IDENTITY_PATTERN = /^(.+?)\s*\(([^()]*)\)\s*$/;
-const POSSIBLE_CHARACTER_TARGET_PATTERN = /^\/performers\/\d+\/?$/;
-
-function normalizePredictionValue(value?: string) {
-  return (value ?? "")
-    .trim()
-    .replaceAll("_", " ")
-    .replace(/\s+/g, " ")
-    .toLocaleLowerCase();
-}
-
-function predictionIdentityKeys(prediction: TagPrediction) {
-  const category = prediction.category.trim().toLocaleLowerCase();
-  const values = [prediction.name, prediction.rawName]
-    .map(normalizePredictionValue)
-    .filter(Boolean);
-  return [...new Set(values)].map((value) => `${category}\u0000${value}`);
-}
-
-function predictionKey(prediction: TagPrediction) {
-  return (
-    predictionIdentityKeys(prediction)[0] ??
-    `${prediction.category}\u0000${prediction.name}`
-  );
-}
-
-function sourceKey(source: MetadataSource) {
-  return `${source.kind}\u0000${source.detail ?? ""}`;
-}
 
 function predictionSource(
   prediction: TagPrediction,
@@ -169,85 +129,30 @@ function predictionSource(
   }
 }
 
-function mergeSources(
-  current: MetadataSource[],
-  incoming: MetadataSource[]
-): MetadataSource[] {
-  const merged = new Map<string, MetadataSource>();
-  for (const source of [...current, ...incoming]) {
-    merged.set(sourceKey(source), source);
-  }
-  return [...merged.values()].sort((left, right) => {
-    if (left.priority !== right.priority) return left.priority - right.priority;
-    return left.label.localeCompare(right.label);
-  });
-}
-
-function mergeMetadataPredictions(
+function mergeImageMetadataPredictions(
   localPredictions: TagPrediction[],
   booruPredictions: TagPrediction[],
   camiePredictions: TagPrediction[],
   eva02Predictions: TagPrediction[]
-): MetadataPrediction[] {
-  const merged: MetadataPrediction[] = [];
-  const indexByKey = new Map<string, number>();
-
-  const add = (prediction: TagPrediction, sourceKind: MetadataSourceKind) => {
-    const keys = predictionIdentityKeys(prediction);
-    let existingIndex: number | undefined;
-    for (const key of keys) {
-      const index = indexByKey.get(key);
-      if (index !== undefined) {
-        existingIndex = index;
-        break;
-      }
-    }
-
-    const provenance = [predictionSource(prediction, sourceKind)];
-    if (existingIndex === undefined) {
-      const next: MetadataPrediction = {
-        ...prediction,
-        provenance,
-      };
-      const index = merged.length;
-      merged.push(next);
-      for (const key of keys) indexByKey.set(key, index);
-      return;
-    }
-
-    // Sources are added in priority order. Preserve the earlier source's
-    // prediction and score; later sources only contribute provenance and fill
-    // optional target information that was missing from the winning source.
-    const current = merged[existingIndex];
-    const next: MetadataPrediction = {
-      ...current,
-      rawName: current.rawName || prediction.rawName,
-      targetExists:
-        current.targetExists === undefined
-          ? prediction.targetExists
-          : current.targetExists,
-      targetPath: current.targetPath || prediction.targetPath,
-      targetCandidates: current.targetCandidates?.length
-        ? current.targetCandidates
-        : prediction.targetCandidates,
-      provenance: mergeSources(current.provenance, provenance),
-    };
-    merged[existingIndex] = next;
-
-    for (const key of [
-      ...predictionIdentityKeys(current),
-      ...keys,
-      ...predictionIdentityKeys(next),
-    ]) {
-      indexByKey.set(key, existingIndex);
-    }
-  };
-
-  for (const prediction of localPredictions) add(prediction, "local");
-  for (const prediction of booruPredictions) add(prediction, "booru");
-  for (const prediction of camiePredictions) add(prediction, "camie");
-  for (const prediction of eva02Predictions) add(prediction, "eva02");
-  return merged;
+) {
+  return mergeTaggingMetadataPredictions([
+    {
+      predictions: localPredictions,
+      source: (prediction) => predictionSource(prediction, "local"),
+    },
+    {
+      predictions: booruPredictions,
+      source: (prediction) => predictionSource(prediction, "booru"),
+    },
+    {
+      predictions: camiePredictions,
+      source: (prediction) => predictionSource(prediction, "camie"),
+    },
+    {
+      predictions: eva02Predictions,
+      source: (prediction) => predictionSource(prediction, "eva02"),
+    },
+  ]);
 }
 
 async function readResponse<T>(response: Response): Promise<T> {
@@ -274,7 +179,7 @@ function categoryLabel(category: string) {
   }
 }
 
-function sourceBadgeVariant(source: MetadataSourceKind) {
+function sourceBadgeVariant(source: string) {
   switch (source) {
     case "local":
       return "success";
@@ -284,6 +189,8 @@ function sourceBadgeVariant(source: MetadataSourceKind) {
       return "warning";
     case "eva02":
       return "danger";
+    default:
+      return "secondary";
   }
 }
 
@@ -297,67 +204,6 @@ function parseInferenceOptions(threshold: string, limit: string) {
     throw new Error("Per-category limit must be between 1 and 200.");
   }
   return { parsedThreshold, parsedLimit };
-}
-
-function possibleBareCharacterMatch(prediction: TagPrediction) {
-  if (
-    prediction.category !== "character" ||
-    prediction.targetExists ||
-    !POSSIBLE_CHARACTER_TARGET_PATTERN.test(prediction.targetPath ?? "")
-  ) {
-    return undefined;
-  }
-
-  const match = prediction.name.match(CHARACTER_IDENTITY_PATTERN);
-  if (!match) return undefined;
-
-  const bareName = match[1].trim();
-  const disambiguation = match[2].trim();
-  if (!bareName || !disambiguation) return undefined;
-
-  return { bareName, disambiguation };
-}
-
-function ambiguousCharacterCandidates(prediction: TagPrediction) {
-  if (prediction.category !== "character" || prediction.targetExists) {
-    return [];
-  }
-  return prediction.targetCandidates ?? [];
-}
-
-function characterCandidateLabel(candidate: TargetCandidate) {
-  const disambiguation = candidate.disambiguation?.trim();
-  return disambiguation
-    ? `${candidate.name} (${disambiguation})`
-    : candidate.name;
-}
-
-function reusePossibleBareCharacter(prediction: TagPrediction): TagPrediction {
-  const possible = possibleBareCharacterMatch(prediction);
-  if (!possible) return prediction;
-
-  return {
-    ...prediction,
-    name: possible.bareName,
-    rawName: possible.bareName,
-    targetExists: true,
-    targetCandidates: undefined,
-  };
-}
-
-function reuseCharacterCandidate(
-  prediction: TagPrediction,
-  candidate: TargetCandidate
-): TagPrediction {
-  const name = characterCandidateLabel(candidate);
-  return {
-    ...prediction,
-    name,
-    rawName: name,
-    targetPath: `/performers/${candidate.id}`,
-    targetExists: true,
-    targetCandidates: undefined,
-  };
 }
 
 export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
@@ -388,7 +234,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
 
   const predictions = useMemo(
     () =>
-      mergeMetadataPredictions(
+      mergeImageMetadataPredictions(
         localPredictions,
         booruPredictions,
         camiePredictions,
@@ -398,11 +244,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   );
 
   const addSelected = useCallback((items: TagPrediction[]) => {
-    setSelected((current) => {
-      const next = new Set(current);
-      for (const item of items) next.add(predictionKey(item));
-      return next;
-    });
+    setSelected((current) => addPredictionSelection(current, items));
   }, []);
 
   const loadBooruMetadata = useCallback(async () => {
@@ -520,22 +362,13 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   }, [predictions]);
 
   const visibleSelectedCount = useMemo(
-    () =>
-      predictions.filter((prediction) =>
-        selected.has(predictionKey(prediction))
-      ).length,
+    () => selectedPredictionCount(predictions, selected),
     [predictions, selected]
   );
   const busy = loading || loadingSource !== undefined;
 
   const togglePrediction = useCallback((prediction: TagPrediction) => {
-    const key = predictionKey(prediction);
-    setSelected((current) => {
-      const next = new Set(current);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
+    setSelected((current) => togglePredictionSelection(current, prediction));
   }, []);
 
   const submitTags = useCallback(
@@ -584,12 +417,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
 
   const continueCharacterResolution = useCallback(
     (tags: TagPrediction[], startIndex: number) => {
-      const nextIndex = tags.findIndex(
-        (prediction, index) =>
-          index >= startIndex &&
-          (possibleBareCharacterMatch(prediction) ||
-            ambiguousCharacterCandidates(prediction).length > 1)
-      );
+      const nextIndex = nextCharacterResolutionIndex(tags, startIndex);
       if (nextIndex === -1) {
         setPendingCharacterResolution(undefined);
         if (tags.length === 0) {
