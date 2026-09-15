@@ -127,7 +127,9 @@ export const SettingsToolsPanel: React.FC = () => {
                                   className="mr-1"
                                   key={matchKind}
                                   variant={
-                                    matchKind === "canonical" ? "primary" : "info"
+                                    matchKind === "canonical"
+                                      ? "primary"
+                                      : "info"
                                   }
                                 >
                                   {matchKind}
@@ -142,7 +144,8 @@ export const SettingsToolsPanel: React.FC = () => {
                 </Table>
               )}
               <div className="text-muted">
-                This inspector reports ambiguity only. It never rewrites or removes aliases.
+                This inspector reports ambiguity only. It never rewrites or
+                removes aliases.
               </div>
             </div>
           ) : null}
