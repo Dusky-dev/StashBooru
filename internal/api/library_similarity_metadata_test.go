@@ -32,6 +32,30 @@ func TestAggregateLibrarySimilarityMetadata(t *testing.T) {
 	}
 }
 
+func TestAggregateLibrarySimilarityMetadataKeepsSameNameNativeTargetsSeparate(t *testing.T) {
+	votes := []librarySimilarityMetadataVote{
+		{NeighborID: 1, Similarity: 0.95, Prediction: camietagger.Tag{Name: "Lana", Category: "character", TargetExists: true, TargetPath: "/performers/1"}},
+		{NeighborID: 2, Similarity: 0.90, Prediction: camietagger.Tag{Name: "lana", Category: "character", TargetExists: true, TargetPath: "/performers/1"}},
+		{NeighborID: 3, Similarity: 0.92, Prediction: camietagger.Tag{Name: "Lana", Category: "character", TargetExists: true, TargetPath: "/performers/2"}},
+		{NeighborID: 4, Similarity: 0.88, Prediction: camietagger.Tag{Name: "lana", Category: "character", TargetExists: true, TargetPath: "/performers/2"}},
+	}
+
+	result := aggregateLibrarySimilarityMetadata(votes, 2)
+	if len(result) != 2 {
+		t.Fatalf("expected two distinct native consensus targets, got %+v", result)
+	}
+	paths := map[string]bool{}
+	for _, consensus := range result {
+		if consensus.Votes != 2 {
+			t.Fatalf("expected two votes per native target, got %+v", consensus)
+		}
+		paths[consensus.Prediction.TargetPath] = true
+	}
+	if !paths["/performers/1"] || !paths["/performers/2"] {
+		t.Fatalf("same-name native targets were conflated: %+v", result)
+	}
+}
+
 func TestAggregateLibrarySimilarityMetadataDeduplicatesNeighborVotes(t *testing.T) {
 	votes := []librarySimilarityMetadataVote{
 		{NeighborID: 1, Similarity: 0.9, Prediction: camietagger.Tag{Name: "solo", Category: "general"}},
@@ -76,6 +100,5 @@ func TestLibrarySimilarityScore(t *testing.T) {
 			if got := librarySimilarityScore(test.distance); math.Abs(got-test.want) > 1e-9 {
 				t.Fatalf("librarySimilarityScore(%v) = %v, want %v", test.distance, got, test.want)
 			}
-		})
 	}
 }
