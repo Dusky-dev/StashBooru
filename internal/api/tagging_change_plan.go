@@ -22,20 +22,21 @@ const (
 )
 
 type taggingChangePlanItem struct {
-	Prediction       camietagger.Tag
-	Action           taggingChangeAction
-	RelationshipMode taggingRelationshipMode
+	Prediction       camietagger.Tag         `json:"prediction"`
+	Action           taggingChangeAction     `json:"action"`
+	RelationshipMode taggingRelationshipMode `json:"relationshipMode"`
 }
 
 type taggingChangePlan struct {
-	Items       []taggingChangePlanItem
-	CanApply    bool
-	ReviewCount int
+	Items       []taggingChangePlanItem `json:"items"`
+	CanApply    bool                    `json:"canApply"`
+	ReviewCount int                     `json:"reviewCount"`
 }
 
 // buildTaggingChangePlan turns enriched tagging predictions into the exact
-// create/reuse/review decisions that an apply path can consume later. It is
-// side-effect free so preview and apply can share the same policy.
+// create/reuse/review decisions that preview and apply consume. The planner is
+// side-effect free: no native entity is created until the resulting plan is
+// accepted by the apply path.
 func buildTaggingChangePlan(predictions []camietagger.Tag, replaceArtists bool) taggingChangePlan {
 	plan := taggingChangePlan{Items: make([]taggingChangePlanItem, 0, len(predictions)), CanApply: true}
 	for _, rawPrediction := range predictions {
@@ -61,4 +62,15 @@ func buildTaggingChangePlan(predictions []camietagger.Tag, replaceArtists bool) 
 		})
 	}
 	return plan
+}
+
+func taggingChangePlanPredictions(plan taggingChangePlan) []camietagger.Tag {
+	predictions := make([]camietagger.Tag, 0, len(plan.Items))
+	for _, item := range plan.Items {
+		if item.Action == taggingChangeReview {
+			continue
+		}
+		predictions = append(predictions, item.Prediction)
+	}
+	return predictions
 }
