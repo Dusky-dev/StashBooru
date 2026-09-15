@@ -229,6 +229,7 @@ func resolveSceneTaggingBatchIDs(ctx context.Context, request sceneTaggingBatchR
 			if scene != nil {
 				ids = append(ids, scene.ID)
 			}
+		}
 		return nil
 	}); err != nil {
 		return nil, fmt.Errorf("loading videos for batch Video Tagging: %w", err)
