@@ -1,0 +1,25 @@
+name: Integrate develop into PR49
+on:
+  push:
+    branches:
+      - fix/native-autotag-character-disambiguation
+    paths:
+      - .github/workflows/integrate-develop-pr49.yml
+permissions:
+  contents: write
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/native-autotag-character-disambiguation
+          fetch-depth: 0
+      - name: Merge current develop
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin develop
+          git merge --no-edit origin/develop
+          git push origin HEAD:fix/native-autotag-character-disambiguation
