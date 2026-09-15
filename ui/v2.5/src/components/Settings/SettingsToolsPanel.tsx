@@ -11,15 +11,11 @@ const SettingsToolsSection = PatchContainerComponent("SettingsToolsSection");
 
 interface MetadataHealthFinding {
   code: string;
-  severity: string;
-  message: string;
-  normalized?: string;
-  entityKind?: string;
-  entityIDs?: number[];
-  assetKind?: string;
-  assetID?: number;
-  legacyArtistID?: number;
-  artistIDs?: number[];
+  kind: string;
+  value?: string;
+  entityIDs: number[];
+  mediaID?: number;
+  detail?: string;
 }
 
 interface MetadataHealthResponse {
@@ -29,29 +25,16 @@ interface MetadataHealthResponse {
 
 function findingContext(finding: MetadataHealthFinding) {
   const parts: string[] = [];
-  if (finding.entityKind) {
-    parts.push(
-      `${finding.entityKind}${
-        finding.entityIDs?.length ? ` #${finding.entityIDs.join(", #")}` : ""
-      }`
-    );
+  if (finding.mediaID) {
+    parts.push(`${finding.kind} #${finding.mediaID}`);
+  } else if (finding.kind) {
+    parts.push(finding.kind);
   }
-  if (finding.assetKind && finding.assetID) {
-    parts.push(`${finding.assetKind} #${finding.assetID}`);
+  if (finding.entityIDs.length > 0) {
+    parts.push(`IDs: #${finding.entityIDs.join(", #")}`);
   }
-  if (finding.normalized) parts.push(`key: ${finding.normalized}`);
+  if (finding.value) parts.push(`key: ${finding.value}`);
   return parts.join(" · ");
-}
-
-function severityVariant(severity: string) {
-  switch (severity.toLowerCase()) {
-    case "error":
-      return "danger";
-    case "warning":
-      return "warning";
-    default:
-      return "info";
-  }
 }
 
 export const SettingsToolsPanel: React.FC = () => {
@@ -93,7 +76,7 @@ export const SettingsToolsPanel: React.FC = () => {
           />
           <Setting
             heading="Metadata Health"
-            subHeading="Read-only diagnostics for duplicate identity names, legacy Copyright Tags, and legacy/native Artist relationship drift."
+            subHeading="Read-only diagnostics for duplicate and same-name identities, legacy Copyright Tags, legacy/native Artist drift, orphaned Character/Tag/legacy Artist relationships, and alias-ambiguous legacy Tag migration."
           >
             <Button
               variant="secondary"
@@ -129,7 +112,6 @@ export const SettingsToolsPanel: React.FC = () => {
                 <Table responsive size="sm">
                   <thead>
                     <tr>
-                      <th>Severity</th>
                       <th>Diagnostic</th>
                       <th>Context</th>
                       <th>Details</th>
@@ -138,24 +120,22 @@ export const SettingsToolsPanel: React.FC = () => {
                   <tbody>
                     {health.findings.map((finding, index) => (
                       <tr
-                        key={`${finding.code}-${finding.assetKind ?? "entity"}-${finding.assetID ?? index}`}
+                        key={`${finding.code}-${finding.kind}-${finding.mediaID ?? finding.value ?? index}`}
                       >
                         <td>
-                          <Badge variant={severityVariant(finding.severity)}>
-                            {finding.severity}
-                          </Badge>
+                          <Badge variant="warning">{finding.code}</Badge>
                         </td>
-                        <td>{finding.code}</td>
                         <td>{findingContext(finding) || "—"}</td>
-                        <td>{finding.message}</td>
+                        <td>{finding.detail || "—"}</td>
                       </tr>
                     ))}
                   </tbody>
                 </Table>
               )}
               <div className="text-muted">
-                This inspector never changes metadata. Repairs must remain
-                explicit.
+                This inspector only reports potential metadata problems and
+                ambiguity. It never changes metadata; any repair must remain an
+                explicit user action.
               </div>
             </div>
           ) : null}
