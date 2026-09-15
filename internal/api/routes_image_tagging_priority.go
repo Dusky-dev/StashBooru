@@ -49,7 +49,7 @@ func filterCamieFilenameAuthoritativeSelections(predictions []camietagger.Tag) [
 
 // ImageKnowledgeTagsWithLocalPriorityV2 keeps the existing per-image Image
 // Tagging behavior, but enforces filename-authoritative identity categories
-// before applyCamieMetadataV2 can resolve or create native entities.
+// before preview/apply. Both preview and apply consume the same generated plan.
 func (rs imageRoutes) ImageKnowledgeTagsWithLocalPriorityV2(w http.ResponseWriter, r *http.Request) {
 	rawApply := strings.TrimSpace(r.URL.Query().Get("apply"))
 	if rawApply != "1" && !strings.EqualFold(rawApply, "true") {
@@ -81,7 +81,17 @@ func (rs imageRoutes) ImageKnowledgeTagsWithLocalPriorityV2(w http.ResponseWrite
 		return
 	}
 
-	response, err := applyCamieMetadataV2(r.Context(), image.ID, selected, request.ReplaceArtist)
+	plan := buildTaggingChangePlan(selected, request.ReplaceArtist)
+	if rawPreview := strings.TrimSpace(r.URL.Query().Get("preview")); rawPreview == "1" || strings.EqualFold(rawPreview, "true") {
+		writeVisualSimilarityJSON(w, plan)
+		return
+	}
+	if !plan.CanApply {
+		http.Error(w, "metadata plan contains unresolved review items", http.StatusConflict)
+		return
+	}
+
+	response, err := applyCamieMetadataV2(r.Context(), image.ID, taggingChangePlanPredictions(plan), request.ReplaceArtist)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("applying Image Tagging metadata to image %d: %v", image.ID, err), http.StatusInternalServerError)
 		return
