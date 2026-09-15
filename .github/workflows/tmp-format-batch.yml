@@ -1,0 +1,33 @@
+name: Temporary format batch UI
+
+on:
+  push:
+    branches:
+      - feature/batch-video-tagging-review
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: ui/v2.5/package.json
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: ui/v2.5/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: ui/v2.5
+      - name: Format and emit
+        working-directory: ui/v2.5
+        run: |
+          pnpm exec biome format --write src/components/Scenes/BatchVideoTaggingPatch.tsx
+          echo 'FORMATTED_FILE_BEGIN'
+          base64 -w0 src/components/Scenes/BatchVideoTaggingPatch.tsx
+          echo
+          echo 'FORMATTED_FILE_END'
