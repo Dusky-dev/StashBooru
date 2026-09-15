@@ -276,7 +276,11 @@ func processSceneTaggingBatchItem(ctx context.Context, sceneID int, config camie
 			result.Error = fmt.Sprintf("parsing local filename metadata: %v", err)
 			return result
 		}
-		local = enrichNativeCamiePredictionTargets(ctx, local)
+		local, err = enrichNativeCamiePredictionTargets(ctx, local)
+		if err != nil {
+			result.Error = fmt.Sprintf("enriching local batch Video Tagging metadata targets: %v", err)
+			return result
+		}
 	}
 
 	booru := []camietagger.Tag{}
@@ -342,6 +346,9 @@ func loadSceneTaggingBatchBooru(ctx context.Context, path string) ([]camietagger
 	for index := range predictions {
 		predictions[index] = normalizeCamiePrediction(predictions[index])
 	}
-	predictions = enrichNativeCamiePredictionTargets(ctx, predictions)
+	predictions, err = enrichNativeCamiePredictionTargets(ctx, predictions)
+	if err != nil {
+		return nil, false, fmt.Errorf("enriching booru batch Video Tagging targets: %w", err)
+	}
 	return predictions, true, nil
 }
