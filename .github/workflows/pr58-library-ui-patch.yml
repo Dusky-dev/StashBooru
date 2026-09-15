@@ -1,0 +1,117 @@
+name: PR58 library similarity UI patch
+
+on:
+  push:
+    branches:
+      - feature/library-similarity-metadata-source
+    paths:
+      - .github/workflows/pr58-library-ui-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/library-similarity-metadata-source
+      - name: Patch Image Tagging library similarity source
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          path = Path("ui/v2.5/src/components/Images/ImageDetails/ImageKnowledgeTagDialog.tsx")
+          text = path.read_text()
+
+          replacements = [
+              (
+                  '''  targetCandidates?: TargetCandidate[];\n}\n\ntype MetadataSourceKind = "local" | "booru" | "camie" | "eva02";''',
+                  '''  targetCandidates?: TargetCandidate[];\n  libraryVotes?: number;\n  libraryMeanSimilarity?: number;\n}\n\ntype MetadataSourceKind =\n  | "local"\n  | "booru"\n  | "camie"\n  | "eva02"\n  | "library";''',
+              ),
+              (
+                  '''  eva02: 30,\n};''',
+                  '''  eva02: 30,\n  library: 40,\n};''',
+              ),
+              (
+                  '''interface BooruMetadataResponse {\n  source: string;\n  postID: string;\n  postURL?: string;\n  md5: string;\n  md5Source: "filename" | "file";\n  tags: TagPrediction[];\n}\n''',
+                  '''interface BooruMetadataResponse {\n  source: string;\n  postID: string;\n  postURL?: string;\n  md5: string;\n  md5Source: "filename" | "file";\n  tags: TagPrediction[];\n}\n\ninterface LibrarySimilarityConsensus {\n  prediction: TagPrediction;\n  votes: number;\n  meanSimilarity: number;\n}\n\ninterface LibrarySimilarityResponse {\n  source: "library-similarity";\n  mediaType: "image" | "video";\n  referenceID: number;\n  neighbors: number;\n  minVotes: number;\n  tags: TagPrediction[];\n  consensus: LibrarySimilarityConsensus[];\n}\n''',
+              ),
+              (
+                  '''    case "eva02":\n      return {\n        kind,\n        label: "EVA02",\n        detail: "WD EVA02 fallback prediction",\n        priority: SOURCE_PRIORITY.eva02,\n      };\n  }''',
+                  '''    case "eva02":\n      return {\n        kind,\n        label: "EVA02",\n        detail: "WD EVA02 fallback prediction",\n        priority: SOURCE_PRIORITY.eva02,\n      };\n    case "library": {\n      const votes = prediction.libraryVotes;\n      const meanSimilarity = prediction.libraryMeanSimilarity;\n      const detail =\n        votes !== undefined && meanSimilarity !== undefined\n          ? `Library consensus: ${votes} neighbors, ${(meanSimilarity * 100).toFixed(1)}% mean similarity`\n          : "Library visual-similarity consensus";\n      return {\n        kind,\n        label: "Library",\n        detail,\n        priority: SOURCE_PRIORITY.library,\n      };\n    }\n  }''',
+              ),
+              (
+                  '''  camiePredictions: TagPrediction[],\n  eva02Predictions: TagPrediction[]\n): MetadataPrediction[] {''',
+                  '''  camiePredictions: TagPrediction[],\n  eva02Predictions: TagPrediction[],\n  libraryPredictions: TagPrediction[]\n): MetadataPrediction[] {''',
+              ),
+              (
+                  '''  for (const prediction of camiePredictions) add(prediction, "camie");\n  for (const prediction of eva02Predictions) add(prediction, "eva02");\n  return merged;''',
+                  '''  for (const prediction of camiePredictions) add(prediction, "camie");\n  for (const prediction of eva02Predictions) add(prediction, "eva02");\n  for (const prediction of libraryPredictions) add(prediction, "library");\n  return merged;''',
+              ),
+              (
+                  '''    case "eva02":\n      return "danger";\n  }''',
+                  '''    case "eva02":\n      return "danger";\n    case "library":\n      return "secondary";\n  }''',
+              ),
+              (
+                  '''  const [eva02Predictions, setEva02Predictions] = useState<TagPrediction[]>([]);\n  const [selected, setSelected]''',
+                  '''  const [eva02Predictions, setEva02Predictions] = useState<TagPrediction[]>([]);\n  const [libraryPredictions, setLibraryPredictions] = useState<TagPrediction[]>([]);\n  const [selected, setSelected]''',
+              ),
+              (
+                  '''  const [booruMetadata, setBooruMetadata] = useState<BooruMetadataResponse>();\n  const [loading, setLoading]''',
+                  '''  const [booruMetadata, setBooruMetadata] = useState<BooruMetadataResponse>();\n  const [libraryMetadata, setLibraryMetadata] = useState<LibrarySimilarityResponse>();\n  const [loading, setLoading]''',
+              ),
+              (
+                  '''        camiePredictions,\n        eva02Predictions\n      ),\n    [booruPredictions, camiePredictions, eva02Predictions, localPredictions]''',
+                  '''        camiePredictions,\n        eva02Predictions,\n        libraryPredictions\n      ),\n    [\n      booruPredictions,\n      camiePredictions,\n      eva02Predictions,\n      libraryPredictions,\n      localPredictions,\n    ]''',
+              ),
+              (
+                  '''  const loadModelPredictions = useCallback(''',
+                  '''  const loadLibrarySimilarity = useCallback(async () => {\n    setLoadingSource("library");\n    setError(undefined);\n    try {\n      const response = await fetch(\n        `image/${imageId}/library-similarity-metadata`\n      );\n      const result = await readResponse<LibrarySimilarityResponse>(response);\n      const suggestions = result.consensus.map((entry) => ({\n        ...entry.prediction,\n        libraryVotes: entry.votes,\n        libraryMeanSimilarity: entry.meanSimilarity,\n      }));\n      setLibraryMetadata(result);\n      setLibraryPredictions(suggestions);\n      // Library similarity is review-only. Never auto-select its suggestions.\n    } catch (cause) {\n      setError(cause instanceof Error ? cause.message : String(cause));\n    } finally {\n      setLoadingSource(undefined);\n    }\n  }, [imageId]);\n\n  const loadModelPredictions = useCallback(''',
+              ),
+              (
+                  '''    case "eva02":\n      return "danger";\n    case "library":\n      return "secondary";\n  }''',
+                  '''    case "eva02":\n      return "danger";\n    case "library":\n      return "secondary";\n  }''',
+              ),
+              (
+                  '''            <Button\n              className="mb-2"\n              variant="secondary"\n              disabled={busy || applying}\n              onClick={() => void loadModelPredictions("eva02")}\n            >\n              {loadingSource === "eva02" ? "Analyzing…" : "Analyze with EVA02"}\n            </Button>''',
+                  '''            <Button\n              className="mr-2 mb-2"\n              variant="secondary"\n              disabled={busy || applying}\n              onClick={() => void loadModelPredictions("eva02")}\n            >\n              {loadingSource === "eva02" ? "Analyzing…" : "Analyze with EVA02"}\n            </Button>\n            <Button\n              className="mb-2"\n              variant="secondary"\n              disabled={busy || applying}\n              onClick={() => void loadLibrarySimilarity()}\n            >\n              {loadingSource === "library"\n                ? "Comparing…"\n                : "Suggest from library"}\n            </Button>''',
+              ),
+              (
+                  '''            {eva02Backend ? (\n              <Badge className="mb-1" variant="danger">\n                EVA02 {eva02Backend}\n              </Badge>\n            ) : null}\n          </div>''',
+                  '''            {eva02Backend ? (\n              <Badge className="mr-2 mb-1" variant="danger">\n                EVA02 {eva02Backend}\n              </Badge>\n            ) : null}\n            {libraryMetadata ? (\n              <Badge\n                className="mb-1"\n                variant="secondary"\n                title={`Consensus requires ${libraryMetadata.minVotes} matching neighbors`}\n              >\n                Library {libraryMetadata.neighbors} neighbors\n              </Badge>\n            ) : null}\n          </div>''',
+              ),
+              (
+                  '''            Sources are merged in priority order: Local → Danbooru → Camie →\n            EVA02. Opening this dialog loads Local metadata only; every network\n            or model source is explicit. Camie and EVA02 use independent\n            thresholds; EVA02 defaults to 0.35. When the same metadata item is\n            predicted by multiple sources, the earlier source keeps its value\n            and score while later sources are shown as additional provenance.\n            EVA02 is the fallback source. Multiple selected Artists can be\n            attached to the same image.''',
+                  '''            Sources are merged in priority order: Local → Danbooru → Camie →\n            EVA02 → Library. Opening this dialog loads Local metadata only;\n            every network, model, or similarity source is explicit. Camie and\n            EVA02 use independent thresholds; EVA02 defaults to 0.35. Library\n            suggestions require consensus from visually similar indexed images\n            and start unselected because they are review-only. When the same\n            metadata item is predicted by multiple sources, the earlier source\n            keeps its value and score while later sources are shown as\n            additional provenance. Multiple selected Artists can be attached to\n            the same image.''',
+              ),
+              (
+                  '''              No Local metadata was found. Fetch Danbooru or run Camie/EVA02\n              explicitly to add predictions.''',
+                  '''              No Local metadata was found. Fetch Danbooru, run Camie/EVA02, or\n              request Library suggestions explicitly to add predictions.''',
+              ),
+              (
+                  '''      .map(({ provenance: _provenance, ...prediction }) => prediction);''',
+                  '''      .map(\n        ({\n          provenance: _provenance,\n          libraryVotes: _libraryVotes,\n          libraryMeanSimilarity: _libraryMeanSimilarity,\n          ...prediction\n        }) => prediction\n      );''',
+              ),
+          ]
+
+          for old, new in replacements:
+              if old not in text:
+                  raise SystemExit(f"expected UI patch anchor not found:\n{old[:180]}")
+              text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          PY
+
+          git diff --check
+          git status --short
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ui/v2.5/src/components/Images/ImageDetails/ImageKnowledgeTagDialog.tsx
+          git commit -m "Add library similarity to Image Tagging review"
+          git push origin HEAD:feature/library-similarity-metadata-source
