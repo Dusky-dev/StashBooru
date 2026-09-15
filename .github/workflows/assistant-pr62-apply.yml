@@ -1,0 +1,188 @@
+name: Apply PR62 frame tagging changes
+
+on:
+  push:
+    branches:
+      - feature/video-frame-assisted-tagging
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/video-frame-assisted-tagging
+          fetch-depth: 0
+      - name: Apply frame tagging route and UI
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          def once(text, old, new, label):
+              if old not in text:
+                  raise SystemExit(f"missing {label}")
+              return text.replace(old, new, 1)
+
+          route_path = Path("internal/api/routes_scene.go")
+          route = route_path.read_text()
+          route = once(
+              route,
+              '\t\tr.Get("/booru-metadata", rs.SceneBooruMetadata)\n',
+              '\t\tr.Get("/booru-metadata", rs.SceneBooruMetadata)\n\t\tr.Get("/frame-metadata", rs.SceneFrameMetadata)\n',
+              "Video Tagging route anchor",
+          )
+          route = once(
+              route,
+              "\t\t// source review flow without running image-only model inference.\n",
+              "\t\t// source review flow. Frame inference remains explicit and never runs on open.\n",
+              "Video Tagging route comment",
+          )
+          route_path.write_text(route)
+
+          ui_path = Path("ui/v2.5/src/components/Scenes/SceneDetails/VideoTaggingDialog.tsx")
+          ui = ui_path.read_text()
+          ui = once(ui, 'type MetadataSourceKind = "local" | "booru";', 'type MetadataSourceKind = "local" | "booru" | "frames";', "source kind")
+          ui = once(ui, '  booru: 10,\n};', '  booru: 10,\n  frames: 20,\n};', "source priority")
+          ui = once(
+              ui,
+              'interface AppliedEntity {',
+              'interface FrameMetadataResponse {\n  backend: "local" | "remote";\n  model: string;\n  threshold: number;\n  limit: number;\n  sampleTimes: number[];\n  tags: TagPrediction[];\n}\n\ninterface AppliedEntity {',
+              "frame response type",
+          )
+          provider = '  const provider = prediction.source?.startsWith("booru:")\n    ? prediction.source.slice("booru:".length)\n    : undefined;'
+          frame_source = '''  if (kind === "frames") {
+    const consensus = prediction.source?.match(/^frame-analysis:(\\d+)\\/(\\d+)$/);
+    return {
+      kind,
+      label: "Frames",
+      detail: consensus
+        ? `Frame analysis: ${consensus[1]}/${consensus[2]} sampled frames`
+        : "Frame analysis",
+      priority: SOURCE_PRIORITY.frames,
+    };
+  }
+
+''' + provider
+          ui = once(ui, provider, frame_source, "frame provenance")
+          ui = once(
+              ui,
+              'function mergeMetadataPredictions(\n  localPredictions: TagPrediction[],\n  booruPredictions: TagPrediction[]\n): MetadataPrediction[] {',
+              'function mergeMetadataPredictions(\n  localPredictions: TagPrediction[],\n  booruPredictions: TagPrediction[],\n  framePredictions: TagPrediction[]\n): MetadataPrediction[] {',
+              "merge signature",
+          )
+          ui = once(
+              ui,
+              '  for (const prediction of booruPredictions) add(prediction, "booru");\n  return merged;',
+              '  for (const prediction of booruPredictions) add(prediction, "booru");\n  for (const prediction of framePredictions) add(prediction, "frames");\n  return merged;',
+              "merge frames",
+          )
+          ui = once(
+              ui,
+              'function sourceBadgeVariant(source: MetadataSourceKind) {\n  return source === "local" ? "success" : "info";\n}',
+              'function sourceBadgeVariant(source: MetadataSourceKind) {\n  if (source === "local") return "success";\n  if (source === "frames") return "warning";\n  return "info";\n}',
+              "frame badge",
+          )
+          ui = once(
+              ui,
+              '  const [booruMetadata, setBooruMetadata] = useState<BooruMetadataResponse>();\n',
+              '  const [booruMetadata, setBooruMetadata] = useState<BooruMetadataResponse>();\n  const [framePredictions, setFramePredictions] = useState<TagPrediction[]>([]);\n  const [frameMetadata, setFrameMetadata] = useState<FrameMetadataResponse>();\n',
+              "frame state",
+          )
+          ui = once(
+              ui,
+              '  const [loadingBooru, setLoadingBooru] = useState(false);\n',
+              '  const [loadingBooru, setLoadingBooru] = useState(false);\n  const [loadingFrames, setLoadingFrames] = useState(false);\n',
+              "frame loading state",
+          )
+          ui = once(
+              ui,
+              '  const predictions = useMemo(\n    () => mergeMetadataPredictions(localPredictions, booruPredictions),\n    [booruPredictions, localPredictions]\n  );',
+              '  const predictions = useMemo(\n    () =>\n      mergeMetadataPredictions(\n        localPredictions,\n        booruPredictions,\n        framePredictions\n      ),\n    [booruPredictions, framePredictions, localPredictions]\n  );',
+              "merged predictions",
+          )
+          ui = once(
+              ui,
+              '  const grouped = useMemo(() => {',
+              '''  const loadFrameMetadata = useCallback(async () => {
+    setLoadingFrames(true);
+    setError(undefined);
+    try {
+      const response = await fetch(`scene/${sceneId}/frame-metadata`);
+      const result = await readResponse<FrameMetadataResponse>(response);
+      setFrameMetadata(result);
+      setFramePredictions(result.tags);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setLoadingFrames(false);
+    }
+  }, [sceneId]);
+
+  const grouped = useMemo(() => {''',
+              "frame loader",
+          )
+          ui = once(
+              ui,
+              '              disabled={loading || loadingBooru || applying}\n',
+              '              disabled={loading || loadingBooru || loadingFrames || applying}\n',
+              "booru loading guard",
+          )
+          button_anchor = '              {loadingBooru ? "Loading booru…" : "Load booru metadata"}\n            </Button>\n            <span className="ml-3 text-muted">'
+          button_replacement = '''              {loadingBooru ? "Loading booru…" : "Load booru metadata"}
+            </Button>
+            <Button
+              className="ml-2"
+              variant="secondary"
+              disabled={loading || loadingBooru || loadingFrames || applying}
+              onClick={() => void loadFrameMetadata()}
+            >
+              {loadingFrames ? "Analyzing frames…" : "Analyze frames"}
+            </Button>
+            <span className="ml-3 text-muted">'''
+          ui = once(ui, button_anchor, button_replacement, "Analyze frames button")
+          ui = once(
+              ui,
+              '              Local filename metadata loads automatically. Camie and EVA02 image\n              inference are not run for Videos.',
+              '              Local filename metadata loads automatically. Frame inference runs\n              only when requested.',
+              "frame explanatory text",
+          )
+          replace_artist_anchor = '          <Form.Check\n            className="mb-3"\n            type="checkbox"\n            id="video-tagging-replace-artists"'
+          frame_alert = '''          {frameMetadata ? (
+            <div className="alert alert-warning py-2">
+              Analyzed {frameMetadata.sampleTimes.length} representative frame
+              {frameMetadata.sampleTimes.length === 1 ? "" : "s"}. Frame
+              suggestions start unselected and cannot override Local filename
+              identity.
+            </div>
+          ) : null}
+
+          <Form.Check
+            className="mb-3"
+            type="checkbox"
+            id="video-tagging-replace-artists"'''
+          ui = once(ui, replace_artist_anchor, frame_alert, "frame analysis alert")
+          ui = once(
+              ui,
+              '              No local metadata was found. You can still try an exact booru\n              lookup.',
+              '              No local metadata was found. You can still try an exact booru\n              lookup or explicitly analyze representative frames.',
+              "empty state",
+          )
+          ui = once(
+              ui,
+              '              loading || loadingBooru || applying || visibleSelectedCount === 0\n',
+              '              loading ||\n              loadingBooru ||\n              loadingFrames ||\n              applying ||\n              visibleSelectedCount === 0\n',
+              "apply loading guard",
+          )
+          ui_path.write_text(ui)
+          PY
+          gofmt -w internal/api/routes_scene.go internal/api/video_tagging_frames.go internal/api/video_tagging_frames_test.go
+          git diff --check
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add internal/api/routes_scene.go internal/api/video_tagging_frames.go internal/api/video_tagging_frames_test.go ui/v2.5/src/components/Scenes/SceneDetails/VideoTaggingDialog.tsx
+          git commit -m "Add explicit frame-assisted Video Tagging"
+          git push origin HEAD:feature/video-frame-assisted-tagging
