@@ -123,7 +123,8 @@ func (rs sceneRoutes) SceneKnowledgeTags(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	selected, err := validateCamiePredictionsV2(request.Tags)
+	prioritized, suppressed := partitionCamieFilenameAuthoritativeSelections(request.Tags)
+	selected, err := validateCamiePredictionsV2(prioritized)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -133,7 +134,7 @@ func (rs sceneRoutes) SceneKnowledgeTags(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	plan := buildTaggingChangePlan(selected, request.ReplaceArtist)
+	plan := buildTaggingChangePlanWithSuppressed(selected, suppressed, request.ReplaceArtist)
 	if rawPreview := strings.TrimSpace(r.URL.Query().Get("preview")); rawPreview == "1" || strings.EqualFold(rawPreview, "true") {
 		writeVisualSimilarityJSON(w, plan)
 		return
