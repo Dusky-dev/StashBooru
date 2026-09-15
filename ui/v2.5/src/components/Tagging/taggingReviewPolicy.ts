@@ -45,10 +45,19 @@ export function normalizePredictionValue(value?: string) {
 
 export function predictionIdentityKeys(prediction: TagPrediction) {
   const category = prediction.category.trim().toLocaleLowerCase();
+  const targetPath = prediction.targetExists
+    ? prediction.targetPath?.trim().replace(/\/+$/, "").toLocaleLowerCase()
+    : undefined;
+  if (targetPath) {
+    return [`${category}\u0000target:${targetPath}`];
+  }
+
   const values = [prediction.name, prediction.rawName]
     .map(normalizePredictionValue)
     .filter(Boolean);
-  return [...new Set(values)].map((value) => `${category}\u0000${value}`);
+  return [...new Set(values)].map(
+    (value) => `${category}\u0000name:${value}`
+  );
 }
 
 export function predictionKey(prediction: TagPrediction) {
