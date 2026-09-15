@@ -44,13 +44,21 @@ type librarySimilarityMetadataResponse struct {
 
 func librarySimilarityMetadataKey(prediction camietagger.Tag) string {
 	prediction = normalizeCamiePrediction(prediction)
-	return prediction.Category + "\x00" + strings.ToLower(strings.TrimSpace(prediction.Name))
+	category := strings.ToLower(strings.TrimSpace(prediction.Category))
+	if prediction.TargetExists {
+		if targetPath := strings.ToLower(strings.TrimSpace(prediction.TargetPath)); targetPath != "" {
+			return category + "\x00target:" + targetPath
+		}
+	}
+	return category + "\x00name:" + strings.ToLower(strings.TrimSpace(prediction.Name))
 }
 
 // aggregateLibrarySimilarityMetadata converts metadata from nearest indexed
 // library neighbors into review-only consensus suggestions. One neighbor gets
 // at most one vote for a canonical prediction, preventing tag duplication on a
-// single media item from inflating consensus.
+// single media item from inflating consensus. Existing native targets vote by
+// exact target identity rather than display name so same-name entities never
+// collapse into an arbitrary first match.
 func aggregateLibrarySimilarityMetadata(votes []librarySimilarityMetadataVote, minVotes int) []librarySimilarityMetadataConsensus {
 	if minVotes < 1 {
 		minVotes = 1
