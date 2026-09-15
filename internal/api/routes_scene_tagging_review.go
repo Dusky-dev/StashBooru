@@ -12,14 +12,14 @@ const (
 )
 
 type sceneTaggingReviewItem struct {
-	Prediction camietagger.Tag
-	Source     string
-	Reason     string
+	Prediction camietagger.Tag `json:"prediction"`
+	Source     string          `json:"source"`
+	Reason     string          `json:"reason"`
 }
 
 type sceneTaggingReviewPlan struct {
-	AutoApply   []camietagger.Tag
-	NeedsReview []sceneTaggingReviewItem
+	AutoApply   []camietagger.Tag        `json:"autoApply"`
+	NeedsReview []sceneTaggingReviewItem `json:"needsReview"`
 }
 
 func sceneTaggingIdentityCategory(category string) bool {
