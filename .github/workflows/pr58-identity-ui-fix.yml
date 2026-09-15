@@ -17,37 +17,8 @@ jobs:
       - name: Preserve exact native identity in UI merge keys
         shell: bash
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("ui/v2.5/src/components/Images/ImageDetails/ImageKnowledgeTagDialog.tsx")
-          text = p.read_text()
-          old = '''function predictionIdentityKeys(prediction: TagPrediction) {
-            const category = prediction.category.trim().toLocaleLowerCase();
-            const values = [prediction.name, prediction.rawName]
-              .map(normalizePredictionValue)
-              .filter(Boolean);
-            return [...new Set(values)].map((value) => `${category}\\u0000${value}`);
-          }
-'''
-          new = '''function predictionIdentityKeys(prediction: TagPrediction) {
-            const category = prediction.category.trim().toLocaleLowerCase();
-            const targetPath = prediction.targetExists
-              ? prediction.targetPath?.trim().replace(/\\/+$/, "").toLocaleLowerCase()
-              : undefined;
-            if (targetPath) {
-              return [`${category}\\u0000target:${targetPath}`];
-            }
-
-            const values = [prediction.name, prediction.rawName]
-              .map(normalizePredictionValue)
-              .filter(Boolean);
-            return [...new Set(values)].map((value) => `${category}\\u0000name:${value}`);
-          }
-'''
-          if old not in text:
-              raise SystemExit("predictionIdentityKeys block not found")
-          p.write_text(text.replace(old, new, 1))
-          PY
+          echo 'ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCgpwID0gUGF0aCgidWkvdjIuNS9zcmMvY29tcG9uZW50cy9JbWFnZXMvSW1hZ2VEZXRhaWxzL0ltYWdlS25vd2xlZGdlVGFnRGlhbG9nLnRzeCIpCnRleHQgPSBwLnJlYWRfdGV4dCgpCm9sZCA9ICIiImZ1bmN0aW9uIHByZWRpY3Rpb25JZGVudGl0eUtleXMocHJlZGljdGlvbjogVGFnUHJlZGljdGlvbikgewogIGNvbnN0IGNhdGVnb3J5ID0gcHJlZGljdGlvbi5jYXRlZ29yeS50cmltKCkudG9Mb2NhbGVMb3dlckNhc2UoKTsKICBjb25zdCB2YWx1ZXMgPSBbcHJlZGljdGlvbi5uYW1lLCBwcmVkaWN0aW9uLnJhd05hbWVdCiAgICAubWFwKG5vcm1hbGl6ZVByZWRpY3Rpb25WYWx1ZSkKICAgIC5maWx0ZXIoQm9vbGVhbik7CiAgcmV0dXJuIFsuLi5uZXcgU2V0KHZhbHVlcyldLm1hcCgodmFsdWUpID0+IGAke2NhdGVnb3J5fVx1MDAwMCR7dmFsdWV9YCk7Cn0KIiIiCm5ldyA9ICIiImZ1bmN0aW9uIHByZWRpY3Rpb25JZGVudGl0eUtleXMocHJlZGljdGlvbjogVGFnUHJlZGljdGlvbikgewogIGNvbnN0IGNhdGVnb3J5ID0gcHJlZGljdGlvbi5jYXRlZ29yeS50cmltKCkudG9Mb2NhbGVMb3dlckNhc2UoKTsKICBjb25zdCB0YXJnZXRQYXRoID0gcHJlZGljdGlvbi50YXJnZXRFeGlzdHMKICAgID8gcHJlZGljdGlvbi50YXJnZXRQYXRoPy50cmltKCkucmVwbGFjZSgvXC8rJC8sICIiKS50b0xvY2FsZUxvd2VyQ2FzZSgpCiAgICA6IHVuZGVmaW5lZDsKICBpZiAodGFyZ2V0UGF0aCkgewogICAgcmV0dXJuIFtgJHtjYXRlZ29yeX1cdTAwMDB0YXJnZXQ6JHt0YXJnZXRQYXRofWBdOwogIH0KCiAgY29uc3QgdmFsdWVzID0gW3ByZWRpY3Rpb24ubmFtZSwgcHJlZGljdGlvbi5yYXdOYW1lXQogICAgLm1hcChub3JtYWxpemVQcmVkaWN0aW9uVmFsdWUpCiAgICAuZmlsdGVyKEJvb2xlYW4pOwogIHJldHVybiBbLi4ubmV3IFNldCh2YWx1ZXMpXS5tYXAoKHZhbHVlKSA9PiBgJHtjYXRlZ29yeX1cdTAwMDBuYW1lOiR7dmFsdWV9YCk7Cn0KIiIiCmlmIG9sZCBub3QgaW4gdGV4dDoKICAgIHJhaXNlIFN5c3RlbUV4aXQoInByZWRpY3Rpb25JZGVudGl0eUtleXMgYmxvY2sgbm90IGZvdW5kIikKcC53cml0ZV90ZXh0KHRleHQucmVwbGFjZShvbGQsIG5ldywgMSkpCg==' | base64 -d > /tmp/patch.py
+          python3 /tmp/patch.py
           git diff --check
       - name: Commit
         shell: bash
