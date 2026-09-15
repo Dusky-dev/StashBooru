@@ -55,6 +55,10 @@ type sceneRoutes struct {
 func (rs sceneRoutes) Routes() chi.Router {
 	r := chi.NewRouter()
 
+	// Batch Video Tagging is library-scoped and must not depend on an
+	// arbitrary anchor Video remaining addressable while a background job runs.
+	r.Post("/tagging-batch", handleSceneTaggingBatch)
+
 	r.Route("/{sceneId}", func(r chi.Router) {
 		r.Use(rs.SceneCtx)
 
