@@ -169,9 +169,7 @@ export const SettingsToolsPanel: React.FC = () => {
       );
       if (!response.ok) {
         const message = (await response.text()).trim();
-        throw new Error(
-          message || `Metadata copy failed (${response.status})`
-        );
+        throw new Error(message || `Metadata copy failed (${response.status})`);
       }
       const report = (await response.json()) as SimilarityMetadataCopyResponse;
       setCopyReports((current) => ({
@@ -259,8 +257,11 @@ export const SettingsToolsPanel: React.FC = () => {
                   const targets = selectedTargets[cluster.preferredID] ?? [];
                   const report = copyReports[cluster.preferredID];
                   const copyError = copyErrors[cluster.preferredID];
-                  const failed = report?.results.filter((result) => result.error) ?? [];
-                  const copied = report ? sumCopiedMetadata(report.results) : undefined;
+                  const failed =
+                    report?.results.filter((result) => result.error) ?? [];
+                  const copied = report
+                    ? sumCopiedMetadata(report.results)
+                    : undefined;
                   const nonPreferredIDs = cluster.members
                     .filter((member) => !member.preferred)
                     .map((member) => member.id);
@@ -311,7 +312,8 @@ export const SettingsToolsPanel: React.FC = () => {
                               size="sm"
                               variant="primary"
                               disabled={
-                                targets.length === 0 || copyingCluster !== undefined
+                                targets.length === 0 ||
+                                copyingCluster !== undefined
                               }
                               onClick={() => void copyClusterMetadata(cluster)}
                             >
@@ -323,18 +325,24 @@ export const SettingsToolsPanel: React.FC = () => {
                         ) : null}
                       </div>
                       <div className="mb-2 text-muted">
-                        Copy action only adds missing Character, Artist, Copyright,
-                        and Tag relationships from the preferred Image. Existing
-                        target metadata is preserved; legacy StudioID, files,
-                        titles, and Images are never changed or removed.
+                        Copy action only adds missing Character, Artist,
+                        Copyright, and Tag relationships from the preferred
+                        Image. Existing target metadata is preserved; legacy
+                        StudioID, files, titles, and Images are never changed or
+                        removed.
                       </div>
-                      {copyError ? <Alert variant="danger">{copyError}</Alert> : null}
+                      {copyError ? (
+                        <Alert variant="danger">{copyError}</Alert>
+                      ) : null}
                       {report && copied ? (
-                        <Alert variant={failed.length > 0 ? "warning" : "success"}>
+                        <Alert
+                          variant={failed.length > 0 ? "warning" : "success"}
+                        >
                           Added {copied.characters} Character, {copied.artists}{" "}
-                          Artist, {copied.copyrights} Copyright, and {copied.tags}{" "}
-                          Tag relationships across {report.results.length} target
-                          Image{report.results.length === 1 ? "" : "s"}.
+                          Artist, {copied.copyrights} Copyright, and{" "}
+                          {copied.tags} Tag relationships across{" "}
+                          {report.results.length} target Image
+                          {report.results.length === 1 ? "" : "s"}.
                           {failed.length > 0 ? (
                             <div className="mt-2">
                               {failed.map((result) => (
@@ -389,7 +397,9 @@ export const SettingsToolsPanel: React.FC = () => {
                                     type="checkbox"
                                     label="Add preferred metadata"
                                     checked={targets.includes(member.id)}
-                                    disabled={copyingCluster === cluster.preferredID}
+                                    disabled={
+                                      copyingCluster === cluster.preferredID
+                                    }
                                     onChange={() =>
                                       toggleClusterTarget(
                                         cluster.preferredID,
