@@ -169,8 +169,8 @@ func camieSameNamePerformers(ctx context.Context, repository models.Repository, 
 
 // findCamieExplicitCharacterTarget honors an exact Character target selected in
 // the review UI. The target ID is accepted only when it still resolves to the
-// same canonical Character name, so a stale or manipulated target cannot turn
-// one Character prediction into an unrelated Character.
+// same Character identity, including disambiguation/Copyright context when the
+// prediction provides it.
 func findCamieExplicitCharacterTarget(ctx context.Context, repository models.Repository, prediction camietagger.Tag) (*models.Performer, error) {
 	prediction = normalizeCamiePrediction(prediction)
 	if prediction.Category != "character" || !prediction.TargetExists {
@@ -193,8 +193,23 @@ func findCamieExplicitCharacterTarget(ctx context.Context, repository models.Rep
 		return nil, nil
 	}
 
-	characterName, _ := camieCharacterIdentity(prediction)
+	characterName, disambiguation := camieCharacterIdentity(prediction)
 	if !strings.EqualFold(strings.TrimSpace(target.Name), strings.TrimSpace(characterName)) {
+		return nil, nil
+	}
+	if strings.TrimSpace(disambiguation) == "" {
+		return target, nil
+	}
+
+	copyrightContext, err := buildCamieCopyrightContext(ctx, repository, nil, disambiguation)
+	if err != nil {
+		return nil, err
+	}
+	matchesContext, err := camiePerformerMatchesCopyrightContext(ctx, repository, target, copyrightContext)
+	if err != nil {
+		return nil, err
+	}
+	if !matchesContext {
 		return nil, nil
 	}
 	return target, nil
