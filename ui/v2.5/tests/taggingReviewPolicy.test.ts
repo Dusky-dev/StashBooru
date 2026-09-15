@@ -2,13 +2,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  addPredictionSelection,
   ambiguousCharacterCandidates,
-  buildTaggingApplyPayload,
   filterBooruPredictionsForLocalPriority,
   mergeMetadataPredictions,
   possibleBareCharacterMatch,
   reuseCharacterCandidate,
   reusePossibleBareCharacter,
+  selectedPredictionCount,
+  togglePredictionSelection,
+  type PredictionSourceGroup,
   type TagPrediction,
 } from "../src/components/Tagging/taggingReviewPolicy.ts";
 
@@ -21,6 +24,15 @@ const prediction = (
   category,
   score: 1,
   ...overrides,
+});
+
+const sourceGroup = (
+  kind: string,
+  priority: number,
+  predictions: TagPrediction[]
+): PredictionSourceGroup => ({
+  predictions,
+  source: () => ({ kind, label: kind, priority }),
 });
 
 test("local identity metadata suppresses conflicting booru identities", () => {
@@ -68,7 +80,10 @@ test("matching exact native target merges provenance without replacing local dat
     }),
   ];
 
-  const merged = mergeMetadataPredictions(local, booru);
+  const merged = mergeMetadataPredictions([
+    sourceGroup("local", 0, local),
+    sourceGroup("booru", 10, booru),
+  ]);
   assert.equal(merged.length, 1);
   assert.equal(merged[0].name, "Lana");
   assert.equal(merged[0].score, 1);
@@ -95,7 +110,10 @@ test("same-name native targets remain distinct", () => {
     }),
   ];
 
-  const merged = mergeMetadataPredictions(local, booru);
+  const merged = mergeMetadataPredictions([
+    sourceGroup("local", 0, local),
+    sourceGroup("booru", 10, booru),
+  ]);
   assert.equal(merged.length, 2);
   assert.deepEqual(
     merged.map(({ targetPath }) => targetPath),
@@ -158,15 +176,21 @@ test("a disambiguated possible bare Character can be explicitly reused", () => {
   assert.equal(reused.targetExists, true);
 });
 
-test("Artist apply payload preserves add-vs-replace intent", () => {
-  const tags = [prediction("Artist A", "artist")];
+test("selection helpers add, toggle, and count exact prediction identities", () => {
+  const first = prediction("Lana", "character", {
+    targetPath: "/performers/12",
+    targetExists: true,
+  });
+  const second = prediction("Lana", "character", {
+    targetPath: "/performers/13",
+    targetExists: true,
+  });
 
-  assert.deepEqual(buildTaggingApplyPayload(tags, false), {
-    tags,
-    replaceArtist: false,
-  });
-  assert.deepEqual(buildTaggingApplyPayload(tags, true), {
-    tags,
-    replaceArtist: true,
-  });
+  let selected = addPredictionSelection(new Set<string>(), [first, second]);
+  assert.equal(selectedPredictionCount([first, second], selected), 2);
+
+  selected = togglePredictionSelection(selected, first);
+  assert.equal(selectedPredictionCount([first, second], selected), 1);
+  assert.equal(selectedPredictionCount([first], selected), 0);
+  assert.equal(selectedPredictionCount([second], selected), 1);
 });
