@@ -1,0 +1,28 @@
+name: Integrate develop into PR55
+on:
+  push:
+    branches:
+      - test/tagging-review-unit-tests
+    paths:
+      - .github/workflows/integrate-develop-pr55.yml
+permissions:
+  contents: write
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: test/tagging-review-unit-tests
+          fetch-depth: 0
+      - name: Merge current develop and self-clean
+        shell: bash
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin develop
+          git merge --no-edit origin/develop
+          git rm .github/workflows/integrate-develop-pr55.yml
+          git commit -m "Remove temporary PR55 integration workflow"
+          git push origin HEAD:test/tagging-review-unit-tests
