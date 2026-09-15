@@ -352,7 +352,7 @@ func (rs imageRoutes) CamieTagImagesV2(w http.ResponseWriter, r *http.Request) {
 	request.ImageIDs = append([]int(nil), request.ImageIDs...)
 	mgr := manager.GetInstance()
 	jobID := mgr.JobManager.Add(r.Context(), "Image tagging...", job.MakeJobExec(func(ctx context.Context, progress *job.Progress) error {
-		ids, err := resolveCamieBulkImageIDs(ctx, mgr, camieBulkRequest{ImageIDs: request.ImageIDs, All: request.All})
+		ids, err := resolveCamieBulkImageIDs(ctx, mgr, camieBulkSelection{ImageIDs: request.ImageIDs, All: request.All})
 		if err != nil {
 			return err
 		}
