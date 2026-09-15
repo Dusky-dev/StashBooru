@@ -159,21 +159,6 @@ func applySceneTaggingMetadata(ctx context.Context, sceneID int, predictions []c
 	}
 	repository := manager.GetInstance().Repository
 
-	var characters, artists, copyrights, metadataTags []camietagger.Tag
-	for _, rawPrediction := range predictions {
-		prediction := normalizeCamiePrediction(rawPrediction)
-		switch prediction.Category {
-		case "character":
-			characters = append(characters, prediction)
-		case "artist":
-			artists = append(artists, prediction)
-		case "copyright":
-			copyrights = append(copyrights, prediction)
-		default:
-			metadataTags = append(metadataTags, prediction)
-		}
-	}
-
 	err := repository.WithTxn(ctx, func(ctx context.Context) error {
 		currentScene, err := repository.Scene.Find(ctx, sceneID)
 		if err != nil {
@@ -183,81 +168,30 @@ func applySceneTaggingMetadata(ctx context.Context, sceneID int, predictions []c
 			return fmt.Errorf("video %d not found", sceneID)
 		}
 
-		performerIDs := make([]int, 0, len(characters))
-		for _, prediction := range characters {
-			entity, created, err := findOrCreateCamiePerformerPredictionWithCopyrightContext(ctx, repository, prediction, predictions)
-			if err != nil {
-				return fmt.Errorf("resolving character %q: %w", prediction.Name, err)
-			}
-			performerIDs = append(performerIDs, entity.ID)
-			response.Characters = append(response.Characters, camieAppliedEntity{
-				ID: entity.ID, Name: entity.Name, Category: prediction.Category,
-				Score: prediction.Score, Created: created,
-			})
-			if created {
-				response.CreatedCharacters++
-			}
+		resolved, err := resolveTaggingEntities(ctx, repository, predictions)
+		if err != nil {
+			return err
 		}
-
-		artistIDs := make([]int, 0, len(artists))
-		for _, prediction := range artists {
-			entity, created, err := findOrCreateCamieStudioPrediction(ctx, repository, prediction)
-			if err != nil {
-				return fmt.Errorf("resolving artist %q: %w", prediction.Name, err)
-			}
-			artistIDs = append(artistIDs, entity.ID)
-			response.Artists = append(response.Artists, camieAppliedEntity{
-				ID: entity.ID, Name: entity.Name, Category: prediction.Category,
-				Score: prediction.Score, Created: created,
-			})
-			if created {
-				response.CreatedArtists++
-			}
-		}
-
-		copyrightIDs := make([]int, 0, len(copyrights))
-		for _, prediction := range copyrights {
-			entity, created, err := findOrCreateNativeCamieCopyright(ctx, repository, prediction)
-			if err != nil {
-				return fmt.Errorf("resolving copyright %q: %w", prediction.Name, err)
-			}
-			copyrightIDs = append(copyrightIDs, entity.ID)
-			response.Copyrights = append(response.Copyrights, camieAppliedEntity{
-				ID: entity.ID, Name: entity.Name, Category: prediction.Category,
-				Score: prediction.Score, Created: created,
-			})
-			if created {
-				response.CreatedCopyrights++
-			}
-		}
-
-		tagIDs := make([]int, 0, len(metadataTags))
-		for _, prediction := range metadataTags {
-			entity, created, err := findOrCreateCamieTagPrediction(ctx, repository, prediction)
-			if err != nil {
-				return fmt.Errorf("resolving %s tag %q: %w", prediction.Category, prediction.Name, err)
-			}
-			tagIDs = append(tagIDs, entity.ID)
-			response.Tags = append(response.Tags, camieAppliedEntity{
-				ID: entity.ID, Name: entity.Name, Category: prediction.Category,
-				Score: prediction.Score, Created: created,
-			})
-			if created {
-				response.CreatedTags++
-			}
-		}
+		response.Characters = resolved.Characters
+		response.Artists = resolved.Artists
+		response.Copyrights = resolved.Copyrights
+		response.Tags = resolved.Tags
+		response.CreatedCharacters = resolved.CreatedCharacters
+		response.CreatedArtists = resolved.CreatedArtists
+		response.CreatedCopyrights = resolved.CreatedCopyrights
+		response.CreatedTags = resolved.CreatedTags
 
 		partial := models.NewScenePartial()
 		changed := false
-		if len(performerIDs) > 0 {
+		if len(resolved.CharacterIDs) > 0 {
 			partial.PerformerIDs = &models.UpdateIDs{
-				IDs: performerIDs, Mode: models.RelationshipUpdateModeAdd,
+				IDs: resolved.CharacterIDs, Mode: models.RelationshipUpdateModeAdd,
 			}
 			changed = true
 		}
-		if len(tagIDs) > 0 {
+		if len(resolved.TagIDs) > 0 {
 			partial.TagIDs = &models.UpdateIDs{
-				IDs: tagIDs, Mode: models.RelationshipUpdateModeAdd,
+				IDs: resolved.TagIDs, Mode: models.RelationshipUpdateModeAdd,
 			}
 			changed = true
 		}
@@ -267,24 +201,21 @@ func applySceneTaggingMetadata(ctx context.Context, sceneID int, predictions []c
 			}
 		}
 
-		if len(artistIDs) > 0 {
+		if len(resolved.ArtistIDs) > 0 {
 			if replaceArtists {
-				if err := repository.SceneArtist.SetSceneArtists(ctx, sceneID, artistIDs); err != nil {
+				if err := repository.SceneArtist.SetSceneArtists(ctx, sceneID, resolved.ArtistIDs); err != nil {
 					return err
 				}
-			} else if err := repository.SceneArtist.AddSceneArtists(ctx, sceneID, artistIDs); err != nil {
+			} else if err := repository.SceneArtist.AddSceneArtists(ctx, sceneID, resolved.ArtistIDs); err != nil {
 				return err
 			}
 		}
-		if len(copyrightIDs) > 0 {
-			if err := repository.Copyright.AddSceneCopyrights(ctx, sceneID, copyrightIDs); err != nil {
+		if len(resolved.CopyrightIDs) > 0 {
+			if err := repository.Copyright.AddSceneCopyrights(ctx, sceneID, resolved.CopyrightIDs); err != nil {
 				return err
 			}
 		}
-		if err := linkCamieCharacterCopyrights(ctx, repository, characters, performerIDs, copyrightIDs); err != nil {
-			return fmt.Errorf("linking Character Copyrights: %w", err)
-		}
-		return nil
+		return linkResolvedTaggingCharacterCopyrights(ctx, repository, resolved)
 	})
 
 	return response, err

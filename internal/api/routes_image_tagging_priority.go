@@ -6,46 +6,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/stashapp/stash/pkg/camietagger"
 	"github.com/stashapp/stash/pkg/models"
 )
-
-func camiePredictionIncludesFilenameSource(source string) bool {
-	for _, part := range strings.Split(strings.ToLower(strings.TrimSpace(source)), "+") {
-		if strings.TrimSpace(part) == "filename" {
-			return true
-		}
-	}
-	return false
-}
-
-// filterCamieFilenameAuthoritativeSelections mirrors mergeCamiePredictions'
-// filename-authority rule at apply time. The multi-source Image Tagging dialog
-// loads Local, booru, Camie, and EVA02 independently, so lower-priority
-// predictions can otherwise reach findOrCreate even when a selected Local
-// Character, Artist, or Copyright already owns that category.
-func filterCamieFilenameAuthoritativeSelections(predictions []camietagger.Tag) []camietagger.Tag {
-	authoritativeCategories := make(map[string]bool, 3)
-	for _, rawPrediction := range predictions {
-		prediction := normalizeCamiePrediction(rawPrediction)
-		if camieFilenameAuthoritativeCategory(prediction.Category) && camiePredictionIncludesFilenameSource(prediction.Source) {
-			authoritativeCategories[prediction.Category] = true
-		}
-	}
-	if len(authoritativeCategories) == 0 {
-		return predictions
-	}
-
-	filtered := make([]camietagger.Tag, 0, len(predictions))
-	for _, rawPrediction := range predictions {
-		prediction := normalizeCamiePrediction(rawPrediction)
-		if authoritativeCategories[prediction.Category] && !camiePredictionIncludesFilenameSource(prediction.Source) {
-			continue
-		}
-		filtered = append(filtered, prediction)
-	}
-	return filtered
-}
 
 // ImageKnowledgeTagsWithLocalPriorityV2 keeps the existing per-image Image
 // Tagging behavior, but enforces filename-authoritative identity categories
