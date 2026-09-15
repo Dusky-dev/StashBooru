@@ -6,6 +6,10 @@ import { useHistory } from "react-router-dom";
 import { Icon } from "src/components/Shared/Icon";
 import { ModalComponent } from "src/components/Shared/Modal";
 import { useToast } from "src/hooks/Toast";
+import {
+  TaggingChangePlan,
+  TaggingChangePlanModal,
+} from "src/components/Tagging/TaggingChangePlanModal";
 
 interface TargetCandidate {
   id: number;
@@ -346,6 +350,8 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
   const [error, setError] = useState<string>();
   const [pendingCharacterResolution, setPendingCharacterResolution] =
     useState<PendingCharacterResolution>();
+  const [changePlan, setChangePlan] = useState<TaggingChangePlan>();
+  const [changePlanTags, setChangePlanTags] = useState<TagPrediction[]>([]);
 
   const predictions = useMemo(
     () => mergeMetadataPredictions(localPredictions, booruPredictions),
@@ -483,6 +489,32 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
     [Toast, onApplied, onHide, replaceArtists, sceneId]
   );
 
+  const previewTags = useCallback(
+    async (tags: TagPrediction[]) => {
+      setApplying(true);
+      setError(undefined);
+      try {
+        const response = await fetch(
+          `scene/${sceneId}/knowledge-tags?preview=1`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tags, replaceArtist: replaceArtists }),
+          }
+        );
+        const plan = await readResponse<TaggingChangePlan>(response);
+        setChangePlan(plan);
+        setChangePlanTags(tags);
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : String(cause));
+        Toast.error(cause);
+      } finally {
+        setApplying(false);
+      }
+    },
+    [Toast, replaceArtists, sceneId]
+  );
+
   const continueCharacterResolution = useCallback(
     (tags: TagPrediction[], startIndex: number) => {
       const nextIndex = tags.findIndex(
@@ -498,12 +530,12 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
           setError("No metadata items remain to apply.");
           return;
         }
-        void submitTags(tags);
+        void previewTags(tags);
         return;
       }
       setPendingCharacterResolution({ tags, index: nextIndex });
     },
-    [submitTags]
+    [previewTags]
   );
 
   const resolvePendingCharacter = useCallback(
@@ -570,7 +602,7 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
   return (
     <>
       <Modal
-        show={!pendingCharacterResolution}
+        show={!pendingCharacterResolution && !changePlan}
         onHide={onHide}
         size="lg"
         centered
@@ -778,6 +810,24 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
           </Button>
         </Modal.Footer>
       </Modal>
+
+      <TaggingChangePlanModal
+        show={!!changePlan}
+        title="Review Video Tagging changes"
+        plan={changePlan}
+        busy={applying}
+        onBack={() => {
+          setChangePlan(undefined);
+          setChangePlanTags([]);
+        }}
+        onHide={onHide}
+        onApply={() => {
+          const tags = changePlanTags;
+          setChangePlan(undefined);
+          setChangePlanTags([]);
+          void submitTags(tags);
+        }}
+      />
 
       <ModalComponent
         show={

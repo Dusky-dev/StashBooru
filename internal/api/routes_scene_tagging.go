@@ -123,7 +123,8 @@ func (rs sceneRoutes) SceneKnowledgeTags(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	selected, err := validateCamiePredictionsV2(request.Tags)
+	prioritized, suppressed := partitionCamieFilenameAuthoritativeSelections(request.Tags)
+	selected, err := validateCamiePredictionsV2(prioritized)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -133,7 +134,17 @@ func (rs sceneRoutes) SceneKnowledgeTags(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	response, err := applySceneTaggingMetadata(r.Context(), scene.ID, selected, request.ReplaceArtist)
+	plan := buildTaggingChangePlanWithSuppressed(selected, suppressed, request.ReplaceArtist)
+	if rawPreview := strings.TrimSpace(r.URL.Query().Get("preview")); rawPreview == "1" || strings.EqualFold(rawPreview, "true") {
+		writeVisualSimilarityJSON(w, plan)
+		return
+	}
+	if !plan.CanApply {
+		http.Error(w, "metadata plan contains unresolved review items", http.StatusConflict)
+		return
+	}
+
+	response, err := applySceneTaggingMetadata(r.Context(), scene.ID, taggingChangePlanPredictions(plan), request.ReplaceArtist)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("applying Video Tagging metadata to video %d: %v", scene.ID, err), http.StatusInternalServerError)
 		return

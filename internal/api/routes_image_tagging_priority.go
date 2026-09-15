@@ -19,12 +19,11 @@ func camiePredictionIncludesFilenameSource(source string) bool {
 	return false
 }
 
-// filterCamieFilenameAuthoritativeSelections mirrors mergeCamiePredictions'
-// filename-authority rule at apply time. The multi-source Image Tagging dialog
-// loads Local, booru, Camie, and EVA02 independently, so lower-priority
-// predictions can otherwise reach findOrCreate even when a selected Local
-// Character, Artist, or Copyright already owns that category.
-func filterCamieFilenameAuthoritativeSelections(predictions []camietagger.Tag) []camietagger.Tag {
+// partitionCamieFilenameAuthoritativeSelections mirrors mergeCamiePredictions'
+// filename-authority rule at apply time while retaining suppressed predictions
+// for dry-run review. Lower-priority identity can therefore be explained in the
+// plan without ever being handed to the mutation path.
+func partitionCamieFilenameAuthoritativeSelections(predictions []camietagger.Tag) ([]camietagger.Tag, []camietagger.Tag) {
 	authoritativeCategories := make(map[string]bool, 3)
 	for _, rawPrediction := range predictions {
 		prediction := normalizeCamiePrediction(rawPrediction)
@@ -33,23 +32,30 @@ func filterCamieFilenameAuthoritativeSelections(predictions []camietagger.Tag) [
 		}
 	}
 	if len(authoritativeCategories) == 0 {
-		return predictions
+		return predictions, nil
 	}
 
-	filtered := make([]camietagger.Tag, 0, len(predictions))
+	kept := make([]camietagger.Tag, 0, len(predictions))
+	suppressed := make([]camietagger.Tag, 0)
 	for _, rawPrediction := range predictions {
 		prediction := normalizeCamiePrediction(rawPrediction)
 		if authoritativeCategories[prediction.Category] && !camiePredictionIncludesFilenameSource(prediction.Source) {
+			suppressed = append(suppressed, prediction)
 			continue
 		}
-		filtered = append(filtered, prediction)
+		kept = append(kept, prediction)
 	}
-	return filtered
+	return kept, suppressed
+}
+
+func filterCamieFilenameAuthoritativeSelections(predictions []camietagger.Tag) []camietagger.Tag {
+	kept, _ := partitionCamieFilenameAuthoritativeSelections(predictions)
+	return kept
 }
 
 // ImageKnowledgeTagsWithLocalPriorityV2 keeps the existing per-image Image
 // Tagging behavior, but enforces filename-authoritative identity categories
-// before applyCamieMetadataV2 can resolve or create native entities.
+// before preview/apply. Both preview and apply consume the same generated plan.
 func (rs imageRoutes) ImageKnowledgeTagsWithLocalPriorityV2(w http.ResponseWriter, r *http.Request) {
 	rawApply := strings.TrimSpace(r.URL.Query().Get("apply"))
 	if rawApply != "1" && !strings.EqualFold(rawApply, "true") {
@@ -70,7 +76,7 @@ func (rs imageRoutes) ImageKnowledgeTagsWithLocalPriorityV2(w http.ResponseWrite
 		return
 	}
 
-	prioritized := filterCamieFilenameAuthoritativeSelections(request.Tags)
+	prioritized, suppressed := partitionCamieFilenameAuthoritativeSelections(request.Tags)
 	selected, err := validateCamiePredictionsV2(prioritized)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -81,7 +87,17 @@ func (rs imageRoutes) ImageKnowledgeTagsWithLocalPriorityV2(w http.ResponseWrite
 		return
 	}
 
-	response, err := applyCamieMetadataV2(r.Context(), image.ID, selected, request.ReplaceArtist)
+	plan := buildTaggingChangePlanWithSuppressed(selected, suppressed, request.ReplaceArtist)
+	if rawPreview := strings.TrimSpace(r.URL.Query().Get("preview")); rawPreview == "1" || strings.EqualFold(rawPreview, "true") {
+		writeVisualSimilarityJSON(w, plan)
+		return
+	}
+	if !plan.CanApply {
+		http.Error(w, "metadata plan contains unresolved review items", http.StatusConflict)
+		return
+	}
+
+	response, err := applyCamieMetadataV2(r.Context(), image.ID, taggingChangePlanPredictions(plan), request.ReplaceArtist)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("applying Image Tagging metadata to image %d: %v", image.ID, err), http.StatusInternalServerError)
 		return
