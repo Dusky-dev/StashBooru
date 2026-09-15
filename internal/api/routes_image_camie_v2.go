@@ -117,7 +117,11 @@ func (rs imageRoutes) ImageKnowledgeTagsV2(w http.ResponseWriter, r *http.Reques
 		http.Error(w, fmt.Sprintf("tagging image %d with %s Camie worker: %v", image.ID, backend, err), http.StatusBadGateway)
 		return
 	}
-	predictions = enrichNativeCamiePredictionTargets(r.Context(), predictions)
+	predictions, err = enrichNativeCamiePredictionTargets(r.Context(), predictions)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("enriching Image Tagging targets: %v", err), http.StatusInternalServerError)
+		return
+	}
 
 	writeVisualSimilarityJSON(w, camieTagsResponse{
 		Backend:   backend,
@@ -291,7 +295,7 @@ func (rs imageRoutes) CamieTagImagesV2(w http.ResponseWriter, r *http.Request) {
 	request.ImageIDs = append([]int(nil), request.ImageIDs...)
 	mgr := manager.GetInstance()
 	jobID := mgr.JobManager.Add(r.Context(), "Image tagging...", job.MakeJobExec(func(ctx context.Context, progress *job.Progress) error {
-		ids, err := resolveCamieBulkImageIDs(ctx, mgr, camieBulkRequest{ImageIDs: request.ImageIDs, All: request.All})
+		ids, err := resolveCamieBulkImageIDs(ctx, mgr, camieBulkSelection{ImageIDs: request.ImageIDs, All: request.All})
 		if err != nil {
 			return err
 		}
