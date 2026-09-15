@@ -57,6 +57,7 @@ func (t *tagger) tagPerformers(ctx context.Context, performerReader models.Perfo
 		return err
 	}
 
+	others = filterAmbiguousPerformerMatches(others)
 	for _, p := range others {
 		added, err := addFunc(t.ID, p.ID)
 
