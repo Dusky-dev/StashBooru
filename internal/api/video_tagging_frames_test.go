@@ -1,6 +1,7 @@
 package api
 
 import (
+	"math"
 	"reflect"
 	"testing"
 
@@ -51,7 +52,7 @@ func TestAggregateVideoFramePredictionsDeduplicatesPerFrameAndTracksConsensus(t 
 	if got[0].Source != "frame-analysis:2/2" {
 		t.Fatalf("unexpected provenance: %q", got[0].Source)
 	}
-	if got[0].Score != 0.85 {
+	if math.Abs(got[0].Score-0.85) > 1e-9 {
 		t.Fatalf("unexpected consensus score: %v", got[0].Score)
 	}
 }
@@ -66,7 +67,7 @@ func TestAggregateVideoFramePredictionsPenalizesSingleFrameHits(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("expected one aggregate, got %#v", got)
 	}
-	if got[0].Source != "frame-analysis:1/2" || got[0].Score != 0.45 {
+	if got[0].Source != "frame-analysis:1/2" || math.Abs(got[0].Score-0.45) > 1e-9 {
 		t.Fatalf("unexpected single-frame aggregate: %#v", got[0])
 	}
 }
