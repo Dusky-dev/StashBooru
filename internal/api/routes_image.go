@@ -47,7 +47,7 @@ func (rs imageRoutes) Routes() chi.Router {
 		r.Post("/camie/tag", rs.CamieTagImagesV2)
 	})
 
-	r.Get("/metadata-health", rs.MetadataHealth)
+	r.Get("/metadata-health", rs.MetadataHealthComplete)
 
 	r.Route("/{imageId}", func(r chi.Router) {
 		r.Use(rs.ImageCtx)
@@ -119,7 +119,6 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 			return
 		}
 
-		// write the generated thumbnail to disk if enabled
 		if manager.GetInstance().Config.IsWriteImageThumbnails() {
 			logger.Debugf("writing thumbnail to disk: %s", img.Path)
 			if err := fsutil.WriteFile(filepath, data); err == nil {
@@ -135,14 +134,11 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 func (rs imageRoutes) Preview(w http.ResponseWriter, r *http.Request) {
 	img := r.Context().Value(imageKey).(*models.Image)
 	filepath := manager.GetInstance().Paths.Generated.GetClipPreviewPath(img.Checksum, models.DefaultGthumbWidth)
-
-	// don't check if the preview exists - we'll just return a 404 if it doesn't
 	utils.ServeStaticFile(w, r, filepath)
 }
 
 func (rs imageRoutes) Image(w http.ResponseWriter, r *http.Request) {
 	i := r.Context().Value(imageKey).(*models.Image)
-
 	const useDefault = false
 	rs.serveImage(w, r, i, useDefault)
 }
@@ -159,7 +155,6 @@ func (rs imageRoutes) serveImage(w http.ResponseWriter, r *http.Request, i *mode
 			return
 		}
 
-		// only log in debug since it can get noisy
 		logger.Debugf("Error serving %s: %v", i.DisplayName(), err)
 	}
 
@@ -168,7 +163,6 @@ func (rs imageRoutes) serveImage(w http.ResponseWriter, r *http.Request, i *mode
 		return
 	}
 
-	// fallback to default image
 	image := static.ReadAll(static.DefaultImageImage)
 	utils.ServeImage(w, r, image)
 }
@@ -195,11 +189,9 @@ func (rs imageRoutes) ImageCtx(next http.Handler) http.Handler {
 					if !errors.Is(err, context.Canceled) {
 						logger.Errorf("error loading primary file for image %d: %v", imageID, err)
 					}
-					// set image to nil so that it doesn't try to use the primary file
 					image = nil
 				}
 			}
-
 			return nil
 		})
 		if image == nil {
