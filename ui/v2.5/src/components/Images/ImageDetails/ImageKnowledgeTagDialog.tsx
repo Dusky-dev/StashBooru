@@ -22,9 +22,16 @@ interface TagPrediction {
   targetPath?: string;
   targetExists?: boolean;
   targetCandidates?: TargetCandidate[];
+  libraryVotes?: number;
+  libraryMeanSimilarity?: number;
 }
 
-type MetadataSourceKind = "local" | "booru" | "camie" | "eva02";
+type MetadataSourceKind =
+  | "local"
+  | "booru"
+  | "camie"
+  | "eva02"
+  | "library";
 
 interface MetadataSource {
   kind: MetadataSourceKind;
@@ -52,6 +59,22 @@ interface BooruMetadataResponse {
   md5: string;
   md5Source: "filename" | "file";
   tags: TagPrediction[];
+}
+
+interface LibrarySimilarityConsensus {
+  prediction: TagPrediction;
+  votes: number;
+  meanSimilarity: number;
+}
+
+interface LibrarySimilarityResponse {
+  source: "library-similarity";
+  mediaType: "image" | "video";
+  referenceID: number;
+  neighbors: number;
+  minVotes: number;
+  tags: TagPrediction[];
+  consensus: LibrarySimilarityConsensus[];
 }
 
 interface CamieConfig {
@@ -98,6 +121,7 @@ const SOURCE_PRIORITY: Record<MetadataSourceKind, number> = {
   booru: 10,
   camie: 20,
   eva02: 30,
+  library: 40,
 };
 const CHARACTER_IDENTITY_PATTERN = /^(.+?)\s*\(([^()]*)\)\s*$/;
 const POSSIBLE_CHARACTER_TARGET_PATTERN = /^\/performers\/\d+\/?$/;
@@ -166,6 +190,20 @@ function predictionSource(
         detail: "WD EVA02 fallback prediction",
         priority: SOURCE_PRIORITY.eva02,
       };
+    case "library": {
+      const votes = prediction.libraryVotes;
+      const meanSimilarity = prediction.libraryMeanSimilarity;
+      const detail =
+        votes !== undefined && meanSimilarity !== undefined
+          ? `Library consensus: ${votes} neighbors, ${(meanSimilarity * 100).toFixed(1)}% mean similarity`
+          : "Library visual-similarity consensus";
+      return {
+        kind,
+        label: "Library",
+        detail,
+        priority: SOURCE_PRIORITY.library,
+      };
+    }
   }
 }
 
@@ -187,7 +225,8 @@ function mergeMetadataPredictions(
   localPredictions: TagPrediction[],
   booruPredictions: TagPrediction[],
   camiePredictions: TagPrediction[],
-  eva02Predictions: TagPrediction[]
+  eva02Predictions: TagPrediction[],
+  libraryPredictions: TagPrediction[]
 ): MetadataPrediction[] {
   const merged: MetadataPrediction[] = [];
   const indexByKey = new Map<string, number>();
@@ -247,6 +286,7 @@ function mergeMetadataPredictions(
   for (const prediction of booruPredictions) add(prediction, "booru");
   for (const prediction of camiePredictions) add(prediction, "camie");
   for (const prediction of eva02Predictions) add(prediction, "eva02");
+  for (const prediction of libraryPredictions) add(prediction, "library");
   return merged;
 }
 
@@ -284,6 +324,8 @@ function sourceBadgeVariant(source: MetadataSourceKind) {
       return "warning";
     case "eva02":
       return "danger";
+    case "library":
+      return "secondary";
   }
 }
 
@@ -374,10 +416,12 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   const [booruPredictions, setBooruPredictions] = useState<TagPrediction[]>([]);
   const [camiePredictions, setCamiePredictions] = useState<TagPrediction[]>([]);
   const [eva02Predictions, setEva02Predictions] = useState<TagPrediction[]>([]);
+  const [libraryPredictions, setLibraryPredictions] = useState<TagPrediction[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [camieBackend, setCamieBackend] = useState<string>();
   const [eva02Backend, setEva02Backend] = useState<string>();
   const [booruMetadata, setBooruMetadata] = useState<BooruMetadataResponse>();
+  const [libraryMetadata, setLibraryMetadata] = useState<LibrarySimilarityResponse>();
   const [loading, setLoading] = useState(true);
   const [loadingSource, setLoadingSource] = useState<MetadataSourceKind>();
   const [applying, setApplying] = useState(false);
@@ -392,9 +436,16 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         localPredictions,
         booruPredictions,
         camiePredictions,
-        eva02Predictions
+        eva02Predictions,
+        libraryPredictions
       ),
-    [booruPredictions, camiePredictions, eva02Predictions, localPredictions]
+    [
+      booruPredictions,
+      camiePredictions,
+      eva02Predictions,
+      libraryPredictions,
+      localPredictions,
+    ]
   );
 
   const addSelected = useCallback((items: TagPrediction[]) => {
@@ -420,6 +471,29 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
       setLoadingSource(undefined);
     }
   }, [addSelected, imageId]);
+
+  const loadLibrarySimilarity = useCallback(async () => {
+    setLoadingSource("library");
+    setError(undefined);
+    try {
+      const response = await fetch(
+        `image/${imageId}/library-similarity-metadata`
+      );
+      const result = await readResponse<LibrarySimilarityResponse>(response);
+      const suggestions = result.consensus.map((entry) => ({
+        ...entry.prediction,
+        libraryVotes: entry.votes,
+        libraryMeanSimilarity: entry.meanSimilarity,
+      }));
+      setLibraryMetadata(result);
+      setLibraryPredictions(suggestions);
+      // Library similarity is review-only. Never auto-select its suggestions.
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setLoadingSource(undefined);
+    }
+  }, [imageId]);
 
   const loadModelPredictions = useCallback(
     async (source: "camie" | "eva02") => {
@@ -645,7 +719,14 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   const applySelected = useCallback(() => {
     const tags = predictions
       .filter((prediction) => selected.has(predictionKey(prediction)))
-      .map(({ provenance: _provenance, ...prediction }) => prediction);
+      .map(
+        ({
+          provenance: _provenance,
+          libraryVotes: _libraryVotes,
+          libraryMeanSimilarity: _libraryMeanSimilarity,
+          ...prediction
+        }) => prediction
+      );
     if (!tags.length) {
       setError("Select at least one metadata item to apply.");
       return;
@@ -735,12 +816,22 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
               {loadingSource === "camie" ? "Analyzing…" : "Analyze with Camie"}
             </Button>
             <Button
-              className="mb-2"
+              className="mr-2 mb-2"
               variant="secondary"
               disabled={busy || applying}
               onClick={() => void loadModelPredictions("eva02")}
             >
               {loadingSource === "eva02" ? "Analyzing…" : "Analyze with EVA02"}
+            </Button>
+            <Button
+              className="mb-2"
+              variant="secondary"
+              disabled={busy || applying}
+              onClick={() => void loadLibrarySimilarity()}
+            >
+              {loadingSource === "library"
+                ? "Comparing…"
+                : "Suggest from library"}
             </Button>
           </div>
 
@@ -759,8 +850,17 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
               </Badge>
             ) : null}
             {eva02Backend ? (
-              <Badge className="mb-1" variant="danger">
+              <Badge className="mr-2 mb-1" variant="danger">
                 EVA02 {eva02Backend}
+              </Badge>
+            ) : null}
+            {libraryMetadata ? (
+              <Badge
+                className="mb-1"
+                variant="secondary"
+                title={`Consensus requires ${libraryMetadata.minVotes} matching neighbors`}
+              >
+                Library {libraryMetadata.neighbors} neighbors
               </Badge>
             ) : null}
           </div>
@@ -790,13 +890,15 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
 
           <div className="mb-3 text-muted">
             Sources are merged in priority order: Local → Danbooru → Camie →
-            EVA02. Opening this dialog loads Local metadata only; every network
-            or model source is explicit. Camie and EVA02 use independent
-            thresholds; EVA02 defaults to 0.35. When the same metadata item is
-            predicted by multiple sources, the earlier source keeps its value
-            and score while later sources are shown as additional provenance.
-            EVA02 is the fallback source. Multiple selected Artists can be
-            attached to the same image.
+            EVA02 → Library. Opening this dialog loads Local metadata only;
+            every network, model, or similarity source is explicit. Camie and
+            EVA02 use independent thresholds; EVA02 defaults to 0.35. Library
+            suggestions require consensus from visually similar indexed images
+            and start unselected because they are review-only. When the same
+            metadata item is predicted by multiple sources, the earlier source
+            keeps its value and score while later sources are shown as
+            additional provenance. Multiple selected Artists can be attached to
+            the same image.
           </div>
 
           <Form.Check
@@ -816,8 +918,8 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
             </div>
           ) : predictions.length === 0 && !error ? (
             <div className="text-muted">
-              No Local metadata was found. Fetch Danbooru or run Camie/EVA02
-              explicitly to add predictions.
+              No Local metadata was found. Fetch Danbooru, run Camie/EVA02, or
+              request Library suggestions explicitly to add predictions.
             </div>
           ) : (
             <>
