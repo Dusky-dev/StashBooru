@@ -114,6 +114,11 @@ func (rs sceneRoutes) SceneBooruMetadata(w http.ResponseWriter, r *http.Request)
 }
 
 func (rs sceneRoutes) SceneKnowledgeTags(w http.ResponseWriter, r *http.Request) {
+	if rawBatch := strings.TrimSpace(r.URL.Query().Get("batch")); rawBatch == "1" || strings.EqualFold(rawBatch, "true") {
+		handleSceneTaggingBatch(w, r)
+		return
+	}
+
 	scene := r.Context().Value(sceneKey).(*models.Scene)
 	var request camieApplyRequest
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1024*1024))
