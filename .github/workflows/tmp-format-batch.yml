@@ -23,11 +23,10 @@ jobs:
           cache-dependency-path: ui/v2.5/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
         working-directory: ui/v2.5
-      - name: Format and emit
+      - name: Format
         working-directory: ui/v2.5
-        run: |
-          pnpm exec biome format --write src/components/Scenes/BatchVideoTaggingPatch.tsx
-          echo 'FORMATTED_FILE_BEGIN'
-          base64 -w0 src/components/Scenes/BatchVideoTaggingPatch.tsx
-          echo
-          echo 'FORMATTED_FILE_END'
+        run: pnpm exec biome format --write src/components/Scenes/BatchVideoTaggingPatch.tsx
+      - uses: actions/upload-artifact@v4
+        with:
+          name: formatted-batch-ui
+          path: ui/v2.5/src/components/Scenes/BatchVideoTaggingPatch.tsx
