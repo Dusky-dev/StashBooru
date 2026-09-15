@@ -21,10 +21,10 @@ jobs:
         run: |
           python3 <<'PY'
           from pathlib import Path
-          from textwrap import dedent
+          from textwrap import dedent, indent
 
-          def d(value):
-              return dedent(value).lstrip("\n")
+          def d(value, spaces=0):
+              return indent(dedent(value).lstrip("\n"), " " * spaces)
 
           def replace(path, old, new):
               p = Path(path)
@@ -82,27 +82,27 @@ jobs:
           replace(
               ui,
               d("""
-                const provider = prediction.source?.startsWith("booru:")
-                  ? prediction.source.slice("booru:".length)
-                  : undefined;
-              """),
+              const provider = prediction.source?.startsWith("booru:")
+                ? prediction.source.slice("booru:".length)
+                : undefined;
+              """, 2),
               d("""
-                if (kind === "frames") {
-                  const consensus = prediction.source?.match(/^frame-analysis:(\\d+)\\/(\\d+)$/);
-                  return {
-                    kind,
-                    label: "Frames",
-                    detail: consensus
-                      ? `Frame analysis: ${consensus[1]}/${consensus[2]} sampled frames`
-                      : "Frame analysis",
-                    priority: SOURCE_PRIORITY.frames,
-                  };
-                }
+              if (kind === "frames") {
+                const consensus = prediction.source?.match(/^frame-analysis:(\\d+)\\/(\\d+)$/);
+                return {
+                  kind,
+                  label: "Frames",
+                  detail: consensus
+                    ? `Frame analysis: ${consensus[1]}/${consensus[2]} sampled frames`
+                    : "Frame analysis",
+                  priority: SOURCE_PRIORITY.frames,
+                };
+              }
 
-                const provider = prediction.source?.startsWith("booru:")
-                  ? prediction.source.slice("booru:".length)
-                  : undefined;
-              """),
+              const provider = prediction.source?.startsWith("booru:")
+                ? prediction.source.slice("booru:".length)
+                : undefined;
+              """, 2),
           )
           replace(
               ui,
@@ -153,44 +153,44 @@ jobs:
           replace(
               ui,
               d("""
-                const predictions = useMemo(
-                  () => mergeMetadataPredictions(localPredictions, booruPredictions),
-                  [booruPredictions, localPredictions]
-                );
-              """),
+              const predictions = useMemo(
+                () => mergeMetadataPredictions(localPredictions, booruPredictions),
+                [booruPredictions, localPredictions]
+              );
+              """, 2),
               d("""
-                const predictions = useMemo(
-                  () =>
-                    mergeMetadataPredictions(
-                      localPredictions,
-                      booruPredictions,
-                      framePredictions
-                    ),
-                  [booruPredictions, framePredictions, localPredictions]
-                );
-              """),
+              const predictions = useMemo(
+                () =>
+                  mergeMetadataPredictions(
+                    localPredictions,
+                    booruPredictions,
+                    framePredictions
+                  ),
+                [booruPredictions, framePredictions, localPredictions]
+              );
+              """, 2),
           )
           replace(
               ui,
               "  const grouped = useMemo(() => {",
               d("""
-                const loadFrameMetadata = useCallback(async () => {
-                  setLoadingFrames(true);
-                  setError(undefined);
-                  try {
-                    const response = await fetch(`scene/${sceneId}/frame-metadata`);
-                    const result = await readResponse<FrameMetadataResponse>(response);
-                    setFrameMetadata(result);
-                    setFramePredictions(result.tags);
-                  } catch (cause) {
-                    setError(cause instanceof Error ? cause.message : String(cause));
-                  } finally {
-                    setLoadingFrames(false);
-                  }
-                }, [sceneId]);
+              const loadFrameMetadata = useCallback(async () => {
+                setLoadingFrames(true);
+                setError(undefined);
+                try {
+                  const response = await fetch(`scene/${sceneId}/frame-metadata`);
+                  const result = await readResponse<FrameMetadataResponse>(response);
+                  setFrameMetadata(result);
+                  setFramePredictions(result.tags);
+                } catch (cause) {
+                  setError(cause instanceof Error ? cause.message : String(cause));
+                } finally {
+                  setLoadingFrames(false);
+                }
+              }, [sceneId]);
 
-                const grouped = useMemo(() => {
-              """),
+              const grouped = useMemo(() => {
+              """, 2),
           )
           replace(
               ui,
@@ -200,62 +200,62 @@ jobs:
           replace(
               ui,
               d("""
-                    {loadingBooru ? "Loading booru…" : "Load booru metadata"}
-                  </Button>
-                  <span className="ml-3 text-muted">
-              """),
+              {loadingBooru ? "Loading booru…" : "Load booru metadata"}
+            </Button>
+            <span className="ml-3 text-muted">
+              """, 14),
               d("""
-                    {loadingBooru ? "Loading booru…" : "Load booru metadata"}
-                  </Button>
-                  <Button
-                    className="ml-2"
-                    variant="secondary"
-                    disabled={loading || loadingBooru || loadingFrames || applying}
-                    onClick={() => void loadFrameMetadata()}
-                  >
-                    {loadingFrames ? "Analyzing frames…" : "Analyze frames"}
-                  </Button>
-                  <span className="ml-3 text-muted">
-              """),
+              {loadingBooru ? "Loading booru…" : "Load booru metadata"}
+            </Button>
+            <Button
+              className="ml-2"
+              variant="secondary"
+              disabled={loading || loadingBooru || loadingFrames || applying}
+              onClick={() => void loadFrameMetadata()}
+            >
+              {loadingFrames ? "Analyzing frames…" : "Analyze frames"}
+            </Button>
+            <span className="ml-3 text-muted">
+              """, 14),
           )
           replace(
               ui,
               d("""
-                    Local filename metadata loads automatically. Camie and EVA02 image
-                    inference are not run for Videos.
-              """),
+              Local filename metadata loads automatically. Camie and EVA02 image
+              inference are not run for Videos.
+              """, 14),
               d("""
-                    Local filename metadata loads automatically. Frame inference runs
-                    only when requested.
-              """),
+              Local filename metadata loads automatically. Frame inference runs
+              only when requested.
+              """, 14),
           )
           replace(
               ui,
               '          <Form.Check\n            className="mb-3"',
               d("""
-                        {frameMetadata ? (
-                          <div className="alert alert-warning py-2">
-                            Analyzed {frameMetadata.sampleTimes.length} representative frame
-                            {frameMetadata.sampleTimes.length === 1 ? "" : "s"}. Frame
-                            suggestions start unselected and cannot override Local filename
-                            identity.
-                          </div>
-                        ) : null}
+              {frameMetadata ? (
+                <div className="alert alert-warning py-2">
+                  Analyzed {frameMetadata.sampleTimes.length} representative frame
+                  {frameMetadata.sampleTimes.length === 1 ? "" : "s"}. Frame
+                  suggestions start unselected and cannot override Local filename
+                  identity.
+                </div>
+              ) : null}
 
-                        <Form.Check
-                          className="mb-3"
-              """).rstrip("\n"),
+              <Form.Check
+                className="mb-3"
+              """, 10).rstrip("\n"),
           )
           replace(
               ui,
               d("""
-                            No local metadata was found. You can still try an exact booru
-                            lookup.
-              """),
+              No local metadata was found. You can still try an exact booru
+              lookup.
+              """, 14),
               d("""
-                            No local metadata was found. You can still try an exact booru
-                            lookup or explicitly analyze representative frames.
-              """),
+              No local metadata was found. You can still try an exact booru
+              lookup or explicitly analyze representative frames.
+              """, 14),
           )
           replace(
               ui,
