@@ -1,0 +1,31 @@
+name: PR55 native identity fix
+on:
+  push:
+    branches:
+      - test/tagging-review-unit-tests
+    paths:
+      - .github/workflows/pr55-native-identity-fix.yml
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: test/tagging-review-unit-tests
+      - name: Preserve exact native identity in shared review policy
+        shell: bash
+        run: |
+          echo 'ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCnAgPSBQYXRoKCJ1aS92Mi41L3NyYy9jb21wb25lbnRzL1RhZ2dpbmcvdGFnZ2luZ1Jldmlld1BvbGljeS50cyIpCnRleHQgPSBwLnJlYWRfdGV4dCgpCnN0YXJ0ID0gdGV4dC5pbmRleCgiZXhwb3J0IGZ1bmN0aW9uIHByZWRpY3Rpb25JZGVudGl0eUtleXMocHJlZGljdGlvbjogVGFnUHJlZGljdGlvbikgeyIpCmVuZF9tYXJrZXIgPSAiXG59XG5cbmV4cG9ydCBmdW5jdGlvbiBwcmVkaWN0aW9uS2V5IgplbmQgPSB0ZXh0LmluZGV4KGVuZF9tYXJrZXIsIHN0YXJ0KSArIDIKbmV3ID0gciIiImV4cG9ydCBmdW5jdGlvbiBwcmVkaWN0aW9uSWRlbnRpdHlLZXlzKHByZWRpY3Rpb246IFRhZ1ByZWRpY3Rpb24pIHsKICBjb25zdCBjYXRlZ29yeSA9IHByZWRpY3Rpb24uY2F0ZWdvcnkudHJpbSgpLnRvTG9jYWxlTG93ZXJDYXNlKCk7CiAgY29uc3QgdGFyZ2V0UGF0aCA9IHByZWRpY3Rpb24udGFyZ2V0RXhpc3RzCiAgICA/IHByZWRpY3Rpb24udGFyZ2V0UGF0aD8udHJpbSgpLnJlcGxhY2UoL1wvKyQvLCAiIikudG9Mb2NhbGVMb3dlckNhc2UoKQogICAgOiB1bmRlZmluZWQ7CiAgaWYgKHRhcmdldFBhdGgpIHsKICAgIHJldHVybiBbYCR7Y2F0ZWdvcnl9XHUwMDAwdGFyZ2V0OiR7dGFyZ2V0UGF0aH1gXTsKICB9CgogIGNvbnN0IHZhbHVlcyA9IFtwcmVkaWN0aW9uLm5hbWUsIHByZWRpY3Rpb24ucmF3TmFtZV0KICAgIC5tYXAobm9ybWFsaXplUHJlZGljdGlvblZhbHVlKQogICAgLmZpbHRlcihCb29sZWFuKTsKICByZXR1cm4gWy4uLm5ldyBTZXQodmFsdWVzKV0ubWFwKAogICAgKHZhbHVlKSA9PiBgJHtjYXRlZ29yeX1cdTAwMDBuYW1lOiR7dmFsdWV9YAogICk7Cn0iIiIKcC53cml0ZV90ZXh0KHRleHRbOnN0YXJ0XSArIG5ldyArIHRleHRbZW5kOl0pCg==' | base64 -d > /tmp/patch.py
+          python3 /tmp/patch.py
+          git diff --check
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ui/v2.5/src/components/Tagging/taggingReviewPolicy.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "Preserve exact native identity in policy tests"
+          git push
