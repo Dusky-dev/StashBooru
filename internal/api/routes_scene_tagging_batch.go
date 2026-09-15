@@ -14,7 +14,6 @@ import (
 	"github.com/stashapp/stash/internal/manager"
 	"github.com/stashapp/stash/pkg/camietagger"
 	"github.com/stashapp/stash/pkg/job"
-	"github.com/stashapp/stash/pkg/logger"
 	"github.com/stashapp/stash/pkg/txn"
 )
 
@@ -36,13 +35,13 @@ type sceneTaggingBatchRequest struct {
 }
 
 type sceneTaggingBatchSceneResult struct {
-	SceneID      int                       `json:"sceneID"`
-	Label        string                    `json:"label"`
-	AutoApply    []camietagger.Tag         `json:"autoApply"`
-	NeedsReview  []sceneTaggingReviewItem  `json:"needsReview"`
+	SceneID      int                        `json:"sceneID"`
+	Label        string                     `json:"label"`
+	AutoApply    []camietagger.Tag          `json:"autoApply"`
+	NeedsReview  []sceneTaggingReviewItem   `json:"needsReview"`
 	Applied      *sceneTaggingApplyResponse `json:"applied,omitempty"`
-	Error        string                    `json:"error,omitempty"`
-	BooruMatched bool                      `json:"booruMatched"`
+	Error        string                     `json:"error,omitempty"`
+	BooruMatched bool                       `json:"booruMatched"`
 }
 
 type sceneTaggingBatchStatusResponse struct {
@@ -340,8 +339,4 @@ func loadSceneTaggingBatchBooru(ctx context.Context, path string) ([]camietagger
 	}
 	predictions = enrichNativeCamiePredictionTargets(ctx, predictions)
 	return predictions, true, nil
-}
-
-func logSceneTaggingBatchFailure(sceneID int, err error) {
-	logger.Warnf("batch Video Tagging: video %d: %v", sceneID, err)
 }
