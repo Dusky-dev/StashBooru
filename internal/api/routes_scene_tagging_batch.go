@@ -189,11 +189,8 @@ func startSceneTaggingBatch(w http.ResponseWriter, r *http.Request, request scen
 	state.setJobID(jobID)
 	sceneTaggingBatchStates.Store(jobID, state)
 	// The review payload is separate from JobManager's bounded graveyard.
-	// Expire abandoned dialog state so closing a running batch cannot retain
-	// per-Video metadata for the lifetime of the server.
-	time.AfterFunc(sceneTaggingBatchStateTTL, func() {
-		sceneTaggingBatchStates.Delete(jobID)
-	})
+	// Bound abandoned state without expiring a legitimately long-running batch.
+	scheduleSceneTaggingBatchStateExpiry(jobID)
 	writeVisualSimilarityJSON(w, visualSimilarityJobResponse{JobID: jobID})
 }
 
@@ -232,7 +229,6 @@ func resolveSceneTaggingBatchIDs(ctx context.Context, request sceneTaggingBatchR
 			if scene != nil {
 				ids = append(ids, scene.ID)
 			}
-		}
 		return nil
 	}); err != nil {
 		return nil, fmt.Errorf("loading videos for batch Video Tagging: %w", err)
