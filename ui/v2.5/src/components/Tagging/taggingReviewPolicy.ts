@@ -55,9 +55,7 @@ export function predictionIdentityKeys(prediction: TagPrediction) {
   const values = [prediction.name, prediction.rawName]
     .map(normalizePredictionValue)
     .filter(Boolean);
-  return [...new Set(values)].map(
-    (value) => `${category}\u0000name:${value}`
-  );
+  return [...new Set(values)].map((value) => `${category}\u0000name:${value}`);
 }
 
 export function predictionKey(prediction: TagPrediction) {
