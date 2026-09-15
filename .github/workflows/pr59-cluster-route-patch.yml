@@ -1,0 +1,42 @@
+name: PR59 cluster route patch
+
+on:
+  push:
+    branches:
+      - feature/similarity-cluster-triage
+    paths:
+      - .github/workflows/pr59-cluster-route-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/similarity-cluster-triage
+      - name: Register endpoint and format Go
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          path = Path("internal/api/routes_image.go")
+          text = path.read_text()
+          old = '\t\tr.Post("/index", rs.VisualSimilarityIndexImages)\n'
+          new = old + '\t\tr.Get("/clusters", rs.ImageSimilarityClusters)\n'
+          if old not in text:
+              raise SystemExit("visual similarity index route anchor not found")
+          path.write_text(text.replace(old, new, 1))
+          PY
+          gofmt -w internal/api/similarity_clusters.go internal/api/similarity_clusters_test.go pkg/sqlite/visual_embedding_ids.go internal/api/routes_image.go
+          git diff --check
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add internal/api/routes_image.go internal/api/similarity_clusters.go internal/api/similarity_clusters_test.go pkg/sqlite/visual_embedding_ids.go
+          git commit -m "Expose image similarity cluster triage endpoint"
+          git push origin HEAD:feature/similarity-cluster-triage
