@@ -179,7 +179,17 @@ func (j *autoTagJob) autoTagPerformers(ctx context.Context, progress *job.Progre
 					return nil
 				}
 
-				err := func() error {
+				ambiguous, err := performerNameIsAmbiguous(ctx, performerQuery, performer)
+				if err != nil {
+					return fmt.Errorf("checking performer name ambiguity for '%s': %w", performer.Name, err)
+				}
+				if ambiguous {
+					logger.Infof("Skipping performer %s because its auto-tag name is ambiguous", performer.Name)
+					progress.Increment()
+					continue
+				}
+
+				err = func() error {
 					if err := tagger.PerformerScenes(ctx, performer, paths, r.Scene); err != nil {
 						return fmt.Errorf("processing scenes: %w", err)
 					}

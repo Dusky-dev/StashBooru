@@ -15,10 +15,8 @@ export interface TagPrediction {
   targetCandidates?: TargetCandidate[];
 }
 
-export type MetadataSourceKind = "local" | "booru";
-
 export interface MetadataSource {
-  kind: MetadataSourceKind;
+  kind: string;
   label: string;
   detail?: string;
   priority: number;
@@ -28,11 +26,12 @@ export interface MetadataPrediction extends TagPrediction {
   provenance: MetadataSource[];
 }
 
+export interface PredictionSourceGroup {
+  predictions: TagPrediction[];
+  source: (prediction: TagPrediction) => MetadataSource;
+}
+
 const IDENTITY_CATEGORIES = new Set(["character", "artist", "copyright"]);
-const SOURCE_PRIORITY: Record<MetadataSourceKind, number> = {
-  local: 0,
-  booru: 10,
-};
 const CHARACTER_IDENTITY_PATTERN = /^(.+?)\s*\(([^()]*)\)\s*$/;
 const POSSIBLE_CHARACTER_TARGET_PATTERN = /^\/performers\/\d+\/?$/;
 
@@ -66,6 +65,83 @@ export function predictionKey(prediction: TagPrediction) {
   );
 }
 
+export function sourceKey(source: MetadataSource) {
+  return `${source.kind}\u0000${source.detail ?? ""}`;
+}
+
+function mergeSources(
+  current: MetadataSource[],
+  incoming: MetadataSource[]
+): MetadataSource[] {
+  const merged = new Map<string, MetadataSource>();
+  for (const source of [...current, ...incoming]) {
+    merged.set(sourceKey(source), source);
+  }
+  return [...merged.values()].sort((left, right) => {
+    if (left.priority !== right.priority) return left.priority - right.priority;
+    return left.label.localeCompare(right.label);
+  });
+}
+
+export function mergeMetadataPredictions(
+  sourceGroups: PredictionSourceGroup[]
+): MetadataPrediction[] {
+  const merged: MetadataPrediction[] = [];
+  const indexByKey = new Map<string, number>();
+
+  for (const group of sourceGroups) {
+    for (const prediction of group.predictions) {
+      const keys = predictionIdentityKeys(prediction);
+      let existingIndex: number | undefined;
+      for (const key of keys) {
+        const index = indexByKey.get(key);
+        if (index !== undefined) {
+          existingIndex = index;
+          break;
+        }
+      }
+
+      const provenance = [group.source(prediction)];
+      if (existingIndex === undefined) {
+        const next: MetadataPrediction = { ...prediction, provenance };
+        const index = merged.length;
+        merged.push(next);
+        for (const key of keys) indexByKey.set(key, index);
+        continue;
+      }
+
+      // Source groups are supplied in priority order. Preserve the earlier
+      // source's prediction and score; later sources only add provenance and
+      // fill optional target information that the winning source lacked.
+      const current = merged[existingIndex];
+      const next: MetadataPrediction = {
+        ...current,
+        rawName: current.rawName || prediction.rawName,
+        targetExists:
+          current.targetExists === undefined
+            ? prediction.targetExists
+            : current.targetExists,
+        targetPath: current.targetPath || prediction.targetPath,
+        targetCandidates: current.targetCandidates?.length
+          ? current.targetCandidates
+          : prediction.targetCandidates,
+        provenance: mergeSources(current.provenance, provenance),
+      };
+      merged[existingIndex] = next;
+
+      for (const key of [
+        ...predictionIdentityKeys(current),
+        ...keys,
+        ...predictionIdentityKeys(next),
+      ]) {
+        indexByKey.set(key, existingIndex);
+      }
+    }
+  }
+
+  return merged;
+}
+
 export function filterBooruPredictionsForLocalPriority(
   localPredictions: TagPrediction[],
   booruPredictions: TagPrediction[]
@@ -90,103 +166,33 @@ export function filterBooruPredictionsForLocalPriority(
   });
 }
 
-function predictionSource(
-  prediction: TagPrediction,
-  kind: MetadataSourceKind
-): MetadataSource {
-  if (kind === "local") {
-    return {
-      kind,
-      label: "Local",
-      detail: "Local filename metadata",
-      priority: SOURCE_PRIORITY.local,
-    };
-  }
-
-  const provider = prediction.source?.startsWith("booru:")
-    ? prediction.source.slice("booru:".length)
-    : undefined;
-  return {
-    kind,
-    label: provider || "Booru",
-    detail: provider ? `Booru metadata: ${provider}` : "Booru metadata",
-    priority: SOURCE_PRIORITY.booru,
-  };
+export function addPredictionSelection(
+  current: Set<string>,
+  predictions: TagPrediction[]
+) {
+  const next = new Set(current);
+  for (const prediction of predictions) next.add(predictionKey(prediction));
+  return next;
 }
 
-export function sourceKey(source: MetadataSource) {
-  return `${source.kind}\u0000${source.detail ?? ""}`;
+export function togglePredictionSelection(
+  current: Set<string>,
+  prediction: TagPrediction
+) {
+  const next = new Set(current);
+  const key = predictionKey(prediction);
+  if (next.has(key)) next.delete(key);
+  else next.add(key);
+  return next;
 }
 
-function mergeSources(
-  current: MetadataSource[],
-  incoming: MetadataSource[]
-): MetadataSource[] {
-  const merged = new Map<string, MetadataSource>();
-  for (const source of [...current, ...incoming]) {
-    merged.set(sourceKey(source), source);
-  }
-  return [...merged.values()].sort((left, right) => {
-    if (left.priority !== right.priority) return left.priority - right.priority;
-    return left.label.localeCompare(right.label);
-  });
-}
-
-export function mergeMetadataPredictions(
-  localPredictions: TagPrediction[],
-  booruPredictions: TagPrediction[]
-): MetadataPrediction[] {
-  const merged: MetadataPrediction[] = [];
-  const indexByKey = new Map<string, number>();
-
-  const add = (prediction: TagPrediction, sourceKind: MetadataSourceKind) => {
-    const keys = predictionIdentityKeys(prediction);
-    let existingIndex: number | undefined;
-    for (const key of keys) {
-      const index = indexByKey.get(key);
-      if (index !== undefined) {
-        existingIndex = index;
-        break;
-      }
-    }
-
-    const provenance = [predictionSource(prediction, sourceKind)];
-    if (existingIndex === undefined) {
-      const next: MetadataPrediction = { ...prediction, provenance };
-      const index = merged.length;
-      merged.push(next);
-      for (const key of keys) indexByKey.set(key, index);
-      return;
-    }
-
-    const current = merged[existingIndex];
-    const next: MetadataPrediction = {
-      ...current,
-      rawName: current.rawName || prediction.rawName,
-      targetExists:
-        current.targetExists === undefined
-          ? prediction.targetExists
-          : current.targetExists,
-      targetPath: current.targetPath || prediction.targetPath,
-      targetCandidates: current.targetCandidates?.length
-        ? current.targetCandidates
-        : prediction.targetCandidates,
-      provenance: mergeSources(current.provenance, provenance),
-    };
-    merged[existingIndex] = next;
-
-    for (const key of [
-      ...predictionIdentityKeys(current),
-      ...keys,
-      ...predictionIdentityKeys(next),
-    ]) {
-      indexByKey.set(key, existingIndex);
-    }
-  };
-
-  for (const prediction of localPredictions) add(prediction, "local");
-  for (const prediction of booruPredictions) add(prediction, "booru");
-  return merged;
+export function selectedPredictionCount(
+  predictions: TagPrediction[],
+  selected: Set<string>
+) {
+  return predictions.filter((prediction) =>
+    selected.has(predictionKey(prediction))
+  ).length;
 }
 
 export function possibleBareCharacterMatch(prediction: TagPrediction) {
@@ -252,9 +258,14 @@ export function reuseCharacterCandidate(
   };
 }
 
-export function buildTaggingApplyPayload(
+export function nextCharacterResolutionIndex(
   tags: TagPrediction[],
-  replaceArtist: boolean
+  startIndex: number
 ) {
-  return { tags, replaceArtist };
+  return tags.findIndex(
+    (prediction, index) =>
+      index >= startIndex &&
+      (possibleBareCharacterMatch(prediction) ||
+        ambiguousCharacterCandidates(prediction).length > 1)
+  );
 }
