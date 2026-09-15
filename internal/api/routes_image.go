@@ -42,6 +42,7 @@ func (rs imageRoutes) Routes() chi.Router {
 		r.Post("/download", rs.VisualSimilarityDownload)
 		r.Post("/index", rs.VisualSimilarityIndexImages)
 		r.Get("/clusters", rs.ImageSimilarityClusters)
+		r.Post("/clusters/copy-metadata", rs.CopySimilarityClusterMetadata)
 		r.Get("/camie/status", rs.CamieStatus)
 		r.Get("/camie/config", rs.CamieConfig)
 		r.Post("/camie/config", rs.CamieConfigUpdate)
