@@ -183,8 +183,9 @@ export function selectedPredictionCount(
   predictions: TagPrediction[],
   selected: Set<string>
 ) {
-  return predictions.filter((prediction) => selected.has(predictionKey(prediction)))
-    .length;
+  return predictions.filter((prediction) =>
+    selected.has(predictionKey(prediction))
+  ).length;
 }
 
 export function possibleBareCharacterMatch(prediction: TagPrediction) {
