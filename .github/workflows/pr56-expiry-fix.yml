@@ -1,0 +1,49 @@
+name: PR56 expiry fix
+on:
+  push:
+    branches:
+      - feature/batch-video-tagging-review
+    paths:
+      - .github/workflows/pr56-expiry-fix.yml
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feature/batch-video-tagging-review
+      - name: Apply expiry fix
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("internal/api/routes_scene_tagging_batch.go")
+          text = p.read_text()
+          old = '''\t// The review payload is separate from JobManager's bounded graveyard.
+\t// Expire abandoned dialog state so closing a running batch cannot retain
+\t// per-Video metadata for the lifetime of the server.
+\ttime.AfterFunc(sceneTaggingBatchStateTTL, func() {
+\t\tsceneTaggingBatchStates.Delete(jobID)
+\t})
+'''
+          new = '''\t// The review payload is separate from JobManager's bounded graveyard.
+\t// Bound abandoned state without expiring a legitimately long-running batch.
+\tscheduleSceneTaggingBatchStateExpiry(jobID)
+'''
+          if old not in text:
+              raise SystemExit("expected expiry block not found")
+          p.write_text(text.replace(old, new, 1))
+          PY
+          gofmt -w internal/api/routes_scene_tagging_batch.go internal/api/routes_scene_tagging_batch_expiry.go
+          git diff --check
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add internal/api/routes_scene_tagging_batch.go internal/api/routes_scene_tagging_batch_expiry.go
+          git diff --cached --quiet && exit 0
+          git commit -m "Expire batch review state after terminal status"
+          git push
