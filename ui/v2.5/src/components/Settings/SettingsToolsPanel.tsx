@@ -13,7 +13,7 @@ interface MetadataHealthFinding {
   code: string;
   kind: string;
   value?: string;
-  entityIDs: number[];
+  entityIDs?: number[];
   mediaID?: number;
   detail?: string;
 }
@@ -30,7 +30,7 @@ function findingContext(finding: MetadataHealthFinding) {
   } else if (finding.kind) {
     parts.push(finding.kind);
   }
-  if (finding.entityIDs.length > 0) {
+  if (finding.entityIDs?.length) {
     parts.push(`IDs: #${finding.entityIDs.join(", #")}`);
   }
   if (finding.value) parts.push(`key: ${finding.value}`);
@@ -123,7 +123,7 @@ export const SettingsToolsPanel: React.FC = () => {
                         key={`${finding.code}-${finding.kind}-${finding.mediaID ?? finding.value ?? index}`}
                       >
                         <td>
-                          <Badge variant="warning">{finding.code}</Badge>
+                          <Badge variant="secondary">{finding.code}</Badge>
                         </td>
                         <td>{findingContext(finding) || "—"}</td>
                         <td>{finding.detail || "—"}</td>
