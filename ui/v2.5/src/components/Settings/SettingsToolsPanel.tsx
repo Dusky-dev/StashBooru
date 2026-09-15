@@ -66,7 +66,9 @@ export const SettingsToolsPanel: React.FC = () => {
       const response = await fetch("image/metadata-health");
       if (!response.ok) {
         const message = (await response.text()).trim();
-        throw new Error(message || `Metadata Health failed (${response.status})`);
+        throw new Error(
+          message || `Metadata Health failed (${response.status})`
+        );
       }
       setHealth((await response.json()) as MetadataHealthResponse);
     } catch (cause) {
@@ -135,7 +137,9 @@ export const SettingsToolsPanel: React.FC = () => {
                   </thead>
                   <tbody>
                     {health.findings.map((finding, index) => (
-                      <tr key={`${finding.code}-${finding.assetKind ?? "entity"}-${finding.assetID ?? index}`}>
+                      <tr
+                        key={`${finding.code}-${finding.assetKind ?? "entity"}-${finding.assetID ?? index}`}
+                      >
                         <td>
                           <Badge variant={severityVariant(finding.severity)}>
                             {finding.severity}
@@ -150,7 +154,8 @@ export const SettingsToolsPanel: React.FC = () => {
                 </Table>
               )}
               <div className="text-muted">
-                This inspector never changes metadata. Repairs must remain explicit.
+                This inspector never changes metadata. Repairs must remain
+                explicit.
               </div>
             </div>
           ) : null}
