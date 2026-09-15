@@ -1,6 +1,7 @@
 package api
 
 import (
+	"math"
 	"testing"
 
 	"github.com/stashapp/stash/pkg/camietagger"
@@ -23,7 +24,7 @@ func TestAggregateLibrarySimilarityMetadata(t *testing.T) {
 	if result[0].Prediction.Source != "library-similarity" {
 		t.Fatalf("unexpected provenance %q", result[0].Prediction.Source)
 	}
-	if result[0].MeanSimilarity != 0.9 {
+	if math.Abs(result[0].MeanSimilarity-0.9) > 1e-9 {
 		t.Fatalf("unexpected mean similarity %v", result[0].MeanSimilarity)
 	}
 }
