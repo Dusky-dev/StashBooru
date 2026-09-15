@@ -1,0 +1,62 @@
+name: Temporary patch dry-run UI
+
+on:
+  push:
+    branches:
+      - feature/tagging-dry-run-plan
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feature/tagging-dry-run-plan
+      - name: Patch Video Tagging preview flow
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('ui/v2.5/src/components/Scenes/SceneDetails/VideoTaggingDialog.tsx')
+          text = path.read_text()
+
+          old = 'import { useToast } from "src/hooks/Toast";\n'
+          new = '''import { useToast } from "src/hooks/Toast";\nimport {\n  TaggingChangePlan,\n  TaggingChangePlanModal,\n} from "src/components/Tagging/TaggingChangePlanModal";\n'''
+          if 'TaggingChangePlanModal' not in text:
+              text = text.replace(old, new, 1)
+
+          old = '''  const [pendingCharacterResolution, setPendingCharacterResolution] =\n    useState<PendingCharacterResolution>();\n'''
+          new = old + '''  const [changePlan, setChangePlan] = useState<TaggingChangePlan>();\n  const [changePlanTags, setChangePlanTags] = useState<TagPrediction[]>([]);\n'''
+          if 'const [changePlan,' not in text:
+              text = text.replace(old, new, 1)
+
+          marker = '''  const continueCharacterResolution = useCallback(\n'''
+          preview = '''  const previewTags = useCallback(\n    async (tags: TagPrediction[]) => {\n      setApplying(true);\n      setError(undefined);\n      try {\n        const response = await fetch(\n          `scene/${sceneId}/knowledge-tags?preview=1`,\n          {\n            method: "POST",\n            headers: { "Content-Type": "application/json" },\n            body: JSON.stringify({ tags, replaceArtist: replaceArtists }),\n          }\n        );\n        const plan = await readResponse<TaggingChangePlan>(response);\n        setChangePlan(plan);\n        setChangePlanTags(tags);\n      } catch (cause) {\n        setError(cause instanceof Error ? cause.message : String(cause));\n        Toast.error(cause);\n      } finally {\n        setApplying(false);\n      }\n    },\n    [Toast, replaceArtists, sceneId]\n  );\n\n'''
+          if 'const previewTags = useCallback(' not in text:
+              text = text.replace(marker, preview + marker, 1)
+
+          text = text.replace('        void submitTags(tags);\n        return;', '        void previewTags(tags);\n        return;', 1)
+          text = text.replace('    [submitTags]\n  );', '    [previewTags]\n  );', 1)
+          text = text.replace('        show={!pendingCharacterResolution}\n', '        show={!pendingCharacterResolution && !changePlan}\n', 1)
+
+          modal_marker = '''      <ModalComponent\n        show={\n'''
+          modal = '''      <TaggingChangePlanModal\n        show={!!changePlan}\n        title="Review Video Tagging changes"\n        plan={changePlan}\n        busy={applying}\n        onBack={() => {\n          setChangePlan(undefined);\n          setChangePlanTags([]);\n        }}\n        onHide={onHide}\n        onApply={() => {\n          const tags = changePlanTags;\n          setChangePlan(undefined);\n          setChangePlanTags([]);\n          void submitTags(tags);\n        }}\n      />\n\n'''
+          if 'title="Review Video Tagging changes"' not in text:
+              text = text.replace(modal_marker, modal + modal_marker, 1)
+
+          path.write_text(text)
+          PY
+
+          git diff --check
+          if git diff --quiet; then
+            echo "No patch needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ui/v2.5/src/components/Scenes/SceneDetails/VideoTaggingDialog.tsx
+          git commit -m "Add Video Tagging dry-run review UI"
+          git push origin HEAD:feature/tagging-dry-run-plan
