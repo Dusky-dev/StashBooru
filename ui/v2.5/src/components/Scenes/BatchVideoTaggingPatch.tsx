@@ -167,7 +167,6 @@ const BatchVideoTaggingDialog: React.FC<{
   const [replaceArtists, setReplaceArtists] = useState(false);
   const [starting, setStarting] = useState(false);
   const [applyingReview, setApplyingReview] = useState(false);
-  const [anchorSceneID, setAnchorSceneID] = useState<string>();
   const [jobID, setJobID] = useState<number>();
   const [status, setStatus] = useState<BatchStatusResponse>();
   const [error, setError] = useState<string>();
@@ -176,8 +175,8 @@ const BatchVideoTaggingDialog: React.FC<{
     Record<string, number>
   >({});
 
-  const postBatch = useCallback(async <T,>(anchor: string, body: unknown) => {
-    const response = await fetch(`scene/${anchor}/knowledge-tags?batch=1`, {
+  const postBatch = useCallback(async <T,>(body: unknown) => {
+    const response = await fetch("scene/tagging-batch", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -200,19 +199,7 @@ const BatchVideoTaggingDialog: React.FC<{
         targetIDs = await collectFilteredSceneIDs(filter, restrictedSceneIDs);
       }
 
-      let anchor = targetIDs[0] ?? [...selectedIds][0];
-      if (!anchor) {
-        const filtered = await collectFilteredSceneIDs(
-          filter,
-          restrictedSceneIDs
-        );
-        anchor = filtered[0];
-      }
-      if (!anchor) {
-        throw new Error("No videos are available to anchor the batch request.");
-      }
-
-      const result = await postBatch<{ jobID: number }>(anchor, {
+      const result = await postBatch<{ jobID: number }>({
         action: "start",
         sceneIDs: scope === "all" ? [] : targetIDs.map(Number),
         all: scope === "all",
@@ -220,7 +207,6 @@ const BatchVideoTaggingDialog: React.FC<{
         autoApply,
         replaceArtist: replaceArtists,
       });
-      setAnchorSceneID(anchor);
       setJobID(result.jobID);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -239,14 +225,14 @@ const BatchVideoTaggingDialog: React.FC<{
   ]);
 
   useEffect(() => {
-    if (!jobID || !anchorSceneID) return;
+    if (!jobID) return;
 
     let cancelled = false;
     let timeout: ReturnType<typeof setTimeout> | undefined;
 
     const poll = async () => {
       try {
-        const next = await postBatch<BatchStatusResponse>(anchorSceneID, {
+        const next = await postBatch<BatchStatusResponse>({
           action: "status",
           jobID,
         });
@@ -267,18 +253,18 @@ const BatchVideoTaggingDialog: React.FC<{
       cancelled = true;
       if (timeout) clearTimeout(timeout);
     };
-  }, [anchorSceneID, jobID, postBatch]);
+  }, [jobID, postBatch]);
 
   const forgetAndClose = useCallback(async () => {
-    if (jobID && anchorSceneID && status?.status !== "running") {
+    if (jobID && status?.status !== "running") {
       try {
-        await postBatch(anchorSceneID, { action: "forget", jobID });
+        await postBatch({ action: "forget", jobID });
       } catch {
-        // Cleanup is best-effort; closing the review should never be blocked.
+        // Cleanup is best-effort; abandoned running state also expires server-side.
       }
     }
     onHide();
-  }, [anchorSceneID, jobID, onHide, postBatch, status?.status]);
+  }, [jobID, onHide, postBatch, status?.status]);
 
   const reviewCount = useMemo(
     () =>
@@ -335,6 +321,7 @@ const BatchVideoTaggingDialog: React.FC<{
         scene.needsReview.forEach((item, index) => {
           const key = reviewKey(scene.sceneID, index);
           if (!selectedReview.has(key)) return;
+          if (item.reason === "local-identity-conflict") return;
 
           let prediction = item.prediction;
           if (item.reason === "ambiguous-character") {
@@ -529,6 +516,8 @@ const BatchVideoTaggingDialog: React.FC<{
                   {scene.needsReview.map((item, index) => {
                     const key = reviewKey(scene.sceneID, index);
                     const ambiguous = item.reason === "ambiguous-character";
+                    const localConflict =
+                      item.reason === "local-identity-conflict";
                     const resolved =
                       !ambiguous || Boolean(characterResolutions[key]);
                     return (
@@ -539,7 +528,7 @@ const BatchVideoTaggingDialog: React.FC<{
                             id={`batch-review-${key}`}
                             className="mr-2"
                             checked={selectedReview.has(key)}
-                            disabled={!resolved}
+                            disabled={!resolved || localConflict}
                             onChange={() => toggleReview(key)}
                           />
                           <strong className="mr-2">
@@ -558,7 +547,7 @@ const BatchVideoTaggingDialog: React.FC<{
                         </div>
                         <small className="text-muted d-block mt-1">
                           {item.reason === "local-identity-conflict"
-                            ? "Conflicts with authoritative local filename identity. Select only if you explicitly want the lower-priority identity too."
+                            ? "Suppressed by authoritative Local filename identity. It is shown for review but cannot be applied as an override."
                             : "Same-name Character is ambiguous. Choose the intended native Character before applying."}
                         </small>
 

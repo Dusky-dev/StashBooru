@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/stashapp/stash/internal/manager"
 	"github.com/stashapp/stash/pkg/camietagger"
@@ -22,6 +23,7 @@ const (
 	sceneTaggingBatchStatusRunning  = "running"
 	sceneTaggingBatchStatusComplete = "complete"
 	sceneTaggingBatchStatusFailed   = "failed"
+	sceneTaggingBatchStateTTL       = 24 * time.Hour
 )
 
 type sceneTaggingBatchRequest struct {
@@ -186,6 +188,12 @@ func startSceneTaggingBatch(w http.ResponseWriter, r *http.Request, request scen
 	))
 	state.setJobID(jobID)
 	sceneTaggingBatchStates.Store(jobID, state)
+	// The review payload is separate from JobManager's bounded graveyard.
+	// Expire abandoned dialog state so closing a running batch cannot retain
+	// per-Video metadata for the lifetime of the server.
+	time.AfterFunc(sceneTaggingBatchStateTTL, func() {
+		sceneTaggingBatchStates.Delete(jobID)
+	})
 	writeVisualSimilarityJSON(w, visualSimilarityJobResponse{JobID: jobID})
 }
 
