@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Alert, Badge, Button, Table } from "react-bootstrap";
+import { Alert, Badge, Button, Form, Table } from "react-bootstrap";
 import { FormattedMessage } from "react-intl";
 import { Link } from "react-router-dom";
 import { Setting } from "./Inputs";
@@ -17,7 +17,7 @@ interface AliasCollisionReference {
 
 interface AliasCollision {
   kind: string;
-  normalized: string;
+  value: string;
   references: AliasCollisionReference[];
 }
 
@@ -26,10 +26,28 @@ interface AliasCollisionResponse {
   counts: Record<string, number>;
 }
 
+interface AliasInspectMatch {
+  kind: string;
+  entityID: number;
+  name: string;
+  matchKinds: string[];
+}
+
+interface AliasInspectResponse {
+  input: string;
+  normalized: string;
+  matches: AliasInspectMatch[];
+  ambiguous: boolean;
+}
+
 export const SettingsToolsPanel: React.FC = () => {
   const [collisions, setCollisions] = useState<AliasCollisionResponse>();
   const [collisionError, setCollisionError] = useState<string>();
   const [collisionLoading, setCollisionLoading] = useState(false);
+  const [inspectValue, setInspectValue] = useState("");
+  const [inspectResult, setInspectResult] = useState<AliasInspectResponse>();
+  const [inspectError, setInspectError] = useState<string>();
+  const [inspectLoading, setInspectLoading] = useState(false);
 
   async function inspectAliasCollisions() {
     setCollisionLoading(true);
@@ -50,6 +68,28 @@ export const SettingsToolsPanel: React.FC = () => {
     }
   }
 
+  async function inspectExactAliasValue() {
+    const value = inspectValue.trim();
+    if (!value) return;
+    setInspectLoading(true);
+    setInspectError(undefined);
+    try {
+      const query = new URLSearchParams({ value });
+      const response = await fetch(`image/alias-collisions/inspect?${query}`);
+      if (!response.ok) {
+        const message = (await response.text()).trim();
+        throw new Error(
+          message || `Alias value inspection failed (${response.status})`
+        );
+      }
+      setInspectResult((await response.json()) as AliasInspectResponse);
+    } catch (cause) {
+      setInspectError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setInspectLoading(false);
+    }
+  }
+
   return (
     <>
       <SettingSection headingID="config.tools.heading">
@@ -65,16 +105,102 @@ export const SettingsToolsPanel: React.FC = () => {
           />
           <Setting
             heading="Alias Collision Inspector"
-            subHeading="Read-only inspection of canonical-name and alias ambiguity for Characters, Artists, Copyrights, and Tags."
+            subHeading="Read-only inspection of canonical-name and alias ambiguity for Characters, Artists, Copyrights, and Tags. Exact lookup shows every matching entity and how the value matched; it never chooses one automatically."
           >
-            <Button
-              variant="secondary"
-              disabled={collisionLoading}
-              onClick={() => void inspectAliasCollisions()}
-            >
-              {collisionLoading ? "Inspecting…" : "Inspect aliases"}
-            </Button>
+            <div className="d-flex flex-wrap align-items-center">
+              <Form.Control
+                className="mr-2 mb-2"
+                style={{ maxWidth: "24rem" }}
+                value={inspectValue}
+                disabled={inspectLoading}
+                placeholder="Canonical name or alias"
+                aria-label="Canonical name or alias to inspect"
+                onChange={(event) => setInspectValue(event.currentTarget.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    void inspectExactAliasValue();
+                  }
+                }}
+              />
+              <Button
+                className="mr-2 mb-2"
+                variant="primary"
+                disabled={inspectLoading || !inspectValue.trim()}
+                onClick={() => void inspectExactAliasValue()}
+              >
+                {inspectLoading ? "Resolving…" : "Inspect value"}
+              </Button>
+              <Button
+                className="mb-2"
+                variant="secondary"
+                disabled={collisionLoading}
+                onClick={() => void inspectAliasCollisions()}
+              >
+                {collisionLoading ? "Inspecting…" : "Scan all collisions"}
+              </Button>
+            </div>
           </Setting>
+          {inspectError ? (
+            <Alert className="mx-3" variant="danger">
+              {inspectError}
+            </Alert>
+          ) : null}
+          {inspectResult ? (
+            <div className="px-3 pb-3">
+              <Alert
+                variant={
+                  inspectResult.ambiguous
+                    ? "warning"
+                    : inspectResult.matches.length === 0
+                      ? "secondary"
+                      : "success"
+                }
+              >
+                <strong>{inspectResult.input}</strong> normalizes to{" "}
+                <code>{inspectResult.normalized}</code> and matches{" "}
+                {inspectResult.matches.length} native entit
+                {inspectResult.matches.length === 1 ? "y" : "ies"}.
+                {inspectResult.ambiguous
+                  ? " This value is ambiguous; no entity is selected automatically."
+                  : ""}
+              </Alert>
+              {inspectResult.matches.length > 0 ? (
+                <Table responsive size="sm">
+                  <thead>
+                    <tr>
+                      <th>Kind</th>
+                      <th>Entity</th>
+                      <th>Matched as</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {inspectResult.matches.map((match) => (
+                      <tr key={`${match.kind}-${match.entityID}`}>
+                        <td>{match.kind}</td>
+                        <td>
+                          {match.name} #{match.entityID}
+                        </td>
+                        <td>
+                          {match.matchKinds.map((matchKind) => (
+                            <Badge
+                              className="mr-1"
+                              key={matchKind}
+                              variant={
+                                matchKind === "canonical" ? "primary" : "info"
+                              }
+                            >
+                              {matchKind}
+                            </Badge>
+                          ))}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              ) : null}
+            </div>
+          ) : null}
           {collisionError ? (
             <Alert className="mx-3" variant="danger">
               {collisionError}
@@ -108,16 +234,16 @@ export const SettingsToolsPanel: React.FC = () => {
                   </thead>
                   <tbody>
                     {collisions.collisions.map((collision) => (
-                      <tr key={`${collision.kind}-${collision.normalized}`}>
+                      <tr key={`${collision.kind}-${collision.value}`}>
                         <td>{collision.kind}</td>
                         <td>
-                          <code>{collision.normalized}</code>
+                          <code>{collision.value}</code>
                         </td>
                         <td>
                           {collision.references.map((reference) => (
                             <div
                               className="mb-1"
-                              key={`${collision.kind}-${collision.normalized}-${reference.entityID}`}
+                              key={`${collision.kind}-${collision.value}-${reference.entityID}`}
                             >
                               <strong>
                                 {reference.name} #{reference.entityID}
@@ -144,8 +270,9 @@ export const SettingsToolsPanel: React.FC = () => {
                 </Table>
               )}
               <div className="text-muted">
-                This inspector reports ambiguity only. It never rewrites or
-                removes aliases.
+                This inspector reports ambiguity and provenance only. It never
+                rewrites or removes aliases, and exact lookup never silently
+                resolves an ambiguous value.
               </div>
             </div>
           ) : null}
