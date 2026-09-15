@@ -26,12 +26,7 @@ interface TagPrediction {
   libraryMeanSimilarity?: number;
 }
 
-type MetadataSourceKind =
-  | "local"
-  | "booru"
-  | "camie"
-  | "eva02"
-  | "library";
+type MetadataSourceKind = "local" | "booru" | "camie" | "eva02" | "library";
 
 interface MetadataSource {
   kind: MetadataSourceKind;
@@ -416,12 +411,15 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   const [booruPredictions, setBooruPredictions] = useState<TagPrediction[]>([]);
   const [camiePredictions, setCamiePredictions] = useState<TagPrediction[]>([]);
   const [eva02Predictions, setEva02Predictions] = useState<TagPrediction[]>([]);
-  const [libraryPredictions, setLibraryPredictions] = useState<TagPrediction[]>([]);
+  const [libraryPredictions, setLibraryPredictions] = useState<TagPrediction[]>(
+    []
+  );
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [camieBackend, setCamieBackend] = useState<string>();
   const [eva02Backend, setEva02Backend] = useState<string>();
   const [booruMetadata, setBooruMetadata] = useState<BooruMetadataResponse>();
-  const [libraryMetadata, setLibraryMetadata] = useState<LibrarySimilarityResponse>();
+  const [libraryMetadata, setLibraryMetadata] =
+    useState<LibrarySimilarityResponse>();
   const [loading, setLoading] = useState(true);
   const [loadingSource, setLoadingSource] = useState<MetadataSourceKind>();
   const [applying, setApplying] = useState(false);

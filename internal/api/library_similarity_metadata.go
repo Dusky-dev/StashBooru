@@ -33,13 +33,13 @@ type librarySimilarityMetadataConsensus struct {
 }
 
 type librarySimilarityMetadataResponse struct {
-	Source     string                               `json:"source"`
-	MediaType  string                               `json:"mediaType"`
-	Reference  int                                  `json:"referenceID"`
-	Neighbors  int                                  `json:"neighbors"`
-	MinVotes   int                                  `json:"minVotes"`
-	Tags       []camietagger.Tag                    `json:"tags"`
-	Consensus  []librarySimilarityMetadataConsensus `json:"consensus"`
+	Source    string                               `json:"source"`
+	MediaType string                               `json:"mediaType"`
+	Reference int                                  `json:"referenceID"`
+	Neighbors int                                  `json:"neighbors"`
+	MinVotes  int                                  `json:"minVotes"`
+	Tags      []camietagger.Tag                    `json:"tags"`
+	Consensus []librarySimilarityMetadataConsensus `json:"consensus"`
 }
 
 func librarySimilarityMetadataKey(prediction camietagger.Tag) string {
