@@ -47,6 +47,9 @@ func (rs imageRoutes) Routes() chi.Router {
 		r.Post("/camie/tag", rs.CamieTagImagesV2)
 	})
 
+	r.Get("/alias-collisions", rs.AliasCollisions)
+	r.Get("/alias-collisions/inspect", rs.AliasCollisionInspect)
+
 	r.Route("/{imageId}", func(r chi.Router) {
 		r.Use(rs.ImageCtx)
 
