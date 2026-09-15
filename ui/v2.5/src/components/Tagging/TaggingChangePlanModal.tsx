@@ -92,14 +92,14 @@ export const TaggingChangePlanModal: React.FC<IProps> = ({
           <>
             <div className="alert alert-info py-2">
               {activeCount} metadata item{activeCount === 1 ? "" : "s"} will be
-              applied. {plan.suppressedCount} suppressed; {plan.reviewCount} need
-              review.
+              applied. {plan.suppressedCount} suppressed; {plan.reviewCount}{" "}
+              need review.
             </div>
 
             {!plan.canApply ? (
               <div className="alert alert-warning py-2">
-                This plan still contains unresolved metadata. Go back and resolve
-                those items before applying.
+                This plan still contains unresolved metadata. Go back and
+                resolve those items before applying.
               </div>
             ) : null}
 
@@ -129,7 +129,9 @@ export const TaggingChangePlanModal: React.FC<IProps> = ({
                     </span>
                   ) : null}
                   {item.reason ? (
-                    <span className="small text-muted ml-auto">{item.reason}</span>
+                    <span className="small text-muted ml-auto">
+                      {item.reason}
+                    </span>
                   ) : null}
                 </div>
               ))}
