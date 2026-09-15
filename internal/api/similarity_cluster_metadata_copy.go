@@ -117,7 +117,7 @@ func normalizeSimilarityMetadataCopyTargets(sourceID int, raw []int) ([]int, err
 	return ret, nil
 }
 
-func loadSimilarityMetadataSnapshot(ctx context.Context, repository *models.Repository, imageID int) (similarityMetadataSnapshot, error) {
+func loadSimilarityMetadataSnapshot(ctx context.Context, repository models.Repository, imageID int) (similarityMetadataSnapshot, error) {
 	var snapshot similarityMetadataSnapshot
 	err := repository.WithReadTxn(ctx, func(ctx context.Context) error {
 		image, err := repository.Image.Find(ctx, imageID)
@@ -166,7 +166,7 @@ func loadSimilarityMetadataSnapshot(ctx context.Context, repository *models.Repo
 	return snapshot, err
 }
 
-func copySimilarityMetadataToImage(ctx context.Context, repository *models.Repository, imageID int, source similarityMetadataSnapshot) (similarityMetadataCopyCounts, error) {
+func copySimilarityMetadataToImage(ctx context.Context, repository models.Repository, imageID int, source similarityMetadataSnapshot) (similarityMetadataCopyCounts, error) {
 	var added similarityMetadataCopyCounts
 	err := repository.WithTxn(ctx, func(ctx context.Context) error {
 		image, err := repository.Image.Find(ctx, imageID)
