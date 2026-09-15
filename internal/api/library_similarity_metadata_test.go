@@ -100,5 +100,6 @@ func TestLibrarySimilarityScore(t *testing.T) {
 			if got := librarySimilarityScore(test.distance); math.Abs(got-test.want) > 1e-9 {
 				t.Fatalf("librarySimilarityScore(%v) = %v, want %v", test.distance, got, test.want)
 			}
+		})
 	}
 }
