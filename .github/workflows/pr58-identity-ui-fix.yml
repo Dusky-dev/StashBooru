@@ -1,0 +1,60 @@
+name: PR58 identity UI fix
+on:
+  push:
+    branches:
+      - feature/library-similarity-metadata-source
+    paths:
+      - .github/workflows/pr58-identity-ui-fix.yml
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feature/library-similarity-metadata-source
+      - name: Preserve exact native identity in UI merge keys
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("ui/v2.5/src/components/Images/ImageDetails/ImageKnowledgeTagDialog.tsx")
+          text = p.read_text()
+          old = '''function predictionIdentityKeys(prediction: TagPrediction) {
+            const category = prediction.category.trim().toLocaleLowerCase();
+            const values = [prediction.name, prediction.rawName]
+              .map(normalizePredictionValue)
+              .filter(Boolean);
+            return [...new Set(values)].map((value) => `${category}\\u0000${value}`);
+          }
+'''
+          new = '''function predictionIdentityKeys(prediction: TagPrediction) {
+            const category = prediction.category.trim().toLocaleLowerCase();
+            const targetPath = prediction.targetExists
+              ? prediction.targetPath?.trim().replace(/\\/+$/, "").toLocaleLowerCase()
+              : undefined;
+            if (targetPath) {
+              return [`${category}\\u0000target:${targetPath}`];
+            }
+
+            const values = [prediction.name, prediction.rawName]
+              .map(normalizePredictionValue)
+              .filter(Boolean);
+            return [...new Set(values)].map((value) => `${category}\\u0000name:${value}`);
+          }
+'''
+          if old not in text:
+              raise SystemExit("predictionIdentityKeys block not found")
+          p.write_text(text.replace(old, new, 1))
+          PY
+          git diff --check
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ui/v2.5/src/components/Images/ImageDetails/ImageKnowledgeTagDialog.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "Keep same-name native library suggestions distinct in UI"
+          git push
