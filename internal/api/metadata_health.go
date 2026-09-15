@@ -39,10 +39,10 @@ type metadataHealthResponse struct {
 }
 
 const (
-	metadataHealthDuplicateCanonical       = "duplicate-canonical-name"
-	metadataHealthCopyrightTagCollision    = "legacy-copyright-tag-collision"
-	metadataHealthLegacyArtistMismatch     = "legacy-artist-mismatch"
-	metadataHealthLegacyArtistMissing      = "legacy-artist-missing-native"
+	metadataHealthDuplicateCanonical        = "duplicate-canonical-name"
+	metadataHealthCopyrightTagCollision     = "legacy-copyright-tag-collision"
+	metadataHealthLegacyArtistMismatch      = "legacy-artist-mismatch"
+	metadataHealthLegacyArtistMissing       = "legacy-artist-missing-native"
 	metadataHealthNativeArtistMissingLegacy = "native-artist-missing-legacy"
 )
 
@@ -136,11 +136,11 @@ func findArtistRelationshipDrift(relations []metadataHealthArtistRelation) []met
 		switch {
 		case relation.LegacyStudio != nil && *relation.LegacyStudio > 0 && len(native) == 0:
 			findings = append(findings, metadataHealthFinding{
-				Code:    metadataHealthLegacyArtistMissing,
-				Kind:    kind,
-				MediaID: relation.MediaID,
+				Code:      metadataHealthLegacyArtistMissing,
+				Kind:      kind,
+				MediaID:   relation.MediaID,
 				EntityIDs: []int{*relation.LegacyStudio},
-				Detail:  "legacy StudioID is set but native Artist relationships are empty",
+				Detail:    "legacy StudioID is set but native Artist relationships are empty",
 			})
 		case relation.LegacyStudio == nil && len(native) > 0:
 			ids := sortedMetadataHealthIDs(native)
