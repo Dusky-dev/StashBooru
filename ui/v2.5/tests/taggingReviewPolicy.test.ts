@@ -49,7 +49,7 @@ test("local identity metadata suppresses conflicting booru identities", () => {
   );
 });
 
-test("canonical and raw alias identities merge provenance without replacing local data", () => {
+test("matching exact native target merges provenance without replacing local data", () => {
   const local = [
     prediction("Lana", "character", {
       rawName: "lana",
@@ -63,6 +63,8 @@ test("canonical and raw alias identities merge provenance without replacing loca
       rawName: "Lana",
       score: 0.7,
       source: "booru:danbooru",
+      targetPath: "/performers/12",
+      targetExists: true,
     }),
   ];
 
@@ -76,6 +78,45 @@ test("canonical and raw alias identities merge provenance without replacing loca
     merged[0].provenance.map(({ kind }) => kind),
     ["local", "booru"]
   );
+});
+
+test("same-name native targets remain distinct", () => {
+  const local = [
+    prediction("Lana", "character", {
+      targetPath: "/performers/12",
+      targetExists: true,
+    }),
+  ];
+  const booru = [
+    prediction("Lana", "character", {
+      source: "booru:danbooru",
+      targetPath: "/performers/13",
+      targetExists: true,
+    }),
+  ];
+
+  const merged = mergeMetadataPredictions(local, booru);
+  assert.equal(merged.length, 2);
+  assert.deepEqual(
+    merged.map(({ targetPath }) => targetPath),
+    ["/performers/12", "/performers/13"]
+  );
+});
+
+test("resolved local native target suppresses unresolved same-name lower-priority identity", () => {
+  const local = [
+    prediction("Lana", "character", {
+      targetPath: "/performers/12",
+      targetExists: true,
+    }),
+  ];
+  const booru = [
+    prediction("Lana", "character", {
+      source: "booru:danbooru",
+    }),
+  ];
+
+  assert.deepEqual(filterBooruPredictionsForLocalPriority(local, booru), []);
 });
 
 test("same-name Character candidates stay ambiguous until an explicit choice is made", () => {
