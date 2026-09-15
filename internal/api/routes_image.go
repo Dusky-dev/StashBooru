@@ -41,6 +41,7 @@ func (rs imageRoutes) Routes() chi.Router {
 		r.Post("/remote-config", rs.VisualSimilarityRemoteConfigUpdate)
 		r.Post("/download", rs.VisualSimilarityDownload)
 		r.Post("/index", rs.VisualSimilarityIndexImages)
+		r.Get("/clusters", rs.ImageSimilarityClusters)
 		r.Get("/camie/status", rs.CamieStatus)
 		r.Get("/camie/config", rs.CamieConfig)
 		r.Post("/camie/config", rs.CamieConfigUpdate)
