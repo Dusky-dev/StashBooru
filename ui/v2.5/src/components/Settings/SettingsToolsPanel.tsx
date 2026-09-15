@@ -61,7 +61,9 @@ export const SettingsToolsPanel: React.FC = () => {
       const response = await fetch(`image/visual-similarity/clusters?${query}`);
       if (!response.ok) {
         const message = (await response.text()).trim();
-        throw new Error(message || `Similarity clustering failed (${response.status})`);
+        throw new Error(
+          message || `Similarity clustering failed (${response.status})`
+        );
       }
       setClusters((await response.json()) as SimilarityClusterResponse);
     } catch (cause) {
@@ -127,12 +129,15 @@ export const SettingsToolsPanel: React.FC = () => {
           {clusters ? (
             <div className="px-3 pb-3">
               <div className="mb-3 text-muted">
-                {clusters.indexedImages} indexed Images · {clusters.clusters.length}{" "}
-                cluster{clusters.clusters.length === 1 ? "" : "s"} · threshold{" "}
+                {clusters.indexedImages} indexed Images ·{" "}
+                {clusters.clusters.length} cluster
+                {clusters.clusters.length === 1 ? "" : "s"} · threshold{" "}
                 {clusters.threshold.toFixed(3)} · {clusters.neighbors} neighbors
               </div>
               {clusters.clusters.length === 0 ? (
-                <Alert variant="info">No clusters matched this threshold.</Alert>
+                <Alert variant="info">
+                  No clusters matched this threshold.
+                </Alert>
               ) : (
                 clusters.clusters.map((cluster, clusterIndex) => (
                   <div
@@ -140,7 +145,9 @@ export const SettingsToolsPanel: React.FC = () => {
                     key={`${cluster.preferredID}-${cluster.ids.join("-")}`}
                   >
                     <div className="mb-2 d-flex align-items-center">
-                      <strong className="mr-2">Cluster {clusterIndex + 1}</strong>
+                      <strong className="mr-2">
+                        Cluster {clusterIndex + 1}
+                      </strong>
                       <Badge variant="success">
                         Preferred Image #{cluster.preferredID}
                       </Badge>
@@ -152,7 +159,11 @@ export const SettingsToolsPanel: React.FC = () => {
                           key={member.id}
                         >
                           <Card
-                            className={member.preferred ? "border-success h-100" : "h-100"}
+                            className={
+                              member.preferred
+                                ? "border-success h-100"
+                                : "h-100"
+                            }
                           >
                             <Link to={`/images/${member.id}`}>
                               <Card.Img
@@ -186,7 +197,9 @@ export const SettingsToolsPanel: React.FC = () => {
                 ))
               )}
               <div className="text-muted">
-                Preferred-copy ranking uses resolution, then file size, then ID as a deterministic tie-breaker. No destructive action is performed here.
+                Preferred-copy ranking uses resolution, then file size, then ID
+                as a deterministic tie-breaker. No destructive action is
+                performed here.
               </div>
             </div>
           ) : null}
