@@ -1,11 +1,13 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import cloneDeep from "lodash-es/cloneDeep";
-import { Badge, Button, Form, Modal, ProgressBar, Spinner } from "react-bootstrap";
+import {
+  Badge,
+  Button,
+  Form,
+  Modal,
+  ProgressBar,
+  Spinner,
+} from "react-bootstrap";
 
 import { after } from "src/patch";
 import { queryFindScenes } from "src/core/StashService";
@@ -174,17 +176,14 @@ const BatchVideoTaggingDialog: React.FC<{
     Record<string, number>
   >({});
 
-  const postBatch = useCallback(
-    async <T,>(anchor: string, body: unknown) => {
-      const response = await fetch(`scene/${anchor}/knowledge-tags?batch=1`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      return readResponse<T>(response);
-    },
-    []
-  );
+  const postBatch = useCallback(async <T,>(anchor: string, body: unknown) => {
+    const response = await fetch(`scene/${anchor}/knowledge-tags?batch=1`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return readResponse<T>(response);
+  }, []);
 
   const start = useCallback(async () => {
     setStarting(true);
@@ -203,7 +202,10 @@ const BatchVideoTaggingDialog: React.FC<{
 
       let anchor = targetIDs[0] ?? [...selectedIds][0];
       if (!anchor) {
-        const filtered = await collectFilteredSceneIDs(filter, restrictedSceneIDs);
+        const filtered = await collectFilteredSceneIDs(
+          filter,
+          restrictedSceneIDs
+        );
         anchor = filtered[0];
       }
       if (!anchor) {
@@ -280,12 +282,17 @@ const BatchVideoTaggingDialog: React.FC<{
 
   const reviewCount = useMemo(
     () =>
-      status?.items.reduce((sum, item) => sum + item.needsReview.length, 0) ?? 0,
+      status?.items.reduce((sum, item) => sum + item.needsReview.length, 0) ??
+      0,
     [status]
   );
 
   const autoApplied = useMemo(
-    () => status?.items.reduce((sum, item) => sum + appliedCount(item.applied), 0) ?? 0,
+    () =>
+      status?.items.reduce(
+        (sum, item) => sum + appliedCount(item.applied),
+        0
+      ) ?? 0,
     [status]
   );
 
@@ -400,7 +407,12 @@ const BatchVideoTaggingDialog: React.FC<{
   const running = status?.status === "queued" || status?.status === "running";
 
   return (
-    <Modal show onHide={() => void forgetAndClose()} size="lg" backdrop="static">
+    <Modal
+      show
+      onHide={() => void forgetAndClose()}
+      size="lg"
+      backdrop="static"
+    >
       <Modal.Header closeButton>
         <Modal.Title>Batch Video Tagging</Modal.Title>
       </Modal.Header>
@@ -458,7 +470,9 @@ const BatchVideoTaggingDialog: React.FC<{
               id="batch-video-tagging-replace-artists"
               label="Replace existing Artists when applying Artist metadata"
               checked={replaceArtists}
-              onChange={(event) => setReplaceArtists(event.currentTarget.checked)}
+              onChange={(event) =>
+                setReplaceArtists(event.currentTarget.checked)
+              }
             />
           </>
         )}
@@ -482,9 +496,10 @@ const BatchVideoTaggingDialog: React.FC<{
                 Complete
               </Badge>
               <span>
-                {status.processed} video{status.processed === 1 ? "" : "s"}; {autoApplied}{" "}
-                metadata item{autoApplied === 1 ? "" : "s"} auto-applied; {reviewCount}{" "}
-                item{reviewCount === 1 ? "" : "s"} need review.
+                {status.processed} video{status.processed === 1 ? "" : "s"};{" "}
+                {autoApplied} metadata item{autoApplied === 1 ? "" : "s"}{" "}
+                auto-applied; {reviewCount} item{reviewCount === 1 ? "" : "s"}{" "}
+                need review.
               </span>
             </div>
 
@@ -492,7 +507,9 @@ const BatchVideoTaggingDialog: React.FC<{
               <div key={scene.sceneID} className="card bg-secondary mb-2">
                 <div className="card-body py-2">
                   <div className="d-flex flex-wrap align-items-center mb-1">
-                    <strong className="mr-2">{scene.label || `Video ${scene.sceneID}`}</strong>
+                    <strong className="mr-2">
+                      {scene.label || `Video ${scene.sceneID}`}
+                    </strong>
                     {scene.booruMatched && (
                       <Badge variant="info" className="mr-2">
                         booru match
@@ -505,12 +522,15 @@ const BatchVideoTaggingDialog: React.FC<{
                     )}
                   </div>
 
-                  {scene.error && <div className="text-danger mb-2">{scene.error}</div>}
+                  {scene.error && (
+                    <div className="text-danger mb-2">{scene.error}</div>
+                  )}
 
                   {scene.needsReview.map((item, index) => {
                     const key = reviewKey(scene.sceneID, index);
                     const ambiguous = item.reason === "ambiguous-character";
-                    const resolved = !ambiguous || Boolean(characterResolutions[key]);
+                    const resolved =
+                      !ambiguous || Boolean(characterResolutions[key]);
                     return (
                       <div key={key} className="border-top py-2">
                         <div className="d-flex align-items-center flex-wrap">
@@ -522,11 +542,17 @@ const BatchVideoTaggingDialog: React.FC<{
                             disabled={!resolved}
                             onChange={() => toggleReview(key)}
                           />
-                          <strong className="mr-2">{item.prediction.name}</strong>
+                          <strong className="mr-2">
+                            {item.prediction.name}
+                          </strong>
                           <Badge variant="secondary" className="mr-2">
                             {item.prediction.category}
                           </Badge>
-                          <Badge variant={item.source === "local" ? "success" : "info"}>
+                          <Badge
+                            variant={
+                              item.source === "local" ? "success" : "info"
+                            }
+                          >
                             {item.source}
                           </Badge>
                         </div>
@@ -550,11 +576,13 @@ const BatchVideoTaggingDialog: React.FC<{
                             }}
                           >
                             <option value="">Choose Character…</option>
-                            {(item.prediction.targetCandidates ?? []).map((candidate) => (
-                              <option key={candidate.id} value={candidate.id}>
-                                {candidateLabel(candidate)}
-                              </option>
-                            ))}
+                            {(item.prediction.targetCandidates ?? []).map(
+                              (candidate) => (
+                                <option key={candidate.id} value={candidate.id}>
+                                  {candidateLabel(candidate)}
+                                </option>
+                              )
+                            )}
                           </Form.Control>
                         )}
                       </div>
@@ -575,15 +603,25 @@ const BatchVideoTaggingDialog: React.FC<{
       </Modal.Body>
       <Modal.Footer>
         {!jobID && (
-          <Button variant="primary" onClick={() => void start()} disabled={starting}>
-            {starting ? <Spinner animation="border" size="sm" /> : "Start batch"}
+          <Button
+            variant="primary"
+            onClick={() => void start()}
+            disabled={starting}
+          >
+            {starting ? (
+              <Spinner animation="border" size="sm" />
+            ) : (
+              "Start batch"
+            )}
           </Button>
         )}
         {status?.status === "complete" && reviewCount > 0 && (
           <Button
             variant="primary"
             disabled={
-              applyingReview || selectedReview.size === 0 || unresolvedSelected > 0
+              applyingReview ||
+              selectedReview.size === 0 ||
+              unresolvedSelected > 0
             }
             onClick={() => void applySelectedReview()}
           >
@@ -646,7 +684,10 @@ function enhanceSceneListTree(
     const original = toolbarProps.operationComponent;
     if (React.isValidElement<ListOperationsProps>(original)) {
       const originalProps = original.props;
-      if (originalProps.operationsMenuClassName === "scene-list-operations-dropdown") {
+      if (
+        originalProps.operationsMenuClassName ===
+        "scene-list-operations-dropdown"
+      ) {
         return React.cloneElement(node, {
           operationComponent: (
             <BatchVideoTaggingOperations
