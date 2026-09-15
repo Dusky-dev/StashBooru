@@ -46,3 +46,47 @@ func TestBuildTaggingChangePlanRequiresReviewForAmbiguousCharacter(t *testing.T)
 		t.Fatalf("expected review action, got %q", plan.Items[0].Action)
 	}
 }
+
+func TestBuildTaggingChangePlanRepresentsSuppressedPredictions(t *testing.T) {
+	selected := []camietagger.Tag{{
+		Name:         "Local Character",
+		Category:     "character",
+		Source:       "filename",
+		TargetExists: true,
+		TargetPath:   "/performers/1",
+	}}
+	suppressed := []camietagger.Tag{{
+		Name:     "Booru Character",
+		Category: "character",
+		Source:   "danbooru",
+	}}
+
+	plan := buildTaggingChangePlanWithSuppressed(selected, suppressed, false)
+	if !plan.CanApply || plan.SuppressedCount != 1 || len(plan.Items) != 2 {
+		t.Fatalf("unexpected plan with suppressed prediction: %+v", plan)
+	}
+	if plan.Items[1].Action != taggingChangeSuppressed || plan.Items[1].Reason == "" {
+		t.Fatalf("expected explained suppressed action, got %+v", plan.Items[1])
+	}
+
+	apply := taggingChangePlanPredictions(plan)
+	if len(apply) != 1 || apply[0].Name != "Local Character" {
+		t.Fatalf("suppressed prediction leaked into apply set: %+v", apply)
+	}
+}
+
+func TestPartitionCamieFilenameAuthoritativeSelections(t *testing.T) {
+	predictions := []camietagger.Tag{
+		{Name: "Local Character", Category: "character", Source: "filename"},
+		{Name: "Booru Character", Category: "character", Source: "danbooru"},
+		{Name: "solo", Category: "general", Source: "danbooru"},
+	}
+
+	kept, suppressed := partitionCamieFilenameAuthoritativeSelections(predictions)
+	if len(kept) != 2 || len(suppressed) != 1 {
+		t.Fatalf("unexpected partition: kept=%+v suppressed=%+v", kept, suppressed)
+	}
+	if suppressed[0].Name != "Booru Character" {
+		t.Fatalf("unexpected suppressed prediction: %+v", suppressed[0])
+	}
+}
