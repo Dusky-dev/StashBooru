@@ -1,0 +1,44 @@
+name: Temporary remove Unified Media video bridges
+
+on:
+  push:
+    branches:
+      - fix/unified-media-remove-video-bridges
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/unified-media-remove-video-bridges
+          fetch-depth: 0
+
+      - name: Patch sources
+        run: python3 .github/tmp/pr66_remove_video_bridges.py
+
+      - name: Validate built-in bundle
+        working-directory: ui/v2.5
+        run: |
+          node scripts/prepare-builtins.mjs
+          node --check public/builtin/unifiedMedia.js
+
+      - name: Check forbidden video bridges
+        run: |
+          ! grep -R 'api.patch.after("SceneList"' ui/v2.5/builtin-source/unifiedMedia.*.part
+          ! grep -R 'api.patch.after("FilteredSceneList.Toolbar"' ui/v2.5/builtin-source/unifiedMedia.*.part
+          ! grep -R 'api.patch.after("SceneCard.Image"' ui/v2.5/builtin-source/unifiedMedia.*.part
+          git diff --check
+
+      - name: Commit real fix and remove temporary helpers
+        run: |
+          rm .github/workflows/tmp-pr66-remove-video-bridges.yml
+          rm .github/tmp/pr66_remove_video_bridges.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ui/v2.5/src/components/Scenes/SceneList.tsx ui/v2.5/builtin-source/unifiedMedia.00.part ui/v2.5/builtin-source/unifiedMedia.05.part ui/v2.5/scripts/prepare-builtins.mjs .github/workflows/tmp-pr66-remove-video-bridges.yml .github/tmp/pr66_remove_video_bridges.py
+          git commit -m "Remove Unified Media bridges from native Videos path"
+          git push origin HEAD:fix/unified-media-remove-video-bridges
