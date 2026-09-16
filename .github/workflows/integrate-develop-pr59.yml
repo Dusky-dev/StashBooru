@@ -1,0 +1,55 @@
+name: Integrate develop into PR59
+on:
+  push:
+    branches:
+      - feature/similarity-cluster-triage
+    paths:
+      - .github/workflows/integrate-develop-pr59.yml
+permissions:
+  contents: write
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feature/similarity-cluster-triage
+          fetch-depth: 0
+      - name: Merge develop, preserve current routes, add cluster routes, and self-clean
+        shell: bash
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin develop
+          set +e
+          git merge --no-edit origin/develop
+          merge_rc=$?
+          set -e
+          if [ "$merge_rc" -ne 0 ]; then
+            conflicts="$(git diff --name-only --diff-filter=U)"
+            unexpected="$(printf '%s\n' "$conflicts" | grep -v '^internal/api/routes_image.go$' || true)"
+            if [ -n "$unexpected" ]; then
+              echo "Unexpected conflicts:"
+              printf '%s\n' "$unexpected"
+              exit 1
+            fi
+            git checkout --theirs internal/api/routes_image.go
+            python - <<'PY'
+from pathlib import Path
+p = Path('internal/api/routes_image.go')
+s = p.read_text()
+needle = '\t\tr.Post("/index", rs.VisualSimilarityIndexImages)\n'
+addition = needle + '\t\tr.Get("/clusters", rs.ImageSimilarityClusters)\n\t\tr.Post("/clusters/copy-metadata", rs.CopySimilarityClusterMetadata)\n'
+if 'rs.ImageSimilarityClusters' not in s:
+    if needle not in s:
+        raise SystemExit('visual-similarity index route anchor not found')
+    s = s.replace(needle, addition, 1)
+p.write_text(s)
+PY
+            git add internal/api/routes_image.go
+            git commit --no-edit
+          fi
+          git rm .github/workflows/integrate-develop-pr59.yml
+          git commit -m "Remove temporary PR59 integration workflow"
+          git push origin HEAD:feature/similarity-cluster-triage
