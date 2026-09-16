@@ -84,7 +84,8 @@ export const GenerateDialog: React.FC<IGenerateDialog> = ({
             general.previewExcludeStart ??
             existing.previewOptions?.previewExcludeStart,
           previewExcludeEnd:
-            general.previewExcludeEnd ?? existing.previewOptions?.previewExcludeEnd,
+            general.previewExcludeEnd ??
+            existing.previewOptions?.previewExcludeEnd,
           previewPreset:
             general.previewPreset ?? existing.previewOptions?.previewPreset,
         },
@@ -187,12 +188,7 @@ export const GenerateDialog: React.FC<IGenerateDialog> = ({
   }
 
   if (type === "image" && showImageMetadata && imageIDs?.length) {
-    return (
-      <BatchImageMetadataDialog
-        imageIds={imageIDs}
-        onHide={onClose}
-      />
-    );
+    return <BatchImageMetadataDialog imageIds={imageIDs} onHide={onClose} />;
   }
 
   return (
