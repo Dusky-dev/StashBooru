@@ -636,7 +636,11 @@ func (rs imageRoutes) ImageBooruMetadata(w http.ResponseWriter, r *http.Request)
 	for index := range predictions {
 		predictions[index] = normalizeCamiePrediction(predictions[index])
 	}
-	predictions = enrichCamiePredictionTargets(r.Context(), predictions)
+	predictions, err = enrichCamiePredictionTargets(r.Context(), predictions)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("enriching booru metadata targets: %v", err), http.StatusInternalServerError)
+		return
+	}
 
 	postURL := ""
 	if post.ID != "" && provider.postURL != nil {

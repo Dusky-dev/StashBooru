@@ -5,37 +5,31 @@ import { useHistory } from "react-router-dom";
 
 import { Icon } from "src/components/Shared/Icon";
 import { ModalComponent } from "src/components/Shared/Modal";
+import {
+  addPredictionSelection,
+  ambiguousCharacterCandidates,
+  characterCandidateLabel,
+  mergeMetadataPredictions as mergeTaggingMetadataPredictions,
+  nextCharacterResolutionIndex,
+  possibleBareCharacterMatch,
+  predictionKey,
+  reuseCharacterCandidate,
+  reusePossibleBareCharacter,
+  selectedPredictionCount,
+  sourceKey,
+  togglePredictionSelection,
+  type MetadataPrediction,
+  type MetadataSource,
+  type TagPrediction,
+  type TargetCandidate,
+} from "src/components/Tagging/taggingReviewPolicy";
 import { useToast } from "src/hooks/Toast";
+import {
+  TaggingChangePlan,
+  TaggingChangePlanModal,
+} from "src/components/Tagging/TaggingChangePlanModal";
 
-interface TargetCandidate {
-  id: number;
-  name: string;
-  disambiguation?: string;
-}
-
-interface TagPrediction {
-  name: string;
-  category: string;
-  score: number;
-  rawName?: string;
-  source?: string;
-  targetPath?: string;
-  targetExists?: boolean;
-  targetCandidates?: TargetCandidate[];
-}
-
-type MetadataSourceKind = "local" | "booru" | "camie" | "eva02";
-
-interface MetadataSource {
-  kind: MetadataSourceKind;
-  label: string;
-  detail?: string;
-  priority: number;
-}
-
-interface MetadataPrediction extends TagPrediction {
-  provenance: MetadataSource[];
-}
+type MetadataSourceKind = "local" | "booru" | "camie" | "eva02" | "library";
 
 interface TagSourceResponse {
   backend: "local" | "remote";
@@ -52,6 +46,22 @@ interface BooruMetadataResponse {
   md5: string;
   md5Source: "filename" | "file";
   tags: TagPrediction[];
+}
+
+interface LibrarySimilarityConsensus {
+  prediction: TagPrediction;
+  votes: number;
+  meanSimilarity: number;
+}
+
+interface LibrarySimilarityResponse {
+  source: "library-similarity";
+  mediaType: "image" | "video";
+  referenceID: number;
+  neighbors: number;
+  minVotes: number;
+  tags: TagPrediction[];
+  consensus: LibrarySimilarityConsensus[];
 }
 
 interface CamieConfig {
@@ -98,36 +108,8 @@ const SOURCE_PRIORITY: Record<MetadataSourceKind, number> = {
   booru: 10,
   camie: 20,
   eva02: 30,
+  library: 40,
 };
-const CHARACTER_IDENTITY_PATTERN = /^(.+?)\s*\(([^()]*)\)\s*$/;
-const POSSIBLE_CHARACTER_TARGET_PATTERN = /^\/performers\/\d+\/?$/;
-
-function normalizePredictionValue(value?: string) {
-  return (value ?? "")
-    .trim()
-    .replaceAll("_", " ")
-    .replace(/\s+/g, " ")
-    .toLocaleLowerCase();
-}
-
-function predictionIdentityKeys(prediction: TagPrediction) {
-  const category = prediction.category.trim().toLocaleLowerCase();
-  const values = [prediction.name, prediction.rawName]
-    .map(normalizePredictionValue)
-    .filter(Boolean);
-  return [...new Set(values)].map((value) => `${category}\u0000${value}`);
-}
-
-function predictionKey(prediction: TagPrediction) {
-  return (
-    predictionIdentityKeys(prediction)[0] ??
-    `${prediction.category}\u0000${prediction.name}`
-  );
-}
-
-function sourceKey(source: MetadataSource) {
-  return `${source.kind}\u0000${source.detail ?? ""}`;
-}
 
 function predictionSource(
   prediction: TagPrediction,
@@ -166,88 +148,52 @@ function predictionSource(
         detail: "WD EVA02 fallback prediction",
         priority: SOURCE_PRIORITY.eva02,
       };
+    case "library": {
+      const votes = prediction.libraryVotes;
+      const meanSimilarity = prediction.libraryMeanSimilarity;
+      const detail =
+        votes !== undefined && meanSimilarity !== undefined
+          ? `Library consensus: ${votes} neighbors, ${(meanSimilarity * 100).toFixed(1)}% mean similarity`
+          : "Library visual-similarity consensus";
+      return {
+        kind,
+        label: "Library",
+        detail,
+        priority: SOURCE_PRIORITY.library,
+      };
+    }
   }
 }
 
-function mergeSources(
-  current: MetadataSource[],
-  incoming: MetadataSource[]
-): MetadataSource[] {
-  const merged = new Map<string, MetadataSource>();
-  for (const source of [...current, ...incoming]) {
-    merged.set(sourceKey(source), source);
-  }
-  return [...merged.values()].sort((left, right) => {
-    if (left.priority !== right.priority) return left.priority - right.priority;
-    return left.label.localeCompare(right.label);
-  });
-}
-
-function mergeMetadataPredictions(
+function mergeImageMetadataPredictions(
   localPredictions: TagPrediction[],
   booruPredictions: TagPrediction[],
   camiePredictions: TagPrediction[],
-  eva02Predictions: TagPrediction[]
-): MetadataPrediction[] {
-  const merged: MetadataPrediction[] = [];
-  const indexByKey = new Map<string, number>();
-
-  const add = (prediction: TagPrediction, sourceKind: MetadataSourceKind) => {
-    const keys = predictionIdentityKeys(prediction);
-    let existingIndex: number | undefined;
-    for (const key of keys) {
-      const index = indexByKey.get(key);
-      if (index !== undefined) {
-        existingIndex = index;
-        break;
-      }
-    }
-
-    const provenance = [predictionSource(prediction, sourceKind)];
-    if (existingIndex === undefined) {
-      const next: MetadataPrediction = {
-        ...prediction,
-        provenance,
-      };
-      const index = merged.length;
-      merged.push(next);
-      for (const key of keys) indexByKey.set(key, index);
-      return;
-    }
-
-    // Sources are added in priority order. Preserve the earlier source's
-    // prediction and score; later sources only contribute provenance and fill
-    // optional target information that was missing from the winning source.
-    const current = merged[existingIndex];
-    const next: MetadataPrediction = {
-      ...current,
-      rawName: current.rawName || prediction.rawName,
-      targetExists:
-        current.targetExists === undefined
-          ? prediction.targetExists
-          : current.targetExists,
-      targetPath: current.targetPath || prediction.targetPath,
-      targetCandidates: current.targetCandidates?.length
-        ? current.targetCandidates
-        : prediction.targetCandidates,
-      provenance: mergeSources(current.provenance, provenance),
-    };
-    merged[existingIndex] = next;
-
-    for (const key of [
-      ...predictionIdentityKeys(current),
-      ...keys,
-      ...predictionIdentityKeys(next),
-    ]) {
-      indexByKey.set(key, existingIndex);
-    }
-  };
-
-  for (const prediction of localPredictions) add(prediction, "local");
-  for (const prediction of booruPredictions) add(prediction, "booru");
-  for (const prediction of camiePredictions) add(prediction, "camie");
-  for (const prediction of eva02Predictions) add(prediction, "eva02");
-  return merged;
+  eva02Predictions: TagPrediction[],
+  libraryPredictions: TagPrediction[]
+) {
+  return mergeTaggingMetadataPredictions([
+    {
+      predictions: localPredictions,
+      source: (prediction) => predictionSource(prediction, "local"),
+    },
+    {
+      predictions: booruPredictions,
+      source: (prediction) => predictionSource(prediction, "booru"),
+    },
+    {
+      predictions: camiePredictions,
+      source: (prediction) => predictionSource(prediction, "camie"),
+    },
+    {
+      predictions: eva02Predictions,
+      source: (prediction) => predictionSource(prediction, "eva02"),
+    },
+    {
+      predictions: libraryPredictions,
+      source: (prediction) => predictionSource(prediction, "library"),
+    },
+  ]);
 }
 
 async function readResponse<T>(response: Response): Promise<T> {
@@ -274,7 +220,7 @@ function categoryLabel(category: string) {
   }
 }
 
-function sourceBadgeVariant(source: MetadataSourceKind) {
+function sourceBadgeVariant(source: string) {
   switch (source) {
     case "local":
       return "success";
@@ -284,6 +230,8 @@ function sourceBadgeVariant(source: MetadataSourceKind) {
       return "warning";
     case "eva02":
       return "danger";
+    default:
+      return "secondary";
   }
 }
 
@@ -297,67 +245,6 @@ function parseInferenceOptions(threshold: string, limit: string) {
     throw new Error("Per-category limit must be between 1 and 200.");
   }
   return { parsedThreshold, parsedLimit };
-}
-
-function possibleBareCharacterMatch(prediction: TagPrediction) {
-  if (
-    prediction.category !== "character" ||
-    prediction.targetExists ||
-    !POSSIBLE_CHARACTER_TARGET_PATTERN.test(prediction.targetPath ?? "")
-  ) {
-    return undefined;
-  }
-
-  const match = prediction.name.match(CHARACTER_IDENTITY_PATTERN);
-  if (!match) return undefined;
-
-  const bareName = match[1].trim();
-  const disambiguation = match[2].trim();
-  if (!bareName || !disambiguation) return undefined;
-
-  return { bareName, disambiguation };
-}
-
-function ambiguousCharacterCandidates(prediction: TagPrediction) {
-  if (prediction.category !== "character" || prediction.targetExists) {
-    return [];
-  }
-  return prediction.targetCandidates ?? [];
-}
-
-function characterCandidateLabel(candidate: TargetCandidate) {
-  const disambiguation = candidate.disambiguation?.trim();
-  return disambiguation
-    ? `${candidate.name} (${disambiguation})`
-    : candidate.name;
-}
-
-function reusePossibleBareCharacter(prediction: TagPrediction): TagPrediction {
-  const possible = possibleBareCharacterMatch(prediction);
-  if (!possible) return prediction;
-
-  return {
-    ...prediction,
-    name: possible.bareName,
-    rawName: possible.bareName,
-    targetExists: true,
-    targetCandidates: undefined,
-  };
-}
-
-function reuseCharacterCandidate(
-  prediction: TagPrediction,
-  candidate: TargetCandidate
-): TagPrediction {
-  const name = characterCandidateLabel(candidate);
-  return {
-    ...prediction,
-    name,
-    rawName: name,
-    targetPath: `/performers/${candidate.id}`,
-    targetExists: true,
-    targetCandidates: undefined,
-  };
 }
 
 export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
@@ -374,10 +261,15 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   const [booruPredictions, setBooruPredictions] = useState<TagPrediction[]>([]);
   const [camiePredictions, setCamiePredictions] = useState<TagPrediction[]>([]);
   const [eva02Predictions, setEva02Predictions] = useState<TagPrediction[]>([]);
+  const [libraryPredictions, setLibraryPredictions] = useState<TagPrediction[]>(
+    []
+  );
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [camieBackend, setCamieBackend] = useState<string>();
   const [eva02Backend, setEva02Backend] = useState<string>();
   const [booruMetadata, setBooruMetadata] = useState<BooruMetadataResponse>();
+  const [libraryMetadata, setLibraryMetadata] =
+    useState<LibrarySimilarityResponse>();
   const [loading, setLoading] = useState(true);
   const [loadingSource, setLoadingSource] = useState<MetadataSourceKind>();
   const [applying, setApplying] = useState(false);
@@ -385,24 +277,29 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   const [error, setError] = useState<string>();
   const [pendingCharacterResolution, setPendingCharacterResolution] =
     useState<PendingCharacterResolution>();
+  const [changePlan, setChangePlan] = useState<TaggingChangePlan>();
+  const [changePlanTags, setChangePlanTags] = useState<TagPrediction[]>([]);
 
   const predictions = useMemo(
     () =>
-      mergeMetadataPredictions(
+      mergeImageMetadataPredictions(
         localPredictions,
         booruPredictions,
         camiePredictions,
-        eva02Predictions
+        eva02Predictions,
+        libraryPredictions
       ),
-    [booruPredictions, camiePredictions, eva02Predictions, localPredictions]
+    [
+      booruPredictions,
+      camiePredictions,
+      eva02Predictions,
+      libraryPredictions,
+      localPredictions,
+    ]
   );
 
   const addSelected = useCallback((items: TagPrediction[]) => {
-    setSelected((current) => {
-      const next = new Set(current);
-      for (const item of items) next.add(predictionKey(item));
-      return next;
-    });
+    setSelected((current) => addPredictionSelection(current, items));
   }, []);
 
   const loadBooruMetadata = useCallback(async () => {
@@ -420,6 +317,29 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
       setLoadingSource(undefined);
     }
   }, [addSelected, imageId]);
+
+  const loadLibrarySimilarity = useCallback(async () => {
+    setLoadingSource("library");
+    setError(undefined);
+    try {
+      const response = await fetch(
+        `image/${imageId}/library-similarity-metadata`
+      );
+      const result = await readResponse<LibrarySimilarityResponse>(response);
+      const suggestions = result.consensus.map((entry) => ({
+        ...entry.prediction,
+        libraryVotes: entry.votes,
+        libraryMeanSimilarity: entry.meanSimilarity,
+      }));
+      setLibraryMetadata(result);
+      setLibraryPredictions(suggestions);
+      // Library similarity is review-only: never add it to selected here.
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setLoadingSource(undefined);
+    }
+  }, [imageId]);
 
   const loadModelPredictions = useCallback(
     async (source: "camie" | "eva02") => {
@@ -480,8 +400,6 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         if (!cancelled) setLoading(false);
       }
 
-      // Camie's saved inference defaults are only used to initialize the
-      // controls. Reading them is not inference and does not start Camie.
       try {
         const response = await fetch("image/visual-similarity/camie/config");
         const config = await readResponse<CamieConfig>(response);
@@ -520,22 +438,13 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   }, [predictions]);
 
   const visibleSelectedCount = useMemo(
-    () =>
-      predictions.filter((prediction) =>
-        selected.has(predictionKey(prediction))
-      ).length,
+    () => selectedPredictionCount(predictions, selected),
     [predictions, selected]
   );
   const busy = loading || loadingSource !== undefined;
 
   const togglePrediction = useCallback((prediction: TagPrediction) => {
-    const key = predictionKey(prediction);
-    setSelected((current) => {
-      const next = new Set(current);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
+    setSelected((current) => togglePredictionSelection(current, prediction));
   }, []);
 
   const submitTags = useCallback(
@@ -582,14 +491,35 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
     [Toast, imageId, onApplied, onHide, replaceArtist]
   );
 
+  const previewTags = useCallback(
+    async (tags: TagPrediction[]) => {
+      setApplying(true);
+      setError(undefined);
+      try {
+        const response = await fetch(
+          `image/${imageId}/knowledge-tags?apply=true&preview=1`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tags, replaceArtist }),
+          }
+        );
+        const plan = await readResponse<TaggingChangePlan>(response);
+        setChangePlan(plan);
+        setChangePlanTags(tags);
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : String(cause));
+        Toast.error(cause);
+      } finally {
+        setApplying(false);
+      }
+    },
+    [Toast, imageId, replaceArtist]
+  );
+
   const continueCharacterResolution = useCallback(
     (tags: TagPrediction[], startIndex: number) => {
-      const nextIndex = tags.findIndex(
-        (prediction, index) =>
-          index >= startIndex &&
-          (possibleBareCharacterMatch(prediction) ||
-            ambiguousCharacterCandidates(prediction).length > 1)
-      );
+      const nextIndex = nextCharacterResolutionIndex(tags, startIndex);
       if (nextIndex === -1) {
         setPendingCharacterResolution(undefined);
         if (tags.length === 0) {
@@ -597,12 +527,12 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
           setError("No metadata items remain to apply.");
           return;
         }
-        void submitTags(tags);
+        void previewTags(tags);
         return;
       }
       setPendingCharacterResolution({ tags, index: nextIndex });
     },
-    [submitTags]
+    [previewTags]
   );
 
   const resolvePendingCharacter = useCallback(
@@ -645,7 +575,14 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   const applySelected = useCallback(() => {
     const tags = predictions
       .filter((prediction) => selected.has(predictionKey(prediction)))
-      .map(({ provenance: _provenance, ...prediction }) => prediction);
+      .map(
+        ({
+          provenance: _provenance,
+          libraryVotes: _libraryVotes,
+          libraryMeanSimilarity: _libraryMeanSimilarity,
+          ...prediction
+        }) => prediction
+      );
     if (!tags.length) {
       setError("Select at least one metadata item to apply.");
       return;
@@ -669,7 +606,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   return (
     <>
       <Modal
-        show={!pendingCharacterResolution}
+        show={!pendingCharacterResolution && !changePlan}
         onHide={onHide}
         size="lg"
         centered
@@ -735,12 +672,22 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
               {loadingSource === "camie" ? "Analyzing…" : "Analyze with Camie"}
             </Button>
             <Button
-              className="mb-2"
+              className="mr-2 mb-2"
               variant="secondary"
               disabled={busy || applying}
               onClick={() => void loadModelPredictions("eva02")}
             >
               {loadingSource === "eva02" ? "Analyzing…" : "Analyze with EVA02"}
+            </Button>
+            <Button
+              className="mb-2"
+              variant="secondary"
+              disabled={busy || applying}
+              onClick={() => void loadLibrarySimilarity()}
+            >
+              {loadingSource === "library"
+                ? "Comparing…"
+                : "Suggest from library"}
             </Button>
           </div>
 
@@ -759,8 +706,17 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
               </Badge>
             ) : null}
             {eva02Backend ? (
-              <Badge className="mb-1" variant="danger">
+              <Badge className="mr-2 mb-1" variant="danger">
                 EVA02 {eva02Backend}
+              </Badge>
+            ) : null}
+            {libraryMetadata ? (
+              <Badge
+                className="mb-1"
+                variant="secondary"
+                title={`Consensus requires ${libraryMetadata.minVotes} matching neighbors`}
+              >
+                Library {libraryMetadata.neighbors} neighbors
               </Badge>
             ) : null}
           </div>
@@ -790,13 +746,15 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
 
           <div className="mb-3 text-muted">
             Sources are merged in priority order: Local → Danbooru → Camie →
-            EVA02. Opening this dialog loads Local metadata only; every network
-            or model source is explicit. Camie and EVA02 use independent
-            thresholds; EVA02 defaults to 0.35. When the same metadata item is
-            predicted by multiple sources, the earlier source keeps its value
-            and score while later sources are shown as additional provenance.
-            EVA02 is the fallback source. Multiple selected Artists can be
-            attached to the same image.
+            EVA02 → Library. Opening this dialog loads Local metadata only;
+            every network, model, or similarity source is explicit. Camie and
+            EVA02 use independent thresholds; EVA02 defaults to 0.35. Library
+            suggestions require consensus from visually similar indexed images
+            and start unselected because they are review-only. When the same
+            metadata item is predicted by multiple sources, the earlier source
+            keeps its value and score while later sources are shown as
+            additional provenance. Multiple selected Artists can be attached to
+            the same image.
           </div>
 
           <Form.Check
@@ -816,8 +774,8 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
             </div>
           ) : predictions.length === 0 && !error ? (
             <div className="text-muted">
-              No Local metadata was found. Fetch Danbooru or run Camie/EVA02
-              explicitly to add predictions.
+              No Local metadata was found. Fetch Danbooru, run Camie/EVA02, or
+              request Library suggestions explicitly to add predictions.
             </div>
           ) : (
             <>
@@ -959,6 +917,24 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
           </Button>
         </Modal.Footer>
       </Modal>
+
+      <TaggingChangePlanModal
+        show={!!changePlan}
+        title="Review Image Tagging changes"
+        plan={changePlan}
+        busy={applying}
+        onBack={() => {
+          setChangePlan(undefined);
+          setChangePlanTags([]);
+        }}
+        onHide={onHide}
+        onApply={() => {
+          const tags = changePlanTags;
+          setChangePlan(undefined);
+          setChangePlanTags([]);
+          void submitTags(tags);
+        }}
+      />
 
       <ModalComponent
         show={
