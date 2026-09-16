@@ -259,7 +259,6 @@ const ScenesFilterSidebarSections = PatchContainerComponent(
   "FilteredSceneList.SidebarSections"
 );
 
-
 const SidebarContent: React.FC<{
   filter: ListFilterModel;
   setFilter: (filter: ListFilterModel) => void;
@@ -364,7 +363,9 @@ const SidebarContent: React.FC<{
 };
 
 type FilteredSceneListBodyProps = React.ComponentProps<typeof SceneList>;
-type FilteredSceneListToolbarProps = React.ComponentProps<typeof FilteredListToolbar>;
+type FilteredSceneListToolbarProps = React.ComponentProps<
+  typeof FilteredListToolbar
+>;
 
 interface IFilteredScenes {
   filterHook?: (filter: ListFilterModel) => ListFilterModel;
