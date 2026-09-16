@@ -1,0 +1,42 @@
+name: Temporary format PR66 UI change
+
+on:
+  push:
+    branches:
+      - fix/unified-media-remove-video-bridges
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/unified-media-remove-video-bridges
+          fetch-depth: 0
+
+      - name: Apply formatter-required changes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('ui/v2.5/src/components/Scenes/SceneList.tsx')
+          s = p.read_text()
+          s = s.replace(');\n\n\nconst SidebarContent', ');\n\nconst SidebarContent', 1)
+          s = s.replace(
+              'type FilteredSceneListToolbarProps = React.ComponentProps<typeof FilteredListToolbar>;',
+              'type FilteredSceneListToolbarProps = React.ComponentProps<\n  typeof FilteredListToolbar\n>;'
+          )
+          p.write_text(s)
+          PY
+          git diff --check
+
+      - name: Commit formatting and remove temporary workflow
+        run: |
+          rm .github/workflows/tmp-pr66-format.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ui/v2.5/src/components/Scenes/SceneList.tsx .github/workflows/tmp-pr66-format.yml
+          git commit -m "Format FilteredSceneList extension props"
+          git push origin HEAD:fix/unified-media-remove-video-bridges
