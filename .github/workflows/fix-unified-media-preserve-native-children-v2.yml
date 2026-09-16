@@ -1,0 +1,156 @@
+name: Retry Unified Media native child traversal
+
+on:
+  push:
+    branches:
+      - fix/unified-media-preserve-native-children
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/unified-media-preserve-native-children
+          fetch-depth: 0
+
+      - name: Patch safe tree traversal
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          source = Path("ui/v2.5/builtin-source/unifiedMedia.05.part")
+          text = source.read_text()
+
+          new_children = "\n".join([
+              "  function isOpaqueChildPayload(value) {",
+              "    return (",
+              "      value !== null &&",
+              "      typeof value === \"object\" &&",
+              "      !React.isValidElement(value) &&",
+              "      !Array.isArray(value) &&",
+              "      value.$$typeof == null",
+              "    );",
+              "  }",
+              "",
+              "  function transformFilteredSceneChildren(children, ctx) {",
+              "    if (React.isValidElement(children)) {",
+              "      return transformFilteredSceneTree(children, ctx);",
+              "    }",
+              "    if (Array.isArray(children)) {",
+              "      // Native components may use children arrays as opaque payloads. If",
+              "      // one contains a non-React object, leave the entire collection under",
+              "      // native ownership instead of rebuilding it in the bridge.",
+              "      if (children.some(isOpaqueChildPayload)) return children;",
+              "",
+              "      let changed = false;",
+              "      const transformed = children.map((child) => {",
+              "        const next = transformFilteredSceneChildren(child, ctx);",
+              "        if (next !== child) changed = true;",
+              "        return next;",
+              "      });",
+              "      return changed ? transformed : children;",
+              "    }",
+              "    // Primitive values, portals/other React-owned values, and opaque",
+              "    // object-valued children are passed through without interpretation.",
+              "    return children;",
+              "  }",
+          ])
+
+          text, count = re.subn(
+              r"  function transformFilteredSceneChildren\(children, ctx\) \{.*?\n  \}\n(?=\n  function transformFilteredSceneTree)",
+              new_children,
+              text,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit(f"children transformer replacement count={count}")
+
+          new_bridge = "\n".join([
+              "  function FilteredSceneListTreeBridge({ rendered }) {",
+              "    const ctx = React.useContext(MixedContext);",
+              "    if (!ctx) return rendered;",
+              "    if (isOpaqueChildPayload(rendered)) {",
+              "      console.warn(",
+              "        \"[Unified Media] FilteredSceneList returned an opaque object; skipping the patched tree\"",
+              "      );",
+              "      return null;",
+              "    }",
+              "    return transformFilteredSceneTree(rendered, ctx);",
+              "  }",
+          ])
+
+          text, count = re.subn(
+              r"  function FilteredSceneListTreeBridge\(\{ rendered \}\) \{.*?\n  \}",
+              new_bridge,
+              text,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit(f"bridge replacement count={count}")
+
+          source.write_text(text)
+          print("patched", source)
+          PY
+
+      - name: Recompute Unified Media checksum
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import re
+
+          root = Path("ui/v2.5")
+          source_dir = root / "builtin-source"
+          parts = [source_dir / f"unifiedMedia.{i:02d}.part" for i in range(7)]
+          extensions = [
+              source_dir / "unifiedMedia.copyright.part",
+              source_dir / "unifiedMedia.copyright.guard.part",
+              source_dir / "unifiedMedia.visual-only.part",
+              source_dir / "unifiedMedia.copyright-native-all.part",
+          ]
+          close = b"})();\n"
+          core = b"".join(p.read_bytes() for p in parts)
+          if not core.endswith(close):
+              raise SystemExit("Unified Media core no longer ends at expected IIFE boundary")
+          unified = core[:-len(close)] + b"".join(p.read_bytes() for p in extensions) + close
+          digest = hashlib.sha256(unified).hexdigest()
+
+          prep = root / "scripts/prepare-builtins.mjs"
+          prep_text = prep.read_text()
+          prep_text, count = re.subn(
+              r'(?<=const expectedUnifiedSha256 =\n  ")[0-9a-f]{64}(?=";)',
+              digest,
+              prep_text,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit(f"checksum replacement count={count}")
+          prep.write_text(prep_text)
+          print("new Unified Media sha256:", digest)
+          PY
+
+      - name: Validate generated built-in bundle
+        working-directory: ui/v2.5
+        run: |
+          node scripts/prepare-builtins.mjs
+          node --check public/builtin/unifiedMedia.js
+
+      - name: Check diff
+        run: git diff --check
+
+      - name: Commit real fix and remove temporary workflows
+        run: |
+          rm .github/workflows/fix-unified-media-preserve-native-children.yml
+          rm .github/workflows/fix-unified-media-preserve-native-children-v2.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ui/v2.5/builtin-source/unifiedMedia.05.part ui/v2.5/scripts/prepare-builtins.mjs .github/workflows/fix-unified-media-preserve-native-children.yml .github/workflows/fix-unified-media-preserve-native-children-v2.yml
+          git commit -m "Fix Unified Media native child traversal"
+          git push origin HEAD:fix/unified-media-preserve-native-children
