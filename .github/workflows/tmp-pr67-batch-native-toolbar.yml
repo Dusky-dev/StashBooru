@@ -1,0 +1,127 @@
+name: Temporary migrate Batch Video Tagging off tree patch
+
+on:
+  push:
+    branches:
+      - fix/batch-video-tagging-native-toolbar
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/batch-video-tagging-native-toolbar
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        with:
+          package_json_file: ui/v2.5/package.json
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: ui/v2.5/pnpm-lock.yaml
+
+      - name: Patch Batch Video Tagging integration
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          batch_path = Path("ui/v2.5/src/components/Scenes/BatchVideoTaggingPatch.tsx")
+          scene_path = Path("ui/v2.5/src/components/Scenes/SceneList.tsx")
+
+          batch = batch_path.read_text()
+          scene = scene_path.read_text()
+
+          removals = [
+              'import { after } from "src/patch";\n',
+              'import {\n  FilteredListToolbar,\n  IFilteredListToolbar,\n} from "src/components/List/FilteredListToolbar";\n',
+              'import {\n  IListFilterOperation,\n  ListOperations,\n} from "src/components/List/ListOperationButtons";\n',
+              'type ListOperationsProps = React.ComponentProps<typeof ListOperations>;\n\n',
+          ]
+          for value in removals:
+              if value not in batch:
+                  raise SystemExit(f"expected BatchVideoTaggingPatch fragment missing: {value!r}")
+              batch = batch.replace(value, "", 1)
+
+          old_dialog = 'const BatchVideoTaggingDialog: React.FC<{'
+          if batch.count(old_dialog) != 1:
+              raise SystemExit("expected exactly one BatchVideoTaggingDialog declaration")
+          batch = batch.replace(old_dialog, 'export const BatchVideoTaggingDialog: React.FC<{', 1)
+
+          tail_marker = 'const BatchVideoTaggingOperations: React.FC<{'
+          if tail_marker not in batch:
+              raise SystemExit("BatchVideoTaggingOperations marker missing")
+          batch = batch[: batch.index(tail_marker)].rstrip() + "\n"
+
+          if 'after(' in batch or 'enhanceSceneListTree' in batch or 'SceneBatchEnhancer' in batch:
+              raise SystemExit("legacy FilteredSceneList tree patch still present")
+
+          import_anchor = 'import { DeleteScenesDialog } from "./DeleteScenesDialog";\n'
+          import_line = 'import { BatchVideoTaggingDialog } from "./BatchVideoTaggingPatch";\n'
+          if import_line not in scene:
+              if scene.count(import_anchor) != 1:
+                  raise SystemExit("SceneList import anchor missing")
+              scene = scene.replace(import_anchor, import_anchor + import_line, 1)
+
+          operations_anchor = '''      {
+        text: intl.formatMessage({ id: "actions.export_all" }),
+        onClick: () => onExport(true),
+      },
+    ];'''
+          operations_replacement = '''      {
+        text: intl.formatMessage({ id: "actions.export_all" }),
+        onClick: () => onExport(true),
+      },
+      {
+        text: "Batch Video Tagging…",
+        onClick: () =>
+          showModal(
+            <BatchVideoTaggingDialog
+              filter={filter}
+              selectedIds={selectedIds}
+              restrictedSceneIDs={sceneIDs}
+              onHide={() => closeModal()}
+            />
+          ),
+      },
+    ];'''
+          if scene.count(operations_anchor) != 1:
+              raise SystemExit("SceneList operations anchor missing or ambiguous")
+          scene = scene.replace(operations_anchor, operations_replacement, 1)
+
+          batch_path.write_text(batch)
+          scene_path.write_text(scene)
+          PY
+
+      - name: Install UI dependencies
+        working-directory: ui/v2.5
+        run: pnpm install --frozen-lockfile
+
+      - name: Format and validate changed UI
+        working-directory: ui/v2.5
+        run: |
+          pnpm exec biome format --write src/components/Scenes/BatchVideoTaggingPatch.tsx src/components/Scenes/SceneList.tsx
+          pnpm exec biome lint --error-on-warnings src/components/Scenes/BatchVideoTaggingPatch.tsx src/components/Scenes/SceneList.tsx
+          pnpm exec tsc --noEmit
+
+      - name: Verify tree patch removal
+        run: |
+          if grep -E 'enhanceSceneListTree|SceneBatchEnhancer|after\(' ui/v2.5/src/components/Scenes/BatchVideoTaggingPatch.tsx; then
+            echo "legacy tree patch remains"
+            exit 1
+          fi
+          git diff --check
+
+      - name: Commit real fix and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/tmp-pr67-batch-native-toolbar.yml
+          git add ui/v2.5/src/components/Scenes/BatchVideoTaggingPatch.tsx ui/v2.5/src/components/Scenes/SceneList.tsx
+          git commit -m "Move Batch Video Tagging onto native scene operations"
+          git push origin HEAD:fix/batch-video-tagging-native-toolbar
