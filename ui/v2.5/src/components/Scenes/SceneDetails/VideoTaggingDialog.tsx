@@ -30,7 +30,7 @@ import {
   TaggingChangePlanModal,
 } from "src/components/Tagging/TaggingChangePlanModal";
 
-type MetadataSourceKind = "local" | "booru";
+type MetadataSourceKind = "local" | "booru" | "frames";
 
 interface TagSourceResponse {
   backend: "local" | "remote";
@@ -46,6 +46,15 @@ interface BooruMetadataResponse {
   postURL?: string;
   md5: string;
   md5Source: "filename" | "file";
+  tags: TagPrediction[];
+}
+
+interface FrameMetadataResponse {
+  backend: "local" | "remote";
+  model: string;
+  threshold: number;
+  limit: number;
+  sampleTimes: number[];
   tags: TagPrediction[];
 }
 
@@ -84,6 +93,7 @@ const CATEGORY_ORDER = ["character", "artist", "copyright", "general", "meta"];
 const SOURCE_PRIORITY: Record<MetadataSourceKind, number> = {
   local: 0,
   booru: 10,
+  frames: 20,
 };
 
 function predictionSource(
@@ -96,6 +106,18 @@ function predictionSource(
       label: "Local",
       detail: "Local filename metadata",
       priority: SOURCE_PRIORITY.local,
+    };
+  }
+
+  if (kind === "frames") {
+    const consensus = prediction.source?.match(/^frame-analysis:(\d+)\/(\d+)$/);
+    return {
+      kind,
+      label: "Frames",
+      detail: consensus
+        ? `Frame analysis: ${consensus[1]}/${consensus[2]} sampled frames`
+        : "Frame analysis",
+      priority: SOURCE_PRIORITY.frames,
     };
   }
 
@@ -112,7 +134,8 @@ function predictionSource(
 
 function mergeVideoMetadataPredictions(
   localPredictions: TagPrediction[],
-  booruPredictions: TagPrediction[]
+  booruPredictions: TagPrediction[],
+  framePredictions: TagPrediction[]
 ) {
   return mergeTaggingMetadataPredictions([
     {
@@ -122,6 +145,10 @@ function mergeVideoMetadataPredictions(
     {
       predictions: booruPredictions,
       source: (prediction) => predictionSource(prediction, "booru"),
+    },
+    {
+      predictions: framePredictions,
+      source: (prediction) => predictionSource(prediction, "frames"),
     },
   ]);
 }
@@ -151,7 +178,9 @@ function categoryLabel(category: string) {
 }
 
 function sourceBadgeVariant(source: string) {
-  return source === "local" ? "success" : "info";
+  if (source === "local") return "success";
+  if (source === "frames") return "warning";
+  return "info";
 }
 
 export const VideoTaggingDialog: React.FC<IProps> = ({
@@ -164,10 +193,13 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
   const [localPredictions, setLocalPredictions] = useState<TagPrediction[]>([]);
   const [booruPredictions, setBooruPredictions] = useState<TagPrediction[]>([]);
   const [booruMetadata, setBooruMetadata] = useState<BooruMetadataResponse>();
+  const [framePredictions, setFramePredictions] = useState<TagPrediction[]>([]);
+  const [frameMetadata, setFrameMetadata] = useState<FrameMetadataResponse>();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [replaceArtists, setReplaceArtists] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingBooru, setLoadingBooru] = useState(false);
+  const [loadingFrames, setLoadingFrames] = useState(false);
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string>();
   const [pendingCharacterResolution, setPendingCharacterResolution] =
@@ -176,8 +208,13 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
   const [changePlanTags, setChangePlanTags] = useState<TagPrediction[]>([]);
 
   const predictions = useMemo(
-    () => mergeVideoMetadataPredictions(localPredictions, booruPredictions),
-    [booruPredictions, localPredictions]
+    () =>
+      mergeVideoMetadataPredictions(
+        localPredictions,
+        booruPredictions,
+        framePredictions
+      ),
+    [booruPredictions, framePredictions, localPredictions]
   );
 
   const addSelected = useCallback((items: TagPrediction[]) => {
@@ -230,6 +267,22 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
       setLoadingBooru(false);
     }
   }, [addSelected, localPredictions, sceneId]);
+
+  const loadFrameMetadata = useCallback(async () => {
+    setLoadingFrames(true);
+    setError(undefined);
+    try {
+      const response = await fetch(`scene/${sceneId}/frame-metadata`);
+      const result = await readResponse<FrameMetadataResponse>(response);
+      setFrameMetadata(result);
+      setFramePredictions(result.tags);
+      // Frame-assisted suggestions are review-only and start unselected.
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setLoadingFrames(false);
+    }
+  }, [sceneId]);
 
   const grouped = useMemo(() => {
     const groups = new Map<string, MetadataPrediction[]>();
@@ -418,14 +471,23 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
           <div className="d-flex flex-wrap align-items-center mb-3">
             <Button
               variant="secondary"
-              disabled={loading || loadingBooru || applying}
+              disabled={loading || loadingBooru || loadingFrames || applying}
               onClick={() => void loadBooruMetadata()}
             >
               {loadingBooru ? "Loading booru…" : "Load booru metadata"}
             </Button>
+            <Button
+              className="ml-2"
+              variant="secondary"
+              disabled={loading || loadingBooru || loadingFrames || applying}
+              onClick={() => void loadFrameMetadata()}
+            >
+              {loadingFrames ? "Analyzing frames…" : "Analyze frames"}
+            </Button>
             <span className="ml-3 text-muted">
-              Local filename metadata loads automatically. Camie and EVA02 image
-              inference are not run for Videos.
+              Local filename metadata loads automatically. Representative-frame
+              Camie analysis runs only when explicitly requested; EVA02 image
+              inference is not run for Videos.
             </span>
           </div>
 
@@ -452,6 +514,15 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
             </div>
           ) : null}
 
+          {frameMetadata ? (
+            <div className="alert alert-warning py-2">
+              Analyzed {frameMetadata.sampleTimes.length} representative frame
+              {frameMetadata.sampleTimes.length === 1 ? "" : "s"}. Frame
+              suggestions start unselected and cannot override Local filename
+              identity.
+            </div>
+          ) : null}
+
           <Form.Check
             className="mb-3"
             type="checkbox"
@@ -470,7 +541,7 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
           ) : predictions.length === 0 && !error ? (
             <div className="text-muted">
               No local metadata was found. You can still try an exact booru
-              lookup.
+              lookup or explicitly analyze representative frames.
             </div>
           ) : (
             <>
@@ -606,7 +677,11 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
           <Button
             variant="primary"
             disabled={
-              loading || loadingBooru || applying || visibleSelectedCount === 0
+              loading ||
+              loadingBooru ||
+              loadingFrames ||
+              applying ||
+              visibleSelectedCount === 0
             }
             onClick={applySelected}
           >
