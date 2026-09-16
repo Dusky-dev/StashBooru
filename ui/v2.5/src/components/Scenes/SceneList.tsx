@@ -259,14 +259,6 @@ const ScenesFilterSidebarSections = PatchContainerComponent(
   "FilteredSceneList.SidebarSections"
 );
 
-// Expose the scene toolbar as a narrow patch point. Plugins that only need to
-// adapt toolbar props should not have to wrap or walk the full FilteredSceneList
-// render tree.
-const FilteredSceneListToolbar = PatchComponent(
-  "FilteredSceneList.Toolbar",
-  FilteredListToolbar
-);
-
 const SidebarContent: React.FC<{
   filter: ListFilterModel;
   setFilter: (filter: ListFilterModel) => void;
@@ -370,6 +362,11 @@ const SidebarContent: React.FC<{
   );
 };
 
+type FilteredSceneListBodyProps = React.ComponentProps<typeof SceneList>;
+type FilteredSceneListToolbarProps = React.ComponentProps<
+  typeof FilteredListToolbar
+>;
+
 interface IFilteredScenes {
   filterHook?: (filter: ListFilterModel) => ListFilterModel;
   defaultSort?: string;
@@ -377,6 +374,10 @@ interface IFilteredScenes {
   alterQuery?: boolean;
   fromGroupId?: string;
   sceneIDs?: number[];
+  toolbarPropsAdapter?: (
+    props: FilteredSceneListToolbarProps
+  ) => FilteredSceneListToolbarProps;
+  renderList?: (props: FilteredSceneListBodyProps) => React.ReactNode;
 }
 
 export const FilteredSceneList = PatchComponent(
@@ -676,6 +677,29 @@ export const FilteredSceneList = PatchComponent(
       />
     );
 
+    const toolbarProps: FilteredSceneListToolbarProps = {
+      filter,
+      listSelect,
+      setFilter,
+      showEditFilter,
+      onDelete,
+      onEdit,
+      operationComponent: operations,
+      view,
+      zoomable: true,
+    };
+    const adaptedToolbarProps = props.toolbarPropsAdapter
+      ? props.toolbarPropsAdapter(toolbarProps)
+      : toolbarProps;
+    const listProps: FilteredSceneListBodyProps = {
+      filter: effectiveFilter,
+      scenes: items,
+      selectedIds,
+      onSelectChange,
+      fromGroupId,
+      sceneIDs,
+    };
+
     return (
       <TaggerContext>
         <div
@@ -703,17 +727,7 @@ export const FilteredSceneList = PatchComponent(
               <SidebarPaneContent
                 onSidebarToggle={() => setShowSidebar(!showSidebar)}
               >
-                <FilteredSceneListToolbar
-                  filter={filter}
-                  listSelect={listSelect}
-                  setFilter={setFilter}
-                  showEditFilter={showEditFilter}
-                  onDelete={onDelete}
-                  onEdit={onEdit}
-                  operationComponent={operations}
-                  view={view}
-                  zoomable
-                />
+                <FilteredListToolbar {...adaptedToolbarProps} />
 
                 <FilterTags
                   view={view}
@@ -742,14 +756,11 @@ export const FilteredSceneList = PatchComponent(
                 </div>
 
                 <LoadedContent loading={result.loading} error={result.error}>
-                  <SceneList
-                    filter={effectiveFilter}
-                    scenes={items}
-                    selectedIds={selectedIds}
-                    onSelectChange={onSelectChange}
-                    fromGroupId={fromGroupId}
-                    sceneIDs={sceneIDs}
-                  />
+                  {props.renderList ? (
+                    props.renderList(listProps)
+                  ) : (
+                    <SceneList {...listProps} />
+                  )}
                 </LoadedContent>
 
                 {totalCount > filter.itemsPerPage && (

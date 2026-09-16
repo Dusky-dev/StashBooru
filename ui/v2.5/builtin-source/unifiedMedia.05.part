@@ -234,58 +234,6 @@ eEffect(() => cleanupNativeLightbox, [cleanupNativeLightbox]);
     );
   }
 
-  // SceneList is the list body produced by our real native FilteredSceneList
-  // controller. Only replace it while it is under MixedContext; every other
-  // SceneList in Stash receives its original rendered result untouched.
-  api.patch.after("SceneList", function () {
-    const args = Array.from(arguments);
-    const props = args[0] || {};
-    const rendered = args[args.length - 1];
-    return React.createElement(SceneListBridge, { props, rendered });
-  });
-
-  function SceneListBridge({ props, rendered }) {
-    const ctx = React.useContext(MixedContext);
-    if (!ctx) return rendered;
-    return React.createElement(MixedGrid, {
-      ctx,
-      filter: props.filter,
-    });
-  }
-
-  // Patch only the dedicated native scene-toolbar wrapper. This keeps the
-  // ordinary /scenes page on Stash's native FilteredSceneList render path
-  // and avoids recursively walking arbitrary React children.
-  api.patch.after("FilteredSceneList.Toolbar", function () {
-    const args = Array.from(arguments);
-    const props = args[0] || {};
-    const rendered = args[args.length - 1];
-    return React.createElement(FilteredSceneListToolbarBridge, { props, rendered });
-  });
-
-  function FilteredSceneListToolbarBridge({ props, rendered }) {
-    const ctx = React.useContext(MixedContext);
-    if (!ctx || !React.isValidElement(rendered)) return rendered;
-
-    const selectedIds = new Set(ctx.selectedKeys);
-    const listSelect = {
-      ...(props.listSelect || {}),
-      selectedIds,
-      selectedItems: [],
-      hasSelection: selectedIds.size > 0,
-      onSelectAll: ctx.selectAll,
-      onSelectNone: ctx.clearSelection,
-      onInvertSelection: ctx.invertSelection,
-    };
-
-    return React.cloneElement(rendered, {
-      filter: makeGridWallToolbarFilter(props.filter),
-      listSelect,
-      operationComponent: makeSafeOperations(props.operationComponent, ctx),
-      onDelete: undefined,
-      onEdit: undefined,
-    });
-  }
 
   function makeGridWallToolbarFilter(filter) {
     if (!filter) return filter;
@@ -501,6 +449,33 @@ eEffect(() => cleanupNativeLightbox, [cleanupNativeLightbox]);
             defaultSort: "date",
             alterQuery: false,
             view,
+            toolbarPropsAdapter: (toolbarProps) => {
+              const selectedIds = new Set(mixedContextValue.selectedKeys);
+              return {
+                ...toolbarProps,
+                filter: makeGridWallToolbarFilter(toolbarProps.filter),
+                listSelect: {
+                  ...(toolbarProps.listSelect || {}),
+                  selectedIds,
+                  selectedItems: [],
+                  hasSelection: selectedIds.size > 0,
+                  onSelectAll: mixedContextValue.selectAll,
+                  onSelectNone: mixedContextValue.clearSelection,
+                  onInvertSelection: mixedContextValue.invertSelection,
+                },
+                operationComponent: makeSafeOperations(
+                  toolbarProps.operationComponent,
+                  mixedContextValue
+                ),
+                onDelete: undefined,
+                onEdit: undefined,
+              };
+            },
+            renderList: (listProps) =>
+              React.createElement(MixedGrid, {
+                ctx: mixedContextValue,
+                filter: listProps.filter,
+              }),
           })
         )      )
     );
