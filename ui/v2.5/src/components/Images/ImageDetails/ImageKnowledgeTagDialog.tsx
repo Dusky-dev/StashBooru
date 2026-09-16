@@ -66,6 +66,7 @@ interface LibrarySimilarityResponse {
 
 interface CamieConfig {
   threshold: number;
+  eva02Threshold: number;
   limit: number;
   filenameEnabled: boolean;
   filenameLayout: string;
@@ -405,10 +406,11 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         const config = await readResponse<CamieConfig>(response);
         if (!cancelled) {
           setCamieThreshold(String(config.threshold));
+          setEva02Threshold(String(config.eva02Threshold));
           setLimit(String(config.limit));
         }
       } catch {
-        // Keep the UI defaults if the optional Camie config is unavailable.
+        // Keep built-in defaults if the optional tagging config is unavailable.
       }
     })();
 
@@ -748,13 +750,12 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
             Sources are merged in priority order: Local → Danbooru → Camie →
             EVA02 → Library. Opening this dialog loads Local metadata only;
             every network, model, or similarity source is explicit. Camie and
-            EVA02 use independent thresholds; EVA02 defaults to 0.35. Library
-            suggestions require consensus from visually similar indexed images
-            and start unselected because they are review-only. When the same
-            metadata item is predicted by multiple sources, the earlier source
-            keeps its value and score while later sources are shown as
-            additional provenance. Multiple selected Artists can be attached to
-            the same image.
+            EVA02 use independent configured thresholds. Library suggestions
+            require consensus from visually similar indexed images and start
+            unselected because they are review-only. When the same metadata item
+            is predicted by multiple sources, the earlier source keeps its value
+            and score while later sources are shown as additional provenance.
+            Multiple selected Artists can be attached to the same image.
           </div>
 
           <Form.Check

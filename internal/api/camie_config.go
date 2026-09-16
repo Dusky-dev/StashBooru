@@ -17,12 +17,14 @@ import (
 const (
 	camieConfigFilename        = "camie-metadata.json"
 	defaultCamieFilenameLayout = "[%artist%](%copyright%).%character%_%md5%.%ext%"
+	defaultEva02Threshold      = 0.35
 )
 
 var camieConfigMu sync.Mutex
 
 type camieConfig struct {
 	Threshold       float64 `json:"threshold"`
+	Eva02Threshold  float64 `json:"eva02Threshold"`
 	Limit           int     `json:"limit"`
 	FilenameEnabled bool    `json:"filenameEnabled"`
 	FilenameLayout  string  `json:"filenameLayout"`
@@ -31,6 +33,7 @@ type camieConfig struct {
 func defaultCamieConfig() camieConfig {
 	return camieConfig{
 		Threshold:       camietagger.DefaultThreshold,
+		Eva02Threshold:  defaultEva02Threshold,
 		Limit:           camietagger.DefaultLimit,
 		FilenameEnabled: true,
 		FilenameLayout:  defaultCamieFilenameLayout,
@@ -62,6 +65,9 @@ func loadCamieConfigLocked() (camieConfig, error) {
 	if config.Threshold == 0 {
 		config.Threshold = camietagger.DefaultThreshold
 	}
+	if config.Eva02Threshold == 0 {
+		config.Eva02Threshold = defaultEva02Threshold
+	}
 	if config.Limit == 0 {
 		config.Limit = camietagger.DefaultLimit
 	}
@@ -77,6 +83,9 @@ func loadCamieConfigLocked() (camieConfig, error) {
 func validateCamieConfig(config camieConfig) error {
 	if config.Threshold <= 0 || config.Threshold >= 1 {
 		return fmt.Errorf("threshold must be greater than 0 and less than 1")
+	}
+	if config.Eva02Threshold <= 0 || config.Eva02Threshold >= 1 {
+		return fmt.Errorf("EVA02 threshold must be greater than 0 and less than 1")
 	}
 	if config.Limit < 1 || config.Limit > camietagger.MaxLimit {
 		return fmt.Errorf("per-category limit must be between 1 and %d", camietagger.MaxLimit)

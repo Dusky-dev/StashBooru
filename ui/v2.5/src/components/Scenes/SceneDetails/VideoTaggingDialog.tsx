@@ -58,6 +58,14 @@ interface FrameMetadataResponse {
   tags: TagPrediction[];
 }
 
+interface TaggingConfig {
+  threshold: number;
+  eva02Threshold: number;
+  limit: number;
+  filenameEnabled: boolean;
+  filenameLayout: string;
+}
+
 interface AppliedEntity {
   id: number;
   name: string;
@@ -183,6 +191,18 @@ function sourceBadgeVariant(source: string) {
   return "info";
 }
 
+function parseFrameOptions(threshold: string, limit: string) {
+  const parsedThreshold = Number.parseFloat(threshold);
+  const parsedLimit = Number.parseInt(limit, 10);
+  if (!(parsedThreshold > 0 && parsedThreshold < 1)) {
+    throw new Error("Frame threshold must be greater than 0 and less than 1.");
+  }
+  if (!(parsedLimit >= 1 && parsedLimit <= 200)) {
+    throw new Error("Per-category limit must be between 1 and 200.");
+  }
+  return { parsedThreshold, parsedLimit };
+}
+
 export const VideoTaggingDialog: React.FC<IProps> = ({
   sceneId,
   onHide,
@@ -190,6 +210,8 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
 }) => {
   const Toast = useToast();
   const history = useHistory();
+  const [frameThreshold, setFrameThreshold] = useState("0.492");
+  const [limit, setLimit] = useState("50");
   const [localPredictions, setLocalPredictions] = useState<TagPrediction[]>([]);
   const [booruPredictions, setBooruPredictions] = useState<TagPrediction[]>([]);
   const [booruMetadata, setBooruMetadata] = useState<BooruMetadataResponse>();
@@ -228,11 +250,17 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
 
     void (async () => {
       try {
-        const response = await fetch(`scene/${sceneId}/local-metadata`);
-        const result = await readResponse<TagSourceResponse>(response);
+        const [localResponse, configResponse] = await Promise.all([
+          fetch(`scene/${sceneId}/local-metadata`),
+          fetch("image/visual-similarity/camie/config"),
+        ]);
+        const result = await readResponse<TagSourceResponse>(localResponse);
+        const config = await readResponse<TaggingConfig>(configResponse);
         if (!cancelled) {
           setLocalPredictions(result.tags);
           addSelected(result.tags);
+          setFrameThreshold(String(config.threshold));
+          setLimit(String(config.limit));
         }
       } catch (cause) {
         if (!cancelled) {
@@ -269,10 +297,20 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
   }, [addSelected, localPredictions, sceneId]);
 
   const loadFrameMetadata = useCallback(async () => {
+    let options: ReturnType<typeof parseFrameOptions>;
+    try {
+      options = parseFrameOptions(frameThreshold, limit);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+      return;
+    }
+
     setLoadingFrames(true);
     setError(undefined);
     try {
-      const response = await fetch(`scene/${sceneId}/frame-metadata`);
+      const response = await fetch(
+        `scene/${sceneId}/frame-metadata?threshold=${encodeURIComponent(options.parsedThreshold)}&limit=${encodeURIComponent(options.parsedLimit)}`
+      );
       const result = await readResponse<FrameMetadataResponse>(response);
       setFrameMetadata(result);
       setFramePredictions(result.tags);
@@ -282,7 +320,7 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
     } finally {
       setLoadingFrames(false);
     }
-  }, [sceneId]);
+  }, [frameThreshold, limit, sceneId]);
 
   const grouped = useMemo(() => {
     const groups = new Map<string, MetadataPrediction[]>();
@@ -456,6 +494,8 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
     ? ambiguousCharacterCandidates(pendingPrediction)
     : [];
 
+  const busy = loading || loadingBooru || loadingFrames;
+
   return (
     <>
       <Modal
@@ -465,30 +505,68 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
         centered
       >
         <Modal.Header closeButton>
-          <Modal.Title>Video Tagging</Modal.Title>
+          <Modal.Title>Video metadata</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <div className="d-flex flex-wrap align-items-center mb-3">
+          <div className="d-flex flex-wrap align-items-end mb-3">
+            <Form.Group className="mr-3 mb-2">
+              <Form.Label>Frame threshold</Form.Label>
+              <Form.Control
+                type="number"
+                min="0.001"
+                max="0.999"
+                step="0.01"
+                value={frameThreshold}
+                onChange={(event) =>
+                  setFrameThreshold(event.currentTarget.value)
+                }
+                style={{ width: "8rem" }}
+              />
+            </Form.Group>
+            <Form.Group className="mr-3 mb-2">
+              <Form.Label>Per-category limit</Form.Label>
+              <Form.Control
+                type="number"
+                min="1"
+                max="200"
+                value={limit}
+                onChange={(event) => setLimit(event.currentTarget.value)}
+                style={{ width: "8rem" }}
+              />
+            </Form.Group>
             <Button
+              className="mr-2 mb-2"
               variant="secondary"
-              disabled={loading || loadingBooru || loadingFrames || applying}
+              disabled={busy || applying}
               onClick={() => void loadBooruMetadata()}
             >
-              {loadingBooru ? "Loading booru…" : "Load booru metadata"}
+              {loadingBooru ? "Fetching…" : "Fetch from Danbooru"}
             </Button>
             <Button
-              className="ml-2"
+              className="mb-2"
               variant="secondary"
-              disabled={loading || loadingBooru || loadingFrames || applying}
+              disabled={busy || applying}
               onClick={() => void loadFrameMetadata()}
             >
-              {loadingFrames ? "Analyzing frames…" : "Analyze frames"}
+              {loadingFrames ? "Analyzing…" : "Analyze frames"}
             </Button>
-            <span className="ml-3 text-muted">
-              Local filename metadata loads automatically. Representative-frame
-              Camie analysis runs only when explicitly requested; EVA02 image
-              inference is not run for Videos.
-            </span>
+          </div>
+
+          <div className="d-flex flex-wrap align-items-center mb-3">
+            <Badge className="mr-2 mb-1" variant="success">
+              Local loaded
+            </Badge>
+            {booruMetadata ? (
+              <Badge className="mr-2 mb-1" variant="info">
+                {booruMetadata.source}
+              </Badge>
+            ) : null}
+            {frameMetadata ? (
+              <Badge className="mb-1" variant="warning">
+                Frames {frameMetadata.sampleTimes.length} samples ·{" "}
+                {frameMetadata.backend}
+              </Badge>
+            ) : null}
           </div>
 
           {booruMetadata ? (
@@ -514,14 +592,15 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
             </div>
           ) : null}
 
-          {frameMetadata ? (
-            <div className="alert alert-warning py-2">
-              Analyzed {frameMetadata.sampleTimes.length} representative frame
-              {frameMetadata.sampleTimes.length === 1 ? "" : "s"}. Frame
-              suggestions start unselected and cannot override Local filename
-              identity.
-            </div>
-          ) : null}
+          <div className="mb-3 text-muted">
+            Sources are merged in priority order: Local → Danbooru → Frames.
+            Opening this dialog loads Local metadata only. Danbooru lookup and
+            representative-frame analysis are explicit. Frame analysis uses the
+            configured Camie/frame threshold and per-category limit, samples the
+            Video through ffmpeg, and starts its suggestions unselected for
+            review. Frame predictions cannot override authoritative Local
+            Character, Artist, or Copyright identity.
+          </div>
 
           <Form.Check
             className="mb-3"
@@ -540,8 +619,8 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
             </div>
           ) : predictions.length === 0 && !error ? (
             <div className="text-muted">
-              No local metadata was found. You can still try an exact booru
-              lookup or explicitly analyze representative frames.
+              No Local metadata was found. Fetch Danbooru or explicitly analyze
+              representative frames to add predictions.
             </div>
           ) : (
             <>
@@ -676,13 +755,7 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
           </Button>
           <Button
             variant="primary"
-            disabled={
-              loading ||
-              loadingBooru ||
-              loadingFrames ||
-              applying ||
-              visibleSelectedCount === 0
-            }
+            disabled={busy || applying || visibleSelectedCount === 0}
             onClick={applySelected}
           >
             {applying ? "Applying…" : "Apply selected metadata"}
@@ -692,7 +765,7 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
 
       <TaggingChangePlanModal
         show={!!changePlan}
-        title="Review Video Tagging changes"
+        title="Review Video Metadata changes"
         plan={changePlan}
         busy={applying}
         onBack={() => {
@@ -730,8 +803,8 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
         {pendingPrediction && pendingMatch ? (
           <>
             <p>
-              Video Tagging found <strong>{pendingPrediction.name}</strong>, but
-              an existing Character named{" "}
+              Video Metadata found <strong>{pendingPrediction.name}</strong>,
+              but an existing Character named{" "}
               <strong>{pendingMatch.bareName}</strong> has no disambiguation.
             </p>
             <p>Is this the same Character?</p>
@@ -758,7 +831,7 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
         </Modal.Header>
         <Modal.Body>
           <p>
-            Video Tagging found <strong>{pendingPrediction?.name}</strong>, but
+            Video Metadata found <strong>{pendingPrediction?.name}</strong>, but
             multiple existing Characters share that name. Choose the Character
             this metadata refers to.
           </p>

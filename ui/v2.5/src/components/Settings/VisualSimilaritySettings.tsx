@@ -37,6 +37,7 @@ interface CamieStatus {
 
 interface CamieConfig {
   threshold: number;
+  eva02Threshold: number;
   limit: number;
   filenameEnabled: boolean;
   filenameLayout: string;
@@ -67,6 +68,7 @@ export const VisualSimilaritySettings: React.FC = () => {
   const [camieStatusError, setCamieStatusError] = useState<string>();
   const [camieConfig, setCamieConfig] = useState<CamieConfig>({
     threshold: 0.492,
+    eva02Threshold: 0.35,
     limit: 50,
     filenameEnabled: true,
     filenameLayout: "[%artist%](%copyright%).%character%_%md5%.%ext%",
@@ -168,7 +170,7 @@ export const VisualSimilaritySettings: React.FC = () => {
       });
       const saved = await readResponse<CamieConfig>(response);
       setCamieConfig(saved);
-      Toast.success("Saved Camie metadata defaults.");
+      Toast.success("Saved tagging defaults.");
     } catch (error) {
       Toast.error(error);
     } finally {
@@ -304,6 +306,82 @@ export const VisualSimilaritySettings: React.FC = () => {
 
         <Setting
           className="flex-column align-items-stretch"
+          heading="Tagging defaults"
+          subHeading="Defaults used by Image Metadata inference and Video frame analysis. Camie/frame inference and EVA02 use independent thresholds; the per-category limit is shared."
+        >
+          <div className="mt-3 w-100">
+            <div className="d-flex flex-wrap align-items-end mb-2">
+              <Form.Group className="mr-3 mb-2">
+                <Form.Label>Camie / frame threshold</Form.Label>
+                <Form.Control
+                  type="number"
+                  min="0.001"
+                  max="0.999"
+                  step="0.01"
+                  value={camieConfig.threshold}
+                  onChange={(event) => {
+                    const value = Number.parseFloat(event.currentTarget.value);
+                    setCamieConfig((current) => ({
+                      ...current,
+                      threshold: value,
+                    }));
+                  }}
+                  style={{ width: "10rem" }}
+                />
+              </Form.Group>
+              <Form.Group className="mr-3 mb-2">
+                <Form.Label>EVA02 threshold</Form.Label>
+                <Form.Control
+                  type="number"
+                  min="0.001"
+                  max="0.999"
+                  step="0.01"
+                  value={camieConfig.eva02Threshold}
+                  onChange={(event) => {
+                    const value = Number.parseFloat(event.currentTarget.value);
+                    setCamieConfig((current) => ({
+                      ...current,
+                      eva02Threshold: value,
+                    }));
+                  }}
+                  style={{ width: "9rem" }}
+                />
+              </Form.Group>
+              <Form.Group className="mb-2">
+                <Form.Label>Per-category limit</Form.Label>
+                <Form.Control
+                  type="number"
+                  min="1"
+                  max="200"
+                  value={camieConfig.limit}
+                  onChange={(event) => {
+                    const value = Number.parseInt(
+                      event.currentTarget.value,
+                      10
+                    );
+                    setCamieConfig((current) => ({
+                      ...current,
+                      limit: value,
+                    }));
+                  }}
+                  style={{ width: "9rem" }}
+                />
+              </Form.Group>
+            </div>
+            <div className="d-flex justify-content-end mb-2">
+              <Button
+                variant="secondary"
+                disabled={savingCamie}
+                onClick={() => void saveCamieConfig()}
+              >
+                {savingCamie ? "Saving..." : "Save tagging defaults"}
+              </Button>
+            </div>
+          </div>
+        </Setting>
+
+        <Setting
+          className="flex-column align-items-stretch"
           heading="Camie Tagger v2 (optional)"
           subHeading={camieSubHeading}
         >
@@ -349,47 +427,6 @@ export const VisualSimilaritySettings: React.FC = () => {
               </div>
             ) : null}
 
-            <div className="d-flex flex-wrap align-items-end mb-2">
-              <Form.Group className="mr-3 mb-2">
-                <Form.Label>Default threshold</Form.Label>
-                <Form.Control
-                  type="number"
-                  min="0.001"
-                  max="0.999"
-                  step="0.01"
-                  value={camieConfig.threshold}
-                  onChange={(event) => {
-                    const value = Number.parseFloat(event.currentTarget.value);
-                    setCamieConfig((current) => ({
-                      ...current,
-                      threshold: value,
-                    }));
-                  }}
-                  style={{ width: "9rem" }}
-                />
-              </Form.Group>
-              <Form.Group className="mb-2">
-                <Form.Label>Per-category limit</Form.Label>
-                <Form.Control
-                  type="number"
-                  min="1"
-                  max="200"
-                  value={camieConfig.limit}
-                  onChange={(event) => {
-                    const value = Number.parseInt(
-                      event.currentTarget.value,
-                      10
-                    );
-                    setCamieConfig((current) => ({
-                      ...current,
-                      limit: value,
-                    }));
-                  }}
-                  style={{ width: "9rem" }}
-                />
-              </Form.Group>
-            </div>
-
             <Form.Check
               className="mb-2"
               type="checkbox"
@@ -432,7 +469,7 @@ export const VisualSimilaritySettings: React.FC = () => {
                 disabled={savingCamie}
                 onClick={() => void saveCamieConfig()}
               >
-                {savingCamie ? "Saving..." : "Save Camie defaults"}
+                {savingCamie ? "Saving..." : "Save Camie filename settings"}
               </Button>
             </div>
 
