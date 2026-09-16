@@ -35,18 +35,7 @@ jobs:
               exit 1
             fi
             git checkout --theirs internal/api/routes_image.go
-            python - <<'PY'
-from pathlib import Path
-p = Path('internal/api/routes_image.go')
-s = p.read_text()
-needle = '\t\tr.Post("/index", rs.VisualSimilarityIndexImages)\n'
-addition = needle + '\t\tr.Get("/clusters", rs.ImageSimilarityClusters)\n\t\tr.Post("/clusters/copy-metadata", rs.CopySimilarityClusterMetadata)\n'
-if 'rs.ImageSimilarityClusters' not in s:
-    if needle not in s:
-        raise SystemExit('visual-similarity index route anchor not found')
-    s = s.replace(needle, addition, 1)
-p.write_text(s)
-PY
+            python -c 'from pathlib import Path; p=Path("internal/api/routes_image.go"); s=p.read_text(); n="\t\tr.Post(\"/index\", rs.VisualSimilarityIndexImages)\n"; a=n+"\t\tr.Get(\"/clusters\", rs.ImageSimilarityClusters)\n\t\tr.Post(\"/clusters/copy-metadata\", rs.CopySimilarityClusterMetadata)\n"; assert ("rs.ImageSimilarityClusters" in s) or (n in s), "route anchor not found"; p.write_text(s if "rs.ImageSimilarityClusters" in s else s.replace(n,a,1))'
             git add internal/api/routes_image.go
             git commit --no-edit
           fi
