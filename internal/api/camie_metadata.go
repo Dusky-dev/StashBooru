@@ -492,6 +492,6 @@ func findOrCreateCamieTagPrediction(ctx context.Context, repository models.Repos
 
 // Kept as a compatibility shim for booru callers while all metadata sources
 // move under the Image Tagging umbrella. Copyrights are resolved natively.
-func enrichCamiePredictionTargets(ctx context.Context, predictions []camietagger.Tag) []camietagger.Tag {
+func enrichCamiePredictionTargets(ctx context.Context, predictions []camietagger.Tag) ([]camietagger.Tag, error) {
 	return enrichNativeCamiePredictionTargets(ctx, predictions)
 }

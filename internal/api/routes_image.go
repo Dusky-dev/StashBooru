@@ -41,14 +41,15 @@ func (rs imageRoutes) Routes() chi.Router {
 		r.Post("/remote-config", rs.VisualSimilarityRemoteConfigUpdate)
 		r.Post("/download", rs.VisualSimilarityDownload)
 		r.Post("/index", rs.VisualSimilarityIndexImages)
+		r.Get("/clusters", rs.ImageSimilarityClusters)
+		r.Post("/clusters/copy-metadata", rs.CopySimilarityClusterMetadata)
 		r.Get("/camie/status", rs.CamieStatus)
 		r.Get("/camie/config", rs.CamieConfig)
 		r.Post("/camie/config", rs.CamieConfigUpdate)
 		r.Post("/camie/tag", rs.CamieTagImagesV2)
 	})
 
-	r.Get("/alias-collisions", rs.AliasCollisions)
-	r.Get("/alias-collisions/inspect", rs.AliasCollisionInspect)
+	r.Get("/metadata-health", rs.MetadataHealthComplete)
 
 	r.Route("/{imageId}", func(r chi.Router) {
 		r.Use(rs.ImageCtx)
@@ -58,6 +59,7 @@ func (rs imageRoutes) Routes() chi.Router {
 		r.Get("/preview", rs.Preview)
 		r.Get("/booru-metadata", rs.ImageBooruMetadata)
 		r.Get("/local-metadata", rs.ImageLocalMetadata)
+		r.Get("/library-similarity-metadata", rs.ImageLibrarySimilarityMetadata)
 		r.Post("/camie-tags", rs.ImageCamiePredictions)
 		r.Post("/eva02-tags", rs.ImageEva02Predictions)
 		r.Post("/knowledge-tags", rs.ImageKnowledgeTagsWithLocalPriorityV2)
