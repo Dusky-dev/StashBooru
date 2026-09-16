@@ -17,33 +17,16 @@ jobs:
           ref: fix/unified-media-preserve-native-children
           fetch-depth: 0
 
-      - name: Patch safe tree traversal and checksum
+      - name: Patch safe tree traversal
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import hashlib
           import re
 
           source = Path("ui/v2.5/builtin-source/unifiedMedia.05.part")
           text = source.read_text()
 
-          old = '''  function transformFilteredSceneChildren(children, ctx) {
-            if (React.isValidElement(children)) {
-              return transformFilteredSceneTree(children, ctx);
-            }
-            if (Array.isArray(children)) {
-              return children.map((child) =>
-                transformFilteredSceneChildren(child, ctx)
-              );
-            }
-            // Some native Stash components use opaque object-valued children.
-            // React.Children.* rejects those objects even though the component
-            // itself may consume them safely, so leave non-React payloads alone.
-            return children;
-          }
-          '''
-
-          new = '''  function isOpaqueChildPayload(value) {
+          new_children = '''  function isOpaqueChildPayload(value) {
             return (
               value !== null &&
               typeof value === "object" &&
@@ -77,16 +60,16 @@ jobs:
           }
           '''
 
-          if old not in text:
-            raise SystemExit("expected transformFilteredSceneChildren block not found")
-          text = text.replace(old, new, 1)
+          text, count = re.subn(
+              r"  function transformFilteredSceneChildren\(children, ctx\) \{.*?\n  \}\n(?=\n  function transformFilteredSceneTree)",
+              new_children.rstrip("\n"),
+              text,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit(f"children transformer replacement count={count}")
 
-          old_bridge = '''  function FilteredSceneListTreeBridge({ rendered }) {
-            const ctx = React.useContext(MixedContext);
-            if (!ctx) return rendered;
-            return transformFilteredSceneTree(rendered, ctx);
-          }
-          '''
           new_bridge = '''  function FilteredSceneListTreeBridge({ rendered }) {
             const ctx = React.useContext(MixedContext);
             if (!ctx) return rendered;
@@ -99,10 +82,26 @@ jobs:
             return transformFilteredSceneTree(rendered, ctx);
           }
           '''
-          if old_bridge not in text:
-            raise SystemExit("expected FilteredSceneListTreeBridge block not found")
-          text = text.replace(old_bridge, new_bridge, 1)
+          text, count = re.subn(
+              r"  function FilteredSceneListTreeBridge\(\{ rendered \}\) \{.*?\n  \}",
+              new_bridge.rstrip("\n"),
+              text,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit(f"bridge replacement count={count}")
+
           source.write_text(text)
+          print("patched", source)
+          PY
+
+      - name: Recompute Unified Media checksum
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import re
 
           root = Path("ui/v2.5")
           source_dir = root / "builtin-source"
@@ -116,20 +115,20 @@ jobs:
           close = b"})();\n"
           core = b"".join(p.read_bytes() for p in parts)
           if not core.endswith(close):
-            raise SystemExit("Unified Media core no longer ends at expected IIFE boundary")
+              raise SystemExit("Unified Media core no longer ends at expected IIFE boundary")
           unified = core[:-len(close)] + b"".join(p.read_bytes() for p in extensions) + close
           digest = hashlib.sha256(unified).hexdigest()
 
           prep = root / "scripts/prepare-builtins.mjs"
           prep_text = prep.read_text()
           prep_text, count = re.subn(
-              r'(const expectedUnifiedSha256 =\n  ")[0-9a-f]{64}(";)',
-              rf'\g<1>{digest}\g<2>',
+              r'(?<=const expectedUnifiedSha256 =\n  ")[0-9a-f]{64}(?=";)',
+              digest,
               prep_text,
               count=1,
           )
           if count != 1:
-            raise SystemExit("expected checksum declaration not found")
+              raise SystemExit(f"checksum replacement count={count}")
           prep.write_text(prep_text)
           print("new Unified Media sha256:", digest)
           PY
