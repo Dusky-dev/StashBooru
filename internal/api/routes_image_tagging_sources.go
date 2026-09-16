@@ -44,7 +44,11 @@ func (rs imageRoutes) ImageLocalMetadata(w http.ResponseWriter, r *http.Request)
 			return
 		}
 	}
-	predictions = enrichNativeCamiePredictionTargets(r.Context(), predictions)
+	predictions, err = enrichNativeCamiePredictionTargets(r.Context(), predictions)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("enriching local Image Tagging metadata targets: %v", err), http.StatusInternalServerError)
+		return
+	}
 
 	writeVisualSimilarityJSON(w, camieTagsResponse{
 		Backend:   "local",
@@ -97,7 +101,11 @@ func (rs imageRoutes) ImageCamiePredictions(w http.ResponseWriter, r *http.Reque
 			predictions[index].Source = "model"
 		}
 	}
-	predictions = enrichNativeCamiePredictionTargets(r.Context(), predictions)
+	predictions, err = enrichNativeCamiePredictionTargets(r.Context(), predictions)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("enriching Camie Image Tagging targets: %v", err), http.StatusInternalServerError)
+		return
+	}
 
 	writeVisualSimilarityJSON(w, camieTagsResponse{
 		Backend:   backend,
@@ -183,7 +191,11 @@ func (rs imageRoutes) ImageEva02Predictions(w http.ResponseWriter, r *http.Reque
 			Source:   "eva02",
 		})
 	}
-	predictions = enrichNativeCamiePredictionTargets(r.Context(), predictions)
+	predictions, err = enrichNativeCamiePredictionTargets(r.Context(), predictions)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("enriching EVA02 Image Tagging targets: %v", err), http.StatusInternalServerError)
+		return
+	}
 
 	writeVisualSimilarityJSON(w, camieTagsResponse{
 		Backend:   backend,

@@ -55,6 +55,10 @@ type sceneRoutes struct {
 func (rs sceneRoutes) Routes() chi.Router {
 	r := chi.NewRouter()
 
+	// Batch Video Tagging is library-scoped and must not depend on an
+	// arbitrary anchor Video remaining addressable while a background job runs.
+	r.Post("/tagging-batch", handleSceneTaggingBatch)
+
 	r.Route("/{sceneId}", func(r chi.Router) {
 		r.Use(rs.SceneCtx)
 
@@ -81,9 +85,10 @@ func (rs sceneRoutes) Routes() chi.Router {
 		r.Get("/caption", rs.CaptionLang)
 
 		// Video Tagging endpoints. These mirror Image Tagging's local/booru
-		// source review flow without running image-only model inference.
+		// source review flow. Frame inference remains explicit and never runs on open.
 		r.Get("/local-metadata", rs.SceneLocalMetadata)
 		r.Get("/booru-metadata", rs.SceneBooruMetadata)
+		r.Get("/frame-metadata", rs.SceneFrameMetadata)
 		r.Post("/knowledge-tags", rs.SceneKnowledgeTags)
 
 		r.Get("/scene_marker/{sceneMarkerId}/stream", rs.SceneMarkerStream)
