@@ -1,0 +1,28 @@
+name: Integrate develop into PR62
+on:
+  push:
+    branches:
+      - feature/video-frame-assisted-tagging
+    paths:
+      - .github/workflows/integrate-develop-pr62.yml
+permissions:
+  contents: write
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feature/video-frame-assisted-tagging
+          fetch-depth: 0
+      - name: Merge current develop and self-clean
+        shell: bash
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin develop
+          git merge --no-edit origin/develop
+          git rm .github/workflows/integrate-develop-pr62.yml
+          git commit -m "Remove temporary PR62 integration workflow"
+          git push origin HEAD:feature/video-frame-assisted-tagging
