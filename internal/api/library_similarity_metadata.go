@@ -350,7 +350,10 @@ func collectLibrarySimilarityMetadata(
 	for index := range consensus {
 		tags = append(tags, consensus[index].Prediction)
 	}
-	tags = enrichNativeCamiePredictionTargets(ctx, tags)
+	tags, err = enrichNativeCamiePredictionTargets(ctx, tags)
+	if err != nil {
+		return librarySimilarityMetadataResponse{}, fmt.Errorf("enriching library-similarity metadata targets: %w", err)
+	}
 	for index := range consensus {
 		if index < len(tags) {
 			consensus[index].Prediction = tags[index]
