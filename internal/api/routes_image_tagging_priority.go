@@ -32,7 +32,7 @@ func (rs imageRoutes) ImageKnowledgeTagsWithLocalPriorityV2(w http.ResponseWrite
 		return
 	}
 
-	prioritized := filterCamieFilenameAuthoritativeSelections(request.Tags)
+	prioritized, suppressed := partitionCamieFilenameAuthoritativeSelections(request.Tags)
 	selected, err := validateCamiePredictionsV2(prioritized)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -43,7 +43,17 @@ func (rs imageRoutes) ImageKnowledgeTagsWithLocalPriorityV2(w http.ResponseWrite
 		return
 	}
 
-	response, err := applyCamieMetadataV2(r.Context(), image.ID, selected, request.ReplaceArtist)
+	plan := buildTaggingChangePlanWithSuppressed(selected, suppressed, request.ReplaceArtist)
+	if rawPreview := strings.TrimSpace(r.URL.Query().Get("preview")); rawPreview == "1" || strings.EqualFold(rawPreview, "true") {
+		writeVisualSimilarityJSON(w, plan)
+		return
+	}
+	if !plan.CanApply {
+		http.Error(w, "metadata plan contains unresolved review items", http.StatusConflict)
+		return
+	}
+
+	response, err := applyCamieMetadataV2(r.Context(), image.ID, taggingChangePlanPredictions(plan), request.ReplaceArtist)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("applying Image Tagging metadata to image %d: %v", image.ID, err), http.StatusInternalServerError)
 		return

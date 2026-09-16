@@ -18,11 +18,10 @@ func camiePredictionIncludesFilenameSource(source string) bool {
 	return false
 }
 
-// filterCamieFilenameAuthoritativeSelections enforces local filename authority
-// for native identity categories at apply time. Metadata sources are loaded
-// independently, so a stale or custom client can otherwise submit lower-priority
-// Character, Artist, or Copyright predictions alongside authoritative Local data.
-func filterCamieFilenameAuthoritativeSelections(predictions []camietagger.Tag) []camietagger.Tag {
+// partitionCamieFilenameAuthoritativeSelections enforces local filename
+// authority while retaining lower-priority identity predictions for dry-run
+// review. The mutation path only receives the kept predictions.
+func partitionCamieFilenameAuthoritativeSelections(predictions []camietagger.Tag) ([]camietagger.Tag, []camietagger.Tag) {
 	authoritativeCategories := make(map[string]bool, 3)
 	for _, rawPrediction := range predictions {
 		prediction := normalizeCamiePrediction(rawPrediction)
@@ -31,18 +30,27 @@ func filterCamieFilenameAuthoritativeSelections(predictions []camietagger.Tag) [
 		}
 	}
 	if len(authoritativeCategories) == 0 {
-		return predictions
+		return predictions, nil
 	}
 
-	filtered := make([]camietagger.Tag, 0, len(predictions))
+	kept := make([]camietagger.Tag, 0, len(predictions))
+	suppressed := make([]camietagger.Tag, 0)
 	for _, rawPrediction := range predictions {
 		prediction := normalizeCamiePrediction(rawPrediction)
 		if authoritativeCategories[prediction.Category] && !camiePredictionIncludesFilenameSource(prediction.Source) {
+			suppressed = append(suppressed, prediction)
 			continue
 		}
-		filtered = append(filtered, prediction)
+		kept = append(kept, prediction)
 	}
-	return filtered
+	return kept, suppressed
+}
+
+// filterCamieFilenameAuthoritativeSelections keeps the existing shared
+// apply-time contract for callers that do not need suppression details.
+func filterCamieFilenameAuthoritativeSelections(predictions []camietagger.Tag) []camietagger.Tag {
+	kept, _ := partitionCamieFilenameAuthoritativeSelections(predictions)
+	return kept
 }
 
 type taggingResolvedEntities struct {

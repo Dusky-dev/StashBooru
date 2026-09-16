@@ -24,6 +24,10 @@ import {
   type TargetCandidate,
 } from "src/components/Tagging/taggingReviewPolicy";
 import { useToast } from "src/hooks/Toast";
+import {
+  TaggingChangePlan,
+  TaggingChangePlanModal,
+} from "src/components/Tagging/TaggingChangePlanModal";
 
 type MetadataSourceKind = "local" | "booru" | "camie" | "eva02";
 
@@ -232,6 +236,8 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   const [error, setError] = useState<string>();
   const [pendingCharacterResolution, setPendingCharacterResolution] =
     useState<PendingCharacterResolution>();
+  const [changePlan, setChangePlan] = useState<TaggingChangePlan>();
+  const [changePlanTags, setChangePlanTags] = useState<TagPrediction[]>([]);
 
   const predictions = useMemo(
     () =>
@@ -414,6 +420,32 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
     [Toast, imageId, onApplied, onHide, replaceArtist]
   );
 
+  const previewTags = useCallback(
+    async (tags: TagPrediction[]) => {
+      setApplying(true);
+      setError(undefined);
+      try {
+        const response = await fetch(
+          `image/${imageId}/knowledge-tags?apply=true&preview=1`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tags, replaceArtist }),
+          }
+        );
+        const plan = await readResponse<TaggingChangePlan>(response);
+        setChangePlan(plan);
+        setChangePlanTags(tags);
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : String(cause));
+        Toast.error(cause);
+      } finally {
+        setApplying(false);
+      }
+    },
+    [Toast, imageId, replaceArtist]
+  );
+
   const continueCharacterResolution = useCallback(
     (tags: TagPrediction[], startIndex: number) => {
       const nextIndex = nextCharacterResolutionIndex(tags, startIndex);
@@ -424,12 +456,12 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
           setError("No metadata items remain to apply.");
           return;
         }
-        void submitTags(tags);
+        void previewTags(tags);
         return;
       }
       setPendingCharacterResolution({ tags, index: nextIndex });
     },
-    [submitTags]
+    [previewTags]
   );
 
   const resolvePendingCharacter = useCallback(
@@ -496,7 +528,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   return (
     <>
       <Modal
-        show={!pendingCharacterResolution}
+        show={!pendingCharacterResolution && !changePlan}
         onHide={onHide}
         size="lg"
         centered
@@ -786,6 +818,24 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
           </Button>
         </Modal.Footer>
       </Modal>
+
+      <TaggingChangePlanModal
+        show={!!changePlan}
+        title="Review Image Tagging changes"
+        plan={changePlan}
+        busy={applying}
+        onBack={() => {
+          setChangePlan(undefined);
+          setChangePlanTags([]);
+        }}
+        onHide={onHide}
+        onApply={() => {
+          const tags = changePlanTags;
+          setChangePlan(undefined);
+          setChangePlanTags([]);
+          void submitTags(tags);
+        }}
+      />
 
       <ModalComponent
         show={
