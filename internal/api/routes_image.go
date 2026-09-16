@@ -49,6 +49,8 @@ func (rs imageRoutes) Routes() chi.Router {
 		r.Post("/camie/tag", rs.CamieTagImagesV2)
 	})
 
+	r.Get("/metadata-health", rs.MetadataHealthComplete)
+
 	r.Route("/{imageId}", func(r chi.Router) {
 		r.Use(rs.ImageCtx)
 
