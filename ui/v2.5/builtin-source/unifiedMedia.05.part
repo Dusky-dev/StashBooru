@@ -343,6 +343,21 @@ eEffect(() => cleanupNativeLightbox, [cleanupNativeLightbox]);
     });
   }
 
+  function transformFilteredSceneChildren(children, ctx) {
+    if (React.isValidElement(children)) {
+      return transformFilteredSceneTree(children, ctx);
+    }
+    if (Array.isArray(children)) {
+      return children.map((child) =>
+        transformFilteredSceneChildren(child, ctx)
+      );
+    }
+    // Some native Stash components use opaque object-valued children.
+    // React.Children.* rejects those objects even though the component
+    // itself may consume them safely, so leave non-React payloads alone.
+    return children;
+  }
+
   function transformFilteredSceneTree(node, ctx) {
     if (!React.isValidElement(node)) return node;
 
@@ -375,9 +390,8 @@ eEffect(() => cleanupNativeLightbox, [cleanupNativeLightbox]);
     }
 
     if (p.children == null) return node;
-    const children = React.Children.map(p.children, (child) =>
-      transformFilteredSceneTree(child, ctx)
-    );
+    const children = transformFilteredSceneChildren(p.children, ctx);
+    if (children === p.children) return node;
     return React.cloneElement(node, {}, children);
   }
 
