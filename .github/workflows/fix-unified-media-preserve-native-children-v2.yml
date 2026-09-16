@@ -85,7 +85,7 @@ jobs:
           ])
 
           text, count = re.subn(
-              r"  function FilteredSceneListTreeBridge\(\{ rendered \}\) \{.*?\n  \}",
+              r"  function FilteredSceneListTreeBridge\(\{ rendered \}\) \{.*?(?=\n\n  function UnifiedController)",
               new_bridge,
               text,
               count=1,
