@@ -1,0 +1,37 @@
+name: Fix PR58 enrichment error propagation
+on:
+  push:
+    branches:
+      - feature/library-similarity-metadata-source
+    paths:
+      - .github/workflows/fix-pr58-enrichment.yml
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feature/library-similarity-metadata-source
+          fetch-depth: 0
+      - name: Update library enrichment call and self-clean
+        shell: bash
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('internal/api/library_similarity_metadata.go')
+          s = p.read_text()
+          old = '\ttags = enrichNativeCamiePredictionTargets(ctx, tags)\n'
+          new = '''\ttags, err = enrichNativeCamiePredictionTargets(ctx, tags)\n\tif err != nil {\n\t\treturn librarySimilarityMetadataResponse{}, fmt.Errorf("enriching library-similarity metadata targets: %w", err)\n\t}\n'''
+          if s.count(old) != 1:
+              raise SystemExit(f'expected exactly one stale enrichment call, found {s.count(old)}')
+          p.write_text(s.replace(old, new))
+          PY
+          git rm .github/workflows/fix-pr58-enrichment.yml
+          git add internal/api/library_similarity_metadata.go
+          git commit -m "Propagate library similarity enrichment errors"
+          git push origin HEAD:feature/library-similarity-metadata-source
