@@ -1,0 +1,106 @@
+name: Fix Unified Media object children crash
+on:
+  push:
+    branches:
+      - fix/unified-media-object-children
+    paths:
+      - .github/workflows/fix-unified-media-object-children.yml
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/unified-media-object-children
+          fetch-depth: 0
+      - name: Patch tree walker and refresh bundle checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import re
+
+          root = Path("ui/v2.5")
+          part = root / "builtin-source/unifiedMedia.05.part"
+          source = part.read_text()
+          old = '''    if (p.children == null) return node;
+              const children = React.Children.map(p.children, (child) =>
+                transformFilteredSceneTree(child, ctx)
+              );
+              return React.cloneElement(node, {}, children);
+          '''
+          new = '''    if (p.children == null) return node;
+              const children = transformFilteredSceneChildren(p.children, ctx);
+              if (children === p.children) return node;
+              return React.cloneElement(node, {}, children);
+          '''
+          if old not in source:
+              raise SystemExit("FilteredSceneList children walker anchor not found")
+          source = source.replace(old, new, 1)
+          helper_anchor = '''  function transformFilteredSceneTree(node, ctx) {
+          '''
+          helper = '''  function transformFilteredSceneChildren(children, ctx) {
+              if (React.isValidElement(children)) {
+                return transformFilteredSceneTree(children, ctx);
+              }
+              if (Array.isArray(children)) {
+                return children.map((child) =>
+                  transformFilteredSceneChildren(child, ctx)
+                );
+              }
+              // Some native Stash components use opaque object-valued children.
+              // React.Children.* rejects those objects even though the component
+              // itself may consume them safely, so leave non-React payloads alone.
+              return children;
+            }
+
+          '''
+          if helper_anchor not in source:
+              raise SystemExit("transformFilteredSceneTree anchor not found")
+          source = source.replace(helper_anchor, helper + helper_anchor, 1)
+          part.write_text(source)
+
+          source_dir = root / "builtin-source"
+          parts = [f"unifiedMedia.{i:02d}.part" for i in range(7)]
+          extensions = [
+              "unifiedMedia.copyright.part",
+              "unifiedMedia.copyright.guard.part",
+              "unifiedMedia.visual-only.part",
+              "unifiedMedia.copyright-native-all.part",
+          ]
+          close = b"})();\n"
+          core = b"".join((source_dir / name).read_bytes() for name in parts)
+          if not core.endswith(close):
+              raise SystemExit("Unified Media core IIFE boundary changed")
+          bundle = core[:-len(close)] + b"".join(
+              (source_dir / name).read_bytes() for name in extensions
+          ) + close
+          digest = hashlib.sha256(bundle).hexdigest()
+
+          prepare = root / "scripts/prepare-builtins.mjs"
+          prepare_source = prepare.read_text()
+          updated, count = re.subn(
+              r'(const expectedUnifiedSha256 =\n\s*")[0-9a-f]{64}(";)',
+              lambda m: m.group(1) + digest + m.group(2),
+              prepare_source,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit("expected Unified Media checksum anchor not found")
+          prepare.write_text(updated)
+          print(f"Unified Media sha256: {digest}")
+          PY
+          cd ui/v2.5
+          node scripts/prepare-builtins.mjs
+          node --check public/builtin/unifiedMedia.js
+          cd ../..
+          git rm .github/workflows/fix-unified-media-object-children.yml
+          git add ui/v2.5/builtin-source/unifiedMedia.05.part ui/v2.5/scripts/prepare-builtins.mjs
+          git commit -m "Fix Unified Media object-valued children crash"
+          git push origin HEAD:fix/unified-media-object-children
