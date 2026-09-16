@@ -29,12 +29,7 @@ import {
   TaggingChangePlanModal,
 } from "src/components/Tagging/TaggingChangePlanModal";
 
-type MetadataSourceKind =
-  | "local"
-  | "booru"
-  | "camie"
-  | "eva02"
-  | "library";
+type MetadataSourceKind = "local" | "booru" | "camie" | "eva02" | "library";
 
 interface TagSourceResponse {
   backend: "local" | "remote";
