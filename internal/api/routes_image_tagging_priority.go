@@ -6,56 +6,12 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/stashapp/stash/pkg/camietagger"
 	"github.com/stashapp/stash/pkg/models"
 )
 
-func camiePredictionIncludesFilenameSource(source string) bool {
-	for _, part := range strings.Split(strings.ToLower(strings.TrimSpace(source)), "+") {
-		if strings.TrimSpace(part) == "filename" {
-			return true
-		}
-	}
-	return false
-}
-
-// partitionCamieFilenameAuthoritativeSelections mirrors mergeCamiePredictions'
-// filename-authority rule at apply time while retaining suppressed predictions
-// for dry-run review. Lower-priority identity can therefore be explained in the
-// plan without ever being handed to the mutation path.
-func partitionCamieFilenameAuthoritativeSelections(predictions []camietagger.Tag) ([]camietagger.Tag, []camietagger.Tag) {
-	authoritativeCategories := make(map[string]bool, 3)
-	for _, rawPrediction := range predictions {
-		prediction := normalizeCamiePrediction(rawPrediction)
-		if camieFilenameAuthoritativeCategory(prediction.Category) && camiePredictionIncludesFilenameSource(prediction.Source) {
-			authoritativeCategories[prediction.Category] = true
-		}
-	}
-	if len(authoritativeCategories) == 0 {
-		return predictions, nil
-	}
-
-	kept := make([]camietagger.Tag, 0, len(predictions))
-	suppressed := make([]camietagger.Tag, 0)
-	for _, rawPrediction := range predictions {
-		prediction := normalizeCamiePrediction(rawPrediction)
-		if authoritativeCategories[prediction.Category] && !camiePredictionIncludesFilenameSource(prediction.Source) {
-			suppressed = append(suppressed, prediction)
-			continue
-		}
-		kept = append(kept, prediction)
-	}
-	return kept, suppressed
-}
-
-func filterCamieFilenameAuthoritativeSelections(predictions []camietagger.Tag) []camietagger.Tag {
-	kept, _ := partitionCamieFilenameAuthoritativeSelections(predictions)
-	return kept
-}
-
 // ImageKnowledgeTagsWithLocalPriorityV2 keeps the existing per-image Image
 // Tagging behavior, but enforces filename-authoritative identity categories
-// before preview/apply. Both preview and apply consume the same generated plan.
+// before applyCamieMetadataV2 can resolve or create native entities.
 func (rs imageRoutes) ImageKnowledgeTagsWithLocalPriorityV2(w http.ResponseWriter, r *http.Request) {
 	rawApply := strings.TrimSpace(r.URL.Query().Get("apply"))
 	if rawApply != "1" && !strings.EqualFold(rawApply, "true") {
