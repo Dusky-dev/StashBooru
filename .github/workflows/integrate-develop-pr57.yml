@@ -15,14 +15,191 @@ jobs:
         with:
           ref: feature/tagging-dry-run-plan
           fetch-depth: 0
-      - name: Merge current develop and self-clean
+      - name: Merge current develop, resolve tagging conflicts, and self-clean
         shell: bash
         run: |
           set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin develop
+
+          set +e
           git merge --no-edit origin/develop
+          merge_status=$?
+          set -e
+
+          if [ "$merge_status" -ne 0 ]; then
+            conflicts="$(git diff --name-only --diff-filter=U | sort)"
+            expected="$(printf '%s\n%s' \
+              'internal/api/routes_image_tagging_priority.go' \
+              'internal/api/routes_scene_tagging.go')"
+            if [ "$conflicts" != "$expected" ]; then
+              echo "Unexpected merge conflicts:"
+              printf '%s\n' "$conflicts"
+              exit 1
+            fi
+            git checkout --theirs internal/api/routes_image_tagging_priority.go
+            git checkout --theirs internal/api/routes_scene_tagging.go
+          fi
+
+          python - <<'PY'
+          from pathlib import Path
+
+          # Image Tagging: keep current develop's domain/validation behavior and
+          # layer the dry-run plan around the already-prioritized selection.
+          p = Path('internal/api/routes_image_tagging_priority.go')
+          s = p.read_text()
+          start = s.index('func (rs imageRoutes) ImageKnowledgeTagsWithLocalPriorityV2')
+          prefix = s[:start]
+          func = r'''func (rs imageRoutes) ImageKnowledgeTagsWithLocalPriorityV2(w http.ResponseWriter, r *http.Request) {
+          	rawApply := strings.TrimSpace(r.URL.Query().Get("apply"))
+          	if rawApply != "1" && !strings.EqualFold(rawApply, "true") {
+          		rs.ImageKnowledgeTagsV2(w, r)
+          		return
+          	}
+          
+          	image := r.Context().Value(imageKey).(*models.Image)
+          	var request camieApplyRequest
+          	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1024*1024))
+          	decoder.DisallowUnknownFields()
+          	if err := decoder.Decode(&request); err != nil {
+          		http.Error(w, fmt.Sprintf("decoding Image Tagging selection: %v", err), http.StatusBadRequest)
+          		return
+          	}
+          	if len(request.Tags) > maxCamieApplyTags {
+          		http.Error(w, fmt.Sprintf("cannot apply more than %d metadata predictions at once", maxCamieApplyTags), http.StatusBadRequest)
+          		return
+          	}
+          
+          	prioritized, suppressed := partitionCamieFilenameAuthoritativeSelections(request.Tags)
+          	selected, err := validateCamiePredictionsV2(prioritized)
+          	if err != nil {
+          		http.Error(w, err.Error(), http.StatusBadRequest)
+          		return
+          	}
+          	if len(selected) == 0 {
+          		http.Error(w, "select at least one metadata item to apply", http.StatusBadRequest)
+          		return
+          	}
+          
+          	plan := buildTaggingChangePlanWithSuppressed(selected, suppressed, request.ReplaceArtist)
+          	if rawPreview := strings.TrimSpace(r.URL.Query().Get("preview")); rawPreview == "1" || strings.EqualFold(rawPreview, "true") {
+          		writeVisualSimilarityJSON(w, plan)
+          		return
+          	}
+          	if !plan.CanApply {
+          		http.Error(w, "metadata plan contains unresolved review items", http.StatusConflict)
+          		return
+          	}
+          
+          	response, err := applyCamieMetadataV2(r.Context(), image.ID, taggingChangePlanPredictions(plan), request.ReplaceArtist)
+          	if err != nil {
+          		http.Error(w, fmt.Sprintf("applying Image Tagging metadata to image %d: %v", image.ID, err), http.StatusInternalServerError)
+          		return
+          	}
+          	writeVisualSimilarityJSON(w, response)
+          }
+          '''
+          p.write_text(prefix + func.replace('          ', ''))
+
+          # Video Tagging: preserve current develop's enrichment error handling,
+          # shared entity resolver, and transaction behavior. Replace only the
+          # review/apply handler with dry-run planning around Video validation.
+          p = Path('internal/api/routes_scene_tagging.go')
+          s = p.read_text()
+          start = s.index('func (rs sceneRoutes) SceneKnowledgeTags')
+          end = s.index('func applySceneTaggingMetadata', start)
+          func = r'''func (rs sceneRoutes) SceneKnowledgeTags(w http.ResponseWriter, r *http.Request) {
+          	scene := r.Context().Value(sceneKey).(*models.Scene)
+          	var request camieApplyRequest
+          	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1024*1024))
+          	decoder.DisallowUnknownFields()
+          	if err := decoder.Decode(&request); err != nil {
+          		http.Error(w, fmt.Sprintf("decoding Video Tagging selection: %v", err), http.StatusBadRequest)
+          		return
+          	}
+          
+          	prioritized, suppressed := partitionCamieFilenameAuthoritativeSelections(request.Tags)
+          	selected, err := validateSceneTaggingPredictions(prioritized)
+          	if err != nil {
+          		http.Error(w, err.Error(), http.StatusBadRequest)
+          		return
+          	}
+          	if len(selected) == 0 {
+          		http.Error(w, "select at least one metadata item to apply", http.StatusBadRequest)
+          		return
+          	}
+          
+          	plan := buildTaggingChangePlanWithSuppressed(selected, suppressed, request.ReplaceArtist)
+          	if rawPreview := strings.TrimSpace(r.URL.Query().Get("preview")); rawPreview == "1" || strings.EqualFold(rawPreview, "true") {
+          		writeVisualSimilarityJSON(w, plan)
+          		return
+          	}
+          	if !plan.CanApply {
+          		http.Error(w, "metadata plan contains unresolved review items", http.StatusConflict)
+          		return
+          	}
+          
+          	response, err := applySceneTaggingMetadata(r.Context(), scene.ID, taggingChangePlanPredictions(plan), request.ReplaceArtist)
+          	if err != nil {
+          		http.Error(w, fmt.Sprintf("applying Video Tagging metadata to video %d: %v", scene.ID, err), http.StatusInternalServerError)
+          		return
+          	}
+          	writeVisualSimilarityJSON(w, response)
+          }
+          
+          '''
+          p.write_text(s[:start] + func.replace('          ', '') + s[end:])
+
+          # Domain policy belongs in the shared module. Extend the existing
+          # filename-authority helper so dry-run can report suppressed entries,
+          # while existing callers keep using the same filter API.
+          p = Path('internal/api/tagging_domain.go')
+          s = p.read_text()
+          start = s.index('// filterCamieFilenameAuthoritativeSelections')
+          end = s.index('type taggingResolvedEntities', start)
+          block = r'''// partitionCamieFilenameAuthoritativeSelections enforces local filename
+          // authority while retaining lower-priority identity predictions for dry-run
+          // review. The mutation path only receives the kept predictions.
+          func partitionCamieFilenameAuthoritativeSelections(predictions []camietagger.Tag) ([]camietagger.Tag, []camietagger.Tag) {
+          	authoritativeCategories := make(map[string]bool, 3)
+          	for _, rawPrediction := range predictions {
+          		prediction := normalizeCamiePrediction(rawPrediction)
+          		if camieFilenameAuthoritativeCategory(prediction.Category) && camiePredictionIncludesFilenameSource(prediction.Source) {
+          			authoritativeCategories[prediction.Category] = true
+          		}
+          	}
+          	if len(authoritativeCategories) == 0 {
+          		return predictions, nil
+          	}
+          
+          	kept := make([]camietagger.Tag, 0, len(predictions))
+          	suppressed := make([]camietagger.Tag, 0)
+          	for _, rawPrediction := range predictions {
+          		prediction := normalizeCamiePrediction(rawPrediction)
+          		if authoritativeCategories[prediction.Category] && !camiePredictionIncludesFilenameSource(prediction.Source) {
+          			suppressed = append(suppressed, prediction)
+          			continue
+          		}
+          		kept = append(kept, prediction)
+          	}
+          	return kept, suppressed
+          }
+          
+          // filterCamieFilenameAuthoritativeSelections keeps the existing shared
+          // apply-time contract for callers that do not need suppression details.
+          func filterCamieFilenameAuthoritativeSelections(predictions []camietagger.Tag) []camietagger.Tag {
+          	kept, _ := partitionCamieFilenameAuthoritativeSelections(predictions)
+          	return kept
+          }
+          
+          '''
+          p.write_text(s[:start] + block.replace('          ', '') + s[end:])
+          PY
+
+          git add internal/api/routes_image_tagging_priority.go \
+                  internal/api/routes_scene_tagging.go \
+                  internal/api/tagging_domain.go
           git rm .github/workflows/integrate-develop-pr57.yml
-          git commit -m "Remove temporary PR57 integration workflow"
+          git commit -m "Integrate dry-run plans with shared tagging domain"
           git push origin HEAD:feature/tagging-dry-run-plan
