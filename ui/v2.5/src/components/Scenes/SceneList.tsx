@@ -259,6 +259,14 @@ const ScenesFilterSidebarSections = PatchContainerComponent(
   "FilteredSceneList.SidebarSections"
 );
 
+// Expose the scene toolbar as a narrow patch point. Plugins that only need to
+// adapt toolbar props should not have to wrap or walk the full FilteredSceneList
+// render tree.
+const FilteredSceneListToolbar = PatchComponent(
+  "FilteredSceneList.Toolbar",
+  FilteredListToolbar
+);
+
 const SidebarContent: React.FC<{
   filter: ListFilterModel;
   setFilter: (filter: ListFilterModel) => void;
@@ -695,7 +703,7 @@ export const FilteredSceneList = PatchComponent(
               <SidebarPaneContent
                 onSidebarToggle={() => setShowSidebar(!showSidebar)}
               >
-                <FilteredListToolbar
+                <FilteredSceneListToolbar
                   filter={filter}
                   listSelect={listSelect}
                   setFilter={setFilter}
