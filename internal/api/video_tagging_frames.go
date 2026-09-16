@@ -316,7 +316,11 @@ func (rs sceneRoutes) SceneFrameMetadata(w http.ResponseWriter, r *http.Request)
 		}
 		predictions = filterVideoFramePredictionsForLocalPriority(local, predictions)
 	}
-	predictions = enrichNativeCamiePredictionTargets(r.Context(), predictions)
+	predictions, err = enrichNativeCamiePredictionTargets(r.Context(), predictions)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("enriching frame-assisted Video Tagging targets: %v", err), http.StatusInternalServerError)
+		return
+	}
 
 	writeVisualSimilarityJSON(w, videoFrameMetadataResponse{
 		Backend:     backend,

@@ -5,37 +5,32 @@ import { useHistory } from "react-router-dom";
 
 import { Icon } from "src/components/Shared/Icon";
 import { ModalComponent } from "src/components/Shared/Modal";
+import {
+  addPredictionSelection,
+  ambiguousCharacterCandidates,
+  characterCandidateLabel,
+  filterBooruPredictionsForLocalPriority,
+  mergeMetadataPredictions as mergeTaggingMetadataPredictions,
+  nextCharacterResolutionIndex,
+  possibleBareCharacterMatch,
+  predictionKey,
+  reuseCharacterCandidate,
+  reusePossibleBareCharacter,
+  selectedPredictionCount,
+  sourceKey,
+  togglePredictionSelection,
+  type MetadataPrediction,
+  type MetadataSource,
+  type TagPrediction,
+  type TargetCandidate,
+} from "src/components/Tagging/taggingReviewPolicy";
 import { useToast } from "src/hooks/Toast";
-
-interface TargetCandidate {
-  id: number;
-  name: string;
-  disambiguation?: string;
-}
-
-interface TagPrediction {
-  name: string;
-  category: string;
-  score: number;
-  rawName?: string;
-  source?: string;
-  targetPath?: string;
-  targetExists?: boolean;
-  targetCandidates?: TargetCandidate[];
-}
+import {
+  TaggingChangePlan,
+  TaggingChangePlanModal,
+} from "src/components/Tagging/TaggingChangePlanModal";
 
 type MetadataSourceKind = "local" | "booru" | "frames";
-
-interface MetadataSource {
-  kind: MetadataSourceKind;
-  label: string;
-  detail?: string;
-  priority: number;
-}
-
-interface MetadataPrediction extends TagPrediction {
-  provenance: MetadataSource[];
-}
 
 interface TagSourceResponse {
   backend: "local" | "remote";
@@ -95,61 +90,11 @@ interface IProps {
 }
 
 const CATEGORY_ORDER = ["character", "artist", "copyright", "general", "meta"];
-const IDENTITY_CATEGORIES = new Set(["character", "artist", "copyright"]);
 const SOURCE_PRIORITY: Record<MetadataSourceKind, number> = {
   local: 0,
   booru: 10,
   frames: 20,
 };
-const CHARACTER_IDENTITY_PATTERN = /^(.+?)\s*\(([^()]*)\)\s*$/;
-const POSSIBLE_CHARACTER_TARGET_PATTERN = /^\/performers\/\d+\/?$/;
-
-function normalizePredictionValue(value?: string) {
-  return (value ?? "")
-    .trim()
-    .replaceAll("_", " ")
-    .replace(/\s+/g, " ")
-    .toLocaleLowerCase();
-}
-
-function predictionIdentityKeys(prediction: TagPrediction) {
-  const category = prediction.category.trim().toLocaleLowerCase();
-  const values = [prediction.name, prediction.rawName]
-    .map(normalizePredictionValue)
-    .filter(Boolean);
-  return [...new Set(values)].map((value) => `${category}\u0000${value}`);
-}
-
-function predictionKey(prediction: TagPrediction) {
-  return (
-    predictionIdentityKeys(prediction)[0] ??
-    `${prediction.category}\u0000${prediction.name}`
-  );
-}
-
-function filterBooruPredictionsForLocalPriority(
-  localPredictions: TagPrediction[],
-  booruPredictions: TagPrediction[]
-) {
-  const localIdentityCategories = new Set(
-    localPredictions
-      .map((prediction) => prediction.category.trim().toLocaleLowerCase())
-      .filter((category) => IDENTITY_CATEGORIES.has(category))
-  );
-  const localIdentityKeys = new Set(
-    localPredictions.flatMap(predictionIdentityKeys)
-  );
-
-  return booruPredictions.filter((prediction) => {
-    const category = prediction.category.trim().toLocaleLowerCase();
-    if (!IDENTITY_CATEGORIES.has(category)) return true;
-    if (!localIdentityCategories.has(category)) return true;
-
-    return predictionIdentityKeys(prediction).some((key) =>
-      localIdentityKeys.has(key)
-    );
-  });
-}
 
 function predictionSource(
   prediction: TagPrediction,
@@ -187,80 +132,25 @@ function predictionSource(
   };
 }
 
-function sourceKey(source: MetadataSource) {
-  return `${source.kind}\u0000${source.detail ?? ""}`;
-}
-
-function mergeSources(
-  current: MetadataSource[],
-  incoming: MetadataSource[]
-): MetadataSource[] {
-  const merged = new Map<string, MetadataSource>();
-  for (const source of [...current, ...incoming]) {
-    merged.set(sourceKey(source), source);
-  }
-  return [...merged.values()].sort((left, right) => {
-    if (left.priority !== right.priority) return left.priority - right.priority;
-    return left.label.localeCompare(right.label);
-  });
-}
-
-function mergeMetadataPredictions(
+function mergeVideoMetadataPredictions(
   localPredictions: TagPrediction[],
   booruPredictions: TagPrediction[],
   framePredictions: TagPrediction[]
-): MetadataPrediction[] {
-  const merged: MetadataPrediction[] = [];
-  const indexByKey = new Map<string, number>();
-
-  const add = (prediction: TagPrediction, sourceKind: MetadataSourceKind) => {
-    const keys = predictionIdentityKeys(prediction);
-    let existingIndex: number | undefined;
-    for (const key of keys) {
-      const index = indexByKey.get(key);
-      if (index !== undefined) {
-        existingIndex = index;
-        break;
-      }
-    }
-
-    const provenance = [predictionSource(prediction, sourceKind)];
-    if (existingIndex === undefined) {
-      const next: MetadataPrediction = { ...prediction, provenance };
-      const index = merged.length;
-      merged.push(next);
-      for (const key of keys) indexByKey.set(key, index);
-      return;
-    }
-
-    const current = merged[existingIndex];
-    const next: MetadataPrediction = {
-      ...current,
-      rawName: current.rawName || prediction.rawName,
-      targetExists:
-        current.targetExists === undefined
-          ? prediction.targetExists
-          : current.targetExists,
-      targetPath: current.targetPath || prediction.targetPath,
-      targetCandidates: current.targetCandidates?.length
-        ? current.targetCandidates
-        : prediction.targetCandidates,
-      provenance: mergeSources(current.provenance, provenance),
-    };
-    merged[existingIndex] = next;
-    for (const key of [
-      ...predictionIdentityKeys(current),
-      ...keys,
-      ...predictionIdentityKeys(next),
-    ]) {
-      indexByKey.set(key, existingIndex);
-    }
-  };
-
-  for (const prediction of localPredictions) add(prediction, "local");
-  for (const prediction of booruPredictions) add(prediction, "booru");
-  for (const prediction of framePredictions) add(prediction, "frames");
-  return merged;
+) {
+  return mergeTaggingMetadataPredictions([
+    {
+      predictions: localPredictions,
+      source: (prediction) => predictionSource(prediction, "local"),
+    },
+    {
+      predictions: booruPredictions,
+      source: (prediction) => predictionSource(prediction, "booru"),
+    },
+    {
+      predictions: framePredictions,
+      source: (prediction) => predictionSource(prediction, "frames"),
+    },
+  ]);
 }
 
 async function readResponse<T>(response: Response): Promise<T> {
@@ -287,71 +177,10 @@ function categoryLabel(category: string) {
   }
 }
 
-function sourceBadgeVariant(source: MetadataSourceKind) {
+function sourceBadgeVariant(source: string) {
   if (source === "local") return "success";
   if (source === "frames") return "warning";
   return "info";
-}
-
-function possibleBareCharacterMatch(prediction: TagPrediction) {
-  if (
-    prediction.category !== "character" ||
-    prediction.targetExists ||
-    !POSSIBLE_CHARACTER_TARGET_PATTERN.test(prediction.targetPath ?? "")
-  ) {
-    return undefined;
-  }
-
-  const match = prediction.name.match(CHARACTER_IDENTITY_PATTERN);
-  if (!match) return undefined;
-
-  const bareName = match[1].trim();
-  const disambiguation = match[2].trim();
-  if (!bareName || !disambiguation) return undefined;
-
-  return { bareName, disambiguation };
-}
-
-function ambiguousCharacterCandidates(prediction: TagPrediction) {
-  if (prediction.category !== "character" || prediction.targetExists) {
-    return [];
-  }
-  return prediction.targetCandidates ?? [];
-}
-
-function characterCandidateLabel(candidate: TargetCandidate) {
-  const disambiguation = candidate.disambiguation?.trim();
-  return disambiguation
-    ? `${candidate.name} (${disambiguation})`
-    : candidate.name;
-}
-
-function reusePossibleBareCharacter(prediction: TagPrediction): TagPrediction {
-  const possible = possibleBareCharacterMatch(prediction);
-  if (!possible) return prediction;
-
-  return {
-    ...prediction,
-    name: possible.bareName,
-    rawName: possible.bareName,
-    targetExists: true,
-    targetCandidates: undefined,
-  };
-}
-
-function reuseCharacterCandidate(
-  prediction: TagPrediction,
-  candidate: TargetCandidate
-): TagPrediction {
-  const name = characterCandidateLabel(candidate);
-  return {
-    ...prediction,
-    name,
-    rawName: name,
-    targetPath: `/performers/${candidate.id}`,
-    targetExists: true,
-    targetCandidates: undefined,
-  };
 }
 
 export const VideoTaggingDialog: React.FC<IProps> = ({
@@ -375,10 +204,12 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
   const [error, setError] = useState<string>();
   const [pendingCharacterResolution, setPendingCharacterResolution] =
     useState<PendingCharacterResolution>();
+  const [changePlan, setChangePlan] = useState<TaggingChangePlan>();
+  const [changePlanTags, setChangePlanTags] = useState<TagPrediction[]>([]);
 
   const predictions = useMemo(
     () =>
-      mergeMetadataPredictions(
+      mergeVideoMetadataPredictions(
         localPredictions,
         booruPredictions,
         framePredictions
@@ -387,11 +218,7 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
   );
 
   const addSelected = useCallback((items: TagPrediction[]) => {
-    setSelected((current) => {
-      const next = new Set(current);
-      for (const item of items) next.add(predictionKey(item));
-      return next;
-    });
+    setSelected((current) => addPredictionSelection(current, items));
   }, []);
 
   useEffect(() => {
@@ -449,6 +276,7 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
       const result = await readResponse<FrameMetadataResponse>(response);
       setFrameMetadata(result);
       setFramePredictions(result.tags);
+      // Frame-assisted suggestions are review-only and start unselected.
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -475,21 +303,12 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
   }, [predictions]);
 
   const visibleSelectedCount = useMemo(
-    () =>
-      predictions.filter((prediction) =>
-        selected.has(predictionKey(prediction))
-      ).length,
+    () => selectedPredictionCount(predictions, selected),
     [predictions, selected]
   );
 
   const toggle = useCallback((prediction: TagPrediction) => {
-    const key = predictionKey(prediction);
-    setSelected((current) => {
-      const next = new Set(current);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
+    setSelected((current) => togglePredictionSelection(current, prediction));
   }, []);
 
   const submitTags = useCallback(
@@ -532,14 +351,35 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
     [Toast, onApplied, onHide, replaceArtists, sceneId]
   );
 
+  const previewTags = useCallback(
+    async (tags: TagPrediction[]) => {
+      setApplying(true);
+      setError(undefined);
+      try {
+        const response = await fetch(
+          `scene/${sceneId}/knowledge-tags?preview=1`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tags, replaceArtist: replaceArtists }),
+          }
+        );
+        const plan = await readResponse<TaggingChangePlan>(response);
+        setChangePlan(plan);
+        setChangePlanTags(tags);
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : String(cause));
+        Toast.error(cause);
+      } finally {
+        setApplying(false);
+      }
+    },
+    [Toast, replaceArtists, sceneId]
+  );
+
   const continueCharacterResolution = useCallback(
     (tags: TagPrediction[], startIndex: number) => {
-      const nextIndex = tags.findIndex(
-        (prediction, index) =>
-          index >= startIndex &&
-          (possibleBareCharacterMatch(prediction) ||
-            ambiguousCharacterCandidates(prediction).length > 1)
-      );
+      const nextIndex = nextCharacterResolutionIndex(tags, startIndex);
       if (nextIndex === -1) {
         setPendingCharacterResolution(undefined);
         if (tags.length === 0) {
@@ -547,12 +387,12 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
           setError("No metadata items remain to apply.");
           return;
         }
-        void submitTags(tags);
+        void previewTags(tags);
         return;
       }
       setPendingCharacterResolution({ tags, index: nextIndex });
     },
-    [submitTags]
+    [previewTags]
   );
 
   const resolvePendingCharacter = useCallback(
@@ -619,7 +459,7 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
   return (
     <>
       <Modal
-        show={!pendingCharacterResolution}
+        show={!pendingCharacterResolution && !changePlan}
         onHide={onHide}
         size="lg"
         centered
@@ -645,8 +485,9 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
               {loadingFrames ? "Analyzing frames…" : "Analyze frames"}
             </Button>
             <span className="ml-3 text-muted">
-              Local filename metadata loads automatically. Frame inference runs
-              only when requested.
+              Local filename metadata loads automatically. Representative-frame
+              Camie analysis runs only when explicitly requested; EVA02 image
+              inference is not run for Videos.
             </span>
           </div>
 
@@ -848,6 +689,24 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
           </Button>
         </Modal.Footer>
       </Modal>
+
+      <TaggingChangePlanModal
+        show={!!changePlan}
+        title="Review Video Tagging changes"
+        plan={changePlan}
+        busy={applying}
+        onBack={() => {
+          setChangePlan(undefined);
+          setChangePlanTags([]);
+        }}
+        onHide={onHide}
+        onApply={() => {
+          const tags = changePlanTags;
+          setChangePlan(undefined);
+          setChangePlanTags([]);
+          void submitTags(tags);
+        }}
+      />
 
       <ModalComponent
         show={
