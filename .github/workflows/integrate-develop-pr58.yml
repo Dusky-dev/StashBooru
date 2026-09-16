@@ -15,14 +15,144 @@ jobs:
         with:
           ref: feature/library-similarity-metadata-source
           fetch-depth: 0
-      - name: Merge current develop and self-clean
+      - name: Merge current develop, preserve dry-run UI, add Library source, and self-clean
         shell: bash
         run: |
           set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin develop
+
+          set +e
           git merge --no-edit origin/develop
+          merge_status=$?
+          set -e
+          if [ "$merge_status" -ne 0 ]; then
+            conflicts="$(git diff --name-only --diff-filter=U | sort)"
+            expected='ui/v2.5/src/components/Images/ImageDetails/ImageKnowledgeTagDialog.tsx'
+            if [ "$conflicts" != "$expected" ]; then
+              echo "Unexpected merge conflicts:"
+              printf '%s\n' "$conflicts"
+              exit 1
+            fi
+            git checkout --theirs "$expected"
+          fi
+
+          python - <<'PY'
+          from pathlib import Path
+
+          policy = Path('ui/v2.5/src/components/Tagging/taggingReviewPolicy.ts')
+          s = policy.read_text()
+          needle = '  targetCandidates?: TargetCandidate[];\n'
+          addition = needle + '  libraryVotes?: number;\n  libraryMeanSimilarity?: number;\n'
+          if 'libraryVotes?: number;' not in s:
+              if s.count(needle) != 1:
+                  raise SystemExit('shared TagPrediction insertion point not found exactly once')
+              s = s.replace(needle, addition)
+          policy.write_text(s)
+
+          p = Path('ui/v2.5/src/components/Images/ImageDetails/ImageKnowledgeTagDialog.tsx')
+          s = p.read_text()
+
+          def replace_once(old, new, label):
+              global s
+              if s.count(old) != 1:
+                  raise SystemExit(f'{label}: expected one match, found {s.count(old)}')
+              s = s.replace(old, new, 1)
+
+          replace_once(
+              'type MetadataSourceKind = "local" | "booru" | "camie" | "eva02";',
+              'type MetadataSourceKind =\n  | "local"\n  | "booru"\n  | "camie"\n  | "eva02"\n  | "library";',
+              'source kind',
+          )
+
+          marker = '''interface CamieConfig {\n'''
+          library_interfaces = '''interface LibrarySimilarityConsensus {\n  prediction: TagPrediction;\n  votes: number;\n  meanSimilarity: number;\n}\n\ninterface LibrarySimilarityResponse {\n  source: "library-similarity";\n  mediaType: "image" | "video";\n  referenceID: number;\n  neighbors: number;\n  minVotes: number;\n  tags: TagPrediction[];\n  consensus: LibrarySimilarityConsensus[];\n}\n\n'''
+          if s.count(marker) != 1:
+              raise SystemExit('CamieConfig marker not found exactly once')
+          s = s.replace(marker, library_interfaces + marker, 1)
+
+          replace_once(
+              '''  eva02: 30,\n};''',
+              '''  eva02: 30,\n  library: 40,\n};''',
+              'source priority',
+          )
+
+          replace_once(
+              '''    case "eva02":\n      return {\n        kind,\n        label: "EVA02",\n        detail: "WD EVA02 fallback prediction",\n        priority: SOURCE_PRIORITY.eva02,\n      };\n  }\n}''',
+              '''    case "eva02":\n      return {\n        kind,\n        label: "EVA02",\n        detail: "WD EVA02 fallback prediction",\n        priority: SOURCE_PRIORITY.eva02,\n      };\n    case "library": {\n      const votes = prediction.libraryVotes;\n      const meanSimilarity = prediction.libraryMeanSimilarity;\n      const detail =\n        votes !== undefined && meanSimilarity !== undefined\n          ? `Library consensus: ${votes} neighbors, ${(meanSimilarity * 100).toFixed(1)}% mean similarity`\n          : "Library visual-similarity consensus";\n      return {\n        kind,\n        label: "Library",\n        detail,\n        priority: SOURCE_PRIORITY.library,\n      };\n    }\n  }\n}''',
+              'prediction source library case',
+          )
+
+          replace_once(
+              '''  camiePredictions: TagPrediction[],\n  eva02Predictions: TagPrediction[]\n) {''',
+              '''  camiePredictions: TagPrediction[],\n  eva02Predictions: TagPrediction[],\n  libraryPredictions: TagPrediction[]\n) {''',
+              'merge signature',
+          )
+          replace_once(
+              '''    {\n      predictions: eva02Predictions,\n      source: (prediction) => predictionSource(prediction, "eva02"),\n    },\n  ]);''',
+              '''    {\n      predictions: eva02Predictions,\n      source: (prediction) => predictionSource(prediction, "eva02"),\n    },\n    {\n      predictions: libraryPredictions,\n      source: (prediction) => predictionSource(prediction, "library"),\n    },\n  ]);''',
+              'merge library source group',
+          )
+
+          replace_once(
+              '''  const [eva02Predictions, setEva02Predictions] = useState<TagPrediction[]>([]);\n  const [selected, setSelected] = useState<Set<string>>(new Set());''',
+              '''  const [eva02Predictions, setEva02Predictions] = useState<TagPrediction[]>([]);\n  const [libraryPredictions, setLibraryPredictions] = useState<TagPrediction[]>(\n    []\n  );\n  const [selected, setSelected] = useState<Set<string>>(new Set());''',
+              'library prediction state',
+          )
+          replace_once(
+              '''  const [booruMetadata, setBooruMetadata] = useState<BooruMetadataResponse>();\n  const [loading, setLoading] = useState(true);''',
+              '''  const [booruMetadata, setBooruMetadata] = useState<BooruMetadataResponse>();\n  const [libraryMetadata, setLibraryMetadata] =\n    useState<LibrarySimilarityResponse>();\n  const [loading, setLoading] = useState(true);''',
+              'library metadata state',
+          )
+
+          replace_once(
+              '''        booruPredictions,\n        camiePredictions,\n        eva02Predictions\n      ),\n    [booruPredictions, camiePredictions, eva02Predictions, localPredictions]\n  );''',
+              '''        booruPredictions,\n        camiePredictions,\n        eva02Predictions,\n        libraryPredictions\n      ),\n    [\n      booruPredictions,\n      camiePredictions,\n      eva02Predictions,\n      libraryPredictions,\n      localPredictions,\n    ]\n  );''',
+              'merged prediction memo',
+          )
+
+          load_marker = '''  const loadModelPredictions = useCallback(\n'''
+          library_loader = '''  const loadLibrarySimilarity = useCallback(async () => {\n    setLoadingSource("library");\n    setError(undefined);\n    try {\n      const response = await fetch(\n        `image/${imageId}/library-similarity-metadata`\n      );\n      const result = await readResponse<LibrarySimilarityResponse>(response);\n      const suggestions = result.consensus.map((entry) => ({\n        ...entry.prediction,\n        libraryVotes: entry.votes,\n        libraryMeanSimilarity: entry.meanSimilarity,\n      }));\n      setLibraryMetadata(result);\n      setLibraryPredictions(suggestions);\n      // Library similarity is review-only: never add it to selected here.\n    } catch (cause) {\n      setError(cause instanceof Error ? cause.message : String(cause));\n    } finally {\n      setLoadingSource(undefined);\n    }\n  }, [imageId]);\n\n'''
+          if s.count(load_marker) != 1:
+              raise SystemExit('model loader marker not found exactly once')
+          s = s.replace(load_marker, library_loader + load_marker, 1)
+
+          replace_once(
+              '''      .filter((prediction) => selected.has(predictionKey(prediction)))\n      .map(({ provenance: _provenance, ...prediction }) => prediction);''',
+              '''      .filter((prediction) => selected.has(predictionKey(prediction)))\n      .map(\n        ({\n          provenance: _provenance,\n          libraryVotes: _libraryVotes,\n          libraryMeanSimilarity: _libraryMeanSimilarity,\n          ...prediction\n        }) => prediction\n      );''',
+              'strip library transport metadata before preview/apply',
+          )
+
+          replace_once(
+              '''            <Button\n              className="mb-2"\n              variant="secondary"\n              disabled={busy || applying}\n              onClick={() => void loadModelPredictions("eva02")}\n            >\n              {loadingSource === "eva02" ? "Analyzing…" : "Analyze with EVA02"}\n            </Button>''',
+              '''            <Button\n              className="mr-2 mb-2"\n              variant="secondary"\n              disabled={busy || applying}\n              onClick={() => void loadModelPredictions("eva02")}\n            >\n              {loadingSource === "eva02" ? "Analyzing…" : "Analyze with EVA02"}\n            </Button>\n            <Button\n              className="mb-2"\n              variant="secondary"\n              disabled={busy || applying}\n              onClick={() => void loadLibrarySimilarity()}\n            >\n              {loadingSource === "library"\n                ? "Comparing…"\n                : "Suggest from library"}\n            </Button>''',
+              'library action button',
+          )
+
+          replace_once(
+              '''            {eva02Backend ? (\n              <Badge className="mb-1" variant="danger">\n                EVA02 {eva02Backend}\n              </Badge>\n            ) : null}\n          </div>''',
+              '''            {eva02Backend ? (\n              <Badge className="mr-2 mb-1" variant="danger">\n                EVA02 {eva02Backend}\n              </Badge>\n            ) : null}\n            {libraryMetadata ? (\n              <Badge\n                className="mb-1"\n                variant="secondary"\n                title={`Consensus requires ${libraryMetadata.minVotes} matching neighbors`}\n              >\n                Library {libraryMetadata.neighbors} neighbors\n              </Badge>\n            ) : null}\n          </div>''',
+              'library status badge',
+          )
+
+          replace_once(
+              '''          <div className="mb-3 text-muted">\n            Sources are merged in priority order: Local → Danbooru → Camie →\n            EVA02. Opening this dialog loads Local metadata only; every network\n            or model source is explicit. Camie and EVA02 use independent\n            thresholds; EVA02 defaults to 0.35. When the same metadata item is\n            predicted by multiple sources, the earlier source keeps its value\n            and score while later sources are shown as additional provenance.\n            EVA02 is the fallback source. Multiple selected Artists can be\n            attached to the same image.\n          </div>''',
+              '''          <div className="mb-3 text-muted">\n            Sources are merged in priority order: Local → Danbooru → Camie →\n            EVA02 → Library. Opening this dialog loads Local metadata only;\n            every network, model, or similarity source is explicit. Camie and\n            EVA02 use independent thresholds; EVA02 defaults to 0.35. Library\n            suggestions require consensus from visually similar indexed images\n            and start unselected because they are review-only. When the same\n            metadata item is predicted by multiple sources, the earlier source\n            keeps its value and score while later sources are shown as\n            additional provenance. Multiple selected Artists can be attached to\n            the same image.\n          </div>''',
+              'source priority help',
+          )
+
+          replace_once(
+              '''            <div className="text-muted">\n              No Local metadata was found. Fetch Danbooru or run Camie/EVA02\n              explicitly to add predictions.\n            </div>''',
+              '''            <div className="text-muted">\n              No Local metadata was found. Fetch Danbooru, run Camie/EVA02, or\n              request Library suggestions explicitly to add predictions.\n            </div>''',
+              'empty-state help',
+          )
+
+          p.write_text(s)
+          PY
+
+          git add ui/v2.5/src/components/Images/ImageDetails/ImageKnowledgeTagDialog.tsx \
+                  ui/v2.5/src/components/Tagging/taggingReviewPolicy.ts
           git rm .github/workflows/integrate-develop-pr58.yml
-          git commit -m "Remove temporary PR58 integration workflow"
+          git commit -m "Integrate Library suggestions with dry-run Image Tagging"
           git push origin HEAD:feature/library-similarity-metadata-source
