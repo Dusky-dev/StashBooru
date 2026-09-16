@@ -13,6 +13,8 @@ export interface TagPrediction {
   targetPath?: string;
   targetExists?: boolean;
   targetCandidates?: TargetCandidate[];
+  libraryVotes?: number;
+  libraryMeanSimilarity?: number;
 }
 
 export interface MetadataSource {
