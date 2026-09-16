@@ -517,7 +517,9 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
                 max="0.999"
                 step="0.01"
                 value={frameThreshold}
-                onChange={(event) => setFrameThreshold(event.currentTarget.value)}
+                onChange={(event) =>
+                  setFrameThreshold(event.currentTarget.value)
+                }
                 style={{ width: "8rem" }}
               />
             </Form.Group>
@@ -561,7 +563,8 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
             ) : null}
             {frameMetadata ? (
               <Badge className="mb-1" variant="warning">
-                Frames {frameMetadata.sampleTimes.length} samples · {frameMetadata.backend}
+                Frames {frameMetadata.sampleTimes.length} samples ·{" "}
+                {frameMetadata.backend}
               </Badge>
             ) : null}
           </div>
@@ -800,8 +803,8 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
         {pendingPrediction && pendingMatch ? (
           <>
             <p>
-              Video Metadata found <strong>{pendingPrediction.name}</strong>, but
-              an existing Character named{" "}
+              Video Metadata found <strong>{pendingPrediction.name}</strong>,
+              but an existing Character named{" "}
               <strong>{pendingMatch.bareName}</strong> has no disambiguation.
             </p>
             <p>Is this the same Character?</p>
