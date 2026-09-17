@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import cloneDeep from "lodash-es/cloneDeep";
 import {
   Badge,
   Button,
@@ -9,18 +8,10 @@ import {
   Spinner,
 } from "react-bootstrap";
 
-import { after } from "src/patch";
 import { queryFindScenes } from "src/core/StashService";
 import { ListFilterModel } from "src/models/list-filter/filter";
 import { useToast } from "src/hooks/Toast";
-import {
-  FilteredListToolbar,
-  IFilteredListToolbar,
-} from "src/components/List/FilteredListToolbar";
-import {
-  IListFilterOperation,
-  ListOperations,
-} from "src/components/List/ListOperationButtons";
+import { collectFilteredSceneIDs } from "./batchVideoTaggingScope";
 
 interface TargetCandidate {
   id: number;
@@ -86,49 +77,11 @@ interface BatchStatusResponse {
 
 type BatchScope = "selected" | "filtered" | "all";
 
-type ListOperationsProps = React.ComponentProps<typeof ListOperations>;
-
 async function readResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     throw new Error((await response.text()) || response.statusText);
   }
   return response.json() as Promise<T>;
-}
-
-async function collectFilteredSceneIDs(
-  filter: ListFilterModel,
-  restrictedSceneIDs?: number[]
-): Promise<string[]> {
-  if (restrictedSceneIDs) {
-    return restrictedSceneIDs.map(String);
-  }
-
-  const pageSize = 250;
-  const ids: string[] = [];
-  const seen = new Set<string>();
-  let page = 1;
-  let total = Number.POSITIVE_INFINITY;
-
-  while (ids.length < total) {
-    const pageFilter = cloneDeep(filter);
-    pageFilter.currentPage = page;
-    pageFilter.itemsPerPage = pageSize;
-    const result = await queryFindScenes(pageFilter);
-    const found = result.data.findScenes.scenes;
-    total = result.data.findScenes.count;
-
-    for (const scene of found) {
-      if (!seen.has(scene.id)) {
-        seen.add(scene.id);
-        ids.push(scene.id);
-      }
-    }
-
-    if (found.length === 0 || found.length < pageSize) break;
-    page += 1;
-  }
-
-  return ids;
 }
 
 function candidateLabel(candidate: TargetCandidate) {
@@ -152,7 +105,7 @@ function reviewKey(sceneID: number, index: number) {
   return `${sceneID}:${index}`;
 }
 
-const BatchVideoTaggingDialog: React.FC<{
+export const BatchVideoTaggingDialog: React.FC<{
   filter: ListFilterModel;
   selectedIds: Set<string>;
   restrictedSceneIDs?: number[];
@@ -196,7 +149,11 @@ const BatchVideoTaggingDialog: React.FC<{
       if (scope === "selected") {
         targetIDs = [...selectedIds];
       } else if (scope === "filtered") {
-        targetIDs = await collectFilteredSceneIDs(filter, restrictedSceneIDs);
+        targetIDs = await collectFilteredSceneIDs(
+          filter,
+          queryFindScenes,
+          restrictedSceneIDs
+        );
       }
 
       const result = await postBatch<{ jobID: number }>({
@@ -626,95 +583,3 @@ const BatchVideoTaggingDialog: React.FC<{
     </Modal>
   );
 };
-
-const BatchVideoTaggingOperations: React.FC<{
-  original: React.ReactElement<ListOperationsProps>;
-  toolbarProps: IFilteredListToolbar;
-  restrictedSceneIDs?: number[];
-}> = ({ original, toolbarProps, restrictedSceneIDs }) => {
-  const [show, setShow] = useState(false);
-  const selectedIds = toolbarProps.listSelect.selectedIds;
-  const originalOperations = original.props.operations ?? [];
-
-  const operations = useMemo<IListFilterOperation[]>(
-    () => [
-      ...originalOperations,
-      {
-        text: "Batch Video Tagging…",
-        onClick: () => setShow(true),
-      },
-    ],
-    [originalOperations]
-  );
-
-  return (
-    <>
-      {React.cloneElement(original, { operations })}
-      {show && (
-        <BatchVideoTaggingDialog
-          filter={toolbarProps.filter}
-          selectedIds={selectedIds}
-          restrictedSceneIDs={restrictedSceneIDs}
-          onHide={() => setShow(false)}
-        />
-      )}
-    </>
-  );
-};
-
-function enhanceSceneListTree(
-  node: React.ReactNode,
-  restrictedSceneIDs?: number[]
-): React.ReactNode {
-  if (!React.isValidElement(node)) return node;
-
-  if (node.type === FilteredListToolbar) {
-    const toolbarProps = node.props as IFilteredListToolbar;
-    const original = toolbarProps.operationComponent;
-    if (React.isValidElement<ListOperationsProps>(original)) {
-      const originalProps = original.props;
-      if (
-        originalProps.operationsMenuClassName ===
-        "scene-list-operations-dropdown"
-      ) {
-        return React.cloneElement(node, {
-          operationComponent: (
-            <BatchVideoTaggingOperations
-              original={original}
-              toolbarProps={toolbarProps}
-              restrictedSceneIDs={restrictedSceneIDs}
-            />
-          ),
-        });
-      }
-    }
-    return node;
-  }
-
-  const props = node.props as { children?: React.ReactNode };
-  if (props.children === undefined) return node;
-  return React.cloneElement(
-    node,
-    undefined,
-    React.Children.map(props.children, (child) =>
-      enhanceSceneListTree(child, restrictedSceneIDs)
-    )
-  );
-}
-
-const SceneBatchEnhancer: React.FC<{
-  result: React.ReactNode;
-  restrictedSceneIDs?: number[];
-}> = ({ result, restrictedSceneIDs }) => (
-  <>{enhanceSceneListTree(result, restrictedSceneIDs)}</>
-);
-
-after(
-  "FilteredSceneList",
-  (
-    props: { sceneIDs?: number[] },
-    result: React.ReactNode
-  ): React.ReactNode => (
-    <SceneBatchEnhancer result={result} restrictedSceneIDs={props.sceneIDs} />
-  )
-);
