@@ -13,6 +13,7 @@ import { SceneWallPanel } from "./SceneWallPanel";
 import { SceneListTable } from "./SceneListTable";
 import { EditScenesDialog } from "./EditScenesDialog";
 import { DeleteScenesDialog } from "./DeleteScenesDialog";
+import { BatchVideoTaggingDialog } from "./BatchVideoTaggingDialog";
 import { GenerateDialog } from "../Dialogs/GenerateDialog";
 import { ExportDialog } from "../Shared/ExportDialog";
 import { SceneCardGrid } from "./SceneCardGrid";
@@ -634,6 +635,21 @@ export const FilteredSceneList = PatchComponent(
             />
           ),
         isDisplayed: () => hasSelection,
+      },
+      {
+        text: "Batch Video Tagging…",
+        onClick: () =>
+          showModal(
+            <BatchVideoTaggingDialog
+              filter={effectiveFilter}
+              selectedIds={selectedIds}
+              restrictedSceneIDs={sceneIDs}
+              onHide={() => {
+                closeModal();
+                void result.refetch();
+              }}
+            />
+          ),
       },
       {
         text: `${intl.formatMessage({ id: "actions.identify" })}…`,
