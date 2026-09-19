@@ -26,8 +26,8 @@ INPUT_FORMATS = "mov,matroska,webm,avi,asf,flv,mpeg,mpegts,ogg,nut,ivf,h264,hevc
 
 # id: (label, extension, family, encoder candidates, controls)
 FORMATS = {
-    "jxl": ("JPEG XL", "jxl", "image", ["cjxl", "libjxl"], ["distance", "effort"]),
-    "ajxl": ("Animated JPEG XL (AJXL)", "jxl", "animation", ["cjxl"], ["distance", "effort"]),
+    "jxl": ("JPEG XL", "jxl", "image", ["cjxl", "libjxl"], ["quality", "effort"]),
+    "ajxl": ("Animated JPEG XL (AJXL)", "jxl", "animation", ["cjxl"], ["quality", "effort"]),
     "av1-mp4": ("AV1 / MP4", "mp4", "video", ["libsvtav1", "libaom-av1"], ["quality", "effort"]),
     "av1-mkv": ("AV1 / MKV", "mkv", "video", ["libsvtav1", "libaom-av1"], ["quality", "effort"]),
     "av1-webm": ("AV1 / WebM", "webm", "video", ["libsvtav1", "libaom-av1"], ["quality", "effort"]),
@@ -129,11 +129,11 @@ def capabilities(probe_gpu=True, only_format=None) -> dict:
 def options(raw: dict) -> dict:
     if not isinstance(raw, dict) or set(raw) - {"format", "hardware", "quality", "effort", "distance", "lossless", "allowLarger", "dropAudio", "allowAlphaLoss"}:
         raise ValueError("unknown conversion option")
-    o = {"format": "jxl", "hardware": "cpu", "quality": 80, "effort": 7, "distance": 1,
+    o = {"format": "jxl", "hardware": "auto", "quality": 90 if raw.get("format", "jxl") in ("jxl", "ajxl") else 80, "effort": 7, "distance": 1,
          "lossless": False, "allowLarger": False, "dropAudio": False, "allowAlphaLoss": False, **raw}
     if o["format"] not in FORMATS or o["hardware"] not in ("cpu", "gpu", "auto"):
         raise ValueError("invalid format or hardware mode")
-    for name, low, high in (("quality", 0, 100), ("effort", 1, 9), ("distance", 0, 15)):
+    for name, low, high in (("quality", 0, 100), ("effort", 1, 9), ("distance", 0, 25)):
         v = o[name]
         if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or not low <= v <= high:
             raise ValueError(f"{name} must be between {low} and {high}")
@@ -142,6 +142,11 @@ def options(raw: dict) -> dict:
     for name in ("lossless", "allowLarger", "dropAudio", "allowAlphaLoss"):
         if not isinstance(o[name], bool):
             raise ValueError(f"{name} must be a boolean")
+    if o["format"] in ("jxl", "ajxl") and "distance" not in raw:
+        q = o["quality"]
+        # libjxl's JxlEncoderDistanceFromQuality. Keep explicit legacy distance
+        # requests working, including jobs sent by older StashBooru servers.
+        o["distance"] = 0 if q >= 100 else 0.1 + (100 - q) * 0.09 if q >= 30 else 53 / 3000 * q * q - 23 / 20 * q + 25
     return o
 
 

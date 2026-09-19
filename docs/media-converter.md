@@ -2,26 +2,57 @@
 
 Open **Convert media…** from an image or video's operations menu. In an image or
 video list, select files and choose **Convert selected media…**. The same dialog
-shows conversion progress, cache settings, statistics and paginated restore
-history. Jobs continue after the dialog closes. A batch continues past individual
-failures; each failed item reports its reason.
+opens on the **Convert** tab. **Statistics & restore** holds full statistics,
+cache settings and paginated restore history. A compact latest-batch summary
+remains on the Convert tab. Jobs continue after the dialog closes. A batch
+continues past individual failures; each failed item reports its reason.
+
+## Defaults and worker selection
+
+Open **Settings → System → Media converter**, just below the tagging settings,
+to add or change **input format → default output format** rules. New dialogs
+select **Use format defaults for each file** and show a preview of the selected
+inputs and outputs. A mixed batch resolves each file separately. Choosing an
+explicit output in the dialog overrides these rules for that batch.
+
+The initial defaults send JPEG/PNG/still WebP to JXL, GIF/APNG/animated WebP to
+AJXL, and videos to AV1 (MP4, MKV and WebM retain their container defaults).
+Existing JXL inputs use the animation-capable JXL path, which accepts stills too.
+PNG and WebP headers distinguish animated files even when extensions are shared.
+**Other images** and **Other videos** provide fallbacks for inputs without a
+specific rule. Encoder availability still depends on the worker.
+
+**Automatic — prefer remote worker** is selected by default. It probes the
+configured remote tagging worker first, using the existing URL and bearer token.
+A working remote converter is used without starting local codec probes. If the
+remote is unconfigured or unavailable (including a 10-second probe timeout),
+the converter uses this server and displays the fallback. Explicit local/remote
+choices remain available. **Recheck worker** refreshes the selection; it is also
+checked again when a job starts. A running batch keeps its selected worker and
+the format defaults read at its start.
+
+The processor defaults to **Prefer GPU, otherwise CPU**. Each output uses an
+available GPU encoder or its CPU encoder, so JXL and video can share a batch.
 
 ## Formats and controls
 
 | Output | Controls | Processor |
 | --- | --- | --- |
-| JPEG XL / animated JPEG XL | Distance 0–15; effort 1–9 | CPU |
+| JPEG XL / animated JPEG XL | Quality 0–100; effort 1–9 | CPU |
 | AV1 in MP4, MKV or WebM | Quality 0–100; effort 1–9 | CPU; supported NVENC, QSV or VAAPI hardware |
 | H.264 MP4/MOV, HEVC MP4, VP9 WebM | Quality; effort | CPU or supported hardware |
 | JPEG, PNG, WebP, AVIF, TIFF, BMP | Controls appropriate to the encoder; WebP lossless option | CPU |
 | GIF, animated PNG, animated WebP | Animation-preserving conversion; applicable quality/effort controls | CPU |
 
 Animated JPEG XL uses the normal **`.jxl` extension**, labeled AJXL in the format
-selector. JXL distance 0 requests lossless compression. JPEG input at distance 0
+selector. JXL quality 100 requests lossless compression. JPEG input at quality 100
 uses `cjxl`'s JPEG reconstruction path when installed. Higher effort trades time
-for compression. Quality is a normalized slider mapped to codec-specific
+for compression. JXL quality follows libjxl's standard quality mapping, with
+quality 90 corresponding to its previous default distance of 1. Other formats'
+quality is normalized and mapped to codec-specific
 CRF/quantizer settings, and is not comparable across codecs. Distance is the JXL
-quality control; WebP has a separate lossless switch.
+quality control used internally; WebP has a separate lossless switch. Existing
+API/worker requests that explicitly set a distance remain supported.
 
 Inputs are read by the worker's FFmpeg build, with Pillow for animated WebP and
 `djxl` for JPEG XL. Mainstream still, animation and video containers are supported.
@@ -151,4 +182,5 @@ Remote endpoints, protected by the existing bearer authentication:
 
 References: [FFmpeg encoders](https://ffmpeg.org/ffmpeg-codecs.html),
 [JPEG XL tools](https://github.com/libjxl/libjxl/tree/main/tools),
+[JPEG XL quality mapping](https://github.com/libjxl/libjxl/blob/main/lib/jxl/encode.cc),
 [NVIDIA encode/decode support](https://developer.nvidia.com/video-encode-decode-support-matrix).

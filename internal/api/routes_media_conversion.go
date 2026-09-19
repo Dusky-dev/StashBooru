@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"path/filepath"
 	"strconv"
 	"sync"
 	"time"
@@ -42,7 +41,7 @@ func lookupConvertedMediaBooruMetadata(ctx context.Context, path string) (booruP
 	return lookupImageBooruMetadata(ctx, path, lookupBooruPost)
 }
 
-func conversionClient(backend string) (mediaconvert.Client, error) {
+func conversionClient(ctx context.Context, backend string) (mediaconvert.Client, mediaconvert.Capabilities, string, error) {
 	mgr := manager.GetInstance()
 	c := mediaconvert.Client{}
 	if mgr.FFMpeg != nil {
@@ -51,22 +50,15 @@ func conversionClient(backend string) (mediaconvert.Client, error) {
 	if mgr.FFProbe != nil {
 		c.FFProbe = mgr.FFProbe.Path()
 	}
-	switch backend {
-	case "local", "":
-		return c, nil
-	case "remote":
+	remote := mediaconvert.Client{}
+	if backend != "local" {
 		config, err := loadVisualSimilarityRemoteConfig()
 		if err != nil {
-			return c, err
+			return c, mediaconvert.Capabilities{}, "", err
 		}
-		if config.URL == "" {
-			return c, fmt.Errorf("configure the remote tagging worker URL in Visual Similarity settings first")
-		}
-		c.URL, c.Token = config.URL, config.Token
-		return c, nil
-	default:
-		return c, fmt.Errorf("unknown conversion backend")
+		remote.URL, remote.Token = config.URL, config.Token
 	}
+	return mediaconvert.SelectWorker(ctx, backend, c, remote)
 }
 
 type conversionTarget struct {
@@ -81,6 +73,8 @@ type conversionRequest struct {
 	RecordID        string               `json:"recordID"`
 	JobID           int                  `json:"jobID"`
 	CacheLimitBytes int64                `json:"cacheLimitBytes"`
+	FormatDefaults  map[string]string    `json:"formatDefaults"`
+	UseQuality      bool                 `json:"useQuality"`
 }
 type conversionItem struct {
 	Target   conversionTarget `json:"target"`
@@ -88,12 +82,14 @@ type conversionItem struct {
 	Error    string           `json:"error,omitempty"`
 }
 type conversionJob struct {
-	JobID  int              `json:"jobID"`
-	Batch  string           `json:"batch"`
-	Status string           `json:"status"`
-	Total  int              `json:"total"`
-	Items  []conversionItem `json:"items"`
-	Error  string           `json:"error,omitempty"`
+	JobID   int              `json:"jobID"`
+	Batch   string           `json:"batch"`
+	Status  string           `json:"status"`
+	Total   int              `json:"total"`
+	Items   []conversionItem `json:"items"`
+	Error   string           `json:"error,omitempty"`
+	Backend string           `json:"backend,omitempty"`
+	Notice  string           `json:"notice,omitempty"`
 }
 
 var conversionJobs = struct {
@@ -101,8 +97,9 @@ var conversionJobs = struct {
 	jobs map[int]*conversionJob
 }{jobs: make(map[int]*conversionJob)}
 var conversionMutations sync.Mutex
+var conversionSettings sync.Mutex
 
-func conversionTargetFile(ctx context.Context, target conversionTarget, family string) (models.FileID, error) {
+func conversionTargetFile(ctx context.Context, target conversionTarget) (models.FileID, error) {
 	mgr := manager.GetInstance()
 	var id models.FileID
 	err := txn.WithReadTxn(ctx, mgr.Repository.TxnManager, func(ctx context.Context) error {
@@ -117,9 +114,6 @@ func conversionTargetFile(ctx context.Context, target conversionTarget, family s
 			}
 			id = *im.PrimaryFileID
 		case "scene":
-			if family != "video" {
-				return fmt.Errorf("video entries require a video output format")
-			}
 			v, err := mgr.Repository.Scene.Find(ctx, target.ID)
 			if err != nil {
 				return err
@@ -148,18 +142,22 @@ func conversionTargetFile(ctx context.Context, target conversionTarget, family s
 }
 
 func handleMediaConversionGet(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Query().Get("capabilities") == "1" {
-		client, err := conversionClient(r.URL.Query().Get("backend"))
+	if r.URL.Query().Get("config") == "1" {
+		config, err := conversionStore().Config()
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		capabilities, err := client.Capabilities(r.Context())
+		writeVisualSimilarityJSON(w, map[string]interface{}{"config": config, "inputFormats": mediaconvert.InputFormats, "outputFormats": mediaconvert.OutputFormats})
+		return
+	}
+	if r.URL.Query().Get("capabilities") == "1" {
+		client, capabilities, notice, err := conversionClient(r.Context(), r.URL.Query().Get("backend"))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusServiceUnavailable)
 			return
 		}
-		writeVisualSimilarityJSON(w, capabilities)
+		writeVisualSimilarityJSON(w, map[string]interface{}{"formats": capabilities.Formats, "backend": conversionBackend(client), "notice": notice})
 		return
 	}
 	s := conversionStore()
@@ -174,6 +172,16 @@ func handleMediaConversionGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	stats := mediaconvert.Summarize(history)
+	latestRecords := []*mediaconvert.Record{}
+	if len(history) > 0 {
+		latestBatch := history[len(history)-1].Batch
+		for _, record := range history {
+			if record.Batch == latestBatch {
+				latestRecords = append(latestRecords, record)
+			}
+		}
+	}
+	latestStats := mediaconvert.Summarize(latestRecords)
 	var activeJob *conversionJob
 	id, _ := strconv.Atoi(r.URL.Query().Get("jobID"))
 	jobStatus := manager.GetInstance().JobManager.GetJob(id)
@@ -221,7 +229,7 @@ func handleMediaConversionGet(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	writeVisualSimilarityJSON(w, map[string]interface{}{"config": config, "history": history, "historyTotal": historyTotal, "stats": stats, "job": activeJob, "batchStats": batchStats})
+	writeVisualSimilarityJSON(w, map[string]interface{}{"config": config, "history": history, "historyTotal": historyTotal, "stats": stats, "job": activeJob, "batchStats": batchStats, "latestStats": latestStats})
 }
 
 func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
@@ -243,11 +251,34 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 		writeVisualSimilarityJSON(w, map[string]bool{"cancelled": true})
 		return
 	}
-	if request.Action != "start" && request.Action != "restore" && request.Action != "configure" && request.Action != "recover" {
+	if request.Action == "save-defaults" {
+		if request.FormatDefaults == nil {
+			http.Error(w, "format defaults are required", http.StatusBadRequest)
+			return
+		}
+		if err := mediaconvert.ValidateFormatDefaults(request.FormatDefaults); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		conversionSettings.Lock()
+		defer conversionSettings.Unlock()
+		config, err := conversionStore().Config()
+		if err == nil {
+			config.FormatDefaults = request.FormatDefaults
+			err = conversionStore().Configure(config)
+		}
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeVisualSimilarityJSON(w, config)
+		return
+	}
+	if request.Action != "start" && request.Action != "restore" && request.Action != "configure" && request.Action != "recover" && request.Action != "preview" {
 		http.Error(w, "unknown conversion action", http.StatusBadRequest)
 		return
 	}
-	if request.Action == "start" && (len(request.Targets) == 0 || len(request.Targets) > 10000) {
+	if (request.Action == "start" || request.Action == "preview") && (len(request.Targets) == 0 || len(request.Targets) > 10000) {
 		http.Error(w, "select between 1 and 10000 media entries", http.StatusBadRequest)
 		return
 	}
@@ -266,6 +297,14 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	request.Targets = uniqueTargets
+	if request.Action == "preview" {
+		previewConversionDefaults(w, r, request.Targets)
+		return
+	}
+	if request.UseQuality && (request.Options.Quality < 0 || request.Options.Quality > 100) {
+		http.Error(w, "quality must be between 0 and 100", http.StatusBadRequest)
+		return
+	}
 	if request.CacheLimitBytes < 0 {
 		http.Error(w, "cache size cannot be negative", http.StatusBadRequest)
 		return
@@ -299,7 +338,14 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 		}
 		switch request.Action {
 		case "configure":
-			if err := s.Configure(mediaconvert.Config{CacheLimitBytes: request.CacheLimitBytes}); err != nil {
+			conversionSettings.Lock()
+			config, err := s.Config()
+			if err == nil {
+				config.CacheLimitBytes = request.CacheLimitBytes
+				err = s.Configure(config)
+			}
+			conversionSettings.Unlock()
+			if err != nil {
 				return err
 			}
 			return s.Trim()
@@ -315,28 +361,16 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 		case "recover":
 			return s.Trim()
 		}
-		client, err := conversionClient(request.Backend)
+		client, capabilities, notice, err := conversionClient(ctx, request.Backend)
 		if err != nil {
 			return err
 		}
-		capabilities, err := client.Capabilities(ctx)
+		conversionJobs.Lock()
+		state.Backend, state.Notice = conversionBackend(client), notice
+		conversionJobs.Unlock()
+		config, err := s.Config()
 		if err != nil {
 			return err
-		}
-		var format mediaconvert.Format
-		for _, f := range capabilities.Formats {
-			if f.ID == request.Options.Format {
-				format = f
-				break
-			}
-		}
-		if !format.Available {
-			return fmt.Errorf("output format is unavailable on the selected worker")
-		}
-		// Extension is returned by a remote worker; never use it as a filesystem path.
-		allowedExtensions := map[string]bool{"jxl": true, "mp4": true, "mkv": true, "webm": true, "mov": true, "jpg": true, "png": true, "webp": true, "avif": true, "gif": true, "tiff": true, "bmp": true}
-		if !allowedExtensions[format.Extension] || filepath.Base(format.Extension) != format.Extension {
-			return fmt.Errorf("invalid output extension")
 		}
 		seen := map[models.FileID]bool{}
 		var converted []models.FileID
@@ -351,19 +385,35 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 				return err
 			}
 			item := conversionItem{Target: target}
-			id, err := conversionTargetFile(ctx, target, format.Family)
+			id, err := conversionTargetFile(ctx, target)
 			if err == nil && seen[id] {
 				progress.Increment()
 				continue
 			}
 			if err == nil {
 				seen[id] = true
-				record, convertErr := s.Convert(ctx, id, state.Batch, client, request.Options, format)
-				err = convertErr
-				if record != nil {
-					item.RecordID = record.ID
-					if record.Status == "complete" {
-						converted = append(converted, id)
+				options := request.Options
+				if options.Format == "" || options.Format == "auto" {
+					options.Format, _, err = conversionDefaultForFile(ctx, s, config, id)
+				}
+				if options.Hardware == "" {
+					options.Hardware = "auto"
+				}
+				if request.UseQuality && (options.Format == "jxl" || options.Format == "ajxl") {
+					options.Distance = mediaconvert.JXLDistanceFromQuality(options.Quality)
+				}
+				var format mediaconvert.Format
+				if err == nil {
+					format, err = conversionOutputFormat(capabilities, options.Format, target.Kind)
+				}
+				if err == nil {
+					record, convertErr := s.Convert(ctx, id, state.Batch, client, options, format)
+					err = convertErr
+					if record != nil {
+						item.RecordID = record.ID
+						if record.Status == "complete" {
+							converted = append(converted, id)
+						}
 					}
 				}
 			}
@@ -389,6 +439,82 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 		}
 	})
 	writeVisualSimilarityJSON(w, map[string]int{"jobID": jobID})
+}
+
+func conversionBackend(client mediaconvert.Client) string {
+	if client.URL != "" {
+		return "remote"
+	}
+	return "local"
+}
+
+func conversionDefaultForFile(ctx context.Context, s mediaconvert.Store, config mediaconvert.Config, id models.FileID) (output, input string, err error) {
+	f, err := s.Repository.Get(ctx, id)
+	if err != nil {
+		return "", "", err
+	}
+	if f == nil {
+		return "", "", fmt.Errorf("media file not found")
+	}
+	input = mediaconvert.SourceFormat(f)
+	_, video := f.(*models.VideoFile)
+	return config.DefaultOutput(input, video), input, nil
+}
+
+func conversionOutputFormat(capabilities mediaconvert.Capabilities, id, kind string) (mediaconvert.Format, error) {
+	for _, format := range capabilities.Formats {
+		if format.ID != id || !format.Available {
+			continue
+		}
+		for _, expected := range mediaconvert.OutputFormats {
+			if expected.ID == id && expected.Extension == format.Extension && expected.Family == format.Family {
+				if kind == "scene" && format.Family != "video" {
+					return format, fmt.Errorf("video entries require a video output format")
+				}
+				return format, nil
+			}
+		}
+		return format, fmt.Errorf("invalid output format returned by worker")
+	}
+	return mediaconvert.Format{}, fmt.Errorf("output format %s is unavailable on the selected worker", id)
+}
+
+func previewConversionDefaults(w http.ResponseWriter, r *http.Request, targets []conversionTarget) {
+	s := conversionStore()
+	config, err := s.Config()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	type plan struct {
+		Input  string `json:"input"`
+		Output string `json:"output"`
+		Count  int    `json:"count"`
+		Error  string `json:"error,omitempty"`
+	}
+	plans := []plan{}
+	indices := map[plan]int{}
+	for _, target := range targets {
+		if r.Context().Err() != nil {
+			return
+		}
+		var next plan
+		id, err := conversionTargetFile(r.Context(), target)
+		if err == nil {
+			next.Output, next.Input, err = conversionDefaultForFile(r.Context(), s, config, id)
+		}
+		if err != nil {
+			next.Error = err.Error()
+		}
+		index, exists := indices[next]
+		if !exists {
+			index = len(plans)
+			indices[next] = index
+			plans = append(plans, next)
+		}
+		plans[index].Count++
+	}
+	writeVisualSimilarityJSON(w, map[string]interface{}{"plans": plans})
 }
 
 func generateConvertedMedia(ctx context.Context, ids []models.FileID) error {
