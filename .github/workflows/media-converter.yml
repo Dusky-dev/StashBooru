@@ -1,0 +1,28 @@
+name: Media converter
+
+on:
+  pull_request:
+    paths:
+      - scripts/media_conversion_worker.py
+      - scripts/visual_embedding_server.py
+      - scripts/tests/test_media_conversion.py
+      - pkg/mediaconvert/**
+      - .github/workflows/media-converter.yml
+  push:
+    branches: [develop]
+    paths:
+      - scripts/media_conversion_worker.py
+      - scripts/visual_embedding_server.py
+      - scripts/tests/test_media_conversion.py
+      - pkg/mediaconvert/**
+      - .github/workflows/media-converter.yml
+
+jobs:
+  codec-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install media tools
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg libjxl-tools python3-pil
+      - name: Exercise real codecs and remote conversion
+        run: python3 -m unittest discover -s scripts/tests -p test_media_conversion.py -v

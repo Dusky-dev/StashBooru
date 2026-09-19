@@ -24,6 +24,7 @@ import {
 
 import { SceneEditPanel } from "./SceneEditPanel";
 import { VideoTaggingDialog } from "./VideoTaggingDialog";
+import { MediaConversionDialog } from "src/components/Shared/MediaConversionDialog";
 import { ErrorMessage } from "src/components/Shared/ErrorMessage";
 import { LoadingIndicator } from "src/components/Shared/LoadingIndicator";
 import { Icon } from "src/components/Shared/Icon";
@@ -219,6 +220,7 @@ const ScenePage: React.FC<IProps> = PatchComponent("ScenePage", (props) => {
   const [isMerging, setIsMerging] = useState(false);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState<boolean>(false);
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
+  const [isConverterOpen, setIsConverterOpen] = useState(false);
   const [isVideoTaggingOpen, setIsVideoTaggingOpen] = useState(false);
 
   const onScreenshotJobComplete = useCallback(
@@ -499,6 +501,12 @@ const ScenePage: React.FC<IProps> = PatchComponent("ScenePage", (props) => {
           Video Tagging…
         </Dropdown.Item>
         <Dropdown.Item
+          className="bg-secondary text-white"
+          onClick={() => setIsConverterOpen(true)}
+        >
+          Convert media…
+        </Dropdown.Item>
+        <Dropdown.Item
           key="generate"
           className="bg-secondary text-white"
           onClick={() => setIsGenerateDialogOpen(true)}
@@ -691,6 +699,16 @@ const ScenePage: React.FC<IProps> = PatchComponent("ScenePage", (props) => {
         />
       )}
       {maybeRenderSceneGenerateDialog()}
+      {isConverterOpen && (
+        <MediaConversionDialog
+          kind="scene"
+          selectedIds={[scene.id]}
+          onHide={() => {
+            setIsConverterOpen(false);
+            void onRefreshScene();
+          }}
+        />
+      )}
       {maybeRenderMergeDialog()}
       {maybeRenderDeleteDialog()}
       <div

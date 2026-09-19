@@ -383,10 +383,16 @@ func (qb *FileStore) Update(ctx context.Context, f models.File) error {
 	// create extended stuff here
 	switch ef := f.(type) {
 	case *models.VideoFile:
+		if err := imageFileTableMgr.destroy(ctx, []int{int(id)}); err != nil {
+			return err
+		}
 		if err := qb.updateOrCreateVideoFile(ctx, id, *ef); err != nil {
 			return err
 		}
 	case *models.ImageFile:
+		if err := videoFileTableMgr.destroy(ctx, []int{int(id)}); err != nil {
+			return err
+		}
 		if err := qb.updateOrCreateImageFile(ctx, id, *ef); err != nil {
 			return err
 		}

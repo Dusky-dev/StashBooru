@@ -618,7 +618,7 @@ func (rs imageRoutes) ImageBooruMetadata(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	provider, post, hash, hashSource, err := lookupImageBooruMetadata(r.Context(), primary.Base().Path, lookupBooruPost)
+	provider, post, hash, hashSource, err := lookupConvertedMediaBooruMetadata(r.Context(), primary.Base().Path)
 	if errors.Is(err, errBooruNoMatch) {
 		http.Error(w, "no matching booru post found for image MD5", http.StatusNotFound)
 		return

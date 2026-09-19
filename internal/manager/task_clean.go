@@ -33,6 +33,9 @@ type cleanJob struct {
 }
 
 func (j *cleanJob) Execute(ctx context.Context, progress *job.Progress) error {
+	if err := GetInstance().RecoverMediaConversions(ctx); err != nil {
+		return err
+	}
 	logger.Infof("Starting cleaning of tracked files")
 	start := time.Now()
 	if j.input.DryRun {
