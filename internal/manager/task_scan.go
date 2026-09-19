@@ -56,6 +56,9 @@ func (j *ScanJob) Execute(ctx context.Context, progress *job.Progress) error {
 	}
 
 	mgr := GetInstance()
+	if err := mgr.RecoverMediaConversions(ctx); err != nil {
+		return err
+	}
 	c := mgr.Config
 	repo := mgr.Repository
 

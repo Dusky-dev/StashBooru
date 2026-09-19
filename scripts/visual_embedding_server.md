@@ -67,6 +67,11 @@ Leave the URL blank and save to switch both inference clients back to local work
 
 ## API
 
+The same worker also supports local/remote media conversion. Update
+`media_conversion_worker.py` alongside this server and install FFmpeg, libjxl
+tools and Pillow. See [media converter setup and recovery](../docs/media-converter.md)
+for formats, CPU/GPU support, video upload limits and the converter endpoints.
+
 The service exposes these inference endpoints:
 
 - `GET /v1/status` — reports EVA02 model compatibility/readiness.

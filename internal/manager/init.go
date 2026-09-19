@@ -244,6 +244,9 @@ func (s *Manager) postInit(ctx context.Context) error {
 
 	s.RefreshFFMpeg(ctx)
 	s.RefreshStreamManager()
+	if err := s.RecoverMediaConversions(ctx); err != nil {
+		logger.Errorf("Media conversion recovery requires attention: %v", err)
+	}
 
 	return nil
 }

@@ -83,7 +83,7 @@ func (rs sceneRoutes) SceneBooruMetadata(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	provider, post, hash, hashSource, err := lookupImageBooruMetadata(r.Context(), path, lookupBooruPost)
+	provider, post, hash, hashSource, err := lookupConvertedMediaBooruMetadata(r.Context(), path)
 	if errors.Is(err, errBooruNoMatch) {
 		http.Error(w, "no matching booru post found for video MD5", http.StatusNotFound)
 		return
