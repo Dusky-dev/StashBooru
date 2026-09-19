@@ -112,6 +112,19 @@ class EncodeTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             self.convert(source.name, "h264")
 
+    def test_auto_uses_cpu_when_hardware_cannot_keep_bit_depth(self):
+        source = self.root / "ten-bit.mkv"
+        converter.run(converter.ffmpeg_prefix() + ["-f", "lavfi", "-i",
+                      "testsrc2=size=128x128:rate=10:duration=0.6,format=yuv420p10le",
+                      "-c:v", "ffv1", str(source)])
+        caps = {"formats": [{"id": "h264", "cpu": ["libx264"], "gpu": ["h264_nvenc"]}]}
+        with patch.object(converter, "capabilities", return_value=caps):
+            result, _ = self.convert(source.name, "h264", hardware="auto")
+            self.assertEqual(result["encoder"], "libx264")
+            self.assertIn("10", result["pixelFormat"])
+            with self.assertRaisesRegex(ValueError, "cannot preserve high bit depth"):
+                converter.convert(source, self.root / "gpu.mp4", {"format": "h264", "hardware": "gpu"})
+
     def test_remote_uses_existing_auth_and_streams_verified_output(self):
         # ML dependencies are irrelevant to the converter HTTP contract.
         stub = types.SimpleNamespace(_log=lambda message: None)

@@ -298,6 +298,12 @@ def convert(source: Path, output: Path, raw: dict, cancelled=None) -> dict:
             raise ValueError("output cannot contain audio; explicitly enable discard audio to continue")
         if before["alpha"] and (family == "video" or fmt in ("jpeg", "avif")) and not o["allowAlphaLoss"]:
             raise ValueError("output may discard transparency; explicitly allow transparency loss to continue")
+        high_depth = any(bit in before["pixelFormat"] for bit in ("10", "12", "16"))
+        if high_depth and encoder.startswith("h264_"):
+            if o["hardware"] == "auto" and cap["cpu"]:
+                encoder = cap["cpu"][0]
+            else:
+                raise ValueError("this hardware H.264 encoder cannot preserve high bit depth; choose HEVC/AV1 or CPU")
         if encoder == "cjxl":
             intermediate = decoded
             # Normalize GIF repeat semantics to APNG's total play count before
@@ -332,9 +338,6 @@ def convert(source: Path, output: Path, raw: dict, cancelled=None) -> dict:
                     # Preserve the last frame's hold time when the encoder uses
                     # a nominal frame rate for packet duration (notably AV1).
                     args += ["-bsf:v", f"setts=duration='if(gte(PTS*TB,{start - 0.000001}),{last}/TB,DURATION)'"]
-                high_depth = any(bit in before["pixelFormat"] for bit in ("10", "12", "16"))
-                if high_depth and encoder.startswith("h264_"):
-                    raise ValueError("this hardware H.264 encoder cannot preserve high bit depth; choose HEVC/AV1 or CPU")
                 if encoder.endswith("_vaapi"):
                     args += ["-vf", "format=" + ("p010le" if high_depth else "nv12") + ",hwupload"]
                 else:
