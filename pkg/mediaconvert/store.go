@@ -81,7 +81,8 @@ type Record struct {
 }
 
 type Config struct {
-	CacheLimitBytes int64 `json:"cacheLimitBytes"`
+	CacheLimitBytes int64             `json:"cacheLimitBytes"`
+	FormatDefaults  map[string]string `json:"formatDefaults"`
 }
 
 type Stats struct {
@@ -210,6 +211,9 @@ func (s Store) Config() (Config, error) {
 	if errors.Is(err, os.ErrNotExist) {
 		err = nil
 	}
+	if c.FormatDefaults == nil {
+		c.FormatDefaults = DefaultFormatDefaults()
+	}
 	if c.CacheLimitBytes < 0 {
 		return c, fmt.Errorf("invalid negative restore cache limit")
 	}
@@ -219,6 +223,12 @@ func (s Store) Config() (Config, error) {
 func (s Store) Configure(c Config) error {
 	if c.CacheLimitBytes < 0 {
 		return fmt.Errorf("cache size cannot be negative")
+	}
+	if c.FormatDefaults == nil {
+		c.FormatDefaults = DefaultFormatDefaults()
+	}
+	if err := ValidateFormatDefaults(c.FormatDefaults); err != nil {
+		return err
 	}
 	return atomicJSON(filepath.Join(s.Root, "config.json"), c)
 }

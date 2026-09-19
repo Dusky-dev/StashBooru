@@ -18,6 +18,7 @@ import { SettingsContext, useSettings } from "./context";
 import { SettingsLibraryPanel } from "./SettingsLibraryPanel";
 import { SettingsSecurityPanel } from "./SettingsSecurityPanel";
 import { VisualSimilaritySettings } from "./VisualSimilaritySettings";
+import { MediaConversionSettings } from "./MediaConversionSettings";
 import Changelog from "../Changelog/Changelog";
 import { TroubleshootingModeButton } from "../TroubleshootingMode/TroubleshootingModeButton";
 import { useTroubleshootingMode } from "../TroubleshootingMode/useTroubleshootingMode";
@@ -186,6 +187,7 @@ const SettingTabs: React.FC<{ tab: TabKey }> = ({ tab }) => {
             </Tab.Pane>
             <Tab.Pane eventKey="system">
               <VisualSimilaritySettings />
+              <MediaConversionSettings />
               <SettingsConfigurationPanel />
             </Tab.Pane>
             <Tab.Pane eventKey="plugins" unmountOnExit>

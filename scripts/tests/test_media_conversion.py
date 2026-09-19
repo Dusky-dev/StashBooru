@@ -27,6 +27,13 @@ class OptionsTests(unittest.TestCase):
         with patch.object(converter, "run", side_effect=RuntimeError("no supported device")):
             self.assertFalse(converter.gpu_usable("av1_nvenc"))
 
+    def test_quality_scale_and_legacy_distance(self):
+        for quality, distance in ((100, 0), (90, 1), (80, 1.9), (30, 6.4), (0, 25)):
+            with self.subTest(quality=quality):
+                self.assertAlmostEqual(converter.options({"format": "jxl", "quality": quality})["distance"], distance)
+        self.assertEqual(converter.options({"quality": 80, "distance": 0})["distance"], 0)
+        self.assertEqual(converter.options({})["hardware"], "auto")
+
 
 @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "FFmpeg required")
 class EncodeTests(unittest.TestCase):
@@ -72,6 +79,21 @@ class EncodeTests(unittest.TestCase):
         self.assertAlmostEqual(result["duration"], 0.6)
         result, _ = self.convert(output.name, "apng")
         self.assertEqual(result["frames"], 3)
+
+    def test_jxl_quality_100_preserves_pixels(self):
+        if not (shutil.which("cjxl") and shutil.which("djxl")):
+            self.skipTest("cjxl and djxl required")
+        from PIL import Image
+        source = Image.new("RGB", (128, 128))
+        source.putdata([((x * 17 + y) % 256, (y * 29 + x) % 256, (x * y) % 256)
+                        for y in range(128) for x in range(128)])
+        source.save(self.root / "pixels.png")
+        _, output = self.convert("pixels.png", "jxl", quality=100)
+        decoded_dir = self.root / "decoded"
+        decoded_dir.mkdir()
+        decoded = converter.prepare_input(output, decoded_dir)
+        with Image.open(decoded) as image:
+            self.assertEqual(source.tobytes(), image.convert("RGB").tobytes())
 
     def test_finite_loop_count_is_preserved_or_output_rejected(self):
         from PIL import Image
