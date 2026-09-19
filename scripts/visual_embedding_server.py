@@ -8,6 +8,8 @@ assignments. It receives image bytes, performs inference, and returns results.
 from __future__ import annotations
 
 import argparse
+import base64
+import hashlib
 import hmac
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -16,10 +18,14 @@ import os
 from pathlib import Path
 import tempfile
 import threading
+import select
+import socket
+import shutil
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
 import visual_embedding_worker as worker
+import media_conversion_worker as converter
 
 try:
     import camie_tagger_worker as camie
@@ -35,6 +41,7 @@ DEFAULT_MAX_UPLOAD_MB = int(os.environ.get("STASH_EMBEDDING_SERVER_MAX_UPLOAD_MB
 SERVER_TOKEN = os.environ.get("STASH_EMBEDDING_SERVER_TOKEN", "").strip()
 
 _inference_lock = threading.Lock()
+_conversion_lock = threading.Lock()
 
 
 def _log(message: str) -> None:
@@ -89,6 +96,12 @@ class VisualEmbeddingHandler(BaseHTTPRequestHandler):
             return
 
         path = urlsplit(self.path).path.rstrip("/")
+        if path == "/v1/convert/capabilities":
+            try:
+                self._send_json(HTTPStatus.OK, converter.capabilities())
+            except Exception as error:
+                self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": str(error)})
+            return
         if path == "/v1/status":
             self._send_json(HTTPStatus.OK, self._embedding_status())
             return
@@ -127,7 +140,7 @@ class VisualEmbeddingHandler(BaseHTTPRequestHandler):
                 HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
                 {
                     "ok": False,
-                    "error": f"image is too large ({content_length} bytes; limit {max_upload_bytes})",
+                    "error": f"media is too large ({content_length} bytes; limit {max_upload_bytes})",
                 },
             )
             return None
@@ -163,6 +176,9 @@ class VisualEmbeddingHandler(BaseHTTPRequestHandler):
 
         parsed = urlsplit(self.path)
         path = parsed.path.rstrip("/")
+        if path == "/v1/convert":
+            self._convert()
+            return
         if path not in ("/v1/embed", "/v1/tag", "/v1/camie/tag"):
             self._send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not found"})
             return
@@ -234,6 +250,50 @@ class VisualEmbeddingHandler(BaseHTTPRequestHandler):
                     temp_path.unlink()
                 except FileNotFoundError:
                     pass
+
+    def _disconnected(self) -> bool:
+        readable, _, _ = select.select([self.connection], [], [], 0)
+        return bool(readable and not self.connection.recv(1, socket.MSG_PEEK))
+
+    def _convert(self) -> None:
+        # Reject rather than queue unbounded large uploads on the worker.
+        if not _conversion_lock.acquire(blocking=False):
+            self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "converter is busy; retry after the current conversion"})
+            return
+        source = None
+        try:
+            raw = self.headers.get("X-Stash-Conversion-Options", "{}")
+            if len(raw) > 8192:
+                raise ValueError("conversion options too large")
+            options = converter.options(json.loads(raw))
+            source = self._read_upload_to_temp()
+            if source is None:
+                return
+            with tempfile.TemporaryDirectory(prefix="stashbooru-converted-", dir=source.parent) as directory:
+                extension = converter.FORMATS[options["format"]][1]
+                output = Path(directory) / ("output." + extension)
+                metadata = converter.convert(source, output, options, self._disconnected)
+                with output.open("rb") as stream:
+                    digest = hashlib.md5(usedforsecurity=False)
+                    while chunk := stream.read(1024 * 1024):
+                        digest.update(chunk)
+                    checksum = digest.hexdigest()
+                    stream.seek(0)
+                    self.send_response(HTTPStatus.OK)
+                    self.send_header("Content-Type", "application/octet-stream")
+                    self.send_header("Content-Length", str(output.stat().st_size))
+                    self.send_header("X-Stash-Content-MD5", checksum)
+                    self.send_header("X-Stash-Conversion", base64.b64encode(json.dumps(metadata).encode()).decode())
+                    self.end_headers()
+                    shutil.copyfileobj(stream, self.wfile, 1024 * 1024)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        except Exception as error:
+            self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
+        finally:
+            if source is not None:
+                source.unlink(missing_ok=True)
+            _conversion_lock.release()
 
 
 class VisualEmbeddingHTTPServer(ThreadingHTTPServer):

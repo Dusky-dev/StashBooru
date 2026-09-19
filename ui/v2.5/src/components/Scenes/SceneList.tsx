@@ -15,6 +15,7 @@ import { EditScenesDialog } from "./EditScenesDialog";
 import { DeleteScenesDialog } from "./DeleteScenesDialog";
 import { BatchVideoTaggingDialog } from "./BatchVideoTaggingDialog";
 import { GenerateDialog } from "../Dialogs/GenerateDialog";
+import { MediaConversionDialog } from "../Shared/MediaConversionDialog";
 import { ExportDialog } from "../Shared/ExportDialog";
 import { SceneCardGrid } from "./SceneCardGrid";
 import { TaggerContext } from "../Tagger/context";
@@ -650,6 +651,21 @@ export const FilteredSceneList = PatchComponent(
               }}
             />
           ),
+      },
+      {
+        text: "Convert selected media…",
+        onClick: () =>
+          showModal(
+            <MediaConversionDialog
+              kind="scene"
+              selectedIds={Array.from(selectedIds)}
+              onHide={() => {
+                closeModal();
+                void result.refetch();
+              }}
+            />
+          ),
+        isDisplayed: () => hasSelection,
       },
       {
         text: `${intl.formatMessage({ id: "actions.identify" })}…`,

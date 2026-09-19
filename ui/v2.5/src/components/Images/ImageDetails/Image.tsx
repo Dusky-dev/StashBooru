@@ -38,6 +38,7 @@ import { TruncatedText } from "src/components/Shared/TruncatedText";
 import { goBackOrReplace } from "src/utils/history";
 import { FormattedDate } from "src/components/Shared/Date";
 import { GenerateDialog } from "src/components/Dialogs/GenerateDialog";
+import { MediaConversionDialog } from "src/components/Shared/MediaConversionDialog";
 
 interface IProps {
   image: GQL.ImageDataFragment;
@@ -62,6 +63,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
   const [activeTabKey, setActiveTabKey] = useState("image-details-panel");
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState<boolean>(false);
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
+  const [isConverterOpen, setIsConverterOpen] = useState(false);
   const [isKnowledgeTagDialogOpen, setIsKnowledgeTagDialogOpen] =
     useState(false);
 
@@ -215,6 +217,12 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
             Image tagging…
           </Dropdown.Item>
           <Dropdown.Item
+            className="bg-secondary text-white"
+            onClick={() => setIsConverterOpen(true)}
+          >
+            Convert media…
+          </Dropdown.Item>
+          <Dropdown.Item
             key="delete-image"
             className="bg-secondary text-white"
             onClick={() => setIsDeleteAlertOpen(true)}
@@ -322,6 +330,16 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
       {maybeRenderDeleteDialog()}
       {maybeRenderSceneGenerateDialog()}
       {maybeRenderKnowledgeTagDialog()}
+      {isConverterOpen && (
+        <MediaConversionDialog
+          kind="image"
+          selectedIds={[image.id]}
+          onHide={() => {
+            setIsConverterOpen(false);
+            void onMetadataApplied();
+          }}
+        />
+      )}
       <div className="image-tabs order-xl-first order-last">
         <div>
           <div className="image-header-container">

@@ -32,6 +32,7 @@ import {
 import { FileSize } from "../Shared/FileSize";
 import { PatchComponent, PatchContainerComponent } from "src/patch";
 import { GenerateDialog } from "../Dialogs/GenerateDialog";
+import { MediaConversionDialog } from "../Shared/MediaConversionDialog";
 import {
   Sidebar,
   SidebarPane,
@@ -754,6 +755,21 @@ export const FilteredImageList = PatchComponent(
       {
         text: intl.formatMessage({ id: "actions.export" }),
         onClick: () => onExport(false),
+        isDisplayed: () => hasSelection,
+      },
+      {
+        text: "Convert selected media…",
+        onClick: () =>
+          showModal(
+            <MediaConversionDialog
+              kind="image"
+              selectedIds={Array.from(selectedIds)}
+              onHide={() => {
+                closeModal();
+                void result.refetch();
+              }}
+            />
+          ),
         isDisplayed: () => hasSelection,
       },
       {

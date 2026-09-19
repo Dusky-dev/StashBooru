@@ -330,7 +330,7 @@ func loadSceneTaggingBatchPath(ctx context.Context, sceneID int) (string, error)
 }
 
 func loadSceneTaggingBatchBooru(ctx context.Context, path string) ([]camietagger.Tag, bool, error) {
-	provider, post, _, _, err := lookupImageBooruMetadata(ctx, path, lookupBooruPost)
+	provider, post, _, _, err := lookupConvertedMediaBooruMetadata(ctx, path)
 	if errors.Is(err, errBooruNoMatch) {
 		return []camietagger.Tag{}, false, nil
 	}

@@ -450,6 +450,38 @@ func Test_fileStore_Update(t *testing.T) {
 	}
 }
 
+func Test_fileStore_ConvertBetweenImageAndVideo(t *testing.T) {
+	runWithRollbackTxn(t, "conversion keeps file identity while changing type", func(t *testing.T, ctx context.Context) {
+		files, err := db.File.Find(ctx, fileIDs[fileIdxStartImageFiles])
+		if err != nil || len(files) != 1 {
+			t.Fatalf("load: %v", err)
+		}
+		original := files[0]
+		video := &models.VideoFile{BaseFile: original.Base(), Format: "mp4", VideoCodec: "av1", Width: 128, Height: 128}
+		if err := db.File.Update(ctx, video); err != nil {
+			t.Fatal(err)
+		}
+		files, err = db.File.Find(ctx, original.Base().ID)
+		if err != nil || len(files) != 1 {
+			t.Fatalf("load converted: %v", err)
+		}
+		if _, ok := files[0].(*models.VideoFile); !ok {
+			t.Fatalf("expected video, got %T", files[0])
+		}
+		if err := db.File.Update(ctx, original); err != nil {
+			t.Fatal(err)
+		}
+		files, err = db.File.Find(ctx, original.Base().ID)
+		if err != nil || len(files) != 1 {
+			t.Fatalf("load restored: %v", err)
+		}
+		if _, ok := files[0].(*models.ImageFile); !ok {
+			t.Fatalf("expected restored image, got %T", files[0])
+		}
+		assert.Equal(t, original, files[0])
+	})
+}
+
 func makeFileWithID(index int) models.File {
 	ret := makeFile(index)
 	ret.Base().Path = getFilePath(fileFolders[index], getFileBaseName(index))

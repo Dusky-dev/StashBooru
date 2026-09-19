@@ -34,6 +34,8 @@ type imageRoutes struct {
 
 func (rs imageRoutes) Routes() chi.Router {
 	r := chi.NewRouter()
+	r.Get("/converter", handleMediaConversionGet)
+	r.Post("/converter", handleMediaConversionPost)
 
 	r.Route("/visual-similarity", func(r chi.Router) {
 		r.Get("/status", rs.VisualSimilarityStatus)
