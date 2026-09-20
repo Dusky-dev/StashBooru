@@ -109,9 +109,9 @@ export const MediaUpscalingDialog: React.FC<{
       <Modal.Body>
         <p>
           Upscale {selectedIds.length} selected image
-          {selectedIds.length === 1 ? "" : "s"} without mixing upscaler
-          controls into the normal conversion workflow. Existing metadata stays
-          on the same Image entries and originals remain restorable.
+          {selectedIds.length === 1 ? "" : "s"} without mixing upscaler controls
+          into the normal conversion workflow. Existing metadata stays on the
+          same Image entries and originals remain restorable.
         </p>
         {error && <Alert variant="danger">{error}</Alert>}
         {jobID && (
@@ -139,7 +139,9 @@ export const MediaUpscalingDialog: React.FC<{
                   }
                 >
                   {upscalers.length === 0 && (
-                    <option value={options.upscaler}>No upscalers detected</option>
+                    <option value={options.upscaler}>
+                      No upscalers detected
+                    </option>
                   )}
                   {upscalers.map((upscaler) => (
                     <option
@@ -173,7 +175,12 @@ export const MediaUpscalingDialog: React.FC<{
               </Form.Group>
             </Row>
             <Row>
-              <Form.Group as={Col} xs={12} md={6} controlId="upscaler-processor">
+              <Form.Group
+                as={Col}
+                xs={12}
+                md={6}
+                controlId="upscaler-processor"
+              >
                 <Form.Label>Processor</Form.Label>
                 <Form.Control
                   as="select"
@@ -183,7 +190,8 @@ export const MediaUpscalingDialog: React.FC<{
                   onChange={(event) =>
                     setOptions({
                       ...options,
-                      hardware: event.target.value as UpscalingDefaults["hardware"],
+                      hardware: event.target
+                        .value as UpscalingDefaults["hardware"],
                     })
                   }
                 >
