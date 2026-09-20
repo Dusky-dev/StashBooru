@@ -17,10 +17,10 @@ func TestEva02TagPredictionToCamieRating(t *testing.T) {
 		wantOK     bool
 	}{
 		{
-			name:       "general rating becomes safe",
+			name:       "general rating becomes safe without general alias",
 			prediction: visualembedding.TagPrediction{Name: "general", Category: "meta", Score: 0.9},
 			wantName:   "safe",
-			wantRaw:    "general",
+			wantRaw:    "safe",
 			wantCat:    "rating",
 			wantOK:     true,
 		},
