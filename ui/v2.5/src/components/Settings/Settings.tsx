@@ -17,6 +17,7 @@ import { SettingsServicesPanel } from "./SettingsServicesPanel";
 import { SettingsContext, useSettings } from "./context";
 import { SettingsLibraryPanel } from "./SettingsLibraryPanel";
 import { SettingsSecurityPanel } from "./SettingsSecurityPanel";
+import { InferenceWorkerSettings } from "./InferenceWorkerSettings";
 import { VisualSimilaritySettings } from "./VisualSimilaritySettings";
 import { MediaConversionSettings } from "./MediaConversionSettings";
 import Changelog from "../Changelog/Changelog";
@@ -186,6 +187,7 @@ const SettingTabs: React.FC<{ tab: TabKey }> = ({ tab }) => {
               <SettingsScrapingPanel />
             </Tab.Pane>
             <Tab.Pane eventKey="system">
+              <InferenceWorkerSettings />
               <VisualSimilaritySettings />
               <MediaConversionSettings />
               <SettingsConfigurationPanel />
