@@ -143,16 +143,20 @@ func eva02TagPredictionToCamie(prediction visualembedding.TagPrediction) (camiet
 	if name == "" {
 		return camietagger.Tag{}, false
 	}
+	rawName := name
 
 	// WD category 9 contains content-rating labels. Older workers expose that
 	// category as "meta"; accept both spellings so server upgrades do not depend
 	// on a worker restart. "general" is the model's safe-rating label, so expose
-	// it as the clearer booru-style "safe" Tag while retaining RawName.
+	// it as the clearer booru-style "safe" Tag. Do not retain "general" as an
+	// alias because Tag resolution also checks RawName and could otherwise reuse
+	// an unrelated Tag literally named "general".
 	if category == "meta" || category == "rating" {
 		switch strings.ToLower(name) {
 		case "general":
 			category = "rating"
 			name = "safe"
+			rawName = name
 		case "sensitive", "questionable", "explicit":
 			category = "rating"
 		default:
@@ -166,7 +170,7 @@ func eva02TagPredictionToCamie(prediction visualembedding.TagPrediction) (camiet
 
 	return camietagger.Tag{
 		Name:     name,
-		RawName:  prediction.Name,
+		RawName:  rawName,
 		Category: category,
 		Score:    prediction.Score,
 		Source:   "eva02",
