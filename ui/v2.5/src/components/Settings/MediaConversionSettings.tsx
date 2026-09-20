@@ -125,10 +125,9 @@ export const MediaConversionSettings: React.FC = () => {
           </Form.Control>
         </Form.Group>
         <p>
-          Automatic mode prefers the remote inference worker
-          configured above when it is reachable, otherwise they run on this
-          server. The processor defaults to{" "}
-          <strong>Prefer GPU, otherwise CPU</strong>.
+          Automatic mode prefers the remote inference worker configured above
+          when it is reachable. Otherwise, conversions run on this server. The
+          processor defaults to <strong>Prefer GPU, otherwise CPU</strong>.
         </p>
         <p className="text-muted">
           Animated PNG and WebP are detected separately from still images.
