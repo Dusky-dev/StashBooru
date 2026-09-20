@@ -8,6 +8,7 @@ fragment VideoFileData on VideoFile {
   id
   path
   size
+  frame_count
   mod_time
   duration
   video_codec
@@ -26,6 +27,7 @@ fragment ImageFileData on ImageFile {
   id
   path
   size
+  frame_count
   mod_time
   width
   height
@@ -39,6 +41,7 @@ fragment GalleryFileData on GalleryFile {
   id
   path
   size
+  frame_count
   mod_time
   fingerprints {
     type
@@ -51,6 +54,7 @@ fragment VisualFileData on VisualFile {
     id
     path
     size
+    frame_count
     mod_time
     fingerprints {
       type
@@ -61,6 +65,7 @@ fragment VisualFileData on VisualFile {
     id
     path
     size
+    frame_count
     mod_time
     width
     height
@@ -73,6 +78,7 @@ fragment VisualFileData on VisualFile {
     id
     path
     size
+    frame_count
     mod_time
     duration
     video_codec

@@ -137,6 +137,8 @@ type BaseFile struct {
 	Fingerprints Fingerprints `json:"fingerprints"`
 
 	Size int64 `json:"size"`
+	// Zero means not inspected yet. One is a still image.
+	FrameCount int `json:"frame_count"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

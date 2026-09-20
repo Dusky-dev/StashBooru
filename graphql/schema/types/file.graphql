@@ -38,6 +38,7 @@ interface BaseFile {
 
   mod_time: Time!
   size: Int64!
+  frame_count: Int!
 
   fingerprint(type: String!): String
   fingerprints: [Fingerprint!]!
@@ -59,6 +60,7 @@ type BasicFile implements BaseFile {
 
   mod_time: Time!
   size: Int64!
+  frame_count: Int!
 
   fingerprint(type: String!): String
   fingerprints: [Fingerprint!]!
@@ -80,6 +82,7 @@ type VideoFile implements BaseFile {
 
   mod_time: Time!
   size: Int64!
+  frame_count: Int!
 
   fingerprint(type: String!): String
   fingerprints: [Fingerprint!]!
@@ -112,6 +115,7 @@ type ImageFile implements BaseFile {
 
   mod_time: Time!
   size: Int64!
+  frame_count: Int!
 
   fingerprint(type: String!): String
   fingerprints: [Fingerprint!]!
@@ -141,6 +145,7 @@ type GalleryFile implements BaseFile {
 
   mod_time: Time!
   size: Int64!
+  frame_count: Int!
 
   fingerprint(type: String!): String
   fingerprints: [Fingerprint!]!

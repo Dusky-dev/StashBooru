@@ -675,6 +675,7 @@ func getScanHandlers(options ScanMetadataInput, taskQueue *job.TaskQueue, progre
 		&file.FilteredHandler{
 			Filter: file.FilterFunc(imageFileFilter),
 			Handler: &image.ScanHandler{
+				AnimationTags:      r.Tag,
 				CreatorUpdater:     r.Image,
 				GalleryFinder:      r.Gallery,
 				SceneFinderUpdater: r.Scene,

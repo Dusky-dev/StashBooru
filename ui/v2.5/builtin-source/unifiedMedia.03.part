@@ -1,4 +1,4 @@
-ion
+    // scene/video or image opens the shared preview directly (unless selection
     // mode is active). Grid mode keeps the normal magnifying-glass affordance.
 
     const anchorProps = {
@@ -24,8 +24,8 @@ ion
         onClick: (ev) => ev.stopPropagation(),
         "aria-label": `Select ${entry.title}`,
       }),
-      entry.type === "image" && isGifImage(item)
-        ? React.createElement(GifBadge, { key: "gif" })
+      entry.type === "image" && imageAnimationLabel(item)
+        ? React.createElement(GifBadge, { key: "gif", label: imageAnimationLabel(item) })
         : null,
       anchor
     );
@@ -271,4 +271,3 @@ ion
         if (oldHandler) {
           footerLink.removeEventListener("click", oldHandler, true);
           delete footerLink.__unifiedMediaSceneNavigateHandler;
-        }

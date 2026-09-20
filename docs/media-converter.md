@@ -10,15 +10,17 @@ continues past individual failures; each failed item reports its reason.
 ## Defaults and worker selection
 
 Open **Settings → System → Media converter**, just below the tagging settings,
-to add or change **input format → default output format** rules. New dialogs
-select **Use format defaults for each file** and show a preview of the selected
-inputs and outputs. A mixed batch resolves each file separately. Choosing an
-explicit output in the dialog overrides these rules for that batch.
+to set **input format → output format, quality and effort** rules and **Run on**
+(automatic/local/remote). The conversion dialog displays the actual resolved
+output formats, with a link back to these settings. A mixed batch resolves each
+file separately. Saved quality/effort are used by default; uncheck that option in
+the dialog to set a temporary quality/effort override for the batch.
 
 The initial defaults send JPEG/PNG/still WebP to JXL, GIF/APNG/animated WebP to
 AJXL, and videos to AV1 (MP4, MKV and WebM retain their container defaults).
-Existing JXL inputs use the animation-capable JXL path, which accepts stills too.
-PNG and WebP headers distinguish animated files even when extensions are shared.
+Inspected still and animated JXL inputs have separate rules. Uninspected JXL
+uses the animation-capable path. PNG and WebP headers distinguish animated files
+even when extensions are shared.
 **Other images** and **Other videos** provide fallbacks for inputs without a
 specific rule. Encoder availability still depends on the worker.
 
@@ -27,7 +29,7 @@ configured remote tagging worker first, using the existing URL and bearer token.
 A working remote converter is used without starting local codec probes. If the
 remote is unconfigured or unavailable (including a 10-second probe timeout),
 the converter uses this server and displays the fallback. Explicit local/remote
-choices remain available. **Recheck worker** refreshes the selection; it is also
+choices are in System settings. **Recheck worker** refreshes the selection; it is also
 checked again when a job starts. A running batch keeps its selected worker and
 the format defaults read at its start.
 
@@ -65,6 +67,10 @@ mode permits CPU fallback.
 The converter fully decodes outputs and checks dimensions, frame count, duration,
 individual animation delays and loop counts when available, and audio stream
 count. It refuses to silently flatten animation or discard audio/transparency.
+Video timing uses presentation timestamps rather than container duration, which
+can include longer audio. Fractional APNG delays are distributed over JPEG XL's
+millisecond ticks, preserving total timing to within a millisecond instead of
+accumulating per-frame rounding error.
 Audio/transparency loss requires the corresponding option. Outputs that are not
 smaller are skipped by default; enable **Keep outputs even when they are larger**
 to keep them.
@@ -89,7 +95,27 @@ support and are not guaranteed to survive every cross-format conversion.
 Conversion changes the primary **file on the same media entry**. IDs, title,
 description, source URLs, tags, characters, artists, copyrights, collections,
 ratings, markers and other database relationships remain attached. It does not
-recreate or retag entries.
+recreate entries or replace their tags. Animated images receive the `animated`
+tag automatically; existing tags are retained.
+
+## Animation detection and badges
+
+Scans persist frame counts independently of fingerprints. GIF frame blocks,
+APNG animation headers and WebP frame chunks are inspected without pixel
+decoding. `jxlinfo` inspects JPEG XL, and ffprobe counts AVIF/HEIF frames. Install
+libjxl tools on the Stash server for existing JXL inspection, even if conversion
+runs remotely. Converted files already include verified frame counts from the
+worker. Missing inspectors leave status unknown, never guessed to be a still.
+
+The existing GIF badge style now also labels APNG, AJXL, animated WebP, AVIF and
+other animated images on native cards/walls and Unified Media cards/walls. GIF
+keeps its existing format badge, including one-frame GIFs; the `animated` tag is
+only assigned when there is more than one frame.
+
+Existing images gain metadata on their next normal scan. **Inspect existing
+images** in converter settings queues that scan without forcing rehashing of
+unchanged files. Follow progress in Tasks. This release advances the database
+schema to 91; use Stash's normal database migration flow on upgrade.
 
 Original fingerprints are retained as `source_md5`, `source_phash`,
 `source_oshash`, etc. The active file receives its actual MD5/OSHash, keeping
@@ -139,7 +165,7 @@ file changes.
 
 The normal and CUDA Docker build images include the converter worker. Local
 non-Docker installations need Python 3.10+, Pillow, FFmpeg/ffprobe and libjxl tools
-(`cjxl` and `djxl`, strongly recommended). The worker defaults to
+(`cjxl`, `djxl`, and `jxlinfo`, strongly recommended). The worker defaults to
 `scripts/media_conversion_worker.py`; set `STASH_MEDIA_CONVERSION_WORKER` to its
 absolute path when launching StashBooru elsewhere. `STASH_PYTHON` overrides
 `python3`. StashBooru's configured FFmpeg/ffprobe paths are passed to the local
@@ -147,9 +173,19 @@ worker.
 
 Remote conversion reuses the **Visual Similarity remote tagging URL and bearer
 token**. Update the remote checkout to the same branch/version and restart
-`scripts/visual_embedding_server.py`; keep `media_conversion_worker.py` beside it.
+`scripts/visual_embedding_server.py`; keep `media_conversion_worker.py` and
+`media_upscale_worker.py` beside it.
 Install FFmpeg, libjxl tools and Pillow on that machine. Existing model settings
 are unchanged and conversion does not download models.
+
+Optional 2×/4× still-image upscaling uses installed waifu2x or SeedVR2 before
+encoding. It shares the same verified replacement, original metadata and restore
+cache. Enabling it selects **Keep outputs even when they are larger**. It does
+not flatten GIFs/videos: disable upscaling to convert those. waifu2x supports
+Vulkan GPU or CPU with automatic fallback; SeedVR2 requires its own working GPU
+environment. See [remote worker setup](../scripts/visual_embedding_server.md).
+Model inference requires installation on your machine and is not exercised by
+the codec-only CI tests.
 
 For large videos, increase the worker's upload limit explicitly, for example:
 

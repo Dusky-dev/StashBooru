@@ -104,7 +104,8 @@
   });
 
   function ImageCardGifBridge({ props, rendered }) {
-    if (!isGifImage(props?.image) || !React.isValidElement(rendered)) return rendered;
+    const label = imageAnimationLabel(props?.image);
+    if (!label || !React.isValidElement(rendered)) return rendered;
 
     const children = React.Children.toArray(rendered.props?.children);
     if (!children.length || !React.isValidElement(children[0])) return rendered;
@@ -114,7 +115,7 @@
       preview,
       {},
       ...previewChildren,
-      React.createElement(GifBadge, { key: "unified-media-gif-badge" })
+      React.createElement(GifBadge, { key: "unified-media-gif-badge", label })
     );
     return React.cloneElement(rendered, {}, patchedPreview, ...children.slice(1));
   }
@@ -214,4 +215,3 @@
       "rating100", "tags", "parents", "created_at", "updated_at", "scene_count", "image_count",
       "gallery_count", "group_count", "organized"
     ]),
-    m

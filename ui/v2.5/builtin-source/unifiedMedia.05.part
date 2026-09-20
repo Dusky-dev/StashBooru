@@ -1,4 +1,4 @@
-eEffect(() => cleanupNativeLightbox, [cleanupNativeLightbox]);
+    React.useEffect(() => cleanupNativeLightbox, [cleanupNativeLightbox]);
 
     const lightboxPrevious = React.useCallback(() => {
       const buttons = document.querySelectorAll(".Lightbox-display > .Lightbox-navbutton");
@@ -556,4 +556,3 @@ eEffect(() => cleanupNativeLightbox, [cleanupNativeLightbox]);
           tab.href = "#";
           tab.setAttribute("role", "tab");
           tab.setAttribute("aria-selected", "false");
-          tab.setAttribute(TAB_A

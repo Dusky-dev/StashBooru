@@ -18,6 +18,8 @@ import (
 )
 
 type Options struct {
+	Upscaler       string  `json:"upscaler,omitempty"`
+	UpscaleScale   int     `json:"upscaleScale,omitempty"`
 	Format         string  `json:"format"`
 	Hardware       string  `json:"hardware"`
 	Quality        float64 `json:"quality"`
@@ -41,10 +43,20 @@ type Format struct {
 }
 
 type Capabilities struct {
-	Formats []Format `json:"formats"`
+	Formats   []Format   `json:"formats"`
+	Upscalers []Upscaler `json:"upscalers"`
+}
+
+type Upscaler struct {
+	ID        string `json:"id"`
+	Label     string `json:"label"`
+	Available bool   `json:"available"`
+	CPU       bool   `json:"cpu"`
+	Notice    string `json:"notice"`
 }
 
 type Result struct {
+	Upscaler   string  `json:"upscaler,omitempty"`
 	Width      int     `json:"width"`
 	Height     int     `json:"height"`
 	Frames     int64   `json:"frames"`

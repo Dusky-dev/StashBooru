@@ -1,4 +1,4 @@
-rs.data?.findPerformers?.performers);
+      add("performer", q.performers.data?.findPerformers?.performers);
       add("studio", q.studios.data?.findStudios?.studios);
     } else {
       add("marker", q.markers.data?.findSceneMarkers?.scene_markers);
@@ -275,4 +275,3 @@ rs.data?.findPerformers?.performers);
     }
 
     // Wall mode intentionally has no preview-button overlay. Clicking either a
-    // scene/video or image opens the shared preview directly (unless select

@@ -1,0 +1,1 @@
+ALTER TABLE `files` ADD COLUMN `frame_count` INTEGER NOT NULL DEFAULT 0;

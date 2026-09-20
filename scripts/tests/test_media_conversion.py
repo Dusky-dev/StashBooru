@@ -3,13 +3,17 @@ import contextlib
 import http.client
 import importlib
 import json
+import os
 from pathlib import Path
 import shutil
 import sys
+import struct
 import tempfile
 import threading
+import time
 import types
 import unittest
+import zlib
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -21,6 +25,9 @@ class OptionsTests(unittest.TestCase):
         for value in ({"format": "sh"}, {"effort": 10}, {"effort": 2.5}, {"quality": True},
                       {"quality": float("nan")}, {"distance": -1}, {"hardware": "cuda;exit"}, {"command": "ls"}):
             with self.subTest(value=value), self.assertRaises(ValueError):
+                converter.options(value)
+        for value in ({"upscaler": "shell"}, {"upscaleScale": True}, {"upscaleScale": 3}):
+            with self.assertRaises(ValueError):
                 converter.options(value)
 
     def test_encoder_presence_is_not_gpu_support(self):
@@ -94,6 +101,102 @@ class EncodeTests(unittest.TestCase):
         decoded = converter.prepare_input(output, decoded_dir)
         with Image.open(decoded) as image:
             self.assertEqual(source.tobytes(), image.convert("RGB").tobytes())
+
+    def test_fractional_apng_timing_does_not_accumulate_jxl_rounding(self):
+        if not (shutil.which("cjxl") and shutil.which("djxl")):
+            self.skipTest("cjxl and djxl required")
+        from PIL import Image
+        frames = [Image.new("RGB", (32, 32), ((i * 11) % 256, (i * 23) % 256, (i * 7) % 256)) for i in range(120)]
+        source = self.root / "fractional.png"
+        frames[0].save(source, save_all=True, append_images=frames[1:], duration=33, loop=0)
+        raw = source.read_bytes()
+        chunks, position = [raw[:8]], 8
+        while position < len(raw):
+            length = int.from_bytes(raw[position:position + 4], "big")
+            chunk = bytearray(raw[position + 4:position + 8 + length])
+            position += length + 12
+            if chunk[:4] == b"fcTL":
+                chunk[24:28] = struct.pack(">HH", 1, 30)
+            chunks.append(struct.pack(">I", length) + chunk + struct.pack(">I", zlib.crc32(chunk)))
+        source.write_bytes(b"".join(chunks))
+        original = source.read_bytes()
+        result, _ = self.convert(source.name, "ajxl", hardware="cpu")
+        self.assertEqual(result["frames"], 120)
+        self.assertAlmostEqual(result["duration"], 4, delta=0.001)
+        self.assertEqual(source.read_bytes(), original)
+
+    def test_video_duration_excludes_trailing_audio(self):
+        source = self.root / "trailing-audio.mkv"
+        converter.run(converter.ffmpeg_prefix() + ["-f", "lavfi", "-i", "testsrc2=size=128x128:rate=25:duration=0.6",
+                      "-f", "lavfi", "-i", "sine=frequency=440:duration=1.2", "-c:v", "libx264", "-c:a", "pcm_s16le", str(source)])
+        result, _ = self.convert(source.name, "av1-mp4", hardware="cpu")
+        self.assertEqual(result["frames"], 15)
+        self.assertEqual(result["audioStreams"], 1)
+        self.assertAlmostEqual(result["duration"], 0.6, delta=0.002)
+
+    def test_optional_upscaling_verifies_size_and_rejects_animation(self):
+        from PIL import Image
+        def enlarge(source, output, options, width, height, run, cancelled):
+            with Image.open(source) as image:
+                image.resize((width * 2, height * 2)).save(output)
+        with patch.object(converter.upscaler, "upscale", side_effect=enlarge):
+            result, _ = self.convert("still.png", "webp", upscaler="waifu2x", upscaleScale=2)
+            self.assertEqual((result["width"], result["height"], result["frames"]), (256, 256, 1))
+            self.assertEqual(result["upscaler"], "waifu2x")
+            with self.assertRaisesRegex(ValueError, "still images only"):
+                converter.convert(self.root / "animation.gif", self.root / "upscaled.gif", {"format": "gif", "upscaler": "seedvr2"})
+            with self.assertRaisesRegex(RuntimeError, "expected"):
+                converter.convert(self.root / "still.png", self.root / "wrong-size.png", {"format": "png", "upscaler": "waifu2x", "upscaleScale": 4})
+            self.assertFalse((self.root / "wrong-size.png").exists())
+
+    @unittest.skipUnless(os.name == "posix", "executable CLI fixture requires POSIX")
+    def test_waifu_cli_cpu_fallback_and_codec_pipeline(self):
+        executable = self.root / "waifu fixture"
+        executable.write_text("#!/usr/bin/env python3\nimport sys\nfrom PIL import Image\na=sys.argv[1:]\n"
+                              "if '-g' not in a: sys.exit(1)\n"
+                              "assert a[a.index('-g')+1]=='-1'\n"
+                              "im=Image.open(a[a.index('-i')+1]); s=int(a[a.index('-s')+1])\n"
+                              "im.resize((im.width*s,im.height*s)).save(a[a.index('-o')+1])\n")
+        executable.chmod(0o700)
+        models = self.root / "fixture models"
+        models.mkdir()
+        (models / "fixture.param").write_text("test fixture, not model weights")
+        (models / "fixture.bin").write_bytes(b"test fixture")
+        with patch.dict(os.environ, {"STASH_WAIFU2X": str(executable), "STASH_WAIFU2X_MODELS": str(models)}):
+            result, _ = self.convert("still.png", "png", upscaler="waifu2x", upscaleScale=2, hardware="auto")
+            self.assertEqual((result["width"], result["height"]), (256, 256))
+
+    def test_seed_cli_requires_installed_models_and_runs_offline(self):
+        cli = self.root / "inference_cli.py"
+        cli.write_text("# CLI fixture\n")
+        models = self.root / "seed-models"
+        models.mkdir()
+        with patch.dict(os.environ, {"STASH_SEEDVR2_CLI": str(cli), "STASH_SEEDVR2_MODELS": str(models), "STASH_SEEDVR2_MODEL": "test.safetensors"}):
+            opts = converter.options({"upscaler": "seedvr2", "upscaleScale": 2})
+            with self.assertRaisesRegex(ValueError, "downloaded"):
+                converter.upscaler.upscale(self.root / "still.png", self.root / "seed.png", opts, 128, 128, converter.run)
+            for name in ("test.safetensors", "ema_vae_fp16.safetensors"):
+                (models / name).write_bytes(b"test fixture")
+            calls = []
+            def record(args, cancelled, **kwargs):
+                calls.append((args, kwargs))
+            converter.upscaler.upscale(self.root / "still.png", self.root / "seed.png", opts, 128, 128, record)
+            self.assertEqual(len(calls), 1)
+            self.assertTrue(calls[0][1]["offline_models"])
+            self.assertEqual(calls[0][0][calls[0][0].index("--resolution") + 1], "256")
+
+    @unittest.skipUnless(os.name == "posix" and Path("/proc").exists(), "Linux process-tree assertion")
+    def test_http_cancellation_stops_child_processes(self):
+        pid_file = self.root / "child.pid"
+        script = "import subprocess,sys,time; from pathlib import Path; p=subprocess.Popen([sys.executable,'-c','import time; time.sleep(30)']); Path(sys.argv[1]).write_text(str(p.pid)); time.sleep(30)"
+        with self.assertRaisesRegex(RuntimeError, "cancelled"):
+            converter.run([sys.executable, "-c", script, str(pid_file)], cancelled=pid_file.exists, timeout=5)
+        pid = int(pid_file.read_text())
+        status = Path(f"/proc/{pid}/stat")
+        deadline = time.monotonic() + 2
+        while status.exists() and status.read_text().split()[2] != "Z" and time.monotonic() < deadline:
+            time.sleep(0.02)
+        self.assertTrue(not status.exists() or status.read_text().split()[2] == "Z")
 
     def test_finite_loop_count_is_preserved_or_output_rejected(self):
         from PIL import Image

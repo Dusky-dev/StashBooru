@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/stashapp/stash/pkg/image"
 	"github.com/stashapp/stash/pkg/models"
 	"github.com/stashapp/stash/pkg/txn"
 )
@@ -31,6 +32,20 @@ func (r ModelRepository) Swap(ctx context.Context, before, after models.File) er
 		if len(files) != 1 || !SameFile(files[0], before) {
 			return fmt.Errorf("file record changed during conversion; retry after rescanning")
 		}
-		return r.Repository.File.Update(ctx, after)
+		if err := r.Repository.File.Update(ctx, after); err != nil {
+			return err
+		}
+		if after.Base().FrameCount > 1 {
+			images, err := r.Repository.Image.FindByFileID(ctx, after.Base().ID)
+			if err != nil {
+				return err
+			}
+			var ids []int
+			for _, im := range images {
+				ids = append(ids, im.ID)
+			}
+			return image.AddAnimatedTag(ctx, r.Repository.Tag, r.Repository.Image, ids)
+		}
+		return nil
 	})
 }

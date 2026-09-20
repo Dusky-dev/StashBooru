@@ -69,6 +69,7 @@ COPY --from=backend /stash/stash /usr/bin/
 COPY --from=backend /stash/scripts/visual_embedding_worker.py /usr/lib/stash/visual_embedding_worker.py
 COPY --from=backend /stash/scripts/camie_tagger_worker.py /usr/lib/stash/camie_tagger_worker.py
 COPY --from=backend /stash/scripts/media_conversion_worker.py /usr/lib/stash/media_conversion_worker.py
+COPY --from=backend /stash/scripts/media_upscale_worker.py /usr/lib/stash/media_upscale_worker.py
 
 ENV STASH_CONFIG_FILE=/root/.stash/config.yml
 ENV STASH_VISUAL_EMBEDDING_WORKER=/usr/lib/stash/visual_embedding_worker.py

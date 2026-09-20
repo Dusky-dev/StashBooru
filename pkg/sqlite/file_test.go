@@ -457,6 +457,7 @@ func Test_fileStore_ConvertBetweenImageAndVideo(t *testing.T) {
 			t.Fatalf("load: %v", err)
 		}
 		original := files[0]
+		original.Base().FrameCount = 3
 		video := &models.VideoFile{BaseFile: original.Base(), Format: "mp4", VideoCodec: "av1", Width: 128, Height: 128}
 		if err := db.File.Update(ctx, video); err != nil {
 			t.Fatal(err)
@@ -468,6 +469,7 @@ func Test_fileStore_ConvertBetweenImageAndVideo(t *testing.T) {
 		if _, ok := files[0].(*models.VideoFile); !ok {
 			t.Fatalf("expected video, got %T", files[0])
 		}
+		assert.Equal(t, 3, files[0].Base().FrameCount)
 		if err := db.File.Update(ctx, original); err != nil {
 			t.Fatal(err)
 		}

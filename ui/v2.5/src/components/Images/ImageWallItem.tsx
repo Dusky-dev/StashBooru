@@ -9,6 +9,7 @@ import { useDragMoveSelect } from "../Shared/GridCard/dragMoveSelect";
 import NavUtils from "src/utils/navigation";
 
 interface IExtraProps {
+  animationLabel?: string;
   maxHeight: number;
   selected?: boolean;
   onSelectedChanged?: (selected: boolean, shiftKey: boolean) => void;
@@ -74,6 +75,7 @@ export const ImageWallItem: React.FC<RenderImageProps & IExtraProps> = (
   return (
     <div
       className="wall-item"
+      data-animation-badge={props.animationLabel || undefined}
       style={divStyle}
       onClick={handleClick}
       {...dragProps}
