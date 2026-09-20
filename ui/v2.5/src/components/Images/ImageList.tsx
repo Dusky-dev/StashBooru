@@ -33,6 +33,7 @@ import { FileSize } from "../Shared/FileSize";
 import { PatchComponent, PatchContainerComponent } from "src/patch";
 import { GenerateDialog } from "../Dialogs/GenerateDialog";
 import { MediaConversionDialog } from "../Shared/MediaConversionDialog";
+import { MediaUpscalingDialog } from "../Shared/MediaUpscalingDialog";
 import {
   Sidebar,
   SidebarPane,
@@ -170,14 +171,10 @@ const ImageWall: React.FC<IImageWallProps> = ({
     [safeZoomIndex]
   );
 
-  // set the max height as a factor of the targetRowHeight
-  // this allows some images to be taller than the target row height
-  // but prevents images from becoming too tall when there is a small number of items
   const maxHeightFactor = 1.3;
 
   const renderImage = useCallback(
     (props: RenderImageProps) => {
-      // #6165 - only use targetRowHeight in row direction
       const maxHeight =
         props.direction === "column"
           ? props.photo.height
@@ -265,7 +262,6 @@ const ImageList: React.FC<IImageListImages> = PatchComponent(
             }
           } else if (direction > 0) {
             if (filter.currentPage === pageCount) {
-              // return to the first page
               onChangePage(1);
             } else {
               onChangePage(filter.currentPage + direction);
@@ -353,7 +349,6 @@ const ImageList: React.FC<IImageListImages> = PatchComponent(
       );
     }
 
-    // should not happen
     return null;
   }
 );
@@ -365,7 +360,6 @@ function renderMetadataByline(
   const size = metadataInfo?.data?.findImages?.filesize;
 
   if (metadataInfo?.loading) {
-    // return ellipsis
     return <span className="images-stats">&nbsp;(...)</span>;
   }
 
@@ -490,7 +484,6 @@ function useViewRandom(filter: ListFilterModel, count: number) {
   const history = useHistory();
 
   const viewRandom = useCallback(async () => {
-    // query for a random image
     if (count === 0) {
       return;
     }
@@ -502,7 +495,6 @@ function useViewRandom(filter: ListFilterModel, count: number) {
     const singleResult = await queryFindImages(filterCopy);
     if (singleResult.data.findImages.images.length === 1) {
       const { id } = singleResult.data.findImages.images[0];
-      // navigate to the image player page
       history.push(`/images/${id}`);
     }
   }, [history, filter, count]);
@@ -581,7 +573,6 @@ export const FilteredImageList = PatchComponent(
       });
     }
 
-    // States
     const {
       showSidebar,
       setShowSidebar,
@@ -635,7 +626,6 @@ export const FilteredImageList = PatchComponent(
 
     const { modal, showModal, closeModal } = modalState;
 
-    // Utility hooks
     const { setPage, removeCriterion, clearAllCriteria } = useFilterOperations({
       filter,
       setFilter,
@@ -761,6 +751,20 @@ export const FilteredImageList = PatchComponent(
         isDisplayed: () => hasSelection,
       },
       {
+        text: "Upscale selected images…",
+        onClick: () =>
+          showModal(
+            <MediaUpscalingDialog
+              selectedIds={Array.from(selectedIds)}
+              onHide={() => {
+                closeModal();
+                void result.refetch();
+              }}
+            />
+          ),
+        isDisplayed: () => hasSelection,
+      },
+      {
         text: "Convert selected media…",
         onClick: () =>
           showModal(
@@ -781,7 +785,6 @@ export const FilteredImageList = PatchComponent(
       },
     ];
 
-    // render
     if (sidebarStateLoading) return null;
 
     const operations = (
