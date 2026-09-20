@@ -54,6 +54,7 @@ type ScanGenerator interface {
 }
 
 type ScanHandler struct {
+	AnimationTags      AnimationTags
 	CreatorUpdater     ScanCreatorUpdater
 	GalleryFinder      GalleryFinderCreator
 	SceneFinderUpdater ScanSceneFinderUpdater
@@ -151,6 +152,16 @@ func (h *ScanHandler) Handle(ctx context.Context, f models.File, oldFile models.
 		h.PluginCache.RegisterPostHooks(ctx, newImage.ID, hook.ImageCreatePost, nil, nil)
 
 		existing = []*models.Image{&newImage}
+	}
+
+	if f.Base().FrameCount > 1 && h.AnimationTags != nil {
+		ids := make([]int, 0, len(existing))
+		for _, im := range existing {
+			ids = append(ids, im.ID)
+		}
+		if err := AddAnimatedTag(ctx, h.AnimationTags, h.CreatorUpdater, ids); err != nil {
+			return err
+		}
 	}
 
 	// remove the old thumbnail if the checksum changed - we'll regenerate it

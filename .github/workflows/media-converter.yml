@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - scripts/media_conversion_worker.py
+      - scripts/media_upscale_worker.py
       - scripts/visual_embedding_server.py
       - scripts/tests/test_media_conversion.py
       - pkg/mediaconvert/**
@@ -12,6 +13,7 @@ on:
     branches: [develop]
     paths:
       - scripts/media_conversion_worker.py
+      - scripts/media_upscale_worker.py
       - scripts/visual_embedding_server.py
       - scripts/tests/test_media_conversion.py
       - pkg/mediaconvert/**

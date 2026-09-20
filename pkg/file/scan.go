@@ -656,6 +656,7 @@ func (s *Scanner) handleRename(ctx context.Context, f models.File, fp []models.F
 	fBaseCopy.ID = updatedBase.ID
 	fBaseCopy.CreatedAt = updatedBase.CreatedAt
 	fBaseCopy.Fingerprints = updatedBase.Fingerprints
+	fBaseCopy.FrameCount = updatedBase.FrameCount
 	*updatedBase = fBaseCopy
 
 	zipMover := zipHierarchyMover{
@@ -891,7 +892,7 @@ func (s *Scanner) onUnchangedFile(ctx context.Context, f ScannedFile, existing m
 	handlerRequired := false
 	if err := s.Repository.WithDB(ctx, func(ctx context.Context) error {
 		// check if the handler needs to be run
-		handlerRequired = s.isHandlerRequired(ctx, existing)
+		handlerRequired = isMissingMetdata || s.isHandlerRequired(ctx, existing)
 		return nil
 	}); err != nil {
 		return nil, err

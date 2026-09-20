@@ -19,6 +19,7 @@ import {
   ConversionConfig,
   ConversionFormat as Format,
   ConversionPlan,
+  ConversionUpscaler,
 } from "./mediaConversion";
 
 interface Target {
@@ -26,6 +27,8 @@ interface Target {
   id: number;
 }
 interface Options {
+  upscaler?: string;
+  upscaleScale?: number;
   format: string;
   hardware: string;
   quality: number;
@@ -113,7 +116,7 @@ export const MediaConversionDialog: React.FC<{
   selectedIds: string[];
   onHide: () => void;
 }> = ({ kind, selectedIds, onHide }) => {
-  const [backend, setBackend] = useState("auto");
+  const [useEncodingDefaults, setUseEncodingDefaults] = useState(true);
   const [resolvedBackend, setResolvedBackend] = useState("");
   const [workerNotice, setWorkerNotice] = useState("");
   const [capabilityAttempt, setCapabilityAttempt] = useState(0);
@@ -121,6 +124,7 @@ export const MediaConversionDialog: React.FC<{
   const [loadingPreview, setLoadingPreview] = useState(true);
   const [previewError, setPreviewError] = useState("");
   const [formats, setFormats] = useState<Format[]>([]);
+  const [upscalers, setUpscalers] = useState<ConversionUpscaler[]>([]);
   const [loadingCapabilities, setLoadingCapabilities] = useState(false);
   const [capabilityError, setCapabilityError] = useState("");
   const [state, setState] = useState<State>();
@@ -168,7 +172,11 @@ export const MediaConversionDialog: React.FC<{
   const targetsJSON = JSON.stringify(
     selectedIds.map((id) => ({ kind, id: Number(id) }))
   );
-  const defaultsJSON = JSON.stringify(state?.config.formatDefaults);
+  const defaultsJSON = JSON.stringify([
+    state?.config.formatDefaults,
+    state?.config.encodingDefaults,
+  ]);
+  const backend = state?.config.backend;
 
   const refresh = useCallback(
     async (signal?: AbortSignal) => {
@@ -199,22 +207,29 @@ export const MediaConversionDialog: React.FC<{
   }, [refresh]);
 
   useEffect(() => {
+    if (!backend) return;
     const controller = new AbortController();
     setFormats([]);
+    setUpscalers([]);
     setResolvedBackend("");
     setWorkerNotice("");
     setLoadingCapabilities(true);
     setCapabilityError("");
-    void fetch(
-      `${endpoint}?capabilities=1&backend=${backend}&refresh=${capabilityAttempt}`,
-      {
-        signal: controller.signal,
-      }
-    )
-      .then(response<{ formats: Format[]; backend: string; notice: string }>)
+    void fetch(`${endpoint}?capabilities=1&refresh=${capabilityAttempt}`, {
+      signal: controller.signal,
+    })
+      .then(
+        response<{
+          formats: Format[];
+          upscalers?: ConversionUpscaler[];
+          backend: string;
+          notice: string;
+        }>
+      )
       .then((v) => {
         if (!controller.signal.aborted) {
           setFormats(v.formats);
+          setUpscalers(v.upscalers ?? []);
           setResolvedBackend(v.backend);
           setWorkerNotice(v.notice);
         }
@@ -229,7 +244,7 @@ export const MediaConversionDialog: React.FC<{
   }, [backend, capabilityAttempt]);
 
   useEffect(() => {
-    if (!defaultsJSON) return;
+    if (!backend || !defaultsJSON) return;
     const controller = new AbortController();
     setLoadingPreview(true);
     setPreviewError("");
@@ -244,7 +259,16 @@ export const MediaConversionDialog: React.FC<{
     })
       .then(response<{ plans: ConversionPlan[] }>)
       .then((v) => {
-        if (!controller.signal.aborted) setPlans(v.plans);
+        if (!controller.signal.aborted) {
+          setPlans(v.plans);
+          const first = v.plans.find((p) => !p.error);
+          if (first)
+            setOptions((old) => ({
+              ...old,
+              quality: first.quality,
+              effort: first.effort,
+            }));
+        }
       })
       .catch((e: Error) => {
         if (!controller.signal.aborted) setPreviewError(e.message);
@@ -253,7 +277,7 @@ export const MediaConversionDialog: React.FC<{
         if (!controller.signal.aborted) setLoadingPreview(false);
       });
     return () => controller.abort();
-  }, [targetsJSON, defaultsJSON]);
+  }, [targetsJSON, defaultsJSON, backend]);
 
   async function action(payload: object) {
     setSubmitting(true);
@@ -311,50 +335,23 @@ export const MediaConversionDialog: React.FC<{
               same entries.
             </p>
             <Row>
-              <Form.Group as={Col} xs={12} md={4} controlId="converter-backend">
-                <Form.Label>Run on</Form.Label>
-                <Form.Control
-                  className="input-control"
-                  as="select"
-                  value={backend}
-                  disabled={busy}
-                  onChange={(e) => setBackend(e.target.value)}
-                >
-                  <option value="auto">Automatic — prefer remote worker</option>
-                  <option value="local">This StashBooru server</option>
-                  <option value="remote">Remote tagging worker</option>
-                </Form.Control>
-                <Form.Text className="text-muted">
-                  {resolvedBackend
-                    ? `Selected: ${resolvedBackend === "remote" ? "remote tagging worker" : "this StashBooru server"}. `
-                    : "Checking worker availability. "}
-                  Automatic uses the configured remote worker when reachable,
-                  otherwise this server.
-                </Form.Text>
-              </Form.Group>
-              <Form.Group as={Col} xs={12} md={4} controlId="converter-format">
+              <Form.Group as={Col} xs={12} md={8} controlId="converter-format">
                 <Form.Label>Output format</Form.Label>
                 <Form.Control
-                  className="input-control"
-                  as="select"
-                  value={options.format}
-                  disabled={busy || loadingCapabilities}
-                  onChange={(e) =>
-                    setOptions({ ...options, format: e.target.value })
+                  className="text-input"
+                  readOnly
+                  value={
+                    loadingPreview
+                      ? "Reading input formats…"
+                      : outputIDs
+                          .map(
+                            (id) =>
+                              formats.find((f) => f.id === id)?.label ??
+                              id.toUpperCase()
+                          )
+                          .join(" / ") || "Unavailable"
                   }
-                >
-                  <option value="auto">
-                    Use format defaults for each file
-                  </option>
-                  {formats
-                    .filter((f) => kind !== "scene" || f.family === "video")
-                    .map((f) => (
-                      <option key={f.id} value={f.id} disabled={!f.available}>
-                        {f.label}
-                        {!f.available ? " — unavailable" : ""}
-                      </option>
-                    ))}
-                </Form.Control>
+                />
                 <Form.Text>
                   <Link
                     to="/settings?tab=system#media-converter"
@@ -401,6 +398,14 @@ export const MediaConversionDialog: React.FC<{
                 </Form.Text>
               </Form.Group>
             </Row>
+            <p className="text-muted">
+              Worker:{" "}
+              {resolvedBackend === "remote"
+                ? "remote tagging worker"
+                : resolvedBackend === "local"
+                  ? "this StashBooru server"
+                  : "checking availability…"}
+            </p>
             {loadingCapabilities && (
               <p>
                 <Spinner animation="border" size="sm" /> Probing codec and
@@ -434,7 +439,7 @@ export const MediaConversionDialog: React.FC<{
                     >
                       {plan.count} {plan.count === 1 ? "file" : "files"}:{" "}
                       {plan.error ||
-                        `${plan.input.toUpperCase()} → ${formats.find((f) => f.id === plan.output)?.label ?? plan.output}`}
+                        `${plan.input.toUpperCase()} → ${formats.find((f) => f.id === plan.output)?.label ?? plan.output} · quality ${useEncodingDefaults ? plan.quality : options.quality}, effort ${useEncodingDefaults ? plan.effort : options.effort}`}
                       {!plan.error &&
                       !loadingCapabilities &&
                       !formats.find((f) => f.id === plan.output)?.available
@@ -444,40 +449,118 @@ export const MediaConversionDialog: React.FC<{
                   ))}
               </div>
             )}
-            <Row>
-              {(["quality", "effort"] as const)
-                .filter((key) => supports(key))
-                .map((key) => (
-                  <Form.Group as={Col} key={key} controlId={`converter-${key}`}>
-                    <Form.Label>
-                      {key === "quality"
-                        ? "Quality (higher = better)"
-                        : "Effort (higher = slower)"}
-                    </Form.Label>
-                    <Form.Control
-                      className="text-input"
-                      type="number"
-                      min={key === "effort" ? 1 : 0}
-                      max={key === "effort" ? 9 : 100}
-                      step={1}
-                      value={options[key]}
-                      disabled={busy}
-                      onChange={(e) =>
-                        setOptions({
-                          ...options,
-                          [key]: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </Form.Group>
-                ))}
-            </Row>
+            <Form.Check
+              id="converter-saved-encoding"
+              label="Use saved quality and effort for each input format"
+              checked={useEncodingDefaults}
+              disabled={busy}
+              onChange={(e) => setUseEncodingDefaults(e.target.checked)}
+            />
+            {!useEncodingDefaults && (
+              <Row>
+                {(["quality", "effort"] as const)
+                  .filter((key) => supports(key))
+                  .map((key) => (
+                    <Form.Group
+                      as={Col}
+                      key={key}
+                      controlId={`converter-${key}`}
+                    >
+                      <Form.Label>
+                        {key === "quality"
+                          ? "Quality (higher = better)"
+                          : "Effort (higher = slower)"}
+                      </Form.Label>
+                      <Form.Control
+                        className="text-input"
+                        type="number"
+                        min={key === "effort" ? 1 : 0}
+                        max={key === "effort" ? 9 : 100}
+                        step={1}
+                        value={options[key]}
+                        disabled={busy}
+                        onChange={(e) =>
+                          setOptions({
+                            ...options,
+                            [key]: Number(e.target.value),
+                          })
+                        }
+                      />
+                    </Form.Group>
+                  ))}
+              </Row>
+            )}
             {supports("quality") && (
               <p className="text-muted">
                 Quality ranges from 0 to 100. JPEG XL quality 100 is lossless.
                 Equal values across codecs do not imply equal quality. Higher
                 effort trades encoding time for compression.
               </p>
+            )}
+            {kind === "image" && upscalers.length > 0 && (
+              <Row>
+                <Form.Group as={Col} controlId="converter-upscaler">
+                  <Form.Label>Optional upscaling (still images)</Form.Label>
+                  <Form.Control
+                    as="select"
+                    className="input-control"
+                    value={options.upscaler ?? ""}
+                    disabled={busy}
+                    onChange={(e) =>
+                      setOptions({
+                        ...options,
+                        upscaler: e.target.value || undefined,
+                        upscaleScale: e.target.value ? 2 : undefined,
+                        allowLarger: e.target.value
+                          ? true
+                          : options.allowLarger,
+                      })
+                    }
+                  >
+                    <option value="">None</option>
+                    {upscalers.map((u) => (
+                      <option
+                        key={u.id}
+                        value={u.id}
+                        disabled={
+                          !u.available || (options.hardware === "cpu" && !u.cpu)
+                        }
+                      >
+                        {u.label}
+                        {!u.available ? " — not installed on this worker" : ""}
+                      </option>
+                    ))}
+                  </Form.Control>
+                  <Form.Text className="text-muted">
+                    {upscalers.find((u) => u.id === options.upscaler)?.notice ||
+                      "Install models on the selected worker to enable waifu2x or SeedVR2."}
+                  </Form.Text>
+                </Form.Group>
+                {options.upscaler && (
+                  <Form.Group as={Col} controlId="converter-upscale-scale">
+                    <Form.Label>Scale</Form.Label>
+                    <Form.Control
+                      as="select"
+                      className="input-control"
+                      value={options.upscaleScale ?? 2}
+                      disabled={busy}
+                      onChange={(e) =>
+                        setOptions({
+                          ...options,
+                          upscaleScale: Number(e.target.value),
+                        })
+                      }
+                    >
+                      <option value={2}>2×</option>
+                      <option value={4}>4×</option>
+                    </Form.Control>
+                    <Form.Text className="text-muted">
+                      Upscale before encoding to the displayed output format.
+                      Originals remain restorable in the cache.
+                    </Form.Text>
+                  </Form.Group>
+                )}
+              </Row>
             )}
             <Form.Check
               id="converter-larger"
@@ -536,9 +619,9 @@ export const MediaConversionDialog: React.FC<{
               onClick={() =>
                 void action({
                   action: "start",
-                  backend,
                   options,
                   useQuality: true,
+                  useEncodingDefaults,
                   targets: selectedIds.map((id) => ({ kind, id: Number(id) })),
                 })
               }

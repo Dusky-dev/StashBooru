@@ -21,7 +21,7 @@ import { DeleteImagesDialog } from "./DeleteImagesDialog";
 import "flexbin/flexbin.css";
 import Gallery, { RenderImageProps } from "react-photo-gallery";
 import { ExportDialog } from "../Shared/ExportDialog";
-import { objectTitle } from "src/core/files";
+import { objectTitle, animationBadge } from "src/core/files";
 import { useConfigurationContext } from "src/hooks/Config";
 import { ImageCardGrid } from "./ImageCardGrid";
 import { View } from "../List/views";
@@ -190,6 +190,9 @@ const ImageWall: React.FC<IImageWallProps> = ({
       return (
         <ImageWallItem
           {...props}
+          animationLabel={animationBadge(
+            images.find((image) => image.id === imageId)
+          )}
           maxHeight={maxHeight}
           selected={selectedIds?.has(imageId)}
           onSelectedChanged={
@@ -202,7 +205,7 @@ const ImageWall: React.FC<IImageWallProps> = ({
         />
       );
     },
-    [targetRowHeight, selectedIds, onSelectChange, selecting]
+    [targetRowHeight, selectedIds, onSelectChange, selecting, images]
   );
 
   return (

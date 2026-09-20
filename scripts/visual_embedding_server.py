@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""HTTP inference server for StashBooru visual embeddings and optional taggers.
+"""HTTP inference server for embeddings, tagging, conversion and optional upscaling.
 
 The server intentionally owns no Stash metadata, embedding database, or tag
 assignments. It receives image bytes, performs inference, and returns results.
@@ -58,7 +58,7 @@ def _authorized(header_value: str | None) -> bool:
 
 
 class VisualEmbeddingHandler(BaseHTTPRequestHandler):
-    server_version = "StashBooruVisualEmbedding/3"
+    server_version = "StashBooruVisualEmbedding/4"
 
     def log_message(self, format: str, *args: Any) -> None:
         _log(format % args)
@@ -272,7 +272,12 @@ class VisualEmbeddingHandler(BaseHTTPRequestHandler):
             with tempfile.TemporaryDirectory(prefix="stashbooru-converted-", dir=source.parent) as directory:
                 extension = converter.FORMATS[options["format"]][1]
                 output = Path(directory) / ("output." + extension)
-                metadata = converter.convert(source, output, options, self._disconnected)
+                if options["upscaler"]:
+                    # Model-based upscaling must not overlap tagging inference.
+                    with _inference_lock:
+                        metadata = converter.convert(source, output, options, self._disconnected)
+                else:
+                    metadata = converter.convert(source, output, options, self._disconnected)
                 with output.open("rb") as stream:
                     digest = hashlib.md5(usedforsecurity=False)
                     while chunk := stream.read(1024 * 1024):

@@ -81,8 +81,10 @@ type Record struct {
 }
 
 type Config struct {
-	CacheLimitBytes int64             `json:"cacheLimitBytes"`
-	FormatDefaults  map[string]string `json:"formatDefaults"`
+	CacheLimitBytes  int64                       `json:"cacheLimitBytes"`
+	FormatDefaults   map[string]string           `json:"formatDefaults"`
+	EncodingDefaults map[string]EncodingDefaults `json:"encodingDefaults"`
+	Backend          string                      `json:"backend"`
 }
 
 type Stats struct {
@@ -214,6 +216,12 @@ func (s Store) Config() (Config, error) {
 	if c.FormatDefaults == nil {
 		c.FormatDefaults = DefaultFormatDefaults()
 	}
+	if c.Backend == "" {
+		c.Backend = "auto"
+	}
+	if c.EncodingDefaults == nil {
+		c.EncodingDefaults = map[string]EncodingDefaults{}
+	}
 	if c.CacheLimitBytes < 0 {
 		return c, fmt.Errorf("invalid negative restore cache limit")
 	}
@@ -221,6 +229,9 @@ func (s Store) Config() (Config, error) {
 }
 
 func (s Store) Configure(c Config) error {
+	if err := ValidateEncodingDefaults(c.EncodingDefaults, c.Backend); err != nil {
+		return err
+	}
 	if c.CacheLimitBytes < 0 {
 		return fmt.Errorf("cache size cannot be negative")
 	}
@@ -359,6 +370,7 @@ func SameFile(a, b models.File) bool {
 func convertedFile(before models.File, path string, result Result, hash string) (models.File, error) {
 	b := *before.Base()
 	b.Path, b.Basename, b.Size = path, filepath.Base(path), result.Size
+	b.FrameCount = int(result.Frames)
 	stat, err := os.Stat(path)
 	if err != nil {
 		return nil, err
@@ -450,7 +462,7 @@ func (s Store) Convert(ctx context.Context, fileID models.FileID, batch string, 
 	if err != nil {
 		return r, err
 	}
-	if result.Size <= 0 || result.Size != outputStat.Size() || result.Format != format.Extension || result.Width <= 0 || result.Height <= 0 || result.Frames <= 0 {
+	if result.Size <= 0 || result.Size != outputStat.Size() || result.Format != format.Extension || result.Width <= 0 || result.Height <= 0 || result.Frames <= 0 || result.Frames > 2147483647 {
 		return r, fmt.Errorf("encoder returned invalid output metadata")
 	}
 	if err := ctx.Err(); err != nil {

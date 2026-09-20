@@ -54,3 +54,15 @@ export function imagePath(s: IObjectWithVisualFiles) {
   }
   return "";
 }
+
+export function animationBadge(image?: {
+  visual_files?: { path: string; frame_count?: number }[];
+}) {
+  const file = image?.visual_files?.[0];
+  const ext = file?.path.split(".").pop()?.toLowerCase();
+  if (ext === "gif") return "GIF";
+  if (!file || (file.frame_count ?? 0) < 2) return "";
+  if (ext === "png" || ext === "apng") return "APNG";
+  if (ext === "jxl") return "AJXL";
+  return ext?.toUpperCase() || "ANIMATED";
+}

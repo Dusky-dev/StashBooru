@@ -11,6 +11,8 @@ import {
 interface Rule {
   input: string;
   output: string;
+  quality: number;
+  effort: number;
 }
 
 export const MediaConversionSettings: React.FC = () => {
@@ -19,6 +21,8 @@ export const MediaConversionSettings: React.FC = () => {
   const [rules, setRules] = useState<Rule[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [backend, setBackend] = useState("auto");
+  const [inspecting, setInspecting] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -27,12 +31,25 @@ export const MediaConversionSettings: React.FC = () => {
       .then((value) => {
         if (controller.signal.aborted) return;
         setSettings(value);
+        setBackend(value.config.backend);
         setRules(
           value.inputFormats
             .filter((f) => value.config.formatDefaults[f.id])
             .map((f) => ({
               input: f.id,
               output: value.config.formatDefaults[f.id],
+              quality:
+                value.config.encodingDefaults[f.id]?.quality ??
+                value.config.encodingDefaults[
+                  f.family === "video" ? "video" : "image"
+                ]?.quality ??
+                (f.family === "video" ? 80 : 90),
+              effort:
+                value.config.encodingDefaults[f.id]?.effort ??
+                value.config.encodingDefaults[
+                  f.family === "video" ? "video" : "image"
+                ]?.effort ??
+                7,
             }))
         );
       })
@@ -60,6 +77,13 @@ export const MediaConversionSettings: React.FC = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "save-defaults",
+          backend,
+          encodingDefaults: Object.fromEntries(
+            rules.map((r) => [
+              r.input,
+              { quality: r.quality, effort: r.effort },
+            ])
+          ),
           formatDefaults: Object.fromEntries(
             rules.map((r) => [r.input, r.output])
           ),
@@ -82,13 +106,26 @@ export const MediaConversionSettings: React.FC = () => {
     <div className="setting-section" id="media-converter">
       <h1>Media converter</h1>
       <div className="sub-heading">
-        Choose the output for each input format. Single and batch conversions
-        use these defaults unless you choose a different output in the
-        converter.
+        Choose the output, quality and effort for each input format. Single and
+        batch conversions use these saved defaults.
       </div>
       <Card className="p-3">
+        <Form.Group controlId="converter-default-backend">
+          <Form.Label>Run on</Form.Label>
+          <Form.Control
+            as="select"
+            className="input-control"
+            value={backend}
+            disabled={saving || !settings}
+            onChange={(e) => setBackend(e.target.value)}
+          >
+            <option value="auto">Automatic — prefer remote worker</option>
+            <option value="local">This StashBooru server</option>
+            <option value="remote">Remote tagging worker</option>
+          </Form.Control>
+        </Form.Group>
         <p>
-          Conversions automatically prefer the remote inference worker
+          Automatic mode prefers the remote inference worker
           configured above when it is reachable, otherwise they run on this
           server. The processor defaults to{" "}
           <strong>Prefer GPU, otherwise CPU</strong>.
@@ -97,6 +134,34 @@ export const MediaConversionSettings: React.FC = () => {
           Animated PNG and WebP are detected separately from still images.
           Formats without a specific rule use Other images or Other videos.
           Actual codec availability depends on the selected worker.
+        </p>
+        <p>
+          Scans inspect animation frames and automatically add the animated tag.
+          <Button
+            className="ml-2"
+            size="sm"
+            variant="secondary"
+            disabled={inspecting}
+            onClick={async () => {
+              setInspecting(true);
+              try {
+                await fetch(conversionEndpoint, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ action: "inspect-animations" }),
+                }).then(conversionResponse);
+                Toast.success(
+                  "Queued a scan to inspect existing images. Follow its progress in Tasks."
+                );
+              } catch (e) {
+                setError(e instanceof Error ? e.message : String(e));
+              } finally {
+                setInspecting(false);
+              }
+            }}
+          >
+            Inspect existing images
+          </Button>
         </p>
         {error && <Alert variant="danger">{error}</Alert>}
         {!settings && !error && <Spinner animation="border" role="status" />}
@@ -107,6 +172,8 @@ export const MediaConversionSettings: React.FC = () => {
                 <tr>
                   <th>Input format</th>
                   <th>Default output format</th>
+                  <th>Quality (0–100)</th>
+                  <th>Effort (1–9)</th>
                   <th>
                     <span className="sr-only">Remove rule</span>
                   </th>
@@ -136,7 +203,7 @@ export const MediaConversionSettings: React.FC = () => {
                             : allowed[0].id;
                           setRules(
                             rules.map((r, i) =>
-                              i === index ? { input, output } : r
+                              i === index ? { ...r, input, output } : r
                             )
                           );
                         }}
@@ -176,6 +243,29 @@ export const MediaConversionSettings: React.FC = () => {
                         ))}
                       </Form.Control>
                     </td>
+                    {(["quality", "effort"] as const).map((key) => (
+                      <td key={key}>
+                        <Form.Control
+                          type="number"
+                          className="text-input"
+                          min={key === "quality" ? 0 : 1}
+                          max={key === "quality" ? 100 : 9}
+                          step={1}
+                          value={rule[key]}
+                          disabled={saving}
+                          aria-label={`${key} for ${rule.input}`}
+                          onChange={(e) =>
+                            setRules(
+                              rules.map((r, i) =>
+                                i === index
+                                  ? { ...r, [key]: Number(e.target.value) }
+                                  : r
+                              )
+                            )
+                          }
+                        />
+                      </td>
+                    ))}
                     <td>
                       {rule.input !== "image" && rule.input !== "video" && (
                         <Button
@@ -204,7 +294,16 @@ export const MediaConversionSettings: React.FC = () => {
                   const input = unused![0].id;
                   setRules([
                     ...rules,
-                    { input, output: outputsFor(input)[0].id },
+                    {
+                      input,
+                      output: outputsFor(input)[0].id,
+                      quality:
+                        settings.inputFormats.find((f) => f.id === input)
+                          ?.family === "video"
+                          ? 80
+                          : 90,
+                      effort: 7,
+                    },
                   ]);
                 }}
               >
@@ -219,8 +318,11 @@ export const MediaConversionSettings: React.FC = () => {
               </Button>
             </div>
             <Form.Text className="text-muted">
-              Saved defaults apply when a new conversion job starts. Existing
-              running jobs keep their selected formats and settings.
+              Higher quality retains more detail; higher effort takes longer.
+              Controls that a codec does not use are ignored. JPEG XL quality
+              100 is lossless. The processor prefers GPU, otherwise CPU. Saved
+              defaults apply when a new conversion job starts. Existing running
+              jobs keep their selected formats and settings.
             </Form.Text>
           </>
         )}

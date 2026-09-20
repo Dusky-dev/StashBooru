@@ -14,6 +14,7 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 
+	"github.com/stashapp/stash/pkg/animation"
 	"github.com/stashapp/stash/pkg/ffmpeg"
 	"github.com/stashapp/stash/pkg/file"
 	"github.com/stashapp/stash/pkg/file/video"
@@ -31,6 +32,17 @@ type Decorator struct {
 
 func (d *Decorator) Decorate(ctx context.Context, fs models.FS, f models.File) (models.File, error) {
 	base := f.Base()
+	probePath := ""
+	if d.FFProbe != nil {
+		probePath = d.FFProbe.Path()
+	}
+	base.FrameCount = 0
+	count, inspectErr := animation.Count(ctx, fs, base.Path, probePath)
+	if inspectErr != nil {
+		logger.Warnf("Could not inspect animation frames for %q: %v", base.Path, inspectErr)
+	} else {
+		base.FrameCount = count
+	}
 
 	// ignore clips in non-OsFS filesystems as ffprobe cannot read them
 	// TODO - copy to temp file if not an OsFS
@@ -188,6 +200,9 @@ func (d *Decorator) decorateViaTempFile(fs models.FS, f models.File) (models.Fil
 }
 
 func (d *Decorator) IsMissingMetadata(ctx context.Context, fs models.FS, f models.File) bool {
+	if f.Base().FrameCount == 0 {
+		return true
+	}
 	const (
 		unsetString = "unset"
 		unsetNumber = -1

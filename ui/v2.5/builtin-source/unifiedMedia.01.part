@@ -1,4 +1,4 @@
-arker: new Set([
+    marker: new Set([
       "tags", "performers", "created_at", "updated_at", "scene_date", "scene_created_at",
       "scene_updated_at", "duration"
     ]),
@@ -152,8 +152,8 @@ arker: new Set([
     return null;
   }
 
-  function isGifImage(image) {
-    if (!image) return false;
+  function imageAnimationLabel(image) {
+    if (!image) return "";
     const file = firstFile(image) || {};
     const candidates = [
       file.path,
@@ -162,14 +162,19 @@ arker: new Set([
       image.paths?.image,
       image.paths?.thumbnail,
     ].filter(Boolean);
-    return candidates.some((value) => /\.gif(?:$|[?#])/i.test(String(value)));
+    if (candidates.some((value) => /\.gif(?:$|[?#])/i.test(String(value)))) return "GIF";
+    if (!(file.frame_count > 1)) return "";
+    const ext = String(file.path || file.basename || "").split(".").pop().toLowerCase();
+    if (ext === "png" || ext === "apng") return "APNG";
+    if (ext === "jxl") return "AJXL";
+    return ext.toUpperCase() || "ANIMATED";
   }
 
-  function GifBadge() {
+  function GifBadge({ label = "GIF" }) {
     return React.createElement(
       "span",
-      { className: "unified-media-gif-badge", title: "GIF", "aria-label": "GIF" },
-      "GIF"
+      { className: "unified-media-gif-badge", title: label, "aria-label": label },
+      label
     );
   }
 
@@ -281,4 +286,3 @@ arker: new Set([
         (q.performers.data?.findPerformers?.performers || []).filter((p) => String(p.id) !== id)
       );
     } else if (kind === "studio") {
-      add("performer", q.performe

@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,14 +18,55 @@ type InputFormat struct {
 	Family string `json:"family"`
 }
 
+type EncodingDefaults struct {
+	Quality float64 `json:"quality"`
+	Effort  int     `json:"effort"`
+}
+
+func ValidateEncodingDefaults(defaults map[string]EncodingDefaults, backend string) error {
+	if backend != "" && backend != "auto" && backend != "local" && backend != "remote" {
+		return fmt.Errorf("invalid conversion worker")
+	}
+	for input, value := range defaults {
+		known := false
+		for _, f := range InputFormats {
+			known = known || f.ID == input
+		}
+		if !known || math.IsNaN(value.Quality) || math.IsInf(value.Quality, 0) || value.Quality < 0 || value.Quality > 100 || value.Effort < 1 || value.Effort > 9 {
+			return fmt.Errorf("invalid quality or effort defaults for %s", input)
+		}
+	}
+	return nil
+}
+
+func (c Config) DefaultEncoding(input string) EncodingDefaults {
+	if value, ok := c.EncodingDefaults[input]; ok {
+		return value
+	}
+	fallback := "image"
+	for _, f := range InputFormats {
+		if f.ID == input && f.Family == "video" {
+			fallback = "video"
+		}
+	}
+	if value, ok := c.EncodingDefaults[fallback]; ok {
+		return value
+	}
+	quality := 90.0
+	if fallback == "video" {
+		quality = 80
+	}
+	return EncodingDefaults{Quality: quality, Effort: 7}
+}
+
 // Catalogs describe configuration choices independently of installed encoders.
 var InputFormats = []InputFormat{
 	{"image", "Other images", "image"}, {"video", "Other videos", "video"},
 	{"jpeg", "JPEG / JPG", "image"}, {"png", "PNG", "image"},
 	{"gif", "GIF", "animation"}, {"apng", "Animated PNG", "animation"},
 	{"webp", "WebP", "image"}, {"animated-webp", "Animated WebP", "animation"},
-	{"jxl", "JPEG XL (still or animated)", "animation"},
-	{"avif", "AVIF", "image"}, {"tiff", "TIFF", "image"}, {"bmp", "BMP", "image"},
+	{"jxl", "JPEG XL", "image"}, {"ajxl", "Animated JPEG XL", "animation"},
+	{"avif", "AVIF", "image"}, {"animated-avif", "Animated AVIF", "animation"}, {"tiff", "TIFF", "image"}, {"bmp", "BMP", "image"},
 	{"heic", "HEIC / HEIF", "image"}, {"ico", "ICO", "image"}, {"exr", "EXR", "image"},
 	{"mp4", "MP4 / M4V", "video"}, {"mkv", "MKV", "video"}, {"webm", "WebM", "video"},
 	{"mov", "MOV", "video"}, {"avi", "AVI", "video"}, {"wmv", "WMV / ASF", "video"},
@@ -55,7 +97,7 @@ var OutputFormats = []Format{
 func DefaultFormatDefaults() map[string]string {
 	return map[string]string{
 		"image": "jxl", "video": "av1-mp4", "jpeg": "jxl", "png": "jxl",
-		"gif": "ajxl", "apng": "ajxl", "webp": "jxl", "animated-webp": "ajxl", "jxl": "ajxl",
+		"gif": "ajxl", "apng": "ajxl", "webp": "jxl", "animated-webp": "ajxl", "jxl": "jxl", "ajxl": "ajxl", "animated-avif": "ajxl",
 		"mp4": "av1-mp4", "mkv": "av1-mkv", "webm": "av1-webm",
 	}
 }
@@ -91,6 +133,11 @@ func (c Config) DefaultOutput(input string, video bool) string {
 	if output := c.FormatDefaults[input]; output != "" {
 		return output
 	}
+	// New animation subtypes must remain safe with configs saved before those
+	// subtype rules existed. They cannot fall through to a still-only fallback.
+	if input == "ajxl" || input == "animated-avif" {
+		return "ajxl"
+	}
 	fallback, output := "image", "jxl"
 	if video {
 		fallback, output = "video", "av1-mp4"
@@ -105,6 +152,21 @@ func (c Config) DefaultOutput(input string, video bool) string {
 // Only container headers are read; decoding/encoding stays on the chosen worker.
 func SourceFormat(file models.File) string {
 	ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(file.Base().Path), "."))
+	if file.Base().FrameCount > 1 {
+		switch ext {
+		case "png", "apng":
+			return "apng"
+		case "webp":
+			return "animated-webp"
+		case "jxl":
+			return "ajxl"
+		case "avif", "avifs":
+			return "animated-avif"
+		}
+	}
+	if ext == "jxl" && file.Base().FrameCount == 0 {
+		return "ajxl" // uninspected JPEG XL must not silently select a still-only output
+	}
 	switch ext {
 	case "jpg", "jfif":
 		return "jpeg"

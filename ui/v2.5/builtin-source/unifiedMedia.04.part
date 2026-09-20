@@ -1,4 +1,4 @@
-
+        }
 
         if (entry) {
           const scene = entry.item;
@@ -190,17 +190,21 @@
         ).forEach((item) => {
           const media = item.querySelector("img, video");
           const src = media?.currentSrc || media?.getAttribute?.("src") || "";
-          const gif = /\.gif(?:$|[?#])/i.test(String(src));
+          const label = item.getAttribute("data-animation-badge") || (/\.gif(?:$|[?#])/i.test(String(src)) ? "GIF" : "");
           let badge = item.querySelector(":scope > .unified-media-native-wall-gif-badge");
-          if (gif && !badge) {
+          if (label && !badge) {
             badge = document.createElement("span");
             badge.className = "unified-media-gif-badge unified-media-native-wall-gif-badge";
-            badge.textContent = "GIF";
-            badge.setAttribute("aria-label", "GIF");
-            badge.setAttribute("title", "GIF");
+            badge.textContent = label;
+            badge.setAttribute("aria-label", label);
+            badge.setAttribute("title", label);
             item.appendChild(badge);
-          } else if (!gif && badge) {
+          } else if (!label && badge) {
             badge.remove();
+          } else if (badge && badge.textContent !== label) {
+            badge.textContent = label;
+            badge.setAttribute("aria-label", label);
+            badge.setAttribute("title", label);
           }
         });
       };
@@ -209,7 +213,7 @@
         frame = requestAnimationFrame(scan);
       };
       const observer = new MutationObserver(schedule);
-      observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["src"] });
+      observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["src", "data-animation-badge"] });
       schedule();
       return () => {
         observer.disconnect();
@@ -505,5 +509,3 @@
       setTimeout(scheduleSync, 50);
       setTimeout(scheduleSync, 250);
     }, [cleanupNativeLightbox, syncNativeLightbox]);
-
-    React.us

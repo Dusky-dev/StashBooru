@@ -34,6 +34,7 @@ type basicFileRow struct {
 	ZipFileID      null.Int        `db:"zip_file_id"`
 	ParentFolderID models.FolderID `db:"parent_folder_id"`
 	Size           int64           `db:"size"`
+	FrameCount     int             `db:"frame_count"`
 	ModTime        Timestamp       `db:"mod_time"`
 	CreatedAt      Timestamp       `db:"created_at"`
 	UpdatedAt      Timestamp       `db:"updated_at"`
@@ -45,6 +46,7 @@ func (r *basicFileRow) fromBasicFile(o models.BaseFile) {
 	r.ZipFileID = nullIntFromFileIDPtr(o.ZipFileID)
 	r.ParentFolderID = o.ParentFolderID
 	r.Size = o.Size
+	r.FrameCount = o.FrameCount
 	r.ModTime = Timestamp{Timestamp: o.ModTime}
 	r.CreatedAt = Timestamp{Timestamp: o.CreatedAt}
 	r.UpdatedAt = Timestamp{Timestamp: o.UpdatedAt}
@@ -171,6 +173,7 @@ type fileQueryRow struct {
 	ZipFileID      null.Int      `db:"zip_file_id"`
 	ParentFolderID null.Int      `db:"parent_folder_id"`
 	Size           null.Int      `db:"size"`
+	FrameCount     null.Int      `db:"frame_count"`
 	ModTime        NullTimestamp `db:"mod_time"`
 	CreatedAt      NullTimestamp `db:"file_created_at"`
 	UpdatedAt      NullTimestamp `db:"file_updated_at"`
@@ -196,6 +199,7 @@ func (r *fileQueryRow) resolve() models.File {
 		ParentFolderID: models.FolderID(r.ParentFolderID.Int64),
 		Basename:       r.Basename.String,
 		Size:           r.Size.Int64,
+		FrameCount:     int(r.FrameCount.Int64),
 		CreatedAt:      r.CreatedAt.Timestamp,
 		UpdatedAt:      r.UpdatedAt.Timestamp,
 	}
@@ -497,6 +501,7 @@ func (qb *FileStore) selectDataset() *goqu.SelectDataset {
 		table.Col("zip_file_id"),
 		table.Col("parent_folder_id"),
 		table.Col("size"),
+		table.Col("frame_count"),
 		table.Col("mod_time"),
 		table.Col("created_at").As("file_created_at"),
 		table.Col("updated_at").As("file_updated_at"),

@@ -71,7 +71,7 @@ func TestMixedInputsUseIndividualDefaults(t *testing.T) {
 		{"still.webp", "webp", "jxl", webp, false},
 		{"animation.webp", "animated-webp", "ajxl", animatedWebp, false},
 		{"animation.gif", "gif", "ajxl", nil, false},
-		{"input.jxl", "jxl", "ajxl", nil, false},
+		{"input.jxl", "ajxl", "ajxl", nil, false},
 		{"video.M4V", "mp4", "av1-mp4", nil, true},
 		{"video.mkv", "mkv", "av1-mkv", nil, true},
 		{"video.webm", "webm", "av1-webm", nil, true},
@@ -146,5 +146,45 @@ func TestJXLQualityScale(t *testing.T) {
 		if math.Abs(JXLDistanceFromQuality(tc.quality)-tc.distance) > 0.00001 {
 			t.Fatalf("quality %v: got %v, want %v", tc.quality, JXLDistanceFromQuality(tc.quality), tc.distance)
 		}
+	}
+}
+
+func TestEncodingPreferencesPersistAndResolvePerInput(t *testing.T) {
+	s := Store{Root: t.TempDir()}
+	c, err := s.Config()
+	if err != nil || c.Backend != "auto" {
+		t.Fatalf("default worker: %+v, %v", c, err)
+	}
+	c.Backend = "remote"
+	c.EncodingDefaults = map[string]EncodingDefaults{"image": {Quality: 85, Effort: 6}, "video": {Quality: 75, Effort: 4}, "gif": {Quality: 95, Effort: 9}}
+	if err := s.Configure(c); err != nil {
+		t.Fatal(err)
+	}
+	c, err = s.Config()
+	if err != nil || c.Backend != "remote" {
+		t.Fatalf("reload: %+v %v", c, err)
+	}
+	for input, expected := range map[string]EncodingDefaults{"png": {85, 6}, "mp4": {75, 4}, "gif": {95, 9}} {
+		if actual := c.DefaultEncoding(input); actual != expected {
+			t.Fatalf("%s: got %+v, expected %+v", input, actual, expected)
+		}
+	}
+	for _, invalid := range []EncodingDefaults{{-1, 4}, {101, 4}, {80, 0}, {80, 10}, {math.NaN(), 7}} {
+		if ValidateEncodingDefaults(map[string]EncodingDefaults{"image": invalid}, "auto") == nil {
+			t.Fatalf("accepted %+v", invalid)
+		}
+	}
+	if ValidateEncodingDefaults(nil, "bad-worker") == nil {
+		t.Fatal("accepted invalid worker")
+	}
+	for frames, input := range map[int]string{0: "ajxl", 1: "jxl", 2: "ajxl"} {
+		f := &models.ImageFile{BaseFile: &models.BaseFile{Path: "image.jxl", FrameCount: frames}}
+		if SourceFormat(f) != input {
+			t.Fatalf("%d frames must select %s", frames, input)
+		}
+	}
+	legacy := Config{FormatDefaults: map[string]string{"image": "jxl"}}
+	if legacy.DefaultOutput("ajxl", false) != "ajxl" {
+		t.Fatal("legacy config would flatten animation")
 	}
 }

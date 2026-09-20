@@ -43,6 +43,13 @@ func lookupConvertedMediaBooruMetadata(ctx context.Context, path string) (booruP
 
 func conversionClient(ctx context.Context, backend string) (mediaconvert.Client, mediaconvert.Capabilities, string, error) {
 	mgr := manager.GetInstance()
+	if backend == "" {
+		config, err := conversionStore().Config()
+		if err != nil {
+			return mediaconvert.Client{}, mediaconvert.Capabilities{}, "", err
+		}
+		backend = config.Backend
+	}
 	c := mediaconvert.Client{}
 	if mgr.FFMpeg != nil {
 		c.FFMpeg = mgr.FFMpeg.Path()
@@ -66,15 +73,17 @@ type conversionTarget struct {
 	ID   int    `json:"id"`
 }
 type conversionRequest struct {
-	Action          string               `json:"action"`
-	Backend         string               `json:"backend"`
-	Targets         []conversionTarget   `json:"targets"`
-	Options         mediaconvert.Options `json:"options"`
-	RecordID        string               `json:"recordID"`
-	JobID           int                  `json:"jobID"`
-	CacheLimitBytes int64                `json:"cacheLimitBytes"`
-	FormatDefaults  map[string]string    `json:"formatDefaults"`
-	UseQuality      bool                 `json:"useQuality"`
+	Action              string                                   `json:"action"`
+	Backend             string                                   `json:"backend"`
+	Targets             []conversionTarget                       `json:"targets"`
+	Options             mediaconvert.Options                     `json:"options"`
+	RecordID            string                                   `json:"recordID"`
+	JobID               int                                      `json:"jobID"`
+	CacheLimitBytes     int64                                    `json:"cacheLimitBytes"`
+	FormatDefaults      map[string]string                        `json:"formatDefaults"`
+	UseQuality          bool                                     `json:"useQuality"`
+	UseEncodingDefaults bool                                     `json:"useEncodingDefaults"`
+	EncodingDefaults    map[string]mediaconvert.EncodingDefaults `json:"encodingDefaults"`
 }
 type conversionItem struct {
 	Target   conversionTarget `json:"target"`
@@ -157,7 +166,7 @@ func handleMediaConversionGet(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusServiceUnavailable)
 			return
 		}
-		writeVisualSimilarityJSON(w, map[string]interface{}{"formats": capabilities.Formats, "backend": conversionBackend(client), "notice": notice})
+		writeVisualSimilarityJSON(w, map[string]interface{}{"formats": capabilities.Formats, "upscalers": capabilities.Upscalers, "backend": conversionBackend(client), "notice": notice})
 		return
 	}
 	s := conversionStore()
@@ -251,6 +260,15 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 		writeVisualSimilarityJSON(w, map[string]bool{"cancelled": true})
 		return
 	}
+	if request.Action == "inspect-animations" {
+		id, err := mgr.Scan(r.Context(), manager.ScanMetadataInput{})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeVisualSimilarityJSON(w, map[string]int{"jobID": id})
+		return
+	}
 	if request.Action == "save-defaults" {
 		if request.FormatDefaults == nil {
 			http.Error(w, "format defaults are required", http.StatusBadRequest)
@@ -260,11 +278,21 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+		if err := mediaconvert.ValidateEncodingDefaults(request.EncodingDefaults, request.Backend); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		conversionSettings.Lock()
 		defer conversionSettings.Unlock()
 		config, err := conversionStore().Config()
 		if err == nil {
 			config.FormatDefaults = request.FormatDefaults
+			if request.EncodingDefaults != nil {
+				config.EncodingDefaults = request.EncodingDefaults
+			}
+			if request.Backend != "" {
+				config.Backend = request.Backend
+			}
 			err = conversionStore().Configure(config)
 		}
 		if err != nil {
@@ -361,17 +389,21 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 		case "recover":
 			return s.Trim()
 		}
-		client, capabilities, notice, err := conversionClient(ctx, request.Backend)
+		config, err := s.Config()
+		if err != nil {
+			return err
+		}
+		backend := request.Backend
+		if backend == "" {
+			backend = config.Backend
+		}
+		client, capabilities, notice, err := conversionClient(ctx, backend)
 		if err != nil {
 			return err
 		}
 		conversionJobs.Lock()
 		state.Backend, state.Notice = conversionBackend(client), notice
 		conversionJobs.Unlock()
-		config, err := s.Config()
-		if err != nil {
-			return err
-		}
 		seen := map[models.FileID]bool{}
 		var converted []models.FileID
 		defer func() {
@@ -393,13 +425,20 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 			if err == nil {
 				seen[id] = true
 				options := request.Options
+				var input string
 				if options.Format == "" || options.Format == "auto" {
-					options.Format, _, err = conversionDefaultForFile(ctx, s, config, id)
+					options.Format, input, err = conversionDefaultForFile(ctx, s, config, id)
+				} else if request.UseEncodingDefaults {
+					_, input, err = conversionDefaultForFile(ctx, s, config, id)
+				}
+				if request.UseEncodingDefaults {
+					defaults := config.DefaultEncoding(input)
+					options.Quality, options.Effort = defaults.Quality, defaults.Effort
 				}
 				if options.Hardware == "" {
 					options.Hardware = "auto"
 				}
-				if request.UseQuality && (options.Format == "jxl" || options.Format == "ajxl") {
+				if (request.UseQuality || request.UseEncodingDefaults) && (options.Format == "jxl" || options.Format == "ajxl") {
 					options.Distance = mediaconvert.JXLDistanceFromQuality(options.Quality)
 				}
 				var format mediaconvert.Format
@@ -487,10 +526,12 @@ func previewConversionDefaults(w http.ResponseWriter, r *http.Request, targets [
 		return
 	}
 	type plan struct {
-		Input  string `json:"input"`
-		Output string `json:"output"`
-		Count  int    `json:"count"`
-		Error  string `json:"error,omitempty"`
+		Input   string  `json:"input"`
+		Output  string  `json:"output"`
+		Count   int     `json:"count"`
+		Error   string  `json:"error,omitempty"`
+		Quality float64 `json:"quality"`
+		Effort  int     `json:"effort"`
 	}
 	plans := []plan{}
 	indices := map[plan]int{}
@@ -502,6 +543,8 @@ func previewConversionDefaults(w http.ResponseWriter, r *http.Request, targets [
 		id, err := conversionTargetFile(r.Context(), target)
 		if err == nil {
 			next.Output, next.Input, err = conversionDefaultForFile(r.Context(), s, config, id)
+			defaults := config.DefaultEncoding(next.Input)
+			next.Quality, next.Effort = defaults.Quality, defaults.Effort
 		}
 		if err != nil {
 			next.Error = err.Error()

@@ -13,10 +13,15 @@ import math
 import os
 from pathlib import Path
 import shutil
+import signal
 import subprocess
+import struct
 import tempfile
 import time
+import zlib
 from fractions import Fraction
+
+import media_upscale_worker as upscaler
 
 FFMPEG = os.environ.get("STASH_CONVERTER_FFMPEG", "ffmpeg")
 FFPROBE = os.environ.get("STASH_CONVERTER_FFPROBE", "ffprobe")
@@ -54,11 +59,16 @@ GPU = {
 _capabilities_cache: tuple[float, dict] | None = None
 
 
-def run(args: list[str], cancelled=None, timeout=TIMEOUT) -> str:
+def run(args: list[str], cancelled=None, timeout=TIMEOUT, stdout_file=None, offline_models=False) -> str:
     # File-backed logs bound memory even for a long failing encode.
     with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
-        proc = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr)
+        env = {**os.environ, "HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1"} if offline_models else None
+        # HTTP cancellation owns this process tree. Local subprocesses instead
+        # inherit the group already managed by Stash's Go client.
+        own_group = cancelled is not None and os.name == "posix"
+        proc = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=stdout_file if stdout_file is not None else stdout, stderr=stderr, env=env, start_new_session=own_group)
         started = time.monotonic()
+        success = False
         try:
             while proc.poll() is None:
                 if cancelled and cancelled():
@@ -69,11 +79,22 @@ def run(args: list[str], cancelled=None, timeout=TIMEOUT) -> str:
             if proc.returncode:
                 stderr.seek(max(0, stderr.tell() - 4096))
                 raise RuntimeError(stderr.read().decode("utf-8", "replace").strip() or "encoder failed")
+            success = True
+            if stdout_file is not None:
+                return ""
             stdout.seek(0)
             return stdout.read(4 * 1024 * 1024).decode("utf-8", "replace")
         finally:
-            if proc.poll() is None:
-                proc.kill()
+            if not success and own_group:
+                try:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+            elif proc.poll() is None:
+                if os.name == "nt" and cancelled is not None:
+                    subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+                else:
+                    proc.kill()
             proc.wait()
 
 
@@ -120,17 +141,18 @@ def capabilities(probe_gpu=True, only_format=None) -> dict:
         formats.append({"id": key, "label": label, "extension": ext, "family": family,
                         "cpu": cpu, "gpu": hardware, "controls": controls,
                         "available": bool(cpu or hardware)})
-    value = {"formats": formats, "version": 1}
+    value = {"formats": formats, "upscalers": upscaler.capabilities(), "version": 2}
     if probe_gpu and only_format is None:
         _capabilities_cache = time.monotonic(), value
     return value
 
 
 def options(raw: dict) -> dict:
-    if not isinstance(raw, dict) or set(raw) - {"format", "hardware", "quality", "effort", "distance", "lossless", "allowLarger", "dropAudio", "allowAlphaLoss"}:
+    if not isinstance(raw, dict) or set(raw) - {"format", "hardware", "quality", "effort", "distance", "lossless", "allowLarger", "dropAudio", "allowAlphaLoss", "upscaler", "upscaleScale"}:
         raise ValueError("unknown conversion option")
     o = {"format": "jxl", "hardware": "auto", "quality": 90 if raw.get("format", "jxl") in ("jxl", "ajxl") else 80, "effort": 7, "distance": 1,
-         "lossless": False, "allowLarger": False, "dropAudio": False, "allowAlphaLoss": False, **raw}
+         "lossless": False, "allowLarger": False, "dropAudio": False, "allowAlphaLoss": False,
+         "upscaler": "", "upscaleScale": 2, **raw}
     if o["format"] not in FORMATS or o["hardware"] not in ("cpu", "gpu", "auto"):
         raise ValueError("invalid format or hardware mode")
     for name, low, high in (("quality", 0, 100), ("effort", 1, 9), ("distance", 0, 25)):
@@ -139,6 +161,9 @@ def options(raw: dict) -> dict:
             raise ValueError(f"{name} must be between {low} and {high}")
     if int(o["effort"]) != o["effort"]:
         raise ValueError("effort must be an integer")
+    if o["upscaler"] not in ("", "waifu2x", "seedvr2") or isinstance(o["upscaleScale"], bool) or o["upscaleScale"] not in (2, 4):
+        raise ValueError("choose waifu2x or SeedVR2 and a scale of 2 or 4")
+    o["upscaleScale"] = int(o["upscaleScale"])
     for name in ("lossless", "allowLarger", "dropAudio", "allowAlphaLoss"):
         if not isinstance(o[name], bool):
             raise ValueError(f"{name} must be a boolean")
@@ -231,6 +256,50 @@ def webp_final_duration(path: Path, seconds: float) -> None:
             stream.write(round(seconds * 1000).to_bytes(3, "little"))
 
 
+def jxl_timing_input(source: Path, output: Path, durations: list[float]) -> Path:
+    # cjxl's APNG reader uses millisecond ticks. Independent rounding drifts at
+    # rates such as 30/60 fps. Round cumulative boundaries instead (33,34,33 ms),
+    # retaining total duration to 1 ms without decoding/recompressing PNG pixels.
+    elapsed = Fraction(0)
+    previous_ms, index = 0, 0
+    with source.open("rb") as src, output.open("xb") as dst:
+        signature = src.read(8)
+        if signature != b"\x89PNG\r\n\x1a\n":
+            raise ValueError("JPEG XL animation requires an APNG intermediate")
+        dst.write(signature)
+        while header := src.read(8):
+            if len(header) != 8:
+                raise ValueError("truncated APNG chunk")
+            length, kind = struct.unpack(">I4s", header)
+            dst.write(header)
+            if kind == b"fcTL":
+                if length != 26 or index >= len(durations):
+                    raise ValueError("APNG frame count does not match the source timing")
+                payload = bytearray(src.read(length))
+                if len(payload) != length or len(src.read(4)) != 4:
+                    raise ValueError("truncated APNG frame control")
+                elapsed += Fraction(durations[index]).limit_denominator(1000000)
+                boundary_ms = round(elapsed * 1000)
+                delay = Fraction(boundary_ms - previous_ms, 1000)
+                if delay <= 0 or delay.numerator > 65535:
+                    raise ValueError("frame delay cannot be represented safely by the JPEG XL APNG reader")
+                payload[20:24] = struct.pack(">HH", delay.numerator, delay.denominator)
+                dst.write(payload)
+                dst.write(struct.pack(">I", zlib.crc32(kind + payload)))
+                previous_ms, index = boundary_ms, index + 1
+            else:
+                remaining = length + 4
+                while remaining:
+                    chunk = src.read(min(remaining, 1024 * 1024))
+                    if not chunk:
+                        raise ValueError("truncated APNG data")
+                    dst.write(chunk)
+                    remaining -= len(chunk)
+        if index != len(durations):
+            raise ValueError("APNG frame count does not match the source timing")
+    return output
+
+
 def probe(source: Path, cancelled=None) -> dict:
     data = json.loads(run([FFPROBE, "-v", "error", "-protocol_whitelist", "file,pipe", "-format_whitelist", INPUT_FORMATS,
         "-count_frames", "-show_streams", "-show_format", "-of", "json", str(source)], cancelled))
@@ -257,8 +326,51 @@ def probe(source: Path, cancelled=None) -> dict:
             "colorTransfer": v.get("color_transfer", ""), "colorPrimaries": v.get("color_primaries", ""),
             "colorSpace": v.get("color_space", ""),
             "alpha": "a" in v.get("pix_fmt", "").replace("gray", "") or v.get("pix_fmt") == "pal8"}
-    result.update(animation_metadata(source))
+    animation = animation_metadata(source)
+    if frames > 1 and not animation.get("durations"):
+        # Container duration may include longer audio or a nonzero start time.
+        # Compare the presented video span, including its last frame's hold.
+        result["duration"] = video_duration(source, rate, cancelled)
+    result.update(animation)
     return result
+
+
+def video_duration(source: Path, rate: float, cancelled=None) -> float:
+    first = last = None
+    last_delay = 0.0
+    with tempfile.TemporaryFile() as packets:
+        run([FFPROBE, "-v", "error", "-protocol_whitelist", "file,pipe", "-format_whitelist", INPUT_FORMATS,
+             "-select_streams", "v:0", "-show_packets", "-show_entries", "packet=pts_time,duration_time",
+             "-of", "csv=p=0", str(source)], cancelled, stdout_file=packets)
+        packets.seek(0)
+        for line in packets:
+            fields = line.strip().split(b",")
+            try:
+                pts = float(fields[0])
+                delay = float(fields[1]) if len(fields) > 1 and fields[1] != b"N/A" else 0.0
+            except (ValueError, IndexError):
+                continue
+            if not math.isfinite(pts) or not math.isfinite(delay):
+                continue
+            first = pts if first is None else min(first, pts)
+            if last is None or pts > last:
+                last, last_delay = pts, delay
+    if first is None or last is None:
+        raise ValueError("could not determine video presentation duration")
+    if last_delay <= 0 and rate > 0:
+        last_delay = 1 / rate
+    if last_delay <= 0:
+        raise ValueError("could not determine the final video frame duration")
+    return last - first + last_delay
+
+
+def input_args(source: Path) -> list[str]:
+    args = ["-protocol_whitelist", "file,pipe", "-format_whitelist", INPUT_FORMATS]
+    with source.open("rb") as stream:
+        if stream.read(6) in (b"GIF87a", b"GIF89a"):
+            # FFmpeg's GIF demuxer otherwise replaces short delays on some versions.
+            args += ["-min_delay", "0"]
+    return args + ["-i", str(source)]
 
 
 def video_quality(encoder: str, o: dict) -> list[str]:
@@ -303,6 +415,21 @@ def convert(source: Path, output: Path, raw: dict, cancelled=None) -> dict:
             raise ValueError("output cannot contain audio; explicitly enable discard audio to continue")
         if before["alpha"] and (family == "video" or fmt in ("jpeg", "avif")) and not o["allowAlphaLoss"]:
             raise ValueError("output may discard transparency; explicitly allow transparency loss to continue")
+        if o["upscaler"]:
+            if before["frames"] != 1 or before["audioStreams"]:
+                raise ValueError("optional upscaling currently supports still images only; disable it for animations/videos")
+            normalized = directory / "upscale-input.png"
+            run(ffmpeg_prefix() + input_args(decoded) + ["-frames:v", "1", str(normalized)], cancelled)
+            enlarged = directory / "upscaled.png"
+            upscaler.upscale(normalized, enlarged, o, before["width"], before["height"], run, cancelled)
+            checked_upscale = probe(enlarged, cancelled)
+            expected = (before["width"] * o["upscaleScale"], before["height"] * o["upscaleScale"], 1)
+            actual = (checked_upscale["width"], checked_upscale["height"], checked_upscale["frames"])
+            if actual != expected:
+                raise RuntimeError(f"upscaler returned {actual}; expected {expected}; source kept")
+            if before["alpha"] and not checked_upscale["alpha"]:
+                raise RuntimeError("upscaler discarded transparency; source kept")
+            decoded, before = enlarged, checked_upscale
         high_depth = any(bit in before["pixelFormat"] for bit in ("10", "12", "16"))
         if high_depth and encoder.startswith("h264_"):
             if o["hardware"] == "auto" and cap["cpu"]:
@@ -315,20 +442,22 @@ def convert(source: Path, output: Path, raw: dict, cancelled=None) -> dict:
             # cjxl; older libjxl treats GIF repetitions as total plays.
             if before["videoCodec"] not in ("mjpeg", "png", "apng"):
                 intermediate = directory / "intermediate.png"
-                intermediate_args = ffmpeg_prefix() + ["-protocol_whitelist", "file,pipe", "-format_whitelist", INPUT_FORMATS, "-i", str(decoded), "-an",
-                    "-fps_mode", "passthrough", "-c:v", "apng" if before["frames"] > 1 else "png",
+                intermediate_args = ffmpeg_prefix() + input_args(decoded) + ["-an",
+                    "-fps_mode", "passthrough", "-enc_time_base", "-1", "-c:v", "apng" if before["frames"] > 1 else "png",
                     "-f", "apng" if before["frames"] > 1 else "image2"]
                 if before["frames"] > 1:
                     intermediate_args += ["-plays", str(before.get("plays", 0))]
                     if before.get("durations"):
                         intermediate_args += ["-final_delay", str(Fraction(before["durations"][-1]).limit_denominator(100000))]
                 run(intermediate_args + [str(intermediate)], cancelled)
+            if before.get("durations"):
+                intermediate = jxl_timing_input(intermediate, directory / "jxl-timed.png", before["durations"])
             args = ["cjxl", str(intermediate), str(output), "--distance=" + str(o["distance"]),
                     "--effort=" + str(int(o["effort"])), "--num_threads=" + str(THREADS)]
             if before["videoCodec"] == "mjpeg" and o["distance"] != 0:
                 args.append("--lossless_jpeg=0")
         else:
-            args = ffmpeg_prefix() + ["-n"] + device_args(encoder) + ["-protocol_whitelist", "file,pipe", "-format_whitelist", INPUT_FORMATS, "-i", str(decoded),
+            args = ffmpeg_prefix() + ["-n"] + device_args(encoder) + input_args(decoded) + [
                 "-map", "[converted]" if fmt == "gif" else "0:v:0", "-map_metadata", "0", "-map_chapters", "0", "-fps_mode", "passthrough",
                 "-threads", str(THREADS), "-c:v", encoder]
             if family == "video":
@@ -349,7 +478,7 @@ def convert(source: Path, output: Path, raw: dict, cancelled=None) -> dict:
                     pix = "p010le" if encoder.endswith(("_qsv", "_nvenc")) else "yuv420p10le"
                     args += ["-pix_fmt", pix if high_depth else "yuv420p"]
                 for option, key in (("-color_trc", "colorTransfer"), ("-color_primaries", "colorPrimaries"), ("-colorspace", "colorSpace")):
-                    if before[key] and before[key] not in ("unknown", "unspecified"):
+                    if before[key] and before[key] not in ("unknown", "unspecified", "gbr", "rgb"):
                         args += [option, before[key]]
                 if not o["dropAudio"]:
                     args += ["-map", "0:a?", "-c:a", "libopus" if ext == "webm" else "aac", "-b:a", "192k"]
@@ -395,7 +524,9 @@ def convert(source: Path, output: Path, raw: dict, cancelled=None) -> dict:
             if (before["width"], before["height"], before["frames"]) != (after["width"], after["height"], after["frames"]):
                 raise RuntimeError("verification failed: dimensions or frame count changed")
             if before["frames"] > 1 and abs(before["duration"] - after["duration"]) > max(0.025, before["duration"] * 0.001):
-                raise RuntimeError("verification failed: animation/video duration changed")
+                raise RuntimeError(f"verification failed: animation/video duration changed "
+                                   f"({before['duration']:.6f}s → {after['duration']:.6f}s; "
+                                   f"{before['frames']} frames, {fmt}/{encoder}); source kept")
             if before.get("durations") and after.get("durations"):
                 if any(abs(a - b) > 0.011 for a, b in zip(before["durations"], after["durations"])):
                     raise RuntimeError("verification failed: individual frame delays changed")
@@ -404,7 +535,7 @@ def convert(source: Path, output: Path, raw: dict, cancelled=None) -> dict:
             if family == "video" and not o["dropAudio"] and before["audioStreams"] != after["audioStreams"]:
                 raise RuntimeError("verification failed: audio stream missing")
             after.update({"format": ext, "videoCodec": "jpegxl" if fmt in ("jxl", "ajxl") else after["videoCodec"],
-                          "encoder": encoder, "seconds": time.monotonic() - started, "size": output.stat().st_size})
+                          "encoder": encoder, "upscaler": o["upscaler"], "seconds": time.monotonic() - started, "size": output.stat().st_size})
             after.pop("durations", None)  # Binary response metadata must fit HTTP headers.
             return after
         except BaseException as error:
