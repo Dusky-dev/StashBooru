@@ -81,7 +81,9 @@ export const MediaUpscalingSettings: React.FC = () => {
                 }
               >
                 {upscalers.length === 0 && (
-                  <option value={defaults.upscaler}>No upscalers detected</option>
+                  <option value={defaults.upscaler}>
+                    No upscalers detected
+                  </option>
                 )}
                 {upscalers.map((upscaler) => (
                   <option
@@ -127,16 +129,14 @@ export const MediaUpscalingSettings: React.FC = () => {
                 onChange={(event) =>
                   setDefaults({
                     ...defaults,
-                    hardware: event.target.value as UpscalingDefaults["hardware"],
+                    hardware: event.target
+                      .value as UpscalingDefaults["hardware"],
                   })
                 }
               >
                 <option value="auto">Prefer GPU, otherwise CPU</option>
                 <option value="gpu">GPU</option>
-                <option
-                  value="cpu"
-                  disabled={selectedUpscaler?.cpu === false}
-                >
+                <option value="cpu" disabled={selectedUpscaler?.cpu === false}>
                   CPU
                 </option>
               </Form.Control>
