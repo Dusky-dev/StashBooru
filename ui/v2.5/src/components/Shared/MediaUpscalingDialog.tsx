@@ -232,9 +232,16 @@ export const MediaUpscalingDialog: React.FC<{
             {capabilities?.notice && (
               <Alert variant="info">{capabilities.notice}</Alert>
             )}
+            {!selectedUpscaler?.available && (
+              <Alert variant="secondary">
+                Configure the local executable/model paths in System → Image
+                upscaling, or configure the equivalent STASH_WAIFU2X_* /
+                STASH_SEEDVR2_* environment variables on a remote worker.
+              </Alert>
+            )}
             <p>
               <Link to="/settings?tab=system#media-upscaling" onClick={onHide}>
-                Edit saved upscaling defaults in System settings
+                Edit upscaler defaults and model paths in System settings
               </Link>
             </p>
             <Button
