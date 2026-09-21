@@ -276,9 +276,8 @@ export const MediaUpscalingSettings: React.FC = () => {
               <Alert variant="info">
                 Automatic mode is currently using the remote inference worker.
                 The paths below configure the local fallback only. Configure the
-                equivalent STASH_WAIFU2X_* / STASH_SEEDVR2_* variables on the
-                remote worker itself; remote filesystem paths are intentionally
-                not accepted from StashBooru media jobs.
+                equivalent STASH_WAIFU2X_* / STASH_SEEDVR2_* variables on that
+                worker.
               </Alert>
             )}
 
