@@ -280,18 +280,18 @@ func createUpscaledImageDerivative(ctx context.Context, sourceImageID int, sourc
 	}
 	derived := &models.ImageFile{
 		BaseFile: &models.BaseFile{
-			DirEntry: models.DirEntry{ModTime: published.ModTime()},
-			Path: destination,
-			Basename: filepath.Base(destination),
+			DirEntry:       models.DirEntry{ModTime: published.ModTime()},
+			Path:           destination,
+			Basename:       filepath.Base(destination),
 			ParentFolderID: base.ParentFolderID,
-			Fingerprints: fingerprints,
-			Size: result.Size,
-			FrameCount: 1,
-			CreatedAt: now,
-			UpdatedAt: now,
+			Fingerprints:   fingerprints,
+			Size:           result.Size,
+			FrameCount:     1,
+			CreatedAt:      now,
+			UpdatedAt:      now,
 		},
 		Format: imageFormat,
-		Width: result.Width,
+		Width:  result.Width,
 		Height: result.Height,
 	}
 
@@ -332,8 +332,8 @@ func createUpscaledImageDerivative(ctx context.Context, sourceImageID int, sourc
 		clone.CreatedAt = now
 		clone.UpdatedAt = now
 		input := &models.CreateImageInput{
-			Image: &clone,
-			FileIDs: []models.FileID{derived.Base().ID},
+			Image:        &clone,
+			FileIDs:      []models.FileID{derived.Base().ID},
 			CustomFields: customFields,
 		}
 		if err := mgr.Repository.Image.Create(ctx, input); err != nil {
