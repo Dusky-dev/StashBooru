@@ -63,6 +63,7 @@ RUN apk add --no-cache \
     gcompat \
     libstdc++ \
     vulkan-loader \
+    mesa-vulkan-swrast \
     && python3 -m pip install \
         --break-system-packages \
         --no-cache-dir \
