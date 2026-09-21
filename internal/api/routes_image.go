@@ -42,6 +42,7 @@ func (rs imageRoutes) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Get("/converter", handleMediaConversionGet)
 	r.Post("/converter", handleMediaConversionPost)
+	r.Post("/upscale", handleImageUpscalePost)
 	r.Get("/upscaler-config", rs.MediaUpscalingConfig)
 	r.Post("/upscaler-config", rs.MediaUpscalingConfigUpdate)
 
