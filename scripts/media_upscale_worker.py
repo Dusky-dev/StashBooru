@@ -11,6 +11,13 @@ import shutil
 import sys
 
 
+WAIFU2X_MODEL_DIR_NAMES = (
+    "models-cunet",
+    "models-upconv_7_anime_style_art_rgb",
+    "models-upconv_7_photo",
+)
+
+
 def configuration() -> dict:
     waifu = shutil.which(os.environ.get("STASH_WAIFU2X", "waifu2x-ncnn-vulkan"))
     waifu_models = Path(os.environ.get("STASH_WAIFU2X_MODELS", str(Path(waifu).parent / "models-cunet") if waifu else ""))
@@ -22,14 +29,40 @@ def configuration() -> dict:
             "seed_python": os.environ.get("STASH_SEEDVR2_PYTHON", sys.executable)}
 
 
+def _waifu2x_model_dir_supported(path: Path) -> bool:
+    value = str(path)
+    return any(name in value for name in WAIFU2X_MODEL_DIR_NAMES)
+
+
+def _waifu2x_vulkan_init_error(error: RuntimeError) -> bool:
+    message = str(error).lower()
+    return "vkcreateinstance failed" in message or "vk_error_incompatible_driver" in message
+
+
+def _waifu2x_vulkan_help(error: RuntimeError) -> RuntimeError:
+    return RuntimeError(
+        f"{error}\nwaifu2x could not initialize Vulkan. Upstream waifu2x-ncnn-vulkan initializes Vulkan "
+        "even for -g -1 CPU mode, so CPU fallback cannot bypass this error. In Docker, expose the GPU "
+        "through the NVIDIA Container Toolkit (or the appropriate host GPU runtime), include the graphics "
+        "driver capability, and make a compatible Vulkan ICD/loader visible inside the container."
+    )
+
+
 def capabilities() -> list[dict]:
     c = configuration()
-    waifu = bool(c["waifu"] and any(c["waifu_models"].glob("*.param")) and any(c["waifu_models"].glob("*.bin")))
+    model_files = any(c["waifu_models"].glob("*.param")) and any(c["waifu_models"].glob("*.bin"))
+    waifu = bool(c["waifu"] and model_files and _waifu2x_model_dir_supported(c["waifu_models"]))
     seed = bool(c["seed_cli"].is_file() and (c["seed_models"] / c["seed_model"]).is_file()
                 and (c["seed_models"] / "ema_vae_fp16.safetensors").is_file())
+    if c["waifu"] and model_files and not _waifu2x_model_dir_supported(c["waifu_models"]):
+        waifu_notice = "Model directory name must contain models-cunet, models-upconv_7_anime_style_art_rgb, or models-upconv_7_photo."
+    elif waifu:
+        waifu_notice = "Still images; Vulkan GPU preferred with CPU processing fallback when Vulkan initializes successfully."
+    else:
+        waifu_notice = "Install waifu2x-ncnn-vulkan and configure a supported model directory."
     return [
         {"id": "waifu2x", "label": "waifu2x", "available": waifu, "cpu": True,
-         "notice": "Still images; CPU or Vulkan GPU." if waifu else "Install waifu2x-ncnn-vulkan and configure its model directory."},
+         "notice": waifu_notice},
         {"id": "seedvr2", "label": "SeedVR2", "available": seed, "cpu": False,
          "notice": "Still images; requires a working SeedVR2 GPU environment." if seed else "Configure the SeedVR2 CLI, Python environment and downloaded DiT/VAE models."},
     ]
@@ -45,14 +78,29 @@ def upscale(source: Path, output: Path, options: dict, width: int, height: int, 
         args = [c["waifu"], "-i", str(source), "-o", str(output), "-n", "-1", "-s", str(scale),
                 "-m", str(c["waifu_models"].resolve()), "-t", "0", "-f", "png"]
         if options["hardware"] == "cpu":
-            args += ["-g", "-1"]
+            try:
+                run(args + ["-g", "-1"], cancelled)
+            except RuntimeError as error:
+                if _waifu2x_vulkan_init_error(error):
+                    raise _waifu2x_vulkan_help(error) from error
+                raise
+            return
         try:
             run(args, cancelled)
-        except RuntimeError:
+        except RuntimeError as gpu_error:
+            if _waifu2x_vulkan_init_error(gpu_error):
+                raise _waifu2x_vulkan_help(gpu_error) from gpu_error
             if options["hardware"] != "auto" or (cancelled and cancelled()):
                 raise
             output.unlink(missing_ok=True)
-            run(args + ["-g", "-1"], cancelled)
+            try:
+                run(args + ["-g", "-1"], cancelled)
+            except RuntimeError as cpu_error:
+                if _waifu2x_vulkan_init_error(cpu_error):
+                    raise _waifu2x_vulkan_help(cpu_error) from cpu_error
+                raise RuntimeError(
+                    f"waifu2x GPU attempt failed: {gpu_error}; CPU fallback failed: {cpu_error}"
+                ) from cpu_error
         return
     if options["hardware"] == "cpu":
         raise ValueError("SeedVR2 requires GPU; choose Prefer GPU or GPU")
