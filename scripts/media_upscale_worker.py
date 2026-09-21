@@ -34,6 +34,12 @@ def _waifu2x_model_dir_supported(path: Path) -> bool:
     return any(name in value for name in WAIFU2X_MODEL_DIR_NAMES)
 
 
+def _waifu2x_uses_upstream_cli(executable: str | None) -> bool:
+    if not executable:
+        return False
+    return Path(executable).name.lower() in ("waifu2x-ncnn-vulkan", "waifu2x-ncnn-vulkan.exe")
+
+
 def _waifu2x_vulkan_init_error(error: RuntimeError) -> bool:
     message = str(error).lower()
     return "vkcreateinstance failed" in message or "vk_error_incompatible_driver" in message
@@ -51,15 +57,17 @@ def _waifu2x_vulkan_help(error: RuntimeError) -> RuntimeError:
 def capabilities() -> list[dict]:
     c = configuration()
     model_files = any(c["waifu_models"].glob("*.param")) and any(c["waifu_models"].glob("*.bin"))
-    waifu = bool(c["waifu"] and model_files and _waifu2x_model_dir_supported(c["waifu_models"]))
+    upstream_cli = _waifu2x_uses_upstream_cli(c["waifu"])
+    model_dir_supported = _waifu2x_model_dir_supported(c["waifu_models"])
+    waifu = bool(c["waifu"] and model_files and (not upstream_cli or model_dir_supported))
     seed = bool(c["seed_cli"].is_file() and (c["seed_models"] / c["seed_model"]).is_file()
                 and (c["seed_models"] / "ema_vae_fp16.safetensors").is_file())
-    if c["waifu"] and model_files and not _waifu2x_model_dir_supported(c["waifu_models"]):
+    if c["waifu"] and model_files and upstream_cli and not model_dir_supported:
         waifu_notice = "Model directory name must contain models-cunet, models-upconv_7_anime_style_art_rgb, or models-upconv_7_photo."
     elif waifu:
         waifu_notice = "Still images; Vulkan GPU preferred with CPU processing fallback when Vulkan initializes successfully."
     else:
-        waifu_notice = "Install waifu2x-ncnn-vulkan and configure a supported model directory."
+        waifu_notice = "Install waifu2x-ncnn-vulkan and configure its model directory."
     return [
         {"id": "waifu2x", "label": "waifu2x", "available": waifu, "cpu": True,
          "notice": waifu_notice},
