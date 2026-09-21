@@ -164,9 +164,7 @@ export const MediaUpscalingDialog: React.FC<{
         { signal }
       ).then(conversionResponse<RestoreState>);
       setRestoreState(value);
-      setCacheGiB(
-        (current) => current ?? value.config.cacheLimitBytes / GiB
-      );
+      setCacheGiB((current) => current ?? value.config.cacheLimitBytes / GiB);
     },
     [historyOffset, restoreJobID]
   );
@@ -239,7 +237,10 @@ export const MediaUpscalingDialog: React.FC<{
       setQueuedMode(replace ? "replace" : "copy");
       setJobID(result.jobID);
       if (replace) {
-        localStorage.setItem("media-upscaling-restore-job", String(result.jobID));
+        localStorage.setItem(
+          "media-upscaling-restore-job",
+          String(result.jobID)
+        );
         setRestoreJobID(result.jobID);
         setHistoryOffset(0);
       }
@@ -291,7 +292,11 @@ export const MediaUpscalingDialog: React.FC<{
           <Modal.Title>Upscale images</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <Tabs id="media-upscaling-tabs" defaultActiveKey="upscale" className="mb-3">
+          <Tabs
+            id="media-upscaling-tabs"
+            defaultActiveKey="upscale"
+            className="mb-3"
+          >
             <Tab eventKey="upscale" title="Upscale">
               <p>
                 Upscale {selectedIds.length} selected image
@@ -328,7 +333,10 @@ export const MediaUpscalingDialog: React.FC<{
                         value={options.upscaler}
                         disabled={submitting || !!jobID}
                         onChange={(event) =>
-                          setOptions({ ...options, upscaler: event.target.value })
+                          setOptions({
+                            ...options,
+                            upscaler: event.target.value,
+                          })
                         }
                       >
                         {upscalers.length === 0 && (
@@ -419,7 +427,9 @@ export const MediaUpscalingDialog: React.FC<{
                           setOptions({ ...options, format: event.target.value })
                         }
                       >
-                        <option value="auto">Use conversion format default</option>
+                        <option value="auto">
+                          Use conversion format default
+                        </option>
                         {imageFormats.map((format) => (
                           <option key={format.id} value={format.id}>
                             {format.label}
@@ -429,7 +439,10 @@ export const MediaUpscalingDialog: React.FC<{
                     </Form.Group>
                   </Row>
 
-                  <Form.Group className="mt-3" controlId="upscaler-save-behavior">
+                  <Form.Group
+                    className="mt-3"
+                    controlId="upscaler-save-behavior"
+                  >
                     <Form.Label>Save behavior</Form.Label>
                     <Form.Check
                       type="radio"
@@ -467,8 +480,8 @@ export const MediaUpscalingDialog: React.FC<{
                   {replaceOriginal && (
                     <Alert variant="warning" className="mt-3">
                       Replacement changes the active library file. The original
-                      is kept only in the upscaling restore cache and may later be
-                      evicted according to its independent cache limit.
+                      is kept only in the upscaling restore cache and may later
+                      be evicted according to its independent cache limit.
                     </Alert>
                   )}
 
@@ -528,10 +541,10 @@ export const MediaUpscalingDialog: React.FC<{
                 <Alert variant="danger">{restoreState.job.error}</Alert>
               )}
               <p className="text-muted">
-                This tab is independent from Media converter history. It contains
-                only destructive upscaling replacements and their restorable
-                originals. Non-destructive upscaled copies do not consume restore
-                cache space.
+                This tab is independent from Media converter history. It
+                contains only destructive upscaling replacements and their
+                restorable originals. Non-destructive upscaled copies do not
+                consume restore cache space.
               </p>
               {restoreState && (
                 <>
@@ -539,8 +552,9 @@ export const MediaUpscalingDialog: React.FC<{
                   <StatsView value={restoreState.stats} />
                   {restoreState.latestStats.converted > 0 && (
                     <p className="text-muted">
-                      Latest replacement batch: {restoreState.latestStats.converted}{" "}
-                      file{restoreState.latestStats.converted === 1 ? "" : "s"} ·{" "}
+                      Latest replacement batch:{" "}
+                      {restoreState.latestStats.converted} file
+                      {restoreState.latestStats.converted === 1 ? "" : "s"} ·{" "}
                       {bytes(restoreState.latestStats.cacheBytes)} of originals
                       retained.
                     </p>
@@ -556,7 +570,11 @@ export const MediaUpscalingDialog: React.FC<{
                 restore cache.
               </p>
               <Row className="align-items-end">
-                <Form.Group as={Col} xs={6} controlId="upscaler-restore-cache">
+                <Form.Group
+                  as={Col}
+                  xs={6}
+                  controlId="upscaler-restore-cache"
+                >
                   <Form.Label>Upscaling restore cache limit (GiB)</Form.Label>
                   <Form.Control
                     className="text-input"
@@ -565,7 +583,9 @@ export const MediaUpscalingDialog: React.FC<{
                     step={0.25}
                     value={cacheGiB ?? ""}
                     disabled={restoreBusy}
-                    onChange={(event) => setCacheGiB(Number(event.target.value))}
+                    onChange={(event) =>
+                      setCacheGiB(Number(event.target.value))
+                    }
                   />
                 </Form.Group>
                 <Col className="mb-3">
@@ -659,7 +679,8 @@ export const MediaUpscalingDialog: React.FC<{
                                 key={fingerprint.Type}
                               >
                                 <small>
-                                  {fingerprint.Type}: {String(fingerprint.Fingerprint)}
+                                  {fingerprint.Type}:{" "}
+                                  {String(fingerprint.Fingerprint)}
                                 </small>
                               </div>
                             ))}
@@ -674,7 +695,9 @@ export const MediaUpscalingDialog: React.FC<{
                               : ""}
                           </small>
                           {record.error && (
-                            <small className="text-warning">{record.error}</small>
+                            <small className="text-warning">
+                              {record.error}
+                            </small>
                           )}
                         </td>
                         <td>
