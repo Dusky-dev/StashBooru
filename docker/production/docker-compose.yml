@@ -1,8 +1,8 @@
-# APPNICENAME=Stash
-# APPDESCRIPTION=An organizer for your porn, written in Go
+# APPNICENAME=StashBooru
+# APPDESCRIPTION=An anime/cartoon-focused media organizer based on Stash
 services:
   stash:
-    image: stashapp/stash:latest
+    image: ghcr.io/dusky-dev/stashbooru:develop
     container_name: stash
     restart: unless-stopped
     ## the container's port must be the same with the STASH_PORT in the environment section
