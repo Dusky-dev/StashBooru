@@ -38,7 +38,7 @@ class Waifu2xHardwareTests(unittest.TestCase):
                 128, 128, run,
             )
 
-    def test_auto_tries_gpu_first_then_cpu(self):
+    def test_prefer_gpu_tries_gpu_first_then_cpu(self):
         calls = []
 
         def run(args, cancelled=None, **kwargs):
@@ -59,6 +59,18 @@ class Waifu2xHardwareTests(unittest.TestCase):
             raise RuntimeError("GPU processing failed")
 
         with self.assertRaisesRegex(RuntimeError, "GPU processing failed"):
+            self.call(run, {**self.options, "hardware": "gpu"})
+        self.assertEqual(len(calls), 1)
+        self.assertNotIn("-g", calls[0])
+
+    def test_explicit_gpu_vulkan_failure_does_not_fallback(self):
+        calls = []
+
+        def run(args, cancelled=None, **kwargs):
+            calls.append(args)
+            raise RuntimeError("vkCreateInstance failed -9")
+
+        with self.assertRaisesRegex(RuntimeError, "CPU fallback cannot bypass this error"):
             self.call(run, {**self.options, "hardware": "gpu"})
         self.assertEqual(len(calls), 1)
         self.assertNotIn("-g", calls[0])
