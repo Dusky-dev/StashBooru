@@ -97,10 +97,12 @@ export const MediaUpscalingSettings: React.FC = () => {
   const localWaifu2x = localUpscalers.find((u) => u.id === "waifu2x");
   const localSeedVR2 = localUpscalers.find((u) => u.id === "seedvr2");
 
-  const updateLocal = <K extends keyof LocalUpscalerConfig>(
+  function updateLocal<K extends keyof LocalUpscalerConfig>(
     key: K,
     value: LocalUpscalerConfig[K]
-  ) => setLocalConfig((current) => ({ ...current, [key]: value }));
+  ) {
+    setLocalConfig((current) => ({ ...current, [key]: value }));
+  }
 
   async function save() {
     setSaving(true);
