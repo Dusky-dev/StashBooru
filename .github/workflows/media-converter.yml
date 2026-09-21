@@ -6,7 +6,7 @@ on:
       - scripts/media_conversion_worker.py
       - scripts/media_upscale_worker.py
       - scripts/visual_embedding_server.py
-      - scripts/tests/test_media_conversion.py
+      - scripts/tests/test_media*.py
       - pkg/mediaconvert/**
       - .github/workflows/media-converter.yml
   push:
@@ -15,7 +15,7 @@ on:
       - scripts/media_conversion_worker.py
       - scripts/media_upscale_worker.py
       - scripts/visual_embedding_server.py
-      - scripts/tests/test_media_conversion.py
+      - scripts/tests/test_media*.py
       - pkg/mediaconvert/**
       - .github/workflows/media-converter.yml
 
@@ -27,4 +27,4 @@ jobs:
       - name: Install media tools
         run: sudo apt-get update && sudo apt-get install -y ffmpeg libjxl-tools python3-pil
       - name: Exercise real codecs and remote conversion
-        run: python3 -m unittest discover -s scripts/tests -p test_media_conversion.py -v
+        run: python3 -m unittest discover -s scripts/tests -p 'test_media*.py' -v
