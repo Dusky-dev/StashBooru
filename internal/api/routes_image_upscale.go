@@ -18,10 +18,14 @@ import (
 )
 
 type imageUpscaleRequest struct {
+	Action              string               `json:"action"`
 	Backend             string               `json:"backend"`
 	Targets             []conversionTarget   `json:"targets"`
 	Options             mediaconvert.Options `json:"options"`
 	UseEncodingDefaults bool                 `json:"useEncodingDefaults"`
+	RecordID            string               `json:"recordID"`
+	CacheLimitBytes     int64                `json:"cacheLimitBytes"`
+	Offset              int                  `json:"offset"`
 }
 
 func handleImageUpscalePost(w http.ResponseWriter, r *http.Request) {
@@ -32,6 +36,75 @@ func handleImageUpscalePost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	mgr := manager.GetInstance()
+	store := mgr.MediaUpscalingStore()
+	switch request.Action {
+	case "history":
+		handleImageUpscaleHistory(w, r, store, request.Offset)
+		return
+	case "configure":
+		if request.CacheLimitBytes < 0 {
+			http.Error(w, "cache size cannot be negative", http.StatusBadRequest)
+			return
+		}
+		config, err := store.Config()
+		if err == nil {
+			config.CacheLimitBytes = request.CacheLimitBytes
+			err = store.Configure(config)
+		}
+		if err == nil {
+			err = store.Trim()
+		}
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeVisualSimilarityJSON(w, config)
+		return
+	case "recover":
+		conversionMutations.Lock()
+		err := store.Recover(r.Context())
+		if err == nil {
+			err = store.Trim()
+		}
+		conversionMutations.Unlock()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeVisualSimilarityJSON(w, map[string]bool{"recovered": true})
+		return
+	case "restore":
+		if request.RecordID == "" {
+			http.Error(w, "restore record ID is required", http.StatusBadRequest)
+			return
+		}
+		jobID := mgr.JobManager.Add(r.Context(), "Restore replaced upscaled image", job.MakeJobExec(func(ctx context.Context, progress *job.Progress) error {
+			conversionMutations.Lock()
+			defer conversionMutations.Unlock()
+			progress.SetTotal(1)
+			if err := store.Recover(ctx); err != nil {
+				return err
+			}
+			if err := store.Restore(ctx, request.RecordID); err != nil {
+				return err
+			}
+			record, err := store.Record(request.RecordID)
+			if err != nil {
+				return err
+			}
+			progress.Increment()
+			return generateConvertedMedia(ctx, []models.FileID{record.Before.File().Base().ID})
+		}))
+		writeVisualSimilarityJSON(w, map[string]int{"jobID": jobID})
+		return
+	case "", "copy", "replace":
+	default:
+		http.Error(w, "unknown upscaling action", http.StatusBadRequest)
+		return
+	}
+
 	if len(request.Targets) == 0 || len(request.Targets) > 10000 {
 		http.Error(w, "select between 1 and 10000 images", http.StatusBadRequest)
 		return
@@ -58,6 +131,128 @@ func handleImageUpscalePost(w http.ResponseWriter, r *http.Request) {
 	}
 	request.Targets = unique
 
+	if request.Action == "replace" {
+		queueImageUpscaleReplacement(w, r, request, store)
+		return
+	}
+	queueImageUpscaleCopies(w, r, request)
+}
+
+func handleImageUpscaleHistory(w http.ResponseWriter, r *http.Request, store mediaconvert.Store, offset int) {
+	config, err := store.Config()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	history, err := store.History()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	stats := mediaconvert.Summarize(history)
+	for left, right := 0, len(history)-1; left < right; left, right = left+1, right-1 {
+		history[left], history[right] = history[right], history[left]
+	}
+	historyTotal := len(history)
+	if offset < 0 {
+		offset = 0
+	}
+	if offset > historyTotal {
+		offset = historyTotal
+	}
+	end := min(offset+200, historyTotal)
+	history = history[offset:end]
+	normalizeRestoreHistoryFingerprints(history)
+	decorated, err := decorateMediaRestoreRecords(r.Context(), history)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeVisualSimilarityJSON(w, map[string]interface{}{
+		"config":       config,
+		"history":      decorated,
+		"historyTotal": historyTotal,
+		"stats":        stats,
+	})
+}
+
+func queueImageUpscaleReplacement(w http.ResponseWriter, r *http.Request, request imageUpscaleRequest, store mediaconvert.Store) {
+	mgr := manager.GetInstance()
+	jobID := mgr.JobManager.Add(r.Context(), "Upscale images (replace originals)", job.MakeJobExec(func(ctx context.Context, progress *job.Progress) error {
+		conversionMutations.Lock()
+		defer conversionMutations.Unlock()
+		if err := store.Recover(ctx); err != nil {
+			return err
+		}
+		conversionConfig, err := conversionStore().Config()
+		if err != nil {
+			return err
+		}
+		backend := request.Backend
+		if backend == "" {
+			backend = conversionConfig.Backend
+		}
+		client, capabilities, _, err := conversionClient(ctx, backend)
+		if err != nil {
+			return err
+		}
+		if err := validateDerivativeUpscaler(capabilities, request.Options); err != nil {
+			return err
+		}
+
+		progress.SetTotal(len(request.Targets))
+		batch := mediaconvert.NewID()
+		generated := make([]models.FileID, 0, len(request.Targets))
+		for _, target := range request.Targets {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			fileID, err := conversionTargetFile(ctx, target)
+			if err != nil {
+				return err
+			}
+			options := request.Options
+			var input string
+			if options.Format == "" || options.Format == "auto" {
+				options.Format, input, err = conversionDefaultForFile(ctx, store, conversionConfig, fileID)
+			} else if request.UseEncodingDefaults {
+				_, input, err = conversionDefaultForFile(ctx, store, conversionConfig, fileID)
+			}
+			if err != nil {
+				return err
+			}
+			if request.UseEncodingDefaults {
+				defaults := conversionConfig.DefaultEncoding(input)
+				options.Quality, options.Effort = defaults.Quality, defaults.Effort
+			}
+			if options.Hardware == "" {
+				options.Hardware = "auto"
+			}
+			if options.Format == "jxl" || options.Format == "ajxl" {
+				options.Distance = mediaconvert.JXLDistanceFromQuality(options.Quality)
+			}
+			format, err := conversionOutputFormat(capabilities, options.Format, "image")
+			if err != nil {
+				return err
+			}
+			record, err := store.Convert(ctx, fileID, batch, client, options, format)
+			if err != nil {
+				return fmt.Errorf("replacing image %d with upscaled result: %w", target.ID, err)
+			}
+			if record != nil && record.Status == "complete" {
+				generated = append(generated, fileID)
+			}
+			progress.Increment()
+		}
+		if len(generated) > 0 {
+			return generateConvertedMedia(context.WithoutCancel(ctx), generated)
+		}
+		return nil
+	}))
+	writeVisualSimilarityJSON(w, map[string]int{"jobID": jobID})
+}
+
+func queueImageUpscaleCopies(w http.ResponseWriter, r *http.Request, request imageUpscaleRequest) {
 	mgr := manager.GetInstance()
 	jobID := mgr.JobManager.Add(r.Context(), "Upscale images (create copies)", job.MakeJobExec(func(ctx context.Context, progress *job.Progress) error {
 		// Keep derivative creation serialized with destructive conversions so the
