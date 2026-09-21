@@ -10,6 +10,10 @@ on:
   release:
     types: [ published ]
 
+permissions:
+  actions: read
+  contents: read
+
 concurrency:
   group: ${{ github.ref }}
   cancel-in-progress: true
@@ -23,6 +27,9 @@ jobs:
   # Produces artifacts (generated Go files + UI build) consumed by test and build jobs.
   generate:
     runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+      contents: read
     steps:
     - uses: actions/checkout@v6
       with:
@@ -123,6 +130,9 @@ jobs:
   build:
     needs: generate
     runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+      contents: read
     strategy:
       fail-fast: false
       matrix:
