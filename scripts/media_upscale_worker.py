@@ -75,8 +75,11 @@ def upscale(source: Path, output: Path, options: dict, width: int, height: int, 
     if not cap or not cap["available"]:
         raise ValueError(cap["notice"] if cap else "unknown upscaler")
     if model == "waifu2x":
+        # Upstream identifies the model family from the -m path text itself.
+        # Keep a configured/symlinked models-* name instead of resolving it away.
+        model_path = c["waifu_models"].absolute()
         args = [c["waifu"], "-i", str(source), "-o", str(output), "-n", "-1", "-s", str(scale),
-                "-m", str(c["waifu_models"].resolve()), "-t", "0", "-f", "png"]
+                "-m", str(model_path), "-t", "0", "-f", "png"]
         if options["hardware"] == "cpu":
             try:
                 run(args + ["-g", "-1"], cancelled)
