@@ -75,7 +75,11 @@ func loadMediaUpscalingConfig() (mediaUpscalingConfig, error) {
 	if err := json.Unmarshal(data, &config); err != nil {
 		return config, fmt.Errorf("decoding media upscaling configuration: %w", err)
 	}
-	return normalizeMediaUpscalingConfig(config), nil
+	config = normalizeMediaUpscalingConfig(config)
+	if err := validateMediaUpscalingConfig(config); err != nil {
+		return mediaUpscalingConfig{}, fmt.Errorf("validating media upscaling configuration: %w", err)
+	}
+	return config, nil
 }
 
 func normalizeMediaUpscalingConfig(config mediaUpscalingConfig) mediaUpscalingConfig {
@@ -93,12 +97,12 @@ func validateMediaUpscalingConfig(config mediaUpscalingConfig) error {
 		return fmt.Errorf("SeedVR2 blocks to swap must be between 0 and 128")
 	}
 	for name, value := range map[string]string{
-		"waifu2x executable":      config.Waifu2xExecutable,
-		"waifu2x model directory": config.Waifu2xModels,
-		"SeedVR2 CLI":             config.SeedVR2CLI,
-		"SeedVR2 model directory": config.SeedVR2Models,
-		"SeedVR2 model":           config.SeedVR2Model,
-		"SeedVR2 Python":          config.SeedVR2Python,
+		"waifu2x executable":       config.Waifu2xExecutable,
+		"waifu2x model directory":  config.Waifu2xModels,
+		"SeedVR2 CLI":              config.SeedVR2CLI,
+		"SeedVR2 model directory":  config.SeedVR2Models,
+		"SeedVR2 model":            config.SeedVR2Model,
+		"SeedVR2 Python executable": config.SeedVR2Python,
 	} {
 		if strings.ContainsRune(value, '\x00') {
 			return fmt.Errorf("%s contains an invalid NUL byte", name)
