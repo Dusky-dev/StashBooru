@@ -169,6 +169,8 @@ func setMediaUpscalingEnvironment(key, value string) {
 	_ = os.Setenv(key, value)
 }
 
+// Local worker paths belong to this StashBooru process. Remote workers keep
+// their own filesystem configuration; paths are never accepted from a media job.
 func applyMediaUpscalingConfig(config mediaUpscalingConfig) {
 	config = normalizeMediaUpscalingConfig(config)
 	setMediaUpscalingEnvironment("STASH_WAIFU2X", config.Waifu2xExecutable)
