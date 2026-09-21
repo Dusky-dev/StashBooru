@@ -25,11 +25,10 @@ func appendUniqueTagIDs(destination []int, seen map[int]struct{}, ids []int) []i
 	return destination
 }
 
-// inheritResolvedProfileTagIDs adds Tags owned by resolved Character and Artist
-// profiles to the media mutation. It is deliberately additive: the caller uses
-// RelationshipUpdateModeAdd, so neither existing media Tags nor profile Tags are
-// removed. Copyright remains a native first-class entity; its current model does
-// not expose profile Tag IDs, so there is no synthetic Copyright-as-Tag fallback.
+// inheritResolvedProfileTagIDs adds Tags owned by resolved Character, Artist,
+// and Copyright profiles to the media mutation. It is deliberately additive:
+// the caller uses RelationshipUpdateModeAdd, so neither existing media Tags nor
+// profile Tags are removed.
 func inheritResolvedProfileTagIDs(ctx context.Context, repository models.Repository, resolved *taggingResolvedEntities) error {
 	seen := make(map[int]struct{}, len(resolved.TagIDs))
 	for _, id := range resolved.TagIDs {
@@ -49,6 +48,13 @@ func inheritResolvedProfileTagIDs(ctx context.Context, repository models.Reposit
 		tagIDs, err := repository.Studio.GetTagIDs(ctx, artistID)
 		if err != nil {
 			return fmt.Errorf("loading Artist %d profile Tags: %w", artistID, err)
+		}
+		resolved.TagIDs = appendUniqueTagIDs(resolved.TagIDs, seen, tagIDs)
+	}
+	for _, copyrightID := range resolved.CopyrightIDs {
+		tagIDs, err := repository.Copyright.GetTagIDs(ctx, copyrightID)
+		if err != nil {
+			return fmt.Errorf("loading Copyright %d profile Tags: %w", copyrightID, err)
 		}
 		resolved.TagIDs = appendUniqueTagIDs(resolved.TagIDs, seen, tagIDs)
 	}
