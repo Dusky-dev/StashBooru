@@ -65,7 +65,7 @@ def capabilities() -> list[dict]:
     if c["waifu"] and model_files and upstream_cli and not model_dir_supported:
         waifu_notice = "Model directory name must contain models-cunet, models-upconv_7_anime_style_art_rgb, or models-upconv_7_photo."
     elif waifu:
-        waifu_notice = "Still images; Vulkan GPU preferred with CPU processing fallback when Vulkan initializes successfully."
+        waifu_notice = "Still images; Prefer GPU retries on CPU after a recoverable GPU failure. Explicit GPU errors instead of falling back."
     else:
         waifu_notice = "Install waifu2x-ncnn-vulkan and configure its model directory."
     return [
@@ -88,7 +88,8 @@ def upscale(source: Path, output: Path, options: dict, width: int, height: int, 
         model_path = c["waifu_models"].absolute()
         args = [c["waifu"], "-i", str(source), "-o", str(output), "-n", "-1", "-s", str(scale),
                 "-m", str(model_path), "-t", "0", "-f", "png"]
-        if options["hardware"] == "cpu":
+        hardware = options["hardware"]
+        if hardware == "cpu":
             try:
                 run(args + ["-g", "-1"], cancelled)
             except RuntimeError as error:
@@ -96,12 +97,24 @@ def upscale(source: Path, output: Path, options: dict, width: int, height: int, 
                     raise _waifu2x_vulkan_help(error) from error
                 raise
             return
+        if hardware == "gpu":
+            try:
+                run(args, cancelled)
+            except RuntimeError as error:
+                if _waifu2x_vulkan_init_error(error):
+                    raise _waifu2x_vulkan_help(error) from error
+                raise
+            return
+        if hardware != "auto":
+            raise ValueError("invalid waifu2x hardware mode")
+
+        # "auto" is the Prefer GPU mode: try Vulkan first, then CPU processing.
         try:
             run(args, cancelled)
         except RuntimeError as gpu_error:
             if _waifu2x_vulkan_init_error(gpu_error):
                 raise _waifu2x_vulkan_help(gpu_error) from gpu_error
-            if options["hardware"] != "auto" or (cancelled and cancelled()):
+            if cancelled and cancelled():
                 raise
             output.unlink(missing_ok=True)
             try:
