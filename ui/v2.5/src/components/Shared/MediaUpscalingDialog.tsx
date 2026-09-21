@@ -135,9 +135,7 @@ export const MediaUpscalingDialog: React.FC<{
         signal,
       }).then(conversionResponse<UpscaleHistoryState>);
       setHistory(value);
-      setCacheGiB(
-        (current) => current ?? value.config.cacheLimitBytes / GiB
-      );
+      setCacheGiB((current) => current ?? value.config.cacheLimitBytes / GiB);
     },
     [historyOffset]
   );
@@ -294,7 +292,10 @@ export const MediaUpscalingDialog: React.FC<{
                         value={options.upscaler}
                         disabled={submitting || !!jobID}
                         onChange={(event) =>
-                          setOptions({ ...options, upscaler: event.target.value })
+                          setOptions({
+                            ...options,
+                            upscaler: event.target.value,
+                          })
                         }
                       >
                         {upscalers.length === 0 && (
@@ -385,7 +386,9 @@ export const MediaUpscalingDialog: React.FC<{
                           setOptions({ ...options, format: event.target.value })
                         }
                       >
-                        <option value="auto">Use conversion format default</option>
+                        <option value="auto">
+                          Use conversion format default
+                        </option>
                         {imageFormats.map((format) => (
                           <option key={format.id} value={format.id}>
                             {format.label}
@@ -523,7 +526,9 @@ export const MediaUpscalingDialog: React.FC<{
                     step={0.25}
                     value={cacheGiB ?? ""}
                     disabled={submitting}
-                    onChange={(event) => setCacheGiB(Number(event.target.value))}
+                    onChange={(event) =>
+                      setCacheGiB(Number(event.target.value))
+                    }
                   />
                 </Form.Group>
                 <Col className="mb-3">
@@ -720,7 +725,8 @@ export const MediaUpscalingDialog: React.FC<{
           <p className="mb-0">
             This uses the destructive upscaling path. Originals are put in the
             dedicated upscaling restore cache rather than the converter cache,
-            and cached originals can be evicted when that cache limit is reached.
+            and cached originals can be evicted when that cache limit is
+            reached.
           </p>
         </Modal.Body>
         <Modal.Footer>
