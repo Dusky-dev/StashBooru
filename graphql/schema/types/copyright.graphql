@@ -10,6 +10,7 @@ type Copyright {
   updated_at: Time!
   parents: [Copyright!]!
   children: [Copyright!]!
+  tags: [Tag!]!
   image_count: Int!
   scene_count: Int!
   performer_count: Int!
@@ -59,6 +60,7 @@ extend type Mutation {
   copyrightCreate(input: CopyrightCreateInput!): Copyright!
   copyrightUpdate(input: CopyrightUpdateInput!): Copyright!
   copyrightDestroy(input: CopyrightDestroyInput!): Boolean!
+  copyrightTagsUpdate(copyright_id: ID!, tag_ids: [ID!]!): Copyright!
   imageCopyrightsUpdate(image_id: ID!, copyright_ids: [ID!]!): Image!
   sceneCopyrightsUpdate(scene_id: ID!, copyright_ids: [ID!]!): Scene!
   performerCopyrightsUpdate(performer_id: ID!, copyright_ids: [ID!]!): Performer!

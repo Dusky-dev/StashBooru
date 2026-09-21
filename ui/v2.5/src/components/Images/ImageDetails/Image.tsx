@@ -39,6 +39,7 @@ import { goBackOrReplace } from "src/utils/history";
 import { FormattedDate } from "src/components/Shared/Date";
 import { GenerateDialog } from "src/components/Dialogs/GenerateDialog";
 import { MediaConversionDialog } from "src/components/Shared/MediaConversionDialog";
+import { MediaUpscalingDialog } from "src/components/Shared/MediaUpscalingDialog";
 
 interface IProps {
   image: GQL.ImageDataFragment;
@@ -64,6 +65,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState<boolean>(false);
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
   const [isConverterOpen, setIsConverterOpen] = useState(false);
+  const [isUpscalerOpen, setIsUpscalerOpen] = useState(false);
   const [isKnowledgeTagDialogOpen, setIsKnowledgeTagDialogOpen] =
     useState(false);
 
@@ -217,6 +219,14 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
             Image tagging…
           </Dropdown.Item>
           <Dropdown.Item
+            key="upscale-image"
+            className="bg-secondary text-white"
+            onClick={() => setIsUpscalerOpen(true)}
+          >
+            Upscale image…
+          </Dropdown.Item>
+          <Dropdown.Item
+            key="convert-media"
             className="bg-secondary text-white"
             onClick={() => setIsConverterOpen(true)}
           >
@@ -330,6 +340,15 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
       {maybeRenderDeleteDialog()}
       {maybeRenderSceneGenerateDialog()}
       {maybeRenderKnowledgeTagDialog()}
+      {isUpscalerOpen && (
+        <MediaUpscalingDialog
+          selectedIds={[image.id]}
+          onHide={() => {
+            setIsUpscalerOpen(false);
+            void onMetadataApplied();
+          }}
+        />
+      )}
       {isConverterOpen && (
         <MediaConversionDialog
           kind="image"

@@ -21,6 +21,8 @@ type CopyrightReaderWriter interface {
 
 	FindParents(ctx context.Context, id int) ([]*Copyright, error)
 	FindChildren(ctx context.Context, id int) ([]*Copyright, error)
+	GetTagIDs(ctx context.Context, id int) ([]int, error)
+	UpdateTags(ctx context.Context, id int, tagIDs []int) error
 	ImageCount(ctx context.Context, id int) (int, error)
 	SceneCount(ctx context.Context, id int) (int, error)
 	PerformerCount(ctx context.Context, id int) (int, error)

@@ -33,9 +33,17 @@ type imageRoutes struct {
 }
 
 func (rs imageRoutes) Routes() chi.Router {
+	if config, err := loadMediaUpscalingConfig(); err != nil {
+		logger.Warnf("could not load media upscaling configuration: %v", err)
+	} else {
+		applyMediaUpscalingConfig(config)
+	}
+
 	r := chi.NewRouter()
 	r.Get("/converter", handleMediaConversionGet)
 	r.Post("/converter", handleMediaConversionPost)
+	r.Get("/upscaler-config", rs.MediaUpscalingConfig)
+	r.Post("/upscaler-config", rs.MediaUpscalingConfigUpdate)
 
 	r.Route("/visual-similarity", func(r chi.Router) {
 		r.Get("/status", rs.VisualSimilarityStatus)
@@ -167,7 +175,7 @@ func (rs imageRoutes) serveImage(w http.ResponseWriter, r *http.Request, i *mode
 			return
 		}
 
-		// only log in debug since it can get noisy
+		// backwards compatibility - fallback to original image instead
 		logger.Debugf("Error serving %s: %v", i.DisplayName(), err)
 	}
 
