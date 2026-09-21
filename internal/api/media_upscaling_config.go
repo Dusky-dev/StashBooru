@@ -203,8 +203,12 @@ func (rs imageRoutes) MediaUpscalingConfigUpdate(w http.ResponseWriter, r *http.
 		return
 	}
 	config = normalizeMediaUpscalingConfig(config)
-	if err := saveMediaUpscalingConfig(config); err != nil {
+	if err := validateMediaUpscalingConfig(config); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := saveMediaUpscalingConfig(config); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	applyMediaUpscalingConfig(config)
