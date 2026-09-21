@@ -89,10 +89,29 @@ jobs:
 
     # Bundle generated Go files + UI build for downstream jobs (test + build)
     - name: Upload generated artifacts
+      id: upload-generated-artifacts
+      continue-on-error: true
       uses: actions/upload-artifact@v7
       with:
         name: generated
         retention-days: 1
+        path: |
+          internal/api/generated_exec.go
+          internal/api/generated_models.go
+          ui/v2.5/build/
+          ui/login/locales/
+
+    - name: Pause before generated artifact retry
+      if: steps.upload-generated-artifacts.outcome == 'failure'
+      run: sleep 10
+
+    - name: Retry generated artifact upload
+      if: steps.upload-generated-artifacts.outcome == 'failure'
+      uses: actions/upload-artifact@v7
+      with:
+        name: generated
+        retention-days: 1
+        overwrite: true
         path: |
           internal/api/generated_exec.go
           internal/api/generated_models.go
@@ -209,10 +228,25 @@ jobs:
       run: docker rm -f -v build
 
     - name: Upload build artifact
+      id: upload-build-artifact
+      continue-on-error: true
       uses: actions/upload-artifact@v7
       with:
         name: build-${{ matrix.platform }}
         retention-days: 1
+        path: ${{ matrix.artifact-paths }}
+
+    - name: Pause before build artifact retry
+      if: steps.upload-build-artifact.outcome == 'failure'
+      run: sleep 10
+
+    - name: Retry build artifact upload
+      if: steps.upload-build-artifact.outcome == 'failure'
+      uses: actions/upload-artifact@v7
+      with:
+        name: build-${{ matrix.platform }}
+        retention-days: 1
+        overwrite: true
         path: ${{ matrix.artifact-paths }}
 
   # Job 4: Release
