@@ -70,7 +70,7 @@ class Waifu2xHardwareTests(unittest.TestCase):
             calls.append(args)
             raise RuntimeError("vkCreateInstance failed -9")
 
-        with self.assertRaisesRegex(RuntimeError, "CPU fallback cannot bypass this error"):
+        with self.assertRaisesRegex(RuntimeError, "working Vulkan ICD"):
             self.call(run, {**self.options, "hardware": "gpu"})
         self.assertEqual(len(calls), 1)
         self.assertNotIn("-g", calls[0])
@@ -92,7 +92,7 @@ class Waifu2xHardwareTests(unittest.TestCase):
             calls.append(args)
             raise RuntimeError("vkCreateInstance failed -9")
 
-        with self.assertRaisesRegex(RuntimeError, "CPU fallback cannot bypass this error"):
+        with self.assertRaisesRegex(RuntimeError, "working Vulkan ICD"):
             self.call(run)
         self.assertEqual(len(calls), 1)
 
