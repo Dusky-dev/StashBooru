@@ -19,7 +19,6 @@ import {
   ConversionConfig,
   ConversionFormat as Format,
   ConversionPlan,
-  ConversionUpscaler,
 } from "./mediaConversion";
 
 interface Target {
@@ -27,8 +26,6 @@ interface Target {
   id: number;
 }
 interface Options {
-  upscaler?: string;
-  upscaleScale?: number;
   format: string;
   hardware: string;
   quality: number;
@@ -39,6 +36,7 @@ interface Options {
   allowAlphaLoss: boolean;
 }
 interface FileSnapshot {
+  id: number;
   basename: string;
   path: string;
   size: number;
@@ -124,7 +122,6 @@ export const MediaConversionDialog: React.FC<{
   const [loadingPreview, setLoadingPreview] = useState(true);
   const [previewError, setPreviewError] = useState("");
   const [formats, setFormats] = useState<Format[]>([]);
-  const [upscalers, setUpscalers] = useState<ConversionUpscaler[]>([]);
   const [loadingCapabilities, setLoadingCapabilities] = useState(false);
   const [capabilityError, setCapabilityError] = useState("");
   const [state, setState] = useState<State>();
@@ -210,7 +207,6 @@ export const MediaConversionDialog: React.FC<{
     if (!backend) return;
     const controller = new AbortController();
     setFormats([]);
-    setUpscalers([]);
     setResolvedBackend("");
     setWorkerNotice("");
     setLoadingCapabilities(true);
@@ -221,7 +217,6 @@ export const MediaConversionDialog: React.FC<{
       .then(
         response<{
           formats: Format[];
-          upscalers?: ConversionUpscaler[];
           backend: string;
           notice: string;
         }>
@@ -229,7 +224,6 @@ export const MediaConversionDialog: React.FC<{
       .then((v) => {
         if (!controller.signal.aborted) {
           setFormats(v.formats);
-          setUpscalers(v.upscalers ?? []);
           setResolvedBackend(v.backend);
           setWorkerNotice(v.notice);
         }
@@ -497,71 +491,6 @@ export const MediaConversionDialog: React.FC<{
                 effort trades encoding time for compression.
               </p>
             )}
-            {kind === "image" && upscalers.length > 0 && (
-              <Row>
-                <Form.Group as={Col} controlId="converter-upscaler">
-                  <Form.Label>Optional upscaling (still images)</Form.Label>
-                  <Form.Control
-                    as="select"
-                    className="input-control"
-                    value={options.upscaler ?? ""}
-                    disabled={busy}
-                    onChange={(e) =>
-                      setOptions({
-                        ...options,
-                        upscaler: e.target.value || undefined,
-                        upscaleScale: e.target.value ? 2 : undefined,
-                        allowLarger: e.target.value
-                          ? true
-                          : options.allowLarger,
-                      })
-                    }
-                  >
-                    <option value="">None</option>
-                    {upscalers.map((u) => (
-                      <option
-                        key={u.id}
-                        value={u.id}
-                        disabled={
-                          !u.available || (options.hardware === "cpu" && !u.cpu)
-                        }
-                      >
-                        {u.label}
-                        {!u.available ? " — not installed on this worker" : ""}
-                      </option>
-                    ))}
-                  </Form.Control>
-                  <Form.Text className="text-muted">
-                    {upscalers.find((u) => u.id === options.upscaler)?.notice ||
-                      "Install models on the selected worker to enable waifu2x or SeedVR2."}
-                  </Form.Text>
-                </Form.Group>
-                {options.upscaler && (
-                  <Form.Group as={Col} controlId="converter-upscale-scale">
-                    <Form.Label>Scale</Form.Label>
-                    <Form.Control
-                      as="select"
-                      className="input-control"
-                      value={options.upscaleScale ?? 2}
-                      disabled={busy}
-                      onChange={(e) =>
-                        setOptions({
-                          ...options,
-                          upscaleScale: Number(e.target.value),
-                        })
-                      }
-                    >
-                      <option value={2}>2×</option>
-                      <option value={4}>4×</option>
-                    </Form.Control>
-                    <Form.Text className="text-muted">
-                      Upscale before encoding to the displayed output format.
-                      Originals remain restorable in the cache.
-                    </Form.Text>
-                  </Form.Group>
-                )}
-              </Row>
-            )}
             <Form.Check
               id="converter-larger"
               label="Keep outputs even when they are larger"
@@ -793,7 +722,15 @@ export const MediaConversionDialog: React.FC<{
                   return (
                     <tr key={r.id}>
                       <td>
-                        <div className="text-break">{before?.basename}</div>
+                        <div className="text-break">
+                          {before?.id ? (
+                            <a href={`/image/file/${before.id}/open`}>
+                              {before.basename}
+                            </a>
+                          ) : (
+                            before?.basename
+                          )}
+                        </div>
                         <small>{new Date(r.createdAt).toLocaleString()}</small>
                         <details>
                           <summary>Fingerprints</summary>
