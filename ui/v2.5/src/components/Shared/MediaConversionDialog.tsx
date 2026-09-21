@@ -39,6 +39,7 @@ interface Options {
   allowAlphaLoss: boolean;
 }
 interface FileSnapshot {
+  id: number;
   basename: string;
   path: string;
   size: number;
@@ -793,7 +794,15 @@ export const MediaConversionDialog: React.FC<{
                   return (
                     <tr key={r.id}>
                       <td>
-                        <div className="text-break">{before?.basename}</div>
+                        <div className="text-break">
+                          {before?.id ? (
+                            <a href={`/image/file/${before.id}/open`}>
+                              {before.basename}
+                            </a>
+                          ) : (
+                            before?.basename
+                          )}
+                        </div>
                         <small>{new Date(r.createdAt).toLocaleString()}</small>
                         <details>
                           <summary>Fingerprints</summary>
