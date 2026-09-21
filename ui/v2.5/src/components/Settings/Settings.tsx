@@ -17,8 +17,10 @@ import { SettingsServicesPanel } from "./SettingsServicesPanel";
 import { SettingsContext, useSettings } from "./context";
 import { SettingsLibraryPanel } from "./SettingsLibraryPanel";
 import { SettingsSecurityPanel } from "./SettingsSecurityPanel";
+import { InferenceWorkerSettings } from "./InferenceWorkerSettings";
 import { VisualSimilaritySettings } from "./VisualSimilaritySettings";
 import { MediaConversionSettings } from "./MediaConversionSettings";
+import { MediaUpscalingSettings } from "./MediaUpscalingSettings";
 import Changelog from "../Changelog/Changelog";
 import { TroubleshootingModeButton } from "../TroubleshootingMode/TroubleshootingModeButton";
 import { useTroubleshootingMode } from "../TroubleshootingMode/useTroubleshootingMode";
@@ -186,8 +188,10 @@ const SettingTabs: React.FC<{ tab: TabKey }> = ({ tab }) => {
               <SettingsScrapingPanel />
             </Tab.Pane>
             <Tab.Pane eventKey="system">
+              <InferenceWorkerSettings />
               <VisualSimilaritySettings />
               <MediaConversionSettings />
+              <MediaUpscalingSettings />
               <SettingsConfigurationPanel />
             </Tab.Pane>
             <Tab.Pane eventKey="plugins" unmountOnExit>

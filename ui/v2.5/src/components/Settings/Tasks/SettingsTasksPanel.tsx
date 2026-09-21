@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useIntl } from "react-intl";
 import { LoadingIndicator } from "src/components/Shared/LoadingIndicator";
 import { LibraryTasks } from "./LibraryTasks";
+import { AnimationInspectionTask } from "./AnimationInspectionTask";
 import { DataManagementTasks } from "./DataManagementTasks";
 import { PluginTasks } from "./PluginTasks";
 import { JobTable } from "./JobTable";
@@ -38,6 +39,8 @@ export const SettingsTasksPanel: React.FC = () => {
 
       <div className="tasks-panel-tasks">
         <LibraryTasks />
+        <hr />
+        <AnimationInspectionTask />
         <hr />
         <DataManagementTasks
           setIsBackupRunning={setIsBackupRunning}

@@ -26,6 +26,51 @@ export interface ConversionUpscaler {
   notice: string;
 }
 
+export interface UpscalingDefaults {
+  upscaler: string;
+  scale: 2 | 4;
+  hardware: "auto" | "cpu" | "gpu";
+  format: string;
+}
+
+const upscalingDefaultsKey = "stashbooru-upscaling-defaults";
+
+export const defaultUpscalingDefaults: UpscalingDefaults = {
+  upscaler: "waifu2x",
+  scale: 2,
+  hardware: "auto",
+  format: "auto",
+};
+
+export function loadUpscalingDefaults(): UpscalingDefaults {
+  try {
+    const saved = window.localStorage.getItem(upscalingDefaultsKey);
+    if (!saved) return defaultUpscalingDefaults;
+    const value = JSON.parse(saved) as Partial<UpscalingDefaults>;
+    return {
+      upscaler:
+        typeof value.upscaler === "string"
+          ? value.upscaler
+          : defaultUpscalingDefaults.upscaler,
+      scale: value.scale === 4 ? 4 : 2,
+      hardware:
+        value.hardware === "cpu" || value.hardware === "gpu"
+          ? value.hardware
+          : "auto",
+      format:
+        typeof value.format === "string" && value.format
+          ? value.format
+          : "auto",
+    };
+  } catch {
+    return defaultUpscalingDefaults;
+  }
+}
+
+export function saveUpscalingDefaults(value: UpscalingDefaults) {
+  window.localStorage.setItem(upscalingDefaultsKey, JSON.stringify(value));
+}
+
 export interface ConversionInputFormat {
   id: string;
   label: string;

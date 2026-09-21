@@ -160,6 +160,11 @@ func resolveTaggingEntities(ctx context.Context, repository models.Repository, p
 		if err != nil {
 			return taggingResolvedEntities{}, fmt.Errorf("resolving %s tag %q: %w", prediction.Category, prediction.Name, err)
 		}
+		if prediction.Category == "rating" {
+			if err := ensureContentRatingHierarchy(ctx, repository, entity); err != nil {
+				return taggingResolvedEntities{}, err
+			}
+		}
 		resolved.TagIDs = append(resolved.TagIDs, entity.ID)
 		resolved.Tags = append(resolved.Tags, camieAppliedEntity{
 			ID:       entity.ID,
@@ -173,6 +178,9 @@ func resolveTaggingEntities(ctx context.Context, repository models.Repository, p
 		}
 	}
 
+	if err := inheritResolvedProfileTagIDs(ctx, repository, &resolved); err != nil {
+		return taggingResolvedEntities{}, err
+	}
 	return resolved, nil
 }
 

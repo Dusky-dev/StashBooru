@@ -137,6 +137,46 @@ func resolveEva02TagOptions(r *http.Request) (float64, int, error) {
 	return threshold, limit, nil
 }
 
+func eva02TagPredictionToCamie(prediction visualembedding.TagPrediction) (camietagger.Tag, bool) {
+	category := strings.ToLower(strings.TrimSpace(prediction.Category))
+	name := strings.TrimSpace(prediction.Name)
+	if name == "" {
+		return camietagger.Tag{}, false
+	}
+	rawName := name
+
+	// WD category 9 contains content-rating labels. Older workers expose that
+	// category as "meta"; accept both spellings so server upgrades do not depend
+	// on a worker restart. "general" is the model's safe-rating label, so expose
+	// it as the clearer booru-style "safe" Tag. Do not retain "general" as an
+	// alias because Tag resolution also checks RawName and could otherwise reuse
+	// an unrelated Tag literally named "general".
+	if category == "meta" || category == "rating" {
+		switch strings.ToLower(name) {
+		case "general":
+			category = "rating"
+			name = "safe"
+			rawName = name
+		case "sensitive", "questionable", "explicit":
+			category = "rating"
+		default:
+			return camietagger.Tag{}, false
+		}
+	}
+
+	if category != "general" && category != "character" && category != "rating" {
+		return camietagger.Tag{}, false
+	}
+
+	return camietagger.Tag{
+		Name:     name,
+		RawName:  rawName,
+		Category: category,
+		Score:    prediction.Score,
+		Source:   "eva02",
+	}, true
+}
+
 // ImageEva02Predictions exposes tag logits from the already-packaged EVA02
 // visual-embedding model. The visualembedding client uses the same persistent
 // ONNX session for embeddings and tags; this endpoint never creates a second
@@ -177,19 +217,11 @@ func (rs imageRoutes) ImageEva02Predictions(w http.ResponseWriter, r *http.Reque
 	}
 	predictions := make([]camietagger.Tag, 0, len(tagPredictions))
 	for _, prediction := range tagPredictions {
-		// WD EVA02 category 9 is the image rating (general/sensitive/
-		// questionable/explicit), not booru metadata. Only expose the model's
-		// real metadata classes here so ratings cannot be applied as Tags.
-		if prediction.Category != "general" && prediction.Category != "character" {
+		tag, ok := eva02TagPredictionToCamie(prediction)
+		if !ok {
 			continue
 		}
-		predictions = append(predictions, camietagger.Tag{
-			Name:     prediction.Name,
-			RawName:  prediction.Name,
-			Category: prediction.Category,
-			Score:    prediction.Score,
-			Source:   "eva02",
-		})
+		predictions = append(predictions, tag)
 	}
 	predictions, err = enrichNativeCamiePredictionTargets(r.Context(), predictions)
 	if err != nil {

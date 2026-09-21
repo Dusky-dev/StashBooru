@@ -22,7 +22,6 @@ export const MediaConversionSettings: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [backend, setBackend] = useState("auto");
-  const [inspecting, setInspecting] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -121,46 +120,19 @@ export const MediaConversionSettings: React.FC = () => {
           >
             <option value="auto">Automatic — prefer remote worker</option>
             <option value="local">This StashBooru server</option>
-            <option value="remote">Remote tagging worker</option>
+            <option value="remote">Remote inference worker</option>
           </Form.Control>
         </Form.Group>
         <p>
-          Automatic mode prefers the remote inference worker configured above
-          when it is reachable. Otherwise, conversions run on this server. The
-          processor defaults to <strong>Prefer GPU, otherwise CPU</strong>.
+          Automatic mode prefers the shared remote inference worker configured
+          above when it is reachable. Otherwise, conversions run on this server.
+          The processor defaults to <strong>Prefer GPU, otherwise CPU</strong>.
         </p>
         <p className="text-muted">
           Animated PNG and WebP are detected separately from still images.
           Formats without a specific rule use Other images or Other videos.
-          Actual codec availability depends on the selected worker.
-        </p>
-        <p>
-          Scans inspect animation frames and automatically add the animated tag.
-          <Button
-            className="ml-2"
-            size="sm"
-            variant="secondary"
-            disabled={inspecting}
-            onClick={async () => {
-              setInspecting(true);
-              try {
-                await fetch(conversionEndpoint, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ action: "inspect-animations" }),
-                }).then(conversionResponse);
-                Toast.success(
-                  "Queued a scan to inspect existing images. Follow its progress in Tasks."
-                );
-              } catch (e) {
-                setError(e instanceof Error ? e.message : String(e));
-              } finally {
-                setInspecting(false);
-              }
-            }}
-          >
-            Inspect existing images
-          </Button>
+          Actual codec availability depends on the selected worker. Existing
+          library animation inspection is available from Tasks.
         </p>
         {error && <Alert variant="danger">{error}</Alert>}
         {!settings && !error && <Spinner animation="border" role="status" />}

@@ -47,11 +47,6 @@ interface VisualSimilarityJobResponse {
   jobID: number;
 }
 
-interface VisualSimilarityRemoteConfig {
-  url: string;
-  tokenConfigured: boolean;
-}
-
 async function readResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     throw new Error((await response.text()) || response.statusText);
@@ -75,28 +70,16 @@ export const VisualSimilaritySettings: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [savingWorker, setSavingWorker] = useState(false);
   const [savingCamie, setSavingCamie] = useState(false);
-  const [remoteURL, setRemoteURL] = useState("");
-  const [remoteToken, setRemoteToken] = useState("");
-  const [tokenConfigured, setTokenConfigured] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [statusResponse, configResponse] = await Promise.all([
-        fetch("image/visual-similarity/status"),
-        fetch("image/visual-similarity/remote-config"),
-      ]);
-      const nextStatus =
-        await readResponse<VisualSimilarityStatus>(statusResponse);
-      const remoteConfig =
-        await readResponse<VisualSimilarityRemoteConfig>(configResponse);
-      setStatus(nextStatus);
-      setRemoteURL(remoteConfig.url);
-      setTokenConfigured(remoteConfig.tokenConfigured);
+      const statusResponse = await fetch("image/visual-similarity/status");
+      setStatus(await readResponse<VisualSimilarityStatus>(statusResponse));
       setStatusError(undefined);
     } catch (error) {
+      setStatus(undefined);
       setStatusError(error instanceof Error ? error.message : String(error));
     }
 
@@ -105,11 +88,8 @@ export const VisualSimilaritySettings: React.FC = () => {
         fetch("image/visual-similarity/camie/status"),
         fetch("image/visual-similarity/camie/config"),
       ]);
-      const nextCamieStatus = await readResponse<CamieStatus>(camieResponse);
-      const nextCamieConfig =
-        await readResponse<CamieConfig>(camieConfigResponse);
-      setCamieStatus(nextCamieStatus);
-      setCamieConfig(nextCamieConfig);
+      setCamieStatus(await readResponse<CamieStatus>(camieResponse));
+      setCamieConfig(await readResponse<CamieConfig>(camieConfigResponse));
       setCamieStatusError(undefined);
     } catch (error) {
       setCamieStatus(undefined);
@@ -125,41 +105,6 @@ export const VisualSimilaritySettings: React.FC = () => {
     void refresh();
   }, [refresh]);
 
-  const saveRemoteWorker = useCallback(
-    async (clearToken = false) => {
-      setSavingWorker(true);
-      try {
-        const payload: {
-          url: string;
-          token?: string;
-          clearToken?: boolean;
-        } = { url: remoteURL.trim() };
-        if (clearToken) {
-          payload.clearToken = true;
-        } else if (remoteToken.trim()) {
-          payload.token = remoteToken.trim();
-        }
-
-        const response = await fetch("image/visual-similarity/remote-config", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const saved =
-          await readResponse<VisualSimilarityRemoteConfig>(response);
-        setRemoteURL(saved.url);
-        setTokenConfigured(saved.tokenConfigured);
-        setRemoteToken("");
-        await refresh();
-      } catch (error) {
-        Toast.error(error);
-      } finally {
-        setSavingWorker(false);
-      }
-    },
-    [Toast, refresh, remoteToken, remoteURL]
-  );
-
   const saveCamieConfig = useCallback(async () => {
     setSavingCamie(true);
     try {
@@ -168,8 +113,7 @@ export const VisualSimilaritySettings: React.FC = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(camieConfig),
       });
-      const saved = await readResponse<CamieConfig>(response);
-      setCamieConfig(saved);
+      setCamieConfig(await readResponse<CamieConfig>(response));
       Toast.success("Saved tagging defaults.");
     } catch (error) {
       Toast.error(error);
@@ -210,57 +154,10 @@ export const VisualSimilaritySettings: React.FC = () => {
       <h1>Visual Similarity</h1>
       <div className="sub-heading">
         Anime/cartoon-aware EVA02 image embeddings with cosine nearest-neighbour
-        search. Stash keeps the index locally; inference can run here or on a
-        remote GPU worker.
+        search. Inference uses the shared worker configured above while the
+        embedding index remains in StashBooru.
       </div>
       <Card>
-        <Setting
-          className="flex-column align-items-stretch"
-          heading="Inference worker"
-          subHeading="Leave the URL empty to use the local worker. Set a remote URL to stream images to another machine for inference while keeping all metadata and embeddings in StashBooru. The same remote worker is used for optional Camie inference."
-        >
-          <div className="mt-3 w-100">
-            <Form.Control
-              className="mb-2"
-              type="url"
-              value={remoteURL}
-              placeholder="http://gpu-pc:8000"
-              onChange={(event) => setRemoteURL(event.currentTarget.value)}
-            />
-            <Form.Control
-              className="mb-2"
-              type="password"
-              value={remoteToken}
-              placeholder={
-                tokenConfigured
-                  ? "Bearer token saved — leave blank to keep it"
-                  : "Optional bearer token"
-              }
-              onChange={(event) => setRemoteToken(event.currentTarget.value)}
-            />
-            <div className="d-flex flex-wrap justify-content-end">
-              {tokenConfigured ? (
-                <Button
-                  className="mr-2 mb-2"
-                  variant="outline-secondary"
-                  disabled={savingWorker}
-                  onClick={() => void saveRemoteWorker(true)}
-                >
-                  Clear token
-                </Button>
-              ) : null}
-              <Button
-                className="mb-2"
-                variant="secondary"
-                disabled={savingWorker}
-                onClick={() => void saveRemoteWorker(false)}
-              >
-                {savingWorker ? "Saving..." : "Save worker"}
-              </Button>
-            </div>
-          </div>
-        </Setting>
-
         <Setting
           heading="Embedding model"
           subHeading={
@@ -319,13 +216,12 @@ export const VisualSimilaritySettings: React.FC = () => {
                   max="0.999"
                   step="0.01"
                   value={camieConfig.threshold}
-                  onChange={(event) => {
-                    const value = Number.parseFloat(event.currentTarget.value);
+                  onChange={(event) =>
                     setCamieConfig((current) => ({
                       ...current,
-                      threshold: value,
-                    }));
-                  }}
+                      threshold: Number.parseFloat(event.currentTarget.value),
+                    }))
+                  }
                   style={{ width: "10rem" }}
                 />
               </Form.Group>
@@ -337,13 +233,14 @@ export const VisualSimilaritySettings: React.FC = () => {
                   max="0.999"
                   step="0.01"
                   value={camieConfig.eva02Threshold}
-                  onChange={(event) => {
-                    const value = Number.parseFloat(event.currentTarget.value);
+                  onChange={(event) =>
                     setCamieConfig((current) => ({
                       ...current,
-                      eva02Threshold: value,
-                    }));
-                  }}
+                      eva02Threshold: Number.parseFloat(
+                        event.currentTarget.value
+                      ),
+                    }))
+                  }
                   style={{ width: "9rem" }}
                 />
               </Form.Group>
@@ -354,16 +251,12 @@ export const VisualSimilaritySettings: React.FC = () => {
                   min="1"
                   max="200"
                   value={camieConfig.limit}
-                  onChange={(event) => {
-                    const value = Number.parseInt(
-                      event.currentTarget.value,
-                      10
-                    );
+                  onChange={(event) =>
                     setCamieConfig((current) => ({
                       ...current,
-                      limit: value,
-                    }));
-                  }}
+                      limit: Number.parseInt(event.currentTarget.value, 10),
+                    }))
+                  }
                   style={{ width: "9rem" }}
                 />
               </Form.Group>
@@ -426,19 +319,17 @@ export const VisualSimilaritySettings: React.FC = () => {
                 <code>{camieStatus.metadataPath}</code>
               </div>
             ) : null}
-
             <Form.Check
               className="mb-2"
               type="checkbox"
               id="camie-filename-enabled"
               checked={camieConfig.filenameEnabled}
-              onChange={(event) => {
-                const checked = event.currentTarget.checked;
+              onChange={(event) =>
                 setCamieConfig((current) => ({
                   ...current,
-                  filenameEnabled: checked,
-                }));
-              }}
+                  filenameEnabled: event.currentTarget.checked,
+                }))
+              }
               label="Use filename metadata together with Camie predictions"
             />
             <Form.Group className="mb-2">
@@ -447,13 +338,12 @@ export const VisualSimilaritySettings: React.FC = () => {
                 type="text"
                 disabled={!camieConfig.filenameEnabled}
                 value={camieConfig.filenameLayout}
-                onChange={(event) => {
-                  const value = event.currentTarget.value;
+                onChange={(event) =>
                   setCamieConfig((current) => ({
                     ...current,
-                    filenameLayout: value,
-                  }));
-                }}
+                    filenameLayout: event.currentTarget.value,
+                  }))
+                }
               />
               <Form.Text className="text-muted">
                 Supported tokens: <code>%artist%</code>,{" "}
@@ -472,7 +362,6 @@ export const VisualSimilaritySettings: React.FC = () => {
                 {savingCamie ? "Saving..." : "Save Camie filename settings"}
               </Button>
             </div>
-
             {!camieStatus?.installed && camieStatus?.workerOK ? (
               <div className="mt-2 text-muted">
                 Place <code>camie-tagger-v2.onnx</code> and{" "}
