@@ -211,6 +211,10 @@ func (rs imageRoutes) MediaUpscalingConfigUpdate(w http.ResponseWriter, r *http.
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	// Conversion jobs already serialize activation. Reuse the same lock so a
+	// worker process cannot inherit a half-updated path configuration.
+	conversionMutations.Lock()
 	applyMediaUpscalingConfig(config)
+	conversionMutations.Unlock()
 	writeVisualSimilarityJSON(w, config)
 }
