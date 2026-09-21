@@ -268,9 +268,9 @@ export const MediaUpscalingSettings: React.FC = () => {
             <h4>Local worker paths</h4>
             <p className="text-muted">
               These are filesystem paths on this StashBooru server. They are
-              saved server-side and are never sent in an upscaling request. Leave
-              a field blank to use the process environment or built-in worker
-              default.
+              saved server-side and are never sent in an upscaling request.
+              Leave a field blank to use the process environment or built-in
+              worker default.
             </p>
             {capabilities?.backend === "remote" && (
               <Alert variant="info">
@@ -351,9 +351,7 @@ export const MediaUpscalingSettings: React.FC = () => {
                     updateLocal("seedVR2CLI", event.target.value)
                   }
                 />
-                <Form.Text className="text-muted">
-                  STASH_SEEDVR2_CLI.
-                </Form.Text>
+                <Form.Text className="text-muted">STASH_SEEDVR2_CLI.</Form.Text>
               </Form.Group>
               <Form.Group
                 as={Col}
