@@ -94,15 +94,16 @@ export const MediaUpscalingDialog: React.FC<{
           allowAlphaLoss: false,
         },
       };
-      const result = await fetch(replace ? conversionEndpoint : upscaleEndpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          replace
-            ? { action: "start", useQuality: true, ...common }
-            : common
-        ),
-      }).then(conversionResponse<{ jobID: number }>);
+      const result = await fetch(
+        replace ? conversionEndpoint : upscaleEndpoint,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            replace ? { action: "start", useQuality: true, ...common } : common
+          ),
+        }
+      ).then(conversionResponse<{ jobID: number }>);
       setQueuedMode(replace ? "replace" : "copy");
       setJobID(result.jobID);
     } catch (e) {
@@ -136,8 +137,8 @@ export const MediaUpscalingDialog: React.FC<{
         <Modal.Body>
           <p>
             Upscale {selectedIds.length} selected image
-            {oneImage ? "" : "s"}. By default StashBooru creates a new Image
-            and leaves the original Image and original file untouched.
+            {oneImage ? "" : "s"}. By default StashBooru creates a new Image and
+            leaves the original Image and original file untouched.
           </p>
           {error && <Alert variant="danger">{error}</Alert>}
           {jobID && (
@@ -312,7 +313,10 @@ export const MediaUpscalingDialog: React.FC<{
                 </Alert>
               )}
               <p>
-                <Link to="/settings?tab=system#media-upscaling" onClick={onHide}>
+                <Link
+                  to="/settings?tab=system#media-upscaling"
+                  onClick={onHide}
+                >
                   Edit upscaler defaults and model paths in System settings
                 </Link>
               </p>
