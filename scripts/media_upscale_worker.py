@@ -48,9 +48,10 @@ def _waifu2x_vulkan_init_error(error: RuntimeError) -> bool:
 def _waifu2x_vulkan_help(error: RuntimeError) -> RuntimeError:
     return RuntimeError(
         f"{error}\nwaifu2x could not initialize Vulkan. Upstream waifu2x-ncnn-vulkan initializes Vulkan "
-        "even for -g -1 CPU mode, so CPU fallback cannot bypass this error. In Docker, expose the GPU "
-        "through the NVIDIA Container Toolkit (or the appropriate host GPU runtime), include the graphics "
-        "driver capability, and make a compatible Vulkan ICD/loader visible inside the container."
+        "even for -g -1 CPU mode, so the container still needs a working Vulkan ICD. On CPU-only Docker "
+        "hosts, use a software Vulkan ICD such as Mesa Lavapipe (the standard StashBooru Alpine image "
+        "includes mesa-vulkan-swrast). On GPU hosts, expose the GPU through the appropriate container "
+        "runtime and make the matching Vulkan ICD/loader visible inside the container."
     )
 
 
