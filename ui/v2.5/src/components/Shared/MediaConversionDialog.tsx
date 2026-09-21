@@ -641,17 +641,18 @@ export const MediaConversionDialog: React.FC<{
                 <p className="text-muted">
                   Net savings include retained originals and may be negative
                   until cache eviction. Repeated conversions are combined per
-                  file. These figures cover conversion outputs and their retained
-                  originals only. Upscaling has its own statistics and restore
-                  cache.
+                  file. These figures cover conversion outputs and their
+                  retained originals only. Upscaling has its own statistics and
+                  restore cache.
                 </p>
               </>
             )}
             <h5>Originals and restoration</h5>
             <p>
               Conversion originals are retained until this cache exceeds its
-              limit. Oldest originals are then permanently deleted. Zero disables
-              retention. Source fingerprints and conversion history remain.
+              limit. Oldest originals are then permanently deleted. Zero
+              disables retention. Source fingerprints and conversion history
+              remain.
             </p>
             <Row className="align-items-end">
               <Form.Group as={Col} xs={6} controlId="converter-cache">
