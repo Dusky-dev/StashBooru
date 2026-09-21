@@ -434,7 +434,7 @@ export const MediaUpscalingSettings: React.FC = () => {
                 onChange={(event) =>
                   updateLocal(
                     "seedVR2BlocksToSwap",
-                    Math.max(0, Number(event.target.value) || 0)
+                    Math.min(128, Math.max(0, Number(event.target.value) || 0))
                   )
                 }
               />
