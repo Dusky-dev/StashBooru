@@ -226,6 +226,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
             Upscale image…
           </Dropdown.Item>
           <Dropdown.Item
+            key="convert-media"
             className="bg-secondary text-white"
             onClick={() => setIsConverterOpen(true)}
           >
