@@ -228,17 +228,13 @@ func handleMediaConversionGet(w http.ResponseWriter, r *http.Request) {
 	end := min(offset+200, historyTotal)
 	history = history[offset:end]
 	batchStats := mediaconvert.Summarize(batchRecords)
-	// JSON numbers cannot represent all 64-bit pHashes in the browser.
-	for _, record := range history {
-		for _, snap := range []mediaconvert.Snapshot{record.Before, record.After} {
-			if f := snap.File(); f != nil {
-				for i, fp := range f.Base().Fingerprints {
-					f.Base().Fingerprints[i].Fingerprint = fp.Value()
-				}
-			}
-		}
+	normalizeRestoreHistoryFingerprints(history)
+	decoratedHistory, err := decorateMediaRestoreRecords(r.Context(), history)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-	writeVisualSimilarityJSON(w, map[string]interface{}{"config": config, "history": history, "historyTotal": historyTotal, "stats": stats, "job": activeJob, "batchStats": batchStats, "latestStats": latestStats})
+	writeVisualSimilarityJSON(w, map[string]interface{}{"config": config, "history": decoratedHistory, "historyTotal": historyTotal, "stats": stats, "job": activeJob, "batchStats": batchStats, "latestStats": latestStats})
 }
 
 func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
