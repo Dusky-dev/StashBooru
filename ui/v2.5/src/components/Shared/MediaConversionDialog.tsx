@@ -19,7 +19,6 @@ import {
   ConversionConfig,
   ConversionFormat as Format,
   ConversionPlan,
-  ConversionUpscaler,
 } from "./mediaConversion";
 
 interface Target {
@@ -27,8 +26,6 @@ interface Target {
   id: number;
 }
 interface Options {
-  upscaler?: string;
-  upscaleScale?: number;
   format: string;
   hardware: string;
   quality: number;
@@ -50,6 +47,8 @@ interface Conversion {
   createdAt: string;
   cached: boolean;
   error?: string;
+  mediaKind?: "image" | "scene";
+  mediaID?: number;
   before: { image?: FileSnapshot; video?: FileSnapshot };
   after: { image?: FileSnapshot; video?: FileSnapshot };
   result: { encoder: string; seconds: number };
@@ -88,6 +87,16 @@ function bytes(n: number) {
   const unit = Math.abs(n) >= GiB ? GiB : 1024 ** 2;
   return `${(n / unit).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${unit === GiB ? "GiB" : "MiB"}`;
 }
+
+function mediaURL(record: Conversion) {
+  if (!record.mediaID) return undefined;
+  return record.mediaKind === "image"
+    ? `/images/${record.mediaID}`
+    : record.mediaKind === "scene"
+      ? `/scenes/${record.mediaID}`
+      : undefined;
+}
+
 function StatsView({ value }: { value: Stats }) {
   return (
     <Row className="mb-3">
@@ -124,7 +133,6 @@ export const MediaConversionDialog: React.FC<{
   const [loadingPreview, setLoadingPreview] = useState(true);
   const [previewError, setPreviewError] = useState("");
   const [formats, setFormats] = useState<Format[]>([]);
-  const [upscalers, setUpscalers] = useState<ConversionUpscaler[]>([]);
   const [loadingCapabilities, setLoadingCapabilities] = useState(false);
   const [capabilityError, setCapabilityError] = useState("");
   const [state, setState] = useState<State>();
@@ -210,7 +218,6 @@ export const MediaConversionDialog: React.FC<{
     if (!backend) return;
     const controller = new AbortController();
     setFormats([]);
-    setUpscalers([]);
     setResolvedBackend("");
     setWorkerNotice("");
     setLoadingCapabilities(true);
@@ -221,7 +228,6 @@ export const MediaConversionDialog: React.FC<{
       .then(
         response<{
           formats: Format[];
-          upscalers?: ConversionUpscaler[];
           backend: string;
           notice: string;
         }>
@@ -229,7 +235,6 @@ export const MediaConversionDialog: React.FC<{
       .then((v) => {
         if (!controller.signal.aborted) {
           setFormats(v.formats);
-          setUpscalers(v.upscalers ?? []);
           setResolvedBackend(v.backend);
           setWorkerNotice(v.notice);
         }
@@ -497,71 +502,6 @@ export const MediaConversionDialog: React.FC<{
                 effort trades encoding time for compression.
               </p>
             )}
-            {kind === "image" && upscalers.length > 0 && (
-              <Row>
-                <Form.Group as={Col} controlId="converter-upscaler">
-                  <Form.Label>Optional upscaling (still images)</Form.Label>
-                  <Form.Control
-                    as="select"
-                    className="input-control"
-                    value={options.upscaler ?? ""}
-                    disabled={busy}
-                    onChange={(e) =>
-                      setOptions({
-                        ...options,
-                        upscaler: e.target.value || undefined,
-                        upscaleScale: e.target.value ? 2 : undefined,
-                        allowLarger: e.target.value
-                          ? true
-                          : options.allowLarger,
-                      })
-                    }
-                  >
-                    <option value="">None</option>
-                    {upscalers.map((u) => (
-                      <option
-                        key={u.id}
-                        value={u.id}
-                        disabled={
-                          !u.available || (options.hardware === "cpu" && !u.cpu)
-                        }
-                      >
-                        {u.label}
-                        {!u.available ? " — not installed on this worker" : ""}
-                      </option>
-                    ))}
-                  </Form.Control>
-                  <Form.Text className="text-muted">
-                    {upscalers.find((u) => u.id === options.upscaler)?.notice ||
-                      "Install models on the selected worker to enable waifu2x or SeedVR2."}
-                  </Form.Text>
-                </Form.Group>
-                {options.upscaler && (
-                  <Form.Group as={Col} controlId="converter-upscale-scale">
-                    <Form.Label>Scale</Form.Label>
-                    <Form.Control
-                      as="select"
-                      className="input-control"
-                      value={options.upscaleScale ?? 2}
-                      disabled={busy}
-                      onChange={(e) =>
-                        setOptions({
-                          ...options,
-                          upscaleScale: Number(e.target.value),
-                        })
-                      }
-                    >
-                      <option value={2}>2×</option>
-                      <option value={4}>4×</option>
-                    </Form.Control>
-                    <Form.Text className="text-muted">
-                      Upscale before encoding to the displayed output format.
-                      Originals remain restorable in the cache.
-                    </Form.Text>
-                  </Form.Group>
-                )}
-              </Row>
-            )}
             <Form.Check
               id="converter-larger"
               label="Keep outputs even when they are larger"
@@ -701,21 +641,21 @@ export const MediaConversionDialog: React.FC<{
                 <p className="text-muted">
                   Net savings include retained originals and may be negative
                   until cache eviction. Repeated conversions are combined per
-                  file. These figures cover media files and originals; generated
-                  previews, temporary files and filesystem compression are
-                  excluded.
+                  file. These figures cover conversion outputs and their retained
+                  originals only. Upscaling has its own statistics and restore
+                  cache.
                 </p>
               </>
             )}
             <h5>Originals and restoration</h5>
             <p>
-              Originals are retained until this cache exceeds its limit. Oldest
-              originals are then permanently deleted. Zero disables retention.
-              Source fingerprints and conversion history remain.
+              Conversion originals are retained until this cache exceeds its
+              limit. Oldest originals are then permanently deleted. Zero disables
+              retention. Source fingerprints and conversion history remain.
             </p>
             <Row className="align-items-end">
               <Form.Group as={Col} xs={6} controlId="converter-cache">
-                <Form.Label>Restore cache limit (GiB)</Form.Label>
+                <Form.Label>Conversion restore cache limit (GiB)</Form.Label>
                 <Form.Control
                   className="text-input"
                   type="number"
@@ -775,7 +715,7 @@ export const MediaConversionDialog: React.FC<{
               disabled={busy}
               onClick={() => void action({ action: "recover" })}
             >
-              Recover interrupted operations
+              Recover interrupted conversion operations
             </Button>
             <Table responsive size="sm">
               <thead>
@@ -790,10 +730,19 @@ export const MediaConversionDialog: React.FC<{
                 {state?.history.map((r) => {
                   const before = r.before.image ?? r.before.video;
                   const after = r.after.image ?? r.after.video;
+                  const url = mediaURL(r);
                   return (
                     <tr key={r.id}>
                       <td>
-                        <div className="text-break">{before?.basename}</div>
+                        <div className="text-break">
+                          {url ? (
+                            <Link to={url} onClick={onHide}>
+                              {before?.basename}
+                            </Link>
+                          ) : (
+                            before?.basename
+                          )}
+                        </div>
                         <small>{new Date(r.createdAt).toLocaleString()}</small>
                         <details>
                           <summary>Fingerprints</summary>
