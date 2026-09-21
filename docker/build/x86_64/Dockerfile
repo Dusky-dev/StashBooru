@@ -60,6 +60,9 @@ RUN apk add --no-cache \
     py3-numpy \
     py3-pillow \
     py3-onnxruntime \
+    gcompat \
+    libstdc++ \
+    vulkan-loader \
     && python3 -m pip install \
         --break-system-packages \
         --no-cache-dir \
