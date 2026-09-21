@@ -570,11 +570,7 @@ export const MediaUpscalingDialog: React.FC<{
                 restore cache.
               </p>
               <Row className="align-items-end">
-                <Form.Group
-                  as={Col}
-                  xs={6}
-                  controlId="upscaler-restore-cache"
-                >
+                <Form.Group as={Col} xs={6} controlId="upscaler-restore-cache">
                   <Form.Label>Upscaling restore cache limit (GiB)</Form.Label>
                   <Form.Control
                     className="text-input"
