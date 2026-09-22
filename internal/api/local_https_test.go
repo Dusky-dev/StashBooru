@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -37,12 +38,14 @@ func TestGenerateLocalCertificateIncludesDNSAndIPSANs(t *testing.T) {
 		}
 	}
 
-	keyInfo, err := os.Stat(keyFile)
-	if err != nil {
-		t.Fatalf("stat key: %v", err)
-	}
-	if got := keyInfo.Mode().Perm(); got != 0600 {
-		t.Errorf("key permissions = %o, want 600", got)
+	if runtime.GOOS != "windows" {
+		keyInfo, err := os.Stat(keyFile)
+		if err != nil {
+			t.Fatalf("stat key: %v", err)
+		}
+		if got := keyInfo.Mode().Perm(); got != 0600 {
+			t.Errorf("key permissions = %o, want 600", got)
+		}
 	}
 }
 
