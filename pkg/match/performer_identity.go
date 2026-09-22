@@ -38,9 +38,9 @@ func NormalizeIdentityPart(value string) string {
 	return strings.TrimSpace(ret.String())
 }
 
-// PathMatchesIdentityPart matches identity metadata such as a performer
-// disambiguation while treating punctuation as separators. For example,
-// "Re:Zero" matches "Re Zero", "Re-Zero", and "ReZero" in a path.
+// PathMatchesIdentityPart matches identity metadata while treating punctuation
+// as separators. For example, "Re:Zero" matches "Re Zero", "Re-Zero", and
+// "ReZero" in a path.
 func PathMatchesIdentityPart(path, value string) bool {
 	value = NormalizeIdentityPart(value)
 	if value == "" {
@@ -54,19 +54,22 @@ func performerIdentityKey(performer *models.Performer) string {
 	return strings.ToLower(strings.TrimSpace(performer.Name)) + "\x00" + strings.ToLower(NormalizeIdentityPart(performer.Disambiguation))
 }
 
-// PerformerCanonicalMatchesPath matches a performer by canonical identity.
-// A disambiguated performer must match both its name and disambiguation. A
-// bare-name performer can be suppressed when that canonical name is ambiguous.
+// PerformerCanonicalMatchesPath matches a performer by canonical identity. A
+// disambiguated performer is matched as one normalized name + disambiguation
+// label, rather than independently finding the name and context elsewhere in
+// the path. A bare-name performer can be suppressed when that name is
+// ambiguous.
 func PerformerCanonicalMatchesPath(performer *models.Performer, path string, canonicalNameAmbiguous bool) bool {
-	if performer == nil || nameMatchesPath(performer.Name, path) == -1 {
+	if performer == nil {
 		return false
 	}
 
 	if strings.TrimSpace(performer.Disambiguation) == "" {
-		return !canonicalNameAmbiguous
+		return nameMatchesPath(performer.Name, path) != -1 && !canonicalNameAmbiguous
 	}
 
-	return PathMatchesIdentityPart(path, performer.Disambiguation)
+	identity := NormalizeIdentityPart(performer.Name + " " + performer.Disambiguation)
+	return nameMatchesPath(identity, NormalizeIdentityPart(path)) != -1 && !canonicalNameAmbiguous
 }
 
 // PathToPerformersIdentityAware is the native auto-tag performer matcher used
