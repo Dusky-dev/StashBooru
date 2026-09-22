@@ -25,6 +25,10 @@ func TestPerformerNameIsAmbiguous(t *testing.T) {
 	lana := &models.Performer{ID: 1, Name: "Lana"}
 	lanaDuplicate := &models.Performer{ID: 2, Name: "Lana"}
 	lanaLower := &models.Performer{ID: 3, Name: "lana"}
+	echidnaReZero := &models.Performer{ID: 4, Name: "Echidna", Disambiguation: "Re:Zero"}
+	echidnaSonic := &models.Performer{ID: 5, Name: "Echidna", Disambiguation: "Sonic"}
+	echidnaReZeroDuplicate := &models.Performer{ID: 6, Name: "echidna", Disambiguation: "re:zero"}
+	echidnaBare := &models.Performer{ID: 7, Name: "Echidna"}
 
 	t.Run("unique name", func(t *testing.T) {
 		ambiguous, err := performerNameIsAmbiguous(context.Background(), performerNameFinderStub{
@@ -46,6 +50,30 @@ func TestPerformerNameIsAmbiguous(t *testing.T) {
 		ambiguous, err := performerNameIsAmbiguous(context.Background(), performerNameFinderStub{
 			matches: []*models.Performer{lana, lanaLower},
 		}, lana)
+		require.NoError(t, err)
+		assert.True(t, ambiguous)
+	})
+
+	t.Run("different disambiguations are distinct identities", func(t *testing.T) {
+		ambiguous, err := performerNameIsAmbiguous(context.Background(), performerNameFinderStub{
+			matches: []*models.Performer{echidnaReZero, echidnaSonic},
+		}, echidnaReZero)
+		require.NoError(t, err)
+		assert.False(t, ambiguous)
+	})
+
+	t.Run("same disambiguated identity is ambiguous case-insensitively", func(t *testing.T) {
+		ambiguous, err := performerNameIsAmbiguous(context.Background(), performerNameFinderStub{
+			matches: []*models.Performer{echidnaReZero, echidnaReZeroDuplicate},
+		}, echidnaReZero)
+		require.NoError(t, err)
+		assert.True(t, ambiguous)
+	})
+
+	t.Run("bare name remains ambiguous beside a disambiguated performer", func(t *testing.T) {
+		ambiguous, err := performerNameIsAmbiguous(context.Background(), performerNameFinderStub{
+			matches: []*models.Performer{echidnaBare, echidnaReZero},
+		}, echidnaBare)
 		require.NoError(t, err)
 		assert.True(t, ambiguous)
 	})
