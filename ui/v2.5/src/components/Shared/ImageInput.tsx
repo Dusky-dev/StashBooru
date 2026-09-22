@@ -14,12 +14,14 @@ import { Icon } from "./Icon";
 import {
   faClipboard,
   faFile,
+  faImages,
   faLink,
   faTrashAlt,
 } from "@fortawesome/free-solid-svg-icons";
 import { PatchComponent } from "src/patch";
 import ImageUtils from "src/utils/image";
 import { useToast } from "src/hooks/Toast";
+import { ImageGalleryPicker } from "./ImageGalleryPicker";
 
 export interface IImageInputExtraAction {
   icon: IconDefinition;
@@ -53,6 +55,7 @@ export const ImageInput: React.FC<IImageInput> = PatchComponent(
     extraActions,
   }) => {
     const [isShowDialog, setIsShowDialog] = useState(false);
+    const [isShowGallery, setIsShowGallery] = useState(false);
     const [url, setURL] = useState("");
     const fileInputRef = useRef<HTMLInputElement>(null);
     const intl = useIntl();
@@ -174,6 +177,17 @@ export const ImageInput: React.FC<IImageInput> = PatchComponent(
               </span>
             </Button>
           </div>
+          <div>
+            <Button className="minimal" onClick={() => setIsShowGallery(true)}>
+              <Icon icon={faImages} className="fa-fw" />
+              <span>
+                <FormattedMessage
+                  id="actions.from_gallery"
+                  defaultMessage="From gallery…"
+                />
+              </span>
+            </Button>
+          </div>
           {window.isSecureContext && (
             <div>
               <Button className="minimal" onClick={onPasteClipboard}>
@@ -217,6 +231,11 @@ export const ImageInput: React.FC<IImageInput> = PatchComponent(
     return (
       <>
         {renderDialog()}
+        <ImageGalleryPicker
+          show={isShowGallery}
+          onHide={() => setIsShowGallery(false)}
+          onSelect={onImageURL}
+        />
         <OverlayTrigger
           trigger="click"
           placement="top"
