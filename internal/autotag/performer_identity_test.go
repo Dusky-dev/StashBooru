@@ -25,6 +25,7 @@ func TestPerformerTaggersUseDisambiguationAndExplicitAliases(t *testing.T) {
 		assert.Equal(t, "Echidna", canonical.Name)
 		assert.True(t, canonical.matchesPath("/anime/Echidna - ReZero/image.jpg"))
 		assert.False(t, canonical.matchesPath("/sonic/Knuckles the Echidna/image.jpg"))
+		assert.False(t, canonical.matchesPath("/anime/ReZero/Knuckles the Echidna/image.jpg"))
 
 		assert.Equal(t, "Knuckles the Echidna", alias.Name)
 		assert.True(t, alias.matchesPath("/sonic/Knuckles the Echidna/image.jpg"))
