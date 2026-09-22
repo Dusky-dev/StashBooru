@@ -19,7 +19,7 @@ func (qb *PerformerStore) QueryAliasesForAutoTag(ctx context.Context, words []st
 
 	table := qb.table()
 	aliasTable := performersAliasesJoinTable
-	q := qb.selectDataset().InnerJoin(
+	q := qb.selectDataset().Distinct().InnerJoin(
 		aliasTable,
 		goqu.On(aliasTable.Col(performerIDColumn).Eq(table.Col(idColumn))),
 	)
@@ -32,7 +32,7 @@ func (qb *PerformerStore) QueryAliasesForAutoTag(ctx context.Context, words []st
 	q = q.Where(
 		goqu.Or(whereClauses...),
 		table.Col("ignore_auto_tag").Eq(0),
-	).GroupBy(table.Col(idColumn))
+	)
 
 	ret, err := qb.getMany(ctx, q)
 	if err != nil {
