@@ -264,7 +264,8 @@ export const ImageGalleryPicker: React.FC<IImageGalleryPickerProps> = ({
             }}
           >
             {images.map((image) => {
-              const thumbnail = image.paths.thumbnail ?? image.paths.image ?? "";
+              const thumbnail =
+                image.paths.thumbnail ?? image.paths.image ?? "";
               const title = imageTitle(image) || `#${image.id}`;
               const selecting = loadingImageID === image.id;
 
