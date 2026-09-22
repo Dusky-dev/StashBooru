@@ -99,6 +99,12 @@ func main() {
 	}
 	defer server.Shutdown()
 
+	if err := server.StartLocalHTTPS(); err != nil {
+		exitError(fmt.Errorf("local HTTPS initialization error: %w", err))
+		return
+	}
+	defer server.ShutdownLocalHTTPS()
+
 	exit := make(chan int)
 
 	go func() {
