@@ -15,7 +15,10 @@ type performerAliasAutoTagQueryer interface {
 	QueryAliasesForAutoTag(ctx context.Context, words []string) ([]*models.Performer, error)
 }
 
-func normalizeIdentityPart(value string) string {
+// NormalizeIdentityPart normalizes disambiguation-style identity metadata so
+// punctuation acts like a separator while compact forms still match. For
+// example, "Re:Zero" normalizes to "Re Zero".
+func NormalizeIdentityPart(value string) string {
 	var ret strings.Builder
 	separator := false
 
@@ -39,16 +42,16 @@ func normalizeIdentityPart(value string) string {
 // disambiguation while treating punctuation as separators. For example,
 // "Re:Zero" matches "Re Zero", "Re-Zero", and "ReZero" in a path.
 func PathMatchesIdentityPart(path, value string) bool {
-	value = normalizeIdentityPart(value)
+	value = NormalizeIdentityPart(value)
 	if value == "" {
 		return false
 	}
 
-	return nameMatchesPath(value, normalizeIdentityPart(path)) != -1
+	return nameMatchesPath(value, NormalizeIdentityPart(path)) != -1
 }
 
 func performerIdentityKey(performer *models.Performer) string {
-	return strings.ToLower(strings.TrimSpace(performer.Name)) + "\x00" + strings.ToLower(normalizeIdentityPart(performer.Disambiguation))
+	return strings.ToLower(strings.TrimSpace(performer.Name)) + "\x00" + strings.ToLower(NormalizeIdentityPart(performer.Disambiguation))
 }
 
 // PerformerCanonicalMatchesPath matches a performer by canonical identity.
