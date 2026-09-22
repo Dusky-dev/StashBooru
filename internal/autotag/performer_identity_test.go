@@ -31,3 +31,21 @@ func TestPerformerTaggersUseDisambiguationAndExplicitAliases(t *testing.T) {
 		assert.True(t, alias.matchesPath("/sonic/Knuckles the Echidna/image.jpg"))
 	}
 }
+
+func TestPerformerTaggersTolerateUnloadedAliases(t *testing.T) {
+	t.Parallel()
+
+	performer := &models.Performer{
+		ID:             1,
+		Name:           "Echidna",
+		Disambiguation: "Re:Zero",
+	}
+
+	assert.NotPanics(t, func() {
+		taggers := getPerformerTaggers(performer, nil)
+		if assert.Len(t, taggers, 1) {
+			assert.Equal(t, "Echidna", taggers[0].Name)
+			assert.True(t, taggers[0].matchesPath("/anime/Echidna - ReZero/image.jpg"))
+		}
+	})
+}

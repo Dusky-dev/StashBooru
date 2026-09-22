@@ -57,6 +57,13 @@ func getPerformerTaggers(p *models.Performer, cache *match.Cache) []performerTag
 		disambiguation: p.Disambiguation,
 	}}
 
+	// Aliases are an optional loaded relationship. Callers that need alias
+	// matching should load them first, but an unloaded relationship must not
+	// turn a valid canonical auto-tag operation into a server panic.
+	if !p.Aliases.Loaded() {
+		return ret
+	}
+
 	// Aliases are explicit independent auto-tag identities. Unlike the
 	// canonical name they do not require the performer's disambiguation.
 	for _, alias := range p.Aliases.List() {
@@ -74,7 +81,6 @@ func getPerformerTaggers(p *models.Performer, cache *match.Cache) []performerTag
 }
 
 // PerformerScenes searches for scenes whose path matches the provided performer identity and tags the scene with the performer.
-// Performer aliases must be loaded.
 func (tagger *Tagger) PerformerScenes(ctx context.Context, p *models.Performer, paths []string, rw SceneQueryPerformerUpdater) error {
 	t := getPerformerTaggers(p, tagger.Cache)
 
