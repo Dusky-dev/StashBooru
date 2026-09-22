@@ -1,11 +1,16 @@
-import React, { useMemo, useState } from "react";
-import { Button, Form, Spinner } from "react-bootstrap";
+import React, { useState } from "react";
+import { Button, Spinner } from "react-bootstrap";
 import { useIntl } from "react-intl";
+import { useLocation } from "react-router-dom";
 import * as GQL from "src/core/generated-graphql";
 import { imageTitle } from "src/core/files";
+import { usePerformerFilterHook } from "src/core/performers";
+import { useStudioFilterHook } from "src/core/studios";
+import { useTagFilterHook } from "src/core/tags";
 import { ListFilterModel } from "src/models/list-filter/filter";
 import ImageUtils from "src/utils/image";
 import { useToast } from "src/hooks/Toast";
+import { ClearableInput } from "./ClearableInput";
 import { ModalComponent } from "./Modal";
 
 interface IImageGalleryPickerProps {
@@ -14,7 +19,43 @@ interface IImageGalleryPickerProps {
   onSelect: (imageData: string) => void;
 }
 
+type GalleryEntityType = "performer" | "tag" | "studio" | "copyright";
+
+interface IGalleryEntityContext {
+  type: GalleryEntityType;
+  id: string;
+}
+
 const PAGE_SIZE = 30;
+
+function getGalleryEntityContext(
+  pathname: string
+): IGalleryEntityContext | undefined {
+  const parts = pathname.split("/").filter(Boolean);
+  if (parts.length < 2 || parts[1] === "new") return;
+
+  const id = parts[1];
+  switch (parts[0]) {
+    case "performers":
+    case "characters":
+      return { type: "performer", id };
+    case "tags":
+      return { type: "tag", id };
+    case "studios":
+    case "artists":
+      return { type: "studio", id };
+    case "copyrights":
+      return { type: "copyright", id };
+    default:
+      return;
+  }
+}
+
+function createInitialFilter() {
+  const ret = new ListFilterModel(GQL.FilterMode.Images);
+  ret.itemsPerPage = PAGE_SIZE;
+  return ret;
+}
 
 export const ImageGalleryPicker: React.FC<IImageGalleryPickerProps> = ({
   show,
@@ -23,35 +64,99 @@ export const ImageGalleryPicker: React.FC<IImageGalleryPickerProps> = ({
 }) => {
   const intl = useIntl();
   const Toast = useToast();
+  const location = useLocation();
+  const entityContext = getGalleryEntityContext(location.pathname);
+  const [filter, setFilter] = useState(createInitialFilter);
   const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
   const [loadingImageID, setLoadingImageID] = useState<string>();
 
-  const filter = useMemo(() => {
-    const ret = new ListFilterModel(GQL.FilterMode.Images);
-    ret.itemsPerPage = PAGE_SIZE;
-    ret.currentPage = page;
-    ret.searchTerm = search;
-    return ret;
-  }, [page, search]);
+  // Reuse the same filters as the entity Images tabs. The placeholder objects
+  // only need id/name because those are the only fields consumed by the hooks.
+  const performerFilterHook = usePerformerFilterHook({
+    id: entityContext?.id ?? "",
+    name: entityContext?.id ?? "",
+  } as GQL.PerformerDataFragment);
+  const tagFilterHook = useTagFilterHook({
+    id: entityContext?.id ?? "",
+    name: entityContext?.id ?? "",
+  } as GQL.TagDataFragment);
+  const studioFilterHook = useStudioFilterHook({
+    id: entityContext?.id ?? "",
+    name: entityContext?.id ?? "",
+  } as GQL.StudioDataFragment);
 
-  const { data, loading, error } = GQL.useFindImagesQuery({
-    skip: !show,
+  let effectiveFilter = filter.clone();
+  switch (entityContext?.type) {
+    case "performer":
+      effectiveFilter = performerFilterHook(effectiveFilter);
+      break;
+    case "tag":
+      effectiveFilter = tagFilterHook(effectiveFilter);
+      break;
+    case "studio":
+      effectiveFilter = studioFilterHook(effectiveFilter);
+      break;
+  }
+
+  const copyrightID =
+    entityContext?.type === "copyright" ? entityContext.id : "";
+  const {
+    data: copyrightData,
+    loading: copyrightLoading,
+    error: copyrightError,
+  } = GQL.useFindCopyrightQuery({
+    skip: !show || !copyrightID,
+    variables: { id: copyrightID },
+  });
+  const copyrightImageIDs =
+    entityContext?.type === "copyright"
+      ? (copyrightData?.findCopyright?.images ?? []).map((image) =>
+          Number(image.id)
+        )
+      : undefined;
+
+  const {
+    data,
+    loading: imagesLoading,
+    error: imagesError,
+  } = GQL.useFindImagesQuery({
+    skip:
+      !show ||
+      copyrightLoading ||
+      (copyrightImageIDs !== undefined && copyrightImageIDs.length === 0),
     variables: {
-      filter: filter.makeFindFilter(),
-      image_filter: filter.makeFilter(),
+      filter: effectiveFilter.makeFindFilter(),
+      image_filter: effectiveFilter.makeFilter(),
+      image_ids: copyrightImageIDs,
     },
   });
 
   const images = data?.findImages.images ?? [];
   const count = data?.findImages.count ?? 0;
   const pageCount = Math.max(1, Math.ceil(count / PAGE_SIZE));
+  const loading = copyrightLoading || imagesLoading;
+  const error = copyrightError ?? imagesError;
 
-  function applySearch(event: React.FormEvent) {
-    event.preventDefault();
-    setPage(1);
-    setSearch(searchInput.trim());
+  function applySearch(value = searchInput) {
+    setFilter((current) => {
+      const next = current.clone();
+      next.searchTerm = value.trim();
+      next.currentPage = 1;
+      return next;
+    });
+  }
+
+  function updateSearchInput(value: string) {
+    setSearchInput(value);
+    if (!value) applySearch("");
+  }
+
+  function changePage(page: number) {
+    setFilter((current) => {
+      const next = current.clone();
+      next.currentPage = page;
+      return next;
+    });
   }
 
   async function selectImage(image: GQL.SlimImageDataFragment) {
@@ -93,24 +198,26 @@ export const ImageGalleryPicker: React.FC<IImageGalleryPickerProps> = ({
       modalProps={{ size: "xl" }}
       isRunning={loadingImageID !== undefined}
     >
-      <Form onSubmit={applySearch} className="mb-3">
-        <div className="d-flex">
-          <Form.Control
-            value={searchInput}
-            onChange={(event) => setSearchInput(event.currentTarget.value)}
-            placeholder={intl.formatMessage({
-              id: "actions.search",
-              defaultMessage: "Search",
-            })}
-          />
-          <Button type="submit" variant="secondary" className="ml-2">
-            {intl.formatMessage({
-              id: "actions.search",
-              defaultMessage: "Search",
-            })}
-          </Button>
-        </div>
-      </Form>
+      <div className="d-flex mb-3">
+        <ClearableInput
+          className="search-term-input flex-grow-1"
+          value={searchInput}
+          setValue={updateSearchInput}
+          onEnter={() => applySearch()}
+          placeholder={`${intl.formatMessage({ id: "actions.search" })}…`}
+        />
+        <Button
+          type="button"
+          variant="secondary"
+          className="ml-2"
+          onClick={() => applySearch()}
+        >
+          {intl.formatMessage({
+            id: "actions.search",
+            defaultMessage: "Search",
+          })}
+        </Button>
+      </div>
 
       {error ? (
         <div className="text-danger">{error.message}</div>
@@ -197,8 +304,10 @@ export const ImageGalleryPicker: React.FC<IImageGalleryPickerProps> = ({
         <Button
           type="button"
           variant="secondary"
-          disabled={page <= 1 || loading || loadingImageID !== undefined}
-          onClick={() => setPage((value) => Math.max(1, value - 1))}
+          disabled={
+            filter.currentPage <= 1 || loading || loadingImageID !== undefined
+          }
+          onClick={() => changePage(Math.max(1, filter.currentPage - 1))}
         >
           {intl.formatMessage({
             id: "actions.previous_action",
@@ -206,15 +315,19 @@ export const ImageGalleryPicker: React.FC<IImageGalleryPickerProps> = ({
           })}
         </Button>
         <span>
-          {page} / {pageCount} ({count})
+          {filter.currentPage} / {pageCount} ({count})
         </span>
         <Button
           type="button"
           variant="secondary"
           disabled={
-            page >= pageCount || loading || loadingImageID !== undefined
+            filter.currentPage >= pageCount ||
+            loading ||
+            loadingImageID !== undefined
           }
-          onClick={() => setPage((value) => Math.min(pageCount, value + 1))}
+          onClick={() =>
+            changePage(Math.min(pageCount, filter.currentPage + 1))
+          }
         >
           {intl.formatMessage({
             id: "actions.next_action",
