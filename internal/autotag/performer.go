@@ -40,7 +40,10 @@ func (t performerTagger) matchesPath(path string) bool {
 		return true
 	}
 
-	return match.PathMatchesIdentityPart(path, t.disambiguation)
+	return match.PerformerCanonicalMatchesPath(&models.Performer{
+		Name:           t.Name,
+		Disambiguation: t.disambiguation,
+	}, path, false)
 }
 
 func getPerformerTaggers(p *models.Performer, cache *match.Cache) []performerTagger {
