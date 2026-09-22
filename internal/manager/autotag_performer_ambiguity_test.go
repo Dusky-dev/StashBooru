@@ -27,7 +27,7 @@ func TestPerformerNameIsAmbiguous(t *testing.T) {
 	lanaLower := &models.Performer{ID: 3, Name: "lana"}
 	echidnaReZero := &models.Performer{ID: 4, Name: "Echidna", Disambiguation: "Re:Zero"}
 	echidnaSonic := &models.Performer{ID: 5, Name: "Echidna", Disambiguation: "Sonic"}
-	echidnaReZeroDuplicate := &models.Performer{ID: 6, Name: "echidna", Disambiguation: "re:zero"}
+	echidnaReZeroDuplicate := &models.Performer{ID: 6, Name: "echidna", Disambiguation: "re zero"}
 	echidnaBare := &models.Performer{ID: 7, Name: "Echidna"}
 
 	t.Run("unique name", func(t *testing.T) {
@@ -62,7 +62,7 @@ func TestPerformerNameIsAmbiguous(t *testing.T) {
 		assert.False(t, ambiguous)
 	})
 
-	t.Run("same disambiguated identity is ambiguous case-insensitively", func(t *testing.T) {
+	t.Run("same normalized disambiguated identity is ambiguous", func(t *testing.T) {
 		ambiguous, err := performerNameIsAmbiguous(context.Background(), performerNameFinderStub{
 			matches: []*models.Performer{echidnaReZero, echidnaReZeroDuplicate},
 		}, echidnaReZero)
