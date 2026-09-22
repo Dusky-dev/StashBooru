@@ -10,7 +10,7 @@ import { useTagFilterHook } from "src/core/tags";
 import { ListFilterModel } from "src/models/list-filter/filter";
 import ImageUtils from "src/utils/image";
 import { useToast } from "src/hooks/Toast";
-import { SearchTermInput } from "src/components/List/ListFilter";
+import { ClearableInput } from "./ClearableInput";
 import { ModalComponent } from "./Modal";
 
 interface IImageGalleryPickerProps {
@@ -65,6 +65,7 @@ export const ImageGalleryPicker: React.FC<IImageGalleryPickerProps> = ({
   const location = useLocation();
   const entityContext = getGalleryEntityContext(location.pathname);
   const [filter, setFilter] = useState(createInitialFilter);
+  const [searchInput, setSearchInput] = useState("");
   const [loadingImageID, setLoadingImageID] = useState<string>();
 
   // Reuse the same filters as the entity Images tabs. The placeholder objects
@@ -134,6 +135,20 @@ export const ImageGalleryPicker: React.FC<IImageGalleryPickerProps> = ({
   const loading = copyrightLoading || imagesLoading;
   const error = copyrightError ?? imagesError;
 
+  function applySearch(value = searchInput) {
+    setFilter((current) => {
+      const next = current.clone();
+      next.searchTerm = value.trim();
+      next.currentPage = 1;
+      return next;
+    });
+  }
+
+  function updateSearchInput(value: string) {
+    setSearchInput(value);
+    if (!value) applySearch("");
+  }
+
   function changePage(page: number) {
     setFilter((current) => {
       const next = current.clone();
@@ -181,11 +196,25 @@ export const ImageGalleryPicker: React.FC<IImageGalleryPickerProps> = ({
       modalProps={{ size: "xl" }}
       isRunning={loadingImageID !== undefined}
     >
-      <div className="mb-3">
-        <SearchTermInput
-          filter={filter}
-          onFilterUpdate={(nextFilter) => setFilter(nextFilter)}
+      <div className="d-flex mb-3">
+        <ClearableInput
+          className="search-term-input flex-grow-1"
+          value={searchInput}
+          setValue={updateSearchInput}
+          onEnter={() => applySearch()}
+          placeholder={`${intl.formatMessage({ id: "actions.search" })}…`}
         />
+        <Button
+          type="button"
+          variant="secondary"
+          className="ml-2"
+          onClick={() => applySearch()}
+        >
+          {intl.formatMessage({
+            id: "actions.search",
+            defaultMessage: "Search",
+          })}
+        </Button>
       </div>
 
       {error ? (
