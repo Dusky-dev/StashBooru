@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -48,6 +49,10 @@ func (rs performerRoutes) AutoTag(w http.ResponseWriter, r *http.Request) {
 	repository := manager.GetInstance().Repository
 
 	err := repository.WithDB(r.Context(), func(ctx context.Context) error {
+		if err := performer.LoadAliases(ctx, repository.Performer); err != nil {
+			return fmt.Errorf("loading aliases for performer %d: %w", performer.ID, err)
+		}
+
 		tagger := autotag.Tagger{
 			TxnManager: repository.TxnManager,
 			Cache:      &match.Cache{},
