@@ -30,34 +30,57 @@ type GalleryQueryPerformerUpdater interface {
 	models.GalleryUpdater
 }
 
-func getPerformerTaggers(p *models.Performer, cache *match.Cache) []tagger {
-	ret := []tagger{{
-		ID:    p.ID,
-		Type:  "performer",
-		Name:  p.Name,
-		cache: cache,
+type performerTagger struct {
+	tagger
+	disambiguation string
+}
+
+func (t performerTagger) matchesPath(path string) bool {
+	if t.disambiguation == "" {
+		return true
+	}
+
+	return match.PathMatchesIdentityPart(path, t.disambiguation)
+}
+
+func getPerformerTaggers(p *models.Performer, cache *match.Cache) []performerTagger {
+	ret := []performerTagger{{
+		tagger: tagger{
+			ID:    p.ID,
+			Type:  "performer",
+			Name:  p.Name,
+			cache: cache,
+		},
+		disambiguation: p.Disambiguation,
 	}}
 
-	// TODO - disabled until we can have finer control over alias matching
-	// for _, a := range p.Aliases.List() {
-	// 	ret = append(ret, tagger{
-	// 		ID:    p.ID,
-	// 		Type:  "performer",
-	// 		Name:  a,
-	// 		cache: cache,
-	// 	})
-	// }
+	// Aliases are explicit independent auto-tag identities. Unlike the
+	// canonical name they do not require the performer's disambiguation.
+	for _, alias := range p.Aliases.List() {
+		ret = append(ret, performerTagger{
+			tagger: tagger{
+				ID:    p.ID,
+				Type:  "performer",
+				Name:  alias,
+				cache: cache,
+			},
+		})
+	}
 
 	return ret
 }
 
-// PerformerScenes searches for scenes whose path matches the provided performer name and tags the scene with the performer.
+// PerformerScenes searches for scenes whose path matches the provided performer identity and tags the scene with the performer.
 // Performer aliases must be loaded.
 func (tagger *Tagger) PerformerScenes(ctx context.Context, p *models.Performer, paths []string, rw SceneQueryPerformerUpdater) error {
 	t := getPerformerTaggers(p, tagger.Cache)
 
 	for _, tt := range t {
 		if err := tt.tagScenes(ctx, paths, rw, func(o *models.Scene) (bool, error) {
+			if !tt.matchesPath(o.Path) {
+				return false, nil
+			}
+
 			if err := o.LoadPerformerIDs(ctx, rw); err != nil {
 				return false, err
 			}
@@ -81,12 +104,16 @@ func (tagger *Tagger) PerformerScenes(ctx context.Context, p *models.Performer, 
 	return nil
 }
 
-// PerformerImages searches for images whose path matches the provided performer name and tags the image with the performer.
+// PerformerImages searches for images whose path matches the provided performer identity and tags the image with the performer.
 func (tagger *Tagger) PerformerImages(ctx context.Context, p *models.Performer, paths []string, rw ImageQueryPerformerUpdater) error {
 	t := getPerformerTaggers(p, tagger.Cache)
 
 	for _, tt := range t {
 		if err := tt.tagImages(ctx, paths, rw, func(o *models.Image) (bool, error) {
+			if !tt.matchesPath(o.Path) {
+				return false, nil
+			}
+
 			if err := o.LoadPerformerIDs(ctx, rw); err != nil {
 				return false, err
 			}
@@ -110,12 +137,16 @@ func (tagger *Tagger) PerformerImages(ctx context.Context, p *models.Performer, 
 	return nil
 }
 
-// PerformerGalleries searches for galleries whose path matches the provided performer name and tags the gallery with the performer.
+// PerformerGalleries searches for galleries whose path matches the provided performer identity and tags the gallery with the performer.
 func (tagger *Tagger) PerformerGalleries(ctx context.Context, p *models.Performer, paths []string, rw GalleryQueryPerformerUpdater) error {
 	t := getPerformerTaggers(p, tagger.Cache)
 
 	for _, tt := range t {
 		if err := tt.tagGalleries(ctx, paths, rw, func(o *models.Gallery) (bool, error) {
+			if !tt.matchesPath(o.Path) {
+				return false, nil
+			}
+
 			if err := o.LoadPerformerIDs(ctx, rw); err != nil {
 				return false, err
 			}
