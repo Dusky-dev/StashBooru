@@ -258,11 +258,11 @@ func (s autotagScraper) spec() Scraper {
 func getAutoTagScraper(repo Repository, globalConfig GlobalConfig) scraper {
 	base := autotagScraper{
 		txnManager:      repo.TxnManager,
-		performerReader: repo.Performer,
-		studioReader:    repo.Studio,
-		tagReader:       repo.Tag,
+		performerReader: repo.PerformerFinder,
+		studioReader:    repo.StudioFinder,
+		tagReader:       repo.TagFinder,
 		globalConfig:    globalConfig,
 	}
 
-	return newCachingScraper(base)
+	return base
 }
