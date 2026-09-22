@@ -27,7 +27,7 @@ type autotagScraper struct {
 }
 
 func autotagMatchPerformers(ctx context.Context, path string, performerReader models.PerformerAutoTagQueryer, trimExt bool) ([]*models.ScrapedPerformer, error) {
-	p, err := match.PathToPerformers(ctx, path, performerReader, nil, trimExt)
+	p, err := match.PathToPerformersIdentityAware(ctx, path, performerReader, nil, trimExt)
 	if err != nil {
 		return nil, fmt.Errorf("error matching performers: %w", err)
 	}
@@ -258,11 +258,11 @@ func (s autotagScraper) spec() Scraper {
 func getAutoTagScraper(repo Repository, globalConfig GlobalConfig) scraper {
 	base := autotagScraper{
 		txnManager:      repo.TxnManager,
-		performerReader: repo.PerformerFinder,
-		studioReader:    repo.StudioFinder,
-		tagReader:       repo.TagFinder,
+		performerReader: repo.Performer,
+		studioReader:    repo.Studio,
+		tagReader:       repo.Tag,
 		globalConfig:    globalConfig,
 	}
 
-	return base
+	return newCachingScraper(base)
 }
