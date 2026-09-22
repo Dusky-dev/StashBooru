@@ -79,7 +79,8 @@ func PathToPerformersIdentityAware(ctx context.Context, path string, reader mode
 		return nil, err
 	}
 
-	if aliasReader, ok := reader.(performerAliasAutoTagQueryer); ok {
+	aliasReader, aliasMatching := reader.(performerAliasAutoTagQueryer)
+	if aliasMatching {
 		aliasCandidates, err := aliasReader.QueryAliasesForAutoTag(ctx, words)
 		if err != nil {
 			return nil, err
@@ -117,11 +118,13 @@ func PathToPerformersIdentityAware(ctx context.Context, path string, reader mode
 		}
 		identityOwners[identityKey][performer.ID] = struct{}{}
 
-		aliases, err := reader.GetAliases(ctx, performer.ID)
-		if err != nil {
-			return nil, err
+		if aliasMatching {
+			aliases, err := reader.GetAliases(ctx, performer.ID)
+			if err != nil {
+				return nil, err
+			}
+			aliasesByID[performer.ID] = aliases
 		}
-		aliasesByID[performer.ID] = aliases
 	}
 
 	ret := make([]*models.Performer, 0, len(candidates))
