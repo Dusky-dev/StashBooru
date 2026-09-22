@@ -150,23 +150,23 @@ function renderCrop(
   context.drawImage(image, -image.naturalWidth / 2, -image.naturalHeight / 2);
   context.restore();
 
-  if (showGuides) {
-    context.save();
-    context.strokeStyle = "rgba(255, 255, 255, 0.55)";
-    context.lineWidth = 1;
-    context.setLineDash([5, 5]);
-    for (const fraction of [1 / 3, 2 / 3]) {
-      context.beginPath();
-      context.moveTo(canvas.width * fraction, 0);
-      context.lineTo(canvas.width * fraction, canvas.height);
-      context.stroke();
-      context.beginPath();
-      context.moveTo(0, canvas.height * fraction);
-      context.lineTo(canvas.width, canvas.height * fraction);
-      context.stroke();
-    }
-    context.restore();
+  if (!showGuides) return;
+
+  context.save();
+  context.strokeStyle = "rgba(255, 255, 255, 0.55)";
+  context.lineWidth = 1;
+  context.setLineDash([5, 5]);
+  for (const fraction of [1 / 3, 2 / 3]) {
+    context.beginPath();
+    context.moveTo(canvas.width * fraction, 0);
+    context.lineTo(canvas.width * fraction, canvas.height);
+    context.stroke();
+    context.beginPath();
+    context.moveTo(0, canvas.height * fraction);
+    context.lineTo(canvas.width, canvas.height * fraction);
+    context.stroke();
   }
+  context.restore();
 }
 
 export const SimpleImageEditorModal: React.FC<ISimpleImageEditorModalProps> = ({
@@ -221,6 +221,7 @@ export const SimpleImageEditorModal: React.FC<ISimpleImageEditorModalProps> = ({
 
   useEffect(() => {
     if (!image || !previewCanvas.current) return;
+
     try {
       const currentCrop = cropGeometry(
         image,
@@ -325,6 +326,7 @@ export const SimpleImageEditorModal: React.FC<ISimpleImageEditorModalProps> = ({
 
   function beginDrag(event: React.PointerEvent<HTMLCanvasElement>) {
     if (!crop) return;
+
     event.currentTarget.setPointerCapture(event.pointerId);
     dragState.current = {
       pointerID: event.pointerId,
@@ -339,7 +341,8 @@ export const SimpleImageEditorModal: React.FC<ISimpleImageEditorModalProps> = ({
   function moveDrag(event: React.PointerEvent<HTMLCanvasElement>) {
     const state = dragState.current;
     const canvas = previewCanvas.current;
-    if (!state || !crop || !canvas || state.pointerID !== event.pointerId) return;
+    if (!state || !crop || !canvas || state.pointerID !== event.pointerId)
+      return;
 
     const rect = canvas.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
@@ -356,6 +359,7 @@ export const SimpleImageEditorModal: React.FC<ISimpleImageEditorModalProps> = ({
 
   function endDrag(event: React.PointerEvent<HTMLCanvasElement>) {
     if (dragState.current?.pointerID !== event.pointerId) return;
+
     dragState.current = undefined;
     setDragging(false);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
@@ -372,15 +376,12 @@ export const SimpleImageEditorModal: React.FC<ISimpleImageEditorModalProps> = ({
     const anchorY = rect.height
       ? clamp((event.clientY - rect.top) / rect.height, 0, 1)
       : 0.5;
-    changeZoom(
-      zoom + (event.deltaY < 0 ? 0.15 : -0.15),
-      anchorX,
-      anchorY
-    );
+    changeZoom(zoom + (event.deltaY < 0 ? 0.15 : -0.15), anchorX, anchorY);
   }
 
-  async function apply() {
+  function apply() {
     if (!image || !crop) return;
+
     setApplying(true);
     try {
       if (
@@ -440,7 +441,7 @@ export const SimpleImageEditorModal: React.FC<ISimpleImageEditorModalProps> = ({
         }),
       }}
       accept={{
-        onClick: () => void apply(),
+        onClick: apply,
         text: intl.formatMessage({
           id: "actions.apply",
           defaultMessage: "Apply",
@@ -514,11 +515,7 @@ export const SimpleImageEditorModal: React.FC<ISimpleImageEditorModalProps> = ({
             defaultMessage: "Rotate right",
           })}
         </Button>
-        <Button
-          variant="secondary"
-          className="mr-2 mb-2"
-          onClick={centerCrop}
-        >
+        <Button variant="secondary" className="mr-2 mb-2" onClick={centerCrop}>
           {intl.formatMessage({
             id: "actions.center",
             defaultMessage: "Center",
@@ -550,23 +547,19 @@ export const SimpleImageEditorModal: React.FC<ISimpleImageEditorModalProps> = ({
       </Form.Group>
 
       <Form.Group className="mb-0">
-        <div className="d-flex justify-content-between align-items-center mb-1">
+        <div className="d-flex justify-content-between align-items-center mb-2">
           <Form.Label className="mb-0">
             {intl.formatMessage({ id: "zoom", defaultMessage: "Zoom" })}
           </Form.Label>
-          <span className="text-muted small">{Math.round(zoom * 100)}%</span>
+          <span>{zoom.toFixed(2)}×</span>
         </div>
         <div className="d-flex align-items-center">
           <Button
+            type="button"
             variant="secondary"
-            size="sm"
             className="mr-2"
             disabled={zoom <= MIN_ZOOM}
             onClick={() => changeZoom(zoom - 0.25)}
-            aria-label={intl.formatMessage({
-              id: "actions.zoom_out",
-              defaultMessage: "Zoom out",
-            })}
           >
             −
           </Button>
@@ -576,20 +569,14 @@ export const SimpleImageEditorModal: React.FC<ISimpleImageEditorModalProps> = ({
             max={MAX_ZOOM}
             step={0.05}
             value={zoom}
-            onChange={(event) =>
-              changeZoom(Number(event.currentTarget.value))
-            }
+            onChange={(event) => changeZoom(Number(event.currentTarget.value))}
           />
           <Button
+            type="button"
             variant="secondary"
-            size="sm"
             className="ml-2"
             disabled={zoom >= MAX_ZOOM}
             onClick={() => changeZoom(zoom + 0.25)}
-            aria-label={intl.formatMessage({
-              id: "actions.zoom_in",
-              defaultMessage: "Zoom in",
-            })}
           >
             +
           </Button>
