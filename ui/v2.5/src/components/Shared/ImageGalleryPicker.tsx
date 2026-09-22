@@ -28,7 +28,9 @@ interface IGalleryEntityContext {
 
 const PAGE_SIZE = 30;
 
-function getGalleryEntityContext(pathname: string): IGalleryEntityContext | undefined {
+function getGalleryEntityContext(
+  pathname: string
+): IGalleryEntityContext | undefined {
   const parts = pathname.split("/").filter(Boolean);
   if (parts.length < 2 || parts[1] === "new") return;
 
