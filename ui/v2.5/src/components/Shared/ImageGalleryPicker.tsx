@@ -211,7 +211,9 @@ export const ImageGalleryPicker: React.FC<IImageGalleryPickerProps> = ({
         <Button
           type="button"
           variant="secondary"
-          disabled={page >= pageCount || loading || loadingImageID !== undefined}
+          disabled={
+            page >= pageCount || loading || loadingImageID !== undefined
+          }
           onClick={() => setPage((value) => Math.min(pageCount, value + 1))}
         >
           {intl.formatMessage({
