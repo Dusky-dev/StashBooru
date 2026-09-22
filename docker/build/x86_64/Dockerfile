@@ -80,5 +80,5 @@ ENV STASH_VISUAL_EMBEDDING_WORKER=/usr/lib/stash/visual_embedding_worker.py
 ENV STASH_CAMIE_TAGGER_WORKER=/usr/lib/stash/camie_tagger_worker.py
 ENV STASH_MEDIA_CONVERSION_WORKER=/usr/lib/stash/media_conversion_worker.py
 
-EXPOSE 9999
+EXPOSE 9999 9443
 ENTRYPOINT ["stash"]
