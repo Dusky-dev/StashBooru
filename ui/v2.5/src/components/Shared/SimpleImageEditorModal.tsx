@@ -107,17 +107,17 @@ function renderEditedImage(
   context.translate(-crop.x, -crop.y);
   context.translate(dimensions.width / 2, dimensions.height / 2);
   context.rotate((normalizeRotation(rotation) * Math.PI) / 180);
-  context.drawImage(
-    image,
-    -image.naturalWidth / 2,
-    -image.naturalHeight / 2
-  );
+  context.drawImage(image, -image.naturalWidth / 2, -image.naturalHeight / 2);
   context.restore();
 }
 
-export const SimpleImageEditorModal: React.FC<
-  ISimpleImageEditorModalProps
-> = ({ show, source, title, onBack, onApply }) => {
+export const SimpleImageEditorModal: React.FC<ISimpleImageEditorModalProps> = ({
+  show,
+  source,
+  title,
+  onBack,
+  onApply,
+}) => {
   const intl = useIntl();
   const Toast = useToast();
   const previewCanvas = useRef<HTMLCanvasElement>(null);
@@ -196,14 +196,7 @@ export const SimpleImageEditorModal: React.FC<
       }
 
       const canvas = document.createElement("canvas");
-      renderEditedImage(
-        canvas,
-        image,
-        rotation,
-        aspect,
-        positionX,
-        positionY
-      );
+      renderEditedImage(canvas, image, rotation, aspect, positionX, positionY);
       onApply(canvas.toDataURL("image/png"));
     } catch (error) {
       Toast.error(error);
@@ -266,14 +259,22 @@ export const SimpleImageEditorModal: React.FC<
           className="mr-2 mb-2"
           onClick={() => rotate(-90)}
         >
-          ↺ {intl.formatMessage({ id: "actions.rotate_left", defaultMessage: "Rotate left" })}
+          ↺{" "}
+          {intl.formatMessage({
+            id: "actions.rotate_left",
+            defaultMessage: "Rotate left",
+          })}
         </Button>
         <Button
           variant="secondary"
           className="mr-2 mb-2"
           onClick={() => rotate(90)}
         >
-          ↻ {intl.formatMessage({ id: "actions.rotate_right", defaultMessage: "Rotate right" })}
+          ↻{" "}
+          {intl.formatMessage({
+            id: "actions.rotate_right",
+            defaultMessage: "Rotate right",
+          })}
         </Button>
         <Button variant="secondary" className="mb-2" onClick={reset}>
           {intl.formatMessage({ id: "actions.reset", defaultMessage: "Reset" })}
