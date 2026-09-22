@@ -30,17 +30,23 @@ func (i *Config) GetLocalHTTPSPort() int {
 }
 
 // GetLocalHTTPSHosts returns additional DNS names or IP addresses that should be
-// included in the generated local certificate. The setting is a comma/semicolon/
-// whitespace-separated string so it also works cleanly through environment variables.
+// included in the generated local certificate. YAML lists and comma/semicolon/
+// whitespace-separated strings are both accepted so environment overrides are easy.
 func (i *Config) GetLocalHTTPSHosts() []string {
-	raw := i.getString(LocalHTTPSHosts)
-	if raw == "" {
-		return nil
+	values := i.getStringSlice(LocalHTTPSHosts)
+	if len(values) == 0 {
+		if raw := i.getString(LocalHTTPSHosts); raw != "" {
+			values = []string{raw}
+		}
 	}
 
-	return strings.FieldsFunc(raw, func(r rune) bool {
-		return r == ',' || r == ';' || r == ' ' || r == '\t' || r == '\n'
-	})
+	var ret []string
+	for _, value := range values {
+		ret = append(ret, strings.FieldsFunc(value, func(r rune) bool {
+			return r == ',' || r == ';' || r == ' ' || r == '\t' || r == '\n'
+		})...)
+	}
+	return ret
 }
 
 func (i *Config) GetLocalHTTPSCertPath() string {
