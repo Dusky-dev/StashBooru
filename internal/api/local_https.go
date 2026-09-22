@@ -17,6 +17,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -356,6 +357,19 @@ func writeLocalHTTPSFile(path string, data []byte, mode os.FileMode) error {
 		return err
 	}
 	if err := tmp.Close(); err != nil {
+		return err
+	}
+
+	if err := os.Rename(tmpName, path); err == nil {
+		return nil
+	} else if runtime.GOOS != "windows" {
+		return err
+	}
+
+	// Windows does not replace an existing destination with os.Rename. Remove
+	// only that known destination and retry, preserving atomic replacement on
+	// platforms where rename-over-existing is supported.
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 		return err
 	}
 	return os.Rename(tmpName, path)
