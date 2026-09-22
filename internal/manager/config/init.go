@@ -34,15 +34,20 @@ var (
 
 	// map of env vars to config keys
 	envBinds = map[string]string{
-		"host":          Host,
-		"port":          Port,
-		"external_host": ExternalHost,
-		"generated":     Generated,
-		"metadata":      Metadata,
-		"blobs":         BlobsPath,
-		"cache":         Cache,
-		"stash":         Stash,
-		"ui":            UILocation,
+		"host":                  Host,
+		"port":                  Port,
+		"external_host":         ExternalHost,
+		"generated":             Generated,
+		"metadata":              Metadata,
+		"blobs":                 BlobsPath,
+		"cache":                 Cache,
+		"stash":                 Stash,
+		"ui":                    UILocation,
+		"local_https_enabled":   LocalHTTPSEnabled,
+		"local_https_port":      LocalHTTPSPort,
+		"local_https_hosts":     LocalHTTPSHosts,
+		"local_https_cert_path": LocalHTTPSCertPath,
+		"local_https_key_path":  LocalHTTPSKeyPath,
 	}
 )
 

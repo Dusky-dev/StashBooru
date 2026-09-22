@@ -99,6 +99,11 @@ func main() {
 	}
 	defer server.Shutdown()
 
+	if err := server.StartLocalHTTPS(); err != nil {
+		logger.Warnf("local HTTPS unavailable: %v", err)
+	}
+	defer server.ShutdownLocalHTTPS()
+
 	exit := make(chan int)
 
 	go func() {

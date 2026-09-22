@@ -5,9 +5,11 @@ services:
     image: ghcr.io/dusky-dev/stashbooru:develop
     container_name: stash
     restart: unless-stopped
-    ## the container's port must be the same with the STASH_PORT in the environment section
+    ## the container's HTTP port must be the same with STASH_PORT in the environment section
+    ## local HTTPS is enabled by default on 9443 while HTTP remains available for reverse proxies
     ports:
       - "9999:9999"
+      - "${STASH_LOCAL_HTTPS_PORT:-9443}:${STASH_LOCAL_HTTPS_PORT:-9443}"
     ## If you intend to use stash's DLNA functionality uncomment the below network mode and comment out the above ports section
     # network_mode: host
     logging:
@@ -20,8 +22,15 @@ services:
       - STASH_GENERATED=/generated/
       - STASH_METADATA=/metadata/
       - STASH_CACHE=/cache/
-      ## Adjust below to change default port (9999)
+      ## Adjust below to change default HTTP port (9999)
       - STASH_PORT=9999
+      ## Local HTTPS is enabled by default. The generated certificate persists in ./config.
+      - STASH_LOCAL_HTTPS_ENABLED=${STASH_LOCAL_HTTPS_ENABLED:-true}
+      - STASH_LOCAL_HTTPS_PORT=${STASH_LOCAL_HTTPS_PORT:-9443}
+      ## Docker bridge networking cannot discover the host LAN IP. Set this to your server
+      ## LAN IP (or comma-separated IPs/hostnames) to include raw-IP access in certificate SANs.
+      ## Example in .env: STASH_LOCAL_HTTPS_HOSTS=192.168.1.10
+      - STASH_LOCAL_HTTPS_HOSTS=${STASH_LOCAL_HTTPS_HOSTS:-}
       ## Set your timezone, e.g. America/New_York or Europe/Berlin
       ## see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
       - TZ=Etc/UTC
@@ -30,7 +39,7 @@ services:
       ## E.g. you can change ./config:/root/.stash to ./stash:/root/.stash
       ## The left part is the path on your host, the right part is the path in the stash container.
 
-      ## Keep configs, scrapers, and plugins here.
+      ## Keep configs, scrapers, plugins, and the generated local HTTPS certificate here.
       - ./config:/root/.stash
       ## Point this at your collection.
       ## The left side is where your collection is on your host, the right side is where it will be in stash.
