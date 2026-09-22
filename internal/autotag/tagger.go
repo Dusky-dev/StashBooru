@@ -52,12 +52,11 @@ func (t *tagger) addLog(otherType, otherName string) {
 }
 
 func (t *tagger) tagPerformers(ctx context.Context, performerReader models.PerformerAutoTagQueryer, addFunc addLinkFunc) error {
-	others, err := match.PathToPerformers(ctx, t.Path, performerReader, t.cache, t.trimExt)
+	others, err := match.PathToPerformersIdentityAware(ctx, t.Path, performerReader, t.cache, t.trimExt)
 	if err != nil {
 		return err
 	}
 
-	others = filterAmbiguousPerformerMatches(others)
 	for _, p := range others {
 		added, err := addFunc(t.ID, p.ID)
 

@@ -27,7 +27,7 @@ type autotagScraper struct {
 }
 
 func autotagMatchPerformers(ctx context.Context, path string, performerReader models.PerformerAutoTagQueryer, trimExt bool) ([]*models.ScrapedPerformer, error) {
-	p, err := match.PathToPerformers(ctx, path, performerReader, nil, trimExt)
+	p, err := match.PathToPerformersIdentityAware(ctx, path, performerReader, nil, trimExt)
 	if err != nil {
 		return nil, fmt.Errorf("error matching performers: %w", err)
 	}
