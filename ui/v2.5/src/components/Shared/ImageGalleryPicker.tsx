@@ -12,6 +12,7 @@ import ImageUtils from "src/utils/image";
 import { useToast } from "src/hooks/Toast";
 import { ClearableInput } from "./ClearableInput";
 import { ModalComponent } from "./Modal";
+import { SimpleImageEditorModal } from "./SimpleImageEditorModal";
 
 interface IImageGalleryPickerProps {
   show: boolean;
@@ -69,6 +70,8 @@ export const ImageGalleryPicker: React.FC<IImageGalleryPickerProps> = ({
   const [filter, setFilter] = useState(createInitialFilter);
   const [searchInput, setSearchInput] = useState("");
   const [loadingImageID, setLoadingImageID] = useState<string>();
+  const [editorSource, setEditorSource] = useState<string>();
+  const [editorTitle, setEditorTitle] = useState<string>();
 
   // Reuse the same filters as the entity Images tabs. The placeholder objects
   // only need id/name because those are the only fields consumed by the hooks.
@@ -105,7 +108,7 @@ export const ImageGalleryPicker: React.FC<IImageGalleryPickerProps> = ({
     loading: copyrightLoading,
     error: copyrightError,
   } = GQL.useFindCopyrightQuery({
-    skip: !show || !copyrightID,
+    skip: !show || !!editorSource || !copyrightID,
     variables: { id: copyrightID },
   });
   const copyrightImageIDs =
@@ -122,6 +125,7 @@ export const ImageGalleryPicker: React.FC<IImageGalleryPickerProps> = ({
   } = GQL.useFindImagesQuery({
     skip:
       !show ||
+      !!editorSource ||
       copyrightLoading ||
       (copyrightImageIDs !== undefined && copyrightImageIDs.length === 0),
     variables: {
@@ -159,6 +163,22 @@ export const ImageGalleryPicker: React.FC<IImageGalleryPickerProps> = ({
     });
   }
 
+  function closePicker() {
+    setEditorSource(undefined);
+    setEditorTitle(undefined);
+    onHide();
+  }
+
+  function backToGallery() {
+    setEditorSource(undefined);
+    setEditorTitle(undefined);
+  }
+
+  function applyEditedImage(imageData: string) {
+    onSelect(imageData);
+    closePicker();
+  }
+
   async function selectImage(image: GQL.SlimImageDataFragment) {
     const source = image.paths.image ?? image.paths.thumbnail ?? "";
     if (!source) {
@@ -174,8 +194,8 @@ export const ImageGalleryPicker: React.FC<IImageGalleryPickerProps> = ({
     setLoadingImageID(image.id);
     try {
       const imageData = await ImageUtils.imageToDataURL(source);
-      onSelect(imageData);
-      onHide();
+      setEditorTitle(imageTitle(image) || `#${image.id}`);
+      setEditorSource(imageData);
     } catch (e) {
       Toast.error(e);
     } finally {
@@ -184,157 +204,170 @@ export const ImageGalleryPicker: React.FC<IImageGalleryPickerProps> = ({
   }
 
   return (
-    <ModalComponent
-      show={show}
-      onHide={onHide}
-      header={intl.formatMessage({
-        id: "dialogs.select_image_from_gallery",
-        defaultMessage: "Select image from gallery",
-      })}
-      accept={{
-        onClick: onHide,
-        text: intl.formatMessage({ id: "actions.close" }),
-      }}
-      modalProps={{ size: "xl" }}
-      isRunning={loadingImageID !== undefined}
-    >
-      <div className="d-flex mb-3">
-        <ClearableInput
-          className="search-term-input flex-grow-1"
-          value={searchInput}
-          setValue={updateSearchInput}
-          onEnter={() => applySearch()}
-          placeholder={`${intl.formatMessage({ id: "actions.search" })}…`}
-        />
-        <Button
-          type="button"
-          variant="secondary"
-          className="ml-2"
-          onClick={() => applySearch()}
-        >
-          {intl.formatMessage({
-            id: "actions.search",
-            defaultMessage: "Search",
-          })}
-        </Button>
-      </div>
-
-      {error ? (
-        <div className="text-danger">{error.message}</div>
-      ) : loading ? (
-        <div className="text-center py-5">
-          <Spinner animation="border" role="status" />
+    <>
+      <ModalComponent
+        show={show && !editorSource}
+        onHide={closePicker}
+        header={intl.formatMessage({
+          id: "dialogs.select_image_from_gallery",
+          defaultMessage: "Select image from gallery",
+        })}
+        accept={{
+          onClick: closePicker,
+          text: intl.formatMessage({ id: "actions.close" }),
+        }}
+        modalProps={{ size: "xl" }}
+        isRunning={loadingImageID !== undefined}
+      >
+        <div className="d-flex mb-3">
+          <ClearableInput
+            className="search-term-input flex-grow-1"
+            value={searchInput}
+            setValue={updateSearchInput}
+            onEnter={() => applySearch()}
+            placeholder={`${intl.formatMessage({ id: "actions.search" })}…`}
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            className="ml-2"
+            onClick={() => applySearch()}
+          >
+            {intl.formatMessage({
+              id: "actions.search",
+              defaultMessage: "Search",
+            })}
+          </Button>
         </div>
-      ) : images.length === 0 ? (
-        <div className="text-muted text-center py-5">
-          {intl.formatMessage({
-            id: "no_images_found",
-            defaultMessage: "No images found.",
-          })}
-        </div>
-      ) : (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
-            gap: "0.75rem",
-            maxHeight: "65vh",
-            overflowY: "auto",
-          }}
-        >
-          {images.map((image) => {
-            const thumbnail = image.paths.thumbnail ?? image.paths.image ?? "";
-            const title = imageTitle(image) || `#${image.id}`;
-            const selecting = loadingImageID === image.id;
 
-            return (
-              <Button
-                key={image.id}
-                type="button"
-                variant="secondary"
-                className="p-1 text-left"
-                disabled={loadingImageID !== undefined}
-                onClick={() => void selectImage(image)}
-                title={title}
-                style={{ minWidth: 0 }}
-              >
-                <div
-                  style={{
-                    position: "relative",
-                    width: "100%",
-                    paddingTop: "100%",
-                    overflow: "hidden",
-                  }}
+        {error ? (
+          <div className="text-danger">{error.message}</div>
+        ) : loading ? (
+          <div className="text-center py-5">
+            <Spinner animation="border" role="status" />
+          </div>
+        ) : images.length === 0 ? (
+          <div className="text-muted text-center py-5">
+            {intl.formatMessage({
+              id: "no_images_found",
+              defaultMessage: "No images found.",
+            })}
+          </div>
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
+              gap: "0.75rem",
+              maxHeight: "65vh",
+              overflowY: "auto",
+            }}
+          >
+            {images.map((image) => {
+              const thumbnail =
+                image.paths.thumbnail ?? image.paths.image ?? "";
+              const title = imageTitle(image) || `#${image.id}`;
+              const selecting = loadingImageID === image.id;
+
+              return (
+                <Button
+                  key={image.id}
+                  type="button"
+                  variant="secondary"
+                  className="p-1 text-left"
+                  disabled={loadingImageID !== undefined}
+                  onClick={() => void selectImage(image)}
+                  title={title}
+                  style={{ minWidth: 0 }}
                 >
-                  <img
-                    src={thumbnail}
-                    alt={title}
-                    loading="lazy"
+                  <div
                     style={{
-                      position: "absolute",
-                      inset: 0,
+                      position: "relative",
                       width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
+                      paddingTop: "100%",
+                      overflow: "hidden",
                     }}
-                  />
-                  {selecting && (
-                    <span
+                  >
+                    <img
+                      src={thumbnail}
+                      alt={title}
+                      loading="lazy"
                       style={{
                         position: "absolute",
                         inset: 0,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        background: "rgba(0, 0, 0, 0.55)",
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
                       }}
-                    >
-                      <Spinner animation="border" role="status" size="sm" />
-                    </span>
-                  )}
-                </div>
-                <div className="text-truncate px-1 pt-1">{title}</div>
-              </Button>
-            );
-          })}
-        </div>
-      )}
+                    />
+                    {selecting && (
+                      <span
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          background: "rgba(0, 0, 0, 0.55)",
+                        }}
+                      >
+                        <Spinner animation="border" role="status" size="sm" />
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-truncate px-1 pt-1">{title}</div>
+                </Button>
+              );
+            })}
+          </div>
+        )}
 
-      <div className="d-flex justify-content-between align-items-center mt-3">
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={
-            filter.currentPage <= 1 || loading || loadingImageID !== undefined
-          }
-          onClick={() => changePage(Math.max(1, filter.currentPage - 1))}
-        >
-          {intl.formatMessage({
-            id: "actions.previous_action",
-            defaultMessage: "Back",
-          })}
-        </Button>
-        <span>
-          {filter.currentPage} / {pageCount} ({count})
-        </span>
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={
-            filter.currentPage >= pageCount ||
-            loading ||
-            loadingImageID !== undefined
-          }
-          onClick={() =>
-            changePage(Math.min(pageCount, filter.currentPage + 1))
-          }
-        >
-          {intl.formatMessage({
-            id: "actions.next_action",
-            defaultMessage: "Next",
-          })}
-        </Button>
-      </div>
-    </ModalComponent>
+        <div className="d-flex justify-content-between align-items-center mt-3">
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={
+              filter.currentPage <= 1 || loading || loadingImageID !== undefined
+            }
+            onClick={() => changePage(Math.max(1, filter.currentPage - 1))}
+          >
+            {intl.formatMessage({
+              id: "actions.previous_action",
+              defaultMessage: "Back",
+            })}
+          </Button>
+          <span>
+            {filter.currentPage} / {pageCount} ({count})
+          </span>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={
+              filter.currentPage >= pageCount ||
+              loading ||
+              loadingImageID !== undefined
+            }
+            onClick={() =>
+              changePage(Math.min(pageCount, filter.currentPage + 1))
+            }
+          >
+            {intl.formatMessage({
+              id: "actions.next_action",
+              defaultMessage: "Next",
+            })}
+          </Button>
+        </div>
+      </ModalComponent>
+
+      {editorSource ? (
+        <SimpleImageEditorModal
+          show={show}
+          source={editorSource}
+          title={editorTitle}
+          onBack={backToGallery}
+          onApply={applyEditedImage}
+        />
+      ) : null}
+    </>
   );
 };
