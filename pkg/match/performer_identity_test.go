@@ -51,6 +51,7 @@ func TestPerformerCanonicalMatchesPath(t *testing.T) {
 
 	assert.True(t, PerformerCanonicalMatchesPath(echidna, "/anime/Echidna - ReZero/image.jpg", false))
 	assert.False(t, PerformerCanonicalMatchesPath(echidna, "/sonic/Knuckles the Echidna/image.jpg", false))
+	assert.False(t, PerformerCanonicalMatchesPath(echidna, "/ReZero/Knuckles the Echidna/image.jpg", false))
 	assert.True(t, PerformerCanonicalMatchesPath(bare, "/media/Lana/image.jpg", false))
 	assert.False(t, PerformerCanonicalMatchesPath(bare, "/media/Lana/image.jpg", true))
 }
@@ -71,13 +72,13 @@ func TestPathToPerformersIdentityAware(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []*models.Performer{echidnaReZero}, matches)
 
-	matches, err = PathToPerformersIdentityAware(context.Background(), "/sonic/Knuckles the Echidna/image.jpg", reader, &Cache{}, true)
+	matches, err = PathToPerformersIdentityAware(context.Background(), "/ReZero/Knuckles the Echidna/image.jpg", reader, &Cache{}, true)
 	require.NoError(t, err)
 	assert.Equal(t, []*models.Performer{knuckles}, matches)
 
 	reader.aliases = []*models.Performer{echidnaReZero}
 	reader.aliasMap[echidnaReZero.ID] = []string{"Knuckles the Echidna"}
-	matches, err = PathToPerformersIdentityAware(context.Background(), "/sonic/Knuckles the Echidna/image.jpg", reader, &Cache{}, true)
+	matches, err = PathToPerformersIdentityAware(context.Background(), "/ReZero/Knuckles the Echidna/image.jpg", reader, &Cache{}, true)
 	require.NoError(t, err)
 	assert.Equal(t, []*models.Performer{echidnaReZero, knuckles}, matches)
 }
