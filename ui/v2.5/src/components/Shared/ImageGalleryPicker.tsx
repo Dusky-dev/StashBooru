@@ -3,6 +3,7 @@ import { Button, Spinner } from "react-bootstrap";
 import { useIntl } from "react-intl";
 import { useLocation } from "react-router-dom";
 import * as GQL from "src/core/generated-graphql";
+import { useCopyrightFilterHook } from "src/core/copyrights";
 import { imageTitle } from "src/core/files";
 import { usePerformerFilterHook } from "src/core/performers";
 import { useStudioFilterHook } from "src/core/studios";
@@ -87,6 +88,10 @@ export const ImageGalleryPicker: React.FC<IImageGalleryPickerProps> = ({
     id: entityContext?.id ?? "",
     name: entityContext?.id ?? "",
   } as GQL.StudioDataFragment);
+  const copyrightFilterHook = useCopyrightFilterHook({
+    id: entityContext?.id ?? "",
+    name: entityContext?.id ?? "",
+  });
 
   let effectiveFilter = filter.clone();
   switch (entityContext?.type) {
@@ -99,47 +104,22 @@ export const ImageGalleryPicker: React.FC<IImageGalleryPickerProps> = ({
     case "studio":
       effectiveFilter = studioFilterHook(effectiveFilter);
       break;
+    case "copyright":
+      effectiveFilter = copyrightFilterHook(effectiveFilter);
+      break;
   }
 
-  const copyrightID =
-    entityContext?.type === "copyright" ? entityContext.id : "";
-  const {
-    data: copyrightData,
-    loading: copyrightLoading,
-    error: copyrightError,
-  } = GQL.useFindCopyrightQuery({
-    skip: !show || !!editorSource || !copyrightID,
-    variables: { id: copyrightID },
-  });
-  const copyrightImageIDs =
-    entityContext?.type === "copyright"
-      ? (copyrightData?.findCopyright?.images ?? []).map((image) =>
-          Number(image.id)
-        )
-      : undefined;
-
-  const {
-    data,
-    loading: imagesLoading,
-    error: imagesError,
-  } = GQL.useFindImagesQuery({
-    skip:
-      !show ||
-      !!editorSource ||
-      copyrightLoading ||
-      (copyrightImageIDs !== undefined && copyrightImageIDs.length === 0),
+  const { data, loading, error } = GQL.useFindImagesQuery({
+    skip: !show || !!editorSource,
     variables: {
       filter: effectiveFilter.makeFindFilter(),
       image_filter: effectiveFilter.makeFilter(),
-      image_ids: copyrightImageIDs,
     },
   });
 
   const images = data?.findImages.images ?? [];
   const count = data?.findImages.count ?? 0;
   const pageCount = Math.max(1, Math.ceil(count / PAGE_SIZE));
-  const loading = copyrightLoading || imagesLoading;
-  const error = copyrightError ?? imagesError;
 
   function applySearch(value = searchInput) {
     setFilter((current) => {

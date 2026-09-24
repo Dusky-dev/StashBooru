@@ -5,6 +5,7 @@ import { Route, Switch, useHistory, useParams } from "react-router-dom";
 import cx from "classnames";
 
 import * as GQL from "src/core/generated-graphql";
+import { useCopyrightFilterHook } from "src/core/copyrights";
 import {
   Copyright,
   CopyrightSelect,
@@ -358,18 +359,15 @@ const CopyrightMediaTabs: React.FC<{
     () => copyright.scenes.map((scene) => Number(scene.id)),
     [copyright.scenes]
   );
-  const imageIDs = useMemo(
-    () => copyright.images.map((image) => Number(image.id)),
-    [copyright.images]
-  );
   const performerIDs = useMemo(
     () => copyright.performers.map((performer) => Number(performer.id)),
     [copyright.performers]
   );
+  const imageFilterHook = useCopyrightFilterHook(copyright);
 
   const renderImages = () => (
     <FilteredImageList
-      imageIDs={imageIDs}
+      filterHook={imageFilterHook}
       alterQuery
       view={View.CopyrightImages}
     />

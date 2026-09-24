@@ -96,6 +96,7 @@ func (qb *imageFilterHandler) criterionHandler() criterionHandler {
 		qb.tagCountCriterionHandler(imageFilter.TagCount),
 		qb.galleriesCriterionHandler(imageFilter.Galleries),
 		qb.performersCriterionHandler(imageFilter.Performers),
+		qb.copyrightsCriterionHandler(imageFilter.Copyrights),
 		qb.performerCountCriterionHandler(imageFilter.PerformerCount),
 		studioCriterionHandler(imageTable, imageFilter.Studios),
 		qb.performerTagsCriterionHandler(imageFilter.PerformerTags),
@@ -278,6 +279,22 @@ func (qb *imageFilterHandler) performersCriterionHandler(performers *models.Mult
 	}
 
 	return h.handler(performers)
+}
+
+func (qb *imageFilterHandler) copyrightsCriterionHandler(copyrights *models.MultiCriterionInput) criterionHandlerFunc {
+	h := joinedMultiCriterionHandlerBuilder{
+		primaryTable: imageTable,
+		joinTable:    imagesCopyrightsTable,
+		joinAs:       "copyrights_join",
+		primaryFK:    imageIDColumn,
+		foreignFK:    "copyright_id",
+
+		addJoinTable: func(f *filterBuilder, joinType joinType) {
+			f.addJoin(joinType, imagesCopyrightsTable, "copyrights_join", "copyrights_join.image_id = images.id")
+		},
+	}
+
+	return h.handler(copyrights)
 }
 
 func (qb *imageFilterHandler) performerCountCriterionHandler(performerCount *models.IntCriterionInput) criterionHandlerFunc {

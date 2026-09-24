@@ -1,0 +1,4 @@
+extend input ImageFilterType {
+  "Filter to only include images with these copyrights"
+  copyrights: MultiCriterionInput
+}

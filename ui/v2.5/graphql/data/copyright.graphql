@@ -34,14 +34,6 @@ fragment CopyrightData on Copyright {
   children {
     ...SlimCopyrightData
   }
-  images {
-    id
-    title
-    paths {
-      thumbnail
-      image
-    }
-  }
   scenes {
     id
     title
