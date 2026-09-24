@@ -583,7 +583,7 @@ export const ReferenceComparison: React.FC<IProps> = ({
       BLINK_INTERVAL_MS
     );
     return () => window.clearInterval(timer);
-  }, [mode, referenceImage.id, selectedImage.id]);
+  }, [mode]);
 
   const transform = `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`;
 
