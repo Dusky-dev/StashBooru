@@ -70,6 +70,26 @@ class EncodeTests(unittest.TestCase):
                 result, _ = self.convert("still.png", fmt)
                 self.assertEqual((result["width"], result["height"], result["frames"]), (128, 128, 1))
 
+    def test_gpu_upscale_uses_cpu_image_encoder(self):
+        from PIL import Image
+
+        def fake_upscale(source, output, options, width, height, run, cancelled):
+            self.assertEqual(options["hardware"], "gpu")
+            with Image.open(source) as image:
+                image.resize((width * 2, height * 2)).save(output)
+
+        for model in ("waifu2x", "seedvr2"):
+            with self.subTest(model=model), patch.object(converter.upscaler, "upscale", side_effect=fake_upscale):
+                result, output = self.convert("still.png", "png", hardware="gpu", upscaler=model, upscaleScale=2)
+                self.assertEqual((result["width"], result["height"]), (256, 256))
+                self.assertEqual(result["encoder"], "png")
+                self.assertEqual(result["upscaler"], model)
+                output.unlink()
+
+    def test_conversion_without_upscale_still_requires_requested_gpu_encoder(self):
+        with self.assertRaisesRegex(ValueError, "png has no working gpu encoder"):
+            self.convert("still.png", "png", hardware="gpu")
+
     def test_variable_frame_delays(self):
         for fmt in ("gif", "apng", "webp", "av1-mp4", "av1-mkv", "av1-webm", "h264", "hevc", "vp9", "mov"):
             with self.subTest(format=fmt):

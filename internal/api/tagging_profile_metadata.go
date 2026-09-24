@@ -7,6 +7,7 @@ import (
 
 	"github.com/stashapp/stash/pkg/camietagger"
 	"github.com/stashapp/stash/pkg/models"
+	"github.com/stashapp/stash/pkg/tag"
 )
 
 const contentRatingRootTag = "rating"
@@ -94,6 +95,9 @@ func ensureContentRatingHierarchy(ctx context.Context, repository models.Reposit
 		}
 	}
 	parentIDs = append(parentIDs, root.ID)
+	if err := tag.ValidateHierarchyExisting(ctx, child, parentIDs, nil, repository.Tag); err != nil {
+		return fmt.Errorf("validating content-rating hierarchy for %q: %w", child.Name, err)
+	}
 	if err := repository.Tag.UpdateParentTags(ctx, child.ID, parentIDs); err != nil {
 		return fmt.Errorf("linking rating Tag %q under %q: %w", child.Name, root.Name, err)
 	}

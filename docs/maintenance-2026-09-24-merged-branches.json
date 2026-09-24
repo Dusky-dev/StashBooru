@@ -1,0 +1,232 @@
+[
+  {
+    "branch": "cleanup/remove-legacy-tagging-v1",
+    "sha": "faaa1646f458484b26b6410ef16b867785ffdf8e",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "feat/animated-media-processing",
+    "sha": "9c59c9deb7ef5db2e47feac1f0b502feb9b6db44",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "feat/catalog-metadata-followup",
+    "sha": "ce122ebabbf583f3ff51c6e5fb35eb67c5574bcd",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "feat/media-converter",
+    "sha": "cf7ef129f8a09edd697125f4a776ba6ddcae61a4",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "feat/media-converter-defaults",
+    "sha": "c18e20b6cee0caa3abc868272d6cb438f8806488",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "feat/nondestructive-image-upscale",
+    "sha": "5537894b23514bb2e8ba842f41f21382d5567f07",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "feat/profile-tags-rating-hierarchy",
+    "sha": "df3e8f5d0399a800f8740db9b760bf2b1c3fe816",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "feature-local-https-default",
+    "sha": "82f2eef25c96b5930b0b6d131c2b2ff939100894",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "feature/alias-collision-inspector",
+    "sha": "933bbeb88c9af39e970457424eec5478d8070bae",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "feature/batch-video-tagging-review",
+    "sha": "97fe050e363cc05491fa106d49b4eff54a7034e3",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "feature/library-similarity-metadata-source",
+    "sha": "68d986c8ef13d05bc24858d2982ebeba9c6c5ff5",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "feature/metadata-health",
+    "sha": "62ca4ba596b800d1baab4e2734ccb0b802d2e298",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "feature/set-image-from-gallery",
+    "sha": "aec386f8dd40881b08acfdd99f93a96d8d48d5b8",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "feature/set-image-from-gallery-copy",
+    "sha": "81efa4fd562fea6eb5f7aa8943648de0cd49126d",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "feature/set-image-interactive-editor",
+    "sha": "91bfdbbf939e9c53e65e0937ab72d6173917c3d9",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "feature/similarity-cluster-triage",
+    "sha": "de5d2131eb7fad73034e4ba2b851aba2bfe8685c",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "feature/tagging-dry-run-plan",
+    "sha": "7b73a0f2d606bb4df8d73cd76142af08cca8817e",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "feature/video-frame-assisted-tagging",
+    "sha": "e7bb56534d84064f792bad5eba9876a7df367dfa",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "feature/video-image-tagging-metadata",
+    "sha": "22efe5199e836a091ab614d5ba24ed65e148c4e2",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "fix/artifact-upload-retry",
+    "sha": "54ff9eb4e2281a154227274445efc2e096c8486f",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "fix/autotag-load-performer-aliases",
+    "sha": "a7b11c5fca2476ee1d95821d8b6927810c8eb607",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "fix/batch-video-tagging-native-operation",
+    "sha": "ae23acc8b4f0a4adf724283ce6009dc04927cf26",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "fix/character-autotag-disambiguation-copyright",
+    "sha": "133ab13bdf7348153d3e658e686a7a0f75947d26",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "fix/copyright-image-pagination",
+    "sha": "a03f20e6985a1ef6c643822bd7c2d817225cffae",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "fix/disable-batch-video-tree-patch",
+    "sha": "edb3b59ac96054420d5960598b70941263f55e9e",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "fix/gallery-picker-context",
+    "sha": "17b9bbee1ce90bb45b559ba2941fafef4df430b8",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "fix/image-reference-character-context",
+    "sha": "18edec0a1b852823b7c5e1fe69b17fd5b275e3d8",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "fix/image-tagging-character-alias-match",
+    "sha": "e6e01513f95430f4426797fc180fc967690ee74c",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "fix/image-tagging-skip-suppressed-native-creation",
+    "sha": "b4c78122225bbc8dcebeef911ba04c70505fd097",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "fix/native-autotag-character-disambiguation",
+    "sha": "686b73004c83d71aa068305b73d77345f616f0e5",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "fix/native-autotag-disambiguation-aliases",
+    "sha": "af081be9836f1f506f980fa4ce5e992a8f29542f",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "fix/same-name-character-enrichment",
+    "sha": "3de635f9f5246996246c34fde9cc3d814b30413e",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "fix/strict-character-target-validation",
+    "sha": "0120f17746af51fdb30f9142ff4a2a6a160935d5",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "fix/tagging-enrichment-error-propagation",
+    "sha": "1d2613981c6ace32a06d381f814748fdc5d01fed",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "fix/tagging-metadata-ux",
+    "sha": "51244edc0e11f52e7a2d0765b69d48f1036c84a5",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "fix/unified-media-object-children",
+    "sha": "6e88104e692973a2301bb4f0feceb27af7371cd8",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "fix/unified-media-remove-video-bridges",
+    "sha": "92e4912b054f947652a2bfe608bc04e2230eb468",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "fix/unified-media-toolbar-boundary",
+    "sha": "28b04a0e9d446594043586d692697c27b7b5bf27",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "fix/upscale-cache-links-copyright-migration",
+    "sha": "b7f5b50cb028f2fa9d24b2401af775babecb7006",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "fix/video-tagging-backend-local-priority",
+    "sha": "38c78fb2c5cc927ec6c6f92e8a03e3aba9d0f530",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "fix/video-tagging-local-identity-priority",
+    "sha": "b1faff255314eba8b27498e77e1220ed739e5a62",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "fix/waifu2x-cpu-only-vulkan",
+    "sha": "d1626fed5e9afd667848effaac3e3e9d877aded1",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "fix/waifu2x-gpu-fallback-docker",
+    "sha": "081c129ce95fb9a85e43e8af7c34e2f5f12b4f23",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "refactor/shared-tagging-domain-engine",
+    "sha": "57888894c9bf80afcd8ef213c05972d99ab2ee80",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "refactor/shared-tagging-review-ui",
+    "sha": "bd1c77db270fc6cb323bbe76fca278987db1683c",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  },
+  {
+    "branch": "test/tagging-review-unit-tests",
+    "sha": "4dc307daa73ad6f086562ad1cb4b3f2489f22a7d",
+    "reason": "tip is an ancestor of develop 613b49ce9"
+  }
+]

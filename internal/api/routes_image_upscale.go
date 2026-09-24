@@ -3,10 +3,12 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/stashapp/stash/internal/manager"
@@ -59,7 +61,7 @@ func handleImageUpscalePost(w http.ResponseWriter, r *http.Request) {
 	request.Targets = unique
 
 	mgr := manager.GetInstance()
-	jobID := mgr.JobManager.Add(r.Context(), "Upscale images (create copies)", job.MakeJobExec(func(ctx context.Context, progress *job.Progress) error {
+	jobID := mgr.JobManager.Add(r.Context(), "Upscale images (create copies)", job.MakeJobExec(func(ctx context.Context, progress *job.Progress) (retErr error) {
 		// Keep derivative creation serialized with destructive conversions so the
 		// source cannot be swapped while the worker is reading it.
 		conversionMutations.Lock()
@@ -84,6 +86,13 @@ func handleImageUpscalePost(w http.ResponseWriter, r *http.Request) {
 
 		progress.SetTotal(len(request.Targets))
 		generated := make([]models.FileID, 0, len(request.Targets))
+		defer func() {
+			// Earlier copies still need thumbnails and pHashes if a later item
+			// fails or the batch is cancelled.
+			if len(generated) > 0 {
+				retErr = errors.Join(retErr, generateConvertedMedia(context.WithoutCancel(ctx), generated))
+			}
+		}()
 		for _, target := range request.Targets {
 			if err := ctx.Err(); err != nil {
 				return err
@@ -125,9 +134,6 @@ func handleImageUpscalePost(w http.ResponseWriter, r *http.Request) {
 			}
 			generated = append(generated, newFileID)
 			progress.Increment()
-		}
-		if len(generated) > 0 {
-			return generateConvertedMedia(context.WithoutCancel(ctx), generated)
 		}
 		return nil
 	}))
@@ -267,10 +273,7 @@ func createUpscaledImageDerivative(ctx context.Context, sourceImageID int, sourc
 	}
 
 	now := time.Now()
-	fingerprints := models.Fingerprints{
-		{Type: models.FingerprintTypeMD5, Fingerprint: outputMD5},
-		{Type: "source_md5", Fingerprint: sourceMD5},
-	}
+	fingerprints := upscaledImageFingerprints(base.Fingerprints, sourceMD5, outputMD5)
 	if value, err := oshash.FromFilePath(destination); err == nil {
 		fingerprints = append(fingerprints, models.Fingerprint{Type: models.FingerprintTypeOshash, Fingerprint: value})
 	}
@@ -297,53 +300,87 @@ func createUpscaledImageDerivative(ctx context.Context, sourceImageID int, sourc
 
 	mgr := manager.GetInstance()
 	err = txn.WithTxn(ctx, mgr.Repository.TxnManager, func(ctx context.Context) error {
-		sourceImage, err := mgr.Repository.Image.Find(ctx, sourceImageID)
-		if err != nil {
-			return err
-		}
-		if sourceImage == nil || sourceImage.PrimaryFileID == nil || *sourceImage.PrimaryFileID != base.ID {
-			return fmt.Errorf("source image changed during upscaling; derivative was not registered")
-		}
-		if err := sourceImage.LoadURLs(ctx, mgr.Repository.Image); err != nil {
-			return err
-		}
-		if err := sourceImage.LoadPerformerIDs(ctx, mgr.Repository.Image); err != nil {
-			return err
-		}
-		if err := sourceImage.LoadTagIDs(ctx, mgr.Repository.Image); err != nil {
-			return err
-		}
-		if err := sourceImage.LoadGalleryIDs(ctx, mgr.Repository.Image); err != nil {
-			return err
-		}
-		customFields, err := mgr.Repository.Image.GetCustomFields(ctx, sourceImage.ID)
-		if err != nil {
-			return err
-		}
-		if err := mgr.Repository.File.Create(ctx, derived); err != nil {
-			return err
-		}
-
-		clone := *sourceImage
-		clone.ID = 0
-		clone.PrimaryFileID = nil
-		clone.Path = ""
-		clone.Checksum = ""
-		clone.CreatedAt = now
-		clone.UpdatedAt = now
-		input := &models.CreateImageInput{
-			Image:        &clone,
-			FileIDs:      []models.FileID{derived.Base().ID},
-			CustomFields: customFields,
-		}
-		if err := mgr.Repository.Image.Create(ctx, input); err != nil {
-			return err
-		}
-		return nil
+		return registerUpscaledImageDerivative(ctx, mgr.Repository, sourceImageID, base.ID, derived)
 	})
 	if err != nil {
 		return 0, err
 	}
 	keepDestination = true
 	return derived.Base().ID, nil
+}
+
+// Retain the original identity through conversion/upscale chains. Active hashes
+// describe the derivative; source hashes always describe the earliest source.
+func upscaledImageFingerprints(source models.Fingerprints, sourceMD5, outputMD5 string) models.Fingerprints {
+	ret := models.Fingerprints{{Type: models.FingerprintTypeMD5, Fingerprint: outputMD5}}
+	for _, fp := range source {
+		if strings.HasPrefix(fp.Type, "source_") {
+			ret = append(ret, models.Fingerprint{Type: fp.Type, Fingerprint: fp.Value()})
+		}
+	}
+	for _, fp := range source {
+		if !strings.HasPrefix(fp.Type, "source_") && ret.For("source_"+fp.Type) == nil {
+			ret = append(ret, models.Fingerprint{Type: "source_" + fp.Type, Fingerprint: fp.Value()})
+		}
+	}
+	if ret.GetString("source_md5") == "" {
+		ret = append(ret, models.Fingerprint{Type: "source_md5", Fingerprint: sourceMD5})
+	}
+	return ret
+}
+
+// Called inside the file/image creation transaction, including native Copyright
+// links, which are stored separately from models.Image's ordinary relationships.
+func registerUpscaledImageDerivative(ctx context.Context, repository models.Repository, sourceImageID int, sourceFileID models.FileID, derived *models.ImageFile) error {
+	sourceImage, err := repository.Image.Find(ctx, sourceImageID)
+	if err != nil {
+		return err
+	}
+	if sourceImage == nil || sourceImage.PrimaryFileID == nil || *sourceImage.PrimaryFileID != sourceFileID {
+		return fmt.Errorf("source image changed during upscaling; derivative was not registered")
+	}
+	if err := sourceImage.LoadURLs(ctx, repository.Image); err != nil {
+		return err
+	}
+	if err := sourceImage.LoadPerformerIDs(ctx, repository.Image); err != nil {
+		return err
+	}
+	if err := sourceImage.LoadTagIDs(ctx, repository.Image); err != nil {
+		return err
+	}
+	if err := sourceImage.LoadGalleryIDs(ctx, repository.Image); err != nil {
+		return err
+	}
+	customFields, err := repository.Image.GetCustomFields(ctx, sourceImage.ID)
+	if err != nil {
+		return err
+	}
+	copyrights, err := repository.Copyright.FindByImageID(ctx, sourceImage.ID)
+	if err != nil {
+		return err
+	}
+	if err := repository.File.Create(ctx, derived); err != nil {
+		return err
+	}
+
+	clone := *sourceImage
+	clone.ID = 0
+	clone.PrimaryFileID = nil
+	clone.Path = ""
+	clone.Checksum = ""
+	clone.CreatedAt = derived.CreatedAt
+	clone.UpdatedAt = derived.UpdatedAt
+	input := &models.CreateImageInput{
+		Image:        &clone,
+		FileIDs:      []models.FileID{derived.Base().ID},
+		CustomFields: customFields,
+	}
+	if err := repository.Image.Create(ctx, input); err != nil {
+		return err
+	}
+	copyrightIDs := make([]int, 0, len(copyrights))
+	for _, copyright := range copyrights {
+		copyrightIDs = append(copyrightIDs, copyright.ID)
+	}
+	return repository.Copyright.SetImageCopyrights(ctx, clone.ID, copyrightIDs)
 }

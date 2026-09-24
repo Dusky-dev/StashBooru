@@ -1,11 +1,57 @@
 package api
 
 import (
+	"context"
+	"errors"
 	"reflect"
 	"testing"
 
+	"github.com/stashapp/stash/pkg/models"
+	"github.com/stashapp/stash/pkg/tag"
 	"github.com/stashapp/stash/pkg/visualembedding"
 )
+
+type ratingHierarchyRepository struct {
+	models.TagReaderWriter
+	parents     []int
+	descendants []*models.TagPath
+	updated     bool
+}
+
+func (r *ratingHierarchyRepository) FindByName(context.Context, string, bool) (*models.Tag, error) {
+	return &models.Tag{ID: 10, Name: "rating"}, nil
+}
+func (r *ratingHierarchyRepository) GetParentIDs(context.Context, int) ([]int, error) {
+	return r.parents, nil
+}
+func (r *ratingHierarchyRepository) FindAllAncestors(context.Context, int, []int) ([]*models.TagPath, error) {
+	return nil, nil
+}
+func (r *ratingHierarchyRepository) FindAllDescendants(context.Context, int, []int) ([]*models.TagPath, error) {
+	return r.descendants, nil
+}
+func (r *ratingHierarchyRepository) UpdateParentTags(_ context.Context, _ int, ids []int) error {
+	r.updated, r.parents = true, ids
+	return nil
+}
+
+func TestContentRatingHierarchyRejectsCycle(t *testing.T) {
+	for _, cyclic := range []bool{false, true} {
+		r := &ratingHierarchyRepository{parents: []int{3}}
+		if cyclic {
+			r.descendants = []*models.TagPath{{Tag: models.Tag{ID: 10, Name: "rating"}}}
+		}
+		err := ensureContentRatingHierarchy(context.Background(), models.Repository{Tag: r}, &models.Tag{ID: 20, Name: "safe"})
+		if cyclic {
+			var hierarchyErr *tag.InvalidTagHierarchyError
+			if !errors.As(err, &hierarchyErr) || r.updated {
+				t.Fatalf("cycle was not rejected before writing: %v", err)
+			}
+		} else if err != nil || !reflect.DeepEqual(r.parents, []int{3, 10}) {
+			t.Fatalf("valid parents not preserved: %v, %v", r.parents, err)
+		}
+	}
+}
 
 func TestEva02TagPredictionToCamieRating(t *testing.T) {
 	tests := []struct {
