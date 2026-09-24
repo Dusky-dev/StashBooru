@@ -21,6 +21,7 @@ const (
 type pHashSimilarityOptions struct {
 	Distance    int
 	ReferenceID *int
+	Method      string // empty preserves legacy image-reference embedding searches
 }
 
 func parsePHashSimilaritySort(value string) (string, *pHashSimilarityOptions, error) {
@@ -34,7 +35,7 @@ func parsePHashSimilaritySort(value string) (string, *pHashSimilarityOptions, er
 	}
 
 	parts := strings.Split(value, ":")
-	if len(parts) < 2 || len(parts) > 3 {
+	if len(parts) < 2 || len(parts) > 4 {
 		return "", nil, fmt.Errorf("invalid perceptual similarity sort %q", value)
 	}
 
@@ -44,12 +45,18 @@ func parsePHashSimilaritySort(value string) (string, *pHashSimilarityOptions, er
 	}
 
 	options := &pHashSimilarityOptions{Distance: distance}
-	if len(parts) == 3 {
+	if len(parts) >= 3 {
 		referenceID, err := strconv.Atoi(parts[2])
 		if err != nil || referenceID <= 0 {
 			return "", nil, fmt.Errorf("invalid perceptual similarity reference ID %q", parts[2])
 		}
 		options.ReferenceID = &referenceID
+	}
+	if len(parts) == 4 {
+		if parts[3] != "phash" && parts[3] != "embedding" {
+			return "", nil, fmt.Errorf("invalid image similarity method %q", parts[3])
+		}
+		options.Method = parts[3]
 	}
 
 	return perceptualSimilaritySort, options, nil
@@ -382,7 +389,13 @@ func findPHashSimilarityCandidates(ctx context.Context, query queryBuilder, rela
 }
 
 func findPHashSimilarityIDs(ctx context.Context, query queryBuilder, relationTable, relationIDColumn string, findFilter *models.FindFilterType, options *pHashSimilarityOptions) ([]int, int, error) {
+	if options.Method != "" && relationTable != imagesFilesTable {
+		return nil, 0, fmt.Errorf("explicit similarity methods are only supported for images")
+	}
 	if options.ReferenceID != nil && relationTable == imagesFilesTable {
+		if options.Method == "phash" {
+			return findImagePHashSimilarityIDs(ctx, query, findFilter, *options.ReferenceID, options.Distance)
+		}
 		return findImageEmbeddingSimilarityIDs(ctx, query, findFilter, *options.ReferenceID)
 	}
 

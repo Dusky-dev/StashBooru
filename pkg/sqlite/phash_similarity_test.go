@@ -19,6 +19,30 @@ func TestParsePHashSimilaritySort(t *testing.T) {
 	}
 }
 
+func TestParseImageSimilarityMethods(t *testing.T) {
+	for _, method := range []string{"phash", "embedding"} {
+		_, opts, err := parsePHashSimilaritySort("perceptual_similarity:0:42:" + method)
+		if err != nil || opts == nil || opts.Method != method || opts.Distance != 0 || *opts.ReferenceID != 42 {
+			t.Fatalf("method %s: options=%+v error=%v", method, opts, err)
+		}
+	}
+	_, legacy, err := parsePHashSimilaritySort("perceptual_similarity:5:42")
+	if err != nil || legacy.Method != "" {
+		t.Fatalf("legacy mode must remain implicit: %+v, %v", legacy, err)
+	}
+	for _, value := range []string{
+		"perceptual_similarity:5:42:unknown",
+		"perceptual_similarity:5:phash",
+		"perceptual_similarity:5:0:phash",
+		"perceptual_similarity:9:42:phash",
+		"perceptual_similarity:5:42:phash:extra",
+	} {
+		if _, _, err := parsePHashSimilaritySort(value); err == nil {
+			t.Errorf("expected invalid sort %q to fail", value)
+		}
+	}
+}
+
 func TestOrderReferencePHashSimilarityCandidates(t *testing.T) {
 	candidates := []pHashSimilarityCandidate{
 		{ID: 10, PHash: sql.NullInt64{Int64: 0, Valid: true}},

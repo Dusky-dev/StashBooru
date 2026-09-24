@@ -1,4 +1,19 @@
-# Dupe checker
+# Deduplication
+
+## Finding similar images
+
+The image card's **Find similar** action opens a reference search with two modes:
+
+- **Same image / variants (pHash)** is the default for new searches. It compares current primary-file perceptual hashes, filters by the distance slider (0–8), and sorts by distance with image ID as the tie-breaker. Start with a low distance for close copies and increase it for more variants. A distance of zero means matching perceptual hashes, not necessarily identical files or pixels. Crops, rotations, borders, and large edits may not match.
+- **Related content (EVA02)** finds related visual subjects using image embeddings. Different pictures of the same character can rank highly. Database tags do not determine this ranking, and the pHash distance slider does not apply. Generate embeddings in **Settings > System > Visual Similarity** if needed.
+
+pHash mode works without embeddings. Images missing a current primary-file pHash are excluded; if the reference is missing one, the search explains that hashes must be generated in **Tasks**, or you can switch to Related content. Preserved `source_phash` values and secondary-file hashes are not used as substitutes for the displayed image's current hash.
+
+Filters apply to the results; the reference itself does not have to pass those filters and is excluded from the results. Changing mode or distance returns to page one while preserving the reference and other filters. Mode and distance are saved in URLs and saved filters. Existing reference links without an explicit mode retain the previous EVA02 behavior; switch the mode to use pHash. Reference-free similarity grouping and video searches retain their existing behavior.
+
+Review matches before deleting anything. This search does not verify byte/pixel identity or automatically delete or stack files.
+
+## Video duplicate checker
 
 [The dupe checker](/sceneDuplicateChecker) searches your collection for scenes that are perceptually similar. This means that the files don't need to be identical, and will be identified even with different bitrates, resolutions, and intros/outros.
 
