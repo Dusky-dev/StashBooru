@@ -45,6 +45,8 @@ type ImageFilterType struct {
 	PerformerTags *HierarchicalMultiCriterionInput `json:"performer_tags"`
 	// Filter to only include images with these performers
 	Performers *MultiCriterionInput `json:"performers"`
+	// Filter to only include images with these copyrights
+	Copyrights *MultiCriterionInput `json:"copyrights"`
 	// Filter by performer count
 	PerformerCount *IntCriterionInput `json:"performer_count"`
 	// Filter images that have performers that have been favorited
