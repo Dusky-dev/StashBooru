@@ -104,7 +104,13 @@ function loadReferenceComparisonMode(): ReferenceComparisonMode {
     const value = window.localStorage.getItem(
       REFERENCE_COMPARISON_MODE_STORAGE_KEY
     );
-    if (value === "selected" || value === "both" || value === "slider") {
+    if (
+      value === "selected" ||
+      value === "both" ||
+      value === "slider" ||
+      value === "blink" ||
+      value === "difference"
+    ) {
       return value;
     }
   } catch {
@@ -160,7 +166,9 @@ export const LightboxComponent: React.FC<IProps> = ({
   const location = useLocation();
   const referenceImageID = useMemo(() => {
     const sortBy = new URLSearchParams(location.search).get("sortby") ?? "";
-    const match = sortBy.match(/^perceptual_similarity(?::(\d+))?(?::(\d+))?$/);
+    const match = sortBy.match(
+      /^perceptual_similarity(?::(\d+))?(?::(\d+)(?::(?:phash|embedding))?)?$/
+    );
     return match?.[2];
   }, [location.search]);
   const { data: referenceImageData } = GQL.useFindImageQuery({
@@ -835,6 +843,8 @@ export const LightboxComponent: React.FC<IProps> = ({
                 <option value="selected">Selected image</option>
                 <option value="both">Both images</option>
                 <option value="slider">Slider</option>
+                <option value="blink">Blink</option>
+                <option value="difference">Difference heatmap</option>
               </Form.Control>
             </Col>
           </Form.Group>
@@ -1140,7 +1150,11 @@ export const LightboxComponent: React.FC<IProps> = ({
               <ReferenceComparison
                 referenceImage={referenceImage}
                 selectedImage={currentImage}
-                mode={referenceComparisonMode === "slider" ? "slider" : "both"}
+                mode={
+                  referenceComparisonMode === "selected"
+                    ? "both"
+                    : referenceComparisonMode
+                }
                 direction={movingLeft ? "left" : "right"}
                 animateSelected={!disableAnimation && !instantTransition}
                 zoom={zoom}
