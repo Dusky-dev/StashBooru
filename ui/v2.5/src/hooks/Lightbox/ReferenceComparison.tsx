@@ -61,7 +61,9 @@ interface INormalizedPixels {
 }
 
 function comparisonSource(image: ILightboxImage) {
-  return image.paths.image ?? image.paths.preview ?? image.paths.thumbnail ?? "";
+  return (
+    image.paths.image ?? image.paths.preview ?? image.paths.thumbnail ?? ""
+  );
 }
 
 const ComparisonMedia: React.FC<{ image: ILightboxImage }> = ({ image }) => {
@@ -126,7 +128,8 @@ function comparisonFormat(image: ILightboxImage) {
     ? filename.split(".").pop()?.toUpperCase()
     : undefined;
   const codec = file?.video_codec?.toUpperCase();
-  if (extension && codec && extension !== codec) return `${extension} · ${codec}`;
+  if (extension && codec && extension !== codec)
+    return `${extension} · ${codec}`;
   return extension ?? codec ?? "—";
 }
 
@@ -384,7 +387,8 @@ const DifferenceComparison: React.FC<{
       })
       .catch((reason: unknown) => {
         if (cancelled) return;
-        const message = reason instanceof Error ? reason.message : String(reason);
+        const message =
+          reason instanceof Error ? reason.message : String(reason);
         setLoading(false);
         setError(
           `Could not read image pixels for comparison: ${message}. Same-origin image access is required.`
@@ -532,14 +536,15 @@ const DifferenceComparison: React.FC<{
             <span className={`${CLASSNAME}-difference-status`}>
               {result.changedPixels.toLocaleString()} changed pixels (
               {changedPercent.toFixed(changedPercent < 0.1 ? 3 : 1)}%) ·{" "}
-              {result.boxes.length} regions · {pixels.width}×{pixels.height} canvas
+              {result.boxes.length} regions · {pixels.width}×{pixels.height}{" "}
+              canvas
             </span>
           ) : null}
           <small>
-            Browser-decoded, centered-fit comparison. Images with the same aspect
-            ratio are normalized to the same canvas; unmatched borders remain
-            differences. EXIF orientation and color management follow the browser
-            decoder.
+            Browser-decoded, centered-fit comparison. Images with the same
+            aspect ratio are normalized to the same canvas; unmatched borders
+            remain differences. EXIF orientation and color management follow the
+            browser decoder.
           </small>
         </div>
       )}
@@ -744,7 +749,10 @@ export const ReferenceComparison: React.FC<IProps> = ({
 
   if (mode === "blink") {
     return (
-      <div className={cx(CLASSNAME, `${CLASSNAME}-blink`)} {...interactionProps}>
+      <div
+        className={cx(CLASSNAME, `${CLASSNAME}-blink`)}
+        {...interactionProps}
+      >
         {resetButton}
         <div
           className={`${CLASSNAME}-layer ${CLASSNAME}-blink-layer`}
