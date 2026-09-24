@@ -29,19 +29,19 @@ The fixes affect future operations. They do not retroactively reconstruct Copyri
 
 ## Branch cleanup
 
-At the snapshot there were 52 remote branches and no open PRs. Full Git history was fetched before ancestry checks. **46 non-default branch tips are ancestors of `develop`**; their exact names and SHAs are recorded in `maintenance-2026-09-24-merged-branches.json`.
+At the initial snapshot there were 52 remote branches and no open PRs. Full Git history was fetched before ancestry checks. **46 non-default branch tips were direct ancestors of `develop`**; their exact names and SHAs remain recorded in `maintenance-2026-09-24-merged-branches.json` as an audit snapshot.
 
-Deletion is pending authenticated write access. The attempted atomic, expected-SHA-guarded Git deletion changed no refs because command-line Git has no write credentials. The GitHub connector exposes no branch-delete action, and the browser is signed out. Recheck remote tips and open PRs before deleting; any changed branch must be excluded. The unfinished older local worktree was preserved separately.
+Branch cleanup was completed after rechecking current tips and PR history. The five branches originally excluded from the direct-ancestry deletion set were also reviewed individually:
 
-These five branches were excluded from the merged-only deletion set:
-
-| Branch | Reason |
+| Branch | Resolution |
 | --- | --- |
-| `feature/video-local-booru-metadata` | Three commits outside develop; retain until the older workflow's behavior has been reconciled with current Video Tagging. |
-| `fix/upscale-cache-history-copyright-tags` | Closed, unmerged #76 includes a legacy-cache migration deliberately absent from #77. Keep until deciding whether that migration is still needed. |
-| `feature/set-image-simple-editor` | Has one post-merge interactive-editor commit. #85 contains its functionality with subsequent changes; a superseded candidate, not a direct-ancestry deletion. |
-| `fix/unified-media-preserve-native-children` | Contains temporary migration commits and the toolbar change already present in #65; the three final code-file versions match #65. Superseded candidate. |
-| `fix/batch-video-tagging-native-toolbar` | Contains a temporary migration workflow; the current native operation came through #69. Superseded candidate. |
+| `feature/video-local-booru-metadata` | Superseded by merged PR #42 and later Video Tagging fixes, including local identity priority. Deleted. |
+| `fix/upscale-cache-history-copyright-tags` | Superseded by the merged restore-cache implementation in PR #77; its unmerged legacy-cache migration is not required by the current design. Deleted. |
+| `feature/set-image-simple-editor` | PR #84 was merged and its post-merge interactive-editor work was superseded by merged PR #85. Deleted. |
+| `fix/unified-media-preserve-native-children` | PR #64 was merged; its later toolbar-boundary implementation was merged separately through PR #65, with matching final code. Deleted. |
+| `fix/batch-video-tagging-native-toolbar` | Contained only the temporary migration path that was replaced by merged PR #69's native Videos operation. Deleted. |
+
+After cleanup, the only remote branches are `develop` and this maintenance branch. The maintenance manifest is intentionally retained as a historical record of the ancestry-safe deletion set rather than a live branch inventory.
 
 ## Follow-up priorities and feature ideas
 
