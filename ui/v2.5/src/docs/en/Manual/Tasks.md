@@ -125,16 +125,20 @@ See the [JSON Specification](/help/JSONSpec.md) page for details on the exported
 
 ## Backing up
 
-The backup task creates a backup of the stash database and (optionally) blob files. The backup can either be downloaded or output into the backup directory (under `Settings > Paths`) or the database directory if the backup directory is not configured.
+> **⚠️ Compatibility:** StashBooru database backups are incompatible with vanilla Stash. Restore them using a compatible StashBooru version. Keep a separate vanilla Stash backup if you need to return to vanilla Stash.
 
-For a full backup, the database file and all blob files must be copied. The backup is stored as a zip file, with the database file at the root of the zip and the blob files in a `blobs` directory.
+The backup task creates a backup of the StashBooru database and (optionally) blob files. The backup can either be downloaded or output into the backup directory (under `Settings > Paths`) or the database directory if the backup directory is not configured.
 
-> **⚠️ Note:** generated files are not included in the backup, so these will need to be regenerated when restoring with an empty system from backup.
+When including filesystem blob storage, the backup is stored as a zip file, with the database file at the root of the zip and the blob files in a `blobs` directory. Blobs are database-managed assets, such as profile images; they are not your library's media files. If blobs are stored in the database, they are already included in the database copy.
+
+> **⚠️ Backup scope:** Neither backup option includes your media files, conversion/upscaling original-file restore caches, generated files, or configuration. Back up media, restore caches, and configuration separately. Generated files can be backed up or regenerated after restoring. A database backup alone cannot recover missing media or cached originals.
 
 For database-only backups, only the database file is copied into the destination. This is useful for quick backups before performing risky operations, or for users who do not use filesystem blob storage.
 
 ## Restoring from backup
 
-Restoring from backup is currently a manual process. The database backup zip file must be unzipped, and the database file and blob files (if applicable) copied into the database and blob directories respectively. Stash should then be restarted to load the restored database.
+> **⚠️ Compatibility:** Restore StashBooru database backups only with a compatible StashBooru version, never vanilla Stash. A matching schema number alone does not establish compatibility between the two applications.
+
+Restoring from backup is currently a manual process. Before restoring, create a backup of the current database and blob files using the backup task, and keep it separate from the backup being restored. Stop StashBooru before replacing any database or blob files. The database backup zip file must be unzipped, and the database file and blob files (if applicable) copied into the database and blob directories respectively. For database-only backups, copy the database file directly. StashBooru should then be restarted to load the restored database. Restore media, configuration, and original-file restore caches from their separate backups as needed.
 
 > **⚠️ Note:** the filename for a database-only backup is not the same as the original database file, so the database file from the backup must be renamed to match the original database filename before copying it into the database directory. The original database filename can be found in `Settings > Paths > Database path`.
