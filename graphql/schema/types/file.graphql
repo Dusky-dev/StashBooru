@@ -123,6 +123,8 @@ type ImageFile implements BaseFile {
   format: String!
   width: Int!
   height: Int!
+  "Average displayed frames per second for animated images; 0 for still/unknown timing"
+  frame_rate: Float!
 
   images: [Image!]!
 

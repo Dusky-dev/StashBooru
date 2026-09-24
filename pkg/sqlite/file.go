@@ -81,10 +81,11 @@ func (f *videoFileRow) fromVideoFile(ff models.VideoFile) {
 }
 
 type imageFileRow struct {
-	FileID models.FileID `db:"file_id"`
-	Format string        `db:"format"`
-	Width  int           `db:"width"`
-	Height int           `db:"height"`
+	FileID    models.FileID `db:"file_id"`
+	Format    string        `db:"format"`
+	Width     int           `db:"width"`
+	Height    int           `db:"height"`
+	FrameRate float64       `db:"frame_rate"`
 }
 
 func (f *imageFileRow) fromImageFile(ff models.ImageFile) {
@@ -92,6 +93,7 @@ func (f *imageFileRow) fromImageFile(ff models.ImageFile) {
 	f.Format = ff.Format
 	f.Width = ff.Width
 	f.Height = ff.Height
+	f.FrameRate = ff.FrameRate
 }
 
 // we redefine this to change the columns around
@@ -145,9 +147,10 @@ func videoFileQueryColumns() []interface{} {
 // we redefine this to change the columns around
 // otherwise, we collide with the video file columns
 type imageFileQueryRow struct {
-	Format null.String `db:"image_format"`
-	Width  null.Int    `db:"image_width"`
-	Height null.Int    `db:"image_height"`
+	Format    null.String `db:"image_format"`
+	Width     null.Int    `db:"image_width"`
+	Height    null.Int    `db:"image_height"`
+	FrameRate null.Float  `db:"image_frame_rate"`
 }
 
 func (imageFileQueryRow) columns(table *table) []interface{} {
@@ -156,14 +159,16 @@ func (imageFileQueryRow) columns(table *table) []interface{} {
 		ex.Col("format").As("image_format"),
 		ex.Col("width").As("image_width"),
 		ex.Col("height").As("image_height"),
+		ex.Col("frame_rate").As("image_frame_rate"),
 	}
 }
 
 func (f *imageFileQueryRow) resolve() *models.ImageFile {
 	return &models.ImageFile{
-		Format: f.Format.String,
-		Width:  int(f.Width.Int64),
-		Height: int(f.Height.Int64),
+		Format:    f.Format.String,
+		Width:     int(f.Width.Int64),
+		Height:    int(f.Height.Int64),
+		FrameRate: f.FrameRate.Float64,
 	}
 }
 

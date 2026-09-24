@@ -86,6 +86,16 @@ const FileInfoPanel: React.FC<IFileInfoPanelProps> = (
           value={`${props.file.width} x ${props.file.height}`}
           truncate
         />
+        {props.file.frame_count > 1 &&
+        "frame_rate" in props.file &&
+        props.file.frame_rate > 0 ? (
+          <TextField id="framerate">
+            <FormattedMessage
+              id="frames_per_second"
+              values={{ value: intl.formatNumber(props.file.frame_rate) }}
+            />
+          </TextField>
+        ) : null}
       </dl>
       {props.ofMany && props.onSetPrimaryFile && !props.primary && (
         <div>

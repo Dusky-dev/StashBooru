@@ -31,6 +31,7 @@ fragment ImageFileData on ImageFile {
   mod_time
   width
   height
+  frame_rate
   fingerprints {
     type
     value
@@ -69,6 +70,7 @@ fragment VisualFileData on VisualFile {
     mod_time
     width
     height
+    frame_rate
     fingerprints {
       type
       value

@@ -107,6 +107,25 @@ class EncodeTests(unittest.TestCase):
         result, _ = self.convert(output.name, "apng")
         self.assertEqual(result["frames"], 3)
 
+    def test_fast_gif_to_jxl_preserves_frame_delays(self):
+        if not (shutil.which("cjxl") and shutil.which("djxl")):
+            self.skipTest("cjxl and djxl required")
+        from PIL import Image
+        frames = [Image.new("RGB", (32, 32), ((i * 17) % 256, (i * 31) % 256, (i * 47) % 256)) for i in range(20)]
+        source = self.root / "fast.gif"
+        frames[0].save(source, save_all=True, append_images=frames[1:], duration=20, loop=0)
+        result, output = self.convert(source.name, "ajxl", hardware="cpu")
+        self.assertEqual(result["frames"], 20)
+        self.assertAlmostEqual(result["duration"], 0.4, delta=0.011)
+        decoded_dir = self.root / "fast-jxl-decoded"
+        decoded_dir.mkdir()
+        decoded = converter.prepare_input(output, decoded_dir)
+        timing = converter.animation_metadata(decoded)
+        self.assertEqual(timing["frames"], 20)
+        self.assertAlmostEqual(timing["duration"], 0.4, delta=0.011)
+        for delay in timing["durations"]:
+            self.assertAlmostEqual(delay, 0.02, delta=0.011)
+
     def test_jxl_quality_100_preserves_pixels(self):
         if not (shutil.which("cjxl") and shutil.which("djxl")):
             self.skipTest("cjxl and djxl required")
