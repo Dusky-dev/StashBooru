@@ -3,13 +3,27 @@ import cx from "classnames";
 
 import { isVideo } from "src/utils/visualFile";
 import { ILightboxImage } from "./types";
+import {
+  computeImageDifference,
+  createComparisonGeometry,
+  type ComparisonRect,
+  type ImageDifferenceResult,
+} from "./imageDifference";
 
 const CLASSNAME = "Lightbox-reference-comparison";
 const ZOOM_STEP = 1.1;
 const SPLIT_KEY_STEP = 1;
 const SPLIT_KEY_LARGE_STEP = 10;
+const BLINK_INTERVAL_MS = 450;
+const DEFAULT_DIFFERENCE_THRESHOLD = 16;
+const DEFAULT_DIFFERENCE_NOISE = 8;
 
-export type ReferenceComparisonMode = "selected" | "both" | "slider";
+export type ReferenceComparisonMode =
+  | "selected"
+  | "both"
+  | "slider"
+  | "blink"
+  | "difference";
 export type ReferenceComparisonDirection = "left" | "right";
 
 interface IProps {
@@ -39,9 +53,19 @@ interface IComparisonMetric {
   selectedValue?: number;
 }
 
+interface INormalizedPixels {
+  width: number;
+  height: number;
+  reference: Uint8ClampedArray;
+  selected: Uint8ClampedArray;
+}
+
+function comparisonSource(image: ILightboxImage) {
+  return image.paths.image ?? image.paths.preview ?? image.paths.thumbnail ?? "";
+}
+
 const ComparisonMedia: React.FC<{ image: ILightboxImage }> = ({ image }) => {
-  const source =
-    image.paths.image ?? image.paths.preview ?? image.paths.thumbnail ?? "";
+  const source = comparisonSource(image);
   const video = isVideo(image.visual_files?.[0] ?? {});
 
   if (video) {
@@ -73,8 +97,7 @@ const SelectedComparisonMedia: React.FC<{
   direction: ReferenceComparisonDirection;
   animate: boolean;
 }> = ({ image, direction, animate }) => {
-  const source =
-    image.paths.image ?? image.paths.preview ?? image.paths.thumbnail ?? "";
+  const source = comparisonSource(image);
   const key = image.id ?? source;
   return (
     <div
@@ -93,6 +116,18 @@ function comparisonFilename(image: ILightboxImage) {
   const path = image.visual_files?.[0]?.path;
   if (!path) return "—";
   return path.split(/[\\/]/).pop() || path;
+}
+
+function comparisonFormat(image: ILightboxImage) {
+  const file = image.visual_files?.[0];
+  const path = file?.path ?? "";
+  const filename = path.split(/[\\/]/).pop() ?? "";
+  const extension = filename.includes(".")
+    ? filename.split(".").pop()?.toUpperCase()
+    : undefined;
+  const codec = file?.video_codec?.toUpperCase();
+  if (extension && codec && extension !== codec) return `${extension} · ${codec}`;
+  return extension ?? codec ?? "—";
 }
 
 function formatBytes(bytes?: number) {
@@ -149,6 +184,11 @@ function comparisonMetrics(
   const referenceFile = referenceImage.visual_files?.[0];
   const selectedFile = selectedImage.visual_files?.[0];
   const metrics: IComparisonMetric[] = [
+    {
+      label: "Format",
+      referenceText: comparisonFormat(referenceImage),
+      selectedText: comparisonFormat(selectedImage),
+    },
     {
       label: "Size",
       referenceText: formatBytes(referenceFile?.size),
@@ -236,6 +276,275 @@ function clampSplit(value: number) {
   return Math.max(0, Math.min(100, value));
 }
 
+function isTemporalMedia(image: ILightboxImage) {
+  const file = image.visual_files?.[0];
+  return file?.__typename === "VideoFile" || (file?.duration ?? 0) > 0;
+}
+
+function loadImage(source: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.decoding = "async";
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error(`failed to load ${source}`));
+    image.src = source;
+  });
+}
+
+function drawNormalizedImage(
+  image: HTMLImageElement,
+  rect: ComparisonRect,
+  width: number,
+  height: number
+) {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) throw new Error("2D canvas is unavailable");
+  context.clearRect(0, 0, width, height);
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+  context.drawImage(image, rect.x, rect.y, rect.width, rect.height);
+  return context.getImageData(0, 0, width, height).data;
+}
+
+const DifferenceComparison: React.FC<{
+  referenceImage: ILightboxImage;
+  selectedImage: ILightboxImage;
+  transform: string;
+}> = ({ referenceImage, selectedImage, transform }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [threshold, setThreshold] = useState(DEFAULT_DIFFERENCE_THRESHOLD);
+  const [noiseArea, setNoiseArea] = useState(DEFAULT_DIFFERENCE_NOISE);
+  const [showBoxes, setShowBoxes] = useState(true);
+  const [pixels, setPixels] = useState<INormalizedPixels | null>(null);
+  const [result, setResult] = useState<ImageDifferenceResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const referenceSource = comparisonSource(referenceImage);
+  const selectedSource = comparisonSource(selectedImage);
+  const temporal =
+    isTemporalMedia(referenceImage) || isTemporalMedia(selectedImage);
+
+  useEffect(() => {
+    let cancelled = false;
+    setPixels(null);
+    setResult(null);
+    setError(null);
+
+    if (temporal) {
+      setLoading(false);
+      setError(
+        "Difference heatmap currently compares still images only. Animated/video media needs an explicit frame or timestamp before a pixel diff is meaningful."
+      );
+      return () => {
+        cancelled = true;
+      };
+    }
+    if (!referenceSource || !selectedSource) {
+      setLoading(false);
+      setError("A full image source is missing for this comparison.");
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setLoading(true);
+    Promise.all([loadImage(referenceSource), loadImage(selectedSource)])
+      .then(([reference, selected]) => {
+        if (cancelled) return;
+        const geometry = createComparisonGeometry(
+          reference.naturalWidth,
+          reference.naturalHeight,
+          selected.naturalWidth,
+          selected.naturalHeight
+        );
+        const referencePixels = drawNormalizedImage(
+          reference,
+          geometry.reference,
+          geometry.width,
+          geometry.height
+        );
+        const selectedPixels = drawNormalizedImage(
+          selected,
+          geometry.selected,
+          geometry.width,
+          geometry.height
+        );
+        if (cancelled) return;
+        setPixels({
+          width: geometry.width,
+          height: geometry.height,
+          reference: referencePixels,
+          selected: selectedPixels,
+        });
+        setLoading(false);
+      })
+      .catch((reason: unknown) => {
+        if (cancelled) return;
+        const message = reason instanceof Error ? reason.message : String(reason);
+        setLoading(false);
+        setError(
+          `Could not read image pixels for comparison: ${message}. Same-origin image access is required.`
+        );
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [referenceSource, selectedSource, temporal]);
+
+  useEffect(() => {
+    if (!pixels) {
+      setResult(null);
+      return;
+    }
+    setResult(
+      computeImageDifference(
+        pixels.reference,
+        pixels.selected,
+        pixels.width,
+        pixels.height,
+        {
+          threshold,
+          minRegionArea: noiseArea,
+          boxPadding: 2,
+          mergeGap: 4,
+        }
+      )
+    );
+  }, [pixels, threshold, noiseArea]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !pixels || !result) return;
+
+    canvas.width = pixels.width;
+    canvas.height = pixels.height;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+
+    context.putImageData(
+      new ImageData(pixels.selected, pixels.width, pixels.height),
+      0,
+      0
+    );
+    context.fillStyle = "rgba(0, 0, 0, 0.68)";
+    context.fillRect(0, 0, pixels.width, pixels.height);
+
+    const heatmap = document.createElement("canvas");
+    heatmap.width = pixels.width;
+    heatmap.height = pixels.height;
+    const heatmapContext = heatmap.getContext("2d");
+    if (heatmapContext) {
+      heatmapContext.putImageData(
+        new ImageData(result.heatmap, pixels.width, pixels.height),
+        0,
+        0
+      );
+      context.drawImage(heatmap, 0, 0);
+    }
+
+    if (showBoxes) {
+      context.save();
+      context.lineWidth = Math.max(2, Math.round(pixels.width / 700));
+      context.strokeStyle = "rgba(255, 255, 255, 0.96)";
+      context.shadowColor = "rgba(0, 0, 0, 0.9)";
+      context.shadowBlur = Math.max(2, Math.round(pixels.width / 900));
+      for (const box of result.boxes) {
+        context.strokeRect(box.x, box.y, box.width, box.height);
+      }
+      context.restore();
+    }
+  }, [pixels, result, showBoxes]);
+
+  const changedPercent =
+    result && result.totalPixels > 0
+      ? (result.changedPixels / result.totalPixels) * 100
+      : 0;
+
+  return (
+    <>
+      <div className={`${CLASSNAME}-viewport`} style={{ transform }}>
+        {loading ? (
+          <div className={`${CLASSNAME}-difference-message`}>
+            Preparing normalized comparison…
+          </div>
+        ) : error ? (
+          <div className={`${CLASSNAME}-difference-message`}>{error}</div>
+        ) : (
+          <canvas
+            ref={canvasRef}
+            className={`${CLASSNAME}-difference-canvas`}
+            aria-label="Absolute pixel difference heatmap"
+          />
+        )}
+      </div>
+      {!error && (
+        <div
+          className={`${CLASSNAME}-difference-controls`}
+          onPointerDown={(event) => event.stopPropagation()}
+          onPointerMove={(event) => event.stopPropagation()}
+          onPointerUp={(event) => event.stopPropagation()}
+          onWheel={(event) => event.stopPropagation()}
+        >
+          <label>
+            Threshold <strong>{threshold}</strong>
+            <input
+              type="range"
+              min={0}
+              max={128}
+              step={1}
+              value={threshold}
+              aria-label="Difference threshold"
+              onChange={(event) =>
+                setThreshold(Number.parseInt(event.currentTarget.value, 10))
+              }
+            />
+          </label>
+          <label>
+            Noise <strong>{noiseArea}px</strong>
+            <input
+              type="range"
+              min={1}
+              max={128}
+              step={1}
+              value={noiseArea}
+              aria-label="Minimum difference region area"
+              onChange={(event) =>
+                setNoiseArea(Number.parseInt(event.currentTarget.value, 10))
+              }
+            />
+          </label>
+          <label className={`${CLASSNAME}-difference-checkbox`}>
+            <input
+              type="checkbox"
+              checked={showBoxes}
+              onChange={(event) => setShowBoxes(event.currentTarget.checked)}
+            />{" "}
+            Boxes
+          </label>
+          {pixels && result ? (
+            <span className={`${CLASSNAME}-difference-status`}>
+              {result.changedPixels.toLocaleString()} changed pixels (
+              {changedPercent.toFixed(changedPercent < 0.1 ? 3 : 1)}%) ·{" "}
+              {result.boxes.length} regions · {pixels.width}×{pixels.height} canvas
+            </span>
+          ) : null}
+          <small>
+            Browser-decoded, centered-fit comparison. Images with the same aspect
+            ratio are normalized to the same canvas; unmatched borders remain
+            differences. EXIF orientation and color management follow the browser
+            decoder.
+          </small>
+        </div>
+      )}
+    </>
+  );
+};
+
 export const ReferenceComparison: React.FC<IProps> = ({
   referenceImage,
   selectedImage,
@@ -248,6 +557,7 @@ export const ReferenceComparison: React.FC<IProps> = ({
 }) => {
   const [split, setSplit] = useState(50);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [blinkReference, setBlinkReference] = useState(true);
   const dragState = useRef<IDragState | null>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
   const metrics = comparisonMetrics(referenceImage, selectedImage);
@@ -262,7 +572,26 @@ export const ReferenceComparison: React.FC<IProps> = ({
     setSplit(50);
   }, [mode, referenceImage.id, resetPosition]);
 
+  useEffect(() => {
+    if (mode !== "blink") {
+      setBlinkReference(true);
+      return;
+    }
+    setBlinkReference(true);
+    const timer = window.setInterval(
+      () => setBlinkReference((value) => !value),
+      BLINK_INTERVAL_MS
+    );
+    return () => window.clearInterval(timer);
+  }, [mode, referenceImage.id, selectedImage.id]);
+
   const transform = `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`;
+
+  function resetComparisonView() {
+    setPan({ x: 0, y: 0 });
+    setSplit(50);
+    setZoom(1);
+  }
 
   function onWheel(event: React.WheelEvent<HTMLDivElement>) {
     if (event.deltaY === 0) return;
@@ -362,9 +691,25 @@ export const ReferenceComparison: React.FC<IProps> = ({
     onPointerCancel: onPointerUp,
   };
 
+  const resetButton = (
+    <button
+      type="button"
+      className={`btn btn-secondary btn-sm ${CLASSNAME}-reset`}
+      onPointerDown={(event) => event.stopPropagation()}
+      onWheel={(event) => event.stopPropagation()}
+      onClick={(event) => {
+        event.stopPropagation();
+        resetComparisonView();
+      }}
+    >
+      Reset comparison
+    </button>
+  );
+
   if (mode === "both") {
     return (
       <div className={cx(CLASSNAME, `${CLASSNAME}-both`)} {...interactionProps}>
+        {resetButton}
         <div className={`${CLASSNAME}-pane`}>
           <ComparisonInfo
             title="Reference"
@@ -395,12 +740,70 @@ export const ReferenceComparison: React.FC<IProps> = ({
     );
   }
 
+  if (mode === "blink") {
+    return (
+      <div className={cx(CLASSNAME, `${CLASSNAME}-blink`)} {...interactionProps}>
+        {resetButton}
+        <div
+          className={`${CLASSNAME}-layer ${CLASSNAME}-blink-layer`}
+          style={{ opacity: blinkReference ? 1 : 0 }}
+        >
+          <div className={`${CLASSNAME}-viewport`} style={{ transform }}>
+            <ComparisonMedia image={referenceImage} />
+          </div>
+        </div>
+        <div
+          className={`${CLASSNAME}-layer ${CLASSNAME}-blink-layer`}
+          style={{ opacity: blinkReference ? 0 : 1 }}
+        >
+          <div className={`${CLASSNAME}-viewport`} style={{ transform }}>
+            <ComparisonMedia image={selectedImage} />
+          </div>
+        </div>
+        <ComparisonInfo
+          title="Reference"
+          filename={referenceFilename}
+          side="reference"
+          metrics={metrics}
+          className={`${CLASSNAME}-info-left`}
+        />
+        <ComparisonInfo
+          title="Selected"
+          filename={selectedFilename}
+          side="selected"
+          metrics={metrics}
+          className={`${CLASSNAME}-info-right`}
+        />
+        <div className={`${CLASSNAME}-blink-indicator`}>
+          {blinkReference ? "Reference" : "Selected"}
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === "difference") {
+    return (
+      <div
+        className={cx(CLASSNAME, `${CLASSNAME}-difference`)}
+        {...interactionProps}
+      >
+        {resetButton}
+        <DifferenceComparison
+          referenceImage={referenceImage}
+          selectedImage={selectedImage}
+          transform={transform}
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       ref={sliderRef}
       className={cx(CLASSNAME, `${CLASSNAME}-slider`)}
       {...interactionProps}
     >
+      {resetButton}
       <div className={`${CLASSNAME}-layer`}>
         <div className={`${CLASSNAME}-viewport`} style={{ transform }}>
           <SelectedComparisonMedia
