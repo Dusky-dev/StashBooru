@@ -395,12 +395,15 @@ def convert(source: Path, output: Path, raw: dict, cancelled=None) -> dict:
     _, ext, family, _, _ = FORMATS[fmt]
     if output.exists():
         raise ValueError("output already exists")
-    cap = next(f for f in capabilities(o["hardware"] != "cpu", fmt)["formats"] if f["id"] == fmt)
-    candidates = cap["gpu"] if o["hardware"] == "gpu" else cap["cpu"]
-    if o["hardware"] == "auto":
+    # The processor selection controls inference for image upscales. PNG/JXL
+    # encoding uses CPU codecs even when the upscaler must run on the GPU.
+    encoding_hardware = "cpu" if o["upscaler"] and family != "video" else o["hardware"]
+    cap = next(f for f in capabilities(encoding_hardware != "cpu", fmt)["formats"] if f["id"] == fmt)
+    candidates = cap["gpu"] if encoding_hardware == "gpu" else cap["cpu"]
+    if encoding_hardware == "auto":
         candidates = cap["gpu"] or cap["cpu"]
     if not candidates:
-        raise ValueError(f"{fmt} has no working {o['hardware']} encoder on this worker")
+        raise ValueError(f"{fmt} has no working {encoding_hardware} encoder on this worker")
     encoder = candidates[0]
     started = time.monotonic()
     with tempfile.TemporaryDirectory(prefix="stash-convert-", dir=output.parent) as temporary:
