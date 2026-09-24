@@ -150,13 +150,21 @@ export function computeImageDifference(
   height: number,
   options: ImageDifferenceOptions
 ): ImageDifferenceResult {
-  if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0) {
+  if (
+    !Number.isInteger(width) ||
+    !Number.isInteger(height) ||
+    width <= 0 ||
+    height <= 0
+  ) {
     throw new Error("comparison canvas must have positive integer dimensions");
   }
 
   const totalPixels = width * height;
   const expectedLength = totalPixels * 4;
-  if (reference.length !== expectedLength || selected.length !== expectedLength) {
+  if (
+    reference.length !== expectedLength ||
+    selected.length !== expectedLength
+  ) {
     throw new Error("comparison pixel buffers do not match canvas dimensions");
   }
 
