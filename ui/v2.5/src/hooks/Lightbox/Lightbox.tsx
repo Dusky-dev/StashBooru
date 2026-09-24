@@ -1150,11 +1150,7 @@ export const LightboxComponent: React.FC<IProps> = ({
               <ReferenceComparison
                 referenceImage={referenceImage}
                 selectedImage={currentImage}
-                mode={
-                  referenceComparisonMode === "selected"
-                    ? "both"
-                    : referenceComparisonMode
-                }
+                mode={referenceComparisonMode}
                 direction={movingLeft ? "left" : "right"}
                 animateSelected={!disableAnimation && !instantTransition}
                 zoom={zoom}
