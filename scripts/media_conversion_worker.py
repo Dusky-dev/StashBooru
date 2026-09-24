@@ -441,9 +441,15 @@ def convert(source: Path, output: Path, raw: dict, cancelled=None) -> dict:
                 raise ValueError("this hardware H.264 encoder cannot preserve high bit depth; choose HEVC/AV1 or CPU")
         if encoder == "cjxl":
             intermediate = decoded
-            # Normalize GIF repeat semantics to APNG's total play count before
-            # cjxl; older libjxl treats GIF repetitions as total plays.
-            if before["videoCodec"] not in ("mjpeg", "png", "apng"):
+            # cjxl's native GIF reader preserves GIF centisecond timing. Routing an
+            # infinite-loop GIF through APNG can produce slow-motion JXL timing on
+            # some libjxl versions, so keep GIF native whenever loop semantics do
+            # not need normalization. Finite GIF loops still use APNG because GIF
+            # stores repeat counts while APNG/JXL store total plays.
+            direct_gif = before["videoCodec"] == "gif" and before.get("plays", 0) == 0
+            # Normalize repeat semantics to APNG's total play count for formats
+            # that still need the intermediate.
+            if not direct_gif and before["videoCodec"] not in ("mjpeg", "png", "apng"):
                 intermediate = directory / "intermediate.png"
                 intermediate_args = ffmpeg_prefix() + input_args(decoded) + ["-an",
                     "-fps_mode", "passthrough", "-enc_time_base", "-1", "-c:v", "apng" if before["frames"] > 1 else "png",
@@ -453,7 +459,7 @@ def convert(source: Path, output: Path, raw: dict, cancelled=None) -> dict:
                     if before.get("durations"):
                         intermediate_args += ["-final_delay", str(Fraction(before["durations"][-1]).limit_denominator(100000))]
                 run(intermediate_args + [str(intermediate)], cancelled)
-            if before.get("durations"):
+            if before.get("durations") and not direct_gif:
                 intermediate = jxl_timing_input(intermediate, directory / "jxl-timed.png", before["durations"])
             args = ["cjxl", str(intermediate), str(output), "--distance=" + str(o["distance"]),
                     "--effort=" + str(int(o["effort"])), "--num_threads=" + str(THREADS)]

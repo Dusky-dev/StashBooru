@@ -70,6 +70,15 @@ func TestImageFrameInspection(t *testing.T) {
 			if err != nil || count != tc.count {
 				t.Fatalf("count=%d err=%v; want %d", count, err, tc.count)
 			}
+			if tc.name == "animated.gif" {
+				rate, err := FrameRate(context.Background(), &file.OsFS{}, path, count)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if want := 3.0 / 0.09; rate < want-0.001 || rate > want+0.001 {
+					t.Fatalf("frame rate=%f; want %f", rate, want)
+				}
+			}
 		})
 	}
 	for _, name := range []string{"broken.gif", "broken.png", "broken.webp"} {
@@ -99,6 +108,12 @@ func TestImageFrameInspection(t *testing.T) {
 		}
 		if err != nil || count != want {
 			t.Fatalf("%s JXL frames=%d err=%v", name, count, err)
+		}
+		if name == "animated" {
+			rate, err := FrameRate(context.Background(), &file.OsFS{}, out, count)
+			if err != nil || rate <= 0 {
+				t.Fatalf("animated JXL frame rate=%f err=%v", rate, err)
+			}
 		}
 	}
 }

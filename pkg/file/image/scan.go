@@ -37,11 +37,18 @@ func (d *Decorator) Decorate(ctx context.Context, fs models.FS, f models.File) (
 		probePath = d.FFProbe.Path()
 	}
 	base.FrameCount = 0
+	animationFrameRate := 0.0
 	count, inspectErr := animation.Count(ctx, fs, base.Path, probePath)
 	if inspectErr != nil {
 		logger.Warnf("Could not inspect animation frames for %q: %v", base.Path, inspectErr)
 	} else {
 		base.FrameCount = count
+		if count > 1 {
+			animationFrameRate, inspectErr = animation.FrameRate(ctx, fs, base.Path, count)
+			if inspectErr != nil {
+				logger.Warnf("Could not inspect animation frame rate for %q: %v", base.Path, inspectErr)
+			}
+		}
 	}
 
 	// ignore clips in non-OsFS filesystems as ffprobe cannot read them
@@ -56,26 +63,27 @@ func (d *Decorator) Decorate(ctx context.Context, fs models.FS, f models.File) (
 
 		// Go cannot decode JXL from a stream, so extract to a temp file and probe by path
 		if ext == ".jxl" {
-			return d.decorateViaTempFile(fs, f)
+			return d.decorateViaTempFile(fs, f, animationFrameRate)
 		}
 
 		logger.Debugf("assuming ImageFile for non-OsFS file %q", base.Path)
-		return decorateFallback(fs, f)
+		return decorateFallback(fs, f, animationFrameRate)
 	}
 
 	probe, err := d.FFProbe.NewVideoFile(base.Path)
 	if err != nil {
 		logger.Warnf("File %q could not be read with ffprobe: %s, assuming ImageFile", base.Path, err)
-		return decorateFallback(fs, f)
+		return decorateFallback(fs, f, animationFrameRate)
 	}
 
 	// Fallback to catch non-animated avif images that FFProbe detects as video files
 	if probe.Bitrate == 0 && probe.VideoCodec == "av1" {
 		return &models.ImageFile{
-			BaseFile: base,
-			Format:   "avif",
-			Width:    probe.Width,
-			Height:   probe.Height,
+			BaseFile:  base,
+			Format:    "avif",
+			Width:     probe.Width,
+			Height:    probe.Height,
+			FrameRate: animationFrameRate,
 		}, nil
 	}
 
@@ -92,10 +100,11 @@ func (d *Decorator) Decorate(ctx context.Context, fs models.FS, f models.File) (
 	}
 
 	ret := &models.ImageFile{
-		BaseFile: base,
-		Format:   probe.VideoCodec,
-		Width:    probe.Width,
-		Height:   probe.Height,
+		BaseFile:  base,
+		Format:    probe.VideoCodec,
+		Width:     probe.Width,
+		Height:    probe.Height,
+		FrameRate: animationFrameRate,
 	}
 
 	// FFprobe has a known bug where it returns 0x0 dimensions for some animated WebP files
@@ -138,7 +147,7 @@ func decodeConfig(fs models.FS, path string) (config image.Config, format string
 	return
 }
 
-func decorateFallback(fs models.FS, f models.File) (models.File, error) {
+func decorateFallback(fs models.FS, f models.File, frameRate float64) (models.File, error) {
 	base := f.Base()
 	path := base.Path
 
@@ -148,10 +157,11 @@ func decorateFallback(fs models.FS, f models.File) (models.File, error) {
 	}
 
 	ret := &models.ImageFile{
-		BaseFile: base,
-		Format:   format,
-		Width:    c.Width,
-		Height:   c.Height,
+		BaseFile:  base,
+		Format:    format,
+		Width:     c.Width,
+		Height:    c.Height,
+		FrameRate: frameRate,
 	}
 
 	adjustForOrientation(fs, path, ret)
@@ -160,7 +170,7 @@ func decorateFallback(fs models.FS, f models.File) (models.File, error) {
 }
 
 // decorateViaTempFile extracts a non-OsFS file (e.g. inside a zip) to a temp file so ffprobe can read it by path, for formats like JXL that ffprobe reads but Go cannot decode from a stream.
-func (d *Decorator) decorateViaTempFile(fs models.FS, f models.File) (models.File, error) {
+func (d *Decorator) decorateViaTempFile(fs models.FS, f models.File, frameRate float64) (models.File, error) {
 	base := f.Base()
 
 	r, err := fs.Open(base.Path)
@@ -188,10 +198,11 @@ func (d *Decorator) decorateViaTempFile(fs models.FS, f models.File) (models.Fil
 	}
 
 	ret := &models.ImageFile{
-		BaseFile: base,
-		Format:   probe.VideoCodec,
-		Width:    probe.Width,
-		Height:   probe.Height,
+		BaseFile:  base,
+		Format:    probe.VideoCodec,
+		Width:     probe.Width,
+		Height:    probe.Height,
+		FrameRate: frameRate,
 	}
 
 	adjustForOrientation(fs, base.Path, ret)
@@ -213,7 +224,7 @@ func (d *Decorator) IsMissingMetadata(ctx context.Context, fs models.FS, f model
 
 	switch {
 	case isImage:
-		return imf.Format == unsetString || imf.Width == unsetNumber || imf.Height == unsetNumber
+		return imf.Format == unsetString || imf.Width == unsetNumber || imf.Height == unsetNumber || (imf.FrameCount > 1 && imf.FrameRate <= 0)
 	case isVideo:
 		videoFileDecorator := video.Decorator{FFProbe: d.FFProbe}
 		return videoFileDecorator.IsMissingMetadata(ctx, fs, vf)

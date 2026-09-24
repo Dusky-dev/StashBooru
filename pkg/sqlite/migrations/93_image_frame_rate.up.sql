@@ -1,0 +1,1 @@
+ALTER TABLE `image_files` ADD COLUMN `frame_rate` REAL NOT NULL DEFAULT 0;
