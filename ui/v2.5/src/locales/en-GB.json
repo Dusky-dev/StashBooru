@@ -1379,6 +1379,13 @@
   "penis_length": "Penis Length",
   "penis_length_cm": "Penis Length (cm)",
   "perceptual_similarity": "Perceptual Similarity (pHash)",
+  "image_similarity": {
+    "method": "Match by",
+    "phash": "Same image / variants (pHash)",
+    "embedding": "Related content (EVA02)",
+    "phash_help": "Current primary-file pHash · nearest first. Lower distance finds closer matches; zero is not proof of identical files. Images without a current pHash are excluded. Generate image perceptual hashes in Tasks. Crops and rotations may not match.",
+    "embedding_help": "EVA02 embeddings · nearest first. Finds related visual content, including different images of the same subject. Requires indexed embeddings; database tags do not determine this ranking."
+  },
   "performer": "Performer",
   "performer_age": "Performer Age",
   "performer_count": "Performer Count",
