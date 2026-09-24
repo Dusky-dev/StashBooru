@@ -29,6 +29,7 @@ fragment ImageFileData on ImageFile {
   size
   frame_count
   mod_time
+  format
   width
   height
   frame_rate
@@ -68,6 +69,7 @@ fragment VisualFileData on VisualFile {
     size
     frame_count
     mod_time
+    format
     width
     height
     frame_rate
