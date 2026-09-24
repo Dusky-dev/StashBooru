@@ -527,6 +527,8 @@
       "backing_up_database": "Backing up database",
       "backup_and_download": "Performs a backup of the database and downloads the resulting file.",
       "backup_database": {
+        "warning_compatibility": "StashBooru database backups are incompatible with vanilla Stash. Restore them using a compatible StashBooru version. Keep a separate vanilla Stash backup if you need to return to vanilla Stash.",
+        "warning_media": "Database backups do not include your media files, conversion/upscaling restore caches, generated files, or configuration. Back these up separately. Including blob files only adds database-managed assets, such as profile images.",
         "description": "Performs a backup of the database and blob files.",
         "destination": "Destination",
         "download": "Download backup",

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { Button, Col, Form, Row } from "react-bootstrap";
+import { Alert, Button, Col, Form, Row } from "react-bootstrap";
 import {
   mutateMigrateHashNaming,
   mutateMetadataExport,
@@ -162,6 +162,17 @@ const CleanOptions: React.FC<ICleanOptions> = ({
   );
 };
 
+const BackupCompatibilityNotice: React.FC = () => (
+  <Alert variant="warning">
+    <p>
+      <FormattedMessage id="config.tasks.backup_database.warning_compatibility" />
+    </p>
+    <p className="mb-0">
+      <FormattedMessage id="config.tasks.backup_database.warning_media" />
+    </p>
+  </Alert>
+);
+
 const BackupDialog: React.FC<{
   onClose: (
     confirmed?: boolean,
@@ -232,6 +243,7 @@ const BackupDialog: React.FC<{
       }}
     >
       <div className="dialog-container">
+        <BackupCompatibilityNotice />
         <Form.Group>
           <h5>
             <FormattedMessage id="config.tasks.backup_database.destination" />
@@ -695,6 +707,7 @@ export const DataManagementTasks: React.FC<IDataManagementTasks> = ({
       </SettingSection>
 
       <SettingSection headingID="actions.backup">
+        <BackupCompatibilityNotice />
         <Setting
           heading={
             <>
