@@ -426,11 +426,12 @@ const DifferenceComparison: React.FC<{
     const context = canvas.getContext("2d");
     if (!context) return;
 
-    context.putImageData(
-      new ImageData(pixels.selected, pixels.width, pixels.height),
-      0,
-      0
+    const selectedImageData = context.createImageData(
+      pixels.width,
+      pixels.height
     );
+    selectedImageData.data.set(pixels.selected);
+    context.putImageData(selectedImageData, 0, 0);
     context.fillStyle = "rgba(0, 0, 0, 0.68)";
     context.fillRect(0, 0, pixels.width, pixels.height);
 
@@ -439,11 +440,12 @@ const DifferenceComparison: React.FC<{
     heatmap.height = pixels.height;
     const heatmapContext = heatmap.getContext("2d");
     if (heatmapContext) {
-      heatmapContext.putImageData(
-        new ImageData(result.heatmap, pixels.width, pixels.height),
-        0,
-        0
+      const heatmapImageData = heatmapContext.createImageData(
+        pixels.width,
+        pixels.height
       );
+      heatmapImageData.data.set(result.heatmap);
+      heatmapContext.putImageData(heatmapImageData, 0, 0);
       context.drawImage(heatmap, 0, 0);
     }
 
