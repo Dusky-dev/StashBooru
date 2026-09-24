@@ -366,7 +366,7 @@ const makeScenesSimilarityUrl = (id: string | undefined) => {
 const makeImagesSimilarityUrl = (id: string | undefined) => {
   if (!id) return "#";
   const sort = encodeURIComponent(
-    `${PERCEPTUAL_SIMILARITY_SORT}:${DEFAULT_SIMILARITY_DISTANCE}:${id}`
+    `${PERCEPTUAL_SIMILARITY_SORT}:${DEFAULT_SIMILARITY_DISTANCE}:${id}:phash`
   );
   return `/images?sortby=${sort}`;
 };

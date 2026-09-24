@@ -1,6 +1,6 @@
 import React from "react";
-import { Button } from "react-bootstrap";
-import { useIntl } from "react-intl";
+import { Button, Form } from "react-bootstrap";
+import { FormattedMessage, useIntl } from "react-intl";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
 
 import { FilterMode } from "src/core/generated-graphql";
@@ -44,41 +44,77 @@ export const PerceptualSimilarityControls: React.FC<{
     </Button>
   ) : null;
 
-  if (filter.mode === FilterMode.Images && filter.similarityReferenceID) {
-    return (
-      <div className="similarity-controls d-flex align-items-center flex-wrap">
-        <span className="mb-0 mx-2">
-          <strong>Visual similarity</strong> · EVA02 embeddings · nearest first
-        </span>
-        {referenceButton}
-      </div>
-    );
-  }
+  const imageReference =
+    filter.mode === FilterMode.Images && !!filter.similarityReferenceID;
+  const embedding = imageReference && filter.similarityMethod === "embedding";
 
   return (
     <div className="similarity-controls d-flex align-items-center flex-wrap">
-      <label className="mb-0 mx-2" htmlFor="phash-similarity-distance">
-        {distanceLabel}: <strong>{filter.similarityDistance}</strong>
-      </label>
+      {imageReference && (
+        <>
+          <label className="mb-0 mx-2" htmlFor="image-similarity-method">
+            <FormattedMessage id="image_similarity.method" />
+          </label>
+          <Form.Control
+            as="select"
+            id="image-similarity-method"
+            size="sm"
+            className="w-auto"
+            value={filter.similarityMethod}
+            onChange={(event) =>
+              setFilter(
+                filter.setSimilarityMethod(
+                  event.currentTarget.value === "phash" ? "phash" : "embedding"
+                )
+              )
+            }
+          >
+            <option value="phash">
+              {intl.formatMessage({ id: "image_similarity.phash" })}
+            </option>
+            <option value="embedding">
+              {intl.formatMessage({ id: "image_similarity.embedding" })}
+            </option>
+          </Form.Control>
+        </>
+      )}
+      {!embedding && (
+        <>
+          <label className="mb-0 mx-2" htmlFor="phash-similarity-distance">
+            {distanceLabel}: <strong>{filter.similarityDistance}</strong>
+          </label>
 
-      <input
-        id="phash-similarity-distance"
-        type="range"
-        min={0}
-        max={MAX_SIMILARITY_DISTANCE}
-        step={1}
-        value={filter.similarityDistance}
-        aria-label={distanceLabel}
-        onChange={(event) =>
-          setFilter(
-            filter.setSimilarityDistance(
-              Number.parseInt(event.currentTarget.value, 10)
-            )
-          )
-        }
-      />
+          <input
+            id="phash-similarity-distance"
+            type="range"
+            min={0}
+            max={MAX_SIMILARITY_DISTANCE}
+            step={1}
+            value={filter.similarityDistance}
+            aria-label={distanceLabel}
+            onChange={(event) =>
+              setFilter(
+                filter.setSimilarityDistance(
+                  Number.parseInt(event.currentTarget.value, 10)
+                )
+              )
+            }
+          />
+        </>
+      )}
 
       {referenceButton}
+      {imageReference && (
+        <small className="w-100 mt-1 mx-2 text-muted">
+          <FormattedMessage
+            id={
+              embedding
+                ? "image_similarity.embedding_help"
+                : "image_similarity.phash_help"
+            }
+          />
+        </small>
+      )}
     </div>
   );
 };

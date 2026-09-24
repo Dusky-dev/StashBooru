@@ -36,6 +36,7 @@ interface IEncodedParams {
 export const PERCEPTUAL_SIMILARITY_SORT = "perceptual_similarity";
 export const DEFAULT_SIMILARITY_DISTANCE = 5;
 export const MAX_SIMILARITY_DISTANCE = 8;
+export type ImageSimilarityMethod = "phash" | "embedding";
 
 const DEFAULT_PARAMS = {
   sortDirection: SortDirectionEnum.Asc,
@@ -56,6 +57,7 @@ export class ListFilterModel {
   public sortBy?: string;
   public similarityDistance = DEFAULT_SIMILARITY_DISTANCE;
   public similarityReferenceID?: string;
+  public similarityMethod: ImageSimilarityMethod = "phash";
   public displayMode: DisplayMode = DEFAULT_PARAMS.displayMode;
   public zoomIndex: number = 1;
   public criteria: Array<Criterion> = [];
@@ -104,7 +106,9 @@ export class ListFilterModel {
   }
 
   private configureSimilaritySort(sortBy: string): boolean {
-    const match = sortBy.match(/^perceptual_similarity(?::(\d+))?(?::(\d+))?$/);
+    const match = sortBy.match(
+      /^perceptual_similarity(?::(\d+))?(?::(\d+)(?::(phash|embedding))?)?$/
+    );
 
     if (!match) {
       return false;
@@ -120,6 +124,9 @@ export class ListFilterModel {
       Math.max(0, parsedDistance)
     );
     this.similarityReferenceID = match[2];
+    // Existing reference URLs/saved filters used EVA02 before modes were added.
+    this.similarityMethod =
+      match[3] === "phash" ? "phash" : match[2] ? "embedding" : "phash";
     this.sortBy = PERCEPTUAL_SIMILARITY_SORT;
     this.sortDirection = SortDirectionEnum.Asc;
 
@@ -382,8 +389,12 @@ export class ListFilterModel {
       const reference = this.similarityReferenceID
         ? `:${this.similarityReferenceID}`
         : "";
+      const method =
+        this.mode === FilterMode.Images && reference
+          ? `:${this.similarityMethod}`
+          : "";
 
-      return `${PERCEPTUAL_SIMILARITY_SORT}:${this.similarityDistance}${reference}`;
+      return `${PERCEPTUAL_SIMILARITY_SORT}:${this.similarityDistance}${reference}${method}`;
     }
 
     return this.sortBy;
@@ -603,6 +614,15 @@ export class ListFilterModel {
     if (sortBy === PERCEPTUAL_SIMILARITY_SORT) {
       ret.sortDirection = SortDirectionEnum.Asc;
     }
+    ret.currentPage = 1;
+    return ret;
+  }
+
+  public setSimilarityMethod(method: ImageSimilarityMethod) {
+    const ret = this.clone();
+    ret.similarityMethod = method;
+    ret.sortBy = PERCEPTUAL_SIMILARITY_SORT;
+    ret.sortDirection = SortDirectionEnum.Asc;
     ret.currentPage = 1;
     return ret;
   }
