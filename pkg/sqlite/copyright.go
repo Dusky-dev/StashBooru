@@ -166,11 +166,11 @@ SELECT 1 FROM copyright_aliases a WHERE a.copyright_id = c.id AND a.alias LIKE ?
 	case "updated_at":
 		sortColumn = "c.updated_at"
 	case "image_count":
-		sortColumn = "(SELECT COUNT(*) FROM images_copyrights m WHERE m.copyright_id = c.id)"
+		sortColumn = copyrightSubtreeCountSortExpression(imagesCopyrightsTable, "image_id")
 	case "scene_count":
-		sortColumn = "(SELECT COUNT(*) FROM scenes_copyrights m WHERE m.copyright_id = c.id)"
+		sortColumn = copyrightSubtreeCountSortExpression(scenesCopyrightsTable, "scene_id")
 	case "performer_count":
-		sortColumn = "(SELECT COUNT(*) FROM performers_copyrights m WHERE m.copyright_id = c.id)"
+		sortColumn = copyrightSubtreeCountSortExpression(performersCopyrightsTable, "performer_id")
 	case "sort_name":
 		// default
 	}
