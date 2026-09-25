@@ -18,7 +18,7 @@ ARG STASH_VERSION
 RUN BUILD_DATE=$(date +"%Y-%m-%d %H:%M:%S") make ui-only
 
 # Build Backend
-FROM golang:1.25.9-alpine AS backend
+FROM golang:1.25.13-alpine AS backend
 RUN apk add --no-cache make alpine-sdk sqlite-dev
 WORKDIR /stash
 COPY ./go* ./*.go Makefile gqlgen.yml .gqlgenc.yml /stash/
@@ -50,7 +50,8 @@ RUN make flags-release flags-pie stash
 # Final Runnable Image
 FROM alpine:latest
 
-RUN apk add --no-cache \
+RUN apk upgrade --no-cache \
+    && apk add --no-cache \
     ca-certificates \
     vips-tools \
     ffmpeg \

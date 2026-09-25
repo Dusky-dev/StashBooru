@@ -142,7 +142,7 @@ jobs:
       run: make it
 
   # Job 3: Cross-compile for all platforms
-  # Each platform gets its own runner and Docker container (ghcr.io/stashapp/compiler:13).
+  # Each platform gets its own runner and Docker container (ghcr.io/stashapp/compiler:14).
   # Each build-cc-* make target is self-contained (sets its own GOOS/GOARCH/CC),
   # so running them in separate containers is functionally identical to one container.
   # Runs in parallel with the test job.
@@ -219,7 +219,7 @@ jobs:
         official-build: ${{ github.repository == 'stashapp/stash' && ((github.event_name == 'push' && github.ref == 'refs/heads/develop') || (github.event_name == 'release' && github.ref != 'refs/tags/latest_develop')) }}
       run: |
         mkdir -p .go-cache
-        docker run -d --name build --mount type=bind,source="$(pwd)",target=/stash,consistency=delegated --mount type=bind,source="$(pwd)/.go-cache",target=/root/.cache/go-build,consistency=delegated --env OFFICIAL_BUILD=${{ env.official-build }} --env UPDATE_REPO=${{ github.repository }} -w /stash $COMPILER_IMAGE tail -f /dev/null
+        docker run -d --name build --mount type=bind,source="$(pwd)",target=/stash,consistency=delegated --mount type=bind,source="$(pwd)/.go-cache",target=/root/.cache/go-build,consistency=delegated --env GOTOOLCHAIN=auto --env OFFICIAL_BUILD=${{ env.official-build }} --env UPDATE_REPO=${{ github.repository }} -w /stash $COMPILER_IMAGE tail -f /dev/null
 
     - name: Build (${{ matrix.platform }})
       run: docker exec -t build /bin/bash -c "make ${{ matrix.make-target }}"
