@@ -4,6 +4,7 @@ import { DetailItem } from "src/components/Shared/DetailItem";
 import { StashIDPill } from "src/components/Shared/StashID";
 import * as GQL from "src/core/generated-graphql";
 import { CustomFields } from "src/components/Shared/CustomFields";
+import { StructuralRoleControl } from "src/components/Copyrights/CopyrightTaxonomyControls";
 
 interface ITagDetails {
   tag: GQL.TagDataFragment;
@@ -71,6 +72,11 @@ export const TagDetailsPanel: React.FC<ITagDetails> = ({ tag, fullWidth }) => {
 
   return (
     <div className="detail-group">
+      <StructuralRoleControl
+        entityType="tag"
+        entityID={tag.id}
+        role={tag.structural_role}
+      />
       <DetailItem
         id="description"
         value={tag.description}
@@ -107,6 +113,12 @@ export const CompressedTagDetailsPanel: React.FC<ITagDetails> = ({ tag }) => {
         <a className="tag-name" onClick={() => scrollToTop()}>
           {tag.name}
         </a>
+        {tag.structural_role ? (
+          <>
+            <span className="detail-divider">/</span>
+            <span className="tag-role">{tag.structural_role}</span>
+          </>
+        ) : null}
         {tag.description ? (
           <>
             <span className="detail-divider">/</span>

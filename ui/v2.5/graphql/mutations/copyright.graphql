@@ -20,6 +20,12 @@ mutation ImageCopyrightsUpdate($imageID: ID!, $copyrightIDs: [ID!]!) {
     copyrights {
       ...SlimCopyrightData
     }
+    ordered_copyrights {
+      ...SlimCopyrightData
+    }
+    primary_copyright {
+      ...SlimCopyrightData
+    }
   }
 }
 
@@ -27,6 +33,12 @@ mutation SceneCopyrightsUpdate($sceneID: ID!, $copyrightIDs: [ID!]!) {
   sceneCopyrightsUpdate(scene_id: $sceneID, copyright_ids: $copyrightIDs) {
     id
     copyrights {
+      ...SlimCopyrightData
+    }
+    ordered_copyrights {
+      ...SlimCopyrightData
+    }
+    primary_copyright {
       ...SlimCopyrightData
     }
   }
@@ -62,5 +74,54 @@ mutation CopyrightPerformersUpdate($copyrightID: ID!, $performerIDs: [ID!]!) {
     performer_ids: $performerIDs
   ) {
     ...CopyrightData
+  }
+}
+
+mutation CopyrightStructuralRoleUpdate($copyrightID: ID!, $role: String!) {
+  copyrightStructuralRoleUpdate(copyright_id: $copyrightID, role: $role) {
+    ...CopyrightData
+  }
+}
+
+mutation TagStructuralRoleUpdate($tagID: ID!, $role: String!) {
+  tagStructuralRoleUpdate(tag_id: $tagID, role: $role) {
+    id
+    structural_role
+  }
+}
+
+mutation CopyrightChildrenOrderUpdate($parentID: ID!, $childIDs: [ID!]!) {
+  copyrightChildrenOrderUpdate(parent_id: $parentID, child_ids: $childIDs) {
+    ...CopyrightData
+  }
+}
+
+mutation ImagePrimaryCopyrightUpdate($imageID: ID!, $copyrightID: ID) {
+  imagePrimaryCopyrightUpdate(image_id: $imageID, copyright_id: $copyrightID) {
+    id
+    copyrights {
+      ...SlimCopyrightData
+    }
+    ordered_copyrights {
+      ...SlimCopyrightData
+    }
+    primary_copyright {
+      ...SlimCopyrightData
+    }
+  }
+}
+
+mutation ScenePrimaryCopyrightUpdate($sceneID: ID!, $copyrightID: ID) {
+  scenePrimaryCopyrightUpdate(scene_id: $sceneID, copyright_id: $copyrightID) {
+    id
+    copyrights {
+      ...SlimCopyrightData
+    }
+    ordered_copyrights {
+      ...SlimCopyrightData
+    }
+    primary_copyright {
+      ...SlimCopyrightData
+    }
   }
 }

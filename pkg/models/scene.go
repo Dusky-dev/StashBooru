@@ -91,6 +91,8 @@ type SceneFilterType struct {
 	PerformerAge *IntCriterionInput `json:"performer_age"`
 	// Filter to only include scenes with these performers
 	Performers *MultiCriterionInput `json:"performers"`
+	// Filter to only include scenes with these copyrights
+	Copyrights *HierarchicalMultiCriterionInput `json:"copyrights"`
 	// Filter by performer count
 	PerformerCount *IntCriterionInput `json:"performer_count"`
 	// Filter by StashID

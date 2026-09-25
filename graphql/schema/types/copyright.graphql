@@ -10,13 +10,31 @@ type Copyright {
   updated_at: Time!
   parents: [Copyright!]!
   children: [Copyright!]!
+  "Direct children in the user-defined sibling order, with normal sort order as fallback."
+  ordered_children: [Copyright!]!
+  "Free-form taxonomy role such as Franchise, Series, Arc, Publisher, or any user-defined label."
+  structural_role: String!
+  "Deterministic canonical root-to-node path used for breadcrumbs and branch grouping."
+  breadcrumb: [Copyright!]!
   tags: [Tag!]!
   image_count: Int!
   scene_count: Int!
   performer_count: Int!
+  "Distinct image count across this Copyright and all descendants."
+  subtree_image_count: Int!
+  "Distinct video count across this Copyright and all descendants."
+  subtree_scene_count: Int!
+  "Distinct character count across this Copyright and all descendants."
+  subtree_performer_count: Int!
   images: [Image!]!
   scenes: [Scene!]!
   performers: [Performer!]!
+  "Distinct images associated with this Copyright or any descendant."
+  subtree_images: [Image!]!
+  "Distinct videos associated with this Copyright or any descendant."
+  subtree_scenes: [Scene!]!
+  "Distinct characters associated with this Copyright or any descendant."
+  subtree_performers: [Performer!]!
 }
 
 input CopyrightCreateInput {
@@ -67,16 +85,38 @@ extend type Mutation {
   copyrightImagesUpdate(copyright_id: ID!, image_ids: [ID!]!): Copyright!
   copyrightScenesUpdate(copyright_id: ID!, scene_ids: [ID!]!): Copyright!
   copyrightPerformersUpdate(copyright_id: ID!, performer_ids: [ID!]!): Copyright!
+
+  "Set the free-form structural role for a Copyright. Empty string clears it."
+  copyrightStructuralRoleUpdate(copyright_id: ID!, role: String!): Copyright!
+  "Set the free-form structural role for a Tag. Empty string clears it."
+  tagStructuralRoleUpdate(tag_id: ID!, role: String!): Tag!
+  "Persist the exact manual order of all direct children of a Copyright."
+  copyrightChildrenOrderUpdate(parent_id: ID!, child_ids: [ID!]!): Copyright!
+  "Select or clear the primary Copyright used to group an image. The Copyright must already be associated with the image."
+  imagePrimaryCopyrightUpdate(image_id: ID!, copyright_id: ID): Image!
+  "Select or clear the primary Copyright used to group a video. The Copyright must already be associated with the video."
+  scenePrimaryCopyrightUpdate(scene_id: ID!, copyright_id: ID): Scene!
 }
 
 extend type Image {
   copyrights: [Copyright!]!
+  "Copyright associations ordered with the primary first, then by deterministic branch path."
+  ordered_copyrights: [Copyright!]!
+  primary_copyright: Copyright
 }
 
 extend type Scene {
   copyrights: [Copyright!]!
+  "Copyright associations ordered with the primary first, then by deterministic branch path."
+  ordered_copyrights: [Copyright!]!
+  primary_copyright: Copyright
 }
 
 extend type Performer {
   copyrights: [Copyright!]!
+}
+
+extend type Tag {
+  "Free-form taxonomy role; this does not impose a fixed hierarchy depth."
+  structural_role: String!
 }

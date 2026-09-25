@@ -5,6 +5,7 @@ import { FormattedMessage } from "react-intl";
 import { PhotographerLink } from "src/components/Shared/Link";
 import { PatchComponent } from "../../../patch";
 import { CustomFields } from "src/components/Shared/CustomFields";
+import { PrimaryCopyrightControl } from "src/components/Copyrights/PrimaryCopyrightControl";
 import { ImageFileInfoPanel } from "./ImageFileInfoPanel";
 
 interface IImageDetailProps {
@@ -70,6 +71,14 @@ export const ImageDetailPanel: React.FC<IImageDetailProps> = PatchComponent(
         </div>
         <div className="row">
           <div className="col-12">
+            <PrimaryCopyrightControl
+              mediaType="image"
+              mediaID={props.image.id}
+              copyrights={
+                props.image.ordered_copyrights ?? props.image.copyrights
+              }
+              primary={props.image.primary_copyright}
+            />
             {renderDetails()}
             <CustomFields values={props.image.custom_fields} fullWidth />
             <hr />

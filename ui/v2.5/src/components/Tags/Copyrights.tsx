@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { FormattedMessage } from "react-intl";
 import { Helmet } from "react-helmet";
 import { Col, Form, Row, Spinner, Tab, Tabs } from "react-bootstrap";
 import { Route, Switch, useHistory, useParams } from "react-router-dom";
@@ -11,6 +12,11 @@ import {
   CopyrightSelect,
 } from "src/components/Copyrights/CopyrightSelect";
 import { CopyrightLink } from "src/components/Copyrights/CopyrightLink";
+import {
+  CopyrightBreadcrumb,
+  CopyrightChildrenOrderControl,
+  StructuralRoleControl,
+} from "src/components/Copyrights/CopyrightTaxonomyControls";
 import { DetailsEditNavbar } from "src/components/Shared/DetailsEditNavbar";
 import { DetailImage } from "src/components/Shared/DetailImage";
 import { DetailItem } from "src/components/Shared/DetailItem";
@@ -35,6 +41,7 @@ import ImageUtils from "src/utils/image";
 
 interface CopyrightFormValues {
   name: string;
+  sort_name: string;
   description: string;
   aliases: string;
   parents: Copyright[];
@@ -43,6 +50,7 @@ interface CopyrightFormValues {
 
 const emptyValues: CopyrightFormValues = {
   name: "",
+  sort_name: "",
   description: "",
   aliases: "",
   parents: [],
@@ -73,6 +81,23 @@ const CopyrightDetailsPanel: React.FC<{
 
   return (
     <div className="detail-group">
+      <CopyrightBreadcrumb items={copyright.breadcrumb} />
+      <StructuralRoleControl
+        entityType="copyright"
+        entityID={copyright.id}
+        role={copyright.structural_role}
+      />
+      <DetailItem
+        id="subtree-media"
+        label="Taxonomy subtree"
+        value={`${copyright.subtree_image_count} images · ${copyright.subtree_scene_count} videos · ${copyright.subtree_performer_count} characters`}
+        fullWidth={fullWidth}
+      />
+      <DetailItem
+        id="sort_name"
+        value={copyright.sort_name}
+        fullWidth={fullWidth}
+      />
       <DetailItem
         id="details"
         value={copyright.description}
@@ -87,9 +112,16 @@ const CopyrightDetailsPanel: React.FC<{
       <DetailItem
         id="sub-series"
         label="Sub-series"
-        value={renderRelations(copyright.children)}
+        value={renderRelations(copyright.ordered_children)}
         fullWidth={fullWidth}
       />
+      <CopyrightChildrenOrderControl
+        parentID={copyright.id}
+        orderedChildren={copyright.ordered_children}
+      />
+      <p className="text-muted small">
+        <FormattedMessage id="copyright_hierarchy.delete_help" />
+      </p>
     </div>
   );
 };
@@ -131,6 +163,7 @@ const CopyrightEditPanel: React.FC<{
     }
     setValues({
       name: copyright.name,
+      sort_name: copyright.sort_name,
       description: copyright.description,
       aliases: copyright.aliases.join("\n"),
       parents: copyright.parents,
@@ -169,6 +202,7 @@ const CopyrightEditPanel: React.FC<{
     try {
       const input = {
         name,
+        sort_name: values.sort_name.trim(),
         description: values.description,
         aliases: aliasesFromText(values.aliases),
         parent_ids: values.parents.map((item) => item.id),
@@ -249,6 +283,21 @@ const CopyrightEditPanel: React.FC<{
               setValues({ ...values, name: event.currentTarget.value })
             }
           />
+        )}
+        {field(
+          <FormattedMessage id="sort_name" />,
+          <>
+            <Form.Control
+              className="text-input"
+              value={values.sort_name}
+              onChange={(event) =>
+                setValues({ ...values, sort_name: event.currentTarget.value })
+              }
+            />
+            <Form.Text className="text-muted">
+              <FormattedMessage id="copyright_hierarchy.sort_name_help" />
+            </Form.Text>
+          </>
         )}
         {field(
           "Aliases",
@@ -346,9 +395,9 @@ const CopyrightMediaTabs: React.FC<{
   const history = useHistory();
   const validTabs = ["all", "images", "videos", "characters"];
   const populatedDefaultTab =
-    copyright.image_count > 0
+    copyright.subtree_image_count > 0
       ? "images"
-      : copyright.scene_count > 0
+      : copyright.subtree_scene_count > 0
         ? "videos"
         : "characters";
   const active = validTabs.includes(initialTab ?? "")
@@ -356,12 +405,12 @@ const CopyrightMediaTabs: React.FC<{
     : populatedDefaultTab;
 
   const sceneIDs = useMemo(
-    () => copyright.scenes.map((scene) => Number(scene.id)),
-    [copyright.scenes]
+    () => copyright.subtree_scenes.map((scene) => Number(scene.id)),
+    [copyright.subtree_scenes]
   );
   const performerIDs = useMemo(
-    () => copyright.performers.map((performer) => Number(performer.id)),
-    [copyright.performers]
+    () => copyright.subtree_performers.map((performer) => Number(performer.id)),
+    [copyright.subtree_performers]
   );
   const imageFilterHook = useCopyrightFilterHook(copyright);
 
@@ -399,7 +448,7 @@ const CopyrightMediaTabs: React.FC<{
         title={
           <TabTitleCounter
             messageID="images"
-            count={copyright.image_count}
+            count={copyright.subtree_image_count}
             abbreviateCounter={abbreviateCounter}
           />
         }
@@ -411,7 +460,7 @@ const CopyrightMediaTabs: React.FC<{
         title={
           <TabTitleCounter
             messageID="scenes"
-            count={copyright.scene_count}
+            count={copyright.subtree_scene_count}
             abbreviateCounter={abbreviateCounter}
           />
         }
@@ -423,7 +472,7 @@ const CopyrightMediaTabs: React.FC<{
         title={
           <TabTitleCounter
             messageID="performers"
-            count={copyright.performer_count}
+            count={copyright.subtree_performer_count}
             abbreviateCounter={abbreviateCounter}
           />
         }

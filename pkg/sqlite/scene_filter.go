@@ -180,6 +180,7 @@ func (qb *sceneFilterHandler) criterionHandler() criterionHandler {
 		qb.tagsCriterionHandler(sceneFilter.Tags),
 		qb.tagCountCriterionHandler(sceneFilter.TagCount),
 		qb.performersCriterionHandler(sceneFilter.Performers),
+		qb.copyrightsCriterionHandler(sceneFilter.Copyrights),
 		qb.performerCountCriterionHandler(sceneFilter.PerformerCount),
 		studioCriterionHandler(sceneTable, sceneFilter.Studios),
 

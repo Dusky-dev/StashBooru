@@ -281,17 +281,15 @@ func (qb *imageFilterHandler) performersCriterionHandler(performers *models.Mult
 	return h.handler(performers)
 }
 
-func (qb *imageFilterHandler) copyrightsCriterionHandler(copyrights *models.MultiCriterionInput) criterionHandlerFunc {
-	h := joinedMultiCriterionHandlerBuilder{
-		primaryTable: imageTable,
-		joinTable:    imagesCopyrightsTable,
-		joinAs:       "copyrights_join",
-		primaryFK:    imageIDColumn,
-		foreignFK:    "copyright_id",
-
-		addJoinTable: func(f *filterBuilder, joinType joinType) {
-			f.addJoin(joinType, imagesCopyrightsTable, "copyrights_join", "copyrights_join.image_id = images.id")
-		},
+func (qb *imageFilterHandler) copyrightsCriterionHandler(copyrights *models.HierarchicalMultiCriterionInput) criterionHandlerFunc {
+	h := joinedHierarchicalMultiCriterionHandlerBuilder{
+		primaryTable:   imageTable,
+		foreignTable:   copyrightTable,
+		foreignFK:      "copyright_id",
+		relationsTable: copyrightRelationsTable,
+		joinAs:         "copyrights_join",
+		joinTable:      imagesCopyrightsTable,
+		primaryFK:      imageIDColumn,
 	}
 
 	return h.handler(copyrights)

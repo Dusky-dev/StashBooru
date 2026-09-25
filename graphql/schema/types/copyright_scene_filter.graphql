@@ -1,0 +1,4 @@
+extend input SceneFilterType {
+  "Filter videos by Copyright hierarchy. depth 0 is direct only; -1 includes all descendants."
+  copyrights: HierarchicalMultiCriterionInput
+}

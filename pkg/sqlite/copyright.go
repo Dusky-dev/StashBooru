@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -79,7 +80,7 @@ func (s *CopyrightStore) FindMany(ctx context.Context, ids []int) ([]*models.Cop
 	for i, id := range ids {
 		args[i] = id
 	}
-	query := fmt.Sprintf("SELECT id, name, sort_name, description, favorite, created_at, updated_at FROM copyrights WHERE id IN %s ORDER BY COALESCE(NULLIF(sort_name, ''), name) COLLATE NOCASE", getInBinding(len(ids)))
+	query := fmt.Sprintf("SELECT id, name, sort_name, description, favorite, created_at, updated_at FROM copyrights WHERE id IN %s ORDER BY COALESCE(NULLIF(sort_name, ''), name) COLLATE NOCASE, id ASC", getInBinding(len(ids)))
 	var rows []copyrightRow
 	if err := dbWrapper.Select(ctx, &rows, query, args...); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
@@ -157,12 +158,20 @@ SELECT 1 FROM copyright_aliases a WHERE a.copyright_id = c.id AND a.alias LIKE ?
 	}
 
 	sortColumn := "COALESCE(NULLIF(c.sort_name, ''), c.name)"
-	switch ff.GetSort("name") {
+	switch ff.GetSort("sort_name") {
+	case "name":
+		sortColumn = "c.name"
 	case "created_at":
 		sortColumn = "c.created_at"
 	case "updated_at":
 		sortColumn = "c.updated_at"
-	case "name", "sort_name":
+	case "image_count":
+		sortColumn = copyrightSubtreeCountSortExpression(imagesCopyrightsTable, "image_id")
+	case "scene_count":
+		sortColumn = copyrightSubtreeCountSortExpression(scenesCopyrightsTable, "scene_id")
+	case "performer_count":
+		sortColumn = copyrightSubtreeCountSortExpression(performersCopyrightsTable, "performer_id")
+	case "sort_name":
 		// default
 	}
 	direction := ff.GetDirection()
@@ -170,7 +179,7 @@ SELECT 1 FROM copyright_aliases a WHERE a.copyright_id = c.id AND a.alias LIKE ?
 		direction = "ASC"
 	}
 	query := `SELECT c.id, c.name, c.sort_name, c.description, c.favorite, c.created_at, c.updated_at FROM copyrights c` + where +
-		" ORDER BY " + sortColumn + " COLLATE NOCASE " + direction
+		" ORDER BY " + sortColumn + " COLLATE NOCASE " + direction + ", c.id ASC"
 	queryArgs := append([]interface{}{}, args...)
 	if !ff.IsGetAll() {
 		pageSize := ff.GetPageSize()
@@ -226,13 +235,41 @@ func replaceCopyrightRelations(ctx context.Context, id int, ids []int, parents b
 	if !parents {
 		column, other = "parent_id", "child_id"
 	}
-	if _, err := dbWrapper.Exec(ctx, "DELETE FROM copyright_relations WHERE "+column+" = ?", id); err != nil {
-		return err
-	}
+
+	// Apply relationship changes as a delta instead of deleting and reinserting
+	// every edge. copyright_relation_order has an FK to the edge itself, so an
+	// unchanged edge must remain intact for its manual sibling position to
+	// survive ordinary Copyright edits.
+	deduped := make([]int, 0, len(ids))
+	seen := make(map[int]struct{}, len(ids))
 	for _, related := range ids {
 		if related == id {
+			return fmt.Errorf("a copyright cannot be its own parent or child")
+		}
+		if _, ok := seen[related]; ok {
 			continue
 		}
+		seen[related] = struct{}{}
+		deduped = append(deduped, related)
+	}
+
+	if len(deduped) == 0 {
+		if _, err := dbWrapper.Exec(ctx, "DELETE FROM copyright_relations WHERE "+column+" = ?", id); err != nil {
+			return err
+		}
+	} else {
+		args := make([]interface{}, 0, len(deduped)+1)
+		args = append(args, id)
+		for _, related := range deduped {
+			args = append(args, related)
+		}
+		query := "DELETE FROM copyright_relations WHERE " + column + " = ? AND " + other + " NOT IN " + getInBinding(len(deduped))
+		if _, err := dbWrapper.Exec(ctx, query, args...); err != nil {
+			return err
+		}
+	}
+
+	for _, related := range deduped {
 		query := "INSERT OR IGNORE INTO copyright_relations (" + column + ", " + other + ") VALUES (?, ?)"
 		if _, err := dbWrapper.Exec(ctx, query, id, related); err != nil {
 			return err
@@ -281,6 +318,9 @@ func (s *CopyrightStore) Create(ctx context.Context, input models.CopyrightCreat
 	if err != nil {
 		return nil, err
 	}
+	if err := validateCopyrightHierarchy(ctx, id, parentIDs, childIDs); err != nil {
+		return nil, err
+	}
 	if err := replaceCopyrightRelations(ctx, id, parentIDs, true); err != nil {
 		return nil, err
 	}
@@ -291,11 +331,14 @@ func (s *CopyrightStore) Create(ctx context.Context, input models.CopyrightCreat
 }
 
 func stringIDsToInts(ids []string) ([]int, error) {
+	if ids == nil {
+		return nil, nil
+	}
 	ret := make([]int, 0, len(ids))
 	for _, raw := range ids {
-		var id int
-		if _, err := fmt.Sscanf(raw, "%d", &id); err != nil {
-			return nil, fmt.Errorf("invalid id %q: %w", raw, err)
+		id, err := strconv.Atoi(raw)
+		if err != nil || id <= 0 {
+			return nil, fmt.Errorf("invalid id %q: expected a positive integer", raw)
 		}
 		ret = append(ret, id)
 	}
@@ -311,6 +354,17 @@ func (s *CopyrightStore) Update(ctx context.Context, input models.CopyrightUpdat
 	current, err := s.Find(ctx, id)
 	if err != nil || current == nil {
 		return current, err
+	}
+	parentIDs, err := stringIDsToInts(input.ParentIDs)
+	if err != nil {
+		return nil, err
+	}
+	childIDs, err := stringIDsToInts(input.ChildIDs)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateCopyrightHierarchy(ctx, id, parentIDs, childIDs); err != nil {
+		return nil, err
 	}
 
 	name := current.Name
@@ -336,7 +390,7 @@ func (s *CopyrightStore) Update(ctx context.Context, input models.CopyrightUpdat
 		sets = append(sets, "favorite = ?")
 		args = append(args, *input.Favorite)
 	}
-	if len(sets) > 0 {
+	if len(sets) > 0 || input.Aliases != nil || input.ParentIDs != nil || input.ChildIDs != nil {
 		sets = append(sets, "updated_at = ?")
 		args = append(args, time.Now(), id)
 		if _, err := dbWrapper.Exec(ctx, "UPDATE copyrights SET "+strings.Join(sets, ", ")+" WHERE id = ?", args...); err != nil {
@@ -349,19 +403,11 @@ func (s *CopyrightStore) Update(ctx context.Context, input models.CopyrightUpdat
 		}
 	}
 	if input.ParentIDs != nil {
-		parentIDs, err := stringIDsToInts(input.ParentIDs)
-		if err != nil {
-			return nil, err
-		}
 		if err := replaceCopyrightRelations(ctx, id, parentIDs, true); err != nil {
 			return nil, err
 		}
 	}
 	if input.ChildIDs != nil {
-		childIDs, err := stringIDsToInts(input.ChildIDs)
-		if err != nil {
-			return nil, err
-		}
 		if err := replaceCopyrightRelations(ctx, id, childIDs, false); err != nil {
 			return nil, err
 		}
@@ -382,7 +428,7 @@ func (s *CopyrightStore) findRelated(ctx context.Context, id int, parents bool) 
 	}
 	query := `SELECT c.id, c.name, c.sort_name, c.description, c.favorite, c.created_at, c.updated_at
 FROM copyrights c INNER JOIN copyright_relations r ON c.id = r.` + joinColumn + `
-WHERE r.` + whereColumn + ` = ? ORDER BY COALESCE(NULLIF(c.sort_name, ''), c.name) COLLATE NOCASE`
+WHERE r.` + whereColumn + ` = ? ORDER BY COALESCE(NULLIF(c.sort_name, ''), c.name) COLLATE NOCASE, c.id ASC`
 	var rows []copyrightRow
 	if err := dbWrapper.Select(ctx, &rows, query, id); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
@@ -423,7 +469,7 @@ func (s *CopyrightStore) SceneCount(ctx context.Context, id int) (int, error) {
 func (s *CopyrightStore) findForMedia(ctx context.Context, table, mediaColumn string, mediaID int) ([]*models.Copyright, error) {
 	query := `SELECT c.id, c.name, c.sort_name, c.description, c.favorite, c.created_at, c.updated_at
 FROM copyrights c INNER JOIN ` + table + ` j ON j.copyright_id = c.id
-WHERE j.` + mediaColumn + ` = ? ORDER BY COALESCE(NULLIF(c.sort_name, ''), c.name) COLLATE NOCASE`
+WHERE j.` + mediaColumn + ` = ? ORDER BY COALESCE(NULLIF(c.sort_name, ''), c.name) COLLATE NOCASE, c.id ASC`
 	var rows []copyrightRow
 	if err := dbWrapper.Select(ctx, &rows, query, mediaID); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
@@ -461,8 +507,27 @@ func setMediaCopyrights(ctx context.Context, table, mediaColumn string, mediaID 
 	return nil
 }
 
+func containsCopyrightID(ids []int, wanted int) bool {
+	for _, id := range ids {
+		if id == wanted {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *CopyrightStore) SetImageCopyrights(ctx context.Context, imageID int, copyrightIDs []int) error {
-	return setMediaCopyrights(ctx, imagesCopyrightsTable, "image_id", imageID, copyrightIDs, true)
+	primaryID, err := s.PrimaryImageCopyrightID(ctx, imageID)
+	if err != nil {
+		return err
+	}
+	if err := setMediaCopyrights(ctx, imagesCopyrightsTable, "image_id", imageID, copyrightIDs, true); err != nil {
+		return err
+	}
+	if primaryID != nil && containsCopyrightID(copyrightIDs, *primaryID) {
+		return s.SetPrimaryImageCopyright(ctx, imageID, primaryID)
+	}
+	return nil
 }
 
 func (s *CopyrightStore) AddImageCopyrights(ctx context.Context, imageID int, copyrightIDs []int) error {
@@ -470,7 +535,17 @@ func (s *CopyrightStore) AddImageCopyrights(ctx context.Context, imageID int, co
 }
 
 func (s *CopyrightStore) SetSceneCopyrights(ctx context.Context, sceneID int, copyrightIDs []int) error {
-	return setMediaCopyrights(ctx, scenesCopyrightsTable, "scene_id", sceneID, copyrightIDs, true)
+	primaryID, err := s.PrimarySceneCopyrightID(ctx, sceneID)
+	if err != nil {
+		return err
+	}
+	if err := setMediaCopyrights(ctx, scenesCopyrightsTable, "scene_id", sceneID, copyrightIDs, true); err != nil {
+		return err
+	}
+	if primaryID != nil && containsCopyrightID(copyrightIDs, *primaryID) {
+		return s.SetPrimarySceneCopyright(ctx, sceneID, primaryID)
+	}
+	return nil
 }
 
 func (s *CopyrightStore) AddSceneCopyrights(ctx context.Context, sceneID int, copyrightIDs []int) error {

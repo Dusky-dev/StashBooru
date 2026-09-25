@@ -38,6 +38,14 @@ fragment ImageData on Image {
     ...SlimCopyrightData
   }
 
+  ordered_copyrights {
+    ...SlimCopyrightData
+  }
+
+  primary_copyright {
+    ...SlimCopyrightData
+  }
+
   performers {
     ...PerformerData
   }

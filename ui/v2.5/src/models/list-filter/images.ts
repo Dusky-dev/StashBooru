@@ -24,6 +24,7 @@ import { GalleriesCriterionOption } from "./criteria/galleries";
 import { PhashCriterionOption } from "./criteria/phash";
 import { CustomFieldsCriterionOption } from "./criteria/custom-fields";
 import { FolderCriterionOption } from "./criteria/folder";
+import { CopyrightsCriterionOption } from "./criteria/copyrights";
 
 const defaultSortBy = "path";
 
@@ -67,6 +68,7 @@ const criterionOptions = [
   OrientationCriterionOption,
   ImageIsMissingCriterionOption,
   TagsCriterionOption,
+  CopyrightsCriterionOption,
   RatingCriterionOption,
   createMandatoryNumberCriterionOption("tag_count"),
   PerformerTagsCriterionOption,

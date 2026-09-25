@@ -5,6 +5,7 @@ import TextUtils from "src/utils/text";
 import { DirectorLink } from "src/components/Shared/Link";
 import { CustomFields } from "src/components/Shared/CustomFields";
 import { BooruTagSidebar } from "src/components/Shared/BooruTagSidebar";
+import { PrimaryCopyrightControl } from "src/components/Copyrights/PrimaryCopyrightControl";
 import { SceneFileInfoPanel } from "./SceneFileInfoPanel";
 
 interface ISceneDetailProps {
@@ -35,7 +36,7 @@ export const SceneDetailPanel: React.FC<ISceneDetailProps> = (props) => {
         tags={props.scene.tags}
         artists={props.scene.artists}
         characters={props.scene.performers}
-        copyrights={props.scene.copyrights}
+        copyrights={props.scene.ordered_copyrights ?? props.scene.copyrights}
       />
       <div className="row">
         <div className={`${sceneDetailsWidth} col-12 scene-details`}>
@@ -68,6 +69,14 @@ export const SceneDetailPanel: React.FC<ISceneDetailProps> = (props) => {
       </div>
       <div className="row">
         <div className="col-12">
+          <PrimaryCopyrightControl
+            mediaType="scene"
+            mediaID={props.scene.id}
+            copyrights={
+              props.scene.ordered_copyrights ?? props.scene.copyrights
+            }
+            primary={props.scene.primary_copyright}
+          />
           {renderDetails()}
           <CustomFields values={props.scene.custom_fields} fullWidth />
           <hr />
