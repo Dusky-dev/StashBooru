@@ -145,10 +145,14 @@ export const MediaConversionDialog: React.FC<{
   const running =
     state?.job?.status === "queued" || state?.job?.status === "running";
   const busy = submitting || running;
+  const defaultOutputIDs = [
+    ...new Set(plans.filter((p) => !p.error).map((p) => p.output)),
+  ];
+  const defaultOutputLabel = defaultOutputIDs
+    .map((id) => formats.find((f) => f.id === id)?.label ?? id.toUpperCase())
+    .join(" / ");
   const outputIDs =
-    options.format === "auto"
-      ? [...new Set(plans.filter((p) => !p.error).map((p) => p.output))]
-      : [options.format];
+    options.format === "auto" ? defaultOutputIDs : [options.format];
   const chosenFormats = formats.filter((f) => outputIDs.includes(f.id));
   const supports = (control: string) =>
     chosenFormats.some(
@@ -332,20 +336,35 @@ export const MediaConversionDialog: React.FC<{
               <Form.Group as={Col} xs={12} md={8} controlId="converter-format">
                 <Form.Label>Output format</Form.Label>
                 <Form.Control
-                  className="text-input"
-                  readOnly
-                  value={
-                    loadingPreview
-                      ? "Reading input formats…"
-                      : outputIDs
-                          .map(
-                            (id) =>
-                              formats.find((f) => f.id === id)?.label ??
-                              id.toUpperCase()
-                          )
-                          .join(" / ") || "Unavailable"
+                  className="input-control"
+                  as="select"
+                  value={options.format}
+                  disabled={busy || loadingCapabilities}
+                  onChange={(e) =>
+                    setOptions({ ...options, format: e.target.value })
                   }
-                />
+                >
+                  <option value="auto">
+                    Saved defaults
+                    {loadingPreview
+                      ? " — reading input formats…"
+                      : ` — ${defaultOutputLabel || "unavailable"}`}
+                  </option>
+                  {formats
+                    .filter((f) => kind === "image" || f.family === "video")
+                    .map((f) => (
+                      <option
+                        key={f.id}
+                        value={f.id}
+                        disabled={!f.available || !encodersFor(f).length}
+                      >
+                        {f.label}
+                        {!f.available || !encodersFor(f).length
+                          ? " — unavailable with this processor"
+                          : ""}
+                      </option>
+                    ))}
+                </Form.Control>
                 <Form.Text>
                   <Link
                     to="/settings?tab=system#media-converter"

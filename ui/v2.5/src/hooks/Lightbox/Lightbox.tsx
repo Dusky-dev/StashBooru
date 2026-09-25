@@ -57,7 +57,7 @@ import { RatingSystem } from "src/components/Shared/Rating/RatingSystem";
 import { DeleteImagesDialog } from "src/components/Images/DeleteImagesDialog";
 import { useDebounce } from "../debounce";
 import { isVideo } from "src/utils/visualFile";
-import { imageTitle } from "src/core/files";
+import { animationBadge, imageTitle } from "src/core/files";
 import { galleryTitle } from "src/core/galleries";
 import type { LightboxHideReason } from "./context";
 import {
@@ -981,6 +981,7 @@ export const LightboxComponent: React.FC<IProps> = ({
         onLeft={handleLeft}
         onRight={handleRight}
         isVideo={isVideo(image.visual_files?.[0] ?? {})}
+        isAnimated={Boolean(animationBadge(image))}
       />
     );
   }

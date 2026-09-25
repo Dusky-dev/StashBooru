@@ -11,9 +11,11 @@ continues past individual failures; each failed item reports its reason.
 
 Open **Settings → System → Media converter**, just below the tagging settings,
 to set **input format → output format, quality and effort** rules and **Run on**
-(automatic/local/remote). The conversion dialog displays the actual resolved
-output formats, with a link back to these settings. A mixed batch resolves each
-file separately. Saved quality/effort are used by default; uncheck that option in
+(automatic/local/remote). The conversion dialog defaults to **Saved defaults**, showing the resolved
+output formats with a link back to these settings. A mixed batch resolves each
+file separately. Choose another **Output format** in the dropdown to override
+the output for this conversion only. Unavailable encoders are disabled, and
+video selections offer video outputs only. Saved quality/effort are used by default; uncheck that option in
 the dialog to set a temporary quality/effort override for the batch.
 
 The initial defaults send JPEG/PNG/still WebP to JXL, GIF/APNG/animated WebP to

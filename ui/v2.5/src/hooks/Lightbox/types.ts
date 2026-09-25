@@ -12,6 +12,7 @@ interface IFiles {
   size?: number;
   width?: number;
   height?: number;
+  frame_count?: number;
   duration?: GQL.Maybe<number>;
   bit_rate?: GQL.Maybe<number>;
   video_codec?: GQL.Maybe<string>;
