@@ -479,8 +479,27 @@ func setMediaCopyrights(ctx context.Context, table, mediaColumn string, mediaID 
 	return nil
 }
 
+func containsCopyrightID(ids []int, wanted int) bool {
+	for _, id := range ids {
+		if id == wanted {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *CopyrightStore) SetImageCopyrights(ctx context.Context, imageID int, copyrightIDs []int) error {
-	return setMediaCopyrights(ctx, imagesCopyrightsTable, "image_id", imageID, copyrightIDs, true)
+	primaryID, err := s.PrimaryImageCopyrightID(ctx, imageID)
+	if err != nil {
+		return err
+	}
+	if err := setMediaCopyrights(ctx, imagesCopyrightsTable, "image_id", imageID, copyrightIDs, true); err != nil {
+		return err
+	}
+	if primaryID != nil && containsCopyrightID(copyrightIDs, *primaryID) {
+		return s.SetPrimaryImageCopyright(ctx, imageID, primaryID)
+	}
+	return nil
 }
 
 func (s *CopyrightStore) AddImageCopyrights(ctx context.Context, imageID int, copyrightIDs []int) error {
@@ -488,7 +507,17 @@ func (s *CopyrightStore) AddImageCopyrights(ctx context.Context, imageID int, co
 }
 
 func (s *CopyrightStore) SetSceneCopyrights(ctx context.Context, sceneID int, copyrightIDs []int) error {
-	return setMediaCopyrights(ctx, scenesCopyrightsTable, "scene_id", sceneID, copyrightIDs, true)
+	primaryID, err := s.PrimarySceneCopyrightID(ctx, sceneID)
+	if err != nil {
+		return err
+	}
+	if err := setMediaCopyrights(ctx, scenesCopyrightsTable, "scene_id", sceneID, copyrightIDs, true); err != nil {
+		return err
+	}
+	if primaryID != nil && containsCopyrightID(copyrightIDs, *primaryID) {
+		return s.SetPrimarySceneCopyright(ctx, sceneID, primaryID)
+	}
+	return nil
 }
 
 func (s *CopyrightStore) AddSceneCopyrights(ctx context.Context, sceneID int, copyrightIDs []int) error {

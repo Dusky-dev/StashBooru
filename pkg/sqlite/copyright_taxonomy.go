@@ -271,13 +271,18 @@ func primaryCopyrightID(ctx context.Context, table, mediaColumn string, mediaID 
 }
 
 func setPrimaryCopyrightID(ctx context.Context, table, mediaColumn string, mediaID int, copyrightID *int) error {
-	if _, err := dbWrapper.Exec(ctx, "DELETE FROM "+table+" WHERE "+mediaColumn+" = ?", mediaID); err != nil {
+	if copyrightID == nil {
+		_, err := dbWrapper.Exec(ctx, "DELETE FROM "+table+" WHERE "+mediaColumn+" = ?", mediaID)
 		return err
 	}
-	if copyrightID == nil {
-		return nil
-	}
-	_, err := dbWrapper.Exec(ctx, "INSERT INTO "+table+" ("+mediaColumn+", copyright_id) VALUES (?, ?)", mediaID, *copyrightID)
+
+	// Replace the primary atomically. If the composite foreign key rejects the
+	// requested Copyright because it is not associated with the media item, the
+	// existing primary remains untouched.
+	_, err := dbWrapper.Exec(ctx,
+		"INSERT INTO "+table+" ("+mediaColumn+", copyright_id) VALUES (?, ?) "+
+			"ON CONFLICT("+mediaColumn+") DO UPDATE SET copyright_id = excluded.copyright_id",
+		mediaID, *copyrightID)
 	return err
 }
 

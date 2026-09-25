@@ -146,16 +146,30 @@ INSERT INTO scenes_copyrights VALUES (30, 2), (30, 3);`)
 	require.Error(t, store.SetPrimaryImageCopyright(ctx, 20, &invalidPrimary), "primary Copyright must already be associated with the image")
 	storedPrimary, err := store.PrimaryImageCopyrightID(ctx, 20)
 	require.NoError(t, err)
-	require.Nil(t, storedPrimary, "failed replacement must not leave a primary Copyright behind")
+	require.NotNil(t, storedPrimary)
+	require.Equal(t, 2, *storedPrimary, "a rejected replacement must preserve the previous primary")
+
+	// Replacing the association set temporarily deletes/reinserts join rows. The
+	// primary should survive when it is still part of the final set.
+	require.NoError(t, store.SetImageCopyrights(ctx, 20, []int{3, 2}))
+	storedPrimary, err = store.PrimaryImageCopyrightID(ctx, 20)
+	require.NoError(t, err)
+	require.NotNil(t, storedPrimary)
+	require.Equal(t, 2, *storedPrimary)
 
 	primary = 3
 	require.NoError(t, store.SetPrimarySceneCopyright(ctx, 30, &primary))
 	orderedScenes, err := store.FindBySceneIDOrdered(ctx, 30)
 	require.NoError(t, err)
 	require.Equal(t, []int{3, 2}, []int{orderedScenes[0].ID, orderedScenes[1].ID})
+	require.NoError(t, store.SetSceneCopyrights(ctx, 30, []int{2, 3}))
+	storedScenePrimary, err := store.PrimarySceneCopyrightID(ctx, 30)
+	require.NoError(t, err)
+	require.NotNil(t, storedScenePrimary)
+	require.Equal(t, 3, *storedScenePrimary)
 
-	require.NoError(t, store.SetImageCopyrights(ctx, 20, []int{2}))
+	require.NoError(t, store.SetImageCopyrights(ctx, 20, []int{3}))
 	storedPrimary, err = store.PrimaryImageCopyrightID(ctx, 20)
 	require.NoError(t, err)
-	require.Nil(t, storedPrimary, "removing an association must cascade-delete the matching primary row")
+	require.Nil(t, storedPrimary, "removing the primary association must clear the primary row")
 }
