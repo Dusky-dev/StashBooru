@@ -8,17 +8,18 @@ import {
 // as Tags while resolving Copyright IDs through the Copyright selector/graph.
 export class CopyrightsCriterion extends IHierarchicalLabeledIdCriterion {}
 
-export const CopyrightsCriterionOption = new ModifierCriterionOption({
-  messageID: "copyrights",
-  type: "copyrights",
-  inputType: "copyrights",
-  modifierOptions: [
-    CriterionModifier.IncludesAll,
-    CriterionModifier.Includes,
-    CriterionModifier.Equals,
-    CriterionModifier.IsNull,
-    CriterionModifier.NotNull,
-  ],
-  defaultModifier: CriterionModifier.IncludesAll,
-  makeCriterion: () => new CopyrightsCriterion(CopyrightsCriterionOption),
-});
+export const CopyrightsCriterionOption: ModifierCriterionOption =
+  new ModifierCriterionOption({
+    messageID: "copyrights",
+    type: "copyrights",
+    inputType: "copyrights",
+    modifierOptions: [
+      CriterionModifier.IncludesAll,
+      CriterionModifier.Includes,
+      CriterionModifier.Equals,
+      CriterionModifier.IsNull,
+      CriterionModifier.NotNull,
+    ],
+    defaultModifier: CriterionModifier.IncludesAll,
+    makeCriterion: (option) => new CopyrightsCriterion(option),
+  });
