@@ -326,6 +326,18 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
       ? `${file.width} × ${file.height}`
       : undefined;
   }, [file?.width, file?.height]);
+  // Existing GIF records may contain FFprobe's nominal cadence. Their full
+  // duration and frame count give the same average used for scanned AJXL/APNG.
+  const frameRate =
+    file && file.frame_count > 1
+      ? file.__typename === "VideoFile" &&
+        file.video_codec === "gif" &&
+        file.duration > 0
+        ? file.frame_count / file.duration
+        : file.frame_rate
+      : undefined;
+  const showFrameRate =
+    frameRate !== undefined && Number.isFinite(frameRate) && frameRate > 0;
   const fileFormat = useMemo(() => {
     const match = file?.path?.match(/\.([^.\\/]+)$/);
     return match?.[1]?.toLocaleUpperCase();
@@ -372,8 +384,19 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
               {!!image.date && <FormattedDate value={image.date} />}
             </span>
             <span className="image-subheader-media">
-              {resolution ? (
+              {resolution || showFrameRate ? (
                 <span className="resolution" data-value={resolution}>
+                  {showFrameRate && (
+                    <>
+                      <span className="frame-rate" data-value={frameRate}>
+                        <FormattedMessage
+                          id="frames_per_second"
+                          values={{ value: intl.formatNumber(frameRate!) }}
+                        />
+                      </span>
+                      {resolution && <span className="divider"> | </span>}
+                    </>
+                  )}
                   {resolution}
                   {dimensions ? ` (${dimensions})` : ""}
                 </span>

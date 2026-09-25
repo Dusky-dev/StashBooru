@@ -332,6 +332,11 @@ def probe(source: Path, cancelled=None) -> dict:
         # Compare the presented video span, including its last frame's hold.
         result["duration"] = video_duration(source, rate, cancelled)
     result.update(animation)
+    if animation.get("durations"):
+        # FFprobe may report the common frame cadence, excluding a longer final
+        # hold. Use the complete animation timeline, including that last frame,
+        # consistently with the scanner and converted-image metadata.
+        result["frameRate"] = animation["frames"] / animation["duration"]
     return result
 
 

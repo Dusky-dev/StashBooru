@@ -96,7 +96,14 @@ func (d *Decorator) Decorate(ctx context.Context, fs models.FS, f models.File) (
 	}
 	if isClip {
 		videoFileDecorator := video.Decorator{FFProbe: d.FFProbe}
-		return videoFileDecorator.Decorate(ctx, fs, f)
+		decorated, err := videoFileDecorator.Decorate(ctx, fs, f)
+		if vf, ok := decorated.(*models.VideoFile); err == nil && ok && animationFrameRate > 0 {
+			// GIF/APNG can be represented as video-backed images. Keep their
+			// timing consistent with other animations, including the final hold.
+			vf.FrameRate = animationFrameRate
+			vf.Duration = float64(base.FrameCount) / animationFrameRate
+		}
+		return decorated, err
 	}
 
 	ret := &models.ImageFile{

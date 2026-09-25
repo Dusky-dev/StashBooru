@@ -387,13 +387,22 @@ func convertedFile(before models.File, path string, result Result, hash string) 
 	if v, err := oshash.FromFilePath(path); err == nil {
 		b.SetFingerprint(models.Fingerprint{Type: models.FingerprintTypeOshash, Fingerprint: v})
 	}
+	// Older remote workers can return FFprobe's nominal rate. For animated
+	// images, derive the average from the verified complete presentation span.
+	animationRate := 0.0
+	if result.Frames > 1 && result.Duration > 0 {
+		animationRate = float64(result.Frames) / result.Duration
+	}
+	if result.VideoCodec == "gif" && animationRate > 0 {
+		result.FrameRate = animationRate
+	}
 	video := result.Format == "mp4" || result.Format == "mkv" || result.Format == "webm" || result.Format == "mov"
 	if video || result.VideoCodec == "gif" {
 		return &models.VideoFile{BaseFile: &b, Format: result.Format, Width: result.Width, Height: result.Height,
 			Duration: result.Duration, VideoCodec: result.VideoCodec, AudioCodec: result.AudioCodec,
 			FrameRate: result.FrameRate, BitRate: result.BitRate}, nil
 	}
-	return &models.ImageFile{BaseFile: &b, Format: result.VideoCodec, Width: result.Width, Height: result.Height}, nil
+	return &models.ImageFile{BaseFile: &b, Format: result.VideoCodec, Width: result.Width, Height: result.Height, FrameRate: animationRate}, nil
 }
 
 func (s Store) Convert(ctx context.Context, fileID models.FileID, batch string, client Client, options Options, format Format) (record *Record, retErr error) {

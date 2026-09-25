@@ -38,6 +38,20 @@ the format defaults read at its start.
 The processor defaults to **Prefer GPU, otherwise CPU**. Each output uses an
 available GPU encoder or its CPU encoder, so JXL and video can share a batch.
 
+## Animated-image frame rate
+
+Animated-image FPS appears beside resolution in the image header. It is the
+average over the full animation, including longer frame holds. FFprobe can report
+25 FPS for a GIF whose full timeline averages 23.904 FPS; that difference alone
+does not establish that conversion changed playback timing. Conversion checks
+frame delays and total duration separately.
+
+New conversions retain the average frame rate immediately, including results
+from older remote workers. Rescan existing image files with file rescanning enabled
+if their animation timing metadata is missing or stale. Update the remote
+`media_conversion_worker.py` and restart the worker to also correct its reported
+animation FPS.
+
 ## Formats and controls
 
 | Output | Controls | Processor |

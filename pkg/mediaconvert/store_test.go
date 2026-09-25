@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -264,5 +265,43 @@ func TestConversionWithoutScannedMD5(t *testing.T) {
 	}
 	if err := s.Restore(context.Background(), r.ID); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestConvertedAnimationFrameRate(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "converted")
+	if err := os.WriteFile(path, []byte("fixture"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	before := &models.ImageFile{BaseFile: &models.BaseFile{Path: path}}
+	for _, tc := range []struct {
+		name, format, codec     string
+		frames                  int64
+		duration, nominal, want float64
+	}{
+		{"AJXL final hold from old worker", "jxl", "jpegxl", 120, 5.02, 25, 120 / 5.02},
+		{"GIF final hold from old worker", "gif", "gif", 120, 5.02, 25, 120 / 5.02},
+		{"constant AJXL", "jxl", "jpegxl", 120, 4.8, 25, 25},
+		{"still image", "jxl", "jpegxl", 1, 0.04, 25, 0},
+		{"video unchanged", "mp4", "h264", 120, 5.02, 25, 25},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f, err := convertedFile(before, path, Result{Format: tc.format, VideoCodec: tc.codec, Frames: tc.frames, Duration: tc.duration, FrameRate: tc.nominal}, "hash")
+			if err != nil {
+				t.Fatal(err)
+			}
+			var rate float64
+			switch f := f.(type) {
+			case *models.ImageFile:
+				rate = f.FrameRate
+			case *models.VideoFile:
+				rate = f.FrameRate
+			default:
+				t.Fatalf("unexpected file type %T", f)
+			}
+			if math.Abs(rate-tc.want) > 0.000001 {
+				t.Fatalf("rate %v; want %v", rate, tc.want)
+			}
+		})
 	}
 }

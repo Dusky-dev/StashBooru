@@ -126,6 +126,27 @@ class EncodeTests(unittest.TestCase):
         for delay in timing["durations"]:
             self.assertAlmostEqual(delay, 0.02, delta=0.011)
 
+    def test_gif_to_jxl_average_rate_includes_final_hold(self):
+        if not (shutil.which("cjxl") and shutil.which("djxl")):
+            self.skipTest("cjxl and djxl required")
+        from PIL import Image
+        frames = [Image.new("RGB", (32, 32), ((i * 13) % 256, (i * 31) % 256, (i * 47) % 256)) for i in range(120)]
+        for name, delays in (("constant", [40] * 120), ("final-hold", [40] * 119 + [260])):
+            with self.subTest(timing=name):
+                source = self.root / (name + ".gif")
+                frames[0].save(source, save_all=True, append_images=frames[1:], duration=delays, loop=0)
+                before = converter.probe(source)
+                result, output = self.convert(source.name, "ajxl", hardware="cpu")
+                decoded_dir = self.root / name
+                decoded_dir.mkdir()
+                after = converter.animation_metadata(converter.prepare_input(output, decoded_dir))
+                self.assertEqual(after["durations"], before["durations"])
+                expected_rate = 120 / (sum(delays) / 1000)
+                self.assertAlmostEqual(before["frameRate"], expected_rate)
+                self.assertAlmostEqual(result["frameRate"], expected_rate)
+                self.assertAlmostEqual(after["duration"], before["duration"])
+                output.unlink()
+
     def test_jxl_quality_100_preserves_pixels(self):
         if not (shutil.which("cjxl") and shutil.which("djxl")):
             self.skipTest("cjxl and djxl required")
