@@ -21,5 +21,6 @@ export const CopyrightsCriterionOption: ModifierCriterionOption =
       CriterionModifier.NotNull,
     ],
     defaultModifier: CriterionModifier.IncludesAll,
-    makeCriterion: (option) => new CopyrightsCriterion(option),
+    makeCriterion: (option) =>
+      new CopyrightsCriterion(option as ModifierCriterionOption),
   });
