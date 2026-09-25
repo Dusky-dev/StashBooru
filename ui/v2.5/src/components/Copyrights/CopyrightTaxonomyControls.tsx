@@ -104,20 +104,20 @@ export const CopyrightBreadcrumb: React.FC<{
 
 export const CopyrightChildrenOrderControl: React.FC<{
   parentID: string;
-  children: CopyrightValue[];
-}> = ({ parentID, children }) => {
+  orderedChildren: CopyrightValue[];
+}> = ({ parentID, orderedChildren }) => {
   const Toast = useToast();
-  const [items, setItems] = useState(children);
+  const [items, setItems] = useState(orderedChildren);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [updateOrder] = GQL.useCopyrightChildrenOrderUpdateMutation();
 
   useEffect(() => {
-    setItems(children);
+    setItems(orderedChildren);
     setDirty(false);
-  }, [children]);
+  }, [orderedChildren]);
 
-  if (children.length < 2) return null;
+  if (orderedChildren.length < 2) return null;
 
   function move(index: number, delta: number) {
     const target = index + delta;
