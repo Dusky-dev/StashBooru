@@ -17,6 +17,12 @@ fragment CopyrightListData on Copyright {
   subtree_scene_count
   subtree_performer_count
   structural_role
+  parents {
+    ...SlimCopyrightData
+  }
+  ordered_children {
+    ...SlimCopyrightData
+  }
 }
 
 fragment CopyrightData on Copyright {
@@ -54,6 +60,9 @@ fragment CopyrightData on Copyright {
     paths {
       screenshot
     }
+  }
+  subtree_scenes {
+    id
   }
   performers {
     id
