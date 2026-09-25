@@ -18,7 +18,10 @@ const CopyrightsCriterionOption: ModifierCriterionOption =
       GQL.CriterionModifier.NotNull,
     ],
     defaultModifier: GQL.CriterionModifier.IncludesAll,
-    makeCriterion: (option) => new IHierarchicalLabeledIdCriterion(option),
+    makeCriterion: (option) =>
+      new IHierarchicalLabeledIdCriterion(
+        option as ModifierCriterionOption
+      ),
   });
 
 export const useCopyrightFilterHook = (
