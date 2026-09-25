@@ -36,10 +36,16 @@ fragment ImageData on Image {
 
   copyrights {
     ...SlimCopyrightData
+    breadcrumb {
+      ...SlimCopyrightData
+    }
   }
 
   ordered_copyrights {
     ...SlimCopyrightData
+    breadcrumb {
+      ...SlimCopyrightData
+    }
   }
 
   primary_copyright {
