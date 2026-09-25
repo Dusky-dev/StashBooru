@@ -77,6 +77,16 @@ fragment SceneData on Scene {
     image_count
   }
 
+  ordered_copyrights {
+    ...SlimCopyrightData
+    scene_count
+    image_count
+  }
+
+  primary_copyright {
+    ...SlimCopyrightData
+  }
+
   performers {
     ...PerformerData
   }
