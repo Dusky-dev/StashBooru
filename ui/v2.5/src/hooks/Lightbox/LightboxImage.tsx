@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import ResizeObserver from "resize-observer-polyfill";
 import * as GQL from "src/core/generated-graphql";
 
 const ZOOM_STEP = 1.1;
@@ -72,6 +73,7 @@ interface IProps {
   onLeft: () => void;
   onRight: () => void;
   isVideo: boolean;
+  isAnimated: boolean;
 }
 
 export const LightboxImage: React.FC<IProps> = ({
@@ -93,6 +95,7 @@ export const LightboxImage: React.FC<IProps> = ({
   onLeft,
   onRight,
   isVideo,
+  isAnimated,
 }) => {
   const [defaultZoom, setDefaultZoom] = useState(1);
   const [moving, setMoving] = useState(false);
@@ -107,7 +110,7 @@ export const LightboxImage: React.FC<IProps> = ({
   const mouseDownEvent = useRef<MouseEvent>();
   const resetPositionRef = useRef(resetPosition);
 
-  const container = React.createRef<HTMLDivElement>();
+  const container = useRef<HTMLDivElement>(null);
   const startPoints = useRef<number[]>([0, 0]);
   const pointerCache = useRef<React.PointerEvent[]>([]);
   const prevDiff = useRef<number | undefined>();
@@ -121,27 +124,25 @@ export const LightboxImage: React.FC<IProps> = ({
       setBoxHeight(box.offsetHeight);
     }
 
-    function toggleVideoPlay() {
-      if (container.current) {
-        const openVideo = container.current.getElementsByTagName("video");
-        if (openVideo.length > 0) {
-          const rect = openVideo[0].getBoundingClientRect();
-          if (Math.abs(rect.x) < document.body.clientWidth / 2) {
-            openVideo[0].play();
-          } else {
-            openVideo[0].pause();
-          }
-        }
-      }
-    }
-
-    setTimeout(() => {
-      toggleVideoPlay();
-    }, 250);
-  }, [container]);
+    const observer = new ResizeObserver(() => {
+      if (!box) return;
+      setBoxWidth(box.offsetWidth);
+      setBoxHeight(box.offsetHeight);
+    });
+    if (box) observer.observe(box);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
-    if (dimensionsProvided) {
+    if (!isVideo || !src) return;
+    const video = container.current?.querySelector("video");
+    if (!video) return;
+    if (current) void video.play().catch(() => {});
+    else video.pause();
+  }, [current, isVideo, src]);
+
+  useEffect(() => {
+    if (dimensionsProvided || (isAnimated && !current)) {
       return;
     }
     let mounted = true;
@@ -159,7 +160,7 @@ export const LightboxImage: React.FC<IProps> = ({
     return () => {
       mounted = false;
     };
-  }, [src, dimensionsProvided]);
+  }, [src, dimensionsProvided, isAnimated, current]);
 
   const minMaxY = useCallback(
     (appliedZoom: number) => {
@@ -546,7 +547,7 @@ export const LightboxImage: React.FC<IProps> = ({
       className={`${CLASSNAME_IMAGE}`}
       onWheel={(e) => onContainerScroll(e)}
     >
-      {defaultZoom ? (
+      {defaultZoom && (current || !isAnimated || isVideo) ? (
         /* The transform is applied to this wrapper rather than the <img>
            to work around a Safari rendering bug: `transform: scale` on
            an <img> with very large intrinsic dimensions distorts the

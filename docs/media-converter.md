@@ -11,9 +11,11 @@ continues past individual failures; each failed item reports its reason.
 
 Open **Settings → System → Media converter**, just below the tagging settings,
 to set **input format → output format, quality and effort** rules and **Run on**
-(automatic/local/remote). The conversion dialog displays the actual resolved
-output formats, with a link back to these settings. A mixed batch resolves each
-file separately. Saved quality/effort are used by default; uncheck that option in
+(automatic/local/remote). The conversion dialog defaults to **Saved defaults**, showing the resolved
+output formats with a link back to these settings. A mixed batch resolves each
+file separately. Choose another **Output format** in the dropdown to override
+the output for this conversion only. Unavailable encoders are disabled, and
+video selections offer video outputs only. Saved quality/effort are used by default; uncheck that option in
 the dialog to set a temporary quality/effort override for the batch.
 
 The initial defaults send JPEG/PNG/still WebP to JXL, GIF/APNG/animated WebP to
@@ -35,6 +37,20 @@ the format defaults read at its start.
 
 The processor defaults to **Prefer GPU, otherwise CPU**. Each output uses an
 available GPU encoder or its CPU encoder, so JXL and video can share a batch.
+
+## Animated-image frame rate
+
+Animated-image FPS appears beside resolution in the image header. It is the
+average over the full animation, including longer frame holds. FFprobe can report
+25 FPS for a GIF whose full timeline averages 23.904 FPS; that difference alone
+does not establish that conversion changed playback timing. Conversion checks
+frame delays and total duration separately.
+
+New conversions retain the average frame rate immediately, including results
+from older remote workers. Rescan existing image files with file rescanning enabled
+if their animation timing metadata is missing or stale. Update the remote
+`media_conversion_worker.py` and restart the worker to also correct its reported
+animation FPS.
 
 ## Formats and controls
 

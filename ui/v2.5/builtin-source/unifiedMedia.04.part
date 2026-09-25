@@ -3,12 +3,14 @@
         if (entry) {
           const scene = entry.item;
           const scenePath = `/scenes/${scene.id}`;
-          footerLink.setAttribute("href", scenePath);
-          footerLink.textContent = sceneFilename(scene);
+          if (footerLink.getAttribute("href") !== scenePath) footerLink.setAttribute("href", scenePath);
+          if (footerLink.textContent !== sceneFilename(scene)) footerLink.textContent = sceneFilename(scene);
           footerLink.removeAttribute("aria-disabled");
           footerLink.removeAttribute("tabindex");
-          footerLink.style.pointerEvents = "";
-          footerLink.classList.add("unified-media-scene-lightbox-title");
+          if (footerLink.style.pointerEvents) footerLink.style.pointerEvents = "";
+          if (!footerLink.classList.contains("unified-media-scene-lightbox-title")) {
+            footerLink.classList.add("unified-media-scene-lightbox-title");
+          }
 
           const handler = (ev) => {
             ev.preventDefault();
@@ -389,7 +391,10 @@
       const carousel = lightbox?.querySelector(".Lightbox-carousel");
       if (!lightbox || !carousel) return;
 
-      document.body.classList.add("unified-media-native-lightbox-open");
+      if (!document.body.classList.contains("unified-media-native-lightbox-open")) {
+        // Only mutate changed DOM state: the observer also watches our own writes.
+        document.body.classList.add("unified-media-native-lightbox-open");
+      }
       const match = String(carousel.style.left || "").match(/(-?\d+(?:\.\d+)?)vw/);
       const index = match ? Math.max(0, Math.round(Math.abs(Number(match[1])) / 100)) : 0;
       const entry = pageVisualEntries[index];
@@ -400,7 +405,9 @@
       });
 
       if (entry?.type === "scene" && target) {
-        target.classList.add("unified-media-native-scene-slide");
+        if (!target.classList.contains("unified-media-native-scene-slide")) {
+          target.classList.add("unified-media-native-scene-slide");
+        }
         setActiveVisualIndex((old) => old === index ? old : index);
         setScenePortalTarget((old) => old === target ? old : target);
 
@@ -430,7 +437,9 @@
           });
         }
       } else {
-        target?.classList?.remove("unified-media-native-scene-slide");
+        if (target?.classList.contains("unified-media-native-scene-slide")) {
+          target.classList.remove("unified-media-native-scene-slide");
+        }
         setActiveVisualIndex((old) => old === index ? old : index);
         setScenePortalTarget(null);
         setScenePortalGeometry(null);
@@ -448,12 +457,14 @@
           const scene = entry.item;
           const scenePath = `/scenes/${scene.id}`;
           const filename = sceneFilename(scene);
-          footerLink.setAttribute("href", scenePath);
-          footerLink.textContent = filename;
+          if (footerLink.getAttribute("href") !== scenePath) footerLink.setAttribute("href", scenePath);
+          if (footerLink.textContent !== filename) footerLink.textContent = filename;
           footerLink.removeAttribute("aria-disabled");
           footerLink.removeAttribute("tabindex");
-          footerLink.style.pointerEvents = "";
-          footerLink.classList.add("unified-media-scene-lightbox-title");
+          if (footerLink.style.pointerEvents) footerLink.style.pointerEvents = "";
+          if (!footerLink.classList.contains("unified-media-scene-lightbox-title")) {
+            footerLink.classList.add("unified-media-scene-lightbox-title");
+          }
 
           const handler = (ev) => {
             // The footer node is still a React-Router <Link> whose React props
@@ -482,7 +493,9 @@
           footerLink.__unifiedMediaSceneNavigateHandler = handler;
           footerLink.addEventListener("click", handler, true);
         } else {
-          footerLink.classList.remove("unified-media-scene-lightbox-title");
+          if (footerLink.classList.contains("unified-media-scene-lightbox-title")) {
+            footerLink.classList.remove("unified-media-scene-lightbox-title");
+          }
         }
       }
     }, [pageVisualEntries]);

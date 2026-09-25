@@ -222,7 +222,10 @@
       const carousel = lightbox?.querySelector(".Lightbox-carousel");
       if (!lightbox || !carousel) return;
 
-      document.body.classList.add("unified-media-native-lightbox-open");
+      if (!document.body.classList.contains("unified-media-native-lightbox-open")) {
+        // Only mutate changed DOM state: the observer also watches our own writes.
+        document.body.classList.add("unified-media-native-lightbox-open");
+      }
       const match = String(carousel.style.left || "").match(/(-?\d+(?:\.\d+)?)vw/);
       const index = match ? Math.max(0, Math.round(Math.abs(Number(match[1])) / 100)) : 0;
       const entry = entries[index];
@@ -233,7 +236,9 @@
       });
 
       if (entry && target) {
-        target.classList.add("unified-media-native-scene-slide");
+        if (!target.classList.contains("unified-media-native-scene-slide")) {
+          target.classList.add("unified-media-native-scene-slide");
+        }
         setActiveIndex((old) => old === index ? old : index);
         setPortalTarget((old) => old === target ? old : target);
 
@@ -260,7 +265,9 @@
           });
         }
       } else {
-        target?.classList?.remove("unified-media-native-scene-slide");
+        if (target?.classList.contains("unified-media-native-scene-slide")) {
+          target.classList.remove("unified-media-native-scene-slide");
+        }
         setPortalTarget(null);
         setPortalGeometry(null);
       }
