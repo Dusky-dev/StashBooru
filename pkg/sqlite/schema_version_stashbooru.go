@@ -1,11 +1,11 @@
 package sqlite
 
-// Migration 92 adds the native Copyright-to-Tag relationship used by Image
-// Tagging profile inheritance. Keep the StashBooru schema version aligned with
-// the highest embedded migration so existing version-91 databases are prompted
-// to run migration 92 instead of opening without copyrights_tags.
+// StashBooru-specific migrations currently extend through 94. Keep the app
+// schema version aligned with the highest embedded migration so existing
+// databases run Copyright-to-Tag migration 92 and the P04 Copyright taxonomy
+// migration 94 before opening.
 func init() {
-	if appSchemaVersion < 92 {
-		appSchemaVersion = 92
+	if appSchemaVersion < 94 {
+		appSchemaVersion = 94
 	}
 }
