@@ -1,4 +1,4 @@
 extend input ImageFilterType {
-  "Filter to only include images with these copyrights"
-  copyrights: MultiCriterionInput
+  "Filter images by Copyright hierarchy. depth 0 is direct only; -1 includes all descendants."
+  copyrights: HierarchicalMultiCriterionInput
 }
