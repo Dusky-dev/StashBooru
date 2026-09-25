@@ -20,6 +20,12 @@ mutation ImageCopyrightsUpdate($imageID: ID!, $copyrightIDs: [ID!]!) {
     copyrights {
       ...SlimCopyrightData
     }
+    ordered_copyrights {
+      ...SlimCopyrightData
+    }
+    primary_copyright {
+      ...SlimCopyrightData
+    }
   }
 }
 
@@ -27,6 +33,12 @@ mutation SceneCopyrightsUpdate($sceneID: ID!, $copyrightIDs: [ID!]!) {
   sceneCopyrightsUpdate(scene_id: $sceneID, copyright_ids: $copyrightIDs) {
     id
     copyrights {
+      ...SlimCopyrightData
+    }
+    ordered_copyrights {
+      ...SlimCopyrightData
+    }
+    primary_copyright {
       ...SlimCopyrightData
     }
   }
