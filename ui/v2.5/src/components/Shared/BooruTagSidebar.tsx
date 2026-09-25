@@ -11,6 +11,7 @@ interface BooruEntity {
   image_path?: string | null;
   scene_count?: number | null;
   image_count?: number | null;
+  breadcrumb?: BooruEntity[] | null;
 }
 
 interface BooruTagSidebarProps {
@@ -181,6 +182,79 @@ const GeneralTags: React.FC<{ items: BooruEntity[] }> = ({ items }) => {
   );
 };
 
+interface CopyrightBranch {
+  key: string;
+  path: BooruEntity[];
+  items: BooruEntity[];
+}
+
+function groupCopyrightBranches(items: BooruEntity[]): CopyrightBranch[] {
+  const branches = new Map<string, CopyrightBranch>();
+
+  for (const item of items) {
+    const path = item.breadcrumb?.length ? item.breadcrumb : [item];
+    const root = path[0] ?? item;
+    const existing = branches.get(root.id);
+    if (existing) {
+      existing.items.push(item);
+      if (path.length < existing.path.length) existing.path = path;
+    } else {
+      branches.set(root.id, { key: root.id, path, items: [item] });
+    }
+  }
+
+  return [...branches.values()]
+    .map((branch) => ({
+      ...branch,
+      items: sortByName(uniqueByID(branch.items)),
+    }))
+    .sort((a, b) =>
+      (a.path[0]?.name ?? "").localeCompare(b.path[0]?.name ?? "", undefined, {
+        sensitivity: "base",
+      })
+    );
+}
+
+const CopyrightBranchSection: React.FC<{ items: BooruEntity[] }> = ({ items }) => {
+  if (items.length === 0) return null;
+  const branches = groupCopyrightBranches(items);
+
+  return (
+    <section className="booru-tag-section booru-tag-section-copyright">
+      <SectionTitle
+        title={countLabel("Copyright", "Copyrights", items.length)}
+        count={items.length}
+      />
+      <div className="copyright-branch-groups">
+        {branches.map((branch) => (
+          <div className="copyright-branch-group mb-3" key={branch.key}>
+            <div className="copyright-branch-breadcrumb mb-2">
+              {branch.path.map((node, index) => (
+                <React.Fragment key={node.id}>
+                  {index > 0 ? (
+                    <span className="mx-1 text-muted">/</span>
+                  ) : null}
+                  <Link to={`/copyrights/${node.id}`}>{node.name}</Link>
+                </React.Fragment>
+              ))}
+            </div>
+            <div className="booru-entity-card-grid booru-entity-card-grid-copyright">
+              {branch.items.map((item) => (
+                <EntityCard
+                  key={`copyright-${item.id}`}
+                  entity={item}
+                  kind="copyright"
+                  route={`/copyrights/${item.id}`}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+};
+
 export const BooruTagSidebar: React.FC<BooruTagSidebarProps> = ({
   tags,
   artists,
@@ -223,13 +297,7 @@ export const BooruTagSidebar: React.FC<BooruTagSidebarProps> = ({
             route={(id) => `/studios/${id}`}
           />
           <CharacterSection items={sortedCharacters} />
-          <CardSection
-            kind="copyright"
-            singularTitle="Copyright"
-            pluralTitle="Copyrights"
-            items={sortedCopyrights}
-            route={(id) => `/copyrights/${id}`}
-          />
+          <CopyrightBranchSection items={sortedCopyrights} />
         </div>
       ) : null}
       {sortedTags.length > 0 ? (
