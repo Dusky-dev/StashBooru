@@ -7,12 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createCopyrightFixture(t *testing.T, ctx interface {
-	Done() <-chan struct{}
-}, store *CopyrightStore) {
-	t.Helper()
-}
-
 func TestCopyrightSubtreeCountsDeduplicateMultiParentPaths(t *testing.T) {
 	ctx, tx, store := copyrightTestContext(t)
 
