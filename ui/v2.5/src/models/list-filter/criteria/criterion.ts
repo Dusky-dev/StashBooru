@@ -251,6 +251,7 @@ export type InputType =
   | "groups"
   | "galleries"
   | "folders"
+  | "copyrights"
   | undefined;
 
 type MakeCriterionFn = (

@@ -37,6 +37,7 @@ import { PathCriterionOption } from "./criteria/path";
 import { OrientationCriterionOption } from "./criteria/orientation";
 import { CustomFieldsCriterionOption } from "./criteria/custom-fields";
 import { FolderCriterionOption } from "./criteria/folder";
+import { CopyrightsCriterionOption } from "./criteria/copyrights";
 
 const defaultSortBy = "date";
 const sortByOptions = [
@@ -124,6 +125,7 @@ const criterionOptions = [
   HasMarkersCriterionOption,
   SceneIsMissingCriterionOption,
   TagsCriterionOption,
+  CopyrightsCriterionOption,
   createMandatoryNumberCriterionOption("tag_count"),
   PerformerTagsCriterionOption,
   PerformersCriterionOption,

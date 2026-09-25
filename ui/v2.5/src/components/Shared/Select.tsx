@@ -28,6 +28,7 @@ import { StudioIDSelect } from "../Studios/StudioSelect";
 import { GalleryIDSelect } from "../Galleries/GallerySelect";
 import { GroupIDSelect } from "../Groups/GroupSelect";
 import { SceneIDSelect } from "../Scenes/SceneSelect";
+import { CopyrightIDSelect } from "../Copyrights/CopyrightSelect";
 
 export type SelectObject = {
   id: string;
@@ -45,7 +46,8 @@ interface ITypeProps {
     | "performer_tags"
     | "scenes"
     | "groups"
-    | "galleries";
+    | "galleries"
+    | "copyrights";
 }
 interface IFilterProps {
   ids?: string[];
@@ -385,6 +387,8 @@ export const FilterSelect: React.FC<IFilterProps & ITypeProps> = (props) => {
       return <GroupSelect {...props} creatable={false} />;
     case "galleries":
       return <GallerySelect {...props} creatable={false} />;
+    case "copyrights":
+      return <CopyrightIDSelect {...props} creatable={false} />;
     default:
       return <TagSelect {...props} creatable={false} />;
   }

@@ -24,7 +24,8 @@ export const HierarchicalLabelValueFilter: React.FC<
     inputType !== "tags" &&
     inputType !== "scene_tags" &&
     inputType !== "performer_tags" &&
-    inputType !== "groups"
+    inputType !== "groups" &&
+    inputType !== "copyrights"
   ) {
     return null;
   }
@@ -55,6 +56,9 @@ export const HierarchicalLabelValueFilter: React.FC<
     if (inputType === "studios") {
       return "include-sub-studios";
     }
+    if (inputType === "copyrights") {
+      return "include-sub-copyrights";
+    }
     if (inputType === "groups") {
       return "include-sub-groups";
     }
@@ -69,6 +73,11 @@ export const HierarchicalLabelValueFilter: React.FC<
     let id: string;
     if (inputType === "studios") {
       id = "include_sub_studios";
+    } else if (inputType === "copyrights") {
+      return {
+        id: "include_sub_copyrights",
+        defaultMessage: "Include descendant Copyrights",
+      };
     } else if (inputType === "groups") {
       id = "include_sub_groups";
     } else if (type === "children") {
