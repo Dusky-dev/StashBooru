@@ -191,7 +191,10 @@ interface CopyrightBranch {
 function commonPath(left: BooruEntity[], right: BooruEntity[]): BooruEntity[] {
   const length = Math.min(left.length, right.length);
   let commonLength = 0;
-  while (commonLength < length && left[commonLength].id === right[commonLength].id) {
+  while (
+    commonLength < length &&
+    left[commonLength].id === right[commonLength].id
+  ) {
     commonLength += 1;
   }
   return left.slice(0, commonLength);
