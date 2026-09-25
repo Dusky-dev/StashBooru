@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from "react";
-import { Button, ButtonGroup, Table } from "react-bootstrap";
+import React from "react";
+import { ButtonGroup, Table } from "react-bootstrap";
 import { Link, useHistory } from "react-router-dom";
 import { FormattedMessage, useIntl } from "react-intl";
 
@@ -108,7 +108,6 @@ const CopyrightList: React.FC = () => {
   const intl = useIntl();
   const history = useHistory();
   const view = View.Copyrights;
-  const [treeMode, setTreeMode] = useState(false);
 
   const { filterState, queryResult, modalState, listSelect, showEditFilter } =
     useFilteredItemList({
@@ -130,28 +129,6 @@ const CopyrightList: React.FC = () => {
   const { selectedIds, onSelectChange } = listSelect;
   const [componentRef, { width: containerWidth }] = useContainerDimensions();
   const cardWidth = useCardWidth(containerWidth, filter.zoomIndex, zoomWidths);
-
-  const treeResult = GQL.useFindCopyrightsQuery({
-    variables: {
-      filter: {
-        per_page: -1,
-        sort: "sort_name",
-        direction: GQL.SortDirectionEnum.Asc,
-      },
-    },
-    fetchPolicy: "network-only",
-    skip: !treeMode,
-  });
-
-  const treeItems = treeResult.data?.findCopyrights.copyrights ?? [];
-  const treeByID = useMemo(
-    () => new Map(treeItems.map((item) => [item.id, item])),
-    [treeItems]
-  );
-  const treeRoots = useMemo(
-    () => treeItems.filter((item) => item.parents.length === 0),
-    [treeItems]
-  );
 
   function viewRandom() {
     if (copyrights.length === 0) return;
@@ -220,59 +197,6 @@ const CopyrightList: React.FC = () => {
     );
   }
 
-  function renderTreeRows(
-    item: GQL.CopyrightListDataFragment,
-    depth: number,
-    path: Set<string>
-  ): React.ReactNode[] {
-    if (path.has(item.id)) return [];
-    const nextPath = new Set(path);
-    nextPath.add(item.id);
-    const rows: React.ReactNode[] = [
-      <tr key={`${item.id}-${Array.from(path).join("-")}`}>
-        <td style={{ paddingLeft: `${0.75 + depth * 1.5}rem` }}>
-          <Link to={`/copyrights/${item.id}`}>{item.name}</Link>
-          {item.structural_role ? (
-            <span className="badge badge-secondary ml-2">
-              {item.structural_role}
-            </span>
-          ) : null}
-        </td>
-        <td title={`${item.scene_count} direct`}>{item.subtree_scene_count}</td>
-        <td title={`${item.image_count} direct`}>{item.subtree_image_count}</td>
-        <td title={`${item.performer_count} direct`}>
-          {item.subtree_performer_count}
-        </td>
-      </tr>,
-    ];
-
-    for (const childRef of item.ordered_children) {
-      const child = treeByID.get(childRef.id);
-      if (child) rows.push(...renderTreeRows(child, depth + 1, nextPath));
-    }
-    return rows;
-  }
-
-  function renderTree() {
-    return (
-      <LoadedContent loading={treeResult.loading} error={treeResult.error}>
-        <Table responsive hover className="list-table copyright-tree-table">
-          <thead>
-            <tr>
-              <th>Copyright branch</th>
-              <th>Videos in subtree</th>
-              <th>Images in subtree</th>
-              <th>Characters in subtree</th>
-            </tr>
-          </thead>
-          <tbody>
-            {treeRoots.flatMap((root) => renderTreeRows(root, 0, new Set()))}
-          </tbody>
-        </Table>
-      </LoadedContent>
-    );
-  }
-
   return (
     <div className="item-list-container copyright-list">
       {modal}
@@ -284,73 +208,44 @@ const CopyrightList: React.FC = () => {
         showEditFilter={showEditFilter}
         operationComponent={operations}
         view={view}
-        zoomable={!treeMode}
+        zoomable
       />
-      <div className="d-flex align-items-center justify-content-between mb-2">
-        <ButtonGroup size="sm">
-          <Button
-            variant={!treeMode ? "primary" : "secondary"}
-            onClick={() => setTreeMode(false)}
-          >
-            Flat
-          </Button>
-          <Button
-            variant={treeMode ? "primary" : "secondary"}
-            onClick={() => setTreeMode(true)}
-          >
-            Tree
-          </Button>
-        </ButtonGroup>
-        <span className="text-muted small">
-          {treeMode
-            ? "Tree counts include distinct media from all descendants."
-            : "Flat counts show direct assignments."}
-        </span>
+
+      <p className="text-muted small">
+        <FormattedMessage id="copyright_hierarchy.direct_count_help" />
+      </p>
+
+      <div className="pagination-index-container">
+        <Pagination
+          currentPage={filter.currentPage}
+          itemsPerPage={filter.itemsPerPage}
+          totalItems={totalCount}
+          onChangePage={(page) => setFilter(filter.changePage(page))}
+        />
+        <PaginationIndex
+          loading={cachedResult.loading}
+          currentPage={filter.currentPage}
+          itemsPerPage={filter.itemsPerPage}
+          totalItems={totalCount}
+        />
       </div>
 
-      {treeMode ? (
-        renderTree()
-      ) : (
-        <>
-          <p className="text-muted small">
-            <FormattedMessage id="copyright_hierarchy.direct_count_help" />
-          </p>
+      <LoadedContent loading={result.loading} error={result.error}>
+        {filter.displayMode === DisplayMode.List ? renderList() : renderGrid()}
+      </LoadedContent>
 
-          <div className="pagination-index-container">
+      {totalCount > filter.itemsPerPage && (
+        <div className="pagination-footer-container">
+          <div className="pagination-footer">
             <Pagination
               currentPage={filter.currentPage}
               itemsPerPage={filter.itemsPerPage}
               totalItems={totalCount}
               onChangePage={(page) => setFilter(filter.changePage(page))}
-            />
-            <PaginationIndex
-              loading={cachedResult.loading}
-              currentPage={filter.currentPage}
-              itemsPerPage={filter.itemsPerPage}
-              totalItems={totalCount}
+              pagePopupPlacement="top"
             />
           </div>
-
-          <LoadedContent loading={result.loading} error={result.error}>
-            {filter.displayMode === DisplayMode.List
-              ? renderList()
-              : renderGrid()}
-          </LoadedContent>
-
-          {totalCount > filter.itemsPerPage && (
-            <div className="pagination-footer-container">
-              <div className="pagination-footer">
-                <Pagination
-                  currentPage={filter.currentPage}
-                  itemsPerPage={filter.itemsPerPage}
-                  totalItems={totalCount}
-                  onChangePage={(page) => setFilter(filter.changePage(page))}
-                  pagePopupPlacement="top"
-                />
-              </div>
-            </div>
-          )}
-        </>
+        </div>
       )}
     </div>
   );
