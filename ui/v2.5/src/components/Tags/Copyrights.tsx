@@ -28,7 +28,7 @@ import { TagLink } from "src/components/Shared/TagLink";
 import { useToast } from "src/hooks/Toast";
 import { ListFilterModel } from "src/models/list-filter/filter";
 import { View } from "src/components/List/views";
-import { useCopyrightFilterHook } from "src/core/copyrights";
+import { useCopyrightFilterHook as createCopyrightFilterHook } from "src/core/copyrights";
 import { ImageList } from "src/components/Images/ImageList";
 import { aliasesFromText } from "src/utils/form";
 import ImageUtils from "src/utils/image";
@@ -347,7 +347,6 @@ const CopyrightEditPanel: React.FC<{
 
 const CopyrightDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const history = useHistory();
   const [editing, setEditing] = useState(id === "new");
   const [image, setImage] = useState<string | null>(null);
   const [encodingImage, setEncodingImage] = useState(false);
@@ -386,7 +385,7 @@ const CopyrightDetails: React.FC = () => {
 
   const displayedCopyright = copyright;
   const filterHook = displayedCopyright
-    ? useCopyrightFilterHook(displayedCopyright)
+    ? createCopyrightFilterHook(displayedCopyright)
     : undefined;
 
   return (
