@@ -225,7 +225,9 @@ function groupCopyrightBranches(items: BooruEntity[]): CopyrightBranch[] {
     );
 }
 
-const CopyrightBranchSection: React.FC<{ items: BooruEntity[] }> = ({ items }) => {
+const CopyrightBranchSection: React.FC<{ items: BooruEntity[] }> = ({
+  items,
+}) => {
   if (items.length === 0) return null;
   const branches = groupCopyrightBranches(items);
 
