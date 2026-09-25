@@ -10,17 +10,31 @@ type Copyright {
   updated_at: Time!
   parents: [Copyright!]!
   children: [Copyright!]!
+  "Direct children in the user-defined sibling order, with normal sort order as fallback."
+  ordered_children: [Copyright!]!
   "Free-form taxonomy role such as Franchise, Series, Arc, Publisher, or any user-defined label."
   structural_role: String!
   "Deterministic canonical root-to-node path used for breadcrumbs and branch grouping."
   breadcrumb: [Copyright!]!
   tags: [Tag!]!
-  image_count(depth: Int): Int!
-  scene_count(depth: Int): Int!
-  performer_count(depth: Int): Int!
+  image_count: Int!
+  scene_count: Int!
+  performer_count: Int!
+  "Distinct image count across this Copyright and all descendants."
+  subtree_image_count: Int!
+  "Distinct video count across this Copyright and all descendants."
+  subtree_scene_count: Int!
+  "Distinct character count across this Copyright and all descendants."
+  subtree_performer_count: Int!
   images: [Image!]!
   scenes: [Scene!]!
   performers: [Performer!]!
+  "Distinct images associated with this Copyright or any descendant."
+  subtree_images: [Image!]!
+  "Distinct videos associated with this Copyright or any descendant."
+  subtree_scenes: [Scene!]!
+  "Distinct characters associated with this Copyright or any descendant."
+  subtree_performers: [Performer!]!
 }
 
 input CopyrightCreateInput {
@@ -85,14 +99,16 @@ extend type Mutation {
 }
 
 extend type Image {
-  "Copyright associations ordered with the primary first, then by deterministic branch path."
   copyrights: [Copyright!]!
+  "Copyright associations ordered with the primary first, then by deterministic branch path."
+  ordered_copyrights: [Copyright!]!
   primary_copyright: Copyright
 }
 
 extend type Scene {
-  "Copyright associations ordered with the primary first, then by deterministic branch path."
   copyrights: [Copyright!]!
+  "Copyright associations ordered with the primary first, then by deterministic branch path."
+  ordered_copyrights: [Copyright!]!
   primary_copyright: Copyright
 }
 
