@@ -6,19 +6,20 @@ import {
 import { ListFilterModel } from "src/models/list-filter/filter";
 import { CriterionType } from "src/models/list-filter/types";
 
-const CopyrightsCriterionOption = new ModifierCriterionOption({
-  messageID: "copyrights",
-  type: "copyrights" as CriterionType,
-  modifierOptions: [
-    GQL.CriterionModifier.IncludesAll,
-    GQL.CriterionModifier.Includes,
-    GQL.CriterionModifier.Equals,
-    GQL.CriterionModifier.IsNull,
-    GQL.CriterionModifier.NotNull,
-  ],
-  defaultModifier: GQL.CriterionModifier.IncludesAll,
-  makeCriterion: () => new IHierarchicalLabeledIdCriterion(CopyrightsCriterionOption),
-});
+const CopyrightsCriterionOption: ModifierCriterionOption =
+  new ModifierCriterionOption({
+    messageID: "copyrights",
+    type: "copyrights" as CriterionType,
+    modifierOptions: [
+      GQL.CriterionModifier.IncludesAll,
+      GQL.CriterionModifier.Includes,
+      GQL.CriterionModifier.Equals,
+      GQL.CriterionModifier.IsNull,
+      GQL.CriterionModifier.NotNull,
+    ],
+    defaultModifier: GQL.CriterionModifier.IncludesAll,
+    makeCriterion: (option) => new IHierarchicalLabeledIdCriterion(option),
+  });
 
 export const useCopyrightFilterHook = (
   copyright: Pick<GQL.CopyrightDataFragment, "id" | "name">
