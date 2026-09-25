@@ -1,7 +1,7 @@
 import React from "react";
 import { ButtonGroup, Table } from "react-bootstrap";
 import { Link, useHistory } from "react-router-dom";
-import { useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 
 import * as GQL from "src/core/generated-graphql";
 import { ListFilterModel } from "src/models/list-filter/filter";
@@ -210,6 +210,9 @@ const CopyrightList: React.FC = () => {
         view={view}
         zoomable
       />
+      <p className="text-muted small">
+        <FormattedMessage id="copyright_hierarchy.direct_count_help" />
+      </p>
 
       <div className="pagination-index-container">
         <Pagination

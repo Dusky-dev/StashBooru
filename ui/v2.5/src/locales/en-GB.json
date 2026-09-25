@@ -1319,6 +1319,12 @@
   "metadata": "Metadata",
   "name": "Name",
   "sort_name": "Sort Name",
+  "copyright_hierarchy": {
+    "sort_name_help": "Optional ordering name, such as a series title without its leading article. Sort Name ordering uses Name when this is empty; Name ordering always uses the displayed name.",
+    "parent_help": "Build your own series hierarchy using Parent Series and Sub-series. A series may have several parents and any number of levels, but cannot be its own ancestor.",
+    "delete_help": "Deleting a Copyright removes its links, but keeps its sub-series and media. Sub-series with no other parent become top-level series.",
+    "direct_count_help": "Image, video, and character counts and count sorting cover direct assignments only; sub-series are not included."
+  },
   "new": "New",
   "none": "None",
   "o_count": "O Count",

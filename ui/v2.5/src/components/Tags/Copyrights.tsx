@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { FormattedMessage, useIntl } from "react-intl";
 import { Helmet } from "react-helmet";
 import { Col, Form, Row, Spinner, Tab, Tabs } from "react-bootstrap";
 import { Route, Switch, useHistory, useParams } from "react-router-dom";
@@ -35,6 +36,7 @@ import ImageUtils from "src/utils/image";
 
 interface CopyrightFormValues {
   name: string;
+  sort_name: string;
   description: string;
   aliases: string;
   parents: Copyright[];
@@ -43,6 +45,7 @@ interface CopyrightFormValues {
 
 const emptyValues: CopyrightFormValues = {
   name: "",
+  sort_name: "",
   description: "",
   aliases: "",
   parents: [],
@@ -74,6 +77,11 @@ const CopyrightDetailsPanel: React.FC<{
   return (
     <div className="detail-group">
       <DetailItem
+        id="sort_name"
+        value={copyright.sort_name}
+        fullWidth={fullWidth}
+      />
+      <DetailItem
         id="details"
         value={copyright.description}
         fullWidth={fullWidth}
@@ -90,6 +98,9 @@ const CopyrightDetailsPanel: React.FC<{
         value={renderRelations(copyright.children)}
         fullWidth={fullWidth}
       />
+      <p className="text-muted small">
+        <FormattedMessage id="copyright_hierarchy.delete_help" />
+      </p>
     </div>
   );
 };
@@ -109,6 +120,7 @@ const CopyrightEditPanel: React.FC<{
   setImage,
   setEncodingImage,
 }) => {
+  const intl = useIntl();
   const history = useHistory();
   const Toast = useToast();
   const [createCopyright] = GQL.useCopyrightCreateMutation();
@@ -131,6 +143,7 @@ const CopyrightEditPanel: React.FC<{
     }
     setValues({
       name: copyright.name,
+      sort_name: copyright.sort_name,
       description: copyright.description,
       aliases: copyright.aliases.join("\n"),
       parents: copyright.parents,
@@ -169,6 +182,7 @@ const CopyrightEditPanel: React.FC<{
     try {
       const input = {
         name,
+        sort_name: values.sort_name.trim(),
         description: values.description,
         aliases: aliasesFromText(values.aliases),
         parent_ids: values.parents.map((item) => item.id),
@@ -251,6 +265,22 @@ const CopyrightEditPanel: React.FC<{
           />
         )}
         {field(
+          <FormattedMessage id="sort_name" />,
+          <>
+            <Form.Control
+              className="text-input"
+              aria-label={intl.formatMessage({ id: "sort_name" })}
+              value={values.sort_name}
+              onChange={(event) =>
+                setValues({ ...values, sort_name: event.currentTarget.value })
+              }
+            />
+            <Form.Text className="text-muted">
+              <FormattedMessage id="copyright_hierarchy.sort_name_help" />
+            </Form.Text>
+          </>
+        )}
+        {field(
           "Aliases",
           <Form.Control
             className="text-input"
@@ -301,6 +331,9 @@ const CopyrightEditPanel: React.FC<{
             creatable={false}
           />
         )}
+        <Form.Text className="text-muted">
+          <FormattedMessage id="copyright_hierarchy.parent_help" />
+        </Form.Text>
       </Form>
 
       <Tabs

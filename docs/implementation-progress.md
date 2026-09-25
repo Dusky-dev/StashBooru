@@ -1,13 +1,32 @@
 # StashBooru implementation progress
 
-Updated: 2026-09-24
+Updated: 2026-09-25
 
 | Package | Status | Notes |
 | --- | --- | --- |
 | P01 — backup compatibility warning | Complete | Covered by merged PR #91; further backend backup-contract work intentionally skipped per project-owner direction. |
 | P02 — image similarity modes | Complete | Merged PR #92 adds explicit pHash and EVA02 modes for image Find similar. |
-| P03 — visual comparison / difference highlighting | In review | `feature/p03-visual-comparison-diff`: extends the existing Lightbox reference comparison with blink, bounded still-image difference heatmap, threshold/noise controls, connected-region boxes, reset, extra format metadata, and compatibility with PR #92 similarity URLs. |
-| P04 — copyright sorting / taxonomy | Not started | Next planned package after P03. |
+| P03 — visual comparison / difference highlighting | Complete | Merged PR #93. Scope remains the bounded still-image comparison described below; automatic alignment and video frame selection are not implemented. |
+| P04 — copyright sorting / taxonomy | In progress | First increment: editable Sort name, directory sorting by direct counts, stable pagination, and validated multi-parent hierarchy edits. Remaining taxonomy work is listed below. |
+
+## P04 first increment
+
+- Reuses native Copyright IDs and parent/child relations. No migration or GraphQL change.
+- Exposes Sort name in create/edit. Directory Name ordering uses the displayed name; Sort Name uses the optional ordering name, falling back to the displayed name. Sort Name is the default for new directory views.
+- Adds direct image/video/character count sorting and an ID tie-breaker to make pagination deterministic. Existing list-filter URL and saved-filter machinery stores these sort choices.
+- Validates the complete proposed hierarchy before an update changes metadata or relationships. Rejects self-links, missing targets, malformed IDs, and cycles on both create and update. Multiple parents remain supported. The existing transaction around create/update rolls back a failed operation.
+- Allows valid simultaneous parent/child changes, including reversing a relation when the old direction is removed in the same edit.
+- Documents the existing deletion behavior: remove Copyright links, keep media and child records, and leave children with their remaining parents (or as roots).
+- SQLite regression tests cover cycles, multi-parent edits, moves, creation rollback, deletion safety, search, count sorting, and stable pagination. UI validation covers TypeScript and focused lint/format checks.
+
+### P04 still to implement
+
+- Descendant-inclusive media filters/counts and sorting, with distinct counts across multiple parent paths.
+- Tree/flat navigation, breadcrumbs, and manual sibling ordering.
+- User-defined structural category roles for Tags and Copyrights, without fixed three-level rules.
+- Deterministic media grouping/sorting by Copyright branch and optional primary Copyright selection.
+
+Ancestor auto-association remains P06; Character variant relations remain P05.
 
 ## P03 validation scope
 
