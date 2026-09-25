@@ -21,9 +21,10 @@ func copyrightTestContext(t *testing.T) (context.Context, *sqlx.Tx, *CopyrightSt
 CREATE TABLE images (id INTEGER PRIMARY KEY);
 CREATE TABLE scenes (id INTEGER PRIMARY KEY);
 CREATE TABLE performers (id INTEGER PRIMARY KEY);
-CREATE TABLE studios (id INTEGER PRIMARY KEY);`)
+CREATE TABLE studios (id INTEGER PRIMARY KEY);
+CREATE TABLE tags (id INTEGER PRIMARY KEY);`)
 	require.NoError(t, err)
-	for _, path := range []string{"migrations/88_copyrights.up.sql", "migrations/90_copyright_media.up.sql"} {
+	for _, path := range []string{"migrations/88_copyrights.up.sql", "migrations/90_copyright_media.up.sql", "migrations/94_copyright_taxonomy.up.sql"} {
 		schema, err := os.ReadFile(path)
 		require.NoError(t, err)
 		_, err = db.Exec(string(schema))
