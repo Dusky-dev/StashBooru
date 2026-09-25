@@ -1,0 +1,53 @@
+name: Temporary P04 format
+
+on:
+  push:
+    branches:
+      - feature/p04-copyright-branches
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feature/p04-copyright-branches
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.33.0 --activate
+      - name: Format P04 UI
+        run: |
+          cd ui/v2.5
+          pnpm install --frozen-lockfile
+          pnpm exec biome format --write \
+            src/components/Copyrights/CopyrightList.tsx \
+            src/components/Copyrights/CopyrightTaxonomyControls.tsx \
+            src/components/Copyrights/PrimaryCopyrightControl.tsx \
+            src/components/Images/ImageDetails/ImageDetailPanel.tsx \
+            src/components/Scenes/SceneDetails/SceneDetailPanel.tsx \
+            src/components/Tags/Copyrights.tsx \
+            src/core/copyrights.ts \
+            src/models/list-filter/criteria/copyrights.ts
+      - name: Commit formatting and remove helper
+        run: |
+          git config user.name "Dusky"
+          git config user.email "76793489+Dusky-dev@users.noreply.github.com"
+          git rm .github/workflows/tmp-p04-format.yml
+          git add ui/v2.5/src/components/Copyrights/CopyrightList.tsx \
+            ui/v2.5/src/components/Copyrights/CopyrightTaxonomyControls.tsx \
+            ui/v2.5/src/components/Copyrights/PrimaryCopyrightControl.tsx \
+            ui/v2.5/src/components/Images/ImageDetails/ImageDetailPanel.tsx \
+            ui/v2.5/src/components/Scenes/SceneDetails/SceneDetailPanel.tsx \
+            ui/v2.5/src/components/Tags/Copyrights.tsx \
+            ui/v2.5/src/core/copyrights.ts \
+            ui/v2.5/src/models/list-filter/criteria/copyrights.ts
+          git commit -m "Format P04 Copyright UI"
+          git push origin HEAD:feature/p04-copyright-branches
