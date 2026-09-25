@@ -94,6 +94,18 @@ func TestCopyrightTaxonomyOrderingRolesAndPrimary(t *testing.T) {
 	children, err = store.FindOrderedChildren(ctx, 1)
 	require.NoError(t, err)
 	require.Equal(t, []int{2, 3}, []int{children[0].ID, children[1].ID})
+
+	// Saving unchanged relationships from either side must not delete the edge
+	// and cascade away the manual order metadata.
+	updatedName := "Root renamed"
+	_, err = store.Update(ctx, models.CopyrightUpdateInput{ID: "1", Name: &updatedName, ChildIDs: []string{"2", "3"}})
+	require.NoError(t, err)
+	_, err = store.Update(ctx, models.CopyrightUpdateInput{ID: "2", ParentIDs: []string{"1"}})
+	require.NoError(t, err)
+	children, err = store.FindOrderedChildren(ctx, 1)
+	require.NoError(t, err)
+	require.Equal(t, []int{2, 3}, []int{children[0].ID, children[1].ID}, "ordinary hierarchy saves must preserve manual sibling order")
+
 	require.Error(t, store.SetChildOrder(ctx, 1, []int{2, 2}))
 	require.Error(t, store.SetChildOrder(ctx, 1, []int{2}))
 	children, err = store.FindOrderedChildren(ctx, 1)

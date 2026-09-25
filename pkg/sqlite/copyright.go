@@ -235,13 +235,41 @@ func replaceCopyrightRelations(ctx context.Context, id int, ids []int, parents b
 	if !parents {
 		column, other = "parent_id", "child_id"
 	}
-	if _, err := dbWrapper.Exec(ctx, "DELETE FROM copyright_relations WHERE "+column+" = ?", id); err != nil {
-		return err
-	}
+
+	// Apply relationship changes as a delta instead of deleting and reinserting
+	// every edge. copyright_relation_order has an FK to the edge itself, so an
+	// unchanged edge must remain intact for its manual sibling position to
+	// survive ordinary Copyright edits.
+	deduped := make([]int, 0, len(ids))
+	seen := make(map[int]struct{}, len(ids))
 	for _, related := range ids {
 		if related == id {
 			return fmt.Errorf("a copyright cannot be its own parent or child")
 		}
+		if _, ok := seen[related]; ok {
+			continue
+		}
+		seen[related] = struct{}{}
+		deduped = append(deduped, related)
+	}
+
+	if len(deduped) == 0 {
+		if _, err := dbWrapper.Exec(ctx, "DELETE FROM copyright_relations WHERE "+column+" = ?", id); err != nil {
+			return err
+		}
+	} else {
+		args := make([]interface{}, 0, len(deduped)+1)
+		args = append(args, id)
+		for _, related := range deduped {
+			args = append(args, related)
+		}
+		query := "DELETE FROM copyright_relations WHERE " + column + " = ? AND " + other + " NOT IN " + getInBinding(len(deduped))
+		if _, err := dbWrapper.Exec(ctx, query, args...); err != nil {
+			return err
+		}
+	}
+
+	for _, related := range deduped {
 		query := "INSERT OR IGNORE INTO copyright_relations (" + column + ", " + other + ") VALUES (?, ?)"
 		if _, err := dbWrapper.Exec(ctx, query, id, related); err != nil {
 			return err
