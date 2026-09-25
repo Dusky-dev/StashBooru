@@ -70,8 +70,8 @@ export const PrimaryCopyrightControl: React.FC<IProps> = ({
         ))}
       </Form.Control>
       <Form.Text className="text-muted">
-        Controls the first Copyright used for deterministic media grouping. Clear
-        it to fall back to taxonomy branch order.
+        Controls the first Copyright used for deterministic media grouping.
+        Clear it to fall back to taxonomy branch order.
       </Form.Text>
     </div>
   );

@@ -72,7 +72,9 @@ export const SceneDetailPanel: React.FC<ISceneDetailProps> = (props) => {
           <PrimaryCopyrightControl
             mediaType="scene"
             mediaID={props.scene.id}
-            copyrights={props.scene.ordered_copyrights ?? props.scene.copyrights}
+            copyrights={
+              props.scene.ordered_copyrights ?? props.scene.copyrights
+            }
             primary={props.scene.primary_copyright}
           />
           {renderDetails()}

@@ -74,7 +74,9 @@ export const ImageDetailPanel: React.FC<IImageDetailProps> = PatchComponent(
             <PrimaryCopyrightControl
               mediaType="image"
               mediaID={props.image.id}
-              copyrights={props.image.ordered_copyrights ?? props.image.copyrights}
+              copyrights={
+                props.image.ordered_copyrights ?? props.image.copyrights
+              }
               primary={props.image.primary_copyright}
             />
             {renderDetails()}

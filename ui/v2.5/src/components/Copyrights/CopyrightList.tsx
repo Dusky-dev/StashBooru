@@ -332,7 +332,9 @@ const CopyrightList: React.FC = () => {
           </div>
 
           <LoadedContent loading={result.loading} error={result.error}>
-            {filter.displayMode === DisplayMode.List ? renderList() : renderGrid()}
+            {filter.displayMode === DisplayMode.List
+              ? renderList()
+              : renderGrid()}
           </LoadedContent>
 
           {totalCount > filter.itemsPerPage && (
