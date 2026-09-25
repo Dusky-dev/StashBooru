@@ -4,6 +4,8 @@ import {
   ModifierCriterionOption,
 } from "./criterion";
 
+// Native Copyright filters deliberately use the same hierarchical value shape
+// as Tags while resolving Copyright IDs through the Copyright selector/graph.
 export class CopyrightsCriterion extends IHierarchicalLabeledIdCriterion {}
 
 export const CopyrightsCriterionOption = new ModifierCriterionOption({
