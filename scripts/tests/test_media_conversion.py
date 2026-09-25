@@ -253,10 +253,20 @@ class EncodeTests(unittest.TestCase):
             converter.run([sys.executable, "-c", script, str(pid_file)], cancelled=pid_file.exists, timeout=5)
         pid = int(pid_file.read_text())
         status = Path(f"/proc/{pid}/stat")
+
+        def process_state():
+            try:
+                return status.read_text().split()[2]
+            except (FileNotFoundError, ProcessLookupError):
+                # A process can disappear between exists() and read_text().
+                return None
+
         deadline = time.monotonic() + 2
-        while status.exists() and status.read_text().split()[2] != "Z" and time.monotonic() < deadline:
+        state = process_state()
+        while state not in (None, "Z") and time.monotonic() < deadline:
             time.sleep(0.02)
-        self.assertTrue(not status.exists() or status.read_text().split()[2] == "Z")
+            state = process_state()
+        self.assertIn(state, (None, "Z"))
 
     def test_finite_loop_count_is_preserved_or_output_rejected(self):
         from PIL import Image
