@@ -188,6 +188,15 @@ interface CopyrightBranch {
   items: BooruEntity[];
 }
 
+function commonPath(left: BooruEntity[], right: BooruEntity[]): BooruEntity[] {
+  const length = Math.min(left.length, right.length);
+  let commonLength = 0;
+  while (commonLength < length && left[commonLength].id === right[commonLength].id) {
+    commonLength += 1;
+  }
+  return left.slice(0, commonLength);
+}
+
 function groupCopyrightBranches(items: BooruEntity[]): CopyrightBranch[] {
   const branches = new Map<string, CopyrightBranch>();
 
@@ -197,7 +206,8 @@ function groupCopyrightBranches(items: BooruEntity[]): CopyrightBranch[] {
     const existing = branches.get(root.id);
     if (existing) {
       existing.items.push(item);
-      if (path.length < existing.path.length) existing.path = path;
+      existing.path = commonPath(existing.path, path);
+      if (existing.path.length === 0) existing.path = [root];
     } else {
       branches.set(root.id, { key: root.id, path, items: [item] });
     }
