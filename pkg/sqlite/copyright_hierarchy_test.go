@@ -16,7 +16,7 @@ func copyrightTestContext(t *testing.T) (context.Context, *sqlx.Tx, *CopyrightSt
 	db, err := sqlx.Open(sqlite3Driver, ":memory:")
 	require.NoError(t, err)
 	db.SetMaxOpenConns(1)
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { require.NoError(t, db.Close()) })
 	_, err = db.Exec(`PRAGMA foreign_keys = ON;
 CREATE TABLE images (id INTEGER PRIMARY KEY);
 CREATE TABLE scenes (id INTEGER PRIMARY KEY);
@@ -31,7 +31,7 @@ CREATE TABLE studios (id INTEGER PRIMARY KEY);`)
 	}
 	tx, err := db.Beginx()
 	require.NoError(t, err)
-	t.Cleanup(func() { tx.Rollback() })
+	t.Cleanup(func() { require.NoError(t, tx.Rollback()) })
 	return context.WithValue(context.Background(), txnKey, tx), tx, NewCopyrightStore()
 }
 
