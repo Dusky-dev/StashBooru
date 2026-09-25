@@ -15,7 +15,6 @@ import { CopyrightLink } from "src/components/Copyrights/CopyrightLink";
 import {
   CopyrightBreadcrumb,
   CopyrightChildrenOrderControl,
-  StructuralRoleControl,
 } from "src/components/Copyrights/CopyrightTaxonomyControls";
 import { DetailsEditNavbar } from "src/components/Shared/DetailsEditNavbar";
 import { DetailImage } from "src/components/Shared/DetailImage";
@@ -69,7 +68,9 @@ const CopyrightDetailsPanel: React.FC<{
   fullWidth?: boolean;
 }> = ({ copyright, fullWidth }) => {
   function renderRelations(items: Copyright[]) {
-    if (items.length === 0) return;
+    if (items.length === 0) {
+      return <span className="text-muted">None</span>;
+    }
     return (
       <>
         {items.map((item) => (
@@ -82,11 +83,6 @@ const CopyrightDetailsPanel: React.FC<{
   return (
     <div className="detail-group">
       <CopyrightBreadcrumb items={copyright.breadcrumb} />
-      <StructuralRoleControl
-        entityType="copyright"
-        entityID={copyright.id}
-        role={copyright.structural_role}
-      />
       <DetailItem
         id="subtree-media"
         label="Taxonomy subtree"
@@ -103,23 +99,37 @@ const CopyrightDetailsPanel: React.FC<{
         value={copyright.description}
         fullWidth={fullWidth}
       />
-      <DetailItem
-        id="parent-series"
-        label="Parent Series"
-        value={renderRelations(copyright.parents)}
-        fullWidth={fullWidth}
-      />
-      <DetailItem
-        id="sub-series"
-        label="Sub-series"
-        value={renderRelations(copyright.ordered_children)}
-        fullWidth={fullWidth}
-      />
-      <CopyrightChildrenOrderControl
-        parentID={copyright.id}
-        orderedChildren={copyright.ordered_children}
-      />
-      <p className="text-muted small">
+      <Tabs
+        defaultActiveKey="main"
+        id={`copyright-hierarchy-tabs-${copyright.id}`}
+        className="mt-3"
+      >
+        <Tab eventKey="main" title="Main">
+          <div className="pt-3">
+            <DetailItem
+              id="parent-series"
+              label="Main Copyright"
+              value={renderRelations(copyright.parents)}
+              fullWidth
+            />
+          </div>
+        </Tab>
+        <Tab eventKey="sub" title="Sub">
+          <div className="pt-3">
+            <DetailItem
+              id="sub-series"
+              label="Sub Copyrights"
+              value={renderRelations(copyright.ordered_children)}
+              fullWidth
+            />
+            <CopyrightChildrenOrderControl
+              parentID={copyright.id}
+              orderedChildren={copyright.ordered_children}
+            />
+          </div>
+        </Tab>
+      </Tabs>
+      <p className="text-muted small mt-2">
         <FormattedMessage id="copyright_hierarchy.delete_help" />
       </p>
     </div>

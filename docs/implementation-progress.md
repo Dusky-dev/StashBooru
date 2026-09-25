@@ -7,26 +7,51 @@ Updated: 2026-09-25
 | P01 — backup compatibility warning | Complete | Covered by merged PR #91; further backend backup-contract work intentionally skipped per project-owner direction. |
 | P02 — image similarity modes | Complete | Merged PR #92 adds explicit pHash and EVA02 modes for image Find similar. |
 | P03 — visual comparison / difference highlighting | Complete | Merged PR #93. Scope remains the bounded still-image comparison described below; automatic alignment and video frame selection are not implemented. |
-| P04 — copyright sorting / taxonomy | In progress | First increment: editable Sort name, directory sorting by direct counts, stable pagination, and validated multi-parent hierarchy edits. Remaining taxonomy work is listed below. |
+| P04 — copyright sorting / taxonomy | Complete, corrective PR #95 pending | PR #94 merged the hierarchy/backend foundation. PR #95 corrects the hierarchy UX and media presentation without changing the P04 database schema. |
 
-## P04 first increment
+## P04 completed behavior
 
-- Reuses native Copyright IDs and parent/child relations. No migration or GraphQL change.
-- Exposes Sort name in create/edit. Directory Name ordering uses the displayed name; Sort Name uses the optional ordering name, falling back to the displayed name. Sort Name is the default for new directory views.
-- Adds direct image/video/character count sorting and an ID tie-breaker to make pagination deterministic. Existing list-filter URL and saved-filter machinery stores these sort choices.
-- Validates the complete proposed hierarchy before an update changes metadata or relationships. Rejects self-links, missing targets, malformed IDs, and cycles on both create and update. Multiple parents remain supported. The existing transaction around create/update rolls back a failed operation.
-- Allows valid simultaneous parent/child changes, including reversing a relation when the old direction is removed in the same edit.
-- Documents the existing deletion behavior: remove Copyright links, keep media and child records, and leave children with their remaining parents (or as roots).
-- SQLite regression tests cover cycles, multi-parent edits, moves, creation rollback, deletion safety, search, count sorting, and stable pagination. UI validation covers TypeScript and focused lint/format checks.
+Backend and data-model work from merged PR #94 is preserved:
 
-### P04 still to implement
+- Native Copyright IDs and parent/child relations remain the hierarchy source of truth.
+- Multi-parent Copyrights are supported; hierarchy writes reject self-links, missing targets and cycles.
+- Copyright directory sorting supports name/sort name, timestamps, direct media counts, descendant-inclusive counts and stable ID tie-breaking.
+- Descendant-aware media filtering/counting counts distinct media across converging hierarchy paths.
+- Breadcrumbs and per-parent manual sibling ordering remain available.
+- Existing deletion behavior keeps media and child records rather than cascading media deletion.
 
-- Descendant-inclusive media filters/counts and sorting, with distinct counts across multiple parent paths.
-- Tree/flat navigation, breadcrumbs, and manual sibling ordering.
-- User-defined structural category roles for Tags and Copyrights, without fixed three-level rules.
-- Deterministic media grouping/sorting by Copyright branch and optional primary Copyright selection.
+Corrective UX in PR #95 (`fix/p04-main-sub-branch-grouping`, based on `develop` at `ae28561d057ff0e2d75136b9fc6da67c941608fd`):
 
-Ancestor auto-association remains P06; Character variant relations remain P05.
+- Removed the separate Flat/Tree Copyright-directory mode. The directory uses the normal Stash Grid/List display controls only.
+- Copyright detail pages expose hierarchy navigation through native Bootstrap/Stash-style **Main** and **Sub** tabs. Main shows parent/main Copyright relationships; Sub shows child/sub-Copyright relationships and manual child ordering. Breadcrumb navigation remains available.
+- Removed the visible free-form Structural Role controls from Copyright and Tag details. The merged schema field is retained for compatibility but is not part of the corrected P04 UX because it currently has no functional behavior.
+- Removed the Image/Video global Primary Copyright selector. The merged schema/API field is retained for compatibility, but the corrected presentation no longer relies on one globally preferred Copyright merely to put it first.
+- Image and Video Copyright presentation now fetches hierarchy breadcrumbs and groups attached Copyrights by independent hierarchy root/branch. When several attached Copyrights share a branch and diverge below it, the group heading uses their common hierarchy prefix. This allows unrelated branches such as Pokémon and Super Mario to remain separate on the same media item.
+- New hierarchy UI reuses React-Bootstrap/native Stash controls and existing card/theme classes rather than adding raw always-visible inputs.
+
+### P04 migration / compatibility impact
+
+- PR #95 adds no migration and does not alter the merged P04 hierarchy tables or validation logic.
+- `structural_role`, `primary_copyright` and related merged API/storage remain readable for compatibility. Their mistaken/decorative UI is removed rather than destructively migrating existing databases.
+- A future compatibility-cleanup package may deprecate those dormant fields if desired; that is not required for the corrected Main/Sub hierarchy behavior.
+
+### P04 verification
+
+Code head `67f72916f09dddb72edb0be439a099bc52725edc` passed the repository GitHub Actions gates before this ledger update:
+
+- backend generation and `golangci-lint` — passed;
+- UI generation — passed;
+- UI test suite — 17 tests passed;
+- JavaScript/CSS lint — passed;
+- TypeScript `tsc --noEmit` — passed;
+- Biome formatting — passed;
+- UI production build — passed;
+- backend test job — passed;
+- cross-platform build matrix — passed, including Linux, Linux ARM variants, Windows, FreeBSD and macOS.
+
+The first corrective CI attempts exposed formatting-only Biome failures. Those were fixed; no test, lint or TypeScript failure remained on the validated code head above.
+
+Ancestor auto-association remains P06; Character variant relations remain P05. The next roadmap package is P05 unless reprioritized by the project owner.
 
 ## P03 validation scope
 

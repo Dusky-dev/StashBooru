@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Button, Form } from "react-bootstrap";
+import { Button } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import * as GQL from "src/core/generated-graphql";
 import { useToast } from "src/hooks/Toast";
@@ -8,82 +8,6 @@ type CopyrightValue = Pick<
   GQL.Copyright,
   "id" | "name" | "sort_name" | "aliases" | "favorite"
 >;
-
-interface StructuralRoleProps {
-  entityType: "copyright" | "tag";
-  entityID: string;
-  role?: string | null;
-}
-
-export const StructuralRoleControl: React.FC<StructuralRoleProps> = ({
-  entityType,
-  entityID,
-  role,
-}) => {
-  const Toast = useToast();
-  const [value, setValue] = useState(role ?? "");
-  const [savedValue, setSavedValue] = useState(role ?? "");
-  const [saving, setSaving] = useState(false);
-  const [updateCopyrightRole] = GQL.useCopyrightStructuralRoleUpdateMutation();
-  const [updateTagRole] = GQL.useTagStructuralRoleUpdateMutation();
-
-  useEffect(() => {
-    setValue(role ?? "");
-    setSavedValue(role ?? "");
-  }, [role]);
-
-  async function save() {
-    const next = value.trim();
-    setSaving(true);
-    try {
-      if (entityType === "copyright") {
-        await updateCopyrightRole({
-          variables: { copyrightID: entityID, role: next },
-        });
-      } else {
-        await updateTagRole({ variables: { tagID: entityID, role: next } });
-      }
-      setValue(next);
-      setSavedValue(next);
-    } catch (error) {
-      Toast.error(error);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div className="structural-role-control mb-3">
-      <Form.Label className="mb-1">Structural role</Form.Label>
-      <div className="d-flex">
-        <Form.Control
-          value={value}
-          disabled={saving}
-          placeholder="Franchise, Series, Arc, Publisher…"
-          onChange={(event) => setValue(event.currentTarget.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              void save();
-            }
-          }}
-        />
-        <Button
-          className="ml-2"
-          variant="secondary"
-          disabled={saving || value.trim() === savedValue}
-          onClick={() => void save()}
-        >
-          Save role
-        </Button>
-      </div>
-      <Form.Text className="text-muted">
-        Free-form taxonomy label only; it does not impose a fixed hierarchy
-        depth.
-      </Form.Text>
-    </div>
-  );
-};
 
 export const CopyrightBreadcrumb: React.FC<{
   items: CopyrightValue[];

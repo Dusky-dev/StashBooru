@@ -75,12 +75,18 @@ fragment SceneData on Scene {
     ...SlimCopyrightData
     scene_count
     image_count
+    breadcrumb {
+      ...SlimCopyrightData
+    }
   }
 
   ordered_copyrights {
     ...SlimCopyrightData
     scene_count
     image_count
+    breadcrumb {
+      ...SlimCopyrightData
+    }
   }
 
   primary_copyright {
