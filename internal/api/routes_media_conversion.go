@@ -435,6 +435,10 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 				defaults := config.DefaultEncoding(input)
 				if request.UseEncodingDefaults {
 					options.Quality, options.Effort = defaults.Quality, defaults.Effort
+					options.AllowLarger = defaults.AllowLarger
+					options.Lossless = defaults.Lossless
+					options.DropAudio = defaults.DropAudio
+					options.AllowAlphaLoss = defaults.AllowAlphaLoss
 				}
 				if conversionUsesDecodingSpeedDefaults(request) {
 					options.DecodingSpeed = defaults.DecodingSpeed
@@ -451,6 +455,9 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 					format, err = conversionOutputFormat(capabilities, options.Format, target.Kind)
 				}
 				if err == nil {
+					if !formatSupportsControl(format, "lossless") {
+						options.Lossless = false
+					}
 					if options.DecodingSpeed == nil {
 						options.DecodingSpeed = options.FasterDecoding
 					}
@@ -596,13 +603,17 @@ func previewConversionDefaults(w http.ResponseWriter, r *http.Request, targets [
 		return
 	}
 	type plan struct {
-		Input         string  `json:"input"`
-		Output        string  `json:"output"`
-		Count         int     `json:"count"`
-		Error         string  `json:"error,omitempty"`
-		Quality       float64 `json:"quality"`
-		Effort        int     `json:"effort"`
-		DecodingSpeed int     `json:"decodingSpeed"`
+		Input          string  `json:"input"`
+		Output         string  `json:"output"`
+		Count          int     `json:"count"`
+		Error          string  `json:"error,omitempty"`
+		Quality        float64 `json:"quality"`
+		Effort         int     `json:"effort"`
+		DecodingSpeed  int     `json:"decodingSpeed"`
+		AllowLarger    bool    `json:"allowLarger,omitempty"`
+		Lossless       bool    `json:"lossless,omitempty"`
+		DropAudio      bool    `json:"dropAudio,omitempty"`
+		AllowAlphaLoss bool    `json:"allowAlphaLoss,omitempty"`
 	}
 	plans := []plan{}
 	indices := map[plan]int{}
@@ -616,6 +627,8 @@ func previewConversionDefaults(w http.ResponseWriter, r *http.Request, targets [
 			next.Output, next.Input, err = conversionDefaultForFile(r.Context(), s, config, id)
 			defaults := config.DefaultEncoding(next.Input)
 			next.Quality, next.Effort, next.DecodingSpeed = defaults.Quality, defaults.Effort, defaults.DecodingSpeedValue()
+			next.AllowLarger, next.Lossless = defaults.AllowLarger, defaults.Lossless
+			next.DropAudio, next.AllowAlphaLoss = defaults.DropAudio, defaults.AllowAlphaLoss
 		}
 		if err != nil {
 			next.Error = err.Error()
