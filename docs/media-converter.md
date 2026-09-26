@@ -18,11 +18,12 @@ the output for this conversion only. Unavailable encoders are disabled, and
 video selections offer video outputs only. Saved quality/effort are used by default; uncheck that option in
 the dialog to set a temporary quality/effort override for the batch.
 
-The initial defaults send JPEG/PNG/still WebP to JXL, GIF/APNG/animated WebP to
-AJXL, and videos to AV1 (MP4, MKV and WebM retain their container defaults).
-Inspected still and animated JXL inputs have separate rules. Uninspected JXL
-uses the animation-capable path. PNG and WebP headers distinguish animated files
-even when extensions are shared.
+The initial defaults send JPEG/PNG/still WebP to JXL; GIF, APNG, animated WebP
+and animated AVIF to animated WebP; and videos to AV1 (MP4, MKV and WebM retain
+their container defaults). Existing AJXL stays AJXL rather than being
+transcoded automatically. Inspected still and animated JXL inputs have separate
+rules. Uninspected JXL uses the animation-capable path. PNG and WebP headers
+distinguish animated files even when extensions are shared.
 **Other images** and **Other videos** provide fallbacks for inputs without a
 specific rule. Encoder availability still depends on the worker.
 
@@ -119,7 +120,8 @@ loses finite APNG loop counts. Verification rejects these outputs. Animated WebP
 decoding has a 512 MiB decoded-frame memory limit.
 
 Playback still depends on the browser's codec support. JPEG XL, especially
-animated JXL, requires a compatible viewer/browser. MP4/WebM usually offer broader
+animated JXL, requires a compatible viewer/browser, which is why animated WebP
+is the default target for non-AJXL animations. MP4/WebM usually offer broader
 browser support. The converter preserves StashBooru metadata; embedded EXIF,
 container metadata, HDR side data and ICC profiles have format/encoder-dependent
 support and are not guaranteed to survive every cross-format conversion.
