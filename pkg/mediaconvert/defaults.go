@@ -19,8 +19,9 @@ type InputFormat struct {
 }
 
 type EncodingDefaults struct {
-	Quality float64 `json:"quality"`
-	Effort  int     `json:"effort"`
+	Quality        float64 `json:"quality"`
+	Effort         int     `json:"effort"`
+	FasterDecoding *int    `json:"fasterDecoding,omitempty"`
 }
 
 func ValidateEncodingDefaults(defaults map[string]EncodingDefaults, backend string) error {
@@ -32,8 +33,8 @@ func ValidateEncodingDefaults(defaults map[string]EncodingDefaults, backend stri
 		for _, f := range InputFormats {
 			known = known || f.ID == input
 		}
-		if !known || math.IsNaN(value.Quality) || math.IsInf(value.Quality, 0) || value.Quality < 0 || value.Quality > 100 || value.Effort < 1 || value.Effort > 9 {
-			return fmt.Errorf("invalid quality or effort defaults for %s", input)
+		if !known || math.IsNaN(value.Quality) || math.IsInf(value.Quality, 0) || value.Quality < 0 || value.Quality > 100 || value.Effort < 1 || value.Effort > 9 || (value.FasterDecoding != nil && (*value.FasterDecoding < 0 || *value.FasterDecoding > 4)) {
+			return fmt.Errorf("invalid encoding defaults for %s", input)
 		}
 	}
 	return nil
@@ -41,6 +42,9 @@ func ValidateEncodingDefaults(defaults map[string]EncodingDefaults, backend stri
 
 func (c Config) DefaultEncoding(input string) EncodingDefaults {
 	if value, ok := c.EncodingDefaults[input]; ok {
+		if value.FasterDecoding == nil {
+			value.FasterDecoding = defaultFasterDecoding(input)
+		}
 		return value
 	}
 	fallback := "image"
@@ -50,13 +54,34 @@ func (c Config) DefaultEncoding(input string) EncodingDefaults {
 		}
 	}
 	if value, ok := c.EncodingDefaults[fallback]; ok {
+		if value.FasterDecoding == nil {
+			value.FasterDecoding = defaultFasterDecoding(input)
+		}
 		return value
 	}
 	quality := 90.0
 	if fallback == "video" {
 		quality = 80
 	}
-	return EncodingDefaults{Quality: quality, Effort: 7}
+	return EncodingDefaults{Quality: quality, Effort: 7, FasterDecoding: defaultFasterDecoding(input)}
+}
+
+func defaultFasterDecoding(input string) *int {
+	value := 0
+	for _, format := range InputFormats {
+		if format.ID == input && format.Family == "animation" {
+			value = 2
+			break
+		}
+	}
+	return &value
+}
+
+func (e EncodingDefaults) FasterDecodingValue() int {
+	if e.FasterDecoding == nil {
+		return 0
+	}
+	return *e.FasterDecoding
 }
 
 // Catalogs describe configuration choices independently of installed encoders.

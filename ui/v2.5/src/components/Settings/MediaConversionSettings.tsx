@@ -13,6 +13,7 @@ interface Rule {
   output: string;
   quality: number;
   effort: number;
+  fasterDecoding: number;
 }
 
 export const MediaConversionSettings: React.FC = () => {
@@ -49,6 +50,12 @@ export const MediaConversionSettings: React.FC = () => {
                   f.family === "video" ? "video" : "image"
                 ]?.effort ??
                 7,
+              fasterDecoding:
+                value.config.encodingDefaults[f.id]?.fasterDecoding ??
+                value.config.encodingDefaults[
+                  f.family === "video" ? "video" : "image"
+                ]?.fasterDecoding ??
+                (f.family === "animation" ? 2 : 0),
             }))
         );
       })
@@ -80,7 +87,11 @@ export const MediaConversionSettings: React.FC = () => {
           encodingDefaults: Object.fromEntries(
             rules.map((r) => [
               r.input,
-              { quality: r.quality, effort: r.effort },
+              {
+                quality: r.quality,
+                effort: r.effort,
+                fasterDecoding: r.fasterDecoding,
+              },
             ])
           ),
           formatDefaults: Object.fromEntries(
@@ -105,8 +116,8 @@ export const MediaConversionSettings: React.FC = () => {
     <div className="setting-section" id="media-converter">
       <h1>Media converter</h1>
       <div className="sub-heading">
-        Choose the output, quality and effort for each input format. Single and
-        batch conversions use these saved defaults.
+        Choose the output, quality, effort and JPEG XL decode speed for each
+        input format. Single and batch conversions use these saved defaults.
       </div>
       <Card className="p-3">
         <Form.Group controlId="converter-default-backend">
@@ -145,6 +156,7 @@ export const MediaConversionSettings: React.FC = () => {
                   <th>Default output format</th>
                   <th>Quality (0–100)</th>
                   <th>Effort (1–9)</th>
+                  <th>JXL decode speed (0–4)</th>
                   <th>
                     <span className="sr-only">Remove rule</span>
                   </th>
@@ -238,6 +250,34 @@ export const MediaConversionSettings: React.FC = () => {
                       </td>
                     ))}
                     <td>
+                      {rule.output === "jxl" || rule.output === "ajxl" ? (
+                        <Form.Control
+                          type="number"
+                          className="text-input"
+                          min={0}
+                          max={4}
+                          step={1}
+                          value={rule.fasterDecoding}
+                          disabled={saving}
+                          aria-label={`JXL decode speed tier for ${rule.input}`}
+                          onChange={(e) =>
+                            setRules(
+                              rules.map((r, i) =>
+                                i === index
+                                  ? {
+                                      ...r,
+                                      fasterDecoding: Number(e.target.value),
+                                    }
+                                  : r
+                              )
+                            )
+                          }
+                        />
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
+                    </td>
+                    <td>
                       {rule.input !== "image" && rule.input !== "video" && (
                         <Button
                           size="sm"
@@ -274,6 +314,11 @@ export const MediaConversionSettings: React.FC = () => {
                           ? 80
                           : 90,
                       effort: 7,
+                      fasterDecoding:
+                        settings.inputFormats.find((f) => f.id === input)
+                          ?.family === "animation"
+                          ? 2
+                          : 0,
                     },
                   ]);
                 }}
@@ -290,10 +335,12 @@ export const MediaConversionSettings: React.FC = () => {
             </div>
             <Form.Text className="text-muted">
               Higher quality retains more detail; higher effort takes longer.
-              Controls that a codec does not use are ignored. JPEG XL quality
-              100 is lossless. The processor prefers GPU, otherwise CPU. Saved
-              defaults apply when a new conversion job starts. Existing running
-              jobs keep their selected formats and settings.
+              JPEG XL quality 100 is lossless. Higher JXL decode speed favors
+              faster playback and can reduce compression or quality; 0 keeps
+              libjxl's default. Controls that a codec does not use are ignored.
+              The processor prefers GPU, otherwise CPU. Saved defaults apply
+              when a new conversion job starts. Existing running jobs keep their
+              selected formats and settings.
             </Form.Text>
           </>
         )}

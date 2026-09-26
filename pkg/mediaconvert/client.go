@@ -25,6 +25,7 @@ type Options struct {
 	Quality        float64 `json:"quality"`
 	Effort         int     `json:"effort"`
 	Distance       float64 `json:"distance"`
+	FasterDecoding *int    `json:"fasterDecoding,omitempty"`
 	Lossless       bool    `json:"lossless"`
 	AllowLarger    bool    `json:"allowLarger"`
 	DropAudio      bool    `json:"dropAudio"`

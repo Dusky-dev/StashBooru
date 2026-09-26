@@ -31,8 +31,8 @@ INPUT_FORMATS = "mov,matroska,webm,avi,asf,flv,mpeg,mpegts,ogg,nut,ivf,h264,hevc
 
 # id: (label, extension, family, encoder candidates, controls)
 FORMATS = {
-    "jxl": ("JPEG XL", "jxl", "image", ["cjxl", "libjxl"], ["quality", "effort"]),
-    "ajxl": ("Animated JPEG XL (AJXL)", "jxl", "animation", ["cjxl"], ["quality", "effort"]),
+    "jxl": ("JPEG XL", "jxl", "image", ["cjxl", "libjxl"], ["quality", "effort", "fasterDecoding"]),
+    "ajxl": ("Animated JPEG XL (AJXL)", "jxl", "animation", ["cjxl"], ["quality", "effort", "fasterDecoding"]),
     "av1-mp4": ("AV1 / MP4", "mp4", "video", ["libsvtav1", "libaom-av1"], ["quality", "effort"]),
     "av1-mkv": ("AV1 / MKV", "mkv", "video", ["libsvtav1", "libaom-av1"], ["quality", "effort"]),
     "av1-webm": ("AV1 / WebM", "webm", "video", ["libsvtav1", "libaom-av1"], ["quality", "effort"]),
@@ -133,11 +133,20 @@ def capabilities(probe_gpu=True, only_format=None) -> dict:
             run([tool, "--version"], timeout=10)
         except (OSError, RuntimeError):
             jxl_tools = False
+    faster_decoding = False
+    if jxl_tools:
+        try:
+            help_result = subprocess.run(["cjxl", "--help"], stdout=subprocess.PIPE,
+                                         stderr=subprocess.STDOUT, timeout=10, check=False)
+            faster_decoding = b"--faster_decoding" in help_result.stdout
+        except (OSError, subprocess.TimeoutExpired):
+            faster_decoding = False
     formats = []
     for key, (label, ext, family, candidates, controls) in FORMATS.items():
         cpu = [e for e in candidates if e == "cjxl" and jxl_tools]
         cpu += [e for e in candidates if e != "cjxl" and e in encoders]
         hardware = gpu.get(key.split("-")[0], [])
+        controls = [c for c in controls if c != "fasterDecoding" or faster_decoding]
         formats.append({"id": key, "label": label, "extension": ext, "family": family,
                         "cpu": cpu, "gpu": hardware, "controls": controls,
                         "available": bool(cpu or hardware)})
@@ -148,9 +157,9 @@ def capabilities(probe_gpu=True, only_format=None) -> dict:
 
 
 def options(raw: dict) -> dict:
-    if not isinstance(raw, dict) or set(raw) - {"format", "hardware", "quality", "effort", "distance", "lossless", "allowLarger", "dropAudio", "allowAlphaLoss", "upscaler", "upscaleScale"}:
+    if not isinstance(raw, dict) or set(raw) - {"format", "hardware", "quality", "effort", "distance", "fasterDecoding", "lossless", "allowLarger", "dropAudio", "allowAlphaLoss", "upscaler", "upscaleScale"}:
         raise ValueError("unknown conversion option")
-    o = {"format": "jxl", "hardware": "auto", "quality": 90 if raw.get("format", "jxl") in ("jxl", "ajxl") else 80, "effort": 7, "distance": 1,
+    o = {"format": "jxl", "hardware": "auto", "quality": 90 if raw.get("format", "jxl") in ("jxl", "ajxl") else 80, "effort": 7, "distance": 1, "fasterDecoding": 0,
          "lossless": False, "allowLarger": False, "dropAudio": False, "allowAlphaLoss": False,
          "upscaler": "", "upscaleScale": 2, **raw}
     if o["format"] not in FORMATS or o["hardware"] not in ("cpu", "gpu", "auto"):
@@ -164,6 +173,10 @@ def options(raw: dict) -> dict:
     if o["upscaler"] not in ("", "waifu2x", "seedvr2") or isinstance(o["upscaleScale"], bool) or o["upscaleScale"] not in (2, 4):
         raise ValueError("choose waifu2x or SeedVR2 and a scale of 2 or 4")
     o["upscaleScale"] = int(o["upscaleScale"])
+    if isinstance(o["fasterDecoding"], bool) or not isinstance(o["fasterDecoding"], int) or not 0 <= o["fasterDecoding"] <= 4:
+        raise ValueError("fasterDecoding must be an integer between 0 and 4")
+    if o["format"] not in ("jxl", "ajxl") and o["fasterDecoding"] != 0:
+        raise ValueError("fasterDecoding is only supported for JPEG XL")
     for name in ("lossless", "allowLarger", "dropAudio", "allowAlphaLoss"):
         if not isinstance(o[name], bool):
             raise ValueError(f"{name} must be a boolean")
@@ -173,6 +186,14 @@ def options(raw: dict) -> dict:
         # requests working, including jobs sent by older StashBooru servers.
         o["distance"] = 0 if q >= 100 else 0.1 + (100 - q) * 0.09 if q >= 30 else 53 / 3000 * q * q - 23 / 20 * q + 25
     return o
+
+
+def jxl_encoder_args(source: Path, output: Path, o: dict) -> list[str]:
+    args = ["cjxl", str(source), str(output), "--distance=" + str(o["distance"]),
+            "--effort=" + str(int(o["effort"])), "--num_threads=" + str(THREADS)]
+    if o["fasterDecoding"] > 0:
+        args.append("--faster_decoding=" + str(o["fasterDecoding"]))
+    return args
 
 
 def prepare_input(source: Path, directory: Path, cancelled=None, known_single_frame=False) -> Path:
@@ -466,8 +487,7 @@ def convert(source: Path, output: Path, raw: dict, cancelled=None) -> dict:
                 run(intermediate_args + [str(intermediate)], cancelled)
             if before.get("durations") and not direct_gif:
                 intermediate = jxl_timing_input(intermediate, directory / "jxl-timed.png", before["durations"])
-            args = ["cjxl", str(intermediate), str(output), "--distance=" + str(o["distance"]),
-                    "--effort=" + str(int(o["effort"])), "--num_threads=" + str(THREADS)]
+            args = jxl_encoder_args(intermediate, output, o)
             if before["videoCodec"] == "mjpeg" and o["distance"] != 0:
                 args.append("--lossless_jpeg=0")
         else:

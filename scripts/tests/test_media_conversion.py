@@ -23,7 +23,8 @@ import media_conversion_worker as converter
 class OptionsTests(unittest.TestCase):
     def test_reject_invalid_controls(self):
         for value in ({"format": "sh"}, {"effort": 10}, {"effort": 2.5}, {"quality": True},
-                      {"quality": float("nan")}, {"distance": -1}, {"hardware": "cuda;exit"}, {"command": "ls"}):
+                      {"quality": float("nan")}, {"distance": -1}, {"hardware": "cuda;exit"},
+                      {"fasterDecoding": 5}, {"fasterDecoding": True}, {"command": "ls"}):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 converter.options(value)
         for value in ({"upscaler": "shell"}, {"upscaleScale": True}, {"upscaleScale": 3}):
@@ -40,6 +41,27 @@ class OptionsTests(unittest.TestCase):
                 self.assertAlmostEqual(converter.options({"format": "jxl", "quality": quality})["distance"], distance)
         self.assertEqual(converter.options({"quality": 80, "distance": 0})["distance"], 0)
         self.assertEqual(converter.options({})["hardware"], "auto")
+
+    def test_jxl_decode_speed_option(self):
+        options = converter.options({"format": "ajxl", "fasterDecoding": 2})
+        args = converter.jxl_encoder_args(Path("in.png"), Path("out.jxl"), options)
+        self.assertIn("--faster_decoding=2", args)
+        options = converter.options({"format": "ajxl", "fasterDecoding": 0})
+        args = converter.jxl_encoder_args(Path("in.png"), Path("out.jxl"), options)
+        self.assertFalse(any(a.startswith("--faster_decoding=") for a in args))
+
+    def test_jxl_decode_speed_is_advertised_only_when_cjxl_supports_it(self):
+        for help_output, advertised in (
+            (b"Usage: cjxl --faster_decoding=0..4", True),
+            (b"Usage: cjxl --distance --effort", False),
+        ):
+            with self.subTest(advertised=advertised), \
+                 patch.object(converter.shutil, "which", side_effect=lambda name: "/usr/bin/cjxl" if name == "cjxl" else "/usr/bin/djxl" if name == "djxl" else None), \
+                 patch.object(converter, "run", side_effect=lambda args, **kwargs: "" if args[0] == "ffmpeg" else "libjxl 0.11"), \
+                 patch.object(converter.subprocess, "run", return_value=types.SimpleNamespace(stdout=help_output)):
+                caps = converter.capabilities(probe_gpu=False)
+            ajxl = next(f for f in caps["formats"] if f["id"] == "ajxl")
+            self.assertEqual("fasterDecoding" in ajxl["controls"], advertised)
 
 
 @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "FFmpeg required")
