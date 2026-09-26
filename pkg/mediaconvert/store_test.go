@@ -23,6 +23,7 @@ type memoryRepository struct {
 	f              models.File
 	failSwap       bool
 	commitThenFail bool
+	afterSwap      func(before, after models.File)
 }
 
 func (r *memoryRepository) Get(context.Context, models.FileID) (models.File, error) {
@@ -36,6 +37,9 @@ func (r *memoryRepository) Swap(_ context.Context, before, after models.File) er
 		return errors.New("injected DB failure")
 	}
 	r.f = after.Clone()
+	if r.afterSwap != nil {
+		r.afterSwap(before, after)
+	}
 	if r.commitThenFail {
 		return errors.New("injected interruption after commit")
 	}
@@ -245,6 +249,97 @@ func TestRecoverInterruptedActivation(t *testing.T) {
 				t.Fatal("recovery left DB pointing to missing file")
 			}
 		})
+	}
+}
+
+func TestConvertKeepsChangedSourceAfterActivation(t *testing.T) {
+	s, repo, client, _ := fixture(t, "compressed", false)
+	sourcePath := repo.f.Base().Path
+	changed := []byte("edited after the database switched to the converted file")
+	repo.afterSwap = func(_, _ models.File) {
+		if err := os.WriteFile(sourcePath, changed, 0600); err != nil {
+			t.Error(err)
+		}
+	}
+
+	r, err := s.Convert(context.Background(), 12, "batch", client, Options{Format: "jxl"}, Format{Extension: "jxl"})
+	if err != nil {
+		t.Fatalf("conversion should complete with a warning: %v", err)
+	}
+	if r.Status != "complete" || !strings.Contains(r.Error, "file changed; refusing to remove") || !strings.Contains(r.Error, "(file kept)") {
+		t.Fatalf("conversion warning was not recorded: %+v", r)
+	}
+	if repo.f.Base().Path != r.After.File().Base().Path {
+		t.Fatal("converted file is not active")
+	}
+	actual, err := os.ReadFile(sourcePath)
+	if err != nil || string(actual) != string(changed) {
+		t.Fatal("changed source copy was not preserved")
+	}
+}
+
+func TestRecoverCompletesWithWarningWhenInactiveSourceChanged(t *testing.T) {
+	s, repo, client, _ := fixture(t, "compressed", false)
+	sourcePath := repo.f.Base().Path
+	changed := []byte("edited after the database switched to the converted file")
+	repo.commitThenFail = true
+	repo.afterSwap = func(_, _ models.File) {
+		if err := os.WriteFile(sourcePath, changed, 0600); err != nil {
+			t.Error(err)
+		}
+	}
+	r, err := s.Convert(context.Background(), 12, "batch", client, Options{Format: "jxl"}, Format{Extension: "jxl"})
+	if err == nil || r.Status != "prepared" {
+		t.Fatal("expected an interruption immediately after activation")
+	}
+	repo.commitThenFail = false
+	if err := s.Recover(context.Background()); err != nil {
+		t.Fatalf("recovery should finalize while preserving changed file: %v", err)
+	}
+	reloaded, err := s.Record(r.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reloaded.Status != "complete" || !strings.Contains(reloaded.Error, "file changed; refusing to remove") {
+		t.Fatalf("recovery warning was not recorded: %+v", reloaded)
+	}
+	actual, err := os.ReadFile(sourcePath)
+	if err != nil || string(actual) != string(changed) {
+		t.Fatal("recovery removed the changed source copy")
+	}
+}
+
+func TestRestoreKeepsChangedConvertedFileAfterActivation(t *testing.T) {
+	s, repo, client, original := fixture(t, "compressed", false)
+	r := convertFixture(t, s, client)
+	convertedPath := r.After.File().Base().Path
+	changed := []byte("edited after the database switched back to the original")
+	repo.afterSwap = func(_, _ models.File) {
+		if err := os.WriteFile(convertedPath, changed, 0600); err != nil {
+			t.Error(err)
+		}
+	}
+
+	if err := s.ToggleRestore(context.Background(), r.ID); err != nil {
+		t.Fatalf("restore should finish with a warning: %v", err)
+	}
+	reloaded, err := s.Record(r.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reloaded.Status != "restored" || !strings.Contains(reloaded.Error, "file changed; refusing to remove") {
+		t.Fatalf("restore warning was not recorded: %+v", reloaded)
+	}
+	if repo.f.Base().Path != reloaded.Before.File().Base().Path {
+		t.Fatal("original file is not active after restore")
+	}
+	active, err := os.ReadFile(repo.f.Base().Path)
+	if err != nil || string(active) != original {
+		t.Fatal("restore did not keep the original bytes active")
+	}
+	kept, err := os.ReadFile(convertedPath)
+	if err != nil || string(kept) != string(changed) {
+		t.Fatal("changed converted file was not preserved")
 	}
 }
 
