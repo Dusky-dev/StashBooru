@@ -198,7 +198,7 @@ func TestEncodingPreferencesPersistAndResolvePerInput(t *testing.T) {
 	if legacyDefaults.FasterDecodingValue() != 2 {
 		t.Fatalf("legacy defaults should favor playback, got tier %d", legacyDefaults.FasterDecodingValue())
 	}
-	if stillDefaults := Config{}.DefaultEncoding("jpeg"); stillDefaults.FasterDecodingValue() != 0 {
+	if stillDefaults := (Config{}).DefaultEncoding("jxl"); stillDefaults.FasterDecodingValue() != 0 {
 		t.Fatalf("still JXL defaults should retain density, got tier %d", stillDefaults.FasterDecodingValue())
 	}
 	for frames, input := range map[int]string{0: "ajxl", 1: "jxl", 2: "ajxl"} {
