@@ -141,7 +141,7 @@ var OutputFormats = []Format{
 func DefaultFormatDefaults() map[string]string {
 	return map[string]string{
 		"image": "jxl", "video": "av1-mp4", "jpeg": "jxl", "png": "jxl",
-		"gif": "ajxl", "apng": "ajxl", "webp": "jxl", "animated-webp": "ajxl", "jxl": "jxl", "ajxl": "ajxl", "animated-avif": "ajxl",
+		"gif": "webp", "apng": "webp", "webp": "jxl", "animated-webp": "webp", "jxl": "jxl", "ajxl": "ajxl", "animated-avif": "webp",
 		"mp4": "av1-mp4", "mkv": "av1-mkv", "webm": "av1-webm",
 	}
 }
@@ -178,9 +178,15 @@ func (c Config) DefaultOutput(input string, video bool) string {
 		return output
 	}
 	// New animation subtypes must remain safe with configs saved before those
-	// subtype rules existed. They cannot fall through to a still-only fallback.
-	if input == "ajxl" || input == "animated-avif" {
+	// subtype rules existed. Existing AJXL stays AJXL; other animations use the
+	// browser-compatible animated WebP fallback.
+	if input == "ajxl" {
 		return "ajxl"
+	}
+	for _, format := range InputFormats {
+		if format.ID == input && format.Family == "animation" {
+			return "webp"
+		}
 	}
 	fallback, output := "image", "jxl"
 	if video {
