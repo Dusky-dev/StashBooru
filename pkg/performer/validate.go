@@ -119,7 +119,7 @@ func ValidateParent(ctx context.Context, performerID int, parentID *int, qb mode
 	seen := make(map[int]struct{})
 	for currentID := *parentID; currentID > 0; {
 		if performerID > 0 && currentID == performerID {
-			return fmt.Errorf("Character variant hierarchy cannot contain a cycle")
+			return fmt.Errorf("character variant hierarchy cannot contain a cycle")
 		}
 		if _, ok := seen[currentID]; ok {
 			return fmt.Errorf("existing Character variant hierarchy already contains a cycle")
