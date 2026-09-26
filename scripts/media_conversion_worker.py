@@ -517,17 +517,33 @@ def webp_chunks(path: Path):
 def webp_animation_durations(path: Path, expected_frames: int) -> list[int]:
     """Read exact ANMF millisecond holds without decoding every WebP frame twice."""
     durations = []
+    file_size = path.stat().st_size
     with path.open("rb") as stream:
-        for name, offset, size in webp_chunks(path):
-            if name != b"ANMF":
-                continue
-            if size < 16:
-                raise ValueError("animated WebP frame metadata is truncated")
-            stream.seek(offset + 12)
-            delay = stream.read(3)
-            if len(delay) != 3:
-                raise ValueError("animated WebP frame metadata is truncated")
-            durations.append(int.from_bytes(delay, "little"))
+        header = stream.read(12)
+        if len(header) != 12 or header[:4] != b"RIFF" or header[8:] != b"WEBP":
+            raise ValueError("invalid animated WebP container")
+        riff_end = 8 + int.from_bytes(header[4:8], "little")
+        if riff_end < 12 or riff_end > file_size:
+            raise ValueError("truncated animated WebP container")
+        while stream.tell() < riff_end:
+            if riff_end - stream.tell() < 8:
+                raise ValueError("truncated animated WebP chunk header")
+            chunk_header = stream.read(8)
+            name = chunk_header[:4]
+            size = int.from_bytes(chunk_header[4:], "little")
+            data_start = stream.tell()
+            chunk_end = data_start + size + (size & 1)
+            if chunk_end > riff_end:
+                raise ValueError("truncated animated WebP chunk")
+            if name == b"ANMF":
+                if size < 16:
+                    raise ValueError("animated WebP frame metadata is truncated")
+                stream.seek(data_start + 12)
+                delay = stream.read(3)
+                if len(delay) != 3:
+                    raise ValueError("animated WebP frame metadata is truncated")
+                durations.append(int.from_bytes(delay, "little"))
+            stream.seek(chunk_end)
     if len(durations) != expected_frames:
         raise ValueError("animated WebP frame count does not match its container")
     return durations
