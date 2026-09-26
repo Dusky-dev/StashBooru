@@ -23,6 +23,10 @@ type EncodingDefaults struct {
 	Effort         int     `json:"effort"`
 	DecodingSpeed  *int    `json:"decodingSpeed,omitempty"`
 	FasterDecoding *int    `json:"fasterDecoding,omitempty"` // Legacy JXL-only key.
+	AllowLarger    bool    `json:"allowLarger,omitempty"`
+	Lossless       bool    `json:"lossless,omitempty"`
+	DropAudio      bool    `json:"dropAudio,omitempty"`
+	AllowAlphaLoss bool    `json:"allowAlphaLoss,omitempty"`
 }
 
 func ValidateEncodingDefaults(defaults map[string]EncodingDefaults, backend string) error {
@@ -130,7 +134,7 @@ var OutputFormats = []Format{
 	{ID: "mov", Label: "H.264 / MOV", Extension: "mov", Family: "video"},
 	{ID: "jpeg", Label: "JPEG", Extension: "jpg", Family: "image"},
 	{ID: "png", Label: "PNG", Extension: "png", Family: "image"},
-	{ID: "webp", Label: "WebP (still or animated)", Extension: "webp", Family: "animation"},
+	{ID: "webp", Label: "WebP (still or animated)", Extension: "webp", Family: "animation", Controls: []string{"quality", "effort", "lossless"}},
 	{ID: "avif", Label: "AVIF", Extension: "avif", Family: "image", Controls: []string{"quality", "effort", "decodingSpeed"}, DecodingSpeedLevels: 1},
 	{ID: "gif", Label: "GIF", Extension: "gif", Family: "animation"},
 	{ID: "apng", Label: "Animated PNG", Extension: "png", Family: "animation"},
