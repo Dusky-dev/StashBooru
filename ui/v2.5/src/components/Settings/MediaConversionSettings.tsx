@@ -70,7 +70,8 @@ export const MediaConversionSettings: React.FC = () => {
                   (output === "jxl" || output === "ajxl")
                     ? 2
                     : 0),
-                allowLarger: saved?.allowLarger ?? fallback?.allowLarger ?? false,
+                allowLarger:
+                  saved?.allowLarger ?? fallback?.allowLarger ?? false,
                 lossless: saved?.lossless ?? fallback?.lossless ?? false,
                 dropAudio: saved?.dropAudio ?? fallback?.dropAudio ?? false,
                 allowAlphaLoss:
@@ -199,7 +200,8 @@ export const MediaConversionSettings: React.FC = () => {
       <h1>Media converter</h1>
       <div className="sub-heading">
         Choose the output, quality, effort, decode speed and safety options for
-        each input format. Single and batch conversions use these saved defaults.
+        each input format. Single and batch conversions use these saved
+        defaults.
       </div>
       <Card className="p-3">
         <Form.Group controlId="converter-default-backend">
@@ -232,8 +234,8 @@ export const MediaConversionSettings: React.FC = () => {
         {workerCapabilityError && (
           <Alert variant="warning">
             Could not read codec support from the selected worker. Saved
-            preferences remain editable, but a worker must support a codec option
-            to apply it during conversion.
+            preferences remain editable, but a worker must support a codec
+            option to apply it during conversion.
           </Alert>
         )}
         {!settings && !error && <Spinner animation="border" role="status" />}
@@ -287,8 +289,10 @@ export const MediaConversionSettings: React.FC = () => {
                                       output
                                     ),
                                     lossless:
-                                      supportsSavedControl(output, "lossless") &&
-                                      r.lossless,
+                                      supportsSavedControl(
+                                        output,
+                                        "lossless"
+                                      ) && r.lossless,
                                   }
                                 : r
                             )
@@ -328,8 +332,10 @@ export const MediaConversionSettings: React.FC = () => {
                                       output
                                     ),
                                     lossless:
-                                      supportsSavedControl(output, "lossless") &&
-                                      r.lossless,
+                                      supportsSavedControl(
+                                        output,
+                                        "lossless"
+                                      ) && r.lossless,
                                   }
                                 : r
                             )
