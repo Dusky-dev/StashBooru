@@ -198,6 +198,23 @@ func TestEncodingPreferencesPersistAndResolvePerInput(t *testing.T) {
 	if legacyDefaults.FasterDecodingValue() != 2 {
 		t.Fatalf("legacy defaults should favor playback, got tier %d", legacyDefaults.FasterDecodingValue())
 	}
+	genericDefaults := (Config{EncodingDefaults: map[string]EncodingDefaults{
+		"mp4": {Quality: 80, Effort: 7, DecodingSpeed: intPtr(1)},
+	}}).DefaultEncoding("mp4")
+	if genericDefaults.DecodingSpeedValue() != 1 {
+		t.Fatalf("generic decode speed should be retained, got %d", genericDefaults.DecodingSpeedValue())
+	}
+	legacyConfig := Config{EncodingDefaults: map[string]EncodingDefaults{
+		"gif": {Quality: 95, Effort: 9, FasterDecoding: intPtr(3)},
+	}}
+	if got := legacyConfig.DefaultEncoding("gif").DecodingSpeedValue(); got != 3 {
+		t.Fatalf("legacy fasterDecoding setting should migrate to decode speed, got %d", got)
+	}
+	if ValidateEncodingDefaults(map[string]EncodingDefaults{
+		"image": {Quality: 90, Effort: 7, DecodingSpeed: intPtr(1), FasterDecoding: intPtr(2)},
+	}, "auto") == nil {
+		t.Fatal("accepted conflicting generic and legacy decode speed values")
+	}
 	if stillDefaults := (Config{}).DefaultEncoding("jxl"); stillDefaults.FasterDecodingValue() != 0 {
 		t.Fatalf("still JXL defaults should retain density, got tier %d", stillDefaults.FasterDecodingValue())
 	}

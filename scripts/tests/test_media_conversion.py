@@ -24,7 +24,12 @@ class OptionsTests(unittest.TestCase):
     def test_reject_invalid_controls(self):
         for value in ({"format": "sh"}, {"effort": 10}, {"effort": 2.5}, {"quality": True},
                       {"quality": float("nan")}, {"distance": -1}, {"hardware": "cuda;exit"},
-                      {"fasterDecoding": 5}, {"fasterDecoding": True}, {"command": "ls"}):
+                      {"fasterDecoding": 5}, {"fasterDecoding": True},
+                      {"decodingSpeed": 5}, {"decodingSpeed": True},
+                      {"format": "av1-mp4", "decodingSpeed": 2},
+                      {"format": "webp", "decodingSpeed": 1},
+                      {"format": "ajxl", "decodingSpeed": 1, "fasterDecoding": 2},
+                      {"command": "ls"}):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 converter.options(value)
         for value in ({"upscaler": "shell"}, {"upscaleScale": True}, {"upscaleScale": 3}):
@@ -42,26 +47,56 @@ class OptionsTests(unittest.TestCase):
         self.assertEqual(converter.options({"quality": 80, "distance": 0})["distance"], 0)
         self.assertEqual(converter.options({})["hardware"], "auto")
 
-    def test_jxl_decode_speed_option(self):
+    def test_generic_and_legacy_jxl_decode_speed_options(self):
+        options = converter.options({"format": "ajxl", "decodingSpeed": 3})
+        args = converter.jxl_encoder_args(Path("in.png"), Path("out.jxl"), options)
+        self.assertIn("--faster_decoding=3", args)
         options = converter.options({"format": "ajxl", "fasterDecoding": 2})
         args = converter.jxl_encoder_args(Path("in.png"), Path("out.jxl"), options)
         self.assertIn("--faster_decoding=2", args)
-        options = converter.options({"format": "ajxl", "fasterDecoding": 0})
+        options = converter.options({"format": "ajxl", "decodingSpeed": 0})
         args = converter.jxl_encoder_args(Path("in.png"), Path("out.jxl"), options)
         self.assertFalse(any(a.startswith("--faster_decoding=") for a in args))
 
-    def test_jxl_decode_speed_is_advertised_only_when_cjxl_supports_it(self):
+    def test_decode_speed_is_advertised_only_when_codec_supports_it(self):
         for help_output, advertised in (
             (b"Usage: cjxl --faster_decoding=0..4", True),
             (b"Usage: cjxl --distance --effort", False),
         ):
             with self.subTest(advertised=advertised), \
+                 patch.object(converter, "_capabilities_cache", None), \
+                 patch.object(converter, "aom_decoding_speed_usable", return_value=False), \
                  patch.object(converter.shutil, "which", side_effect=lambda name: "/usr/bin/cjxl" if name == "cjxl" else "/usr/bin/djxl" if name == "djxl" else None), \
                  patch.object(converter, "run", side_effect=lambda args, **kwargs: "" if args[0] == "ffmpeg" else "libjxl 0.11"), \
                  patch.object(converter.subprocess, "run", return_value=types.SimpleNamespace(stdout=help_output)):
                 caps = converter.capabilities(probe_gpu=False)
             ajxl = next(f for f in caps["formats"] if f["id"] == "ajxl")
             self.assertEqual("fasterDecoding" in ajxl["controls"], advertised)
+            self.assertEqual("decodingSpeed" in ajxl["controls"], advertised)
+            self.assertEqual(ajxl["decodingSpeedLevels"], 4 if advertised else 0)
+
+    def test_av1_decode_speed_requires_an_actual_libaom_probe(self):
+        for advertised in (True, False):
+            with self.subTest(advertised=advertised), \
+                 patch.object(converter, "_capabilities_cache", None), \
+                 patch.object(converter.shutil, "which", return_value=None), \
+                 patch.object(converter, "run", side_effect=lambda args, **kwargs: " V..... libaom-av1" if args[0] == converter.FFMPEG else (_ for _ in ()).throw(RuntimeError("missing"))), \
+                 patch.object(converter, "aom_decoding_speed_usable", return_value=advertised):
+                caps = converter.capabilities(probe_gpu=False)
+            for format_id in ("av1-mp4", "av1-mkv", "av1-webm", "avif"):
+                with self.subTest(format=format_id):
+                    output = next(f for f in caps["formats"] if f["id"] == format_id)
+                    self.assertEqual("decodingSpeed" in output["controls"], advertised)
+                    self.assertEqual(output["decodingSpeedLevels"], 1 if advertised else 0)
+
+    def test_libaom_decode_speed_option_and_effort_range(self):
+        enabled = converter.options({"format": "av1-mp4", "decodingSpeed": 1, "effort": 9})
+        args = converter.video_quality("libaom-av1", enabled)
+        self.assertIn("enable-low-complexity-decode=1", args)
+        self.assertEqual(args[args.index("-cpu-used") + 1], "1")
+        faster = converter.options({"format": "av1-mp4", "decodingSpeed": 1, "effort": 1})
+        args = converter.video_quality("libaom-av1", faster)
+        self.assertEqual(args[args.index("-cpu-used") + 1], "3")
 
 
 @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "FFmpeg required")

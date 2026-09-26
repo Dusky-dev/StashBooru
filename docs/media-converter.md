@@ -10,7 +10,7 @@ continues past individual failures; each failed item reports its reason.
 ## Defaults and worker selection
 
 Open **Settings → System → Media converter**, just below the tagging settings,
-to set **input format → output format, quality and effort** rules and **Run on**
+to set **input format → output format, quality, effort and decode speed** rules and **Run on**
 (automatic/local/remote). The conversion dialog defaults to **Saved defaults**, showing the resolved
 output formats with a link back to these settings. A mixed batch resolves each
 file separately. Choose another **Output format** in the dropdown to override
@@ -57,7 +57,7 @@ animation FPS.
 | Output | Controls | Processor |
 | --- | --- | --- |
 | JPEG XL / animated JPEG XL | Quality 0–100; effort 1–9; decode-speed tier 0–4 | CPU |
-| AV1 in MP4, MKV or WebM | Quality 0–100; effort 1–9 | CPU; supported NVENC, QSV or VAAPI hardware |
+| AV1 in MP4, MKV or WebM; AVIF | Quality 0–100; effort 1–9; optional low-complexity decode mode | CPU libaom; supported hardware for normal AV1 video encoding |
 | H.264 MP4/MOV, HEVC MP4, VP9 WebM | Quality; effort | CPU or supported hardware |
 | JPEG, PNG, WebP, AVIF, TIFF, BMP | Controls appropriate to the encoder; WebP lossless option | CPU |
 | GIF, animated PNG, animated WebP | Animation-preserving conversion; applicable quality/effort controls | CPU |
@@ -69,12 +69,23 @@ for compression. JXL quality follows libjxl's standard quality mapping, with
 quality 90 corresponding to its previous default distance of 1. JPEG XL also
 offers decode-speed tiers from 0 to 4. Tier 0 keeps libjxl's default density;
 higher tiers favor faster decoding at some cost to quality or file size. AJXL
-conversions default to tier 2 to improve animated playback; still JXL defaults
-to tier 0. The tier can be changed in System settings or per conversion. The
-worker exposes this control only when its `cjxl` build supports
-`--faster_decoding`; older remote workers
-continue to work without it. Other formats' quality is normalized and mapped to
-codec-specific CRF/quantizer settings, and is not comparable across codecs.
+conversions default to tier 2; still JXL defaults to tier 0. AV1 and AVIF can
+offer an on/off low-complexity decode mode when the worker's libaom build passes
+a real encode probe. This option uses the CPU libaom encoder, so automatic
+processor selection uses CPU for those files; explicitly selecting GPU while
+the mode is enabled fails with a clear error. libaom's encoding-speed control
+is limited to the supported range while this mode is on. Other codecs expose
+no decode-speed setting unless their worker advertises one.
+
+Decode speed changes how the output is encoded. It does not guarantee that every
+browser will play every animation smoothly; browser decoder and hardware
+behavior still matter. In particular, a maximum JXL tier is not a universal
+playback fix. The worker exposes JXL controls only when its `cjxl` build
+supports `--faster_decoding`, and AV1 controls only when libaom accepts the
+low-complexity decode option. Older remote workers continue to work through the
+legacy `fasterDecoding` key or with the control omitted. Other formats' quality
+is normalized and mapped to codec-specific CRF/quantizer settings, and is not
+comparable across codecs.
 Distance is the JXL quality control used internally; WebP has a separate
 lossless switch. Existing API/worker requests that explicitly set a distance
 remain supported.

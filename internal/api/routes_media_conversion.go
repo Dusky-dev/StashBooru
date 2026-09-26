@@ -434,7 +434,8 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 				if request.UseEncodingDefaults {
 					defaults := config.DefaultEncoding(input)
 					options.Quality, options.Effort = defaults.Quality, defaults.Effort
-					options.FasterDecoding = defaults.FasterDecoding
+					options.DecodingSpeed = defaults.DecodingSpeed
+					options.FasterDecoding = nil
 				}
 				if options.Hardware == "" {
 					options.Hardware = "auto"
@@ -447,15 +448,31 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 					format, err = conversionOutputFormat(capabilities, options.Format, target.Kind)
 				}
 				if err == nil {
-					if formatSupportsControl(format, "fasterDecoding") {
-						if options.FasterDecoding == nil {
-							options.FasterDecoding = defaultConversionDecodingSpeed()
-						}
-					} else {
-						// Older remote workers may not have a cjxl build with this
-						// encoder control. Omit it so the existing worker protocol
-						// remains compatible.
+					if options.DecodingSpeed == nil {
+						options.DecodingSpeed = options.FasterDecoding
+					}
+					if options.DecodingSpeed == nil {
+						options.DecodingSpeed = defaultConversionDecodingSpeed(format)
+					}
+					switch {
+					case formatSupportsControl(format, "decodingSpeed"):
 						options.FasterDecoding = nil
+					case formatSupportsControl(format, "fasterDecoding"):
+						// Keep the old wire name for remote workers that predate
+						// the generic decodingSpeed option.
+						options.FasterDecoding = options.DecodingSpeed
+						options.DecodingSpeed = nil
+					default:
+						// Older workers may not have a compatible encoder control.
+						// Omit it so the existing worker protocol remains compatible.
+						options.DecodingSpeed = nil
+						options.FasterDecoding = nil
+					}
+					if options.DecodingSpeed != nil && formatDecodingSpeedLevels(format) == 1 && *options.DecodingSpeed > 0 {
+						// The UI's generic range maps to AV1's codec-specific on/off
+						// control when a mixed batch uses one shared override.
+						value := 1
+						options.DecodingSpeed = &value
 					}
 				}
 				if err == nil {
@@ -540,8 +557,22 @@ func formatSupportsControl(format mediaconvert.Format, control string) bool {
 	return false
 }
 
-func defaultConversionDecodingSpeed() *int {
-	value := 2
+func formatDecodingSpeedLevels(format mediaconvert.Format) int {
+	if format.DecodingSpeedLevels > 0 {
+		return format.DecodingSpeedLevels
+	}
+	if (format.ID == "jxl" || format.ID == "ajxl") &&
+		(formatSupportsControl(format, "decodingSpeed") || formatSupportsControl(format, "fasterDecoding")) {
+		return 4
+	}
+	return 0
+}
+
+func defaultConversionDecodingSpeed(format mediaconvert.Format) *int {
+	value := 0
+	if formatDecodingSpeedLevels(format) > 1 {
+		value = 2
+	}
 	return &value
 }
 
@@ -553,13 +584,13 @@ func previewConversionDefaults(w http.ResponseWriter, r *http.Request, targets [
 		return
 	}
 	type plan struct {
-		Input          string  `json:"input"`
-		Output         string  `json:"output"`
-		Count          int     `json:"count"`
-		Error          string  `json:"error,omitempty"`
-		Quality        float64 `json:"quality"`
-		Effort         int     `json:"effort"`
-		FasterDecoding int     `json:"fasterDecoding"`
+		Input         string  `json:"input"`
+		Output        string  `json:"output"`
+		Count         int     `json:"count"`
+		Error         string  `json:"error,omitempty"`
+		Quality       float64 `json:"quality"`
+		Effort        int     `json:"effort"`
+		DecodingSpeed int     `json:"decodingSpeed"`
 	}
 	plans := []plan{}
 	indices := map[plan]int{}
@@ -572,7 +603,7 @@ func previewConversionDefaults(w http.ResponseWriter, r *http.Request, targets [
 		if err == nil {
 			next.Output, next.Input, err = conversionDefaultForFile(r.Context(), s, config, id)
 			defaults := config.DefaultEncoding(next.Input)
-			next.Quality, next.Effort, next.FasterDecoding = defaults.Quality, defaults.Effort, defaults.FasterDecodingValue()
+			next.Quality, next.Effort, next.DecodingSpeed = defaults.Quality, defaults.Effort, defaults.DecodingSpeedValue()
 		}
 		if err != nil {
 			next.Error = err.Error()

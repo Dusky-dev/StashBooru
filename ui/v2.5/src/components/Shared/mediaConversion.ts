@@ -8,6 +8,7 @@ export interface ConversionFormat {
   cpu: string[];
   gpu: string[];
   controls: string[];
+  decodingSpeedLevels?: number;
   available: boolean;
 }
 
@@ -16,7 +17,12 @@ export interface ConversionConfig {
   formatDefaults: Record<string, string>;
   encodingDefaults: Record<
     string,
-    { quality: number; effort: number; fasterDecoding?: number }
+    {
+      quality: number;
+      effort: number;
+      decodingSpeed?: number;
+      fasterDecoding?: number;
+    }
   >;
   backend: string;
 }
@@ -92,7 +98,8 @@ export interface ConversionPlan {
   count: number;
   quality: number;
   effort: number;
-  fasterDecoding: number;
+  decodingSpeed: number;
+  fasterDecoding?: number;
   error?: string;
 }
 

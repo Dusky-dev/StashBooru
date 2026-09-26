@@ -25,6 +25,7 @@ type Options struct {
 	Quality        float64 `json:"quality"`
 	Effort         int     `json:"effort"`
 	Distance       float64 `json:"distance"`
+	DecodingSpeed  *int    `json:"decodingSpeed,omitempty"`
 	FasterDecoding *int    `json:"fasterDecoding,omitempty"`
 	Lossless       bool    `json:"lossless"`
 	AllowLarger    bool    `json:"allowLarger"`
@@ -33,14 +34,15 @@ type Options struct {
 }
 
 type Format struct {
-	ID        string   `json:"id"`
-	Label     string   `json:"label"`
-	Extension string   `json:"extension"`
-	Family    string   `json:"family"`
-	CPU       []string `json:"cpu"`
-	GPU       []string `json:"gpu"`
-	Controls  []string `json:"controls"`
-	Available bool     `json:"available"`
+	ID                  string   `json:"id"`
+	Label               string   `json:"label"`
+	Extension           string   `json:"extension"`
+	Family              string   `json:"family"`
+	CPU                 []string `json:"cpu"`
+	GPU                 []string `json:"gpu"`
+	Controls            []string `json:"controls"`
+	DecodingSpeedLevels int      `json:"decodingSpeedLevels,omitempty"`
+	Available           bool     `json:"available"`
 }
 
 type Capabilities struct {
