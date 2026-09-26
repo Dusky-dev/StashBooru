@@ -663,49 +663,5 @@ func (s Store) Trim() error {
 }
 
 func (s Store) Restore(ctx context.Context, id string) error {
-	r, err := s.Record(id)
-	if err != nil {
-		return err
-	}
-	if r.Status != "complete" || !r.Cached {
-		return fmt.Errorf("original is no longer in the restore cache")
-	}
-	before, after := r.Before.File(), r.After.File()
-	current, err := s.Repository.Get(ctx, before.Base().ID)
-	if err != nil {
-		return err
-	}
-	// New pHashes may have been generated since conversion; use actual content identity.
-	if current == nil || current.Base().Path != after.Base().Path || !matches(after.Base().Path, after.Base().Fingerprints.GetString("md5")) {
-		return fmt.Errorf("converted file is no longer active or has changed; restore the latest conversion first")
-	}
-	if _, err := os.Lstat(before.Base().Path); !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("original destination is occupied; no files changed")
-	}
-	if !matches(s.backup(id), before.Base().Fingerprints.GetString("md5")) {
-		return fmt.Errorf("cached original is missing or corrupted")
-	}
-	r.Status = "restoring"
-	if err := s.save(r); err != nil {
-		return err
-	}
-	stat, err := os.Stat(s.backup(id))
-	if err != nil {
-		return err
-	}
-	if err := copyExclusive(s.backup(id), before.Base().Path, stat.Mode().Perm()); err != nil {
-		return err
-	}
-	_ = os.Chtimes(before.Base().Path, before.Base().ModTime, before.Base().ModTime)
-	if err := s.Repository.Swap(context.WithoutCancel(ctx), current, before); err != nil {
-		return err
-	}
-	if err := removeMatching(after.Base().Path, after.Base().Fingerprints.GetString("md5")); err != nil {
-		return err
-	}
-	r.Status = "restored"
-	if err := s.save(r); err != nil {
-		return err
-	}
-	return s.Trim()
+	return s.ToggleRestore(ctx, id)
 }

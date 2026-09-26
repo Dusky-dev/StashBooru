@@ -123,7 +123,7 @@ function StatsView({ value }: { value: Stats }) {
       </Col>
       <Col xs={12} sm={6} lg={3} className="mb-2">
         <strong>{bytes(value.cacheBytes)}</strong>
-        <div>Restorable originals</div>
+        <div>Version cache</div>
       </Col>
       <Col xs={12} sm={6} lg={3} className="mb-2">
         <strong>{bytes(value.netSavedBytes)}</strong>
@@ -315,6 +315,10 @@ export const MediaConversionDialog: React.FC<{
               quality: first.quality,
               effort: first.effort,
               decodingSpeed: first.decodingSpeed ?? first.fasterDecoding ?? 0,
+              allowLarger: first.allowLarger ?? false,
+              lossless: first.lossless ?? false,
+              dropAudio: first.dropAudio ?? false,
+              allowAlphaLoss: first.allowAlphaLoss ?? false,
             }));
         }
       })
@@ -360,6 +364,32 @@ export const MediaConversionDialog: React.FC<{
       setSubmitting(false);
     }
   }
+
+  const planText = (plan: ConversionPlan) => {
+    const output = formats.find((f) => f.id === plan.output);
+    const decodeSpeed = output
+      ? decodingSpeedLabel(
+          output,
+          useDecodingSpeedDefaults
+            ? (plan.decodingSpeed ?? plan.fasterDecoding ?? 0)
+            : options.decodingSpeed
+        )
+      : "";
+    if (plan.error)
+      return `${plan.count} ${plan.count === 1 ? "file" : "files"}: ${plan.error}`;
+    const safety = useEncodingDefaults
+      ? [
+          plan.allowLarger ? "keep larger" : "",
+          plan.lossless ? "lossless" : "",
+          plan.dropAudio ? "audio loss allowed" : "",
+          plan.allowAlphaLoss ? "alpha loss allowed" : "",
+        ]
+          .filter(Boolean)
+          .map((v) => ` · ${v}`)
+          .join("")
+      : "";
+    return `${plan.count} ${plan.count === 1 ? "file" : "files"}: ${plan.input.toUpperCase()} → ${output?.label ?? plan.output} · quality ${useEncodingDefaults ? plan.quality : options.quality}, effort ${useEncodingDefaults ? plan.effort : options.effort}${decodeSpeed}${safety}${!loadingCapabilities && !output?.available ? " — unavailable on this worker" : ""}`;
+  };
 
   return (
     <Modal show onHide={onHide} size="xl" scrollable>
@@ -522,37 +552,29 @@ export const MediaConversionDialog: React.FC<{
                   <Alert variant="warning">{previewError}</Alert>
                 )}
                 {!loadingPreview &&
-                  plans.map((plan, index) => {
-                    const output = formats.find((f) => f.id === plan.output);
-                    const decodeSpeed = output
-                      ? decodingSpeedLabel(
-                          output,
-                          useDecodingSpeedDefaults
-                            ? (plan.decodingSpeed ?? plan.fasterDecoding ?? 0)
-                            : options.decodingSpeed
-                        )
-                      : "";
-                    return (
-                      <div
-                        key={`${plan.input}-${plan.output}-${index}`}
-                        className={plan.error ? "text-warning" : ""}
-                      >
-                        {plan.count} {plan.count === 1 ? "file" : "files"}:{" "}
-                        {plan.error ||
-                          `${plan.input.toUpperCase()} → ${output?.label ?? plan.output} · quality ${useEncodingDefaults ? plan.quality : options.quality}, effort ${useEncodingDefaults ? plan.effort : options.effort}${decodeSpeed}`}
-                        {!plan.error &&
-                        !loadingCapabilities &&
-                        !output?.available
-                          ? " — unavailable on this worker"
-                          : ""}
-                      </div>
-                    );
-                  })}
+                  (plans.length > 1
+                    ? plans.map((plan, index) => (
+                        <Form.Control
+                          key={`${plan.input}-${plan.output}-${index}`}
+                          className={`input-control mb-1${plan.error ? " text-warning" : ""}`}
+                          readOnly
+                          value={planText(plan)}
+                          aria-label={`Conversion plan for ${plan.input}`}
+                        />
+                      ))
+                    : plans.map((plan, index) => (
+                        <div
+                          key={`${plan.input}-${plan.output}-${index}`}
+                          className={plan.error ? "text-warning" : ""}
+                        >
+                          {planText(plan)}
+                        </div>
+                      )))}
               </div>
             )}
             <Form.Check
               id="converter-saved-encoding"
-              label="Use saved quality and effort defaults for each input format"
+              label="Use saved quality, effort and safety defaults for each input format"
               checked={useEncodingDefaults}
               disabled={busy}
               onChange={(e) => setUseEncodingDefaults(e.target.checked)}
@@ -565,8 +587,8 @@ export const MediaConversionDialog: React.FC<{
               onChange={(e) => setUseDecodingSpeedDefaults(e.target.checked)}
             />
             <Form.Text className="text-muted d-block mb-2">
-              Uncheck to set a one-off decode-speed value without changing the
-              saved defaults.
+              Uncheck saved defaults to set one-off values without changing the
+              per-format defaults.
             </Form.Text>
             {!useEncodingDefaults && (
               <Row>
@@ -668,7 +690,7 @@ export const MediaConversionDialog: React.FC<{
               id="converter-larger"
               label="Keep outputs even when they are larger"
               checked={options.allowLarger}
-              disabled={busy}
+              disabled={busy || useEncodingDefaults}
               onChange={(e) =>
                 setOptions({ ...options, allowLarger: e.target.checked })
               }
@@ -678,7 +700,7 @@ export const MediaConversionDialog: React.FC<{
                 id="converter-lossless"
                 label="Lossless WebP"
                 checked={options.lossless}
-                disabled={busy}
+                disabled={busy || useEncodingDefaults}
                 onChange={(e) =>
                   setOptions({ ...options, lossless: e.target.checked })
                 }
@@ -688,7 +710,7 @@ export const MediaConversionDialog: React.FC<{
               id="converter-audio"
               label="Allow discarding audio"
               checked={options.dropAudio}
-              disabled={busy}
+              disabled={busy || useEncodingDefaults}
               onChange={(e) =>
                 setOptions({ ...options, dropAudio: e.target.checked })
               }
@@ -697,7 +719,7 @@ export const MediaConversionDialog: React.FC<{
               id="converter-alpha"
               label="Allow losing transparency for formats without alpha"
               checked={options.allowAlphaLoss}
-              disabled={busy}
+              disabled={busy || useEncodingDefaults}
               onChange={(e) =>
                 setOptions({ ...options, allowAlphaLoss: e.target.checked })
               }
@@ -764,16 +786,31 @@ export const MediaConversionDialog: React.FC<{
                     </Button>
                   </>
                 )}
-                {state.job.items
-                  .filter((i) => i.error)
-                  .map((i, index) => (
-                    <div
-                      className="text-danger"
-                      key={`${i.target.kind}-${i.target.id}-${index}`}
-                    >
-                      {i.target.kind} #{i.target.id}: {i.error}
-                    </div>
-                  ))}
+                {state.job.items.some((i) => i.error) && (
+                  <div
+                    className="bg-dark border rounded p-2 mt-2"
+                    role="log"
+                    aria-label="Conversion errors"
+                    style={{
+                      maxHeight: "12rem",
+                      overflowY: "auto",
+                      fontFamily: "monospace",
+                      whiteSpace: "pre-wrap",
+                      overflowWrap: "anywhere",
+                    }}
+                  >
+                    {state.job.items
+                      .filter((i) => i.error)
+                      .map((i, index) => (
+                        <div
+                          className="text-danger"
+                          key={`${i.target.kind}-${i.target.id}-${index}`}
+                        >
+                          {i.target.kind} #{i.target.id}: {i.error}
+                        </div>
+                      ))}
+                  </div>
+                )}
                 <p className="mt-2">
                   This batch: {state.batchStats.converted} converted,{" "}
                   {bytes(state.batchStats.savedBytes)} saved,{" "}
@@ -802,19 +839,19 @@ export const MediaConversionDialog: React.FC<{
                   </>
                 )}
                 <p className="text-muted">
-                  Net savings include retained originals and may be negative
-                  until cache eviction. Repeated conversions are combined per
-                  file. These figures cover media files and originals; generated
-                  previews, temporary files and filesystem compression are
-                  excluded.
+                  Net savings include retained restore-cache copies and may be
+                  negative until cache eviction. Repeated conversions are
+                  combined per file. Generated previews, temporary files and
+                  filesystem compression are excluded.
                 </p>
               </>
             )}
-            <h5>Originals and restoration</h5>
+            <h5>Version cache and restoration</h5>
             <p>
-              Originals are retained until this cache exceeds its limit. Oldest
-              originals are then permanently deleted. Zero disables retention.
-              Source fingerprints and conversion history remain.
+              Originals are cached after conversion. When you restore an
+              original, the converted bytes are cached too so Unrestore can
+              switch back without re-encoding. Cached versions are evicted when
+              the cache exceeds its limit. Zero disables retention.
             </p>
             <Row className="align-items-end">
               <Form.Group as={Col} xs={6} controlId="converter-cache">
@@ -886,7 +923,7 @@ export const MediaConversionDialog: React.FC<{
                   <th>File / source fingerprints</th>
                   <th>Result</th>
                   <th>Space saved</th>
-                  <th>Original</th>
+                  <th>Restore / Unrestore</th>
                 </tr>
               </thead>
               <tbody>
@@ -954,9 +991,19 @@ export const MediaConversionDialog: React.FC<{
                             Restore
                           </Button>
                         ) : r.status === "complete" ? (
-                          "Evicted"
+                          "Original evicted"
                         ) : r.status === "restored" ? (
-                          "Restored"
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            disabled={busy}
+                            title="Reapply the cached converted version"
+                            onClick={() =>
+                              void action({ action: "restore", recordID: r.id })
+                            }
+                          >
+                            Unrestore
+                          </Button>
                         ) : r.status === "prepared" ||
                           r.status === "committed" ||
                           r.status === "restoring" ? (
