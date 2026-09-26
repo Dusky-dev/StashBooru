@@ -1326,6 +1326,7 @@
     "delete_help": "Deleting a Copyright removes its links, but keeps its subfolders and media. Subfolders with no other parent become top-level folders.",
     "direct_count_help": "Image, video, and character counts and count sorting show items assigned directly to this folder; subfolders are not included."
   },
+  "copyrights": "Copyrights",
   "new": "New",
   "none": "None",
   "o_count": "O Count",

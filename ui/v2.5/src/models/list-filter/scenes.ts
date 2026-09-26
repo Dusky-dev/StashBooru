@@ -38,6 +38,7 @@ import { OrientationCriterionOption } from "./criteria/orientation";
 import { CustomFieldsCriterionOption } from "./criteria/custom-fields";
 import { FolderCriterionOption } from "./criteria/folder";
 import { CopyrightsCriterionOption } from "./criteria/copyrights";
+import { SceneFormatCriterionOption } from "./criteria/format";
 
 const defaultSortBy = "date";
 const sortByOptions = [
@@ -101,6 +102,7 @@ const criterionOptions = [
   createStringCriterionOption("code", "scene_code"),
   PathCriterionOption,
   FolderCriterionOption,
+  SceneFormatCriterionOption,
   createStringCriterionOption("details"),
   createStringCriterionOption("director"),
   createMandatoryStringCriterionOption("oshash", "media_info.oshash"),

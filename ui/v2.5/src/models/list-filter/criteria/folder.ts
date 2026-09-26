@@ -3,6 +3,7 @@ import {
   ModifierCriterionOption,
   IHierarchicalLabeledIdCriterion,
 } from "./criterion";
+import { addFileFilterInput } from "./file-filter";
 
 const modifierOptions = [CriterionModifier.Includes];
 
@@ -35,9 +36,9 @@ export class FolderCriterion extends IHierarchicalLabeledIdCriterion {
   }
 
   public applyToCriterionInput(input: Record<string, unknown>) {
-    input.files_filter = {
+    addFileFilterInput(input, {
       parent_folder: this.toCriterionInput(),
-    };
+    });
   }
 }
 
