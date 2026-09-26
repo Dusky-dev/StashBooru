@@ -15,8 +15,10 @@ to set **input format → output format, quality, effort and decode speed** rule
 output formats with a link back to these settings. A mixed batch resolves each
 file separately. Choose another **Output format** in the dropdown to override
 the output for this conversion only. Unavailable encoders are disabled, and
-video selections offer video outputs only. Saved quality/effort are used by default; uncheck that option in
-the dialog to set a temporary quality/effort override for the batch.
+video selections offer video outputs only. Saved quality and effort are used
+by default; uncheck that option in the dialog to set temporary quality/effort
+values for the batch. Decode-speed defaults have an independent checkbox, so
+you can override decode speed without changing the saved quality or effort.
 
 The initial defaults send JPEG/PNG/still WebP to JXL; GIF, APNG, animated WebP
 and animated AVIF to animated WebP; and videos to AV1 (MP4, MKV and WebM retain

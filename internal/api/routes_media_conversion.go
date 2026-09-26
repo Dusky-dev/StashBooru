@@ -73,17 +73,18 @@ type conversionTarget struct {
 	ID   int    `json:"id"`
 }
 type conversionRequest struct {
-	Action              string                                   `json:"action"`
-	Backend             string                                   `json:"backend"`
-	Targets             []conversionTarget                       `json:"targets"`
-	Options             mediaconvert.Options                     `json:"options"`
-	RecordID            string                                   `json:"recordID"`
-	JobID               int                                      `json:"jobID"`
-	CacheLimitBytes     int64                                    `json:"cacheLimitBytes"`
-	FormatDefaults      map[string]string                        `json:"formatDefaults"`
-	UseQuality          bool                                     `json:"useQuality"`
-	UseEncodingDefaults bool                                     `json:"useEncodingDefaults"`
-	EncodingDefaults    map[string]mediaconvert.EncodingDefaults `json:"encodingDefaults"`
+	Action                   string                                   `json:"action"`
+	Backend                  string                                   `json:"backend"`
+	Targets                  []conversionTarget                       `json:"targets"`
+	Options                  mediaconvert.Options                     `json:"options"`
+	RecordID                 string                                   `json:"recordID"`
+	JobID                    int                                      `json:"jobID"`
+	CacheLimitBytes          int64                                    `json:"cacheLimitBytes"`
+	FormatDefaults           map[string]string                        `json:"formatDefaults"`
+	UseQuality               bool                                     `json:"useQuality"`
+	UseEncodingDefaults      bool                                     `json:"useEncodingDefaults"`
+	UseDecodingSpeedDefaults *bool                                    `json:"useDecodingSpeedDefaults,omitempty"`
+	EncodingDefaults         map[string]mediaconvert.EncodingDefaults `json:"encodingDefaults"`
 }
 type conversionItem struct {
 	Target   conversionTarget `json:"target"`
@@ -428,12 +429,14 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 				var input string
 				if options.Format == "" || options.Format == "auto" {
 					options.Format, input, err = conversionDefaultForFile(ctx, s, config, id)
-				} else if request.UseEncodingDefaults {
+				} else if request.UseEncodingDefaults || conversionUsesDecodingSpeedDefaults(request) {
 					_, input, err = conversionDefaultForFile(ctx, s, config, id)
 				}
+				defaults := config.DefaultEncoding(input)
 				if request.UseEncodingDefaults {
-					defaults := config.DefaultEncoding(input)
 					options.Quality, options.Effort = defaults.Quality, defaults.Effort
+				}
+				if conversionUsesDecodingSpeedDefaults(request) {
 					options.DecodingSpeed = defaults.DecodingSpeed
 					options.FasterDecoding = nil
 				}
@@ -566,6 +569,15 @@ func formatDecodingSpeedLevels(format mediaconvert.Format) int {
 		return 4
 	}
 	return 0
+}
+
+func conversionUsesDecodingSpeedDefaults(request conversionRequest) bool {
+	if request.UseDecodingSpeedDefaults != nil {
+		return *request.UseDecodingSpeedDefaults
+	}
+	// Preserve the old combined setting for clients that have not yet sent the
+	// separate decode-speed preference.
+	return request.UseEncodingDefaults
 }
 
 func defaultConversionDecodingSpeed(format mediaconvert.Format) *int {
