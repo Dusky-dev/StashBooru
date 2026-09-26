@@ -15,6 +15,10 @@ interface Rule {
   quality: number;
   effort: number;
   decodingSpeed: number;
+  allowLarger: boolean;
+  lossless: boolean;
+  dropAudio: boolean;
+  allowAlphaLoss: boolean;
 }
 
 export const MediaConversionSettings: React.FC = () => {
@@ -66,6 +70,12 @@ export const MediaConversionSettings: React.FC = () => {
                   (output === "jxl" || output === "ajxl")
                     ? 2
                     : 0),
+                allowLarger:
+                  saved?.allowLarger ?? fallback?.allowLarger ?? false,
+                lossless: saved?.lossless ?? fallback?.lossless ?? false,
+                dropAudio: saved?.dropAudio ?? fallback?.dropAudio ?? false,
+                allowAlphaLoss:
+                  saved?.allowAlphaLoss ?? fallback?.allowAlphaLoss ?? false,
               };
             })
         );
@@ -116,6 +126,11 @@ export const MediaConversionSettings: React.FC = () => {
     settings?.outputFormats.find((f) => f.id === output)?.decodingSpeedLevels ??
     0;
 
+  const supportsSavedControl = (output: string, control: string) =>
+    settings?.outputFormats
+      .find((f) => f.id === output)
+      ?.controls.includes(control) ?? false;
+
   // Saved defaults describe user preferences, so keep them editable even when
   // the selected worker is older or temporarily unavailable. Conversion jobs
   // still filter options against that worker's actual capabilities.
@@ -153,6 +168,12 @@ export const MediaConversionSettings: React.FC = () => {
                 quality: r.quality,
                 effort: r.effort,
                 decodingSpeed: r.decodingSpeed,
+                allowLarger: r.allowLarger,
+                lossless: supportsSavedControl(r.output, "lossless")
+                  ? r.lossless
+                  : false,
+                dropAudio: r.dropAudio,
+                allowAlphaLoss: r.allowAlphaLoss,
               },
             ])
           ),
@@ -178,8 +199,9 @@ export const MediaConversionSettings: React.FC = () => {
     <div className="setting-section" id="media-converter">
       <h1>Media converter</h1>
       <div className="sub-heading">
-        Choose the output, quality, effort and decode speed for each input
-        format. Single and batch conversions use these saved defaults.
+        Choose the output, quality, effort, decode speed and safety options for
+        each input format. Single and batch conversions use these saved
+        defaults.
       </div>
       <Card className="p-3">
         <Form.Group controlId="converter-default-backend">
@@ -212,8 +234,8 @@ export const MediaConversionSettings: React.FC = () => {
         {workerCapabilityError && (
           <Alert variant="warning">
             Could not read codec support from the selected worker. Saved
-            decode-speed preferences remain editable, but a worker must support
-            a codec option to apply it during conversion.
+            preferences remain editable, but a worker must support a codec
+            option to apply it during conversion.
           </Alert>
         )}
         {!settings && !error && <Spinner animation="border" role="status" />}
@@ -227,6 +249,7 @@ export const MediaConversionSettings: React.FC = () => {
                   <th>Quality (0–100)</th>
                   <th>Effort (1–9)</th>
                   <th>Decode speed</th>
+                  <th>Conversion options</th>
                   <th>
                     <span className="sr-only">Remove rule</span>
                   </th>
@@ -265,6 +288,11 @@ export const MediaConversionSettings: React.FC = () => {
                                       r.decodingSpeed,
                                       output
                                     ),
+                                    lossless:
+                                      supportsSavedControl(
+                                        output,
+                                        "lossless"
+                                      ) && r.lossless,
                                   }
                                 : r
                             )
@@ -303,6 +331,11 @@ export const MediaConversionSettings: React.FC = () => {
                                       r.decodingSpeed,
                                       output
                                     ),
+                                    lossless:
+                                      supportsSavedControl(
+                                        output,
+                                        "lossless"
+                                      ) && r.lossless,
                                   }
                                 : r
                             )
@@ -396,6 +429,70 @@ export const MediaConversionSettings: React.FC = () => {
                         )}
                     </td>
                     <td>
+                      <Form.Check
+                        type="checkbox"
+                        label="Keep larger"
+                        checked={rule.allowLarger}
+                        disabled={saving}
+                        onChange={(e) =>
+                          setRules(
+                            rules.map((r, i) =>
+                              i === index
+                                ? { ...r, allowLarger: e.target.checked }
+                                : r
+                            )
+                          )
+                        }
+                      />
+                      {supportsSavedControl(rule.output, "lossless") && (
+                        <Form.Check
+                          type="checkbox"
+                          label="Lossless"
+                          checked={rule.lossless}
+                          disabled={saving}
+                          onChange={(e) =>
+                            setRules(
+                              rules.map((r, i) =>
+                                i === index
+                                  ? { ...r, lossless: e.target.checked }
+                                  : r
+                              )
+                            )
+                          }
+                        />
+                      )}
+                      <Form.Check
+                        type="checkbox"
+                        label="Allow audio loss"
+                        checked={rule.dropAudio}
+                        disabled={saving}
+                        onChange={(e) =>
+                          setRules(
+                            rules.map((r, i) =>
+                              i === index
+                                ? { ...r, dropAudio: e.target.checked }
+                                : r
+                            )
+                          )
+                        }
+                      />
+                      <Form.Check
+                        type="checkbox"
+                        label="Allow alpha loss"
+                        checked={rule.allowAlphaLoss}
+                        disabled={saving}
+                        onChange={(e) =>
+                          setRules(
+                            rules.map((r, i) =>
+                              i === index
+                                ? { ...r, allowAlphaLoss: e.target.checked }
+                                : r
+                            )
+                          )
+                        }
+                      />
+                    </td>
+                    <td>
                       {rule.input !== "image" && rule.input !== "video" && (
                         <Button
                           size="sm"
@@ -440,6 +537,10 @@ export const MediaConversionSettings: React.FC = () => {
                         )?.decodingSpeedLevels ?? 0) > 1
                           ? 2
                           : 0,
+                      allowLarger: false,
+                      lossless: false,
+                      dropAudio: false,
+                      allowAlphaLoss: false,
                     },
                   ]);
                 }}
@@ -456,14 +557,15 @@ export const MediaConversionSettings: React.FC = () => {
             </div>
             <Form.Text className="text-muted">
               Higher quality retains more detail; higher effort takes longer.
-              JPEG XL quality 100 is lossless. Decode speed is codec-specific:
-              JPEG XL offers tiers 0–4, while compatible AV1/libaom workers
-              offer an on/off low-complexity decode mode that uses CPU. Higher
-              JXL tiers can reduce compression or quality. These encoding hints
-              do not guarantee faster playback in every browser. The processor
-              prefers GPU, otherwise CPU. Saved defaults apply when a new
-              conversion job starts. Existing running jobs keep their selected
-              formats and settings.
+              JPEG XL quality 100 is lossless. Format-specific options appear
+              only where the selected output supports them (for example,
+              lossless WebP). Decode speed is codec-specific: JPEG XL offers
+              tiers 0–4, while compatible AV1/libaom workers offer an on/off
+              low-complexity decode mode that uses CPU. Higher JXL tiers can
+              reduce compression or quality. These encoding hints do not
+              guarantee faster playback in every browser. Saved defaults apply
+              when a new conversion job starts. Existing running jobs keep their
+              selected formats and settings.
             </Form.Text>
           </>
         )}
