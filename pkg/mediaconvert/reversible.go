@@ -128,8 +128,8 @@ func (s Store) ToggleRestore(ctx context.Context, id string) error {
 		return fmt.Errorf("converted destination is occupied; no files changed")
 	}
 
-	// The old cache trimmer may have evicted the inactive original while the
-	// original itself was active. Re-cache it before switching back.
+	// The legacy original-only trimmer may have removed this inactive copy while
+	// the original itself was active. Re-cache it before switching back.
 	if !r.Cached || !matches(s.backup(id), beforeHash) {
 		stat, err := os.Stat(before.Base().Path)
 		if err != nil {
@@ -166,8 +166,36 @@ func (s Store) ToggleRestore(ctx context.Context, id string) error {
 	return s.TrimVersions()
 }
 
+func (s Store) removeOriginalCache(r *Record, used *int64) (bool, error) {
+	if !r.Cached || r.Before.File() == nil {
+		return false, nil
+	}
+	path := s.backup(r.ID)
+	valid := matches(path, r.Before.File().Base().Fingerprints.GetString("md5"))
+	if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return false, err
+	}
+	r.Cached = false
+	if valid {
+		*used -= r.Before.File().Base().Size
+	}
+	return true, nil
+}
+
+func (s Store) removeConvertedCache(r *Record, used *int64) (bool, error) {
+	if !s.ConvertedCached(r) {
+		return false, nil
+	}
+	if err := os.Remove(s.convertedBackup(r.ID)); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return false, err
+	}
+	*used -= r.After.File().Base().Size
+	return true, nil
+}
+
 // TrimVersions enforces the shared cache limit across both retained originals
-// and converted versions. Active media files are never removed.
+// and converted versions. It evicts the copy of the currently active version
+// first, preserving the version needed to toggle state whenever possible.
 func (s Store) TrimVersions() error {
 	config, err := s.Config()
 	if err != nil {
@@ -193,20 +221,36 @@ func (s Store) TrimVersions() error {
 
 	for _, r := range records {
 		changed := false
-		if used > config.CacheLimitBytes && r.Cached && r.Before.File() != nil {
-			if err := os.Remove(s.backup(r.ID)); err != nil && !errors.Is(err, os.ErrNotExist) {
-				return err
+		if r.Status == "complete" {
+			if used > config.CacheLimitBytes {
+				removed, err := s.removeConvertedCache(r, &used)
+				if err != nil {
+					return err
+				}
+				changed = changed || removed
 			}
-		r.Cached = false
-			used -= r.Before.File().Base().Size
-			changed = true
-		}
-		if used > config.CacheLimitBytes && s.ConvertedCached(r) {
-			if err := os.Remove(s.convertedBackup(r.ID)); err != nil && !errors.Is(err, os.ErrNotExist) {
-				return err
+			if used > config.CacheLimitBytes {
+				removed, err := s.removeOriginalCache(r, &used)
+				if err != nil {
+					return err
+				}
+				changed = changed || removed
 			}
-			used -= r.After.File().Base().Size
-			changed = true
+		} else {
+			if used > config.CacheLimitBytes {
+				removed, err := s.removeOriginalCache(r, &used)
+				if err != nil {
+					return err
+				}
+				changed = changed || removed
+			}
+			if used > config.CacheLimitBytes {
+				removed, err := s.removeConvertedCache(r, &used)
+				if err != nil {
+					return err
+				}
+				changed = changed || removed
+			}
 		}
 		if changed {
 			if err := s.save(r); err != nil {
