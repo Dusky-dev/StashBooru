@@ -53,3 +53,24 @@ func TestDecodingSpeedControlsAndDefaults(t *testing.T) {
 		t.Fatal("worker must not receive a control it did not advertise")
 	}
 }
+
+func TestConversionUsesDecodingSpeedDefaults(t *testing.T) {
+	useDefaults := true
+	useOverride := false
+	for _, tc := range []struct {
+		name    string
+		request conversionRequest
+		want    bool
+	}{
+		{"legacy saved encoding defaults", conversionRequest{UseEncodingDefaults: true}, true},
+		{"legacy explicit encoding options", conversionRequest{UseEncodingDefaults: false}, false},
+		{"saved decode speed with custom quality", conversionRequest{UseDecodingSpeedDefaults: &useDefaults}, true},
+		{"decode speed override with saved quality", conversionRequest{UseEncodingDefaults: true, UseDecodingSpeedDefaults: &useOverride}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := conversionUsesDecodingSpeedDefaults(tc.request); got != tc.want {
+				t.Fatalf("conversionUsesDecodingSpeedDefaults() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}

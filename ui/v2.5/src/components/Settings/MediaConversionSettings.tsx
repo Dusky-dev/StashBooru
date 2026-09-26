@@ -116,33 +116,23 @@ export const MediaConversionSettings: React.FC = () => {
     settings?.outputFormats.find((f) => f.id === output)?.decodingSpeedLevels ??
     0;
 
-  const decodingSpeedLevels = (output: string) => {
-    const format = settings?.outputFormats.find((f) => f.id === output);
+  // Saved defaults describe user preferences, so keep them editable even when
+  // the selected worker is older or temporarily unavailable. Conversion jobs
+  // still filter options against that worker's actual capabilities.
+  const decodingSpeedLevels = catalogDecodingSpeedLevels;
+
+  const workerSupportsDecodingSpeed = (output: string) => {
     const worker = workerFormats.find((f) => f.id === output);
-    if (!format || !worker) return 0;
-    const generic = worker.controls.includes("decodingSpeed");
-    const legacyJXL =
-      (output === "jxl" || output === "ajxl") &&
-      worker.controls.includes("fasterDecoding");
-    if (!generic && !legacyJXL) return 0;
     return (
-      worker.decodingSpeedLevels ??
-      (legacyJXL ? 4 : (format.decodingSpeedLevels ?? 0))
+      !!worker &&
+      (worker.controls.includes("decodingSpeed") ||
+        ((output === "jxl" || output === "ajxl") &&
+          worker.controls.includes("fasterDecoding")))
     );
   };
 
-  const decodingSpeedLimit = (output: string) => {
-    const workerLimit = decodingSpeedLevels(output);
-    if (workerLimit > 0) return workerLimit;
-    // Keep a saved preference editable while worker capabilities are loading
-    // or temporarily unavailable. The converter will omit unsupported values.
-    return loadingWorkerFormats || workerCapabilityError
-      ? catalogDecodingSpeedLevels(output)
-      : 0;
-  };
-
   const clampDecodingSpeed = (speed: number, output: string) => {
-    const limit = decodingSpeedLimit(output);
+    const limit = decodingSpeedLevels(output);
     return limit > 0 ? Math.min(speed, limit) : 0;
   };
 
@@ -214,14 +204,16 @@ export const MediaConversionSettings: React.FC = () => {
         <p className="text-muted">
           Animated PNG and WebP are detected separately from still images.
           Formats without a specific rule use Other images or Other videos.
-          Actual codec availability depends on the selected worker. Existing
+          Decode-speed defaults stay editable independently of the selected
+          worker; unsupported controls are skipped at conversion time. Existing
           library animation inspection is available from Tasks.
         </p>
         {error && <Alert variant="danger">{error}</Alert>}
         {workerCapabilityError && (
           <Alert variant="warning">
-            Could not read codec support from the selected worker. Decode-speed
-            controls are hidden until the worker is reachable.
+            Could not read codec support from the selected worker. Saved
+            decode-speed preferences remain editable, but a worker must support
+            a codec option to apply it during conversion.
           </Alert>
         )}
         {!settings && !error && <Spinner animation="border" role="status" />}
@@ -348,17 +340,15 @@ export const MediaConversionSettings: React.FC = () => {
                       </td>
                     ))}
                     <td>
-                      {loadingWorkerFormats ? (
-                        <span className="text-muted">Checking worker…</span>
-                      ) : decodingSpeedLevels(rule.output) > 1 ? (
+                      {decodingSpeedLevels(rule.output) > 1 ? (
                         <Form.Control
                           type="number"
                           className="text-input"
                           min={0}
-                          max={4}
+                          max={decodingSpeedLevels(rule.output)}
                           step={1}
                           value={rule.decodingSpeed}
-                          disabled={saving || loadingWorkerFormats}
+                          disabled={saving}
                           aria-label={`Decode speed tier for ${rule.input}`}
                           onChange={(e) =>
                             setRules(
@@ -377,7 +367,7 @@ export const MediaConversionSettings: React.FC = () => {
                         <Form.Check
                           type="checkbox"
                           checked={rule.decodingSpeed > 0}
-                          disabled={saving || loadingWorkerFormats}
+                          disabled={saving}
                           aria-label={`AV1 low-complexity decode for ${rule.input}`}
                           onChange={(e) =>
                             setRules(
@@ -395,6 +385,15 @@ export const MediaConversionSettings: React.FC = () => {
                       ) : (
                         <span className="text-muted">—</span>
                       )}
+                      {decodingSpeedLevels(rule.output) > 0 &&
+                        !loadingWorkerFormats &&
+                        !workerCapabilityError &&
+                        workerFormats.length > 0 &&
+                        !workerSupportsDecodingSpeed(rule.output) && (
+                          <Form.Text className="d-block text-warning">
+                            Not advertised by this worker
+                          </Form.Text>
+                        )}
                     </td>
                     <td>
                       {rule.input !== "image" && rule.input !== "video" && (

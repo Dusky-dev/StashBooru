@@ -55,8 +55,16 @@ const source = ['03', '04'].map(n => fs.readFileSync(path.join(root, `ui/v2.5/bu
     page.on('pageerror', e => errors.push(e.message));
     let submitted;
     const stats = {converted:0,savedBytes:0,averageSavedBytes:0,savedPercent:0,cacheBytes:0,netSavedBytes:0,largerFiles:0};
+    const settingsFormats = [
+      {id:'jxl',label:'JPEG XL',extension:'jxl',family:'image',cpu:['cjxl'],gpu:[],controls:['quality','effort','decodingSpeed'],decodingSpeedLevels:4,available:true},
+      {id:'ajxl',label:'Animated JPEG XL',extension:'jxl',family:'animation',cpu:['cjxl'],gpu:[],controls:['quality','effort','decodingSpeed'],decodingSpeedLevels:4,available:true},
+      {id:'webp',label:'WebP',extension:'webp',family:'image',cpu:['webp'],gpu:[],controls:['quality','lossless'],available:true},
+    ];
+    const oldWorkerFormats = [
+      {id:'ajxl',label:'Animated JPEG XL',extension:'jxl',family:'animation',cpu:['cjxl'],gpu:[],controls:['quality','effort'],available:true},
+    ];
     const formats = [
-      {id:'ajxl', label:'Animated JPEG XL', family:'animation', available:true, cpu:['cjxl'], gpu:[], controls:['quality','effort']},
+      {id:'ajxl', label:'Animated JPEG XL', family:'animation', available:true, cpu:['cjxl'], gpu:[], controls:['quality','effort','decodingSpeed'], decodingSpeedLevels:4},
       {id:'webp', label:'WebP', family:'image', available:true, cpu:['webp'], gpu:[], controls:['quality','lossless']},
       {id:'av1-mp4', label:'AV1 MP4', family:'video', available:true, cpu:['svtav1'], gpu:['av1_nvenc'], controls:['quality']},
       {id:'hevc', label:'HEVC', family:'video', available:false, cpu:[], gpu:[], controls:['quality']},
@@ -64,11 +72,19 @@ const source = ['03', '04'].map(n => fs.readFileSync(path.join(root, `ui/v2.5/bu
     await page.route('**/image/converter*', async route => {
       if (route.request().method() === 'POST') {
         const body = route.request().postDataJSON();
-        if (body.action === 'preview') return route.fulfill({json:{plans:[{input:'gif',output:'ajxl',count:1,quality:90,effort:7}]}});
+        if (body.action === 'preview') return route.fulfill({json:{plans:[{input:'gif',output:'ajxl',count:1,quality:90,effort:7,decodingSpeed:2}]}});
         submitted = body;
         return route.fulfill({json:{}});
       }
-      if (route.request().url().includes('capabilities')) return route.fulfill({json:{formats,backend:'local',notice:''}});
+      if (route.request().url().includes('capabilities')) {
+        const settings = route.request().url().includes('backend=');
+        return route.fulfill({json:{formats:settings ? oldWorkerFormats : formats,backend:'local',notice:''}});
+      }
+      if (route.request().url().includes('config=1')) return route.fulfill({json:{
+        config:{backend:'auto',formatDefaults:{image:'jxl',gif:'ajxl'},encodingDefaults:{image:{quality:90,effort:7,decodingSpeed:0},gif:{quality:90,effort:7,decodingSpeed:2}},cacheLimitBytes:1024},
+        inputFormats:[{id:'image',label:'Other images',family:'image'},{id:'gif',label:'GIF',family:'animation'}],
+        outputFormats:settingsFormats,
+      }});
       return route.fulfill({json:{config:{backend:'auto',formatDefaults:{gif:'ajxl'},encodingDefaults:{gif:{quality:90,effort:7}},cacheLimitBytes:1024},stats,batchStats:stats,latestStats:stats,history:[],historyTotal:0}});
     });
     await page.route('**/playback-smoke', route => route.fulfill({contentType:'text/html',body:`<div id="root"></div><script type="module">
@@ -93,13 +109,37 @@ const source = ['03', '04'].map(n => fs.readFileSync(path.join(root, `ui/v2.5/bu
     await page.waitForFunction(() => document.querySelector('#converter-format option[value="webp"]'));
     assert.equal(await page.locator('#converter-format').inputValue(), 'auto');
     assert.match(await page.locator('#converter-format option:checked').textContent(), /Animated JPEG XL/);
+    await page.getByRole('checkbox', {name:'Use saved decode-speed defaults for each input format'}).uncheck();
+    await page.getByLabel('Decode speed tier (0–4)').fill('4');
+    await page.getByRole('button', {name:'Convert file', exact:true}).click();
+    assert.equal(submitted.options.format, 'auto');
+    assert.equal(submitted.options.decodingSpeed, 4);
+    assert.equal(submitted.useEncodingDefaults, true);
+    assert.equal(submitted.useDecodingSpeedDefaults, false);
+    await page.getByRole('checkbox', {name:'Use saved decode-speed defaults for each input format'}).check();
     await page.selectOption('#converter-format', 'webp');
     await page.getByRole('button', {name:'Convert file', exact:true}).click();
     assert.equal(submitted.options.format, 'webp');
     assert.equal(submitted.useEncodingDefaults, true);
+    assert.equal(submitted.useDecodingSpeedDefaults, true);
     await page.selectOption('#converter-format', 'auto');
     await page.getByRole('button', {name:'Convert file', exact:true}).click();
     assert.equal(submitted.options.format, 'auto');
+    await page.evaluate(async () => {
+      const {React, ReactDOM} = window.testReact;
+      const {MediaConversionSettings} = await import('/src/components/Settings/MediaConversionSettings.tsx');
+      const {ToastProvider} = await import('/src/hooks/Toast.tsx');
+      const root = document.getElementById('root');
+      ReactDOM.unmountComponentAtNode(root);
+      ReactDOM.render(React.createElement(ToastProvider, {}, React.createElement(MediaConversionSettings)), root);
+    });
+    await page.waitForFunction(() => document.querySelector('[aria-label="Decode speed tier for gif"]'));
+    await page.getByText('Not advertised by this worker').waitFor();
+    const settingsSpeed = page.locator('[aria-label="Decode speed tier for gif"]');
+    await settingsSpeed.fill('3');
+    assert.equal(await settingsSpeed.inputValue(), '3');
+    assert.match(await page.locator('text=Not advertised by this worker').textContent(), /Not advertised/);
+    console.log('Converter: decode-speed overrides stay independent from quality defaults; saved speed remains editable with an older worker');
     await page.evaluate(() => window.renderConverter('scene'));
     await page.waitForFunction(() => document.querySelector('#converter-format option[value="av1-mp4"]'));
     assert.equal(await page.locator('#converter-format option[value="webp"]').count(), 0);

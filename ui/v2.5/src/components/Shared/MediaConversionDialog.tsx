@@ -139,6 +139,8 @@ export const MediaConversionDialog: React.FC<{
   onHide: () => void;
 }> = ({ kind, selectedIds, onHide }) => {
   const [useEncodingDefaults, setUseEncodingDefaults] = useState(true);
+  const [useDecodingSpeedDefaults, setUseDecodingSpeedDefaults] =
+    useState(true);
   const [resolvedBackend, setResolvedBackend] = useState("");
   const [workerNotice, setWorkerNotice] = useState("");
   const [capabilityAttempt, setCapabilityAttempt] = useState(0);
@@ -187,7 +189,7 @@ export const MediaConversionDialog: React.FC<{
     );
   const decodingSpeedFor = (format: Format) => {
     if (!supportsControl(format, "decodingSpeed")) return 0;
-    if (!useEncodingDefaults) return options.decodingSpeed;
+    if (!useDecodingSpeedDefaults) return options.decodingSpeed;
     const relevant = plans.filter((plan) => plan.output === format.id);
     const plan = relevant[0] ?? plans[0];
     const speed = plan?.decodingSpeed ?? plan?.fasterDecoding ?? 0;
@@ -312,6 +314,7 @@ export const MediaConversionDialog: React.FC<{
               ...old,
               quality: first.quality,
               effort: first.effort,
+              decodingSpeed: first.decodingSpeed ?? first.fasterDecoding ?? 0,
             }));
         }
       })
@@ -524,7 +527,7 @@ export const MediaConversionDialog: React.FC<{
                     const decodeSpeed = output
                       ? decodingSpeedLabel(
                           output,
-                          useEncodingDefaults
+                          useDecodingSpeedDefaults
                             ? (plan.decodingSpeed ?? plan.fasterDecoding ?? 0)
                             : options.decodingSpeed
                         )
@@ -549,11 +552,22 @@ export const MediaConversionDialog: React.FC<{
             )}
             <Form.Check
               id="converter-saved-encoding"
-              label="Use saved quality, effort, and decode speed defaults for each input format"
+              label="Use saved quality and effort defaults for each input format"
               checked={useEncodingDefaults}
               disabled={busy}
               onChange={(e) => setUseEncodingDefaults(e.target.checked)}
             />
+            <Form.Check
+              id="converter-saved-decoding-speed"
+              label="Use saved decode-speed defaults for each input format"
+              checked={useDecodingSpeedDefaults}
+              disabled={busy}
+              onChange={(e) => setUseDecodingSpeedDefaults(e.target.checked)}
+            />
+            <Form.Text className="text-muted d-block mb-2">
+              Uncheck to set a one-off decode-speed value without changing the
+              saved defaults.
+            </Form.Text>
             {!useEncodingDefaults && (
               <Row>
                 {(["quality", "effort"] as const)
@@ -586,49 +600,54 @@ export const MediaConversionDialog: React.FC<{
                       />
                     </Form.Group>
                   ))}
-                {supports("decodingSpeed") &&
-                  (() => {
-                    const levels = Math.max(
-                      ...chosenFormats.map(decodingSpeedLevels)
-                    );
-                    return levels === 1 ? (
-                      <Form.Group as={Col} controlId="converter-decoding-speed">
-                        <Form.Check
-                          type="checkbox"
-                          label="AV1 low-complexity decode (CPU)"
-                          checked={options.decodingSpeed > 0}
-                          disabled={busy || options.hardware === "gpu"}
-                          onChange={(e) =>
-                            setOptions({
-                              ...options,
-                              decodingSpeed: e.target.checked ? 1 : 0,
-                            })
-                          }
-                        />
-                      </Form.Group>
-                    ) : (
-                      <Form.Group as={Col} controlId="converter-decoding-speed">
-                        <Form.Label>Decode speed tier (0–{levels})</Form.Label>
-                        <Form.Control
-                          className="text-input"
-                          type="number"
-                          min={0}
-                          max={levels}
-                          step={1}
-                          value={options.decodingSpeed}
-                          disabled={busy}
-                          onChange={(e) =>
-                            setOptions({
-                              ...options,
-                              decodingSpeed: Number(e.target.value),
-                            })
-                          }
-                        />
-                      </Form.Group>
-                    );
-                  })()}
               </Row>
             )}
+            {!useDecodingSpeedDefaults &&
+              supports("decodingSpeed") &&
+              (() => {
+                const levels = Math.max(
+                  ...chosenFormats.map(decodingSpeedLevels)
+                );
+                return levels === 1 ? (
+                  <Row>
+                    <Form.Group as={Col} controlId="converter-decoding-speed">
+                      <Form.Check
+                        type="checkbox"
+                        label="AV1 low-complexity decode (CPU)"
+                        checked={options.decodingSpeed > 0}
+                        disabled={busy || options.hardware === "gpu"}
+                        onChange={(e) =>
+                          setOptions({
+                            ...options,
+                            decodingSpeed: e.target.checked ? 1 : 0,
+                          })
+                        }
+                      />
+                    </Form.Group>
+                  </Row>
+                ) : (
+                  <Row>
+                    <Form.Group as={Col} controlId="converter-decoding-speed">
+                      <Form.Label>Decode speed tier (0–{levels})</Form.Label>
+                      <Form.Control
+                        className="text-input"
+                        type="number"
+                        min={0}
+                        max={levels}
+                        step={1}
+                        value={options.decodingSpeed}
+                        disabled={busy}
+                        onChange={(e) =>
+                          setOptions({
+                            ...options,
+                            decodingSpeed: Number(e.target.value),
+                          })
+                        }
+                      />
+                    </Form.Group>
+                  </Row>
+                );
+              })()}
             {supports("quality") && (
               <p className="text-muted">
                 Quality ranges from 0 to 100. JPEG XL quality 100 is lossless.
@@ -705,6 +724,7 @@ export const MediaConversionDialog: React.FC<{
                   options,
                   useQuality: true,
                   useEncodingDefaults,
+                  useDecodingSpeedDefaults,
                   targets: selectedIds.map((id) => ({ kind, id: Number(id) })),
                 })
               }
