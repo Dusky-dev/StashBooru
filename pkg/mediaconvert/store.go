@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"syscall"
 	"sort"
 	"strings"
 	"time"
@@ -383,7 +384,10 @@ var errFileChanged = errors.New("file changed; refusing to remove")
 
 func removeMatching(path, checksum string) error {
 	stat, err := os.Lstat(path)
-	if errors.Is(err, os.ErrNotExist) {
+	if errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ENAMETOOLONG) {
+		// Old conversion journals can reference output names that exceeded the
+		// filesystem limit before generated basenames were shortened. Such a
+		// path cannot name an entry; treating it as absent lets recovery finish.
 		return nil
 	}
 	if err != nil {
