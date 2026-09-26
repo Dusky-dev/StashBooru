@@ -73,14 +73,14 @@ type conversionTarget struct {
 	ID   int    `json:"id"`
 }
 type conversionRequest struct {
-	Action              string                                   `json:"action"`
-	Backend             string                                   `json:"backend"`
-	Targets             []conversionTarget                       `json:"targets"`
-	Options             mediaconvert.Options                     `json:"options"`
-	RecordID            string                                   `json:"recordID"`
-	JobID               int                                      `json:"jobID"`
-	CacheLimitBytes     int64                                    `json:"cacheLimitBytes"`
-	FormatDefaults      map[string]string                        `json:"formatDefaults"`
+	Action                   string                                   `json:"action"`
+	Backend                  string                                   `json:"backend"`
+	Targets                  []conversionTarget                       `json:"targets"`
+	Options                  mediaconvert.Options                     `json:"options"`
+	RecordID                 string                                   `json:"recordID"`
+	JobID                    int                                      `json:"jobID"`
+	CacheLimitBytes          int64                                    `json:"cacheLimitBytes"`
+	FormatDefaults           map[string]string                        `json:"formatDefaults"`
 	UseQuality               bool                                     `json:"useQuality"`
 	UseEncodingDefaults      bool                                     `json:"useEncodingDefaults"`
 	UseDecodingSpeedDefaults *bool                                    `json:"useDecodingSpeedDefaults,omitempty"`
