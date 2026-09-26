@@ -41,8 +41,8 @@ func ensureCachedCopy(source, destination, checksum string, mode os.FileMode) er
 }
 
 // ToggleRestore switches between the converted result and its original bytes.
-// The inactive representation is retained in the conversion cache so the same
-// journal can be restored and un-restored repeatedly until cache eviction.
+// Only the inactive representation is cached: original while converted is
+// active, converted while original is active.
 func (s Store) ToggleRestore(ctx context.Context, id string) error {
 	r, err := s.Record(id)
 	if err != nil {
@@ -59,7 +59,6 @@ func (s Store) ToggleRestore(ctx context.Context, id string) error {
 	if current == nil {
 		return fmt.Errorf("media entry was removed")
 	}
-
 	beforeHash := before.Base().Fingerprints.GetString("md5")
 	afterHash := after.Base().Fingerprints.GetString("md5")
 
@@ -98,6 +97,10 @@ func (s Store) ToggleRestore(ctx context.Context, id string) error {
 		if err := removeMatching(after.Base().Path, afterHash); err != nil {
 			return err
 		}
+		if err := os.Remove(s.backup(id)); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		r.Cached = false
 		r.Status = "restored"
 		if err := s.save(r); err != nil {
 			return err
@@ -114,16 +117,14 @@ func (s Store) ToggleRestore(ctx context.Context, id string) error {
 	if _, err := os.Lstat(after.Base().Path); !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("converted destination is occupied; no files changed")
 	}
-	if !r.Cached || !matches(s.backup(id), beforeHash) {
-		stat, err := os.Stat(before.Base().Path)
-		if err != nil {
-			return err
-		}
-		if err := ensureCachedCopy(before.Base().Path, s.backup(id), beforeHash, stat.Mode().Perm()); err != nil {
-			return err
-		}
-		r.Cached = true
+	stat, err := os.Stat(before.Base().Path)
+	if err != nil {
+		return err
 	}
+	if err := ensureCachedCopy(before.Base().Path, s.backup(id), beforeHash, stat.Mode().Perm()); err != nil {
+		return err
+	}
+	r.Cached = true
 
 	r.Status = "restoring"
 	if err := s.save(r); err != nil {
@@ -143,6 +144,9 @@ func (s Store) ToggleRestore(ctx context.Context, id string) error {
 	if err := removeMatching(before.Base().Path, beforeHash); err != nil {
 		return err
 	}
+	if err := os.Remove(s.convertedBackup(id)); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
 	r.Status = "complete"
 	if err := s.save(r); err != nil {
 		return err
@@ -150,36 +154,8 @@ func (s Store) ToggleRestore(ctx context.Context, id string) error {
 	return s.TrimVersions()
 }
 
-func (s Store) removeOriginalCache(r *Record, used *int64) (bool, error) {
-	if !r.Cached || r.Before.File() == nil {
-		return false, nil
-	}
-	path := s.backup(r.ID)
-	valid := matches(path, r.Before.File().Base().Fingerprints.GetString("md5"))
-	if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return false, err
-	}
-	r.Cached = false
-	if valid {
-		*used -= r.Before.File().Base().Size
-	}
-	return true, nil
-}
-
-func (s Store) removeConvertedCache(r *Record, used *int64) (bool, error) {
-	if !s.ConvertedCached(r) {
-		return false, nil
-	}
-	if err := os.Remove(s.convertedBackup(r.ID)); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return false, err
-	}
-	*used -= r.After.File().Base().Size
-	return true, nil
-}
-
-// TrimVersions enforces the shared cache limit across both retained originals
-// and converted versions. It evicts the copy of the currently active version
-// first, preserving the version needed to toggle state whenever possible.
+// TrimVersions enforces the shared cache limit across retained inactive
+// originals and converted versions. Active media files are never removed.
 func (s Store) TrimVersions() error {
 	config, err := s.Config()
 	if err != nil {
@@ -189,7 +165,6 @@ func (s Store) TrimVersions() error {
 	if err != nil {
 		return err
 	}
-
 	var used int64
 	for _, r := range records {
 		if r.Cached && r.Before.File() != nil && matches(s.backup(r.ID), r.Before.File().Base().Fingerprints.GetString("md5")) {
@@ -202,39 +177,25 @@ func (s Store) TrimVersions() error {
 	if used <= config.CacheLimitBytes {
 		return nil
 	}
-
 	for _, r := range records {
 		changed := false
-		if r.Status == "complete" {
-			if used > config.CacheLimitBytes {
-				removed, err := s.removeConvertedCache(r, &used)
-				if err != nil {
-					return err
-				}
-				changed = changed || removed
+		if used > config.CacheLimitBytes && r.Cached && r.Before.File() != nil {
+			valid := matches(s.backup(r.ID), r.Before.File().Base().Fingerprints.GetString("md5"))
+			if err := os.Remove(s.backup(r.ID)); err != nil && !errors.Is(err, os.ErrNotExist) {
+				return err
 			}
-			if used > config.CacheLimitBytes {
-				removed, err := s.removeOriginalCache(r, &used)
-				if err != nil {
-					return err
-				}
-				changed = changed || removed
+			r.Cached = false
+			if valid {
+				used -= r.Before.File().Base().Size
 			}
-		} else {
-			if used > config.CacheLimitBytes {
-				removed, err := s.removeOriginalCache(r, &used)
-				if err != nil {
-					return err
-				}
-				changed = changed || removed
+			changed = true
+		}
+		if used > config.CacheLimitBytes && s.ConvertedCached(r) {
+			if err := os.Remove(s.convertedBackup(r.ID)); err != nil && !errors.Is(err, os.ErrNotExist) {
+				return err
 			}
-			if used > config.CacheLimitBytes {
-				removed, err := s.removeConvertedCache(r, &used)
-				if err != nil {
-					return err
-				}
-				changed = changed || removed
-			}
+			used -= r.After.File().Base().Size
+			changed = true
 		}
 		if changed {
 			if err := s.save(r); err != nil {
