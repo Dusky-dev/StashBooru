@@ -28,6 +28,8 @@ FFPROBE = os.environ.get("STASH_CONVERTER_FFPROBE", "ffprobe")
 TIMEOUT = int(os.environ.get("STASH_CONVERTER_TIMEOUT_SECONDS", "86400"))
 THREADS = max(1, int(os.environ.get("STASH_CONVERTER_THREADS", "4")))
 INPUT_FORMATS = "mov,matroska,webm,avi,asf,flv,mpeg,mpegts,ogg,nut,ivf,h264,hevc,mjpeg,image2,image2pipe,jpeg_pipe,png_pipe,apng,gif,webp_pipe,bmp_pipe,tiff_pipe,jpegxl_pipe,jpegxl_anim,ico,exr_pipe,j2k_pipe"
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+MAX_DECODED_WEBP_FRAME_BYTES = 512 * 1024 * 1024
 
 # id: (label, extension, family, encoder candidates, controls)
 FORMATS = {
@@ -268,6 +270,110 @@ def jxl_encoder_args(source: Path, output: Path, o: dict) -> list[str]:
     return args
 
 
+def write_png_chunk(stream, name: bytes, data: bytes) -> None:
+    stream.write(struct.pack(">I", len(data)))
+    stream.write(name)
+    stream.write(data)
+    stream.write(struct.pack(">I", zlib.crc32(name + data) & 0xFFFFFFFF))
+
+
+def png_chunks(path: Path):
+    with path.open("rb") as stream:
+        if stream.read(len(PNG_SIGNATURE)) != PNG_SIGNATURE:
+            raise RuntimeError("Pillow produced an invalid PNG frame")
+        while True:
+            length = stream.read(4)
+            if len(length) != 4:
+                raise RuntimeError("truncated PNG frame")
+            size = struct.unpack(">I", length)[0]
+            name = stream.read(4)
+            data = stream.read(size)
+            crc = stream.read(4)
+            if len(name) != 4 or len(data) != size or len(crc) != 4:
+                raise RuntimeError("truncated PNG frame chunk")
+            if zlib.crc32(name + data) & 0xFFFFFFFF != struct.unpack(">I", crc)[0]:
+                raise RuntimeError("corrupt PNG frame chunk")
+            yield name, data
+            if name == b"IEND":
+                return
+
+
+def webp_animation_to_apng(image, output: Path, temporary_frame: Path, cancelled=None) -> None:
+    """Normalize animated WebP one composited frame at a time without merging frames."""
+    width, height = image.size
+    frame_count = int(getattr(image, "n_frames", 1))
+    if frame_count < 2:
+        raise ValueError("animated WebP must contain at least two frames")
+    plays = int(image.info.get("loop", 0))
+    icc_profile = image.info.get("icc_profile")
+    sequence = 0
+    try:
+        with output.open("xb") as destination:
+            destination.write(PNG_SIGNATURE)
+            for index in range(frame_count):
+                if cancelled and cancelled():
+                    raise RuntimeError("conversion cancelled")
+                image.seek(index)
+                image.load()
+                raw_duration = image.info.get("duration", 0)
+                try:
+                    delay = Fraction(str(raw_duration)) / 1000
+                except (ValueError, ZeroDivisionError):
+                    raise ValueError("animation contains an invalid frame delay") from None
+                if delay <= 0:
+                    raise ValueError("animation contains zero-duration frames; cannot safely preserve its timing")
+                delay = delay.limit_denominator(65535)
+                if delay.numerator > 65535 or delay.denominator > 65535:
+                    raise ValueError("animation frame delay cannot be represented safely in APNG")
+
+                # Pillow coalesces WebP disposal/blend operations when converting
+                # each frame. Keep only this full-canvas RGBA frame resident.
+                frame = image.convert("RGBA")
+                if frame.size != (width, height):
+                    raise ValueError("animated WebP frame dimensions do not match its canvas")
+                save_options = {"format": "PNG"}
+                if icc_profile:
+                    save_options["icc_profile"] = icc_profile
+                frame.save(temporary_frame, **save_options)
+
+                wrote_header = False
+                wrote_frame_control = False
+                for name, data in png_chunks(temporary_frame):
+                    if name == b"IHDR":
+                        if index == 0:
+                            write_png_chunk(destination, name, data)
+                            write_png_chunk(destination, b"acTL", struct.pack(">II", frame_count, plays))
+                        wrote_header = True
+                    elif name == b"IDAT":
+                        if not wrote_header:
+                            raise RuntimeError("PNG frame is missing its image header")
+                        if not wrote_frame_control:
+                            write_png_chunk(destination, b"fcTL", struct.pack(
+                                ">IIIIIHHBB", sequence, width, height, 0, 0,
+                                delay.numerator, delay.denominator, 0, 0,
+                            ))
+                            sequence += 1
+                            wrote_frame_control = True
+                        if index == 0:
+                            write_png_chunk(destination, b"IDAT", data)
+                        else:
+                            write_png_chunk(destination, b"fdAT", struct.pack(">I", sequence) + data)
+                            sequence += 1
+                    elif name not in (b"IEND", b"IHDR") and index == 0:
+                        # Preserve PNG color-profile and other ancillary chunks
+                        # from the generated frame before its first IDAT chunk.
+                        write_png_chunk(destination, name, data)
+                if not wrote_frame_control:
+                    raise RuntimeError("PNG frame contains no image data")
+                del frame
+            write_png_chunk(destination, b"IEND", b"")
+    except BaseException:
+        output.unlink(missing_ok=True)
+        raise
+    finally:
+        temporary_frame.unlink(missing_ok=True)
+
+
 def prepare_input(source: Path, directory: Path, cancelled=None, known_single_frame=False) -> Path:
     # djxl supports animation even on FFmpeg builds whose JXL decoder is still-only.
     with source.open("rb") as stream:
@@ -280,22 +386,18 @@ def prepare_input(source: Path, directory: Path, cancelled=None, known_single_fr
         if not known_single_frame:
             raise ValueError("djxl is required to read JPEG XL inputs without risking animation loss")
     # Older FFmpeg cannot decode animated WebP. Pillow coalesces disposal/blend
-    # correctly; enforce a decoded-memory budget before collecting frames.
+    # correctly; write a frame-at-a-time APNG so memory use depends on one frame,
+    # not the total animation. Keep a per-frame cap for malformed huge canvases.
     if signature[:4] == b"RIFF" and signature[8:] == b"WEBP":
         from PIL import Image
         with Image.open(source) as im:
             count = getattr(im, "n_frames", 1)
             if count > 1:
-                if im.width * im.height * count * 4 > 512 * 1024 * 1024:
-                    raise ValueError("animated WebP exceeds the 512 MiB decoded-frame budget")
-                frames, durations = [], []
-                for index in range(count):
-                    im.seek(index)
-                    frames.append(im.convert("RGBA"))
-                    durations.append(im.info.get("duration", 100))
                 decoded = directory / "decoded.png"
-                frames[0].save(decoded, format="PNG", save_all=True, append_images=frames[1:],
-                               duration=durations, loop=im.info.get("loop", 0))
+                frame_bytes = im.width * im.height * 4
+                if frame_bytes > MAX_DECODED_WEBP_FRAME_BYTES:
+                    raise ValueError("animated WebP frame exceeds the 512 MiB decoded-frame budget")
+                webp_animation_to_apng(im, decoded, directory / "webp-frame.png", cancelled)
                 return decoded
     return source
 
@@ -347,6 +449,187 @@ def webp_final_duration(path: Path, seconds: float) -> None:
         if last is not None:
             stream.seek(last)
             stream.write(round(seconds * 1000).to_bytes(3, "little"))
+
+
+def webp_chunks(path: Path):
+    with path.open("rb") as stream:
+        header = stream.read(12)
+        if len(header) != 12 or header[:4] != b"RIFF" or header[8:] != b"WEBP":
+            raise RuntimeError("still WebP encoder produced an invalid file")
+        while True:
+            chunk_header = stream.read(8)
+            if not chunk_header:
+                return
+            if len(chunk_header) != 8:
+                raise RuntimeError("truncated still WebP chunk")
+            name = chunk_header[:4]
+            size = int.from_bytes(chunk_header[4:], "little")
+            data_offset = stream.tell()
+            if len(stream.read(size)) != size:
+                raise RuntimeError("truncated still WebP image data")
+            has_padding = bool(size & 1)
+            if has_padding and len(stream.read(1)) != 1:
+                raise RuntimeError("truncated still WebP padding")
+            yield name, data_offset, size
+
+
+def write_webp_chunk(stream, name: bytes, data: bytes) -> None:
+    stream.write(name)
+    stream.write(len(data).to_bytes(4, "little"))
+    stream.write(data)
+    if len(data) & 1:
+        stream.write(b"\x00")
+
+
+def pillow_webp_available() -> bool:
+    try:
+        from PIL import features
+        return bool(features.check("webp"))
+    except (ImportError, ValueError):
+        return False
+
+
+def animated_webp_encode(source: Path, metadata_source: Path, output: Path, temporary_frame: Path,
+                         o: dict, durations: list[float], plays: int, cancelled=None) -> None:
+    """Encode WebP frames independently and mux them without dropping repeats."""
+    from PIL import Image
+
+    with Image.open(source) as image:
+        frame_count = int(getattr(image, "n_frames", 1))
+        if frame_count < 2 or len(durations) != frame_count:
+            raise ValueError("Pillow could not read the complete animation frame sequence")
+        width, height = image.size
+        if width < 1 or height < 1 or width > 16_384 or height > 16_384:
+            raise ValueError("animation dimensions cannot be represented in WebP")
+        if width * height * 4 > MAX_DECODED_WEBP_FRAME_BYTES:
+            raise ValueError("animation frame exceeds the 512 MiB decoded-frame budget")
+
+        profile_source = image
+        if metadata_source != source:
+            try:
+                profile_source = Image.open(metadata_source)
+            except (OSError, ValueError):
+                profile_source = image
+        close_profile_source = profile_source is not image
+        try:
+            info = profile_source.info
+            icc_profile = info.get("icc_profile") or b""
+            exif = info.get("exif") or b""
+            xmp = info.get("xmp") or b""
+            if isinstance(icc_profile, str):
+                icc_profile = icc_profile.encode("latin-1")
+            if isinstance(exif, str):
+                exif = exif.encode("latin-1")
+            if isinstance(xmp, str):
+                xmp = xmp.encode("utf-8")
+        finally:
+            if close_profile_source:
+                profile_source.close()
+
+        loop_count = int(plays)
+        if not 0 <= loop_count <= 65_535:
+            raise ValueError("animation loop count cannot be represented in WebP")
+        cumulative_ms = Fraction(0)
+        previous_ms = 0
+        frame_delays = []
+        for seconds in durations:
+            if not math.isfinite(float(seconds)) or seconds <= 0:
+                raise ValueError("animation contains zero-duration frames; cannot safely preserve its timing")
+            cumulative_ms += Fraction(str(seconds)) * 1000
+            boundary_ms = int(cumulative_ms + Fraction(1, 2))
+            delay_ms = boundary_ms - previous_ms
+            if not 1 <= delay_ms <= 0xFFFFFF:
+                raise ValueError("animation frame delay cannot be represented safely in WebP")
+            frame_delays.append(delay_ms)
+            previous_ms = boundary_ms
+
+        temporary_frame.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with output.open("xb") as destination:
+                destination.write(b"RIFF\x00\x00\x00\x00WEBP")
+                # Set the alpha flag when any frame contains transparency. The
+                # frame encoder may also choose an alpha-capable bitstream.
+                has_alpha = False
+                vp8x_flags_offset = None
+                vp8x_flags = 0
+                for index in range(frame_count):
+                    if cancelled and cancelled():
+                        raise RuntimeError("conversion cancelled")
+                    image.seek(index)
+                    image.load()
+                    frame = image.convert("RGBA")
+                    if frame.size != (width, height):
+                        raise ValueError("animation frame dimensions do not match the canvas")
+                    frame_has_alpha = frame.getchannel("A").getextrema()[0] < 255
+                    has_alpha |= frame_has_alpha
+                    frame.save(temporary_frame, format="WEBP", quality=o["quality"],
+                               method=round(o["effort"] * 6 / 9), lossless=o["lossless"], exact=True)
+                    image_chunks = [(name, offset, size) for name, offset, size in webp_chunks(temporary_frame)
+                                    if name in (b"ALPH", b"VP8 ", b"VP8L")]
+                    if not image_chunks or not any(name in (b"VP8 ", b"VP8L") for name, _, _ in image_chunks):
+                        raise RuntimeError("still WebP encoder returned no image bitstream")
+                    has_alpha |= any(name == b"ALPH" for name, _, _ in image_chunks)
+
+                    if index == 0:
+                        vp8x_flags = 0x02
+                        if has_alpha:
+                            vp8x_flags |= 0x10
+                        if icc_profile:
+                            vp8x_flags |= 0x20
+                        if exif:
+                            vp8x_flags |= 0x08
+                        if xmp:
+                            vp8x_flags |= 0x04
+                        vp8x = bytes([vp8x_flags, 0, 0, 0]) + (width - 1).to_bytes(3, "little") + (height - 1).to_bytes(3, "little")
+                        write_webp_chunk(destination, b"VP8X", vp8x)
+                        vp8x_flags_offset = destination.tell() - len(vp8x)
+                        if icc_profile:
+                            write_webp_chunk(destination, b"ICCP", icc_profile)
+                        write_webp_chunk(destination, b"ANIM", bytes(4) + struct.pack("<H", loop_count))
+                    elif has_alpha and not (vp8x_flags & 0x10):
+                        # A later frame can introduce transparency even if the
+                        # first frame is opaque. Patch VP8X while retaining the
+                        # stream position at the end of the already-written data.
+                        current_position = destination.tell()
+                        vp8x_flags |= 0x10
+                        destination.seek(vp8x_flags_offset)
+                        destination.write(bytes([vp8x_flags]))
+                        destination.seek(current_position)
+
+                    frame_header = (bytes(6) + (width - 1).to_bytes(3, "little") +
+                                    (height - 1).to_bytes(3, "little") + frame_delays[index].to_bytes(3, "little") + b"\x02")
+                    inner_size = sum(8 + size + (size & 1) for _, _, size in image_chunks)
+                    payload_size = len(frame_header) + inner_size
+                    destination.write(b"ANMF")
+                    destination.write(payload_size.to_bytes(4, "little"))
+                    destination.write(frame_header)
+                    with temporary_frame.open("rb") as encoded:
+                        for name, offset, size in image_chunks:
+                            encoded.seek(offset - 8)
+                            remaining = 8 + size + (size & 1)
+                            while remaining:
+                                block = encoded.read(min(1024 * 1024, remaining))
+                                if not block:
+                                    raise RuntimeError("truncated still WebP image bitstream")
+                                destination.write(block)
+                                remaining -= len(block)
+                    del frame
+
+                if exif:
+                    write_webp_chunk(destination, b"EXIF", exif)
+                if xmp:
+                    write_webp_chunk(destination, b"XMP ", xmp)
+                end = destination.tell()
+                riff_size = end - 8
+                if riff_size > 0xFFFFFFFF:
+                    raise ValueError("encoded WebP exceeds the RIFF container size limit")
+                destination.seek(4)
+                destination.write(struct.pack("<I", riff_size))
+        except BaseException:
+            output.unlink(missing_ok=True)
+            raise
+        finally:
+            temporary_frame.unlink(missing_ok=True)
 
 
 def jxl_timing_input(source: Path, output: Path, durations: list[float]) -> Path:
@@ -554,6 +837,7 @@ def convert(source: Path, output: Path, raw: dict, cancelled=None) -> dict:
                 encoder = cap["cpu"][0]
             else:
                 raise ValueError("this hardware H.264 encoder cannot preserve high bit depth; choose HEVC/AV1 or CPU")
+        direct_webp_animation = False
         if encoder == "cjxl":
             intermediate = decoded
             # cjxl's native GIF reader preserves GIF centisecond timing. Routing an
@@ -579,6 +863,13 @@ def convert(source: Path, output: Path, raw: dict, cancelled=None) -> dict:
             args = jxl_encoder_args(intermediate, output, o)
             if before["videoCodec"] == "mjpeg" and o["distance"] != 0:
                 args.append("--lossless_jpeg=0")
+        elif (fmt == "webp" and before["frames"] > 1 and before.get("durations") and
+              encoder == "libwebp_anim" and pillow_webp_available()):
+            # libwebp_anim may coalesce repeated frames and can assign an extra
+            # nominal hold to the last frame. Encode still frames separately,
+            # then mux exact frame durations into the animation container.
+            direct_webp_animation = True
+            args = []
         else:
             args = ffmpeg_prefix() + ["-n"] + device_args(encoder) + input_args(decoded) + [
                 "-map", "[converted]" if fmt == "gif" else "0:v:0", "-map_metadata", "0", "-map_chapters", "0", "-fps_mode", "passthrough",
@@ -634,8 +925,12 @@ def convert(source: Path, output: Path, raw: dict, cancelled=None) -> dict:
                         args += ["-final_delay", str(Fraction(before["durations"][-1]).limit_denominator(100000))]
             args += [str(output)]
         try:
-            run(args, cancelled)
-            if fmt == "webp" and before.get("durations"):
+            if direct_webp_animation:
+                animated_webp_encode(decoded, source, output, directory / "webp-output-frame.webp",
+                                      o, before["durations"], before["plays"], cancelled)
+            else:
+                run(args, cancelled)
+            if fmt == "webp" and before.get("durations") and not direct_webp_animation:
                 webp_final_duration(output, before["durations"][-1])
             # A successful process exit alone does not prove that animation survived.
             check_dir = directory / "check"
@@ -645,7 +940,10 @@ def convert(source: Path, output: Path, raw: dict, cancelled=None) -> dict:
             run(ffmpeg_prefix() + ["-xerror", "-protocol_whitelist", "file,pipe", "-format_whitelist", INPUT_FORMATS,
                 "-i", str(checked), "-map", "0:v:0", "-map", "0:a?", "-f", "null", "-"], cancelled)
             if (before["width"], before["height"], before["frames"]) != (after["width"], after["height"], after["frames"]):
-                raise RuntimeError("verification failed: dimensions or frame count changed")
+                raise RuntimeError(f"verification failed: dimensions or frame count changed "
+                                   f"({before['width']}x{before['height']}/{before['frames']} → "
+                                   f"{after['width']}x{after['height']}/{after['frames']}; "
+                                   f"{fmt}/{encoder}); source kept")
             if before["frames"] > 1 and abs(before["duration"] - after["duration"]) > max(0.025, before["duration"] * 0.001):
                 raise RuntimeError(f"verification failed: animation/video duration changed "
                                    f"({before['duration']:.6f}s → {after['duration']:.6f}s; "
@@ -657,7 +955,8 @@ def convert(source: Path, output: Path, raw: dict, cancelled=None) -> dict:
                     raise RuntimeError("verification failed: animation loop count changed")
             if family == "video" and not o["dropAudio"] and before["audioStreams"] != after["audioStreams"]:
                 raise RuntimeError("verification failed: audio stream missing")
-            after.update({"format": ext, "videoCodec": "jpegxl" if fmt in ("jxl", "ajxl") else after["videoCodec"],
+            codec = "jpegxl" if fmt in ("jxl", "ajxl") else "webp" if fmt == "webp" else after["videoCodec"]
+            after.update({"format": ext, "videoCodec": codec,
                           "encoder": encoder, "upscaler": o["upscaler"], "seconds": time.monotonic() - started, "size": output.stat().st_size})
             after.pop("durations", None)  # Binary response metadata must fit HTTP headers.
             return after
