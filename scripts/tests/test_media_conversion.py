@@ -20,6 +20,45 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import media_conversion_worker as converter
 
 
+def write_animated_webp(path, colors, durations, size=32, loop=0):
+    from PIL import Image
+
+    def riff_chunk(name, data):
+        return name + struct.pack("<I", len(data)) + data + (b"\x00" if len(data) & 1 else b"")
+
+    def u24(value):
+        return value.to_bytes(3, "little")
+
+    has_alpha = any(len(color) == 4 and color[3] < 255 for color in colors)
+    vp8x_flags = 0x02 | (0x10 if has_alpha else 0)
+    chunks = [
+        riff_chunk(b"VP8X", bytes([vp8x_flags]) + bytes(3) + u24(size - 1) + u24(size - 1)),
+        riff_chunk(b"ANIM", bytes(4) + struct.pack("<H", loop)),
+    ]
+    for index, (color, duration) in enumerate(zip(colors, durations)):
+        still_path = path.parent / f"fixture-frame-{index}.webp"
+        mode = "RGBA" if len(color) == 4 else "RGB"
+        Image.new(mode, (size, size), color).save(still_path, format="WEBP", lossless=True)
+        still = still_path.read_bytes()
+        still_path.unlink()
+        position = 12
+        image_chunks = []
+        while position < len(still):
+            length = int.from_bytes(still[position + 4:position + 8], "little")
+            end = position + 8 + length + (length & 1)
+            if still[position:position + 4] in (b"ALPH", b"VP8 ", b"VP8L"):
+                image_chunks.append(still[position:end])
+            position = end
+        if not image_chunks:
+            raise AssertionError("Pillow did not encode a still WebP frame")
+        frame_header = (bytes(6) + u24(size - 1) + u24(size - 1) +
+                        u24(duration) + bytes([2]))
+        chunks.append(riff_chunk(b"ANMF", frame_header + b"".join(image_chunks)))
+
+    body = b"WEBP" + b"".join(chunks)
+    path.write_bytes(b"RIFF" + struct.pack("<I", len(body)) + body)
+
+
 class OptionsTests(unittest.TestCase):
     def test_reject_invalid_controls(self):
         for value in ({"format": "sh"}, {"effort": 10}, {"effort": 2.5}, {"quality": True},
@@ -153,6 +192,81 @@ class EncodeTests(unittest.TestCase):
                 result, _ = self.convert("animation.gif", fmt)
                 self.assertEqual(result["frames"], 3)
                 self.assertAlmostEqual(result["duration"], 0.6, delta=0.025)
+
+    def test_animated_webp_preserves_repeated_frames_and_timing(self):
+        caps = converter.capabilities(probe_gpu=False)
+        webp = next(f for f in caps["formats"] if f["id"] == "webp")
+        if not converter.pillow_webp_available() or "libwebp_anim" not in webp["cpu"]:
+            self.skipTest("Pillow WebP and FFmpeg WebP encoders are required")
+
+        cases = (
+            ("repeated", [(255, 0, 0), (255, 0, 0), (0, 0, 255), (0, 0, 255)], [100, 200, 300, 400]),
+            ("long-final-hold", [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0)], [1000, 1000, 1000, 5500]),
+        )
+        for name, colors, delays in cases:
+            with self.subTest(case=name):
+                source = self.root / f"{name}.webp"
+                output = self.root / f"{name}-converted.webp"
+                write_animated_webp(source, colors, delays)
+                source_metadata = converter.animation_metadata(source)
+                self.assertEqual(source_metadata["frames"], 4)
+                with patch.object(converter, "MAX_DECODED_WEBP_FRAME_BYTES", 6 * 1024):
+                    result = converter.convert(source, output, {
+                        "format": "webp", "hardware": "cpu", "quality": 100,
+                        "effort": 3, "lossless": True,
+                    })
+                output_metadata = converter.animation_metadata(output)
+                self.assertEqual(output_metadata["frames"], 4)
+                self.assertEqual(output_metadata["durations"], source_metadata["durations"])
+                self.assertEqual(output_metadata["plays"], source_metadata["plays"])
+                self.assertEqual(result["frames"], 4)
+                self.assertAlmostEqual(result["duration"], sum(delays) / 1000, delta=0.001)
+
+    def test_animated_webp_preserves_transparency_and_finite_loop_count(self):
+        caps = converter.capabilities(probe_gpu=False)
+        webp = next(f for f in caps["formats"] if f["id"] == "webp")
+        if not converter.pillow_webp_available() or "libwebp_anim" not in webp["cpu"]:
+            self.skipTest("Pillow WebP and FFmpeg WebP encoders are required")
+        source = self.root / "transparent.webp"
+        output = self.root / "transparent-converted.webp"
+        write_animated_webp(source, [(255, 0, 0, 0), (0, 255, 0, 255)], [100, 200], loop=3)
+        result = converter.convert(source, output, {
+            "format": "webp", "hardware": "cpu", "quality": 100,
+            "effort": 3, "lossless": True,
+        })
+        source_metadata = converter.animation_metadata(source)
+        output_metadata = converter.animation_metadata(output)
+        self.assertTrue(source_metadata["alpha"])
+        self.assertTrue(output_metadata["alpha"])
+        self.assertEqual(output_metadata["frames"], source_metadata["frames"])
+        self.assertEqual(output_metadata["plays"], 3)
+        self.assertEqual(result["frames"], source_metadata["frames"])
+
+    def test_animated_webp_conversion_preserves_embedded_metadata(self):
+        from PIL import Image
+        caps = converter.capabilities(probe_gpu=False)
+        webp = next(f for f in caps["formats"] if f["id"] == "webp")
+        if not converter.pillow_webp_available() or "libwebp_anim" not in webp["cpu"]:
+            self.skipTest("Pillow WebP and FFmpeg WebP encoders are required")
+        source = self.root / "metadata.webp"
+        output = self.root / "metadata-converted.webp"
+        metadata = {
+            "icc_profile": b"synthetic ICC profile metadata",
+            "exif": b"Exif\x00\x00synthetic EXIF metadata",
+            "xmp": b"<xmpmeta>synthetic XMP metadata</xmpmeta>",
+        }
+        frames = [Image.new("RGB", (32, 32), color) for color in ("red", "green", "blue")]
+        frames[0].save(source, format="WEBP", save_all=True, append_images=frames[1:],
+                       duration=[100, 200, 300], loop=1, lossless=True, **metadata)
+        result = converter.convert(source, output, {
+            "format": "webp", "hardware": "cpu", "quality": 100,
+            "effort": 3, "lossless": True,
+        })
+        with Image.open(source) as original, Image.open(output) as converted:
+            for key, value in metadata.items():
+                self.assertEqual(converted.info.get(key), original.info.get(key))
+            self.assertEqual(converted.info["loop"], original.info["loop"])
+        self.assertEqual(result["videoCodec"], "webp")
 
     def test_animated_jxl_round_trip(self):
         caps = converter.capabilities(probe_gpu=False)
