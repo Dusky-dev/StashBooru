@@ -56,7 +56,7 @@ animation FPS.
 
 | Output | Controls | Processor |
 | --- | --- | --- |
-| JPEG XL / animated JPEG XL | Quality 0–100; effort 1–9 | CPU |
+| JPEG XL / animated JPEG XL | Quality 0–100; effort 1–9; decode-speed tier 0–4 | CPU |
 | AV1 in MP4, MKV or WebM | Quality 0–100; effort 1–9 | CPU; supported NVENC, QSV or VAAPI hardware |
 | H.264 MP4/MOV, HEVC MP4, VP9 WebM | Quality; effort | CPU or supported hardware |
 | JPEG, PNG, WebP, AVIF, TIFF, BMP | Controls appropriate to the encoder; WebP lossless option | CPU |
@@ -66,11 +66,18 @@ Animated JPEG XL uses the normal **`.jxl` extension**, labeled AJXL in the forma
 selector. JXL quality 100 requests lossless compression. JPEG input at quality 100
 uses `cjxl`'s JPEG reconstruction path when installed. Higher effort trades time
 for compression. JXL quality follows libjxl's standard quality mapping, with
-quality 90 corresponding to its previous default distance of 1. Other formats'
-quality is normalized and mapped to codec-specific
-CRF/quantizer settings, and is not comparable across codecs. Distance is the JXL
-quality control used internally; WebP has a separate lossless switch. Existing
-API/worker requests that explicitly set a distance remain supported.
+quality 90 corresponding to its previous default distance of 1. JPEG XL also
+offers decode-speed tiers from 0 to 4. Tier 0 keeps libjxl's default density;
+higher tiers favor faster decoding at some cost to quality or file size. AJXL
+conversions default to tier 2 to improve animated playback; still JXL defaults
+to tier 0. The tier can be changed in System settings or per conversion. The
+worker exposes this control only when its `cjxl` build supports
+`--faster_decoding`; older remote workers
+continue to work without it. Other formats' quality is normalized and mapped to
+codec-specific CRF/quantizer settings, and is not comparable across codecs.
+Distance is the JXL quality control used internally; WebP has a separate
+lossless switch. Existing API/worker requests that explicitly set a distance
+remain supported.
 
 Inputs are read by the worker's FFmpeg build, with Pillow for animated WebP and
 `djxl` for JPEG XL. Mainstream still, animation and video containers are supported.

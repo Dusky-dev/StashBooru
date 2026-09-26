@@ -14,7 +14,10 @@ export interface ConversionFormat {
 export interface ConversionConfig {
   cacheLimitBytes: number;
   formatDefaults: Record<string, string>;
-  encodingDefaults: Record<string, { quality: number; effort: number }>;
+  encodingDefaults: Record<
+    string,
+    { quality: number; effort: number; fasterDecoding?: number }
+  >;
   backend: string;
 }
 
@@ -89,6 +92,7 @@ export interface ConversionPlan {
   count: number;
   quality: number;
   effort: number;
+  fasterDecoding: number;
   error?: string;
 }
 

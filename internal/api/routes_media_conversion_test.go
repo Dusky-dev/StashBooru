@@ -27,3 +27,14 @@ func TestConversionOutputValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestFormatSupportsDecodeSpeedOnlyWhenWorkerAdvertisesIt(t *testing.T) {
+	format := mediaconvert.Format{ID: "ajxl", Controls: []string{"quality", "effort", "fasterDecoding"}}
+	if !formatSupportsControl(format, "fasterDecoding") {
+		t.Fatal("worker-advertised JPEG XL decode speed should be enabled")
+	}
+	format.Controls = []string{"quality", "effort"}
+	if formatSupportsControl(format, "fasterDecoding") {
+		t.Fatal("older worker must not receive an unsupported option")
+	}
+}

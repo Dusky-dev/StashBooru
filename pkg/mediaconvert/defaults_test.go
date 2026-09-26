@@ -13,6 +13,8 @@ import (
 	"github.com/stashapp/stash/pkg/models"
 )
 
+func intPtr(value int) *int { return &value }
+
 func TestFormatDefaultsPersistAcrossUpgrade(t *testing.T) {
 	s := Store{Root: t.TempDir()}
 	if err := os.WriteFile(filepath.Join(s.Root, "config.json"), []byte(`{"cacheLimitBytes":1234}`), 0600); err != nil {
@@ -156,7 +158,12 @@ func TestEncodingPreferencesPersistAndResolvePerInput(t *testing.T) {
 		t.Fatalf("default worker: %+v, %v", c, err)
 	}
 	c.Backend = "remote"
-	c.EncodingDefaults = map[string]EncodingDefaults{"image": {Quality: 85, Effort: 6}, "video": {Quality: 75, Effort: 4}, "gif": {Quality: 95, Effort: 9}}
+	c.EncodingDefaults = map[string]EncodingDefaults{
+		"image": {Quality: 85, Effort: 6},
+		"video": {Quality: 75, Effort: 4},
+		"gif":   {Quality: 95, Effort: 9, FasterDecoding: intPtr(3)},
+		"jxl":   {Quality: 90, Effort: 7, FasterDecoding: intPtr(0)},
+	}
 	if err := s.Configure(c); err != nil {
 		t.Fatal(err)
 	}
@@ -164,18 +171,35 @@ func TestEncodingPreferencesPersistAndResolvePerInput(t *testing.T) {
 	if err != nil || c.Backend != "remote" {
 		t.Fatalf("reload: %+v %v", c, err)
 	}
-	for input, expected := range map[string]EncodingDefaults{"png": {85, 6}, "mp4": {75, 4}, "gif": {95, 9}} {
-		if actual := c.DefaultEncoding(input); actual != expected {
+	for input, expected := range map[string]EncodingDefaults{
+		"png": {Quality: 85, Effort: 6, FasterDecoding: intPtr(0)},
+		"mp4": {Quality: 75, Effort: 4, FasterDecoding: intPtr(0)},
+		"gif": {Quality: 95, Effort: 9, FasterDecoding: intPtr(3)},
+		"jxl": {Quality: 90, Effort: 7, FasterDecoding: intPtr(0)},
+	} {
+		actual := c.DefaultEncoding(input)
+		if actual.Quality != expected.Quality || actual.Effort != expected.Effort || actual.FasterDecodingValue() != expected.FasterDecodingValue() {
 			t.Fatalf("%s: got %+v, expected %+v", input, actual, expected)
 		}
 	}
-	for _, invalid := range []EncodingDefaults{{-1, 4}, {101, 4}, {80, 0}, {80, 10}, {math.NaN(), 7}} {
+	for _, invalid := range []EncodingDefaults{
+		{Quality: -1, Effort: 4}, {Quality: 101, Effort: 4},
+		{Quality: 80, Effort: 0}, {Quality: 80, Effort: 10},
+		{Quality: math.NaN(), Effort: 7}, {Quality: 80, Effort: 7, FasterDecoding: intPtr(5)},
+	} {
 		if ValidateEncodingDefaults(map[string]EncodingDefaults{"image": invalid}, "auto") == nil {
 			t.Fatalf("accepted %+v", invalid)
 		}
 	}
 	if ValidateEncodingDefaults(nil, "bad-worker") == nil {
 		t.Fatal("accepted invalid worker")
+	}
+	legacyDefaults := Config{}.DefaultEncoding("gif")
+	if legacyDefaults.FasterDecodingValue() != 2 {
+		t.Fatalf("legacy defaults should favor playback, got tier %d", legacyDefaults.FasterDecodingValue())
+	}
+	if stillDefaults := (Config{}).DefaultEncoding("jxl"); stillDefaults.FasterDecodingValue() != 0 {
+		t.Fatalf("still JXL defaults should retain density, got tier %d", stillDefaults.FasterDecodingValue())
 	}
 	for frames, input := range map[int]string{0: "ajxl", 1: "jxl", 2: "ajxl"} {
 		f := &models.ImageFile{BaseFile: &models.BaseFile{Path: "image.jxl", FrameCount: frames}}

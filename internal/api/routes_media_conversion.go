@@ -434,6 +434,7 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 				if request.UseEncodingDefaults {
 					defaults := config.DefaultEncoding(input)
 					options.Quality, options.Effort = defaults.Quality, defaults.Effort
+					options.FasterDecoding = defaults.FasterDecoding
 				}
 				if options.Hardware == "" {
 					options.Hardware = "auto"
@@ -444,6 +445,18 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 				var format mediaconvert.Format
 				if err == nil {
 					format, err = conversionOutputFormat(capabilities, options.Format, target.Kind)
+				}
+				if err == nil {
+					if formatSupportsControl(format, "fasterDecoding") {
+						if options.FasterDecoding == nil {
+							options.FasterDecoding = defaultConversionDecodingSpeed()
+						}
+					} else {
+						// Older remote workers may not have a cjxl build with this
+						// encoder control. Omit it so the existing worker protocol
+						// remains compatible.
+						options.FasterDecoding = nil
+					}
 				}
 				if err == nil {
 					record, convertErr := s.Convert(ctx, id, state.Batch, client, options, format)
@@ -518,6 +531,20 @@ func conversionOutputFormat(capabilities mediaconvert.Capabilities, id, kind str
 	return mediaconvert.Format{}, fmt.Errorf("output format %s is unavailable on the selected worker", id)
 }
 
+func formatSupportsControl(format mediaconvert.Format, control string) bool {
+	for _, available := range format.Controls {
+		if available == control {
+			return true
+		}
+	}
+	return false
+}
+
+func defaultConversionDecodingSpeed() *int {
+	value := 2
+	return &value
+}
+
 func previewConversionDefaults(w http.ResponseWriter, r *http.Request, targets []conversionTarget) {
 	s := conversionStore()
 	config, err := s.Config()
@@ -526,12 +553,13 @@ func previewConversionDefaults(w http.ResponseWriter, r *http.Request, targets [
 		return
 	}
 	type plan struct {
-		Input   string  `json:"input"`
-		Output  string  `json:"output"`
-		Count   int     `json:"count"`
-		Error   string  `json:"error,omitempty"`
-		Quality float64 `json:"quality"`
-		Effort  int     `json:"effort"`
+		Input          string  `json:"input"`
+		Output         string  `json:"output"`
+		Count          int     `json:"count"`
+		Error          string  `json:"error,omitempty"`
+		Quality        float64 `json:"quality"`
+		Effort         int     `json:"effort"`
+		FasterDecoding int     `json:"fasterDecoding"`
 	}
 	plans := []plan{}
 	indices := map[plan]int{}
@@ -544,7 +572,7 @@ func previewConversionDefaults(w http.ResponseWriter, r *http.Request, targets [
 		if err == nil {
 			next.Output, next.Input, err = conversionDefaultForFile(r.Context(), s, config, id)
 			defaults := config.DefaultEncoding(next.Input)
-			next.Quality, next.Effort = defaults.Quality, defaults.Effort
+			next.Quality, next.Effort, next.FasterDecoding = defaults.Quality, defaults.Effort, defaults.FasterDecodingValue()
 		}
 		if err != nil {
 			next.Error = err.Error()

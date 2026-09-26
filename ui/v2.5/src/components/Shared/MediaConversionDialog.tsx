@@ -30,6 +30,7 @@ interface Options {
   hardware: string;
   quality: number;
   effort: number;
+  fasterDecoding: number;
   lossless: boolean;
   allowLarger: boolean;
   dropAudio: boolean;
@@ -137,6 +138,7 @@ export const MediaConversionDialog: React.FC<{
     hardware: "auto",
     quality: kind === "scene" ? 80 : 90,
     effort: 7,
+    fasterDecoding: 2,
     lossless: false,
     allowLarger: false,
     dropAudio: false,
@@ -445,26 +447,34 @@ export const MediaConversionDialog: React.FC<{
                   <Alert variant="warning">{previewError}</Alert>
                 )}
                 {!loadingPreview &&
-                  plans.map((plan, index) => (
-                    <div
-                      key={`${plan.input}-${plan.output}-${index}`}
-                      className={plan.error ? "text-warning" : ""}
-                    >
-                      {plan.count} {plan.count === 1 ? "file" : "files"}:{" "}
-                      {plan.error ||
-                        `${plan.input.toUpperCase()} → ${formats.find((f) => f.id === plan.output)?.label ?? plan.output} · quality ${useEncodingDefaults ? plan.quality : options.quality}, effort ${useEncodingDefaults ? plan.effort : options.effort}`}
-                      {!plan.error &&
-                      !loadingCapabilities &&
-                      !formats.find((f) => f.id === plan.output)?.available
-                        ? " — unavailable on this worker"
-                        : ""}
-                    </div>
-                  ))}
+                  plans.map((plan, index) => {
+                    const output = formats.find((f) => f.id === plan.output);
+                    const decodeSpeed = output?.controls.includes(
+                      "fasterDecoding"
+                    )
+                      ? `, decode speed ${useEncodingDefaults ? plan.fasterDecoding : options.fasterDecoding}/4`
+                      : "";
+                    return (
+                      <div
+                        key={`${plan.input}-${plan.output}-${index}`}
+                        className={plan.error ? "text-warning" : ""}
+                      >
+                        {plan.count} {plan.count === 1 ? "file" : "files"}:{" "}
+                        {plan.error ||
+                          `${plan.input.toUpperCase()} → ${output?.label ?? plan.output} · quality ${useEncodingDefaults ? plan.quality : options.quality}, effort ${useEncodingDefaults ? plan.effort : options.effort}${decodeSpeed}`}
+                        {!plan.error &&
+                        !loadingCapabilities &&
+                        !output?.available
+                          ? " — unavailable on this worker"
+                          : ""}
+                      </div>
+                    );
+                  })}
               </div>
             )}
             <Form.Check
               id="converter-saved-encoding"
-              label="Use saved quality and effort for each input format"
+              label="Use saved quality, effort, and decode speed defaults for each input format"
               checked={useEncodingDefaults}
               disabled={busy}
               onChange={(e) => setUseEncodingDefaults(e.target.checked)}
@@ -501,6 +511,26 @@ export const MediaConversionDialog: React.FC<{
                       />
                     </Form.Group>
                   ))}
+                {supports("fasterDecoding") && (
+                  <Form.Group as={Col} controlId="converter-faster-decoding">
+                    <Form.Label>JXL decode speed tier (0–4)</Form.Label>
+                    <Form.Control
+                      className="text-input"
+                      type="number"
+                      min={0}
+                      max={4}
+                      step={1}
+                      value={options.fasterDecoding}
+                      disabled={busy}
+                      onChange={(e) =>
+                        setOptions({
+                          ...options,
+                          fasterDecoding: Number(e.target.value),
+                        })
+                      }
+                    />
+                  </Form.Group>
+                )}
               </Row>
             )}
             {supports("quality") && (
@@ -508,6 +538,13 @@ export const MediaConversionDialog: React.FC<{
                 Quality ranges from 0 to 100. JPEG XL quality 100 is lossless.
                 Equal values across codecs do not imply equal quality. Higher
                 effort trades encoding time for compression.
+              </p>
+            )}
+            {supports("fasterDecoding") && (
+              <p className="text-muted">
+                Higher JXL decode speed tiers favor smoother playback but can
+                increase file size or reduce quality. Tier 0 uses libjxl’s
+                default.
               </p>
             )}
             <Form.Check
