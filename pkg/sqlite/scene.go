@@ -1313,8 +1313,21 @@ func (qb *SceneStore) setSceneSort(query *queryBuilder, findFilter *models.FindF
 		addFileTable()
 		query.sortAndPagination += getSort(sort, direction, fileTable)
 	case "format":
-		addVideoFileTable()
-		query.sortAndPagination += " ORDER BY COALESCE(video_files.format, '') COLLATE NATURAL_CI " + direction
+		query.addJoins(
+			join{
+				sort:     true,
+				table:    scenesFilesTable,
+				as:       "format_scenes_files",
+				onClause: "format_scenes_files.scene_id = scenes.id AND format_scenes_files.primary = 1",
+			},
+			join{
+				sort:     true,
+				table:    videoFileTable,
+				as:       "format_video_files",
+				onClause: "format_video_files.file_id = format_scenes_files.file_id",
+			},
+		)
+		query.sortAndPagination += " ORDER BY COALESCE(format_video_files.format, '') COLLATE NATURAL_CI " + direction
 	case "framerate":
 		sort = "frame_rate"
 		addVideoFileTable()
