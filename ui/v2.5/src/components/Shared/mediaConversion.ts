@@ -12,18 +12,21 @@ export interface ConversionFormat {
   available: boolean;
 }
 
+export interface ConversionEncodingDefaults {
+  quality: number;
+  effort: number;
+  decodingSpeed?: number;
+  fasterDecoding?: number;
+  allowLarger?: boolean;
+  lossless?: boolean;
+  dropAudio?: boolean;
+  allowAlphaLoss?: boolean;
+}
+
 export interface ConversionConfig {
   cacheLimitBytes: number;
   formatDefaults: Record<string, string>;
-  encodingDefaults: Record<
-    string,
-    {
-      quality: number;
-      effort: number;
-      decodingSpeed?: number;
-      fasterDecoding?: number;
-    }
-  >;
+  encodingDefaults: Record<string, ConversionEncodingDefaults>;
   backend: string;
 }
 
@@ -100,6 +103,10 @@ export interface ConversionPlan {
   effort: number;
   decodingSpeed: number;
   fasterDecoding?: number;
+  allowLarger?: boolean;
+  lossless?: boolean;
+  dropAudio?: boolean;
+  allowAlphaLoss?: boolean;
   error?: string;
 }
 
