@@ -241,6 +241,7 @@ export abstract class ModifierCriterion<
 
 export type InputType =
   | "number"
+  | "select"
   | "text"
   | "performers"
   | "studios"
