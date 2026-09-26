@@ -28,13 +28,28 @@ func TestConversionOutputValidation(t *testing.T) {
 	}
 }
 
-func TestFormatSupportsDecodeSpeedOnlyWhenWorkerAdvertisesIt(t *testing.T) {
-	format := mediaconvert.Format{ID: "ajxl", Controls: []string{"quality", "effort", "fasterDecoding"}}
-	if !formatSupportsControl(format, "fasterDecoding") {
-		t.Fatal("worker-advertised JPEG XL decode speed should be enabled")
+func TestDecodingSpeedControlsAndDefaults(t *testing.T) {
+	for _, tc := range []struct {
+		format mediaconvert.Format
+		levels int
+		def    int
+	}{
+		{mediaconvert.Format{ID: "ajxl", Controls: []string{"decodingSpeed"}, DecodingSpeedLevels: 4}, 4, 2},
+		{mediaconvert.Format{ID: "av1-mp4", Controls: []string{"decodingSpeed"}, DecodingSpeedLevels: 1}, 1, 0},
+		{mediaconvert.Format{ID: "ajxl", Controls: []string{"fasterDecoding"}}, 4, 2},
+	} {
+		if !formatSupportsControl(tc.format, "decodingSpeed") && !formatSupportsControl(tc.format, "fasterDecoding") {
+			t.Fatalf("format %s should support decode speed", tc.format.ID)
+		}
+		if levels := formatDecodingSpeedLevels(tc.format); levels != tc.levels {
+			t.Fatalf("format %s has %d levels, want %d", tc.format.ID, levels, tc.levels)
+		}
+		if value := defaultConversionDecodingSpeed(tc.format); *value != tc.def {
+			t.Fatalf("format %s default is %d, want %d", tc.format.ID, *value, tc.def)
+		}
 	}
-	format.Controls = []string{"quality", "effort"}
-	if formatSupportsControl(format, "fasterDecoding") {
-		t.Fatal("older worker must not receive an unsupported option")
+	unsupported := mediaconvert.Format{ID: "av1-mp4", Controls: []string{"quality"}, DecodingSpeedLevels: 1}
+	if formatSupportsControl(unsupported, "decodingSpeed") {
+		t.Fatal("worker must not receive a control it did not advertise")
 	}
 }

@@ -31,11 +31,11 @@ INPUT_FORMATS = "mov,matroska,webm,avi,asf,flv,mpeg,mpegts,ogg,nut,ivf,h264,hevc
 
 # id: (label, extension, family, encoder candidates, controls)
 FORMATS = {
-    "jxl": ("JPEG XL", "jxl", "image", ["cjxl", "libjxl"], ["quality", "effort", "fasterDecoding"]),
-    "ajxl": ("Animated JPEG XL (AJXL)", "jxl", "animation", ["cjxl"], ["quality", "effort", "fasterDecoding"]),
-    "av1-mp4": ("AV1 / MP4", "mp4", "video", ["libsvtav1", "libaom-av1"], ["quality", "effort"]),
-    "av1-mkv": ("AV1 / MKV", "mkv", "video", ["libsvtav1", "libaom-av1"], ["quality", "effort"]),
-    "av1-webm": ("AV1 / WebM", "webm", "video", ["libsvtav1", "libaom-av1"], ["quality", "effort"]),
+    "jxl": ("JPEG XL", "jxl", "image", ["cjxl", "libjxl"], ["quality", "effort", "decodingSpeed", "fasterDecoding"]),
+    "ajxl": ("Animated JPEG XL (AJXL)", "jxl", "animation", ["cjxl"], ["quality", "effort", "decodingSpeed", "fasterDecoding"]),
+    "av1-mp4": ("AV1 / MP4", "mp4", "video", ["libsvtav1", "libaom-av1"], ["quality", "effort", "decodingSpeed"]),
+    "av1-mkv": ("AV1 / MKV", "mkv", "video", ["libsvtav1", "libaom-av1"], ["quality", "effort", "decodingSpeed"]),
+    "av1-webm": ("AV1 / WebM", "webm", "video", ["libsvtav1", "libaom-av1"], ["quality", "effort", "decodingSpeed"]),
     "h264": ("H.264 / MP4", "mp4", "video", ["libx264"], ["quality", "effort"]),
     "hevc": ("HEVC / MP4", "mp4", "video", ["libx265"], ["quality", "effort"]),
     "vp9": ("VP9 / WebM", "webm", "video", ["libvpx-vp9"], ["quality", "effort"]),
@@ -43,7 +43,7 @@ FORMATS = {
     "jpeg": ("JPEG", "jpg", "image", ["mjpeg"], ["quality"]),
     "png": ("PNG", "png", "image", ["png"], ["effort"]),
     "webp": ("WebP (still or animated)", "webp", "animation", ["libwebp_anim", "libwebp"], ["quality", "effort", "lossless"]),
-    "avif": ("AVIF", "avif", "image", ["libaom-av1"], ["quality", "effort"]),
+    "avif": ("AVIF", "avif", "image", ["libaom-av1"], ["quality", "effort", "decodingSpeed"]),
     "gif": ("GIF", "gif", "animation", ["gif"], []),
     "apng": ("Animated PNG", "png", "animation", ["apng"], ["effort"]),
     "tiff": ("TIFF", "tiff", "image", ["tiff"], []),
@@ -57,6 +57,8 @@ GPU = {
     "vp9": ["vp9_qsv", "vp9_vaapi"],
 }
 _capabilities_cache: tuple[float, dict] | None = None
+_aom_decoding_speed_cache: tuple[float, bool] | None = None
+AV1_DECODING_SPEED_FORMATS = {"av1-mp4", "av1-mkv", "av1-webm", "avif"}
 
 
 def run(args: list[str], cancelled=None, timeout=TIMEOUT, stdout_file=None, offline_models=False) -> str:
@@ -86,10 +88,7 @@ def run(args: list[str], cancelled=None, timeout=TIMEOUT, stdout_file=None, offl
             return stdout.read(4 * 1024 * 1024).decode("utf-8", "replace")
         finally:
             if not success and own_group:
-                try:
-                    os.killpg(proc.pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
+                kill_process_tree(proc.pid)
             elif proc.poll() is None:
                 if os.name == "nt" and cancelled is not None:
                     subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
@@ -101,6 +100,51 @@ def run(args: list[str], cancelled=None, timeout=TIMEOUT, stdout_file=None, offl
 def ffmpeg_prefix() -> list[str]:
     return [FFMPEG, "-nostdin", "-hide_banner", "-loglevel", "error", "-threads", str(THREADS),
             "-filter_threads", "1", "-filter_complex_threads", "1"]
+
+
+def linux_descendant_pids(root_pid: int) -> list[int]:
+    """Return child process IDs deepest-first for restricted Linux containers."""
+    proc_root = Path("/proc")
+    if not proc_root.is_dir():
+        return []
+    children: dict[int, list[int]] = {}
+    for entry in proc_root.iterdir():
+        if not entry.name.isdigit():
+            continue
+        try:
+            stat = (entry / "stat").read_text()
+            fields = stat[stat.rfind(")") + 2:].split()
+            if len(fields) > 1:
+                children.setdefault(int(fields[1]), []).append(int(entry.name))
+        except (OSError, ValueError):
+            continue
+
+    result: list[int] = []
+
+    def visit(parent: int) -> None:
+        for child in children.get(parent, []):
+            visit(child)
+            result.append(child)
+
+    visit(root_pid)
+    return result
+
+
+def kill_process_tree(root_pid: int) -> None:
+    """Stop our encoder and any descendants, even if they left its process group."""
+    for pid in linux_descendant_pids(root_pid):
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+    try:
+        os.killpg(root_pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    try:
+        os.kill(root_pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
 
 
 def device_args(encoder: str) -> list[str]:
@@ -119,7 +163,22 @@ def gpu_usable(encoder: str) -> bool:
         return False
 
 
-def capabilities(probe_gpu=True, only_format=None) -> dict:
+def aom_decoding_speed_usable() -> bool:
+    """Probe the actual libaom option instead of inferring it from version strings."""
+    global _aom_decoding_speed_cache
+    if _aom_decoding_speed_cache and time.monotonic() - _aom_decoding_speed_cache[0] < 300:
+        return _aom_decoding_speed_cache[1]
+    try:
+        run(ffmpeg_prefix() + ["-f", "lavfi", "-i", "color=size=128x128:rate=1", "-frames:v", "1",
+            "-c:v", "libaom-av1", "-aom-params", "enable-low-complexity-decode=1", "-f", "null", "-"], timeout=20)
+        supported = True
+    except (OSError, RuntimeError):
+        supported = False
+    _aom_decoding_speed_cache = time.monotonic(), supported
+    return supported
+
+
+def capabilities(probe_gpu=True, only_format=None, probe_decoding_speed=True) -> dict:
     global _capabilities_cache
     if _capabilities_cache and time.monotonic() - _capabilities_cache[0] < 300:
         return _capabilities_cache[1]
@@ -141,14 +200,22 @@ def capabilities(probe_gpu=True, only_format=None) -> dict:
             faster_decoding = b"--faster_decoding" in help_result.stdout
         except (OSError, subprocess.TimeoutExpired):
             faster_decoding = False
+    av1_decoding_speed = (
+        probe_decoding_speed and "libaom-av1" in encoders and aom_decoding_speed_usable()
+    )
     formats = []
     for key, (label, ext, family, candidates, controls) in FORMATS.items():
         cpu = [e for e in candidates if e == "cjxl" and jxl_tools]
         cpu += [e for e in candidates if e != "cjxl" and e in encoders]
         hardware = gpu.get(key.split("-")[0], [])
-        controls = [c for c in controls if c != "fasterDecoding" or faster_decoding]
+        controls = [c for c in controls if (
+            (c not in ("decodingSpeed", "fasterDecoding")) or
+            (key in ("jxl", "ajxl") and faster_decoding) or
+            (key in AV1_DECODING_SPEED_FORMATS and av1_decoding_speed)
+        )]
         formats.append({"id": key, "label": label, "extension": ext, "family": family,
                         "cpu": cpu, "gpu": hardware, "controls": controls,
+                        "decodingSpeedLevels": 4 if key in ("jxl", "ajxl") and faster_decoding else 1 if key in AV1_DECODING_SPEED_FORMATS and av1_decoding_speed else 0,
                         "available": bool(cpu or hardware)})
     value = {"formats": formats, "upscalers": upscaler.capabilities(), "version": 2}
     if probe_gpu and only_format is None:
@@ -157,9 +224,15 @@ def capabilities(probe_gpu=True, only_format=None) -> dict:
 
 
 def options(raw: dict) -> dict:
-    if not isinstance(raw, dict) or set(raw) - {"format", "hardware", "quality", "effort", "distance", "fasterDecoding", "lossless", "allowLarger", "dropAudio", "allowAlphaLoss", "upscaler", "upscaleScale"}:
+    if not isinstance(raw, dict) or set(raw) - {"format", "hardware", "quality", "effort", "distance", "decodingSpeed", "fasterDecoding", "lossless", "allowLarger", "dropAudio", "allowAlphaLoss", "upscaler", "upscaleScale"}:
         raise ValueError("unknown conversion option")
-    o = {"format": "jxl", "hardware": "auto", "quality": 90 if raw.get("format", "jxl") in ("jxl", "ajxl") else 80, "effort": 7, "distance": 1, "fasterDecoding": 0,
+    raw = dict(raw)
+    generic_speed = raw.pop("decodingSpeed", None)
+    legacy_speed = raw.pop("fasterDecoding", None)
+    if generic_speed is not None and legacy_speed is not None and generic_speed != legacy_speed:
+        raise ValueError("decodingSpeed and legacy fasterDecoding must match when both are supplied")
+    decode_speed = generic_speed if generic_speed is not None else legacy_speed if legacy_speed is not None else 0
+    o = {"format": "jxl", "hardware": "auto", "quality": 90 if raw.get("format", "jxl") in ("jxl", "ajxl") else 80, "effort": 7, "distance": 1, "decodingSpeed": decode_speed,
          "lossless": False, "allowLarger": False, "dropAudio": False, "allowAlphaLoss": False,
          "upscaler": "", "upscaleScale": 2, **raw}
     if o["format"] not in FORMATS or o["hardware"] not in ("cpu", "gpu", "auto"):
@@ -173,10 +246,9 @@ def options(raw: dict) -> dict:
     if o["upscaler"] not in ("", "waifu2x", "seedvr2") or isinstance(o["upscaleScale"], bool) or o["upscaleScale"] not in (2, 4):
         raise ValueError("choose waifu2x or SeedVR2 and a scale of 2 or 4")
     o["upscaleScale"] = int(o["upscaleScale"])
-    if isinstance(o["fasterDecoding"], bool) or not isinstance(o["fasterDecoding"], int) or not 0 <= o["fasterDecoding"] <= 4:
-        raise ValueError("fasterDecoding must be an integer between 0 and 4")
-    if o["format"] not in ("jxl", "ajxl") and o["fasterDecoding"] != 0:
-        raise ValueError("fasterDecoding is only supported for JPEG XL")
+    speed_limit = 4 if o["format"] in ("jxl", "ajxl") else 1 if o["format"] in AV1_DECODING_SPEED_FORMATS else 0
+    if isinstance(o["decodingSpeed"], bool) or not isinstance(o["decodingSpeed"], int) or not 0 <= o["decodingSpeed"] <= speed_limit:
+        raise ValueError(f"decodingSpeed must be an integer between 0 and {speed_limit} for {o['format']}")
     for name in ("lossless", "allowLarger", "dropAudio", "allowAlphaLoss"):
         if not isinstance(o[name], bool):
             raise ValueError(f"{name} must be a boolean")
@@ -191,8 +263,8 @@ def options(raw: dict) -> dict:
 def jxl_encoder_args(source: Path, output: Path, o: dict) -> list[str]:
     args = ["cjxl", str(source), str(output), "--distance=" + str(o["distance"]),
             "--effort=" + str(int(o["effort"])), "--num_threads=" + str(THREADS)]
-    if o["fasterDecoding"] > 0:
-        args.append("--faster_decoding=" + str(o["fasterDecoding"]))
+    if o["decodingSpeed"] > 0:
+        args.append("--faster_decoding=" + str(o["decodingSpeed"]))
     return args
 
 
@@ -410,7 +482,15 @@ def video_quality(encoder: str, o: dict) -> list[str]:
         return ["-rc_mode", "CQP", "-qp", str(max(1, crf))]
     if encoder == "libsvtav1":
         return ["-crf", str(crf), "-preset", str(13 - effort), "-svtav1-params", "lp=" + str(THREADS)]
-    if encoder in ("libaom-av1", "libvpx-vp9"):
+    if encoder == "libaom-av1":
+        cpu_used = 9 - effort
+        args = ["-crf", str(crf), "-b:v", "0"]
+        if o["decodingSpeed"] > 0:
+            # libaom's low-complexity decode tool is defined for cpu-used 1–3.
+            cpu_used = min(3, max(1, cpu_used))
+            args += ["-aom-params", "enable-low-complexity-decode=1"]
+        return args + ["-cpu-used", str(cpu_used)]
+    if encoder == "libvpx-vp9":
         return ["-crf", str(crf), "-b:v", "0", "-cpu-used", str(9 - effort)]
     return ["-crf", str(crf), "-preset", ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"][effort - 1]]
 
@@ -423,11 +503,20 @@ def convert(source: Path, output: Path, raw: dict, cancelled=None) -> dict:
         raise ValueError("output already exists")
     # The processor selection controls inference for image upscales. PNG/JXL
     # encoding uses CPU codecs even when the upscaler must run on the GPU.
-    encoding_hardware = "cpu" if o["upscaler"] and family != "video" else o["hardware"]
-    cap = next(f for f in capabilities(encoding_hardware != "cpu", fmt)["formats"] if f["id"] == fmt)
+    low_complexity_av1 = o["decodingSpeed"] > 0 and fmt in AV1_DECODING_SPEED_FORMATS
+    if low_complexity_av1 and o["hardware"] == "gpu":
+        raise ValueError("AV1 decode-speed mode requires the libaom CPU encoder; choose CPU or Auto")
+    encoding_hardware = "cpu" if low_complexity_av1 or (o["upscaler"] and family != "video") else o["hardware"]
+    cap = next(f for f in capabilities(
+        encoding_hardware != "cpu", fmt, probe_decoding_speed=low_complexity_av1
+    )["formats"] if f["id"] == fmt)
+    if low_complexity_av1 and ("decodingSpeed" not in cap["controls"] or "libaom-av1" not in cap["cpu"]):
+        raise ValueError("this worker does not support AV1 low-complexity decode mode with libaom")
     candidates = cap["gpu"] if encoding_hardware == "gpu" else cap["cpu"]
     if encoding_hardware == "auto":
         candidates = cap["gpu"] or cap["cpu"]
+    if low_complexity_av1:
+        candidates = ["libaom-av1"]
     if not candidates:
         raise ValueError(f"{fmt} has no working {encoding_hardware} encoder on this worker")
     encoder = candidates[0]

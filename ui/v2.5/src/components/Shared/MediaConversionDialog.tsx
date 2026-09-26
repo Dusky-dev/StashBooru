@@ -30,7 +30,7 @@ interface Options {
   hardware: string;
   quality: number;
   effort: number;
-  fasterDecoding: number;
+  decodingSpeed: number;
   lossless: boolean;
   allowLarger: boolean;
   dropAudio: boolean;
@@ -82,6 +82,29 @@ interface State {
   job?: Job;
 }
 const GiB = 1024 ** 3;
+
+function decodingSpeedLevels(format: Format) {
+  if (format.decodingSpeedLevels) return format.decodingSpeedLevels;
+  if (format.controls.includes("fasterDecoding")) return 4;
+  return format.controls.includes("decodingSpeed") &&
+    (format.id.startsWith("av1-") || format.id === "avif")
+    ? 1
+    : 0;
+}
+
+function supportsControl(format: Format, control: string) {
+  return (
+    format.controls.includes(control) ||
+    (control === "decodingSpeed" && format.controls.includes("fasterDecoding"))
+  );
+}
+
+function decodingSpeedLabel(format: Format, speed: number) {
+  const levels = decodingSpeedLevels(format);
+  if (levels === 1)
+    return `, AV1 low-complexity decode ${speed > 0 ? "on" : "off"}`;
+  return levels > 1 ? `, decode speed ${speed}/${levels}` : "";
+}
 
 function bytes(n: number) {
   const unit = Math.abs(n) >= GiB ? GiB : 1024 ** 2;
@@ -138,7 +161,7 @@ export const MediaConversionDialog: React.FC<{
     hardware: "auto",
     quality: kind === "scene" ? 80 : 90,
     effort: 7,
-    fasterDecoding: 2,
+    decodingSpeed: kind === "scene" ? 0 : 2,
     lossless: false,
     allowLarger: false,
     dropAudio: false,
@@ -159,19 +182,41 @@ export const MediaConversionDialog: React.FC<{
   const supports = (control: string) =>
     chosenFormats.some(
       (f) =>
-        f.controls.includes(control) ||
+        supportsControl(f, control) ||
         (control === "quality" && f.controls.includes("distance"))
     );
-  const encodersFor = (f: Format) =>
-    options.hardware === "gpu"
+  const decodingSpeedFor = (format: Format) => {
+    if (!supportsControl(format, "decodingSpeed")) return 0;
+    if (!useEncodingDefaults) return options.decodingSpeed;
+    const relevant = plans.filter((plan) => plan.output === format.id);
+    const plan = relevant[0] ?? plans[0];
+    const speed = plan?.decodingSpeed ?? plan?.fasterDecoding ?? 0;
+    return decodingSpeedLevels(format) === 1 ? (speed > 0 ? 1 : 0) : speed;
+  };
+  const encodersFor = (f: Format) => {
+    if (
+      decodingSpeedFor(f) > 0 &&
+      decodingSpeedLevels(f) === 1 &&
+      f.controls.includes("decodingSpeed")
+    ) {
+      return f.cpu.filter((encoder) => encoder === "libaom-av1");
+    }
+    return options.hardware === "gpu"
       ? f.gpu
       : options.hardware === "auto" && f.gpu.length
         ? f.gpu
         : f.cpu;
+  };
+  const gpuDecodeSpeedConflict =
+    options.hardware === "gpu" &&
+    chosenFormats.some(
+      (f) => decodingSpeedFor(f) > 0 && decodingSpeedLevels(f) === 1
+    );
   const canEncode =
     outputIDs.length > 0 &&
     chosenFormats.length === outputIDs.length &&
-    chosenFormats.every((f) => f.available && encodersFor(f).length > 0);
+    chosenFormats.every((f) => f.available && encodersFor(f).length > 0) &&
+    !gpuDecodeSpeedConflict;
   const targetsJSON = JSON.stringify(
     selectedIds.map((id) => ({ kind, id: Number(id) }))
   );
@@ -342,9 +387,21 @@ export const MediaConversionDialog: React.FC<{
                   as="select"
                   value={options.format}
                   disabled={busy || loadingCapabilities}
-                  onChange={(e) =>
-                    setOptions({ ...options, format: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const format = e.target.value;
+                    const selected = formats.find((f) => f.id === format);
+                    const levels = selected ? decodingSpeedLevels(selected) : 0;
+                    setOptions({
+                      ...options,
+                      format,
+                      decodingSpeed:
+                        format === "auto"
+                          ? options.decodingSpeed
+                          : levels > 0
+                            ? Math.min(options.decodingSpeed, levels)
+                            : 0,
+                    });
+                  }}
                 >
                   <option value="auto">
                     Saved defaults
@@ -398,7 +455,12 @@ export const MediaConversionDialog: React.FC<{
                     value="gpu"
                     disabled={
                       !chosenFormats.length ||
-                      chosenFormats.some((f) => !f.gpu.length)
+                      chosenFormats.some((f) => !f.gpu.length) ||
+                      chosenFormats.some(
+                        (f) =>
+                          decodingSpeedFor(f) > 0 &&
+                          decodingSpeedLevels(f) === 1
+                      )
                     }
                   >
                     GPU
@@ -410,9 +472,19 @@ export const MediaConversionDialog: React.FC<{
                       (f) => `${f.label}: ${encodersFor(f)[0] ?? "unavailable"}`
                     )
                     .join(" · ")}
+                  {chosenFormats.some((f) => decodingSpeedFor(f) > 0) &&
+                    options.hardware === "auto" &&
+                    chosenFormats.some((f) => decodingSpeedLevels(f) === 1) &&
+                    " · AV1 decode-speed mode uses the CPU libaom encoder"}
                 </Form.Text>
               </Form.Group>
             </Row>
+            {gpuDecodeSpeedConflict && (
+              <Alert variant="warning">
+                AV1 low-complexity decode uses the CPU libaom encoder. Choose
+                Auto or CPU to convert with this setting.
+              </Alert>
+            )}
             <p className="text-muted">
               Worker:{" "}
               {resolvedBackend === "remote"
@@ -449,10 +521,13 @@ export const MediaConversionDialog: React.FC<{
                 {!loadingPreview &&
                   plans.map((plan, index) => {
                     const output = formats.find((f) => f.id === plan.output);
-                    const decodeSpeed = output?.controls.includes(
-                      "fasterDecoding"
-                    )
-                      ? `, decode speed ${useEncodingDefaults ? plan.fasterDecoding : options.fasterDecoding}/4`
+                    const decodeSpeed = output
+                      ? decodingSpeedLabel(
+                          output,
+                          useEncodingDefaults
+                            ? (plan.decodingSpeed ?? plan.fasterDecoding ?? 0)
+                            : options.decodingSpeed
+                        )
                       : "";
                     return (
                       <div
@@ -511,26 +586,47 @@ export const MediaConversionDialog: React.FC<{
                       />
                     </Form.Group>
                   ))}
-                {supports("fasterDecoding") && (
-                  <Form.Group as={Col} controlId="converter-faster-decoding">
-                    <Form.Label>JXL decode speed tier (0–4)</Form.Label>
-                    <Form.Control
-                      className="text-input"
-                      type="number"
-                      min={0}
-                      max={4}
-                      step={1}
-                      value={options.fasterDecoding}
-                      disabled={busy}
-                      onChange={(e) =>
-                        setOptions({
-                          ...options,
-                          fasterDecoding: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </Form.Group>
-                )}
+                {supports("decodingSpeed") &&
+                  (() => {
+                    const levels = Math.max(
+                      ...chosenFormats.map(decodingSpeedLevels)
+                    );
+                    return levels === 1 ? (
+                      <Form.Group as={Col} controlId="converter-decoding-speed">
+                        <Form.Check
+                          type="checkbox"
+                          label="AV1 low-complexity decode (CPU)"
+                          checked={options.decodingSpeed > 0}
+                          disabled={busy || options.hardware === "gpu"}
+                          onChange={(e) =>
+                            setOptions({
+                              ...options,
+                              decodingSpeed: e.target.checked ? 1 : 0,
+                            })
+                          }
+                        />
+                      </Form.Group>
+                    ) : (
+                      <Form.Group as={Col} controlId="converter-decoding-speed">
+                        <Form.Label>Decode speed tier (0–{levels})</Form.Label>
+                        <Form.Control
+                          className="text-input"
+                          type="number"
+                          min={0}
+                          max={levels}
+                          step={1}
+                          value={options.decodingSpeed}
+                          disabled={busy}
+                          onChange={(e) =>
+                            setOptions({
+                              ...options,
+                              decodingSpeed: Number(e.target.value),
+                            })
+                          }
+                        />
+                      </Form.Group>
+                    );
+                  })()}
               </Row>
             )}
             {supports("quality") && (
@@ -540,11 +636,13 @@ export const MediaConversionDialog: React.FC<{
                 effort trades encoding time for compression.
               </p>
             )}
-            {supports("fasterDecoding") && (
+            {supports("decodingSpeed") && (
               <p className="text-muted">
-                Higher JXL decode speed tiers favor smoother playback but can
-                increase file size or reduce quality. Tier 0 uses libjxl’s
-                default.
+                Decode-speed controls depend on the selected codec. JPEG XL
+                supports tiers 0–4. AV1 can enable low-complexity decoding on a
+                compatible libaom CPU encoder. This changes how the output is
+                encoded; browser playback speed still depends on the browser
+                decoder and hardware.
               </p>
             )}
             <Form.Check

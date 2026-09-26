@@ -21,7 +21,8 @@ type InputFormat struct {
 type EncodingDefaults struct {
 	Quality        float64 `json:"quality"`
 	Effort         int     `json:"effort"`
-	FasterDecoding *int    `json:"fasterDecoding,omitempty"`
+	DecodingSpeed  *int    `json:"decodingSpeed,omitempty"`
+	FasterDecoding *int    `json:"fasterDecoding,omitempty"` // Legacy JXL-only key.
 }
 
 func ValidateEncodingDefaults(defaults map[string]EncodingDefaults, backend string) error {
@@ -33,7 +34,10 @@ func ValidateEncodingDefaults(defaults map[string]EncodingDefaults, backend stri
 		for _, f := range InputFormats {
 			known = known || f.ID == input
 		}
-		if !known || math.IsNaN(value.Quality) || math.IsInf(value.Quality, 0) || value.Quality < 0 || value.Quality > 100 || value.Effort < 1 || value.Effort > 9 || (value.FasterDecoding != nil && (*value.FasterDecoding < 0 || *value.FasterDecoding > 4)) {
+		if !known || math.IsNaN(value.Quality) || math.IsInf(value.Quality, 0) || value.Quality < 0 || value.Quality > 100 || value.Effort < 1 || value.Effort > 9 ||
+			(value.DecodingSpeed != nil && (*value.DecodingSpeed < 0 || *value.DecodingSpeed > 4)) ||
+			(value.FasterDecoding != nil && (*value.FasterDecoding < 0 || *value.FasterDecoding > 4)) ||
+			(value.DecodingSpeed != nil && value.FasterDecoding != nil && *value.DecodingSpeed != *value.FasterDecoding) {
 			return fmt.Errorf("invalid encoding defaults for %s", input)
 		}
 	}
@@ -42,10 +46,7 @@ func ValidateEncodingDefaults(defaults map[string]EncodingDefaults, backend stri
 
 func (c Config) DefaultEncoding(input string) EncodingDefaults {
 	if value, ok := c.EncodingDefaults[input]; ok {
-		if value.FasterDecoding == nil {
-			value.FasterDecoding = defaultFasterDecoding(input)
-		}
-		return value
+		return value.withDefaultDecodingSpeed(input)
 	}
 	fallback := "image"
 	for _, f := range InputFormats {
@@ -54,19 +55,27 @@ func (c Config) DefaultEncoding(input string) EncodingDefaults {
 		}
 	}
 	if value, ok := c.EncodingDefaults[fallback]; ok {
-		if value.FasterDecoding == nil {
-			value.FasterDecoding = defaultFasterDecoding(input)
-		}
-		return value
+		return value.withDefaultDecodingSpeed(input)
 	}
 	quality := 90.0
 	if fallback == "video" {
 		quality = 80
 	}
-	return EncodingDefaults{Quality: quality, Effort: 7, FasterDecoding: defaultFasterDecoding(input)}
+	return EncodingDefaults{Quality: quality, Effort: 7, DecodingSpeed: defaultDecodingSpeed(input)}
 }
 
-func defaultFasterDecoding(input string) *int {
+func (e EncodingDefaults) withDefaultDecodingSpeed(input string) EncodingDefaults {
+	if e.DecodingSpeed == nil {
+		if e.FasterDecoding != nil {
+			e.DecodingSpeed = e.FasterDecoding
+		} else {
+			e.DecodingSpeed = defaultDecodingSpeed(input)
+		}
+	}
+	return e
+}
+
+func defaultDecodingSpeed(input string) *int {
 	value := 0
 	for _, format := range InputFormats {
 		if format.ID == input && format.Family == "animation" {
@@ -76,10 +85,20 @@ func defaultFasterDecoding(input string) *int {
 	}
 	return &value
 }
+func (e EncodingDefaults) DecodingSpeedValue() int {
+	if e.DecodingSpeed != nil {
+		return *e.DecodingSpeed
+	}
+	if e.FasterDecoding != nil {
+		return *e.FasterDecoding
+	}
+	return 0
+}
 
+// FasterDecodingValue keeps callers that consume older persisted preferences working.
 func (e EncodingDefaults) FasterDecodingValue() int {
 	if e.FasterDecoding == nil {
-		return 0
+		return e.DecodingSpeedValue()
 	}
 	return *e.FasterDecoding
 }
@@ -100,11 +119,11 @@ var InputFormats = []InputFormat{
 }
 
 var OutputFormats = []Format{
-	{ID: "jxl", Label: "JPEG XL", Extension: "jxl", Family: "image"},
-	{ID: "ajxl", Label: "Animated JPEG XL (AJXL)", Extension: "jxl", Family: "animation"},
-	{ID: "av1-mp4", Label: "AV1 / MP4", Extension: "mp4", Family: "video"},
-	{ID: "av1-mkv", Label: "AV1 / MKV", Extension: "mkv", Family: "video"},
-	{ID: "av1-webm", Label: "AV1 / WebM", Extension: "webm", Family: "video"},
+	{ID: "jxl", Label: "JPEG XL", Extension: "jxl", Family: "image", Controls: []string{"quality", "effort", "decodingSpeed"}, DecodingSpeedLevels: 4},
+	{ID: "ajxl", Label: "Animated JPEG XL (AJXL)", Extension: "jxl", Family: "animation", Controls: []string{"quality", "effort", "decodingSpeed"}, DecodingSpeedLevels: 4},
+	{ID: "av1-mp4", Label: "AV1 / MP4", Extension: "mp4", Family: "video", Controls: []string{"quality", "effort", "decodingSpeed"}, DecodingSpeedLevels: 1},
+	{ID: "av1-mkv", Label: "AV1 / MKV", Extension: "mkv", Family: "video", Controls: []string{"quality", "effort", "decodingSpeed"}, DecodingSpeedLevels: 1},
+	{ID: "av1-webm", Label: "AV1 / WebM", Extension: "webm", Family: "video", Controls: []string{"quality", "effort", "decodingSpeed"}, DecodingSpeedLevels: 1},
 	{ID: "h264", Label: "H.264 / MP4", Extension: "mp4", Family: "video"},
 	{ID: "hevc", Label: "HEVC / MP4", Extension: "mp4", Family: "video"},
 	{ID: "vp9", Label: "VP9 / WebM", Extension: "webm", Family: "video"},
@@ -112,7 +131,7 @@ var OutputFormats = []Format{
 	{ID: "jpeg", Label: "JPEG", Extension: "jpg", Family: "image"},
 	{ID: "png", Label: "PNG", Extension: "png", Family: "image"},
 	{ID: "webp", Label: "WebP (still or animated)", Extension: "webp", Family: "animation"},
-	{ID: "avif", Label: "AVIF", Extension: "avif", Family: "image"},
+	{ID: "avif", Label: "AVIF", Extension: "avif", Family: "image", Controls: []string{"quality", "effort", "decodingSpeed"}, DecodingSpeedLevels: 1},
 	{ID: "gif", Label: "GIF", Extension: "gif", Family: "animation"},
 	{ID: "apng", Label: "Animated PNG", Extension: "png", Family: "animation"},
 	{ID: "tiff", Label: "TIFF", Extension: "tiff", Family: "image"},
