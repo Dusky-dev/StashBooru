@@ -94,7 +94,8 @@ func (s Store) ToggleRestore(ctx context.Context, id string) error {
 		if err := s.Repository.Swap(context.WithoutCancel(ctx), current, before); err != nil {
 			return err
 		}
-		if err := removeMatching(after.Base().Path, afterHash); err != nil {
+		warning, err := removeMatchingOrWarn(after.Base().Path, afterHash)
+		if err != nil {
 			return err
 		}
 		if err := os.Remove(s.backup(id)); err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -102,6 +103,7 @@ func (s Store) ToggleRestore(ctx context.Context, id string) error {
 		}
 		r.Cached = false
 		r.Status = "restored"
+		appendRecordWarning(r, warning)
 		if err := s.save(r); err != nil {
 			return err
 		}
@@ -141,13 +143,15 @@ func (s Store) ToggleRestore(ctx context.Context, id string) error {
 	if err := s.Repository.Swap(context.WithoutCancel(ctx), current, after); err != nil {
 		return err
 	}
-	if err := removeMatching(before.Base().Path, beforeHash); err != nil {
+	warning, err := removeMatchingOrWarn(before.Base().Path, beforeHash)
+	if err != nil {
 		return err
 	}
 	if err := os.Remove(s.convertedBackup(id)); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
 	r.Status = "complete"
+	appendRecordWarning(r, warning)
 	if err := s.save(r); err != nil {
 		return err
 	}
