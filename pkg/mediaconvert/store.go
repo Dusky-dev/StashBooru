@@ -379,18 +379,53 @@ func matches(path, checksum string) bool {
 	return err == nil && checksum != "" && actual == checksum
 }
 
+var errFileChanged = errors.New("file changed; refusing to remove")
+
 func removeMatching(path, checksum string) error {
-	if _, err := os.Lstat(path); errors.Is(err, os.ErrNotExist) {
+	stat, err := os.Lstat(path)
+	if errors.Is(err, os.ErrNotExist) {
 		return nil
 	}
-	if !matches(path, checksum) {
-		return fmt.Errorf("file changed; refusing to remove %s", path)
+	if err != nil {
+		return err
+	}
+	if !stat.Mode().IsRegular() {
+		return fmt.Errorf("%w: %s", errFileChanged, path)
+	}
+	actual, err := MD5(path)
+	if err != nil {
+		return err
+	}
+	if checksum == "" || actual != checksum {
+		return fmt.Errorf("%w: %s", errFileChanged, path)
 	}
 	if err := os.Remove(path); err != nil {
 		return err
 	}
 	syncDir(filepath.Dir(path))
 	return nil
+}
+
+// removeMatchingOrWarn preserves an externally changed copy while allowing a
+// conversion or restore that already activated its other representation to
+// finish. Callers persist the warning in the conversion history.
+func removeMatchingOrWarn(path, checksum string) (string, error) {
+	err := removeMatching(path, checksum)
+	if errors.Is(err, errFileChanged) {
+		return err.Error() + " (file kept)", nil
+	}
+	return "", err
+}
+
+func appendRecordWarning(r *Record, warning string) {
+	if warning == "" {
+		return
+	}
+	if r.Error == "" {
+		r.Error = warning
+		return
+	}
+	r.Error += "; " + warning
 }
 
 func SameFile(a, b models.File) bool {
@@ -568,10 +603,12 @@ func (s Store) Convert(ctx context.Context, fileID models.FileID, batch string, 
 	if err := s.save(r); err != nil {
 		return r, err
 	}
-	if err := removeMatching(base.Path, checksum); err != nil {
+	warning, err := removeMatchingOrWarn(base.Path, checksum)
+	if err != nil {
 		return r, err
 	}
 	r.Status = "complete"
+	appendRecordWarning(r, warning)
 	if err := s.save(r); err != nil {
 		return r, err
 	}
@@ -623,28 +660,36 @@ func (s Store) Recover(ctx context.Context) error {
 		case r.Status == "restoring":
 			switch {
 			case isBefore && matches(before.Base().Path, before.Base().Fingerprints.GetString("md5")):
-				if err := removeMatching(after.Base().Path, after.Base().Fingerprints.GetString("md5")); err != nil {
+				warning, err := removeMatchingOrWarn(after.Base().Path, after.Base().Fingerprints.GetString("md5"))
+				if err != nil {
 					return err
 				}
+				appendRecordWarning(r, warning)
 				r.Status = "restored"
 			case isAfter:
-				if err := removeMatching(before.Base().Path, before.Base().Fingerprints.GetString("md5")); err != nil {
+				warning, err := removeMatchingOrWarn(before.Base().Path, before.Base().Fingerprints.GetString("md5"))
+				if err != nil {
 					return err
 				}
+				appendRecordWarning(r, warning)
 				r.Status = "complete"
 			default:
 				return fmt.Errorf("conversion %s needs manual recovery; files changed", r.ID)
 			}
 		case isAfter && matches(after.Base().Path, after.Base().Fingerprints.GetString("md5")):
-			if err := removeMatching(before.Base().Path, before.Base().Fingerprints.GetString("md5")); err != nil {
+			warning, err := removeMatchingOrWarn(before.Base().Path, before.Base().Fingerprints.GetString("md5"))
+			if err != nil {
 				return err
 			}
+			appendRecordWarning(r, warning)
 			r.Status = "complete"
 		case isBefore && matches(before.Base().Path, before.Base().Fingerprints.GetString("md5")):
-			if err := removeMatching(after.Base().Path, after.Base().Fingerprints.GetString("md5")); err != nil {
+			warning, err := removeMatchingOrWarn(after.Base().Path, after.Base().Fingerprints.GetString("md5"))
+			if err != nil {
 				return err
 			}
 			r.Status, r.Error = "failed", "activation interrupted; source retained"
+			appendRecordWarning(r, warning)
 		default:
 			return fmt.Errorf("conversion %s needs manual recovery; files changed", r.ID)
 		}
