@@ -25,7 +25,7 @@ import { ImageEditPanel } from "./ImageEditPanel";
 import { ImageDetailPanel } from "./ImageDetailPanel";
 import { ImageKnowledgeTagDialog } from "./ImageKnowledgeTagDialog";
 import { DeleteImagesDialog } from "../DeleteImagesDialog";
-import { faEllipsisV } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsisV, faFilm } from "@fortawesome/free-solid-svg-icons";
 import { imagePath, imageTitle } from "src/core/files";
 import { isVideo } from "src/utils/visualFile";
 import NavUtils from "src/utils/navigation";
@@ -338,6 +338,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
       : undefined;
   const showFrameRate =
     frameRate !== undefined && Number.isFinite(frameRate) && frameRate > 0;
+  const isAnimated = Boolean(file && file.frame_count > 1);
   const fileFormat = useMemo(() => {
     const match = file?.path?.match(/\.([^.\\/]+)$/);
     return match?.[1]?.toLocaleUpperCase();
@@ -406,6 +407,15 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
                   <FileSize size={file.size} />
                   {fileFormat ? (
                     <span className="image-file-format">{fileFormat}</span>
+                  ) : null}
+                  {isAnimated ? (
+                    <span
+                      className="image-file-animated"
+                      title="Animated"
+                      aria-label="Animated"
+                    >
+                      <Icon icon={faFilm} />
+                    </span>
                   ) : null}
                 </span>
               ) : null}
