@@ -3149,6 +3149,64 @@ func TestImageQuerySorting(t *testing.T) {
 	}
 }
 
+func TestImageQuerySortByFormat(t *testing.T) {
+	runWithRollbackTxn(t, "sort images by file format", func(t *testing.T, ctx context.Context) {
+		formats := map[int]string{
+			0: "jxl",
+			1: "avif",
+			2: "png",
+		}
+
+		for i := 0; i < totalImages; i++ {
+			files, err := db.File.Find(ctx, imageFileIDs[i])
+			if err != nil {
+				t.Fatalf("finding image file %d: %v", i, err)
+			}
+			if len(files) != 1 {
+				t.Fatalf("expected one file for image %d, got %d", i, len(files))
+			}
+
+			imageFile, ok := files[0].(*models.ImageFile)
+			if !ok {
+				t.Fatalf("expected image file for image %d, got %T", i, files[0])
+			}
+			imageFile.Format = "zzz"
+			if format, ok := formats[i]; ok {
+				imageFile.Format = format
+			}
+			if err := db.File.Update(ctx, imageFile); err != nil {
+				t.Fatalf("updating format for image %d: %v", i, err)
+			}
+		}
+
+		perPage := -1
+		sortBy := "format"
+		direction := models.SortDirectionEnumAsc
+		result, err := db.Image.Query(ctx, models.ImageQueryOptions{
+			QueryOptions: models.QueryOptions{
+				FindFilter: &models.FindFilterType{
+					Sort:      &sortBy,
+					Direction: &direction,
+					PerPage:   &perPage,
+				},
+			},
+		})
+		if err != nil {
+			t.Fatalf("querying images by format: %v", err)
+		}
+		images, err := result.Resolve(ctx)
+		if err != nil {
+			t.Fatalf("resolving images sorted by format: %v", err)
+		}
+
+		if assert.GreaterOrEqual(t, len(images), 3) {
+			assert.Equal(t, imageIDs[1], images[0].ID, "avif should sort before jxl and png")
+			assert.Equal(t, imageIDs[0], images[1].ID, "jxl should sort before png")
+			assert.Equal(t, imageIDs[2], images[2].ID)
+		}
+	})
+}
+
 func TestImageQueryPagination(t *testing.T) {
 	withTxn(func(ctx context.Context) error {
 		perPage := 1

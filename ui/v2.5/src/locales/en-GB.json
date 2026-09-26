@@ -1219,6 +1219,7 @@
   "filter_name": "Filter name",
   "filters": "Filters",
   "folder": "Folder",
+  "format": "File Format",
   "framerate": "Frame Rate",
   "frames_per_second": "{value} fps",
   "front_page": {

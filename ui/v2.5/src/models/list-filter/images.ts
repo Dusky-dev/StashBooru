@@ -31,6 +31,7 @@ const defaultSortBy = "path";
 const sortByOptions = [
   "filesize",
   "file_count",
+  "format",
   "date",
   "resolution",
   "perceptual_similarity",

@@ -1039,6 +1039,7 @@ var imageSortOptions = sortOptions{
 	"date",
 	"file_count",
 	"file_mod_time",
+	"format",
 	"filesize",
 	"id",
 	"o_counter",
@@ -1115,6 +1116,28 @@ func (qb *ImageStore) setImageSortAndPagination(q *queryBuilder, findFilter *mod
 
 		case "file_count":
 			sortClause = getCountSort(imageTable, imagesFilesTable, imageIDColumn, direction)
+		case "format":
+			q.addJoins(
+				join{
+					sort:     true,
+					table:    imagesFilesTable,
+					as:       "format_images_files",
+					onClause: "format_images_files.image_id = images.id AND format_images_files.`primary` = 1",
+				},
+				join{
+					sort:     true,
+					table:    imageFileTable,
+					as:       "format_image_files",
+					onClause: "format_image_files.file_id = format_images_files.file_id",
+				},
+				join{
+					sort:     true,
+					table:    videoFileTable,
+					as:       "format_video_files",
+					onClause: "format_video_files.file_id = format_images_files.file_id",
+				},
+			)
+			sortClause = " ORDER BY COALESCE(NULLIF(format_image_files.format, ''), format_video_files.format, '') COLLATE NATURAL_CI " + direction
 		case "tag_count":
 			sortClause = getCountSort(imageTable, imagesTagsTable, imageIDColumn, direction)
 		case "performer_count":
