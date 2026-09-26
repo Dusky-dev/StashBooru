@@ -1197,6 +1197,7 @@ var sceneSortOptions = sortOptions{
 	"production_date",
 	"file_count",
 	"filesize",
+	"format",
 	"duration",
 	"file_mod_time",
 	"framerate",
@@ -1311,6 +1312,9 @@ func (qb *SceneStore) setSceneSort(query *queryBuilder, findFilter *models.FindF
 		sort = "mod_time"
 		addFileTable()
 		query.sortAndPagination += getSort(sort, direction, fileTable)
+	case "format":
+		addVideoFileTable()
+		query.sortAndPagination += " ORDER BY COALESCE(video_files.format, '') COLLATE NATURAL_CI " + direction
 	case "framerate":
 		sort = "frame_rate"
 		addVideoFileTable()

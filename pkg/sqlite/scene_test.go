@@ -4456,6 +4456,64 @@ func TestSceneQuerySorting(t *testing.T) {
 	}
 }
 
+func TestSceneQuerySortByFormat(t *testing.T) {
+	runWithRollbackTxn(t, "sort scenes by file format", func(t *testing.T, ctx context.Context) {
+		formats := map[int]string{
+			0: "jxl",
+			1: "avif",
+			2: "png",
+		}
+
+		for i := 0; i < totalScenes; i++ {
+			files, err := db.File.Find(ctx, sceneFileIDs[i])
+			if err != nil {
+				t.Fatalf("finding scene file %d: %v", i, err)
+			}
+			if len(files) != 1 {
+				t.Fatalf("expected one file for scene %d, got %d", i, len(files))
+			}
+
+			videoFile, ok := files[0].(*models.VideoFile)
+			if !ok {
+				t.Fatalf("expected video file for scene %d, got %T", i, files[0])
+			}
+			videoFile.Format = "zzz"
+			if format, ok := formats[i]; ok {
+				videoFile.Format = format
+			}
+			if err := db.File.Update(ctx, videoFile); err != nil {
+				t.Fatalf("updating format for scene %d: %v", i, err)
+			}
+		}
+
+		perPage := -1
+		sortBy := "format"
+		direction := models.SortDirectionEnumAsc
+		result, err := db.Scene.Query(ctx, models.SceneQueryOptions{
+			QueryOptions: models.QueryOptions{
+				FindFilter: &models.FindFilterType{
+					Sort:      &sortBy,
+					Direction: &direction,
+					PerPage:   &perPage,
+				},
+			},
+		})
+		if err != nil {
+			t.Fatalf("querying scenes by format: %v", err)
+		}
+		scenes, err := result.Resolve(ctx)
+		if err != nil {
+			t.Fatalf("resolving scenes sorted by format: %v", err)
+		}
+
+		if assert.GreaterOrEqual(t, len(scenes), 3) {
+			assert.Equal(t, sceneIDs[1], scenes[0].ID, "avif should sort before jxl and png")
+			assert.Equal(t, sceneIDs[0], scenes[1].ID, "jxl should sort before png")
+			assert.Equal(t, sceneIDs[2], scenes[2].ID)
+		}
+	})
+}
+
 func TestSceneQueryPagination(t *testing.T) {
 	perPage := 1
 	findFilter := models.FindFilterType{

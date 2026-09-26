@@ -46,6 +46,7 @@ const sortByOptions = [
   "production_date",
   "file_count",
   "filesize",
+  "format",
   "duration",
   "framerate",
   "resolution",
