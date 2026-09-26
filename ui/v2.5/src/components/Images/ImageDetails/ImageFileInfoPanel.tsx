@@ -22,41 +22,12 @@ interface IFileInfoPanelProps {
   loading?: boolean;
 }
 
-function imageFormatLabel(file: GQL.ImageFileDataFragment): string {
-  const format = file.format.toLowerCase();
-
-  if (file.frame_count > 1) {
-    switch (format) {
-      case "png":
-      case "apng":
-        return "apng";
-      case "jxl":
-      case "jpegxl":
-      case "ajxl":
-        return "ajxl";
-      case "webp":
-      case "awebp":
-        return "awebp";
-      // GIF is already specifically known as an animation format, so it keeps
-      // its normal name instead of becoming "agif".
-      case "gif":
-        return "gif";
-    }
-  }
-
-  // FFmpeg reports JPEG XL as jpegxl; use the normal file-format spelling in
-  // the details panel so the animated form naturally reads as ajxl.
-  return format === "jpegxl" ? "jxl" : format;
-}
-
 const FileInfoPanel: React.FC<IFileInfoPanelProps> = (
   props: IFileInfoPanelProps
 ) => {
   const intl = useIntl();
   const checksum = props.file.fingerprints.find((f) => f.type === "md5");
   const phash = props.file.fingerprints.find((f) => f.type === "phash");
-  const imageFormat =
-    "format" in props.file ? imageFormatLabel(props.file) : undefined;
 
   return (
     <div>
@@ -110,7 +81,6 @@ const FileInfoPanel: React.FC<IFileInfoPanelProps> = (
             value={props.file.mod_time ?? 0}
           />
         </TextField>
-        <TextField id="format" name="Format" value={imageFormat} />
         <TextField
           id="dimensions"
           value={`${props.file.width} x ${props.file.height}`}
