@@ -2,7 +2,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import { FormattedMessage } from "react-intl";
 import { Helmet } from "react-helmet";
 import { Col, Form, Row, Spinner, Tab, Tabs } from "react-bootstrap";
-import { Route, Switch, useHistory, useParams } from "react-router-dom";
+import {
+  Link,
+  Route,
+  Switch,
+  useHistory,
+  useLocation,
+  useParams,
+} from "react-router-dom";
 import cx from "classnames";
 
 import * as GQL from "src/core/generated-graphql";
@@ -44,16 +51,15 @@ interface CopyrightFormValues {
   description: string;
   aliases: string;
   parents: Copyright[];
-  children: Copyright[];
 }
 
+const noParents: Copyright[] = [];
 const emptyValues: CopyrightFormValues = {
   name: "",
   sort_name: "",
   description: "",
   aliases: "",
   parents: [],
-  children: [],
 };
 
 function aliasesFromText(value: string) {
@@ -67,61 +73,81 @@ const CopyrightDetailsPanel: React.FC<{
   copyright: GQL.CopyrightDataFragment;
   fullWidth?: boolean;
 }> = ({ copyright, fullWidth }) => {
-  function renderRelations(items: Copyright[]) {
+  function renderParentFolders(items: Copyright[]) {
     if (items.length === 0) {
       return <span className="text-muted">None</span>;
     }
     return (
       <>
-        {items.map((item) => (
-          <CopyrightLink key={item.id} copyright={item} />
+        {items.map((item, index) => (
+          <React.Fragment key={item.id}>
+            {index > 0 ? ", " : null}
+            <CopyrightLink copyright={item} />
+          </React.Fragment>
         ))}
       </>
     );
   }
 
   return (
-    <div className="detail-group">
-      <CopyrightBreadcrumb items={copyright.breadcrumb} />
-      <DetailItem
-        id="subtree-media"
-        label="Taxonomy subtree"
-        value={`${copyright.subtree_image_count} images · ${copyright.subtree_scene_count} videos · ${copyright.subtree_performer_count} characters`}
-        fullWidth={fullWidth}
-      />
-      <DetailItem
-        id="sort_name"
-        value={copyright.sort_name}
-        fullWidth={fullWidth}
-      />
-      <DetailItem
-        id="details"
-        value={copyright.description}
-        fullWidth={fullWidth}
-      />
+    <>
+      <div className="detail-group">
+        <CopyrightBreadcrumb items={copyright.breadcrumb} />
+        <DetailItem
+          id="sort_name"
+          value={copyright.sort_name}
+          fullWidth={fullWidth}
+        />
+        <DetailItem
+          id="details"
+          value={copyright.description}
+          fullWidth={fullWidth}
+        />
+      </div>
       <Tabs
-        defaultActiveKey="main"
+        defaultActiveKey="parents"
         id={`copyright-hierarchy-tabs-${copyright.id}`}
-        className="mt-3"
+        className="copyright-hierarchy-tabs mt-3"
       >
-        <Tab eventKey="main" title="Main">
+        <Tab eventKey="parents" title="Parent folders">
           <div className="pt-3">
             <DetailItem
-              id="parent-series"
-              label="Main Copyright"
-              value={renderRelations(copyright.parents)}
+              id="parent-folders"
+              label="Parent folders"
+              value={renderParentFolders(copyright.parents)}
               fullWidth
             />
           </div>
         </Tab>
-        <Tab eventKey="sub" title="Sub">
+        <Tab
+          eventKey="children"
+          title={`Subfolders (${copyright.ordered_children.length})`}
+        >
           <div className="pt-3">
-            <DetailItem
-              id="sub-series"
-              label="Sub Copyrights"
-              value={renderRelations(copyright.ordered_children)}
-              fullWidth
-            />
+            <div
+              className="d-flex justify-content-between align-items-center mb-2"
+            >
+              <span className="text-muted small">
+                Open a subfolder to browse its contents.
+              </span>
+              <Link
+                className="btn btn-secondary btn-sm"
+                to={`/copyrights/new?parent_id=${copyright.id}`}
+              >
+                New subfolder
+              </Link>
+            </div>
+            {copyright.ordered_children.length > 0 ? (
+              <ul className="list-unstyled mb-2">
+                {copyright.ordered_children.map((child) => (
+                  <li key={child.id} className="py-1">
+                    <CopyrightLink copyright={child} />
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-muted mb-2">No subfolders yet.</p>
+            )}
             <CopyrightChildrenOrderControl
               parentID={copyright.id}
               orderedChildren={copyright.ordered_children}
@@ -129,16 +155,14 @@ const CopyrightDetailsPanel: React.FC<{
           </div>
         </Tab>
       </Tabs>
-      <p className="text-muted small mt-2">
-        <FormattedMessage id="copyright_hierarchy.delete_help" />
-      </p>
-    </div>
+    </>
   );
 };
 
 const CopyrightEditPanel: React.FC<{
   copyright?: GQL.CopyrightDataFragment;
   create?: boolean;
+  initialParents?: Copyright[];
   onSaved: (copyright: GQL.CopyrightDataFragment) => void;
   onCancel: () => void;
   setImage: (image?: string | null) => void;
@@ -146,6 +170,7 @@ const CopyrightEditPanel: React.FC<{
 }> = ({
   copyright,
   create = false,
+  initialParents = noParents,
   onSaved,
   onCancel,
   setImage,
@@ -165,7 +190,7 @@ const CopyrightEditPanel: React.FC<{
 
   useEffect(() => {
     if (!copyright) {
-      setValues(emptyValues);
+      setValues({ ...emptyValues, parents: initialParents });
       setPerformers([]);
       setImageValue(undefined);
       setImageTouched(false);
@@ -177,12 +202,11 @@ const CopyrightEditPanel: React.FC<{
       description: copyright.description,
       aliases: copyright.aliases.join("\n"),
       parents: copyright.parents,
-      children: copyright.children,
     });
     setPerformers(copyright.performers);
     setImageValue(undefined);
     setImageTouched(false);
-  }, [copyright]);
+  }, [copyright, initialParents]);
 
   const encodingImage = ImageUtils.usePasteImage((data) => {
     setImageValue(data);
@@ -216,7 +240,6 @@ const CopyrightEditPanel: React.FC<{
         description: values.description,
         aliases: aliasesFromText(values.aliases),
         parent_ids: values.parents.map((item) => item.id),
-        child_ids: values.children.map((item) => item.id),
         ...(imageTouched ? { image: imageValue } : {}),
       };
 
@@ -244,7 +267,7 @@ const CopyrightEditPanel: React.FC<{
         },
       });
 
-      Toast.success(`Saved Copyright “${saved.name}”.`);
+      Toast.success(`Saved folder “${saved.name}”.`);
       onSaved(saved);
     } catch (error) {
       Toast.error(error);
@@ -278,7 +301,7 @@ const CopyrightEditPanel: React.FC<{
 
   return (
     <>
-      {create ? <h2>New Copyright</h2> : null}
+      {create ? <h2>New folder</h2> : null}
       <Form
         noValidate
         onSubmit={(event) => event.preventDefault()}
@@ -335,30 +358,20 @@ const CopyrightEditPanel: React.FC<{
           />
         )}
         {field(
-          "Parent Series",
-          <CopyrightSelect
-            isMulti
-            values={values.parents}
-            excludeIds={[
-              ...(copyright ? [copyright.id] : []),
-              ...values.children.map((item) => item.id),
-            ]}
-            onSelect={(parents) => setValues({ ...values, parents })}
-            creatable={false}
-          />
-        )}
-        {field(
-          "Sub-series",
-          <CopyrightSelect
-            isMulti
-            values={values.children}
-            excludeIds={[
-              ...(copyright ? [copyright.id] : []),
-              ...values.parents.map((item) => item.id),
-            ]}
-            onSelect={(children) => setValues({ ...values, children })}
-            creatable={false}
-          />
+          "Parent folder(s)",
+          <>
+            <CopyrightSelect
+              isMulti
+              values={values.parents}
+              excludeIds={copyright ? [copyright.id] : []}
+              onSelect={(parents) => setValues({ ...values, parents })}
+              noSelectionString="Select parent folder(s)"
+              creatable={false}
+            />
+            <Form.Text className="text-muted">
+              <FormattedMessage id="copyright_hierarchy.parent_help" />
+            </Form.Text>
+          </>
         )}
       </Form>
 
@@ -414,14 +427,6 @@ const CopyrightMediaTabs: React.FC<{
     ? initialTab
     : populatedDefaultTab;
 
-  const sceneIDs = useMemo(
-    () => copyright.subtree_scenes.map((scene) => Number(scene.id)),
-    [copyright.subtree_scenes]
-  );
-  const performerIDs = useMemo(
-    () => copyright.subtree_performers.map((performer) => Number(performer.id)),
-    [copyright.subtree_performers]
-  );
   const imageFilterHook = useCopyrightFilterHook(copyright);
 
   const renderImages = () => (
@@ -434,7 +439,7 @@ const CopyrightMediaTabs: React.FC<{
 
   const renderVideos = () => (
     <FilteredSceneList
-      sceneIDs={sceneIDs}
+      filterHook={imageFilterHook}
       alterQuery
       view={View.CopyrightScenes}
     />
@@ -488,7 +493,7 @@ const CopyrightMediaTabs: React.FC<{
         }
       >
         <FilteredPerformerList
-          performerIDs={performerIDs}
+          filterHook={imageFilterHook}
           alterQuery
           view={View.CopyrightPerformers}
         />
@@ -674,8 +679,21 @@ const CopyrightDetail: React.FC = () => {
 
 const CopyrightCreate: React.FC = () => {
   const history = useHistory();
+  const location = useLocation();
   const [image, setImage] = useState<string | null>();
   const [encodingImage, setEncodingImage] = useState(false);
+  const parentID = new URLSearchParams(location.search).get("parent_id");
+  const { data, loading } = GQL.useFindCopyrightQuery({
+    variables: { id: parentID ?? "" },
+    skip: !parentID,
+  });
+  const parent = data?.findCopyright;
+  const initialParents = useMemo(() => (parent ? [parent] : []), [parent]);
+
+  if (loading) return <Spinner animation="border" />;
+  if (parentID && !parent) {
+    return <div className="alert alert-warning">Parent folder not found.</div>;
+  }
 
   return (
     <div className="row new-view" id="tag-page">
@@ -689,6 +707,7 @@ const CopyrightCreate: React.FC = () => {
         </div>
         <CopyrightEditPanel
           create
+          initialParents={initialParents}
           onSaved={(created) => history.replace(`/copyrights/${created.id}`)}
           onCancel={() => history.push("/copyrights")}
           setImage={setImage}

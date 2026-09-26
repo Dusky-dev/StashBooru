@@ -142,6 +142,11 @@ const CopyrightList: React.FC = () => {
       hasSelection={selectedIds.size > 0}
       operations={[
         {
+          text: "New folder",
+          onClick: () => history.push("/copyrights/new"),
+          isDisplayed: () => selectedIds.size === 0,
+        },
+        {
           text: intl.formatMessage({ id: "actions.view_random" }),
           onClick: viewRandom,
           isDisplayed: () => totalCount > 0 && selectedIds.size === 0,
@@ -172,7 +177,7 @@ const CopyrightList: React.FC = () => {
 
   function renderList() {
     return (
-      <Table responsive hover className="list-table">
+      <Table responsive hover className="list-table" role="treegrid">
         <thead>
           <tr>
             <th>Name</th>
@@ -183,9 +188,47 @@ const CopyrightList: React.FC = () => {
         </thead>
         <tbody>
           {copyrights.map((copyright) => (
-            <tr key={copyright.id}>
+            <tr
+              key={copyright.id}
+              className="copyright-list-row"
+              aria-level={Math.max(copyright.breadcrumb.length, 1)}
+            >
               <td>
-                <Link to={`/copyrights/${copyright.id}`}>{copyright.name}</Link>
+                <div
+                  className="copyright-list-name"
+                  style={{
+                    paddingInlineStart: `${Math.min(
+                      Math.max(copyright.breadcrumb.length - 1, 0),
+                      12
+                    ) * 1.25}rem`,
+                  }}
+                  title={copyright.breadcrumb
+                    .map((item) => item.name)
+                    .join(" / ")}
+                >
+                  <Link to={`/copyrights/${copyright.id}`}>
+                    {copyright.name}
+                  </Link>
+                  {copyright.ordered_children.length > 0 ? (
+                    <span className="text-muted small ml-2">
+                      {copyright.ordered_children.length} subfolders
+                    </span>
+                  ) : null}
+                  {copyright.breadcrumb.length > 1 ? (
+                    <div className="small text-muted copyright-list-path">
+                      {copyright.breadcrumb
+                        .slice(0, -1)
+                        .map((folder, index) => (
+                          <React.Fragment key={folder.id}>
+                            {index > 0 ? " / " : null}
+                            <Link to={`/copyrights/${folder.id}`}>
+                              {folder.name}
+                            </Link>
+                          </React.Fragment>
+                        ))}
+                    </div>
+                  ) : null}
+                </div>
               </td>
               <td>{copyright.scene_count}</td>
               <td>{copyright.image_count}</td>
