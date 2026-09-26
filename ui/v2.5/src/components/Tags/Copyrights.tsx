@@ -124,9 +124,7 @@ const CopyrightDetailsPanel: React.FC<{
           title={`Subfolders (${copyright.ordered_children.length})`}
         >
           <div className="pt-3">
-            <div
-              className="d-flex justify-content-between align-items-center mb-2"
-            >
+            <div className="d-flex justify-content-between align-items-center mb-2">
               <span className="text-muted small">
                 Open a subfolder to browse its contents.
               </span>

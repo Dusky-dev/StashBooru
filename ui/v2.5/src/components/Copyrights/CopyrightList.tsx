@@ -197,10 +197,12 @@ const CopyrightList: React.FC = () => {
                 <div
                   className="copyright-list-name"
                   style={{
-                    paddingInlineStart: `${Math.min(
-                      Math.max(copyright.breadcrumb.length - 1, 0),
-                      12
-                    ) * 1.25}rem`,
+                    paddingInlineStart: `${
+                      Math.min(
+                        Math.max(copyright.breadcrumb.length - 1, 0),
+                        12
+                      ) * 1.25
+                    }rem`,
                   }}
                   title={copyright.breadcrumb
                     .map((item) => item.name)

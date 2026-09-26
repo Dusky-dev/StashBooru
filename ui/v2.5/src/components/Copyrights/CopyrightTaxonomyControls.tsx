@@ -15,10 +15,7 @@ export const CopyrightBreadcrumb: React.FC<{
   if (items.length <= 1) return null;
 
   return (
-    <nav
-      className="copyright-breadcrumb mb-2"
-      aria-label="Folder path"
-    >
+    <nav className="copyright-breadcrumb mb-2" aria-label="Folder path">
       {items.map((item, index) => (
         <React.Fragment key={item.id}>
           {index > 0 ? <span className="mx-1 text-muted">/</span> : null}
