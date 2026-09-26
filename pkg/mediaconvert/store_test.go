@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/stashapp/stash/pkg/models"
 )
@@ -131,6 +132,36 @@ func TestConvertRestorePreservesSourceIdentity(t *testing.T) {
 	}
 	if reloaded.Status != "restored" || reloaded.Cached {
 		t.Fatal("restore cache not released")
+	}
+}
+
+func TestConvertTruncatesLongUnicodeBasename(t *testing.T) {
+	s, repo, client, _ := fixture(t, "compressed", false)
+	base := repo.f.Base()
+	longName := strings.Repeat("界", 79) + ".png"
+	longPath := filepath.Join(filepath.Dir(base.Path), longName)
+	if err := os.Rename(base.Path, longPath); err != nil {
+		t.Fatal(err)
+	}
+	base.Path, base.Basename = longPath, longName
+
+	r := convertFixture(t, s, client)
+	convertedPath := repo.f.Base().Path
+	convertedName := filepath.Base(convertedPath)
+	if len(convertedName) > maxFilenameComponentBytes {
+		t.Fatalf("converted basename is %d bytes, filesystem limit is %d", len(convertedName), maxFilenameComponentBytes)
+	}
+	if !utf8.ValidString(convertedName) {
+		t.Fatalf("converted basename contains invalid UTF-8: %q", convertedName)
+	}
+	if r.Status != "complete" {
+		t.Fatalf("conversion did not complete: %+v", r)
+	}
+	if _, err := os.Stat(convertedPath); err != nil {
+		t.Fatalf("converted file missing at %q: %v", convertedPath, err)
+	}
+	if _, err := os.Stat(longPath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("source path should be retired after conversion: %v", err)
 	}
 }
 

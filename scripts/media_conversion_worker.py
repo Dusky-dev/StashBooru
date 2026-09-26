@@ -30,6 +30,7 @@ THREADS = max(1, int(os.environ.get("STASH_CONVERTER_THREADS", "4")))
 INPUT_FORMATS = "mov,matroska,webm,avi,asf,flv,mpeg,mpegts,ogg,nut,ivf,h264,hevc,mjpeg,image2,image2pipe,jpeg_pipe,png_pipe,apng,gif,webp_pipe,bmp_pipe,tiff_pipe,jpegxl_pipe,jpegxl_anim,ico,exr_pipe,j2k_pipe"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 MAX_DECODED_WEBP_FRAME_BYTES = 512 * 1024 * 1024
+MIN_NORMALIZED_FRAME_DELAY_SECONDS = 0.01
 
 # id: (label, extension, family, encoder candidates, controls)
 FORMATS = {
@@ -298,13 +299,39 @@ def png_chunks(path: Path):
                 return
 
 
-def webp_animation_to_apng(image, output: Path, temporary_frame: Path, cancelled=None) -> None:
-    """Normalize animated WebP one composited frame at a time without merging frames."""
+def normalize_animation_durations(durations: list[float]) -> tuple[list[float], int]:
+    """Give zero-delay frames one 10 ms tick so encoders can retain each frame."""
+    normalized, repaired = [], 0
+    for duration in durations:
+        try:
+            value = float(duration)
+        except (TypeError, ValueError):
+            raise ValueError("animation contains an invalid frame delay") from None
+        if not math.isfinite(value) or value < 0:
+            raise ValueError("animation contains an invalid frame delay")
+        if value == 0:
+            value = MIN_NORMALIZED_FRAME_DELAY_SECONDS
+            repaired += 1
+        normalized.append(value)
+    return normalized, repaired
+
+
+def animation_play_count(image) -> int:
+    loop = image.info.get("loop")
+    if image.format == "GIF":
+        # GIF's Netscape extension stores repeats after the first play;
+        # APNG and WebP store total plays, with 0 meaning infinite.
+        return 0 if loop == 0 else int(loop or 0) + 1
+    return int(loop if loop is not None else (1 if image.format == "PNG" else 0))
+
+
+def animation_to_apng(image, output: Path, temporary_frame: Path, durations: list[float],
+                      plays: int, cancelled=None) -> None:
+    """Normalize an animation one composited frame at a time without merging frames."""
     width, height = image.size
     frame_count = int(getattr(image, "n_frames", 1))
-    if frame_count < 2:
-        raise ValueError("animated WebP must contain at least two frames")
-    plays = int(image.info.get("loop", 0))
+    if frame_count < 2 or len(durations) != frame_count:
+        raise ValueError("could not read the complete animation frame sequence")
     icc_profile = image.info.get("icc_profile")
     sequence = 0
     try:
@@ -315,22 +342,18 @@ def webp_animation_to_apng(image, output: Path, temporary_frame: Path, cancelled
                     raise RuntimeError("conversion cancelled")
                 image.seek(index)
                 image.load()
-                raw_duration = image.info.get("duration", 0)
-                try:
-                    delay = Fraction(str(raw_duration)) / 1000
-                except (ValueError, ZeroDivisionError):
-                    raise ValueError("animation contains an invalid frame delay") from None
+                delay = Fraction(str(durations[index]))
                 if delay <= 0:
                     raise ValueError("animation contains zero-duration frames; cannot safely preserve its timing")
                 delay = delay.limit_denominator(65535)
                 if delay.numerator > 65535 or delay.denominator > 65535:
                     raise ValueError("animation frame delay cannot be represented safely in APNG")
 
-                # Pillow coalesces WebP disposal/blend operations when converting
-                # each frame. Keep only this full-canvas RGBA frame resident.
+                # Pillow coalesces frame disposal/blend operations when
+                # converting each frame. Keep one full-canvas frame resident.
                 frame = image.convert("RGBA")
                 if frame.size != (width, height):
-                    raise ValueError("animated WebP frame dimensions do not match its canvas")
+                    raise ValueError("animation frame dimensions do not match its canvas")
                 save_options = {"format": "PNG"}
                 if icc_profile:
                     save_options["icc_profile"] = icc_profile
@@ -385,20 +408,38 @@ def prepare_input(source: Path, directory: Path, cancelled=None, known_single_fr
             return decoded
         if not known_single_frame:
             raise ValueError("djxl is required to read JPEG XL inputs without risking animation loss")
-    # Older FFmpeg cannot decode animated WebP. Pillow coalesces disposal/blend
-    # correctly; write a frame-at-a-time APNG so memory use depends on one frame,
-    # not the total animation. Keep a per-frame cap for malformed huge canvases.
-    if signature[:4] == b"RIFF" and signature[8:] == b"WEBP":
+    is_gif = signature[:6] in (b"GIF87a", b"GIF89a")
+    is_png = signature.startswith(PNG_SIGNATURE)
+    is_webp = signature[:4] == b"RIFF" and signature[8:] == b"WEBP"
+    if is_gif or is_png or is_webp:
         from PIL import Image
         with Image.open(source) as im:
-            count = getattr(im, "n_frames", 1)
-            if count > 1:
-                decoded = directory / "decoded.png"
-                frame_bytes = im.width * im.height * 4
-                if frame_bytes > MAX_DECODED_WEBP_FRAME_BYTES:
-                    raise ValueError("animated WebP frame exceeds the 512 MiB decoded-frame budget")
-                webp_animation_to_apng(im, decoded, directory / "webp-frame.png", cancelled)
-                return decoded
+            count = int(getattr(im, "n_frames", 1))
+            if count > 1 and im.format in ("GIF", "PNG", "WEBP"):
+                if im.info.get("default_image"):
+                    raise ValueError("APNG with a separate poster frame is not supported by this conversion path")
+                plays = animation_play_count(im)
+                if im.format == "WEBP":
+                    raw_durations = webp_animation_durations(source, count)
+                else:
+                    raw_durations = []
+                    for index in range(count):
+                        im.seek(index)
+                        raw_durations.append(im.info.get("duration") or 0)
+                im.seek(0)
+                raw_durations = [float(value) / 1000 for value in raw_durations]
+                durations, repaired = normalize_animation_durations(raw_durations)
+                # FFmpeg versions vary in animated WebP support. Also rebuild
+                # GIF/APNG files with zero holds so every encoder sees the same
+                # positive, verified frame timeline.
+                if im.format == "WEBP" or repaired:
+                    decoded = directory / "decoded.png"
+                    frame_bytes = im.width * im.height * 4
+                    if frame_bytes > MAX_DECODED_WEBP_FRAME_BYTES:
+                        raise ValueError("animated image frame exceeds the 512 MiB decoded-frame budget")
+                    animation_to_apng(im, decoded, directory / "animation-frame.png",
+                                      durations, plays, cancelled)
+                    return decoded
     return source
 
 
@@ -420,7 +461,7 @@ def animation_metadata(source: Path) -> dict:
             im.seek(i)
             im.load()
             alpha |= im.convert("RGBA").getextrema()[3][0] < 255
-            durations.append(float(im.info.get("duration", 0)) / 1000)
+            durations.append(float(im.info.get("duration") or 0) / 1000)
         if count == 1:
             return {"alpha": alpha}
         if any(d <= 0 for d in durations):
@@ -471,6 +512,41 @@ def webp_chunks(path: Path):
             if has_padding and len(stream.read(1)) != 1:
                 raise RuntimeError("truncated still WebP padding")
             yield name, data_offset, size
+
+
+def webp_animation_durations(path: Path, expected_frames: int) -> list[int]:
+    """Read exact ANMF millisecond holds without decoding every WebP frame twice."""
+    durations = []
+    file_size = path.stat().st_size
+    with path.open("rb") as stream:
+        header = stream.read(12)
+        if len(header) != 12 or header[:4] != b"RIFF" or header[8:] != b"WEBP":
+            raise ValueError("invalid animated WebP container")
+        riff_end = 8 + int.from_bytes(header[4:8], "little")
+        if riff_end < 12 or riff_end > file_size:
+            raise ValueError("truncated animated WebP container")
+        while stream.tell() < riff_end:
+            if riff_end - stream.tell() < 8:
+                raise ValueError("truncated animated WebP chunk header")
+            chunk_header = stream.read(8)
+            name = chunk_header[:4]
+            size = int.from_bytes(chunk_header[4:], "little")
+            data_start = stream.tell()
+            chunk_end = data_start + size + (size & 1)
+            if chunk_end > riff_end:
+                raise ValueError("truncated animated WebP chunk")
+            if name == b"ANMF":
+                if size < 16:
+                    raise ValueError("animated WebP frame metadata is truncated")
+                stream.seek(data_start + 12)
+                delay = stream.read(3)
+                if len(delay) != 3:
+                    raise ValueError("animated WebP frame metadata is truncated")
+                durations.append(int.from_bytes(delay, "little"))
+            stream.seek(chunk_end)
+    if len(durations) != expected_frames:
+        raise ValueError("animated WebP frame count does not match its container")
+    return durations
 
 
 def write_webp_chunk(stream, name: bytes, data: bytes) -> None:

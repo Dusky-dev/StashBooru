@@ -193,6 +193,37 @@ class EncodeTests(unittest.TestCase):
                 self.assertEqual(result["frames"], 3)
                 self.assertAlmostEqual(result["duration"], 0.6, delta=0.025)
 
+    def test_zero_delay_frames_are_normalized_before_encoding(self):
+        from PIL import Image
+
+        colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255)]
+        cases = (("gif", 0), ("apng", 2), ("webp", 2))
+        for fmt, plays in cases:
+            with self.subTest(format=fmt):
+                source = self.root / f"zero-delay.{fmt}"
+                frames = [Image.new("RGB", (24, 24), color) for color in colors]
+                if fmt == "gif":
+                    frames[0].save(source, format="GIF", save_all=True, append_images=frames[1:],
+                                   duration=[0, 100, 200], loop=0)
+                elif fmt == "apng":
+                    frames[0].save(source, format="PNG", save_all=True, append_images=frames[1:],
+                                   duration=[0, 100, 200], loop=plays)
+                else:
+                    write_animated_webp(source, colors, [0, 100, 200], loop=plays)
+
+                with Image.open(source) as original:
+                    self.assertEqual(original.n_frames, 3)
+                    self.assertIn(original.info.get("duration"), (None, 0))
+
+                prepared_dir = self.root / f"prepared-{fmt}"
+                prepared_dir.mkdir()
+                prepared = converter.prepare_input(source, prepared_dir)
+                self.assertNotEqual(prepared, source)
+                metadata = converter.animation_metadata(prepared)
+                self.assertEqual(metadata["frames"], 3)
+                self.assertEqual(metadata["durations"], [0.01, 0.1, 0.2])
+                self.assertEqual(metadata["plays"], plays)
+
     def test_animated_webp_preserves_repeated_frames_and_timing(self):
         caps = converter.capabilities(probe_gpu=False)
         webp = next(f for f in caps["formats"] if f["id"] == "webp")

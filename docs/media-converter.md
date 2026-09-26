@@ -55,6 +55,12 @@ if their animation timing metadata is missing or stale. Update the remote
 `media_conversion_worker.py` and restart the worker to also correct its reported
 animation FPS.
 
+Animated GIF, APNG and WebP frames with a zero-millisecond hold are normalized to
+one 10 ms tick before encoding. Those formats define a zero hold as advancing as
+quickly as possible or leave its display duration implementation-defined, so an
+exact positive duration cannot be recovered. Normalization retains every frame
+and the loop count; total duration increases by 10 ms for each repaired frame.
+
 ## Formats and controls
 
 | Output | Controls | Processor |
