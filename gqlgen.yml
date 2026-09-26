@@ -49,6 +49,10 @@ models:
     model: github.com/stashapp/stash/pkg/models.Group
   MovieFilterType:
     model: github.com/stashapp/stash/pkg/models.GroupFilterType
+  PerformerVariantInput:
+    model: github.com/stashapp/stash/pkg/models.PerformerVariantInput
+  PerformerDisambiguationContextInput:
+    model: github.com/stashapp/stash/pkg/models.PerformerDisambiguationContextInput
   # autobind on config causes generation issues
   BlobsStorageType:
     model: github.com/stashapp/stash/internal/manager/config.BlobsStorageType
@@ -145,6 +149,16 @@ models:
       career_length:
         resolver: true
       copyrights:
+        resolver: true
+      parent:
+        resolver: true
+      disambiguation_context:
+        resolver: true
+  PerformerDisambiguationContext:
+    fields:
+      copyright:
+        resolver: true
+      artist:
         resolver: true
   Copyright:
     fields:

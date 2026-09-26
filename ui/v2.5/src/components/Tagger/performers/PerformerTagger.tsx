@@ -46,6 +46,7 @@ import { Icon } from "src/components/Shared/Icon";
 import { mergeStashIDs } from "src/utils/stashbox";
 import { separateNamesAndStashIds } from "src/utils/stashIds";
 import { ExternalLink } from "src/components/Shared/ExternalLink";
+import { PerformerDisambiguationValue } from "src/components/Performers/PerformerDisambiguationValue";
 import { useTaggerConfig } from "../config";
 import { StashBoxSelectorField } from "../StashBoxSelector";
 
@@ -736,19 +737,18 @@ const PerformerTaggerList: React.FC<IPerformerTaggerListProps> = ({
             <img src={performer.image_path ?? ""} alt="" />
           </Card>
           <div className={`${CLASSNAME}-details`}>
-            <Link
-              to={`/performers/${performer.id}`}
-              className={`${CLASSNAME}-header`}
-            >
-              <h2>
+            <h2>
+              <Link
+                to={`/performers/${performer.id}`}
+                className={`${CLASSNAME}-header`}
+              >
                 {performer.name}
-                {performer.disambiguation && (
-                  <span className="performer-disambiguation">
-                    {` (${performer.disambiguation})`}
-                  </span>
-                )}
-              </h2>
-            </Link>
+              </Link>
+              <PerformerDisambiguationValue
+                disambiguation={performer.disambiguation}
+                context={performer.disambiguation_context}
+              />
+            </h2>
             {mainContent}
             <div className="sub-content text-left">{subContent}</div>
             {searchResult}

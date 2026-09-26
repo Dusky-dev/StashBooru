@@ -56,6 +56,8 @@ import {
   Copyright,
   CopyrightSelect,
 } from "src/components/Copyrights/CopyrightSelect";
+import { PerformerSelect } from "src/components/Performers/PerformerSelect";
+import { Studio, StudioSelect } from "src/components/Studios/StudioSelect";
 import cloneDeep from "lodash-es/cloneDeep";
 
 const isScraper = (
@@ -99,11 +101,44 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
   );
   const [copyrightsDirty, setCopyrightsDirty] = useState(false);
   const [updateCopyrights] = GQL.usePerformerCopyrightsUpdateMutation();
+  const [parentPerformer, setParentPerformer] = useState<
+    GQL.SelectPerformerDataFragment | undefined
+  >(performer.parent ?? undefined);
+  const [parentDirty, setParentDirty] = useState(false);
+  const [contextType, setContextType] = useState<"" | "copyright" | "artist">(
+    performer.disambiguation_context?.copyright
+      ? "copyright"
+      : performer.disambiguation_context?.artist
+        ? "artist"
+        : ""
+  );
+  const [contextCopyright, setContextCopyright] = useState<
+    Copyright | undefined
+  >(performer.disambiguation_context?.copyright ?? undefined);
+  const [contextArtist, setContextArtist] = useState<Studio | undefined>(
+    performer.disambiguation_context?.artist ?? undefined
+  );
+  const [contextDirty, setContextDirty] = useState(false);
+  const missingContextTarget =
+    (contextType === "copyright" && !contextCopyright) ||
+    (contextType === "artist" && !contextArtist);
 
   useEffect(() => {
     setCopyrights(performer.copyrights ?? []);
     setCopyrightsDirty(false);
   }, [performer.copyrights]);
+
+  useEffect(() => {
+    setParentPerformer(performer.parent ?? undefined);
+    setParentDirty(false);
+    const context = performer.disambiguation_context;
+    setContextType(
+      context?.copyright ? "copyright" : context?.artist ? "artist" : ""
+    );
+    setContextCopyright(context?.copyright ?? undefined);
+    setContextArtist(context?.artist ?? undefined);
+    setContextDirty(false);
+  }, [performer]);
 
   const Scrapers = useListPerformerScrapers();
   const [queryableScrapers, setQueryableScrapers] = useState<GQL.Scraper[]>([]);
@@ -178,10 +213,24 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
   const [customFieldsError, setCustomFieldsError] = useState<string>();
 
   function submit(values: InputValues) {
-    const input = {
+    const input: GQL.PerformerCreateInput = {
       ...schema.cast(values),
-      custom_fields: formatCustomFieldInput(isNew, values.custom_fields),
+      custom_fields: formatCustomFieldInput(
+        isNew,
+        values.custom_fields
+      ) as GQL.PerformerCreateInput["custom_fields"],
     };
+    if (parentDirty) {
+      input.variant = { parent_id: parentPerformer?.id ?? null };
+    }
+    if (contextDirty) {
+      input.disambiguation_context = {
+        copyright_id:
+          contextType === "copyright" ? (contextCopyright?.id ?? null) : null,
+        artist_id:
+          contextType === "artist" ? (contextArtist?.id ?? null) : null,
+      };
+    }
     onSave(input);
   }
 
@@ -358,7 +407,7 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
     ImageUtils.onImageChange(event, onImageLoad);
   }
 
-  async function onSave(input: InputValues, andNew?: boolean) {
+  async function onSave(input: GQL.PerformerCreateInput, andNew?: boolean) {
     setIsLoading(true);
     try {
       if (!isNew && performer.id && copyrightsDirty) {
@@ -371,9 +420,15 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
       }
       await onSubmit(input, andNew);
       setCopyrightsDirty(false);
+      setParentDirty(false);
+      setContextDirty(false);
       formik.resetForm();
       if (andNew) {
         resetTagsState();
+        setParentPerformer(undefined);
+        setContextType("");
+        setContextCopyright(undefined);
+        setContextArtist(undefined);
       }
     } catch (e) {
       Toast.error(e);
@@ -383,10 +438,24 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
 
   async function onSaveAndNewClick() {
     const { values } = formik;
-    const input = {
+    const input: GQL.PerformerCreateInput = {
       ...schema.cast(values),
-      custom_fields: formatCustomFieldInput(isNew, values.custom_fields),
+      custom_fields: formatCustomFieldInput(
+        isNew,
+        values.custom_fields
+      ) as GQL.PerformerCreateInput["custom_fields"],
     };
+    if (parentDirty) {
+      input.variant = { parent_id: parentPerformer?.id ?? null };
+    }
+    if (contextDirty) {
+      input.disambiguation_context = {
+        copyright_id:
+          contextType === "copyright" ? (contextCopyright?.id ?? null) : null,
+        artist_id:
+          contextType === "artist" ? (contextArtist?.id ?? null) : null,
+      };
+    }
     onSave(input, true);
   }
 
@@ -394,7 +463,7 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
   useEffect(() => {
     if (isVisible) {
       Mousetrap.bind("s s", () => {
-        if (formik.dirty || copyrightsDirty) {
+        if (formik.dirty || copyrightsDirty || parentDirty || contextDirty) {
           formik.submitForm();
         }
       });
@@ -642,12 +711,17 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
             id="save-split-button"
             variant="success"
             disabled={
-              !isEqual(formik.errors, {}) || customFieldsError !== undefined
+              !isEqual(formik.errors, {}) ||
+              customFieldsError !== undefined ||
+              !!missingContextTarget
             }
             title={intl.formatMessage({ id: "actions.save" })}
             onClick={() => formik.submitForm()}
           >
-            <Dropdown.Item onClick={() => onSaveAndNewClick()}>
+            <Dropdown.Item
+              disabled={!!missingContextTarget}
+              onClick={() => onSaveAndNewClick()}
+            >
               <FormattedMessage id="actions.save_and_new" />
             </Dropdown.Item>
           </SplitButton>
@@ -655,7 +729,12 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
           <Button
             variant="success"
             disabled={
-              (!isNew && !formik.dirty && !copyrightsDirty) ||
+              (!isNew &&
+                !formik.dirty &&
+                !copyrightsDirty &&
+                !parentDirty &&
+                !contextDirty) ||
+              missingContextTarget ||
               !isEqual(formik.errors, {}) ||
               customFieldsError !== undefined
             }
@@ -738,6 +817,120 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
     );
   }
 
+  function renderParentCharacterField() {
+    const title = intl.formatMessage({
+      id: "base_character",
+      defaultMessage: "Base Character",
+    });
+
+    return (
+      <Form.Group as={Row} data-field="parent-character">
+        <Form.Label column sm={3} xl={2}>
+          {title}
+        </Form.Label>
+        <Col sm={9} xl={7}>
+          <PerformerSelect
+            values={parentPerformer ? [parentPerformer] : []}
+            onSelect={(items) => {
+              setParentPerformer(items[0]);
+              setParentDirty(true);
+            }}
+            isClearable
+            excludeIds={performer.id ? [performer.id] : []}
+          />
+          <Form.Text muted>
+            {intl.formatMessage({
+              id: "base_character_help",
+              defaultMessage:
+                "Leave blank for a base Character. Each variant keeps its own media and metadata.",
+            })}
+          </Form.Text>
+        </Col>
+      </Form.Group>
+    );
+  }
+
+  function renderDisambiguationContextField() {
+    const title = intl.formatMessage({
+      id: "disambiguation_context",
+      defaultMessage: "Disambiguation link",
+    });
+    return (
+      <Form.Group as={Row} data-field="disambiguation-context">
+        <Form.Label column sm={3} xl={2}>
+          {title}
+        </Form.Label>
+        <Col sm={9} xl={7}>
+          <Form.Control
+            as="select"
+            value={contextType}
+            onChange={(event) => {
+              const nextType = event.currentTarget.value as
+                | ""
+                | "copyright"
+                | "artist";
+              setContextType(nextType);
+              setContextCopyright(undefined);
+              setContextArtist(undefined);
+              setContextDirty(true);
+            }}
+          >
+            <option value="">
+              {intl.formatMessage({
+                id: "no_disambiguation_link",
+                defaultMessage: "No linked context",
+              })}
+            </option>
+            <option value="copyright">
+              {intl.formatMessage({
+                id: "copyright",
+                defaultMessage: "Copyright",
+              })}
+            </option>
+            <option value="artist">
+              {intl.formatMessage({ id: "artist", defaultMessage: "Artist" })}
+            </option>
+          </Form.Control>
+          {contextType === "copyright" && (
+            <CopyrightSelect
+              values={contextCopyright ? [contextCopyright] : []}
+              onSelect={(items) => {
+                setContextCopyright(items[0]);
+                setContextDirty(true);
+              }}
+              isClearable
+            />
+          )}
+          {contextType === "artist" && (
+            <StudioSelect
+              values={contextArtist ? [contextArtist] : []}
+              onSelect={(items) => {
+                setContextArtist(items[0]);
+                setContextDirty(true);
+              }}
+              isClearable
+            />
+          )}
+          {missingContextTarget && (
+            <Form.Text className="text-danger">
+              {intl.formatMessage({
+                id: "select_disambiguation_target",
+                defaultMessage: "Select a target or choose no linked context.",
+              })}
+            </Form.Text>
+          )}
+          <Form.Text muted>
+            {intl.formatMessage({
+              id: "disambiguation_context_help",
+              defaultMessage:
+                "The linked name follows renames. The free-text disambiguation above remains available as a separate label.",
+            })}
+          </Form.Text>
+        </Col>
+      </Form.Group>
+    );
+  }
+
   return (
     <>
       {renderScrapeModal()}
@@ -758,7 +951,7 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
       )}
 
       <Prompt
-        when={formik.dirty || copyrightsDirty}
+        when={formik.dirty || copyrightsDirty || parentDirty || contextDirty}
         message={intl.formatMessage({ id: "dialogs.unsaved_changes" })}
       />
       {renderButtons("mb-3")}
@@ -766,6 +959,8 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
       <Form noValidate onSubmit={formik.handleSubmit} id="performer-edit">
         {renderInputField("name")}
         {renderInputField("disambiguation")}
+        {renderParentCharacterField()}
+        {renderDisambiguationContextField()}
 
         {renderStringListField("alias_list", "aliases", { orderable: false })}
 

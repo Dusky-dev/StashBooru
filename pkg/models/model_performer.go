@@ -6,26 +6,29 @@ import (
 )
 
 type Performer struct {
-	ID             int              `json:"id"`
-	Name           string           `json:"name"`
-	Disambiguation string           `json:"disambiguation"`
-	Gender         *GenderEnum      `json:"gender"`
-	Birthdate      *Date            `json:"birthdate"`
-	Ethnicity      string           `json:"ethnicity"`
-	Country        string           `json:"country"`
-	EyeColor       string           `json:"eye_color"`
-	Height         *int             `json:"height"`
-	Measurements   string           `json:"measurements"`
-	FakeTits       string           `json:"fake_tits"`
-	PenisLength    *float64         `json:"penis_length"`
-	Circumcised    *CircumcisedEnum `json:"circumcised"`
-	CareerStart    *Date            `json:"career_start"`
-	CareerEnd      *Date            `json:"career_end"`
-	Tattoos        string           `json:"tattoos"`
-	Piercings      string           `json:"piercings"`
-	Favorite       bool             `json:"favorite"`
-	CreatedAt      time.Time        `json:"created_at"`
-	UpdatedAt      time.Time        `json:"updated_at"`
+	ID                        int              `json:"id"`
+	Name                      string           `json:"name"`
+	Disambiguation            string           `json:"disambiguation"`
+	ParentID                  *int             `json:"parent_id"`
+	DisambiguationCopyrightID *int             `json:"disambiguation_copyright_id"`
+	DisambiguationStudioID    *int             `json:"disambiguation_studio_id"`
+	Gender                    *GenderEnum      `json:"gender"`
+	Birthdate                 *Date            `json:"birthdate"`
+	Ethnicity                 string           `json:"ethnicity"`
+	Country                   string           `json:"country"`
+	EyeColor                  string           `json:"eye_color"`
+	Height                    *int             `json:"height"`
+	Measurements              string           `json:"measurements"`
+	FakeTits                  string           `json:"fake_tits"`
+	PenisLength               *float64         `json:"penis_length"`
+	Circumcised               *CircumcisedEnum `json:"circumcised"`
+	CareerStart               *Date            `json:"career_start"`
+	CareerEnd                 *Date            `json:"career_end"`
+	Tattoos                   string           `json:"tattoos"`
+	Piercings                 string           `json:"piercings"`
+	Favorite                  bool             `json:"favorite"`
+	CreatedAt                 time.Time        `json:"created_at"`
+	UpdatedAt                 time.Time        `json:"updated_at"`
 	// Rating expressed in 1-100 scale
 	Rating        *int   `json:"rating"`
 	Details       string `json:"details"`
@@ -38,6 +41,20 @@ type Performer struct {
 	URLs     RelatedStrings  `json:"urls"`
 	TagIDs   RelatedIDs      `json:"tag_ids"`
 	StashIDs RelatedStashIDs `json:"stash_ids"`
+}
+
+type PerformerDisambiguationContext struct {
+	CopyrightID *int
+	ArtistID    *int
+}
+
+type PerformerVariantInput struct {
+	ParentID *string `json:"parent_id"`
+}
+
+type PerformerDisambiguationContextInput struct {
+	CopyrightID *string `json:"copyright_id"`
+	ArtistID    *string `json:"artist_id"`
 }
 
 type CreatePerformerInput struct {
@@ -63,26 +80,29 @@ func NewPerformer() Performer {
 // PerformerPartial represents part of a Performer object. It is used to update
 // the database entry.
 type PerformerPartial struct {
-	Name           OptionalString
-	Disambiguation OptionalString
-	Gender         OptionalString
-	URLs           *UpdateStrings
-	Birthdate      OptionalDate
-	Ethnicity      OptionalString
-	Country        OptionalString
-	EyeColor       OptionalString
-	Height         OptionalInt
-	Measurements   OptionalString
-	FakeTits       OptionalString
-	PenisLength    OptionalFloat64
-	Circumcised    OptionalString
-	CareerStart    OptionalDate
-	CareerEnd      OptionalDate
-	Tattoos        OptionalString
-	Piercings      OptionalString
-	Favorite       OptionalBool
-	CreatedAt      OptionalTime
-	UpdatedAt      OptionalTime
+	Name                      OptionalString
+	Disambiguation            OptionalString
+	ParentID                  OptionalInt
+	DisambiguationCopyrightID OptionalInt
+	DisambiguationStudioID    OptionalInt
+	Gender                    OptionalString
+	URLs                      *UpdateStrings
+	Birthdate                 OptionalDate
+	Ethnicity                 OptionalString
+	Country                   OptionalString
+	EyeColor                  OptionalString
+	Height                    OptionalInt
+	Measurements              OptionalString
+	FakeTits                  OptionalString
+	PenisLength               OptionalFloat64
+	Circumcised               OptionalString
+	CareerStart               OptionalDate
+	CareerEnd                 OptionalDate
+	Tattoos                   OptionalString
+	Piercings                 OptionalString
+	Favorite                  OptionalBool
+	CreatedAt                 OptionalTime
+	UpdatedAt                 OptionalTime
 	// Rating expressed in 1-100 scale
 	Rating        OptionalInt
 	Details       OptionalString

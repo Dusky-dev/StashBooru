@@ -17,6 +17,7 @@ import {
   getPerformerCollisionMessageIds,
   TaggerPerformerPopover,
 } from "./TaggerPerformerPopover";
+import { PerformerDisambiguationValue } from "src/components/Performers/PerformerDisambiguationValue";
 
 const PerformerLink: React.FC<{
   performer: GQL.ScrapedPerformer | Performer;
@@ -38,11 +39,14 @@ const PerformerLink: React.FC<{
   return (
     <>
       <span>{name}</span>
-      {performer.disambiguation && (
-        <span className="performer-disambiguation">
-          {` (${performer.disambiguation})`}
-        </span>
-      )}
+      <PerformerDisambiguationValue
+        disambiguation={performer.disambiguation}
+        context={
+          "disambiguation_context" in performer
+            ? performer.disambiguation_context
+            : undefined
+        }
+      />
     </>
   );
 };

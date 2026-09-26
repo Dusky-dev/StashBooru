@@ -130,6 +130,8 @@ input PerformerFilterType {
 
   name: StringCriterionInput
   disambiguation: StringCriterionInput
+  "Filter Characters by their direct parent/base Character ID."
+  parent_id: IntCriterionInput
   details: StringCriterionInput
 
   "Filter by favorite"

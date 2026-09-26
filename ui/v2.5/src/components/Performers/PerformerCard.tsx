@@ -26,6 +26,7 @@ import { PatchComponent } from "src/patch";
 import { ExternalLinksButton } from "../Shared/ExternalLinksButton";
 import { useConfigurationContext } from "src/hooks/Config";
 import { OCounterButton } from "../Shared/CountButton";
+import { PerformerDisambiguationValue } from "./PerformerDisambiguationValue";
 
 export interface IPerformerCardExtraCriteria {
   scenes?: ModifierCriterion<CriterionValue>[];
@@ -306,6 +307,12 @@ const PerformerCardDetails: React.FC<IPerformerCardProps> = PatchComponent(
 
     return (
       <>
+        <div className="performer-card__disambiguation">
+          <PerformerDisambiguationValue
+            disambiguation={performer.disambiguation}
+            context={performer.disambiguation_context}
+          />
+        </div>
         {age !== 0 ? (
           <div className="performer-card__age">{ageString}</div>
         ) : (
@@ -336,11 +343,6 @@ const PerformerCardTitle: React.FC<IPerformerCardProps> = PatchComponent(
     return (
       <div>
         <span className="performer-name">{performer.name}</span>
-        {performer.disambiguation && (
-          <span className="performer-disambiguation">
-            {` (${performer.disambiguation})`}
-          </span>
-        )}
       </div>
     );
   }

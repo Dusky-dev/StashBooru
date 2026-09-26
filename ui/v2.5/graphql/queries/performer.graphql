@@ -21,6 +21,18 @@ query FindPerformer($id: ID!) {
   }
 }
 
+query FindPerformerVariants($parent_id: Int!, $filter: FindFilterType) {
+  findPerformers(
+    performer_filter: { parent_id: { value: $parent_id, modifier: EQUALS } }
+    filter: $filter
+  ) {
+    count
+    performers {
+      ...PerformerData
+    }
+  }
+}
+
 query FindPerformersForSelect(
   $filter: FindFilterType
   $performer_filter: PerformerFilterType

@@ -1,9 +1,9 @@
-import React, { PropsWithChildren } from "react";
+import React, { PropsWithChildren, ReactNode } from "react";
 
 export const DetailTitle: React.FC<
   PropsWithChildren<{
     name: string;
-    disambiguation?: string;
+    disambiguation?: ReactNode;
     classNamePrefix: string;
   }>
 > = ({ name, disambiguation, classNamePrefix, children }) => {

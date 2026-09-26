@@ -171,6 +171,24 @@ func (r *performerResolver) Tags(ctx context.Context, obj *models.Performer) (re
 	return ret, firstError(errs)
 }
 
+func (r *performerResolver) Parent(ctx context.Context, obj *models.Performer) (*models.Performer, error) {
+	if obj.ParentID == nil {
+		return nil, nil
+	}
+	return loaders.From(ctx).PerformerByID.Load(*obj.ParentID)
+}
+
+func (r *performerResolver) DisambiguationContext(ctx context.Context, obj *models.Performer) (*models.PerformerDisambiguationContext, error) {
+	if obj.DisambiguationCopyrightID == nil && obj.DisambiguationStudioID == nil {
+		return nil, nil
+	}
+
+	return &models.PerformerDisambiguationContext{
+		CopyrightID: obj.DisambiguationCopyrightID,
+		ArtistID:    obj.DisambiguationStudioID,
+	}, nil
+}
+
 func (r *performerResolver) SceneCount(ctx context.Context, obj *models.Performer) (ret int, err error) {
 	if err := r.withReadTxn(ctx, func(ctx context.Context) error {
 		ret, err = r.repository.Scene.CountByPerformerID(ctx, obj.ID)

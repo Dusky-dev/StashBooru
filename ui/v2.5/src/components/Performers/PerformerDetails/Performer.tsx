@@ -26,6 +26,7 @@ import { PerformerGalleriesPanel } from "./PerformerGalleriesPanel";
 import { PerformerGroupsPanel } from "./PerformerGroupsPanel";
 import { PerformerImagesPanel } from "./PerformerImagesPanel";
 import { PerformerAppearsWithPanel } from "./performerAppearsWithPanel";
+import { PerformerVariantsPanel } from "./PerformerVariantsPanel";
 import { PerformerEditPanel } from "./PerformerEditPanel";
 import { PerformerMergeModal } from "../PerformerMergeDialog";
 import { PerformerSubmitButton } from "./PerformerSubmitButton";
@@ -50,6 +51,7 @@ import { ILightboxImage } from "src/hooks/Lightbox/types";
 import { goBackOrReplace } from "src/utils/history";
 import { OCounterButton } from "src/components/Shared/CountButton";
 import { runEntityAutoTag } from "src/utils/entityAutoTag";
+import { PerformerDisambiguationValue } from "../PerformerDisambiguationValue";
 
 interface IProps {
   performer: GQL.PerformerDataFragment;
@@ -68,6 +70,7 @@ const validTabs = [
   "images",
   "groups",
   "appearswith",
+  "variants",
 ] as const;
 type TabKey = (typeof validTabs)[number];
 
@@ -198,6 +201,18 @@ const PerformerTabs: React.FC<{
       >
         <PerformerAppearsWithPanel
           active={activeTabKey === "appearswith"}
+          performer={performer}
+        />
+      </Tab>
+
+      <Tab
+        eventKey="variants"
+        title={
+          <FormattedMessage id="character_variants" defaultMessage="Variants" />
+        }
+      >
+        <PerformerVariantsPanel
+          active={activeTabKey === "variants"}
           performer={performer}
         />
       </Tab>
@@ -439,11 +454,11 @@ const PerformerPage: React.FC<IProps> = PatchComponent(
             />
             <div className="row">
               <div className="performer-head col">
-                <DetailTitle
-                  name={performer.name}
-                  disambiguation={performer.disambiguation ?? undefined}
-                  classNamePrefix="performer"
-                >
+                <DetailTitle name={performer.name} classNamePrefix="performer">
+                  <PerformerDisambiguationValue
+                    disambiguation={performer.disambiguation}
+                    context={performer.disambiguation_context}
+                  />
                   {!isEditing && (
                     <ExpandCollapseButton
                       collapsed={collapsed}

@@ -30,29 +30,32 @@ const (
 )
 
 type performerRow struct {
-	ID                   int         `db:"id" goqu:"skipinsert"`
-	Name                 null.String `db:"name"` // TODO: make schema non-nullable
-	Disambigation        zero.String `db:"disambiguation"`
-	Gender               zero.String `db:"gender"`
-	Birthdate            NullDate    `db:"birthdate"`
-	BirthdatePrecision   null.Int    `db:"birthdate_precision"`
-	Ethnicity            zero.String `db:"ethnicity"`
-	Country              zero.String `db:"country"`
-	EyeColor             zero.String `db:"eye_color"`
-	Height               null.Int    `db:"height"`
-	Measurements         zero.String `db:"measurements"`
-	FakeTits             zero.String `db:"fake_tits"`
-	PenisLength          null.Float  `db:"penis_length"`
-	Circumcised          zero.String `db:"circumcised"`
-	CareerStart          NullDate    `db:"career_start"`
-	CareerStartPrecision null.Int    `db:"career_start_precision"`
-	CareerEnd            NullDate    `db:"career_end"`
-	CareerEndPrecision   null.Int    `db:"career_end_precision"`
-	Tattoos              zero.String `db:"tattoos"`
-	Piercings            zero.String `db:"piercings"`
-	Favorite             bool        `db:"favorite"`
-	CreatedAt            Timestamp   `db:"created_at"`
-	UpdatedAt            Timestamp   `db:"updated_at"`
+	ID                        int         `db:"id" goqu:"skipinsert"`
+	Name                      null.String `db:"name"` // TODO: make schema non-nullable
+	Disambigation             zero.String `db:"disambiguation"`
+	ParentPerformerID         null.Int    `db:"parent_performer_id"`
+	DisambiguationCopyrightID null.Int    `db:"disambiguation_copyright_id"`
+	DisambiguationStudioID    null.Int    `db:"disambiguation_studio_id"`
+	Gender                    zero.String `db:"gender"`
+	Birthdate                 NullDate    `db:"birthdate"`
+	BirthdatePrecision        null.Int    `db:"birthdate_precision"`
+	Ethnicity                 zero.String `db:"ethnicity"`
+	Country                   zero.String `db:"country"`
+	EyeColor                  zero.String `db:"eye_color"`
+	Height                    null.Int    `db:"height"`
+	Measurements              zero.String `db:"measurements"`
+	FakeTits                  zero.String `db:"fake_tits"`
+	PenisLength               null.Float  `db:"penis_length"`
+	Circumcised               zero.String `db:"circumcised"`
+	CareerStart               NullDate    `db:"career_start"`
+	CareerStartPrecision      null.Int    `db:"career_start_precision"`
+	CareerEnd                 NullDate    `db:"career_end"`
+	CareerEndPrecision        null.Int    `db:"career_end_precision"`
+	Tattoos                   zero.String `db:"tattoos"`
+	Piercings                 zero.String `db:"piercings"`
+	Favorite                  bool        `db:"favorite"`
+	CreatedAt                 Timestamp   `db:"created_at"`
+	UpdatedAt                 Timestamp   `db:"updated_at"`
 	// expressed as 1-100
 	Rating             null.Int    `db:"rating"`
 	Details            zero.String `db:"details"`
@@ -70,6 +73,9 @@ func (r *performerRow) fromPerformer(o models.Performer) {
 	r.ID = o.ID
 	r.Name = null.StringFrom(o.Name)
 	r.Disambigation = zero.StringFrom(o.Disambiguation)
+	r.ParentPerformerID = intFromPtr(o.ParentID)
+	r.DisambiguationCopyrightID = intFromPtr(o.DisambiguationCopyrightID)
+	r.DisambiguationStudioID = intFromPtr(o.DisambiguationStudioID)
 	if o.Gender != nil && o.Gender.IsValid() {
 		r.Gender = zero.StringFrom(o.Gender.String())
 	}
@@ -105,24 +111,27 @@ func (r *performerRow) fromPerformer(o models.Performer) {
 
 func (r *performerRow) resolve() *models.Performer {
 	ret := &models.Performer{
-		ID:             r.ID,
-		Name:           r.Name.String,
-		Disambiguation: r.Disambigation.String,
-		Birthdate:      r.Birthdate.DatePtr(r.BirthdatePrecision),
-		Ethnicity:      r.Ethnicity.String,
-		Country:        r.Country.String,
-		EyeColor:       r.EyeColor.String,
-		Height:         nullIntPtr(r.Height),
-		Measurements:   r.Measurements.String,
-		FakeTits:       r.FakeTits.String,
-		PenisLength:    nullFloatPtr(r.PenisLength),
-		CareerStart:    r.CareerStart.DatePtr(r.CareerStartPrecision),
-		CareerEnd:      r.CareerEnd.DatePtr(r.CareerEndPrecision),
-		Tattoos:        r.Tattoos.String,
-		Piercings:      r.Piercings.String,
-		Favorite:       r.Favorite,
-		CreatedAt:      r.CreatedAt.Timestamp,
-		UpdatedAt:      r.UpdatedAt.Timestamp,
+		ID:                        r.ID,
+		Name:                      r.Name.String,
+		Disambiguation:            r.Disambigation.String,
+		ParentID:                  nullIntPtr(r.ParentPerformerID),
+		DisambiguationCopyrightID: nullIntPtr(r.DisambiguationCopyrightID),
+		DisambiguationStudioID:    nullIntPtr(r.DisambiguationStudioID),
+		Birthdate:                 r.Birthdate.DatePtr(r.BirthdatePrecision),
+		Ethnicity:                 r.Ethnicity.String,
+		Country:                   r.Country.String,
+		EyeColor:                  r.EyeColor.String,
+		Height:                    nullIntPtr(r.Height),
+		Measurements:              r.Measurements.String,
+		FakeTits:                  r.FakeTits.String,
+		PenisLength:               nullFloatPtr(r.PenisLength),
+		CareerStart:               r.CareerStart.DatePtr(r.CareerStartPrecision),
+		CareerEnd:                 r.CareerEnd.DatePtr(r.CareerEndPrecision),
+		Tattoos:                   r.Tattoos.String,
+		Piercings:                 r.Piercings.String,
+		Favorite:                  r.Favorite,
+		CreatedAt:                 r.CreatedAt.Timestamp,
+		UpdatedAt:                 r.UpdatedAt.Timestamp,
 		// expressed as 1-100
 		Rating:        nullIntPtr(r.Rating),
 		Details:       r.Details.String,
@@ -152,6 +161,9 @@ type performerRowRecord struct {
 func (r *performerRowRecord) fromPartial(o models.PerformerPartial) {
 	r.setString("name", o.Name)
 	r.setNullString("disambiguation", o.Disambiguation)
+	r.setNullInt("parent_performer_id", o.ParentID)
+	r.setNullInt("disambiguation_copyright_id", o.DisambiguationCopyrightID)
+	r.setNullInt("disambiguation_studio_id", o.DisambiguationStudioID)
 	r.setNullString("gender", o.Gender)
 	r.setNullDate("birthdate", "birthdate_precision", o.Birthdate)
 	r.setNullString("ethnicity", o.Ethnicity)

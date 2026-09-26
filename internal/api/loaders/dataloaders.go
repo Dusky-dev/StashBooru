@@ -6,6 +6,7 @@
 //go:generate go run github.com/vektah/dataloaden GalleryLoader int *github.com/stashapp/stash/pkg/models.Gallery
 //go:generate go run github.com/vektah/dataloaden ImageLoader int *github.com/stashapp/stash/pkg/models.Image
 //go:generate go run github.com/vektah/dataloaden PerformerLoader int *github.com/stashapp/stash/pkg/models.Performer
+//go:generate go run github.com/vektah/dataloaden CopyrightLoader int *github.com/stashapp/stash/pkg/models.Copyright
 //go:generate go run github.com/vektah/dataloaden StudioLoader int *github.com/stashapp/stash/pkg/models.Studio
 //go:generate go run github.com/vektah/dataloaden TagLoader int *github.com/stashapp/stash/pkg/models.Tag
 //go:generate go run github.com/vektah/dataloaden GroupLoader int *github.com/stashapp/stash/pkg/models.Group
@@ -64,6 +65,7 @@ type Loaders struct {
 
 	PerformerByID         *PerformerLoader
 	PerformerCustomFields *CustomFieldsLoader
+	CopyrightByID         *CopyrightLoader
 
 	StudioByID         *StudioLoader
 	StudioCustomFields *CustomFieldsLoader
@@ -138,6 +140,11 @@ func (m Middleware) Middleware(next http.Handler) http.Handler {
 				wait:     wait,
 				maxBatch: maxBatch,
 				fetch:    m.fetchPerformerCustomFields(ctx),
+			},
+			CopyrightByID: &CopyrightLoader{
+				wait:     wait,
+				maxBatch: maxBatch,
+				fetch:    m.fetchCopyrights(ctx),
 			},
 			StudioCustomFields: &CustomFieldsLoader{
 				wait:     wait,
@@ -374,6 +381,17 @@ func (m Middleware) fetchStudios(ctx context.Context) func(keys []int) ([]*model
 		err := m.Repository.WithDB(ctx, func(ctx context.Context) error {
 			var err error
 			ret, err = m.Repository.Studio.FindMany(ctx, keys)
+			return err
+		})
+		return ret, toErrorSlice(err)
+	}
+}
+
+func (m Middleware) fetchCopyrights(ctx context.Context) func(keys []int) ([]*models.Copyright, []error) {
+	return func(keys []int) (ret []*models.Copyright, errs []error) {
+		err := m.Repository.WithDB(ctx, func(ctx context.Context) error {
+			var err error
+			ret, err = m.Repository.Copyright.FindMany(ctx, keys)
 			return err
 		})
 		return ret, toErrorSlice(err)

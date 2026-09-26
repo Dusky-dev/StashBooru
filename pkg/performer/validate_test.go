@@ -155,6 +155,34 @@ func TestValidateUpdateName(t *testing.T) {
 	}
 }
 
+func TestValidateParentRejectsSelfAndAncestorCycles(t *testing.T) {
+	selfID := 1
+	assert.ErrorContains(t, ValidateParent(testCtx, 1, &selfID, nil), "cycle")
+
+	db := mocks.NewDatabase()
+	parentID, grandparentID := 2, 3
+	db.Performer.On("Find", testCtx, parentID).Return(&models.Performer{
+		ID: parentID, ParentID: &grandparentID,
+	}, nil).Once()
+	db.Performer.On("Find", testCtx, grandparentID).Return(&models.Performer{
+		ID: grandparentID, ParentID: &selfID,
+	}, nil).Once()
+
+	err := ValidateParent(testCtx, selfID, &parentID, db.Performer)
+	assert.ErrorContains(t, err, "cycle")
+	db.Performer.AssertExpectations(t)
+}
+
+func TestValidateParentRequiresExistingTarget(t *testing.T) {
+	db := mocks.NewDatabase()
+	missingID := 42
+	db.Performer.On("Find", testCtx, missingID).Return((*models.Performer)(nil), nil).Once()
+
+	err := ValidateParent(testCtx, 1, &missingID, db.Performer)
+	assert.EqualError(t, err, (&NotFoundError{missingID}).Error())
+	db.Performer.AssertExpectations(t)
+}
+
 func TestValidateAliases(t *testing.T) {
 	const (
 		name1  = "name 1"
