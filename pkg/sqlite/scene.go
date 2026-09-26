@@ -1318,7 +1318,7 @@ func (qb *SceneStore) setSceneSort(query *queryBuilder, findFilter *models.FindF
 				sort:     true,
 				table:    scenesFilesTable,
 				as:       "format_scenes_files",
-				onClause: "format_scenes_files.scene_id = scenes.id AND format_scenes_files.primary = 1",
+				onClause: "format_scenes_files.scene_id = scenes.id AND format_scenes_files.`primary` = 1",
 			},
 			join{
 				sort:     true,

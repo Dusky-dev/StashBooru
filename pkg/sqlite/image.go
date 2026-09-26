@@ -1122,7 +1122,7 @@ func (qb *ImageStore) setImageSortAndPagination(q *queryBuilder, findFilter *mod
 					sort:     true,
 					table:    imagesFilesTable,
 					as:       "format_images_files",
-					onClause: "format_images_files.image_id = images.id AND format_images_files.primary = 1",
+					onClause: "format_images_files.image_id = images.id AND format_images_files.`primary` = 1",
 				},
 				join{
 					sort:     true,
