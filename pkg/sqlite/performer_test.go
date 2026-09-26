@@ -14,6 +14,7 @@ import (
 
 	"github.com/stashapp/stash/pkg/models"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var testCustomFields = map[string]interface{}{
@@ -208,6 +209,74 @@ func Test_PerformerStore_Create(t *testing.T) {
 			assert.Equal(tt.newObject.CustomFields, cf)
 		})
 	}
+}
+
+func Test_PerformerVariantAndDisambiguationContext(t *testing.T) {
+	runWithRollbackTxn(t, "variant context", func(t *testing.T, ctx context.Context) {
+		base := models.NewPerformer()
+		base.Name = "P05 base Character"
+		require.NoError(t, db.Performer.Create(ctx, &models.CreatePerformerInput{Performer: &base}))
+
+		copyrightStore := db.Repository().Copyright
+		copyright, err := copyrightStore.Create(ctx, models.CopyrightCreateInput{Name: "P05 Copyright context"})
+		require.NoError(t, err)
+
+		artist := models.NewStudio()
+		artist.Name = "P05 Artist context"
+		require.NoError(t, db.Studio.Create(ctx, &models.CreateStudioInput{Studio: &artist}))
+
+		legacyLabel := "legacy context label"
+		child := models.NewPerformer()
+		child.Name = "P05 variant Character"
+		child.Disambiguation = legacyLabel
+		child.ParentID = &base.ID
+		child.DisambiguationCopyrightID = &copyright.ID
+		require.NoError(t, db.Performer.Create(ctx, &models.CreatePerformerInput{Performer: &child}))
+
+		loaded, err := db.Performer.Find(ctx, child.ID)
+		require.NoError(t, err)
+		require.NotNil(t, loaded)
+		require.Equal(t, &base.ID, loaded.ParentID)
+		require.Equal(t, &copyright.ID, loaded.DisambiguationCopyrightID)
+		require.Nil(t, loaded.DisambiguationStudioID)
+		require.Equal(t, legacyLabel, loaded.Disambiguation)
+
+		pageSize := 10
+		variants, count, err := db.Performer.Query(ctx, &models.PerformerFilterType{
+			ParentID: &models.IntCriterionInput{
+				Value:    base.ID,
+				Modifier: models.CriterionModifierEquals,
+			},
+		}, &models.FindFilterType{PerPage: &pageSize})
+		require.NoError(t, err)
+		require.Equal(t, 1, count)
+		require.Len(t, variants, 1)
+		require.Equal(t, child.ID, variants[0].ID)
+
+		require.NoError(t, copyrightStore.Destroy(ctx, copyright.ID))
+		loaded, err = db.Performer.Find(ctx, child.ID)
+		require.NoError(t, err)
+		require.Nil(t, loaded.DisambiguationCopyrightID, "deleting a context target should clear its link")
+
+		updated, err := db.Performer.UpdatePartial(ctx, child.ID, models.PerformerPartial{
+			DisambiguationCopyrightID: models.NewOptionalIntPtr(nil),
+			DisambiguationStudioID:    models.NewOptionalIntPtr(&artist.ID),
+		})
+		require.NoError(t, err)
+		require.Nil(t, updated.DisambiguationCopyrightID)
+		require.Equal(t, &artist.ID, updated.DisambiguationStudioID)
+		require.Equal(t, &base.ID, updated.ParentID)
+
+		require.NoError(t, db.Performer.Destroy(ctx, base.ID))
+		require.NoError(t, db.Studio.Destroy(ctx, artist.ID))
+
+		loaded, err = db.Performer.Find(ctx, child.ID)
+		require.NoError(t, err)
+		require.NotNil(t, loaded)
+		require.Nil(t, loaded.ParentID, "deleting a base Character should orphan, not delete, its variants")
+		require.Nil(t, loaded.DisambiguationStudioID, "deleting a context target should leave the Character valid")
+		require.Equal(t, legacyLabel, loaded.Disambiguation, "legacy text remains available as the fallback label")
+	})
 }
 
 func Test_PerformerStore_Update(t *testing.T) {

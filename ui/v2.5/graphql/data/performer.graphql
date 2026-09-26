@@ -2,6 +2,24 @@ fragment PerformerData on Performer {
   id
   name
   disambiguation
+  parent {
+    ...SelectPerformerData
+  }
+  disambiguation_context {
+    copyright {
+      id
+      name
+      sort_name
+      aliases
+      favorite
+    }
+    artist {
+      id
+      name
+      aliases
+      image_path
+    }
+  }
   urls
   gender
   birthdate

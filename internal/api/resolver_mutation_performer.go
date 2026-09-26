@@ -43,6 +43,19 @@ func (r *mutationResolver) PerformerCreate(ctx context.Context, input models.Per
 
 	newPerformer.Name = strings.TrimSpace(input.Name)
 	newPerformer.Disambiguation = translator.string(input.Disambiguation)
+	if input.Variant != nil {
+		parentID, err := parsePerformerRelationID(input.Variant.ParentID, "parent Character")
+		if err != nil {
+			return nil, err
+		}
+		newPerformer.ParentID = parentID
+	}
+	copyrightContextID, artistContextID, contextErr := parsePerformerContextInput(input.DisambiguationContext)
+	if contextErr != nil {
+		return nil, contextErr
+	}
+	newPerformer.DisambiguationCopyrightID = copyrightContextID
+	newPerformer.DisambiguationStudioID = artistContextID
 	newPerformer.Aliases = models.NewRelatedStrings(stringslice.UniqueExcludeFold(stringslice.TrimSpace(input.AliasList), newPerformer.Name))
 	newPerformer.Gender = input.Gender
 	newPerformer.Ethnicity = translator.string(input.Ethnicity)
@@ -125,6 +138,9 @@ func (r *mutationResolver) PerformerCreate(ctx context.Context, input models.Per
 	// Start the transaction and save the performer
 	if err := r.withTxn(ctx, func(ctx context.Context) error {
 		qb := r.repository.Performer
+		if err := validatePerformerContextTargets(ctx, r.repository, newPerformer.DisambiguationCopyrightID, newPerformer.DisambiguationStudioID); err != nil {
+			return err
+		}
 
 		if err := performer.ValidateCreate(ctx, newPerformer, qb); err != nil {
 			return err
@@ -268,6 +284,21 @@ func legacyPerformerURLsFromInput(input models.PerformerUpdateInput, translator 
 func performerPartialFromInput(input models.PerformerUpdateInput, translator changesetTranslator) (*models.PerformerPartial, error) {
 	// Populate performer from the input
 	updatedPerformer := models.NewPerformerPartial()
+	if input.Variant != nil {
+		parentID, err := parsePerformerRelationID(input.Variant.ParentID, "parent Character")
+		if err != nil {
+			return nil, err
+		}
+		updatedPerformer.ParentID = models.NewOptionalIntPtr(parentID)
+	}
+	if input.DisambiguationContext != nil {
+		copyrightID, artistID, err := parsePerformerContextInput(input.DisambiguationContext)
+		if err != nil {
+			return nil, err
+		}
+		updatedPerformer.DisambiguationCopyrightID = models.NewOptionalIntPtr(copyrightID)
+		updatedPerformer.DisambiguationStudioID = models.NewOptionalIntPtr(artistID)
+	}
 
 	updatedPerformer.Name = translator.optionalString(input.Name, "name")
 	updatedPerformer.Disambiguation = translator.optionalString(input.Disambiguation, "disambiguation")
@@ -381,6 +412,11 @@ func (r *mutationResolver) PerformerUpdate(ctx context.Context, input models.Per
 	// Start the transaction and save the performer
 	if err := r.withTxn(ctx, func(ctx context.Context) error {
 		qb := r.repository.Performer
+		if input.DisambiguationContext != nil {
+			if err := validatePerformerContextTargets(ctx, r.repository, updatedPerformer.DisambiguationCopyrightID.Ptr(), updatedPerformer.DisambiguationStudioID.Ptr()); err != nil {
+				return err
+			}
+		}
 
 		if legacyURLs.AnySet() {
 			if err := r.handleLegacyURLs(ctx, performerID, legacyURLs, updatedPerformer); err != nil {

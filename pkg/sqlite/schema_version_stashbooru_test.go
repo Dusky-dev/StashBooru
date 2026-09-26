@@ -2,8 +2,8 @@ package sqlite
 
 import "testing"
 
-func TestStashBooruSchemaIncludesTaxonomyMigrations(t *testing.T) {
-	if appSchemaVersion < 94 {
-		t.Fatalf("schema version %d does not include P04 taxonomy migration 94", appSchemaVersion)
+func TestStashBooruSchemaIncludesCharacterVariantMigration(t *testing.T) {
+	if appSchemaVersion < 95 {
+		t.Fatalf("schema version %d does not include P05 Character migration 95", appSchemaVersion)
 	}
 }

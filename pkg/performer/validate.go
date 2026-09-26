@@ -51,6 +51,10 @@ func (e *DeathDateError) Error() string {
 }
 
 func ValidateCreate(ctx context.Context, performer models.Performer, qb models.PerformerReader) error {
+	if err := ValidateParent(ctx, performer.ID, performer.ParentID, qb); err != nil {
+		return err
+	}
+
 	if err := ValidateName(ctx, performer.Name, performer.Disambiguation, qb); err != nil {
 		return err
 	}
@@ -76,6 +80,14 @@ func ValidateUpdate(ctx context.Context, id int, partial models.PerformerPartial
 		return &NotFoundError{id}
 	}
 
+	parentID := existing.ParentID
+	if partial.ParentID.Set {
+		parentID = partial.ParentID.Ptr()
+	}
+	if err := ValidateParent(ctx, id, parentID, qb); err != nil {
+		return err
+	}
+
 	if err := ValidateUpdateName(ctx, *existing, partial.Name, partial.Disambiguation, qb); err != nil {
 		return err
 	}
@@ -89,6 +101,42 @@ func ValidateUpdate(ctx context.Context, id int, partial models.PerformerPartial
 
 	if err := ValidateUpdateDeathDate(*existing, partial.Birthdate, partial.DeathDate); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// ValidateParent ensures a Character's single parent link points to an
+// existing Character and cannot create or extend a cycle.
+func ValidateParent(ctx context.Context, performerID int, parentID *int, qb models.PerformerGetter) error {
+	if parentID == nil {
+		return nil
+	}
+	if *parentID <= 0 {
+		return fmt.Errorf("parent Character ID must be positive")
+	}
+
+	seen := make(map[int]struct{})
+	for currentID := *parentID; currentID > 0; {
+		if performerID > 0 && currentID == performerID {
+			return fmt.Errorf("character variant hierarchy cannot contain a cycle")
+		}
+		if _, ok := seen[currentID]; ok {
+			return fmt.Errorf("existing Character variant hierarchy already contains a cycle")
+		}
+		seen[currentID] = struct{}{}
+
+		parent, err := qb.Find(ctx, currentID)
+		if err != nil {
+			return fmt.Errorf("checking parent Character %d: %w", currentID, err)
+		}
+		if parent == nil {
+			return &NotFoundError{currentID}
+		}
+		if parent.ParentID == nil {
+			return nil
+		}
+		currentID = *parent.ParentID
 	}
 
 	return nil

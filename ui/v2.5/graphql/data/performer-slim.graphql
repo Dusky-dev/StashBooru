@@ -43,4 +43,14 @@ fragment SelectPerformerData on Performer {
   image_path
   birthdate
   death_date
+  disambiguation_context {
+    copyright {
+      id
+      name
+    }
+    artist {
+      id
+      name
+    }
+  }
 }

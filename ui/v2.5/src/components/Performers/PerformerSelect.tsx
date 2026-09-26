@@ -36,6 +36,7 @@ import { PerformerPopover } from "./PerformerPopover";
 import { Placement } from "react-bootstrap/esm/Overlay";
 import { isUUID } from "src/utils/stashIds";
 import { filterByStashID } from "src/models/list-filter/utils";
+import { PerformerDisambiguationValue } from "./PerformerDisambiguationValue";
 
 export type SelectObject = {
   id: string;
@@ -44,11 +45,12 @@ export type SelectObject = {
 };
 
 export type Performer = Pick<
-  GQL.Performer,
+  GQL.SelectPerformerDataFragment,
   | "id"
   | "name"
   | "alias_list"
   | "disambiguation"
+  | "disambiguation_context"
   | "image_path"
   | "birthdate"
   | "death_date"
@@ -208,11 +210,11 @@ const _PerformerSelect: React.FC<
                 lineCount={1}
               />
 
-              {object.disambiguation && (
-                <span className="performer-select-disambiguation">
-                  {object.disambiguation}
-                </span>
-              )}
+              <PerformerDisambiguationValue
+                disambiguation={object.disambiguation}
+                context={object.disambiguation_context}
+                linkContext={false}
+              />
 
               {object.birthdate && (
                 <span className="performer-select-birthdate">
@@ -245,9 +247,11 @@ const _PerformerSelect: React.FC<
         >
           <span className="performer-select-value">
             <span>{object.name}</span>
-            {object.disambiguation && (
-              <span className="performer-disambiguation">{` (${object.disambiguation})`}</span>
-            )}
+            <PerformerDisambiguationValue
+              disambiguation={object.disambiguation}
+              context={object.disambiguation_context}
+              linkContext={false}
+            />
           </span>
         </PerformerPopover>
       ),
@@ -268,9 +272,11 @@ const _PerformerSelect: React.FC<
       children: (
         <span className="performer-select-value">
           {object.name}
-          {object.disambiguation && (
-            <span className="performer-disambiguation">{` (${object.disambiguation})`}</span>
-          )}
+          <PerformerDisambiguationValue
+            disambiguation={object.disambiguation}
+            context={object.disambiguation_context}
+            linkContext={false}
+          />
         </span>
       ),
     };

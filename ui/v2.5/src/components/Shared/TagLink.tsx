@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import cx from "classnames";
 import NavUtils, { INamedObject } from "src/utils/navigation";
 import TextUtils from "src/utils/text";
+import { PerformerDisambiguationValue } from "../Performers/PerformerDisambiguationValue";
 import { IFile, IObjectWithTitleFiles, objectTitle } from "src/core/files";
 import { galleryTitle } from "src/core/galleries";
 import * as GQL from "src/core/generated-graphql";
@@ -62,7 +63,7 @@ const CommonLinkComponent: React.FC<ICommonLinkProps> = ({
 };
 
 interface IPerformerLinkProps {
-  performer: INamedObject & { disambiguation?: string | null };
+  performer: Partial<GQL.PerformerDataFragment> & INamedObject;
   linkType?: "scene" | "gallery" | "image" | "scene_marker";
   className?: string;
 }
@@ -91,12 +92,15 @@ export const PerformerLink: React.FC<IPerformerLinkProps> = ({
   const title = performer.name || "";
 
   return (
-    <CommonLinkComponent link={link} className={className}>
-      <span>{title}</span>
-      {performer.disambiguation && (
-        <span className="performer-disambiguation">{` (${performer.disambiguation})`}</span>
-      )}
-    </CommonLinkComponent>
+    <span className={className}>
+      <CommonLinkComponent link={link}>
+        <span>{title}</span>
+      </CommonLinkComponent>
+      <PerformerDisambiguationValue
+        disambiguation={performer.disambiguation}
+        context={performer.disambiguation_context}
+      />
+    </span>
   );
 };
 

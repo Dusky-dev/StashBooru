@@ -58,6 +58,9 @@ func (r *Resolver) Mutation() MutationResolver {
 func (r *Resolver) Performer() PerformerResolver {
 	return &performerResolver{r}
 }
+func (r *Resolver) PerformerDisambiguationContext() PerformerDisambiguationContextResolver {
+	return &performerDisambiguationContextResolver{r}
+}
 func (r *Resolver) Query() QueryResolver {
 	return &queryResolver{r}
 }
@@ -119,6 +122,7 @@ type subscriptionResolver struct{ *Resolver }
 type galleryResolver struct{ *Resolver }
 type galleryChapterResolver struct{ *Resolver }
 type performerResolver struct{ *Resolver }
+type performerDisambiguationContextResolver struct{ *Resolver }
 type sceneResolver struct{ *Resolver }
 type sceneMarkerResolver struct{ *Resolver }
 type imageResolver struct{ *Resolver }

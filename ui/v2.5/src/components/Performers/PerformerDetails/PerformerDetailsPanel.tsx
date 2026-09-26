@@ -17,6 +17,7 @@ import {
 } from "../PerformerList";
 import { PatchComponent } from "src/patch";
 import { CustomFields } from "src/components/Shared/CustomFields";
+import { Link } from "react-router-dom";
 
 interface IPerformerDetails {
   performer: GQL.PerformerDataFragment;
@@ -83,6 +84,21 @@ export const PerformerDetailsPanel: React.FC<IPerformerDetails> =
 
     return (
       <PerformerDetailGroup {...props}>
+        {performer.parent && (
+          <DetailItem
+            id="base-character"
+            label={intl.formatMessage({
+              id: "base_character",
+              defaultMessage: "Base Character",
+            })}
+            value={
+              <Link to={`/performers/${performer.parent.id}`}>
+                {performer.parent.name}
+              </Link>
+            }
+            fullWidth={fullWidth}
+          />
+        )}
         {performer.gender ? (
           <DetailItem
             id="gender"

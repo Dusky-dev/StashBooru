@@ -2,6 +2,7 @@ import React from "react";
 import { useIntl } from "react-intl";
 import { Button } from "react-bootstrap";
 import { Link } from "react-router-dom";
+import { PerformerDisambiguationValue } from "./PerformerDisambiguationValue";
 import * as GQL from "src/core/generated-graphql";
 import { Icon } from "../Shared/Icon";
 import NavUtils from "src/utils/navigation";
@@ -74,16 +75,13 @@ export const PerformerListTable: React.FC<IPerformerListTableProps> = (
   );
 
   const NameCell = (performer: GQL.PerformerDataFragment) => (
-    <Link to={`/performers/${performer.id}`}>
-      <div className="ellips-data" title={performer.name}>
-        {performer.name}
-        {performer.disambiguation && (
-          <span className="performer-disambiguation">
-            {` (${performer.disambiguation})`}
-          </span>
-        )}
-      </div>
-    </Link>
+    <div className="ellips-data" title={performer.name}>
+      <Link to={`/performers/${performer.id}`}>{performer.name}</Link>
+      <PerformerDisambiguationValue
+        disambiguation={performer.disambiguation}
+        context={performer.disambiguation_context}
+      />
+    </div>
   );
 
   const AliasesCell = (performer: GQL.PerformerDataFragment) => {

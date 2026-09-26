@@ -126,6 +126,7 @@ func (qb *performerFilterHandler) criterionHandler() criterionHandler {
 	return compoundHandler{
 		stringCriterionHandler(filter.Name, tableName+".name"),
 		stringCriterionHandler(filter.Disambiguation, tableName+".disambiguation"),
+		intCriterionHandler(filter.ParentID, tableName+".parent_performer_id", nil),
 		stringCriterionHandler(filter.Details, tableName+".details"),
 
 		boolCriterionHandler(filter.FilterFavorites, tableName+".favorite", nil),
