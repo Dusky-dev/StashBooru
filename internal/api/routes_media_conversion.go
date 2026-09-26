@@ -454,14 +454,15 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 					if options.DecodingSpeed == nil {
 						options.DecodingSpeed = defaultConversionDecodingSpeed(format)
 					}
-					if formatSupportsControl(format, "decodingSpeed") {
+					switch {
+					case formatSupportsControl(format, "decodingSpeed"):
 						options.FasterDecoding = nil
-					} else if formatSupportsControl(format, "fasterDecoding") {
+					case formatSupportsControl(format, "fasterDecoding"):
 						// Keep the old wire name for remote workers that predate
 						// the generic decodingSpeed option.
 						options.FasterDecoding = options.DecodingSpeed
 						options.DecodingSpeed = nil
-					} else {
+					default:
 						// Older workers may not have a compatible encoder control.
 						// Omit it so the existing worker protocol remains compatible.
 						options.DecodingSpeed = nil
@@ -583,13 +584,13 @@ func previewConversionDefaults(w http.ResponseWriter, r *http.Request, targets [
 		return
 	}
 	type plan struct {
-		Input          string  `json:"input"`
-		Output         string  `json:"output"`
-		Count          int     `json:"count"`
-		Error          string  `json:"error,omitempty"`
-		Quality        float64 `json:"quality"`
-		Effort         int     `json:"effort"`
-		DecodingSpeed  int     `json:"decodingSpeed"`
+		Input         string  `json:"input"`
+		Output        string  `json:"output"`
+		Count         int     `json:"count"`
+		Error         string  `json:"error,omitempty"`
+		Quality       float64 `json:"quality"`
+		Effort        int     `json:"effort"`
+		DecodingSpeed int     `json:"decodingSpeed"`
 	}
 	plans := []plan{}
 	indices := map[plan]int{}
