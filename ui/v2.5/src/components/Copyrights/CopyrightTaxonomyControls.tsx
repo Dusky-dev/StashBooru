@@ -15,10 +15,7 @@ export const CopyrightBreadcrumb: React.FC<{
   if (items.length <= 1) return null;
 
   return (
-    <nav
-      className="copyright-breadcrumb mb-2"
-      aria-label="Copyright breadcrumb"
-    >
+    <nav className="copyright-breadcrumb mb-2" aria-label="Folder path">
       {items.map((item, index) => (
         <React.Fragment key={item.id}>
           {index > 0 ? <span className="mx-1 text-muted">/</span> : null}
@@ -74,7 +71,7 @@ export const CopyrightChildrenOrderControl: React.FC<{
 
   return (
     <div className="copyright-child-order mb-3">
-      <div className="font-weight-bold mb-1">Manual child order</div>
+      <div className="font-weight-bold mb-1">Subfolder order</div>
       {items.map((item, index) => (
         <div
           key={item.id}
@@ -109,7 +106,7 @@ export const CopyrightChildrenOrderControl: React.FC<{
         disabled={saving || !dirty}
         onClick={() => void save()}
       >
-        Save child order
+        Save subfolder order
       </Button>
     </div>
   );
