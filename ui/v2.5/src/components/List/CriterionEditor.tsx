@@ -67,7 +67,8 @@ const GenericCriterionEditor: React.FC<IGenericCriterionEditor> = ({
   criterion,
   setCriterion,
 }) => {
-  const { options, modifierOptions } = criterion.modifierCriterionOption();
+  const { options, modifierOptions, inputType } =
+    criterion.modifierCriterionOption();
 
   const showModifierSelector = useMemo(() => {
     if (
@@ -200,6 +201,7 @@ const GenericCriterionEditor: React.FC<IGenericCriterionEditor> = ({
     }
     if (
       options &&
+      inputType !== "select" &&
       !criterionIsHierarchicalLabelValue(criterion.value) &&
       !criterionIsNumberValue(criterion.value) &&
       !criterionIsStashIDValue(criterion.value) &&
@@ -270,7 +272,7 @@ const GenericCriterionEditor: React.FC<IGenericCriterionEditor> = ({
     return (
       <InputFilter criterion={criterion} onValueChanged={onValueChanged} />
     );
-  }, [criterion, setCriterion, options, alwaysShowFilter]);
+  }, [criterion, setCriterion, options, alwaysShowFilter, inputType]);
 
   return (
     <div>
