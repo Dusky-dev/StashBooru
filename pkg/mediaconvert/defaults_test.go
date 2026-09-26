@@ -21,7 +21,7 @@ func TestFormatDefaultsPersistAcrossUpgrade(t *testing.T) {
 		t.Fatal(err)
 	}
 	c, err := s.Config()
-	if err != nil || c.CacheLimitBytes != 1234 || c.DefaultOutput("gif", false) != "ajxl" {
+	if err != nil || c.CacheLimitBytes != 1234 || c.DefaultOutput("gif", false) != "webp" {
 		t.Fatalf("legacy config: %+v, %v", c, err)
 	}
 	c.FormatDefaults = map[string]string{"image": "webp", "video": "hevc", "gif": "apng", "jpeg": "jxl"}
@@ -69,10 +69,10 @@ func TestMixedInputsUseIndividualDefaults(t *testing.T) {
 	}{
 		{"still.JPG", "jpeg", "jxl", nil, false},
 		{"still.png", "png", "jxl", append(png, pngChunk("IDAT", 0)...), false},
-		{"animation.png", "apng", "ajxl", apng, false},
+		{"animation.png", "apng", "webp", apng, false},
 		{"still.webp", "webp", "jxl", webp, false},
-		{"animation.webp", "animated-webp", "ajxl", animatedWebp, false},
-		{"animation.gif", "gif", "ajxl", nil, false},
+		{"animation.webp", "animated-webp", "webp", animatedWebp, false},
+		{"animation.gif", "gif", "webp", nil, false},
 		{"input.jxl", "ajxl", "ajxl", nil, false},
 		{"video.M4V", "mp4", "av1-mp4", nil, true},
 		{"video.mkv", "mkv", "av1-mkv", nil, true},
@@ -226,6 +226,9 @@ func TestEncodingPreferencesPersistAndResolvePerInput(t *testing.T) {
 	}
 	legacy := Config{FormatDefaults: map[string]string{"image": "jxl"}}
 	if legacy.DefaultOutput("ajxl", false) != "ajxl" {
-		t.Fatal("legacy config would flatten animation")
+		t.Fatal("legacy config would unnecessarily transcode AJXL")
+	}
+	if legacy.DefaultOutput("gif", false) != "webp" || legacy.DefaultOutput("animated-avif", false) != "webp" {
+		t.Fatal("legacy config should use animated WebP for animation subtypes without saved rules")
 	}
 }
