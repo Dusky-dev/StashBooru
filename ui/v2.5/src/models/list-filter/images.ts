@@ -25,6 +25,7 @@ import { PhashCriterionOption } from "./criteria/phash";
 import { CustomFieldsCriterionOption } from "./criteria/custom-fields";
 import { FolderCriterionOption } from "./criteria/folder";
 import { CopyrightsCriterionOption } from "./criteria/copyrights";
+import { ImageFormatCriterionOption } from "./criteria/format";
 
 const defaultSortBy = "path";
 
@@ -60,6 +61,7 @@ const criterionOptions = [
   PhashCriterionOption,
   PathCriterionOption,
   FolderCriterionOption,
+  ImageFormatCriterionOption,
   GalleriesCriterionOption,
   OrganizedCriterionOption,
   createMandatoryNumberCriterionOption("o_counter", "o_count", {
