@@ -15,7 +15,7 @@ func (s Store) convertedBackup(id string) string {
 // ConvertedCached reports whether the inactive converted representation is
 // retained and still matches the conversion journal.
 func (s Store) ConvertedCached(r *Record) bool {
-	if r == nil || !r.ConvertedCached || r.After.File() == nil {
+	if r == nil || r.After.File() == nil {
 		return false
 	}
 	return matches(s.convertedBackup(r.ID), r.After.File().Base().Fingerprints.GetString("md5"))
@@ -80,7 +80,6 @@ func (s Store) ToggleRestore(ctx context.Context, id string) error {
 		if err := ensureCachedCopy(after.Base().Path, s.convertedBackup(id), afterHash, stat.Mode().Perm()); err != nil {
 			return err
 		}
-		r.ConvertedCached = true
 		r.Status = "restoring"
 		if err := s.save(r); err != nil {
 			return err
@@ -115,9 +114,6 @@ func (s Store) ToggleRestore(ctx context.Context, id string) error {
 	if _, err := os.Lstat(after.Base().Path); !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("converted destination is occupied; no files changed")
 	}
-
-	// The legacy original-only cache may have removed this inactive copy while
-	// the original itself was active. Re-cache it before switching back.
 	if !r.Cached || !matches(s.backup(id), beforeHash) {
 		stat, err := os.Stat(before.Base().Path)
 		if err != nil {
@@ -171,17 +167,13 @@ func (s Store) removeOriginalCache(r *Record, used *int64) (bool, error) {
 }
 
 func (s Store) removeConvertedCache(r *Record, used *int64) (bool, error) {
-	if !r.ConvertedCached {
+	if !s.ConvertedCached(r) {
 		return false, nil
 	}
-	valid := s.ConvertedCached(r)
 	if err := os.Remove(s.convertedBackup(r.ID)); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return false, err
 	}
-	r.ConvertedCached = false
-	if valid {
-		*used -= r.After.File().Base().Size
-	}
+	*used -= r.After.File().Base().Size
 	return true, nil
 }
 
