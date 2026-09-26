@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/stashapp/stash/pkg/hash/oshash"
 	"github.com/stashapp/stash/pkg/models"
@@ -29,6 +30,36 @@ type Repository interface {
 type Snapshot struct {
 	Image *models.ImageFile `json:"image,omitempty"`
 	Video *models.VideoFile `json:"video,omitempty"`
+}
+
+const maxFilenameComponentBytes = 255
+
+func truncateFilenameBytes(value string, maxBytes int) string {
+	if maxBytes <= 0 {
+		return ""
+	}
+	if len(value) <= maxBytes {
+		return value
+	}
+	end := maxBytes
+	for end > 0 && !utf8.RuneStart(value[end]) {
+		end--
+	}
+	return value[:end]
+}
+
+func convertedDestinationPath(sourcePath, recordID, extension string) string {
+	id := recordID
+	if len(id) > 8 {
+		id = id[:8]
+	}
+	suffix := ".converted-" + id + "." + extension
+	stem := strings.TrimSuffix(filepath.Base(sourcePath), filepath.Ext(sourcePath))
+	stem = truncateFilenameBytes(stem, maxFilenameComponentBytes-len(suffix))
+	if stem == "" {
+		stem = "media"
+	}
+	return filepath.Join(filepath.Dir(sourcePath), stem+suffix)
 }
 
 func snapshot(f models.File) Snapshot {
@@ -498,7 +529,7 @@ func (s Store) Convert(ctx context.Context, fileID models.FileID, batch string, 
 	}
 	r.Cached = true
 	// Always use a fresh basename. Never overwrite a sibling or mutate an open input.
-	destination := strings.TrimSuffix(base.Path, filepath.Ext(base.Path)) + ".converted-" + r.ID[:8] + "." + format.Extension
+	destination := convertedDestinationPath(base.Path, r.ID, format.Extension)
 	after, err := convertedFile(before, staged, result, outputHash)
 	if err != nil {
 		return r, err
