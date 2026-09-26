@@ -11,9 +11,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"syscall"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 	"unicode/utf8"
 
