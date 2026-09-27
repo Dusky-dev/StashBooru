@@ -213,7 +213,10 @@ const CopyrightList: React.FC = () => {
                   </Link>
                   {copyright.ordered_children.length > 0 ? (
                     <span className="text-muted small ml-2">
-                      {copyright.ordered_children.length} Sub-Copyrights
+                      {copyright.ordered_children.length}{" "}
+                      {copyright.ordered_children.length === 1
+                        ? "Sub-Copyright"
+                        : "Sub-Copyrights"}
                     </span>
                   ) : null}
                   {copyright.breadcrumb.length > 1 ? (
