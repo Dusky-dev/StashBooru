@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"unicode/utf8"
 
@@ -219,6 +220,43 @@ func TestFailedTransferAndLargerOutputKeepSource(t *testing.T) {
 				t.Fatal("failed output was activated")
 			}
 		})
+	}
+}
+
+func TestRecoverSkipsLegacyOverlongOutputPath(t *testing.T) {
+	s, repo, _, _ := fixture(t, "compressed", false)
+	before := repo.f.Clone()
+	sourcePath := before.Base().Path
+	checksum, err := MD5(sourcePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before.Base().SetFingerprint(models.Fingerprint{Type: "md5", Fingerprint: checksum})
+
+	after := before.Clone()
+	overlongPath := filepath.Join(filepath.Dir(sourcePath), strings.Repeat("x", maxFilenameComponentBytes+1)+".webp")
+	if _, err := os.Lstat(overlongPath); !errors.Is(err, syscall.ENAMETOOLONG) {
+		t.Skipf("filesystem did not report an overlong component: %v", err)
+	}
+	after.Base().Path = overlongPath
+	after.Base().Basename = filepath.Base(overlongPath)
+
+	r := &Record{ID: NewID(), Status: "prepared", Before: snapshot(before), After: snapshot(after)}
+	if err := s.save(r); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Recover(context.Background()); err != nil {
+		t.Fatalf("recovery should discard the inaccessible legacy output path: %v", err)
+	}
+	recovered, err := s.Record(r.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recovered.Status != "failed" {
+		t.Fatalf("status = %q; want failed", recovered.Status)
+	}
+	if repo.f.Base().Path != sourcePath || !matches(sourcePath, checksum) {
+		t.Fatal("recovery changed the active source")
 	}
 }
 
