@@ -1,7 +1,7 @@
 import React, { PropsWithChildren } from "react";
 import { useIntl } from "react-intl";
 import { TagLink } from "src/components/Shared/TagLink";
-import { CopyrightLink } from "src/components/Copyrights/CopyrightLink";
+import { CopyrightGrid } from "src/components/Copyrights/CopyrightGrid";
 import * as GQL from "src/core/generated-graphql";
 import TextUtils from "src/utils/text";
 import { DetailItem } from "src/components/Shared/DetailItem";
@@ -53,13 +53,7 @@ export const PerformerDetailsPanel: React.FC<IPerformerDetails> =
         return;
       }
 
-      return (
-        <>
-          {(performer.copyrights ?? []).map((copyright) => (
-            <CopyrightLink key={copyright.id} copyright={copyright} />
-          ))}
-        </>
-      );
+      return <CopyrightGrid items={performer.copyrights} label="Copyrights" />;
     }
 
     function renderStashIDs() {
