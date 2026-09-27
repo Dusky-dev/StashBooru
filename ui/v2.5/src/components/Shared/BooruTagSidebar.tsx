@@ -2,6 +2,7 @@ import { faImage, faPlayCircle } from "@fortawesome/free-solid-svg-icons";
 import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
 import * as GQL from "src/core/generated-graphql";
+import { CopyrightGrid } from "src/components/Copyrights/CopyrightGrid";
 import { PerformerCard } from "../Performers/PerformerCard";
 import { Icon } from "./Icon";
 
@@ -241,30 +242,35 @@ const CopyrightBranchSection: React.FC<{ items: BooruEntity[] }> = ({
         count={items.length}
       />
       <div className="copyright-branch-groups">
-        {branches.map((branch) => (
-          <div className="copyright-branch-group mb-3" key={branch.key}>
-            <div className="copyright-branch-breadcrumb mb-2">
-              {branch.path.map((node, index) => (
-                <React.Fragment key={node.id}>
-                  {index > 0 ? (
-                    <span className="mx-1 text-muted">/</span>
-                  ) : null}
-                  <Link to={`/copyrights/${node.id}`}>{node.name}</Link>
-                </React.Fragment>
-              ))}
+        {branches.map((branch) => {
+          const assignedIDs = new Set(branch.items.map((item) => item.id));
+          const hierarchyItems = branch.path.filter(
+            (node) => !assignedIDs.has(node.id)
+          );
+
+          return (
+            <div className="copyright-branch-group mb-3" key={branch.key}>
+              {hierarchyItems.length > 0 ? (
+                <div className="mb-2">
+                  <CopyrightGrid
+                    items={hierarchyItems}
+                    label="Main and Sub-Copyrights"
+                  />
+                </div>
+              ) : null}
+              <div className="booru-entity-card-grid booru-entity-card-grid-copyright">
+                {branch.items.map((item) => (
+                  <EntityCard
+                    key={`copyright-${item.id}`}
+                    entity={item}
+                    kind="copyright"
+                    route={`/copyrights/${item.id}`}
+                  />
+                ))}
+              </div>
             </div>
-            <div className="booru-entity-card-grid booru-entity-card-grid-copyright">
-              {branch.items.map((item) => (
-                <EntityCard
-                  key={`copyright-${item.id}`}
-                  entity={item}
-                  kind="copyright"
-                  route={`/copyrights/${item.id}`}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

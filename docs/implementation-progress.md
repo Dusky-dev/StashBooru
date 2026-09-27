@@ -1,6 +1,6 @@
 # StashBooru implementation progress
 
-Updated: 2026-09-26
+Updated: 2026-09-27
 
 | Package | Status | Notes |
 | --- | --- | --- |
@@ -68,6 +68,13 @@ The first corrective CI attempts exposed formatting-only Biome failures. Those w
 - The focused SQLite integration test `Test_PerformerVariantAndDisambiguationContext` passed, covering persistence, variant lookup, context switching, and cleanup after deleting linked records.
 
 P05 is implemented and ready for review. P06 ancestor auto-association is the next roadmap package after P05 is reviewed and merged.
+
+## P04/P05 hierarchy and disambiguation UX follow-up — draft PR #113
+
+- Copyright pages use Copyright/Main/Sub terminology; the editor can select both Main and Sub-Copyrights, empty hierarchy tabs are hidden, and related Copyrights display as cards. Image/Video detail sidebars render Main/Sub hierarchy paths as cards too.
+- The optional alphabetical sort name now has an example explaining how it affects ordering.
+- Character disambiguation text and its optional Copyright/Artist link share one editor field; Character Copyright associations display as cards.
+- No schema, migration, or backend changes. CI is pending on PR #113.
 
 ## P03 validation scope
 
