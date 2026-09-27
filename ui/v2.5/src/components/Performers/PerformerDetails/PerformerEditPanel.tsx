@@ -948,7 +948,8 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
             {intl.formatMessage({
               id: "disambiguation_context_help",
               defaultMessage:
-                "Optionally link this label to a Copyright or Artist. The linked name appears with the label and updates if that entity is renamed.",
+                "Optionally link this label to a Copyright or Artist. The linked name " +
+                "appears with the label and updates if that entity is renamed.",
             })}
           </Form.Text>
         </Col>
