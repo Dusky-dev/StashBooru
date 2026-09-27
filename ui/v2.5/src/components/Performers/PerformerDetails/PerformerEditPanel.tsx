@@ -850,20 +850,43 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
     );
   }
 
-  function renderDisambiguationContextField() {
+  function renderDisambiguationField() {
     const title = intl.formatMessage({
-      id: "disambiguation_context",
-      defaultMessage: "Disambiguation link",
+      id: "disambiguation",
+      defaultMessage: "Disambiguation",
     });
+    const linkedContextLabel = intl.formatMessage({
+      id: "disambiguation_context",
+      defaultMessage: "Link to",
+    });
+
     return (
-      <Form.Group as={Row} data-field="disambiguation-context">
+      <Form.Group as={Row} data-field="disambiguation">
         <Form.Label column sm={3} xl={2}>
           {title}
         </Form.Label>
         <Col sm={9} xl={7}>
           <Form.Control
+            {...formik.getFieldProps("disambiguation")}
+            id="performer-disambiguation"
+            className="text-input"
+            type="text"
+            placeholder={intl.formatMessage({
+              id: "disambiguation_placeholder",
+              defaultMessage: "Optional distinguishing label",
+            })}
+          />
+          <Form.Label
+            htmlFor="disambiguation-context-type"
+            className="d-block mt-2 mb-1 small"
+          >
+            {linkedContextLabel}
+          </Form.Label>
+          <Form.Control
             as="select"
+            id="disambiguation-context-type"
             value={contextType}
+            aria-label={linkedContextLabel}
             onChange={(event) => {
               const nextType = event.currentTarget.value as
                 | ""
@@ -893,6 +916,7 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
           </Form.Control>
           {contextType === "copyright" && (
             <CopyrightSelect
+              className="mt-2"
               values={contextCopyright ? [contextCopyright] : []}
               onSelect={(items) => {
                 setContextCopyright(items[0]);
@@ -903,6 +927,7 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
           )}
           {contextType === "artist" && (
             <StudioSelect
+              className="mt-2"
               values={contextArtist ? [contextArtist] : []}
               onSelect={(items) => {
                 setContextArtist(items[0]);
@@ -923,7 +948,7 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
             {intl.formatMessage({
               id: "disambiguation_context_help",
               defaultMessage:
-                "The linked name follows renames. The free-text disambiguation above remains available as a separate label.",
+                "Optionally link this label to a Copyright or Artist. The linked name appears with the label and updates if that entity is renamed.",
             })}
           </Form.Text>
         </Col>
@@ -958,9 +983,8 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
 
       <Form noValidate onSubmit={formik.handleSubmit} id="performer-edit">
         {renderInputField("name")}
-        {renderInputField("disambiguation")}
         {renderParentCharacterField()}
-        {renderDisambiguationContextField()}
+        {renderDisambiguationField()}
 
         {renderStringListField("alias_list", "aliases", { orderable: false })}
 
