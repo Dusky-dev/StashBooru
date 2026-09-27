@@ -18,7 +18,7 @@ import {
   Copyright,
   CopyrightSelect,
 } from "src/components/Copyrights/CopyrightSelect";
-import { CopyrightLink } from "src/components/Copyrights/CopyrightLink";
+import { CopyrightGrid } from "src/components/Copyrights/CopyrightGrid";
 import {
   CopyrightBreadcrumb,
   CopyrightChildrenOrderControl,
@@ -51,6 +51,7 @@ interface CopyrightFormValues {
   description: string;
   aliases: string;
   parents: Copyright[];
+  children: Copyright[];
 }
 
 const noParents: Copyright[] = [];
@@ -60,6 +61,7 @@ const emptyValues: CopyrightFormValues = {
   description: "",
   aliases: "",
   parents: [],
+  children: [],
 };
 
 function aliasesFromText(value: string) {
@@ -73,86 +75,67 @@ const CopyrightDetailsPanel: React.FC<{
   copyright: GQL.CopyrightDataFragment;
   fullWidth?: boolean;
 }> = ({ copyright, fullWidth }) => {
-  function renderParentFolders(items: Copyright[]) {
-    if (items.length === 0) {
-      return <span className="text-muted">None</span>;
-    }
-    return (
-      <>
-        {items.map((item, index) => (
-          <React.Fragment key={item.id}>
-            {index > 0 ? ", " : null}
-            <CopyrightLink copyright={item} />
-          </React.Fragment>
-        ))}
-      </>
-    );
-  }
+  const hasMain = copyright.parents.length > 0;
+  const hasSub = copyright.ordered_children.length > 0;
+  const newSubCopyright = (
+    <Link
+      className="btn btn-secondary btn-sm"
+      to={`/copyrights/new?parent_id=${copyright.id}`}
+    >
+      New Sub-Copyright
+    </Link>
+  );
 
   return (
     <>
       <div className="detail-group">
         <CopyrightBreadcrumb items={copyright.breadcrumb} />
-        <DetailItem
-          id="sort_name"
-          value={copyright.sort_name}
-          fullWidth={fullWidth}
-        />
-        <DetailItem
-          id="details"
-          value={copyright.description}
-          fullWidth={fullWidth}
-        />
+        {copyright.description ? (
+          <DetailItem id="details" value={copyright.description} fullWidth={fullWidth} />
+        ) : null}
       </div>
-      <Tabs
-        defaultActiveKey="parents"
-        id={`copyright-hierarchy-tabs-${copyright.id}`}
-        className="copyright-hierarchy-tabs mt-3"
-      >
-        <Tab eventKey="parents" title="Parent folders">
-          <div className="pt-3">
-            <DetailItem
-              id="parent-folders"
-              label="Parent folders"
-              value={renderParentFolders(copyright.parents)}
-              fullWidth
-            />
-          </div>
-        </Tab>
-        <Tab
-          eventKey="children"
-          title={`Subfolders (${copyright.ordered_children.length})`}
+      {!hasSub ? <div className="mt-3">{newSubCopyright}</div> : null}
+      {hasMain || hasSub ? (
+        <Tabs
+          defaultActiveKey={hasMain ? "main" : "sub"}
+          id={`copyright-hierarchy-tabs-${copyright.id}`}
+          className="copyright-hierarchy-tabs mt-3"
         >
-          <div className="pt-3">
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <span className="text-muted small">
-                Open a subfolder to browse its contents.
-              </span>
-              <Link
-                className="btn btn-secondary btn-sm"
-                to={`/copyrights/new?parent_id=${copyright.id}`}
-              >
-                New subfolder
-              </Link>
-            </div>
-            {copyright.ordered_children.length > 0 ? (
-              <ul className="list-unstyled mb-2">
-                {copyright.ordered_children.map((child) => (
-                  <li key={child.id} className="py-1">
-                    <CopyrightLink copyright={child} />
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-muted mb-2">No subfolders yet.</p>
-            )}
-            <CopyrightChildrenOrderControl
-              parentID={copyright.id}
-              orderedChildren={copyright.ordered_children}
-            />
-          </div>
-        </Tab>
-      </Tabs>
+          {hasMain ? (
+            <Tab eventKey="main" title={`Main (${copyright.parents.length})`}>
+              <div className="pt-3">
+                <CopyrightGrid
+                  items={copyright.parents}
+                  label="Main Copyrights"
+                />
+              </div>
+            </Tab>
+          ) : null}
+          {hasSub ? (
+            <Tab
+              eventKey="sub"
+              title={`Sub (${copyright.ordered_children.length})`}
+            >
+              <div className="pt-3">
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <span className="text-muted small">
+                    Sub-Copyrights linked to this Copyright.
+                  </span>
+                  {newSubCopyright}
+                </div>
+                <CopyrightGrid
+                  items={copyright.ordered_children}
+                  label="Sub-Copyrights"
+                />
+                <CopyrightChildrenOrderControl
+                  parentID={copyright.id}
+                  orderedChildren={copyright.ordered_children}
+                />
+              </div>
+            </Tab>
+          ) : null}
+        </Tabs>
+      ) : null}
     </>
   );
 };
@@ -200,6 +183,7 @@ const CopyrightEditPanel: React.FC<{
       description: copyright.description,
       aliases: copyright.aliases.join("\n"),
       parents: copyright.parents,
+      children: copyright.ordered_children,
     });
     setPerformers(copyright.performers);
     setImageValue(undefined);
@@ -238,6 +222,7 @@ const CopyrightEditPanel: React.FC<{
         description: values.description,
         aliases: aliasesFromText(values.aliases),
         parent_ids: values.parents.map((item) => item.id),
+        child_ids: values.children.map((item) => item.id),
         ...(imageTouched ? { image: imageValue } : {}),
       };
 
@@ -265,7 +250,7 @@ const CopyrightEditPanel: React.FC<{
         },
       });
 
-      Toast.success(`Saved folder “${saved.name}”.`);
+      Toast.success(`Saved Copyright “${saved.name}”.`);
       onSaved(saved);
     } catch (error) {
       Toast.error(error);
@@ -299,7 +284,7 @@ const CopyrightEditPanel: React.FC<{
 
   return (
     <>
-      {create ? <h2>New folder</h2> : null}
+      {create ? <h2>New Copyright</h2> : null}
       <Form
         noValidate
         onSubmit={(event) => event.preventDefault()}
@@ -316,7 +301,10 @@ const CopyrightEditPanel: React.FC<{
           />
         )}
         {field(
-          <FormattedMessage id="sort_name" />,
+          <FormattedMessage
+            id="copyright_hierarchy.sort_name_label"
+            defaultMessage="Sort alphabetically as (optional)"
+          />,
           <>
             <Form.Control
               className="text-input"
@@ -356,20 +344,31 @@ const CopyrightEditPanel: React.FC<{
           />
         )}
         {field(
-          "Parent folder(s)",
+          "Main Copyrights",
           <>
             <CopyrightSelect
               isMulti
               values={values.parents}
               excludeIds={copyright ? [copyright.id] : []}
               onSelect={(parents) => setValues({ ...values, parents })}
-              noSelectionString="Select parent folder(s)"
+              noSelectionString="Select Main Copyrights"
               creatable={false}
             />
             <Form.Text className="text-muted">
               <FormattedMessage id="copyright_hierarchy.parent_help" />
             </Form.Text>
           </>
+        )}
+        {field(
+          "Sub-Copyrights",
+          <CopyrightSelect
+            isMulti
+            values={values.children}
+            excludeIds={copyright ? [copyright.id] : []}
+            onSelect={(children) => setValues({ ...values, children })}
+            noSelectionString="Select Sub-Copyrights"
+            creatable={false}
+          />
         )}
       </Form>
 
@@ -690,7 +689,7 @@ const CopyrightCreate: React.FC = () => {
 
   if (loading) return <Spinner animation="border" />;
   if (parentID && !parent) {
-    return <div className="alert alert-warning">Parent folder not found.</div>;
+    return <div className="alert alert-warning">Main Copyright not found.</div>;
   }
 
   return (
