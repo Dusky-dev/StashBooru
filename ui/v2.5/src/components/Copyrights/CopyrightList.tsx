@@ -142,7 +142,7 @@ const CopyrightList: React.FC = () => {
       hasSelection={selectedIds.size > 0}
       operations={[
         {
-          text: "New folder",
+          text: "New Copyright",
           onClick: () => history.push("/copyrights/new"),
           isDisplayed: () => selectedIds.size === 0,
         },
@@ -213,18 +213,18 @@ const CopyrightList: React.FC = () => {
                   </Link>
                   {copyright.ordered_children.length > 0 ? (
                     <span className="text-muted small ml-2">
-                      {copyright.ordered_children.length} subfolders
+                      {copyright.ordered_children.length} Sub-Copyrights
                     </span>
                   ) : null}
                   {copyright.breadcrumb.length > 1 ? (
                     <div className="small text-muted copyright-list-path">
                       {copyright.breadcrumb
                         .slice(0, -1)
-                        .map((folder, index) => (
-                          <React.Fragment key={folder.id}>
+                        .map((ancestor, index) => (
+                          <React.Fragment key={ancestor.id}>
                             {index > 0 ? " / " : null}
-                            <Link to={`/copyrights/${folder.id}`}>
-                              {folder.name}
+                            <Link to={`/copyrights/${ancestor.id}`}>
+                              {ancestor.name}
                             </Link>
                           </React.Fragment>
                         ))}
