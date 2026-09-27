@@ -91,7 +91,11 @@ const CopyrightDetailsPanel: React.FC<{
       <div className="detail-group">
         <CopyrightBreadcrumb items={copyright.breadcrumb} />
         {copyright.description ? (
-          <DetailItem id="details" value={copyright.description} fullWidth={fullWidth} />
+          <DetailItem
+            id="details"
+            value={copyright.description}
+            fullWidth={fullWidth}
+          />
         ) : null}
       </div>
       {!hasSub ? <div className="mt-3">{newSubCopyright}</div> : null}
