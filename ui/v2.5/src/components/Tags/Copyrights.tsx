@@ -3,7 +3,6 @@ import { FormattedMessage } from "react-intl";
 import { Helmet } from "react-helmet";
 import { Col, Form, Row, Spinner, Tab, Tabs } from "react-bootstrap";
 import {
-  Link,
   Route,
   Switch,
   useHistory,
@@ -77,14 +76,6 @@ const CopyrightDetailsPanel: React.FC<{
 }> = ({ copyright, fullWidth }) => {
   const hasMain = copyright.parents.length > 0;
   const hasSub = copyright.ordered_children.length > 0;
-  const newSubCopyright = (
-    <Link
-      className="btn btn-secondary btn-sm"
-      to={`/copyrights/new?parent_id=${copyright.id}`}
-    >
-      New Sub-Copyright
-    </Link>
-  );
 
   return (
     <>
@@ -98,7 +89,6 @@ const CopyrightDetailsPanel: React.FC<{
           />
         ) : null}
       </div>
-      {!hasSub ? <div className="mt-3">{newSubCopyright}</div> : null}
       {hasMain || hasSub ? (
         <Tabs
           defaultActiveKey={hasMain ? "main" : "sub"}
@@ -121,12 +111,9 @@ const CopyrightDetailsPanel: React.FC<{
               title={`Sub (${copyright.ordered_children.length})`}
             >
               <div className="pt-3">
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <span className="text-muted small">
-                    Sub-Copyrights linked to this Copyright.
-                  </span>
-                  {newSubCopyright}
-                </div>
+                <p className="text-muted small mb-2">
+                  Sub-Copyrights linked to this Copyright.
+                </p>
                 <CopyrightGrid
                   items={copyright.ordered_children}
                   label="Sub-Copyrights"

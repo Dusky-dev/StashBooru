@@ -47,17 +47,52 @@ export const PerformerVariantsPanel: React.FC<IProps> = ({
           />
         </p>
       ) : (
-        <ul className="performer-variants-list">
+        <div
+          className="booru-entity-card-grid booru-character-card-grid performer-variant-grid"
+          role="list"
+          aria-label="Character variants"
+        >
           {variants.map((variant) => (
-            <li key={variant.id}>
-              <Link to={`/performers/${variant.id}`}>{variant.name}</Link>
-              <PerformerDisambiguationValue
-                disambiguation={variant.disambiguation}
-                context={variant.disambiguation_context}
-              />
-            </li>
+            <article
+              key={variant.id}
+              className="booru-entity-card booru-entity-card-character"
+              role="listitem"
+            >
+              <Link
+                className="booru-entity-card-image-link"
+                to={`/performers/${variant.id}`}
+                tabIndex={-1}
+                aria-hidden="true"
+              >
+                {variant.image_path ? (
+                  <img
+                    loading="lazy"
+                    className="booru-entity-card-image"
+                    alt=""
+                    src={variant.image_path}
+                  />
+                ) : (
+                  <span
+                    className="booru-entity-card-placeholder"
+                    aria-hidden="true"
+                  />
+                )}
+              </Link>
+              <Link
+                className="booru-entity-card-name"
+                to={`/performers/${variant.id}`}
+                title={variant.name}
+              >
+                {variant.name}
+                <PerformerDisambiguationValue
+                  disambiguation={variant.disambiguation}
+                  context={variant.disambiguation_context}
+                  linkContext={false}
+                />
+              </Link>
+            </article>
           ))}
-        </ul>
+        </div>
       )}
       {(result?.count ?? 0) > variants.length && (
         <p className="text-muted">
