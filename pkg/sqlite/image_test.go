@@ -2472,6 +2472,30 @@ func TestImageQueryPerformers(t *testing.T) {
 	}
 }
 
+func TestImageQueryPerformerFilterIncludesVariants(t *testing.T) {
+	runWithRollbackTxn(t, "base Character includes variants", func(t *testing.T, ctx context.Context) {
+		baseID := performerIDs[performerIdx1WithImage]
+		variantID := performerIDs[performerIdxWithImage]
+		_, err := db.Performer.UpdatePartial(ctx, variantID, models.PerformerPartial{
+			ParentID: models.NewOptionalIntPtr(&baseID),
+		})
+		assert.NoError(t, err)
+
+		results, err := db.Image.Query(ctx, models.ImageQueryOptions{
+			ImageFilter: &models.ImageFilterType{
+				Performers: &models.MultiCriterionInput{
+					Value:    []string{strconv.Itoa(baseID)},
+					Modifier: models.CriterionModifierIncludes,
+				},
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Contains(t, results.IDs, imageIDs[imageIdxWithPerformer])
+	})
+}
+
 func TestImageQueryTags(t *testing.T) {
 	tests := []struct {
 		name        string

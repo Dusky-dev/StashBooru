@@ -12,53 +12,21 @@ import (
 
 const contentRatingRootTag = "rating"
 
-func appendUniqueTagIDs(destination []int, seen map[int]struct{}, ids []int) []int {
-	for _, id := range ids {
-		if id <= 0 {
-			continue
-		}
-		if _, exists := seen[id]; exists {
-			continue
-		}
-		seen[id] = struct{}{}
-		destination = append(destination, id)
-	}
-	return destination
-}
-
 // inheritResolvedProfileTagIDs adds Tags owned by resolved Character, Artist,
-// and Copyright profiles to the media mutation. It is deliberately additive:
-// the caller uses RelationshipUpdateModeAdd, so neither existing media Tags nor
-// profile Tags are removed.
+// and Copyright profiles and their ancestors to the tagging result. It also
+// includes the ancestor Tags of predicted and profile Tags, matching the
+// effective association projection used by media detail views.
 func inheritResolvedProfileTagIDs(ctx context.Context, repository models.Repository, resolved *taggingResolvedEntities) error {
-	seen := make(map[int]struct{}, len(resolved.TagIDs))
-	for _, id := range resolved.TagIDs {
-		if id > 0 {
-			seen[id] = struct{}{}
-		}
+	effective, err := resolveEffectiveMediaAssociationIDs(ctx, repository, directMediaAssociationIDs{
+		tags:       resolved.TagIDs,
+		artists:    resolved.ArtistIDs,
+		performers: resolved.CharacterIDs,
+		copyrights: resolved.CopyrightIDs,
+	})
+	if err != nil {
+		return fmt.Errorf("resolving inherited tagging profile Tags: %w", err)
 	}
-
-	for _, characterID := range resolved.CharacterIDs {
-		tagIDs, err := repository.Performer.GetTagIDs(ctx, characterID)
-		if err != nil {
-			return fmt.Errorf("loading Character %d profile Tags: %w", characterID, err)
-		}
-		resolved.TagIDs = appendUniqueTagIDs(resolved.TagIDs, seen, tagIDs)
-	}
-	for _, artistID := range resolved.ArtistIDs {
-		tagIDs, err := repository.Studio.GetTagIDs(ctx, artistID)
-		if err != nil {
-			return fmt.Errorf("loading Artist %d profile Tags: %w", artistID, err)
-		}
-		resolved.TagIDs = appendUniqueTagIDs(resolved.TagIDs, seen, tagIDs)
-	}
-	for _, copyrightID := range resolved.CopyrightIDs {
-		tagIDs, err := repository.Copyright.GetTagIDs(ctx, copyrightID)
-		if err != nil {
-			return fmt.Errorf("loading Copyright %d profile Tags: %w", copyrightID, err)
-		}
-		resolved.TagIDs = appendUniqueTagIDs(resolved.TagIDs, seen, tagIDs)
-	}
+	resolved.TagIDs = effective.tags
 	return nil
 }
 

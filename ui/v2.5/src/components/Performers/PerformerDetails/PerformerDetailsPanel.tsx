@@ -49,11 +49,17 @@ export const PerformerDetailsPanel: React.FC<IPerformerDetails> =
     }
 
     function renderCopyrightsField() {
-      if (!(performer.copyrights ?? []).length) {
+      const copyrights = performer.copyrights ?? [];
+      if (!copyrights.length) {
         return;
       }
 
-      return <CopyrightGrid items={performer.copyrights} label="Copyrights" />;
+      const label = intl.formatMessage({
+        id: copyrights.length === 1 ? "copyright" : "copyrights",
+        defaultMessage: copyrights.length === 1 ? "Copyright" : "Copyrights",
+      });
+
+      return <CopyrightGrid items={copyrights} label={label} />;
     }
 
     function renderStashIDs() {
@@ -78,12 +84,22 @@ export const PerformerDetailsPanel: React.FC<IPerformerDetails> =
 
     return (
       <PerformerDetailGroup {...props}>
+        <DetailItem
+          id="copyrights"
+          label={intl.formatMessage({
+            id: performer.copyrights?.length === 1 ? "copyright" : "copyrights",
+            defaultMessage:
+              performer.copyrights?.length === 1 ? "Copyright" : "Copyrights",
+          })}
+          value={renderCopyrightsField()}
+          fullWidth={fullWidth}
+        />
         {performer.parent && (
           <DetailItem
-            id="base-character"
+            id="character-variant-of"
             label={intl.formatMessage({
-              id: "base_character",
-              defaultMessage: "Base Character",
+              id: "character_variant_of",
+              defaultMessage: "Variant of",
             })}
             value={
               <Link to={`/performers/${performer.parent.id}`}>
@@ -205,11 +221,6 @@ export const PerformerDetailsPanel: React.FC<IPerformerDetails> =
           fullWidth={fullWidth}
         />
         <DetailItem id="details" value={details} fullWidth={fullWidth} />
-        <DetailItem
-          id="copyrights"
-          value={renderCopyrightsField()}
-          fullWidth={fullWidth}
-        />
         <DetailItem id="tags" value={renderTagsField()} fullWidth={fullWidth} />
         <DetailItem
           id="stash_ids"

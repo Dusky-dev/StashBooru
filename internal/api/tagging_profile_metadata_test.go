@@ -119,12 +119,3 @@ func TestEva02TagPredictionToCamieRating(t *testing.T) {
 		})
 	}
 }
-
-func TestAppendUniqueTagIDs(t *testing.T) {
-	seen := map[int]struct{}{2: {}}
-	got := appendUniqueTagIDs([]int{2}, seen, []int{0, 2, 3, 3, 4})
-	want := []int{2, 3, 4}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("appendUniqueTagIDs() = %v, want %v", got, want)
-	}
-}

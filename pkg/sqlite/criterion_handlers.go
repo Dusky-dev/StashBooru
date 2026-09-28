@@ -865,6 +865,29 @@ type joinedHierarchicalMultiCriterionHandlerBuilder struct {
 	primaryFK string
 }
 
+// performerHierarchyCriterion turns the media performer filter into a
+// hierarchy-aware filter. Performer variants are related through
+// performers.parent_performer_id, so selecting a base Character should also
+// match media linked to any of its variants. Equals keeps its legacy exact
+// semantics and therefore does not expand descendants.
+func performerHierarchyCriterion(performers *models.MultiCriterionInput) *models.HierarchicalMultiCriterionInput {
+	if performers == nil {
+		return nil
+	}
+
+	depth := -1
+	if performers.Modifier == models.CriterionModifierEquals {
+		depth = 0
+	}
+
+	return &models.HierarchicalMultiCriterionInput{
+		Value:    performers.Value,
+		Modifier: performers.Modifier,
+		Depth:    &depth,
+		Excludes: performers.Excludes,
+	}
+}
+
 func (m *joinedHierarchicalMultiCriterionHandlerBuilder) addHierarchicalConditionClauses(f *filterBuilder, criterion models.HierarchicalMultiCriterionInput, table, idColumn string) {
 	primaryKey := m.primaryKey
 	if primaryKey == "" {

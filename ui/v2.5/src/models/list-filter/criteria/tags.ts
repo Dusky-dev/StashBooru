@@ -27,7 +27,8 @@ class BaseTagsCriterionOption extends ModifierCriterionOption {
   constructor(
     messageID: string,
     type: CriterionType,
-    modifierOptions: CriterionModifier[]
+    modifierOptions: CriterionModifier[],
+    defaultDepth = 0
   ) {
     super({
       messageID,
@@ -35,7 +36,7 @@ class BaseTagsCriterionOption extends ModifierCriterionOption {
       modifierOptions,
       defaultModifier,
       inputType,
-      makeCriterion: () => new TagsCriterion(this),
+      makeCriterion: () => new TagsCriterion(this, defaultDepth),
     });
   }
 }
@@ -43,19 +44,22 @@ class BaseTagsCriterionOption extends ModifierCriterionOption {
 export const TagsCriterionOption = new BaseTagsCriterionOption(
   "tags",
   "tags",
-  defaultModifierOptions
+  defaultModifierOptions,
+  -1
 );
 
 export const SceneTagsCriterionOption = new BaseTagsCriterionOption(
   "scene_tags",
   "scene_tags",
-  defaultModifierOptions
+  defaultModifierOptions,
+  -1
 );
 
 export const PerformerTagsCriterionOption = new BaseTagsCriterionOption(
   "performer_tags",
   "performer_tags",
-  withoutEqualsModifierOptions
+  withoutEqualsModifierOptions,
+  -1
 );
 
 // TODO - this requires using a nested studios_filter which needs to be added separately
@@ -77,4 +81,8 @@ export const ChildTagsCriterionOption = new BaseTagsCriterionOption(
   withoutEqualsModifierOptions
 );
 
-export class TagsCriterion extends IHierarchicalLabeledIdCriterion {}
+export class TagsCriterion extends IHierarchicalLabeledIdCriterion {
+  constructor(option: ModifierCriterionOption, defaultDepth = 0) {
+    super(option, { items: [], excluded: [], depth: defaultDepth });
+  }
+}

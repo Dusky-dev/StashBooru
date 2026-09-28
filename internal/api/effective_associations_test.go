@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/stashapp/stash/pkg/models"
@@ -128,4 +129,54 @@ func TestResolveEffectiveMediaAssociationIDsIncludesLiveAncestorsAndProfileTags(
 	assertIDs("artists", got.artists, []int{13, 12, 11})
 	assertIDs("copyrights", got.copyrights, []int{23, 22, 21, 20})
 	assertIDs("tags", got.tags, []int{30, 29, 28, 40, 39, 41, 42, 43, 44, 45, 46, 47, 48, 49})
+}
+
+func TestInheritResolvedProfileTagsIncludesAncestorProfilesAndTagParents(t *testing.T) {
+	parent := func(id int) *int { return &id }
+	repository := models.Repository{
+		Performer: &effectiveAssociationPerformerReader{
+			performers: map[int]*models.Performer{
+				1: {ID: 1, ParentID: parent(2)},
+				2: {ID: 2},
+			},
+			tags: map[int][]int{1: {31}, 2: {32}},
+		},
+		Studio: &effectiveAssociationStudioReader{
+			studios: map[int]*models.Studio{
+				3: {ID: 3, ParentID: parent(4)},
+				4: {ID: 4},
+			},
+			tags: map[int][]int{3: {33}, 4: {34}},
+		},
+		Copyright: &effectiveAssociationCopyrightReader{
+			parents: map[int][]*models.Copyright{5: {{ID: 6}}, 6: nil},
+			tags:    map[int][]int{5: {35}, 6: {36}},
+		},
+		Tag: &effectiveAssociationTagReader{
+			parents: map[int][]*models.Tag{
+				30: {{ID: 40}}, // predicted tag ancestor
+				31: {{ID: 41}}, // character profile tag ancestor
+				32: {{ID: 42}}, // parent Character profile tag ancestor
+				33: {{ID: 43}}, // Artist profile tag ancestor
+				34: {{ID: 44}}, // parent Artist profile tag ancestor
+				35: {{ID: 45}}, // Copyright profile tag ancestor
+				36: {{ID: 46}}, // parent Copyright profile tag ancestor
+			},
+		},
+	}
+	resolved := taggingResolvedEntities{
+		CharacterIDs: []int{1},
+		ArtistIDs:    []int{3},
+		CopyrightIDs: []int{5},
+		TagIDs:       []int{30},
+	}
+
+	if err := inheritResolvedProfileTagIDs(context.Background(), repository, &resolved); err != nil {
+		t.Fatalf("inheritResolvedProfileTagIDs() error = %v", err)
+	}
+
+	want := []int{30, 31, 32, 33, 34, 35, 36, 40, 41, 42, 43, 44, 45, 46}
+	if !reflect.DeepEqual(resolved.TagIDs, want) {
+		t.Fatalf("resolved Tags = %v, want %v", resolved.TagIDs, want)
+	}
 }
