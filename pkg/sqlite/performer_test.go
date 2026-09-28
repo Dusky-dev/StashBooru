@@ -79,11 +79,11 @@ func TestPerformerVariantCountsIncludeDescendantMedia(t *testing.T) {
 
 		sceneCount, err := db.Scene.CountByPerformerID(ctx, sceneParentID)
 		require.NoError(err)
-		assert.Equal(3, sceneCount)
+		assert.Equal(4, sceneCount)
 
 		imageCount, err := image.CountByPerformerID(ctx, db.Image, imageParentID)
 		require.NoError(err)
-		assert.Equal(3, imageCount)
+		assert.Equal(4, imageCount)
 
 		galleryCount, err := gallery.CountByPerformerID(ctx, db.Gallery, galleryParentID)
 		require.NoError(err)
@@ -104,11 +104,19 @@ func TestPerformerVariantCountsIncludeDescendantMedia(t *testing.T) {
 
 		appearsWithCount, err := performer.CountByAppearsWith(ctx, db.Performer, sceneParentID)
 		require.NoError(err)
-		assert.Equal(1, appearsWithCount)
+		assert.Equal(2, appearsWithCount)
 
 		imageOCounter, err := db.Image.OCountByPerformerID(ctx, imageParentID)
 		require.NoError(err)
-		wantOCounter := getOCounter(imageIdx1WithPerformer) + getOCounter(imageIdx2WithPerformer) + getOCounter(imageIdxWithTwoPerformers)
+		wantOCounter := 0
+		for _, imageIndex := range []int{
+			imageIdx1WithPerformer,
+			imageIdx2WithPerformer,
+			imageIdxWithTwoPerformers,
+			imageIdxWithThreePerformers,
+		} {
+			wantOCounter += getOCounter(imageIndex)
+		}
 		assert.Equal(wantOCounter, imageOCounter)
 	})
 }
