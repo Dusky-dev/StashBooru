@@ -13,11 +13,13 @@ not create an authorship link.
 
 Because the derivation reads the stored direct links, it applies regardless of
 whether those links came from an edit form, import, scan, or tagging workflow.
-Media searches also expand Character variants, and new Tag, Artist and
-Copyright hierarchy filters include descendants by default while preserving
-the existing depth selector. Tagging now adds profile Tags from Character,
-Artist and Copyright ancestors, as well as Tag ancestors, to its additive
-result.
+Media searches expand Character variants, and Tag, Artist and Copyright
+hierarchy filters include descendants by default while preserving the existing
+depth selector. Character counts and media tabs include variant media across
+Images, Videos, Galleries and Groups; shared media is counted once. Tagging
+adds profile Tags from Character, Artist and Copyright ancestors, as well as
+Tag ancestors, to its additive result. Copyright list counts now use the same
+subtree totals as their media tabs.
 
-Hierarchy-aware list counts and per-domain inheritance settings remain
-follow-up work.
+Per-domain inheritance settings remain follow-up work. Tag and Artist detail
+views continue to offer direct and all-descendant count modes.

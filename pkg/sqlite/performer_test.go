@@ -12,7 +12,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stashapp/stash/pkg/gallery"
+	"github.com/stashapp/stash/pkg/image"
 	"github.com/stashapp/stash/pkg/models"
+	"github.com/stashapp/stash/pkg/performer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,6 +24,93 @@ var testCustomFields = map[string]interface{}{
 	"string": "aaa",
 	"int":    int64(123), // int64 to match the type of the field in the database
 	"real":   1.23,
+}
+
+func TestPerformerVariantCountsIncludeDescendantMedia(t *testing.T) {
+	runWithRollbackTxn(t, "variant media counts", func(t *testing.T, ctx context.Context) {
+		assert := assert.New(t)
+		require := require.New(t)
+
+		// A parent Character counts media associated with its variants. Set up
+		// one variant under each representative, including two variants that
+		// share an image to check that aggregate counts do not double-count it.
+		sceneParentID := performerIDs[performerIdx1WithScene]
+		sceneVariantID := performerIDs[performerIdxWithScene]
+		_, err := db.Performer.UpdatePartial(ctx, sceneVariantID, models.PerformerPartial{
+			ParentID: models.NewOptionalIntPtr(&sceneParentID),
+		})
+		require.NoError(err)
+
+		galleryParentID := performerIDs[performerIdxWithTwoGalleries]
+		galleryVariantID := performerIDs[performerIdxWithGallery]
+		_, err = db.Performer.UpdatePartial(ctx, galleryVariantID, models.PerformerPartial{
+			ParentID: models.NewOptionalIntPtr(&galleryParentID),
+		})
+		require.NoError(err)
+
+		imageParentID := performerIDs[performerIdxWithTwoImages]
+		imageVariantIDs := []int{
+			performerIDs[performerIdx1WithImage],
+			performerIDs[performerIdx2WithImage],
+		}
+		for _, variantID := range imageVariantIDs {
+			_, err = db.Performer.UpdatePartial(ctx, variantID, models.PerformerPartial{
+				ParentID: models.NewOptionalIntPtr(&imageParentID),
+			})
+			require.NoError(err)
+		}
+
+		// Add the scene variant to a group and give it a co-performer. Both
+		// relationships should be visible from the parent Character.
+		_, err = db.Scene.UpdatePartial(ctx, sceneIDs[sceneIdxWithGroup], models.ScenePartial{
+			PerformerIDs: &models.UpdateIDs{
+				IDs:  []int{sceneVariantID},
+				Mode: models.RelationshipUpdateModeAdd,
+			},
+		})
+		require.NoError(err)
+		_, err = db.Scene.UpdatePartial(ctx, sceneIDs[sceneIdxWithPerformer], models.ScenePartial{
+			PerformerIDs: &models.UpdateIDs{
+				IDs:  []int{performerIDs[performerIdx2WithScene]},
+				Mode: models.RelationshipUpdateModeAdd,
+			},
+		})
+		require.NoError(err)
+
+		sceneCount, err := db.Scene.CountByPerformerID(ctx, sceneParentID)
+		require.NoError(err)
+		assert.Equal(3, sceneCount)
+
+		imageCount, err := image.CountByPerformerID(ctx, db.Image, imageParentID)
+		require.NoError(err)
+		assert.Equal(3, imageCount)
+
+		galleryCount, err := gallery.CountByPerformerID(ctx, db.Gallery, galleryParentID)
+		require.NoError(err)
+		assert.Equal(3, galleryCount)
+
+		groupCount, err := db.Group.CountByPerformerID(ctx, sceneParentID)
+		require.NoError(err)
+		assert.Equal(1, groupCount)
+
+		groupFilterCount, err := db.Group.QueryCount(ctx, &models.GroupFilterType{
+			Performers: &models.MultiCriterionInput{
+				Value:    []string{strconv.Itoa(sceneParentID)},
+				Modifier: models.CriterionModifierIncludes,
+			},
+		}, nil)
+		require.NoError(err)
+		assert.Equal(1, groupFilterCount)
+
+		appearsWithCount, err := performer.CountByAppearsWith(ctx, db.Performer, sceneParentID)
+		require.NoError(err)
+		assert.Equal(1, appearsWithCount)
+
+		imageOCounter, err := db.Image.OCountByPerformerID(ctx, imageParentID)
+		require.NoError(err)
+		wantOCounter := getOCounter(imageIdx1WithPerformer) + getOCounter(imageIdx2WithPerformer) + getOCounter(imageIdxWithTwoPerformers)
+		assert.Equal(wantOCounter, imageOCounter)
+	})
 }
 
 func loadPerformerRelationships(ctx context.Context, expected models.Performer, actual *models.Performer) error {

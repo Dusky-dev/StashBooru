@@ -29,6 +29,18 @@ const (
 	performerImageBlobColumn = "image_blob"
 )
 
+// performerDescendantsCTE selects a performer and every nested variant below
+// it. UNION keeps the result finite and unique even if malformed legacy data
+// contains a cycle or a variant is reachable by more than one path.
+const performerDescendantsCTE = `WITH RECURSIVE performer_descendants(id) AS (
+SELECT ?
+UNION
+SELECT child.id
+FROM performers child
+INNER JOIN performer_descendants parent ON child.parent_performer_id = parent.id
+)
+`
+
 type performerRow struct {
 	ID                        int         `db:"id" goqu:"skipinsert"`
 	Name                      null.String `db:"name"` // TODO: make schema non-nullable

@@ -10,9 +10,9 @@ fragment SlimCopyrightData on Copyright {
 fragment CopyrightListData on Copyright {
   ...SlimCopyrightData
   description
-  image_count
-  scene_count
-  performer_count
+  image_count: subtree_image_count
+  scene_count: subtree_scene_count
+  performer_count: subtree_performer_count
   breadcrumb {
     ...SlimCopyrightData
   }

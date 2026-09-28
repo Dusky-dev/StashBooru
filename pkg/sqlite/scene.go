@@ -789,29 +789,30 @@ func (qb *SceneStore) FindByGalleryID(ctx context.Context, galleryID int) ([]*mo
 }
 
 func (qb *SceneStore) CountByPerformerID(ctx context.Context, performerID int) (int, error) {
-	joinTable := scenesPerformersJoinTable
+	query := performerDescendantsCTE + `
+SELECT COUNT(DISTINCT scene_id)
+FROM performers_scenes
+WHERE performer_id IN (SELECT id FROM performer_descendants)`
 
-	q := dialect.Select(goqu.COUNT("*")).From(joinTable).Where(joinTable.Col(performerIDColumn).Eq(performerID))
-	return count(ctx, q)
+	var ret int
+	if err := dbWrapper.Get(ctx, &ret, query, performerID); err != nil {
+		return 0, err
+	}
+	return ret, nil
 }
 
 func (qb *SceneStore) OCountByPerformerID(ctx context.Context, performerID int) (int, error) {
-	table := qb.table()
-	joinTable := scenesPerformersJoinTable
-	oHistoryTable := goqu.T(scenesODatesTable)
-
-	q := dialect.Select(goqu.COUNT("*")).From(table).InnerJoin(
-		oHistoryTable,
-		goqu.On(table.Col(idColumn).Eq(oHistoryTable.Col(sceneIDColumn))),
-	).InnerJoin(
-		joinTable,
-		goqu.On(
-			table.Col(idColumn).Eq(joinTable.Col(sceneIDColumn)),
-		),
-	).Where(joinTable.Col(performerIDColumn).Eq(performerID))
+	query := performerDescendantsCTE + `
+SELECT COUNT(*)
+FROM scenes_o_dates
+WHERE scene_id IN (
+	SELECT DISTINCT scene_id
+	FROM performers_scenes
+	WHERE performer_id IN (SELECT id FROM performer_descendants)
+)`
 
 	var ret int
-	if err := querySimple(ctx, q, &ret); err != nil {
+	if err := dbWrapper.Get(ctx, &ret, query, performerID); err != nil {
 		return 0, err
 	}
 

@@ -479,17 +479,32 @@ func (qb *performerFilterHandler) galleryCountCriterionHandler(count *models.Int
 
 // used for sorting and filtering on performer o-count
 var selectPerformerOCountSQL = utils.StrFormat(
-	"SELECT SUM(o_counter) "+
-		"FROM ("+
-		"SELECT SUM(o_counter) as o_counter from {performers_images} s "+
-		"LEFT JOIN {images} ON {images}.id = s.{images_id} "+
-		"WHERE s.{performer_id} = {performers}.id "+
-		"UNION ALL "+
-		"SELECT COUNT({scenes_o_dates}.{o_date}) as o_counter from {performers_scenes} s "+
-		"LEFT JOIN {scenes} ON {scenes}.id = s.{scene_id} "+
-		"LEFT JOIN {scenes_o_dates} ON {scenes_o_dates}.{scene_id} = {scenes}.id "+
-		"WHERE s.{performer_id} = {performers}.id "+
-		")",
+	`WITH RECURSIVE performer_descendants(root_id, item_id) AS (
+SELECT id, id FROM {performers}
+UNION
+SELECT descendants.root_id, child.id
+FROM {performers} child
+INNER JOIN performer_descendants descendants ON child.parent_performer_id = descendants.item_id
+)
+SELECT COALESCE((
+	SELECT SUM({images}.o_counter)
+	FROM {images}
+	WHERE {images}.id IN (
+		SELECT DISTINCT {performers_images}.{images_id}
+		FROM {performers_images}
+		INNER JOIN performer_descendants ON performer_descendants.item_id = {performers_images}.{performer_id}
+		WHERE performer_descendants.root_id = {performers}.id
+	)
+), 0) + COALESCE((
+	SELECT COUNT({scenes_o_dates}.{o_date})
+	FROM {scenes_o_dates}
+	WHERE {scenes_o_dates}.{scene_id} IN (
+		SELECT DISTINCT {performers_scenes}.{scene_id}
+		FROM {performers_scenes}
+		INNER JOIN performer_descendants ON performer_descendants.item_id = {performers_scenes}.{performer_id}
+		WHERE performer_descendants.root_id = {performers}.id
+	)
+), 0)`,
 	map[string]interface{}{
 		"performers_images": performersImagesTable,
 		"images":            imageTable,
@@ -497,7 +512,6 @@ var selectPerformerOCountSQL = utils.StrFormat(
 		"images_id":         imageIDColumn,
 		"performers":        performerTable,
 		"performers_scenes": performersScenesTable,
-		"scenes":            sceneTable,
 		"scene_id":          sceneIDColumn,
 		"scenes_o_dates":    scenesODatesTable,
 		"o_date":            sceneODateColumn,
@@ -791,25 +805,32 @@ func (qb *performerFilterHandler) appearsWithCriterionHandler(performers *models
 				},
 			}
 
-			if len(performers.Value) == '0' {
+			if len(performers.Value) == 0 {
 				return
 			}
 
 			const derivedPerformerPerformersTable = "performer_performers"
+			depth := -1
+			if performers.Modifier == models.CriterionModifierEquals {
+				depth = 0
+			}
+			valuesClause, err := getHierarchicalValues(ctx, performers.Value, performerTable, "", "parent_performer_id", "", &depth)
+			if err != nil {
+				f.setError(err)
+				return
+			}
 
-			valuesClause := strings.Join(performers.Value, "),(")
-
-			f.addWith("performer(id) AS (VALUES(" + valuesClause + "))")
+			f.addWith("performer(root_id, item_id) AS (" + valuesClause + ")")
 
 			templStr := `SELECT {primaryTable}2.performer_id FROM {primaryTable}
 			INNER JOIN {primaryTable} AS {primaryTable}2 ON {primaryTable}.{primaryFK} = {primaryTable}2.{primaryFK}
-			INNER JOIN performer ON {primaryTable}.performer_id = performer.id
-			WHERE {primaryTable}2.performer_id != performer.id`
+			INNER JOIN performer ON {primaryTable}.performer_id = performer.item_id
+			WHERE {primaryTable}2.performer_id != performer.item_id`
 
 			if performers.Modifier == models.CriterionModifierIncludesAll && len(performers.Value) > 1 {
 				templStr += `
 							GROUP BY {primaryTable}2.performer_id
-							HAVING(count(distinct {primaryTable}.performer_id) IS ` + strconv.Itoa(len(performers.Value)) + `)`
+							HAVING(count(distinct performer.root_id) IS ` + strconv.Itoa(len(performers.Value)) + `)`
 			}
 
 			var unions []string

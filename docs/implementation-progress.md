@@ -80,9 +80,10 @@ P05 is complete and merged in PRs #104 and #114.
 ## P06 ancestor/profile auto-association — draft PR #115
 
 - Image and Scene `effective_associations` resolve parent Characters, Artists and Copyrights from direct media links, then include profile Tags and Tag ancestors. Direct GraphQL fields remain editable stored links; the effective view is derived and creates no sticky parent links.
-- Image/Scene Character filters include all variants of a selected Character. New Tag, Artist and Copyright hierarchy filters include descendants by default and retain the depth control.
+- Character filters/counts include all variants across Images, Scenes, Galleries and Groups. Repeated media links through sibling variants are de-duplicated.
+- Tag, Artist and Copyright hierarchy filters include descendants by default and retain the depth control. Tag/Artist detail views offer direct and all-descendant count modes, and Copyright list counts use the subtree totals shown by its media tabs.
 - Tagging adds profile Tags from matched Characters, Artists and Copyrights, their parents, and Tag ancestors.
-- No database migration or backfill is needed. Hierarchy-aware entity counts and per-domain inheritance controls remain follow-up work.
+- No database migration or backfill is needed. Per-domain inheritance controls remain follow-up work.
 
 ## P03 validation scope
 
