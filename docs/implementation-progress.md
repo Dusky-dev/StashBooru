@@ -8,7 +8,7 @@ Updated: 2026-09-28
 | P02 — image similarity modes | Complete | Merged PR #92 adds explicit pHash and EVA02 modes for image Find similar. |
 | P03 — visual comparison / difference highlighting | Complete | Merged PR #93. Scope remains the bounded still-image comparison described below; automatic alignment and video frame selection are not implemented. |
 | P04 — copyright sorting / taxonomy | Complete | PRs #94 and #95 are merged. PR #94 added the hierarchy/backend foundation; PR #95 corrected hierarchy UX and media presentation without changing the P04 database schema. |
-| P05 — Character variants / disambiguation links | Complete | Merged PR #104 adds a single-parent Character variant relation and typed Copyright/Artist disambiguation links. P06 ancestor auto-association remains separate. |
+| P05 — Character variants / disambiguation links | Complete | Merged PR #104 adds native Character variants and typed Copyright/Artist disambiguation links. Draft PR #114 refines Character/Copyright editing; P06 ancestor auto-association remains separate. |
 
 ## P04 completed behavior
 
@@ -55,9 +55,8 @@ The first corrective CI attempts exposed formatting-only Biome failures. Those w
 ## P05 Character variants and disambiguation links
 
 - Characters remain native Performer records with their own IDs, aliases, images, tags and metadata. Each Character can optionally point to one base Character; validation rejects missing parents, self-links and cycles.
-- Character details show a link to the base Character and a Variants tab listing its direct variants. The edit form can select or clear a base Character.
-- A Character can have one typed disambiguation target: a Copyright or Artist (Studio). The target name is displayed as a link in details, lists, selects and tagger views; a rename is reflected automatically. Deleting a target clears the relation, while existing free-text disambiguation remains as fallback.
-- Legacy free-text disambiguation is preserved and remains independently editable. Linking an Artist does not automatically apply that Artist to media; automatic ancestor/profile association is P06.
+- Character details show a “Variant of” link and a Variants tab with a card grid. The edit form selects child variants from the parent Character.
+- A Character disambiguation selector chooses Copyright, Artist, or Custom. Copyright and Artist choices link the target name; Custom is a plain label. P06 ancestor/profile auto-association remains separate.
 - Migration 95 adds the parent and context foreign keys with `ON DELETE SET NULL`, a check against self-parenting and indexes for lookups.
 
 ### P05 verification
@@ -69,12 +68,13 @@ The first corrective CI attempts exposed formatting-only Biome failures. Those w
 
 P05 is complete and merged in PR #104. P06 ancestor/profile auto-association is the next roadmap package.
 
-## P04/P05 hierarchy and disambiguation UX follow-up — merged PR #113
+## P04/P05 hierarchy and disambiguation UX follow-up — draft PR #114
 
 - Copyright pages use Copyright/Main/Sub terminology; the editor can select both Main and Sub-Copyrights, empty hierarchy tabs are hidden, and related Copyrights display as cards. Image/Video detail sidebars render Main/Sub hierarchy paths as cards too.
 - The optional alphabetical sort name now has an example explaining how it affects ordering.
-- Character disambiguation text and its optional Copyright/Artist link share one editor field; Character Copyright associations display as cards.
-- Merged PR #113 has no schema, migration, or backend changes. The New Sub-Copyright action is being removed in follow-up draft PR #114.
+- Character Copyright associations display as cards before the other detail fields, with singular/plural labeling. Character variants are edited as child selections and displayed as cards.
+- Character disambiguation uses one Copyright/Artist/Custom selector with Stash-native styling. The New Sub-Copyright action was removed.
+- PR #114 changes only the UI and progress ledger; it adds no schema, migration, or backend changes.
 
 ## P03 validation scope
 

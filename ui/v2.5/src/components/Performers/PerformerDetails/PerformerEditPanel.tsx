@@ -9,6 +9,7 @@ import {
   queryScrapePerformer,
   mutateReloadScrapers,
   queryScrapePerformerURL,
+  usePerformerUpdate,
 } from "src/core/StashService";
 import { Icon } from "src/components/Shared/Icon";
 import { ImageInput } from "src/components/Shared/ImageInput";
@@ -56,7 +57,10 @@ import {
   Copyright,
   CopyrightSelect,
 } from "src/components/Copyrights/CopyrightSelect";
-import { PerformerSelect } from "src/components/Performers/PerformerSelect";
+import {
+  Performer,
+  PerformerSelect,
+} from "src/components/Performers/PerformerSelect";
 import { Studio, StudioSelect } from "src/components/Studios/StudioSelect";
 import cloneDeep from "lodash-es/cloneDeep";
 
@@ -101,16 +105,30 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
   );
   const [copyrightsDirty, setCopyrightsDirty] = useState(false);
   const [updateCopyrights] = GQL.usePerformerCopyrightsUpdateMutation();
-  const [parentPerformer, setParentPerformer] = useState<
-    GQL.SelectPerformerDataFragment | undefined
-  >(performer.parent ?? undefined);
-  const [parentDirty, setParentDirty] = useState(false);
-  const [contextType, setContextType] = useState<"" | "copyright" | "artist">(
+  const performerID = performer.id ? Number(performer.id) : Number.NaN;
+  const variantsQuery = GQL.useFindPerformerVariantsQuery({
+    skip: isNew || !Number.isSafeInteger(performerID),
+    variables: {
+      parent_id: performerID,
+      filter: {
+        page: 1,
+        per_page: 100,
+        sort: "name",
+        direction: GQL.SortDirectionEnum.Asc,
+      },
+    },
+  });
+  const [updatePerformer] = usePerformerUpdate();
+  const [variants, setVariants] = useState<Performer[]>([]);
+  const [variantsDirty, setVariantsDirty] = useState(false);
+  const [contextType, setContextType] = useState<
+    "custom" | "copyright" | "artist"
+  >(
     performer.disambiguation_context?.copyright
       ? "copyright"
       : performer.disambiguation_context?.artist
         ? "artist"
-        : ""
+        : "custom"
   );
   const [contextCopyright, setContextCopyright] = useState<
     Copyright | undefined
@@ -124,16 +142,21 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
     (contextType === "artist" && !contextArtist);
 
   useEffect(() => {
+    if (!variantsDirty) {
+      setVariants(variantsQuery.data?.findPerformers.performers ?? []);
+    }
+  }, [variantsDirty, variantsQuery.data]);
+
+  useEffect(() => {
     setCopyrights(performer.copyrights ?? []);
     setCopyrightsDirty(false);
   }, [performer.copyrights]);
 
   useEffect(() => {
-    setParentPerformer(performer.parent ?? undefined);
-    setParentDirty(false);
+    setVariantsDirty(false);
     const context = performer.disambiguation_context;
     setContextType(
-      context?.copyright ? "copyright" : context?.artist ? "artist" : ""
+      context?.copyright ? "copyright" : context?.artist ? "artist" : "custom"
     );
     setContextCopyright(context?.copyright ?? undefined);
     setContextArtist(context?.artist ?? undefined);
@@ -220,8 +243,8 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
         values.custom_fields
       ) as GQL.PerformerCreateInput["custom_fields"],
     };
-    if (parentDirty) {
-      input.variant = { parent_id: parentPerformer?.id ?? null };
+    if (contextType !== "custom") {
+      input.disambiguation = "";
     }
     if (contextDirty) {
       input.disambiguation_context = {
@@ -407,9 +430,38 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
     ImageUtils.onImageChange(event, onImageLoad);
   }
 
+  async function syncVariantLinks() {
+    if (!variantsDirty || isNew || !performer.id) return;
+
+    const existingVariants =
+      variantsQuery.data?.findPerformers.performers ?? [];
+    const selectedIDs = new Set(variants.map((variant) => variant.id));
+    const existingIDs = new Set(existingVariants.map((variant) => variant.id));
+
+    // Add first so a failed update cannot leave the current variants detached.
+    for (const variant of variants) {
+      if (existingIDs.has(variant.id)) continue;
+      await updatePerformer({
+        variables: {
+          input: { id: variant.id, variant: { parent_id: performer.id } },
+        },
+      });
+    }
+
+    for (const variant of existingVariants) {
+      if (selectedIDs.has(variant.id)) continue;
+      await updatePerformer({
+        variables: {
+          input: { id: variant.id, variant: { parent_id: null } },
+        },
+      });
+    }
+  }
+
   async function onSave(input: GQL.PerformerCreateInput, andNew?: boolean) {
     setIsLoading(true);
     try {
+      await syncVariantLinks();
       if (!isNew && performer.id && copyrightsDirty) {
         await updateCopyrights({
           variables: {
@@ -420,13 +472,13 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
       }
       await onSubmit(input, andNew);
       setCopyrightsDirty(false);
-      setParentDirty(false);
+      setVariantsDirty(false);
       setContextDirty(false);
       formik.resetForm();
       if (andNew) {
         resetTagsState();
-        setParentPerformer(undefined);
-        setContextType("");
+        setVariants([]);
+        setContextType("custom");
         setContextCopyright(undefined);
         setContextArtist(undefined);
       }
@@ -445,8 +497,8 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
         values.custom_fields
       ) as GQL.PerformerCreateInput["custom_fields"],
     };
-    if (parentDirty) {
-      input.variant = { parent_id: parentPerformer?.id ?? null };
+    if (contextType !== "custom") {
+      input.disambiguation = "";
     }
     if (contextDirty) {
       input.disambiguation_context = {
@@ -463,7 +515,7 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
   useEffect(() => {
     if (isVisible) {
       Mousetrap.bind("s s", () => {
-        if (formik.dirty || copyrightsDirty || parentDirty || contextDirty) {
+        if (formik.dirty || copyrightsDirty || variantsDirty || contextDirty) {
           formik.submitForm();
         }
       });
@@ -732,7 +784,7 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
               (!isNew &&
                 !formik.dirty &&
                 !copyrightsDirty &&
-                !parentDirty &&
+                !variantsDirty &&
                 !contextDirty) ||
               missingContextTarget ||
               !isEqual(formik.errors, {}) ||
@@ -798,10 +850,16 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
   function renderCopyrightsField() {
     if (isNew) return;
 
+    const copyrightCount = copyrights.length;
+    const label = intl.formatMessage({
+      id: copyrightCount === 1 ? "copyright" : "copyrights",
+      defaultMessage: copyrightCount === 1 ? "Copyright" : "Copyrights",
+    });
+
     return (
       <Form.Group as={Row} data-field="copyrights">
         <Form.Label column sm={3} xl={2}>
-          Copyrights
+          {label}
         </Form.Label>
         <Col sm={9} xl={7}>
           <CopyrightSelect
@@ -817,34 +875,58 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
     );
   }
 
-  function renderParentCharacterField() {
-    const title = intl.formatMessage({
-      id: "base_character",
-      defaultMessage: "Base Character",
-    });
+  function renderVariantsField() {
+    if (isNew) return null;
 
     return (
-      <Form.Group as={Row} data-field="parent-character">
+      <Form.Group as={Row} data-field="character-variants">
         <Form.Label column sm={3} xl={2}>
-          {title}
+          {intl.formatMessage({
+            id: "character_variants",
+            defaultMessage: "Variants",
+          })}
         </Form.Label>
         <Col sm={9} xl={7}>
           <PerformerSelect
-            values={parentPerformer ? [parentPerformer] : []}
+            isMulti
+            creatable={false}
+            values={variants}
+            isDisabled={variantsQuery.loading || !!variantsQuery.error}
             onSelect={(items) => {
-              setParentPerformer(items[0]);
-              setParentDirty(true);
+              setVariants(items);
+              setVariantsDirty(true);
             }}
             isClearable
             excludeIds={performer.id ? [performer.id] : []}
-          />
-          <Form.Text muted>
-            {intl.formatMessage({
-              id: "base_character_help",
-              defaultMessage:
-                "Leave blank for a base Character. Each variant keeps its own media and metadata.",
+            noSelectionString={intl.formatMessage({
+              id: "select_character_variants",
+              defaultMessage: "Select variants",
             })}
-          </Form.Text>
+          />
+          {variantsQuery.error ? (
+            <Form.Text className="text-danger">
+              {intl.formatMessage({
+                id: "character_variants_load_error",
+                defaultMessage: "Could not load this Character's variants.",
+              })}
+            </Form.Text>
+          ) : variantsQuery.data &&
+            variantsQuery.data.findPerformers.count >
+              variantsQuery.data.findPerformers.performers.length ? (
+            <Form.Text muted>
+              {intl.formatMessage(
+                {
+                  id: "character_variants_edit_limit",
+                  defaultMessage:
+                    "The first {shown} of {total} variants are available here.",
+                },
+                {
+                  shown: variantsQuery.data.findPerformers.performers.length,
+                  total: variantsQuery.data.findPerformers.count,
+                }
+              )}
+            </Form.Text>
+          ) : null}
         </Col>
       </Form.Group>
     );
@@ -855,11 +937,6 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
       id: "disambiguation",
       defaultMessage: "Disambiguation",
     });
-    const linkedContextLabel = intl.formatMessage({
-      id: "disambiguation_context",
-      defaultMessage: "Link to",
-    });
-
     return (
       <Form.Group as={Row} data-field="disambiguation">
         <Form.Label column sm={3} xl={2}>
@@ -867,43 +944,25 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
         </Form.Label>
         <Col sm={9} xl={7}>
           <Form.Control
-            {...formik.getFieldProps("disambiguation")}
-            id="performer-disambiguation"
-            className="text-input"
-            type="text"
-            placeholder={intl.formatMessage({
-              id: "disambiguation_placeholder",
-              defaultMessage: "Optional distinguishing label",
-            })}
-          />
-          <Form.Label
-            htmlFor="disambiguation-context-type"
-            className="d-block mt-2 mb-1 small"
-          >
-            {linkedContextLabel}
-          </Form.Label>
-          <Form.Control
             as="select"
             id="disambiguation-context-type"
             value={contextType}
-            aria-label={linkedContextLabel}
+            className="text-input"
+            aria-label={title}
             onChange={(event) => {
               const nextType = event.currentTarget.value as
-                | ""
+                | "custom"
                 | "copyright"
                 | "artist";
               setContextType(nextType);
               setContextCopyright(undefined);
               setContextArtist(undefined);
+              if (nextType !== "custom") {
+                formik.setFieldValue("disambiguation", "");
+              }
               setContextDirty(true);
             }}
           >
-            <option value="">
-              {intl.formatMessage({
-                id: "no_disambiguation_link",
-                defaultMessage: "No linked context",
-              })}
-            </option>
             <option value="copyright">
               {intl.formatMessage({
                 id: "copyright",
@@ -913,7 +972,22 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
             <option value="artist">
               {intl.formatMessage({ id: "artist", defaultMessage: "Artist" })}
             </option>
+            <option value="custom">
+              {intl.formatMessage({ id: "custom", defaultMessage: "Custom" })}
+            </option>
           </Form.Control>
+          {contextType === "custom" && (
+            <Form.Control
+              {...formik.getFieldProps("disambiguation")}
+              id="performer-disambiguation"
+              className="text-input mt-2"
+              type="text"
+              placeholder={intl.formatMessage({
+                id: "disambiguation_placeholder",
+                defaultMessage: "Custom disambiguation label",
+              })}
+            />
+          )}
           {contextType === "copyright" && (
             <CopyrightSelect
               className="mt-2"
@@ -940,7 +1014,7 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
             <Form.Text className="text-danger">
               {intl.formatMessage({
                 id: "select_disambiguation_target",
-                defaultMessage: "Select a target or choose no linked context.",
+                defaultMessage: "Select a target or choose Custom.",
               })}
             </Form.Text>
           )}
@@ -948,8 +1022,7 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
             {intl.formatMessage({
               id: "disambiguation_context_help",
               defaultMessage:
-                "Optionally link this label to a Copyright or Artist. The linked name " +
-                "appears with the label and updates if that entity is renamed.",
+                "Choose a Copyright or Artist to link, or Custom for a plain label.",
             })}
           </Form.Text>
         </Col>
@@ -977,14 +1050,15 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
       )}
 
       <Prompt
-        when={formik.dirty || copyrightsDirty || parentDirty || contextDirty}
+        when={formik.dirty || copyrightsDirty || variantsDirty || contextDirty}
         message={intl.formatMessage({ id: "dialogs.unsaved_changes" })}
       />
       {renderButtons("mb-3")}
 
       <Form noValidate onSubmit={formik.handleSubmit} id="performer-edit">
         {renderInputField("name")}
-        {renderParentCharacterField()}
+        {renderCopyrightsField()}
+        {renderVariantsField()}
         {renderDisambiguationField()}
 
         {renderStringListField("alias_list", "aliases", { orderable: false })}
@@ -1017,7 +1091,6 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
         {renderURLListField("urls", onScrapePerformerURL, urlScrapable)}
 
         {renderInputField("details", "textarea")}
-        {renderCopyrightsField()}
         {renderTagsField()}
 
         {renderStashIDsField(

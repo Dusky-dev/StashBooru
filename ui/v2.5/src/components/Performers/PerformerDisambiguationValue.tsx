@@ -41,16 +41,11 @@ export const PerformerDisambiguationValue: React.FC<IProps> = ({
   ) : (
     label
   );
-  const showLegacyLabel =
-    target &&
-    label &&
-    label.toLocaleLowerCase() !== target.name.trim().toLocaleLowerCase();
 
   return (
     <span className="performer-disambiguation">
       {" ("}
       {contextLabel}
-      {showLegacyLabel ? ` — ${label}` : ""}
       {")"}
     </span>
   );
