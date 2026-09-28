@@ -191,7 +191,7 @@ func (qb *groupFilterHandler) performersCriterionHandler(performers *models.Mult
 				SELECT DISTINCT groups_scenes.group_id, performer_hierarchy.column1 AS performer_id
 				FROM groups_scenes
 				INNER JOIN performers_scenes ON groups_scenes.scene_id = performers_scenes.scene_id
-				INNER JOIN (`+valuesClause+`) performer_hierarchy ON performers_scenes.performer_id = performer_hierarchy.column2
+				INNER JOIN (` + valuesClause + `) performer_hierarchy ON performers_scenes.performer_id = performer_hierarchy.column2
 			)`)
 			f.addLeftJoin("groups_performers", "", "groups.id = groups_performers.group_id")
 
