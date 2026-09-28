@@ -112,8 +112,8 @@ const CopyrightDetailsPanel: React.FC<{
             >
               <div className="pt-3">
                 <p className="text-muted small mb-2">
-                Sub-Copyrights linked to this Copyright.
-              </p>
+                  Sub-Copyrights linked to this Copyright.
+                </p>
                 <CopyrightGrid
                   items={copyright.ordered_children}
                   label="Sub-Copyrights"
