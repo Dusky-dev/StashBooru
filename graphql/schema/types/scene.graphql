@@ -78,6 +78,7 @@ type Scene {
   movies: [SceneMovie!]! @deprecated(reason: "Use groups")
   tags: [Tag!]!
   performers: [Performer!]!
+  effective_associations: MediaEffectiveAssociations!
   stash_ids: [StashID!]!
 
   custom_fields: Map!

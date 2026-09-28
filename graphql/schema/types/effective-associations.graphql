@@ -1,0 +1,7 @@
+"Derived media associations, recalculated from each media item's direct links."
+type MediaEffectiveAssociations {
+  tags: [Tag!]!
+  artists: [Studio!]!
+  performers: [Performer!]!
+  copyrights: [Copyright!]!
+}

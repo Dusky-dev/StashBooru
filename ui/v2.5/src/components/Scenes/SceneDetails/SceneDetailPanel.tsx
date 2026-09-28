@@ -8,7 +8,7 @@ import { BooruTagSidebar } from "src/components/Shared/BooruTagSidebar";
 import { SceneFileInfoPanel } from "./SceneFileInfoPanel";
 
 interface ISceneDetailProps {
-  scene: GQL.SceneDataFragment;
+  scene: NonNullable<GQL.FindSceneQuery["findScene"]>;
 }
 
 export const SceneDetailPanel: React.FC<ISceneDetailProps> = (props) => {
@@ -32,10 +32,10 @@ export const SceneDetailPanel: React.FC<ISceneDetailProps> = (props) => {
   return (
     <>
       <BooruTagSidebar
-        tags={props.scene.tags}
-        artists={props.scene.artists}
-        characters={props.scene.performers}
-        copyrights={props.scene.ordered_copyrights ?? props.scene.copyrights}
+        tags={props.scene.effective_associations.tags}
+        artists={props.scene.effective_associations.artists}
+        characters={props.scene.effective_associations.performers}
+        copyrights={props.scene.effective_associations.copyrights}
       />
       <div className="row">
         <div className={`${sceneDetailsWidth} col-12 scene-details`}>

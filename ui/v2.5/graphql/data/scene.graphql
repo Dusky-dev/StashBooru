@@ -112,6 +112,30 @@ fragment SceneData on Scene {
   custom_fields
 }
 
+fragment SceneEffectiveAssociations on Scene {
+  effective_associations {
+    tags {
+      ...SlimTagData
+    }
+    artists {
+      ...SlimStudioData
+      scene_count
+      image_count
+    }
+    performers {
+      ...PerformerData
+    }
+    copyrights {
+      ...SlimCopyrightData
+      scene_count
+      image_count
+      breadcrumb {
+        ...SlimCopyrightData
+      }
+    }
+  }
+}
+
 fragment SelectSceneData on Scene {
   id
   title
