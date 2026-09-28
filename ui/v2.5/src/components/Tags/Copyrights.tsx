@@ -3,7 +3,6 @@ import { FormattedMessage } from "react-intl";
 import { Helmet } from "react-helmet";
 import { Col, Form, Row, Spinner, Tab, Tabs } from "react-bootstrap";
 import {
-  Link,
   Route,
   Switch,
   useHistory,
