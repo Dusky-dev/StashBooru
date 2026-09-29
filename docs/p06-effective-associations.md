@@ -17,11 +17,11 @@ System settings independently control whether Character, Artist, Copyright
 and Tag ancestors are included. Each defaults to enabled. Changing a switch
 changes the calculated result; it does not rewrite existing media relationships.
 
-The same read-time resolver consumes the stored direct links regardless of
-whether an edit form, import, scan, native Auto Tag, or tagging workflow wrote
-them. Manual edits keep their existing direct-only update contract. Image and
-Video detail queries use the same effective-association builder, so inheritance
-is recalculated after an edit or hierarchy change without a media rewrite.
+Image and Video detail queries use the same effective-association builder, so
+inheritance is recalculated after an edit or hierarchy change without a media
+rewrite. This shared read path does not prove each writer workflow's behavior;
+end-to-end checks for manual edits, native Auto Tag, import, scan, repeated
+import, and batch review remain outstanding.
 
 Media searches expand Character variants, and Tag, Artist and Copyright
 hierarchy filters include descendants by default while preserving the existing
@@ -34,9 +34,8 @@ subtree totals as their media tabs.
 Tag and Artist detail views continue to offer direct and all-descendant count
 modes. Regression tests cover cycle termination, de-duplication, diamond
 Copyright/Tag ancestry, domain settings, reparenting, shared parents and explicit
-parents. The shared resolver makes the result independent of which supported
-write workflow supplied the direct links; end-to-end tests for the full
-cross-workflow matrix remain follow-up work.
+parents. Resolver tests cover Image and Video wiring. They do not yet exercise
+the full cross-workflow acceptance matrix.
 
 Image and Video tagging previews now include inherited Tags with their origins:
 the direct Character, Artist, or Copyright profile that supplied a Tag, the
@@ -51,13 +50,12 @@ legacy assignments, are treated as explicit. Do not remove direct media Tags
 merely because they also appear through a profile or hierarchy; that could
 erase an intentional assignment.
 
-## Acceptance across media workflows
+## Acceptance across media workflows — incomplete
 
-Every supported writer stores native direct media relationships. The effective
-resolver reads those relationships from the same Image and Scene repositories,
-so behavior does not depend on whether a link came from an edit form, an import,
-a scan, native Auto Tag, or reviewed Tagging. There is no second writer-specific
-inheritance state to synchronize.
+The implementation relies on native direct media relationships and a shared
+read resolver. That is a design argument, not an integration test of every
+writer. The P06 handoff's workflow-level acceptance requirements are not yet
+verified end to end.
 
 | Workflow | Stored relationship | P06 behavior |
 | --- | --- | --- |
@@ -68,21 +66,30 @@ inheritance state to synchronize.
 
 Resolver tests cover the Image and Video GraphQL relationship readers, legacy
 primary Artist plus multi-Artist links, multi-parent Copyrights, profile Tags,
-Tag ancestors, and de-duplication. The core behavior tests cover settings,
-cycles, shared ancestors, explicit parent links, detach/reparent behavior, and
-tagging origins/direct-only application.
+Tag ancestors, and de-duplication. Core tests cover settings, cycles, shared
+ancestors, explicit parent links, detach/reparent behavior, and tagging
+origins/direct-only application. Actual manual single/bulk edits, native Auto
+Tag, import, scan, repeated import, and batch-review workflows still need tests
+for both Images and Videos.
 
-## Backfill decision
+The effective_associations response does not currently attach source provenance
+to each effective Character, Artist, Copyright, and Tag membership. Tagging
+previews expose origins for calculated Tags only. The requirement to verify the
+origin of every effective association is therefore not met.
 
-No write-backfill job is needed for this design. Effective associations are
-computed from existing direct rows and current hierarchy/profile data, so there
-are no previously materialized inherited links to migrate. A job that inserted
-ancestors into the native direct relation tables would make them sticky after a
-child is detached, and could overwrite the user's distinction between an
-explicit link and a calculated one. The reviewed Tagging preview already shows
-the calculated additions and their origins without changing media rows.
+## Backfill requirement — unresolved
 
-If a future consumer requires stored inherited rows for performance or export,
-that needs a separate provenance-backed materialization design. It must record
-direct-versus-derived origins and reconcile shared sources, hierarchy changes,
-and user edits before any write-backfill can be safe.
+The P06 handoff explicitly requires a previewable backfill task. This
+implementation omits it because effective associations are computed from
+existing direct rows and current hierarchy/profile data. That rationale does
+not satisfy the stated requirement. Blindly inserting ancestors into native
+direct relation tables would make them sticky after a child is detached and
+could overwrite the user's distinction between an explicit link and a
+calculated one.
+
+Before P06 can be marked complete, either implement a reviewed preview/apply
+backfill with provenance that safely reconciles shared sources, hierarchy
+changes, and user edits, or explicitly revise the handoff to accept read-time
+projection in place of backfill. Current System settings affect Tagging too;
+the request for System/Tagging defaults also needs confirmation as to whether a
+separate Tagging override is required.
