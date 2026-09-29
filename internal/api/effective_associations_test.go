@@ -54,10 +54,23 @@ func (r *effectiveAssociationCopyrightReader) GetTagIDs(_ context.Context, id in
 type effectiveAssociationTagReader struct {
 	models.TagReaderWriter
 	parents map[int][]*models.Tag
+	tags    map[int]*models.Tag
 }
 
 func (r *effectiveAssociationTagReader) FindByChildTagID(_ context.Context, id int) ([]*models.Tag, error) {
 	return r.parents[id], nil
+}
+
+func (r *effectiveAssociationTagReader) FindMany(_ context.Context, ids []int) ([]*models.Tag, error) {
+	ret := make([]*models.Tag, 0, len(ids))
+	for _, id := range ids {
+		if tag := r.tags[id]; tag != nil {
+			ret = append(ret, tag)
+		} else {
+			ret = append(ret, &models.Tag{ID: id})
+		}
+	}
+	return ret, nil
 }
 
 func TestResolveEffectiveMediaAssociationIDsIncludesLiveAncestorsAndProfileTags(t *testing.T) {
@@ -101,7 +114,9 @@ func TestResolveEffectiveMediaAssociationIDsIncludesLiveAncestorsAndProfileTags(
 	}
 
 	got, err := resolveEffectiveMediaAssociationIDs(context.Background(), repository, directMediaAssociationIDs{
-		tags:       []int{30, 30},
+		// Explicitly linking a parent with its child still returns the shared
+		// parent only once.
+		tags:       []int{30, 29, 30},
 		artists:    []int{13},
 		performers: []int{3},
 		copyrights: []int{23},
@@ -137,7 +152,7 @@ func TestResolveEffectiveMediaAssociationIDsIncludesLiveAncestorsAndProfileTags(
 	assertIDs("tags", got.tags, []int{30, 29, 28, 40, 39, 41, 42, 43, 44, 45, 46, 47, 48, 49})
 }
 
-func TestInheritResolvedProfileTagsIncludesAncestorProfilesAndTagParents(t *testing.T) {
+func TestResolveInheritedTaggingTagsKeepsDerivedTagsOutOfDirectSelectionAndTracksOrigins(t *testing.T) {
 	parent := func(id int) *int { return &id }
 	repository := models.Repository{
 		Performer: &effectiveAssociationPerformerReader{
@@ -152,7 +167,7 @@ func TestInheritResolvedProfileTagsIncludesAncestorProfilesAndTagParents(t *test
 				3: {ID: 3, ParentID: parent(4)},
 				4: {ID: 4},
 			},
-			tags: map[int][]int{3: {33}, 4: {34}},
+			tags: map[int][]int{3: {31, 33}, 4: {34}},
 		},
 		Copyright: &effectiveAssociationCopyrightReader{
 			parents: map[int][]*models.Copyright{5: {{ID: 6}}, 6: nil},
@@ -161,34 +176,120 @@ func TestInheritResolvedProfileTagsIncludesAncestorProfilesAndTagParents(t *test
 		Tag: &effectiveAssociationTagReader{
 			parents: map[int][]*models.Tag{
 				30: {{ID: 40}}, // predicted tag ancestor
-				31: {{ID: 41}}, // character profile tag ancestor
-				32: {{ID: 42}}, // parent Character profile tag ancestor
+				31: {{ID: 41}, {ID: 42}}, // character profile Tag has multiple parents
+				32: {{ID: 41}, {ID: 42}}, // shared by both Character profiles
 				33: {{ID: 43}}, // Artist profile tag ancestor
 				34: {{ID: 44}}, // parent Artist profile tag ancestor
 				35: {{ID: 45}}, // Copyright profile tag ancestor
 				36: {{ID: 46}}, // parent Copyright profile tag ancestor
 			},
+			tags: map[int]*models.Tag{
+				30: {ID: 30, Name: "selected"},
+				31: {ID: 31, Name: "character"},
+				32: {ID: 32, Name: "parent-character"},
+				33: {ID: 33, Name: "artist"},
+				34: {ID: 34, Name: "parent-artist"},
+				35: {ID: 35, Name: "copyright"},
+				36: {ID: 36, Name: "parent-copyright"},
+				40: {ID: 40, Name: "selected-parent"},
+				41: {ID: 41, Name: "character-parent"},
+				42: {ID: 42, Name: "parent-character-parent"},
+				43: {ID: 43, Name: "artist-parent"},
+				44: {ID: 44, Name: "parent-artist-parent"},
+				45: {ID: 45, Name: "copyright-parent"},
+				46: {ID: 46, Name: "parent-copyright-parent"},
+			},
 		},
 	}
-	resolved := taggingResolvedEntities{
-		CharacterIDs: []int{1},
-		ArtistIDs:    []int{3},
-		CopyrightIDs: []int{5},
-		TagIDs:       []int{30},
+	direct := directMediaAssociationIDs{
+		tags:       []int{30},
+		performers: []int{1},
+		artists:    []int{3},
+		copyrights: []int{5},
 	}
 
-	if err := inheritResolvedProfileTagIDs(context.Background(), repository, &resolved, config.AssociationInheritanceSettings{
+	inherited, err := resolveInheritedTaggingTags(context.Background(), repository, direct, config.AssociationInheritanceSettings{
 		Characters: true,
 		Artists:    true,
 		Copyrights: true,
 		Tags:       true,
-	}); err != nil {
-		t.Fatalf("inheritResolvedProfileTagIDs() error = %v", err)
+	})
+	if err != nil {
+		t.Fatalf("resolveInheritedTaggingTags() error = %v", err)
 	}
 
-	want := []int{30, 31, 32, 33, 34, 35, 36, 40, 41, 42, 43, 44, 45, 46}
-	if !reflect.DeepEqual(resolved.TagIDs, want) {
-		t.Fatalf("resolved Tags = %v, want %v", resolved.TagIDs, want)
+	want := []int{31, 32, 33, 34, 35, 36, 40, 41, 42, 43, 44, 45, 46}
+	gotIDs := make([]int, 0, len(inherited))
+	byID := make(map[int]taggingInheritedTag, len(inherited))
+	for _, tag := range inherited {
+		gotIDs = append(gotIDs, tag.ID)
+		byID[tag.ID] = tag
+	}
+	if !reflect.DeepEqual(gotIDs, want) {
+		t.Fatalf("inherited Tag IDs = %v, want %v", gotIDs, want)
+	}
+	if !reflect.DeepEqual(direct.tags, []int{30}) {
+		t.Fatalf("selected Tag IDs changed while calculating inherited Tags: %v", direct.tags)
+	}
+	containsOrigin := func(tagID int, want effectiveAssociationTagOrigin) bool {
+		for _, origin := range byID[tagID].Origins {
+			if origin == want {
+				return true
+			}
+		}
+		return false
+	}
+	if !containsOrigin(31, effectiveAssociationTagOrigin{Kind: "character_profile", EntityID: 1, SourceTagID: 31}) {
+		t.Fatalf("Character profile origin missing from inherited Tag: %+v", byID[31])
+	}
+	if !containsOrigin(31, effectiveAssociationTagOrigin{Kind: "artist_profile", EntityID: 3, SourceTagID: 31}) {
+		t.Fatalf("shared Artist profile origin missing from inherited Tag: %+v", byID[31])
+	}
+	if !containsOrigin(32, effectiveAssociationTagOrigin{Kind: "character_profile", EntityID: 2, EntityAncestor: true, SourceTagID: 32}) {
+		t.Fatalf("ancestor Character origin missing from inherited Tag: %+v", byID[32])
+	}
+	if !containsOrigin(40, effectiveAssociationTagOrigin{Kind: "selected_tag", SourceTagID: 30, TagAncestor: true}) {
+		t.Fatalf("selected Tag hierarchy origin missing from inherited Tag: %+v", byID[40])
+	}
+	for _, sourceTagID := range []int{31, 32} {
+		if !containsOrigin(41, effectiveAssociationTagOrigin{
+			Kind: "character_profile", EntityID: sourceTagID - 30, SourceTagID: sourceTagID, TagAncestor: true,
+		}) {
+			t.Errorf("shared Tag parent lacks Character profile origin from Tag %d: %+v", sourceTagID, byID[41])
+		}
+	}
+}
+
+func TestResolveEffectiveMediaAssociationsReflectsReparentingOnNextRead(t *testing.T) {
+	parentID := 2
+	child := &models.Performer{ID: 1, ParentID: &parentID}
+	repository := models.Repository{
+		Performer: &effectiveAssociationPerformerReader{
+			performers: map[int]*models.Performer{
+				1: child,
+				2: {ID: 2},
+				3: {ID: 3},
+			},
+		},
+	}
+	direct := directMediaAssociationIDs{performers: []int{1}}
+	settings := config.AssociationInheritanceSettings{Characters: true}
+
+	before, err := resolveEffectiveMediaAssociationIDs(context.Background(), repository, direct, settings)
+	if err != nil {
+		t.Fatalf("resolving before reparent: %v", err)
+	}
+	if !reflect.DeepEqual(before.performers, []int{1, 2}) {
+		t.Fatalf("before reparenting got Characters %v, want [1 2]", before.performers)
+	}
+
+	parentID = 3
+	after, err := resolveEffectiveMediaAssociationIDs(context.Background(), repository, direct, settings)
+	if err != nil {
+		t.Fatalf("resolving after reparent: %v", err)
+	}
+	if !reflect.DeepEqual(after.performers, []int{1, 3}) {
+		t.Fatalf("after reparenting got Characters %v, want [1 3]", after.performers)
 	}
 }
 

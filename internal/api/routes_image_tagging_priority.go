@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/stashapp/stash/internal/manager"
 	"github.com/stashapp/stash/pkg/models"
 )
 
@@ -45,6 +46,10 @@ func (rs imageRoutes) ImageKnowledgeTagsWithLocalPriorityV2(w http.ResponseWrite
 
 	plan := buildTaggingChangePlanWithSuppressed(selected, suppressed, request.ReplaceArtist)
 	if rawPreview := strings.TrimSpace(r.URL.Query().Get("preview")); rawPreview == "1" || strings.EqualFold(rawPreview, "true") {
+		if err := populateTaggingChangePlanInheritedTags(r.Context(), manager.GetInstance().Repository, selected, &plan); err != nil {
+			http.Error(w, fmt.Sprintf("resolving inherited Image Tagging Tags: %v", err), http.StatusInternalServerError)
+			return
+		}
 		writeVisualSimilarityJSON(w, plan)
 		return
 	}

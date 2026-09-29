@@ -15,8 +15,7 @@ authorship link.
 
 System settings independently control whether Character, Artist, Copyright
 and Tag ancestors are included. Each defaults to enabled. Changing a switch
-changes the calculated result and tagging suggestions; it does not rewrite
-existing media relationships.
+changes the calculated result; it does not rewrite existing media relationships.
 
 Because the derivation reads the stored direct links, it applies regardless of
 whether those links came from an edit form, import, scan, or tagging workflow.
@@ -29,5 +28,19 @@ Tag ancestors, to its additive result. Copyright list counts now use the same
 subtree totals as their media tabs.
 
 Tag and Artist detail views continue to offer direct and all-descendant count
-modes. The shared application service, review provenance and complete
-cross-workflow acceptance matrix remain follow-up work.
+modes. The shared workflow behavior and complete cross-workflow acceptance
+matrix remain follow-up work.
+
+Image and Video tagging previews now include inherited Tags with their origins:
+the direct Character, Artist, or Copyright profile that supplied a Tag, the
+ancestor profile that supplied it, or the selected Tag whose parent supplied
+it. The same summary is shown in bulk Video review when selected predictions
+resolve to existing metadata. Applying predictions persists only the explicitly
+selected Tag IDs; profile Tags and hierarchy parents remain calculated.
+
+No derived-association storage has been introduced, so live inheritance itself
+recalculates without a data migration. The broader handoff still requires a
+previewable backfill job for existing Image and Video associations; that
+reviewed job is not implemented yet. Existing direct associations are treated
+as explicit. Do not remove direct media Tags merely because they also appear
+through a profile or hierarchy; that could erase an intentional assignment.

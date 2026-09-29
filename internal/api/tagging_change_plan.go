@@ -31,6 +31,7 @@ type taggingChangePlanItem struct {
 
 type taggingChangePlan struct {
 	Items           []taggingChangePlanItem `json:"items"`
+	InheritedTags   []taggingInheritedTag   `json:"inheritedTags"`
 	CanApply        bool                    `json:"canApply"`
 	ReviewCount     int                     `json:"reviewCount"`
 	SuppressedCount int                     `json:"suppressedCount"`
@@ -46,8 +47,9 @@ func buildTaggingChangePlan(predictions []camietagger.Tag, replaceArtists bool) 
 
 func buildTaggingChangePlanWithSuppressed(predictions, suppressed []camietagger.Tag, replaceArtists bool) taggingChangePlan {
 	plan := taggingChangePlan{
-		Items:    make([]taggingChangePlanItem, 0, len(predictions)+len(suppressed)),
-		CanApply: true,
+		Items:         make([]taggingChangePlanItem, 0, len(predictions)+len(suppressed)),
+		InheritedTags: []taggingInheritedTag{},
+		CanApply:      true,
 	}
 	for _, rawPrediction := range predictions {
 		prediction := normalizeCamiePrediction(rawPrediction)

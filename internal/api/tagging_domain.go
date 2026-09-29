@@ -55,10 +55,11 @@ func filterCamieFilenameAuthoritativeSelections(predictions []camietagger.Tag) [
 }
 
 type taggingResolvedEntities struct {
-	Characters []camieAppliedEntity
-	Artists    []camieAppliedEntity
-	Copyrights []camieAppliedEntity
-	Tags       []camieAppliedEntity
+	Characters    []camieAppliedEntity
+	Artists       []camieAppliedEntity
+	Copyrights    []camieAppliedEntity
+	Tags          []camieAppliedEntity
+	InheritedTags []taggingInheritedTag
 
 	CharacterIDs []int
 	ArtistIDs    []int
@@ -75,10 +76,11 @@ type taggingResolvedEntities struct {
 
 func resolveTaggingEntities(ctx context.Context, repository models.Repository, predictions []camietagger.Tag) (taggingResolvedEntities, error) {
 	resolved := taggingResolvedEntities{
-		Characters: []camieAppliedEntity{},
-		Artists:    []camieAppliedEntity{},
-		Copyrights: []camieAppliedEntity{},
-		Tags:       []camieAppliedEntity{},
+		Characters:    []camieAppliedEntity{},
+		Artists:       []camieAppliedEntity{},
+		Copyrights:    []camieAppliedEntity{},
+		Tags:          []camieAppliedEntity{},
+		InheritedTags: []taggingInheritedTag{},
 	}
 
 	normalized := make([]camietagger.Tag, 0, len(predictions))
@@ -180,9 +182,16 @@ func resolveTaggingEntities(ctx context.Context, repository models.Repository, p
 	}
 
 	settings := config.GetInstance().GetAssociationInheritanceSettings()
-	if err := inheritResolvedProfileTagIDs(ctx, repository, &resolved, settings); err != nil {
+	inheritedTags, err := resolveInheritedTaggingTags(ctx, repository, directMediaAssociationIDs{
+		tags:       resolved.TagIDs,
+		artists:    resolved.ArtistIDs,
+		performers: resolved.CharacterIDs,
+		copyrights: resolved.CopyrightIDs,
+	}, settings)
+	if err != nil {
 		return taggingResolvedEntities{}, err
 	}
+	resolved.InheritedTags = inheritedTags
 	return resolved, nil
 }
 

@@ -32,6 +32,34 @@ type effectiveMediaAssociationIDs struct {
 	copyrights []int
 }
 
+type effectiveAssociationTagOrigin struct {
+	Kind           string `json:"kind"`
+	EntityID       int    `json:"entityID,omitempty"`
+	EntityAncestor bool   `json:"entityAncestor,omitempty"`
+	SourceTagID    int    `json:"sourceTagID,omitempty"`
+	TagAncestor    bool   `json:"tagAncestor,omitempty"`
+}
+
+type taggingInheritedTag struct {
+	ID      int                             `json:"id"`
+	Name    string                          `json:"name"`
+	Origins []effectiveAssociationTagOrigin `json:"origins"`
+}
+
+type effectiveTagOriginTraversalKey struct {
+	TagID          int
+	EntityID       int
+	SourceTagID    int
+	Kind           string
+	EntityAncestor bool
+	TagAncestor    bool
+}
+
+type effectiveTagOriginTraversal struct {
+	TagID  int
+	Origin effectiveAssociationTagOrigin
+}
+
 func appendUniqueIDs(destination []int, seen map[int]struct{}, ids []int) []int {
 	for _, id := range ids {
 		if id <= 0 {
@@ -181,6 +209,136 @@ func resolveEffectiveMediaAssociationIDs(
 	}
 
 	return effective, nil
+}
+
+func resolveEffectiveAssociationTagOrigins(
+	ctx context.Context,
+	repository models.Repository,
+	direct directMediaAssociationIDs,
+	settings config.AssociationInheritanceSettings,
+	effective effectiveMediaAssociationIDs,
+) (map[int][]effectiveAssociationTagOrigin, error) {
+	origins := make(map[int][]effectiveAssociationTagOrigin)
+	seen := make(map[effectiveTagOriginTraversalKey]struct{})
+	queue := make([]effectiveTagOriginTraversal, 0)
+
+	enqueue := func(tagID int, origin effectiveAssociationTagOrigin) {
+		if tagID <= 0 {
+			return
+		}
+		key := effectiveTagOriginTraversalKey{
+			TagID:          tagID,
+			EntityID:       origin.EntityID,
+			SourceTagID:    origin.SourceTagID,
+			Kind:           origin.Kind,
+			EntityAncestor: origin.EntityAncestor,
+			TagAncestor:    origin.TagAncestor,
+		}
+		if _, exists := seen[key]; exists {
+			return
+		}
+		seen[key] = struct{}{}
+		origins[tagID] = append(origins[tagID], origin)
+		queue = append(queue, effectiveTagOriginTraversal{TagID: tagID, Origin: origin})
+	}
+
+	for _, id := range direct.tags {
+		enqueue(id, effectiveAssociationTagOrigin{Kind: "selected_tag", SourceTagID: id})
+	}
+
+	directPerformers := make(map[int]struct{}, len(direct.performers))
+	for _, id := range direct.performers {
+		directPerformers[id] = struct{}{}
+	}
+	for _, id := range effective.performers {
+		performer, err := repository.Performer.Find(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("loading Character %d for Tag origin: %w", id, err)
+		}
+		if performer == nil {
+			continue
+		}
+		tagIDs, err := repository.Performer.GetTagIDs(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("loading Character %d profile Tags: %w", id, err)
+		}
+		_, isDirect := directPerformers[id]
+		for _, tagID := range tagIDs {
+			enqueue(tagID, effectiveAssociationTagOrigin{
+				Kind:           "character_profile",
+				EntityID:       id,
+				EntityAncestor: !isDirect,
+				SourceTagID:    tagID,
+			})
+		}
+	}
+
+	directArtists := make(map[int]struct{}, len(direct.artists))
+	for _, id := range direct.artists {
+		directArtists[id] = struct{}{}
+	}
+	for _, id := range effective.artists {
+		artist, err := repository.Studio.Find(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("loading Artist %d for Tag origin: %w", id, err)
+		}
+		if artist == nil {
+			continue
+		}
+		tagIDs, err := repository.Studio.GetTagIDs(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("loading Artist %d profile Tags: %w", id, err)
+		}
+		_, isDirect := directArtists[id]
+		for _, tagID := range tagIDs {
+			enqueue(tagID, effectiveAssociationTagOrigin{
+				Kind:           "artist_profile",
+				EntityID:       id,
+				EntityAncestor: !isDirect,
+				SourceTagID:    tagID,
+			})
+		}
+	}
+
+	directCopyrights := make(map[int]struct{}, len(direct.copyrights))
+	for _, id := range direct.copyrights {
+		directCopyrights[id] = struct{}{}
+	}
+	for _, id := range effective.copyrights {
+		tagIDs, err := repository.Copyright.GetTagIDs(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("loading Copyright %d profile Tags: %w", id, err)
+		}
+		_, isDirect := directCopyrights[id]
+		for _, tagID := range tagIDs {
+			enqueue(tagID, effectiveAssociationTagOrigin{
+				Kind:           "copyright_profile",
+				EntityID:       id,
+				EntityAncestor: !isDirect,
+				SourceTagID:    tagID,
+			})
+		}
+	}
+
+	if settings.Tags {
+		for index := 0; index < len(queue); index++ {
+			current := queue[index]
+			parents, err := repository.Tag.FindByChildTagID(ctx, current.TagID)
+			if err != nil {
+				return nil, fmt.Errorf("loading Tag %d parents for origin: %w", current.TagID, err)
+			}
+			for _, parent := range parents {
+				if parent == nil {
+					continue
+				}
+				origin := current.Origin
+				origin.TagAncestor = true
+				enqueue(parent.ID, origin)
+			}
+		}
+	}
+
+	return origins, nil
 }
 
 func buildMediaEffectiveAssociations(

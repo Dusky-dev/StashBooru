@@ -9,7 +9,7 @@ Updated: 2026-09-29
 | P03 — visual comparison / difference highlighting | Complete | Merged PR #93. Scope remains the bounded still-image comparison described below; automatic alignment and video frame selection are not implemented. |
 | P04 — copyright sorting / taxonomy | Complete | PRs #94 and #95 are merged. PR #94 added the hierarchy/backend foundation; PR #95 corrected hierarchy UX and media presentation without changing the P04 database schema. |
 | P05 — Character variants / disambiguation links | Complete | Merged PR #104 adds native Character variants and typed Copyright/Artist disambiguation links; merged PR #114 refines Character/Copyright editing. |
-| P06 — ancestor/profile auto-association | In progress | Draft PR #115 covers read-time effective associations, hierarchy-aware filters/counts and tagging-result profile Tags. This slice adds configurable per-domain inheritance defaults. Shared application across edit/import/scan paths, provenance in review, the previewable backfill requirement and the full acceptance matrix remain open. |
+| P06 — ancestor/profile auto-association | In progress | Draft PR #115 covers read-time effective associations, hierarchy-aware filters/counts, independent inheritance settings and non-sticky tagging results with visible origins. The workflow acceptance matrix and the handoff's underspecified previewable backfill remain open. |
 
 ## P04 completed behavior
 
@@ -82,9 +82,9 @@ P05 is complete and merged in PRs #104 and #114.
 - Image and Scene `effective_associations` resolve parent Characters, Artists and Copyrights from direct media links, then include profile Tags and Tag ancestors. Direct GraphQL fields remain editable stored links; the effective view is derived and creates no sticky parent links.
 - Character filters/counts include all variants across Images, Scenes, Galleries and Groups. Repeated media links through sibling variants are de-duplicated.
 - Tag, Artist and Copyright hierarchy filters include descendants by default and retain the depth control. Tag/Artist detail views offer direct and all-descendant count modes, and Copyright list counts use the subtree totals shown by its media tabs.
-- Tagging adds profile Tags from matched Characters, Artists and Copyrights, their parents, and Tag ancestors.
+- Tagging previews calculated profile and Tag-parent Tags with their origin. Applying predictions stores only directly selected Tags; inherited Tags stay live and are not copied as sticky media links.
 - System settings now independently control Character, Artist, Copyright and Tag ancestor inclusion. All four default to enabled; changing them affects calculated effective associations and additive tagging results without rewriting media links.
-- Still open against the full P06 handoff: use one application service across manual single/bulk edits, tagging review, native Auto Tag, imports and scans; expose association origin in review; resolve the specified previewable backfill requirement; and cover the complete P06 acceptance matrix.
+- Still open against the full P06 handoff: implement the reviewed preview/backfill job and complete the acceptance matrix across manual single/bulk edits, tagging review, native Auto Tag, imports and scans. The read-time projection recalculates current results without migration; any backfill must preserve existing direct links as explicit, never delete a Tag solely because it is also inherited.
 
 ## P03 validation scope
 

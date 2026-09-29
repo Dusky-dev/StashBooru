@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stashapp/stash/pkg/camietagger"
 	"github.com/stashapp/stash/pkg/models"
 	"github.com/stashapp/stash/pkg/tag"
 	"github.com/stashapp/stash/pkg/visualembedding"
@@ -117,5 +118,29 @@ func TestEva02TagPredictionToCamieRating(t *testing.T) {
 				t.Fatalf("prediction provenance changed: %+v", got)
 			}
 		})
+	}
+}
+
+func TestTaggingDirectAssociationsFromPredictionsUsesOnlyResolvedMatchingTargets(t *testing.T) {
+	predictions := []camietagger.Tag{
+		{Name: "Character", Category: "character", TargetExists: true, TargetPath: "/performers/1"},
+		{Name: "Character duplicate", Category: "character", TargetExists: true, TargetPath: "/performers/1"},
+		{Name: "Artist", Category: "artist", TargetExists: true, TargetPath: "/studios/2"},
+		{Name: "Copyright", Category: "copyright", TargetExists: true, TargetPath: "/copyrights/3"},
+		{Name: "Tag", Category: "general", TargetExists: true, TargetPath: "/tags/4"},
+		{Name: "New Tag", Category: "general", TargetExists: false, TargetPath: "/tags?q=new"},
+		{Name: "Wrong path", Category: "artist", TargetExists: true, TargetPath: "/performers/5"},
+		{Name: "Invalid ID", Category: "copyright", TargetExists: true, TargetPath: "/copyrights/nope"},
+	}
+
+	got := taggingDirectAssociationsFromPredictions(predictions)
+	want := directMediaAssociationIDs{
+		performers: []int{1},
+		artists:    []int{2},
+		copyrights: []int{3},
+		tags:       []int{4},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("resolved direct associations = %+v, want %+v", got, want)
 	}
 }

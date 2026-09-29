@@ -11,6 +11,8 @@ import {
 import { queryFindScenes } from "src/core/StashService";
 import { ListFilterModel } from "src/models/list-filter/filter";
 import { useToast } from "src/hooks/Toast";
+import { CalculatedTagsSummary } from "src/components/Tagging/TaggingChangePlanModal";
+import type { TaggingInheritedTag } from "src/components/Tagging/TaggingChangePlanModal";
 import { collectFilteredSceneIDs } from "./batchVideoTaggingScope";
 
 interface TargetCandidate {
@@ -50,6 +52,7 @@ interface VideoTaggingApplyResponse {
   artists: AppliedEntity[] | null;
   copyrights: AppliedEntity[] | null;
   tags: AppliedEntity[] | null;
+  inheritedTags?: TaggingInheritedTag[];
   createdCharacters: number;
   createdArtists: number;
   createdCopyrights: number;
@@ -73,6 +76,10 @@ interface BatchStatusResponse {
   processed: number;
   items: BatchSceneResult[];
   error?: string;
+}
+
+interface TaggingPlanPreviewResponse {
+  inheritedTags?: TaggingInheritedTag[];
 }
 
 type BatchScope = "selected" | "filtered" | "all";
@@ -105,6 +112,86 @@ function reviewKey(sceneID: number, index: number) {
   return `${sceneID}:${index}`;
 }
 
+function resolveReviewPrediction(
+  item: BatchReviewItem,
+  candidateID?: number
+): TagPrediction | undefined {
+  if (item.reason === "local-identity-conflict") return undefined;
+  if (item.reason !== "ambiguous-character") return item.prediction;
+
+  const candidate = item.prediction.targetCandidates?.find(
+    (value) => value.id === candidateID
+  );
+  if (!candidate) return undefined;
+  const name = candidateLabel(candidate);
+  return {
+    ...item.prediction,
+    name,
+    rawName: name,
+    targetPath: "/performers/" + candidate.id,
+    targetExists: true,
+    targetCandidates: undefined,
+  };
+}
+
+function mergeAppliedEntities(
+  existing: AppliedEntity[] | null | undefined,
+  incoming: AppliedEntity[] | null | undefined
+) {
+  const byIdentity = new Map<string, AppliedEntity>();
+  for (const entity of [...(existing ?? []), ...(incoming ?? [])]) {
+    byIdentity.set(entity.category + ":" + entity.id, entity);
+  }
+  return [...byIdentity.values()];
+}
+
+function mergeInheritedTags(
+  existing: TaggingInheritedTag[] | undefined,
+  incoming: TaggingInheritedTag[] | undefined
+) {
+  const byID = new Map<number, TaggingInheritedTag>();
+  for (const tag of [...(existing ?? []), ...(incoming ?? [])]) {
+    const current = byID.get(tag.id);
+    if (!current) {
+      byID.set(tag.id, { ...tag, origins: [...tag.origins] });
+      continue;
+    }
+
+    const origins = new Map(
+      current.origins.map((origin) => [JSON.stringify(origin), origin])
+    );
+    for (const origin of tag.origins) {
+      origins.set(JSON.stringify(origin), origin);
+    }
+    byID.set(tag.id, { ...current, origins: [...origins.values()] });
+  }
+  return [...byID.values()];
+}
+
+function mergeApplyResponses(
+  existing: VideoTaggingApplyResponse | undefined,
+  incoming: VideoTaggingApplyResponse | undefined
+): VideoTaggingApplyResponse | undefined {
+  if (!existing) return incoming;
+  if (!incoming) return existing;
+  return {
+    ...existing,
+    ...incoming,
+    characters: mergeAppliedEntities(existing.characters, incoming.characters),
+    artists: mergeAppliedEntities(existing.artists, incoming.artists),
+    copyrights: mergeAppliedEntities(existing.copyrights, incoming.copyrights),
+    tags: mergeAppliedEntities(existing.tags, incoming.tags),
+    inheritedTags: mergeInheritedTags(
+      existing.inheritedTags,
+      incoming.inheritedTags
+    ),
+    createdCharacters: existing.createdCharacters + incoming.createdCharacters,
+    createdArtists: existing.createdArtists + incoming.createdArtists,
+    createdCopyrights: existing.createdCopyrights + incoming.createdCopyrights,
+    createdTags: existing.createdTags + incoming.createdTags,
+  };
+}
+
 export const BatchVideoTaggingDialog: React.FC<{
   filter: ListFilterModel;
   selectedIds: Set<string>;
@@ -124,6 +211,9 @@ export const BatchVideoTaggingDialog: React.FC<{
   const [status, setStatus] = useState<BatchStatusResponse>();
   const [error, setError] = useState<string>();
   const [selectedReview, setSelectedReview] = useState<Set<string>>(new Set());
+  const [reviewInheritedTags, setReviewInheritedTags] = useState<
+    Record<number, TaggingInheritedTag[]>
+  >({});
   const [characterResolutions, setCharacterResolutions] = useState<
     Record<string, number>
   >({});
@@ -266,6 +356,67 @@ export const BatchVideoTaggingDialog: React.FC<{
     });
   }, []);
 
+  useEffect(() => {
+    if (status?.status !== "complete" || selectedReview.size === 0) {
+      setReviewInheritedTags({});
+      return;
+    }
+
+    let cancelled = false;
+    setReviewInheritedTags({});
+
+    const preview = async () => {
+      const next: Record<number, TaggingInheritedTag[]> = {};
+      const scenes = status.items.filter((scene) =>
+        scene.needsReview.some((_item, index) =>
+          selectedReview.has(reviewKey(scene.sceneID, index))
+        )
+      );
+      let nextScene = 0;
+      await Promise.all(
+        Array.from({ length: Math.min(scenes.length, 4) }, async () => {
+          while (nextScene < scenes.length) {
+            const scene = scenes[nextScene];
+            nextScene += 1;
+            const tags: TagPrediction[] = [];
+            scene.needsReview.forEach((item, index) => {
+              const key = reviewKey(scene.sceneID, index);
+              if (!selectedReview.has(key)) return;
+              const prediction = resolveReviewPrediction(
+                item,
+                characterResolutions[key]
+              );
+              if (prediction) tags.push(prediction);
+            });
+            if (tags.length === 0) return;
+
+            try {
+              const response = await fetch(
+                "scene/" + scene.sceneID + "/knowledge-tags?preview=1",
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ tags, replaceArtist: replaceArtists }),
+                }
+              );
+              const plan =
+                await readResponse<TaggingPlanPreviewResponse>(response);
+              next[scene.sceneID] = plan.inheritedTags ?? [];
+            } catch {
+              // Preview is advisory; the apply request still reports any error.
+            }
+          }
+        })
+      );
+      if (!cancelled) setReviewInheritedTags(next);
+    };
+
+    void preview();
+    return () => {
+      cancelled = true;
+    };
+  }, [characterResolutions, replaceArtists, selectedReview, status]);
+
   const applySelectedReview = useCallback(async () => {
     if (!status || selectedReview.size === 0 || unresolvedSelected > 0) return;
     setApplyingReview(true);
@@ -273,30 +424,17 @@ export const BatchVideoTaggingDialog: React.FC<{
 
     try {
       const appliedKeys = new Set<string>();
+      const reviewedApplications = new Map<number, VideoTaggingApplyResponse>();
       for (const scene of status.items) {
         const tags: TagPrediction[] = [];
         scene.needsReview.forEach((item, index) => {
           const key = reviewKey(scene.sceneID, index);
           if (!selectedReview.has(key)) return;
-          if (item.reason === "local-identity-conflict") return;
-
-          let prediction = item.prediction;
-          if (item.reason === "ambiguous-character") {
-            const candidateID = characterResolutions[key];
-            const candidate = prediction.targetCandidates?.find(
-              (value) => value.id === candidateID
-            );
-            if (!candidate) return;
-            const name = candidateLabel(candidate);
-            prediction = {
-              ...prediction,
-              name,
-              rawName: name,
-              targetPath: `/performers/${candidate.id}`,
-              targetExists: true,
-              targetCandidates: undefined,
-            };
-          }
+          const prediction = resolveReviewPrediction(
+            item,
+            characterResolutions[key]
+          );
+          if (!prediction) return;
           tags.push(prediction);
           appliedKeys.add(key);
         });
@@ -307,7 +445,10 @@ export const BatchVideoTaggingDialog: React.FC<{
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ tags, replaceArtist: replaceArtists }),
         });
-        await readResponse<VideoTaggingApplyResponse>(response);
+        reviewedApplications.set(
+          scene.sceneID,
+          await readResponse<VideoTaggingApplyResponse>(response)
+        );
       }
 
       setStatus((current) =>
@@ -319,6 +460,10 @@ export const BatchVideoTaggingDialog: React.FC<{
                 needsReview: scene.needsReview.filter(
                   (_item, index) =>
                     !appliedKeys.has(reviewKey(scene.sceneID, index))
+                ),
+                applied: mergeApplyResponses(
+                  scene.applied,
+                  reviewedApplications.get(scene.sceneID)
                 ),
               })),
             }
@@ -461,7 +606,7 @@ export const BatchVideoTaggingDialog: React.FC<{
                     )}
                     {scene.applied && (
                       <Badge variant="success">
-                        {appliedCount(scene.applied)} auto-applied
+                        {appliedCount(scene.applied)} applied
                       </Badge>
                     )}
                   </div>
@@ -469,6 +614,10 @@ export const BatchVideoTaggingDialog: React.FC<{
                   {scene.error && (
                     <div className="text-danger mb-2">{scene.error}</div>
                   )}
+                  <CalculatedTagsSummary
+                    tags={scene.applied?.inheritedTags ?? []}
+                    heading="Inherited Tags from applied metadata"
+                  />
 
                   {scene.needsReview.map((item, index) => {
                     const key = reviewKey(scene.sceneID, index);
@@ -534,6 +683,10 @@ export const BatchVideoTaggingDialog: React.FC<{
                       </div>
                     );
                   })}
+                  <CalculatedTagsSummary
+                    tags={reviewInheritedTags[scene.sceneID] ?? []}
+                    heading="Calculated Tags from selected review items"
+                  />
                 </div>
               </div>
             ))}
