@@ -175,13 +175,13 @@ func TestResolveInheritedTaggingTagsKeepsDerivedTagsOutOfDirectSelectionAndTrack
 		},
 		Tag: &effectiveAssociationTagReader{
 			parents: map[int][]*models.Tag{
-				30: {{ID: 40}}, // predicted tag ancestor
+				30: {{ID: 40}},           // predicted tag ancestor
 				31: {{ID: 41}, {ID: 42}}, // character profile Tag has multiple parents
 				32: {{ID: 41}, {ID: 42}}, // shared by both Character profiles
-				33: {{ID: 43}}, // Artist profile tag ancestor
-				34: {{ID: 44}}, // parent Artist profile tag ancestor
-				35: {{ID: 45}}, // Copyright profile tag ancestor
-				36: {{ID: 46}}, // parent Copyright profile tag ancestor
+				33: {{ID: 43}},           // Artist profile tag ancestor
+				34: {{ID: 44}},           // parent Artist profile tag ancestor
+				35: {{ID: 45}},           // Copyright profile tag ancestor
+				36: {{ID: 46}},           // parent Copyright profile tag ancestor
 			},
 			tags: map[int]*models.Tag{
 				30: {ID: 30, Name: "selected"},
