@@ -293,6 +293,60 @@ func TestResolveEffectiveMediaAssociationsReflectsReparentingOnNextRead(t *testi
 	}
 }
 
+func TestResolveEffectiveMediaAssociationIDsRemovesOnlyUnsupportedAncestors(t *testing.T) {
+	parent := func(id int) *int { return &id }
+	repository := models.Repository{
+		Performer: &effectiveAssociationPerformerReader{
+			performers: map[int]*models.Performer{
+				1: {ID: 1, ParentID: parent(3)},
+				2: {ID: 2, ParentID: parent(3)},
+				3: {ID: 3},
+			},
+		},
+	}
+	settings := config.AssociationInheritanceSettings{Characters: true}
+	tests := []struct {
+		name       string
+		direct     []int
+		want       []int
+		wantParent bool
+	}{
+		{name: "child supplies parent", direct: []int{1}, want: []int{1, 3}, wantParent: true},
+		{name: "detaching child removes unsupported parent", direct: nil, want: nil},
+		{name: "second child still supplies shared parent", direct: []int{2}, want: []int{2, 3}, wantParent: true},
+		{name: "either child keeps a shared parent", direct: []int{1, 2}, want: []int{1, 2, 3}, wantParent: true},
+		{name: "explicit parent survives child removal", direct: []int{3}, want: []int{3}, wantParent: true},
+		{name: "explicit parent and child deduplicate", direct: []int{1, 3}, want: []int{1, 3}, wantParent: true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			direct := append([]int(nil), test.direct...)
+			got, err := resolveEffectiveMediaAssociationIDs(
+				context.Background(), repository, directMediaAssociationIDs{performers: direct}, settings,
+			)
+			if err != nil {
+				t.Fatalf("resolveEffectiveMediaAssociationIDs() error = %v", err)
+			}
+			if !reflect.DeepEqual(got.performers, test.want) {
+				t.Fatalf("effective Characters = %v, want %v", got.performers, test.want)
+			}
+			if !reflect.DeepEqual(direct, test.direct) {
+				t.Fatalf("resolving associations changed direct assignments: got %v, want %v", direct, test.direct)
+			}
+			parentFound := false
+			for _, id := range got.performers {
+				if id == 3 {
+					parentFound = true
+				}
+			}
+			if parentFound != test.wantParent {
+				t.Fatalf("parent present = %v, want %v", parentFound, test.wantParent)
+			}
+		})
+	}
+}
+
 func TestResolveEffectiveMediaAssociationIDsRespectsDomainSettings(t *testing.T) {
 	parent := func(id int) *int { return &id }
 	repository := models.Repository{
