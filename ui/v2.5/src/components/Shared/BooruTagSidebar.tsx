@@ -20,6 +20,7 @@ interface BooruTagSidebarProps {
   artists?: BooruEntity[] | null;
   characters?: GQL.PerformerDataFragment[] | null;
   copyrights?: BooruEntity[] | null;
+  provenance?: GQL.MediaAssociationProvenance[] | null;
 }
 
 type CardKind = "artist" | "copyright";
@@ -183,6 +184,82 @@ const GeneralTags: React.FC<{ items: BooruEntity[] }> = ({ items }) => {
   );
 };
 
+function associationRoute(type: string, id: number): string | undefined {
+  switch (type) {
+    case "tag":
+      return `/tags/${id}`;
+    case "artist":
+      return `/studios/${id}`;
+    case "character":
+      return `/performers/${id}`;
+    case "copyright":
+      return `/copyrights/${id}`;
+    default:
+      return undefined;
+  }
+}
+
+function associationName(
+  type: string,
+  id: number,
+  names: Map<string, string>
+): string {
+  return names.get(`${type}:${id}`) ?? `${type} #${id}`;
+}
+
+const AssociationSources: React.FC<{
+  provenance: GQL.MediaAssociationProvenance[];
+  names: Map<string, string>;
+}> = ({ provenance, names }) => {
+  if (provenance.length === 0) return null;
+
+  const entityLink = (
+    type: string | null | undefined,
+    id: number | null | undefined
+  ) => {
+    if (!type || !id) return null;
+    const route = associationRoute(type, id);
+    const name = associationName(type, id, names);
+    return route ? <Link to={route}>{name}</Link> : name;
+  };
+
+  return (
+    <details className="booru-association-sources mt-2">
+      <summary>Association sources ({provenance.length})</summary>
+      <ul className="small mb-0 pl-3">
+        {provenance.map((association) => (
+          <li
+            key={`${association.association_type}:${association.association_id}`}
+          >
+            <strong>
+              {entityLink(
+                association.association_type,
+                association.association_id
+              )}
+            </strong>
+            <ul className="pl-3">
+              {association.origins.map((origin, index) => (
+                <li
+                  key={`${origin.kind}:${origin.source_type}:${origin.source_id}:${origin.via_id ?? 0}:${index}`}
+                >
+                  {origin.kind.replaceAll("_", " ")}:{" "}
+                  {entityLink(origin.source_type, origin.source_id)}
+                  {origin.via_type && origin.via_id ? (
+                    <> via {entityLink(origin.via_type, origin.via_id)}</>
+                  ) : null}
+                  {origin.source_tag_id && origin.kind === "tag_ancestor" ? (
+                    <> from Tag #{origin.source_tag_id}</>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+};
+
 interface CopyrightBranch {
   key: string;
   path: BooruEntity[];
@@ -281,6 +358,7 @@ export const BooruTagSidebar: React.FC<BooruTagSidebarProps> = ({
   artists,
   characters,
   copyrights,
+  provenance,
 }) => {
   const sortedTags = useMemo(() => sortByName(tags), [tags]);
   const sortedArtists = useMemo(() => sortByName(artists), [artists]);
@@ -291,6 +369,19 @@ export const BooruTagSidebar: React.FC<BooruTagSidebarProps> = ({
     );
     return sortByName(uniqueByID([...(copyrights ?? []), ...inherited]));
   }, [characters, copyrights]);
+
+  const names = useMemo(() => {
+    const result = new Map<string, string>();
+    for (const entity of tags ?? [])
+      result.set(`tag:${entity.id}`, entity.name);
+    for (const entity of artists ?? [])
+      result.set(`artist:${entity.id}`, entity.name);
+    for (const entity of characters ?? [])
+      result.set(`character:${entity.id}`, entity.name);
+    for (const entity of copyrights ?? [])
+      result.set(`copyright:${entity.id}`, entity.name);
+    return result;
+  }, [artists, characters, copyrights, tags]);
 
   if (
     sortedTags.length === 0 &&
@@ -326,6 +417,7 @@ export const BooruTagSidebar: React.FC<BooruTagSidebarProps> = ({
           <GeneralTags items={sortedTags} />
         </aside>
       ) : null}
+      <AssociationSources provenance={provenance ?? []} names={names} />
     </div>
   );
 };

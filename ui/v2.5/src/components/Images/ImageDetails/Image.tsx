@@ -277,6 +277,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
               artists={image.effective_associations.artists}
               characters={image.effective_associations.performers}
               copyrights={image.effective_associations.copyrights}
+              provenance={image.effective_associations.provenance}
             />
             <ImageDetailPanel image={image} />
           </Tab.Pane>

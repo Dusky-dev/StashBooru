@@ -4,4 +4,26 @@ type MediaEffectiveAssociations {
   artists: [Studio!]!
   performers: [Performer!]!
   copyrights: [Copyright!]!
+  "Direct and derived source records for every effective membership."
+  provenance: [MediaAssociationProvenance!]!
+}
+
+type MediaAssociationProvenance {
+  association_type: String!
+  association_id: Int!
+  origins: [MediaAssociationOrigin!]!
+}
+
+type MediaAssociationOrigin {
+  "direct, ancestor, profile_tag, ancestor_profile_tag, or tag_ancestor"
+  kind: String!
+  "character, artist, copyright, or tag"
+  source_type: String!
+  "Direct media association that ultimately supports this result."
+  source_id: Int!
+  "Immediate hierarchy/profile/Tag node that supplied the result, when applicable."
+  via_type: String
+  via_id: Int
+  "Profile or selected leaf Tag that supplied an effective Tag."
+  source_tag_id: Int
 }

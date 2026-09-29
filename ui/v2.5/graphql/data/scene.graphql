@@ -133,6 +133,18 @@ fragment SceneEffectiveAssociations on Scene {
         ...SlimCopyrightData
       }
     }
+    provenance {
+      association_type
+      association_id
+      origins {
+        kind
+        source_type
+        source_id
+        via_type
+        via_id
+        source_tag_id
+      }
+    }
   }
 }
 
