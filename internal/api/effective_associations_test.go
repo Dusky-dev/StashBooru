@@ -302,21 +302,24 @@ func TestResolveEffectiveMediaAssociationIDsRemovesOnlyUnsupportedAncestors(t *t
 				2: {ID: 2, ParentID: parent(3)},
 				3: {ID: 3},
 			},
+			tags: map[int][]int{1: {11}, 2: {12}, 3: {13}},
 		},
+		Tag: &effectiveAssociationTagReader{parents: map[int][]*models.Tag{}},
 	}
-	settings := config.AssociationInheritanceSettings{Characters: true}
+	settings := config.AssociationInheritanceSettings{Characters: true, Tags: true}
 	tests := []struct {
 		name       string
 		direct     []int
 		want       []int
+		wantTags   []int
 		wantParent bool
 	}{
-		{name: "child supplies parent", direct: []int{1}, want: []int{1, 3}, wantParent: true},
-		{name: "detaching child removes unsupported parent", direct: nil, want: nil},
-		{name: "second child still supplies shared parent", direct: []int{2}, want: []int{2, 3}, wantParent: true},
-		{name: "either child keeps a shared parent", direct: []int{1, 2}, want: []int{1, 2, 3}, wantParent: true},
-		{name: "explicit parent survives child removal", direct: []int{3}, want: []int{3}, wantParent: true},
-		{name: "explicit parent and child deduplicate", direct: []int{1, 3}, want: []int{1, 3}, wantParent: true},
+		{name: "child supplies parent and profile Tags", direct: []int{1}, want: []int{1, 3}, wantTags: []int{11, 13}, wantParent: true},
+		{name: "detaching child removes unsupported ancestors and profile Tags", direct: nil, want: nil},
+		{name: "second child still supplies shared parent", direct: []int{2}, want: []int{2, 3}, wantTags: []int{12, 13}, wantParent: true},
+		{name: "either child keeps a shared parent", direct: []int{1, 2}, want: []int{1, 2, 3}, wantTags: []int{11, 12, 13}, wantParent: true},
+		{name: "explicit parent preserves its profile Tag", direct: []int{3}, want: []int{3}, wantTags: []int{13}, wantParent: true},
+		{name: "explicit parent and child deduplicate", direct: []int{1, 3}, want: []int{1, 3}, wantTags: []int{11, 13}, wantParent: true},
 	}
 
 	for _, test := range tests {
@@ -330,6 +333,9 @@ func TestResolveEffectiveMediaAssociationIDsRemovesOnlyUnsupportedAncestors(t *t
 			}
 			if !reflect.DeepEqual(got.performers, test.want) {
 				t.Fatalf("effective Characters = %v, want %v", got.performers, test.want)
+			}
+			if !reflect.DeepEqual(got.tags, test.wantTags) {
+				t.Fatalf("effective profile Tags = %v, want %v", got.tags, test.wantTags)
 			}
 			if !reflect.DeepEqual(direct, test.direct) {
 				t.Fatalf("resolving associations changed direct assignments: got %v, want %v", direct, test.direct)

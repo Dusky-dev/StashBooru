@@ -17,8 +17,12 @@ System settings independently control whether Character, Artist, Copyright
 and Tag ancestors are included. Each defaults to enabled. Changing a switch
 changes the calculated result; it does not rewrite existing media relationships.
 
-Because the derivation reads the stored direct links, it applies regardless of
-whether those links came from an edit form, import, scan, or tagging workflow.
+The same read-time resolver consumes the stored direct links regardless of
+whether an edit form, import, scan, native Auto Tag, or tagging workflow wrote
+them. Manual edits keep their existing direct-only update contract. Image and
+Video detail queries use the same effective-association builder, so inheritance
+is recalculated after an edit or hierarchy change without a media rewrite.
+
 Media searches expand Character variants, and Tag, Artist and Copyright
 hierarchy filters include descendants by default while preserving the existing
 depth selector. Character counts and media tabs include variant media across
@@ -28,8 +32,11 @@ Tag ancestors, to its additive result. Copyright list counts now use the same
 subtree totals as their media tabs.
 
 Tag and Artist detail views continue to offer direct and all-descendant count
-modes. The shared workflow behavior and complete cross-workflow acceptance
-matrix remain follow-up work.
+modes. Regression tests cover cycle termination, de-duplication, diamond
+Copyright/Tag ancestry, domain settings, reparenting, shared parents and explicit
+parents. The shared resolver makes the result independent of which supported
+write workflow supplied the direct links; end-to-end tests for the full
+cross-workflow matrix remain follow-up work.
 
 Image and Video tagging previews now include inherited Tags with their origins:
 the direct Character, Artist, or Copyright profile that supplied a Tag, the
@@ -39,8 +46,16 @@ resolve to existing metadata. Applying predictions persists only the explicitly
 selected Tag IDs; profile Tags and hierarchy parents remain calculated.
 
 No derived-association storage has been introduced, so live inheritance itself
-recalculates without a data migration. The broader handoff still requires a
-previewable backfill job for existing Image and Video associations; that
-reviewed job is not implemented yet. Existing direct associations are treated
-as explicit. Do not remove direct media Tags merely because they also appear
-through a profile or hierarchy; that could erase an intentional assignment.
+recalculates without a data migration. Existing direct associations, including
+legacy assignments, are treated as explicit. Do not remove direct media Tags
+merely because they also appear through a profile or hierarchy; that could
+erase an intentional assignment.
+
+The handoff also calls for a previewable, reviewed backfill job for existing
+Image and Video associations. It is still open: before such a job can write
+anything, the implementation needs a separate provenance model for materialized
+inherited links. Writing ancestors into the current direct relation tables would
+turn derived memberships into sticky explicit assignments when a child is later
+removed. The live read-time projection already covers existing media safely;
+the backfill must preserve that distinction and must never silently rewrite the
+library.
