@@ -238,10 +238,10 @@ func makeConfigDefaultsResult() *ConfigDefaultSettingsResult {
 	deleteGeneratedDefault := config.GetDeleteGeneratedDefault()
 
 	return &ConfigDefaultSettingsResult{
-		Identify:               config.GetDefaultIdentifySettings(),
-		Scan:                   config.GetDefaultScanSettings(),
-		AutoTag:                config.GetDefaultAutoTagSettings(),
-		Generate:               config.GetDefaultGenerateSettings(),
+		Identify: config.GetDefaultIdentifySettings(),
+		Scan:     config.GetDefaultScanSettings(),
+		AutoTag:  config.GetDefaultAutoTagSettings(),
+		Generate: config.GetDefaultGenerateSettings(),
 		AssociationInheritance: &AssociationInheritanceSettingsResult{
 			Characters: associationInheritance.Characters,
 			Artists:    associationInheritance.Artists,
