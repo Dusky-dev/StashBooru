@@ -51,11 +51,38 @@ legacy assignments, are treated as explicit. Do not remove direct media Tags
 merely because they also appear through a profile or hierarchy; that could
 erase an intentional assignment.
 
-The handoff also calls for a previewable, reviewed backfill job for existing
-Image and Video associations. It is still open: before such a job can write
-anything, the implementation needs a separate provenance model for materialized
-inherited links. Writing ancestors into the current direct relation tables would
-turn derived memberships into sticky explicit assignments when a child is later
-removed. The live read-time projection already covers existing media safely;
-the backfill must preserve that distinction and must never silently rewrite the
-library.
+## Acceptance across media workflows
+
+Every supported writer stores native direct media relationships. The effective
+resolver reads those relationships from the same Image and Scene repositories,
+so behavior does not depend on whether a link came from an edit form, an import,
+a scan, native Auto Tag, or reviewed Tagging. There is no second writer-specific
+inheritance state to synchronize.
+
+| Workflow | Stored relationship | P06 behavior |
+| --- | --- | --- |
+| Single or bulk Image/Video edits | Selected direct Character, Artist, Copyright, and Tag IDs | The next detail read recalculates ancestors and profile Tags. |
+| Reviewed Image/Video Tagging | Only selected, resolved IDs are applied; inherited Tags are returned with origins for review | Applying a plan does not turn inherited Tags into direct assignments. |
+| Native Auto Tag, import, and scan | Existing native media relationship rows | The same effective resolver reads the rows; no writer-specific migration is needed. |
+| Existing library | Existing direct rows and current entity hierarchies | Existing media receives the live projection immediately. |
+
+Resolver tests cover the Image and Video GraphQL relationship readers, legacy
+primary Artist plus multi-Artist links, multi-parent Copyrights, profile Tags,
+Tag ancestors, and de-duplication. The core behavior tests cover settings,
+cycles, shared ancestors, explicit parent links, detach/reparent behavior, and
+tagging origins/direct-only application.
+
+## Backfill decision
+
+No write-backfill job is needed for this design. Effective associations are
+computed from existing direct rows and current hierarchy/profile data, so there
+are no previously materialized inherited links to migrate. A job that inserted
+ancestors into the native direct relation tables would make them sticky after a
+child is detached, and could overwrite the user's distinction between an
+explicit link and a calculated one. The reviewed Tagging preview already shows
+the calculated additions and their origins without changing media rows.
+
+If a future consumer requires stored inherited rows for performance or export,
+that needs a separate provenance-backed materialization design. It must record
+direct-versus-derived origins and reconcile shared sources, hierarchy changes,
+and user edits before any write-backfill can be safe.
