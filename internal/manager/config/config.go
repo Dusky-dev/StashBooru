@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 14190)
-Total output lines: 2107
-
 package config
 
 import (
@@ -902,7 +899,319 @@ func (i *Config) GetGalleryCoverRegex() string {
 	_, err := regexp.Compile(regexString)
 	if err != nil {
 		logger.Warnf("Gallery cover regex '%v' invalid, reverting to default.", regexString)
-		return galleryCoverRegexDefau…2190 tokens truncated…) {
+		return galleryCoverRegexDefault
+	}
+
+	return regexString
+}
+
+func (i *Config) GetScrapersPath() string {
+	return i.getString(ScrapersPath)
+}
+
+func (i *Config) GetScraperUserAgent() string {
+	return i.getString(ScraperUserAgent)
+}
+
+// GetScraperCDPPath gets the path to the Chrome executable or remote address
+// to an instance of Chrome.
+func (i *Config) GetScraperCDPPath() string {
+	return i.getString(ScraperCDPPath)
+}
+
+// GetScraperCertCheck returns true if the scraper should check for insecure
+// certificates when fetching an image or a page.
+func (i *Config) GetScraperCertCheck() bool {
+	return i.getBoolDefault(ScraperCertCheck, true)
+}
+
+func (i *Config) GetScraperExcludeTagPatterns() []string {
+	return i.getStringSlice(ScraperExcludeTagPatterns)
+}
+
+func (i *Config) GetStashBoxes() []*models.StashBox {
+	var boxes []*models.StashBox
+	if err := i.unmarshalKey(StashBoxes, &boxes); err != nil {
+		logger.Warnf("error in unmarshalkey: %v", err)
+	}
+
+	return boxes
+}
+
+func (i *Config) GetDefaultPluginsPath() string {
+	// default to the same directory as the config file
+	fn := filepath.Join(i.GetConfigPath(), "plugins")
+
+	return fn
+}
+
+func (i *Config) GetPluginsPath() string {
+	return i.getString(PluginsPath)
+}
+
+func (i *Config) GetAllPluginConfiguration() map[string]map[string]interface{} {
+	i.RLock()
+	defer i.RUnlock()
+
+	ret := make(map[string]map[string]interface{})
+
+	v := i.forKey(PluginsSetting)
+
+	sub := v.Cut(PluginsSetting)
+	if sub == nil {
+		return ret
+	}
+
+	for plugin := range sub.Raw() {
+		ret[plugin] = sub.Cut(plugin).Raw()
+	}
+
+	return ret
+}
+
+func (i *Config) GetPluginConfiguration(pluginID string) map[string]interface{} {
+	i.RLock()
+	defer i.RUnlock()
+
+	key := PluginsSettingPrefix + pluginID
+
+	return i.forKey(key).Cut(key).Raw()
+}
+
+// SetPluginConfiguration sets the configuration for a plugin.
+// It will overwrite any existing configuration.
+func (i *Config) SetPluginConfiguration(pluginID string, v map[string]interface{}) {
+	i.Lock()
+	defer i.Unlock()
+
+	key := PluginsSettingPrefix + pluginID
+
+	i.set(key, v)
+}
+
+func (i *Config) GetDisabledPlugins() []string {
+	return i.getStringSlice(DisabledPlugins)
+}
+
+func (i *Config) GetPythonPath() string {
+	return i.getString(PythonPath)
+}
+
+func (i *Config) GetHost() string {
+	ret := i.getString(Host)
+	if ret == "" {
+		ret = hostDefault
+	}
+
+	return ret
+}
+
+func (i *Config) GetPort() int {
+	ret := i.getInt(Port)
+	if ret == 0 {
+		ret = portDefault
+	}
+
+	return ret
+}
+
+func (i *Config) GetThemeColor() string {
+	return i.getString(ThemeColor)
+}
+
+func (i *Config) GetExternalHost() string {
+	return i.getString(ExternalHost)
+}
+
+// GetPreviewSegmentDuration returns the duration of a single segment in a
+// scene preview file, in seconds.
+func (i *Config) GetPreviewSegmentDuration() float64 {
+	return i.getFloat64(PreviewSegmentDuration)
+}
+
+// GetParallelTasks returns the number of parallel tasks that should be started
+// by scan or generate task.
+func (i *Config) GetParallelTasks() int {
+	return i.getInt(ParallelTasks)
+}
+
+func (i *Config) GetParallelTasksWithAutoDetection() int {
+	parallelTasks := i.getInt(ParallelTasks)
+	if parallelTasks <= 0 {
+		parallelTasks = (runtime.NumCPU() / 4) + 1
+	}
+	return parallelTasks
+}
+
+// GetUseCustomSpriteInterval returns true if the sprite minimum, maximum, and interval settings
+// should be used instead of the default
+func (i *Config) GetUseCustomSpriteInterval() bool {
+	value := i.getBool(UseCustomSpriteInterval)
+	return value
+}
+
+// GetSpriteInterval returns the time (in seconds) to be between each scrubber sprite
+// A value of 0 indicates that the sprite interval should be automatically determined
+// based on the minimum sprite setting.
+func (i *Config) GetSpriteInterval() float64 {
+	value := i.getFloat64(SpriteInterval)
+	return value
+}
+
+// GetMinimumSprites returns the minimum number of sprites that have to be generated
+// A value of 0 will be overridden with the default of 10.
+func (i *Config) GetMinimumSprites() int {
+	value := i.getInt(MinimumSprites)
+	if value <= 0 {
+		return MinimumSpritesDefault
+	}
+	return value
+}
+
+// GetMaximumSprites returns the maximum number of sprites that can be generated
+// A value of 0 indicates no maximum.
+func (i *Config) GetMaximumSprites() int {
+	value := i.getInt(MaximumSprites)
+	return value
+}
+
+// GetSpriteScreenshotSize returns the required size of the screenshots to be taken
+// during sprite generation in pixels. This will be the width for landscape scenes
+// and the height for portrait scenes, with the other dimension being scaled to maintain
+// the aspect ratio. If the value is less than or equal to 0, the default will be used.
+func (i *Config) GetSpriteScreenshotSize() int {
+	value := i.getInt(SpriteScreenshotSize)
+	if value <= 0 {
+		return spriteScreenshotSizeDefault
+	}
+	return value
+}
+
+func (i *Config) GetPreviewAudio() bool {
+	return i.getBool(PreviewAudio)
+}
+
+// GetPreviewSegments returns the amount of segments in a scene preview file.
+func (i *Config) GetPreviewSegments() int {
+	return i.getInt(PreviewSegments)
+}
+
+// GetPreviewExcludeStart returns the configuration setting string for
+// excluding the start of scene videos for preview generation. This can
+// be in two possible formats. A float value is interpreted as the amount
+// of seconds to exclude from the start of the video before it is included
+// in the preview. If the value is suffixed with a '%' character (for example
+// '2%'), then it is interpreted as a proportion of the total video duration.
+func (i *Config) GetPreviewExcludeStart() string {
+	return i.getString(PreviewExcludeStart)
+}
+
+// GetPreviewExcludeEnd returns the configuration setting string for
+// excluding the end of scene videos for preview generation. A float value
+// is interpreted as the amount of seconds to exclude from the end of the video
+// when generating previews. If the value is suffixed with a '%' character,
+// then it is interpreted as a proportion of the total video duration.
+func (i *Config) GetPreviewExcludeEnd() string {
+	return i.getString(PreviewExcludeEnd)
+}
+
+// GetPreviewPreset returns the preset when generating previews. Defaults to
+// Slow.
+func (i *Config) GetPreviewPreset() models.PreviewPreset {
+	ret := i.getString(PreviewPreset)
+
+	// default to slow
+	if ret == "" {
+		return models.PreviewPresetSlow
+	}
+
+	return models.PreviewPreset(ret)
+}
+
+func (i *Config) GetTranscodeHardwareAcceleration() bool {
+	return i.getBool(TranscodeHardwareAcceleration)
+}
+
+// GetMaxMarkerPreviewDuration returns the ceiling in seconds applied to
+// generated marker preview videos when the marker has an explicit end time.
+// Any value <= 0 disables the ceiling, honoring the marker's end time verbatim.
+func (i *Config) GetMaxMarkerPreviewDuration() int {
+	return i.getInt(MaxMarkerPreviewDuration)
+}
+
+// GetDefaultMarkerPreviewDuration returns the duration in seconds used for
+// marker preview videos when the marker has no usable explicit end time
+// (nil end, or end <= start). Must be a positive value; the configure
+// mutation rejects non-positive input.
+func (i *Config) GetDefaultMarkerPreviewDuration() int {
+	return i.getInt(DefaultMarkerPreviewDuration)
+}
+
+func (i *Config) GetMaxTranscodeSize() models.StreamingResolutionEnum {
+	ret := i.getString(MaxTranscodeSize)
+
+	// default to original
+	if ret == "" {
+		return models.StreamingResolutionEnumOriginal
+	}
+
+	return models.StreamingResolutionEnum(ret)
+}
+
+func (i *Config) GetMaxStreamingTranscodeSize() models.StreamingResolutionEnum {
+	ret := i.getString(MaxStreamingTranscodeSize)
+
+	// default to original
+	if ret == "" {
+		return models.StreamingResolutionEnumOriginal
+	}
+
+	return models.StreamingResolutionEnum(ret)
+}
+
+func (i *Config) GetTranscodeInputArgs() []string {
+	return i.getStringSlice(TranscodeInputArgs)
+}
+
+func (i *Config) GetTranscodeOutputArgs() []string {
+	return i.getStringSlice(TranscodeOutputArgs)
+}
+
+func (i *Config) GetLiveTranscodeInputArgs() []string {
+	return i.getStringSlice(LiveTranscodeInputArgs)
+}
+
+func (i *Config) GetLiveTranscodeOutputArgs() []string {
+	return i.getStringSlice(LiveTranscodeOutputArgs)
+}
+
+func (i *Config) GetDrawFunscriptHeatmapRange() bool {
+	return i.getBoolDefault(DrawFunscriptHeatmapRange, drawFunscriptHeatmapRangeDefault)
+}
+
+// IsWriteImageThumbnails returns true if image thumbnails should be written
+// to disk after generating on the fly.
+func (i *Config) IsWriteImageThumbnails() bool {
+	return i.getBool(WriteImageThumbnails)
+}
+
+func (i *Config) IsCreateImageClipsFromVideos() bool {
+	return i.getBool(CreateImageClipsFromVideos)
+}
+
+func (i *Config) GetAPIKey() string {
+	return i.getString(ApiKey)
+}
+
+func (i *Config) GetUsername() string {
+	return i.getString(Username)
+}
+
+func (i *Config) GetPasswordHash() string {
+	return i.getString(Password)
+}
+
+func (i *Config) GetCredentials() (string, string) {
 	if i.HasCredentials() {
 		return i.getString(Username), i.getString(Password)
 	}
