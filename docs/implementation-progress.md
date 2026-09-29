@@ -9,7 +9,7 @@ Updated: 2026-09-29
 | P03 — visual comparison / difference highlighting | Complete | Merged PR #93. Scope remains the bounded still-image comparison described below; automatic alignment and video frame selection are not implemented. |
 | P04 — copyright sorting / taxonomy | Complete | PRs #94 and #95 are merged. PR #94 added the hierarchy/backend foundation; PR #95 corrected hierarchy UX and media presentation without changing the P04 database schema. |
 | P05 — Character variants / disambiguation links | Complete | Merged PR #104 adds native Character variants and typed Copyright/Artist disambiguation links; merged PR #114 refines Character/Copyright editing. |
-| P06 — ancestor/profile auto-association | In progress | Draft PR #115 covers read-time effective associations, hierarchy-aware filters/counts, independent inheritance settings and non-sticky tagging results with visible origins. Image/Video resolver acceptance coverage is being finalized. A write-backfill is intentionally excluded because the live projection covers existing media and materialized inherited rows would need a separate provenance model. |
+| P06 — ancestor/profile auto-association | Ready for review | PR #115 covers read-time effective associations, hierarchy-aware filters/counts, independent inheritance settings and non-sticky tagging results with visible origins. Image/Video resolver acceptance coverage is green. A write-backfill is intentionally excluded because the live projection covers existing media and materialized inherited rows would need a separate provenance model. |
 
 ## P04 completed behavior
 
@@ -77,7 +77,7 @@ P05 is complete and merged in PRs #104 and #114.
 - Character disambiguation uses one Copyright/Artist/Custom selector with Stash-native styling. The New Sub-Copyright action was removed.
 - PR #114 changes only the UI and progress ledger; it adds no schema, migration, or backend changes.
 
-## P06 ancestor/profile auto-association — draft PR #115
+## P06 ancestor/profile auto-association — PR #115
 
 - Image and Scene `effective_associations` resolve parent Characters, Artists and Copyrights from direct media links, then include profile Tags and Tag ancestors. Direct GraphQL fields remain editable stored links; the effective view is derived and creates no sticky parent links.
 - Character filters/counts include all variants across Images, Scenes, Galleries and Groups. Repeated media links through sibling variants are de-duplicated.
@@ -85,7 +85,7 @@ P05 is complete and merged in PRs #104 and #114.
 - Tagging previews calculated profile and Tag-parent Tags with their origin. Applying predictions stores only directly selected Tags; inherited Tags stay live and are not copied as sticky media links.
 - System settings now independently control Character, Artist, Copyright and Tag ancestor inclusion. All four default to enabled; changing them affects calculated effective associations and additive tagging results without rewriting media links.
 - The resolver reads the same native direct relationships regardless of which supported writer supplied them. The reviewed Tagging preview shows calculated Tags and origins; applying the plan persists only selected direct IDs. A write-backfill is not applicable to the read-time design: existing media is covered on its next read, while materializing inherited IDs into native direct tables would require a separate provenance model to prevent sticky memberships.
-- The acceptance matrix and its design rationale are documented in `docs/p06-effective-associations.md`. Current coverage includes Image and Video resolver wiring, Tagging origin/direct-selection behavior, settings, shared and multi-parent ancestry, cycles, de-duplication, and detach/reparent behavior.
+- The acceptance matrix and its design rationale are documented in `docs/p06-effective-associations.md`. Coverage includes Image and Video resolver wiring, Tagging origin/direct-selection behavior, settings, shared and multi-parent ancestry, cycles, de-duplication, and detach/reparent behavior. GitHub Actions passed for the reviewed code head.
 
 ## P03 validation scope
 
