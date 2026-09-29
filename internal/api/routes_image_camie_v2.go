@@ -17,16 +17,16 @@ import (
 )
 
 type camieApplyResponseV2 struct {
-	ImageID           int                  `json:"imageID"`
-	Characters        []camieAppliedEntity `json:"characters"`
-	Artists           []camieAppliedEntity `json:"artists"`
-	Copyrights        []camieAppliedEntity `json:"copyrights"`
-	Tags              []camieAppliedEntity `json:"tags"`
+	ImageID           int                   `json:"imageID"`
+	Characters        []camieAppliedEntity  `json:"characters"`
+	Artists           []camieAppliedEntity  `json:"artists"`
+	Copyrights        []camieAppliedEntity  `json:"copyrights"`
+	Tags              []camieAppliedEntity  `json:"tags"`
 	InheritedTags     []taggingInheritedTag `json:"inheritedTags"`
-	CreatedCharacters int                  `json:"createdCharacters"`
-	CreatedArtists    int                  `json:"createdArtists"`
-	CreatedCopyrights int                  `json:"createdCopyrights"`
-	CreatedTags       int                  `json:"createdTags"`
+	CreatedCharacters int                   `json:"createdCharacters"`
+	CreatedArtists    int                   `json:"createdArtists"`
+	CreatedCopyrights int                   `json:"createdCopyrights"`
+	CreatedTags       int                   `json:"createdTags"`
 }
 
 type camieBulkRequestV2 struct {

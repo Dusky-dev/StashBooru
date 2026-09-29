@@ -14,16 +14,16 @@ import (
 )
 
 type sceneTaggingApplyResponse struct {
-	SceneID           int                  `json:"sceneID"`
-	Characters        []camieAppliedEntity `json:"characters"`
-	Artists           []camieAppliedEntity `json:"artists"`
-	Copyrights        []camieAppliedEntity `json:"copyrights"`
-	Tags              []camieAppliedEntity `json:"tags"`
+	SceneID           int                   `json:"sceneID"`
+	Characters        []camieAppliedEntity  `json:"characters"`
+	Artists           []camieAppliedEntity  `json:"artists"`
+	Copyrights        []camieAppliedEntity  `json:"copyrights"`
+	Tags              []camieAppliedEntity  `json:"tags"`
 	InheritedTags     []taggingInheritedTag `json:"inheritedTags"`
-	CreatedCharacters int                  `json:"createdCharacters"`
-	CreatedArtists    int                  `json:"createdArtists"`
-	CreatedCopyrights int                  `json:"createdCopyrights"`
-	CreatedTags       int                  `json:"createdTags"`
+	CreatedCharacters int                   `json:"createdCharacters"`
+	CreatedArtists    int                   `json:"createdArtists"`
+	CreatedCopyrights int                   `json:"createdCopyrights"`
+	CreatedTags       int                   `json:"createdTags"`
 }
 
 func sceneTaggingPrimaryPath(scene *models.Scene) (string, error) {
