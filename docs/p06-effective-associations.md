@@ -74,11 +74,16 @@ verified end to end.
 
 Resolver tests cover the Image and Video GraphQL relationship readers, legacy
 primary Artist plus multi-Artist links, multi-parent Copyrights, profile Tags,
-Tag ancestors, and de-duplication. Core tests cover settings, cycles, shared
-ancestors, explicit parent links, detach/reparent behavior, and tagging
-origins/direct-only application. Actual manual single/bulk edits, native Auto
-Tag, import, scan, repeated import, and batch-review workflows still need tests
-for both Images and Videos.
+Tag ancestors, and de-duplication. A focused API regression also calls the
+single Image and Video Copyright update mutations, then verifies that the
+selected sub-Copyright remains the only direct link while its parent appears in
+the effective result with matching provenance. This uses test repository
+adapters; it does not cover bulk edits or exercise the SQLite writer.
+
+Core tests cover settings, cycles, shared ancestors, explicit parent links,
+detach/reparent behavior, and tagging origins/direct-only application. Bulk
+manual edits, Tagging apply, native Auto Tag, import, scan, repeated import, and
+batch-review workflows still need tests for both Images and Videos.
 
 The current resolver tests verify direct and derived provenance across Image
 and Video associations, including multiple Copyright ancestry paths, an
