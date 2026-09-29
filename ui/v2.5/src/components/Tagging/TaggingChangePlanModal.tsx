@@ -11,6 +11,20 @@ export interface TaggingPlanPrediction {
 export type TaggingPlanAction = "reuse" | "create" | "review" | "suppressed";
 export type TaggingPlanRelationshipMode = "add" | "replace";
 
+export interface TaggingAssociationTagOrigin {
+  kind: string;
+  entityID?: number;
+  entityAncestor?: boolean;
+  sourceTagID?: number;
+  tagAncestor?: boolean;
+}
+
+export interface TaggingInheritedTag {
+  id: number;
+  name: string;
+  origins: TaggingAssociationTagOrigin[];
+}
+
 export interface TaggingChangePlanItem {
   prediction: TaggingPlanPrediction;
   action: TaggingPlanAction;
@@ -20,10 +34,68 @@ export interface TaggingChangePlanItem {
 
 export interface TaggingChangePlan {
   items: TaggingChangePlanItem[];
+  inheritedTags?: TaggingInheritedTag[];
   canApply: boolean;
   reviewCount: number;
   suppressedCount: number;
 }
+
+export function taggingTagOriginLabel(origin: TaggingAssociationTagOrigin) {
+  const profileNames: Record<string, string> = {
+    character_profile: "Character profile",
+    artist_profile: "Artist profile",
+    copyright_profile: "Copyright profile",
+  };
+  const profile = profileNames[origin.kind];
+  const profileLabel = profile
+    ? `${profile}${origin.entityAncestor ? " ancestor" : ""}${
+        origin.entityID ? ` #${origin.entityID}` : ""
+      }`
+    : undefined;
+  const tagLabel = origin.tagAncestor
+    ? `parent of Tag #${origin.sourceTagID}`
+    : origin.kind === "selected_tag"
+      ? `selected Tag #${origin.sourceTagID}`
+      : undefined;
+
+  return [profileLabel, tagLabel].filter(Boolean).join(" · ") || origin.kind;
+}
+
+export const CalculatedTagsSummary: React.FC<{
+  tags: TaggingInheritedTag[];
+  heading?: string;
+}> = ({ tags, heading = "Calculated Tags" }) => {
+  if (tags.length === 0) return null;
+
+  return (
+    <section className="mt-3">
+      <h6 className="mb-1">{heading}</h6>
+      <p className="small text-muted mb-2">
+        These Tags come from selected profiles or Tag parents. They appear on
+        the media through inheritance and are not saved as direct media Tags.
+      </p>
+      <div>
+        {tags.map((tag) => (
+          <div
+            className="d-flex flex-wrap align-items-center py-1 border-bottom"
+            key={tag.id}
+          >
+            <strong className="mr-2">{tag.name}</strong>
+            {tag.origins.map((origin, index) => (
+              <Badge
+                className="mr-1 mb-1"
+                variant="secondary"
+                key={`${tag.id}-${origin.kind}-${origin.entityID ?? 0}-${origin.sourceTagID ?? 0}-${index}`}
+              >
+                {taggingTagOriginLabel(origin)}
+              </Badge>
+            ))}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+};
 
 interface IProps {
   show: boolean;
@@ -136,6 +208,7 @@ export const TaggingChangePlanModal: React.FC<IProps> = ({
                 </div>
               ))}
             </div>
+            <CalculatedTagsSummary tags={plan.inheritedTags ?? []} />
           </>
         )}
       </Modal.Body>

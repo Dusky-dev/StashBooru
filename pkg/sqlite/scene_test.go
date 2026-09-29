@@ -3666,6 +3666,30 @@ func TestSceneQueryPerformers(t *testing.T) {
 	}
 }
 
+func TestSceneQueryPerformerFilterIncludesVariants(t *testing.T) {
+	runWithRollbackTxn(t, "base Character includes variants", func(t *testing.T, ctx context.Context) {
+		baseID := performerIDs[performerIdx1WithScene]
+		variantID := performerIDs[performerIdxWithScene]
+		_, err := db.Performer.UpdatePartial(ctx, variantID, models.PerformerPartial{
+			ParentID: models.NewOptionalIntPtr(&baseID),
+		})
+		assert.NoError(t, err)
+
+		results, err := db.Scene.Query(ctx, models.SceneQueryOptions{
+			SceneFilter: &models.SceneFilterType{
+				Performers: &models.MultiCriterionInput{
+					Value:    []string{strconv.Itoa(baseID)},
+					Modifier: models.CriterionModifierIncludes,
+				},
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Contains(t, results.IDs, sceneIDs[sceneIdxWithPerformer])
+	})
+}
+
 func TestSceneQueryTags(t *testing.T) {
 	tests := []struct {
 		name        string

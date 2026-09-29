@@ -1,6 +1,6 @@
 # StashBooru implementation progress
 
-Updated: 2026-09-28
+Updated: 2026-09-29
 
 | Package | Status | Notes |
 | --- | --- | --- |
@@ -8,7 +8,8 @@ Updated: 2026-09-28
 | P02 — image similarity modes | Complete | Merged PR #92 adds explicit pHash and EVA02 modes for image Find similar. |
 | P03 — visual comparison / difference highlighting | Complete | Merged PR #93. Scope remains the bounded still-image comparison described below; automatic alignment and video frame selection are not implemented. |
 | P04 — copyright sorting / taxonomy | Complete | PRs #94 and #95 are merged. PR #94 added the hierarchy/backend foundation; PR #95 corrected hierarchy UX and media presentation without changing the P04 database schema. |
-| P05 — Character variants / disambiguation links | Complete | Merged PR #104 adds native Character variants and typed Copyright/Artist disambiguation links. Draft PR #114 refines Character/Copyright editing; P06 ancestor auto-association remains separate. |
+| P05 — Character variants / disambiguation links | Complete | Merged PR #104 adds native Character variants and typed Copyright/Artist disambiguation links; merged PR #114 refines Character/Copyright editing. |
+| P06 — ancestor/profile auto-association | In progress | PR #115 is a partial implementation. Live effective associations, hierarchy filters/counts, settings and Tagging previews are present. Remaining acceptance: expose provenance for effective memberships; test actual manual edit, Tagging, native Auto Tag, import/scan and repeated-import workflows for Images and Videos; and resolve the required previewable backfill through a safe provenance-backed design or an explicit spec change. |
 
 ## P04 completed behavior
 
@@ -56,7 +57,7 @@ The first corrective CI attempts exposed formatting-only Biome failures. Those w
 
 - Characters remain native Performer records with their own IDs, aliases, images, tags and metadata. Each Character can optionally point to one base Character; validation rejects missing parents, self-links and cycles.
 - Character details show a “Variant of” link and a Variants tab with a card grid. The edit form selects child variants from the parent Character.
-- A Character disambiguation selector chooses Copyright, Artist, or Custom. Copyright and Artist choices link the target name; Custom is a plain label. P06 ancestor/profile auto-association remains separate.
+- A Character disambiguation selector chooses Copyright, Artist, or Custom. Copyright and Artist choices link the target name; Custom is a plain label. Disambiguation context does not create a media association.
 - Migration 95 adds the parent and context foreign keys with `ON DELETE SET NULL`, a check against self-parenting and indexes for lookups.
 
 ### P05 verification
@@ -66,15 +67,25 @@ The first corrective CI attempts exposed formatting-only Biome failures. Those w
 - `go test ./pkg/performer ./internal/api` passed with the repository SQLite include flags.
 - The focused SQLite integration test `Test_PerformerVariantAndDisambiguationContext` passed, covering persistence, variant lookup, context switching, and cleanup after deleting linked records.
 
-P05 is complete and merged in PR #104. P06 ancestor/profile auto-association is the next roadmap package.
+P05 is complete and merged in PRs #104 and #114.
 
-## P04/P05 hierarchy and disambiguation UX follow-up — draft PR #114
+## P04/P05 hierarchy and disambiguation UX follow-up — merged PR #114
 
 - Copyright pages use Copyright/Main/Sub terminology; the editor can select both Main and Sub-Copyrights, empty hierarchy tabs are hidden, and related Copyrights display as cards. Image/Video detail sidebars render Main/Sub hierarchy paths as cards too.
 - The optional alphabetical sort name now has an example explaining how it affects ordering.
 - Character Copyright associations display as cards before the other detail fields, with singular/plural labeling. Character variants are edited as child selections and displayed as cards.
 - Character disambiguation uses one Copyright/Artist/Custom selector with Stash-native styling. The New Sub-Copyright action was removed.
 - PR #114 changes only the UI and progress ledger; it adds no schema, migration, or backend changes.
+
+## P06 ancestor/profile auto-association — PR #115
+
+- Image and Scene `effective_associations` resolve parent Characters, Artists and Copyrights from direct media links, then include profile Tags and Tag ancestors. Direct GraphQL fields remain editable stored links; the effective view is derived and creates no sticky parent links.
+- Character filters/counts include all variants across Images, Scenes, Galleries and Groups. Repeated media links through sibling variants are de-duplicated.
+- Tag, Artist and Copyright hierarchy filters include descendants by default and retain the depth control. Tag/Artist detail views offer direct and all-descendant count modes, and Copyright list counts use the subtree totals shown by its media tabs.
+- Tagging previews calculated profile and Tag-parent Tags with their origin. Applying predictions stores only directly selected Tags; inherited Tags stay live and are not copied as sticky media links.
+- System settings now independently control Character, Artist, Copyright and Tag ancestor inclusion. All four default to enabled; changing them affects calculated effective associations and additive tagging results without rewriting media links.
+- The resolver reads the same native direct relationships regardless of which supported writer supplied them. The reviewed Tagging preview shows calculated Tags and origins; applying the plan persists only selected direct IDs. A write-backfill is not applicable to the read-time design: existing media is covered on its next read, while materializing inherited IDs into native direct tables would require a separate provenance model to prevent sticky memberships.
+- The acceptance matrix and its design rationale are documented in `docs/p06-effective-associations.md`. Coverage includes Image and Video resolver wiring, Tagging origin/direct-selection behavior, settings, shared and multi-parent ancestry, cycles, de-duplication, and detach/reparent behavior. GitHub Actions passed for the reviewed code head.
 
 ## P03 validation scope
 

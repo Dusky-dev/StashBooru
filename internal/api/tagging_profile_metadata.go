@@ -3,8 +3,11 @@ package api
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strconv"
 	"strings"
 
+	"github.com/stashapp/stash/internal/manager/config"
 	"github.com/stashapp/stash/pkg/camietagger"
 	"github.com/stashapp/stash/pkg/models"
 	"github.com/stashapp/stash/pkg/tag"
@@ -12,53 +15,148 @@ import (
 
 const contentRatingRootTag = "rating"
 
-func appendUniqueTagIDs(destination []int, seen map[int]struct{}, ids []int) []int {
-	for _, id := range ids {
-		if id <= 0 {
-			continue
-		}
-		if _, exists := seen[id]; exists {
-			continue
-		}
-		seen[id] = struct{}{}
-		destination = append(destination, id)
+// resolveInheritedTaggingTags calculates profile Tags and Tag ancestors for
+// preview and review. These remain derived associations; callers must only
+// persist the explicitly selected Tag IDs.
+func resolveInheritedTaggingTags(
+	ctx context.Context,
+	repository models.Repository,
+	direct directMediaAssociationIDs,
+	settings config.AssociationInheritanceSettings,
+) ([]taggingInheritedTag, error) {
+	effective, err := resolveEffectiveMediaAssociationIDs(ctx, repository, direct, settings)
+	if err != nil {
+		return nil, fmt.Errorf("resolving inherited tagging profile Tags: %w", err)
 	}
-	return destination
+	origins, err := resolveEffectiveAssociationTagOrigins(ctx, repository, direct, settings, effective)
+	if err != nil {
+		return nil, fmt.Errorf("resolving tagging Tag origins: %w", err)
+	}
+	tagIDs := append([]int(nil), effective.tags...)
+	sort.Ints(tagIDs)
+	if len(tagIDs) == 0 {
+		return []taggingInheritedTag{}, nil
+	}
+
+	tags, err := repository.Tag.FindMany(ctx, tagIDs)
+	if err != nil {
+		return nil, fmt.Errorf("loading inherited tagging Tags: %w", err)
+	}
+	tagsByID := make(map[int]*models.Tag, len(tags))
+	for _, tag := range tags {
+		if tag != nil {
+			tagsByID[tag.ID] = tag
+		}
+	}
+	directTagIDs := make(map[int]struct{}, len(direct.tags))
+	for _, id := range direct.tags {
+		directTagIDs[id] = struct{}{}
+	}
+
+	result := make([]taggingInheritedTag, 0, len(tagIDs))
+	for _, id := range tagIDs {
+		if _, direct := directTagIDs[id]; direct {
+			continue
+		}
+		tag := tagsByID[id]
+		if tag == nil {
+			continue
+		}
+		tagOrigins := append([]effectiveAssociationTagOrigin(nil), origins[id]...)
+		sort.Slice(tagOrigins, func(i, j int) bool {
+			left, right := tagOrigins[i], tagOrigins[j]
+			if left.Kind != right.Kind {
+				return left.Kind < right.Kind
+			}
+			if left.EntityID != right.EntityID {
+				return left.EntityID < right.EntityID
+			}
+			if left.SourceTagID != right.SourceTagID {
+				return left.SourceTagID < right.SourceTagID
+			}
+			if left.EntityAncestor != right.EntityAncestor {
+				return !left.EntityAncestor && right.EntityAncestor
+			}
+			return !left.TagAncestor && right.TagAncestor
+		})
+		result = append(result, taggingInheritedTag{ID: id, Name: tag.Name, Origins: tagOrigins})
+	}
+	return result, nil
 }
 
-// inheritResolvedProfileTagIDs adds Tags owned by resolved Character, Artist,
-// and Copyright profiles to the media mutation. It is deliberately additive:
-// the caller uses RelationshipUpdateModeAdd, so neither existing media Tags nor
-// profile Tags are removed.
-func inheritResolvedProfileTagIDs(ctx context.Context, repository models.Repository, resolved *taggingResolvedEntities) error {
-	seen := make(map[int]struct{}, len(resolved.TagIDs))
-	for _, id := range resolved.TagIDs {
-		if id > 0 {
-			seen[id] = struct{}{}
-		}
+func taggingDirectAssociationsFromPredictions(predictions []camietagger.Tag) directMediaAssociationIDs {
+	var direct directMediaAssociationIDs
+	seen := map[string]map[int]struct{}{
+		"performers": {},
+		"artists":    {},
+		"copyrights": {},
+		"tags":       {},
 	}
+	appendID := func(ids *[]int, kind string, id int) {
+		if _, exists := seen[kind][id]; exists {
+			return
+		}
+		seen[kind][id] = struct{}{}
+		*ids = append(*ids, id)
+	}
+	for _, rawPrediction := range predictions {
+		prediction := normalizeCamiePrediction(rawPrediction)
+		if !prediction.TargetExists {
+			continue
+		}
+		parts := strings.Split(strings.Trim(prediction.TargetPath, "/"), "/")
+		if len(parts) != 2 {
+			continue
+		}
+		id, err := strconv.Atoi(parts[1])
+		if err != nil || id <= 0 {
+			continue
+		}
 
-	for _, characterID := range resolved.CharacterIDs {
-		tagIDs, err := repository.Performer.GetTagIDs(ctx, characterID)
-		if err != nil {
-			return fmt.Errorf("loading Character %d profile Tags: %w", characterID, err)
+		switch prediction.Category {
+		case "character":
+			if parts[0] == "performers" {
+				appendID(&direct.performers, "performers", id)
+			}
+		case "artist":
+			if parts[0] == "studios" {
+				appendID(&direct.artists, "artists", id)
+			}
+		case "copyright":
+			if parts[0] == "copyrights" {
+				appendID(&direct.copyrights, "copyrights", id)
+			}
+		default:
+			if parts[0] == "tags" {
+				appendID(&direct.tags, "tags", id)
+			}
 		}
-		resolved.TagIDs = appendUniqueTagIDs(resolved.TagIDs, seen, tagIDs)
 	}
-	for _, artistID := range resolved.ArtistIDs {
-		tagIDs, err := repository.Studio.GetTagIDs(ctx, artistID)
-		if err != nil {
-			return fmt.Errorf("loading Artist %d profile Tags: %w", artistID, err)
-		}
-		resolved.TagIDs = appendUniqueTagIDs(resolved.TagIDs, seen, tagIDs)
+	return direct
+}
+
+func resolveInheritedTaggingTagsForPredictions(
+	ctx context.Context,
+	repository models.Repository,
+	predictions []camietagger.Tag,
+	settings config.AssociationInheritanceSettings,
+) ([]taggingInheritedTag, error) {
+	direct := taggingDirectAssociationsFromPredictions(predictions)
+	return resolveInheritedTaggingTags(ctx, repository, direct, settings)
+}
+
+func populateTaggingChangePlanInheritedTags(
+	ctx context.Context,
+	repository models.Repository,
+	predictions []camietagger.Tag,
+	plan *taggingChangePlan,
+) error {
+	settings := config.GetInstance().GetAssociationInheritanceSettings()
+	inheritedTags, err := resolveInheritedTaggingTagsForPredictions(ctx, repository, predictions, settings)
+	if err != nil {
+		return err
 	}
-	for _, copyrightID := range resolved.CopyrightIDs {
-		tagIDs, err := repository.Copyright.GetTagIDs(ctx, copyrightID)
-		if err != nil {
-			return fmt.Errorf("loading Copyright %d profile Tags: %w", copyrightID, err)
-		}
-		resolved.TagIDs = appendUniqueTagIDs(resolved.TagIDs, seen, tagIDs)
-	}
+	plan.InheritedTags = inheritedTags
 	return nil
 }
 

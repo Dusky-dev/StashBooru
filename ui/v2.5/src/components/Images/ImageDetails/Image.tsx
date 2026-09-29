@@ -273,10 +273,10 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
         <Tab.Content>
           <Tab.Pane eventKey="image-details-panel">
             <BooruTagSidebar
-              tags={image.tags}
-              artists={image.artists}
-              characters={image.performers}
-              copyrights={image.ordered_copyrights ?? image.copyrights}
+              tags={image.effective_associations.tags}
+              artists={image.effective_associations.artists}
+              characters={image.effective_associations.performers}
+              copyrights={image.effective_associations.copyrights}
             />
             <ImageDetailPanel image={image} />
           </Tab.Pane>

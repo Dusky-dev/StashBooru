@@ -624,10 +624,11 @@ WHERE performers_scenes.performer_id = ?
 }
 
 func (qb *GroupStore) CountByPerformerID(ctx context.Context, performerID int) (int, error) {
-	query := `SELECT COUNT(DISTINCT groups_scenes.group_id) AS count
+	query := performerDescendantsCTE + `
+SELECT COUNT(DISTINCT groups_scenes.group_id) AS count
 FROM groups_scenes
 INNER JOIN performers_scenes ON performers_scenes.scene_id = groups_scenes.scene_id
-WHERE performers_scenes.performer_id = ?
+WHERE performers_scenes.performer_id IN (SELECT id FROM performer_descendants)
 `
 	args := []interface{}{performerID}
 	return groupRepository.runCountQuery(ctx, query, args)

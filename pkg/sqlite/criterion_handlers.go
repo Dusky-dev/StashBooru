@@ -776,6 +776,11 @@ func addHierarchicalConditionClauses(f *filterBuilder, criterion models.Hierarch
 	switch criterion.Modifier {
 	case models.CriterionModifierIncludes:
 		f.addWhere(fmt.Sprintf("%s.%s IS NOT NULL", table, idColumn))
+		// Hierarchical joins may produce several matching rows for one entity
+		// (for example, when two Character variants from the same family are
+		// attached to one image). Group by the primary entity so result and
+		// count queries remain distinct.
+		f.addHaving(fmt.Sprintf("count(distinct %s.%s) >= 1", table, idColumn))
 	case models.CriterionModifierIncludesAll:
 		f.addWhere(fmt.Sprintf("%s.%s IS NOT NULL", table, idColumn))
 		f.addHaving(fmt.Sprintf("count(distinct %s.%s) IS %d", table, idColumn, len(criterion.Value)))
@@ -863,6 +868,29 @@ type joinedHierarchicalMultiCriterionHandlerBuilder struct {
 	joinAs    string
 	joinTable string
 	primaryFK string
+}
+
+// performerHierarchyCriterion turns the media performer filter into a
+// hierarchy-aware filter. Performer variants are related through
+// performers.parent_performer_id, so selecting a base Character should also
+// match media linked to any of its variants. Equals keeps its legacy exact
+// semantics and therefore does not expand descendants.
+func performerHierarchyCriterion(performers *models.MultiCriterionInput) *models.HierarchicalMultiCriterionInput {
+	if performers == nil {
+		return nil
+	}
+
+	depth := -1
+	if performers.Modifier == models.CriterionModifierEquals {
+		depth = 0
+	}
+
+	return &models.HierarchicalMultiCriterionInput{
+		Value:    performers.Value,
+		Modifier: performers.Modifier,
+		Depth:    &depth,
+		Excludes: performers.Excludes,
+	}
 }
 
 func (m *joinedHierarchicalMultiCriterionHandlerBuilder) addHierarchicalConditionClauses(f *filterBuilder, criterion models.HierarchicalMultiCriterionInput, table, idColumn string) {

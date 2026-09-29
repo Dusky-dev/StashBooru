@@ -26,7 +26,7 @@ export const StudiosCriterionOption = new ModifierCriterionOption({
 
 export class StudiosCriterion extends IHierarchicalLabeledIdCriterion {
   constructor() {
-    super(StudiosCriterionOption);
+    super(StudiosCriterionOption, { items: [], excluded: [], depth: -1 });
   }
 }
 

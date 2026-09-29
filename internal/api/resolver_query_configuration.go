@@ -233,14 +233,21 @@ func makeConfigScrapingResult() *ConfigScrapingResult {
 
 func makeConfigDefaultsResult() *ConfigDefaultSettingsResult {
 	config := config.GetInstance()
+	associationInheritance := config.GetAssociationInheritanceSettings()
 	deleteFileDefault := config.GetDeleteFileDefault()
 	deleteGeneratedDefault := config.GetDeleteGeneratedDefault()
 
 	return &ConfigDefaultSettingsResult{
-		Identify:        config.GetDefaultIdentifySettings(),
-		Scan:            config.GetDefaultScanSettings(),
-		AutoTag:         config.GetDefaultAutoTagSettings(),
-		Generate:        config.GetDefaultGenerateSettings(),
+		Identify: config.GetDefaultIdentifySettings(),
+		Scan:     config.GetDefaultScanSettings(),
+		AutoTag:  config.GetDefaultAutoTagSettings(),
+		Generate: config.GetDefaultGenerateSettings(),
+		AssociationInheritance: &AssociationInheritanceSettingsResult{
+			Characters: associationInheritance.Characters,
+			Artists:    associationInheritance.Artists,
+			Copyrights: associationInheritance.Copyrights,
+			Tags:       associationInheritance.Tags,
+		},
 		DeleteFile:      &deleteFileDefault,
 		DeleteGenerated: &deleteGeneratedDefault,
 	}

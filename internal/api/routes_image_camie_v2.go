@@ -17,15 +17,16 @@ import (
 )
 
 type camieApplyResponseV2 struct {
-	ImageID           int                  `json:"imageID"`
-	Characters        []camieAppliedEntity `json:"characters"`
-	Artists           []camieAppliedEntity `json:"artists"`
-	Copyrights        []camieAppliedEntity `json:"copyrights"`
-	Tags              []camieAppliedEntity `json:"tags"`
-	CreatedCharacters int                  `json:"createdCharacters"`
-	CreatedArtists    int                  `json:"createdArtists"`
-	CreatedCopyrights int                  `json:"createdCopyrights"`
-	CreatedTags       int                  `json:"createdTags"`
+	ImageID           int                   `json:"imageID"`
+	Characters        []camieAppliedEntity  `json:"characters"`
+	Artists           []camieAppliedEntity  `json:"artists"`
+	Copyrights        []camieAppliedEntity  `json:"copyrights"`
+	Tags              []camieAppliedEntity  `json:"tags"`
+	InheritedTags     []taggingInheritedTag `json:"inheritedTags"`
+	CreatedCharacters int                   `json:"createdCharacters"`
+	CreatedArtists    int                   `json:"createdArtists"`
+	CreatedCopyrights int                   `json:"createdCopyrights"`
+	CreatedTags       int                   `json:"createdTags"`
 }
 
 type camieBulkRequestV2 struct {
@@ -190,11 +191,12 @@ func validateCamiePredictionsV2(predictions []camietagger.Tag) ([]camietagger.Ta
 
 func applyCamieMetadataV2(ctx context.Context, imageID int, predictions []camietagger.Tag, replaceArtists bool) (camieApplyResponseV2, error) {
 	response := camieApplyResponseV2{
-		ImageID:    imageID,
-		Characters: []camieAppliedEntity{},
-		Artists:    []camieAppliedEntity{},
-		Copyrights: []camieAppliedEntity{},
-		Tags:       []camieAppliedEntity{},
+		ImageID:       imageID,
+		Characters:    []camieAppliedEntity{},
+		Artists:       []camieAppliedEntity{},
+		Copyrights:    []camieAppliedEntity{},
+		Tags:          []camieAppliedEntity{},
+		InheritedTags: []taggingInheritedTag{},
 	}
 	repository := manager.GetInstance().Repository
 
@@ -215,6 +217,7 @@ func applyCamieMetadataV2(ctx context.Context, imageID int, predictions []camiet
 		response.Artists = resolved.Artists
 		response.Copyrights = resolved.Copyrights
 		response.Tags = resolved.Tags
+		response.InheritedTags = resolved.InheritedTags
 		response.CreatedCharacters = resolved.CreatedCharacters
 		response.CreatedArtists = resolved.CreatedArtists
 		response.CreatedCopyrights = resolved.CreatedCopyrights

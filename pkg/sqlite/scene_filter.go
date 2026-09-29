@@ -548,19 +548,17 @@ func (qb *sceneFilterHandler) stashIDCountCriterionHandler(stashIDCount *models.
 }
 
 func (qb *sceneFilterHandler) performersCriterionHandler(performers *models.MultiCriterionInput) criterionHandlerFunc {
-	h := joinedMultiCriterionHandlerBuilder{
+	h := joinedHierarchicalMultiCriterionHandlerBuilder{
 		primaryTable: sceneTable,
-		joinTable:    performersScenesTable,
-		joinAs:       "performers_join",
-		primaryFK:    sceneIDColumn,
+		foreignTable: performerTable,
 		foreignFK:    performerIDColumn,
-
-		addJoinTable: func(f *filterBuilder, joinType joinType) {
-			sceneRepository.performers.join(f, joinType, "performers_join", "scenes.id")
-		},
+		parentFK:     "parent_performer_id",
+		joinAs:       "performers_join",
+		joinTable:    performersScenesTable,
+		primaryFK:    sceneIDColumn,
 	}
 
-	return h.handler(performers)
+	return h.handler(performerHierarchyCriterion(performers))
 }
 
 func (qb *sceneFilterHandler) performerCountCriterionHandler(performerCount *models.IntCriterionInput) criterionHandlerFunc {

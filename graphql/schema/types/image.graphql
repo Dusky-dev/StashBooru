@@ -21,6 +21,7 @@ type Image {
   studio: Studio
   tags: [Tag!]!
   performers: [Performer!]!
+  effective_associations: MediaEffectiveAssociations!
   custom_fields: Map!
 }
 

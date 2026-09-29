@@ -14,15 +14,16 @@ import (
 )
 
 type sceneTaggingApplyResponse struct {
-	SceneID           int                  `json:"sceneID"`
-	Characters        []camieAppliedEntity `json:"characters"`
-	Artists           []camieAppliedEntity `json:"artists"`
-	Copyrights        []camieAppliedEntity `json:"copyrights"`
-	Tags              []camieAppliedEntity `json:"tags"`
-	CreatedCharacters int                  `json:"createdCharacters"`
-	CreatedArtists    int                  `json:"createdArtists"`
-	CreatedCopyrights int                  `json:"createdCopyrights"`
-	CreatedTags       int                  `json:"createdTags"`
+	SceneID           int                   `json:"sceneID"`
+	Characters        []camieAppliedEntity  `json:"characters"`
+	Artists           []camieAppliedEntity  `json:"artists"`
+	Copyrights        []camieAppliedEntity  `json:"copyrights"`
+	Tags              []camieAppliedEntity  `json:"tags"`
+	InheritedTags     []taggingInheritedTag `json:"inheritedTags"`
+	CreatedCharacters int                   `json:"createdCharacters"`
+	CreatedArtists    int                   `json:"createdArtists"`
+	CreatedCopyrights int                   `json:"createdCopyrights"`
+	CreatedTags       int                   `json:"createdTags"`
 }
 
 func sceneTaggingPrimaryPath(scene *models.Scene) (string, error) {
@@ -144,6 +145,10 @@ func (rs sceneRoutes) SceneKnowledgeTags(w http.ResponseWriter, r *http.Request)
 
 	plan := buildTaggingChangePlanWithSuppressed(selected, suppressed, request.ReplaceArtist)
 	if rawPreview := strings.TrimSpace(r.URL.Query().Get("preview")); rawPreview == "1" || strings.EqualFold(rawPreview, "true") {
+		if err := populateTaggingChangePlanInheritedTags(r.Context(), manager.GetInstance().Repository, selected, &plan); err != nil {
+			http.Error(w, fmt.Sprintf("resolving inherited Video Tagging Tags: %v", err), http.StatusInternalServerError)
+			return
+		}
 		writeVisualSimilarityJSON(w, plan)
 		return
 	}
@@ -162,11 +167,12 @@ func (rs sceneRoutes) SceneKnowledgeTags(w http.ResponseWriter, r *http.Request)
 
 func applySceneTaggingMetadata(ctx context.Context, sceneID int, predictions []camietagger.Tag, replaceArtists bool) (sceneTaggingApplyResponse, error) {
 	response := sceneTaggingApplyResponse{
-		SceneID:    sceneID,
-		Characters: []camieAppliedEntity{},
-		Artists:    []camieAppliedEntity{},
-		Copyrights: []camieAppliedEntity{},
-		Tags:       []camieAppliedEntity{},
+		SceneID:       sceneID,
+		Characters:    []camieAppliedEntity{},
+		Artists:       []camieAppliedEntity{},
+		Copyrights:    []camieAppliedEntity{},
+		Tags:          []camieAppliedEntity{},
+		InheritedTags: []taggingInheritedTag{},
 	}
 	repository := manager.GetInstance().Repository
 
@@ -187,6 +193,7 @@ func applySceneTaggingMetadata(ctx context.Context, sceneID int, predictions []c
 		response.Artists = resolved.Artists
 		response.Copyrights = resolved.Copyrights
 		response.Tags = resolved.Tags
+		response.InheritedTags = resolved.InheritedTags
 		response.CreatedCharacters = resolved.CreatedCharacters
 		response.CreatedArtists = resolved.CreatedArtists
 		response.CreatedCopyrights = resolved.CreatedCopyrights

@@ -140,7 +140,7 @@ const VideoFrameRateResolution: React.FC<{
 };
 
 interface IProps {
-  scene: GQL.SceneDataFragment;
+  scene: NonNullable<GQL.FindSceneQuery["findScene"]>;
   setTimestamp: (num: number) => void;
   queueScenes: QueuedScene[];
   onQueueNext: () => void;
@@ -798,7 +798,8 @@ const SceneLoader: React.FC<RouteComponentProps<ISceneParams>> = ({
   const { configuration } = useConfigurationContext();
   const { data, loading, error, refetch } = useFindScene(id);
 
-  const [scene, setScene] = useState<GQL.SceneDataFragment>();
+  const [scene, setScene] =
+    useState<NonNullable<GQL.FindSceneQuery["findScene"]>>();
 
   const onRefreshScene = useCallback(async () => {
     const result = await refetch();

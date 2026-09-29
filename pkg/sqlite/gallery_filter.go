@@ -419,19 +419,17 @@ func (qb *galleryFilterHandler) scenesCriterionHandler(scenes *models.MultiCrite
 }
 
 func (qb *galleryFilterHandler) performersCriterionHandler(performers *models.MultiCriterionInput) criterionHandlerFunc {
-	h := joinedMultiCriterionHandlerBuilder{
+	h := joinedHierarchicalMultiCriterionHandlerBuilder{
 		primaryTable: galleryTable,
-		joinTable:    performersGalleriesTable,
-		joinAs:       "performers_join",
-		primaryFK:    galleryIDColumn,
+		foreignTable: performerTable,
 		foreignFK:    performerIDColumn,
-
-		addJoinTable: func(f *filterBuilder, joinType joinType) {
-			galleryRepository.performers.join(f, joinType, "performers_join", "galleries.id")
-		},
+		parentFK:     "parent_performer_id",
+		joinAs:       "performers_join",
+		joinTable:    performersGalleriesTable,
+		primaryFK:    galleryIDColumn,
 	}
 
-	return h.handler(performers)
+	return h.handler(performerHierarchyCriterion(performers))
 }
 
 func (qb *galleryFilterHandler) performerCountCriterionHandler(performerCount *models.IntCriterionInput) criterionHandlerFunc {

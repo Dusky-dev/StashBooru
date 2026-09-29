@@ -56,6 +56,24 @@ fragment ImageData on Image {
     ...PerformerData
   }
 
+  effective_associations {
+    tags {
+      ...SlimTagData
+    }
+    artists {
+      ...SlimStudioData
+    }
+    performers {
+      ...PerformerData
+    }
+    copyrights {
+      ...SlimCopyrightData
+      breadcrumb {
+        ...SlimCopyrightData
+      }
+    }
+  }
+
   visual_files {
     ...VisualFileData
   }

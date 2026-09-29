@@ -178,23 +178,27 @@ func (qb *groupFilterHandler) performersCriterionHandler(performers *models.Mult
 				return
 			}
 
-			var args []interface{}
-			for _, arg := range performers.Value {
-				args = append(args, arg)
+			criterion := performerHierarchyCriterion(performers)
+			valuesClause, err := getHierarchicalValues(ctx, criterion.Value, performerTable, "", "parent_performer_id", "", criterion.Depth)
+			if err != nil {
+				f.setError(err)
+				return
 			}
 
-			// Hack, can't apply args to join, nor inner join on a left join, so use CTE instead
+			// Preserve the selected root ID for IncludesAll while allowing any
+			// descendant Character variant to satisfy that selected performer.
 			f.addWith(`groups_performers AS (
-				SELECT groups_scenes.group_id, performers_scenes.performer_id
+				SELECT DISTINCT groups_scenes.group_id, performer_hierarchy.column1 AS performer_id
 				FROM groups_scenes
 				INNER JOIN performers_scenes ON groups_scenes.scene_id = performers_scenes.scene_id
-				WHERE performers_scenes.performer_id IN`+getInBinding(len(performers.Value))+`
-			)`, args...)
+				INNER JOIN (` + valuesClause + `) performer_hierarchy ON performers_scenes.performer_id = performer_hierarchy.column2
+			)`)
 			f.addLeftJoin("groups_performers", "", "groups.id = groups_performers.group_id")
 
 			switch performers.Modifier {
 			case models.CriterionModifierIncludes:
 				f.addWhere("groups_performers.performer_id IS NOT NULL")
+				f.addHaving("COUNT(DISTINCT groups_performers.performer_id) >= 1")
 			case models.CriterionModifierIncludesAll:
 				f.addWhere("groups_performers.performer_id IS NOT NULL")
 				f.addHaving("COUNT(DISTINCT groups_performers.performer_id) = ?", len(performers.Value))
