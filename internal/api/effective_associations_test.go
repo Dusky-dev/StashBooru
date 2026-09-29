@@ -253,7 +253,11 @@ func TestResolveInheritedTaggingTagsKeepsDerivedTagsOutOfDirectSelectionAndTrack
 	}
 	for _, sourceTagID := range []int{31, 32} {
 		if !containsOrigin(41, effectiveAssociationTagOrigin{
-			Kind: "character_profile", EntityID: sourceTagID - 30, SourceTagID: sourceTagID, TagAncestor: true,
+			Kind:           "character_profile",
+			EntityID:       sourceTagID - 30,
+			EntityAncestor: sourceTagID == 32,
+			SourceTagID:    sourceTagID,
+			TagAncestor:    true,
 		}) {
 			t.Errorf("shared Tag parent lacks Character profile origin from Tag %d: %+v", sourceTagID, byID[41])
 		}
