@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/stashapp/stash/internal/manager/config"
 	"github.com/stashapp/stash/pkg/camietagger"
 	"github.com/stashapp/stash/pkg/models"
 	"github.com/stashapp/stash/pkg/tag"
@@ -16,13 +17,18 @@ const contentRatingRootTag = "rating"
 // and Copyright profiles and their ancestors to the tagging result. It also
 // includes the ancestor Tags of predicted and profile Tags, matching the
 // effective association projection used by media detail views.
-func inheritResolvedProfileTagIDs(ctx context.Context, repository models.Repository, resolved *taggingResolvedEntities) error {
+func inheritResolvedProfileTagIDs(
+	ctx context.Context,
+	repository models.Repository,
+	resolved *taggingResolvedEntities,
+	settings config.AssociationInheritanceSettings,
+) error {
 	effective, err := resolveEffectiveMediaAssociationIDs(ctx, repository, directMediaAssociationIDs{
 		tags:       resolved.TagIDs,
 		artists:    resolved.ArtistIDs,
 		performers: resolved.CharacterIDs,
 		copyrights: resolved.CopyrightIDs,
-	})
+	}, settings)
 	if err != nil {
 		return fmt.Errorf("resolving inherited tagging profile Tags: %w", err)
 	}

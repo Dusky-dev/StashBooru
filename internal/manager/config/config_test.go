@@ -32,3 +32,20 @@ func TestConfig_GetAllPluginConfiguration(t *testing.T) {
 		"plugin2": {"key3": "value3"},
 	}, i.GetAllPluginConfiguration())
 }
+
+func TestAssociationInheritanceSettingsDefaultToEnabledAndCanBeDisabled(t *testing.T) {
+	i := InitializeEmpty()
+	assert.Equal(t, AssociationInheritanceSettings{
+		Characters: true,
+		Artists:    true,
+		Copyrights: true,
+		Tags:       true,
+	}, i.GetAssociationInheritanceSettings())
+
+	i.SetBool(AssociationInheritanceArtists, false)
+	settings := i.GetAssociationInheritanceSettings()
+	assert.True(t, settings.Characters)
+	assert.False(t, settings.Artists)
+	assert.True(t, settings.Copyrights)
+	assert.True(t, settings.Tags)
+}

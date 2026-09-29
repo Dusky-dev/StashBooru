@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/stashapp/stash/internal/manager/config"
 	"github.com/stashapp/stash/pkg/models"
 )
 
@@ -62,55 +63,75 @@ func expandIDsWithParents(
 	return ids, nil
 }
 
+func expandIDsWithParentsWhenEnabled(
+	ctx context.Context,
+	directIDs []int,
+	includeParents bool,
+	findParents func(context.Context, int) ([]int, error),
+) ([]int, error) {
+	if includeParents {
+		return expandIDsWithParents(ctx, directIDs, findParents)
+	}
+	seen := make(map[int]struct{}, len(directIDs))
+	return appendUniqueIDs(nil, seen, directIDs), nil
+}
+
 func resolveEffectiveMediaAssociationIDs(
 	ctx context.Context,
 	repository models.Repository,
 	direct directMediaAssociationIDs,
+	settings config.AssociationInheritanceSettings,
 ) (effectiveMediaAssociationIDs, error) {
 	var effective effectiveMediaAssociationIDs
 	var err error
 
-	effective.performers, err = expandIDsWithParents(ctx, direct.performers, func(ctx context.Context, id int) ([]int, error) {
-		performer, err := repository.Performer.Find(ctx, id)
-		if err != nil {
-			return nil, fmt.Errorf("loading Character %d: %w", id, err)
-		}
-		if performer == nil || performer.ParentID == nil {
-			return nil, nil
-		}
-		return []int{*performer.ParentID}, nil
-	})
+	effective.performers, err = expandIDsWithParentsWhenEnabled(
+		ctx, direct.performers, settings.Characters, func(ctx context.Context, id int) ([]int, error) {
+			performer, err := repository.Performer.Find(ctx, id)
+			if err != nil {
+				return nil, fmt.Errorf("loading Character %d: %w", id, err)
+			}
+			if performer == nil || performer.ParentID == nil {
+				return nil, nil
+			}
+			return []int{*performer.ParentID}, nil
+		},
+	)
 	if err != nil {
 		return effectiveMediaAssociationIDs{}, fmt.Errorf("resolving Character ancestors: %w", err)
 	}
 
-	effective.artists, err = expandIDsWithParents(ctx, direct.artists, func(ctx context.Context, id int) ([]int, error) {
-		artist, err := repository.Studio.Find(ctx, id)
-		if err != nil {
-			return nil, fmt.Errorf("loading Artist %d: %w", id, err)
-		}
-		if artist == nil || artist.ParentID == nil {
-			return nil, nil
-		}
-		return []int{*artist.ParentID}, nil
-	})
+	effective.artists, err = expandIDsWithParentsWhenEnabled(
+		ctx, direct.artists, settings.Artists, func(ctx context.Context, id int) ([]int, error) {
+			artist, err := repository.Studio.Find(ctx, id)
+			if err != nil {
+				return nil, fmt.Errorf("loading Artist %d: %w", id, err)
+			}
+			if artist == nil || artist.ParentID == nil {
+				return nil, nil
+			}
+			return []int{*artist.ParentID}, nil
+		},
+	)
 	if err != nil {
 		return effectiveMediaAssociationIDs{}, fmt.Errorf("resolving Artist ancestors: %w", err)
 	}
 
-	effective.copyrights, err = expandIDsWithParents(ctx, direct.copyrights, func(ctx context.Context, id int) ([]int, error) {
-		parents, err := repository.Copyright.FindParents(ctx, id)
-		if err != nil {
-			return nil, fmt.Errorf("loading Copyright %d parents: %w", id, err)
-		}
-		parentIDs := make([]int, 0, len(parents))
-		for _, parent := range parents {
-			if parent != nil {
-				parentIDs = append(parentIDs, parent.ID)
+	effective.copyrights, err = expandIDsWithParentsWhenEnabled(
+		ctx, direct.copyrights, settings.Copyrights, func(ctx context.Context, id int) ([]int, error) {
+			parents, err := repository.Copyright.FindParents(ctx, id)
+			if err != nil {
+				return nil, fmt.Errorf("loading Copyright %d parents: %w", id, err)
 			}
-		}
-		return parentIDs, nil
-	})
+			parentIDs := make([]int, 0, len(parents))
+			for _, parent := range parents {
+				if parent != nil {
+					parentIDs = append(parentIDs, parent.ID)
+				}
+			}
+			return parentIDs, nil
+		},
+	)
 	if err != nil {
 		return effectiveMediaAssociationIDs{}, fmt.Errorf("resolving Copyright ancestors: %w", err)
 	}
@@ -140,19 +161,21 @@ func resolveEffectiveMediaAssociationIDs(
 		profileTagIDs = appendUniqueIDs(profileTagIDs, seenProfileTags, tagIDs)
 	}
 
-	effective.tags, err = expandIDsWithParents(ctx, profileTagIDs, func(ctx context.Context, id int) ([]int, error) {
-		parents, err := repository.Tag.FindByChildTagID(ctx, id)
-		if err != nil {
-			return nil, fmt.Errorf("loading Tag %d parents: %w", id, err)
-		}
-		parentIDs := make([]int, 0, len(parents))
-		for _, parent := range parents {
-			if parent != nil {
-				parentIDs = append(parentIDs, parent.ID)
+	effective.tags, err = expandIDsWithParentsWhenEnabled(
+		ctx, profileTagIDs, settings.Tags, func(ctx context.Context, id int) ([]int, error) {
+			parents, err := repository.Tag.FindByChildTagID(ctx, id)
+			if err != nil {
+				return nil, fmt.Errorf("loading Tag %d parents: %w", id, err)
 			}
-		}
-		return parentIDs, nil
-	})
+			parentIDs := make([]int, 0, len(parents))
+			for _, parent := range parents {
+				if parent != nil {
+					parentIDs = append(parentIDs, parent.ID)
+				}
+			}
+			return parentIDs, nil
+		},
+	)
 	if err != nil {
 		return effectiveMediaAssociationIDs{}, fmt.Errorf("resolving Tag ancestors: %w", err)
 	}
@@ -165,7 +188,8 @@ func buildMediaEffectiveAssociations(
 	repository models.Repository,
 	direct directMediaAssociationIDs,
 ) (*MediaEffectiveAssociations, error) {
-	ids, err := resolveEffectiveMediaAssociationIDs(ctx, repository, direct)
+	settings := config.GetInstance().GetAssociationInheritanceSettings()
+	ids, err := resolveEffectiveMediaAssociationIDs(ctx, repository, direct, settings)
 	if err != nil {
 		return nil, err
 	}

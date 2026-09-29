@@ -300,6 +300,12 @@ const (
 	DefaultAutoTagSettings  = "defaults.auto_tag_task"
 	DefaultGenerateSettings = "defaults.generate_task"
 
+	AssociationInheritanceCharacters = "defaults.association_inheritance.characters"
+	AssociationInheritanceArtists    = "defaults.association_inheritance.artists"
+	AssociationInheritanceCopyrights = "defaults.association_inheritance.copyrights"
+	AssociationInheritanceTags       = "defaults.association_inheritance.tags"
+	associationInheritanceDefault   = true
+
 	DeleteFileDefault             = "defaults.delete_file"
 	DeleteGeneratedDefault        = "defaults.delete_generated"
 	deleteGeneratedDefaultDefault = true
@@ -1728,6 +1734,26 @@ func (i *Config) GetDefaultGenerateSettings() *models.GenerateMetadataOptions {
 	return nil
 }
 
+// AssociationInheritanceSettings controls which entity hierarchies contribute
+// ancestors to effective media associations and additive tagging results.
+type AssociationInheritanceSettings struct {
+	Characters bool `json:"characters"`
+	Artists    bool `json:"artists"`
+	Copyrights bool `json:"copyrights"`
+	Tags       bool `json:"tags"`
+}
+
+// GetAssociationInheritanceSettings returns the defaults for hierarchy-based
+// associations. Unset options default to enabled to match the P06 behavior.
+func (i *Config) GetAssociationInheritanceSettings() AssociationInheritanceSettings {
+	return AssociationInheritanceSettings{
+		Characters: i.getBoolDefault(AssociationInheritanceCharacters, associationInheritanceDefault),
+		Artists:    i.getBoolDefault(AssociationInheritanceArtists, associationInheritanceDefault),
+		Copyrights: i.getBoolDefault(AssociationInheritanceCopyrights, associationInheritanceDefault),
+		Tags:       i.getBoolDefault(AssociationInheritanceTags, associationInheritanceDefault),
+	}
+}
+
 // GetDLNAServerName returns the visible name of the DLNA server. If empty,
 // "stash" will be used.
 func (i *Config) GetDLNAServerName() string {
@@ -2001,6 +2027,10 @@ func (i *Config) setDefaultValues() {
 	i.setDefault(NoBrowser, NoBrowserDefault)
 	i.setDefault(NotificationsEnabled, NotificationsEnabledDefault)
 	i.setDefault(ShowOneTimeMovedNotification, ShowOneTimeMovedNotificationDefault)
+	i.setDefault(AssociationInheritanceCharacters, associationInheritanceDefault)
+	i.setDefault(AssociationInheritanceArtists, associationInheritanceDefault)
+	i.setDefault(AssociationInheritanceCopyrights, associationInheritanceDefault)
+	i.setDefault(AssociationInheritanceTags, associationInheritanceDefault)
 
 	// Set default scrapers and plugins paths
 	i.setDefault(ScrapersPath, defaultScrapersPath)

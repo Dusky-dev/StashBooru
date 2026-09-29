@@ -261,6 +261,26 @@
       "support_us": "Support us through {openCollectiveUrl} or {githubSponsorsUrl}.",
       "version": "Version"
     },
+    "association_inheritance": {
+      "heading": "Hierarchy inheritance",
+      "description": "Choose which ancestors are included in effective associations and tagging results. This changes calculated results without rewriting direct media links.",
+      "characters": {
+        "heading": "Include parent Characters",
+        "description": "A selected variant includes its base Character and higher ancestors, including their profile Tags."
+      },
+      "artists": {
+        "heading": "Include parent Artists",
+        "description": "A selected Artist includes its parent Artists and their profile Tags."
+      },
+      "copyrights": {
+        "heading": "Include parent Copyrights",
+        "description": "A selected Copyright includes its parent Copyrights and their profile Tags."
+      },
+      "tags": {
+        "heading": "Include parent Tags",
+        "description": "A selected Tag or inherited profile Tag includes its parent Tags."
+      }
+    },
     "advanced_mode": "Advanced mode",
     "application_paths": {
       "heading": "Application Paths"

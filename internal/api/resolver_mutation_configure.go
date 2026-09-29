@@ -652,6 +652,13 @@ func (r *mutationResolver) ConfigureDefaults(ctx context.Context, input ConfigDe
 		c.SetInterface(config.DefaultGenerateSettings, input.Generate)
 	}
 
+	if input.AssociationInheritance != nil {
+		r.setConfigBool(config.AssociationInheritanceCharacters, input.AssociationInheritance.Characters)
+		r.setConfigBool(config.AssociationInheritanceArtists, input.AssociationInheritance.Artists)
+		r.setConfigBool(config.AssociationInheritanceCopyrights, input.AssociationInheritance.Copyrights)
+		r.setConfigBool(config.AssociationInheritanceTags, input.AssociationInheritance.Tags)
+	}
+
 	r.setConfigBool(config.DeleteFileDefault, input.DeleteFile)
 	r.setConfigBool(config.DeleteGeneratedDefault, input.DeleteGenerated)
 

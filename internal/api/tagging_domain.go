@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/stashapp/stash/internal/manager/config"
 	"github.com/stashapp/stash/pkg/camietagger"
 	"github.com/stashapp/stash/pkg/models"
 )
@@ -178,7 +179,8 @@ func resolveTaggingEntities(ctx context.Context, repository models.Repository, p
 		}
 	}
 
-	if err := inheritResolvedProfileTagIDs(ctx, repository, &resolved); err != nil {
+	settings := config.GetInstance().GetAssociationInheritanceSettings()
+	if err := inheritResolvedProfileTagIDs(ctx, repository, &resolved, settings); err != nil {
 		return taggingResolvedEntities{}, err
 	}
 	return resolved, nil
