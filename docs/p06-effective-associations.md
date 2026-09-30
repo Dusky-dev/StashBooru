@@ -1,109 +1,125 @@
 # P06 — Effective media associations
 
-P06 adds `effective_associations` to Image and Scene GraphQL results. Detail
-views use it to show inherited parent Characters, Artists, Copyrights and
-Tags, plus Tags owned by selected entity profiles.
+P06 is implemented across PRs #115, #116 and #117. Images and Scenes/Videos
+expose `effective_associations`: the selected native relationships, their
+enabled ancestors, and Tags owned by selected or enabled ancestor profiles.
+Detail views show the calculated associations and a collapsible “Association
+sources” section with links to the metadata that supplied each membership.
 
-The associations are derived at read time. Existing `tags`, `performers`,
-`artists` and `copyrights` fields continue to represent the direct, editable
-links. Removing a child therefore removes its inherited ancestors from the
-effective view, while a parent that is also directly linked remains visible.
-This read-time projection needs no migration. The broader P06 handoff's
-previewable backfill requirement remains unresolved because the current design
-does not persist inherited links. Disambiguation context does not create an
-authorship link.
+## Relationship and provenance contract
 
-System settings independently control whether Character, Artist, Copyright
-and Tag ancestors are included. Each defaults to enabled. Changing a switch
-changes the calculated result; it does not rewrite existing media relationships.
+Native `tags`, `performers`, `artists` and `copyrights` remain the direct,
+editable relationships. Existing assignments, including legacy rows, are
+conservatively explicit. The primary Artist and multi-Artist readers are
+de-duplicated before calculation. Disambiguation context does not create an
+authorship relationship.
 
-Image and Video detail queries use the same effective-association builder, so
-inheritance is recalculated after an edit or hierarchy change without a media
-rewrite. This shared read path does not prove each writer workflow's behavior;
-end-to-end checks for manual edits, native Auto Tag, import, scan, repeated
-import, and batch review remain outstanding.
+Effective memberships are computed from the current direct selections,
+hierarchy edges and profile Tags. Detaching a child removes only memberships
+that have lost their supporting sources. An explicit parent survives, and a
+shared parent or Tag survives while another source supports it. Reparenting or
+changing a profile changes the next read without rewriting media relations.
 
-Media searches expand Character variants, and Tag, Artist and Copyright
-hierarchy filters include descendants by default while preserving the existing
-depth selector. Character counts and media tabs include variant media across
-Images, Videos, Galleries and Groups; shared media is counted once. Tagging
-adds profile Tags from Character, Artist and Copyright ancestors, as well as
-Tag ancestors, to its additive result. Copyright list counts now use the same
-subtree totals as their media tabs.
+Each effective membership has its type, ID and a list of origins. Origins
+distinguish direct selections, hierarchy ancestors, direct-profile Tags,
+ancestor-profile Tags and Tag ancestors. They retain the direct source ID,
+profile owner or supplying parent edge, and source Tag ID where applicable.
+Copyright/Tag diamonds retain the converging parent edges; independent direct
+sources and an explicit parent retain their own origins. Traversal terminates
+on repeated nodes, and membership lists are de-duplicated and deterministic.
 
-Tag and Artist detail views continue to offer direct and all-descendant count
-modes. Regression tests cover cycle termination, de-duplication, diamond
-Copyright/Tag ancestry, domain settings, reparenting, shared parents and explicit
-parents. Resolver tests cover Image and Video wiring. They do not yet exercise
-the full cross-workflow acceptance matrix.
+No database migration or derived-association table is introduced. Calculated
+parents and profile Tags are never inserted into the native direct tables.
+A direct Tag that is also supplied by a profile remains an intentional direct
+assignment.
 
-Image and Video tagging previews now include inherited Tags with their origins:
-the direct Character, Artist, or Copyright profile that supplied a Tag, the
-ancestor profile that supplied it, or the selected Tag whose parent supplied
-it. The same summary is shown in bulk Video review when selected predictions
-resolve to existing metadata. Applying predictions persists only the explicitly
-selected Tag IDs; profile Tags and hierarchy parents remain calculated.
+## Shared System and Tagging defaults
 
-Effective-association responses also include one provenance entry per effective
-membership. Each entry identifies its association type and ID plus all known
-origins: direct selection, supported hierarchy child, profile Tag owner, or
-source Tag and parent edge. Shared parents retain an origin for each independent
-direct source; an explicitly selected parent retains its direct origin beside
-derived origins. Image and Video detail views show these sources in a collapsed
-“Association sources” section with links to the referenced metadata.
+System settings independently enable Character, Artist, Copyright and Tag
+ancestor inclusion; all four default to enabled. Image/Video detail reads,
+Tagging inherited-Tag previews and the existing-library review use these same
+defaults. Tagging settings link to the shared System controls.
 
-No derived-association storage has been introduced, so live inheritance itself
-recalculates without a data migration. Existing direct associations, including
-legacy assignments, are treated as explicit. Do not remove direct media Tags
-merely because they also appear through a profile or hierarchy; that could
-erase an intentional assignment.
+A domain switch controls that domain's ancestors and their profile Tags.
+Direct entity profile Tags remain available when that entity's ancestor
+switch is off. The Tag switch controls Tag ancestors, including ancestors of
+profile Tags. Applying reviewed Image/Video Tagging persists only the selected,
+resolved native IDs. Its inherited Tags are returned with their origins for
+review.
 
-## Acceptance across media workflows — incomplete
+Existing descendant-aware searches/counts from PR #115 are preserved.
+Character filters and media tabs include variant media; hierarchy filters keep
+their depth selector. Shared media is counted once. Tag/Artist detail pages
+offer direct and descendant count modes, and Copyright directory counts use
+the subtree totals shown by media tabs.
 
-The implementation relies on native direct media relationships and a shared
-read resolver. That is a design argument, not an integration test of every
-writer. The P06 handoff's workflow-level acceptance requirements are not yet
-verified end to end.
+## Preview and apply for the existing library
 
-| Workflow | Stored relationship | P06 behavior |
-| --- | --- | --- |
-| Single or bulk Image/Video edits | Selected direct Character, Artist, Copyright, and Tag IDs | The next detail read recalculates ancestors and profile Tags. |
-| Reviewed Image/Video Tagging | Only selected, resolved IDs are applied; inherited Tags are returned with origins for review | Applying a plan does not turn inherited Tags into direct assignments. |
-| Native Auto Tag, import, and scan | Existing native media relationship rows | The same effective resolver reads the rows; no writer-specific migration is needed. |
-| Existing library | Existing direct rows and current entity hierarchies | Existing media receives the live projection immediately. |
+Settings → Tasks → **Review library inheritance** reviews all existing Images
+and Videos against four proposed shared defaults. System settings link to this
+task. The native Jobs queue reports progress and supports cancellation.
 
-Resolver tests cover the Image and Video GraphQL relationship readers, legacy
-primary Artist plus multi-Artist links, multi-parent Copyrights, profile Tags,
-Tag ancestors, and de-duplication. A focused API regression also calls the
-single Image and Video Copyright update mutations, then verifies that the
-selected sub-Copyright remains the only direct link while its parent appears in
-the effective result with matching provenance. This uses test repository
-adapters; it does not cover bulk edits or exercise the SQLite writer.
+Preview reads native rows in a SQLite read transaction using ID pagination
+with 100 items per page. It reports reviewed Image/Video totals, affected
+media, per-domain inherited membership totals and membership additions/removals.
+Up to 20 samples show current/proposed memberships and source links; each side
+is limited to 32 memberships and indicates truncation. Per-item errors are
+reported with a bounded sample and prevent apply.
 
-Core tests cover settings, cycles, shared ancestors, explicit parent links,
-detach/reparent behavior, and tagging origins/direct-only application. Bulk
-manual edits, Tagging apply, native Auto Tag, import, scan, repeated import, and
-batch-review workflows still need tests for both Images and Videos.
+Apply rechecks the whole library under a native write transaction. A SHA-256
+fingerprint includes every typed media ID and its complete before/after
+provenance, including records outside the displayed samples. Changes to
+selections, profiles, hierarchy or defaults that affect that snapshot require
+a new preview. Cancellation before activation leaves defaults unchanged.
+Successful activation saves all four settings under one configuration lock
+with an atomic file replacement; a late cancellation reports the completed
+activation. Repeating an already completed apply returns its completed state.
 
-The current resolver tests verify direct and derived provenance across Image
-and Video associations, including multiple Copyright ancestry paths, an
-explicit parent that is also inherited, profile Tags and Tag ancestors. These
-tests do not yet exercise provenance through every actual media writer
-workflow.
+This is the P06 reviewed backfill/activation task: it reviews existing records
+and activates the reviewed live projection. Apply saves the shared defaults;
+it does not copy ancestor IDs into native relationship tables. Existing media
+uses the activated projection on its next read.
 
-## Backfill requirement — unresolved
+Review state is in memory, limited to eight retained reviews. Terminal reviews
+expire after 30 minutes; a server restart requires another preview. The browser
+retains the current review ID for the session and can resume polling, cancel or
+discard it. Discarding a running job requires cancellation to finish first.
 
-The P06 handoff explicitly requires a previewable backfill task. This
-implementation omits it because effective associations are computed from
-existing direct rows and current hierarchy/profile data. That rationale does
-not satisfy the stated requirement. Blindly inserting ancestors into native
-direct relation tables would make them sticky after a child is detached and
-could overwrite the user's distinction between an explicit link and a
-calculated one.
+## Native workflow acceptance
 
-Before P06 can be marked complete, either implement a reviewed preview/apply
-backfill with provenance that safely reconciles shared sources, hierarchy
-changes, and user edits, or explicitly revise the handoff to accept read-time
-projection in place of backfill. Current System settings affect Tagging too;
-the request for System/Tagging defaults also needs confirmation as to whether a
-separate Tagging override is required.
+The integration suite uses fresh SQLite databases and native repository writers.
+It reads the result through Image/Scene effective-association resolvers and
+checks that native direct selections remain distinct from inherited results.
+
+| Workflow | Verification |
+| --- | --- |
+| Manual single Image/Video edits | Real GraphQL update mutations and native Copyright update mutations; selected children remain direct while ancestors/profile Tags appear on read. |
+| Manual bulk Image/Video edits | Real bulk GraphQL mutations over two media of each type; the same direct/effective contract is checked for both records. |
+| Reviewed Image/Video Tagging | Shared change-plan preview and native apply functions, applied twice; inherited Tags stay out of direct media Tags. |
+| Bulk Video review | Real filename parsing, native target enrichment, review and repeated batch-item apply against a native primary Video file. |
+| Native Auto Tag | Native Character/Artist/Tag filename match writers for Images and Videos; calculated ancestors remain derived. Native Copyright links are retained. |
+| Import and repeated import | Native Image/Scene importers match existing file IDs and apply twice. The legacy JSON schema lacks Copyright fields; existing native Copyright links are preserved. |
+| Scan and rescan | Native Image/Scene scan handlers preserve selections and recalculate inheritance; animated-image scan adds only its native explicit animated Tag. |
+| Shared sources and explicit parents | Copyright/Tag diamonds, independent source origins, detach of one source and detach of all sources; an explicitly selected parent Tag survives. |
+| Hierarchy changes | Native Character, Artist, Copyright and Tag reparenting changes the next read without altering direct media links. Invalid Copyright cycle/name edits roll back. |
+| Existing-library task | Real paginated Image/Video scan, preview/apply, stale selections/profiles/reparenting, per-item errors, cancellation and native HTTP Jobs integration. |
+| Configuration activation | Atomic snapshot/save, persisted defaults, stale-default and override rejection, existing permission/unrelated-setting preservation, rollback on save failure. |
+
+Tests are in `internal/api/p06_sources_integration_test.go`,
+`p06_native_workflows_integration_test.go`,
+`p06_native_writers_integration_test.go` and
+`association_inheritance_review_integration_test.go`, plus the configuration
+tests and earlier provenance/settings/resolver regressions.
+
+The scan tests use real native File rows and stub only derived thumbnail/cover
+generation; they do not decode media or invoke external encoders. Tagging
+tests use local existing targets and filename metadata; external model/booru
+availability is outside this acceptance scope. Browser interaction has not
+been manually exercised in this follow-up.
+
+## Verification
+
+CI validation is recorded in `docs/implementation-progress.md`. It includes
+backend generation/tests, UI tests/lint/TypeScript/format/build, Go lint and
+the seven-platform build matrix. The new native workflow tests require the
+`integration` build tag and run in the repository's backend CI test target.

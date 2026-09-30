@@ -1,6 +1,6 @@
 # StashBooru implementation progress
 
-Updated: 2026-09-29
+Updated: 2026-09-30
 
 | Package | Status | Notes |
 | --- | --- | --- |
@@ -9,7 +9,7 @@ Updated: 2026-09-29
 | P03 — visual comparison / difference highlighting | Complete | Merged PR #93. Scope remains the bounded still-image comparison described below; automatic alignment and video frame selection are not implemented. |
 | P04 — copyright sorting / taxonomy | Complete | PRs #94 and #95 are merged. PR #94 added the hierarchy/backend foundation; PR #95 corrected hierarchy UX and media presentation without changing the P04 database schema. |
 | P05 — Character variants / disambiguation links | Complete | Merged PR #104 adds native Character variants and typed Copyright/Artist disambiguation links; merged PR #114 refines Character/Copyright editing. |
-| P06 — ancestor/profile auto-association | In progress | Merged PR #115 provides read-time effective associations. The current follow-up adds per-membership provenance to Image/Video effective-association responses and tests single Image/Video Copyright edits through their API mutations. Remaining acceptance: cover bulk edits and the Tagging, native Auto Tag, import/scan and repeated-import workflows for Images and Videos; implement the required previewable backfill with safe provenance, or explicitly revise that requirement. |
+| P06 — ancestor/profile auto-association | Complete, pending merge of PR #117 | PRs #115 and #116 are merged. PR #117 completes the existing-library preview/apply task, shared System/Tagging defaults and native SQLite workflow acceptance; direct legacy relationships remain explicit and no migration is introduced. |
 
 ## P04 completed behavior
 
@@ -77,15 +77,29 @@ P05 is complete and merged in PRs #104 and #114.
 - Character disambiguation uses one Copyright/Artist/Custom selector with Stash-native styling. The New Sub-Copyright action was removed.
 - PR #114 changes only the UI and progress ledger; it adds no schema, migration, or backend changes.
 
-## P06 ancestor/profile auto-association — PR #115
+## P06 ancestor/profile auto-association — PRs #115, #116 and #117
 
-- Image and Scene `effective_associations` resolve parent Characters, Artists and Copyrights from direct media links, then include profile Tags and Tag ancestors. Direct GraphQL fields remain editable stored links; the effective view is derived and creates no sticky parent links.
-- Character filters/counts include all variants across Images, Scenes, Galleries and Groups. Repeated media links through sibling variants are de-duplicated.
-- Tag, Artist and Copyright hierarchy filters include descendants by default and retain the depth control. Tag/Artist detail views offer direct and all-descendant count modes, and Copyright list counts use the subtree totals shown by its media tabs.
-- Tagging previews calculated profile and Tag-parent Tags with their origin. Applying predictions stores only directly selected Tags; inherited Tags stay live and are not copied as sticky media links.
-- System settings now independently control Character, Artist, Copyright and Tag ancestor inclusion. All four default to enabled; changing them affects calculated effective associations and additive tagging results without rewriting media links.
-- The resolver reads the same native direct relationships regardless of which supported writer supplied them. The reviewed Tagging preview shows calculated Tags and origins; applying the plan persists only selected direct IDs. A write-backfill is not applicable to the read-time design: existing media is covered on its next read, while materializing inherited IDs into native direct tables would require a separate provenance model to prevent sticky memberships.
-- The acceptance matrix and its design rationale are documented in `docs/p06-effective-associations.md`. Coverage includes Image and Video resolver wiring, Tagging origin/direct-selection behavior, settings, shared and multi-parent ancestry, cycles, de-duplication, and detach/reparent behavior. GitHub Actions passed for the reviewed code head.
+- Merged PR #115 supplies Image/Scene effective associations, descendant-aware searches/counts and four independent ancestor defaults. Merged PR #116 adds per-membership provenance and the linked association-source presentation.
+- PR #117 shares native direct-association loaders between Image/Video detail reads and the existing-library review, de-duplicates legacy primary Artists and multi-Artist links, and fixes inherited Tagging preview reads to own a SQLite read transaction.
+- Native direct relationships remain the editable selections. Ancestors and profile Tags are live projections; shared sources, explicit parents and legacy assignments remain distinguishable. Reparenting changes the next read without rewriting media.
+- Settings → Tasks now offers a Review library inheritance preview/apply task through the native Jobs queue. It reviews every existing Image/Video with paginated reads, reports inherited totals and membership deltas, and shows bounded before/after samples with provenance links. Cancellation and per-item errors are visible.
+- Apply fingerprints every media item's complete provenance and rechecks the library under a native write transaction before atomically saving the reviewed defaults. Changed associations, profiles, hierarchy or defaults require a new preview. No inherited IDs are copied into direct native tables.
+- The reviewed backfill activates the existing library's live projection. System and Tagging share all four enabled-by-default switches, with links from System to the task and Tagging to System.
+- Fresh SQLite integration fixtures exercise actual single and bulk GraphQL mutations, reviewed Image/Video Tagging, bulk Video filename review/apply, native Auto Tag, import/repeated import and scan/rescan. They verify direct-only selections, derived membership/provenance, Copyright/Tag diamonds, shared-source detach, explicit-parent retention and native reparenting. Task tests cover pagination, stale previews, invalid-write rollback, errors and cancellation.
+- Review state is transient: terminal reports expire after 30 minutes, at most eight reviews are retained, and restarting the server requires another preview. Scan tests stub only thumbnail/cover generation. External model/booru availability and manual browser interaction are outside this follow-up's verification.
+
+The behavior and workflow matrix are documented in [P06 effective associations](p06-effective-associations.md).
+
+### P06 verification
+
+Code head `dfdd33bccae9971af298c666a1d4acbfa535226c` passed the [Build workflow](https://github.com/Dusky-dev/StashBooru/actions/runs/36761342091) and [Go lint workflow](https://github.com/Dusky-dev/StashBooru/actions/runs/36761342087) on 2026-09-30:
+
+- Backend generation and `golangci-lint` passed.
+- `make it` (`go test -tags integration ./...`) passed, including the real SQLite API/configuration tests and the new native workflow matrix.
+- All seven platform builds passed: Linux, Linux ARM64/ARMv7/ARMv6, Windows, FreeBSD and macOS.
+- The unchanged UI passed all 20 tests, JavaScript/CSS lint, TypeScript, Biome formatting and the production build at code head `2a4c1b6d6bbc32ce2b1409c457fcbad9d0b8bd32` in the [UI/build workflow](https://github.com/Dusky-dev/StashBooru/actions/runs/36758817817). Later code commits change only backend integration tests; CI reuses that validated UI build.
+
+No browser interaction or external inference/booru service test is claimed.
 
 ## P03 validation scope
 
