@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/knadh/koanf/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -12,6 +13,7 @@ func TestApplyAssociationInheritanceSettingsPersistsReviewedDefaults(t *testing.
 	cfg := InitializeEmpty()
 	path := filepath.Join(t.TempDir(), "config.yml")
 	cfg.SetConfigFile(path)
+	cfg.SetInt(Port, 9999)
 	require.NoError(t, cfg.Write())
 	require.NoError(t, os.Chmod(path, 0600))
 	before := cfg.GetAssociationInheritanceSettings()
@@ -21,7 +23,10 @@ func TestApplyAssociationInheritanceSettingsPersistsReviewedDefaults(t *testing.
 	require.Equal(t, proposed, cfg.GetAssociationInheritanceSettings())
 	data, err := os.ReadFile(path)
 	require.NoError(t, err)
-	require.Contains(t, string(data), AssociationInheritanceArtists+": false")
+	loaded := &Config{main: koanf.New("."), overrides: koanf.New(".")}
+	require.NoError(t, loaded.load(path))
+	require.Equal(t, proposed, loaded.GetAssociationInheritanceSettings())
+	require.Equal(t, 9999, loaded.GetPort(), "other settings must survive the reviewed save")
 	info, err := os.Stat(path)
 	require.NoError(t, err)
 	require.Equal(t, os.FileMode(0600), info.Mode().Perm())

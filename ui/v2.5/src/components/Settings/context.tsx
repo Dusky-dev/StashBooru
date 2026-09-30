@@ -43,6 +43,9 @@ export interface ISettingsContextState {
   saveGeneral: (input: Partial<GQL.ConfigGeneralInput>) => void;
   saveInterface: (input: Partial<GQL.ConfigInterfaceInput>) => void;
   saveDefaults: (input: Partial<GQL.ConfigDefaultSettingsInput>) => void;
+  adoptAssociationInheritance: (
+    input: GQL.AssociationInheritanceSettingsInput
+  ) => void;
   saveScraping: (input: Partial<GQL.ConfigScrapingInput>) => void;
   saveDLNA: (input: Partial<GQL.ConfigDlnaInput>) => void;
   saveUI: (input: Partial<IUIConfig>) => void;
@@ -75,6 +78,7 @@ const emptyState: ISettingsContextState = {
   saveGeneral: noop,
   saveInterface: noop,
   saveDefaults: noop,
+  adoptAssociationInheritance: noop,
   saveScraping: noop,
   saveDLNA: noop,
   saveUI: noop,
@@ -330,6 +334,13 @@ export const SettingsContext: React.FC = ({ children }) => {
       };
     });
   }
+
+  const adoptAssociationInheritance = useCallback(
+    (input: GQL.AssociationInheritanceSettingsInput) => {
+      setDefaults((value) => ({ ...value, associationInheritance: input }));
+    },
+    []
+  );
 
   // saves the configuration if no further changes are made after a half second
   const saveScrapingConfig = useDebounce(
@@ -587,6 +598,7 @@ export const SettingsContext: React.FC = ({ children }) => {
         saveGeneral,
         saveInterface,
         saveDefaults,
+        adoptAssociationInheritance,
         saveScraping,
         saveDLNA,
         saveUI,

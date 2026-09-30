@@ -3,6 +3,7 @@ import { useIntl } from "react-intl";
 import { LoadingIndicator } from "src/components/Shared/LoadingIndicator";
 import { LibraryTasks } from "./LibraryTasks";
 import { AnimationInspectionTask } from "./AnimationInspectionTask";
+import { AssociationInheritanceTask } from "./AssociationInheritanceTask";
 import { DataManagementTasks } from "./DataManagementTasks";
 import { PluginTasks } from "./PluginTasks";
 import { JobTable } from "./JobTable";
@@ -41,6 +42,8 @@ export const SettingsTasksPanel: React.FC = () => {
         <LibraryTasks />
         <hr />
         <AnimationInspectionTask />
+        <hr />
+        <AssociationInheritanceTask />
         <hr />
         <DataManagementTasks
           setIsBackupRunning={setIsBackupRunning}

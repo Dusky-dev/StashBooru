@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Badge, Button, Card, Form } from "react-bootstrap";
-import { useHistory } from "react-router-dom";
+import { Link, useHistory } from "react-router-dom";
+import { useIntl } from "react-intl";
 
 import { useToast } from "src/hooks/Toast";
 import { Setting } from "./Inputs";
@@ -56,6 +57,7 @@ async function readResponse<T>(response: Response): Promise<T> {
 
 export const VisualSimilaritySettings: React.FC = () => {
   const Toast = useToast();
+  const intl = useIntl();
   const history = useHistory();
   const [status, setStatus] = useState<VisualSimilarityStatus>();
   const [statusError, setStatusError] = useState<string>();
@@ -207,6 +209,13 @@ export const VisualSimilaritySettings: React.FC = () => {
           subHeading="Defaults used by Image Metadata inference and Video frame analysis. Camie/frame inference and EVA02 use independent thresholds; the per-category limit is shared."
         >
           <div className="mt-3 w-100">
+            <p>
+              <Link to="/settings?tab=system#association-inheritance-settings">
+                {intl.formatMessage({
+                  id: "config.association_inheritance.review.shared_defaults",
+                })}
+              </Link>
+            </p>
             <div className="d-flex flex-wrap align-items-end mb-2">
               <Form.Group className="mr-3 mb-2">
                 <Form.Label>Camie / frame threshold</Form.Label>

@@ -35,16 +35,16 @@ type associationInheritanceSample struct {
 }
 
 type associationInheritanceReport struct {
-	Current        config.AssociationInheritanceSettings         `json:"current"`
-	Proposed       config.AssociationInheritanceSettings         `json:"proposed"`
-	ImagesReviewed int                                           `json:"imagesReviewed"`
-	VideosReviewed int                                           `json:"videosReviewed"`
-	AffectedMedia  int                                           `json:"affectedMedia"`
-	ErrorCount     int                                           `json:"errorCount"`
-	ErrorSamples   []string                                      `json:"errorSamples"`
+	Current        config.AssociationInheritanceSettings          `json:"current"`
+	Proposed       config.AssociationInheritanceSettings          `json:"proposed"`
+	ImagesReviewed int                                            `json:"imagesReviewed"`
+	VideosReviewed int                                            `json:"videosReviewed"`
+	AffectedMedia  int                                            `json:"affectedMedia"`
+	ErrorCount     int                                            `json:"errorCount"`
+	ErrorSamples   []string                                       `json:"errorSamples"`
 	Domains        map[string]associationInheritanceDomainSummary `json:"domains"`
-	Samples        []associationInheritanceSample                `json:"samples"`
-	Fingerprint    string                                        `json:"-"`
+	Samples        []associationInheritanceSample                 `json:"samples"`
+	Fingerprint    string                                         `json:"-"`
 }
 
 // scanAssociationInheritanceReview must run in a caller-owned transaction.
