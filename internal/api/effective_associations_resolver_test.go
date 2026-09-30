@@ -135,7 +135,7 @@ func TestImageAndVideoResolversProjectEffectiveAssociationsFromDirectLinks(t *te
 				40: {230}, 41: {231},
 			},
 		},
-		images: map[int][]*models.Copyright{1000: {{ID: 10}}},
+		images: map[int][]*models.Copyright{1000: {{ID: 10}, {ID: 13}}},
 		scenes: map[int][]*models.Copyright{2000: {{ID: 40}}},
 		items: map[int]*models.Copyright{
 			10: {ID: 10}, 11: {ID: 11}, 12: {ID: 12}, 13: {ID: 13},
@@ -151,7 +151,7 @@ func TestImageAndVideoResolversProjectEffectiveAssociationsFromDirectLinks(t *te
 		},
 	}
 	imageArtists := &effectiveAssociationResolverImageArtists{
-		byImage: map[int][]*models.Studio{1000: {{ID: 6}}},
+		byImage: map[int][]*models.Studio{1000: {{ID: 6}, {ID: 7}}},
 	}
 	sceneArtists := &effectiveAssociationResolverSceneArtists{
 		byScene: map[int][]*models.Studio{2000: {{ID: 30}}},
@@ -170,8 +170,8 @@ func TestImageAndVideoResolversProjectEffectiveAssociationsFromDirectLinks(t *te
 	image := &models.Image{
 		ID:           1000,
 		StudioID:     parent(4), // legacy primary Artist and multi-Artist links coexist
-		TagIDs:       models.NewRelatedIDs([]int{100}),
-		PerformerIDs: models.NewRelatedIDs([]int{1}),
+		TagIDs:       models.NewRelatedIDs([]int{100, 101}),
+		PerformerIDs: models.NewRelatedIDs([]int{1, 2}),
 	}
 	imageAssociations, err := resolver.Image().EffectiveAssociations(context.Background(), image)
 	if err != nil {
@@ -181,6 +181,45 @@ func TestImageAndVideoResolversProjectEffectiveAssociationsFromDirectLinks(t *te
 	assertEffectiveIDs(t, "Image Artists", uniqueRelatedModelIDs(imageAssociations.Artists, func(item *models.Studio) int { return item.ID }), []int{4, 5, 6, 7})
 	assertEffectiveIDs(t, "Image Characters", uniqueRelatedModelIDs(imageAssociations.Performers, func(item *models.Performer) int { return item.ID }), []int{1, 2})
 	assertEffectiveIDs(t, "Image Copyrights", uniqueRelatedModelIDs(imageAssociations.Copyrights, func(item *models.Copyright) int { return item.ID }), []int{10, 11, 12, 13})
+	assertHasMediaAssociationOrigin(t, imageAssociations.Provenance, "character", 1, MediaAssociationOrigin{
+		Kind: "direct", SourceType: "character", SourceID: 1,
+	})
+	assertHasMediaAssociationOrigin(t, imageAssociations.Provenance, "character", 2, MediaAssociationOrigin{
+		Kind: "ancestor", SourceType: "character", SourceID: 1, ViaType: "character", ViaID: 1,
+	})
+	assertHasMediaAssociationOrigin(t, imageAssociations.Provenance, "character", 2, MediaAssociationOrigin{
+		Kind: "direct", SourceType: "character", SourceID: 2,
+	})
+	assertHasMediaAssociationOrigin(t, imageAssociations.Provenance, "artist", 4, MediaAssociationOrigin{
+		Kind: "direct", SourceType: "artist", SourceID: 4,
+	})
+	assertHasMediaAssociationOrigin(t, imageAssociations.Provenance, "artist", 7, MediaAssociationOrigin{
+		Kind: "ancestor", SourceType: "artist", SourceID: 6, ViaType: "artist", ViaID: 6,
+	})
+	assertHasMediaAssociationOrigin(t, imageAssociations.Provenance, "copyright", 13, MediaAssociationOrigin{
+		Kind: "ancestor", SourceType: "copyright", SourceID: 10, ViaType: "copyright", ViaID: 11,
+	})
+	assertHasMediaAssociationOrigin(t, imageAssociations.Provenance, "copyright", 13, MediaAssociationOrigin{
+		Kind: "ancestor", SourceType: "copyright", SourceID: 10, ViaType: "copyright", ViaID: 12,
+	})
+	assertHasMediaAssociationOrigin(t, imageAssociations.Provenance, "copyright", 13, MediaAssociationOrigin{
+		Kind: "direct", SourceType: "copyright", SourceID: 13,
+	})
+	assertHasMediaAssociationOrigin(t, imageAssociations.Provenance, "tag", 111, MediaAssociationOrigin{
+		Kind: "ancestor_profile_tag", SourceType: "character", SourceID: 1, ViaType: "character", ViaID: 2, SourceTagID: 111,
+	})
+	assertHasMediaAssociationOrigin(t, imageAssociations.Provenance, "tag", 111, MediaAssociationOrigin{
+		Kind: "profile_tag", SourceType: "character", SourceID: 2, ViaType: "character", ViaID: 2, SourceTagID: 111,
+	})
+	assertHasMediaAssociationOrigin(t, imageAssociations.Provenance, "tag", 133, MediaAssociationOrigin{
+		Kind: "ancestor_profile_tag", SourceType: "copyright", SourceID: 10, ViaType: "copyright", ViaID: 13, SourceTagID: 133,
+	})
+	assertHasMediaAssociationOrigin(t, imageAssociations.Provenance, "tag", 101, MediaAssociationOrigin{
+		Kind: "tag_ancestor", SourceType: "tag", SourceID: 100, ViaType: "tag", ViaID: 100, SourceTagID: 100,
+	})
+	assertHasMediaAssociationOrigin(t, imageAssociations.Provenance, "tag", 101, MediaAssociationOrigin{
+		Kind: "direct", SourceType: "tag", SourceID: 101, SourceTagID: 101,
+	})
 
 	video := &models.Scene{
 		ID:           2000,
@@ -196,8 +235,23 @@ func TestImageAndVideoResolversProjectEffectiveAssociationsFromDirectLinks(t *te
 	assertEffectiveIDs(t, "Video Artists", uniqueRelatedModelIDs(videoAssociations.Artists, func(item *models.Studio) int { return item.ID }), []int{30, 31})
 	assertEffectiveIDs(t, "Video Characters", uniqueRelatedModelIDs(videoAssociations.Performers, func(item *models.Performer) int { return item.ID }), []int{20, 21})
 	assertEffectiveIDs(t, "Video Copyrights", uniqueRelatedModelIDs(videoAssociations.Copyrights, func(item *models.Copyright) int { return item.ID }), []int{40, 41})
+	assertHasMediaAssociationOrigin(t, videoAssociations.Provenance, "character", 21, MediaAssociationOrigin{
+		Kind: "ancestor", SourceType: "character", SourceID: 20, ViaType: "character", ViaID: 20,
+	})
+	assertHasMediaAssociationOrigin(t, videoAssociations.Provenance, "artist", 31, MediaAssociationOrigin{
+		Kind: "ancestor", SourceType: "artist", SourceID: 30, ViaType: "artist", ViaID: 30,
+	})
+	assertHasMediaAssociationOrigin(t, videoAssociations.Provenance, "copyright", 41, MediaAssociationOrigin{
+		Kind: "ancestor", SourceType: "copyright", SourceID: 40, ViaType: "copyright", ViaID: 40,
+	})
+	assertHasMediaAssociationOrigin(t, videoAssociations.Provenance, "tag", 211, MediaAssociationOrigin{
+		Kind: "ancestor_profile_tag", SourceType: "character", SourceID: 20, ViaType: "character", ViaID: 21, SourceTagID: 211,
+	})
+	assertHasMediaAssociationOrigin(t, videoAssociations.Provenance, "tag", 231, MediaAssociationOrigin{
+		Kind: "ancestor_profile_tag", SourceType: "copyright", SourceID: 40, ViaType: "copyright", ViaID: 41, SourceTagID: 231,
+	})
 
-	if !reflect.DeepEqual(image.TagIDs.List(), []int{100}) || !reflect.DeepEqual(video.TagIDs.List(), []int{200}) {
+	if !reflect.DeepEqual(image.TagIDs.List(), []int{100, 101}) || !reflect.DeepEqual(video.TagIDs.List(), []int{200}) {
 		t.Fatalf("resolving effective associations changed direct media Tags: image=%v video=%v", image.TagIDs.List(), video.TagIDs.List())
 	}
 }
@@ -209,4 +263,26 @@ func assertEffectiveIDs(t *testing.T, label string, got, want []int) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("%s = %v, want %v", label, got, want)
 	}
+}
+
+func assertHasMediaAssociationOrigin(
+	t *testing.T,
+	provenance []MediaAssociationProvenance,
+	associationType string,
+	associationID int,
+	want MediaAssociationOrigin,
+) {
+	t.Helper()
+	for _, association := range provenance {
+		if association.AssociationType != associationType || association.AssociationID != associationID {
+			continue
+		}
+		for _, origin := range association.Origins {
+			if origin == want {
+				return
+			}
+		}
+		t.Fatalf("%s %d origins = %+v, missing %+v", associationType, associationID, association.Origins, want)
+	}
+	t.Fatalf("provenance for %s %d not found", associationType, associationID)
 }

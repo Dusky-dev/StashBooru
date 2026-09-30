@@ -44,6 +44,14 @@ it. The same summary is shown in bulk Video review when selected predictions
 resolve to existing metadata. Applying predictions persists only the explicitly
 selected Tag IDs; profile Tags and hierarchy parents remain calculated.
 
+Effective-association responses also include one provenance entry per effective
+membership. Each entry identifies its association type and ID plus all known
+origins: direct selection, supported hierarchy child, profile Tag owner, or
+source Tag and parent edge. Shared parents retain an origin for each independent
+direct source; an explicitly selected parent retains its direct origin beside
+derived origins. Image and Video detail views show these sources in a collapsed
+“Association sources” section with links to the referenced metadata.
+
 No derived-association storage has been introduced, so live inheritance itself
 recalculates without a data migration. Existing direct associations, including
 legacy assignments, are treated as explicit. Do not remove direct media Tags
@@ -66,16 +74,22 @@ verified end to end.
 
 Resolver tests cover the Image and Video GraphQL relationship readers, legacy
 primary Artist plus multi-Artist links, multi-parent Copyrights, profile Tags,
-Tag ancestors, and de-duplication. Core tests cover settings, cycles, shared
-ancestors, explicit parent links, detach/reparent behavior, and tagging
-origins/direct-only application. Actual manual single/bulk edits, native Auto
-Tag, import, scan, repeated import, and batch-review workflows still need tests
-for both Images and Videos.
+Tag ancestors, and de-duplication. A focused API regression also calls the
+single Image and Video Copyright update mutations, then verifies that the
+selected sub-Copyright remains the only direct link while its parent appears in
+the effective result with matching provenance. This uses test repository
+adapters; it does not cover bulk edits or exercise the SQLite writer.
 
-The effective_associations response does not currently attach source provenance
-to each effective Character, Artist, Copyright, and Tag membership. Tagging
-previews expose origins for calculated Tags only. The requirement to verify the
-origin of every effective association is therefore not met.
+Core tests cover settings, cycles, shared ancestors, explicit parent links,
+detach/reparent behavior, and tagging origins/direct-only application. Bulk
+manual edits, Tagging apply, native Auto Tag, import, scan, repeated import, and
+batch-review workflows still need tests for both Images and Videos.
+
+The current resolver tests verify direct and derived provenance across Image
+and Video associations, including multiple Copyright ancestry paths, an
+explicit parent that is also inherited, profile Tags and Tag ancestors. These
+tests do not yet exercise provenance through every actual media writer
+workflow.
 
 ## Backfill requirement — unresolved
 

@@ -36,6 +36,7 @@ export const SceneDetailPanel: React.FC<ISceneDetailProps> = (props) => {
         artists={props.scene.effective_associations.artists}
         characters={props.scene.effective_associations.performers}
         copyrights={props.scene.effective_associations.copyrights}
+        provenance={props.scene.effective_associations.provenance}
       />
       <div className="row">
         <div className={`${sceneDetailsWidth} col-12 scene-details`}>

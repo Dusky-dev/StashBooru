@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/stashapp/stash/internal/manager/config"
 	"github.com/stashapp/stash/pkg/models"
@@ -12,10 +13,33 @@ import (
 // Direct GraphQL fields remain the editable, stored relations; this projection
 // adds active parents and profile Tags without persisting sticky copies.
 type MediaEffectiveAssociations struct {
-	Tags       []*models.Tag       `json:"tags"`
-	Artists    []*models.Studio    `json:"artists"`
-	Performers []*models.Performer `json:"performers"`
-	Copyrights []*models.Copyright `json:"copyrights"`
+	Tags       []*models.Tag                `json:"tags"`
+	Artists    []*models.Studio             `json:"artists"`
+	Performers []*models.Performer          `json:"performers"`
+	Copyrights []*models.Copyright          `json:"copyrights"`
+	Provenance []MediaAssociationProvenance `json:"provenance"`
+}
+
+// MediaAssociationProvenance describes why one entity is present in an
+// effective media association. Origins are computed from current direct links
+// and hierarchy/profile relations, so reparenting is reflected on the next
+// read without rewriting media rows.
+type MediaAssociationProvenance struct {
+	AssociationType string                   `json:"associationType"`
+	AssociationID   int                      `json:"associationID"`
+	Origins         []MediaAssociationOrigin `json:"origins"`
+}
+
+// MediaAssociationOrigin identifies one direct selection or derivation path.
+// SourceID is the direct entity selected on the media; ViaID identifies the
+// parent/profile node or Tag edge that supplied the effective association.
+type MediaAssociationOrigin struct {
+	Kind        string `json:"kind"`
+	SourceType  string `json:"sourceType"`
+	SourceID    int    `json:"sourceID"`
+	ViaType     string `json:"viaType,omitempty"`
+	ViaID       int    `json:"viaID,omitempty"`
+	SourceTagID int    `json:"sourceTagID,omitempty"`
 }
 
 type directMediaAssociationIDs struct {
@@ -58,6 +82,333 @@ type effectiveTagOriginTraversalKey struct {
 type effectiveTagOriginTraversal struct {
 	TagID  int
 	Origin effectiveAssociationTagOrigin
+}
+
+type mediaAssociationOriginKey struct {
+	kind        string
+	sourceType  string
+	sourceID    int
+	viaType     string
+	viaID       int
+	sourceTagID int
+}
+
+type mediaAssociationKey struct {
+	associationType string
+	associationID   int
+}
+
+type hierarchyOriginTraversal struct {
+	entityID int
+	sourceID int
+}
+
+type tagAssociationOriginTraversal struct {
+	tagID  int
+	origin MediaAssociationOrigin
+}
+
+type tagAssociationOriginKey struct {
+	tagID       int
+	sourceType  string
+	sourceID    int
+	sourceTagID int
+}
+
+func addMediaAssociationOrigin(
+	provenance map[mediaAssociationKey]map[mediaAssociationOriginKey]MediaAssociationOrigin,
+	associationType string,
+	associationID int,
+	origin MediaAssociationOrigin,
+) {
+	if associationID <= 0 || origin.SourceID <= 0 {
+		return
+	}
+	association := mediaAssociationKey{associationType: associationType, associationID: associationID}
+	origins := provenance[association]
+	if origins == nil {
+		origins = make(map[mediaAssociationOriginKey]MediaAssociationOrigin)
+		provenance[association] = origins
+	}
+	key := mediaAssociationOriginKey{
+		kind:        origin.Kind,
+		sourceType:  origin.SourceType,
+		sourceID:    origin.SourceID,
+		viaType:     origin.ViaType,
+		viaID:       origin.ViaID,
+		sourceTagID: origin.SourceTagID,
+	}
+	origins[key] = origin
+}
+
+// addHierarchyAssociationProvenance records direct selections and all
+// ancestor support while retaining which direct selection supports each
+// effective ancestor. The seen set is per direct source so shared ancestors
+// keep one origin per independent child without looping on malformed cycles.
+func addHierarchyAssociationProvenance(
+	ctx context.Context,
+	provenance map[mediaAssociationKey]map[mediaAssociationOriginKey]MediaAssociationOrigin,
+	associationType string,
+	directIDs []int,
+	includeAncestors bool,
+	findParents func(context.Context, int) ([]int, error),
+) (map[int][]int, error) {
+	support := make(map[int]map[int]struct{})
+	addSupport := func(entityID, sourceID int) {
+		if support[entityID] == nil {
+			support[entityID] = make(map[int]struct{})
+		}
+		support[entityID][sourceID] = struct{}{}
+	}
+
+	directSeen := make(map[int]struct{}, len(directIDs))
+	queue := make([]hierarchyOriginTraversal, 0, len(directIDs))
+	for _, id := range directIDs {
+		if id <= 0 {
+			continue
+		}
+		if _, exists := directSeen[id]; exists {
+			continue
+		}
+		directSeen[id] = struct{}{}
+		addSupport(id, id)
+		addMediaAssociationOrigin(provenance, associationType, id, MediaAssociationOrigin{
+			Kind: "direct", SourceType: associationType, SourceID: id,
+		})
+		queue = append(queue, hierarchyOriginTraversal{entityID: id, sourceID: id})
+	}
+
+	if includeAncestors {
+		seen := make(map[hierarchyOriginTraversal]struct{})
+		for index := 0; index < len(queue); index++ {
+			current := queue[index]
+			if _, exists := seen[current]; exists {
+				continue
+			}
+			seen[current] = struct{}{}
+			parents, err := findParents(ctx, current.entityID)
+			if err != nil {
+				return nil, err
+			}
+			for _, parentID := range parents {
+				if parentID <= 0 {
+					continue
+				}
+				addSupport(parentID, current.sourceID)
+				if parentID != current.sourceID {
+					addMediaAssociationOrigin(provenance, associationType, parentID, MediaAssociationOrigin{
+						Kind: "ancestor", SourceType: associationType, SourceID: current.sourceID,
+						ViaType: associationType, ViaID: current.entityID,
+					})
+				}
+				queue = append(queue, hierarchyOriginTraversal{entityID: parentID, sourceID: current.sourceID})
+			}
+		}
+	}
+
+	result := make(map[int][]int, len(support))
+	for entityID, sourceSet := range support {
+		sources := make([]int, 0, len(sourceSet))
+		for sourceID := range sourceSet {
+			sources = append(sources, sourceID)
+		}
+		sort.Ints(sources)
+		result[entityID] = sources
+	}
+	return result, nil
+}
+
+func effectiveAssociationProvenance(
+	ctx context.Context,
+	repository models.Repository,
+	direct directMediaAssociationIDs,
+	settings config.AssociationInheritanceSettings,
+) (effectiveMediaAssociationIDs, []MediaAssociationProvenance, error) {
+	provenance := make(map[mediaAssociationKey]map[mediaAssociationOriginKey]MediaAssociationOrigin)
+	performerParents := func(ctx context.Context, id int) ([]int, error) {
+		performer, err := repository.Performer.Find(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("loading Character %d: %w", id, err)
+		}
+		if performer == nil || performer.ParentID == nil {
+			return nil, nil
+		}
+		return []int{*performer.ParentID}, nil
+	}
+	performerSources, err := addHierarchyAssociationProvenance(ctx, provenance, "character", direct.performers, settings.Characters, performerParents)
+	if err != nil {
+		return effectiveMediaAssociationIDs{}, nil, fmt.Errorf("resolving Character provenance: %w", err)
+	}
+
+	artistParents := func(ctx context.Context, id int) ([]int, error) {
+		artist, err := repository.Studio.Find(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("loading Artist %d: %w", id, err)
+		}
+		if artist == nil || artist.ParentID == nil {
+			return nil, nil
+		}
+		return []int{*artist.ParentID}, nil
+	}
+	artistSources, err := addHierarchyAssociationProvenance(ctx, provenance, "artist", direct.artists, settings.Artists, artistParents)
+	if err != nil {
+		return effectiveMediaAssociationIDs{}, nil, fmt.Errorf("resolving Artist provenance: %w", err)
+	}
+
+	copyrightParents := func(ctx context.Context, id int) ([]int, error) {
+		parents, err := repository.Copyright.FindParents(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("loading Copyright %d parents: %w", id, err)
+		}
+		parentIDs := make([]int, 0, len(parents))
+		for _, parent := range parents {
+			if parent != nil {
+				parentIDs = append(parentIDs, parent.ID)
+			}
+		}
+		return parentIDs, nil
+	}
+	copyrightSources, err := addHierarchyAssociationProvenance(ctx, provenance, "copyright", direct.copyrights, settings.Copyrights, copyrightParents)
+	if err != nil {
+		return effectiveMediaAssociationIDs{}, nil, fmt.Errorf("resolving Copyright provenance: %w", err)
+	}
+
+	tagQueue := make([]tagAssociationOriginTraversal, 0, len(direct.tags))
+	seenTagSeeds := make(map[mediaAssociationOriginKey]struct{})
+	addTagSeed := func(tagID int, origin MediaAssociationOrigin) {
+		if tagID <= 0 {
+			return
+		}
+		key := mediaAssociationOriginKey{
+			kind: origin.Kind, sourceType: origin.SourceType, sourceID: origin.SourceID,
+			viaType: origin.ViaType, viaID: origin.ViaID, sourceTagID: origin.SourceTagID,
+		}
+		if _, exists := seenTagSeeds[key]; exists {
+			return
+		}
+		seenTagSeeds[key] = struct{}{}
+		addMediaAssociationOrigin(provenance, "tag", tagID, origin)
+		tagQueue = append(tagQueue, tagAssociationOriginTraversal{tagID: tagID, origin: origin})
+	}
+
+	for _, id := range direct.tags {
+		addTagSeed(id, MediaAssociationOrigin{Kind: "direct", SourceType: "tag", SourceID: id, SourceTagID: id})
+	}
+	for _, profile := range []struct {
+		typeName string
+		sources  map[int][]int
+		getTags  func(context.Context, int) ([]int, error)
+	}{
+		{typeName: "character", sources: performerSources, getTags: repository.Performer.GetTagIDs},
+		{typeName: "artist", sources: artistSources, getTags: repository.Studio.GetTagIDs},
+		{typeName: "copyright", sources: copyrightSources, getTags: repository.Copyright.GetTagIDs},
+	} {
+		ownerIDs := make([]int, 0, len(profile.sources))
+		for ownerID := range profile.sources {
+			ownerIDs = append(ownerIDs, ownerID)
+		}
+		sort.Ints(ownerIDs)
+		for _, ownerID := range ownerIDs {
+			tagIDs, err := profile.getTags(ctx, ownerID)
+			if err != nil {
+				return effectiveMediaAssociationIDs{}, nil, fmt.Errorf("loading %s %d profile Tags: %w", profile.typeName, ownerID, err)
+			}
+			for _, sourceID := range profile.sources[ownerID] {
+				kind := "ancestor_profile_tag"
+				if ownerID == sourceID {
+					kind = "profile_tag"
+				}
+				for _, tagID := range tagIDs {
+					addTagSeed(tagID, MediaAssociationOrigin{
+						Kind: kind, SourceType: profile.typeName, SourceID: sourceID,
+						ViaType: profile.typeName, ViaID: ownerID, SourceTagID: tagID,
+					})
+				}
+			}
+		}
+	}
+
+	if settings.Tags {
+		seen := make(map[tagAssociationOriginKey]struct{})
+		for index := 0; index < len(tagQueue); index++ {
+			current := tagQueue[index]
+			traversalKey := tagAssociationOriginKey{
+				tagID: current.tagID, sourceType: current.origin.SourceType,
+				sourceID: current.origin.SourceID, sourceTagID: current.origin.SourceTagID,
+			}
+			if _, exists := seen[traversalKey]; exists {
+				continue
+			}
+			seen[traversalKey] = struct{}{}
+			parents, err := repository.Tag.FindByChildTagID(ctx, current.tagID)
+			if err != nil {
+				return effectiveMediaAssociationIDs{}, nil, fmt.Errorf("loading Tag %d parents: %w", current.tagID, err)
+			}
+			for _, parent := range parents {
+				if parent == nil || parent.ID <= 0 {
+					continue
+				}
+				origin := current.origin
+				origin.Kind = "tag_ancestor"
+				origin.ViaType = "tag"
+				origin.ViaID = current.tagID
+				addMediaAssociationOrigin(provenance, "tag", parent.ID, origin)
+				tagQueue = append(tagQueue, tagAssociationOriginTraversal{tagID: parent.ID, origin: origin})
+			}
+		}
+	}
+
+	result := make([]MediaAssociationProvenance, 0, len(provenance))
+	for association, origins := range provenance {
+		originList := make([]MediaAssociationOrigin, 0, len(origins))
+		for _, origin := range origins {
+			originList = append(originList, origin)
+		}
+		sort.Slice(originList, func(i, j int) bool {
+			left, right := originList[i], originList[j]
+			if left.Kind != right.Kind {
+				return left.Kind < right.Kind
+			}
+			if left.SourceType != right.SourceType {
+				return left.SourceType < right.SourceType
+			}
+			if left.SourceID != right.SourceID {
+				return left.SourceID < right.SourceID
+			}
+			if left.ViaType != right.ViaType {
+				return left.ViaType < right.ViaType
+			}
+			if left.ViaID != right.ViaID {
+				return left.ViaID < right.ViaID
+			}
+			return left.SourceTagID < right.SourceTagID
+		})
+		result = append(result, MediaAssociationProvenance{
+			AssociationType: association.associationType,
+			AssociationID:   association.associationID,
+			Origins:         originList,
+		})
+	}
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].AssociationType != result[j].AssociationType {
+			return result[i].AssociationType < result[j].AssociationType
+		}
+		return result[i].AssociationID < result[j].AssociationID
+	})
+	ids := effectiveMediaAssociationIDs{}
+	for _, association := range result {
+		switch association.AssociationType {
+		case "tag":
+			ids.tags = append(ids.tags, association.AssociationID)
+		case "artist":
+			ids.artists = append(ids.artists, association.AssociationID)
+		case "character":
+			ids.performers = append(ids.performers, association.AssociationID)
+		case "copyright":
+			ids.copyrights = append(ids.copyrights, association.AssociationID)
+		}
+	}
+	return ids, result, nil
 }
 
 func appendUniqueIDs(destination []int, seen map[int]struct{}, ids []int) []int {
@@ -347,7 +698,7 @@ func buildMediaEffectiveAssociations(
 	direct directMediaAssociationIDs,
 ) (*MediaEffectiveAssociations, error) {
 	settings := config.GetInstance().GetAssociationInheritanceSettings()
-	ids, err := resolveEffectiveMediaAssociationIDs(ctx, repository, direct, settings)
+	ids, provenance, err := effectiveAssociationProvenance(ctx, repository, direct, settings)
 	if err != nil {
 		return nil, err
 	}
@@ -381,6 +732,7 @@ func buildMediaEffectiveAssociations(
 			return nil, fmt.Errorf("loading effective Copyrights: %w", err)
 		}
 	}
+	result.Provenance = provenance
 	return result, nil
 }
 

@@ -9,7 +9,7 @@ Updated: 2026-09-29
 | P03 — visual comparison / difference highlighting | Complete | Merged PR #93. Scope remains the bounded still-image comparison described below; automatic alignment and video frame selection are not implemented. |
 | P04 — copyright sorting / taxonomy | Complete | PRs #94 and #95 are merged. PR #94 added the hierarchy/backend foundation; PR #95 corrected hierarchy UX and media presentation without changing the P04 database schema. |
 | P05 — Character variants / disambiguation links | Complete | Merged PR #104 adds native Character variants and typed Copyright/Artist disambiguation links; merged PR #114 refines Character/Copyright editing. |
-| P06 — ancestor/profile auto-association | In progress | PR #115 is a partial implementation. Live effective associations, hierarchy filters/counts, settings and Tagging previews are present. Remaining acceptance: expose provenance for effective memberships; test actual manual edit, Tagging, native Auto Tag, import/scan and repeated-import workflows for Images and Videos; and resolve the required previewable backfill through a safe provenance-backed design or an explicit spec change. |
+| P06 — ancestor/profile auto-association | In progress | Merged PR #115 provides read-time effective associations. The current follow-up adds per-membership provenance to Image/Video effective-association responses and tests single Image/Video Copyright edits through their API mutations. Remaining acceptance: cover bulk edits and the Tagging, native Auto Tag, import/scan and repeated-import workflows for Images and Videos; implement the required previewable backfill with safe provenance, or explicitly revise that requirement. |
 
 ## P04 completed behavior
 
