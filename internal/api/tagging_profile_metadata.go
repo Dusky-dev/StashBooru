@@ -152,12 +152,14 @@ func populateTaggingChangePlanInheritedTags(
 	plan *taggingChangePlan,
 ) error {
 	settings := config.GetInstance().GetAssociationInheritanceSettings()
-	inheritedTags, err := resolveInheritedTaggingTagsForPredictions(ctx, repository, predictions, settings)
-	if err != nil {
-		return err
-	}
-	plan.InheritedTags = inheritedTags
-	return nil
+	return repository.WithReadTxn(ctx, func(ctx context.Context) error {
+		inheritedTags, err := resolveInheritedTaggingTagsForPredictions(ctx, repository, predictions, settings)
+		if err != nil {
+			return err
+		}
+		plan.InheritedTags = inheritedTags
+		return nil
+	})
 }
 
 // ensureContentRatingHierarchy keeps content ratings in the normal native Tag

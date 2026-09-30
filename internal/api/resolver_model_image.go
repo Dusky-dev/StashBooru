@@ -121,36 +121,11 @@ func (r *imageResolver) Tags(ctx context.Context, obj *models.Image) (ret []*mod
 
 func (r *imageResolver) EffectiveAssociations(ctx context.Context, obj *models.Image) (ret *MediaEffectiveAssociations, err error) {
 	if err := r.withReadTxn(ctx, func(ctx context.Context) error {
-		if !obj.TagIDs.Loaded() {
-			if err := obj.LoadTagIDs(ctx, r.repository.Image); err != nil {
-				return err
-			}
-		}
-		if !obj.PerformerIDs.Loaded() {
-			if err := obj.LoadPerformerIDs(ctx, r.repository.Image); err != nil {
-				return err
-			}
-		}
-
-		copyrights, err := r.repository.Copyright.FindByImageIDOrdered(ctx, obj.ID)
+		direct, err := imageDirectMediaAssociations(ctx, r.repository, obj)
 		if err != nil {
 			return err
 		}
-		artists, err := r.repository.ImageArtist.FindByImageID(ctx, obj.ID)
-		if err != nil {
-			return err
-		}
-		artistIDs := uniqueRelatedModelIDs(artists, func(artist *models.Studio) int { return artist.ID })
-		if obj.StudioID != nil {
-			artistIDs = appendUniqueIDs(artistIDs, map[int]struct{}{}, []int{*obj.StudioID})
-		}
-
-		ret, err = buildMediaEffectiveAssociations(ctx, r.repository, directMediaAssociationIDs{
-			tags:       obj.TagIDs.List(),
-			artists:    artistIDs,
-			performers: obj.PerformerIDs.List(),
-			copyrights: uniqueRelatedModelIDs(copyrights, func(copyright *models.Copyright) int { return copyright.ID }),
-		})
+		ret, err = buildMediaEffectiveAssociations(ctx, r.repository, direct)
 		return err
 	}); err != nil {
 		return nil, err

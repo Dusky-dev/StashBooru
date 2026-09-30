@@ -1746,11 +1746,25 @@ type AssociationInheritanceSettings struct {
 // GetAssociationInheritanceSettings returns the defaults for hierarchy-based
 // associations. Unset options default to enabled to match the P06 behavior.
 func (i *Config) GetAssociationInheritanceSettings() AssociationInheritanceSettings {
+	i.RLock()
+	defer i.RUnlock()
+	return i.associationInheritanceSettings()
+}
+
+// associationInheritanceSettings assumes the configuration lock is held.
+func (i *Config) associationInheritanceSettings() AssociationInheritanceSettings {
+	value := func(key string) bool {
+		v := i.forKey(key)
+		if !v.Exists(key) {
+			return associationInheritanceDefault
+		}
+		return v.Bool(key)
+	}
 	return AssociationInheritanceSettings{
-		Characters: i.getBoolDefault(AssociationInheritanceCharacters, associationInheritanceDefault),
-		Artists:    i.getBoolDefault(AssociationInheritanceArtists, associationInheritanceDefault),
-		Copyrights: i.getBoolDefault(AssociationInheritanceCopyrights, associationInheritanceDefault),
-		Tags:       i.getBoolDefault(AssociationInheritanceTags, associationInheritanceDefault),
+		Characters: value(AssociationInheritanceCharacters),
+		Artists:    value(AssociationInheritanceArtists),
+		Copyrights: value(AssociationInheritanceCopyrights),
+		Tags:       value(AssociationInheritanceTags),
 	}
 }
 
