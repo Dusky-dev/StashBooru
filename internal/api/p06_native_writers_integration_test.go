@@ -72,7 +72,11 @@ func (f *p06WorkflowFixture) files(t *testing.T) (*models.ImageFile, *models.Vid
 		require.NoError(t, f.repository.File.Create(ctx, image))
 		require.NoError(t, f.repository.File.Create(ctx, video))
 		require.NoError(t, f.repository.Image.AddFileID(ctx, f.image.ID, image.ID))
-		return f.repository.Scene.AddFileID(ctx, f.video.ID, video.ID)
+		require.NoError(t, f.repository.Scene.AddFileID(ctx, f.video.ID, video.ID))
+		_, err := f.repository.Image.UpdatePartial(ctx, f.image.ID, models.ImagePartial{PrimaryFileID: &image.ID})
+		require.NoError(t, err)
+		_, err = f.repository.Scene.UpdatePartial(ctx, f.video.ID, models.ScenePartial{PrimaryFileID: &video.ID})
+		return err
 	}))
 	return image, video
 }
