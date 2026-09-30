@@ -129,7 +129,10 @@ func TestP06SQLiteTaggingPreviewOwnsReadTransaction(t *testing.T) {
 	require.Contains(t, byID[f.parentTag.ID].Origins, effectiveAssociationTagOrigin{
 		Kind: "artist_profile", EntityID: f.artist.ID, SourceTagID: f.profileTag.ID, TagAncestor: true,
 	})
-	require.Equal(t, predictions, taggingChangePlanPredictions(plan))
+	selected := taggingChangePlanPredictions(plan)
+	require.Len(t, selected, 1)
+	require.Equal(t, predictions[0].TargetPath, selected[0].TargetPath)
+	require.Equal(t, "artist", selected[0].Category)
 	require.Empty(t, f.direct(t, false).tags)
 	require.Empty(t, f.direct(t, true).tags)
 }

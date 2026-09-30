@@ -299,9 +299,15 @@ func effectiveAssociationProvenance(
 		sources  map[int][]int
 		getTags  func(context.Context, int) ([]int, error)
 	}{
-		{typeName: "character", sources: performerSources, getTags: repository.Performer.GetTagIDs},
-		{typeName: "artist", sources: artistSources, getTags: repository.Studio.GetTagIDs},
-		{typeName: "copyright", sources: copyrightSources, getTags: repository.Copyright.GetTagIDs},
+		{typeName: "character", sources: performerSources, getTags: func(ctx context.Context, id int) ([]int, error) {
+			return repository.Performer.GetTagIDs(ctx, id)
+		}},
+		{typeName: "artist", sources: artistSources, getTags: func(ctx context.Context, id int) ([]int, error) {
+			return repository.Studio.GetTagIDs(ctx, id)
+		}},
+		{typeName: "copyright", sources: copyrightSources, getTags: func(ctx context.Context, id int) ([]int, error) {
+			return repository.Copyright.GetTagIDs(ctx, id)
+		}},
 	} {
 		ownerIDs := make([]int, 0, len(profile.sources))
 		for ownerID := range profile.sources {

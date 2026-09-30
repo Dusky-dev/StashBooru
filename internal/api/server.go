@@ -220,6 +220,10 @@ func Initialize() (*Server, error) {
 	r.Mount("/group", server.getGroupRoutes())
 	r.Mount("/tag", server.getTagRoutes())
 	r.Mount("/downloads", server.getDownloadsRoutes())
+
+	inheritanceRoutes := newAssociationInheritanceRoutes(repo, cfg, mgr.JobManager)
+	r.Get("/association-inheritance", inheritanceRoutes.Get)
+	r.Post("/association-inheritance", inheritanceRoutes.Post)
 	r.Mount("/plugin", server.getPluginRoutes())
 
 	r.HandleFunc("/css", cssHandler(cfg))
