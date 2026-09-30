@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Accordion,
   Alert,
@@ -130,9 +130,7 @@ const MembershipList: React.FC<{ items: Membership[] }> = ({ items }) => {
   return (
     <ul className="pl-3 mb-0">
       {items.map((membership) => (
-        <li
-          key={membership.associationType + ":" + membership.associationID}
-        >
+        <li key={membership.associationType + ":" + membership.associationID}>
           {sourceLink(membership.associationType, membership.associationID)}
           <ul className="pl-3">
             {membership.origins.map((origin) => (
@@ -173,7 +171,7 @@ export const AssociationInheritanceTask: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [reload, setReload] = useState(0);
+  const loadingController = useRef<AbortController>();
   const message = (key: string) =>
     intl.formatMessage({ id: prefix + "." + key });
   const running = active(review?.status);
@@ -191,47 +189,50 @@ export const AssociationInheritanceTask: React.FC = () => {
     [adoptAssociationInheritance]
   );
 
-  useEffect(() => {
+  const load = useCallback(async () => {
+    loadingController.current?.abort();
     const controller = new AbortController();
-    async function load() {
-      setLoading(true);
-      setError("");
+    loadingController.current = controller;
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(endpoint, { signal: controller.signal });
+      const defaults = await readResponse<{ current: InheritanceDefaults }>(
+        response
+      );
+      setCurrent(defaults.current);
+      setProposed(defaults.current);
+      let retained: string | null = null;
       try {
-        const response = await fetch(endpoint, { signal: controller.signal });
-        const defaults = await readResponse<{ current: InheritanceDefaults }>(
-          response
-        );
-        setCurrent(defaults.current);
-        setProposed(defaults.current);
-        let retained: string | null = null;
-        try {
-          retained = sessionStorage.getItem(storageKey);
-        } catch {
-          // Reviews also work without browser persistence.
-        }
-        if (retained) {
-          const saved = await fetch(
-            endpoint + "?reviewID=" + encodeURIComponent(retained),
-            { signal: controller.signal }
-          );
-          if (saved.status === 404) {
-            remember();
-            setReview(undefined);
-          } else {
-            receive(await readResponse<Review>(saved));
-          }
-        }
-      } catch (e) {
-        if (!controller.signal.aborted) {
-          setError(e instanceof Error ? e.message : String(e));
-        }
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        retained = sessionStorage.getItem(storageKey);
+      } catch {
+        // Reviews also work without browser persistence.
       }
+      if (retained) {
+        const saved = await fetch(
+          endpoint + "?reviewID=" + encodeURIComponent(retained),
+          { signal: controller.signal }
+        );
+        if (saved.status === 404) {
+          remember();
+          setReview(undefined);
+        } else {
+          receive(await readResponse<Review>(saved));
+        }
+      }
+    } catch (e) {
+      if (!controller.signal.aborted) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
     }
+  }, [receive]);
+
+  useEffect(() => {
     void load();
-    return () => controller.abort();
-  }, [receive, reload]);
+    return () => loadingController.current?.abort();
+  }, [load]);
 
   const reviewID = review?.reviewID;
   useEffect(() => {
@@ -285,7 +286,7 @@ export const AssociationInheritanceTask: React.FC = () => {
         if (response.status !== 404) await readResponse<unknown>(response);
         remember();
         setReview(undefined);
-        setReload((value) => value + 1);
+        await load();
       } else {
         receive(await readResponse<Review>(response));
       }
@@ -326,10 +327,7 @@ export const AssociationInheritanceTask: React.FC = () => {
         <Alert variant="danger" className="mt-3">
           {error || review?.error}
           {!current && (
-            <Button
-              variant="link"
-              onClick={() => setReload((value) => value + 1)}
-            >
+            <Button variant="link" onClick={() => void load()}>
               {message("retry")}
             </Button>
           )}
