@@ -259,8 +259,10 @@ in [P07 global media](p07-global-media.md).
   height cap. Resume checks confirmed the unchanged `develop` baseline,
   reviewed desktop captures, and passed built-in composition/checksum,
   JavaScript syntax and `git diff --check` checks.
-- No migration, GraphQL or backend behavior changes. Publish this feature
-  branch for review; merging and real-file playback remain separate checks.
+- No migration, GraphQL or backend behavior changes. Published as
+  [PR #123](https://github.com/Dusky-dev/StashBooru/pull/123), with implementation
+  commit `ca852aa2a0a75056cfdb3e44477d9c70649b195c`. Build and Lint CI were running
+  at publication; merging and real-file playback remain separate checks.
 
 ## P03 validation scope
 
