@@ -341,3 +341,7 @@ in [P07 global media](p07-global-media.md).
   ran the existing ts-node test suites; dependencies and schema artifacts were
   reused unchanged. Before/after relation captures were visually reviewed.
 - No backend, GraphQL schema, migration or production data changes.
+- Published as [PR #125](https://github.com/Dusky-dev/StashBooru/pull/125).
+  Implementation SHA `e9dab826a3347d650cfa161b9a32d03e4d7da026` was verified on
+  2026-10-01; the published tree matches the checked local tree exactly. CI is
+  pending at publication. Merging and production playback remain separate.
