@@ -274,3 +274,33 @@ in [P07 global media](p07-global-media.md).
 - Difference boxes are connected pixel-difference regions after threshold/noise filtering, not object detection.
 - Browser decoding supplies orientation/color handling for this first pass; automatic crop/rotation registration is not implemented.
 - No database or GraphQL schema changes.
+
+## Repository agent guidance and upstream merge check — 2026-10-01
+
+- `AGENTS.md` records the fork owner's standing authorization for implementation,
+  feature-branch publication and PR creation/updates, while keeping merging a
+  separate action. It documents product conventions, native UI extension points,
+  progress handoffs, repository validation commands and upstream checks.
+- Guidance branch: `chore/agent-workflow-20261001`, based on current `develop`
+  at `4a0fc01b57c9616c6aae8e0abde65d48a5ee43c7` (merged PR #122).
+- Fetched `stashapp/stash` `develop` at
+  `e7d33c9bd131f1f5d781b850de30735943fa1195`. Seven upstream commits are absent
+  from the fork, touching 14 UI files. They improve scraper search, create-page
+  plugin hooks, duration matching, the organized indicator, portrait Video
+  wrapper height, VR colors and Safari Character details layout. No incoming
+  database, GraphQL schema or dependency-manifest changes were found.
+- `git merge-tree --write-tree --name-only` reports zero conflicts against both
+  current fork `develop` and pending [PR #123](https://github.com/Dusky-dev/StashBooru/pull/123)
+  at `a8800230477b24bb93168f0512cc5325d0ac8f93`. Candidate tree SHAs are
+  `fe1fa4e2237a330426a7474e59e0f94139a77f16` and
+  `bf55bf1286898ff572f3ca7e59333e82229c7001`, respectively.
+- An isolated `git merge --no-commit --no-ff upstream/develop` including #123
+  completed without conflicts or unmerged index entries. The temporary result
+  passed TypeScript, all 28 existing UI unit tests, Biome lint/format, Stylelint
+  and staged/unstaged `git diff --check`. It reused unchanged dependencies and
+  generated UI GraphQL artifacts; Node's ESM registration API ran the existing
+  ts-node suites in the available Node 24 runtime.
+- The guidance change itself is documentation only and passed diff checks.
+  No upstream integration was published or merged into the fork. The temporary
+  source checks do not establish real Safari rendering, VR playback or full
+  production/build-matrix results. Recheck fresh heads before a later merge.
