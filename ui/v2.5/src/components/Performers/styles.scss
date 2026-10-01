@@ -91,17 +91,29 @@
     .detail-item {
       display: inline-flex;
       flex: 0 1 auto;
-      max-width: calc(50% - 0.5rem);
+      max-width: 100%;
       min-width: 0;
       padding-right: 0;
       width: auto;
+
+      &.copyrights {
+        flex-shrink: 2;
+        max-width: calc(65% - 0.5rem);
+      }
+
+      &.character-variants {
+        max-width: calc(35% - 0.5rem);
+      }
 
       &:only-child {
         max-width: 100%;
       }
 
       @media (max-width: 576px) {
-        max-width: 100%;
+        &.copyrights,
+        &.character-variants {
+          max-width: 100%;
+        }
       }
     }
 
@@ -129,6 +141,12 @@
       // ratio even on a short viewport. The relation panel handles scrolling.
       flex: 0 1 min(11rem, 30vh);
       width: min(11rem, 30vh);
+    }
+
+    .booru-entity-card-copyright {
+      // Landscape art gets its own width budget, still below 40vh in height.
+      flex-basis: min(20rem, 70vh);
+      width: min(20rem, 70vh);
     }
 
     .booru-entity-card-image {

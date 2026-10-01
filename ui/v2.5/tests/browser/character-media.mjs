@@ -85,6 +85,7 @@ try {
             .getBoundingClientRect();
           return {
             copyright: card.classList.contains("booru-entity-card-copyright"),
+            width: frame.width,
             ratio: frame.width / frame.height,
             fit: getComputedStyle(card.querySelector("img")).objectFit,
           };
@@ -99,6 +100,9 @@ try {
           })
         ),
         viewport: innerHeight,
+        rootFontSize: Number.parseFloat(
+          getComputedStyle(document.documentElement).fontSize
+        ),
       };
     });
   const single = await measure();
@@ -116,6 +120,17 @@ try {
     }
   }
   checkShapes(single);
+  const copyrightWidth = single.cards.find((card) => card.copyright).width;
+  const variantWidth = single.cards.find((card) => !card.copyright).width;
+  assert.ok(
+    copyrightWidth >= single.rootFontSize * 19 - 2 &&
+      copyrightWidth >= variantWidth * 1.5,
+    JSON.stringify(single)
+  );
+  console.log(
+    "Relation card widths",
+    JSON.stringify({ copyrightWidth, variantWidth })
+  );
   assert.ok(
     single.heights.every(
       (height) => height <= Math.min(256, single.viewport * 0.4) + 1
@@ -124,10 +139,32 @@ try {
   console.log(
     "PASS: adjacent Copyrights use landscape cards; Variants use portrait cards without cropping or stretching"
   );
-  if (process.env.STASH_BROWSER_SCREENSHOT_PREFIX)
+  if (process.env.STASH_BROWSER_SCREENSHOT_PREFIX) {
     await page.screenshot({
       path: `${process.env.STASH_BROWSER_SCREENSHOT_PREFIX}-desktop.png`,
     });
+    const row = page.locator(".performer-relations");
+    await row.screenshot({
+      path: `${process.env.STASH_BROWSER_SCREENSHOT_PREFIX}-relations-after.png`,
+    });
+    // Render the previous sizing rules against the same read-only fixture for
+    // a comparable before capture, then immediately restore the current CSS.
+    const previous = await page.addStyleTag({
+      content: `
+      #performer-page .performer-relations .detail-item.copyrights,
+      #performer-page .performer-relations .detail-item.character-variants {
+        flex-shrink: 1; max-width: calc(50% - .5rem);
+      }
+      #performer-page .performer-relations .booru-entity-card-copyright {
+        flex-basis: min(11rem, 30vh); width: min(11rem, 30vh);
+      }
+    `,
+    });
+    await row.screenshot({
+      path: `${process.env.STASH_BROWSER_SCREENSHOT_PREFIX}-relations-before.png`,
+    });
+    await previous.evaluate((node) => node.remove());
+  }
   await page.setViewportSize({ width: 1440, height: 400 });
   const short = await measure();
   checkShapes(short);

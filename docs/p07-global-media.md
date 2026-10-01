@@ -117,8 +117,11 @@ Copyright card images now use landscape (16:9) frames; Character/Variant frames
 are portrait, and Artist frames are square. Copyright and relation images use
 `object-fit: contain` so sources with different proportions are not stretched
 or cropped. Native Character cards retain their existing portrait layout.
-Relation card widths are bounded by 11 rem and 30% of viewport height, keeping
-portrait frames within 40% of viewport height even on short windows. Names wrap.
+Variant card widths are bounded by 11 rem and 30% of viewport height, keeping
+portrait frames within 40% of viewport height even on short windows. Copyright
+cards have a separate landscape width of up to 20 rem or 70% of viewport height.
+The desktop row reserves up to 65% for Copyrights and 35% for Variants; mobile
+sections can use the full row width and wrap. Names wrap.
 Each relation list grows with its contents up to the smaller of 24 rem and half the viewport
 height, then scrolls internally; no records are hidden by line clamping.
 
@@ -180,3 +183,52 @@ browser Back and the close button. The shape suite verifies desktop/mobile menu
 order and native card ratios using opposite-shape source images. The Character
 suite also checks relation ratios on a short viewport. These suites make no
 metadata writes; synthetic fixtures do not verify real-file decoding or playback.
+
+## Preview identity during metadata refreshes
+
+Refreshing native Video card metadata previously removed/re-added its registry
+entry and moved it to the end of the preview list. The native player used the
+updated list's numeric index while the DOM observer still used the list from
+opening. A regression reproduced four different Videos mounting behind one
+unchanged footer link, so checking the footer alone did not detect the cycling.
+
+Card metadata now updates an existing registration. Each open preview captures
+its media identities and order; the native Lightbox, player and DOM observer
+share that sequence until dismissal. Current metadata still updates by typed
+identity, without replacing the media at an index. Closing releases the queue,
+and reopening captures the current list, including its visible sort order. This
+applies to global All, Videos and
+the existing Character/Artist/Tag mixed All preview path. Explicit next/previous
+controls remain available; Video completion does not advance the preview.
+
+The read-only queue regression instruments the actual native ScenePlayer ID,
+refreshes every Video's local Apollo metadata, reorders the Character All list,
+waits beyond the slideshow interval, navigates explicitly, and closes/reopens:
+
+```sh
+STASH_BROWSER_URL=http://127.0.0.1:9999 STASH_BROWSER_CHARACTER_ID=123 \
+  node ui/v2.5/tests/browser/preview-queue-stability.mjs
+```
+
+Use an isolated fixture containing multiple Videos and a Character associated
+with at least two of them. Optional `STASH_BROWSER_VIDEO_FILE=/path/to/clip.webm`
+supplies a four-second VP8 clip. The suite substitutes browser-local VideoFile
+metadata/stream responses and intercepts playback-activity writes, verifies
+decoding/playback to completion in the native player, and checks the selected
+identity throughout. Create a matching fixture with:
+
+```sh
+ffmpeg -f lavfi -i testsrc2=size=320x180:rate=12 -t 4 -c:v libvpx \
+  -b:v 160k -an preview-test.webm
+```
+
+This clip check establishes VP8 playback in headless Chromium; other production
+files/codecs, browser engines and physical devices require separate checks.
+
+The relation width comparison uses the same opposite-shape source images in
+both captures. The before capture temporarily applies the previous sizing CSS
+in the browser fixture; the after capture uses the current production CSS.
+
+| Previous sizing | Wider landscape sizing |
+| --- | --- |
+| ![Previous Copyright relation width](images/preview-relations-before.png) | ![Wider Copyright relation width](images/preview-relations-after.png) |
