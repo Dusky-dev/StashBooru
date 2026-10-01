@@ -29,21 +29,23 @@ class MarkersPlugin extends videojs.getPlugin("plugin") {
   constructor(player: VideoJsPlayer) {
     super(player);
     player.ready(() => {
+      // Preview navigation can dispose the player before this queued callback.
+      if (player.isDisposed()) return;
+      const element = player.el();
+      if (!element) return;
       const tooltip = videojs.dom.createEl("div") as HTMLElement;
       tooltip.className = "vjs-marker-tooltip";
       tooltip.style.visibility = "hidden";
 
-      const parent = player
-        .el()
-        .querySelector(".vjs-progress-holder .vjs-mouse-display");
+      const parent = element.querySelector(
+        ".vjs-progress-holder .vjs-mouse-display"
+      );
       if (parent) parent.appendChild(tooltip);
       this.markerTooltip = tooltip;
 
-      this.defaultTooltip = player
-        .el()
-        .querySelector<HTMLElement>(
-          ".vjs-progress-holder .vjs-mouse-display .vjs-time-tooltip"
-        );
+      this.defaultTooltip = element.querySelector<HTMLElement>(
+        ".vjs-progress-holder .vjs-mouse-display .vjs-time-tooltip"
+      );
     });
   }
 

@@ -13,7 +13,7 @@ Current baseline: `develop` at `3ab54a28ebcd1081cb065bc0bd0c29f04a2cd5b8`
 | P04 — copyright sorting / taxonomy | Complete | PRs #94 and #95 are merged. PR #94 added the hierarchy/backend foundation; PR #95 corrected hierarchy UX and media presentation without changing the P04 database schema. |
 | P05 — Character variants / disambiguation links | Complete | Merged PR #104 adds native Character variants and typed Copyright/Artist disambiguation links; merged PR #114 refines Character/Copyright editing. |
 | P06 — ancestor/profile auto-association | Complete | PRs #115–#118 are merged; the final search consistency follow-up passed Build and Go lint CI. Direct legacy relationships remain explicit; no migration is introduced. |
-| P07 — native global All media page | Implemented; awaiting PR review and remote checks | A server-paginated Media page combines Images and Videos with typed identity, shared filters and native cards/actions. Local automated checks pass; browser interaction remains unverified. |
+| P07 — native global All media page | Foundation merged; UI corrections verified locally | PRs #119–#121 are merged. Global All combines Images and Videos with server pagination, typed identity and native controls. Edit-pane cleanup, relation sizing and restored Video previews pass the mounted Chromium checks. |
 
 ## P04 completed behavior
 
@@ -211,6 +211,26 @@ No browser interaction or external inference/booru service test is claimed.
 
 Query semantics, supported operations and remaining browser checks are recorded
 in [P07 global media](p07-global-media.md).
+
+### P07 Character edit pane, relation sizing and Video previews
+
+- The scoped All inline host now clears its active state and unmounts media
+  contents when Edit removes the native tabs. Cancel restores the native tabs
+  without retaining an active All pane beneath the editor.
+- Copyrights and Variants use content widths with a one-rem gap. Images keep
+  their full proportions at a bounded height; names wrap and long relation
+  lists scroll within the viewport-based height cap.
+- Restored the existing Video magnifying-glass bridge, card registry and native
+  ScenePlayer preview flow. Selection hides the preview action. Global All
+  restores Image lightbox contents when an Image is previewed after a Video.
+- Rapid preview navigation exposed a queued marker callback after player
+  disposal; that callback now exits safely.
+- Verification passed: 28 UI tests, TypeScript, JavaScript/CSS lint, formatting,
+  built-in checksum/syntax, production build and `git diff --check`. Chromium
+  checked scoped/global All and native Video previews, carousel navigation,
+  Video-to-Image preview switching, edit/cancel, short/tall relation images,
+  18-item scrolling lists, delayed/empty/failed queries, selection, Wall/back
+  navigation, legacy routes and mobile overflow. Browser fixtures are synthetic.
 
 ## P03 validation scope
 

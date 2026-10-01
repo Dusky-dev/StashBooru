@@ -547,7 +547,18 @@
 
       function install() {
         const nav = navElement();
-        if (!nav) return;
+        if (!nav) {
+          // Entity editors keep the shell mounted but remove the native Tabs.
+          // Deactivate and unmount the All contents along with those Tabs.
+          attachNav(null);
+          tabRef.current = null;
+          if (activeRef.current) {
+            activeRef.current = false;
+            setActive(false);
+          }
+          shell.classList.remove("unified-media-all-active");
+          return;
+        }
         attachNav(nav);
         let tab = nav.querySelector(`[${TAB_ATTR}="tab"]`);
         if (!tab) {

@@ -36,7 +36,13 @@ export function MediaListContent({
   const onPreviewImage = useCallback(
     (image: GQL.SlimImageDataFragment) => {
       const initialIndex = images.findIndex((item) => item.id === image.id);
-      if (initialIndex >= 0) showLightbox({ initialIndex });
+      if (initialIndex >= 0)
+        showLightbox({
+          initialIndex,
+          images,
+          onClose: undefined,
+          slideshowEnabled: false,
+        });
     },
     [images, showLightbox]
   );

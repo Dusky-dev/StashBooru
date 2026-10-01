@@ -80,6 +80,8 @@ metadata writes and new/existing list-route HTTP smoke checks.
 P07 was merged in [PR #119](https://github.com/Dusky-dev/StashBooru/pull/119);
 its Build and Go lint workflows passed. Navigation corrections were merged in
 [PR #120](https://github.com/Dusky-dev/StashBooru/pull/120).
+The native All list rework was merged in
+[PR #121](https://github.com/Dusky-dev/StashBooru/pull/121).
 
 The All list now follows the native Images/Videos structure: saved filter sidebar,
 toolbar and operations menu, cached pagination, loaded list body and native
@@ -101,3 +103,40 @@ STASH_BROWSER_URL=http://127.0.0.1:9999 node ui/v2.5/tests/browser/all-media.mjs
 `CHROMIUM_EXECUTABLE` a browser executable. This suite injects delayed/error
 responses only inside its own browser; it does not modify library records.
 Unit regressions also cover missing/failed preview sources and invalid dimensions.
+
+## Character editing, relation cards and Video previews
+
+The existing Character/Artist/Tag All enhancement now deactivates its inline
+pane when editing removes the native tab navigation. Its media contents unmount;
+cancelling restores the native tabs with All inactive.
+
+Copyrights and Variants sit together at their content width with a one-rem gap.
+Their images keep their natural proportions with `object-fit: contain`, capped
+at the smaller of 16 rem and 40% of viewport height. Names wrap. Each relation
+list grows with its contents up to the smaller of 24 rem and half the viewport
+height, then scrolls internally; no records are hidden by line clamping.
+
+Video cards again show the magnifying-glass preview button outside selection
+mode. Scoped All uses its existing mixed preview carousel; global All and Videos
+use the shared native ScenePlayer preview host and current mounted Video cards.
+An Image preview in global All explicitly restores its Image list after a Video
+preview closes. The player's queued marker setup exits if navigation already
+disposed the player.
+
+The Chromium suite checks Video previews and carousel navigation on global All
+and native Videos, then opens an Image after closing a Video. The Character
+suite also checks scoped All previews, editing while All is selected, portrait
+and landscape card dimensions, 18-item relation lists and mobile overflow:
+
+```sh
+STASH_BROWSER_URL=http://127.0.0.1:9999 STASH_BROWSER_CHARACTER_ID=123 \
+  node ui/v2.5/tests/browser/character-media.mjs
+```
+
+Use an isolated Character linked to an Image, Video, Copyright and direct
+Variant. This suite substitutes relation images/counts only in its own browser
+and makes no metadata writes. `STASH_BROWSER_SCREENSHOT_PREFIX` optionally saves
+desktop and mobile captures. All 28 UI tests, TypeScript, lint, formatting, the
+built-in checksum/syntax checks and production build passed with these changes.
+Real-file playback and external processing services remain outside these
+synthetic-fixture browser checks.

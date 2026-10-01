@@ -71,6 +71,63 @@
     return api.components?.[name] || null;
   }
 
+  // Restore the native cards' preview affordance through the existing shared
+  // ScenePlayer host. Keep hooks in a component, rather than the patch callback.
+  function SceneCardPreviewBridge({ props, rendered }) {
+    const scene = props.scene;
+    const mixed = React.useContext(MixedContext);
+    const page = React.useContext(PageMediaContext);
+    const intl = api.libraries.Intl.useIntl();
+    const tokenRef = React.useRef(null);
+    if (tokenRef.current == null) {
+      tokenRef.current = `scene-card:${++globalSceneInstanceCounter}`;
+    }
+    React.useEffect(() => {
+      if (!scene?.id) return undefined;
+      const token = tokenRef.current;
+      publishGlobalSceneRegistration("add", token, scene);
+      return () => publishGlobalSceneRegistration("remove", token, scene);
+    }, [scene]);
+
+    const Button = api.libraries.Bootstrap.Button;
+    const Icon = nativeComponent("Icon");
+    const label = intl.formatMessage({ id: "actions.preview", defaultMessage: "Preview" });
+    return React.createElement(
+      "div",
+      { className: "unified-media-scene-image-wrap" },
+      rendered,
+      !props.selecting && scene?.id && Icon
+        ? React.createElement(
+            "div",
+            { className: "preview-button unified-media-video-preview-button" },
+            React.createElement(
+              Button,
+              {
+                title: label,
+                "aria-label": label,
+                onClick: (event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (mixed?.openVisualPreview) mixed.openVisualPreview(`scene:${scene.id}`);
+                  else if (page?.openScenePreview) page.openScenePreview(scene);
+                  else requestGlobalScenePreview(scene);
+                },
+              },
+              React.createElement(Icon, { icon: api.libraries.FontAwesomeSolid.faSearch })
+            )
+          )
+        : null
+    );
+  }
+
+  api.patch.after("SceneCard.Image", function () {
+    const args = Array.from(arguments);
+    return React.createElement(SceneCardPreviewBridge, {
+      props: args[0] || {},
+      rendered: args[args.length - 1],
+    });
+  });
+
   class RenderErrorBoundary extends React.Component {
     constructor(props) {
       super(props);
