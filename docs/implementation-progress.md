@@ -60,7 +60,7 @@ The first corrective CI attempts exposed formatting-only Biome failures. Those w
 ## P05 Character variants and disambiguation links
 
 - Characters remain native Performer records with their own IDs, aliases, images, tags and metadata. Each Character can optionally point to one base Character; validation rejects missing parents, self-links and cycles.
-- Character details show a “Variant of” link and a Variants card grid in a `detail-group` immediately after Copyrights. The edit form selects child variants from the parent Character.
+- Character details show a “Variant of” link and a Variants card grid beside Copyrights in the same `detail-group` row. The edit form selects child variants from the parent Character.
 - A Character disambiguation selector chooses Copyright, Artist, or Custom. Copyright and Artist choices link the target name; Custom is a plain label. Disambiguation context does not create a media association.
 - Migration 95 adds the parent and context foreign keys with `ON DELETE SET NULL`, a check against self-parenting and indexes for lookups.
 
@@ -178,14 +178,36 @@ No browser interaction or external inference/booru service test is claimed.
 
 - The backend's default menu includes the mixed media page. Its navigation and
   Interface setting labels are “All”; existing custom menu selections still apply.
-- Character variants appear in their own `detail-group` immediately after
-  Copyrights, rather than in a tab. Native card links, disambiguation, loading,
+- Character variants appear beside Copyrights in the same `detail-group` row,
+  rather than in a tab. Native card links, disambiguation, loading,
   errors and the existing 100-card limit remain. Empty variant groups are hidden.
 - Existing `/performers/:id/variants` links fall back to the Character page.
 - Verification passed: configuration package tests (including default/custom
   menu regression coverage), scoped Go lint (zero issues), all 25 UI tests,
   JavaScript/CSS lint, TypeScript, formatting, production UI build and
-  `git diff --check`. Browser rendering remains unverified.
+  `git diff --check`. PR #120 was merged; browser verification was completed
+  during the subsequent All list rework below.
+
+### P07 All list rework
+
+- Reproduced React error #185 in Chromium while delaying the mixed query. All
+  now mounts Lightbox synchronization only inside the loaded list body, following
+  Images. Stable result adapters also avoid creating fresh empty arrays.
+- All uses native sidebar filters, toolbar actions, pagination and cards. The
+  duplicate All/Images/Videos tab strip is removed. Old type-specific Media URLs
+  redirect to the existing Images/Videos pages with their query state.
+- Mixed Wall reuses native Video preview source selection and styling, handles
+  failed previews and invalid dimensions, bounds item height and opens native
+  Video links with their queue. Selection retains typed Image/Video identities.
+- Copyrights and Variants share a responsive relation row. Variants still use
+  the existing card and edit flows.
+- Verification passed: all 28 UI tests, TypeScript, JavaScript/CSS lint,
+  formatting, production UI build and `git diff --check`. Chromium exercised
+  delayed, empty, Video-only and failed mixed queries; typed mixed selection;
+  Wall navigation/back; and legacy native-page redirects. An isolated fixture
+  confirmed equal desktop row positions and mobile wrapping without overflow.
+  Browser fixtures use synthetic records; real-file playback and external
+  conversion/upscaling services were outside this correction.
 
 Query semantics, supported operations and remaining browser checks are recorded
 in [P07 global media](p07-global-media.md).

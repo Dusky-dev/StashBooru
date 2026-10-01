@@ -1,8 +1,9 @@
 # P07 native global media
 
-The top-level All navigation entry contains All, Images and Videos tabs. Their
-routes are `/media`, `/media/images` and `/media/videos`; existing `/images`,
-`/scenes` and native detail links remain usable.
+The top-level All navigation entry opens `/media`. Images and Videos keep their
+existing `/images` and `/scenes` pages beside it in the navbar. All has no second
+media-type tab row. Legacy `/media/images` and `/media/videos` links redirect to
+the native pages and retain their query parameters and history state.
 
 All is included in the backend's default navigation. A customized menu can enable it in
 Settings → Interface → Menu items.
@@ -37,12 +38,11 @@ identities remain suitable for future P08 stack members.
 Text search, title, details, path, rating, dates/timestamps, organized status,
 favorite Characters, Tags, Characters, Artists and Copyrights use their existing
 native predicates. Hierarchy depth and P06 inheritance retain native semantics.
-The route supplies the media-type constraint. Any duration criterion, including
+Any duration criterion, including
 `IS_NULL`, excludes Images; the page shows that rule while the criterion is active.
 
 Shared criteria, sort, page size, Grid/Wall mode and zoom are preserved in the
-URL/native filter state. Saved Media filters store shared criteria; the current
-tab supplies the type constraint when they are applied. Selection carries
+URL/native filter state. Saved All filters store shared criteria. Selection carries
 across pages. Eight in-memory history snapshots retain selection and scroll for
 back navigation during the browser session; reloading clears those snapshots.
 
@@ -78,7 +78,26 @@ application also passed the actual UI query/fragments, filtered counts, native
 metadata writes and new/existing list-route HTTP smoke checks.
 
 P07 was merged in [PR #119](https://github.com/Dusky-dev/StashBooru/pull/119);
-its Build and Go lint workflows passed. Browser rendering/interaction remains
-unverified because Chromium's download failed. Grid/Wall previews, mixed
-selection/dialogs, filters across tabs and detail-page back navigation with
-scroll/selection still need browser verification. No migration is added.
+its Build and Go lint workflows passed. Navigation corrections were merged in
+[PR #120](https://github.com/Dusky-dev/StashBooru/pull/120).
+
+The All list now follows the native Images/Videos structure: saved filter sidebar,
+toolbar and operations menu, cached pagination, loaded list body and native
+cards. Lightbox synchronization mounts inside the loaded body. Previously it
+mounted while a query was loading, and fresh empty arrays caused React's update
+depth limit to fail. Wall uses the native Video styling and preview source
+selection, safe dimensions, bounded row height and native Video queue links.
+
+The optional mounted-browser regression suite covers delayed, empty, Video-only
+and failed queries, mixed Grid selection, Wall navigation/back and absence of
+duplicate type tabs. Run it against an isolated instance containing Images and
+Videos with Playwright available:
+
+```sh
+STASH_BROWSER_URL=http://127.0.0.1:9999 node ui/v2.5/tests/browser/all-media.mjs
+```
+
+`PLAYWRIGHT_MODULE` can specify an absolute Playwright module path and
+`CHROMIUM_EXECUTABLE` a browser executable. This suite injects delayed/error
+responses only inside its own browser; it does not modify library records.
+Unit regressions also cover missing/failed preview sources and invalid dimensions.

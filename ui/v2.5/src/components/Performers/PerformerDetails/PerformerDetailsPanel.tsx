@@ -19,17 +19,22 @@ import { PatchComponent } from "src/patch";
 import { CustomFields } from "src/components/Shared/CustomFields";
 import { Link } from "react-router-dom";
 import { PerformerVariantsPanel } from "./PerformerVariantsPanel";
+import cx from "classnames";
 
 interface IPerformerDetails {
   performer: GQL.PerformerDataFragment;
   collapsed?: boolean;
   fullWidth?: boolean;
+  className?: string;
 }
 
 const PerformerDetailGroup: React.FC<PropsWithChildren<IPerformerDetails>> =
-  PatchComponent("PerformerDetailsPanel.DetailGroup", ({ children }) => {
-    return <div className="detail-group">{children}</div>;
-  });
+  PatchComponent(
+    "PerformerDetailsPanel.DetailGroup",
+    ({ children, className }) => {
+      return <div className={cx("detail-group", className)}>{children}</div>;
+    }
+  );
 
 export const PerformerDetailsPanel: React.FC<IPerformerDetails> =
   PatchComponent("PerformerDetailsPanel", (props) => {
@@ -85,8 +90,8 @@ export const PerformerDetailsPanel: React.FC<IPerformerDetails> =
 
     return (
       <>
-        {!!performer.copyrights?.length && (
-          <PerformerDetailGroup {...props}>
+        <PerformerDetailGroup {...props} className="performer-relations">
+          {!!performer.copyrights?.length && (
             <DetailItem
               id="copyrights"
               label={intl.formatMessage({
@@ -102,9 +107,9 @@ export const PerformerDetailsPanel: React.FC<IPerformerDetails> =
               value={renderCopyrightsField()}
               fullWidth={fullWidth}
             />
-          </PerformerDetailGroup>
-        )}
-        <PerformerVariantsPanel performer={performer} fullWidth={fullWidth} />
+          )}
+          <PerformerVariantsPanel performer={performer} fullWidth={fullWidth} />
+        </PerformerDetailGroup>
         <PerformerDetailGroup {...props}>
           {performer.parent && (
             <DetailItem

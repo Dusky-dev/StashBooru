@@ -567,6 +567,10 @@ export function setObjectFilter(
   const empty = Object.keys(relatedFilterOutput).length === 0;
 
   switch (mode) {
+    case FilterMode.Media:
+      // There is no single native related-object filter for mixed media.
+      // Offer the full taxonomy; findMedia applies the selected criteria.
+      break;
     case FilterMode.Scenes:
       // if empty, only get objects with scenes
       if (empty) {

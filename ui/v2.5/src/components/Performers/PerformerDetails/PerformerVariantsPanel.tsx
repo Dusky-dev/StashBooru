@@ -42,77 +42,76 @@ export const PerformerVariantsPanel: React.FC<IProps> = ({
   });
 
   return (
-    <div className="detail-group performer-variants-panel">
-      <DetailItem
-        id="character-variants"
-        label={label}
-        fullWidth={fullWidth}
-        value={
-          loading ? (
-            <LoadingIndicator />
-          ) : error ? (
-            <ErrorMessage error={error.message} />
-          ) : (
-            <>
-              <div
-                className="booru-entity-card-grid booru-character-card-grid performer-variant-grid"
-                role="list"
-                aria-label={label}
-              >
-                {variants.map((variant) => (
-                  <article
-                    key={variant.id}
-                    className="booru-entity-card booru-entity-card-character"
-                    role="listitem"
+    <DetailItem
+      id="character-variants"
+      className="performer-variants-panel"
+      label={label}
+      fullWidth={fullWidth}
+      value={
+        loading ? (
+          <LoadingIndicator />
+        ) : error ? (
+          <ErrorMessage error={error.message} />
+        ) : (
+          <>
+            <div
+              className="booru-entity-card-grid booru-character-card-grid performer-variant-grid"
+              role="list"
+              aria-label={label}
+            >
+              {variants.map((variant) => (
+                <article
+                  key={variant.id}
+                  className="booru-entity-card booru-entity-card-character"
+                  role="listitem"
+                >
+                  <Link
+                    className="booru-entity-card-image-link"
+                    to={`/performers/${variant.id}`}
+                    tabIndex={-1}
+                    aria-hidden="true"
                   >
-                    <Link
-                      className="booru-entity-card-image-link"
-                      to={`/performers/${variant.id}`}
-                      tabIndex={-1}
-                      aria-hidden="true"
-                    >
-                      {variant.image_path ? (
-                        <img
-                          loading="lazy"
-                          className="booru-entity-card-image"
-                          alt=""
-                          src={variant.image_path}
-                        />
-                      ) : (
-                        <span
-                          className="booru-entity-card-placeholder"
-                          aria-hidden="true"
-                        />
-                      )}
-                    </Link>
-                    <Link
-                      className="booru-entity-card-name"
-                      to={`/performers/${variant.id}`}
-                      title={variant.name}
-                    >
-                      {variant.name}
-                      <PerformerDisambiguationValue
-                        disambiguation={variant.disambiguation}
-                        context={variant.disambiguation_context}
-                        linkContext={false}
+                    {variant.image_path ? (
+                      <img
+                        loading="lazy"
+                        className="booru-entity-card-image"
+                        alt=""
+                        src={variant.image_path}
                       />
-                    </Link>
-                  </article>
-                ))}
-              </div>
-              {(result?.count ?? 0) > variants.length && (
-                <p className="text-muted">
-                  <FormattedMessage
-                    id="character_variants_page_limit"
-                    defaultMessage="Showing the first {shown} of {total} direct variants."
-                    values={{ shown: variants.length, total: result?.count }}
-                  />
-                </p>
-              )}
-            </>
-          )
-        }
-      />
-    </div>
+                    ) : (
+                      <span
+                        className="booru-entity-card-placeholder"
+                        aria-hidden="true"
+                      />
+                    )}
+                  </Link>
+                  <Link
+                    className="booru-entity-card-name"
+                    to={`/performers/${variant.id}`}
+                    title={variant.name}
+                  >
+                    {variant.name}
+                    <PerformerDisambiguationValue
+                      disambiguation={variant.disambiguation}
+                      context={variant.disambiguation_context}
+                      linkContext={false}
+                    />
+                  </Link>
+                </article>
+              ))}
+            </div>
+            {(result?.count ?? 0) > variants.length && (
+              <p className="text-muted">
+                <FormattedMessage
+                  id="character_variants_page_limit"
+                  defaultMessage="Showing the first {shown} of {total} direct variants."
+                  values={{ shown: variants.length, total: result?.count }}
+                />
+              </p>
+            )}
+          </>
+        )
+      }
+    />
   );
 };
