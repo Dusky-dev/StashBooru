@@ -84,15 +84,27 @@
   }
   /* stylelint-enable selector-class-pattern */
 
-  .performer-variants-panel .detail-item {
-    min-width: 0;
-    padding-right: 0;
-    width: 100%;
-  }
+  .performer-relations {
+    align-items: flex-start;
+    gap: 1rem 2rem;
 
-  .performer-variants-panel .detail-item-value {
-    display: flex;
-    overflow: visible;
+    .detail-item {
+      display: inline-flex;
+      flex: 1 1 15rem;
+      min-width: 0;
+      padding-right: 0;
+      width: auto;
+    }
+
+    .detail-item-title {
+      display: block;
+      width: auto;
+    }
+
+    .detail-item-value {
+      display: flex;
+      overflow: visible;
+    }
   }
 }
 

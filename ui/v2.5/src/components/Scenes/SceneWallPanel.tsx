@@ -24,6 +24,7 @@ import cx from "classnames";
 import { defaultPreviewVolume } from "src/core/config";
 import {
   getFirstValidPreviewSource,
+  getScenePreviewSources,
   PreviewMediaType,
 } from "src/utils/wallPreview";
 
@@ -216,27 +217,6 @@ const breakpointZoomHeights = [
 
 type FailedSrcMap = Record<string, string[]>; // id to list of failed srcs
 
-function getScenePreviewSources(
-  scene: GQL.SlimSceneDataFragment,
-  previewType?: string | null
-) {
-  if (previewType === "image") {
-    return [{ src: scene.paths.screenshot, mediaType: "image" }] as const;
-  }
-
-  if (previewType === "animation") {
-    return [
-      { src: scene.paths.webp, mediaType: "image" },
-      { src: scene.paths.screenshot, mediaType: "image" },
-    ] as const;
-  }
-
-  return [
-    { src: scene.paths.preview, mediaType: "video" },
-    { src: scene.paths.screenshot, mediaType: "image" },
-  ] as const;
-}
-
 const SceneWall: React.FC<ISceneWallProps> = ({
   scenes,
   sceneQueue,
@@ -278,7 +258,7 @@ const SceneWall: React.FC<ISceneWallProps> = ({
     return scenes.map((s, index) => {
       const { width, height } = getDimensions(s);
       const previewSource = getFirstValidPreviewSource(
-        getScenePreviewSources(s, previewType),
+        getScenePreviewSources(s.paths, previewType),
         erroredImgs[s.id] || []
       );
 
