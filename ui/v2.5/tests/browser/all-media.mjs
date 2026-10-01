@@ -12,12 +12,60 @@ const browser = await chromium.launch({
   args: ["--no-sandbox", "--disable-dev-shm-usage"],
 });
 
+async function checkVideoPreview(page, selector) {
+  const cards = page.locator(selector);
+  const first = cards.first();
+  const link = await first.locator("a.scene-card-link").getAttribute("href");
+  const originalURL = page.url();
+  await first.hover();
+  const preview = first.locator(".unified-media-video-preview-button button");
+  assert.equal(
+    await preview
+      .locator('svg[data-icon="magnifying-glass"], svg[data-icon="search"]')
+      .count(),
+    1
+  );
+  await preview.click();
+  await page.locator(".unified-media-native-scene-player .video-js").waitFor();
+  assert.equal(page.url(), originalURL, "Preview navigated away from the list");
+  const scenePath = new URL(link, baseURL).pathname;
+  await page.waitForFunction(
+    (path) =>
+      document
+        .querySelector(".Lightbox-footer-center .image-link")
+        ?.getAttribute("href") === path,
+    scenePath
+  );
+  if ((await cards.count()) > 1) {
+    const nextLink = await cards
+      .nth(1)
+      .locator("a.scene-card-link")
+      .getAttribute("href");
+    await page
+      .locator(".Lightbox-display > .Lightbox-navbutton")
+      .last()
+      .click();
+    await page.waitForFunction(
+      (path) =>
+        document
+          .querySelector(".Lightbox-footer-center .image-link")
+          ?.getAttribute("href") === path,
+      new URL(nextLink, baseURL).pathname
+    );
+  }
+  await page.getByTitle("Close Lightbox", { exact: true }).click();
+  await page.locator(".Lightbox").waitFor({ state: "hidden" });
+  await page
+    .locator(".unified-media-native-scene-player")
+    .waitFor({ state: "hidden" });
+}
+
 async function check(mode) {
   const page = await browser.newPage({
     viewport: { width: 1440, height: 1000 },
   });
   const errors = [];
-  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("pageerror", (error) => errors.push(error.stack ?? error.message));
   page.on("console", (message) => {
     if (
       message.type() === "error" &&
@@ -97,7 +145,29 @@ async function check(mode) {
       );
     } else {
       await page.locator(".media-list .scene-card").first().waitFor();
+      await checkVideoPreview(page, ".media-list .scene-card");
       if (mode === "loaded") {
+        const image = page.locator(".media-list .image-card").first();
+        const imageLink = await image
+          .locator("a.image-card-link")
+          .getAttribute("href");
+        await image.hover();
+        await image.locator(".preview-button button").click();
+        await page.locator(".Lightbox").waitFor();
+        await page.waitForFunction(
+          (path) =>
+            document
+              .querySelector(".Lightbox-footer-center .image-link")
+              ?.getAttribute("href") === path,
+          new URL(imageLink, baseURL).pathname
+        );
+        assert.equal(
+          await page.locator(".unified-media-native-scene-player").count(),
+          0,
+          "Image reopened the previous Video player"
+        );
+        await page.getByTitle("Close Lightbox", { exact: true }).click();
+        await page.locator(".Lightbox").waitFor({ state: "hidden" });
         const imageCheck = page
           .locator(".media-list .image-card input.card-check")
           .first();
@@ -107,6 +177,13 @@ async function check(mode) {
         await imageCheck.check();
         await videoCheck.check();
         assert.equal(await page.locator(".selected-count").innerText(), "2");
+        assert.equal(
+          await page
+            .locator(".media-list .unified-media-video-preview-button")
+            .count(),
+          0,
+          "Preview buttons remain active while selecting"
+        );
         await imageCheck.uncheck();
         assert.ok(
           await videoCheck.isChecked(),
@@ -144,6 +221,12 @@ try {
   for (const mode of ["loaded", "empty", "videos", "error"]) await check(mode);
   const page = await browser.newPage();
   try {
+    await page.goto(`${baseURL}/scenes`);
+    await page.locator(".scene-card").first().waitFor();
+    await checkVideoPreview(page, ".scene-card");
+    console.log(
+      "PASS: magnifying-glass previews and Video carousel work on the native Videos page"
+    );
     for (const [legacy, native] of [
       ["/media/images", "/images"],
       ["/media/videos", "/scenes"],

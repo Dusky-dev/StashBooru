@@ -86,14 +86,23 @@
 
   .performer-relations {
     align-items: flex-start;
-    gap: 1rem 2rem;
+    gap: 1rem;
 
     .detail-item {
       display: inline-flex;
-      flex: 1 1 15rem;
+      flex: 0 1 auto;
+      max-width: calc(50% - 0.5rem);
       min-width: 0;
       padding-right: 0;
       width: auto;
+
+      &:only-child {
+        max-width: 100%;
+      }
+
+      @media (max-width: 576px) {
+        max-width: 100%;
+      }
     }
 
     .detail-item-title {
@@ -102,8 +111,43 @@
     }
 
     .detail-item-value {
+      display: block;
+      max-height: min(24rem, 50vh);
+      max-width: 100%;
+      overflow: auto;
+    }
+
+    .booru-entity-card-grid {
+      align-items: flex-start;
       display: flex;
-      overflow: visible;
+      flex-wrap: wrap;
+      width: fit-content;
+    }
+
+    .booru-entity-card {
+      flex: 0 1 11rem;
+      width: 11rem;
+    }
+
+    .booru-entity-card-image-link {
+      aspect-ratio: auto;
+    }
+
+    .booru-entity-card-image {
+      height: auto;
+      max-height: min(16rem, 40vh);
+      object-fit: contain;
+    }
+
+    .booru-entity-card-placeholder {
+      aspect-ratio: 1;
+      height: auto;
+      max-height: min(16rem, 40vh);
+    }
+
+    .booru-entity-card-name {
+      overflow-wrap: anywhere;
+      white-space: normal;
     }
   }
 }
