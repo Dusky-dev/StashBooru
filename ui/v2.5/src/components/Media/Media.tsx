@@ -5,7 +5,7 @@ import { FilteredMediaList } from "./MediaList";
 
 export default function Media() {
   const location = useLocation();
-  const titleProps = useTitleProps({ id: "all" });
+  const titleProps = useTitleProps({ id: "media_all", defaultMessage: "All" });
   const legacyDestination =
     location.pathname === "/media/images"
       ? "/images"

@@ -82,6 +82,8 @@ its Build and Go lint workflows passed. Navigation corrections were merged in
 [PR #120](https://github.com/Dusky-dev/StashBooru/pull/120).
 The native All list rework was merged in
 [PR #121](https://github.com/Dusky-dev/StashBooru/pull/121).
+Character edit cleanup and restored Video previews were merged in
+[PR #122](https://github.com/Dusky-dev/StashBooru/pull/122).
 
 The All list now follows the native Images/Videos structure: saved filter sidebar,
 toolbar and operations menu, cached pagination, loaded list body and native
@@ -111,9 +113,13 @@ pane when editing removes the native tab navigation. Its media contents unmount;
 cancelling restores the native tabs with All inactive.
 
 Copyrights and Variants sit together at their content width with a one-rem gap.
-Their images keep their natural proportions with `object-fit: contain`, capped
-at the smaller of 16 rem and 40% of viewport height. Names wrap. Each relation
-list grows with its contents up to the smaller of 24 rem and half the viewport
+Copyright card images now use landscape (16:9) frames; Character/Variant frames
+are portrait, and Artist frames are square. Copyright and relation images use
+`object-fit: contain` so sources with different proportions are not stretched
+or cropped. Native Character cards retain their existing portrait layout.
+Relation card widths are bounded by 11 rem and 30% of viewport height, keeping
+portrait frames within 40% of viewport height even on short windows. Names wrap.
+Each relation list grows with its contents up to the smaller of 24 rem and half the viewport
 height, then scrolls internally; no records are hidden by line clamping.
 
 Video cards again show the magnifying-glass preview button outside selection
@@ -140,3 +146,37 @@ desktop and mobile captures. All 28 UI tests, TypeScript, lint, formatting, the
 built-in checksum/syntax checks and production build passed with these changes.
 Real-file playback and external processing services remain outside these
 synthetic-fixture browser checks.
+
+## Navbar order and stable Video previews
+
+The navbar's DOM and keyboard order is All, Images, Videos, Characters, Artists,
+Copyrights, Tags, Galleries, Collections. All has its own capitalized message
+instead of using the lowercase inline `all` translation. Existing enabled-menu
+preferences still determine which entries appear.
+
+A mounted-browser regression reproduced an unrelated lightbox caller's live
+Image refresh replacing an open Video preview. Each `useLightbox` caller now
+claims the viewer when opening; only that caller can synchronize its active
+contents. Opens read the caller's latest data and reset inherited callbacks and
+slideshow state. The opener's identity remains stable across renders.
+
+The global Video bridge keeps opener functions in refs, rejects duplicate open
+requests and invalidates queued work when closing. Video previews disable
+slideshow/autostart; next/previous remain explicit native controls. The ScenePlayer
+still plays the selected Video automatically.
+
+Additional read-only Chromium suites:
+
+```sh
+STASH_BROWSER_URL=http://127.0.0.1:9999 node ui/v2.5/tests/browser/preview-stability.mjs
+STASH_BROWSER_URL=http://127.0.0.1:9999 node ui/v2.5/tests/browser/navigation-card-shapes.mjs
+```
+
+Use an isolated instance with multiple Videos plus Character, Artist and Copyright
+records. The stability fixture refreshes a second lightbox caller and Apollo's
+local resume cache, samples the active preview beyond the default slideshow
+interval, then checks double-click/repeated opens and dismissals through Escape,
+browser Back and the close button. The shape suite verifies desktop/mobile menu
+order and native card ratios using opposite-shape source images. The Character
+suite also checks relation ratios on a short viewport. These suites make no
+metadata writes; synthetic fixtures do not verify real-file decoding or playback.

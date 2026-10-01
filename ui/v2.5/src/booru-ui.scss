@@ -1,37 +1,9 @@
 /* Fork UI ordering. Internal Stash route/component identifiers intentionally remain unchanged. */
 
-/* Navigation: Images → Videos → Characters → Artists → Tags → Galleries → Collections */
+/* Navbar DOM and keyboard order are owned by MainNavbar's menu definition. */
 nav .navbar-nav:first-child {
   display: flex;
   flex-direction: row;
-}
-
-div.nav-link[data-rb-event-key="/images"] {
-  order: -7;
-}
-
-div.nav-link[data-rb-event-key="/scenes"] {
-  order: -6;
-}
-
-div.nav-link[data-rb-event-key="/performers"] {
-  order: -5;
-}
-
-div.nav-link[data-rb-event-key="/studios"] {
-  order: -4;
-}
-
-div.nav-link[data-rb-event-key="/tags"] {
-  order: -3;
-}
-
-div.nav-link[data-rb-event-key="/galleries"] {
-  order: -2;
-}
-
-div.nav-link[data-rb-event-key="/groups"] {
-  order: -1;
 }
 
 div.nav-link[data-rb-event-key="/scenes/markers"] {
@@ -250,6 +222,30 @@ div.nav-link[data-rb-event-key="/scenes/markers"] {
 
 .booru-entity-card-image {
   object-fit: cover;
+}
+
+.copyright-card .copyright-card-image {
+  aspect-ratio: 16 / 9;
+  height: auto;
+  object-fit: contain;
+  width: 100%;
+}
+
+.studio-card .studio-card-image {
+  aspect-ratio: 1;
+  height: auto;
+  max-height: none;
+  object-fit: contain;
+  width: 100%;
+}
+
+.studio-card .studio-card-header {
+  height: auto;
+  line-height: normal;
+}
+
+.booru-entity-card-copyright .booru-entity-card-image {
+  object-fit: contain;
 }
 
 .booru-entity-card-placeholder {

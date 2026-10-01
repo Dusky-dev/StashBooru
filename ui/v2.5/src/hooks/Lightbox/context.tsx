@@ -31,7 +31,7 @@ export interface IState {
 }
 interface IContext {
   lightboxState: IState;
-  setLightboxState: (state: Partial<IState>) => void;
+  setLightboxState: (state: Partial<IState>, owner?: symbol) => void;
 }
 
 interface ILightboxHistoryState {
@@ -73,6 +73,7 @@ export const LightboxProvider: React.FC = ({ children }) => {
   const isDismissingRef = useRef(false);
   const isVisibleRef = useRef(lightboxState.isVisible);
   const onCloseRef = useRef<(() => void) | undefined>();
+  const activeOwnerRef = useRef<symbol>();
 
   isVisibleRef.current = lightboxState.isVisible;
   onCloseRef.current = lightboxState.onClose;
@@ -120,6 +121,7 @@ export const LightboxProvider: React.FC = ({ children }) => {
 
     isDismissingRef.current = false;
     isVisibleRef.current = false;
+    activeOwnerRef.current = undefined;
     setLightboxState((currentState: IState) =>
       currentState.isVisible
         ? {
@@ -133,13 +135,23 @@ export const LightboxProvider: React.FC = ({ children }) => {
   }, []);
 
   const setPartialState = useCallback(
-    (state: Partial<IState>) => {
+    (state: Partial<IState>, owner?: symbol) => {
+      // Background list/cache refreshes must not replace another caller's
+      // active preview. An explicit open always claims the viewer.
+      if (
+        state.isVisible === undefined &&
+        isVisibleRef.current &&
+        activeOwnerRef.current !== owner
+      )
+        return;
+      if (state.isVisible === true) activeOwnerRef.current = owner;
       if (state.isVisible === true && !isVisibleRef.current) {
         pushLightboxHistory();
         isVisibleRef.current = true;
       } else if (state.isVisible === false) {
         isDismissingRef.current = false;
         isVisibleRef.current = false;
+        activeOwnerRef.current = undefined;
       }
 
       setLightboxState((currentState: IState) => ({

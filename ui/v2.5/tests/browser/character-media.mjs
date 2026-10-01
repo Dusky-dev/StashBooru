@@ -79,6 +79,16 @@ try {
         heights: [...node.querySelectorAll("img")].map(
           (image) => image.getBoundingClientRect().height
         ),
+        cards: [...node.querySelectorAll(".booru-entity-card")].map((card) => {
+          const frame = card
+            .querySelector(".booru-entity-card-image-link")
+            .getBoundingClientRect();
+          return {
+            copyright: card.classList.contains("booru-entity-card-copyright"),
+            ratio: frame.width / frame.height,
+            fit: getComputedStyle(card.querySelector("img")).objectFit,
+          };
+        }),
         panels: [...node.querySelectorAll(".detail-item-value")].map(
           (panel) => ({
             height: panel.clientHeight,
@@ -96,22 +106,35 @@ try {
     single.sameRow && single.gap >= 0 && single.gap <= 17,
     JSON.stringify(single)
   );
-  assert.ok(
-    Math.max(...single.heights) - Math.min(...single.heights) > 100,
-    "Images retain different natural heights"
-  );
+  function checkShapes(measurement) {
+    for (const card of measurement.cards) {
+      assert.ok(
+        Math.abs(card.ratio - (card.copyright ? 16 / 9 : 3 / 4)) < 0.01,
+        JSON.stringify(card)
+      );
+      assert.equal(card.fit, "contain");
+    }
+  }
+  checkShapes(single);
   assert.ok(
     single.heights.every(
       (height) => height <= Math.min(256, single.viewport * 0.4) + 1
     )
   );
   console.log(
-    "PASS: relation sections sit together; portrait/landscape images fit without cropping or stretching"
+    "PASS: adjacent Copyrights use landscape cards; Variants use portrait cards without cropping or stretching"
   );
   if (process.env.STASH_BROWSER_SCREENSHOT_PREFIX)
     await page.screenshot({
       path: `${process.env.STASH_BROWSER_SCREENSHOT_PREFIX}-desktop.png`,
     });
+  await page.setViewportSize({ width: 1440, height: 400 });
+  const short = await measure();
+  checkShapes(short);
+  assert.ok(
+    short.heights.every((height) => height <= short.viewport * 0.4 + 1)
+  );
+  await page.setViewportSize({ width: 1440, height: 1000 });
 
   const allTab = page.locator(
     '.performer-tabs > .nav-tabs [data-unified-media-all="tab"]'
@@ -165,6 +188,7 @@ try {
     )
   );
   const large = await measure();
+  checkShapes(large);
   assert.ok(large.sameRow, JSON.stringify(large));
   for (const panel of large.panels) {
     assert.ok(

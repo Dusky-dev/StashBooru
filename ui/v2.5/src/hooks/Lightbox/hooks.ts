@@ -9,19 +9,25 @@ export const useLightbox = (
   chapters: IChapter[] = []
 ) => {
   const { setLightboxState } = useLightboxContext();
+  const owner = useRef(Symbol("lightbox-caller")).current;
+  const latest = useRef({ state, chapters });
+  latest.current = { state, chapters };
 
   useEffect(() => {
-    setLightboxState({
-      images: state.images,
-      showNavigation: state.showNavigation,
-      pageCallback: state.pageCallback,
-      page: state.page,
-      pages: state.pages,
-      pageSize: state.pageSize,
-      totalCount: state.totalCount,
-      slideshowEnabled: state.slideshowEnabled,
-      onClose: state.onClose,
-    });
+    setLightboxState(
+      {
+        images: state.images,
+        showNavigation: state.showNavigation,
+        pageCallback: state.pageCallback,
+        page: state.page,
+        pages: state.pages,
+        pageSize: state.pageSize,
+        totalCount: state.totalCount,
+        slideshowEnabled: state.slideshowEnabled,
+        onClose: state.onClose,
+      },
+      owner
+    );
   }, [
     setLightboxState,
     state.images,
@@ -33,28 +39,33 @@ export const useLightbox = (
     state.totalCount,
     state.slideshowEnabled,
     state.onClose,
+    owner,
   ]);
 
   const show = useCallback(
     (props: Partial<IState>) => {
-      setLightboxState({
-        ...props,
-        isVisible: true,
-        page: props.page ?? state.page,
-        pages: props.pages ?? state.pages,
-        pageSize: props.pageSize ?? state.pageSize,
-        totalCount: props.totalCount ?? state.totalCount,
-        chapters: chapters,
-      });
+      const current = latest.current;
+      setLightboxState(
+        {
+          ...current.state,
+          showNavigation: current.state.showNavigation,
+          pageCallback: current.state.pageCallback,
+          onClose: current.state.onClose,
+          isLoading: current.state.isLoading ?? false,
+          slideshowEnabled: current.state.slideshowEnabled ?? false,
+          slideshowAutostart: current.state.slideshowAutostart ?? false,
+          ...props,
+          isVisible: true,
+          page: props.page ?? current.state.page,
+          pages: props.pages ?? current.state.pages,
+          pageSize: props.pageSize ?? current.state.pageSize,
+          totalCount: props.totalCount ?? current.state.totalCount,
+          chapters: props.chapters ?? current.chapters,
+        },
+        owner
+      );
     },
-    [
-      setLightboxState,
-      state.page,
-      state.pages,
-      state.pageSize,
-      state.totalCount,
-      chapters,
-    ]
+    [setLightboxState, owner]
   );
   return show;
 };
