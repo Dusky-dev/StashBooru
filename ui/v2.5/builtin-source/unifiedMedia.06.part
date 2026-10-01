@@ -147,7 +147,7 @@
         if (detail.action !== "add" || !detail.scene?.id) return;
 
         const existing = registryRef.current.get(token);
-        const order = existing?.order ?? ++registryOrderRef.current;
+        const order = existing?.order ?? globalSceneRegistry.get(token)?.order ?? ++registryOrderRef.current;
         registryRef.current.set(token, { scene: detail.scene, order });
         setRegistryVersion((v) => v + 1);
       };
@@ -184,9 +184,18 @@
     }, []);
 
     const scenes = React.useMemo(() => {
-      const ordered = Array.from(registryRef.current.values())
-        .sort((a, b) => a.order - b.order)
-        .map((value) => value.scene);
+      // Keyed cards keep their instance tokens when sorting moves them. Read
+      // their current visible order for a new preview, rather than mount order.
+      // The preview host captures this sequence before playback begins.
+      const cardOrder = new Map(Array.from(document.querySelectorAll(
+        ".unified-media-scene-image-wrap[data-unified-media-scene-token]"
+      )).filter((node) => node.getClientRects().length > 0).map((node, index) => [
+        node.getAttribute("data-unified-media-scene-token"), index,
+      ]));
+      const ordered = Array.from(registryRef.current.entries())
+        .filter(([token]) => !cardOrder.size || cardOrder.has(token))
+        .sort(([at, a], [bt, b]) => (cardOrder.get(at) ?? a.order) - (cardOrder.get(bt) ?? b.order))
+        .map(([, value]) => value.scene);
       const deduped = [];
       const seen = new Set();
       for (const scene of ordered) {

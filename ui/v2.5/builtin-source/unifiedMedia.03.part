@@ -174,21 +174,53 @@
     );
   }
 
+  // A preview owns the sequence captured at open. Queries can still hydrate
+  // the native player, but background card updates must not replace the Video
+  // at the viewer's numeric index. The observer and player read the same queue.
+  function usePreviewSequence(availableEntries) {
+    const [previewEntries, setPreviewEntries] = React.useState(null);
+    const sequenceRef = React.useRef(null);
+    const entries = React.useMemo(() => {
+      if (!previewEntries) return availableEntries;
+      // Preserve captured membership/order while allowing edits and hydration
+      // of the same media identity to appear in the native viewer.
+      const latestByKey = new Map(availableEntries.map((entry) => [entry.key, entry]));
+      return previewEntries.map((entry) => latestByKey.get(entry.key) || entry);
+    }, [availableEntries, previewEntries]);
+    sequenceRef.current = previewEntries ? entries : null;
+    const beginPreview = React.useCallback(() => {
+      const entries = availableEntries.slice();
+      sequenceRef.current = entries;
+      setPreviewEntries(entries);
+      return {
+        images: entries.map(entryToLightboxImage),
+        pageSize: entries.length || 1,
+        totalCount: entries.length,
+      };
+    }, [availableEntries]);
+    const resetPreview = React.useCallback(() => {
+      sequenceRef.current = null;
+      setPreviewEntries(null);
+    }, []);
+    return { entries, sequenceRef, beginPreview, resetPreview };
+  }
+
   // Page-wide scene preview host. Native scene cards in the normal Videos tab
   // register themselves with PageMediaContext, so they get the same Stash
   // Lightbox + native ScenePlayer preview experience as the All tab.
   function PageScenePreviewHost({ scenes, registerOpen, onClosed }) {
-    const entries = React.useMemo(
+    const availableEntries = React.useMemo(
       () => (scenes || []).map((scene) => wrap("scene", scene)),
       [scenes]
     );
+    const { entries, sequenceRef, beginPreview, resetPreview } = usePreviewSequence(availableEntries);
     const lightboxItems = React.useMemo(
       () => entries.map(entryToLightboxImage),
       [entries]
     );
     const indexByID = React.useMemo(
-      () => new Map(entries.map((entry, index) => [String(entry.id), index])),
-      [entries]
+      () => new Map(availableEntries.map((entry, index) => [String(entry.id), index])),
+      [availableEntries]
     );
 
     const [activeIndex, setActiveIndex] = React.useState(null);
@@ -215,7 +247,8 @@
       setActiveIndex(null);
       setPortalTarget(null);
       setPortalGeometry(null);
-    }, []);
+      resetPreview();
+    }, [resetPreview]);
 
     const sync = React.useCallback(() => {
       const lightbox = document.querySelector(".Lightbox");
@@ -228,7 +261,7 @@
       }
       const match = String(carousel.style.left || "").match(/(-?\d+(?:\.\d+)?)vw/);
       const index = match ? Math.max(0, Math.round(Math.abs(Number(match[1])) / 100)) : 0;
-      const entry = entries[index];
+      const entry = sequenceRef.current?.[index];
       const target = carousel.children?.[index] || null;
 
       carousel.querySelectorAll(".Lightbox-carousel-image.unified-media-native-scene-slide").forEach((node) => {

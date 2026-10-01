@@ -24,13 +24,13 @@
 
     const openPreviewByKey = React.useCallback(
       (key) => {
-        if (!showLightbox) return;
+        if (!showLightbox || document.querySelector(".Lightbox")) return;
         const index = visualIndexByKey.get(key);
         if (index == null) return;
         startNativeLightboxEnhancements();
-        showLightbox({ initialIndex: index, slideshowEnabled: false, slideshowAutostart: false });
+        showLightbox({ ...beginPreview(), initialIndex: index, slideshowEnabled: false, slideshowAutostart: false });
       },
-      [showLightbox, visualIndexByKey, startNativeLightboxEnhancements]
+      [showLightbox, visualIndexByKey, startNativeLightboxEnhancements, beginPreview]
     );
 
     React.useEffect(

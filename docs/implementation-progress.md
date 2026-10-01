@@ -304,3 +304,44 @@ in [P07 global media](p07-global-media.md).
   No upstream integration was published or merged into the fork. The temporary
   source checks do not establish real Safari rendering, VR playback or full
   production/build-matrix results. Recheck fresh heads before a later merge.
+
+## Video preview cycling and Copyright relation width — 2026-10-01
+
+- Fresh `origin/develop` baseline verified at
+  `8420388976f7f2d33cd48681fdf6b4abcaf8cce6`, after PRs #123/#124 and the upstream
+  merge. Delivery branch: `fix/p07-preview-cycle-copyright-width-20261002`.
+- Reproduced metadata refreshes cycling the actual native ScenePlayer through
+  Videos 1, 2, 3 and 4 while the footer remained on Video 1. The previous footer
+  assertion missed this mismatch. The new regression observes native player
+  identity as well as the footer and player count.
+- Video card registrations update in place. An open preview retains captured
+  typed identities/order, with metadata reconciled by identity; the player,
+  Lightbox and observer share the sequence. New opens use the visible card order
+  after sorting, and dismissals release the queue. Both the native Video host
+  and existing scoped mixed All path use this behavior.
+- Copyright relation cards now use up to 20 rem/70vh landscape width, with a
+  larger desktop section allowance. Variant portraits retain their existing
+  11 rem/30vh cap. The fixture measures Copyright frames at 278 px versus
+  152 px for Variants, with close spacing, preserved ratios, internal scrolling
+  for large lists, and mobile wrapping without horizontal overflow.
+- All five mounted Chromium suites passed: `preview-queue-stability`,
+  `preview-stability`, `all-media`, `character-media`, and
+  `navigation-card-shapes`. Coverage includes metadata churn, list reordering,
+  idle beyond the slideshow interval, explicit next/previous navigation,
+  repeated/double-clicked opens, Escape/Back/button dismissal, source shapes,
+  short windows, large relation lists and mobile views.
+- A four-second VP8/WebM fixture decoded and played to completion in the native
+  ScenePlayer on All, mobile Videos and Character All without advancing.
+  Browser-local file/stream metadata and intercepted activity mutations kept
+  the suite read-only. This is a codec fixture check, not verification of every
+  production file, browser engine, physical device or GPU.
+- Validation passed: all 28 existing UI unit tests, TypeScript, Biome lint and
+  formatting, Stylelint, built-in composition/checksum and JavaScript syntax,
+  production UI bundling and `git diff --check`. Node 24's ESM registration API
+  ran the existing ts-node test suites; dependencies and schema artifacts were
+  reused unchanged. Before/after relation captures were visually reviewed.
+- No backend, GraphQL schema, migration or production data changes.
+- Published as [PR #125](https://github.com/Dusky-dev/StashBooru/pull/125).
+  Implementation SHA `e9dab826a3347d650cfa161b9a32d03e4d7da026` was verified on
+  2026-10-01; the published tree matches the checked local tree exactly. CI is
+  pending at publication. Merging and production playback remain separate.

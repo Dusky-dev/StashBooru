@@ -26,7 +26,7 @@
           footerLink.addEventListener("click", handler, true);
         }
       }
-    }, [entries]);
+    }, [sequenceRef]);
 
     const start = React.useCallback(() => {
       cleanup();
@@ -85,12 +85,12 @@
       : null;
 
     const openScene = React.useCallback((scene) => {
-      if (!showLightbox || !scene) return;
+      if (!showLightbox || !scene || document.querySelector(".Lightbox")) return;
       const index = indexByID.get(String(scene.id));
       if (index == null) return;
       start();
-      showLightbox({ initialIndex: index, slideshowEnabled: false, slideshowAutostart: false });
-    }, [showLightbox, indexByID, start]);
+      showLightbox({ ...beginPreview(), initialIndex: index, slideshowEnabled: false, slideshowAutostart: false });
+    }, [showLightbox, indexByID, start, beginPreview]);
 
     React.useEffect(
       () => registerOpen?.(openScene),
@@ -340,17 +340,18 @@
     // One native Stash lightbox sequence for all visual media on this mixed
     // page. Images remain their real Image objects; scenes are safe synthetic
     // ILightboxImage-compatible entries backed by Stash's generated preview.
-    const pageVisualEntries = React.useMemo(
+    const availableVisualEntries = React.useMemo(
       () => pageItems.filter((x) => x.type === "scene" || x.type === "image"),
       [pageItems]
     );
+    const { entries: pageVisualEntries, sequenceRef, beginPreview, resetPreview } = usePreviewSequence(availableVisualEntries);
     const lightboxItems = React.useMemo(
       () => pageVisualEntries.map(entryToLightboxImage),
       [pageVisualEntries]
     );
     const visualIndexByKey = React.useMemo(
-      () => new Map(pageVisualEntries.map((entry, index) => [entry.key, index])),
-      [pageVisualEntries]
+      () => new Map(availableVisualEntries.map((entry, index) => [entry.key, index])),
+      [availableVisualEntries]
     );
 
     // The Lightbox remains Stash's native image/lightbox shell and owns mixed
@@ -385,7 +386,8 @@
       setActiveVisualIndex(null);
       setScenePortalTarget(null);
       setScenePortalGeometry(null);
-    }, []);
+      resetPreview();
+    }, [resetPreview]);
 
     const syncNativeLightbox = React.useCallback(() => {
       const lightbox = document.querySelector(".Lightbox");
@@ -398,7 +400,7 @@
       }
       const match = String(carousel.style.left || "").match(/(-?\d+(?:\.\d+)?)vw/);
       const index = match ? Math.max(0, Math.round(Math.abs(Number(match[1])) / 100)) : 0;
-      const entry = pageVisualEntries[index];
+      const entry = sequenceRef.current?.[index];
       const target = carousel.children?.[index] || null;
 
       carousel.querySelectorAll(".Lightbox-carousel-image.unified-media-native-scene-slide").forEach((node) => {
@@ -499,7 +501,7 @@
           }
         }
       }
-    }, [pageVisualEntries]);
+    }, [sequenceRef]);
 
 
     const startNativeLightboxEnhancements = React.useCallback(() => {

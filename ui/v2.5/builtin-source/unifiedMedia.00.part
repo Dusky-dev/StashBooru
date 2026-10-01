@@ -84,17 +84,21 @@
     }
     React.useEffect(() => {
       if (!scene?.id) return undefined;
-      const token = tokenRef.current;
-      publishGlobalSceneRegistration("add", token, scene);
-      return () => publishGlobalSceneRegistration("remove", token, scene);
+      // Apollo hydration updates the card without removing it from the queue.
+      publishGlobalSceneRegistration("add", tokenRef.current, scene);
     }, [scene]);
+    React.useEffect(() => {
+      if (!scene?.id) return undefined;
+      const token = tokenRef.current;
+      return () => publishGlobalSceneRegistration("remove", token, scene);
+    }, [scene?.id]);
 
     const Button = api.libraries.Bootstrap.Button;
     const Icon = nativeComponent("Icon");
     const label = intl.formatMessage({ id: "actions.preview", defaultMessage: "Preview" });
     return React.createElement(
       "div",
-      { className: "unified-media-scene-image-wrap" },
+      { className: "unified-media-scene-image-wrap", "data-unified-media-scene-token": tokenRef.current },
       rendered,
       !props.selecting && scene?.id && Icon
         ? React.createElement(
