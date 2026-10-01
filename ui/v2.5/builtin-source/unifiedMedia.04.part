@@ -79,7 +79,7 @@
           pages: 1,
           pageSize: lightboxItems.length || 1,
           totalCount: lightboxItems.length,
-          slideshowEnabled: true,
+          slideshowEnabled: false,
           onClose: handleClose,
         })
       : null;
@@ -89,7 +89,7 @@
       const index = indexByID.get(String(scene.id));
       if (index == null) return;
       start();
-      showLightbox({ initialIndex: index, slideshowEnabled: true });
+      showLightbox({ initialIndex: index, slideshowEnabled: false, slideshowAutostart: false });
     }, [showLightbox, indexByID, start]);
 
     React.useEffect(

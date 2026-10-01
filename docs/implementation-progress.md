@@ -2,8 +2,8 @@
 
 Updated: 2026-10-01
 
-Current baseline: `develop` at `3ab54a28ebcd1081cb065bc0bd0c29f04a2cd5b8`
-(merged PR #118). Active package: `feat/p07-global-media-20261001`.
+Current baseline: `develop` at `4a0fc01b57c9616c6aae8e0abde65d48a5ee43c7`
+(merged PR #122). Active package: `fix/p07-preview-navigation-card-shapes-20261001`.
 
 | Package | Status | Notes |
 | --- | --- | --- |
@@ -13,7 +13,7 @@ Current baseline: `develop` at `3ab54a28ebcd1081cb065bc0bd0c29f04a2cd5b8`
 | P04 — copyright sorting / taxonomy | Complete | PRs #94 and #95 are merged. PR #94 added the hierarchy/backend foundation; PR #95 corrected hierarchy UX and media presentation without changing the P04 database schema. |
 | P05 — Character variants / disambiguation links | Complete | Merged PR #104 adds native Character variants and typed Copyright/Artist disambiguation links; merged PR #114 refines Character/Copyright editing. |
 | P06 — ancestor/profile auto-association | Complete | PRs #115–#118 are merged; the final search consistency follow-up passed Build and Go lint CI. Direct legacy relationships remain explicit; no migration is introduced. |
-| P07 — native global All media page | Foundation merged; UI corrections verified locally | PRs #119–#121 are merged. Global All combines Images and Videos with server pagination, typed identity and native controls. Edit-pane cleanup, relation sizing and restored Video previews pass the mounted Chromium checks. |
+| P07 — native global All media page | Foundation merged; follow-up corrections verified locally | PRs #119–#122 are merged. Global All combines Images and Videos with server pagination, typed identity and native controls. Current follow-up fixes navbar order, profile card shapes and competing preview updates. |
 
 ## P04 completed behavior
 
@@ -231,6 +231,38 @@ in [P07 global media](p07-global-media.md).
   Video-to-Image preview switching, edit/cancel, short/tall relation images,
   18-item scrolling lists, delayed/empty/failed queries, selection, Wall/back
   navigation, legacy routes and mobile overflow. Browser fixtures are synthetic.
+
+### P07 navbar order, card shapes and preview stability
+
+- All is first and capitalized; Copyrights sit between Artists and Tags in both
+  the visual navbar and DOM order. Menu enable/disable preferences remain supported.
+- Native Copyright images use 16:9 landscape frames, Artists use square frames,
+  and Characters retain portrait frames. Copyright/Variant relation cards use
+  the same typed layouts, fit sources without cropping, and bound their width
+  to preserve proportions on short viewports. The prior Artist 150-pixel height
+  cap and fixed header height no longer constrain its square card image.
+- Reproduced a background lightbox caller refreshing its Image contents while
+  a Video preview was open, replacing the active viewer. Active caller ownership
+  now isolates synchronization; stable open callbacks read the latest caller
+  state and reset inherited slideshow/paging callbacks.
+- The Video bridge uses request-scoped opener refs, rejects duplicate opens and
+  cancels queued opens after dismissal. Video preview slideshow is disabled;
+  selected Video playback and explicit next/previous controls remain available.
+- Browser regressions cover background refresh/resume-cache updates, idle time
+  longer than the default slideshow interval, repeated/double-clicked opens,
+  Escape/Back/button dismissals, desktop/mobile navbar order and opposite-shape
+  card sources. Synthetic fixtures verify viewer state and mounted player UI;
+  they do not verify real-file decoding or playback.
+- Validation completed before interruption and recovered on resume: all 28 UI
+  unit tests, TypeScript, Biome lint/format, Stylelint and the production UI
+  build passed. The final browser runs passed after removal of the Artist
+  height cap. Resume checks confirmed the unchanged `develop` baseline,
+  reviewed desktop captures, and passed built-in composition/checksum,
+  JavaScript syntax and `git diff --check` checks.
+- No migration, GraphQL or backend behavior changes. Published as
+  [PR #123](https://github.com/Dusky-dev/StashBooru/pull/123), with implementation
+  commit `ca852aa2a0a75056cfdb3e44477d9c70649b195c`. Build and Lint CI were running
+  at publication; merging and real-file playback remain separate checks.
 
 ## P03 validation scope
 

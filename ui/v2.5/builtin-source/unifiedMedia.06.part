@@ -116,7 +116,8 @@
     const registryOrderRef = React.useRef(globalSceneInstanceCounter);
     const [registryVersion, setRegistryVersion] = React.useState(0);
     const [request, setRequest] = React.useState(null);
-    const [opener, setOpener] = React.useState(null);
+    const openerRef = React.useRef(null);
+    const requestRef = React.useRef(null);
     const openedTokenRef = React.useRef(0);
     const tokenRef = React.useRef(0);
 
@@ -159,22 +160,26 @@
         const detail = ev?.detail || {};
         const nextID = String(detail.id ?? detail.scene?.id ?? "");
         if (!nextID) return;
+        if (requestRef.current?.id === nextID || document.querySelector(".Lightbox")) return;
+        if (requestRef.current && openedTokenRef.current === requestRef.current.token) return;
         tokenRef.current += 1;
         openedTokenRef.current = 0;
-        setRequest({
+        const nextRequest = {
           id: nextID,
           scene: detail.scene || null,
           token: tokenRef.current,
-        });
+        };
+        requestRef.current = nextRequest;
+        setRequest(nextRequest);
       };
       window.addEventListener(GLOBAL_SCENE_PREVIEW_EVENT, onRequest);
       return () => window.removeEventListener(GLOBAL_SCENE_PREVIEW_EVENT, onRequest);
     }, []);
 
     const registerOpen = React.useCallback((nextOpener) => {
-      setOpener(() => nextOpener || null);
+      openerRef.current = nextOpener || null;
       return () => {
-        setOpener((current) => current === nextOpener ? null : current);
+        if (openerRef.current === nextOpener) openerRef.current = null;
       };
     }, []);
 
@@ -201,7 +206,7 @@
     }, [registryVersion, requestedScene, request?.token]);
 
     React.useEffect(() => {
-      if (!request || !requestedScene || !opener) return undefined;
+      if (!request || !requestedScene) return undefined;
       if (openedTokenRef.current === request.token) return undefined;
       if (!scenes.some((scene) => String(scene.id) === String(request.id))) return undefined;
 
@@ -209,32 +214,33 @@
       let frame = 0;
       let attempts = 0;
       const openWhenReady = () => {
-        if (cancelled) return;
-        // If the previous native lightbox is still finishing its history-backed
-        // dismiss cycle, wait until its DOM is gone before creating the next one.
-        if (document.querySelector(".Lightbox") && attempts < 120) {
+        if (cancelled || tokenRef.current !== request.token) return;
+        if (!openerRef.current && attempts < 120) {
           attempts += 1;
           frame = requestAnimationFrame(openWhenReady);
           return;
         }
+        if (!openerRef.current || document.querySelector(".Lightbox")) return;
         const scene = scenes.find((value) => String(value.id) === String(request.id));
         if (!scene) return;
         openedTokenRef.current = request.token;
-        opener(scene);
+        openerRef.current(scene);
       };
       frame = requestAnimationFrame(openWhenReady);
       return () => {
         cancelled = true;
         if (frame) cancelAnimationFrame(frame);
       };
-    }, [request?.token, requestedScene, opener, scenes]);
+    }, [request?.token, requestedScene, scenes]);
 
     const handlePreviewClosed = React.useCallback(() => {
       // Unmount our useLightbox caller as soon as the scene preview is closed.
       // Stash has one shared LightboxProvider; leaving a scene-specific caller
       // mounted can overwrite the image list owned by native ImageList hooks.
       setRequest(null);
-      setOpener(null);
+      requestRef.current = null;
+      openerRef.current = null;
+      tokenRef.current += 1;
     }, []);
 
     // Native image walls do not render ImageCard.Image. Add GIF markers to all
@@ -311,6 +317,7 @@
 
     return request && requestedScene
       ? React.createElement(PageScenePreviewHost, {
+          key: request.token,
           scenes,
           registerOpen,
           onClosed: handlePreviewClosed,

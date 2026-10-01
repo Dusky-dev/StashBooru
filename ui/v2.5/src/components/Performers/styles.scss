@@ -125,24 +125,19 @@
     }
 
     .booru-entity-card {
-      flex: 0 1 11rem;
-      width: 11rem;
-    }
-
-    .booru-entity-card-image-link {
-      aspect-ratio: auto;
+      // Bound portrait height through width so every card keeps its aspect
+      // ratio even on a short viewport. The relation panel handles scrolling.
+      flex: 0 1 min(11rem, 30vh);
+      width: min(11rem, 30vh);
     }
 
     .booru-entity-card-image {
-      height: auto;
-      max-height: min(16rem, 40vh);
+      height: 100%;
       object-fit: contain;
     }
 
     .booru-entity-card-placeholder {
-      aspect-ratio: 1;
-      height: auto;
-      max-height: min(16rem, 40vh);
+      height: 100%;
     }
 
     .booru-entity-card-name {

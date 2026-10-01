@@ -17,7 +17,7 @@
           pages: 1,
           pageSize: lightboxItems.length || 1,
           totalCount: lightboxItems.length,
-          slideshowEnabled: true,
+          slideshowEnabled: false,
           onClose: cleanupNativeLightbox,
         })
       : null;
@@ -28,7 +28,7 @@
         const index = visualIndexByKey.get(key);
         if (index == null) return;
         startNativeLightboxEnhancements();
-        showLightbox({ initialIndex: index, slideshowEnabled: true });
+        showLightbox({ initialIndex: index, slideshowEnabled: false, slideshowAutostart: false });
       },
       [showLightbox, visualIndexByKey, startNativeLightboxEnhancements]
     );

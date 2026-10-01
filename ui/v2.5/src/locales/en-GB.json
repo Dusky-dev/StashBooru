@@ -1,5 +1,6 @@
 {
   "media": "Media",
+  "media_all": "All",
   "actions": {
     "add": "Add",
     "add_directory": "Add directory",
