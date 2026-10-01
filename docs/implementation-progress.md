@@ -1,6 +1,9 @@
 # StashBooru implementation progress
 
-Updated: 2026-09-30
+Updated: 2026-10-01
+
+Current baseline: `develop` at `3ce826575874c9eb7550cb7c43cf832e45a0cc32`
+(merged PR #117). Active follow-up: `fix/p06-association-consistency-20261001`.
 
 | Package | Status | Notes |
 | --- | --- | --- |
@@ -9,7 +12,7 @@ Updated: 2026-09-30
 | P03 — visual comparison / difference highlighting | Complete | Merged PR #93. Scope remains the bounded still-image comparison described below; automatic alignment and video frame selection are not implemented. |
 | P04 — copyright sorting / taxonomy | Complete | PRs #94 and #95 are merged. PR #94 added the hierarchy/backend foundation; PR #95 corrected hierarchy UX and media presentation without changing the P04 database schema. |
 | P05 — Character variants / disambiguation links | Complete | Merged PR #104 adds native Character variants and typed Copyright/Artist disambiguation links; merged PR #114 refines Character/Copyright editing. |
-| P06 — ancestor/profile auto-association | Complete, pending merge of PR #117 | PRs #115 and #116 are merged. PR #117 completes the existing-library preview/apply task, shared System/Tagging defaults and native SQLite workflow acceptance; direct legacy relationships remain explicit and no migration is introduced. |
+| P06 — ancestor/profile auto-association | Complete; search consistency follow-up awaiting remote checks | PRs #115, #116 and #117 are merged. The follow-up makes hierarchical Image/Video Tag searches and Tag detail media counts include live profile-derived memberships. Direct legacy relationships remain explicit; no migration is introduced. |
 
 ## P04 completed behavior
 
@@ -89,6 +92,36 @@ P05 is complete and merged in PRs #104 and #114.
 - Review state is transient: terminal reports expire after 30 minutes, at most eight reviews are retained, and restarting the server requires another preview. Scan tests stub only thumbnail/cover generation. External model/booru availability and manual browser interaction are outside this follow-up's verification.
 
 The behavior and workflow matrix are documented in [P06 effective associations](p06-effective-associations.md).
+
+### P06 Tag search consistency follow-up — 2026-10-01
+
+- Reproduced a missing acceptance case on merged `develop`: the Image/Video
+  detail projection included Artist profile Tags, but the native Tag filter
+  returned no media for the same Tag.
+- Image/Video Tag `INCLUDES`, `INCLUDES_ALL` and `EXCLUDES` now resolve effective
+  memberships through native links, selected profiles, enabled ancestor profiles
+  and enabled Tag ancestors. Tag detail media counts use the same native query.
+- Searches expand only the requested Tag and supplying profile metadata, then
+  join indexed native media relationships. They do not load every media item,
+  materialize inherited links, or change IDs, fingerprints or provenance.
+- Independent source paths and Copyright/Tag diamonds count each media once.
+  The existing server-side sort/pagination and explicit descendant-depth control
+  remain available. Exact-set/null criteria, Tag-count maintenance criteria and
+  nested `tags_filter` retain their native direct-link semantics.
+- New `internal/api/p06_tag_search_integration_test.go` checks the native SQL
+  results against the independent Go effective-association projection for both
+  media types and all 16 defaults. It also checks Tag detail counts, shared
+  sources, exclusions, pagination, profile edits, reparenting, explicit-link
+  retention after detach and termination on a malformed legacy Tag cycle.
+- Local verification passed: focused native search regressions;
+  `make generate-backend`; the full `make it` integration suite;
+  `make lint` (zero issues); and `git diff --check`.
+  Validated code commit: `c8e7f9c636bd0a1d7ef73103e1a525e89cf565e0`.
+- Remote review uses `fix/p06-association-consistency-20261001` against
+  `develop`. Local verification is complete; remote platform-build/CI gates
+  still need to pass before merge. Do not merge without instruction.
+- No database, GraphQL, UI or writer changes. P07 remains the next roadmap
+  package; this branch is limited to the P06 Tag search correction.
 
 ### P06 verification
 

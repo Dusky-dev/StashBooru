@@ -524,7 +524,7 @@ func (qb *sceneFilterHandler) tagsCriterionHandler(tags *models.HierarchicalMult
 		primaryFK:      sceneIDColumn,
 	}
 
-	return h.handler(tags)
+	return effectiveMediaTagsCriterionHandler(sceneTable, tags, h.handler(tags))
 }
 
 func (qb *sceneFilterHandler) tagCountCriterionHandler(tagCount *models.IntCriterionInput) criterionHandlerFunc {
