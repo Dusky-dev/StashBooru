@@ -53,6 +53,22 @@ their depth selector. Shared media is counted once. Tag/Artist detail pages
 offer direct and descendant count modes, and Copyright directory counts use
 the subtree totals shown by media tabs.
 
+Image/Video hierarchical Tag searches (`INCLUDES`, `INCLUDES_ALL`, `EXCLUDES`
+and their additional exclusions) also match the live profile-derived Tags shown
+on detail pages. Tag detail Image/Video counts use that same native search.
+Requested Tags are expanded to the profiles and native links that supply them;
+the query does not calculate every media/Tag pair in the library. Multiple
+sources, hierarchy diamonds and primary/multi-Artist overlap yield one media
+result, with stable native sorting and pagination. Profile edits, reparenting
+and detach affect the next search without a backfill or sticky copied Tags.
+
+The four defaults control automatic ancestor membership in searches as in
+detail reads. The explicit filter depth still lets a user search a whole Tag
+branch even when automatic Tag ancestor membership is disabled. Exact-set and
+null criteria, Tag-count maintenance criteria and nested `tags_filter` keep
+their existing direct-link semantics; Tag-directory count filters/sorts also
+retain their native stored-link scope.
+
 ## Preview and apply for the existing library
 
 Settings → Tasks → **Review library inheritance** reviews all existing Images
@@ -102,6 +118,7 @@ checks that native direct selections remain distinct from inherited results.
 | Scan and rescan | Native Image/Scene scan handlers preserve selections and recalculate inheritance; animated-image scan adds only its native explicit animated Tag. |
 | Shared sources and explicit parents | Copyright/Tag diamonds, independent source origins, detach of one source and detach of all sources; an explicitly selected parent Tag survives. |
 | Hierarchy changes | Native Character, Artist, Copyright and Tag reparenting changes the next read without altering direct media links. Invalid Copyright cycle/name edits roll back. |
+| Tag searches and detail media counts | Native queries agree with effective-association reads for both media types and all 16 default combinations; shared sources, exclusions, pagination, profile edits, reparenting, detach and malformed legacy Tag cycles are covered. |
 | Existing-library task | Real paginated Image/Video scan, preview/apply, stale selections/profiles/reparenting, per-item errors, cancellation and native HTTP Jobs integration. |
 | Configuration activation | Atomic snapshot/save, persisted defaults, stale-default and override rejection, existing permission/unrelated-setting preservation, rollback on save failure. |
 
@@ -110,6 +127,7 @@ Tests are in `internal/api/p06_sources_integration_test.go`,
 `p06_native_writers_integration_test.go` and
 `association_inheritance_review_integration_test.go`, plus the configuration
 tests and earlier provenance/settings/resolver regressions.
+Tag search regressions are in `internal/api/p06_tag_search_integration_test.go`.
 
 The scan tests use real native File rows and stub only derived thumbnail/cover
 generation; they do not decode media or invoke external encoders. Tagging

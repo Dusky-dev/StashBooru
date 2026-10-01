@@ -240,7 +240,7 @@ func (qb *imageFilterHandler) tagsCriterionHandler(tags *models.HierarchicalMult
 		primaryFK:      imageIDColumn,
 	}
 
-	return h.handler(tags)
+	return effectiveMediaTagsCriterionHandler(imageTable, tags, h.handler(tags))
 }
 
 func (qb *imageFilterHandler) tagCountCriterionHandler(tagCount *models.IntCriterionInput) criterionHandlerFunc {
