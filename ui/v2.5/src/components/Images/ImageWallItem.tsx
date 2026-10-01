@@ -7,6 +7,7 @@ import { useIntl } from "react-intl";
 import { Icon } from "../Shared/Icon";
 import { useDragMoveSelect } from "../Shared/GridCard/dragMoveSelect";
 import NavUtils from "src/utils/navigation";
+import { AnimationBadge } from "../Shared/AnimationBadge";
 
 interface IExtraProps {
   animationLabel?: string;
@@ -121,6 +122,7 @@ export const ImageWallItem: React.FC<RenderImageProps & IExtraProps> = (
         alt={props.photo.alt}
         onClick={handleClick}
       />
+      <AnimationBadge label={props.animationLabel} />
     </div>
   );
 };

@@ -1,0 +1,50 @@
+enum MediaKind {
+  IMAGE
+  VIDEO
+}
+
+"Shared native media filters. A duration criterion excludes Images."
+input MediaFilterType {
+  media_types: [MediaKind!]
+  title: StringCriterionInput
+  details: StringCriterionInput
+  path: StringCriterionInput
+  rating100: IntCriterionInput
+  date: DateCriterionInput
+  created_at: TimestampCriterionInput
+  updated_at: TimestampCriterionInput
+  organized: Boolean
+  performer_favorite: Boolean
+  tags: HierarchicalMultiCriterionInput
+  performers: MultiCriterionInput
+  studios: HierarchicalMultiCriterionInput
+  copyrights: HierarchicalMultiCriterionInput
+  duration: IntCriterionInput
+}
+
+type MediaItem {
+  "Collision-free identity, such as image:123 or scene:123."
+  id: ID!
+  kind: MediaKind!
+  image: Image
+  scene: Scene
+}
+
+type FindMediaResultType {
+  count: Int!
+  image_count: Int!
+  video_count: Int!
+  items: [MediaItem!]!
+}
+
+extend type Query {
+  "Globally filtered, sorted and paginated Images and Videos. Page size is bounded to 500."
+  findMedia(
+    media_filter: MediaFilterType
+    filter: FindFilterType
+  ): FindMediaResultType!
+}
+
+extend enum FilterMode {
+  MEDIA
+}

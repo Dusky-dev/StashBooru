@@ -2,8 +2,8 @@
 
 Updated: 2026-10-01
 
-Current baseline: `develop` at `3ce826575874c9eb7550cb7c43cf832e45a0cc32`
-(merged PR #117). Active follow-up: `fix/p06-association-consistency-20261001`.
+Current baseline: `develop` at `3ab54a28ebcd1081cb065bc0bd0c29f04a2cd5b8`
+(merged PR #118). Active package: `feat/p07-global-media-20261001`.
 
 | Package | Status | Notes |
 | --- | --- | --- |
@@ -12,7 +12,8 @@ Current baseline: `develop` at `3ce826575874c9eb7550cb7c43cf832e45a0cc32`
 | P03 — visual comparison / difference highlighting | Complete | Merged PR #93. Scope remains the bounded still-image comparison described below; automatic alignment and video frame selection are not implemented. |
 | P04 — copyright sorting / taxonomy | Complete | PRs #94 and #95 are merged. PR #94 added the hierarchy/backend foundation; PR #95 corrected hierarchy UX and media presentation without changing the P04 database schema. |
 | P05 — Character variants / disambiguation links | Complete | Merged PR #104 adds native Character variants and typed Copyright/Artist disambiguation links; merged PR #114 refines Character/Copyright editing. |
-| P06 — ancestor/profile auto-association | Complete; search consistency follow-up awaiting remote checks | PRs #115, #116 and #117 are merged. The follow-up makes hierarchical Image/Video Tag searches and Tag detail media counts include live profile-derived memberships. Direct legacy relationships remain explicit; no migration is introduced. |
+| P06 — ancestor/profile auto-association | Complete | PRs #115–#118 are merged; the final search consistency follow-up passed Build and Go lint CI. Direct legacy relationships remain explicit; no migration is introduced. |
+| P07 — native global All media page | Implemented; awaiting PR review and remote checks | A server-paginated Media page combines Images and Videos with typed identity, shared filters and native cards/actions. Local automated checks pass; browser interaction remains unverified. |
 
 ## P04 completed behavior
 
@@ -117,9 +118,10 @@ The behavior and workflow matrix are documented in [P06 effective associations](
   `make generate-backend`; the full `make it` integration suite;
   `make lint` (zero issues); and `git diff --check`.
   Validated code commit: `c8e7f9c636bd0a1d7ef73103e1a525e89cf565e0`.
-- Remote review uses `fix/p06-association-consistency-20261001` against
-  `develop`. Local verification is complete; remote platform-build/CI gates
-  still need to pass before merge. Do not merge without instruction.
+- Merged as [PR #118](https://github.com/Dusky-dev/StashBooru/pull/118).
+  Remote [Build](https://github.com/Dusky-dev/StashBooru/actions/runs/36844384502)
+  and [Go lint](https://github.com/Dusky-dev/StashBooru/actions/runs/36844384515)
+  completed successfully.
 - No database, GraphQL, UI or writer changes. P07 remains the next roadmap
   package; this branch is limited to the P06 Tag search correction.
 
@@ -133,6 +135,46 @@ Code head `dfdd33bccae9971af298c666a1d4acbfa535226c` passed the [Build workflow]
 - The unchanged UI passed all 20 tests, JavaScript/CSS lint, TypeScript, Biome formatting and the production build at code head `2a4c1b6d6bbc32ce2b1409c457fcbad9d0b8bd32` in the [UI/build workflow](https://github.com/Dusky-dev/StashBooru/actions/runs/36758817817). Later code commits change only backend integration tests; CI reuses that validated UI build.
 
 No browser interaction or external inference/booru service test is claimed.
+
+## P07 global Media page — 2026-10-01
+
+- `/media`, `/media/images` and `/media/videos` share the native filter toolbar,
+  saved shared criteria, Grid/Wall controls, pagination and typed selection.
+  Image and Video detail links keep their native IDs.
+- `findMedia` applies native shared predicates and one SQL union ordering before
+  pagination. Counts use the same predicates and identity-only projections;
+  only the requested sort key is projected for ordering, and only the selected
+  page is hydrated as native Image/Scene data.
+- Typed keys distinguish `image:123` from `scene:123`. Sort ties use kind then ID;
+  missing values sort last in both directions. Page sizes are bounded to 500.
+  A duration criterion explicitly excludes Images.
+- Shared native animation badges label animated Images without reclassifying
+  them or duplicating catalogue entries. Existing badge enhancements detect
+  native badges and avoid adding another one.
+- Mixed metadata edits dispatch native Image and Video mutations separately,
+  expose partial failures and retry only the failed type. Conversion passes both
+  native target kinds; upscaling selects only Images and reports excluded Videos.
+- URL state and eight browser-session snapshots retain list context for back
+  navigation. Existing detail-page enhancements remain; P07 adds no recursive
+  React tree walker and no database migration.
+- Verification passed: backend and UI GraphQL generation, full `make it`,
+  `make lint` (zero issues), all 25 UI tests, JavaScript/CSS lint, TypeScript,
+  Biome formatting, production UI build, Linux application build and
+  `git diff --check`.
+- An isolated running application passed an HTTP smoke using the actual Media
+  query and native UI fragments: alternating rows across three pages, per-kind
+  rating filters/counts, equal-ID native metadata writes and all five new/native
+  list routes. The smoke database contains only synthetic records.
+- Full Go checks ran sequentially with reduced compiler concurrency after a
+  concurrent attempt exceeded workspace memory. The local application build
+  used `-buildvcs=false` because this workspace's subprocess Git lookup starts
+  outside the checkout. CI retains its standard build commands.
+- Browser interaction, scroll restoration and rendered Grid/Wall previews have
+  not been manually verified: Chromium was unavailable and its download failed.
+  Remote checks and owner review remain pending; the branch is not merged.
+
+Query semantics, supported operations and remaining browser checks are recorded
+in [P07 global media](p07-global-media.md).
 
 ## P03 validation scope
 

@@ -497,8 +497,11 @@ export function useListKeyboardShortcuts(props: {
   }, [onSelectAll, onSelectNone, onInvertSelection]);
 }
 
-export function useListSelect<T extends IHasID = IHasID>(items: T[]) {
-  const [itemsSelected, setItemsSelected] = useState<T[]>([]);
+export function useListSelect<T extends IHasID = IHasID>(
+  items: T[],
+  initialSelected: T[] = []
+) {
+  const [itemsSelected, setItemsSelected] = useState<T[]>(initialSelected);
   const [lastClickedId, setLastClickedId] = useState<string>();
 
   // TODO - this doesn't get updated when items changes
@@ -621,6 +624,10 @@ export function useListSelect<T extends IHasID = IHasID>(items: T[]) {
 
   // TODO - this is for backwards compatibility
   const getSelected = useCallback(() => itemsSelected, [itemsSelected]);
+  const restoreSelection = useCallback((selected: T[]) => {
+    setItemsSelected(selected);
+    setLastClickedId(undefined);
+  }, []);
 
   // convenience state
   const hasSelection = itemsSelected.length > 0;
@@ -629,6 +636,7 @@ export function useListSelect<T extends IHasID = IHasID>(items: T[]) {
     selectedItems: itemsSelected,
     selectedIds,
     getSelected,
+    restoreSelection,
     onSelectChange,
     onSelectAll,
     onSelectNone,
@@ -637,8 +645,10 @@ export function useListSelect<T extends IHasID = IHasID>(items: T[]) {
   };
 }
 
-export type IListSelect<T extends IHasID = IHasID> = ReturnType<
-  typeof useListSelect<T>
+// Toolbars consume selection actions without replacing the typed item data.
+export type IListSelect<T extends IHasID = IHasID> = Omit<
+  ReturnType<typeof useListSelect<T>>,
+  "restoreSelection"
 >;
 
 // returns true if the filter has changed in a way that impacts the total count

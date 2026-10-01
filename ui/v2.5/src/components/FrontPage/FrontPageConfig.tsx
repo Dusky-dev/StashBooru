@@ -20,6 +20,7 @@ interface IAddSavedFilterModalProps {
 }
 
 const FilterModeToMessageID = {
+  [GQL.FilterMode.Media]: "media",
   [GQL.FilterMode.Galleries]: "galleries",
   [GQL.FilterMode.Images]: "images",
   [GQL.FilterMode.Movies]: "groups",
@@ -94,7 +95,12 @@ const AddContentModal: React.FC<IAddSavedFilterModalProps> = ({
     ].concat(
       candidates.findSavedFilters
         .filter((f) => {
-          return !existingSavedFilterIDs.includes(f.id);
+          // Media filters belong to the mixed list; front-page widgets only
+          // support their existing native entity lists.
+          return (
+            f.mode !== GQL.FilterMode.Media &&
+            !existingSavedFilterIDs.includes(f.id)
+          );
         })
         .map((f) => {
           return {

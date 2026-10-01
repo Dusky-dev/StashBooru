@@ -9,6 +9,7 @@ src/core/generated-graphql.ts
 
 # production
 /build
+/public/builtin/
 
 # misc
 .gitignore

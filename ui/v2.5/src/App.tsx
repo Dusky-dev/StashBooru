@@ -77,6 +77,7 @@ const Copyrights = lazyComponent(
   () => import("./components/Copyrights/CopyrightsRouter")
 );
 const Images = lazyComponent(() => import("./components/Images/Images"));
+const Media = lazyComponent(() => import("./components/Media/Media"));
 const Setup = lazyComponent(() => import("./components/Setup/Setup"));
 const Migrate = lazyComponent(() => import("./components/Setup/Migrate"));
 
@@ -258,6 +259,11 @@ export const App: React.FC = () => {
             <Route exact path="/" component={FrontPage} />
             <Route path="/scenes" component={Scenes} />
             <Route path="/images" component={Images} />
+            <Route
+              exact
+              path={["/media", "/media/images", "/media/videos"]}
+              component={Media}
+            />
             <Route path="/galleries" component={Galleries} />
             <Route path="/performers" component={Performers} />
             <Route path="/copyrights" component={Copyrights} />

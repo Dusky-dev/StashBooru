@@ -115,8 +115,9 @@ function StatsView({ value }: { value: RestoreStats }) {
 
 export const MediaUpscalingDialog: React.FC<{
   selectedIds: string[];
+  excludedVideoCount?: number;
   onHide: () => void;
-}> = ({ selectedIds, onHide }) => {
+}> = ({ selectedIds, excludedVideoCount = 0, onHide }) => {
   const [options, setOptions] = useState<UpscalingDefaults>(() =>
     loadUpscalingDefaults()
   );
@@ -292,6 +293,12 @@ export const MediaUpscalingDialog: React.FC<{
           <Modal.Title>Upscale images</Modal.Title>
         </Modal.Header>
         <Modal.Body>
+          {excludedVideoCount > 0 && (
+            <Alert variant="info">
+              Upscaling applies to Images. {excludedVideoCount} selected Videos
+              are excluded.
+            </Alert>
+          )}
           <Tabs
             id="media-upscaling-tabs"
             defaultActiveKey="upscale"

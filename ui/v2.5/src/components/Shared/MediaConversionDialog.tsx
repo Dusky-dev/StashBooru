@@ -136,8 +136,13 @@ function StatsView({ value }: { value: Stats }) {
 export const MediaConversionDialog: React.FC<{
   kind: "image" | "scene";
   selectedIds: string[];
+  targets?: Target[];
   onHide: () => void;
-}> = ({ kind, selectedIds, onHide }) => {
+}> = ({ kind, selectedIds, targets: mixedTargets, onHide }) => {
+  const targets =
+    mixedTargets ?? selectedIds.map((id) => ({ kind, id: Number(id) }));
+  const hasVideos = targets.some((target) => target.kind === "scene");
+  const selectedCount = targets.length;
   const [useEncodingDefaults, setUseEncodingDefaults] = useState(true);
   const [useDecodingSpeedDefaults, setUseDecodingSpeedDefaults] =
     useState(true);
@@ -219,9 +224,7 @@ export const MediaConversionDialog: React.FC<{
     chosenFormats.length === outputIDs.length &&
     chosenFormats.every((f) => f.available && encodersFor(f).length > 0) &&
     !gpuDecodeSpeedConflict;
-  const targetsJSON = JSON.stringify(
-    selectedIds.map((id) => ({ kind, id: Number(id) }))
-  );
+  const targetsJSON = JSON.stringify(targets);
   const defaultsJSON = JSON.stringify([
     state?.config.formatDefaults,
     state?.config.encodingDefaults,
@@ -406,11 +409,14 @@ export const MediaConversionDialog: React.FC<{
         >
           <Tab eventKey="convert" title="Convert">
             <p>
-              Convert {selectedIds.length} selected{" "}
-              {kind === "scene" ? "video" : "image"}
-              {selectedIds.length === 1 ? "" : "s"}. Tags, source URLs,
-              characters, artists and original fingerprints stay attached to the
-              same entries.
+              Convert {selectedCount} selected{" "}
+              {mixedTargets
+                ? "media entries"
+                : kind === "scene"
+                  ? "videos"
+                  : "images"}
+              . Tags, source URLs, characters, artists and original fingerprints
+              stay attached to the same entries.
             </p>
             <Row>
               <Form.Group as={Col} xs={12} md={8} controlId="converter-format">
@@ -443,7 +449,7 @@ export const MediaConversionDialog: React.FC<{
                       : ` — ${defaultOutputLabel || "unavailable"}`}
                   </option>
                   {formats
-                    .filter((f) => kind === "image" || f.family === "video")
+                    .filter((f) => !hasVideos || f.family === "video")
                     .map((f) => (
                       <option
                         key={f.id}
@@ -729,7 +735,7 @@ export const MediaConversionDialog: React.FC<{
               disabled={
                 busy ||
                 !canEncode ||
-                !selectedIds.length ||
+                !selectedCount ||
                 loadingCapabilities ||
                 (options.format === "auto" &&
                   (loadingPreview || !!previewError)) ||
@@ -747,14 +753,11 @@ export const MediaConversionDialog: React.FC<{
                   useQuality: true,
                   useEncodingDefaults,
                   useDecodingSpeedDefaults,
-                  targets: selectedIds.map((id) => ({ kind, id: Number(id) })),
+                  targets,
                 })
               }
             >
-              Convert{" "}
-              {selectedIds.length === 1
-                ? "file"
-                : `${selectedIds.length} files`}
+              Convert {selectedCount === 1 ? "file" : `${selectedCount} files`}
             </Button>
             {state?.job && (
               <div role="status" className="mb-3">
