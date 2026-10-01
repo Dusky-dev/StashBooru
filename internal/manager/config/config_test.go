@@ -6,6 +6,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestConfig_GetMenuItemsIncludesMediaByDefaultAndPreservesCustomMenus(t *testing.T) {
+	i := InitializeEmpty()
+	assert.Equal(t, "media", i.GetMenuItems()[0])
+
+	custom := []string{"images", "performers", "tags"}
+	i.SetInterface(MenuItems, custom)
+	assert.Equal(t, custom, i.GetMenuItems())
+
+	i.SetInterface(MenuItems, []string{})
+	assert.Empty(t, i.GetMenuItems())
+}
+
 func TestConfig_GetAllPluginConfiguration(t *testing.T) {
 	i := InitializeEmpty()
 

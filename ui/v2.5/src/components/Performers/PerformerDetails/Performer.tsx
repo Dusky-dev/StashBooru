@@ -26,7 +26,6 @@ import { PerformerGalleriesPanel } from "./PerformerGalleriesPanel";
 import { PerformerGroupsPanel } from "./PerformerGroupsPanel";
 import { PerformerImagesPanel } from "./PerformerImagesPanel";
 import { PerformerAppearsWithPanel } from "./performerAppearsWithPanel";
-import { PerformerVariantsPanel } from "./PerformerVariantsPanel";
 import { PerformerEditPanel } from "./PerformerEditPanel";
 import { PerformerMergeModal } from "../PerformerMergeDialog";
 import { PerformerSubmitButton } from "./PerformerSubmitButton";
@@ -70,7 +69,6 @@ const validTabs = [
   "images",
   "groups",
   "appearswith",
-  "variants",
 ] as const;
 type TabKey = (typeof validTabs)[number];
 
@@ -201,18 +199,6 @@ const PerformerTabs: React.FC<{
       >
         <PerformerAppearsWithPanel
           active={activeTabKey === "appearswith"}
-          performer={performer}
-        />
-      </Tab>
-
-      <Tab
-        eventKey="variants"
-        title={
-          <FormattedMessage id="character_variants" defaultMessage="Variants" />
-        }
-      >
-        <PerformerVariantsPanel
-          active={activeTabKey === "variants"}
           performer={performer}
         />
       </Tab>

@@ -1,10 +1,10 @@
 # P07 native global media
 
-The top-level Media destination contains All, Images and Videos tabs. Their
+The top-level All navigation entry contains All, Images and Videos tabs. Their
 routes are `/media`, `/media/images` and `/media/videos`; existing `/images`,
 `/scenes` and native detail links remain usable.
 
-Media is included in the default navigation. A customized menu can enable it in
+All is included in the backend's default navigation. A customized menu can enable it in
 Settings → Interface → Menu items.
 
 ## Query and identity
@@ -77,7 +77,8 @@ The full backend/UI checks and production builds passed. A running isolated
 application also passed the actual UI query/fragments, filtered counts, native
 metadata writes and new/existing list-route HTTP smoke checks.
 
-Browser rendering/interaction remains unverified because Chromium's download
-failed. Before merge, exercise Grid/Wall previews, mixed selection/dialogs,
-filters across tabs and detail-page back navigation with scroll/selection.
-Remote platform checks and owner review remain required. No migration is added.
+P07 was merged in [PR #119](https://github.com/Dusky-dev/StashBooru/pull/119);
+its Build and Go lint workflows passed. Browser rendering/interaction remains
+unverified because Chromium's download failed. Grid/Wall previews, mixed
+selection/dialogs, filters across tabs and detail-page back navigation with
+scroll/selection still need browser verification. No migration is added.

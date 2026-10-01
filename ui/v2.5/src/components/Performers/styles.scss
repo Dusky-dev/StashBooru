@@ -83,6 +83,17 @@
     padding-left: 0;
   }
   /* stylelint-enable selector-class-pattern */
+
+  .performer-variants-panel .detail-item {
+    min-width: 0;
+    padding-right: 0;
+    width: 100%;
+  }
+
+  .performer-variants-panel .detail-item-value {
+    display: flex;
+    overflow: visible;
+  }
 }
 
 .new-view {

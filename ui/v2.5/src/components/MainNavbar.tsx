@@ -51,7 +51,7 @@ interface IMenuItem {
   userCreatable?: boolean;
 }
 const messages = defineMessages({
-  media: { id: "media", defaultMessage: "Media" },
+  all: { id: "all", defaultMessage: "All" },
   scenes: {
     id: "scenes",
     defaultMessage: "Scenes",
@@ -105,7 +105,7 @@ const messages = defineMessages({
 const allMenuItems: IMenuItem[] = [
   {
     name: "media",
-    message: messages.media,
+    message: messages.all,
     href: "/media",
     icon: faImages,
     hotkey: "g a",

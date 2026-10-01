@@ -60,7 +60,7 @@ The first corrective CI attempts exposed formatting-only Biome failures. Those w
 ## P05 Character variants and disambiguation links
 
 - Characters remain native Performer records with their own IDs, aliases, images, tags and metadata. Each Character can optionally point to one base Character; validation rejects missing parents, self-links and cycles.
-- Character details show a “Variant of” link and a Variants tab with a card grid. The edit form selects child variants from the parent Character.
+- Character details show a “Variant of” link and a Variants card grid in a `detail-group` immediately after Copyrights. The edit form selects child variants from the parent Character.
 - A Character disambiguation selector chooses Copyright, Artist, or Custom. Copyright and Artist choices link the target name; Custom is a plain label. Disambiguation context does not create a media association.
 - Migration 95 adds the parent and context foreign keys with `ON DELETE SET NULL`, a check against self-parenting and indexes for lookups.
 
@@ -169,9 +169,23 @@ No browser interaction or external inference/booru service test is claimed.
   concurrent attempt exceeded workspace memory. The local application build
   used `-buildvcs=false` because this workspace's subprocess Git lookup starts
   outside the checkout. CI retains its standard build commands.
-- Browser interaction, scroll restoration and rendered Grid/Wall previews have
-  not been manually verified: Chromium was unavailable and its download failed.
-  Remote checks and owner review remain pending; the branch is not merged.
+- [PR #119](https://github.com/Dusky-dev/StashBooru/pull/119) was merged on
+  2026-10-01. Its Build and Go lint workflows passed. Browser interaction,
+  scroll restoration and rendered Grid/Wall previews have not been manually
+  verified: Chromium was unavailable and its download failed.
+
+### P07 navigation and Character layout follow-up
+
+- The backend's default menu includes the mixed media page. Its navigation and
+  Interface setting labels are “All”; existing custom menu selections still apply.
+- Character variants appear in their own `detail-group` immediately after
+  Copyrights, rather than in a tab. Native card links, disambiguation, loading,
+  errors and the existing 100-card limit remain. Empty variant groups are hidden.
+- Existing `/performers/:id/variants` links fall back to the Character page.
+- Verification passed: configuration package tests (including default/custom
+  menu regression coverage), scoped Go lint (zero issues), all 25 UI tests,
+  JavaScript/CSS lint, TypeScript, formatting, production UI build and
+  `git diff --check`. Browser rendering remains unverified.
 
 Query semantics, supported operations and remaining browser checks are recorded
 in [P07 global media](p07-global-media.md).

@@ -18,6 +18,7 @@ import {
 import { PatchComponent } from "src/patch";
 import { CustomFields } from "src/components/Shared/CustomFields";
 import { Link } from "react-router-dom";
+import { PerformerVariantsPanel } from "./PerformerVariantsPanel";
 
 interface IPerformerDetails {
   performer: GQL.PerformerDataFragment;
@@ -83,154 +84,170 @@ export const PerformerDetailsPanel: React.FC<IPerformerDetails> =
       .trim();
 
     return (
-      <PerformerDetailGroup {...props}>
-        <DetailItem
-          id="copyrights"
-          label={intl.formatMessage({
-            id: performer.copyrights?.length === 1 ? "copyright" : "copyrights",
-            defaultMessage:
-              performer.copyrights?.length === 1 ? "Copyright" : "Copyrights",
-          })}
-          value={renderCopyrightsField()}
-          fullWidth={fullWidth}
-        />
-        {performer.parent && (
-          <DetailItem
-            id="character-variant-of"
-            label={intl.formatMessage({
-              id: "character_variant_of",
-              defaultMessage: "Variant of",
-            })}
-            value={
-              <Link to={`/performers/${performer.parent.id}`}>
-                {performer.parent.name}
-              </Link>
-            }
-            fullWidth={fullWidth}
-          />
+      <>
+        {!!performer.copyrights?.length && (
+          <PerformerDetailGroup {...props}>
+            <DetailItem
+              id="copyrights"
+              label={intl.formatMessage({
+                id:
+                  performer.copyrights.length === 1
+                    ? "copyright"
+                    : "copyrights",
+                defaultMessage:
+                  performer.copyrights.length === 1
+                    ? "Copyright"
+                    : "Copyrights",
+              })}
+              value={renderCopyrightsField()}
+              fullWidth={fullWidth}
+            />
+          </PerformerDetailGroup>
         )}
-        {performer.gender ? (
-          <DetailItem
-            id="gender"
-            value={intl.formatMessage({
-              id: "gender_types." + performer.gender,
-            })}
-            fullWidth={fullWidth}
-          />
-        ) : (
-          ""
-        )}
-        <DetailItem
-          id="age"
-          value={
-            !fullWidth
-              ? TextUtils.age(performer.birthdate, performer.death_date)
-              : FormatAge(performer.birthdate, performer.death_date)
-          }
-          title={
-            !fullWidth
-              ? TextUtils.formatFuzzyDate(
-                  intl,
-                  performer.birthdate ?? undefined
-                )
-              : ""
-          }
-          fullWidth={fullWidth}
-        />
-        <DetailItem
-          id="death_date"
-          value={performer.death_date}
-          fullWidth={fullWidth}
-        />
-        {performer.country ? (
-          <DetailItem
-            id="country"
-            value={
-              <CountryFlag
-                country={performer.country}
-                className="mr-2"
-                includeName={true}
-              />
-            }
-            fullWidth={fullWidth}
-          />
-        ) : (
-          ""
-        )}
-        <DetailItem
-          id="ethnicity"
-          value={performer?.ethnicity}
-          fullWidth={fullWidth}
-        />
-        <DetailItem
-          id="hair_color"
-          value={performer?.hair_color}
-          fullWidth={fullWidth}
-        />
-        <DetailItem
-          id="eye_color"
-          value={performer?.eye_color}
-          fullWidth={fullWidth}
-        />
-        <DetailItem
-          id="height"
-          value={FormatHeight(performer.height_cm)}
-          fullWidth={fullWidth}
-        />
-        <DetailItem
-          id="weight"
-          value={FormatWeight(performer.weight)}
-          fullWidth={fullWidth}
-        />
-        <DetailItem
-          id="penis_length"
-          value={FormatPenisLength(performer.penis_length)}
-          fullWidth={fullWidth}
-        />
-        <DetailItem
-          id="circumcised"
-          value={FormatCircumcised(performer.circumcised)}
-          fullWidth={fullWidth}
-        />
-        <DetailItem
-          id="measurements"
-          value={performer?.measurements}
-          fullWidth={fullWidth}
-        />
-        <DetailItem
-          id="fake_tits"
-          value={performer?.fake_tits}
-          fullWidth={fullWidth}
-        />
-        <DetailItem
-          id="tattoos"
-          value={performer?.tattoos}
-          fullWidth={fullWidth}
-        />
-        <DetailItem
-          id="piercings"
-          value={performer?.piercings}
-          fullWidth={fullWidth}
-        />
-        <DetailItem
-          id="career_length"
-          value={formatYearRange(
-            performer?.career_start,
-            performer?.career_end
+        <PerformerVariantsPanel performer={performer} fullWidth={fullWidth} />
+        <PerformerDetailGroup {...props}>
+          {performer.parent && (
+            <DetailItem
+              id="character-variant-of"
+              label={intl.formatMessage({
+                id: "character_variant_of",
+                defaultMessage: "Variant of",
+              })}
+              value={
+                <Link to={`/performers/${performer.parent.id}`}>
+                  {performer.parent.name}
+                </Link>
+              }
+              fullWidth={fullWidth}
+            />
           )}
-          fullWidth={fullWidth}
-        />
-        <DetailItem id="details" value={details} fullWidth={fullWidth} />
-        <DetailItem id="tags" value={renderTagsField()} fullWidth={fullWidth} />
-        <DetailItem
-          id="stash_ids"
-          value={renderStashIDs()}
-          fullWidth={fullWidth}
-        />
-        {(fullWidth || !collapsed) && (
-          <CustomFields values={performer.custom_fields} />
-        )}
-      </PerformerDetailGroup>
+          {performer.gender ? (
+            <DetailItem
+              id="gender"
+              value={intl.formatMessage({
+                id: "gender_types." + performer.gender,
+              })}
+              fullWidth={fullWidth}
+            />
+          ) : (
+            ""
+          )}
+          <DetailItem
+            id="age"
+            value={
+              !fullWidth
+                ? TextUtils.age(performer.birthdate, performer.death_date)
+                : FormatAge(performer.birthdate, performer.death_date)
+            }
+            title={
+              !fullWidth
+                ? TextUtils.formatFuzzyDate(
+                    intl,
+                    performer.birthdate ?? undefined
+                  )
+                : ""
+            }
+            fullWidth={fullWidth}
+          />
+          <DetailItem
+            id="death_date"
+            value={performer.death_date}
+            fullWidth={fullWidth}
+          />
+          {performer.country ? (
+            <DetailItem
+              id="country"
+              value={
+                <CountryFlag
+                  country={performer.country}
+                  className="mr-2"
+                  includeName={true}
+                />
+              }
+              fullWidth={fullWidth}
+            />
+          ) : (
+            ""
+          )}
+          <DetailItem
+            id="ethnicity"
+            value={performer?.ethnicity}
+            fullWidth={fullWidth}
+          />
+          <DetailItem
+            id="hair_color"
+            value={performer?.hair_color}
+            fullWidth={fullWidth}
+          />
+          <DetailItem
+            id="eye_color"
+            value={performer?.eye_color}
+            fullWidth={fullWidth}
+          />
+          <DetailItem
+            id="height"
+            value={FormatHeight(performer.height_cm)}
+            fullWidth={fullWidth}
+          />
+          <DetailItem
+            id="weight"
+            value={FormatWeight(performer.weight)}
+            fullWidth={fullWidth}
+          />
+          <DetailItem
+            id="penis_length"
+            value={FormatPenisLength(performer.penis_length)}
+            fullWidth={fullWidth}
+          />
+          <DetailItem
+            id="circumcised"
+            value={FormatCircumcised(performer.circumcised)}
+            fullWidth={fullWidth}
+          />
+          <DetailItem
+            id="measurements"
+            value={performer?.measurements}
+            fullWidth={fullWidth}
+          />
+          <DetailItem
+            id="fake_tits"
+            value={performer?.fake_tits}
+            fullWidth={fullWidth}
+          />
+          <DetailItem
+            id="tattoos"
+            value={performer?.tattoos}
+            fullWidth={fullWidth}
+          />
+          <DetailItem
+            id="piercings"
+            value={performer?.piercings}
+            fullWidth={fullWidth}
+          />
+          <DetailItem
+            id="career_length"
+            value={formatYearRange(
+              performer?.career_start,
+              performer?.career_end
+            )}
+            fullWidth={fullWidth}
+          />
+          <DetailItem id="details" value={details} fullWidth={fullWidth} />
+          <DetailItem
+            id="tags"
+            value={renderTagsField()}
+            fullWidth={fullWidth}
+          />
+          <DetailItem
+            id="stash_ids"
+            value={renderStashIDs()}
+            fullWidth={fullWidth}
+          />
+          {(fullWidth || !collapsed) && (
+            <CustomFields values={performer.custom_fields} />
+          )}
+        </PerformerDetailGroup>
+      </>
     );
   });
 
