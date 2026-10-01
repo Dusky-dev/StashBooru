@@ -9,9 +9,12 @@ import { SceneMarkerListFilterOptions } from "./scene-markers";
 import { SceneListFilterOptions } from "./scenes";
 import { StudioListFilterOptions } from "./studios";
 import { TagListFilterOptions } from "./tags";
+import { MediaListFilterOptions } from "./media";
 
 export function getFilterOptions(mode: FilterMode): ListFilterOptions {
   switch (mode) {
+    case FilterMode.Media:
+      return MediaListFilterOptions;
     case FilterMode.Scenes:
       return SceneListFilterOptions;
     case FilterMode.Performers:

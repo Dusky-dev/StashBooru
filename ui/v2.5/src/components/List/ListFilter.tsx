@@ -95,8 +95,9 @@ const PAGE_SIZE_OPTIONS = ["20", "40", "60", "120", "250", "500", "1000"];
 
 export const PageSizeSelector: React.FC<{
   pageSize: number;
+  maxPageSize?: number;
   setPageSize: (pageSize: number) => void;
-}> = ({ pageSize, setPageSize }) => {
+}> = ({ pageSize, setPageSize, maxPageSize = Infinity }) => {
   const intl = useIntl();
 
   const perPageSelect = useRef(null);
@@ -112,12 +113,14 @@ export const PageSizeSelector: React.FC<{
   useStopWheelScroll(perPageInput);
 
   const pageSizeOptions = useMemo(() => {
-    const ret = PAGE_SIZE_OPTIONS.map((o) => {
-      return {
-        label: o,
-        value: o,
-      };
-    });
+    const ret = PAGE_SIZE_OPTIONS.filter((o) => Number(o) <= maxPageSize).map(
+      (o) => {
+        return {
+          label: o,
+          value: o,
+        };
+      }
+    );
     const currentPerPage = pageSize.toString();
     if (!ret.find((o) => o.value === currentPerPage)) {
       ret.push({ label: currentPerPage, value: currentPerPage });
@@ -130,7 +133,7 @@ export const PageSizeSelector: React.FC<{
     });
 
     return ret;
-  }, [intl, pageSize]);
+  }, [intl, pageSize, maxPageSize]);
 
   function onChangePageSize(val: string) {
     if (val === "custom") {
@@ -147,7 +150,7 @@ export const PageSizeSelector: React.FC<{
       return;
     }
 
-    setPageSize(pp);
+    setPageSize(Math.min(pp, maxPageSize));
   }
 
   return (

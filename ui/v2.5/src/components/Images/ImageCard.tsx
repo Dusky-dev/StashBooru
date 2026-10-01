@@ -16,7 +16,8 @@ import {
   faSearch,
   faTag,
 } from "@fortawesome/free-solid-svg-icons";
-import { imageTitle } from "src/core/files";
+import { animationBadge, imageTitle } from "src/core/files";
+import { AnimationBadge } from "../Shared/AnimationBadge";
 import { PatchComponent } from "src/patch";
 import { TruncatedText } from "../Shared/TruncatedText";
 import { StudioOverlay } from "../Shared/GridCard/StudioOverlay";
@@ -188,7 +189,10 @@ const ImageCardImage = PatchComponent(
 
     return (
       <>
-        <div className={cx("image-card-preview", { portrait: isPortrait() })}>
+        <div
+          className={cx("image-card-preview", { portrait: isPortrait() })}
+          data-animation-badge={animationBadge(props.image) || undefined}
+        >
           <ImagePreview
             loop={video}
             autoPlay={video}
@@ -197,6 +201,7 @@ const ImageCardImage = PatchComponent(
             alt={props.image.title ?? ""}
             src={source}
           />
+          <AnimationBadge label={animationBadge(props.image)} />
           {props.onPreview ? (
             <div className="preview-button">
               <Button onClick={props.onPreview}>

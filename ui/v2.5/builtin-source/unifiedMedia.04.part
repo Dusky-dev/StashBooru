@@ -190,6 +190,7 @@
         document.querySelectorAll(
           ".performer-tabs .wall-item, .studio-tabs .wall-item, .tag-tabs .wall-item"
         ).forEach((item) => {
+          if (item.querySelector(":scope > .media-animation-badge")) return;
           const media = item.querySelector("img, video");
           const src = media?.currentSrc || media?.getAttribute?.("src") || "";
           const label = item.getAttribute("data-animation-badge") || (/\.gif(?:$|[?#])/i.test(String(src)) ? "GIF" : "");

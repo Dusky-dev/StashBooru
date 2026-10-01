@@ -23,6 +23,7 @@ interface IFilteredItemList<
 > {
   filterStateProps: IFilterStateHook;
   queryResultProps: IQueryResultHook<T, E, M>;
+  initialSelected?: E[];
 }
 
 // Provides the common state and behaviour for filtered item list components
@@ -47,7 +48,7 @@ export function useFilteredItemList<
   });
   const { result, items, totalCount, pages, metadataInfo } = queryResult;
 
-  const listSelect = useListSelect(items);
+  const listSelect = useListSelect(items, props.initialSelected);
   const { onSelectAll, onSelectNone, onInvertSelection } = listSelect;
 
   const modalState = useModal();

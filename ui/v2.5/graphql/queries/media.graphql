@@ -1,0 +1,21 @@
+fragment MediaListItem on MediaItem {
+  id
+  kind
+  image {
+    ...SlimImageData
+  }
+  scene {
+    ...SlimSceneData
+  }
+}
+
+query FindMedia($filter: FindFilterType, $media_filter: MediaFilterType) {
+  findMedia(filter: $filter, media_filter: $media_filter) {
+    count
+    image_count
+    video_count
+    items {
+      ...MediaListItem
+    }
+  }
+}

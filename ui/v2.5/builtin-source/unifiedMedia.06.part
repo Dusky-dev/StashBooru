@@ -244,6 +244,7 @@
       const scan = () => {
         frame = 0;
         document.querySelectorAll(".wall-item").forEach((item) => {
+          if (item.querySelector(":scope > .media-animation-badge")) return;
           if (item.closest(".unified-media-wall")) return;
           const media = item.querySelector("img, video");
           const src = media?.currentSrc || media?.getAttribute?.("src") || "";

@@ -1269,3 +1269,18 @@ input[type="range"].double-range-slider-max {
   margin-top: 0.5rem;
   text-align: center;
 }
+
+.media-animation-badge {
+  background: rgba(0, 0, 0, 0.72);
+  border-radius: 0.2rem;
+  bottom: 0.4rem;
+  color: #fff;
+  font-size: 0.96rem;
+  font-weight: 700;
+  left: 0.4rem;
+  line-height: 1;
+  padding: 0.4rem 0.52rem;
+  pointer-events: none;
+  position: absolute;
+  z-index: 12;
+}

@@ -87,6 +87,7 @@ export interface IFilteredListToolbar {
   zoomable?: boolean;
   filterable?: boolean;
   sortable?: boolean;
+  maxPageSize?: number;
 }
 
 export const FilteredListToolbar: React.FC<IFilteredListToolbar> = ({
@@ -102,6 +103,7 @@ export const FilteredListToolbar: React.FC<IFilteredListToolbar> = ({
   zoomable = false,
   filterable = true,
   sortable = true,
+  maxPageSize,
 }) => {
   const { configuration } = useConfigurationContext();
   const { pinnedSortBy = {} } = configuration.ui;
@@ -243,6 +245,7 @@ export const FilteredListToolbar: React.FC<IFilteredListToolbar> = ({
 
           <PageSizeSelector
             pageSize={filter.itemsPerPage}
+            maxPageSize={maxPageSize}
             setPageSize={(size) => setFilter(filter.setPageSize(size))}
           />
         </>

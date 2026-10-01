@@ -59,6 +59,10 @@ export function evictQueries(
       if (!isField(field)) continue;
       const keyName = field.name.value;
       fields[keyName] = (_value, { DELETE }) => DELETE;
+      // The mixed query shares all native media and association predicates.
+      if (keyName === "findImages" || keyName === "findScenes") {
+        fields.findMedia = (_value, { DELETE }) => DELETE;
+      }
     }
   }
 
@@ -580,6 +584,7 @@ const sceneMutationImpactedTypeFields = {
 };
 
 const sceneMutationImpactedQueries = [
+  GQL.FindMediaDocument,
   GQL.FindScenesDocument, // various filters
   GQL.FindGroupsDocument, // is missing scenes
   GQL.FindGalleriesDocument, // is missing scenes
@@ -1134,6 +1139,7 @@ const imageMutationImpactedTypeFields = {
 };
 
 const imageMutationImpactedQueries = [
+  GQL.FindMediaDocument,
   GQL.FindImagesDocument, // various filters
   GQL.FindGalleriesDocument, // filter by image count
   GQL.FindPerformersDocument, // filter by image count
