@@ -46,7 +46,7 @@ import { defaultMaxOptionsShown, defaultPreviewVolume } from "src/core/config";
 import { PatchComponent } from "src/patch";
 
 const allMenuItems = [
-  { id: "media", headingID: "media" },
+  { id: "media", headingID: "all" },
   { id: "scenes", headingID: "scenes" },
   { id: "images", headingID: "images" },
   { id: "groups", headingID: "groups" },
