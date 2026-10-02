@@ -366,7 +366,8 @@ retaining landscape 16:9 and portrait 3:4, borders, bounded relation scrolling
 and scrollbar space. The opening regression records native player identity
 and frame geometry from before the click, rather than checking the footer only.
 
-Verified locally on implementation commit `266122e70` (2026-10-02):
+Verified implementation published as `a0e8227100e78955a601d8c1ddbd494893730af5` (2026-10-02);
+the published Git tree matches the checked local tree:
 
 - All 28 UI unit tests passed; TypeScript, Biome lint/format, Stylelint,
   built-in composition/checksum/syntax and production Vite build passed.
@@ -397,4 +398,8 @@ VP8 playback was exercised; other production files/codecs, browser engines and
 physical devices were not. Running `preview-opening.mjs` against the PR #125 production UI failed its
 first-opening assertion for a transient incorrect footer. The exact reported
 production multi-Video flash was not established in the fixture; its observer/portal selection path has been
-removed. No backend, schema or migration changes. Publication details follow.
+removed. No backend, schema or migration changes. Published as [PR #126](https://github.com/Dusky-dev/StashBooru/pull/126)
+from implementation `a0e8227100e78955a601d8c1ddbd494893730af5`. The tree SHA was checked
+against the local result before branch publication. Fresh `origin/develop`
+remains at the baseline; `git merge-tree --write-tree` reports no conflict.
+Merging and production deployment have not been performed.
