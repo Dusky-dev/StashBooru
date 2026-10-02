@@ -22,6 +22,7 @@ import { useIntl } from "react-intl";
 import { useDragMoveSelect } from "../Shared/GridCard/dragMoveSelect";
 import cx from "classnames";
 import { defaultPreviewVolume } from "src/core/config";
+import { usePreviewPlayback } from "src/hooks/previewPlayback";
 import {
   getFirstValidPreviewSource,
   getScenePreviewSources,
@@ -93,7 +94,6 @@ export const SceneWallItem: React.FC<
     loading: "lazy",
     loop: video,
     muted: !video || !playSound || !active,
-    autoPlay: video,
     playsInline: video,
     key: props.photo.key,
     src: props.photo.src,
@@ -110,9 +110,10 @@ export const SceneWallItem: React.FC<
   };
 
   const videoEl = useRef<HTMLVideoElement>(null);
+  usePreviewPlayback(videoEl, video, props.photo.src);
 
   useEffect(() => {
-    if (video && videoEl?.current?.volume)
+    if (video && videoEl.current)
       videoEl.current.volume = playSound ? volume / 100 : 0;
   }, [video, playSound, volume]);
 

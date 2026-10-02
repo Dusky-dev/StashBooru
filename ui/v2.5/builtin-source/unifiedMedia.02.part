@@ -213,6 +213,8 @@
     const selected = ctx.selectedKeys.has(entry.key);
     const selecting = ctx.selectedKeys.size > 0;
     const item = entry.item;
+    const videoRef = React.useRef(null);
+    api.hooks.usePreviewPlayback(videoRef, true, item.paths?.preview || item.paths?.thumbnail);
 
     const onSelect = (selectedValue, shiftKey) =>
       ctx.onSelectEntry(entry.key, selectedValue, shiftKey, selectableKeys);
@@ -242,9 +244,9 @@
       media = scenePreview
         ? React.createElement("video", {
             className: "unified-media-wall-media",
+            ref: videoRef,
             src: scenePreview,
             poster: scenePoster || undefined,
-            autoPlay: true,
             loop: true,
             muted: true,
             playsInline: true,
@@ -260,8 +262,8 @@
       media = imageIsVideo
         ? React.createElement("video", {
             className: "unified-media-wall-media",
+            ref: videoRef,
             src: imageSource,
-            autoPlay: true,
             loop: true,
             muted: true,
             playsInline: true,

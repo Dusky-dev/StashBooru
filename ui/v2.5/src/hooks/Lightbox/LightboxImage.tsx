@@ -371,9 +371,11 @@ export const LightboxImage: React.FC<IProps> = ({
 
     // #2389 - if scroll up and at top, then go to previous image
     // if scroll down and at bottom, then go to next image
-    if (newPositionY > maxY && positionY === maxY) {
+    // A custom player owns its input. Image edge-scroll navigation must not
+    // turn wheel momentum or a volume adjustment into successive Videos.
+    if (!media && newPositionY > maxY && positionY === maxY) {
       onLeftScroll(ev, scrollable, infinite);
-    } else if (newPositionY < minY && positionY === minY) {
+    } else if (!media && newPositionY < minY && positionY === minY) {
       onRightScroll(ev, scrollable, infinite);
     } else {
       scrollAttempts.current = 0;
@@ -573,7 +575,16 @@ export const LightboxImage: React.FC<IProps> = ({
             <div
               style={{ width: imageWidth, height: imageHeight }}
               onWheel={(e) => {
-                onImageScroll(e);
+                // Let native controls handle their wheel event without also
+                // zooming or panning the whole player.
+                if (
+                  !(
+                    e.target instanceof Element &&
+                    e.target.closest(".vjs-control-bar")
+                  )
+                ) {
+                  onImageScroll(e);
+                }
                 e.stopPropagation();
               }}
             >

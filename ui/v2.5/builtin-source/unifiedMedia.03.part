@@ -93,6 +93,7 @@
     } else {
       content = React.createElement(ScenePlayer, {
         scene,
+        playerId: `StashBooruPreview-${initialScene.id}`,
         hideScrubberOverride: true,
         autoplay: true,
         permitLoop: false,

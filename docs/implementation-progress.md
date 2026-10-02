@@ -2,8 +2,8 @@
 
 Updated: 2026-10-02
 
-Current baseline: `develop` at `a44f7ac7c55fff9210fd57b3e7218abd5ccc354a`
-(merged PR #125). Active package: `fix/p07-preview-open-flash-equal-heights-20261002`.
+Current baseline: `develop` at `4adba688c14e276c85c21b6f8eeca909cd22ddf1`
+(merged PR #126). Active package: `fix/p07-preview-lifecycle-20261002`.
 
 | Package | Status | Notes |
 | --- | --- | --- |
@@ -403,3 +403,30 @@ from implementation `a0e8227100e78955a601d8c1ddbd494893730af5`. The tree SHA was
 against the local result before branch publication. Fresh `origin/develop`
 remains at the baseline; `git merge-tree --write-tree` reports no conflict.
 Merging and production deployment have not been performed.
+
+## P07 Video input and shared playback lifecycle — 2026-10-02
+
+Baseline: `4adba688c14e276c85c21b6f8eeca909cd22ddf1` (merged #126; its
+Build and Go lint workflows passed). Branch: `fix/p07-preview-lifecycle-20261002`.
+
+The owner still reported buggy Video previews and supplied Firefox network logs.
+The logs alone do not establish a switching trigger. Mounted tests reproduced:
+
+- With Image lightbox `PAN_Y`, a burst of wheel events over the native preview
+  mounted fixture IDs `1`, `2`, `3`, `4` instead of retaining `1`.
+- An arrow key focused in ScenePlayer both sought within the Video and advanced
+  its carousel.
+- A preview over a Video detail page produced two `VideoJsPlayer` IDs,
+  overwriting the native global registration.
+
+Implemented input isolation, bounded custom-player panning, native-control wheel
+handling, shared visible-page preview playback and screenshot fallback until a
+decoded hover frame. Background grid/wall clips yield to the native viewer.
+Preview players have separate IDs; a covered detail player pauses/resumes without
+being disposed. Media Session metadata/actions restore to the remaining player
+and clear when all players close. Prior captured queues, caller ownership,
+selected-only rendering and equal Copyright/Variant image heights are preserved.
+
+Verification and publication are in progress. No backend/schema/migration change.
+The regression fixture changes no production metadata and contains synthetic
+VP8 media; the exact production trigger and other codecs remain unverified.
