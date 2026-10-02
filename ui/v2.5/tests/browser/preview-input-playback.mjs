@@ -1,13 +1,17 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-// Read-only HTTP fixture: native controls must not also drive the Image
-// carousel, and decoded card/wall clips must yield to the foreground viewer.
+// Read-only HTTP fixture: wheel gestures must not change Videos, preview
+// arrows navigate once without seeking, and background clips yield.
 const engines = await import(process.env.PLAYWRIGHT_MODULE ?? "playwright");
 const engineName = process.env.STASH_BROWSER_ENGINE ?? "chromium";
 const baseURL = process.env.STASH_BROWSER_URL ?? "http://127.0.0.1:9999";
 const characterID = process.env.STASH_BROWSER_CHARACTER_ID;
 const clip = readFileSync(process.env.STASH_BROWSER_VIDEO_FILE);
+const recorder = readFileSync(
+  new URL("../../scripts/record-preview-debug.js", import.meta.url),
+  "utf8"
+);
 assert.ok(characterID, "Set STASH_BROWSER_CHARACTER_ID to an isolated fixture");
 const browser = await engines[engineName].launch({
   headless: true,
@@ -132,6 +136,7 @@ try {
     ],
   ]) {
     const { page, errors } = await fixturePage(path, "PAN_Y", width);
+    await page.evaluate(recorder);
     const cards = page.locator(selector);
     await cards.nth(1).waitFor();
     const first = cards.first();
@@ -159,15 +164,6 @@ try {
     await page.mouse.move(5, 80);
     await page.mouse.wheel(0, 120);
     await assertOnlySelected(page, id);
-    const player = page.locator(".unified-media-native-scene-player .video-js");
-    await player.focus();
-    await page.keyboard.press("ArrowRight");
-    await page.keyboard.down("ArrowLeft");
-    for (let event = 0; event < 6; event++)
-      await page.keyboard.down("ArrowLeft");
-    await page.keyboard.up("ArrowLeft");
-    await page.waitForTimeout(150);
-    await assertOnlySelected(page, id);
     assert.equal(
       await page
         .locator(`${selector} .scene-card-preview-video`)
@@ -184,6 +180,57 @@ try {
       });
     });
     await assertOnlySelected(page, id);
+    const nextLink = await cards
+      .nth(1)
+      .locator("a.scene-card-link")
+      .getAttribute("href");
+    const nextID = new URL(nextLink, baseURL).pathname.split("/").at(-1);
+    await page.evaluate(() => {
+      window.previewArrowSeeks = 0;
+      const video = document.querySelector(
+        ".unified-media-native-scene-player video"
+      );
+      video.pause();
+      video.addEventListener("seeking", () => window.previewArrowSeeks++);
+    });
+    await page.locator(".unified-media-native-scene-player .video-js").focus();
+    await page.keyboard.press("ArrowRight");
+    await page.waitForFunction(
+      (expected) =>
+        document.querySelector(".unified-media-native-scene-player")?.dataset
+          .sceneId === expected,
+      nextID
+    );
+    assert.equal(
+      await page.evaluate(() => window.previewArrowSeeks),
+      0,
+      "Preview arrow also sought within the outgoing Video"
+    );
+    await page
+      .locator(".unified-media-native-scene-player .vjs-play-control")
+      .focus();
+    await page.keyboard.down("ArrowLeft");
+    for (let event = 0; event < 6; event++)
+      await page.keyboard.down("ArrowLeft");
+    await page.keyboard.up("ArrowLeft");
+    await page.waitForFunction(
+      (expected) =>
+        document.querySelector(".unified-media-native-scene-player")?.dataset
+          .sceneId === expected,
+      id
+    );
+    await page
+      .locator(".unified-media-native-scene-player .video-js")
+      .waitFor();
+    assert.deepEqual(
+      await page.evaluate(() =>
+        window.previewInputEvents
+          .filter((event) => event.kind === "mount")
+          .map((event) => event.id)
+      ),
+      [id, nextID, id],
+      "A held arrow rapidly cycled Videos"
+    );
     // Explicit native next/previous controls still change the selected Video.
     await page
       .locator(".unified-media-native-scene-player .vjs-icon-next-item")
@@ -205,9 +252,182 @@ try {
     );
     await page.getByTitle("Close Lightbox", { exact: true }).click();
     await page.locator(".Lightbox").waitFor({ state: "hidden" });
+    // The production-console recorder observes actual mounts/input without
+    // relying on the test's ScenePlayer patch or changing playback behavior.
+    const trace = await page.evaluate(() => window.stashPreviewDebug.stop());
+    assert.equal(trace.format, "stashbooru-preview-v1");
+    assert.equal(trace.page, new URL(page.url()).pathname);
+    assert.ok(
+      trace.events.some(
+        (event) => event.kind === "viewer" && event.scenes.includes(id)
+      )
+    );
+    assert.ok(
+      trace.events.some(
+        (event) => event.kind === "viewer" && event.scenes.includes(nextID)
+      )
+    );
+    assert.ok(
+      trace.events.some(
+        (event) => event.kind === "video-added" && event.area === "lightbox"
+      )
+    );
+    assert.ok(
+      trace.events.some(
+        (event) => event.kind === "input" && event.key === "ArrowRight"
+      )
+    );
+    assert.equal(trace.events.at(-1).kind, "stop");
+    assert.equal(trace.dropped, 0);
+    assert.ok(
+      !JSON.stringify(trace).includes(baseURL),
+      "Trace exposed the server address"
+    );
+    await page.evaluate(() => {
+      const video = document.createElement("video");
+      video.preload = "none";
+      video.src =
+        "https://example.invalid/scene/123/preview?signature=private-signature&api_key=private-key";
+      video.title = "Private title";
+      document.body.append(video);
+      window.stashPreviewDebugProbe = video;
+    });
+    await page.evaluate(recorder);
+    await page.evaluate(() => window.stashPreviewDebugProbe.remove());
+    await page.waitForTimeout(30);
+    const sanitized = await page.evaluate(() =>
+      window.stashPreviewDebug.stop()
+    );
+    const serialized = JSON.stringify(sanitized);
+    assert.ok(serialized.includes("/scene/123/preview"));
+    for (const privateValue of [
+      "private-signature",
+      "private-key",
+      "Private title",
+      "example.invalid",
+    ])
+      assert.ok(!serialized.includes(privateValue));
+    const downloading = page.waitForEvent("download");
+    await page.evaluate(() => window.stashPreviewDebug.download());
+    const download = await downloading;
+    assert.equal(download.suggestedFilename(), "stashbooru-preview-debug.json");
+    assert.deepEqual(
+      JSON.parse(readFileSync(await download.path(), "utf8")),
+      sanitized
+    );
+    await page.keyboard.press("ArrowRight");
+    assert.deepEqual(
+      await page.evaluate(() => window.stashPreviewDebug.stop()),
+      sanitized,
+      "Stopped recorder continued capturing events"
+    );
     assert.deepEqual(errors, []);
     console.log(
-      `PASS (${engineName}): ${path} keeps one Video through wheel bursts, native seek keys and network refetches; explicit next/previous works`
+      `PASS (${engineName}): ${path} retains selection through wheel/refetch; focused preview arrows navigate without seeking or repeated cycling; explicit buttons work`
+    );
+    await page.unrouteAll({ behavior: "ignoreErrors" });
+    await page.close();
+  }
+
+  // A held arrow must also stop after landing on an Image in a mixed queue.
+  {
+    const { page, errors } = await fixturePage(`/performers/${characterID}`);
+    const scope = ".unified-media-inline-pane";
+    await page.locator(`${scope} .image-card`).first().waitFor();
+    const order = await page
+      .locator(`${scope} a.scene-card-link, ${scope} a.image-card-link`)
+      .evaluateAll((links) =>
+        links.map((link) => ({
+          href: link.getAttribute("href"),
+          video: link.matches(".scene-card-link"),
+        }))
+      );
+    const edge = order.findIndex(
+      (entry, index) =>
+        entry.video &&
+        order[(index + 1) % order.length] &&
+        !order[(index + 1) % order.length].video
+    );
+    assert.ok(edge >= 0, "Fixture needs a Video followed by an Image");
+    const scene = order[edge];
+    const image = order[(edge + 1) % order.length];
+    const card = page
+      .locator(`${scope} .scene-card`)
+      .filter({ has: page.locator(`a.scene-card-link[href='${scene.href}']`) });
+    await card.hover();
+    await card.locator(".unified-media-video-preview-button button").click();
+    await page.locator(".unified-media-native-scene-player .video-js").focus();
+    await page.keyboard.down("ArrowRight");
+    for (let event = 0; event < 8; event++)
+      await page.keyboard.down("ArrowRight");
+    await page.waitForFunction(
+      (expected) =>
+        document
+          .querySelector(".Lightbox .image-link")
+          ?.getAttribute("href") === expected,
+      image.href
+    );
+    assert.equal(
+      await page.locator(".unified-media-native-scene-player").count(),
+      0
+    );
+    await page.keyboard.up("ArrowRight");
+    await page.keyboard.press("ArrowLeft");
+    await page.waitForFunction(
+      (expected) =>
+        document
+          .querySelector(".Lightbox .image-link")
+          ?.getAttribute("href") === expected,
+      scene.href
+    );
+    await page
+      .locator(".unified-media-native-scene-player .video-js")
+      .waitFor();
+    await page.getByTitle("Close Lightbox", { exact: true }).click();
+    await page.locator(".Lightbox").waitFor({ state: "hidden" });
+    assert.deepEqual(errors, []);
+    console.log(
+      `PASS (${engineName}): a held preview arrow lands once on an Image; release/previous returns to its Video`
+    );
+    await page.unrouteAll({ behavior: "ignoreErrors" });
+    await page.close();
+  }
+
+  // The hidden viewer must leave the full Video detail player's seek shortcut.
+  {
+    const { page, errors } = await fixturePage("/scenes/1");
+    await page.locator(".VideoPlayer .video-js").waitFor();
+    await page.evaluate(async () => {
+      const player = document.querySelector(".VideoPlayer .video-js").player;
+      player.muted(true);
+      player.loop(true);
+      await player.play();
+    });
+    await page.waitForFunction(
+      () => document.querySelector(".VideoPlayer video")?.readyState >= 2
+    );
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector(".VideoPlayer .video-js")
+          ?.player?.currentTime() > 0.25
+    );
+    assert.equal(await page.locator(".Lightbox").count(), 0);
+    await page.evaluate(() =>
+      document.querySelector(".VideoPlayer .video-js").player.pause()
+    );
+    await page.locator(".VideoPlayer .video-js").focus();
+    await page.keyboard.press("ArrowLeft");
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector(".VideoPlayer .video-js")
+          ?.player?.currentTime() < 0.1
+    );
+    assert.equal(await page.locator(".Lightbox").count(), 0);
+    assert.deepEqual(errors, []);
+    console.log(
+      `PASS (${engineName}): the full Video detail player still seeks with arrow keys`
     );
     await page.unrouteAll({ behavior: "ignoreErrors" });
     await page.close();
