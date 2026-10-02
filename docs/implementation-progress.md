@@ -13,7 +13,7 @@ Current baseline: `develop` at `5f6e9e593bced10f432b690519914706196d8dff`
 | P04 — copyright sorting / taxonomy | Complete | PRs #94 and #95 are merged. PR #94 added the hierarchy/backend foundation; PR #95 corrected hierarchy UX and media presentation without changing the P04 database schema. |
 | P05 — Character variants / disambiguation links | Complete | Merged PR #104 adds native Character variants and typed Copyright/Artist disambiguation links; merged PR #114 refines Character/Copyright editing. |
 | P06 — ancestor/profile auto-association | Complete | PRs #115–#118 are merged; the final search consistency follow-up passed Build and Go lint CI. Direct legacy relationships remain explicit; no migration is introduced. |
-| P07 — native global All media page | Shared playback follow-up merged; arrow correction and production trace verified | PRs #119–#127 are merged. The owner still reports preview flashing. This follow-up restores previous/next preview arrows and supplies a production trace to establish the remaining trigger. Equal Copyright/Variant image heights are retained. |
+| P07 — native global All media page | Shared playback follow-up merged; arrow correction and production trace verified | PRs #119–#127 are merged. The owner still reports preview flashing. PR #128 restores previous/next preview arrows and supplies a production trace to establish the remaining trigger. Equal Copyright/Variant image heights are retained. |
 
 ## P04 completed behavior
 
@@ -496,6 +496,12 @@ Verified on 2026-10-02:
 These are automated fixture checks with synthetic VP8 media. Firefox used
 single-process mode with its content sandbox disabled. No human manual testing,
 production codecs/files, third-party extensions or physical GPU rendering were
-verified. No backend/schema/migration change. Publication is in progress.
+verified. No backend/schema/migration change.
 This arrow preference correction does not claim to fix the remaining production
 flash; the trace is intended to identify its actual trigger.
+
+Published as [PR #128](https://github.com/Dusky-dev/StashBooru/pull/128), from
+verified implementation `0476ae2d1edcb682bef3f00cb7d50093e6e82611` (2026-10-02).
+Published tree `3ff61a60b0fc05c48a34eed112494ac13fd82796` matches the checked
+local tree exactly. CI is pending at publication; merging and production
+deployment have not been performed.
