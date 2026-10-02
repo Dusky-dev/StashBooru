@@ -4,6 +4,7 @@ import React, {
   useRef,
   useState,
   useCallback,
+  useMemo,
 } from "react";
 import { Button } from "react-bootstrap";
 import * as GQL from "src/core/generated-graphql";
@@ -50,7 +51,38 @@ export const ScenePlayerScrubber: React.FC<IScenePlayerScrubberProps> = ({
   const prevTime = useRef(NaN);
   const _width = useRef(0);
   const [width, setWidth] = useState(0);
-  const [scrubWidth, setScrubWidth] = useState(0);
+  const spriteInfo = useSpriteInfo(scene.paths.vtt ?? undefined);
+  const { scrubWidth, spriteItems } = useMemo<{
+    scrubWidth: number;
+    spriteItems: ISceneSpriteItem[] | undefined;
+  }>(() => {
+    if (!spriteInfo || spriteInfo.length === 0) {
+      return { scrubWidth: 0, spriteItems: undefined };
+    }
+    let totalWidth = 0;
+
+    // Calculate total sprite dimensions so we can scale the scrubber image.
+    const maxX = Math.max(...spriteInfo.map((sprite) => sprite.x + sprite.w));
+    const maxY = Math.max(...spriteInfo.map((sprite) => sprite.y + sprite.h));
+    const scale = scrubberSpriteHeight / spriteInfo[0].h;
+    const w = spriteInfo[0].w * scale;
+
+    const newSprites = spriteInfo.map((sprite, index) => {
+      totalWidth += w;
+      return {
+        style: {
+          width: `${w}px`,
+          height: `${scrubberSpriteHeight}px`,
+          backgroundPosition: `${-sprite.x * scale}px ${-sprite.y * scale}px`,
+          backgroundImage: `url(${sprite.url})`,
+          backgroundSize: `${maxX * scale}px ${maxY * scale}px`,
+          left: `${w * index}px`,
+        },
+        time: `${TextUtils.secondsToTimestamp(sprite.start)} - ${TextUtils.secondsToTimestamp(sprite.end)}`,
+      };
+    });
+    return { scrubWidth: totalWidth, spriteItems: newSprites };
+  }, [spriteInfo]);
   const position = useRef(0);
   const setPosition = useCallback(
     (value: number, seek: boolean) => {
@@ -85,53 +117,6 @@ export const ScenePlayerScrubber: React.FC<IScenePlayerScrubberProps> = ({
     },
     [onSeek, file.duration, scrubWidth]
   );
-
-  const spriteInfo = useSpriteInfo(scene.paths.vtt ?? undefined);
-  const [spriteItems, setSpriteItems] = useState<ISceneSpriteItem[]>();
-
-  useEffect(() => {
-    if (!spriteInfo || spriteInfo.length === 0) return;
-    let totalWidth = 0;
-
-    // calculate total width/height of scrubber image so we can scale it
-    const maxX = Math.max(...spriteInfo.map((sprite) => sprite.x + sprite.w));
-    const maxY = Math.max(...spriteInfo.map((sprite) => sprite.y + sprite.h));
-    const spriteWidth = spriteInfo[0].w;
-    const spriteHeight = spriteInfo[0].h;
-    const scale = scrubberSpriteHeight / spriteHeight;
-
-    const w = spriteWidth * scale;
-    const h = scrubberSpriteHeight;
-
-    const sizeX = maxX * scale;
-    const sizeY = maxY * scale;
-
-    // scale sprite dimensions to fit scrubber height, and calculate background position for each sprite
-    const newSprites = spriteInfo?.map((sprite, index) => {
-      totalWidth += w;
-      const left = w * index;
-
-      const spriteX = sprite.x * scale;
-      const spriteY = sprite.y * scale;
-
-      const style = {
-        width: `${w}px`,
-        height: `${h}px`,
-        backgroundPosition: `${-spriteX}px ${-spriteY}px`,
-        backgroundImage: `url(${sprite.url})`,
-        backgroundSize: `${sizeX}px ${sizeY}px`,
-        left: `${left}px`,
-      };
-      const start = TextUtils.secondsToTimestamp(sprite.start);
-      const end = TextUtils.secondsToTimestamp(sprite.end);
-      return {
-        style,
-        time: `${start} - ${end}`,
-      };
-    });
-    setScrubWidth(totalWidth);
-    setSpriteItems(newSprites);
-  }, [spriteInfo]);
 
   useEffect(() => {
     const onResize = (entries: ResizeObserverEntry[]) => {

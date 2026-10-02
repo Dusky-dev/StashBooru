@@ -29,15 +29,18 @@ class PersistVolumePlugin extends videojs.getPlugin("plugin") {
   }
 
   private ready() {
+    // Storage reads can finish after a preview is closed or its Video changes.
+    // VideoJS clears this.player during disposal, so retain and check the owner.
+    const player = this.player;
     localForage.getItem<number>(levelKey).then((value) => {
-      if (value !== null) {
-        this.player.volume(value);
+      if (value !== null && !player.isDisposed()) {
+        player.volume(value);
       }
     });
 
     localForage.getItem<boolean>(mutedKey).then((value) => {
-      if (value !== null) {
-        this.player.muted(value);
+      if (value !== null && !player.isDisposed()) {
+        player.muted(value);
       }
     });
   }

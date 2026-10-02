@@ -39,27 +39,29 @@ function getSpriteInfo(vttPath: string, response: string) {
 // If the vttPath is undefined, the hook will return undefined.
 // If the response is not ok, the hook will return null. This usually indicates missing sprite.
 export function useSpriteInfo(vttPath: string | undefined) {
-  const [spriteInfo, setSpriteInfo] = useState<
-    ISceneSpriteInfo[] | undefined | null
-  >();
+  const [result, setResult] = useState<{
+    path: string;
+    sprites: ISceneSpriteInfo[] | null;
+  }>();
 
   useEffect(() => {
-    if (!vttPath) {
-      setSpriteInfo(undefined);
-      return;
-    }
-
-    fetch(vttPath).then((response) => {
-      if (!response.ok) {
-        setSpriteInfo(null);
-        return;
+    if (!vttPath) return;
+    const controller = new AbortController();
+    async function loadSprites(path: string) {
+      try {
+        const response = await fetch(path, { signal: controller.signal });
+        const sprites = response.ok
+          ? getSpriteInfo(path, await response.text())
+          : null;
+        if (!controller.signal.aborted) setResult({ path, sprites });
+      } catch {
+        if (!controller.signal.aborted) setResult({ path, sprites: null });
       }
-
-      response.text().then((text) => {
-        setSpriteInfo(getSpriteInfo(vttPath, text));
-      });
-    });
+    }
+    void loadSprites(vttPath);
+    return () => controller.abort();
   }, [vttPath]);
 
-  return spriteInfo;
+  // Clear old thumbnails during render, before the new fetch effect runs.
+  return result && result.path === vttPath ? result.sprites : undefined;
 }

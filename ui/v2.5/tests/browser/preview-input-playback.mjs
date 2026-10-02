@@ -274,6 +274,12 @@ try {
     );
     assert.ok(
       trace.events.some(
+        (event) => event.kind.startsWith("visual-") && event.area === "poster"
+      ),
+      "Trace did not capture the native player's poster"
+    );
+    assert.ok(
+      trace.events.some(
         (event) => event.kind === "input" && event.key === "ArrowRight"
       )
     );
@@ -291,15 +297,29 @@ try {
       video.title = "Private title";
       document.body.append(video);
       window.stashPreviewDebugProbe = video;
+      const host = document.createElement("div");
+      host.className = "VideoPlayer";
+      const poster = document.createElement("div");
+      poster.className = "vjs-poster";
+      poster.style.backgroundImage =
+        'url("https://example.invalid/scene/123/screenshot?signature=private-signature&api_key=private-key")';
+      poster.title = "Private title";
+      host.append(poster);
+      document.body.append(host);
+      window.stashPreviewDebugPoster = host;
     });
     await page.evaluate(recorder);
-    await page.evaluate(() => window.stashPreviewDebugProbe.remove());
+    await page.evaluate(() => {
+      window.stashPreviewDebugProbe.remove();
+      window.stashPreviewDebugPoster.remove();
+    });
     await page.waitForTimeout(30);
     const sanitized = await page.evaluate(() =>
       window.stashPreviewDebug.stop()
     );
     const serialized = JSON.stringify(sanitized);
     assert.ok(serialized.includes("/scene/123/preview"));
+    assert.ok(serialized.includes("/scene/123/screenshot"));
     for (const privateValue of [
       "private-signature",
       "private-key",

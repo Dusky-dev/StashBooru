@@ -5,7 +5,6 @@ import React, {
   useState,
   useMemo,
   useRef,
-  useLayoutEffect,
 } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory, RouteComponentProps } from "react-router-dom";
@@ -798,21 +797,13 @@ const SceneLoader: React.FC<RouteComponentProps<ISceneParams>> = ({
   const { configuration } = useConfigurationContext();
   const { data, loading, error, refetch } = useFindScene(id);
 
-  const [scene, setScene] =
-    useState<NonNullable<GQL.FindSceneQuery["findScene"]>>();
+  // Apollo can retain the previous result while a new route is loading.
+  // Never display that Video or its poster under the new Video's URL.
+  const scene = data?.findScene?.id === id ? data.findScene : undefined;
 
   const onRefreshScene = useCallback(async () => {
-    const result = await refetch();
-    if (result.data?.findScene) {
-      setScene(result.data.findScene);
-    }
+    await refetch();
   }, [refetch]);
-
-  useLayoutEffect(() => {
-    if (!loading) {
-      setScene(data?.findScene ?? undefined);
-    }
-  }, [data, loading]);
 
   const queryParams = useMemo(
     () => new URLSearchParams(location.search),
@@ -1063,7 +1054,7 @@ const SceneLoader: React.FC<RouteComponentProps<ISceneParams>> = ({
       />
       <div className={`scene-player-container ${collapsed ? "expanded" : ""}`}>
         <ScenePlayer
-          key="ScenePlayer"
+          key={scene.id}
           scene={scene}
           hideScrubberOverride={hideScrubber}
           autoplay={autoplay}

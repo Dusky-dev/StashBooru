@@ -2,8 +2,9 @@
 
 Updated: 2026-10-02
 
-Current baseline: `develop` at `5f6e9e593bced10f432b690519914706196d8dff`
-(merged PR #127). Active package: `fix/p07-preview-arrow-debug-20261002`.
+Current baseline: `develop` at `7f96a326e768fde2660ae2ddca7baefcbfa077d5`
+(merged PR #128; matches the owner's installed build `7f96a32`). Active package:
+`fix/p07-player-opening-state-20261002`.
 
 | Package | Status | Notes |
 | --- | --- | --- |
@@ -13,7 +14,7 @@ Current baseline: `develop` at `5f6e9e593bced10f432b690519914706196d8dff`
 | P04 — copyright sorting / taxonomy | Complete | PRs #94 and #95 are merged. PR #94 added the hierarchy/backend foundation; PR #95 corrected hierarchy UX and media presentation without changing the P04 database schema. |
 | P05 — Character variants / disambiguation links | Complete | Merged PR #104 adds native Character variants and typed Copyright/Artist disambiguation links; merged PR #114 refines Character/Copyright editing. |
 | P06 — ancestor/profile auto-association | Complete | PRs #115–#118 are merged; the final search consistency follow-up passed Build and Go lint CI. Direct legacy relationships remain explicit; no migration is introduced. |
-| P07 — native global All media page | Shared playback follow-up merged; arrow correction and production trace verified | PRs #119–#127 are merged. The owner still reports preview flashing. PR #128 restores previous/next preview arrows and supplies a production trace to establish the remaining trigger. Equal Copyright/Variant image heights are retained. |
+| P07 — native global All media page | Shared opening-state corrections verified | PRs #119–#128 are merged. The owner reports other Videos/thumbnails flashing before the selected Video, including on detail pages. This follow-up fixes reproduced stale detail content, player restarts and thumbnail races, and extends the production trace to posters. Equal Copyright/Variant image heights are retained. |
 
 ## P04 completed behavior
 
@@ -505,3 +506,74 @@ verified implementation `0476ae2d1edcb682bef3f00cb7d50093e6e82611` (2026-10-02).
 Published tree `3ff61a60b0fc05c48a34eed112494ac13fd82796` matches the checked
 local tree exactly. CI is pending at publication; merging and production
 deployment have not been performed.
+
+## P07 Video opening state and thumbnail ownership — 2026-10-02
+
+Baseline: `7f96a326e768fde2660ae2ddca7baefcbfa077d5` (merged #128;
+matches the owner's reported build `7f96a32`). Branch:
+`fix/p07-player-opening-state-20261002`.
+
+The owner clarified that other Videos or thumbnails flash before the requested
+Video settles, including on its full detail page. The network log alone does
+not identify a decoded-frame cause. Tests against the exact baseline source
+reproduced these failures in Chromium:
+
+- A delayed detail transition from Video `1` to `2` left the native stream and
+  screenshot for `1` displayed under `/scenes/2`.
+- An autostart preference update disposed the existing native player and
+  started a replacement, although the plugin already supports in-place sync.
+- A late VTT response for source `a` replaced the already-loaded source `b`.
+
+The detail loader now uses only the query result matching its route, and each
+Video owns a separate player lifecycle even on cache-hit transitions. Autostart
+changes use plugin sync without native-player replacement. Sprite results are
+owned by their VTT path, clear immediately on a path change, abort on source
+changes/unmount, and handle unsuccessful reads. Scrubber items/width derive
+from the current sprite result instead of retaining the previous list. Rapid
+player disposal also exposed a persisted-volume storage callback dereferencing
+a disposed plugin player; the callback now checks its captured owner.
+
+The passive production recorder now includes route changes and poster/sprite
+source revisions, visibility, geometry and sprite positions. Unchanged visual
+states are deduplicated. Native stream identity and decoded-frame counters are
+still recorded; titles, addresses and signed queries remain excluded.
+
+Verified on 2026-10-02:
+
+- `player-opening-state.mjs` passed in Chromium 135 and Firefox 153: slow and
+  cached detail transitions at 1440/390 px, autostart sync in detail and preview
+  players without resetting playback, out-of-order/cleared/failed VTT reads,
+  and actual detail-scrubber clearing during a same-ID metadata refresh.
+  The test serves native synthetic VP8 range requests on a direct `/stream`
+  endpoint, with browser-only GraphQL/poster/VTT/activity substitutions.
+- `preview-input-playback.mjs` passed in both browsers: arrows, held-key
+  suppression, wheel/refetch stability, full-detail seeking, hover/wall
+  ownership and fallback. The extended trace captured posters and omitted
+  signed screenshot/stream queries, titles and addresses; restart/download
+  contents and post-stop cleanup passed.
+- `preview-player-overlap.mjs` passed in both browsers: the covered detail
+  player paused/resumed without disposal, separate player IDs and Media Session
+  ownership remained correct.
+- Chromium `preview-opening.mjs` passed all 12 cold/warm All, mobile Videos
+  and Character All opens with one selected native player and stable geometry.
+  `preview-queue-stability.mjs` passed metadata churn, idle, explicit navigation,
+  reopening and native VP8 completion without automatic advance.
+- All 28 UI unit tests, TypeScript, Biome lint/format, Stylelint, built-in
+  composition/syntax/unchanged checksum, recorder syntax, production Vite build
+  and `git diff --check` passed. No dependency changes.
+
+These are automated fixture checks, not human manual testing. Firefox used the
+environment's single-process mode with its content sandbox disabled. The actual
+production files/codecs, browser extensions and GPU rendering remain unverified.
+The reproduced opening-state failures are corrected; this does not establish
+that every production flash has the same trigger. If it persists, capture the
+extended recorder JSON rather than only network-console messages. No backend,
+schema, migration or production metadata/configuration change.
+
+Published as [PR #129](https://github.com/Dusky-dev/StashBooru/pull/129), from
+verified implementation `4cc91da2101d7169685b5115c7d76216c923976f` on 2026-10-02. Published Git
+tree `e6e60285340be695463578748702cb99b488ec13` exactly matches the checked local
+tree. [Build](https://github.com/Dusky-dev/StashBooru/actions/runs/37029906006)
+and [Go lint](https://github.com/Dusky-dev/StashBooru/actions/runs/37029905279)
+are running at publication. Merging and production deployment have not been
+performed.
