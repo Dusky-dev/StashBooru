@@ -2,9 +2,10 @@
 
 Updated: 2026-10-02
 
-Current baseline: `develop` at `7f96a326e768fde2660ae2ddca7baefcbfa077d5`
-(merged PR #128; matches the owner's installed build `7f96a32`). Active package:
-`fix/p07-player-opening-state-20261002`.
+Current baseline: `develop` at `8edd383cd464eac088347bdc9454c598f062bbb8`
+(merged PR #129). P01–P07 are complete. Active work:
+`fix/video-thumbnail-flash-20261002`, the owner's autoplay/preview poster-flash
+correction before starting P08.
 
 | Package | Status | Notes |
 | --- | --- | --- |
@@ -14,7 +15,8 @@ Current baseline: `develop` at `7f96a326e768fde2660ae2ddca7baefcbfa077d5`
 | P04 — copyright sorting / taxonomy | Complete | PRs #94 and #95 are merged. PR #94 added the hierarchy/backend foundation; PR #95 corrected hierarchy UX and media presentation without changing the P04 database schema. |
 | P05 — Character variants / disambiguation links | Complete | Merged PR #104 adds native Character variants and typed Copyright/Artist disambiguation links; merged PR #114 refines Character/Copyright editing. |
 | P06 — ancestor/profile auto-association | Complete | PRs #115–#118 are merged; the final search consistency follow-up passed Build and Go lint CI. Direct legacy relationships remain explicit; no migration is introduced. |
-| P07 — native global All media page | Shared opening-state corrections verified | PRs #119–#128 are merged. The owner reports other Videos/thumbnails flashing before the selected Video, including on detail pages. This follow-up fixes reproduced stale detail content, player restarts and thumbnail races, and extends the production trace to posters. Equal Copyright/Variant image heights are retained. |
+| P07 — native global All media page | Complete | PRs #119–#129 are merged. The standalone follow-up below removes screenshot posters during automatic Video startup. Equal Copyright/Variant image heights and native preview navigation are retained. |
+| P08 — visual stacks / variant filmstrip | Next; not started | Next bounded package after the standalone autoplay/preview poster correction. |
 
 ## P04 completed behavior
 
@@ -577,3 +579,58 @@ tree. [Build](https://github.com/Dusky-dev/StashBooru/actions/runs/37029906006)
 and [Go lint](https://github.com/Dusky-dev/StashBooru/actions/runs/37029905279)
 are running at publication. Merging and production deployment have not been
 performed.
+
+
+## Video autoplay/preview poster flash — 2026-10-02
+
+Baseline: `8edd383cd464eac088347bdc9454c598f062bbb8` (merged #129).
+Branch: `fix/video-thumbnail-flash-20261002`. The owner confirmed P07 complete
+and requested this correction before P08.
+
+The current player still assigned a screenshot poster during automatic startup.
+The baseline Firefox fixture observed transient screenshot visibility; the
+source assertion also consistently reproduced an assigned poster on an
+automatic player while its stream response was held.
+
+The shared native player now computes playback intent and clears its poster
+before loading streams. Automatic metadata refreshes retain an empty poster;
+manual playback retains its screenshot. A browser `NotAllowedError` restores
+only the current, undisposed Video's poster and permits manual playback. Other
+playback cancellations/errors retain the existing native behavior. Media
+Session artwork, source failover, controls and preview ownership are preserved.
+No backend, schema, migration or dependency changes.
+
+Changed files: `ScenePlayer.tsx`, `tests/browser/player-opening-state.mjs`,
+`docs/p07-global-media.md` and this ledger.
+
+Verified on 2026-10-02:
+
+- All 28 UI unit tests, Biome lint/format, Stylelint and source TypeScript checks
+  passed with `TS_NODE_TRANSPILE_ONLY=true make validate-ui` under Node 24.
+  The flag avoids the environment's ts-node loader type-check failures;
+  `pnpm exec tsc --noEmit -p tsconfig.test.json` independently passed the test
+  sources and their imported modules. The package manager was pnpm 10.33.0.
+- `make generate-ui`, built-in composition/checksum/syntax, `make ui-only` and
+  `git diff --check` passed. Generated GraphQL/build outputs remain generated.
+- `player-opening-state.mjs` passed in Chromium 135 and Firefox 153: manual
+  posters, held-stream automatic startup and native previews at 1440/390 px,
+  frame samples and empty poster sources, pause/resume, simulated policy refusal,
+  poster restoration after cache refresh and manual VP8 playback. Its existing
+  slow/cached route changes, in-place autostart configuration and late/cleared/
+  failed VTT/scrubber cases also passed. No page errors were observed.
+- `preview-opening.mjs` passed in Chromium: 12 cold/warm openings on All,
+  mobile Videos and Character All retained selected-only mounting, fitted
+  geometry, controls, navigation and cleanup.
+- `preview-input-playback.mjs` and `preview-player-overlap.mjs` passed in both
+  browsers: wheel/refetch stability, focused/held arrows, mixed Image navigation,
+  detail seeking, zoom controls, wall suspension/resume, hover fallbacks and
+  distinct detail/preview identities with existing-player pause/resume.
+
+These are automated browser-local GraphQL/stream fixtures with synthetic VP8
+media and intercepted activity mutations, not human manual testing. Firefox
+used single-process mode, software decoding and disabled content/RDD sandboxing
+in the managed execution environment; production browser settings are unchanged.
+Production files/codecs, extensions, physical GPU rendering and Safari were not
+verified. Autoplay-policy refusal is simulated, not a claim about every browser
+policy. Publication is pending; merging and deployment are not performed.
+Next package: P08 visual stacks and variant filmstrip; not started.
