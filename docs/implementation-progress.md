@@ -569,3 +569,11 @@ The reproduced opening-state failures are corrected; this does not establish
 that every production flash has the same trigger. If it persists, capture the
 extended recorder JSON rather than only network-console messages. No backend,
 schema, migration or production metadata/configuration change.
+
+Published as [PR #129](https://github.com/Dusky-dev/StashBooru/pull/129), from
+verified implementation `4cc91da2101d7169685b5115c7d76216c923976f` on 2026-10-02. Published Git
+tree `e6e60285340be695463578748702cb99b488ec13` exactly matches the checked local
+tree. [Build](https://github.com/Dusky-dev/StashBooru/actions/runs/37029906006)
+and [Go lint](https://github.com/Dusky-dev/StashBooru/actions/runs/37029905279)
+are running at publication. Merging and production deployment have not been
+performed.
