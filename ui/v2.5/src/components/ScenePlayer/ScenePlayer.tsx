@@ -920,7 +920,9 @@ export const ScenePlayer: React.FC<IScenePlayerProps> = PatchComponent(
         return;
       }
 
-      player.play();
+      // Autoplay may be cancelled by navigation or refused by the browser.
+      // Stream failures still retain VideoJS's error UI.
+      void player.play()?.catch(() => {});
       auto.current = false;
     }, [getPlayer, scene, ready, interactiveClient, currentScript]);
 

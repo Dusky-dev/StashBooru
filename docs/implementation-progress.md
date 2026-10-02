@@ -1,9 +1,9 @@
 # StashBooru implementation progress
 
-Updated: 2026-10-01
+Updated: 2026-10-02
 
-Current baseline: `develop` at `4a0fc01b57c9616c6aae8e0abde65d48a5ee43c7`
-(merged PR #122). Active package: `fix/p07-preview-navigation-card-shapes-20261001`.
+Current baseline: `develop` at `a44f7ac7c55fff9210fd57b3e7218abd5ccc354a`
+(merged PR #125). Active package: `fix/p07-preview-open-flash-equal-heights-20261002`.
 
 | Package | Status | Notes |
 | --- | --- | --- |
@@ -13,7 +13,7 @@ Current baseline: `develop` at `4a0fc01b57c9616c6aae8e0abde65d48a5ee43c7`
 | P04 — copyright sorting / taxonomy | Complete | PRs #94 and #95 are merged. PR #94 added the hierarchy/backend foundation; PR #95 corrected hierarchy UX and media presentation without changing the P04 database schema. |
 | P05 — Character variants / disambiguation links | Complete | Merged PR #104 adds native Character variants and typed Copyright/Artist disambiguation links; merged PR #114 refines Character/Copyright editing. |
 | P06 — ancestor/profile auto-association | Complete | PRs #115–#118 are merged; the final search consistency follow-up passed Build and Go lint CI. Direct legacy relationships remain explicit; no migration is introduced. |
-| P07 — native global All media page | Foundation merged; follow-up corrections verified locally | PRs #119–#122 are merged. Global All combines Images and Videos with server pagination, typed identity and native controls. Current follow-up fixes navbar order, profile card shapes and competing preview updates. |
+| P07 — native global All media page | Foundation and refresh fixes merged; opening replacement verified locally | PRs #119–#125 are merged. Global All combines Images and Videos with server pagination, typed identity and native controls. Current follow-up replaces the Video preview bridge and matches Copyright/Variant image height. |
 
 ## P04 completed behavior
 
@@ -345,3 +345,61 @@ in [P07 global media](p07-global-media.md).
   Implementation SHA `e9dab826a3347d650cfa161b9a32d03e4d7da026` was verified on
   2026-10-01; the published tree matches the checked local tree exactly. CI is
   pending at publication. Merging and production playback remain separate.
+
+## P07 preview opening and equal relation heights — 2026-10-02
+
+Baseline: `a44f7ac7c55fff9210fd57b3e7218abd5ccc354a` (`develop`, PR #125).
+Branch: `fix/p07-preview-open-flash-equal-heights-20261002`.
+
+The owner still reported rapid Video flashes and requested Copyright image
+frames match Variant height. This follow-up replaces the observer/placeholder/
+portal preview bridge with a declarative native selected-media renderer.
+Neighbours never mount a player, and navigation for custom media is immediate.
+Native ScenePlayer and explicit navigation remain, with typed selected-ID
+queries/links, fit-before-paint geometry, normal-size fitted controls, queue
+ownership and metadata-refresh identity preserved. Video completion cannot
+advance. Thumbnail requests abort on disposal/source change and ignore stale
+responses; expected autoplay cancellation is handled.
+
+Copyright and Variant image frames derive width from one responsive height,
+retaining landscape 16:9 and portrait 3:4, borders, bounded relation scrolling
+and scrollbar space. The opening regression records native player identity
+and frame geometry from before the click, rather than checking the footer only.
+
+Verified implementation published as `a0e8227100e78955a601d8c1ddbd494893730af5` (2026-10-02);
+the published Git tree matches the checked local tree:
+
+- All 28 UI unit tests passed; TypeScript, Biome lint/format, Stylelint,
+  built-in composition/checksum/syntax and production Vite build passed.
+- `preview-opening.mjs`: 12 cold/warm openings on All, mobile Videos and
+  Character All rendered/mounted only the selected Video. First visible player
+  geometry was stable (desktop 1440×810, mobile 390×219.375), fitted controls
+  kept normal size, zoom/reset did not remount, delayed thumbnail setup worked,
+  disposal aborted pending thumbnail requests, explicit arrows/footer cleanup
+  passed, and no page errors were observed.
+- `character-media.mjs`: Copyright/Variant frames both measured 202.65625 px
+  high on desktop (widths 360.28125 / 152 px). Opposite-shape sources stayed
+  contained; short viewport, 18+18 scrolling relations, mobile equal heights
+  and no horizontal page overflow passed. Character All and Edit/Cancel
+  cleanup passed. Before/after relation captures were visually inspected.
+- `preview-queue-stability.mjs`: native-player identity survived 20–36
+  metadata registrations/cache updates, idle, explicit navigation, reordered
+  Character All and reopening on all three contexts. The native player decoded
+  the four-second VP8 fixture to completion without advancing.
+- `preview-stability.mjs`: 74 idle observations retained one selected player
+  through another caller's Image refresh and resume-cache writes; completion,
+  repeated/double opens, Escape, Back and close-button cleanup passed.
+- `all-media.mjs` and `navigation-card-shapes.mjs`: loaded/empty/error/delayed
+  queries, native controls, mixed previews, Video/Image cleanup, legacy route
+  preservation, desktop/mobile navbar order and native card ratios passed.
+
+These are automated mounted-browser fixture checks, not human manual testing.
+VP8 playback was exercised; other production files/codecs, browser engines and
+physical devices were not. Running `preview-opening.mjs` against the PR #125 production UI failed its
+first-opening assertion for a transient incorrect footer. The exact reported
+production multi-Video flash was not established in the fixture; its observer/portal selection path has been
+removed. No backend, schema or migration changes. Published as [PR #126](https://github.com/Dusky-dev/StashBooru/pull/126)
+from implementation `a0e8227100e78955a601d8c1ddbd494893730af5`. The tree SHA was checked
+against the local result before branch publication. Fresh `origin/develop`
+remains at the baseline; `git merge-tree --write-tree` reports no conflict.
+Merging and production deployment have not been performed.

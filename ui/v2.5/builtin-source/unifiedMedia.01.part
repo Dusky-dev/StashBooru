@@ -189,43 +189,28 @@
     return itemTitle("scene", scene);
   }
 
-  function sceneLightboxPlaceholder(scene) {
-    const file = firstFile(scene) || {};
-    const width = Math.max(1, Number(file.width) || 1280);
-    const height = Math.max(1, Number(file.height) || 720);
-    // A transparent SVG with the original video's intrinsic dimensions lets
-    // Stash's native LightboxImage calculate display-mode, fit and zoom exactly
-    // as it does for a real image. The ScenePlayer is laid over this geometry.
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"></svg>`;
-    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}#scene-${scene.id}`;
-  }
-
-  // Scenes remain safe synthetic image-like entries so they can participate in
-  // Stash's native Lightbox carousel. The invisible placeholder has the same
-  // intrinsic dimensions as the source video, which means LightboxImage keeps
-  // ownership of display mode, Fit-to-Screen, zoom/reset and pan calculations.
-  // The current scene slide is then covered by Stash's real ScenePlayer.
+  // The native viewer renders custom media from its selected React item.
   function sceneToLightboxImage(scene) {
     const sourceFile = firstFile(scene) || {};
-    const screenshot = scene.paths?.screenshot || scene.paths?.sprite || scene.paths?.preview || "";
-    const placeholder = sceneLightboxPlaceholder(scene);
     return {
       title: sceneFilename(scene),
+      href: `/scenes/${scene.id}`,
       paths: {
-        image: placeholder,
-        thumbnail: screenshot,
+        image: `scene:${scene.id}`,
+        thumbnail: scene.paths?.screenshot || "",
         preview: "",
       },
-      visual_files: [
-        {
-          __typename: "ImageFile",
-          path: placeholder,
-          width: Math.max(1, Number(sourceFile.width) || 1280),
-          height: Math.max(1, Number(sourceFile.height) || 720),
-        },
-      ],
-      __unified_media_scene_id: String(scene.id),
-      __unified_media_scene_filename: sceneFilename(scene),
+      visual_files: [{
+        __typename: "ImageFile",
+        path: `scene:${scene.id}`,
+        width: Math.max(1, Number(sourceFile.width) || 1280),
+        height: Math.max(1, Number(sourceFile.height) || 720),
+      }],
+      renderMedia: (controls) => React.createElement(NativeScenePlayer, {
+        key: `unified-media-scene-player:${scene.id}`,
+        scene,
+        ...controls,
+      }),
     };
   }
 

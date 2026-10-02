@@ -1,14 +1,3 @@
-    React.useEffect(() => cleanupNativeLightbox, [cleanupNativeLightbox]);
-
-    const lightboxPrevious = React.useCallback(() => {
-      const buttons = document.querySelectorAll(".Lightbox-display > .Lightbox-navbutton");
-      buttons?.[0]?.click?.();
-    }, []);
-    const lightboxNext = React.useCallback(() => {
-      const buttons = document.querySelectorAll(".Lightbox-display > .Lightbox-navbutton");
-      buttons?.[buttons.length - 1]?.click?.();
-    }, []);
-
     const showLightbox = api.hooks?.useLightbox
       ? api.hooks.useLightbox({
           images: lightboxItems,
@@ -18,7 +7,7 @@
           pageSize: lightboxItems.length || 1,
           totalCount: lightboxItems.length,
           slideshowEnabled: false,
-          onClose: cleanupNativeLightbox,
+          onClose: resetPreview,
         })
       : null;
 
@@ -27,10 +16,9 @@
         if (!showLightbox || document.querySelector(".Lightbox")) return;
         const index = visualIndexByKey.get(key);
         if (index == null) return;
-        startNativeLightboxEnhancements();
         showLightbox({ ...beginPreview(), initialIndex: index, slideshowEnabled: false, slideshowAutostart: false });
       },
-      [showLightbox, visualIndexByKey, startNativeLightboxEnhancements, beginPreview]
+      [showLightbox, visualIndexByKey, beginPreview]
     );
 
     React.useEffect(
@@ -149,11 +137,6 @@
     const first = displayItems.length ? (page - 1) * perPage + 1 : 0;
     const last = Math.min(page * perPage, displayItems.length);
 
-    const activeSceneEntry =
-      activeVisualIndex != null && pageVisualEntries[activeVisualIndex]?.type === "scene"
-        ? pageVisualEntries[activeVisualIndex]
-        : null;
-
     function changePage(next, scrollToTop) {
       setPage(next);
       if (!scrollToTop) return;
@@ -193,16 +176,6 @@
     return React.createElement(
       React.Fragment,
       null,
-      activeSceneEntry && scenePortalTarget
-        ? React.createElement(NativeScenePlayerPortal, {
-            key: `unified-media-mixed-scene-player:${activeSceneEntry.id}`,
-            entry: activeSceneEntry,
-            target: scenePortalTarget,
-            geometry: scenePortalGeometry,
-            onNext: lightboxNext,
-            onPrevious: lightboxPrevious,
-          })
-        : null,
       status.errors.length
         ? React.createElement(
             "div",

@@ -117,9 +117,12 @@ Copyright card images now use landscape (16:9) frames; Character/Variant frames
 are portrait, and Artist frames are square. Copyright and relation images use
 `object-fit: contain` so sources with different proportions are not stretched
 or cropped. Native Character cards retain their existing portrait layout.
-Variant card widths are bounded by 11 rem and 30% of viewport height, keeping
-portrait frames within 40% of viewport height even on short windows. Copyright
-cards have a separate landscape width of up to 20 rem or 70% of viewport height.
+Copyright and Variant image frames share one height. The height retains the
+existing Variant bounds (11 rem or 30% of viewport height, converted from its
+portrait width), and shrinks when necessary to fit a landscape Copyright within
+the available row. Width derives from the shared height at 16:9 or 3:4, allowing
+for card borders and a vertical scrollbar. Frames stay within 40% of viewport
+height even on short windows.
 The desktop row reserves up to 65% for Copyrights and 35% for Variants; mobile
 sections can use the full row width and wrap. Names wrap.
 Each relation list grows with its contents up to the smaller of 24 rem and half the viewport
@@ -193,8 +196,8 @@ opening. A regression reproduced four different Videos mounting behind one
 unchanged footer link, so checking the footer alone did not detect the cycling.
 
 Card metadata now updates an existing registration. Each open preview captures
-its media identities and order; the native Lightbox, player and DOM observer
-share that sequence until dismissal. Current metadata still updates by typed
+its media identities and order; the native Lightbox and player share that
+sequence until dismissal. Current metadata still updates by typed
 identity, without replacing the media at an index. Closing releases the queue,
 and reopening captures the current list, including its visible sort order. This
 applies to global All, Videos and
@@ -232,3 +235,53 @@ in the browser fixture; the after capture uses the current production CSS.
 | Previous sizing | Wider landscape sizing |
 | --- | --- |
 | ![Previous Copyright relation width](images/preview-relations-before.png) | ![Wider Copyright relation width](images/preview-relations-after.png) |
+
+## Declarative Video preview opening — 2026-10-02
+
+Video previews now use the native Lightbox's selected-media renderer. The old
+carousel-position MutationObserver, SVG placeholder, fixed-position portal and
+footer DOM rewrite are removed. Only the selected Video mounts a ScenePlayer;
+neighbouring slides contain no player. Custom-media navigation is immediate,
+so an outgoing player is not animated through the next Video's opening frame.
+
+The selected typed ID controls the data query, native player and footer link.
+The native fit/zoom/pan wrapper measures before painting; fitted player controls
+retain their normal size. Video completion does not advance the queue. The
+Video footer navigates directly to its detail route and disposes the preview.
+Thumbnail requests abort on source changes/disposal, and late responses cannot
+attach UI to another or disposed player. Cancelled autoplay promises are handled.
+
+The opening regression starts recording before the magnifying-glass click. It
+checks cold/warm first, middle and last Videos on global All, mobile Videos and
+Character All, actual native-player render/mount IDs, every sampled frame's
+footer and geometry, fitted control size, zoom/reset, delayed thumbnail responses,
+explicit next/previous navigation and dismissal/footer cleanup:
+
+```sh
+STASH_BROWSER_URL=http://127.0.0.1:9999 STASH_BROWSER_CHARACTER_ID=123 \
+  node ui/v2.5/tests/browser/preview-opening.mjs
+```
+
+Use an isolated fixture with multiple Videos and a Character associated with
+at least two. The suite changes VideoFile dimensions to 1920×1080 only in its
+browser to exercise fit geometry, and intercepts playback-activity mutations.
+Production files/codecs, other browser engines and physical devices need
+separate validation; the exact reported production flash is not established by
+a synthetic fixture.
+
+The mounted opening suite passed all 12 opens on 2026-10-02, together with
+`character-media.mjs`, `preview-queue-stability.mjs` (native VP8 playback),
+`preview-stability.mjs`, `all-media.mjs` and `navigation-card-shapes.mjs`.
+The progress ledger records the implementation commit and observed dimensions.
+
+Copyright and Variant image-height comparison uses the same browser-local
+opposite-shape sources. The before capture applies PR #125's independent
+width rules; the after capture uses the current production CSS.
+
+| Independent frame heights | Shared frame height |
+| --- | --- |
+| ![Copyright shorter than Variant](images/preview-relation-heights-before.png) | ![Equal Copyright and Variant image height](images/preview-relation-heights-after.png) |
+
+Against the previous PR #125 production UI, `preview-opening.mjs` failed its
+first-opening assertion for a transient incorrect footer. The replacement passed
+that check and the player-identity/geometry checks across all three contexts.
