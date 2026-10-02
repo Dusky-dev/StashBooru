@@ -632,5 +632,11 @@ used single-process mode, software decoding and disabled content/RDD sandboxing
 in the managed execution environment; production browser settings are unchanged.
 Production files/codecs, extensions, physical GPU rendering and Safari were not
 verified. Autoplay-policy refusal is simulated, not a claim about every browser
-policy. Publication is pending; merging and deployment are not performed.
+policy.
+
+Published as [PR #130](https://github.com/Dusky-dev/StashBooru/pull/130), from
+verified implementation `d975761316717be7abcb028a38756df766fbfb12` on 2026-10-02.
+Published Git tree `815568abbf42fdc8f2ec533d80b4a2c0c8f4ee86` matches the checked
+local tree exactly. The branch starts from the recorded fresh `develop` SHA.
+CI is pending at publication; merging and deployment are not performed.
 Next package: P08 visual stacks and variant filmstrip; not started.
