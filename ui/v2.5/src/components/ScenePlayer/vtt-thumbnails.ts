@@ -36,13 +36,17 @@ class VTTThumbnailsPlugin extends videojs.getPlugin("plugin") {
 
   private vttData?: IVTTData[];
   private lastStyle?: IVTTStyle;
+  private request?: XMLHttpRequest;
+  private requestVersion = 0;
 
   constructor(player: VideoJsPlayer, options: IVTTThumbnailsOptions) {
     super(player, options);
     this.source = options.src ?? null;
     this.showTimestamp = options.showTimestamp ?? false;
+    this.on("dispose", () => this.resetPlugin());
 
     player.ready(() => {
+      if (player.isDisposed()) return;
       player.addClass("vjs-vtt-thumbnails");
       this.initializeThumbnails();
     });
@@ -59,6 +63,9 @@ class VTTThumbnailsPlugin extends videojs.getPlugin("plugin") {
   }
 
   private resetPlugin() {
+    this.requestVersion += 1;
+    this.request?.abort();
+    delete this.request;
     this.showing = false;
 
     if (this.thumbnailHolder) {
@@ -68,7 +75,7 @@ class VTTThumbnailsPlugin extends videojs.getPlugin("plugin") {
 
     if (this.progressBar) {
       this.progressBar.removeEventListener(
-        "pointerenter",
+        "pointerover",
         this.onBarPointerEnter
       );
       this.progressBar.removeEventListener(
@@ -76,7 +83,7 @@ class VTTThumbnailsPlugin extends videojs.getPlugin("plugin") {
         this.onBarPointerMove
       );
       this.progressBar.removeEventListener(
-        "pointerleave",
+        "pointerout",
         this.onBarPointerLeave
       );
 
@@ -91,17 +98,23 @@ class VTTThumbnailsPlugin extends videojs.getPlugin("plugin") {
    * Bootstrap the plugin.
    */
   private initializeThumbnails() {
-    if (!this.source) {
+    if (!this.source || !this.player || this.player.isDisposed()) {
       return;
     }
 
     const baseUrl = this.getBaseUrl();
     const url = this.getFullyQualifiedUrl(this.source, baseUrl);
 
-    this.getVttFile(url).then((data) => {
-      this.vttData = this.processVtt(data);
-      this.setupThumbnailElement();
-    });
+    const version = ++this.requestVersion;
+    this.request?.abort();
+    this.getVttFile(url)
+      .then((data) => {
+        // Ignore responses from an older source or a disposed player.
+        if (version !== this.requestVersion || !this.player) return;
+        this.vttData = this.processVtt(data);
+        this.setupThumbnailElement();
+      })
+      .catch(() => {});
   }
 
   /**
@@ -125,6 +138,7 @@ class VTTThumbnailsPlugin extends videojs.getPlugin("plugin") {
   private getVttFile(url: string): Promise<string> {
     return new Promise((resolve, reject) => {
       const req = new XMLHttpRequest();
+      this.request = req;
 
       req.addEventListener("load", () => {
         resolve(req.responseText);
@@ -133,11 +147,18 @@ class VTTThumbnailsPlugin extends videojs.getPlugin("plugin") {
         reject(e);
       });
       req.open("GET", url);
+      req.addEventListener("abort", () =>
+        reject(new DOMException("Thumbnail request cancelled", "AbortError"))
+      );
+      req.addEventListener("loadend", () => {
+        if (this.request === req) delete this.request;
+      });
       req.send();
     });
   }
 
   private setupThumbnailElement() {
+    if (!this.player || this.player.isDisposed()) return;
     const progressBar = this.player.$(".vjs-progress-control") as HTMLElement;
     if (!progressBar) return;
     this.progressBar = progressBar;

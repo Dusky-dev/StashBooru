@@ -85,8 +85,23 @@
   /* stylelint-enable selector-class-pattern */
 
   .performer-relations {
+    --relation-image-height: min(
+      calc((11rem - 2px) * 4 / 3),
+      calc((30vh - 2px) * 4 / 3),
+      calc((65cqw - 0.5rem - 2px - 18px) * 9 / 16)
+    );
+
     align-items: flex-start;
+    container-type: inline-size;
     gap: 1rem;
+
+    @media (max-width: 576px) {
+      --relation-image-height: min(
+        calc((11rem - 2px) * 4 / 3),
+        calc((30vh - 2px) * 4 / 3),
+        calc((100cqw - 2px - 18px) * 9 / 16)
+      );
+    }
 
     .detail-item {
       display: inline-flex;
@@ -137,16 +152,13 @@
     }
 
     .booru-entity-card {
-      // Bound portrait height through width so every card keeps its aspect
-      // ratio even on a short viewport. The relation panel handles scrolling.
-      flex: 0 1 min(11rem, 30vh);
-      width: min(11rem, 30vh);
+      // Share frame height, preserving ratios, borders and scrollbar space.
+      flex: 0 0 auto;
+      width: calc(var(--relation-image-height) * 3 / 4 + 2px);
     }
 
     .booru-entity-card-copyright {
-      // Landscape art gets its own width budget, still below 40vh in height.
-      flex-basis: min(20rem, 70vh);
-      width: min(20rem, 70vh);
+      width: calc(var(--relation-image-height) * 16 / 9 + 2px);
     }
 
     .booru-entity-card-image {

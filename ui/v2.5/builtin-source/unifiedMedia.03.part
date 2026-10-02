@@ -65,121 +65,55 @@
     );
   }
 
-  function NativeScenePlayerPortal({ entry, target, geometry, onNext, onPrevious }) {
-    const portal = api.ReactDOM?.createPortal;
+  function NativeScenePlayer({ scene: initialScene, onNext, onPrevious }) {
     const loadables = React.useMemo(
       () => [api.loadableComponents?.ScenePlayer, api.loadableComponents?.Scenes].filter(Boolean),
       []
     );
     const loadingComponents = api.hooks?.useLoadComponents
-      ? api.hooks.useLoadComponents(loadables)
-      : false;
-
+      ? api.hooks.useLoadComponents(loadables) : false;
     const useFindScene = api.utils?.StashService?.useFindScene;
     const queryResult = useFindScene
-      ? useFindScene(String(entry.item.id))
-      : { data: { findScene: entry.item }, loading: false, error: null };
-
-    const scene = queryResult?.data?.findScene || entry.item;
+      ? useFindScene(String(initialScene.id))
+      : { data: { findScene: initialScene }, loading: false };
+    const queriedScene = queryResult?.data?.findScene;
+    const scene = queriedScene && String(queriedScene.id) === String(initialScene.id)
+      ? queriedScene : initialScene;
     const ScenePlayer = nativeComponent("ScenePlayer");
-    const sendSetTimestamp = React.useCallback(() => {}, []);
     const noop = React.useCallback(() => {}, []);
-
-    const relayWheelToNativeLightbox = React.useCallback(
-      (ev) => {
-        if (!target) return;
-        const hiddenMedia = target.querySelector(
-          ".Lightbox-carousel-image-wrapper img, .Lightbox-carousel-image-wrapper video"
-        );
-        if (!hiddenMedia) return;
-
-        // Let Stash's own LightboxImage handle scroll mode, zoom increments,
-        // reset-zoom UI and persisted lightbox options. We only relay the wheel
-        // event from the visible native ScenePlayer to its invisible placeholder.
-        ev.preventDefault?.();
-        ev.stopPropagation?.();
-        try {
-          hiddenMedia.dispatchEvent(
-            new WheelEvent("wheel", {
-              bubbles: true,
-              cancelable: true,
-              deltaX: ev.deltaX,
-              deltaY: ev.deltaY,
-              deltaZ: ev.deltaZ,
-              deltaMode: ev.deltaMode,
-              clientX: ev.clientX,
-              clientY: ev.clientY,
-              ctrlKey: ev.ctrlKey,
-              shiftKey: ev.shiftKey,
-              altKey: ev.altKey,
-              metaKey: ev.metaKey,
-            })
-          );
-        } catch (e) {
-          console.warn("[Unified Media] could not relay lightbox zoom event", e);
-        }
-      },
-      [target]
-    );
-
-    if (!target || typeof portal !== "function") return null;
-
     let content;
     if (loadingComponents || queryResult?.loading) {
       const Loading = nativeComponent("LoadingIndicator");
-      content = Loading
-        ? React.createElement(Loading)
+      content = Loading ? React.createElement(Loading)
         : React.createElement("div", { className: "text-muted" }, "Loading video…");
     } else if (!ScenePlayer || !scene?.sceneStreams || !Array.isArray(scene.files)) {
-      content = React.createElement(
-        "div",
-        { className: "alert alert-warning unified-media-native-player-error" },
-        "Stash's native ScenePlayer could not be loaded for this preview."
-      );
+      content = React.createElement("div", {
+        className: "alert alert-warning unified-media-native-player-error",
+      }, "Stash's native ScenePlayer could not be loaded for this preview.");
     } else {
       content = React.createElement(ScenePlayer, {
-        key: `unified-media-scene-player:${scene.id}`,
         scene,
         hideScrubberOverride: true,
         autoplay: true,
         permitLoop: false,
         initialTimestamp: 0,
-        sendSetTimestamp,
+        sendSetTimestamp: noop,
         onComplete: noop,
-        onNext: onNext || noop,
-        onPrevious: onPrevious || noop,
+        onNext,
+        onPrevious,
       });
     }
-
-    const style = geometry
-      ? {
-          left: `${geometry.left}px`,
-          top: `${geometry.top}px`,
-          width: `${geometry.width}px`,
-          height: `${geometry.height}px`,
-        }
-      : undefined;
-
-    return portal(
-      React.createElement(
-        "div",
-        {
-          className: "unified-media-native-scene-player",
-          style,
-          onWheelCapture: relayWheelToNativeLightbox,
-        },
-        content
-      ),
-      document.body
-    );
+    return React.createElement("div", {
+      className: "unified-media-native-scene-player",
+      "data-scene-id": String(initialScene.id),
+    }, content);
   }
 
   // A preview owns the sequence captured at open. Queries can still hydrate
   // the native player, but background card updates must not replace the Video
-  // at the viewer's numeric index. The observer and player read the same queue.
+  // at the viewer's numeric index. The viewer and player read the same queue.
   function usePreviewSequence(availableEntries) {
     const [previewEntries, setPreviewEntries] = React.useState(null);
-    const sequenceRef = React.useRef(null);
     const entries = React.useMemo(() => {
       if (!previewEntries) return availableEntries;
       // Preserve captured membership/order while allowing edits and hydration
@@ -187,10 +121,8 @@
       const latestByKey = new Map(availableEntries.map((entry) => [entry.key, entry]));
       return previewEntries.map((entry) => latestByKey.get(entry.key) || entry);
     }, [availableEntries, previewEntries]);
-    sequenceRef.current = previewEntries ? entries : null;
     const beginPreview = React.useCallback(() => {
       const entries = availableEntries.slice();
-      sequenceRef.current = entries;
       setPreviewEntries(entries);
       return {
         images: entries.map(entryToLightboxImage),
@@ -199,115 +131,45 @@
       };
     }, [availableEntries]);
     const resetPreview = React.useCallback(() => {
-      sequenceRef.current = null;
       setPreviewEntries(null);
     }, []);
-    return { entries, sequenceRef, beginPreview, resetPreview };
+    return { entries, beginPreview, resetPreview };
   }
 
-  // Page-wide scene preview host. Native scene cards in the normal Videos tab
-  // register themselves with PageMediaContext, so they get the same Stash
-  // Lightbox + native ScenePlayer preview experience as the All tab.
+  // Native scene cards share the viewer's declarative media renderer.
   function PageScenePreviewHost({ scenes, registerOpen, onClosed }) {
     const availableEntries = React.useMemo(
-      () => (scenes || []).map((scene) => wrap("scene", scene)),
-      [scenes]
+      () => (scenes || []).map((scene) => wrap("scene", scene)), [scenes]
     );
-    const { entries, sequenceRef, beginPreview, resetPreview } = usePreviewSequence(availableEntries);
+    const { entries, beginPreview, resetPreview } = usePreviewSequence(availableEntries);
     const lightboxItems = React.useMemo(
-      () => entries.map(entryToLightboxImage),
-      [entries]
+      () => entries.map(entryToLightboxImage), [entries]
     );
     const indexByID = React.useMemo(
       () => new Map(availableEntries.map((entry, index) => [String(entry.id), index])),
       [availableEntries]
     );
-
-    const [activeIndex, setActiveIndex] = React.useState(null);
-    const [portalTarget, setPortalTarget] = React.useState(null);
-    const [portalGeometry, setPortalGeometry] = React.useState(null);
-    const observerRef = React.useRef(null);
-    const syncFrameRef = React.useRef(null);
-
-    const cleanup = React.useCallback(() => {
-      document.body.classList.remove("unified-media-native-lightbox-open");
-      document.querySelectorAll(".Lightbox-carousel-image.unified-media-native-scene-slide").forEach((node) =>
-        node.classList.remove("unified-media-native-scene-slide")
-      );
-      document.querySelectorAll(".Lightbox-footer-center .image-link").forEach((link) => {
-        const handler = link.__unifiedMediaSceneNavigateHandler;
-        if (handler) link.removeEventListener("click", handler, true);
-        delete link.__unifiedMediaSceneNavigateHandler;
-        link.classList.remove("unified-media-scene-lightbox-title");
-      });
-      observerRef.current?.disconnect?.();
-      observerRef.current = null;
-      if (syncFrameRef.current) cancelAnimationFrame(syncFrameRef.current);
-      syncFrameRef.current = null;
-      setActiveIndex(null);
-      setPortalTarget(null);
-      setPortalGeometry(null);
+    const handleClose = React.useCallback(() => {
       resetPreview();
-    }, [resetPreview]);
-
-    const sync = React.useCallback(() => {
-      const lightbox = document.querySelector(".Lightbox");
-      const carousel = lightbox?.querySelector(".Lightbox-carousel");
-      if (!lightbox || !carousel) return;
-
-      if (!document.body.classList.contains("unified-media-native-lightbox-open")) {
-        // Only mutate changed DOM state: the observer also watches our own writes.
-        document.body.classList.add("unified-media-native-lightbox-open");
-      }
-      const match = String(carousel.style.left || "").match(/(-?\d+(?:\.\d+)?)vw/);
-      const index = match ? Math.max(0, Math.round(Math.abs(Number(match[1])) / 100)) : 0;
-      const entry = sequenceRef.current?.[index];
-      const target = carousel.children?.[index] || null;
-
-      carousel.querySelectorAll(".Lightbox-carousel-image.unified-media-native-scene-slide").forEach((node) => {
-        if (node !== target) node.classList.remove("unified-media-native-scene-slide");
-      });
-
-      if (entry && target) {
-        if (!target.classList.contains("unified-media-native-scene-slide")) {
-          target.classList.add("unified-media-native-scene-slide");
-        }
-        setActiveIndex((old) => old === index ? old : index);
-        setPortalTarget((old) => old === target ? old : target);
-
-        const nativeMedia = target.querySelector(
-          ".Lightbox-carousel-image-wrapper img, .Lightbox-carousel-image-wrapper video"
-        );
-        if (nativeMedia) {
-          const mediaRect = nativeMedia.getBoundingClientRect();
-          const nextGeometry = {
-            left: mediaRect.left,
-            top: mediaRect.top,
-            width: mediaRect.width,
-            height: mediaRect.height,
-          };
-          setPortalGeometry((old) => {
-            if (
-              old &&
-              Math.abs(old.left - nextGeometry.left) < 0.5 &&
-              Math.abs(old.top - nextGeometry.top) < 0.5 &&
-              Math.abs(old.width - nextGeometry.width) < 0.5 &&
-              Math.abs(old.height - nextGeometry.height) < 0.5
-            ) return old;
-            return nextGeometry;
-          });
-        }
-      } else {
-        if (target?.classList.contains("unified-media-native-scene-slide")) {
-          target.classList.remove("unified-media-native-scene-slide");
-        }
-        setPortalTarget(null);
-        setPortalGeometry(null);
-      }
-
-      const footerLink = lightbox.querySelector(".Lightbox-footer-center .image-link");
-      if (footerLink) {
-        const oldHandler = footerLink.__unifiedMediaSceneNavigateHandler;
-        if (oldHandler) {
-          footerLink.removeEventListener("click", oldHandler, true);
-          delete footerLink.__unifiedMediaSceneNavigateHandler;
+      onClosed?.();
+    }, [resetPreview, onClosed]);
+    const showLightbox = api.hooks?.useLightbox
+      ? api.hooks.useLightbox({
+          images: lightboxItems,
+          showNavigation: false,
+          page: 1,
+          pages: 1,
+          pageSize: lightboxItems.length || 1,
+          totalCount: lightboxItems.length,
+          slideshowEnabled: false,
+          onClose: handleClose,
+        }) : null;
+    const openScene = React.useCallback((scene) => {
+      if (!showLightbox || !scene || document.querySelector(".Lightbox")) return;
+      const index = indexByID.get(String(scene.id));
+      if (index == null) return;
+      showLightbox({ ...beginPreview(), initialIndex: index, slideshowEnabled: false, slideshowAutostart: false });
+    }, [showLightbox, indexByID, beginPreview]);
+    React.useEffect(() => registerOpen?.(openScene), [registerOpen, openScene]);
+    return null;
+  }

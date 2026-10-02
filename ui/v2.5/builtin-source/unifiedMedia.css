@@ -181,23 +181,12 @@
   }
 }
 
-/* Scene entries stay inside Stash's stock Lightbox shell/navigation. The
-   invisible native LightboxImage placeholder continues to own display-mode,
-   fit, zoom and pan calculations. Unified Media mirrors that exact media rect
-   and places Stash's real ScenePlayer over it. */
-.Lightbox-carousel-image.unified-media-native-scene-slide {
+/* The native viewer sizes/transforms its selected player in the Image wrapper. */
+.unified-media-native-scene-player {
+  height: 100%;
   overflow: visible;
   position: relative;
-}
-
-.Lightbox-carousel-image.unified-media-native-scene-slide > .Lightbox-carousel-image {
-  visibility: hidden;
-}
-
-.unified-media-native-scene-player {
-  overflow: visible;
-  position: fixed;
-  z-index: 1042;
+  width: 100%;
 }
 
 .unified-media-native-scene-player > .VideoPlayer,
@@ -232,12 +221,6 @@
 .unified-media-native-player-error {
   margin: 1rem;
   max-width: 42rem;
-}
-
-/* Scene previews use the same centered footer-link styling as images, but the
-   link is retargeted to /scenes/:id and displays the actual video filename. */
-body.unified-media-native-lightbox-open .unified-media-scene-lightbox-title {
-  cursor: pointer;
 }
 
 /* v23: apply the Wall hover behavior app-wide. Stash's native Wall is used

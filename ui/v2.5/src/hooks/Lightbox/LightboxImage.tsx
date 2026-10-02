@@ -1,4 +1,10 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
 import ResizeObserver from "resize-observer-polyfill";
 import * as GQL from "src/core/generated-graphql";
 
@@ -74,6 +80,7 @@ interface IProps {
   onRight: () => void;
   isVideo: boolean;
   isAnimated: boolean;
+  media?: React.ReactNode;
 }
 
 export const LightboxImage: React.FC<IProps> = ({
@@ -96,6 +103,7 @@ export const LightboxImage: React.FC<IProps> = ({
   onRight,
   isVideo,
   isAnimated,
+  media,
 }) => {
   const [defaultZoom, setDefaultZoom] = useState(1);
   const [moving, setMoving] = useState(false);
@@ -117,7 +125,7 @@ export const LightboxImage: React.FC<IProps> = ({
 
   const scrollAttempts = useRef(0);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const box = container.current;
     if (box) {
       setBoxWidth(box.offsetWidth);
@@ -220,7 +228,7 @@ export const LightboxImage: React.FC<IProps> = ({
     ]
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     // don't set anything until we have the dimensions
     if (!imageWidth || !imageHeight || !boxWidth || !boxHeight) {
       return;
@@ -540,6 +548,7 @@ export const LightboxImage: React.FC<IProps> = ({
   }
 
   const ImageView = isVideo ? "video" : "img";
+  const appliedZoom = defaultZoom * zoom;
 
   return (
     <div
@@ -547,7 +556,9 @@ export const LightboxImage: React.FC<IProps> = ({
       className={`${CLASSNAME_IMAGE}`}
       onWheel={(e) => onContainerScroll(e)}
     >
-      {defaultZoom && (current || !isAnimated || isVideo) ? (
+      {defaultZoom &&
+      (current || !isAnimated || isVideo) &&
+      (!media || (boxWidth > 0 && boxHeight > 0)) ? (
         /* The transform is applied to this wrapper rather than the <img>
            to work around a Safari rendering bug: `transform: scale` on
            an <img> with very large intrinsic dimensions distorts the
@@ -555,29 +566,51 @@ export const LightboxImage: React.FC<IProps> = ({
         <div
           className={`${CLASSNAME_IMAGE}-wrapper`}
           style={{
-            transform: `translate(${positionX}px, ${positionY}px) scale(${
-              defaultZoom * zoom
-            })`,
+            transform: `translate(${positionX}px, ${positionY}px) scale(${appliedZoom})`,
           }}
         >
-          <source srcSet={src} media="(min-width: 800px)" />
-          {/* XXbiome-ignore jsx-a11y/no-noninteractive-element-interactions */}
-          <ImageView
-            loop={isVideo}
-            src={src}
-            alt=""
-            draggable={false}
-            style={{ touchAction: "none" }}
-            onWheel={current ? (e) => onImageScroll(e) : undefined}
-            onMouseDown={onImageMouseDown}
-            onMouseUp={onImageMouseUp}
-            onMouseMove={onImageMouseOver}
-            onTouchStart={onTouchStart}
-            onTouchMove={onTouchMove}
-            onPointerDown={onPointerDown}
-            onPointerUp={onPointerUp}
-            onPointerMove={onPointerMove}
-          />
+          {media ? (
+            <div
+              style={{ width: imageWidth, height: imageHeight }}
+              onWheel={(e) => {
+                onImageScroll(e);
+                e.stopPropagation();
+              }}
+            >
+              {/* Preserve native fit/zoom/pan geometry and full-size controls. */}
+              <div
+                style={{
+                  width: imageWidth * appliedZoom,
+                  height: imageHeight * appliedZoom,
+                  transform: `scale(${1 / appliedZoom})`,
+                  transformOrigin: "top left",
+                }}
+              >
+                {media}
+              </div>
+            </div>
+          ) : (
+            <>
+              <source srcSet={src} media="(min-width: 800px)" />
+              {/* XXbiome-ignore jsx-a11y/no-noninteractive-element-interactions */}
+              <ImageView
+                loop={isVideo}
+                src={src}
+                alt=""
+                draggable={false}
+                style={{ touchAction: "none" }}
+                onWheel={current ? (e) => onImageScroll(e) : undefined}
+                onMouseDown={onImageMouseDown}
+                onMouseUp={onImageMouseUp}
+                onMouseMove={onImageMouseOver}
+                onTouchStart={onTouchStart}
+                onTouchMove={onTouchMove}
+                onPointerDown={onPointerDown}
+                onPointerUp={onPointerUp}
+                onPointerMove={onPointerMove}
+              />
+            </>
+          )}
         </div>
       ) : undefined}
     </div>

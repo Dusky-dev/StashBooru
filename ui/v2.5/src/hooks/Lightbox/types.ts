@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import * as GQL from "src/core/generated-graphql";
 
 interface IImagePaths {
@@ -37,6 +38,11 @@ export interface ILightboxImage {
   paths: IImagePaths;
   visual_files?: IFiles[];
   galleries?: GQL.Maybe<IGallery[]>;
+  href?: string;
+  renderMedia?: (controls: {
+    onNext: () => void;
+    onPrevious: () => void;
+  }) => ReactNode;
 }
 
 export interface IChapter {

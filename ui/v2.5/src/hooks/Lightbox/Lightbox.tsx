@@ -957,6 +957,9 @@ export const LightboxComponent: React.FC<IProps> = ({
   }
 
   function renderCarouselImage(image: ILightboxImage, imageIndex: number) {
+    // Stateful custom players belong only to the selected item. Preloading
+    // neighbouring slides must never mount or start another Video player.
+    if (image.renderMedia && imageIndex !== currentIndex) return undefined;
     if (imageIndex < currentIndex - 1 || imageIndex > currentIndex + 1) {
       return undefined;
     }
@@ -982,6 +985,10 @@ export const LightboxComponent: React.FC<IProps> = ({
         onRight={handleRight}
         isVideo={isVideo(image.visual_files?.[0] ?? {})}
         isAnimated={Boolean(animationBadge(image))}
+        media={image.renderMedia?.({
+          onNext: handleRight,
+          onPrevious: handleLeft,
+        })}
       />
     );
   }
@@ -1162,7 +1169,9 @@ export const LightboxComponent: React.FC<IProps> = ({
           ) : (
             <div
               className={cx(CLASSNAME_CAROUSEL, {
-                [CLASSNAME_INSTANT]: instantTransition,
+                [CLASSNAME_INSTANT]:
+                  instantTransition ||
+                  images.some((image) => image.renderMedia),
               })}
               style={{ left: `${currentIndex * -100}vw` }}
               ref={carouselRef}
@@ -1240,9 +1249,24 @@ export const LightboxComponent: React.FC<IProps> = ({
                 >
                   <Link
                     className="image-link"
-                    to={`/images/${currentImage.id}`}
+                    to={currentImage.href ?? `/images/${currentImage.id}`}
                     replace
-                    onClick={() => close("navigate")}
+                    onClick={(event) => {
+                      if (!currentImage.href) {
+                        close("navigate");
+                      } else if (
+                        event.button === 0 &&
+                        !event.metaKey &&
+                        !event.ctrlKey &&
+                        !event.shiftKey &&
+                        !event.altKey
+                      ) {
+                        // Full navigation disposes custom players before the
+                        // detail route creates another with the same plugins.
+                        event.preventDefault();
+                        window.location.replace(currentImage.href);
+                      }
+                    }}
                   >
                     {title ?? ""}
                   </Link>

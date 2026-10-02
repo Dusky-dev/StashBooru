@@ -88,11 +88,9 @@ try {
           imageCount: document.querySelectorAll(
             ".Lightbox-carousel-image-wrapper img"
           ).length,
-          placeholders: [
-            ...document.querySelectorAll(
-              ".Lightbox-carousel-image-wrapper img"
-            ),
-          ].every((image) => image.getAttribute("src")?.includes("#scene-")),
+          playerID: document
+            .querySelector(".unified-media-native-scene-player")
+            ?.getAttribute("data-scene-id"),
         }),
       100
     );
@@ -128,7 +126,7 @@ try {
       hrefs: [...new Set(samples.map((s) => s.href))],
       lightboxes: [...new Set(samples.map((s) => s.lightboxes))],
       players: [...new Set(samples.map((s) => s.players))],
-      placeholders: [...new Set(samples.map((s) => s.placeholders))],
+      playerIDs: [...new Set(samples.map((s) => s.playerID))],
       imageCount: [...new Set(samples.map((s) => s.imageCount))],
       slides: [...new Set(samples.map((s) => s.slides))],
       errors,
@@ -144,7 +142,9 @@ try {
     "Preview advanced without input"
   );
   assert.ok(
-    samples.every((s) => s.imageCount > 0 && s.placeholders && s.slides > 1),
+    samples.every(
+      (s) => s.imageCount === 0 && s.playerID === id && s.slides > 1
+    ),
     "Background cache refresh replaced the active Video preview with Image slides"
   );
   await page

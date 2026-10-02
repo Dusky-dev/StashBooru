@@ -86,6 +86,7 @@ try {
           return {
             copyright: card.classList.contains("booru-entity-card-copyright"),
             width: frame.width,
+            height: frame.height,
             ratio: frame.width / frame.height,
             fit: getComputedStyle(card.querySelector("img")).objectFit,
           };
@@ -111,6 +112,11 @@ try {
     JSON.stringify(single)
   );
   function checkShapes(measurement) {
+    const heights = measurement.cards.map((card) => card.height);
+    assert.ok(
+      Math.max(...heights) - Math.min(...heights) < 1,
+      `Copyright and Variant frames differ in height: ${JSON.stringify(measurement.cards)}`
+    );
     for (const card of measurement.cards) {
       assert.ok(
         Math.abs(card.ratio - (card.copyright ? 16 / 9 : 3 / 4)) < 0.01,
@@ -127,10 +133,7 @@ try {
       copyrightWidth >= variantWidth * 1.5,
     JSON.stringify(single)
   );
-  console.log(
-    "Relation card widths",
-    JSON.stringify({ copyrightWidth, variantWidth })
-  );
+  console.log("Relation card dimensions", JSON.stringify(single.cards));
   assert.ok(
     single.heights.every(
       (height) => height <= Math.min(256, single.viewport * 0.4) + 1
@@ -151,12 +154,11 @@ try {
     // a comparable before capture, then immediately restore the current CSS.
     const previous = await page.addStyleTag({
       content: `
-      #performer-page .performer-relations .detail-item.copyrights,
-      #performer-page .performer-relations .detail-item.character-variants {
-        flex-shrink: 1; max-width: calc(50% - .5rem);
+      #performer-page .performer-relations .booru-entity-card {
+        flex: 0 1 min(11rem, 30vh); width: min(11rem, 30vh);
       }
       #performer-page .performer-relations .booru-entity-card-copyright {
-        flex-basis: min(11rem, 30vh); width: min(11rem, 30vh);
+        flex-basis: min(20rem, 70vh); width: min(20rem, 70vh);
       }
     `,
     });
@@ -219,6 +221,18 @@ try {
   many = true;
   await page.reload();
   await page.locator(".performer-relations img").nth(35).waitFor();
+  // Lazy images in the wider Copyright grid need every row brought into view.
+  for (const panel of await page
+    .locator(".performer-relations .detail-item-value")
+    .all()) {
+    await panel.evaluate(async (node) => {
+      for (let top = 0; top <= node.scrollHeight; top += node.clientHeight) {
+        node.scrollTop = top;
+        await new Promise((resolve) => setTimeout(resolve, 30));
+      }
+      node.scrollTop = 0;
+    });
+  }
   await page.waitForFunction(() =>
     [...document.querySelectorAll(".performer-relations img")].every(
       (image) => image.complete && image.naturalWidth
@@ -248,6 +262,7 @@ try {
   }
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(100);
+  checkShapes(await measure());
   const mobile = await page.evaluate(() => ({
     scroll: document.documentElement.scrollWidth,
     width: innerWidth,
