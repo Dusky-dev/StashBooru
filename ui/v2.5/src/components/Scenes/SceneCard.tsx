@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Button, ButtonGroup, OverlayTrigger, Tooltip } from "react-bootstrap";
 import { Link, useHistory } from "react-router-dom";
 import cx from "classnames";
@@ -32,6 +38,7 @@ import { GroupTag } from "../Groups/GroupTag";
 import { FileSize } from "../Shared/FileSize";
 import { OCounterButton } from "../Shared/CountButton";
 import { defaultPreviewVolume } from "src/core/config";
+import { usePreviewPlayback } from "src/hooks/previewPlayback";
 
 interface IScenePreviewProps {
   isPortrait: boolean;
@@ -56,24 +63,32 @@ export const ScenePreview: React.FC<IScenePreviewProps> = React.memo(
     volume,
   }) => {
     const videoEl = useRef<HTMLVideoElement>(null);
+    const [hovered, setHovered] = useState(false);
+    const [loadedSource, setLoadedSource] = useState<string>();
+    const [failedSource, setFailedSource] = useState<string>();
+    const playable = !!video && video !== failedSource && !disabled;
+    usePreviewPlayback(videoEl, playable && hovered, video);
 
     useEffect(() => {
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-          if (entry.intersectionRatio > 0)
-            // Catch is necessary due to DOMException if user hovers before clicking on page
-            videoEl.current?.play()?.catch(() => {});
-          else videoEl.current?.pause();
-        });
-      });
-
-      if (videoEl.current) observer.observe(videoEl.current);
-
-      return () => observer.disconnect();
+      // Keep hover stable while moving between the image, overlay buttons
+      // and card text. The preview button is a sibling of the image wrapper.
+      const target =
+        videoEl.current?.closest(".scene-card") ??
+        videoEl.current?.parentElement;
+      if (!target) return;
+      const enter = () => setHovered(true);
+      const leave = () => setHovered(false);
+      target.addEventListener("pointerenter", enter);
+      target.addEventListener("pointerleave", leave);
+      setHovered(target.matches(":hover"));
+      return () => {
+        target.removeEventListener("pointerenter", enter);
+        target.removeEventListener("pointerleave", leave);
+      };
     }, []);
 
     useEffect(() => {
-      if (videoEl?.current?.volume)
+      if (videoEl.current)
         videoEl.current.volume = soundActive ? (volume ?? 0) / 100 : 0;
     }, [volume, soundActive]);
 
@@ -89,11 +104,15 @@ export const ScenePreview: React.FC<IScenePreviewProps> = React.memo(
           disableRemotePlayback
           playsInline
           muted={!soundActive}
-          className="scene-card-preview-video"
+          className={cx("scene-card-preview-video", {
+            "scene-card-preview-ready": playable && loadedSource === video,
+          })}
           loop
           preload="none"
           ref={videoEl}
           src={video}
+          onLoadedData={() => setLoadedSource(video)}
+          onError={() => setFailedSource(video)}
         />
         <PreviewScrubber
           vttPath={vttPath}

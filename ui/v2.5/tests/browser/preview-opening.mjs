@@ -47,8 +47,15 @@ try {
         });
         return;
       }
-      const response = await route.fetch();
-      const payload = await response.json();
+      let response;
+      let payload;
+      try {
+        response = await route.fetch();
+        payload = await response.json();
+      } catch (error) {
+        if (/closed|disposed|aborted/i.test(error.message)) return;
+        throw error;
+      }
       function largeVideo(value) {
         if (!value || typeof value !== "object") return;
         if (value.__typename === "VideoFile") {
@@ -58,14 +65,22 @@ try {
         for (const child of Object.values(value)) largeVideo(child);
       }
       largeVideo(payload);
-      await route.fulfill({ response, json: payload });
+      try {
+        await route.fulfill({ response, json: payload });
+      } catch (error) {
+        if (!/closed|aborted|already handled/i.test(error.message)) throw error;
+      }
     });
     await page.route("**/scene/**/*thumbs*", async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 2000));
       try {
         await route.fulfill({ contentType: "text/vtt", body: "WEBVTT\n\n" });
       } catch (error) {
-        if (!/closed|aborted|Invalid InterceptionId/i.test(error.message))
+        if (
+          !/closed|aborted|already handled|Invalid InterceptionId/i.test(
+            error.message
+          )
+        )
           throw error;
       }
     });
@@ -242,6 +257,7 @@ try {
         await page.evaluate(() => {
           window.openingPlayerEvents = [];
         });
+        await page.getByTitle("Close Lightbox", { exact: true }).focus();
         await page.keyboard.press("ArrowRight");
         await page.waitForFunction(
           (target) =>
@@ -263,6 +279,7 @@ try {
           ]),
           [nextID]
         );
+        await page.getByTitle("Close Lightbox", { exact: true }).focus();
         await page.keyboard.press("ArrowLeft");
         await page.waitForFunction(
           (target) =>
@@ -287,6 +304,7 @@ try {
       "Pending thumbnail requests survived player disposal"
     );
     assert.deepEqual(errors, []);
+    await page.unrouteAll({ behavior: "ignoreErrors" });
     await page.close();
   }
   console.log(

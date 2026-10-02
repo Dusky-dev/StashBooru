@@ -48,6 +48,8 @@ const getLightboxHistoryID = (state: unknown) => {
 };
 
 export const LightboxContext = React.createContext<IContext | null>(null);
+// Background previews only need visibility, not every active media update.
+export const LightboxVisibilityContext = React.createContext(false);
 
 export function useLightboxContext() {
   const context = React.useContext(LightboxContext);
@@ -221,7 +223,9 @@ export const LightboxProvider: React.FC = ({ children }) => {
     <LightboxContext.Provider
       value={{ lightboxState, setLightboxState: setPartialState }}
     >
-      {children}
+      <LightboxVisibilityContext.Provider value={lightboxState.isVisible}>
+        {children}
+      </LightboxVisibilityContext.Provider>
       <Suspense fallback={null}>
         {lightboxState.isVisible && (
           <LightboxComponent

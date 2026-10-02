@@ -42,6 +42,7 @@ import {
 import { SceneInteractiveStatus } from "src/hooks/Interactive/status";
 import { languageMap } from "src/utils/caption";
 import { VIDEO_PLAYER_ID } from "./util";
+import { LightboxVisibilityContext } from "src/hooks/Lightbox/context";
 
 // @ts-expect-error
 import airplay from "@silvermine/videojs-airplay";
@@ -220,6 +221,7 @@ function getMarkerTitle(marker: MarkerFragment) {
 
 interface IScenePlayerProps {
   scene: GQL.SceneDataFragment;
+  playerId?: string;
   hideScrubberOverride: boolean;
   autoplay?: boolean;
   permitLoop?: boolean;
@@ -234,6 +236,7 @@ export const ScenePlayer: React.FC<IScenePlayerProps> = PatchComponent(
   "ScenePlayer",
   ({
     scene,
+    playerId = VIDEO_PLAYER_ID,
     hideScrubberOverride,
     autoplay,
     permitLoop = true,
@@ -244,6 +247,7 @@ export const ScenePlayer: React.FC<IScenePlayerProps> = PatchComponent(
     onPrevious,
   }) => {
     const { configuration } = useConfigurationContext();
+    const viewerOpen = React.useContext(LightboxVisibilityContext);
     const interfaceConfig = configuration?.interface;
     const uiConfig = configuration?.ui;
     const videoRef = useRef<HTMLDivElement>(null);
@@ -304,6 +308,18 @@ export const ScenePlayer: React.FC<IScenePlayerProps> = PatchComponent(
     }, [_player]);
 
     useEffect(() => {
+      const player = getPlayer();
+      if (!viewerOpen || !player || playerId !== VIDEO_PLAYER_ID) return;
+      const wasPlaying = !player.paused();
+      player.pause();
+      return () => {
+        if (wasPlaying && !player.isDisposed()) {
+          void player.play()?.catch(() => {});
+        }
+      };
+    }, [getPlayer, viewerOpen, playerId]);
+
+    useEffect(() => {
       if (hideScrubberOverride || fullscreen) {
         setShowScrubber(false);
         return;
@@ -338,7 +354,7 @@ export const ScenePlayer: React.FC<IScenePlayerProps> = PatchComponent(
     // Initialize VideoJS player
     useEffect(() => {
       const options: VideoJsPlayerOptions = {
-        id: VIDEO_PLAYER_ID,
+        id: playerId,
         controls: true,
         controlBar: {
           pictureInPictureToggle: false,
@@ -447,6 +463,7 @@ export const ScenePlayer: React.FC<IScenePlayerProps> = PatchComponent(
       // player re-initialization when toggling autostart (which would interrupt playback)
       // XXbiome-ignore lint/correctness/useExhaustiveDependencies: intentional
     }, [
+      playerId,
       uiConfig?.showAbLoopControls,
       uiConfig?.enableChromecast,
       interfaceConfig?.autostartVideo,
@@ -907,7 +924,12 @@ export const ScenePlayer: React.FC<IScenePlayerProps> = PatchComponent(
 
     useEffect(() => {
       const player = getPlayer();
-      if (!player || !ready || !auto.current) {
+      if (
+        !player ||
+        !ready ||
+        !auto.current ||
+        (viewerOpen && playerId === VIDEO_PLAYER_ID)
+      ) {
         return;
       }
 
@@ -924,7 +946,15 @@ export const ScenePlayer: React.FC<IScenePlayerProps> = PatchComponent(
       // Stream failures still retain VideoJS's error UI.
       void player.play()?.catch(() => {});
       auto.current = false;
-    }, [getPlayer, scene, ready, interactiveClient, currentScript]);
+    }, [
+      getPlayer,
+      scene,
+      ready,
+      interactiveClient,
+      currentScript,
+      viewerOpen,
+      playerId,
+    ]);
 
     // Attach handler for onComplete event
     useEffect(() => {

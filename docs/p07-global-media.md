@@ -285,3 +285,53 @@ width rules; the after capture uses the current production CSS.
 Against the previous PR #125 production UI, `preview-opening.mjs` failed its
 first-opening assertion for a transient incorrect footer. The replacement passed
 that check and the player-identity/geometry checks across all three contexts.
+
+## Video input and foreground playback — 2026-10-02
+
+PR #126 removed the observer/portal bridge, but custom players still inherited
+the Image lightbox's input handling. With vertical-scroll (`PAN_Y`) enabled,
+a wheel burst over a fitted Video advanced through all four fixture Videos.
+Native player arrow keys also sought within a Video and bubbled into carousel
+navigation. Custom players now clamp vertical panning to the selected Video;
+wheel events over native controls do not zoom/pan the wrapper. Player and form
+keys stay within their controls, and held carousel keys do not rapidly cycle
+Videos. Explicit next/previous buttons and carousel keys outside the player
+remain available.
+
+Native grid hover clips, native Video/All walls and scoped mixed walls share
+`usePreviewPlayback`. A clip plays only while its page area is visible, its
+preview is enabled, the document is visible and the foreground viewer is closed.
+Opening the viewer pauses background clips; closing releases eligible clips.
+Grid hover remains stable between the thumbnail, overlay buttons and card text.
+Screenshots stay visible until a decoded clip frame is ready, and remain the
+fallback for a failed clip. Volume updates also work after a zero-volume state.
+
+A preview opened over a Video detail page previously reused `VideoJsPlayer`,
+creating duplicate DOM IDs and overwriting VideoJS's global player registration.
+Preview players now use a separate ID; the detail player pauses while covered
+and resumes if it was playing. Media Session metadata/handlers belong to the
+active native player, restore on preview disposal and clear when no player
+remains. Closing a preview does not leave system media keys targeting it.
+
+Read-only regressions use native decoded VP8 media over HTTP:
+
+```sh
+STASH_BROWSER_URL=http://127.0.0.1:9999 STASH_BROWSER_CHARACTER_ID=123 \
+  STASH_BROWSER_VIDEO_FILE=/path/to/preview-test.webm \
+  node ui/v2.5/tests/browser/preview-input-playback.mjs
+STASH_BROWSER_URL=http://127.0.0.1:9999 \
+  STASH_BROWSER_VIDEO_FILE=/path/to/preview-test.webm \
+  node ui/v2.5/tests/browser/preview-player-overlap.mjs
+```
+
+Use an isolated fixture with Videos `1` and `2`, at least two Videos linked to
+the specified Character and an Image. Stream/preview URLs, configuration and
+activity responses are substituted only within the browser; these suites make
+no metadata writes. `STASH_BROWSER_ENGINE=firefox` selects Firefox; the default
+is Chromium. `CHROMIUM_EXECUTABLE`/`FIREFOX_EXECUTABLE` optionally select a binary.
+The optional `STASH_BROWSER_FIREFOX_SINGLE_PROCESS=1` is for execution
+environments that cannot start Firefox's normal content sandbox.
+
+These regressions establish the reproduced input/ownership failures and native
+VP8 playback. Production codecs/files, third-party browser extensions and the
+exact trigger behind an individual production log remain separate checks.

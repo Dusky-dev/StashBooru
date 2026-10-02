@@ -606,6 +606,23 @@ export const LightboxComponent: React.FC<IProps> = ({
 
   const handleKey = useCallback(
     (e: KeyboardEvent) => {
+      const arrow = e.key === "ArrowRight" || e.key === "ArrowLeft";
+      // Native player arrows seek within the selected Video. Image carousel
+      // navigation must not handle the same event a second time.
+      if (
+        (e.defaultPrevented && e.key !== "Escape") ||
+        (arrow &&
+          ((e.target instanceof Element &&
+            e.target.closest(
+              ".VideoPlayer, input, select, textarea, [contenteditable='true']"
+            )) ||
+            e.altKey ||
+            e.ctrlKey ||
+            e.metaKey ||
+            e.shiftKey ||
+            (e.repeat && images[index ?? initialIndex]?.renderMedia)))
+      )
+        return;
       if (e.repeat && (e.key === "ArrowRight" || e.key === "ArrowLeft"))
         setInstant();
       if (e.key === "ArrowLeft") handleLeft();

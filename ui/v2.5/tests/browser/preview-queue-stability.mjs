@@ -284,6 +284,7 @@ try {
       );
     }
     const next = page.locator(".Lightbox-display > .Lightbox-navbutton").last();
+    await page.getByTitle("Close Lightbox", { exact: true }).focus();
     if (width === 390) await page.keyboard.press("ArrowRight");
     else await next.click();
     if (!scoped) {
@@ -298,6 +299,7 @@ try {
         `${path}: explicit Next did not keep its selected Video`
       );
     }
+    await page.getByTitle("Close Lightbox", { exact: true }).focus();
     if (width === 390) await page.keyboard.press("ArrowLeft");
     else
       await page

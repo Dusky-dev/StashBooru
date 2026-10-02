@@ -1106,6 +1106,12 @@ declare namespace PluginApi {
       sync: () => Promise<void>;
     };
 
+    function usePreviewPlayback(
+      ref: React.RefObject<HTMLVideoElement>,
+      enabled: boolean,
+      source?: string
+    ): void;
+
     function useLightbox(): {
       state: any;
       chapters: any;

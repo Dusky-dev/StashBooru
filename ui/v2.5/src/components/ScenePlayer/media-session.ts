@@ -1,16 +1,43 @@
 import videojs, { VideoJsPlayer } from "video.js";
 
 class MediaSessionPlugin extends videojs.getPlugin("plugin") {
+  private static instances = new Set<MediaSessionPlugin>();
+  private static active?: MediaSessionPlugin;
+  private metadata?: MediaMetadata;
+
   constructor(player: VideoJsPlayer) {
     super(player);
+    MediaSessionPlugin.instances.add(this);
+    this.on("dispose", () => {
+      MediaSessionPlugin.instances.delete(this);
+      if (MediaSessionPlugin.active !== this) return;
+      MediaSessionPlugin.active = undefined;
+      const previous = [...MediaSessionPlugin.instances]
+        .reverse()
+        .find((plugin) => plugin.player && !plugin.player.isDisposed());
+      if (previous) previous.activate();
+      else if ("mediaSession" in navigator) {
+        for (const action of [
+          "play",
+          "pause",
+          "nexttrack",
+          "previoustrack",
+        ] as const) {
+          navigator.mediaSession.setActionHandler(action, null);
+        }
+        navigator.mediaSession.metadata = null;
+        navigator.mediaSession.playbackState = "none";
+      }
+    });
 
     player.ready(() => {
+      if (player.isDisposed()) return;
       player.addClass("vjs-media-session");
-      this.setActionHandlers();
+      this.activate();
     });
 
     player.on("play", () => {
-      this.updatePlaybackState();
+      this.activate();
     });
 
     player.on("pause", () => {
@@ -22,7 +49,7 @@ class MediaSessionPlugin extends videojs.getPlugin("plugin") {
   // manually set poster since it's only set on useEffect
   public setMetadata(title: string, artist: string, poster: string): void {
     if ("mediaSession" in navigator) {
-      navigator.mediaSession.metadata = new MediaMetadata({
+      this.metadata = new MediaMetadata({
         title,
         artist,
         artwork: [
@@ -32,11 +59,30 @@ class MediaSessionPlugin extends videojs.getPlugin("plugin") {
           },
         ],
       });
+      if (MediaSessionPlugin.active === this)
+        navigator.mediaSession.metadata = this.metadata;
     }
   }
 
+  public activate(): void {
+    if (
+      !this.player ||
+      this.player.isDisposed() ||
+      !("mediaSession" in navigator)
+    )
+      return;
+    MediaSessionPlugin.active = this;
+    this.setActionHandlers();
+    navigator.mediaSession.metadata = this.metadata ?? null;
+    this.updatePlaybackState();
+  }
+
   private updatePlaybackState(): void {
-    if ("mediaSession" in navigator) {
+    if (
+      "mediaSession" in navigator &&
+      MediaSessionPlugin.active === this &&
+      this.player
+    ) {
       const playbackState = this.player.paused() ? "paused" : "playing";
       navigator.mediaSession.playbackState = playbackState;
     }

@@ -2,8 +2,8 @@
 
 Updated: 2026-10-02
 
-Current baseline: `develop` at `a44f7ac7c55fff9210fd57b3e7218abd5ccc354a`
-(merged PR #125). Active package: `fix/p07-preview-open-flash-equal-heights-20261002`.
+Current baseline: `develop` at `4adba688c14e276c85c21b6f8eeca909cd22ddf1`
+(merged PR #126). Active package: `fix/p07-preview-lifecycle-20261002`.
 
 | Package | Status | Notes |
 | --- | --- | --- |
@@ -13,7 +13,7 @@ Current baseline: `develop` at `a44f7ac7c55fff9210fd57b3e7218abd5ccc354a`
 | P04 — copyright sorting / taxonomy | Complete | PRs #94 and #95 are merged. PR #94 added the hierarchy/backend foundation; PR #95 corrected hierarchy UX and media presentation without changing the P04 database schema. |
 | P05 — Character variants / disambiguation links | Complete | Merged PR #104 adds native Character variants and typed Copyright/Artist disambiguation links; merged PR #114 refines Character/Copyright editing. |
 | P06 — ancestor/profile auto-association | Complete | PRs #115–#118 are merged; the final search consistency follow-up passed Build and Go lint CI. Direct legacy relationships remain explicit; no migration is introduced. |
-| P07 — native global All media page | Foundation and refresh fixes merged; opening replacement verified locally | PRs #119–#125 are merged. Global All combines Images and Videos with server pagination, typed identity and native controls. Current follow-up replaces the Video preview bridge and matches Copyright/Variant image height. |
+| P07 — native global All media page | Foundation and opening replacement merged; shared playback/input follow-up verified | PRs #119–#126 are merged. Global All combines Images and Videos with server pagination, typed identity and native controls. PR #127 isolates player input, background preview playback and overlapping player ownership; equal Copyright/Variant image heights are retained. |
 
 ## P04 completed behavior
 
@@ -403,3 +403,58 @@ from implementation `a0e8227100e78955a601d8c1ddbd494893730af5`. The tree SHA was
 against the local result before branch publication. Fresh `origin/develop`
 remains at the baseline; `git merge-tree --write-tree` reports no conflict.
 Merging and production deployment have not been performed.
+
+## P07 Video input and shared playback lifecycle — 2026-10-02
+
+Baseline: `4adba688c14e276c85c21b6f8eeca909cd22ddf1` (merged #126; its
+Build and Go lint workflows passed). Branch: `fix/p07-preview-lifecycle-20261002`.
+
+The owner still reported buggy Video previews and supplied Firefox network logs.
+The logs alone do not establish a switching trigger. Mounted tests reproduced:
+
+- With Image lightbox `PAN_Y`, a burst of wheel events over the native preview
+  mounted fixture IDs `1`, `2`, `3`, `4` instead of retaining `1`.
+- An arrow key focused in ScenePlayer both sought within the Video and advanced
+  its carousel.
+- A preview over a Video detail page produced two `VideoJsPlayer` IDs,
+  overwriting the native global registration.
+
+Implemented input isolation, bounded custom-player panning, native-control wheel
+handling, shared visible-page preview playback and screenshot fallback until a
+decoded hover frame. Background grid/wall clips yield to the native viewer.
+Preview players have separate IDs; a covered detail player pauses/resumes without
+being disposed. Media Session metadata/actions restore to the remaining player
+and clear when all players close. Prior captured queues, caller ownership,
+selected-only rendering and equal Copyright/Variant image heights are preserved.
+
+Verified implementation published as `cc9bddbd3d1aee3fa995a2633cb1998da89f8ea7`
+on 2026-10-02, with Git tree `32a0d77539cfefdd92af3d20cb15f77bf9211f3a`
+matching the checked local tree exactly:
+
+- All 28 UI unit tests, TypeScript, Biome lint/format, Stylelint, built-in
+  composition/checksum/syntax and production Vite build passed.
+- `preview-input-playback.mjs` passed in Chromium 135 and Firefox 153 on All,
+  mobile Videos and Character All: wheel bursts, held native seek keys and
+  network refetches retained one selected native player; explicit navigation
+  worked. Zoom-mode control sizes, All/Videos wall suspension/resume and
+  delayed/failed hover screenshot fallback and pointer-leave pause passed.
+- `preview-player-overlap.mjs` passed in both browsers: detail/preview IDs
+  were distinct, the covered detail player paused and resumed without disposal,
+  and restored Media Session pause/play actions reached the remaining player.
+- All five existing mounted Chromium suites passed: `preview-opening`,
+  `preview-queue-stability`, `preview-stability`, `all-media` and
+  `character-media`. Cold/warm opens, metadata churn, native VP8 completion,
+  idle/double opens, Escape/Back/button dismissal, mixed views and relation
+  scrolling/mobile wrapping passed. Copyright/Variant frames retain equal
+  desktop height (202.65625 px) and equal responsive mobile height.
+
+These are automated mounted-browser fixture checks, not human manual testing.
+Firefox used the execution environment's single-process mode with content
+sandbox disabled. The fixture contains synthetic VP8 media and intercepts
+activity mutations; no production metadata was changed. Production files,
+other codecs, extensions and the exact trigger behind the supplied log remain
+unverified. No backend/schema/migration change.
+
+Published as [PR #127](https://github.com/Dusky-dev/StashBooru/pull/127).
+Merging and production deployment have not been performed; CI is pending at
+publication.
