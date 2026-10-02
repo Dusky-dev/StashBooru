@@ -17,13 +17,18 @@ const browser = await engines[engineName].launch({
     engineName === "chromium"
       ? ["--no-sandbox", "--disable-dev-shm-usage"]
       : [],
-  firefoxUserPrefs: process.env.STASH_BROWSER_FIREFOX_SINGLE_PROCESS
-    ? {
-        "fission.autostart": false,
-        "browser.tabs.remote.autostart": false,
-        "security.sandbox.content.level": 0,
-      }
-    : undefined,
+  firefoxUserPrefs: {
+    "media.autoplay.default": 0,
+    ...(process.env.STASH_BROWSER_FIREFOX_SINGLE_PROCESS
+      ? {
+          "fission.autostart": false,
+          "browser.tabs.remote.autostart": false,
+          "security.sandbox.content.level": 0,
+          "security.sandbox.rdd.level": 0,
+          "media.hardware-video-decoding.enabled": false,
+        }
+      : {}),
+  },
 });
 
 async function fixturePage(width = 1440) {
@@ -32,7 +37,14 @@ async function fixturePage(width = 1440) {
   });
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.stack ?? error.message));
-  await page.route("**/browser-opening/scene/*/stream", (route) => {
+  let streamWaiting;
+  let releaseStream;
+  let streamRequested;
+  await page.route("**/browser-opening/scene/*/stream", async (route) => {
+    if (streamWaiting) {
+      streamRequested();
+      await streamWaiting;
+    }
     const range = route
       .request()
       .headers()
@@ -146,6 +158,18 @@ async function fixturePage(width = 1440) {
   return {
     page,
     errors,
+    delayStream: () => {
+      streamWaiting = new Promise((resolve) => {
+        releaseStream = resolve;
+      });
+      return new Promise((resolve) => {
+        streamRequested = resolve;
+      });
+    },
+    releaseStream: () => {
+      streamWaiting = undefined;
+      releaseStream?.();
+    },
     delayScene,
     release: () => {
       delayedID = undefined;
@@ -156,6 +180,200 @@ async function fixturePage(width = 1440) {
 
 const chosen = process.env.STASH_BROWSER_OPENING_CASE;
 try {
+  if (!chosen || chosen === "poster") {
+    for (const width of [1440, 390]) {
+      const fixture = await fixturePage(width);
+      const { page, errors } = fixture;
+      try {
+        await page
+          .locator(".scene-player-container .vjs-poster")
+          .waitFor({ state: "visible" });
+        for (const preview of [false, true]) {
+          if (preview) {
+            await page.evaluate(() => window.openingHistory.push("/scenes"));
+            await page.locator(".scene-card").first().waitFor();
+          }
+          const scope = preview
+            ? ".Lightbox .VideoPlayer"
+            : ".scene-player-container .VideoPlayer";
+          await page.evaluate((selector) => {
+            window.visibleOpeningPosters = [];
+            function sample() {
+              for (const poster of document.querySelectorAll(
+                `${selector} .vjs-poster`
+              )) {
+                if (
+                  !selector.startsWith(".Lightbox") &&
+                  location.pathname !== "/scenes/2"
+                )
+                  continue;
+                const style = getComputedStyle(poster);
+                if (
+                  style.display !== "none" &&
+                  style.visibility !== "hidden" &&
+                  style.backgroundImage !== "none" &&
+                  poster.getBoundingClientRect().width > 0
+                )
+                  window.visibleOpeningPosters.push(style.backgroundImage);
+              }
+              window.posterSampleFrame = requestAnimationFrame(sample);
+            }
+            window.posterSampleFrame = requestAnimationFrame(sample);
+          }, scope);
+          const requested = fixture.delayStream();
+          if (preview)
+            await page
+              .locator(".scene-card")
+              .first()
+              .locator(".unified-media-video-preview-button button")
+              .click();
+          else
+            await page.evaluate(() =>
+              window.openingHistory.push("/scenes/2?autoplay=true")
+            );
+          await requested;
+          await page.waitForTimeout(200);
+          if (process.env.STASH_BROWSER_SCREENSHOT_PREFIX && !preview)
+            await page.locator(`${scope} .video-wrapper`).screenshot({
+              path: `${process.env.STASH_BROWSER_SCREENSHOT_PREFIX}-${width}-autoplay.png`,
+            });
+          assert.deepEqual(
+            await page.evaluate(() => window.visibleOpeningPosters),
+            [],
+            "The screenshot poster flashed during automatic playback startup"
+          );
+          assert.equal(
+            await page
+              .locator(`${scope} .video-js`)
+              .evaluate((element) => element.player.poster()),
+            "",
+            "Automatic playback retained a screenshot that can flash on source loading"
+          );
+          fixture.releaseStream();
+          try {
+            await page.waitForFunction(
+              (selector) =>
+                document
+                  .querySelector(`${selector} .video-js`)
+                  ?.player?.currentTime() > 0.1,
+              scope
+            );
+          } catch (error) {
+            console.log(
+              "Automatic playback state",
+              await page.locator(`${scope} .video-js`).evaluate((element) => {
+                const player = element.player;
+                return {
+                  src: player.currentSrc(),
+                  poster: player.poster(),
+                  paused: player.paused(),
+                  ready: player.readyState(),
+                  error: player.error(),
+                  media: [...element.querySelectorAll("video")].map(
+                    (video) => ({
+                      state: video.networkState,
+                      error: video.error?.message,
+                    })
+                  ),
+                };
+              })
+            );
+            throw error;
+          }
+          await page.evaluate((selector) => {
+            const player = document.querySelector(
+              `${selector} .video-js`
+            ).player;
+            player.pause();
+            player.play();
+          }, scope);
+          await page.waitForTimeout(100);
+          assert.deepEqual(
+            await page.evaluate(() => window.visibleOpeningPosters),
+            [],
+            "The poster returned after pause/resume"
+          );
+          await page.evaluate(() =>
+            cancelAnimationFrame(window.posterSampleFrame)
+          );
+          if (preview) {
+            await page.getByTitle("Close Lightbox", { exact: true }).click();
+            await page.locator(".Lightbox").waitFor({ state: "hidden" });
+          }
+        }
+        assert.deepEqual(errors, []);
+        console.log(
+          `PASS (${engineName}, ${width}px): manual posters remain; autoplay and preview startup never expose screenshots`
+        );
+      } finally {
+        fixture.releaseStream();
+        fixture.release();
+        await page.unrouteAll({ behavior: "ignoreErrors" });
+        await page.close();
+      }
+    }
+  }
+  if (!chosen || chosen === "blocked") {
+    const { page, errors } = await fixturePage();
+    try {
+      await page.evaluate(() => {
+        window.autoplayRejections = 0;
+        function blockAutoplay(event) {
+          const player = event.target.closest?.(".video-js")?.player;
+          if (!player?.currentSrc().includes("/scene/2/stream")) return;
+          document.removeEventListener("loadstart", blockAutoplay, true);
+          const play = player.play.bind(player);
+          player.play = () => {
+            window.autoplayRejections += 1;
+            player.play = play;
+            return Promise.reject(
+              new DOMException("Fixture autoplay policy", "NotAllowedError")
+            );
+          };
+        }
+        document.addEventListener("loadstart", blockAutoplay, true);
+        window.openingHistory.push("/scenes/2?autoplay=true");
+      });
+      await page.waitForFunction(() => window.autoplayRejections === 1);
+      await page
+        .locator(".scene-player-container .vjs-poster")
+        .waitFor({ state: "visible" });
+      const poster = await page
+        .locator(".scene-player-container .video-js")
+        .evaluate((element) => element.player.poster());
+      assert.ok(poster.endsWith("poster-2.svg"));
+      await page.evaluate(() => {
+        const { cache } = window.openingClient;
+        const query = window.PluginApi.GQL.FindSceneDocument;
+        const variables = { id: "2" };
+        const data = cache.readQuery({ query, variables });
+        cache.writeQuery({
+          query,
+          variables,
+          data: { findScene: { ...data.findScene, resume_time: 0.25 } },
+        });
+      });
+      await page
+        .locator(".scene-player-container .vjs-poster")
+        .waitFor({ state: "visible" });
+      await page
+        .locator(".scene-player-container .video-js")
+        .evaluate((element) => element.player.play());
+      await page.waitForFunction(
+        () =>
+          document
+            .querySelector(".scene-player-container .video-js")
+            .player.currentTime() > 0.1
+      );
+      assert.deepEqual(errors, []);
+      console.log(
+        `PASS (${engineName}): policy rejection restores the current poster and permits manual playback after metadata refresh`
+      );
+    } finally {
+      await page.unrouteAll({ behavior: "ignoreErrors" });
+      await page.close();
+    }
+  }
   if (!chosen || chosen === "route") {
     for (const width of [1440, 390]) {
       const fixture = await fixturePage(width);

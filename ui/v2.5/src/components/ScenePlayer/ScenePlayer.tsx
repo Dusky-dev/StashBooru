@@ -601,6 +601,17 @@ export const ScenePlayer: React.FC<IScenePlayerProps> = PatchComponent(
 
       setReady(false);
 
+      // Decide before loading sources so automatic playback never flashes a
+      // screenshot while its first frame is loading.
+      const autostartButton = player.autostartButton();
+      auto.current =
+        autoplay ||
+        autostartButton.getEnabled() ||
+        (interfaceConfig?.autostartVideo ?? false) ||
+        _initialTimestamp > 0;
+      autostartIntent.current = auto.current;
+      player.poster(auto.current ? "" : (scene.paths.screenshot ?? ""));
+
       // reset on new scene
       player.trackActivity().reset();
 
@@ -722,16 +733,6 @@ export const ScenePlayer: React.FC<IScenePlayerProps> = PatchComponent(
       player.load();
       player.focus();
 
-      // Check the autostart button plugin for user preference
-      const autostartButton = player.autostartButton();
-      const buttonEnabled = autostartButton.getEnabled();
-      auto.current =
-        autoplay ||
-        buttonEnabled ||
-        (interfaceConfig?.autostartVideo ?? false) ||
-        _initialTimestamp > 0;
-      autostartIntent.current = auto.current;
-
       // let the source selector know whether playback is intended, so it doesn't
       // auto-start during source failover/preload (e.g. transcode fallback in Safari).
       // uses autostartIntent (not auto) because auto is cleared by the one-shot play
@@ -817,7 +818,7 @@ export const ScenePlayer: React.FC<IScenePlayerProps> = PatchComponent(
       const player = getPlayer();
       if (!player) return;
 
-      if (scene.paths.screenshot) {
+      if (!autostartIntent.current && scene.paths.screenshot) {
         player.poster(scene.paths.screenshot);
       } else {
         player.poster("");
@@ -936,7 +937,19 @@ export const ScenePlayer: React.FC<IScenePlayerProps> = PatchComponent(
 
       // Autoplay may be cancelled by navigation or refused by the browser.
       // Stream failures still retain VideoJS's error UI.
-      void player.play()?.catch(() => {});
+      void player.play()?.catch((error: unknown) => {
+        if (
+          error instanceof DOMException &&
+          error.name === "NotAllowedError" &&
+          !player.isDisposed() &&
+          sceneId.current === scene.id
+        ) {
+          // A refused autostart needs the normal manual-play screen. Do not
+          // restore posters for cancelled navigation or stream/source errors.
+          autostartIntent.current = false;
+          player.poster(scene.paths.screenshot ?? "");
+        }
+      });
       auto.current = false;
     }, [
       getPlayer,

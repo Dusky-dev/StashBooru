@@ -379,6 +379,34 @@ These checks isolate actual stale-source/thumbnail failures. They do not prove
 that every production flash has the same cause; the owner's real files, codecs,
 browser extensions and GPU are outside the synthetic fixture.
 
+## Automatic Video startup without poster flashes — 2026-10-02
+
+Video autoplay and native Video previews now open on the video surface while
+their first frame loads. The screenshot poster is cleared before stream setup
+and remains unset on automatic playback's metadata refreshes. This applies to
+the full Video player and previews on All, Videos and scoped All panes.
+Media Session artwork still uses the Video's screenshot.
+
+Manual playback keeps its normal screenshot and Play button. If the browser
+rejects automatic playback with `NotAllowedError`, the current Video's poster
+returns and the user can start playback manually. Expected cancellation during
+navigation and media/source errors do not restore an automatic-start poster.
+
+The existing `player-opening-state.mjs` suite now holds stream responses and
+samples poster visibility from navigation/opening through pause/resume on
+desktop and mobile. It also requires the automatic player's poster URL to be
+empty, so a short flash cannot evade the frame sampler. A simulated browser
+policy rejection checks poster restoration, a metadata refresh and subsequent
+manual playback. Select just these cases with
+`STASH_BROWSER_OPENING_CASE=poster` or `STASH_BROWSER_OPENING_CASE=blocked`;
+omitting it runs the existing route, configuration and sprite checks too.
+
+The synthetic VP8 checks passed in Chromium 135 and Firefox 153. The managed
+Firefox fixture used `STASH_BROWSER_FIREFOX_SINGLE_PROCESS=1`, disabled content
+and decoder sandboxing, and software decoding; these settings affect the test
+browser only. Production files/codecs, extensions and physical GPU rendering
+remain separate runtime checks.
+
 ## Capturing a production preview flash
 
 If flashing remains after the opening-state correction, a console recorder is
