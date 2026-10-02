@@ -293,10 +293,11 @@ the Image lightbox's input handling. With vertical-scroll (`PAN_Y`) enabled,
 a wheel burst over a fitted Video advanced through all four fixture Videos.
 Native player arrow keys also sought within a Video and bubbled into carousel
 navigation. Custom players now clamp vertical panning to the selected Video;
-wheel events over native controls do not zoom/pan the wrapper. Player and form
-keys stay within their controls, and held carousel keys do not rapidly cycle
-Videos. Explicit next/previous buttons and carousel keys outside the player
-remain available.
+wheel events over native controls do not zoom/pan the wrapper. Preview Left/Right
+arrows navigate previous/next, including when the player or its buttons have
+focus. They are captured before VideoJS can seek, and held-key repeats do not
+rapidly cycle the queue. Form inputs and modified keys retain their control
+behavior. The full Video detail player retains its normal seek shortcuts.
 
 Native grid hover clips, native Video/All walls and scoped mixed walls share
 `usePreviewPlayback`. A clip plays only while its page area is visible, its
@@ -335,3 +336,41 @@ environments that cannot start Firefox's normal content sandbox.
 These regressions establish the reproduced input/ownership failures and native
 VP8 playback. Production codecs/files, third-party browser extensions and the
 exact trigger behind an individual production log remain separate checks.
+
+## Capturing a production preview flash
+
+The owner reports flashing after #127, which has not been reproduced by the
+synthetic fixture. A console recorder is provided at
+`ui/v2.5/scripts/record-preview-debug.js`; it works with an already-installed
+build and does not require this follow-up to be merged first.
+
+1. Navigate to the page where the flash occurs, with its viewer closed.
+2. In Firefox/Firedragon press Ctrl+Shift+K to open the Web Console. Copy the
+   entire recorder file into the console and execute it.
+3. Open one preview. First leave the pointer still and press no keys; if that
+   does not trigger it, perform the usual triggering action. Stop after one
+   brief reproduction. Do not reload or navigate to another page during capture.
+4. Execute `stashPreviewDebug.download()` in the same console. It stops the
+   recorder and downloads `stashbooru-preview-debug.json`. Attach that file
+   to the bug report, along with the installed version/build hash from Settings
+   → About, and whether the
+   flash was a card hover clip, Wall clip, or opened viewer. Report whether
+   every Video is affected or only particular IDs. A short screen recording
+   with the pointer visible is useful if convenient.
+
+The trace records stable DOM node numbers, selected Video IDs, player IDs,
+playback/seek/loading/error events, native/logical time, opaque source revisions,
+ready/network state, native frame counts,
+geometry/visibility, footer/transform changes and recent arrows/clicks/wheel/
+pointer events. Browser version, viewport and loaded JavaScript asset filenames
+identify the actual UI. Completed native preview/stream requests are recorded
+with timing/status when the browser exposes them.
+
+It sends no requests, changes no playback/settings/metadata, omits media titles
+and server addresses, and strips source query strings (including signatures and
+API keys). It stops automatically after 60 seconds, caps the trace at 2,000
+events, and reports dropped entries. `stashPreviewDebug.stop()` also stops it
+without downloading; `copy(JSON.stringify(stashPreviewDebug.stop()))` is the
+clipboard alternative. Re-executing the script releases the previous recorder.
+This is a passive DOM/media trace, not a decoded-frame video or GPU profiler;
+the capture should establish which switching/restart path to reproduce next.

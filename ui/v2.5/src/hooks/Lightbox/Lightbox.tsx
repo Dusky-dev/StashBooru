@@ -214,6 +214,7 @@ export const LightboxComponent: React.FC<IProps> = ({
   // while the dialog is open).
   const [deleteTarget, setDeleteTarget] = useState<ILightboxImage | null>(null);
   const lastDKeyTime = useRef<number>(0);
+  const previewArrowHeld = useRef<string | null>(null);
   const [navOffset, setNavOffset] = useState<React.CSSProperties | undefined>();
 
   // An in-flight page switch's intended landing, set synchronously by
@@ -607,8 +608,8 @@ export const LightboxComponent: React.FC<IProps> = ({
   const handleKey = useCallback(
     (e: KeyboardEvent) => {
       const arrow = e.key === "ArrowRight" || e.key === "ArrowLeft";
-      // Native player arrows seek within the selected Video. Image carousel
-      // navigation must not handle the same event a second time.
+      // Events handled by controls must not also navigate the Image carousel.
+      // Preview arrows are intercepted before the player in capture below.
       if (
         (e.defaultPrevented && e.key !== "Escape") ||
         (arrow &&
@@ -644,6 +645,37 @@ export const LightboxComponent: React.FC<IProps> = ({
     [setInstant, handleLeft, handleRight, close, images, index, initialIndex]
   );
 
+  const handlePreviewArrow = useCallback(
+    (e: KeyboardEvent) => {
+      if (
+        (!images[index ?? initialIndex]?.renderMedia &&
+          previewArrowHeld.current !== e.key) ||
+        (e.key !== "ArrowLeft" && e.key !== "ArrowRight") ||
+        e.defaultPrevented ||
+        e.altKey ||
+        e.ctrlKey ||
+        e.metaKey ||
+        e.shiftKey ||
+        (e.target instanceof Element &&
+          e.target.closest("input, select, textarea, [contenteditable='true']"))
+      )
+        return;
+      // Preview arrows navigate even when the native player has focus. Capture
+      // before VideoJS can seek, and consume held-key repeats without cycling.
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.repeat) return;
+      previewArrowHeld.current = e.key;
+      if (e.key === "ArrowLeft") handleLeft();
+      else handleRight();
+    },
+    [images, index, initialIndex, handleLeft, handleRight]
+  );
+
+  const releasePreviewArrow = useCallback((e: KeyboardEvent) => {
+    if (previewArrowHeld.current === e.key) previewArrowHeld.current = null;
+  }, []);
+
   const [clearCallback, resetCallback] = useInterval(
     () => {
       handleRight(false);
@@ -663,14 +695,20 @@ export const LightboxComponent: React.FC<IProps> = ({
     };
 
     if (isVisible) {
+      document.addEventListener("keydown", handlePreviewArrow, true);
+      document.addEventListener("keyup", releasePreviewArrow, true);
       document.addEventListener("keydown", handleKey);
       document.addEventListener("fullscreenchange", handleFullScreenChange);
+    } else {
+      previewArrowHeld.current = null;
     }
     return () => {
+      document.removeEventListener("keydown", handlePreviewArrow, true);
+      document.removeEventListener("keyup", releasePreviewArrow, true);
       document.removeEventListener("keydown", handleKey);
       document.removeEventListener("fullscreenchange", handleFullScreenChange);
     };
-  }, [isVisible, handleKey]);
+  }, [isVisible, handleKey, handlePreviewArrow, releasePreviewArrow]);
 
   const toggleFullscreen = useCallback(() => {
     if (!isFullscreen) containerRef.current?.requestFullscreen();

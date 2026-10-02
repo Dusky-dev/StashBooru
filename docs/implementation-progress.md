@@ -2,8 +2,8 @@
 
 Updated: 2026-10-02
 
-Current baseline: `develop` at `4adba688c14e276c85c21b6f8eeca909cd22ddf1`
-(merged PR #126). Active package: `fix/p07-preview-lifecycle-20261002`.
+Current baseline: `develop` at `5f6e9e593bced10f432b690519914706196d8dff`
+(merged PR #127). Active package: `fix/p07-preview-arrow-debug-20261002`.
 
 | Package | Status | Notes |
 | --- | --- | --- |
@@ -13,7 +13,7 @@ Current baseline: `develop` at `4adba688c14e276c85c21b6f8eeca909cd22ddf1`
 | P04 — copyright sorting / taxonomy | Complete | PRs #94 and #95 are merged. PR #94 added the hierarchy/backend foundation; PR #95 corrected hierarchy UX and media presentation without changing the P04 database schema. |
 | P05 — Character variants / disambiguation links | Complete | Merged PR #104 adds native Character variants and typed Copyright/Artist disambiguation links; merged PR #114 refines Character/Copyright editing. |
 | P06 — ancestor/profile auto-association | Complete | PRs #115–#118 are merged; the final search consistency follow-up passed Build and Go lint CI. Direct legacy relationships remain explicit; no migration is introduced. |
-| P07 — native global All media page | Foundation and opening replacement merged; shared playback/input follow-up verified | PRs #119–#126 are merged. Global All combines Images and Videos with server pagination, typed identity and native controls. PR #127 isolates player input, background preview playback and overlapping player ownership; equal Copyright/Variant image heights are retained. |
+| P07 — native global All media page | Shared playback follow-up merged; arrow correction and production trace verified | PRs #119–#127 are merged. The owner still reports preview flashing. This follow-up restores previous/next preview arrows and supplies a production trace to establish the remaining trigger. Equal Copyright/Variant image heights are retained. |
 
 ## P04 completed behavior
 
@@ -458,3 +458,44 @@ unverified. No backend/schema/migration change.
 Published as [PR #127](https://github.com/Dusky-dev/StashBooru/pull/127).
 Merging and production deployment have not been performed; CI is pending at
 publication.
+
+## P07 preview arrows and production flash capture — 2026-10-02
+
+Baseline: `5f6e9e593bced10f432b690519914706196d8dff` (merged #127).
+Branch: `fix/p07-preview-arrow-debug-20261002`.
+
+The owner prefers preview arrows to navigate previous/next rather than seek,
+and still reports flashing. Left/Right are now captured before native VideoJS
+seeking, including when player buttons are focused; held repeats are consumed.
+A held arrow remains consumed if navigation lands on an Image in the mixed
+queue. Form/modified-key behavior and the full Video detail player remain native.
+
+A passive console recorder can be pasted into the currently-installed build
+before opening a preview. It records selected/player/node identity, native media
+events/state, visibility/geometry, recent input and loaded asset filenames,
+and downloads a bounded JSON trace. Titles, addresses and signed URL query
+parameters are excluded. Capture instructions are in `p07-global-media.md`.
+
+Verified on 2026-10-02:
+
+- All 28 UI tests, TypeScript, Biome lint/format, Stylelint, built-in
+  composition/checksum/syntax, recorder syntax, production Vite build and
+  `git diff --check` passed.
+- `preview-input-playback.mjs` passed in Chromium 135 and Firefox 153:
+  focused player/button arrows moved once without outgoing seeking; held
+  repeats stopped across Videos and a scoped mixed Video/Image queue. Full
+  Video detail seeking remained native. Wheel/refetch identity, zoom control
+  sizes, wall suspension/resume and hover fallback/cleanup passed.
+- The same suite verified selected/player/node and input trace observations,
+  downloaded JSON contents, recorder restart and no post-stop capture. Signed
+  query/API-key values, server addresses and media titles were excluded.
+- `preview-opening.mjs` passed all 12 cold/warm desktop/mobile opens with
+  selected-only native rendering, stable fit geometry, normal-size controls,
+  explicit navigation and disposal.
+
+These are automated fixture checks with synthetic VP8 media. Firefox used
+single-process mode with its content sandbox disabled. No human manual testing,
+production codecs/files, third-party extensions or physical GPU rendering were
+verified. No backend/schema/migration change. Publication is in progress.
+This arrow preference correction does not claim to fix the remaining production
+flash; the trace is intended to identify its actual trigger.
