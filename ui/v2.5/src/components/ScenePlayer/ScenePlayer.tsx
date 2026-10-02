@@ -412,7 +412,9 @@ export const ScenePlayer: React.FC<IScenePlayerProps> = PatchComponent(
           trackActivity: {},
           vrMenu: {},
           autostartButton: {
-            enabled: interfaceConfig?.autostartVideo ?? false,
+            // The config-sync effect below initializes and updates this setting
+            // without replacing the native player or reloading its source.
+            enabled: false,
           },
           abLoopPlugin: {
             start: 0,
@@ -457,17 +459,7 @@ export const ScenePlayer: React.FC<IScenePlayerProps> = PatchComponent(
         // reset sceneId to force reload sources
         sceneId.current = undefined;
       };
-      // empty deps - only init once
-      // showAbLoopControls is necessary to re-init the player when the config changes
-      // Note: interfaceConfig?.autostartVideo is intentionally excluded to prevent
-      // player re-initialization when toggling autostart (which would interrupt playback)
-      // XXbiome-ignore lint/correctness/useExhaustiveDependencies: intentional
-    }, [
-      playerId,
-      uiConfig?.showAbLoopControls,
-      uiConfig?.enableChromecast,
-      interfaceConfig?.autostartVideo,
-    ]);
+    }, [playerId, uiConfig?.showAbLoopControls, uiConfig?.enableChromecast]);
 
     useEffect(() => {
       const player = getPlayer();

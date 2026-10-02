@@ -337,10 +337,52 @@ These regressions establish the reproduced input/ownership failures and native
 VP8 playback. Production codecs/files, third-party browser extensions and the
 exact trigger behind an individual production log remain separate checks.
 
+## Video opening state and asynchronous thumbnails — 2026-10-02
+
+The owner reports build `7f96a32`, which includes #128, and describes other
+Videos or thumbnails appearing before the requested Video, including on its
+detail page. Checks against that exact source reproduced three failures:
+
+- While the next detail query was pending, the new route still displayed the
+  previous Video's stream and screenshot. Cached transitions also reused one
+  native player across different Videos.
+- An autostart preference change disposed the active player and loaded its
+  source again, even though the autostart plugin supports updating in place.
+- An old VTT fetch could finish after the new VTT and replace the current
+  thumbnails. The detail scrubber also kept previously calculated sprite items
+  when the new source was missing, loading or empty.
+
+The detail page now derives its Video from the route's matching query result,
+shows the native loading indicator during a different Video's query, and keys
+its player by Video ID. Autostart sync updates the existing plugin. Sprite reads
+are cancelled on source changes/disposal; results belong to their requested
+source, old thumbnails clear during render, and failed reads resolve to the
+existing missing-thumbnail state. The detail scrubber derives its items from
+the current result instead of retaining a previous list. Rapid disposal also
+exposed a persisted-volume callback using a disposed player; its storage reads
+now check the owning player before applying values.
+
+`ui/v2.5/tests/browser/player-opening-state.mjs` checks slow and cached detail
+transitions on desktop/mobile, autostart updates in both detail and preview
+players, out-of-order/cleared/failed VTT results and actual detail-scrubber
+clearing on a same-ID metadata refresh. It uses browser-only GraphQL, poster,
+range-stream and VTT substitutions with synthetic VP8 media. No server metadata
+or configuration is modified by the suite.
+
+```sh
+STASH_BROWSER_URL=http://127.0.0.1:9999 \
+  STASH_BROWSER_VIDEO_FILE=/path/to/preview-test.webm \
+  node ui/v2.5/tests/browser/player-opening-state.mjs
+```
+
+These checks isolate actual stale-source/thumbnail failures. They do not prove
+that every production flash has the same cause; the owner's real files, codecs,
+browser extensions and GPU are outside the synthetic fixture.
+
 ## Capturing a production preview flash
 
-The owner reports flashing after #127, which has not been reproduced by the
-synthetic fixture. A console recorder is provided at
+If flashing remains after the opening-state correction, a console recorder is
+provided at
 `ui/v2.5/scripts/record-preview-debug.js`; it works with an already-installed
 build and does not require this follow-up to be merged first.
 
@@ -349,7 +391,9 @@ build and does not require this follow-up to be merged first.
    entire recorder file into the console and execute it.
 3. Open one preview. First leave the pointer still and press no keys; if that
    does not trigger it, perform the usual triggering action. Stop after one
-   brief reproduction. Do not reload or navigate to another page during capture.
+   brief reproduction. Do not reload during capture. For detail transitions,
+   start on a Video detail page and use its queue controls to switch Videos;
+   this keeps the recorder active across native route navigation.
 4. Execute `stashPreviewDebug.download()` in the same console. It stops the
    recorder and downloads `stashbooru-preview-debug.json`. Attach that file
    to the bug report, along with the installed version/build hash from Settings
@@ -365,6 +409,11 @@ geometry/visibility, footer/transform changes and recent arrows/clicks/wheel/
 pointer events. Browser version, viewport and loaded JavaScript asset filenames
 identify the actual UI. Completed native preview/stream requests are recorded
 with timing/status when the browser exposes them.
+
+It also records route changes and native poster/scrubber source revisions,
+visibility, dimensions and sprite positions. Unchanged visual samples are
+deduplicated. This distinguishes a previous screenshot/sprite appearing from
+a decoded Video source being restarted or replaced, without exporting images.
 
 It sends no requests, changes no playback/settings/metadata, omits media titles
 and server addresses, and strips source query strings (including signatures and

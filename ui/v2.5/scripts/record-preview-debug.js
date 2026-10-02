@@ -6,12 +6,15 @@
   const events = [];
   const cleanups = [];
   const identities = new WeakMap();
+  const visualSignatures = new WeakMap();
   const sourceIdentities = new Map();
   let nextIdentity = 1;
   let dropped = 0;
   let stopped = false;
   let lastView = "";
   let report;
+  const visualSelector =
+    ".VideoPlayer .vjs-poster, .VideoPlayer .scrubber-item, .scene-card .scrubber-image";
 
   const rounded = (value) =>
     Number.isFinite(value) ? Math.round(value * 1000) / 1000 : null;
@@ -42,14 +45,53 @@
     }
     events.push({ ms: rounded(performance.now() - started), kind, ...data });
   }
+  function sourceRevision(source) {
+    if (source && !sourceIdentities.has(source) && sourceIdentities.size < 2000)
+      sourceIdentities.set(source, sourceIdentities.size + 1);
+    return sourceIdentities.get(source) ?? null;
+  }
+  function visualState(node) {
+    if (!identities.has(node)) identities.set(node, nextIdentity++);
+    const style = getComputedStyle(node);
+    const background = style.backgroundImage;
+    const source =
+      node.querySelector("img")?.currentSrc ||
+      (background.startsWith("url(")
+        ? background.slice(4, -1).replace(/^["']|["']$/g, "")
+        : "");
+    const rect = node.getBoundingClientRect();
+    return {
+      node: identities.get(node),
+      player: node.closest(".video-js")?.id ?? null,
+      scene:
+        node.closest(".unified-media-native-scene-player")?.dataset.sceneId ??
+        null,
+      area: node.matches(".vjs-poster") ? "poster" : "thumbnail",
+      source: mediaPath(source),
+      sourceRevision: sourceRevision(source),
+      connected: node.isConnected,
+      opacity: style.opacity,
+      visibility: style.visibility,
+      display: style.display,
+      width: rounded(rect.width),
+      height: rounded(rect.height),
+      position: style.backgroundPosition,
+      size: style.backgroundSize,
+    };
+  }
+  function recordVisual(kind, node) {
+    const state = visualState(node);
+    const signature = JSON.stringify(state);
+    if (visualSignatures.get(node) === signature) return;
+    visualSignatures.set(node, signature);
+    record(kind, state);
+  }
   function videoState(video) {
     if (!identities.has(video)) identities.set(video, nextIdentity++);
     const host = video.closest(".unified-media-native-scene-player");
     const rect = video.getBoundingClientRect();
     const style = getComputedStyle(video);
     const source = video.currentSrc || video.src;
-    if (source && !sourceIdentities.has(source) && sourceIdentities.size < 2000)
-      sourceIdentities.set(source, sourceIdentities.size + 1);
     let playerTime = null;
     try {
       playerTime = video.closest(".video-js")?.player?.currentTime();
@@ -68,7 +110,7 @@
             ? "wall"
             : "other",
       source: mediaPath(source),
-      sourceRevision: sourceIdentities.get(source) ?? null,
+      sourceRevision: sourceRevision(source),
       connected: video.isConnected,
       time: rounded(video.currentTime),
       playerTime: rounded(playerTime),
@@ -93,6 +135,7 @@
     const box = document.querySelector(".Lightbox");
     const carousel = box?.querySelector(".Lightbox-carousel");
     return {
+      route: mediaPath(location.href),
       visible: Boolean(box),
       scenes: [
         ...document.querySelectorAll(".unified-media-native-scene-player"),
@@ -186,6 +229,11 @@
             ? [node]
             : [...node.querySelectorAll("video")];
           for (const video of videos) record(kind, videoState(video));
+          const visuals = node.matches(visualSelector)
+            ? [node]
+            : [...node.querySelectorAll(visualSelector)];
+          for (const visual of visuals)
+            recordVisual(kind.replace("video", "visual"), visual);
         }
       }
       if (
@@ -193,6 +241,13 @@
         mutation.target instanceof HTMLVideoElement
       )
         record("video-attribute", videoState(mutation.target));
+      if (
+        mutation.type === "attributes" &&
+        mutation.target instanceof Element
+      ) {
+        const visual = mutation.target.closest(visualSelector);
+        if (visual) recordVisual("visual-attribute", visual);
+      }
     }
     observeView();
   });
@@ -200,7 +255,7 @@
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ["src", "data-scene-id", "id", "class"],
+    attributeFilter: ["src", "poster", "data-scene-id", "id", "class", "style"],
   });
   cleanups.push(() => observer.disconnect());
   try {
@@ -226,6 +281,8 @@
       ".Lightbox video, .VideoPlayer video"
     ))
       record("sample", videoState(video));
+    for (const visual of document.querySelectorAll(visualSelector))
+      recordVisual("visual-sample", visual);
   }, 250);
   cleanups.push(() => clearInterval(timer));
   window.stashPreviewDebug = {
@@ -283,6 +340,8 @@
   observeView();
   for (const video of document.querySelectorAll("video"))
     record("initial", videoState(video));
+  for (const visual of document.querySelectorAll(visualSelector))
+    recordVisual("visual-initial", visual);
   console.info(
     "Preview recorder active for up to 60 seconds. Reproduce once, then stashPreviewDebug.download()."
   );
