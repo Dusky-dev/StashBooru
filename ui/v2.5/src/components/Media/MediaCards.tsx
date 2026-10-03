@@ -1,3 +1,4 @@
+import { StackMember } from "../VisualStacks/media";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useHistory } from "react-router-dom";
 import Gallery, { GalleryI, RenderImageProps } from "react-photo-gallery";
@@ -23,6 +24,7 @@ const zoomWidths = [280, 340, 480, 640];
 const zoomHeights = [180, 240, 320, 400];
 
 interface Props {
+  onStackMemberSelect?: (member: StackMember, selected: boolean) => void;
   items: GQL.MediaListItemFragment[];
   selectedIds: Set<string>;
   zoomIndex: number;
@@ -36,6 +38,7 @@ export function MediaGrid({
   zoomIndex,
   onSelectChange,
   onPreviewImage,
+  onStackMemberSelect,
 }: Props) {
   const [ref, { width }] = useContainerDimensions();
   const cardWidth = useCardWidth(width, zoomIndex, zoomWidths);
@@ -55,6 +58,8 @@ export function MediaGrid({
             image={item.image}
             cardWidth={cardWidth}
             zoomIndex={zoomIndex}
+            stackSelectedIds={selectedIds}
+            onStackMemberSelect={onStackMemberSelect}
             selecting={selectedIds.size > 0}
             selected={selectedIds.has(item.id)}
             onSelectedChanged={(selected, shiftKey) =>
@@ -76,6 +81,8 @@ export function MediaGrid({
             width={cardWidth}
             zoomIndex={zoomIndex}
             queue={queue}
+            stackSelectedIds={selectedIds}
+            onStackMemberSelect={onStackMemberSelect}
             selecting={selectedIds.size > 0}
             selected={selectedIds.has(item.id)}
             onSelectedChanged={(selected, shiftKey) =>

@@ -1,0 +1,80 @@
+input MediaReferenceInput {
+  kind: MediaKind!
+  id: ID!
+}
+type MediaReference {
+  kind: MediaKind!
+  id: ID!
+}
+input VisualStackMemberInput {
+  media: MediaReferenceInput!
+  label: String! = ""
+}
+input VisualStackCreateInput {
+  title: String! = ""
+  members: [VisualStackMemberInput!]!
+  representative: MediaReferenceInput!
+}
+input VisualStackUpdateInput {
+  id: ID!
+  version: Int!
+  title: String! = ""
+  members: [VisualStackMemberInput!]!
+  representative: MediaReferenceInput!
+}
+input VisualStackSplitInput {
+  id: ID!
+  version: Int!
+  members: [MediaReferenceInput!]!
+  title: String! = ""
+  representative: MediaReferenceInput!
+}
+input VisualStackVersionInput {
+  id: ID!
+  version: Int!
+}
+input VisualStackMergeInput {
+  "Ordered stacks; the first stack's identity survives."
+  stacks: [VisualStackVersionInput!]!
+  title: String! = ""
+  representative: MediaReferenceInput!
+}
+type VisualStack {
+  id: ID!
+  title: String!
+  version: Int!
+  member_count: Int!
+  "Typed member identity, not a compression base."
+  representative: String!
+  members: [VisualStackMember!]!
+}
+type VisualStackMember {
+  id: ID!
+  media: MediaReference!
+  position: Int!
+  label: String!
+  representative: Boolean!
+  image: Image
+  scene: Scene
+}
+type VisualStackProposal {
+  members: [MediaReference!]!
+  evidence: String!
+  score: Float
+}
+extend type Image { visual_stack: VisualStack }
+extend type Scene { visual_stack: VisualStack }
+extend type Query {
+  findVisualStack(id: ID!): VisualStack
+  findVisualStackForMedia(media: MediaReferenceInput!): VisualStack
+  "Read-only pairwise proposals for 2–100 selected members; never writes or runs inference."
+  visualStackProposals(media: [MediaReferenceInput!]!): [VisualStackProposal!]!
+}
+extend type Mutation {
+  visualStackCreate(input: VisualStackCreateInput!): VisualStack!
+  visualStackUpdate(input: VisualStackUpdateInput!): VisualStack!
+  visualStackSplit(input: VisualStackSplitInput!): VisualStack!
+  visualStackMerge(input: VisualStackMergeInput!): VisualStack!
+  "Deletes only grouping, never media or files."
+  visualStackDestroy(input: VisualStackVersionInput!): Boolean!
+}

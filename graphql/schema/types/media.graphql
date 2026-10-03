@@ -5,6 +5,8 @@ enum MediaKind {
 
 "Shared native media filters. A duration criterion excludes Images."
 input MediaFilterType {
+  "Collapse matching members into their representative before pagination. A representative may be outside the filters."
+  collapse_stacks: Boolean
   media_types: [MediaKind!]
   title: StringCriterionInput
   details: StringCriterionInput
@@ -23,6 +25,8 @@ input MediaFilterType {
 }
 
 type MediaItem {
+  "Number of matching native members in this card; one when ungrouped."
+  stack_match_count: Int!
   "Collision-free identity, such as image:123 or scene:123."
   id: ID!
   kind: MediaKind!
@@ -31,6 +35,7 @@ type MediaItem {
 }
 
 type FindMediaResultType {
+  matched_count: Int!
   count: Int!
   image_count: Int!
   video_count: Int!

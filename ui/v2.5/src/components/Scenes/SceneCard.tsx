@@ -1,3 +1,5 @@
+import { VisualStackBadge } from "../VisualStacks/VisualStackBadge";
+import { StackMember } from "../VisualStacks/media";
 import React, {
   useCallback,
   useEffect,
@@ -125,6 +127,8 @@ export const ScenePreview: React.FC<IScenePreviewProps> = React.memo(
 );
 
 interface ISceneCardProps {
+  stackSelectedIds?: Set<string>;
+  onStackMemberSelect?: (member: StackMember, selected: boolean) => void;
   scene: GQL.SlimSceneDataFragment;
   width?: number;
   previewHeight?: number;
@@ -314,7 +318,8 @@ const SceneCardPopovers = React.memo(
     function maybeRenderPopoverButtonGroup() {
       if (
         !props.compact &&
-        (props.scene.tags.length > 0 ||
+        (props.scene.visual_stack ||
+          props.scene.tags.length > 0 ||
           props.scene.performers.length > 0 ||
           props.scene.groups.length > 0 ||
           props.scene.scene_markers.length > 0 ||
@@ -328,6 +333,11 @@ const SceneCardPopovers = React.memo(
             <Description sceneNumber={sceneNumber} />
             <hr />
             <ButtonGroup className="card-popovers">
+              <VisualStackBadge
+                stack={props.scene.visual_stack}
+                selectedIds={props.stackSelectedIds}
+                onSelectMember={props.onStackMemberSelect}
+              />
               {maybeRenderTagPopoverButton()}
               {maybeRenderPerformerPopoverButton()}
               {maybeRenderGroupPopoverButton()}

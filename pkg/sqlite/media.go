@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/stashapp/stash/pkg/models"
 )
@@ -101,12 +102,33 @@ func (s *MediaStore) Query(ctx context.Context, filter *models.MediaFilterType, 
 	}
 	order := fmt.Sprintf(" ORDER BY sort_value IS NULL ASC, sort_value%s %s, kind ASC, id ASC", collation, find.GetDirection())
 	result := &models.MediaQueryResult{Items: []models.MediaReference{}}
-	if err := dbWrapper.Get(ctx, result, countWith+`SELECT COUNT(*) AS count,
-		COALESCE(SUM(kind='IMAGE'),0) AS image_count, COALESCE(SUM(kind='VIDEO'),0) AS video_count FROM media`, args...); err != nil {
+	countSQL := countWith + `SELECT COUNT(*) AS matched_count, COUNT(*) AS count,
+  COALESCE(SUM(kind='IMAGE'),0) AS image_count, COALESCE(SUM(kind='VIDEO'),0) AS video_count FROM media`
+	pageSQL := pageWith + "SELECT kind,id,1 AS stack_match_count FROM media" + order + " LIMIT ? OFFSET ?"
+	if filter.CollapseStacks != nil && *filter.CollapseStacks {
+		grouped := func(with string) string {
+			return strings.TrimSpace(with) + `, grouped AS (SELECT media.*,
+    CASE WHEN sm.stack_id IS NULL THEN media.kind || ':' || media.id ELSE 'stack:' || sm.stack_id END AS group_key,
+    CASE WHEN rep.scene_id IS NOT NULL THEN 'VIDEO' WHEN rep.image_id IS NOT NULL THEN 'IMAGE' ELSE media.kind END AS display_kind,
+    COALESCE(rep.image_id,rep.scene_id,media.id) AS display_id
+    FROM media LEFT JOIN visual_stack_members sm ON
+      (media.kind='IMAGE' AND sm.image_id=media.id) OR (media.kind='VIDEO' AND sm.scene_id=media.id)
+    LEFT JOIN visual_stack_members rep ON rep.stack_id=sm.stack_id AND rep.representative=1) `
+		}
+		countSQL = grouped(countWith) + `, cards AS (SELECT group_key,MAX(display_kind) AS kind FROM grouped GROUP BY group_key)
+   SELECT (SELECT COUNT(*) FROM media) AS matched_count,COUNT(*) AS count,
+   COALESCE(SUM(kind='IMAGE'),0) AS image_count,COALESCE(SUM(kind='VIDEO'),0) AS video_count FROM cards`
+		rankOrder := fmt.Sprintf("sort_value IS NULL ASC,sort_value%s %s,kind ASC,id ASC", collation, find.GetDirection())
+		pageSQL = grouped(pageWith) + `, ranked AS (SELECT display_kind,display_id,sort_value,kind,id,
+   COUNT(*) OVER(PARTITION BY group_key) AS stack_match_count,
+   ROW_NUMBER() OVER(PARTITION BY group_key ORDER BY ` + rankOrder + `) AS group_rank FROM grouped)
+   SELECT display_kind AS kind,display_id AS id,stack_match_count FROM ranked WHERE group_rank=1 ORDER BY ` + strings.ReplaceAll(strings.ReplaceAll(rankOrder, "kind ASC", "ranked.kind ASC"), "id ASC", "ranked.id ASC") + " LIMIT ? OFFSET ?"
+	}
+	if err := dbWrapper.Get(ctx, result, countSQL, args...); err != nil {
 		return nil, err
 	}
 	args = append(args, size, (page-1)*size)
-	if err := dbWrapper.Select(ctx, &result.Items, pageWith+"SELECT kind,id FROM media"+order+" LIMIT ? OFFSET ?", args...); err != nil {
+	if err := dbWrapper.Select(ctx, &result.Items, pageSQL, args...); err != nil {
 		return nil, err
 	}
 	return result, nil

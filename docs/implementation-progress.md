@@ -1,11 +1,14 @@
 # StashBooru implementation progress
 
-Updated: 2026-10-02
+Updated: 2026-10-03
 
-Current baseline: `develop` at `8edd383cd464eac088347bdc9454c598f062bbb8`
-(merged PR #129). P01–P07 are complete. Active work:
-`fix/video-thumbnail-flash-20261002`, the owner's autoplay/preview poster-flash
-correction before starting P08.
+Current baseline: `develop` at `96309d8ffd66a141e94219a10b2ced7f2113b565`
+(merged PR #130). P01–P07 and the autoplay/preview thumbnail-flash fix are complete.
+Active work: `feat/p08-visual-stacks-20261003`, visual stacks and variant filmstrip.
+The unpublished 2026-10-02 checkout was lost when the execution workspace
+restored an older snapshot; P08 is reconstructed and reverified from current
+source on this branch.
+
 
 | Package | Status | Notes |
 | --- | --- | --- |
@@ -16,7 +19,7 @@ correction before starting P08.
 | P05 — Character variants / disambiguation links | Complete | Merged PR #104 adds native Character variants and typed Copyright/Artist disambiguation links; merged PR #114 refines Character/Copyright editing. |
 | P06 — ancestor/profile auto-association | Complete | PRs #115–#118 are merged; the final search consistency follow-up passed Build and Go lint CI. Direct legacy relationships remain explicit; no migration is introduced. |
 | P07 — native global All media page | Complete | PRs #119–#129 are merged. The standalone follow-up below removes screenshot posters during automatic Video startup. Equal Copyright/Variant image heights and native preview navigation are retained. |
-| P08 — visual stacks / variant filmstrip | Next; not started | Next bounded package after the standalone autoplay/preview poster correction. |
+| P08 — visual stacks / variant filmstrip | In progress | Durable catalogue grouping, native controls and reviewed proposals are implemented; focused integration and 30 UI tests passed. Full gates/browser verification/publication pending. See [P08 notes](p08-visual-stacks.md). |
 
 ## P04 completed behavior
 

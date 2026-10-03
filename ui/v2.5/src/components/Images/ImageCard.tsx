@@ -1,3 +1,5 @@
+import { VisualStackBadge } from "../VisualStacks/VisualStackBadge";
+import { StackMember } from "../VisualStacks/media";
 import React, { MouseEvent, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Button, ButtonGroup } from "react-bootstrap";
@@ -26,6 +28,8 @@ import NavUtils from "src/utils/navigation";
 import { useIntl } from "react-intl";
 
 interface IImageCardProps {
+  stackSelectedIds?: Set<string>;
+  onStackMemberSelect?: (member: StackMember, selected: boolean) => void;
   image: GQL.SlimImageDataFragment;
   cardWidth?: number;
   selecting?: boolean;
@@ -110,6 +114,7 @@ const ImageCardPopovers = PatchComponent(
     }
 
     if (
+      props.image.visual_stack ||
       props.image.tags.length > 0 ||
       props.image.performers.length > 0 ||
       props.image.o_counter ||
@@ -120,6 +125,11 @@ const ImageCardPopovers = PatchComponent(
         <>
           <hr />
           <ButtonGroup className="card-popovers">
+            <VisualStackBadge
+              stack={props.image.visual_stack}
+              selectedIds={props.stackSelectedIds}
+              onSelectMember={props.onStackMemberSelect}
+            />
             {maybeRenderTagPopoverButton()}
             {maybeRenderPerformerPopoverButton()}
             {maybeRenderOCounter()}

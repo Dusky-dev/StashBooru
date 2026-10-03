@@ -1,3 +1,8 @@
+import { VisualStackDialog } from "../VisualStacks/VisualStackDialog";
+import { StackProposalsDialog } from "../VisualStacks/StackProposalsDialog";
+import { StackMember } from "../VisualStacks/media";
+import { CollapseStacksOption } from "src/models/list-filter/media";
+import { BooleanCriterion } from "src/models/list-filter/criteria/criterion";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Alert, Button } from "react-bootstrap";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -160,6 +165,28 @@ export const FilteredMediaList = PatchComponent("FilteredMediaList", () => {
       ),
     [showModal, selectedItems, refreshed]
   );
+  const collapsed = filter
+    .criteriaFor("collapse_stacks")
+    .some((c) => (c as BooleanCriterion).value === "true");
+  const hiddenSelected = selectedItems.filter(
+    (m) => !items.some((item) => item.id === m.id)
+  ).length;
+  const selection = selectedItems.map((m) => ({
+    kind: m.kind,
+    id: m.image?.id ?? m.scene!.id,
+  }));
+  const selectStackMember = (member: StackMember, checked: boolean) => {
+    const next = selectedItems.filter((m) => m.id !== member.id);
+    if (checked)
+      next.push({
+        id: member.id,
+        kind: member.media.kind,
+        image: member.image,
+        scene: member.scene,
+        stack_match_count: 1,
+      });
+    restoreSelection(next);
+  };
   const operations = (
     <ListOperations
       items={items.length}
@@ -167,6 +194,27 @@ export const FilteredMediaList = PatchComponent("FilteredMediaList", () => {
       onEdit={onEdit}
       operationsMenuClassName="media-list-operations-dropdown"
       operations={[
+        {
+          text: "Create stack from selection…",
+          isDisplayed: () =>
+            selectedItems.length >= 2 && selectedItems.length <= 200,
+          onClick: () =>
+            showModal(
+              <VisualStackDialog selection={selection} onClose={closeModal} />
+            ),
+        },
+        {
+          text: "Review stack proposals…",
+          isDisplayed: () =>
+            selectedItems.length >= 2 && selectedItems.length <= 100,
+          onClick: () =>
+            showModal(
+              <StackProposalsDialog
+                selection={selection}
+                onClose={closeModal}
+              />
+            ),
+        },
         {
           text: intl.formatMessage({ id: "actions.select_all" }),
           onClick: onSelectAll,
@@ -267,6 +315,44 @@ export const FilteredMediaList = PatchComponent("FilteredMediaList", () => {
               onEdit={onEdit}
               operationComponent={operations}
             />
+            <div className="my-2">
+              <Button
+                variant={collapsed ? "primary" : "secondary"}
+                aria-pressed={collapsed}
+                onClick={() => {
+                  const next = filter.clone();
+                  next.criteria = next.criteria.filter(
+                    (c) => c.criterionOption.type !== "collapse_stacks"
+                  );
+                  if (!collapsed) {
+                    const criterion = new BooleanCriterion(
+                      CollapseStacksOption
+                    );
+                    criterion.value = "true";
+                    next.criteria.push(criterion);
+                  }
+                  next.currentPage = 1;
+                  setFilter(next);
+                }}
+              >
+                Group stacks
+              </Button>
+            </div>
+            {collapsed && (
+              <Alert variant="info">
+                {totalCount} cards represent{" "}
+                {cachedResult.data?.findMedia.matched_count ?? 0} matching
+                members. Any matching hidden member can make a stack appear; its
+                representative may be outside the filters. Expand a stack to
+                select individual members.
+              </Alert>
+            )}
+            {hiddenSelected > 0 && (
+              <Alert variant="info">
+                {hiddenSelected} selected members are hidden by grouping or
+                filters. Actions still target only the selected members.
+              </Alert>
+            )}
             <FilterTags
               view={View.Media}
               criteria={filter.criteria}
@@ -302,6 +388,7 @@ export const FilteredMediaList = PatchComponent("FilteredMediaList", () => {
                 filter={effectiveFilter}
                 selectedIds={selectedIds}
                 onSelectChange={onSelectChange}
+                onStackMemberSelect={selectStackMember}
               />
             </LoadedContent>
             {totalCount > filter.itemsPerPage && (

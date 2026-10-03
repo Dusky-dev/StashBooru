@@ -1,6 +1,7 @@
 fragment MediaListItem on MediaItem {
   id
   kind
+  stack_match_count
   image {
     ...SlimImageData
   }
@@ -12,6 +13,7 @@ fragment MediaListItem on MediaItem {
 query FindMedia($filter: FindFilterType, $media_filter: MediaFilterType) {
   findMedia(filter: $filter, media_filter: $media_filter) {
     count
+    matched_count
     image_count
     video_count
     items {

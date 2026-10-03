@@ -21,6 +21,7 @@ type Repository struct {
 	GalleryChapter GalleryChapterReaderWriter
 	Image          ImageReaderWriter
 	Media          MediaReader
+	VisualStack    VisualStackReaderWriter
 	ImageArtist    ImageArtistReaderWriter
 	Group          GroupReaderWriter
 	Performer      PerformerReaderWriter

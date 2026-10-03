@@ -20,6 +20,18 @@ autobind:
   - github.com/stashapp/stash/pkg/stashbox
 
 models:
+  MediaReferenceInput:
+    model: github.com/stashapp/stash/pkg/models.MediaReference
+  VisualStack:
+    fields:
+      members:
+        resolver: true
+  VisualStackMember:
+    fields:
+      image:
+        resolver: true
+      scene:
+        resolver: true
   # Scalars
   ID:
     model:
@@ -182,12 +194,16 @@ models:
         resolver: true
   Image:
     fields:
+      visual_stack:
+        resolver: true
       copyrights:
         resolver: true
       artists:
         resolver: true
   Scene:
     fields:
+      visual_stack:
+        resolver: true
       copyrights:
         resolver: true
       artists:

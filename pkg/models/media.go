@@ -43,12 +43,14 @@ type MediaFilterType struct {
 	Performers        *MultiCriterionInput             `json:"performers"`
 	Studios           *HierarchicalMultiCriterionInput `json:"studios"`
 	Copyrights        *HierarchicalMultiCriterionInput `json:"copyrights"`
+	CollapseStacks    *bool                            `json:"collapse_stacks"`
 	Duration          *IntCriterionInput               `json:"duration"`
 }
 
 type MediaReference struct {
-	Kind MediaKind `db:"kind"`
-	ID   int       `db:"id"`
+	StackMatchCount int       `db:"stack_match_count"`
+	Kind            MediaKind `db:"kind"`
+	ID              int       `db:"id"`
 }
 
 func (m MediaReference) Key() string {
@@ -60,10 +62,11 @@ func (m MediaReference) Key() string {
 }
 
 type MediaQueryResult struct {
-	Count      int `db:"count"`
-	ImageCount int `db:"image_count"`
-	VideoCount int `db:"video_count"`
-	Items      []MediaReference
+	MatchedCount int `db:"matched_count"`
+	Count        int `db:"count"`
+	ImageCount   int `db:"image_count"`
+	VideoCount   int `db:"video_count"`
+	Items        []MediaReference
 }
 
 type MediaReader interface {

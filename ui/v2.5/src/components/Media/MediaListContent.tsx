@@ -1,3 +1,4 @@
+import { StackMember } from "../VisualStacks/media";
 import { useCallback, useMemo } from "react";
 import * as GQL from "src/core/generated-graphql";
 import { useLightbox } from "src/hooks/Lightbox/hooks";
@@ -6,6 +7,7 @@ import { DisplayMode } from "src/models/list-filter/types";
 import { MediaGrid, MediaWall } from "./MediaCards";
 
 interface Props {
+  onStackMemberSelect?: (member: StackMember, selected: boolean) => void;
   items: GQL.MediaListItemFragment[];
   filter: ListFilterModel;
   selectedIds: Set<string>;
@@ -19,6 +21,7 @@ export function MediaListContent({
   filter,
   selectedIds,
   onSelectChange,
+  onStackMemberSelect,
 }: Props) {
   const images = useMemo(
     () => items.flatMap((item) => (item.image ? [item.image] : [])),
@@ -52,6 +55,7 @@ export function MediaListContent({
     zoomIndex: filter.zoomIndex,
     onSelectChange,
     onPreviewImage,
+    onStackMemberSelect,
   };
   return filter.displayMode === DisplayMode.Wall ? (
     <MediaWall {...props} />

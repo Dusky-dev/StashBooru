@@ -1,3 +1,5 @@
+import { VisualStackDialog } from "../VisualStacks/VisualStackDialog";
+import { StackProposalsDialog } from "../VisualStacks/StackProposalsDialog";
 import React, { useCallback, useEffect, useMemo } from "react";
 import cloneDeep from "lodash-es/cloneDeep";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -590,6 +592,35 @@ export const FilteredSceneList = PatchComponent(
     }
 
     const otherOperations = [
+      {
+        text: "Create stack from selection…",
+        isDisplayed: () => selectedIds.size >= 2 && selectedIds.size <= 200,
+        onClick: () =>
+          showModal(
+            <VisualStackDialog
+              selection={Array.from(selectedIds).map((id) => ({
+                kind: GQL.MediaKind.Video,
+                id,
+              }))}
+              onClose={closeModal}
+            />
+          ),
+      },
+      {
+        text: "Review stack proposals…",
+        isDisplayed: () => selectedIds.size >= 2 && selectedIds.size <= 100,
+        onClick: () =>
+          showModal(
+            <StackProposalsDialog
+              selection={Array.from(selectedIds).map((id) => ({
+                kind: GQL.MediaKind.Video,
+                id,
+              }))}
+              onClose={closeModal}
+            />
+          ),
+      },
+
       {
         text: intl.formatMessage({ id: "actions.play" }),
         onClick: () => onPlay(),

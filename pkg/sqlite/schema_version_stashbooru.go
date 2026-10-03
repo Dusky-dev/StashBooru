@@ -1,10 +1,8 @@
 package sqlite
 
-// StashBooru-specific migrations currently extend through 95. Keep the app
-// schema version aligned with the highest embedded migration so existing
-// databases run the P05 Character variant/context migration before opening.
+// Keep the fork schema version aligned with its highest embedded migration.
 func init() {
-	if appSchemaVersion < 95 {
-		appSchemaVersion = 95
+	if appSchemaVersion < 96 {
+		appSchemaVersion = 96
 	}
 }
