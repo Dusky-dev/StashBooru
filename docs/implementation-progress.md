@@ -1,12 +1,14 @@
 # StashBooru implementation progress
 
-Updated: 2026-10-03
+Updated: 2026-10-04
 
 Current baseline: `develop` at `96309d8ffd66a141e94219a10b2ced7f2113b565`
 (merged PR #130). P01–P07 and the autoplay/preview thumbnail-flash fix are complete.
 Current package: P08 visual stacks and variant filmstrip, implemented and verified
 in [PR #131](https://github.com/Dusky-dev/StashBooru/pull/131) on
 `feat/p08-visual-stacks-20261003`. The PR is open; merging/deployment are not performed.
+GitHub Actions Build and Go lint passed for published head
+`04326bbb973cc44b8e4dc5085cf077fbb4329a55`, confirmed on 2026-10-04.
 The unpublished 2026-10-02 checkout was lost when the execution workspace
 restored an older snapshot; P08 is reconstructed and reverified from current
 source on this branch.
@@ -21,7 +23,7 @@ source on this branch.
 | P05 — Character variants / disambiguation links | Complete | Merged PR #104 adds native Character variants and typed Copyright/Artist disambiguation links; merged PR #114 refines Character/Copyright editing. |
 | P06 — ancestor/profile auto-association | Complete | PRs #115–#118 are merged; the final search consistency follow-up passed Build and Go lint CI. Direct legacy relationships remain explicit; no migration is introduced. |
 | P07 — native global All media page | Complete | PRs #119–#129 are merged. The standalone follow-up below removes screenshot posters during automatic Video startup. Equal Copyright/Variant image heights and native preview navigation are retained. |
-| P08 — visual stacks / variant filmstrip | Complete; PR #131 open | Durable catalogue grouping, native controls and reviewed proposals passed backend gates, 30 UI tests, production builds, and desktop/mobile Chromium/Firefox workflows. See [P08 notes](p08-visual-stacks.md). |
+| P08 — visual stacks / variant filmstrip | Complete; PR #131 open, CI passed | Durable catalogue grouping, native controls and reviewed proposals passed backend gates, 30 UI tests, production builds, and desktop/mobile Chromium/Firefox workflows. See [P08 notes](p08-visual-stacks.md). |
 
 ## P04 completed behavior
 
@@ -718,5 +720,20 @@ source commit: `3092dfe872345effa80113aa424796228453d28d`, with Git tree
 `710ffb0cd39715707a678d73d22234ccfb5ca581`, matching local commit
 `9ebe2085195b10c0c17596cc17308813f8c326df` exactly. Publication preserves the
 intermediate checkpoint's ancestry. This final ledger update changes docs only.
-Remote CI is pending at publication. Merging and production deployment are not
-performed. Next package: P09 conversion trial/threshold workflow; not started.
+Remote CI subsequently passed for published head
+`04326bbb973cc44b8e4dc5085cf077fbb4329a55`; results were confirmed on 2026-10-04:
+
+- [Build](https://github.com/Dusky-dev/StashBooru/actions/runs/37137377976):
+  all ten jobs succeeded, including generation, tests, the seven-platform build
+  matrix and the release job.
+- [Go lint](https://github.com/Dusky-dev/StashBooru/actions/runs/37137377950):
+  the lint job succeeded.
+
+The resumed checkout matches that published head and fresh `origin/develop`
+still matches the recorded baseline. PR #131 is open and mergeable, with no
+review threads at this check. The source, migration, filmstrip and existing
+acceptance coverage were inspected; no implementation changes or additional
+runtime tests were needed. This follow-up changes documentation only and was
+reviewed with `git diff --check`. Earlier synthetic-fixture limitations remain.
+Merging and production deployment are not performed. Next package: P09
+conversion trial/threshold workflow; not started.

@@ -103,6 +103,13 @@ Branch: `feat/p08-visual-stacks-20261003`, published in
   `preview-input-playback.mjs` and `preview-player-overlap.mjs` passed in both
   browsers, including PR #130's held-stream empty-poster startup checks.
 
+On 2026-10-04, published head `04326bbb973cc44b8e4dc5085cf077fbb4329a55`
+was confirmed to have passed [Build](https://github.com/Dusky-dev/StashBooru/actions/runs/37137377976)
+(all ten jobs) and [Go lint](https://github.com/Dusky-dev/StashBooru/actions/runs/37137377950).
+PR #131 remains open and mergeable, with no review threads at this check.
+The resumed source inspection found no remaining implementation work; this
+follow-up changes documentation only and does not rerun the recorded fixtures.
+
 Run the new browser suite against an isolated server containing four PNG Images
 and four VP8 Videos, with native IDs 1–4 for each type and no existing stacks:
 
