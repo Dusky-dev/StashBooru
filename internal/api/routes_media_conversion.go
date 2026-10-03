@@ -85,21 +85,30 @@ type conversionRequest struct {
 	UseEncodingDefaults      bool                                     `json:"useEncodingDefaults"`
 	UseDecodingSpeedDefaults *bool                                    `json:"useDecodingSpeedDefaults,omitempty"`
 	EncodingDefaults         map[string]mediaconvert.EncodingDefaults `json:"encodingDefaults"`
+	Savings                  *mediaconvert.SavingsThresholds          `json:"savings,omitempty"`
+	TrialIDs                 []string                                 `json:"trialIDs,omitempty"`
+	TrialCacheLimitBytes     *int64                                   `json:"trialCacheLimitBytes,omitempty"`
+	TrialTTLHours            *int                                     `json:"trialTTLHours,omitempty"`
 }
 type conversionItem struct {
 	Target   conversionTarget `json:"target"`
 	RecordID string           `json:"recordID,omitempty"`
 	Error    string           `json:"error,omitempty"`
+	TrialID  string           `json:"trialID,omitempty"`
+	Status   string           `json:"status,omitempty"`
 }
 type conversionJob struct {
-	JobID   int              `json:"jobID"`
-	Batch   string           `json:"batch"`
-	Status  string           `json:"status"`
-	Total   int              `json:"total"`
-	Items   []conversionItem `json:"items"`
-	Error   string           `json:"error,omitempty"`
-	Backend string           `json:"backend,omitempty"`
-	Notice  string           `json:"notice,omitempty"`
+	JobID       int                           `json:"jobID"`
+	Batch       string                        `json:"batch"`
+	Status      string                        `json:"status"`
+	Total       int                           `json:"total"`
+	Items       []conversionItem              `json:"items"`
+	Error       string                        `json:"error,omitempty"`
+	Backend     string                        `json:"backend,omitempty"`
+	Notice      string                        `json:"notice,omitempty"`
+	Action      string                        `json:"action,omitempty"`
+	Estimate    *mediaconvert.Estimate        `json:"estimate,omitempty"`
+	Reservation *mediaconvert.DiskReservation `json:"reservation,omitempty"`
 }
 
 var conversionJobs = struct {
@@ -152,6 +161,21 @@ func conversionTargetFile(ctx context.Context, target conversionTarget) (models.
 }
 
 func handleMediaConversionGet(w http.ResponseWriter, r *http.Request) {
+	if id := r.URL.Query().Get("trialID"); id != "" {
+		role := r.URL.Query().Get("file")
+		if role != "source" && role != "output" {
+			http.Error(w, "choose source or output", http.StatusBadRequest)
+			return
+		}
+		path, err := conversionStore().TrialFile(r.Context(), id, role == "source")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusConflict)
+			return
+		}
+		w.Header().Set("Cache-Control", "private, no-store")
+		http.ServeFile(w, r, path)
+		return
+	}
 	if r.URL.Query().Get("config") == "1" {
 		config, err := conversionStore().Config()
 		if err != nil {
@@ -239,7 +263,20 @@ func handleMediaConversionGet(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	writeVisualSimilarityJSON(w, map[string]interface{}{"config": config, "history": history, "historyTotal": historyTotal, "stats": stats, "job": activeJob, "batchStats": batchStats, "latestStats": latestStats})
+	trials, err := s.Trials()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	trialStats := mediaconvert.SummarizeTrials(trials)
+	trialTotal := len(trials)
+	for left, right := 0, len(trials)-1; left < right; left, right = left+1, right-1 {
+		trials[left], trials[right] = trials[right], trials[left]
+	}
+	trialOffset, _ := strconv.Atoi(r.URL.Query().Get("trialOffset"))
+	trialOffset = max(0, min(trialOffset, trialTotal))
+	trials = trials[trialOffset:min(trialOffset+50, trialTotal)]
+	writeVisualSimilarityJSON(w, map[string]interface{}{"config": config, "history": history, "historyTotal": historyTotal, "stats": stats, "job": activeJob, "batchStats": batchStats, "latestStats": latestStats, "trials": trials, "trialStats": trialStats, "trialTotal": trialTotal})
 }
 
 func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
@@ -251,6 +288,20 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	mgr := manager.GetInstance()
+	if request.Savings != nil {
+		if err := request.Savings.Validate(); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
+	if request.TrialCacheLimitBytes != nil && *request.TrialCacheLimitBytes < 0 {
+		http.Error(w, "trial cache cannot be negative", http.StatusBadRequest)
+		return
+	}
+	if request.TrialTTLHours != nil && (*request.TrialTTLHours < 1 || *request.TrialTTLHours > 168) {
+		http.Error(w, "trial expiry must be 1–168 hours", http.StatusBadRequest)
+		return
+	}
 	if request.Action == "cancel" {
 		mgr.JobManager.CancelJob(request.JobID)
 		conversionJobs.Lock()
@@ -294,6 +345,15 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 			if request.Backend != "" {
 				config.Backend = request.Backend
 			}
+			if request.Savings != nil {
+				config.Savings = *request.Savings
+			}
+			if request.TrialCacheLimitBytes != nil {
+				config.TrialCacheLimitBytes = *request.TrialCacheLimitBytes
+			}
+			if request.TrialTTLHours != nil {
+				config.TrialTTLHours = *request.TrialTTLHours
+			}
 			err = conversionStore().Configure(config)
 		}
 		if err != nil {
@@ -301,6 +361,10 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeVisualSimilarityJSON(w, config)
+		return
+	}
+	if isConversionReviewAction(request.Action) {
+		startConversionReview(w, r, request)
 		return
 	}
 	if request.Action != "start" && request.Action != "restore" && request.Action != "configure" && request.Action != "recover" && request.Action != "preview" {
@@ -338,7 +402,7 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "cache size cannot be negative", http.StatusBadRequest)
 		return
 	}
-	state := &conversionJob{Batch: mediaconvert.NewID(), Status: "queued", Total: len(request.Targets), Items: []conversionItem{}}
+	state := &conversionJob{Batch: mediaconvert.NewID(), Status: "queued", Total: len(request.Targets), Action: request.Action, Items: []conversionItem{}}
 	setState := func(status string, err error) {
 		conversionJobs.Lock()
 		defer conversionJobs.Unlock()
@@ -394,6 +458,27 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
+		var sources []models.File
+		for _, target := range request.Targets {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			id, err := conversionTargetFile(ctx, target)
+			if err != nil {
+				continue // The item loop reports lookup failures individually.
+			}
+			source, err := s.Repository.Get(ctx, id)
+			if err == nil && source != nil {
+				sources = append(sources, source)
+			}
+		}
+		reservation, err := s.Preflight(sources, true)
+		if err != nil {
+			return err
+		}
+		conversionJobs.Lock()
+		state.Reservation = &reservation
+		conversionJobs.Unlock()
 		backend := request.Backend
 		if backend == "" {
 			backend = config.Backend
@@ -425,71 +510,18 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 			}
 			if err == nil {
 				seen[id] = true
-				options := request.Options
-				var input string
-				if options.Format == "" || options.Format == "auto" {
-					options.Format, input, err = conversionDefaultForFile(ctx, s, config, id)
-				} else if request.UseEncodingDefaults || conversionUsesDecodingSpeedDefaults(request) {
-					_, input, err = conversionDefaultForFile(ctx, s, config, id)
-				}
-				defaults := config.DefaultEncoding(input)
-				if request.UseEncodingDefaults {
-					options.Quality, options.Effort = defaults.Quality, defaults.Effort
-					options.AllowLarger = defaults.AllowLarger
-					options.Lossless = defaults.Lossless
-					options.DropAudio = defaults.DropAudio
-					options.AllowAlphaLoss = defaults.AllowAlphaLoss
-				}
-				if conversionUsesDecodingSpeedDefaults(request) {
-					options.DecodingSpeed = defaults.DecodingSpeed
-					options.FasterDecoding = nil
-				}
-				if options.Hardware == "" {
-					options.Hardware = "auto"
-				}
-				if (request.UseQuality || request.UseEncodingDefaults) && (options.Format == "jxl" || options.Format == "ajxl") {
-					options.Distance = mediaconvert.JXLDistanceFromQuality(options.Quality)
-				}
-				var format mediaconvert.Format
+				options, format, resolveErr := resolveConversionOptions(ctx, s, config, id, target, request, capabilities)
+				err = resolveErr
 				if err == nil {
-					format, err = conversionOutputFormat(capabilities, options.Format, target.Kind)
-				}
-				if err == nil {
-					if !formatSupportsControl(format, "lossless") {
-						options.Lossless = false
+					policy := config.Savings
+					if request.Savings != nil {
+						policy = *request.Savings
 					}
-					if options.DecodingSpeed == nil {
-						options.DecodingSpeed = options.FasterDecoding
-					}
-					if options.DecodingSpeed == nil {
-						options.DecodingSpeed = defaultConversionDecodingSpeed(format)
-					}
-					switch {
-					case formatSupportsControl(format, "decodingSpeed"):
-						options.FasterDecoding = nil
-					case formatSupportsControl(format, "fasterDecoding"):
-						// Keep the old wire name for remote workers that predate
-						// the generic decodingSpeed option.
-						options.FasterDecoding = options.DecodingSpeed
-						options.DecodingSpeed = nil
-					default:
-						// Older workers may not have a compatible encoder control.
-						// Omit it so the existing worker protocol remains compatible.
-						options.DecodingSpeed = nil
-						options.FasterDecoding = nil
-					}
-					if options.DecodingSpeed != nil && formatDecodingSpeedLevels(format) == 1 && *options.DecodingSpeed > 0 {
-						// The UI's generic range maps to AV1's codec-specific on/off
-						// control when a mixed batch uses one shared override.
-						value := 1
-						options.DecodingSpeed = &value
-					}
-				}
-				if err == nil {
-					record, convertErr := s.Convert(ctx, id, state.Batch, client, options, format)
+					record, convertErr := s.ConvertWithSavings(ctx, id, state.Batch, client, options, format, policy)
 					err = convertErr
 					if record != nil {
 						item.RecordID = record.ID
+						item.Status = record.Status
 						if record.Status == "complete" {
 							converted = append(converted, id)
 						}
@@ -518,6 +550,71 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 		}
 	})
 	writeVisualSimilarityJSON(w, map[string]int{"jobID": jobID})
+}
+
+func resolveConversionOptions(ctx context.Context, s mediaconvert.Store, config mediaconvert.Config, id models.FileID, target conversionTarget, request conversionRequest, capabilities mediaconvert.Capabilities) (mediaconvert.Options, mediaconvert.Format, error) {
+	options := request.Options
+	var err error
+	var input string
+	if options.Format == "" || options.Format == "auto" {
+		options.Format, input, err = conversionDefaultForFile(ctx, s, config, id)
+	} else if request.UseEncodingDefaults || conversionUsesDecodingSpeedDefaults(request) {
+		_, input, err = conversionDefaultForFile(ctx, s, config, id)
+	}
+	defaults := config.DefaultEncoding(input)
+	if request.UseEncodingDefaults {
+		options.Quality, options.Effort = defaults.Quality, defaults.Effort
+		options.AllowLarger = defaults.AllowLarger
+		options.Lossless = defaults.Lossless
+		options.DropAudio = defaults.DropAudio
+		options.AllowAlphaLoss = defaults.AllowAlphaLoss
+	}
+	if conversionUsesDecodingSpeedDefaults(request) {
+		options.DecodingSpeed = defaults.DecodingSpeed
+		options.FasterDecoding = nil
+	}
+	if options.Hardware == "" {
+		options.Hardware = "auto"
+	}
+	if (request.UseQuality || request.UseEncodingDefaults) && (options.Format == "jxl" || options.Format == "ajxl") {
+		options.Distance = mediaconvert.JXLDistanceFromQuality(options.Quality)
+	}
+	var format mediaconvert.Format
+	if err == nil {
+		format, err = conversionOutputFormat(capabilities, options.Format, target.Kind)
+	}
+	if err == nil {
+		if !formatSupportsControl(format, "lossless") {
+			options.Lossless = false
+		}
+		if options.DecodingSpeed == nil {
+			options.DecodingSpeed = options.FasterDecoding
+		}
+		if options.DecodingSpeed == nil {
+			options.DecodingSpeed = defaultConversionDecodingSpeed(format)
+		}
+		switch {
+		case formatSupportsControl(format, "decodingSpeed"):
+			options.FasterDecoding = nil
+		case formatSupportsControl(format, "fasterDecoding"):
+			// Keep the old wire name for remote workers that predate
+			// the generic decodingSpeed option.
+			options.FasterDecoding = options.DecodingSpeed
+			options.DecodingSpeed = nil
+		default:
+			// Older workers may not have a compatible encoder control.
+			// Omit it so the existing worker protocol remains compatible.
+			options.DecodingSpeed = nil
+			options.FasterDecoding = nil
+		}
+		if options.DecodingSpeed != nil && formatDecodingSpeedLevels(format) == 1 && *options.DecodingSpeed > 0 {
+			// The UI's generic range maps to AV1's codec-specific on/off
+			// control when a mixed batch uses one shared override.
+			value := 1
+			options.DecodingSpeed = &value
+		}
+	}
+	return options, format, err
 }
 
 func conversionBackend(client mediaconvert.Client) string {

@@ -98,25 +98,29 @@ func (s Snapshot) File() models.File {
 }
 
 type Record struct {
-	ID        string    `json:"id"`
-	Batch     string    `json:"batch"`
-	CreatedAt time.Time `json:"createdAt"`
-	Status    string    `json:"status"`
-	Error     string    `json:"error,omitempty"`
-	Before    Snapshot  `json:"before"`
-	After     Snapshot  `json:"after"`
-	Options   Options   `json:"options"`
-	Backend   string    `json:"backend"`
-	Result    Result    `json:"result"`
-	Cached    bool      `json:"cached"`
-	Staging   string    `json:"staging,omitempty"`
+	ID        string             `json:"id"`
+	Batch     string             `json:"batch"`
+	CreatedAt time.Time          `json:"createdAt"`
+	Status    string             `json:"status"`
+	Error     string             `json:"error,omitempty"`
+	Before    Snapshot           `json:"before"`
+	After     Snapshot           `json:"after"`
+	Options   Options            `json:"options"`
+	Backend   string             `json:"backend"`
+	Result    Result             `json:"result"`
+	Cached    bool               `json:"cached"`
+	Staging   string             `json:"staging,omitempty"`
+	Savings   *SavingsThresholds `json:"savings,omitempty"`
 }
 
 type Config struct {
-	CacheLimitBytes  int64                       `json:"cacheLimitBytes"`
-	FormatDefaults   map[string]string           `json:"formatDefaults"`
-	EncodingDefaults map[string]EncodingDefaults `json:"encodingDefaults"`
-	Backend          string                      `json:"backend"`
+	CacheLimitBytes      int64                       `json:"cacheLimitBytes"`
+	FormatDefaults       map[string]string           `json:"formatDefaults"`
+	EncodingDefaults     map[string]EncodingDefaults `json:"encodingDefaults"`
+	Backend              string                      `json:"backend"`
+	Savings              SavingsThresholds           `json:"savings"`
+	TrialCacheLimitBytes int64                       `json:"trialCacheLimitBytes"`
+	TrialTTLHours        int                         `json:"trialTTLHours"`
 }
 
 type Stats struct {
@@ -130,6 +134,8 @@ type Stats struct {
 	CacheBytes        int64   `json:"cacheBytes"`
 	NetSavedBytes     int64   `json:"netSavedBytes"`
 	LargerFiles       int     `json:"largerFiles"`
+	Skipped           int     `json:"skipped"`
+	Failed            int     `json:"failed"`
 }
 
 func Summarize(records []*Record) Stats {
@@ -140,6 +146,12 @@ func Summarize(records []*Record) Stats {
 	}
 	files := map[models.FileID]total{}
 	for _, r := range records {
+		if r.Status == "skipped" {
+			ret.Skipped++
+		}
+		if r.Status == "failed" {
+			ret.Failed++
+		}
 		if r.Cached && r.Before.File() != nil {
 			ret.CacheBytes += r.Before.File().Base().Size
 		}
@@ -240,7 +252,7 @@ func readJSON(path string, value interface{}) error {
 }
 
 func (s Store) Config() (Config, error) {
-	c := Config{CacheLimitBytes: 20 * 1024 * 1024 * 1024}
+	c := Config{CacheLimitBytes: 20 * 1024 * 1024 * 1024, TrialCacheLimitBytes: 10 * 1024 * 1024 * 1024, TrialTTLHours: 24}
 	err := readJSON(filepath.Join(s.Root, "config.json"), &c)
 	if errors.Is(err, os.ErrNotExist) {
 		err = nil
@@ -257,10 +269,16 @@ func (s Store) Config() (Config, error) {
 	if c.CacheLimitBytes < 0 {
 		return c, fmt.Errorf("invalid negative restore cache limit")
 	}
+	if err := c.ValidateReview(); err != nil {
+		return c, err
+	}
 	return c, err
 }
 
 func (s Store) Configure(c Config) error {
+	if err := c.ValidateReview(); err != nil {
+		return err
+	}
 	if err := ValidateEncodingDefaults(c.EncodingDefaults, c.Backend); err != nil {
 		return err
 	}
@@ -475,47 +493,78 @@ func convertedFile(before models.File, path string, result Result, hash string) 
 	return &models.ImageFile{BaseFile: &b, Format: result.VideoCodec, Width: result.Width, Height: result.Height, FrameRate: animationRate}, nil
 }
 
-func (s Store) Convert(ctx context.Context, fileID models.FileID, batch string, client Client, options Options, format Format) (record *Record, retErr error) {
+func (s Store) conversionSource(ctx context.Context, fileID models.FileID) (models.File, os.FileInfo, error) {
 	before, err := s.Repository.Get(ctx, fileID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if before == nil || snapshot(before).File() == nil {
-		return nil, fmt.Errorf("media file not found")
+		return nil, nil, fmt.Errorf("media file not found")
 	}
 	base := before.Base()
 	if base.ZipFileID != nil {
-		return nil, fmt.Errorf("extract archived media before converting")
+		return nil, nil, fmt.Errorf("extract archived media before converting")
 	}
 	stat, err := os.Lstat(base.Path)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if !stat.Mode().IsRegular() {
-		return nil, fmt.Errorf("only regular files can be converted")
+		return nil, nil, fmt.Errorf("only regular files can be converted")
 	}
 	if v, ok := before.(*models.VideoFile); ok && v.Interactive {
-		return nil, fmt.Errorf("interactive video requires preserving its sidecars; conversion is unavailable")
+		return nil, nil, fmt.Errorf("interactive video requires preserving its sidecars; conversion is unavailable")
+	}
+	if stat.Size() <= 0 {
+		return nil, nil, fmt.Errorf("zero-byte input cannot be converted")
 	}
 	checksum, err := MD5(base.Path)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if old := base.Fingerprints.GetString(models.FingerprintTypeMD5); old != "" && old != checksum {
-		return nil, fmt.Errorf("source changed; rescan before converting")
+		return nil, nil, fmt.Errorf("source changed; rescan before converting")
 	}
 	if base.Size != stat.Size() {
-		return nil, fmt.Errorf("source size changed; rescan before converting")
+		return nil, nil, fmt.Errorf("source size changed; rescan before converting")
 	}
 	// Do not alter the repository snapshot used by the compare-and-swap.
 	before = before.Clone()
 	before.Base().Fingerprints = append(models.Fingerprints(nil), base.Fingerprints...)
+	return before, stat, nil
+}
+
+func (s Store) Convert(ctx context.Context, fileID models.FileID, batch string, client Client, options Options, format Format) (*Record, error) {
+	return s.convert(ctx, fileID, batch, client, options, format, nil)
+}
+
+// ConvertWithSavings enforces compression policy independently of encoder options.
+// Upscaling and older callers retain their explicit AllowLarger semantics in Convert.
+func (s Store) ConvertWithSavings(ctx context.Context, fileID models.FileID, batch string, client Client, options Options, format Format, savings SavingsThresholds) (*Record, error) {
+	if err := savings.Validate(); err != nil {
+		return nil, err
+	}
+	return s.convert(ctx, fileID, batch, client, options, format, &savings)
+}
+
+func (s Store) convert(ctx context.Context, fileID models.FileID, batch string, client Client, options Options, format Format, savings *SavingsThresholds) (record *Record, retErr error) {
+	before, stat, err := s.conversionSource(ctx, fileID)
+	if err != nil {
+		return nil, err
+	}
+	base := before.Base()
+	checksum, err := MD5(base.Path)
+	if err != nil {
+		return nil, err
+	}
+
 	record = &Record{ID: NewID(), Batch: batch, CreatedAt: time.Now(), Status: "encoding", Before: snapshot(before), Options: options, Backend: "local"}
 	record.Before.File().Base().SetFingerprint(models.Fingerprint{Type: "md5", Fingerprint: checksum})
 	if client.URL != "" {
 		record.Backend = "remote"
 	}
 	r := record
+	r.Savings = savings
 	stageDir := filepath.Join(filepath.Dir(base.Path), ".stash-convert-"+r.ID)
 	r.Staging = stageDir
 	if err := s.save(r); err != nil {
@@ -547,15 +596,23 @@ func (s Store) Convert(ctx context.Context, fileID models.FileID, batch string, 
 	if err := ctx.Err(); err != nil {
 		return r, err
 	}
-	if !options.AllowLarger && result.Size >= base.Size {
+	if reason := conversionSkipReason(base.Size, result.Size, options, savings); reason != "" {
 		r.Status = "skipped"
-		r.Error = "output was not smaller; source kept"
+		r.Error = reason
 		return r, s.save(r)
 	}
 	outputHash, err := MD5(staged)
 	if err != nil {
 		return r, err
 	}
+	return s.activate(ctx, r, before, staged, outputHash, stat)
+}
+
+func (s Store) activate(ctx context.Context, r *Record, before models.File, staged, outputHash string, stat os.FileInfo) (*Record, error) {
+	base := before.Base()
+	checksum := r.Before.File().Base().Fingerprints.GetString("md5")
+	result, format := r.Result, r.Result.Format
+
 	if !matches(base.Path, checksum) {
 		return r, fmt.Errorf("source changed during encoding; source kept")
 	}
@@ -568,7 +625,7 @@ func (s Store) Convert(ctx context.Context, fileID models.FileID, batch string, 
 	}
 	r.Cached = true
 	// Always use a fresh basename. Never overwrite a sibling or mutate an open input.
-	destination := convertedDestinationPath(base.Path, r.ID, format.Extension)
+	destination := convertedDestinationPath(base.Path, r.ID, format)
 	after, err := convertedFile(before, staged, result, outputHash)
 	if err != nil {
 		return r, err
@@ -710,7 +767,7 @@ func (s Store) Recover(ctx context.Context) error {
 			return err
 		}
 	}
-	return nil
+	return s.TrimTrials(true)
 }
 
 func (s Store) Trim() error {

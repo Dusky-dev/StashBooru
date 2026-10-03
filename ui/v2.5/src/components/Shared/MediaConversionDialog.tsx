@@ -19,7 +19,14 @@ import {
   ConversionConfig,
   ConversionFormat as Format,
   ConversionPlan,
+  ConversionTrial,
+  TrialStats,
+  SavingsThresholds,
+  ConversionEstimate,
+  ConversionDiskReservation,
 } from "./mediaConversion";
+import { ConversionReview } from "./ConversionReview";
+import { SavingsThresholdFields, validSavings } from "./SavingsThresholdFields";
 
 interface Target {
   kind: "image" | "scene";
@@ -62,6 +69,8 @@ interface Stats {
   cacheBytes: number;
   netSavedBytes: number;
   largerFiles: number;
+  skipped: number;
+  failed: number;
 }
 interface Job {
   jobID: number;
@@ -70,7 +79,16 @@ interface Job {
   error?: string;
   backend?: string;
   notice?: string;
-  items: { target: Target; recordID?: string; error?: string }[];
+  action?: string;
+  estimate?: ConversionEstimate;
+  reservation?: ConversionDiskReservation;
+  items: {
+    target: Target;
+    recordID?: string;
+    trialID?: string;
+    status?: string;
+    error?: string;
+  }[];
 }
 interface State {
   config: ConversionConfig;
@@ -80,6 +98,9 @@ interface State {
   history: Conversion[];
   historyTotal: number;
   job?: Job;
+  trials: ConversionTrial[];
+  trialStats: TrialStats;
+  trialTotal: number;
 }
 const GiB = 1024 ** 3;
 
@@ -115,7 +136,10 @@ function StatsView({ value }: { value: Stats }) {
     <Row className="mb-3">
       <Col xs={12} sm={6} lg={3} className="mb-2">
         <strong>{bytes(value.savedBytes)}</strong>
-        <div>Conversion savings ({value.savedPercent.toFixed(1)}%)</div>
+        <div>
+          Applied conversion savings ({value.savedPercent.toFixed(1)}%,
+          weighted)
+        </div>
       </Col>
       <Col xs={12} sm={6} lg={3} className="mb-2">
         <strong>{bytes(value.averageSavedBytes)}</strong>
@@ -157,6 +181,10 @@ export const MediaConversionDialog: React.FC<{
   const [capabilityError, setCapabilityError] = useState("");
   const [state, setState] = useState<State>();
   const [historyOffset, setHistoryOffset] = useState(0);
+  const [trialOffset, setTrialOffset] = useState(0);
+  const [tab, setTab] = useState("convert");
+  const [comparing, setComparing] = useState(false);
+  const [savings, setSavings] = useState<SavingsThresholds>();
   const [jobID, setJobID] = useState<number>(
     () => Number(localStorage.getItem("media-converter-job")) || 0
   );
@@ -234,15 +262,16 @@ export const MediaConversionDialog: React.FC<{
   const refresh = useCallback(
     async (signal?: AbortSignal) => {
       const result = await fetch(
-        `${endpoint}?jobID=${jobID}&offset=${historyOffset}`,
+        `${endpoint}?jobID=${jobID}&offset=${historyOffset}&trialOffset=${trialOffset}`,
         { signal }
       ).then(response<State>);
       setState(result);
+      setSavings((existing) => existing ?? result.config.savings);
       setCacheGiB(
         (existing) => existing ?? result.config.cacheLimitBytes / GiB
       );
     },
-    [jobID, historyOffset]
+    [jobID, historyOffset, trialOffset]
   );
 
   useEffect(() => {
@@ -394,8 +423,23 @@ export const MediaConversionDialog: React.FC<{
     return `${plan.count} ${plan.count === 1 ? "file" : "files"}: ${plan.input.toUpperCase()} → ${output?.label ?? plan.output} · quality ${useEncodingDefaults ? plan.quality : options.quality}, effort ${useEncodingDefaults ? plan.effort : options.effort}${decodeSpeed}${safety}${!loadingCapabilities && !output?.available ? " — unavailable on this worker" : ""}`;
   };
 
+  const reviewRequest = {
+    options,
+    savings,
+    useQuality: true,
+    useEncodingDefaults,
+    useDecodingSpeedDefaults,
+    targets,
+  };
+
   return (
-    <Modal show onHide={onHide} size="xl" scrollable>
+    <Modal
+      show
+      onHide={onHide}
+      size="xl"
+      scrollable
+      className={comparing ? "d-none" : undefined}
+    >
       <Modal.Header closeButton>
         <Modal.Title>Media converter</Modal.Title>
       </Modal.Header>
@@ -404,7 +448,8 @@ export const MediaConversionDialog: React.FC<{
         {state?.job?.error && <Alert variant="danger">{state.job.error}</Alert>}
         <Tabs
           id="media-converter-tabs"
-          defaultActiveKey="convert"
+          activeKey={tab}
+          onSelect={(key) => setTab(key ?? "convert")}
           className="mb-3"
         >
           <Tab eventKey="convert" title="Convert">
@@ -694,9 +739,9 @@ export const MediaConversionDialog: React.FC<{
             )}
             <Form.Check
               id="converter-larger"
-              label="Keep outputs even when they are larger"
+              label="Saved keep-larger preference (compression savings policy takes precedence)"
               checked={options.allowLarger}
-              disabled={busy || useEncodingDefaults}
+              disabled
               onChange={(e) =>
                 setOptions({ ...options, allowLarger: e.target.checked })
               }
@@ -734,6 +779,8 @@ export const MediaConversionDialog: React.FC<{
               className="my-3"
               disabled={
                 busy ||
+                !savings ||
+                !validSavings(savings) ||
                 !canEncode ||
                 !selectedCount ||
                 loadingCapabilities ||
@@ -746,19 +793,58 @@ export const MediaConversionDialog: React.FC<{
                 options.effort < 1 ||
                 options.effort > 9
               }
-              onClick={() =>
+              onClick={() => {
+                setTab("review");
                 void action({
-                  action: "start",
-                  options,
-                  useQuality: true,
-                  useEncodingDefaults,
-                  useDecodingSpeedDefaults,
-                  targets,
-                })
-              }
+                  ...reviewRequest,
+                  action: "trial",
+                });
+              }}
             >
-              Convert {selectedCount === 1 ? "file" : `${selectedCount} files`}
+              Verified trial for{" "}
+              {selectedCount === 1 ? "file" : `${selectedCount} files`}
             </Button>
+            <Button
+              variant="secondary"
+              className="my-3 ml-2"
+              disabled={
+                busy ||
+                !canEncode ||
+                !selectedCount ||
+                loadingCapabilities ||
+                (options.format === "auto" &&
+                  (loadingPreview || !!previewError)) ||
+                !savings ||
+                !validSavings(savings) ||
+                !Number.isFinite(options.quality) ||
+                options.quality < 0 ||
+                options.quality > 100 ||
+                !Number.isInteger(options.effort) ||
+                options.effort < 1 ||
+                options.effort > 9
+              }
+              onClick={() => {
+                setTab("review");
+                void action({ ...reviewRequest, action: "estimate" });
+              }}
+            >
+              Estimate savings
+            </Button>
+            <Button
+              variant="secondary"
+              className="my-3 ml-2"
+              onClick={() => setTab("review")}
+            >
+              Review trials &amp; apply
+            </Button>
+            {savings && (
+              <SavingsThresholdFields
+                value={savings}
+                onChange={setSavings}
+                disabled={busy}
+                prefix="converter-job"
+              />
+            )}
             {state?.job && (
               <div role="status" className="mb-3">
                 <strong>
@@ -804,6 +890,7 @@ export const MediaConversionDialog: React.FC<{
                   >
                     {state.job.items
                       .filter((i) => i.error)
+                      .slice(0, 50)
                       .map((i, index) => (
                         <div
                           className="text-danger"
@@ -815,7 +902,9 @@ export const MediaConversionDialog: React.FC<{
                   </div>
                 )}
                 <p className="mt-2">
-                  This batch: {state.batchStats.converted} converted,{" "}
+                  Applied in this batch: {state.batchStats.converted}; skipped{" "}
+                  {state.job.items.filter((i) => i.status === "skipped").length}
+                  ; failed {state.job.items.filter((i) => i.error).length}.{" "}
                   {bytes(state.batchStats.savedBytes)} saved,{" "}
                   {state.batchStats.largerFiles} larger outputs.
                 </p>
@@ -829,6 +918,66 @@ export const MediaConversionDialog: React.FC<{
                 {bytes(state.latestStats.averageSavedBytes)} average per file.
               </p>
             )}
+          </Tab>
+          <Tab eventKey="review" title="Estimate / trial review / apply">
+            {state?.job && (
+              <p role="status">
+                {state.job.action ?? "Conversion"}: {state.job.status} ·{" "}
+                {state.job.items.length}/{state.job.total} processed
+                {state.job.error && ` · ${state.job.error}`}
+              </p>
+            )}
+            {running && (
+              <Button
+                size="sm"
+                variant="secondary"
+                className="mb-3"
+                onClick={() => void action({ action: "cancel", jobID })}
+              >
+                Cancel remaining work
+              </Button>
+            )}
+            {state?.job?.items
+              .filter((i) => i.error)
+              .slice(0, 50)
+              .map((item, index) => (
+                <Alert
+                  variant="warning"
+                  key={`${item.trialID ?? item.target.kind}-${item.target.id}-${index}`}
+                >
+                  {item.target.id
+                    ? `${item.target.kind} #${item.target.id}`
+                    : `Trial ${item.trialID}`}
+                  : {item.error}
+                </Alert>
+              ))}
+            {(state?.job?.items.filter((i) => i.error).length ?? 0) > 50 && (
+              <p>
+                Showing the first 50 item errors. Full results remain in the
+                converter job response.
+              </p>
+            )}
+            <ConversionReview
+              trials={state?.trials ?? []}
+              stats={state?.trialStats}
+              estimate={state?.job?.estimate}
+              reservation={state?.job?.reservation}
+              total={state?.trialTotal ?? 0}
+              offset={trialOffset}
+              onPage={setTrialOffset}
+              onComparisonChange={setComparing}
+              busy={busy || !savings || !validSavings(savings)}
+              onApply={(trialIDs) =>
+                void action({
+                  ...reviewRequest,
+                  action: "apply-trials",
+                  trialIDs,
+                })
+              }
+              onDiscard={(trialIDs) =>
+                void action({ action: "discard-trials", trialIDs })
+              }
+            />
           </Tab>
           <Tab eventKey="statistics" title="Statistics & restore">
             {state && (

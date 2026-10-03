@@ -8,6 +8,7 @@ and checked before the caller can activate it.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -181,9 +182,35 @@ def aom_decoding_speed_usable() -> bool:
     return supported
 
 
+def toolchain_signature() -> str:
+    """Bind saved trials to actual worker code, codecs and image libraries."""
+    identity = hashlib.sha256()
+    for script in (Path(__file__), Path(upscaler.__file__)):
+        identity.update(script.read_bytes())
+    for command in ([FFMPEG, "-version"], [FFPROBE, "-version"], ["cjxl", "--version"], ["djxl", "--version"],
+                    ["nvidia-smi", "--query-gpu=driver_version", "--format=csv,noheader"]):
+        tool = command[0]
+        identity.update(tool.encode())
+        try:
+            identity.update(run(command, timeout=10).encode())
+        except (OSError, RuntimeError, subprocess.TimeoutExpired):
+            identity.update(b"unavailable")
+    try:
+        import PIL
+        from PIL import features
+        identity.update(PIL.__version__.encode())
+        for feature in ("webp", "jpg", "zlib", "libtiff"):
+            identity.update(str(features.version(feature)).encode())
+    except ImportError:
+        identity.update(b"Pillow unavailable")
+    return identity.hexdigest()
+
+
 def capabilities(probe_gpu=True, only_format=None, probe_decoding_speed=True) -> dict:
     global _capabilities_cache
-    if _capabilities_cache and time.monotonic() - _capabilities_cache[0] < 300:
+    signature = toolchain_signature()
+    if (_capabilities_cache and time.monotonic() - _capabilities_cache[0] < 300
+            and _capabilities_cache[1].get("signature") == signature):
         return _capabilities_cache[1]
     available = run([FFMPEG, "-hide_banner", "-encoders"], timeout=20)
     encoders = {line.split()[1] for line in available.splitlines() if len(line.split()) > 1}
@@ -220,7 +247,8 @@ def capabilities(probe_gpu=True, only_format=None, probe_decoding_speed=True) ->
                         "cpu": cpu, "gpu": hardware, "controls": controls,
                         "decodingSpeedLevels": 4 if key in ("jxl", "ajxl") and faster_decoding else 1 if key in AV1_DECODING_SPEED_FORMATS and av1_decoding_speed else 0,
                         "available": bool(cpu or hardware)})
-    value = {"formats": formats, "upscalers": upscaler.capabilities(), "version": 2}
+    value = {"formats": formats, "upscalers": upscaler.capabilities(), "version": 3,
+             "signature": signature}
     if probe_gpu and only_format is None:
         _capabilities_cache = time.monotonic(), value
     return value
@@ -1033,6 +1061,7 @@ def convert(source: Path, output: Path, raw: dict, cancelled=None) -> dict:
                 raise RuntimeError("verification failed: audio stream missing")
             codec = "jpegxl" if fmt in ("jxl", "ajxl") else "webp" if fmt == "webp" else after["videoCodec"]
             after.update({"format": ext, "videoCodec": codec,
+                          "signature": toolchain_signature(),
                           "encoder": encoder, "upscaler": o["upscaler"], "seconds": time.monotonic() - started, "size": output.stat().st_size})
             after.pop("durations", None)  # Binary response metadata must fit HTTP headers.
             return after

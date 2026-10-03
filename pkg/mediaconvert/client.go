@@ -48,6 +48,7 @@ type Format struct {
 type Capabilities struct {
 	Formats   []Format   `json:"formats"`
 	Upscalers []Upscaler `json:"upscalers"`
+	Signature string     `json:"signature,omitempty"`
 }
 
 type Upscaler struct {
@@ -59,6 +60,7 @@ type Upscaler struct {
 }
 
 type Result struct {
+	Signature  string  `json:"signature,omitempty"`
 	Upscaler   string  `json:"upscaler,omitempty"`
 	Width      int     `json:"width"`
 	Height     int     `json:"height"`

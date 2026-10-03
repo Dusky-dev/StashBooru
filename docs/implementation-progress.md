@@ -2,17 +2,11 @@
 
 Updated: 2026-10-04
 
-Current baseline: `develop` at `96309d8ffd66a141e94219a10b2ced7f2113b565`
-(merged PR #130). P01–P07 and the autoplay/preview thumbnail-flash fix are complete.
-Current package: P08 visual stacks and variant filmstrip, implemented and verified
-in [PR #131](https://github.com/Dusky-dev/StashBooru/pull/131) on
-`feat/p08-visual-stacks-20261003`. The PR is open; merging/deployment are not performed.
-GitHub Actions Build and Go lint passed for published head
-`04326bbb973cc44b8e4dc5085cf077fbb4329a55`, confirmed on 2026-10-04.
-The unpublished 2026-10-02 checkout was lost when the execution workspace
-restored an older snapshot; P08 is reconstructed and reverified from current
-source on this branch.
-
+Current baseline: `develop` at `2e00454f3b063b729ce98e61afb69916cc44a5d8`
+(merged PR #131). P01–P08 are complete. Current package: P09 conversion review,
+verified trials and savings policy, implemented and locally verified on
+`feat/p09-conversion-review-20261004`. Publication details follow below.
+Merging/deployment are not performed.
 
 | Package | Status | Notes |
 | --- | --- | --- |
@@ -23,7 +17,8 @@ source on this branch.
 | P05 — Character variants / disambiguation links | Complete | Merged PR #104 adds native Character variants and typed Copyright/Artist disambiguation links; merged PR #114 refines Character/Copyright editing. |
 | P06 — ancestor/profile auto-association | Complete | PRs #115–#118 are merged; the final search consistency follow-up passed Build and Go lint CI. Direct legacy relationships remain explicit; no migration is introduced. |
 | P07 — native global All media page | Complete | PRs #119–#129 are merged. The standalone follow-up below removes screenshot posters during automatic Video startup. Equal Copyright/Variant image heights and native preview navigation are retained. |
-| P08 — visual stacks / variant filmstrip | Complete; PR #131 open, CI passed | Durable catalogue grouping, native controls and reviewed proposals passed backend gates, 30 UI tests, production builds, and desktop/mobile Chromium/Firefox workflows. See [P08 notes](p08-visual-stacks.md). |
+| P08 — visual stacks / variant filmstrip | Complete; PR #131 merged | Durable catalogue grouping, native controls and reviewed proposals passed backend gates, 30 UI tests, production builds, and desktop/mobile Chromium/Firefox workflows. See [P08 notes](p08-visual-stacks.md). |
+| P09 — conversion review / savings thresholds | Implemented; local checks passed | Estimate, verified saved trials, reviewed apply, both savings minimums, cache/expiry/revalidation and native restore. See [P09 notes](p09-conversion-review.md). |
 
 ## P04 completed behavior
 
@@ -736,4 +731,53 @@ acceptance coverage were inspected; no implementation changes or additional
 runtime tests were needed. This follow-up changes documentation only and was
 reviewed with `git diff --check`. Earlier synthetic-fixture limitations remain.
 Merging and production deployment are not performed. Next package: P09
-conversion trial/threshold workflow; not started.
+conversion trial/threshold workflow. PR #131 was merged before P09 started,
+producing the current baseline recorded above.
+
+
+## P09 conversion review, saved trials and savings thresholds
+
+Baseline: merged P08 `2e00454f3b063b729ce98e61afb69916cc44a5d8`; fresh develop
+still matched it at final verification. No open fork PRs were returned at the
+publication check. Work is on `feat/p09-conversion-review-20261004`.
+
+- The native converter separates stratified estimate, verified trial and apply.
+  Estimates sample up to 24 complete encodes, report coverage/observed uncertainty,
+  and delete temporary results. Trials retain measured output separately from
+  original restore entries without changing active bytes/fingerprints/metadata.
+- Per-file review shows effective format/options, exact bytes and savings, encoder,
+  elapsed time, verification/status, skipped reasons, typed links, expiry and
+  animation/alpha/audio/profile limitations. Still comparisons reuse P03 controls.
+- Global and per-job minima default to zero. Positive savings and both enabled
+  inclusive byte/percent minima must pass after verification and before any backup
+  or activation. Keep-larger cannot bypass compression policy; intentional upscaling
+  remains separate. Potential, applied, skipped/failed and backup usage are labelled.
+- Saved apply rechecks primary-file ownership, source identity/SHA-256/measured
+  timestamp, normalized options/policy, worker/codecs signature and output checksum.
+  It activates the saved bytes through the existing restore/recovery journal.
+- Trial cache defaults to 10 GiB / 24 hours, with configurable size/1–168 hour TTL,
+  cancellation cleanup, restart recovery and conservative peak-disk planning.
+  Remote retained trials need the updated converter script and worker restart.
+
+Verification on 2026-10-04:
+
+- Focused acceptance tests and a native SQLite catalogue-preservation test passed.
+  Tags/Characters/Artists/Copyrights, gallery order, visual stack, media/file IDs,
+  metadata/provenance and exact restored bytes/fingerprints remain intact.
+- Full `make test`, `make it` and `make lint` passed; zero Go lint issues.
+- `TS_NODE_TRANSPILE_ONLY=true make validate-ui` passed 30 tests, JS/CSS lint,
+  source TypeScript and formatting; test TypeScript independently passed.
+- Backend/UI generation and production `make ui-only` passed; built-ins and locked
+  dependencies are unchanged. Windows/macOS converter tests cross-compiled.
+- Python suite: 27 passed, 5 availability skips (32 total), including actual available
+  CPU codec fixtures and worker identity coverage. Physical GPU remains unverified.
+- Chromium 143 passed 1440×1000 / 390×844 native component workflows: estimate,
+  trial rows, skipped eligibility, comparison/parent isolation, apply, discard,
+  global minima/cache/TTL and reopen. Screenshots are in the package notes.
+- `git diff --check` passed. Synthetic browser/API/store/database fixtures are
+  distinguished from real Python codec execution; no manual owner test is claimed.
+
+See [P09 package notes](p09-conversion-review.md) for API/lifecycle details and
+remaining limits. Publication verification will be recorded after the PR opens.
+Next package: P10 robust Video duplicate and interval matching. No merge or
+production deployment is performed.
