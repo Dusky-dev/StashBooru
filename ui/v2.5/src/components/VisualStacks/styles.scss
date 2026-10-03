@@ -79,6 +79,19 @@
   max-width: 190px;
 }
 
+.visual-stack-selection-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.visual-stack-selection-action {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
 .visual-stack-card {
   display: inline-block;
   max-width: 100%;
