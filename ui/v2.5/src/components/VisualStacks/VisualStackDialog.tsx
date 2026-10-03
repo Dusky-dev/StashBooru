@@ -133,6 +133,16 @@ export function VisualStackDialog({
   const groupedSelection = !targetID
     ? rows.filter((m) => m.image?.visual_stack || m.scene?.visual_stack)
     : [];
+  const groupedStackIDs = Array.from(
+    new Set(
+      groupedSelection.map(
+        (m) => (m.image?.visual_stack ?? m.scene?.visual_stack)!.id
+      )
+    )
+  );
+  const ungroupedSelection = !targetID
+    ? rows.filter((m) => !m.image?.visual_stack && !m.scene?.visual_stack)
+    : [];
   const members = rows.map((m) => ({
     media: { kind: m.media.kind, id: m.media.id },
     label: m.label,
@@ -282,6 +292,117 @@ export function VisualStackDialog({
       setMemberURL("");
     });
 
+  const mergeSelectionInto = (targetStackID: string) =>
+    run(async () => {
+      const loaded = await Promise.all(
+        groupedStackIDs.map(async (id) => {
+          const value = (
+            await client.query({
+              query: GQL.FindVisualStackDocument,
+              variables: { id },
+              fetchPolicy: "network-only",
+            })
+          ).data.findVisualStack;
+          if (!value) throw new Error(`Stack ${id} no longer exists.`);
+          return value;
+        })
+      );
+      const target = loaded.find((value) => value.id === targetStackID);
+      if (!target) throw new Error("Target stack no longer exists.");
+
+      const orderedStacks = [
+        target,
+        ...loaded.filter((value) => value.id !== target.id),
+      ];
+      const combinedCount =
+        orderedStacks.reduce((sum, value) => sum + value.member_count, 0) +
+        ungroupedSelection.length;
+      if (combinedCount > 200)
+        throw new Error("Merged stack would exceed 200 members.");
+
+      let value = target;
+      if (orderedStacks.length > 1) {
+        const targetRepresentative = target.members.find(
+          (member) => member.representative
+        )?.media;
+        if (!targetRepresentative)
+          throw new Error("Target stack has no representative.");
+
+        const mergedValue = (
+          await mergeStacks({
+            variables: {
+              input: {
+                stacks: orderedStacks.map((stack) => ({
+                  id: stack.id,
+                  version: stack.version,
+                })),
+                title: target.title,
+                representative: {
+                  kind: targetRepresentative.kind,
+                  id: targetRepresentative.id,
+                },
+              },
+            },
+          })
+        ).data?.visualStackMerge;
+        if (!mergedValue) throw new Error("Stack merge did not return a stack.");
+        value = mergedValue;
+      }
+
+      const existing = new Set(
+        value.members.map((member) => stackKey(member.media))
+      );
+      const additions = ungroupedSelection.filter(
+        (member) => !existing.has(member.id)
+      );
+      if (additions.length > 0) {
+        const currentRepresentative = value.members.find(
+          (member) => member.representative
+        )?.media;
+        if (!currentRepresentative)
+          throw new Error("Target stack has no representative.");
+
+        const updatedValue = (
+          await update({
+            variables: {
+              input: {
+                id: value.id,
+                version: value.version,
+                title: value.title,
+                members: [
+                  ...value.members.map((member) => ({
+                    media: {
+                      kind: member.media.kind,
+                      id: member.media.id,
+                    },
+                    label: member.label,
+                  })),
+                  ...additions.map((member) => ({
+                    media: {
+                      kind: member.media.kind,
+                      id: member.media.id,
+                    },
+                    label: member.label,
+                  })),
+                ],
+                representative: {
+                  kind: currentRepresentative.kind,
+                  id: currentRepresentative.id,
+                },
+              },
+            },
+          })
+        ).data?.visualStackUpdate;
+        if (!updatedValue)
+          throw new Error("Adding selected media did not return a stack.");
+        value = updatedValue;
+      }
+
+      await refresh();
+      setTargetID(value.id);
+      adopt(value);
+    });
+
   return (
     <ModalComponent
       show
@@ -341,32 +462,49 @@ export function VisualStackDialog({
       )}
       {groupedSelection.length > 0 && (
         <Alert variant="warning">
-          Some selected members already belong to a stack. Manage it or merge
-          stacks.
-          {Array.from(
-            new Set(
-              groupedSelection.map(
-                (m) => (m.image?.visual_stack ?? m.scene?.visual_stack)!.id
-              )
-            )
-          ).map((id) => (
-            <Button
-              key={id}
-              size="sm"
-              className="ml-2"
-              onClick={() => {
-                setSnapshot(undefined);
-                setTargetID(id);
-              }}
-            >
-              Manage stack {id}
-            </Button>
-          ))}
+          <div>
+            Some selected members already belong to a stack. Manage an existing
+            stack, or merge the full selection into one of them.
+          </div>
+          {groupedStackIDs.length > 1 && (
+            <small className="d-block mt-1">
+              Merging also includes every member of the selected existing
+              stacks, not only the members currently selected.
+            </small>
+          )}
+          <div className="visual-stack-selection-actions">
+            {groupedStackIDs.map((id) => (
+              <div className="visual-stack-selection-action" key={id}>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={busy}
+                  onClick={() => {
+                    setSnapshot(undefined);
+                    setTargetID(id);
+                  }}
+                >
+                  Manage stack {id}
+                </Button>
+                {(groupedStackIDs.length > 1 ||
+                  ungroupedSelection.length > 0) && (
+                  <Button
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => mergeSelectionInto(id)}
+                  >
+                    Merge selection into stack {id}
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
         </Alert>
       )}
       <Form.Group controlId="visual-stack-title">
         <Form.Label>Stack title (optional)</Form.Label>
         <Form.Control
+          className="text-input"
           value={title}
           maxLength={200}
           disabled={busy}
@@ -389,6 +527,7 @@ export function VisualStackDialog({
               </small>
               <Form.Control
                 as="select"
+                className="input-control"
                 aria-label={`Relationship for ${m.id}`}
                 value={m.label}
                 disabled={busy}
@@ -470,6 +609,7 @@ export function VisualStackDialog({
       <Form.Group controlId="visual-stack-member-url">
         <Form.Label>Add member by Image or Video URL</Form.Label>
         <Form.Control
+          className="text-input"
           value={memberURL}
           placeholder="/images/123 or /scenes/123"
           disabled={busy}
