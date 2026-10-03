@@ -49,6 +49,9 @@ the selected member, relationship, representative marker, variant arrows,
 keyboard navigation and **Open this member**. Preview selection follows typed
 member identity through representative changes. Previous/next result controls
 remain separate from variant navigation, preserving gallery/list order.
+Apollo keys media references by both kind and native ID, so equal Image/Video
+IDs remain distinct after mutation results and refetches. Expanded grid members
+use a viewport-bounded native popover with individual controls.
 
 Only the selected Video mounts a native ScenePlayer; switching variants or
 closing the preview disposes it. Video completion never advances to another
@@ -80,12 +83,50 @@ integration tests, along with invariant preservation, rollback, typed identity,
 representative deletion, filtering before pagination and current pair evidence.
 
 Baseline: `develop` at `96309d8ffd66a141e94219a10b2ced7f2113b565` (merged #130).
-Branch: `feat/p08-visual-stacks-20261003`. On 2026-10-03 the restored source passed
-focused P07/P08 integration tests, all 30 UI tests, lint, source/test TypeScript
-and formatting. Full backend gates, production builds and browser workflows
-are in progress; final verification and publication details follow in the
-implementation ledger.
+Branch: `feat/p08-visual-stacks-20261003`. Verified on 2026-10-03:
 
-Browser media are isolated synthetic VP8 and PNG fixtures. Production media,
-other codecs, Safari, browser extensions and physical GPU rendering require
-separate checks. P09 conversion trial/threshold work is a separate package.
+- Backend and UI generation, focused P07 and seven P08 integration tests,
+  `make test`, `make it` and `make lint` (zero issues) passed.
+- `TS_NODE_TRANSPILE_ONLY=true make validate-ui` passed all 30 UI tests,
+  JavaScript/CSS lint, source TypeScript and formatting. Test TypeScript passed
+  independently with `pnpm exec tsc --noEmit -p tsconfig.test.json`.
+- `make ui-only`, the Linux server build, built-in composition/checksum and
+  generated JavaScript syntax checks passed. Built-in source is unchanged.
+- `tests/browser/visual-stacks.mjs` passed in Chromium 135 and Firefox 153 at
+  1440×1000 and 390×844. It covers create, collapse, hidden-member selection,
+  ordered previews, Video completion, modal keyboard isolation, representative
+  changes, native detail URLs, reorder, add, split, merge, remove and unstack.
+  Native metadata, URLs, files, fingerprints and gallery snapshots are unchanged.
+- Existing `preview-opening.mjs` passed its 12 cold/warm Chromium openings on
+  All, mobile Videos and Character All. `player-opening-state.mjs`,
+  `preview-input-playback.mjs` and `preview-player-overlap.mjs` passed in both
+  browsers, including PR #130's held-stream empty-poster startup checks.
+
+Run the new browser suite against an isolated server containing four PNG Images
+and four VP8 Videos, with native IDs 1–4 for each type and no existing stacks:
+
+```sh
+STASH_BROWSER_URL=http://127.0.0.1:9999 \
+STASH_BROWSER_ALLOW_STACK_WRITES=1 STASH_BROWSER_ENGINE=chromium \
+  node ui/v2.5/tests/browser/visual-stacks.mjs
+STASH_BROWSER_URL=http://127.0.0.1:9999 \
+STASH_BROWSER_ALLOW_STACK_WRITES=1 STASH_BROWSER_ENGINE=firefox \
+  node ui/v2.5/tests/browser/visual-stacks.mjs
+```
+
+The explicit fixture flag permits grouping mutations; the suite cleans up its
+created stacks and intercepts native playback-activity writes. The integration
+suite separately verifies actual file bytes, gallery order, representative
+deletion, stale-write rejection, failed split/merge rollback and reviewed evidence.
+Before-grouping and desktop/mobile preview captures are in `docs/images/p08`.
+Exact publication SHAs and the PR are recorded in the implementation ledger.
+
+These are automated synthetic fixture checks, not human manual testing. Firefox
+used single-process software decoding with content/RDD sandboxing disabled in
+the execution environment; product browser settings are unchanged. Production
+media, other codecs, Safari, extensions and physical GPU rendering were not
+verified. Proposal tests use stored synthetic vectors and do not run inference.
+If an editor removes the originally opened member during a preview, that preview
+falls back to its original native item; representative changes preserve the
+selected variant while the opened member remains grouped. P09 conversion
+trial/threshold work is a separate package.

@@ -312,3 +312,73 @@ func TestP08MigrationUpgrades95AndPreservesNativeRecords(t *testing.T) {
 		return err
 	}))
 }
+
+func TestP08HashAndDerivationPairsRequireReviewAndRespectBounds(t *testing.T) {
+	r := p07Fixture(t)
+	a, b := p08Ref(models.MediaKindImage, 1), p08Ref(models.MediaKindVideo, 1)
+	refs := []*models.MediaReference{&a, &b}
+	propose := func() []*models.VisualStackProposal {
+		var ret []*models.VisualStackProposal
+		require.NoError(t, r.WithReadTxn(context.Background(), func(ctx context.Context) error {
+			var err error
+			ret, err = r.VisualStack.Propose(ctx, refs)
+			return err
+		}))
+		return ret
+	}
+	require.NoError(t, r.WithTxn(context.Background(), func(ctx context.Context) error {
+		for _, id := range []models.FileID{1, 2} {
+			require.NoError(t, r.File.ModifyFingerprints(ctx, id, []models.Fingerprint{{Type: "md5", Fingerprint: "same-active-hash"}}))
+		}
+		return nil
+	}))
+	proposals := propose()
+	require.Len(t, proposals, 1)
+	require.Contains(t, proposals[0].Evidence, "Identical")
+	require.Equal(t, refs, proposals[0].Members)
+	require.NoError(t, r.WithTxn(context.Background(), func(ctx context.Context) error {
+		return r.File.ModifyFingerprints(ctx, 2, []models.Fingerprint{{Type: "md5", Fingerprint: "new-active-hash"}, {Type: "source_md5", Fingerprint: "same-active-hash"}})
+	}))
+	proposals = propose()
+	require.Len(t, proposals, 1)
+	require.Contains(t, proposals[0].Evidence, "Recorded source")
+	p08Write(t, r, func(ctx context.Context) (*models.VisualStack, error) {
+		return r.VisualStack.Create(ctx, models.VisualStackCreateInput{Members: p08Members(a, b), Representative: a})
+	})
+	require.Empty(t, propose(), "already grouped pairs are not proposed again")
+	require.ErrorContains(t, r.WithTxn(context.Background(), func(ctx context.Context) error {
+		members := make([]*models.VisualStackMemberInput, 201)
+		_, err := r.VisualStack.Create(ctx, models.VisualStackCreateInput{Members: members, Representative: a})
+		return err
+	}), "200")
+	require.ErrorContains(t, r.WithReadTxn(context.Background(), func(ctx context.Context) error {
+		_, err := r.VisualStack.Propose(ctx, make([]*models.MediaReference, 101))
+		return err
+	}), "100")
+}
+
+func TestP08MergeValidatesVersionsAndRollsBackTransfers(t *testing.T) {
+	r := p07Fixture(t)
+	a, b, c, d := p08Ref(models.MediaKindImage, 1), p08Ref(models.MediaKindVideo, 1), p08Ref(models.MediaKindImage, 2), p08Ref(models.MediaKindVideo, 2)
+	first := p08Write(t, r, func(ctx context.Context) (*models.VisualStack, error) {
+		return r.VisualStack.Create(ctx, models.VisualStackCreateInput{Members: p08Members(a, b), Representative: a})
+	})
+	second := p08Write(t, r, func(ctx context.Context) (*models.VisualStack, error) {
+		return r.VisualStack.Create(ctx, models.VisualStackCreateInput{Members: p08Members(c, d), Representative: c})
+	})
+	input := models.VisualStackMergeInput{Stacks: []*models.VisualStackVersionInput{{ID: first.ID, Version: first.Version}, {ID: second.ID, Version: second.Version}}, Representative: p08Ref(models.MediaKindImage, 999)}
+	require.Error(t, r.WithTxn(context.Background(), func(ctx context.Context) error {
+		_, err := r.VisualStack.Merge(ctx, input)
+		return err
+	}))
+	require.Equal(t, first, p08Read(t, r, first.ID))
+	require.Equal(t, second, p08Read(t, r, second.ID))
+	input.Representative = a
+	input.Stacks[1].Version = 0
+	require.ErrorContains(t, r.WithTxn(context.Background(), func(ctx context.Context) error {
+		_, err := r.VisualStack.Merge(ctx, input)
+		return err
+	}), "stack changed")
+	require.Equal(t, first, p08Read(t, r, first.ID))
+	require.Equal(t, second, p08Read(t, r, second.ID))
+}

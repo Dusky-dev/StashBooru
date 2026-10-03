@@ -34,6 +34,10 @@ const readDanglingNull: FieldReadFunction = (existing, { canRead }) => {
 };
 
 const typePolicies: TypePolicies = {
+  // Native Image and Video IDs can be equal. Keep stack references distinct.
+  MediaReference: {
+    keyFields: ["kind", "id"],
+  },
   Query: {
     fields: {
       findImage: {

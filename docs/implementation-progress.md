@@ -4,7 +4,8 @@ Updated: 2026-10-03
 
 Current baseline: `develop` at `96309d8ffd66a141e94219a10b2ced7f2113b565`
 (merged PR #130). P01–P07 and the autoplay/preview thumbnail-flash fix are complete.
-Active work: `feat/p08-visual-stacks-20261003`, visual stacks and variant filmstrip.
+Current package: `feat/p08-visual-stacks-20261003`, visual stacks and variant filmstrip,
+implemented and locally verified; publication details are recorded below.
 The unpublished 2026-10-02 checkout was lost when the execution workspace
 restored an older snapshot; P08 is reconstructed and reverified from current
 source on this branch.
@@ -19,7 +20,7 @@ source on this branch.
 | P05 — Character variants / disambiguation links | Complete | Merged PR #104 adds native Character variants and typed Copyright/Artist disambiguation links; merged PR #114 refines Character/Copyright editing. |
 | P06 — ancestor/profile auto-association | Complete | PRs #115–#118 are merged; the final search consistency follow-up passed Build and Go lint CI. Direct legacy relationships remain explicit; no migration is introduced. |
 | P07 — native global All media page | Complete | PRs #119–#129 are merged. The standalone follow-up below removes screenshot posters during automatic Video startup. Equal Copyright/Variant image heights and native preview navigation are retained. |
-| P08 — visual stacks / variant filmstrip | In progress | Durable catalogue grouping, native controls and reviewed proposals are implemented; focused integration and 30 UI tests passed. Full gates/browser verification/publication pending. See [P08 notes](p08-visual-stacks.md). |
+| P08 — visual stacks / variant filmstrip | Implemented; publication in progress | Durable catalogue grouping, native controls and reviewed proposals passed backend gates, 30 UI tests, production builds, and desktop/mobile Chromium/Firefox workflows. See [P08 notes](p08-visual-stacks.md). |
 
 ## P04 completed behavior
 
@@ -642,4 +643,75 @@ verified implementation `d975761316717be7abcb028a38756df766fbfb12` on 2026-10-02
 Published Git tree `815568abbf42fdc8f2ec533d80b4a2c0c8f4ee86` matches the checked
 local tree exactly. The branch starts from the recorded fresh `develop` SHA.
 CI is pending at publication; merging and deployment are not performed.
-Next package: P08 visual stacks and variant filmstrip; not started.
+At PR #130 publication, P08 was the next package. Its completed implementation
+and current verification are recorded below.
+
+## P08 visual stacks / variant filmstrip — 2026-10-03
+
+Baseline: fresh `develop` at `96309d8ffd66a141e94219a10b2ced7f2113b565`, with
+PR #130 merged. Branch: `feat/p08-visual-stacks-20261003`.
+The unavailable 2026-10-02 checkout was reconstructed from the package contract
+and current source. An intermediate published checkpoint is
+`7b8ac0263a6d58a0556c19f3f1452c737a1a03a2`, whose tree
+`626b95e438d1257bad9874c8c791e1f891ef1903` matches the local implementation.
+
+- Migration 96 stores ordered native Image/Video memberships, relationship labels,
+  one representative and optimistic versions. Creation, add/remove, reorder,
+  representative choice, split, merge and unstack all are atomic catalogue edits.
+  Native deletion selects a survivor or cleans up an empty stack. File bytes,
+  fingerprints, metadata, provenance, activation/restore and gallery order remain
+  independent of grouping.
+- All's optional Group stacks filter collapses before pagination after applying
+  native filters. Any matching member can make a stack appear. Counts and expanded
+  cards explain hidden matches and representatives outside filters. Selection
+  keeps typed native IDs through representative changes; file actions target
+  explicit individual members.
+- Native details and previews show the ordered bottom filmstrip, current member,
+  labels, representative, variant arrows and native member links. Only the
+  selected Video owns a native player, and completion never advances variants.
+  The original preview caller and PR #130's automatic empty-poster policy survive.
+  Browser checks corrected viewport positioning of expanded members and a cache
+  identity collision between equal numeric Image/Video IDs.
+- Proposals require review of independent pairs using active MD5, recorded source
+  MD5, or pHash plus current configured EVA02 evidence. Stale/missing evidence is
+  skipped. There is no automatic/transitive clustering or inference/model download.
+  Stacks are bounded at 200 members, proposal selections at 100, and rendered
+  proposals at 50 per page.
+
+Verification on the final implementation:
+
+- `make generate-backend` and `make generate-ui` passed.
+- Focused P07 compatibility and seven P08 integration tests passed. Coverage
+  includes actual bytes/fingerprints, native metadata and gallery order; typed
+  identity; stale versions; failed split/merge rollback; representative deletion;
+  any-member filtering and pagination; current pair evidence and no transitive
+  joining; and fresh schema 96 / upgrade from schema 95.
+- Full `make test`, `make it` and `make lint` passed, with zero Go lint issues.
+- `TS_NODE_TRANSPILE_ONLY=true make validate-ui` passed all 30 UI tests, Biome,
+  Stylelint, source TypeScript and formatting under Node 24 / pnpm 10.33.0.
+  `pnpm exec tsc --noEmit -p tsconfig.test.json` independently passed test types.
+- `make ui-only`, the Linux server build, built-in composition/checksum/syntax
+  and `git diff --check` passed. Generated outputs remain generated; built-in
+  source and dependency locks are unchanged.
+- The new visual-stack suite passed at 1440×1000 and 390×844 in Chromium 135 and
+  Firefox 153: create, collapse, hidden-member selection, ordered Image/Video
+  previews, completion staying selected, editor keyboard isolation, stable
+  selection after representative changes, native detail URLs, reorder, add,
+  split, merge, remove and unstack. Native snapshots were unchanged.
+- Existing preview-opening checks passed 12 cold/warm Chromium cases. The
+  player-opening-state, preview-input-playback and preview-player-overlap suites
+  passed in both browsers, including held-stream poster clearing, delayed/failed
+  thumbnails, wheel/refetch stability, focused/held arrows, detail seeking, zoom,
+  wall suspension/resume and independent player disposal/pause/resume.
+
+These are automated synthetic PNG/VP8 fixtures with browser-local activity
+interception. Firefox used single-process software decoding with disabled
+content/RDD sandboxing in the execution environment. Production media/codecs,
+Safari, extensions, physical GPU rendering and real EVA02 inference were not
+verified. Removing the originally opened member while a preview is showing
+another variant falls back to the original native item. Representative changes
+preserve the selected variant while the opened member remains grouped.
+
+Publication metadata will follow the verified final tree. Merging and production
+deployment are not performed. Next package: P09 conversion trial/threshold workflow;
+not started.

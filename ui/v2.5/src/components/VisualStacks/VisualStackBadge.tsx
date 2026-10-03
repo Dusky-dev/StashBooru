@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Alert, Button, Form } from "react-bootstrap";
+import { useMemo, useRef, useState } from "react";
+import { Alert, Button, Form, Overlay, Popover } from "react-bootstrap";
 import * as GQL from "src/core/generated-graphql";
 import { useLightbox } from "src/hooks/Lightbox/hooks";
 import { VisualStackDialog } from "./VisualStackDialog";
@@ -72,6 +72,7 @@ export function VisualStackBadge({
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [manage, setManage] = useState(false);
+  const button = useRef<HTMLButtonElement>(null);
   const query = GQL.useFindVisualStackQuery({
     variables: { id: stack?.id ?? "" },
     skip: !expanded || !stack,
@@ -80,6 +81,7 @@ export function VisualStackBadge({
   return (
     <div className="visual-stack-card" onClick={(e) => e.stopPropagation()}>
       <Button
+        ref={button}
         size="sm"
         variant="secondary"
         aria-expanded={expanded}
@@ -90,8 +92,25 @@ export function VisualStackBadge({
       >
         Stack · {stack.member_count}
       </Button>
-      {expanded && (
-        <div className="visual-stack-expanded">
+      <Overlay
+        show={expanded}
+        target={button}
+        placement="bottom-start"
+        container={document.body}
+        popperConfig={{
+          modifiers: [
+            {
+              name: "preventOverflow",
+              options: { boundary: "viewport", padding: 16 },
+            },
+          ],
+        }}
+      >
+        <Popover
+          id={`visual-stack-expanded-${stack.id}`}
+          className="visual-stack-expanded"
+          onClick={(e) => e.stopPropagation()}
+        >
           <small>
             All members are shown here, including members outside the current
             filters. File actions target selected members only.
@@ -107,8 +126,8 @@ export function VisualStackBadge({
           <Button size="sm" onClick={() => setManage(true)}>
             Manage stack
           </Button>
-        </div>
-      )}
+        </Popover>
+      </Overlay>
       {manage && (
         <VisualStackDialog
           stackID={stack.id}
