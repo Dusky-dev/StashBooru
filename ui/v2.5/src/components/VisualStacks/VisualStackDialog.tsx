@@ -294,9 +294,9 @@ export function VisualStackDialog({
 
   const mergeSelectionInto = (targetStackID: string) =>
     run(async () => {
-      const loaded = await Promise.all(
+      const loaded: GQL.VisualStackDataFragment[] = await Promise.all(
         groupedStackIDs.map(async (id) => {
-          const value = (
+          const value: GQL.VisualStackDataFragment | undefined = (
             await client.query({
               query: GQL.FindVisualStackDocument,
               variables: { id },
