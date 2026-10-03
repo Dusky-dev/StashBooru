@@ -345,7 +345,8 @@ export function VisualStackDialog({
             },
           })
         ).data?.visualStackMerge;
-        if (!mergedValue) throw new Error("Stack merge did not return a stack.");
+        if (!mergedValue)
+          throw new Error("Stack merge did not return a stack.");
         value = mergedValue;
       }
 
