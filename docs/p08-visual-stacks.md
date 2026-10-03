@@ -83,7 +83,8 @@ integration tests, along with invariant preservation, rollback, typed identity,
 representative deletion, filtering before pagination and current pair evidence.
 
 Baseline: `develop` at `96309d8ffd66a141e94219a10b2ced7f2113b565` (merged #130).
-Branch: `feat/p08-visual-stacks-20261003`. Verified on 2026-10-03:
+Branch: `feat/p08-visual-stacks-20261003`, published in
+[PR #131](https://github.com/Dusky-dev/StashBooru/pull/131). Verified on 2026-10-03:
 
 - Backend and UI generation, focused P07 and seven P08 integration tests,
   `make test`, `make it` and `make lint` (zero issues) passed.
