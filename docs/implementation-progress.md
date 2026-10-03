@@ -2,10 +2,10 @@
 
 Updated: 2026-10-04
 
-Current baseline: `develop` at `2e00454f3b063b729ce98e61afb69916cc44a5d8`
-(merged PR #131). P01–P08 are complete. Current package: P09 conversion review,
+Current baseline: `develop` at `6240a022b74e121174756f8b0a33f6df05e455f9`
+(merged PR #132). P01–P08 are complete. Current package: P09 conversion review,
 verified trials and savings policy, implemented and locally verified on
-`feat/p09-conversion-review-20261004`. Publication details follow below.
+`feat/p09-conversion-review-20261004` in [PR #133](https://github.com/Dusky-dev/StashBooru/pull/133).
 Merging/deployment are not performed.
 
 | Package | Status | Notes |
@@ -18,7 +18,7 @@ Merging/deployment are not performed.
 | P06 — ancestor/profile auto-association | Complete | PRs #115–#118 are merged; the final search consistency follow-up passed Build and Go lint CI. Direct legacy relationships remain explicit; no migration is introduced. |
 | P07 — native global All media page | Complete | PRs #119–#129 are merged. The standalone follow-up below removes screenshot posters during automatic Video startup. Equal Copyright/Variant image heights and native preview navigation are retained. |
 | P08 — visual stacks / variant filmstrip | Complete; PR #131 merged | Durable catalogue grouping, native controls and reviewed proposals passed backend gates, 30 UI tests, production builds, and desktop/mobile Chromium/Firefox workflows. See [P08 notes](p08-visual-stacks.md). |
-| P09 — conversion review / savings thresholds | Implemented; local checks passed | Estimate, verified saved trials, reviewed apply, both savings minimums, cache/expiry/revalidation and native restore. See [P09 notes](p09-conversion-review.md). |
+| P09 — conversion review / savings thresholds | Complete; PR #133 open | Estimate, verified saved trials, reviewed apply, both savings minimums, cache/expiry/revalidation and native restore. See [P09 notes](p09-conversion-review.md). |
 
 ## P04 completed behavior
 
@@ -737,9 +737,12 @@ producing the current baseline recorded above.
 
 ## P09 conversion review, saved trials and savings thresholds
 
-Baseline: merged P08 `2e00454f3b063b729ce98e61afb69916cc44a5d8`; fresh develop
-still matched it at final verification. No open fork PRs were returned at the
-publication check. Work is on `feat/p09-conversion-review-20261004`.
+Starting baseline: merged P08 `2e00454f3b063b729ce98e61afb69916cc44a5d8`.
+PR #132 reached develop during publication, producing
+`6240a022b74e121174756f8b0a33f6df05e455f9`. Its two native visual-stack editor
+UI files merged cleanly; the combined UI is reverified. Work is published in
+[PR #133](https://github.com/Dusky-dev/StashBooru/pull/133) on
+`feat/p09-conversion-review-20261004`.
 
 - The native converter separates stratified estimate, verified trial and apply.
   Estimates sample up to 24 complete encodes, report coverage/observed uncertainty,
@@ -778,6 +781,15 @@ Verification on 2026-10-04:
   distinguished from real Python codec execution; no manual owner test is claimed.
 
 See [P09 package notes](p09-conversion-review.md) for API/lifecycle details and
-remaining limits. Publication verification will be recorded after the PR opens.
+remaining limits. Published implementation commit:
+`17b4d4a355b022609faa0b8499187295debbac9e`, Git tree
+`5e39f9deba173a8fef2abf5a94dd819c4757a925`, exactly matching locally verified
+commit `d88c07690cb373f400287dc2f4ae48980393929f`. The subsequent compatibility
+merge preserves both this feature commit and fresh develop ancestry, and updates
+these publication notes. GitHub CI results are tracked on the PR; local results
+above are confirmed. On the initial published source, [Media converter](https://github.com/Dusky-dev/StashBooru/actions/runs/37159657387)
+and [Go lint](https://github.com/Dusky-dev/StashBooru/actions/runs/37159657220)
+already passed; Build was in progress at the check. Compatibility UI validation,
+production bundling and both browser sizes also passed after incorporating #132.
 Next package: P10 robust Video duplicate and interval matching. No merge or
 production deployment is performed.

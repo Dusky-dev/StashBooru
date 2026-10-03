@@ -1,8 +1,11 @@
 # P09 — conversion review and savings policy
 
 Implemented from merged P08 baseline `2e00454f3b063b729ce98e61afb69916cc44a5d8`
-on `feat/p09-conversion-review-20261004`. No database migration or dependency
-upgrade is introduced.
+on `feat/p09-conversion-review-20261004` in [PR #133](https://github.com/Dusky-dev/StashBooru/pull/133).
+The final compatibility merge includes develop at
+`6240a022b74e121174756f8b0a33f6df05e455f9` (P08 editor follow-up #132), with UI
+validation, bundling and the P09 browser flow rechecked. No database migration or
+dependency upgrade is introduced.
 
 ## Estimate, verified trial, apply
 
