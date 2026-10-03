@@ -71,7 +71,7 @@ func fixture(t *testing.T, output string, corrupt bool) (Store, *memoryRepositor
 		if req.Header.Get("Authorization") != "Bearer fixture-token" {
 			t.Error("missing worker token")
 		}
-		payload := Result{Width: 64, Height: 64, Frames: 1, Size: int64(len(output)), Format: "jxl", VideoCodec: "jpegxl", Encoder: "fixture"}
+		payload := Result{Width: 64, Height: 64, Frames: 1, Size: int64(len(output)), Format: "jxl", VideoCodec: "jpegxl", Encoder: "fixture", Signature: "fixture-v1"}
 		data, err := json.Marshal(payload)
 		if err != nil {
 			t.Error(err)

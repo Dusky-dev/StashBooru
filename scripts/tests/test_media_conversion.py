@@ -60,6 +60,16 @@ def write_animated_webp(path, colors, durations, size=32, loop=0):
 
 
 class OptionsTests(unittest.TestCase):
+    def test_trial_identity_changes_with_worker_code_and_codec_versions(self):
+        with patch.object(converter, "run", return_value="codec version one"):
+            first = converter.toolchain_signature()
+            self.assertEqual(first, converter.toolchain_signature())
+        with patch.object(converter, "run", return_value="codec version two"):
+            self.assertNotEqual(first, converter.toolchain_signature())
+        with patch.object(converter, "run", return_value="codec version one"), \
+                patch.object(Path, "read_bytes", return_value=b"changed worker code"):
+            self.assertNotEqual(first, converter.toolchain_signature())
+
     def test_reject_invalid_controls(self):
         for value in ({"format": "sh"}, {"effort": 10}, {"effort": 2.5}, {"quality": True},
                       {"quality": float("nan")}, {"distance": -1}, {"hardware": "cuda;exit"},
@@ -155,6 +165,7 @@ class EncodeTests(unittest.TestCase):
         result = converter.convert(self.root / source, output, {"format": fmt, "effort": 3, **options})
         self.assertTrue(output.is_file())
         self.assertGreater(result["size"], 0)
+        self.assertEqual(result["signature"], converter.toolchain_signature())
         return result, output
 
     def test_mainstream_still_outputs(self):

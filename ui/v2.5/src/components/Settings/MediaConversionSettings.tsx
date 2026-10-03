@@ -7,7 +7,12 @@ import {
   ConversionConfig,
   ConversionFormat,
   ConversionSettings,
+  SavingsThresholds,
 } from "../Shared/mediaConversion";
+import {
+  SavingsThresholdFields,
+  validSavings,
+} from "../Shared/SavingsThresholdFields";
 
 interface Rule {
   input: string;
@@ -31,6 +36,12 @@ export const MediaConversionSettings: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [backend, setBackend] = useState("auto");
+  const [savings, setSavings] = useState<SavingsThresholds>({
+    minimumSavedBytes: 0,
+    minimumSavedPercent: 0,
+  });
+  const [trialCacheGiB, setTrialCacheGiB] = useState(10);
+  const [trialTTLHours, setTrialTTLHours] = useState(24);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -40,6 +51,9 @@ export const MediaConversionSettings: React.FC = () => {
         if (controller.signal.aborted) return;
         setSettings(value);
         setBackend(value.config.backend);
+        setSavings(value.config.savings);
+        setTrialCacheGiB(value.config.trialCacheLimitBytes / 1024 ** 3);
+        setTrialTTLHours(value.config.trialTTLHours || 24);
         setRules(
           value.inputFormats
             .filter((f) => value.config.formatDefaults[f.id])
@@ -161,6 +175,9 @@ export const MediaConversionSettings: React.FC = () => {
         body: JSON.stringify({
           action: "save-defaults",
           backend,
+          savings,
+          trialCacheLimitBytes: Math.round(trialCacheGiB * 1024 ** 3),
+          trialTTLHours,
           encodingDefaults: Object.fromEntries(
             rules.map((r) => [
               r.input,
@@ -204,6 +221,44 @@ export const MediaConversionSettings: React.FC = () => {
         defaults.
       </div>
       <Card className="p-3">
+        <h5>Compression savings and trials</h5>
+        <SavingsThresholdFields
+          value={savings}
+          onChange={setSavings}
+          disabled={saving || !settings}
+          prefix="converter-global"
+        />
+        <Form.Group controlId="converter-trial-cache">
+          <Form.Label>Trial cache limit (GiB)</Form.Label>
+          <Form.Control
+            className="text-input"
+            type="number"
+            min={0}
+            step={0.25}
+            value={trialCacheGiB}
+            disabled={saving || !settings}
+            onChange={(e) => setTrialCacheGiB(Number(e.target.value))}
+          />
+          <Form.Text className="text-muted">
+            Separate from original-file restore backups. Zero disables saved
+            trials; expired outputs are cleaned during startup and converter
+            jobs. Reducing the limit evicts oldest reviewed outputs on the next
+            job.
+          </Form.Text>
+        </Form.Group>
+        <Form.Group controlId="converter-trial-expiry">
+          <Form.Label>Trial expiry (hours)</Form.Label>
+          <Form.Control
+            className="text-input"
+            type="number"
+            min={1}
+            max={168}
+            step={1}
+            value={trialTTLHours}
+            disabled={saving || !settings}
+            onChange={(e) => setTrialTTLHours(Number(e.target.value))}
+          />
+        </Form.Group>
         <Form.Group controlId="converter-default-backend">
           <Form.Label>Run on</Form.Label>
           <Form.Control
@@ -549,7 +604,17 @@ export const MediaConversionSettings: React.FC = () => {
               </Button>
               <Button
                 className="mb-2"
-                disabled={saving}
+                disabled={
+                  saving ||
+                  !validSavings(savings) ||
+                  !Number.isSafeInteger(
+                    Math.round(trialCacheGiB * 1024 ** 3)
+                  ) ||
+                  trialCacheGiB < 0 ||
+                  !Number.isInteger(trialTTLHours) ||
+                  trialTTLHours < 1 ||
+                  trialTTLHours > 168
+                }
                 onClick={() => void save()}
               >
                 {saving ? "Saving…" : "Save format defaults"}

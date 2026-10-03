@@ -28,6 +28,99 @@ export interface ConversionConfig {
   formatDefaults: Record<string, string>;
   encodingDefaults: Record<string, ConversionEncodingDefaults>;
   backend: string;
+  savings: SavingsThresholds;
+  trialCacheLimitBytes: number;
+  trialTTLHours: number;
+}
+
+export interface SavingsThresholds {
+  minimumSavedBytes: number;
+  minimumSavedPercent: number;
+}
+
+export interface ConversionTrial {
+  id: string;
+  batch: string;
+  target: { kind: "image" | "scene"; id: number };
+  createdAt: string;
+  expiresAt: string;
+  status: string;
+  error?: string;
+  before: {
+    image?: {
+      path: string;
+      basename: string;
+      size: number;
+      width?: number;
+      height?: number;
+    };
+    video?: {
+      path: string;
+      basename: string;
+      size: number;
+      width?: number;
+      height?: number;
+    };
+  };
+  result: {
+    width: number;
+    height: number;
+    frames: number;
+    size: number;
+    seconds: number;
+    encoder: string;
+  };
+  format: ConversionFormat;
+  options: {
+    quality: number;
+    effort: number;
+    hardware: string;
+    decodingSpeed?: number;
+    lossless: boolean;
+    dropAudio: boolean;
+    allowAlphaLoss: boolean;
+  };
+  savings: SavingsThresholds;
+  verified: boolean;
+  retained: boolean;
+  backend: string;
+  recordID?: string;
+  notices: string[];
+}
+
+export interface TrialStats {
+  verified: number;
+  skipped: number;
+  failed: number;
+  applied: number;
+  potentialSavedBytes: number;
+  weightedSavedPercent: number;
+  cacheBytes: number;
+}
+
+export interface ConversionEstimate {
+  total: number;
+  sampled: number;
+  covered: boolean;
+  estimatedSavedBytes: number;
+  observedLowBytes: number;
+  observedHighBytes: number;
+  strata: {
+    name: string;
+    count: number;
+    sampled: number;
+    failed: number;
+    sourceBytes: number;
+    estimatedSavedBytes: number;
+  }[];
+}
+
+export interface ConversionDiskReservation {
+  sourceBytes: number;
+  outputBytes: number;
+  stagingBytes: number;
+  backupBytes: number;
+  requiredBytes: number;
 }
 
 export interface ConversionUpscaler {
