@@ -123,6 +123,7 @@ export interface IOptionType {
 }
 
 export type CriterionType =
+  | "collapse_stacks"
   | "path"
   | "rating100"
   | "organized"

@@ -1,4 +1,7 @@
 fragment SlimImageData on Image {
+  visual_stack {
+    ...VisualStackSummary
+  }
   id
   title
   code

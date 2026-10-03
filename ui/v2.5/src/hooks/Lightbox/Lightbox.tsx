@@ -1,3 +1,7 @@
+import {
+  StackFilmstrip,
+  useViewerStack,
+} from "src/components/VisualStacks/StackFilmstrip";
 import React, {
   useCallback,
   useEffect,
@@ -278,7 +282,14 @@ export const LightboxComponent: React.FC<IProps> = ({
   const clearIntervalCallback = useRef<() => void>();
   const resetIntervalCallback = useRef<() => void>();
 
-  const allowNavigation = images.length > 1 || pageCallback;
+  const currentIndex = index === null ? initialIndex : index;
+  const stackViewer = useViewerStack(
+    images[currentIndex],
+    isVisible && !isSwitchingPage
+  );
+  const currentDisplayImage = stackViewer.displayImage;
+  const stackSize = stackViewer.stack?.members.length ?? 0;
+  const allowNavigation = images.length > 1 || pageCallback || stackSize > 1;
 
   const Toast = useToast();
   const intl = useIntl();
@@ -427,7 +438,9 @@ export const LightboxComponent: React.FC<IProps> = ({
     if (index === null) return;
 
     const comparisonNavigation =
-      referenceImage !== undefined && referenceComparisonMode !== "selected";
+      !currentDisplayImage?.renderMedia &&
+      referenceImage !== undefined &&
+      referenceComparisonMode !== "selected";
     if (!comparisonNavigation) {
       if (resetZoomOnNav) {
         setZoom(1);
@@ -439,10 +452,20 @@ export const LightboxComponent: React.FC<IProps> = ({
   }, [
     index,
     images.length,
+    currentDisplayImage,
     resetZoomOnNav,
     referenceComparisonMode,
     referenceImage,
   ]);
+
+  const selectedStackMember = stackViewer.stack
+    ? stackViewer.selectedKey
+    : undefined;
+  useEffect(() => {
+    if (!selectedStackMember) return;
+    if (resetZoomOnNav) setZoom(1);
+    setResetPosition((value) => !value);
+  }, [selectedStackMember, resetZoomOnNav]);
 
   const getNavOffset = useCallback(() => {
     if (images.length < 2) return;
@@ -541,6 +564,10 @@ export const LightboxComponent: React.FC<IProps> = ({
   const handleLeft = useCallback(
     (isUserAction = true) => {
       if (isSwitchingPageRef.current) return;
+      if (isUserAction && stackSize > 1) {
+        stackViewer.step(-1);
+        return;
+      }
 
       if (disableAnimation) {
         setInstant();
@@ -561,12 +588,25 @@ export const LightboxComponent: React.FC<IProps> = ({
         resetIntervalCallback.current();
       }
     },
-    [images, pageCallback, index, disableAnimation, setInstant, startPageSwitch]
+    [
+      images,
+      pageCallback,
+      index,
+      disableAnimation,
+      setInstant,
+      startPageSwitch,
+      stackSize,
+      stackViewer.step,
+    ]
   );
 
   const handleRight = useCallback(
     (isUserAction = true) => {
       if (isSwitchingPageRef.current) return;
+      if (isUserAction && stackSize > 1) {
+        stackViewer.step(1);
+        return;
+      }
 
       if (disableAnimation) {
         setInstant();
@@ -587,7 +627,16 @@ export const LightboxComponent: React.FC<IProps> = ({
         resetIntervalCallback.current();
       }
     },
-    [images, pageCallback, index, disableAnimation, setInstant, startPageSwitch]
+    [
+      images,
+      pageCallback,
+      index,
+      disableAnimation,
+      setInstant,
+      startPageSwitch,
+      stackSize,
+      stackViewer.step,
+    ]
   );
 
   const firstScroll = useRef<number | null>(null);
@@ -607,6 +656,7 @@ export const LightboxComponent: React.FC<IProps> = ({
 
   const handleKey = useCallback(
     (e: KeyboardEvent) => {
+      if (document.querySelector(".modal.show")) return;
       const arrow = e.key === "ArrowRight" || e.key === "ArrowLeft";
       // Events handled by controls must not also navigate the Image carousel.
       // Preview arrows are intercepted before the player in capture below.
@@ -621,7 +671,7 @@ export const LightboxComponent: React.FC<IProps> = ({
             e.ctrlKey ||
             e.metaKey ||
             e.shiftKey ||
-            (e.repeat && images[index ?? initialIndex]?.renderMedia)))
+            (e.repeat && currentDisplayImage?.renderMedia)))
       )
         return;
       if (e.repeat && (e.key === "ArrowRight" || e.key === "ArrowLeft"))
@@ -632,7 +682,7 @@ export const LightboxComponent: React.FC<IProps> = ({
       else if (e.key === "d") {
         // Not while a page switch is in flight: the index is parked at 0 then,
         // so the shortcut would target an image the user isn't viewing.
-        const image = images[index ?? initialIndex];
+        const image = currentDisplayImage;
         if (!isSwitchingPageRef.current && image?.id !== undefined) {
           const now = Date.now();
           if (now - lastDKeyTime.current < 1000) {
@@ -642,13 +692,14 @@ export const LightboxComponent: React.FC<IProps> = ({
         }
       }
     },
-    [setInstant, handleLeft, handleRight, close, images, index, initialIndex]
+    [setInstant, handleLeft, handleRight, close, currentDisplayImage]
   );
 
   const handlePreviewArrow = useCallback(
     (e: KeyboardEvent) => {
       if (
-        (!images[index ?? initialIndex]?.renderMedia &&
+        document.querySelector(".modal.show") ||
+        (!currentDisplayImage?.renderMedia &&
           previewArrowHeld.current !== e.key) ||
         (e.key !== "ArrowLeft" && e.key !== "ArrowRight") ||
         e.defaultPrevented ||
@@ -669,7 +720,7 @@ export const LightboxComponent: React.FC<IProps> = ({
       if (e.key === "ArrowLeft") handleLeft();
       else handleRight();
     },
-    [images, index, initialIndex, handleLeft, handleRight]
+    [currentDisplayImage, handleLeft, handleRight]
   );
 
   const releasePreviewArrow = useCallback((e: KeyboardEvent) => {
@@ -765,8 +816,6 @@ export const LightboxComponent: React.FC<IProps> = ({
       setSlideshowInterval(numberValue * SECONDS_TO_MS);
     }
   };
-
-  const currentIndex = index === null ? initialIndex : index;
 
   useEffect(() => {
     // Don't auto-close while images are still loading. Some entry points open
@@ -1011,7 +1060,9 @@ export const LightboxComponent: React.FC<IProps> = ({
     );
   }
 
-  function renderCarouselImage(image: ILightboxImage, imageIndex: number) {
+  function renderCarouselImage(source: ILightboxImage, imageIndex: number) {
+    const image =
+      imageIndex === currentIndex ? (currentDisplayImage ?? source) : source;
     // Stateful custom players belong only to the selected item. Preloading
     // neighbouring slides must never mount or start another Video player.
     if (image.renderMedia && imageIndex !== currentIndex) return undefined;
@@ -1021,6 +1072,11 @@ export const LightboxComponent: React.FC<IProps> = ({
 
     return (
       <LightboxImage
+        key={
+          imageIndex === currentIndex
+            ? stackViewer.selectedKey
+            : image.paths.image
+        }
         src={image.paths.image ?? ""}
         width={image.visual_files?.[0]?.width ?? 0}
         height={image.visual_files?.[0]?.height ?? 0}
@@ -1053,10 +1109,11 @@ export const LightboxComponent: React.FC<IProps> = ({
       return <LoadingIndicator />;
     }
 
-    const currentImage: ILightboxImage | undefined = images[currentIndex];
+    const currentImage = currentDisplayImage;
     const title = currentImage ? imageTitle(currentImage) : undefined;
     const referenceComparisonActive =
       currentImage !== undefined &&
+      !currentImage.renderMedia &&
       referenceImage !== undefined &&
       referenceImage.id !== currentImage.id &&
       referenceComparisonMode !== "selected";
@@ -1198,7 +1255,7 @@ export const LightboxComponent: React.FC<IProps> = ({
           </div>
         </div>
         <div className={CLASSNAME_DISPLAY}>
-          {allowNavigation && (
+          {allowNavigation && !stackViewer.stack && (
             <Button
               variant="link"
               onClick={handleLeft}
@@ -1226,6 +1283,7 @@ export const LightboxComponent: React.FC<IProps> = ({
               className={cx(CLASSNAME_CAROUSEL, {
                 [CLASSNAME_INSTANT]:
                   instantTransition ||
+                  Boolean(currentDisplayImage?.renderMedia) ||
                   images.some((image) => image.renderMedia),
               })}
               style={{ left: `${currentIndex * -100}vw` }}
@@ -1239,7 +1297,7 @@ export const LightboxComponent: React.FC<IProps> = ({
             </div>
           )}
 
-          {allowNavigation && (
+          {allowNavigation && !stackViewer.stack && (
             <Button
               variant="link"
               onClick={handleRight}
@@ -1249,31 +1307,51 @@ export const LightboxComponent: React.FC<IProps> = ({
             </Button>
           )}
         </div>
-        {showNavigation && !isFullscreen && images.length > 1 && (
-          <div className={CLASSNAME_NAV} style={navOffset} ref={navRef}>
-            <Button
-              variant="link"
-              onClick={() => {
-                setMovingLeft(true);
-                setIndex(images.length - 1);
-              }}
-              className={CLASSNAME_NAVBUTTON}
-            >
-              <Icon icon={faArrowLeft} className="mr-4" />
-            </Button>
-            {navItems}
-            <Button
-              variant="link"
-              onClick={() => {
-                setMovingLeft(false);
-                setIndex(0);
-              }}
-              className={CLASSNAME_NAVBUTTON}
-            >
-              <Icon icon={faArrowRight} className="ml-4" />
-            </Button>
-          </div>
+        {stackViewer.stack && (
+          <StackFilmstrip
+            stack={stackViewer.stack}
+            selectedKey={stackViewer.selectedKey}
+            onSelect={stackViewer.select}
+            onPreviousResult={
+              images.length > 1 || pageCallback
+                ? () => handleLeft(false)
+                : undefined
+            }
+            onNextResult={
+              images.length > 1 || pageCallback
+                ? () => handleRight(false)
+                : undefined
+            }
+          />
         )}
+        {showNavigation &&
+          !stackViewer.stack &&
+          !isFullscreen &&
+          images.length > 1 && (
+            <div className={CLASSNAME_NAV} style={navOffset} ref={navRef}>
+              <Button
+                variant="link"
+                onClick={() => {
+                  setMovingLeft(true);
+                  setIndex(images.length - 1);
+                }}
+                className={CLASSNAME_NAVBUTTON}
+              >
+                <Icon icon={faArrowLeft} className="mr-4" />
+              </Button>
+              {navItems}
+              <Button
+                variant="link"
+                onClick={() => {
+                  setMovingLeft(false);
+                  setIndex(0);
+                }}
+                className={CLASSNAME_NAVBUTTON}
+              >
+                <Icon icon={faArrowRight} className="ml-4" />
+              </Button>
+            </div>
+          )}
         <div className={CLASSNAME_FOOTER}>
           <div className={CLASSNAME_FOOTER_LEFT}>
             {currentImage?.id !== undefined && (

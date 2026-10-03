@@ -7,10 +7,11 @@ import (
 )
 
 type MediaItem struct {
-	ID    string
-	Kind  models.MediaKind
-	Image *models.Image
-	Scene *models.Scene
+	StackMatchCount int
+	ID              string
+	Kind            models.MediaKind
+	Image           *models.Image
+	Scene           *models.Scene
 }
 
 func (r *queryResolver) FindMedia(ctx context.Context, mediaFilter *models.MediaFilterType, filter *models.FindFilterType) (ret *FindMediaResultType, err error) {
@@ -43,10 +44,10 @@ func (r *queryResolver) FindMedia(ctx context.Context, mediaFilter *models.Media
 		for _, scene := range scenes {
 			sceneMap[scene.ID] = scene
 		}
-		ret = &FindMediaResultType{Count: result.Count, ImageCount: result.ImageCount, VideoCount: result.VideoCount, Items: []*MediaItem{}}
+		ret = &FindMediaResultType{Count: result.Count, MatchedCount: result.MatchedCount, ImageCount: result.ImageCount, VideoCount: result.VideoCount, Items: []*MediaItem{}}
 		for _, row := range result.Items {
 			// Equal numeric IDs in the two native tables must not leak across kinds.
-			item := &MediaItem{ID: row.Key(), Kind: row.Kind}
+			item := &MediaItem{ID: row.Key(), Kind: row.Kind, StackMatchCount: row.StackMatchCount}
 			if row.Kind == models.MediaKindImage {
 				item.Image = imageMap[row.ID]
 			} else {

@@ -150,6 +150,10 @@ export const DeleteImagesDialog: React.FC<IDeleteImageDialogProps> = (
       isRunning={isDeleting}
     >
       <p>{message}</p>
+      <p>
+        Only the selected members are deleted. Other stack members and their
+        files are kept.
+      </p>
       {maybeRenderDeleteFileAlert()}
       <Form>
         <Form.Check

@@ -1,3 +1,4 @@
+import { DetailStackFilmstrip } from "src/components/VisualStacks/StackFilmstrip";
 import { Tab, Nav, Dropdown, Button } from "react-bootstrap";
 import React, {
   useCallback,
@@ -1052,7 +1053,9 @@ const SceneLoader: React.FC<RouteComponentProps<ISceneParams>> = ({
         setContinuePlaylist={setContinuePlaylist}
         onRefreshScene={onRefreshScene}
       />
-      <div className={`scene-player-container ${collapsed ? "expanded" : ""}`}>
+      <div
+        className={`scene-player-container visual-stack-detail-viewer ${collapsed ? "expanded" : ""}`}
+      >
         <ScenePlayer
           key={scene.id}
           scene={scene}
@@ -1065,6 +1068,7 @@ const SceneLoader: React.FC<RouteComponentProps<ISceneParams>> = ({
           onNext={() => queueNext(true)}
           onPrevious={() => queuePrevious(true)}
         />
+        <DetailStackFilmstrip kind={GQL.MediaKind.Video} id={scene.id} />
       </div>
     </div>
   );

@@ -1,0 +1,26 @@
+fragment VisualStackSummary on VisualStack {
+  id
+  title
+  version
+  member_count
+  representative
+}
+fragment VisualStackData on VisualStack {
+  ...VisualStackSummary
+  members {
+    id
+    media {
+      kind
+      id
+    }
+    position
+    label
+    representative
+    image {
+      ...SlimImageData
+    }
+    scene {
+      ...SlimSceneData
+    }
+  }
+}

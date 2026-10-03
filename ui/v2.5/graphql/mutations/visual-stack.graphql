@@ -1,0 +1,23 @@
+mutation VisualStackCreate($input: VisualStackCreateInput!) {
+  visualStackCreate(input: $input) {
+    ...VisualStackData
+  }
+}
+mutation VisualStackUpdate($input: VisualStackUpdateInput!) {
+  visualStackUpdate(input: $input) {
+    ...VisualStackData
+  }
+}
+mutation VisualStackSplit($input: VisualStackSplitInput!) {
+  visualStackSplit(input: $input) {
+    ...VisualStackData
+  }
+}
+mutation VisualStackMerge($input: VisualStackMergeInput!) {
+  visualStackMerge(input: $input) {
+    ...VisualStackData
+  }
+}
+mutation VisualStackDestroy($input: VisualStackVersionInput!) {
+  visualStackDestroy(input: $input)
+}

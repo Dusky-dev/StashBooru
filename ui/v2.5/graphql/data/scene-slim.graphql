@@ -1,4 +1,7 @@
 fragment SlimSceneData on Scene {
+  visual_stack {
+    ...VisualStackSummary
+  }
   id
   title
   code

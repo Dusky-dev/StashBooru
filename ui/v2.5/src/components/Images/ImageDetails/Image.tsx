@@ -1,3 +1,4 @@
+import { DetailStackFilmstrip } from "src/components/VisualStacks/StackFilmstrip";
 import { Tab, Nav, Dropdown } from "react-bootstrap";
 import React, { useEffect, useMemo, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -454,7 +455,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
         </div>
         {renderTabs()}
       </div>
-      <div className="image-container">
+      <div className="image-container visual-stack-detail-viewer">
         {image.visual_files.length > 0 && (
           <ImageView
             loop={image.visual_files[0].__typename === "VideoFile"}
@@ -471,6 +472,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
             src={image.paths.image ?? ""}
           />
         )}
+        <DetailStackFilmstrip kind={GQL.MediaKind.Image} id={image.id} />
       </div>
     </div>
   );

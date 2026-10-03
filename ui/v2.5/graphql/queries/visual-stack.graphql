@@ -1,0 +1,20 @@
+query FindVisualStack($id: ID!) {
+  findVisualStack(id: $id) {
+    ...VisualStackData
+  }
+}
+query FindVisualStackForMedia($media: MediaReferenceInput!) {
+  findVisualStackForMedia(media: $media) {
+    ...VisualStackData
+  }
+}
+query VisualStackProposals($media: [MediaReferenceInput!]!) {
+  visualStackProposals(media: $media) {
+    members {
+      kind
+      id
+    }
+    evidence
+    score
+  }
+}

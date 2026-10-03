@@ -31,6 +31,7 @@ export interface IGallery {
 }
 
 export interface ILightboxImage {
+  mediaReference?: { kind: "IMAGE" | "VIDEO"; id: string };
   id?: string;
   title?: GQL.Maybe<string>;
   rating100?: GQL.Maybe<number>;
