@@ -3,8 +3,14 @@ import { useApolloClient } from "@apollo/client";
 import { Alert, Button, Form } from "react-bootstrap";
 import * as GQL from "src/core/generated-graphql";
 import { ModalComponent } from "../Shared/Modal";
-import { parseMemberURL, stackKey, stackPath } from "./identity";
+import {
+  parseMemberURL,
+  reorderStackMembers,
+  stackKey,
+  stackPath,
+} from "./identity";
 import { StackMember, memberThumbnail, memberTitle } from "./media";
+import { useMemberDrag } from "./useMemberDrag";
 
 interface Props {
   stackID?: string;
@@ -37,6 +43,23 @@ export function VisualStackDialog({
   const [memberURL, setMemberURL] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const [orderMessage, setOrderMessage] = useState("");
+  function reorder(source: string, target: string) {
+    const next = reorderStackMembers(rows, source, target);
+    if (next === rows) return;
+    setRows(next);
+    setOrderMessage(
+      `${source} moved to position ${next.findIndex((row) => row.id === source) + 1} of ${next.length}.`
+    );
+  }
+  const memberDrag = useMemberDrag(busy, reorder);
   const query = GQL.useFindVisualStackQuery({
     variables: { id: targetID ?? "" },
     skip: !targetID,
@@ -50,6 +73,7 @@ export function VisualStackDialog({
   const stack = query.data?.findVisualStack;
 
   const adopt = useCallback((value: GQL.VisualStackDataFragment) => {
+    if (!mounted.current) return;
     setSnapshot(value);
     setRows(value.members);
     setTitle(value.title);
@@ -189,9 +213,9 @@ export function VisualStackDialog({
     try {
       await action();
     } catch (e) {
-      setError(String(e));
+      if (mounted.current) setError(String(e));
     } finally {
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
   }
   const save = () =>
@@ -214,15 +238,11 @@ export function VisualStackDialog({
           variables: { input: { title, members, representative: rep } },
         });
       await refresh();
-      onClose();
+      if (mounted.current) onClose();
     });
   function move(index: number, direction: -1 | 1) {
-    const next = [...rows];
-    [next[index], next[index + direction]] = [
-      next[index + direction],
-      next[index],
-    ];
-    setRows(next);
+    const target = rows[index + direction];
+    if (target) reorder(rows[index].id, target.id);
   }
   const add = () =>
     run(async () => {
@@ -245,7 +265,7 @@ export function VisualStackDialog({
           throw new Error(
             "This member already belongs to a stack. Manage or merge that stack."
           );
-        setMerge(found);
+        if (mounted.current) setMerge(found);
         return;
       }
       if (rows.length >= 200)
@@ -271,6 +291,7 @@ export function VisualStackDialog({
             ).data.findScene
           : undefined;
       if (!image && !scene) throw new Error("Member does not exist.");
+      if (!mounted.current) return;
       setRows([
         ...rows,
         {
@@ -400,8 +421,10 @@ export function VisualStackDialog({
       }
 
       await refresh();
-      setTargetID(value.id);
-      adopt(value);
+      if (mounted.current) {
+        setTargetID(value.id);
+        adopt(value);
+      }
     });
 
   return (
@@ -429,7 +452,7 @@ export function VisualStackDialog({
                   },
                 });
                 await refresh();
-                onClose();
+                if (mounted.current) onClose();
               })
             }
           >
@@ -512,13 +535,45 @@ export function VisualStackDialog({
           onChange={(e) => setTitle(e.target.value)}
         />
       </Form.Group>
-      <div className="visual-stack-editor">
+      <small id="visual-stack-order-help" className="d-block mb-2">
+        Drag a member’s handle to reorder, or use its up/down buttons. Save
+        stack to apply the order.
+      </small>
+      <div className="sr-only" role="status">
+        {orderMessage}
+      </div>
+      <div
+        className="visual-stack-editor"
+        ref={memberDrag.editorRef}
+        onKeyDown={(e) => {
+          if (e.key === "Escape" && memberDrag.drag) {
+            e.preventDefault();
+            e.stopPropagation();
+            memberDrag.cancel();
+          }
+        }}
+      >
         {rows.map((m, i) => (
           <div
-            className="visual-stack-editor-member"
+            className={`visual-stack-editor-member${memberDrag.drag?.source === m.id ? " dragging" : ""}${memberDrag.drag?.target === m.id && memberDrag.drag.source !== m.id ? (rows.findIndex((row) => row.id === memberDrag.drag?.source) < i ? " drop-after" : " drop-before") : ""}`}
             key={m.id}
             data-member-id={m.id}
           >
+            <Button
+              size="sm"
+              variant="secondary"
+              className="visual-stack-drag-handle"
+              aria-label={`Drag ${m.id} to reorder`}
+              aria-describedby="visual-stack-order-help"
+              disabled={busy}
+              onPointerDown={(e) => memberDrag.onPointerDown(m.id, e)}
+              onPointerMove={memberDrag.onPointerMove}
+              onPointerUp={memberDrag.onPointerUp}
+              onPointerCancel={memberDrag.cancel}
+              onLostPointerCapture={memberDrag.cancel}
+            >
+              ↕
+            </Button>
             <img src={memberThumbnail(m)} alt="" />
             <div className="visual-stack-member-info">
               <a href={stackPath(m.media)}>{memberTitle(m)}</a>
@@ -646,7 +701,7 @@ export function VisualStackDialog({
                   },
                 });
                 await refresh();
-                onClose();
+                if (mounted.current) onClose();
               })
             }
           >

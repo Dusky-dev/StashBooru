@@ -1,6 +1,6 @@
 import localForage from "localforage";
 import isEqual from "lodash-es/isEqual";
-import React, { Dispatch, SetStateAction, useEffect } from "react";
+import React, { Dispatch, SetStateAction, useEffect, useRef } from "react";
 import { View } from "src/components/List/views";
 import { ConfigImageLightboxInput } from "src/core/generated-graphql";
 
@@ -43,6 +43,13 @@ export function useLocalForage<T extends {}>(
   const [error, setError] = React.useState<Error | null>(null);
   const [data, setData] = React.useState<T>(Cache[key] as T);
   const [loading, setLoading] = React.useState(Loading[key]);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     async function runAsync() {
@@ -52,19 +59,19 @@ export function useLocalForage<T extends {}>(
           parsed = JSON.parse(parsed ?? "null");
         }
         if (parsed !== null) {
-          setData(parsed);
+          if (mounted.current) setData(parsed);
           Cache[key] = parsed;
         } else {
-          setData(defaultValue);
+          if (mounted.current) setData(defaultValue);
           Cache[key] = defaultValue;
         }
-        setError(null);
+        if (mounted.current) setError(null);
       } catch (err) {
-        if (err instanceof Error) setError(err);
+        if (mounted.current && err instanceof Error) setError(err);
         Cache[key] = defaultValue;
       } finally {
         Loading[key] = false;
-        setLoading(false);
+        if (mounted.current) setLoading(false);
       }
     }
 

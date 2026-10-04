@@ -8,56 +8,58 @@ import {
   faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 import moment from "moment/min/moment-with-locales";
-import React, { useEffect, useState } from "react";
-import { Button, Card, ProgressBar } from "react-bootstrap";
+import React, { useEffect, useRef, useState } from "react";
+import { Alert, Button, Card, ProgressBar } from "react-bootstrap";
 import { FormattedMessage, useIntl } from "react-intl";
 import { Icon } from "src/components/Shared/Icon";
-import {
-  mutateStopJob,
-  useJobQueue,
-  useJobsSubscribe,
-} from "src/core/StashService";
+import { mutateStopJob } from "src/core/StashService";
 import * as GQL from "src/core/generated-graphql";
-
-type JobFragment = Pick<
-  GQL.Job,
-  | "id"
-  | "status"
-  | "subTasks"
-  | "description"
-  | "progress"
-  | "error"
-  | "startTime"
->;
+import { useJobNotices } from "src/hooks/JobQueue";
+import { JobNotice, jobKey } from "src/hooks/jobQueueState";
+import { copyText } from "src/utils/clipboard";
 
 interface IJob {
-  job: JobFragment;
+  job: JobNotice;
+  expiresAt?: number;
+  onDismiss: () => void;
 }
 
-const Task: React.FC<IJob> = ({ job }) => {
+const Task: React.FC<IJob> = ({ job, expiresAt, onDismiss }) => {
   const [stopping, setStopping] = useState(false);
   const [className, setClassName] = useState("");
+  const [actionMessage, setActionMessage] = useState("");
+  const mounted = useRef(true);
 
   useEffect(() => {
-    setTimeout(() => setClassName("fade-in"));
+    const timer = window.setTimeout(() => setClassName("fade-in"));
+    return () => {
+      mounted.current = false;
+      window.clearTimeout(timer);
+    };
   }, []);
 
   useEffect(() => {
-    if (
-      job.status === GQL.JobStatus.Cancelled ||
-      job.status === GQL.JobStatus.Failed ||
-      job.status === GQL.JobStatus.Finished
-    ) {
-      // fade out around 10 seconds
-      setTimeout(() => {
-        setClassName("fade-out");
-      }, 9800);
+    if (expiresAt === undefined) {
+      setClassName("fade-in");
+      return;
     }
-  }, [job]);
+    const timer = window.setTimeout(
+      () => setClassName("fade-out"),
+      Math.max(0, expiresAt - Date.now() - 200)
+    );
+    return () => window.clearTimeout(timer);
+  }, [expiresAt]);
 
   async function stopJob() {
     setStopping(true);
-    await mutateStopJob(job.id);
+    try {
+      await mutateStopJob(job.id);
+    } catch (e) {
+      if (mounted.current) {
+        setActionMessage(String(e));
+        setStopping(false);
+      }
+    }
   }
 
   function canStop() {
@@ -172,22 +174,51 @@ const Task: React.FC<IJob> = ({ job }) => {
       );
     }
 
-    if (job.status === GQL.JobStatus.Failed && job.error) {
-      return <div className="job-error">{job.error}</div>;
+    if (job.status === GQL.JobStatus.Failed) {
+      return (
+        <>
+          <div className="job-error">
+            {job.error || "No error details supplied."}
+          </div>
+          <div className="job-actions">
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={!job.error}
+              onClick={async () => {
+                try {
+                  await copyText(job.error!);
+                  if (mounted.current) setActionMessage("Error copied.");
+                } catch (e) {
+                  if (mounted.current) setActionMessage(String(e));
+                }
+              }}
+            >
+              Copy error
+            </Button>
+            <Button size="sm" variant="secondary" onClick={onDismiss}>
+              Dismiss
+            </Button>
+          </div>
+        </>
+      );
     }
   }
 
   return (
-    <li className={`job ${className}`}>
+    <li className={`job ${className}`} data-job-key={jobKey(job)}>
       <div>
-        <Button
-          className="minimal stop"
-          size="sm"
-          onClick={() => stopJob()}
-          disabled={!canStop()}
-        >
-          <Icon icon={faTimes} />
-        </Button>
+        {job.status !== GQL.JobStatus.Failed && (
+          <Button
+            className="minimal stop"
+            size="sm"
+            onClick={() => stopJob()}
+            disabled={!canStop()}
+            aria-label={`Stop ${job.description}`}
+          >
+            <Icon icon={faTimes} />
+          </Button>
+        )}
         <div className={`job-status ${getStatusClass()}`}>
           <div className="job-description">
             <div>
@@ -198,6 +229,7 @@ const Task: React.FC<IJob> = ({ job }) => {
           </div>
           <div>{maybeRenderProgress()}</div>
           {maybeRenderSubTasks()}
+          <div role="status">{actionMessage}</div>
         </div>
       </div>
     </li>
@@ -206,62 +238,46 @@ const Task: React.FC<IJob> = ({ job }) => {
 
 export const JobTable: React.FC = () => {
   const intl = useIntl();
-  const jobStatus = useJobQueue();
-  const jobsSubscribe = useJobsSubscribe();
-
-  const [queue, setQueue] = useState<JobFragment[]>([]);
-
-  useEffect(() => {
-    setQueue(jobStatus.data?.jobQueue ?? []);
-  }, [jobStatus]);
-
-  useEffect(() => {
-    if (!jobsSubscribe.data) {
-      return;
-    }
-
-    const event = jobsSubscribe.data.jobsSubscribe;
-
-    function updateJob() {
-      setQueue((q) =>
-        q.map((j) => {
-          if (j.id === event.job.id) {
-            return event.job;
-          }
-
-          return j;
-        })
-      );
-    }
-
-    switch (event.type) {
-      case GQL.JobStatusUpdateType.Add:
-        // add to the end of the queue
-        setQueue((q) => q.concat([event.job]));
-        break;
-      case GQL.JobStatusUpdateType.Remove:
-        // update the job then remove after a timeout
-        updateJob();
-        setTimeout(() => {
-          setQueue((q) => q.filter((j) => j.id !== event.job.id));
-        }, 10000);
-        break;
-      case GQL.JobStatusUpdateType.Update:
-        updateJob();
-        break;
-    }
-  }, [jobsSubscribe.data]);
+  const { entries, error, storageWarning, dismiss, refresh } = useJobNotices();
+  const failed = entries.some(({ job }) => job.status === GQL.JobStatus.Failed);
 
   return (
     <Card className="job-table">
+      <div className="job-actions">
+        {failed && (
+          <>
+            <small>
+              Failed jobs stay here until dismissed in this browser tab.
+            </small>
+            <Button size="sm" variant="secondary" onClick={() => dismiss()}>
+              Dismiss all failures
+            </Button>
+          </>
+        )}
+        <Button size="sm" variant="link" onClick={refresh}>
+          Refresh jobs
+        </Button>
+      </div>
+      {error && <Alert variant="warning">{error}</Alert>}
+      {storageWarning && (
+        <Alert variant="warning">
+          Browser storage is unavailable. Failed jobs will be kept until you
+          leave or refresh this application.
+        </Alert>
+      )}
       <ul>
-        {!queue?.length ? (
-          <span className="empty-queue-message">
+        {!entries.length ? (
+          <li className="empty-queue-message fade-in">
             {intl.formatMessage({ id: "config.tasks.empty_queue" })}
-          </span>
+          </li>
         ) : undefined}
-        {(queue ?? []).map((j) => (
-          <Task job={j} key={j.id} />
+        {entries.map(({ job, expiresAt }) => (
+          <Task
+            job={job}
+            expiresAt={expiresAt}
+            key={jobKey(job)}
+            onDismiss={() => dismiss(jobKey(job))}
+          />
         ))}
       </ul>
     </Card>

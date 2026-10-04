@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   nextStackMember,
   parseMemberURL,
+  reorderStackMembers,
   stackKey,
   stackPath,
 } from "../src/components/VisualStacks/identity.ts";
@@ -24,6 +25,24 @@ test("stack identity and native URLs separate equal Image and Video IDs", () => 
     "/performers/123",
   ])
     assert.equal(parseMemberURL(value), undefined);
+});
+
+test("reordering moves typed identities in either direction without changing labels or representative", () => {
+  const rows = [
+    { id: "image:1", label: "Original", representative: true },
+    { id: "scene:1", label: "Converted copy", representative: false },
+    { id: "image:2", label: "Restoration", representative: false },
+  ];
+  const down = reorderStackMembers(rows, "image:1", "image:2");
+  assert.deepEqual(
+    down.map((row) => row.id),
+    ["scene:1", "image:2", "image:1"]
+  );
+  assert.equal(down[2], rows[0]);
+  assert.deepEqual(reorderStackMembers(down, "image:1", "scene:1"), rows);
+  assert.equal(reorderStackMembers(rows, "unknown", "image:1"), rows);
+  assert.equal(reorderStackMembers(rows, "image:1", "unknown"), rows);
+  assert.equal(reorderStackMembers(rows, "scene:1", "scene:1"), rows);
 });
 
 test("variant navigation follows explicit order and retains selected identity across reorders", () => {

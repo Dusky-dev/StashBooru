@@ -24,3 +24,17 @@ export function nextStackMember(
   const index = Math.max(0, ordered.indexOf(selected));
   return ordered[(index + direction + ordered.length) % ordered.length];
 }
+
+export function reorderStackMembers<T extends { id: string }>(
+  rows: T[],
+  source: string,
+  target: string
+): T[] {
+  const from = rows.findIndex((row) => row.id === source);
+  const to = rows.findIndex((row) => row.id === target);
+  if (from < 0 || to < 0 || from === to) return rows;
+  const next = [...rows];
+  const [member] = next.splice(from, 1);
+  next.splice(to, 0, member);
+  return next;
+}
