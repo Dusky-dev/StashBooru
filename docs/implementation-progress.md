@@ -2,11 +2,11 @@
 
 Updated: 2026-10-04
 
-Current baseline: `develop` at `57443b7a8773de267cad81ba80c461fc8363a15e`
-(merged PR #133). P01–P09 are complete and merged. Current package: P10 Video
-overlap/containment review, implemented and verified on
-`feat/p10-video-overlap-20261004` in [PR #134](https://github.com/Dusky-dev/StashBooru/pull/134).
-See [P10 notes](p10-video-overlap.md).
+Current baseline: `develop` at `c63027cf995304614a2e42c31c41d7fecbcdbc99`
+(merged PR #134). P01–P10 are complete and merged. Current package: P11 masked
+still-image restoration, implemented and locally verified on
+`feat/p11-image-restoration-20261004`. See [P11 notes](p11-image-restoration.md).
+Published in [PR #135](https://github.com/Dusky-dev/StashBooru/pull/135).
 
 | Package | Status | Notes |
 | --- | --- | --- |
@@ -19,7 +19,8 @@ See [P10 notes](p10-video-overlap.md).
 | P07 — native global All media page | Complete | PRs #119–#129 are merged. The standalone follow-up below removes screenshot posters during automatic Video startup. Equal Copyright/Variant image heights and native preview navigation are retained. |
 | P08 — visual stacks / variant filmstrip | Complete; PR #131 merged | Durable catalogue grouping, native controls and reviewed proposals passed backend gates, 30 UI tests, production builds, and desktop/mobile Chromium/Firefox workflows. See [P08 notes](p08-visual-stacks.md). |
 | P09 — conversion review / savings thresholds | Complete; PR #133 merged | Estimate, verified saved trials, reviewed apply, both savings minimums, cache/expiry/revalidation and native restore. See [P09 notes](p09-conversion-review.md). |
-| P10 — Video overlap / containment | Complete; PR #134 open | Versioned PTS samples, indexed retrieval, exact/near-complete/contained/partial/compilation evidence, durable index checkpoints and synchronized segment review. See [P10 notes](p10-video-overlap.md). |
+| P10 — Video overlap / containment | Complete; PR #134 merged | Versioned PTS samples, indexed retrieval, exact/near-complete/contained/partial/compilation evidence, durable index checkpoints and synchronized segment review. See [P10 notes](p10-video-overlap.md). |
+| P11 — mask-based image restoration | Implemented; PR #135 open | Local checks passed. Native manual-mask editor, bounded offline inpainting adapter, preview/comparison, new derivative and retained masks/provenance. Actual model/GPU validation remains. See [P11 notes](p11-image-restoration.md). |
 
 ## P04 completed behavior
 
@@ -859,4 +860,66 @@ GitHub [Build](https://github.com/Dusky-dev/StashBooru/actions/runs/37200848871)
 [Go lint](https://github.com/Dusky-dev/StashBooru/actions/runs/37200848905) and
 [Media converter](https://github.com/Dusky-dev/StashBooru/actions/runs/37200848862)
 were in progress at the publication check; local results above are confirmed.
-P11 remains unstarted; merge and production deployment are not performed.
+That was the P10 publication checkpoint. On 2026-10-04, final head
+`c506506f2149c80cb936839b272778d7ab03a4e9` was rechecked: [Build](https://github.com/Dusky-dev/StashBooru/actions/runs/37201043858),
+[Go lint](https://github.com/Dusky-dev/StashBooru/actions/runs/37201043781) and
+[Media converter](https://github.com/Dusky-dev/StashBooru/actions/runs/37201043962)
+all passed. PR #134 is now merged as `c63027cf995304614a2e42c31c41d7fecbcdbc99`.
+P10 is complete; its documented sampled-evidence limits remain applicable.
+
+## P11 masked still-image restoration — 2026-10-04
+
+Verified local implementation commit `083704bb779a69237e028fad7b915ab9b8f0e7da`
+has tree `8127cf65a4f9e867c3c4e820f09ba0d870d85a53`. The following documentation
+update records that checkpoint; no implementation changes follow its checks.
+
+Based on fresh merged P10 `develop` at
+`c63027cf995304614a2e42c31c41d7fecbcdbc99`; branch
+`feat/p11-image-restoration-20261004`. P10's server endpoints merged cleanly into
+this branch before final validation.
+
+- Image Operations opens brush/erase/box/clear, feather, zoom/pan and bounded undo.
+  The exact effective mask is visible. Preview/settings changes invalidate Save;
+  P03 comparison is reused. Optional reference supplies starting pixels only.
+- A separate offline SD1.5 nine-channel inpainting adapter negotiates model/revision,
+  hardware and bounds through existing authenticated worker transport and Jobs.
+  Model installation is explicit. CPU needs an opt-in; GPU-only/remote-only are
+  honored. CUDA work is bounded to a 512×512 crop, not arbitrary source resolution.
+- Final compositing retains every unmasked canonical RGBA pixel and all alpha.
+  Orientation/ICC/embedded-metadata and crop-resampling behavior is disclosed.
+  Generated pixels are labelled as plausible restoration, not recovered originals.
+- Save copies exact reviewed PNG bytes to a new native Image/file. Source bytes,
+  IDs and primary files remain intact. Direct metadata, all Artists, Characters,
+  Copyrights, Tags, URLs, custom fields and Gallery links survive; an optional
+  stack append preserves existing members/order/labels/representative. Raw and
+  effective masks, reference and provenance remain with the saved journal.
+- Checks passed: backend generation; full `make test`, `make it`, `make lint`;
+  35 UI tests, JS/CSS lint, source/test TypeScript, formatting and production
+  bundling; nine Pillow/authenticated-HTTP restoration tests; Windows processing
+  package cross-compilation. The merged worker suite passed 46 tests with five
+  JPEG XL skips before adding the separately verified soft-mask edge case.
+- Native tests cover exact preview/final agreement, unchanged originals, native
+  metadata/relationship retention, new/existing mixed-media stacks, stale inputs,
+  corrupt preview and transactional rollback. Go/Python cover bounded archives,
+  transport verification, finite feather blending, CPU/GPU rejection, missing
+  models, cancellation cleanup and preview pruning.
+- Desktop/mobile Chromium 143 (1440×1000 / 390×844) passed mounted native controls,
+  reference upload, comparison, dirty preview, save/link, missing-model state,
+  repeated opens, cancellation and late-response cleanup. API processing is mocked; screenshots were
+  inspected. Real diffusion/PyTorch are stubbed in automated adapter tests.
+
+No native migration, dependency-lock change, model download, actual diffusion or
+physical RTX 3060 test is claimed. Target-worker acceptance still needs a bounded
+512×512/20-step run with measured VRAM/time and seam inspection. Deployment and
+merge are separate owner actions. [P11 notes](p11-image-restoration.md) include
+explicit installation, protocol, limits, journal and preservation behavior.
+
+Next package: P12 image delta-storage benchmark and non-destructive prototype.
+P12 is not started by this request.
+
+P11 was published as [PR #135](https://github.com/Dusky-dev/StashBooru/pull/135)
+at `57eead67c6381e87caa9f04aa4b1a46132a30d2b`, preserving merged P10 ancestry.
+Its tree `12f8890e7de76748246887ac95a9168555b8f5b2` matches locally verified
+`92eea899ac1290433bc22de6b1b448bc5f243590` exactly. Fetch/diff confirmed the
+publication on 2026-10-04; these subsequent notes are documentation only.
+GitHub CI status is tracked on the PR separately from confirmed local checks.

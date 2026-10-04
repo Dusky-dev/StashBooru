@@ -42,6 +42,8 @@ func (rs imageRoutes) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Get("/converter", handleMediaConversionGet)
 	r.Post("/converter", handleMediaConversionPost)
+	r.Get("/restoration", handleImageRestorationGet)
+	r.Post("/restoration", handleImageRestorationPost)
 	r.Post("/upscale", handleImageUpscalePost)
 	r.Get("/upscale-restore", handleImageUpscaleRestoreGet)
 	r.Post("/upscale-restore", handleImageUpscaleRestorePost)

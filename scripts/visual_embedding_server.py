@@ -25,6 +25,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
 import visual_embedding_worker as worker
+import image_restoration_worker as restoration
 import media_conversion_worker as converter
 import video_overlap_worker as video_overlap
 
@@ -112,6 +113,12 @@ class VisualEmbeddingHandler(BaseHTTPRequestHandler):
         if path == "/v1/status":
             self._send_json(HTTPStatus.OK, self._embedding_status())
             return
+        if path == "/v1/restoration/capabilities":
+            try:
+                self._send_json(HTTPStatus.OK, restoration.capabilities())
+            except Exception as error:
+                self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": str(error)})
+            return
         if path == "/v1/camie/status":
             status = self._camie_status()
             if status is None:
@@ -189,6 +196,9 @@ class VisualEmbeddingHandler(BaseHTTPRequestHandler):
         if path == "/v1/convert":
             self._convert()
             return
+        if path == "/v1/restoration":
+            self._restoration()
+            return
         if path not in ("/v1/embed", "/v1/tag", "/v1/camie/tag"):
             self._send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not found"})
             return
@@ -264,6 +274,54 @@ class VisualEmbeddingHandler(BaseHTTPRequestHandler):
     def _disconnected(self) -> bool:
         readable, _, _ = select.select([self.connection], [], [], 0)
         return bool(readable and not self.connection.recv(1, socket.MSG_PEEK))
+
+    def _restoration(self) -> None:
+        if not _conversion_lock.acquire(blocking=False):
+            self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "processing worker is busy; retry later"})
+            return
+        inference = False
+        source = None
+        try:
+            inference = _inference_lock.acquire(blocking=False)
+            if not inference:
+                self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "inference worker is busy; retry later"})
+                return
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                length = 0
+            if length <= 0 or length > restoration.MAX_BYTES:
+                self._send_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"error": "restoration requires a bounded upload of at most 96 MiB"})
+                return
+            self.connection.settimeout(30)
+            source = self._read_upload_to_temp()
+            if source is None:
+                return
+            with tempfile.TemporaryDirectory(prefix="stashbooru-restoration-", dir=source.parent) as directory:
+                output = Path(directory) / "result.zip"
+                restoration.process(source, output, self._disconnected)
+                if self._disconnected():
+                    return
+                with output.open("rb") as stream:
+                    checksum = hashlib.file_digest(stream, "sha256").hexdigest()
+                    stream.seek(0)
+                    self.send_response(HTTPStatus.OK)
+                    self.send_header("Content-Type", "application/octet-stream")
+                    self.send_header("Content-Length", str(output.stat().st_size))
+                    self.send_header("X-Stash-Content-SHA256", checksum)
+                    self.end_headers()
+                    shutil.copyfileobj(stream, self.wfile, 1024 * 1024)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        except Exception as error:
+            self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
+        finally:
+            if source is not None:
+                source.unlink(missing_ok=True)
+            if inference:
+                _inference_lock.release()
+            _conversion_lock.release()
+
 
     def _convert(self) -> None:
         # Reject rather than queue unbounded large uploads on the worker.
