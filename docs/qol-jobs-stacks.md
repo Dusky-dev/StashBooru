@@ -3,7 +3,7 @@
 This owner-requested batch implements three final QoL items before maintenance.
 It starts from merged P12/P13 `develop` at
 `a061a22cbbd3c8fee30dd14e1b5c13e45326d984` (PR #138). Branch:
-`feat/qol-jobs-stacks-20261004`.
+`feat/qol-jobs-stacks-20261004`; [PR #139](https://github.com/Dusky-dev/StashBooru/pull/139).
 
 ## Failed jobs
 

@@ -6,7 +6,7 @@ Current baseline: `develop` at `a061a22cbbd3c8fee30dd14e1b5c13e45326d984`
 (merged PR #138). P01–P13's listed implementation/prototype packages are merged.
 P11's actual model/GPU acceptance and P12/P13's production activation gates remain
 open. Current package: the owner-approved three-item Jobs/stack QoL batch on
-`feat/qol-jobs-stacks-20261004`, ready for publication. See
+`feat/qol-jobs-stacks-20261004`, published as [PR #139](https://github.com/Dusky-dev/StashBooru/pull/139). See
 [QoL notes](qol-jobs-stacks.md). Maintenance/cleanup follows this batch's merge.
 
 | Package | Status | Notes |
@@ -23,9 +23,8 @@ open. Current package: the owner-approved three-item Jobs/stack QoL batch on
 | P10 — Video overlap / containment | Complete; PR #134 merged | Versioned PTS samples, indexed retrieval, exact/near-complete/contained/partial/compilation evidence, durable index checkpoints and synchronized segment review. See [P10 notes](p10-video-overlap.md). |
 | P11 — mask-based image restoration | Merged; PR #135 | Final CI and nine local restoration tests rechecked. Native mask editor/adapter, reviewed new derivative and provenance; actual model/GPU validation remains. See [P11 notes](p11-image-restoration.md). |
 | P12 — image delta storage | Offline prototype merged; PR #136 | Byte/pixel contracts, measured base selection and fallbacks, full accounting, self-contained pack/verify/extract/recover. 22 tests and 20 fixture runs passed locally and in the new CI workflow; production activation and owner-stack calibration remain gated. See [P12 notes](p12-image-delta-storage.md). |
-
 | P13 — Gallery shared blocks | Offline prototype merged; PRs #137/#138 | #137 initially merged into the P12 feature branch; #138 landed the unchanged tested P13 tree on develop. Production activation remains gated. See [P13 notes](p13-gallery-block-storage.md). |
-| QoL — Jobs and stack review | Implemented; publication pending | Retained failed jobs and Copy error; representative/compare shortcuts; touch/mouse draft reordering with up/down controls. See [QoL notes](qol-jobs-stacks.md). |
+| QoL — Jobs and stack review | Implemented; PR #139 open | Retained failed jobs and Copy error; representative/compare shortcuts; touch/mouse draft reordering with up/down controls. See [QoL notes](qol-jobs-stacks.md). |
 
 ## Jobs and stack QoL — 2026-10-04
 
@@ -66,7 +65,12 @@ open. Current package: the owner-approved three-item Jobs/stack QoL batch on
 - Dated verification: final application-code local commit
   `dfa2f4c8b0985408f82ff8bb57d248c5633d4ccd` has tree
   `fda0a7fb4ce6f7a2516f0ab770d40fa4052acad2`. The following commit adds validated
-  fixture metadata, screenshots and documentation. Publication SHA/PR follow.
+  fixture metadata, screenshots and documentation. Published implementation
+  `b7b0cacd63101f7fe0d905dbe486a404951b69af` has tree
+  `6048b341f418d8aa744339200504856a872b6216`, exactly matching local documentation
+  head `d8c684019bd81b843d2cdc1b299c842affec7ada`. PR #139 targets develop directly;
+  GitHub checks are tracked on its exact head. This following publication-note
+  commit changes documentation only.
 - Next: review and merge this focused QoL PR after checks, then maintenance and
   cleanup. Physical P11 inference and native P12/P13 production/recovery integration
   remain separately scoped acceptance work.
@@ -1135,5 +1139,8 @@ passed its 25 acceptance tests, 26 measured fixture contracts and benchmark
 artifact publication on Ubuntu. Media converter and backend generation also
 passed. Native tests, seven platform builds and Go lint were still running at
 that check. Final-head checks are tracked on the PR separately from these
-confirmed local and implementation-head results. P12 #136 remains unmerged;
-neither PR nor develop was merged automatically.
+confirmed local and implementation-head results. Those were the original
+publication statuses. P12 #136 subsequently merged into develop; #137 merged into
+P12's branch, and owner-merged #138 landed the same P13 tree on develop. No merge
+or deployment was performed by the agent. The current checkpoint above supersedes
+these historical CI snapshots.
