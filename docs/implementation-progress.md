@@ -1001,3 +1001,91 @@ passed all 22 acceptance tests and the 20 measured fixture contracts, and
 published its JSON artifact. Build, Go lint and Media converter were still
 running at that check. Final-head CI is tracked on the PR separately from the
 confirmed local/implementation-head results.
+
+## P12 completion check and P13 Gallery sharing prototype — 2026-10-04
+
+P12 PR [#136](https://github.com/Dusky-dev/StashBooru/pull/136) final head
+`7023c9f812f1ecb9184193b3480a5c8790f61357` was rechecked: all Build jobs,
+Go lint, Media converter and Image delta storage passed. P12 is complete as its
+specified non-destructive prototype. It remains open/unmerged; fresh `develop`
+is still merged P11 `03f3bd88969f8b04414dca7781ddd1c96bf53c93`.
+
+P13 branch `feat/p13-gallery-block-prototype-20261004` starts from that exact
+remote P12 head (tree `f8c6899c05da8e7df7c824dbb73227ec53433286`). Review targets
+the P12 branch so only P13 is shown. After P12 merges, retarget P13 to develop
+before its separate owner-approved merge; no merge or activation was performed.
+
+- Bounded per-Gallery or explicit-group offline `estimate`, `benchmark`, `pack`,
+  `verify`, `diagnose`, `extract`, `append`, `remove`, `repair` and `recover`.
+  Byte-exact is default; pixel-exact explicitly retains the P12 canonical plane,
+  alpha/hidden-RGB, uint16, ICC/Exif/opaque metadata and fingerprint contracts.
+- Compares fixed byte chunks 4/16/64 KiB, Gear-64 content-defined target sizes
+  8/32/64 KiB, exact tiles 32/64/128 and a full independent competitor. All
+  candidates reconstruct exactly; inclusive byte/percentage minima apply to
+  complete sizes against independent archives and originals, with ordinary
+  lossless export/sidecar costs included. Unprofitable sharing falls back.
+- Self-contained ZIP_STORED packs contain independent per-image manifests,
+  a versioned Gallery/chunk index and immutable cryptographically addressed
+  payloads. Chunk addresses include the codec/decoded contract, avoiding raw
+  versus zlib interpretation collisions. IDs, original filenames and reading
+  order survive; a member directly references only its own chunks.
+- Physical bytes count each chunk once, including every manifest and ZIP index.
+  Per-image attribution is labelled allocation and sums to the complete pack.
+  Initial metadata access and selected-member chunk costs are measured;
+  retained sources/previous revisions, cache and extra backups are separate.
+- Append prepares only new sources and copies old compressed chunks unchanged;
+  remove traces survivors without losing referenced chunks. Both verify and
+  publish an immutable parent-linked revision of only that Gallery, retaining
+  old revisions and leaving unrelated Galleries intact. A revision's net-source
+  savings gate is disclosed; global reoptimization is a separate whole estimate.
+- Durable private staging and atomic exclusive publication, actual process-death
+  recovery, independent empty-environment export, per-corrupt-chunk dependant
+  diagnostics, and repair from explicit full-hash-matching originals only.
+  Hostile paths/indexes, duplicate manifests, canvas/reference bounds, FIFO,
+  ZIP directory and zlib bombs reject. No approximate repair or source eviction.
+
+Final local verification:
+
+- `python3 -m unittest discover -s scripts/tests -p 'test_*storage.py' -v`:
+  **47 passed** (25 P13 acceptance/recovery/CLI tests + 22 P12 regressions).
+  Actual subprocess exits execute at five pack stages, unpack and revision;
+  P13 tests also cover independent one-image I/O, ownership after removal,
+  append without old sources, metadata/high-bit depth and true threshold limits.
+- `python3 scripts/tests/gallery_block_fixtures.py --output <new-report.json>`:
+  **26 verified** Gallery/contract runs (13 labelled cases). Checked report:
+  `docs/benchmarks/p13-gallery-block-20261004.json`. It records exact overhead,
+  runtime versions, all block sizes and reconstruction timings. This is repo
+  artwork/seeded fixture data, not owner-library Gallery calibration.
+- Localized edits: originals **644,143 B**, byte archive **647,573 B** (independent),
+  pixel tiles **288,139 B**, about 55% below originals. Byte-prefix insertion
+  control: **590,917 B → 237,305 B** with CDC 32 KiB; it deliberately uses
+  uncompressed PNGs. Noise, boundary shifts, resized/JPEG and small flat-page
+  cases demonstrate measured independent fallbacks.
+- Python syntax/import-use and CI YAML checks passed; exact physical ZIP sizes
+  and allocation sums are asserted in acceptance. `git diff --check` passed.
+  No Go/UI, schema/GraphQL, model or dependency-lock changes. Local Go is absent;
+  application checks are tracked on GitHub. New Gallery block CI runs its
+  acceptance/fixtures and uploads the JSON benchmark.
+
+See [P13 notes](p13-gallery-block-storage.md) for runnable commands, format,
+recovery, revision semantics, full accounting and production gates. Real Gallery
+and JXL codec measurements, supported-platform/version conformance, native
+logical-media reads, catalogue activation/rollback, live-reference GC, concurrent
+cache and application backup/restore remain open. P13 completes the last listed
+roadmap prototype; production replacement of originals is a separate milestone.
+
+Published as [PR #137](https://github.com/Dusky-dev/StashBooru/pull/137), targeting
+P12's feature branch. Verified implementation
+`262d59d9843dcb9e53163ac88e83f1bd213d64ef` has tree
+`8b11972f1571db24772b203d9d7e07df2ea9d0f5`, exactly matching locally tested
+`5b600ca1ec15a2598ed078887ec7eb22ff15709b`. Fetch, empty tree diff and explicit
+ancestor checks confirmed both P12 and fresh merged-P11 develop ancestry on
+2026-10-04. This subsequent publication-note commit changes documentation only.
+
+On the implementation head, [Gallery block storage](https://github.com/Dusky-dev/StashBooru/actions/runs/37222868235)
+passed its 25 acceptance tests, 26 measured fixture contracts and benchmark
+artifact publication on Ubuntu. Media converter and backend generation also
+passed. Native tests, seven platform builds and Go lint were still running at
+that check. Final-head checks are tracked on the PR separately from these
+confirmed local and implementation-head results. P12 #136 remains unmerged;
+neither PR nor develop was merged automatically.
