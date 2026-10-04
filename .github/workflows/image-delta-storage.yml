@@ -1,0 +1,33 @@
+name: Image delta storage prototype
+
+on:
+  pull_request:
+    paths:
+      - scripts/image_delta_storage.py
+      - scripts/tests/test_image_delta_storage.py
+      - scripts/tests/image_delta_fixtures.py
+      - .github/workflows/image-delta-storage.yml
+      - docs/p12-image-delta-storage.md
+  push:
+    branches: [develop]
+    paths:
+      - scripts/image_delta_storage.py
+      - scripts/tests/test_image_delta_storage.py
+      - scripts/tests/image_delta_fixtures.py
+      - .github/workflows/image-delta-storage.yml
+
+jobs:
+  fidelity-and-recovery:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install image and array dependencies
+        run: sudo apt-get update && sudo apt-get install -y python3-pil python3-numpy
+      - name: Verify fidelity, overhead, bounds, fallback and actual crash recovery
+        run: python3 -m unittest discover -s scripts/tests -p test_image_delta_storage.py -v
+      - name: Measure labelled repository and synthetic fixtures
+        run: python3 scripts/tests/image_delta_fixtures.py --output p12-benchmark.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: p12-benchmark
+          path: p12-benchmark.json
