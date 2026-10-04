@@ -6,6 +6,7 @@ Current baseline: `develop` at `c63027cf995304614a2e42c31c41d7fecbcdbc99`
 (merged PR #134). P01–P10 are complete and merged. Current package: P11 masked
 still-image restoration, implemented and locally verified on
 `feat/p11-image-restoration-20261004`. See [P11 notes](p11-image-restoration.md).
+Published in [PR #135](https://github.com/Dusky-dev/StashBooru/pull/135).
 
 | Package | Status | Notes |
 | --- | --- | --- |
@@ -19,7 +20,7 @@ still-image restoration, implemented and locally verified on
 | P08 — visual stacks / variant filmstrip | Complete; PR #131 merged | Durable catalogue grouping, native controls and reviewed proposals passed backend gates, 30 UI tests, production builds, and desktop/mobile Chromium/Firefox workflows. See [P08 notes](p08-visual-stacks.md). |
 | P09 — conversion review / savings thresholds | Complete; PR #133 merged | Estimate, verified saved trials, reviewed apply, both savings minimums, cache/expiry/revalidation and native restore. See [P09 notes](p09-conversion-review.md). |
 | P10 — Video overlap / containment | Complete; PR #134 merged | Versioned PTS samples, indexed retrieval, exact/near-complete/contained/partial/compilation evidence, durable index checkpoints and synchronized segment review. See [P10 notes](p10-video-overlap.md). |
-| P11 — mask-based image restoration | Implemented; local checks passed | Native manual-mask editor, bounded offline inpainting adapter, preview/comparison, new derivative and retained masks/provenance. Actual model/GPU validation remains. See [P11 notes](p11-image-restoration.md). |
+| P11 — mask-based image restoration | Implemented; PR #135 open | Local checks passed. Native manual-mask editor, bounded offline inpainting adapter, preview/comparison, new derivative and retained masks/provenance. Actual model/GPU validation remains. See [P11 notes](p11-image-restoration.md). |
 
 ## P04 completed behavior
 
@@ -915,3 +916,10 @@ explicit installation, protocol, limits, journal and preservation behavior.
 
 Next package: P12 image delta-storage benchmark and non-destructive prototype.
 P12 is not started by this request.
+
+P11 was published as [PR #135](https://github.com/Dusky-dev/StashBooru/pull/135)
+at `57eead67c6381e87caa9f04aa4b1a46132a30d2b`, preserving merged P10 ancestry.
+Its tree `12f8890e7de76748246887ac95a9168555b8f5b2` matches locally verified
+`92eea899ac1290433bc22de6b1b448bc5f243590` exactly. Fetch/diff confirmed the
+publication on 2026-10-04; these subsequent notes are documentation only.
+GitHub CI status is tracked on the PR separately from confirmed local checks.
