@@ -21,7 +21,7 @@ See [P12 notes](p12-image-delta-storage.md) and the recorded benchmark.
 | P09 — conversion review / savings thresholds | Complete; PR #133 merged | Estimate, verified saved trials, reviewed apply, both savings minimums, cache/expiry/revalidation and native restore. See [P09 notes](p09-conversion-review.md). |
 | P10 — Video overlap / containment | Complete; PR #134 merged | Versioned PTS samples, indexed retrieval, exact/near-complete/contained/partial/compilation evidence, durable index checkpoints and synchronized segment review. See [P10 notes](p10-video-overlap.md). |
 | P11 — mask-based image restoration | Merged; PR #135 | Final CI and nine local restoration tests rechecked. Native mask editor/adapter, reviewed new derivative and provenance; actual model/GPU validation remains. See [P11 notes](p11-image-restoration.md). |
-| P12 — image delta storage | Offline prototype implemented; publication pending | Byte/pixel contracts, measured base selection and fallbacks, full accounting, self-contained pack/verify/extract/recover. 22 tests and 20 fixture runs passed; production activation and owner-stack calibration remain gated. See [P12 notes](p12-image-delta-storage.md). |
+| P12 — image delta storage | Offline prototype implemented; PR #136 open | Byte/pixel contracts, measured base selection and fallbacks, full accounting, self-contained pack/verify/extract/recover. 22 tests and 20 fixture runs passed locally and in the new CI workflow; production activation and owner-stack calibration remain gated. See [P12 notes](p12-image-delta-storage.md). |
 
 ## P04 completed behavior
 
@@ -987,4 +987,17 @@ live-base GC, concurrent cache and journalled application activation/backup/rest
 remain separate before any original eviction. No production activation occurred.
 
 Next roadmap prototype is P13 bounded Gallery block sharing. P13 is unstarted.
-Publication and verified Git tree are recorded below when the PR is available.
+
+Published as [PR #136](https://github.com/Dusky-dev/StashBooru/pull/136).
+Verified implementation commit `e85e1e6e44746e59afe4e95514255dead5ee9ce3`
+has Git tree `0af2dec7e3e6c582a171e354cb0a69f510b8656f`, exactly matching
+locally verified `89f477a7c2bb643753eec94780c00780cf85ca64`. Fresh develop was
+still the merged P11 baseline before publication. The branch was fetched and
+diff/ancestry checked; this following update changes publication documentation
+only. Merge and deployment remain separate owner actions.
+
+On the implementation head, the new [Image delta storage prototype workflow](https://github.com/Dusky-dev/StashBooru/actions/runs/37219023641)
+passed all 22 acceptance tests and the 20 measured fixture contracts, and
+published its JSON artifact. Build, Go lint and Media converter were still
+running at that check. Final-head CI is tracked on the PR separately from the
+confirmed local/implementation-head results.

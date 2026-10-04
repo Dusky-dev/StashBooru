@@ -267,3 +267,12 @@ Windows/macOS runtime and cross-version decoding have not been tested.
 Next roadmap prototype: P13 bounded gallery chunk/tile sharing, using the
 same honest byte-versus-pixel measurements and independent recovery requirements.
 Production P12 activation is a separate milestone; P13 is not implemented here.
+
+Published as [PR #136](https://github.com/Dusky-dev/StashBooru/pull/136).
+Implementation `e85e1e6e44746e59afe4e95514255dead5ee9ce3` has Git tree
+`0af2dec7e3e6c582a171e354cb0a69f510b8656f`, exactly matching locally verified
+`89f477a7c2bb643753eec94780c00780cf85ca64`, with merged P11 ancestry retained.
+The initial [P12 CI workflow](https://github.com/Dusky-dev/StashBooru/actions/runs/37219023641)
+passed its 22 tests and 20 fixture contracts and published its benchmark artifact.
+Final-head application CI is tracked on the PR. These subsequent publication
+notes do not change the checked implementation.
