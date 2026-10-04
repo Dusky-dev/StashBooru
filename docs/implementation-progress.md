@@ -2,11 +2,11 @@
 
 Updated: 2026-10-04
 
-Current baseline: `develop` at `6240a022b74e121174756f8b0a33f6df05e455f9`
-(merged PR #132). P01–P08 are complete. Current package: P09 conversion review,
-verified trials and savings policy, implemented and locally verified on
-`feat/p09-conversion-review-20261004` in [PR #133](https://github.com/Dusky-dev/StashBooru/pull/133).
-Merging/deployment are not performed.
+Current baseline: `develop` at `57443b7a8773de267cad81ba80c461fc8363a15e`
+(merged PR #133). P01–P09 are complete and merged. Current package: P10 Video
+overlap/containment review, implemented and verified on
+`feat/p10-video-overlap-20261004` in [PR #134](https://github.com/Dusky-dev/StashBooru/pull/134).
+See [P10 notes](p10-video-overlap.md).
 
 | Package | Status | Notes |
 | --- | --- | --- |
@@ -18,7 +18,8 @@ Merging/deployment are not performed.
 | P06 — ancestor/profile auto-association | Complete | PRs #115–#118 are merged; the final search consistency follow-up passed Build and Go lint CI. Direct legacy relationships remain explicit; no migration is introduced. |
 | P07 — native global All media page | Complete | PRs #119–#129 are merged. The standalone follow-up below removes screenshot posters during automatic Video startup. Equal Copyright/Variant image heights and native preview navigation are retained. |
 | P08 — visual stacks / variant filmstrip | Complete; PR #131 merged | Durable catalogue grouping, native controls and reviewed proposals passed backend gates, 30 UI tests, production builds, and desktop/mobile Chromium/Firefox workflows. See [P08 notes](p08-visual-stacks.md). |
-| P09 — conversion review / savings thresholds | Complete; PR #133 open | Estimate, verified saved trials, reviewed apply, both savings minimums, cache/expiry/revalidation and native restore. See [P09 notes](p09-conversion-review.md). |
+| P09 — conversion review / savings thresholds | Complete; PR #133 merged | Estimate, verified saved trials, reviewed apply, both savings minimums, cache/expiry/revalidation and native restore. See [P09 notes](p09-conversion-review.md). |
+| P10 — Video overlap / containment | Complete; PR #134 open | Versioned PTS samples, indexed retrieval, exact/near-complete/contained/partial/compilation evidence, durable index checkpoints and synchronized segment review. See [P10 notes](p10-video-overlap.md). |
 
 ## P04 completed behavior
 
@@ -793,3 +794,69 @@ already passed; Build was in progress at the check. Compatibility UI validation,
 production bundling and both browser sizes also passed after incorporating #132.
 Next package: P10 robust Video duplicate and interval matching. No merge or
 production deployment is performed.
+
+## P10 Video overlap / containment review — 2026-10-04
+
+Implemented on `feat/p10-video-overlap-20261004` from merged P09 `develop`
+`57443b7a8773de267cad81ba80c461fc8363a15e` (PR #133). Fresh develop was checked
+again before publication and remains at that baseline.
+
+- Versioned actual-PTS frame sampling handles tested VFR, display rotation,
+  resolutions and symmetric black bars. Lightweight pHash/dHash/RGB signatures
+  downweight blank/static/title frames; SHA-256 remains the exact-file proof.
+- An owned, rebuildable SQLite inverted index retrieves candidates before
+  bounded monotonic offset alignment, without excluding short-versus-long pairs.
+  Exact, near-complete visual, contained, partial and compilation classes retain
+  both ranges, offsets, gaps, coverage, tolerance, evidence grades and audio limits.
+- Native Settings Tasks and Video detail actions open paged review with typed
+  links and configurable keeper suggestions. Explicit synchronized two-stream
+  playback supports segment selection/audio audition and cleans up on dismissal.
+  Stale results are blocked. Partial/contained/compilation reviews preserve both;
+  no delete/merge/convert action is introduced.
+- Native Jobs persist atomic per-file checkpoints, failed IDs and captured ID
+  bounds. Incremental skip, restart/resume, cancelled failed retries, lost native
+  job-history entries and explicit remote-only selection are handled. Source,
+  decoder/settings and exact bytes are revalidated. Catalogue metadata, native
+  relationships, fingerprints, file activation and conversion backups are intact.
+- Full `make test`, `make it`, and `make lint` passed; Go lint reports zero issues.
+  The initial concurrent lint attempt exhausted compiler memory; its serial rerun
+  passed after resolving actual lint findings. No failing check remains.
+- `make test-video-overlap` passed all 14 labelled actual-codec cases and indexed
+  short-in-long retrieval. Expected offsets passed the ±1.25 s default tolerance.
+  Shared titles, black frames and unsupported 1.5× speed changes produced no
+  visual match. The fixture/results table is in [P10 notes](p10-video-overlap.md).
+- The combined Python converter/upscaler/sampler suite passed 38 tests with five
+  JPEG XL availability skips (43 total). Authenticated remote sampling exercised
+  actual FFmpeg decoding; heavyweight model imports were stubbed. No models were
+  downloaded and physical GPU inference is not claimed.
+- UI validation passed all 33 tests, JS/CSS lint, TypeScript and formatting;
+  separate test TypeScript and `make ui-only` production bundling passed. Built-in
+  sources/checksums and locked dependencies are unchanged.
+- Chromium 143 passed desktop 1440×1000 / mobile 390×844 mounted native-component
+  flows with mocked review API and actual synthetic MP4 streams: settings/jobs,
+  remote-only payloads, resume/cancel, paging/links/preferences, repeated opens,
+  no autoplay, mapped playback/pause/audio, cleanup and stale/empty/error/limits.
+  Screenshots were inspected. Native SQLite tests independently cover real
+  catalogue/checkpoint behavior; no full production-library or manual owner test
+  is claimed. The Windows sampler/process package cross-compiled; Windows runtime
+  and SQLite execution are unverified.
+
+Remote workers require the P10 sampler/server update and restart. Results remain
+sample-based; static material, arbitrary crops/overlays, very short intervals,
+speed normalization, repeated reuse of a range, full audio interval alignment and
+real-library recall calibration are outside this first version. Common-posting,
+candidate and alignment limits are disclosed. The derived sidecar is rebuilt
+after native catalogue restore/import; it is not a new backup contract.
+
+Published as [PR #134](https://github.com/Dusky-dev/StashBooru/pull/134). Verified
+implementation commit `9bcd1a380dd2a70cfce49196224afde9abe82335` has Git tree
+`4d737177947ec52a227038b1fd398321a4d426ab`, exactly matching locally checked
+commit `7f59d3ee8fddbe65065246437392bb60bc96fd32`. Fetch/diff confirmed that tree
+and preserved merged P09 ancestry on 2026-10-04. This subsequent publication-note
+commit changes documentation only.
+
+GitHub [Build](https://github.com/Dusky-dev/StashBooru/actions/runs/37200848871),
+[Go lint](https://github.com/Dusky-dev/StashBooru/actions/runs/37200848905) and
+[Media converter](https://github.com/Dusky-dev/StashBooru/actions/runs/37200848862)
+were in progress at the publication check; local results above are confirmed.
+P11 remains unstarted; merge and production deployment are not performed.

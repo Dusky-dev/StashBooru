@@ -4,6 +4,7 @@ import { LoadingIndicator } from "src/components/Shared/LoadingIndicator";
 import { LibraryTasks } from "./LibraryTasks";
 import { AnimationInspectionTask } from "./AnimationInspectionTask";
 import { AssociationInheritanceTask } from "./AssociationInheritanceTask";
+import { VideoOverlapTask } from "./VideoOverlapTask";
 import { DataManagementTasks } from "./DataManagementTasks";
 import { PluginTasks } from "./PluginTasks";
 import { JobTable } from "./JobTable";
@@ -44,6 +45,8 @@ export const SettingsTasksPanel: React.FC = () => {
         <AnimationInspectionTask />
         <hr />
         <AssociationInheritanceTask />
+        <hr />
+        <VideoOverlapTask />
         <hr />
         <DataManagementTasks
           setIsBackupRunning={setIsBackupRunning}

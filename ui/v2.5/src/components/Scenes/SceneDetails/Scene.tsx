@@ -25,6 +25,7 @@ import {
 import { SceneEditPanel } from "./SceneEditPanel";
 import { VideoTaggingDialog } from "./VideoTaggingDialog";
 import { MediaConversionDialog } from "src/components/Shared/MediaConversionDialog";
+import { VideoOverlapDialog } from "src/components/Shared/VideoOverlapDialog";
 import { ErrorMessage } from "src/components/Shared/ErrorMessage";
 import { LoadingIndicator } from "src/components/Shared/LoadingIndicator";
 import { Icon } from "src/components/Shared/Icon";
@@ -37,6 +38,7 @@ import { useConfigurationContext } from "src/hooks/Config";
 import {
   getAbLoopPlugin,
   getPlayerPosition,
+  getPlayer,
 } from "src/components/ScenePlayer/util";
 import {
   faEllipsisV,
@@ -221,6 +223,7 @@ const ScenePage: React.FC<IProps> = PatchComponent("ScenePage", (props) => {
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState<boolean>(false);
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
   const [isConverterOpen, setIsConverterOpen] = useState(false);
+  const [isOverlapOpen, setIsOverlapOpen] = useState(false);
   const [isVideoTaggingOpen, setIsVideoTaggingOpen] = useState(false);
 
   const onScreenshotJobComplete = useCallback(
@@ -507,6 +510,15 @@ const ScenePage: React.FC<IProps> = PatchComponent("ScenePage", (props) => {
           Convert media…
         </Dropdown.Item>
         <Dropdown.Item
+          className="bg-secondary text-white"
+          onClick={() => {
+            getPlayer()?.pause();
+            setIsOverlapOpen(true);
+          }}
+        >
+          Find overlapping segments…
+        </Dropdown.Item>
+        <Dropdown.Item
           key="generate"
           className="bg-secondary text-white"
           onClick={() => setIsGenerateDialogOpen(true)}
@@ -696,6 +708,12 @@ const ScenePage: React.FC<IProps> = PatchComponent("ScenePage", (props) => {
           sceneId={scene.id}
           onHide={() => setIsVideoTaggingOpen(false)}
           onApplied={onRefreshScene}
+        />
+      )}
+      {isOverlapOpen && (
+        <VideoOverlapDialog
+          referenceId={Number(scene.id)}
+          onHide={() => setIsOverlapOpen(false)}
         />
       )}
       {maybeRenderSceneGenerateDialog()}

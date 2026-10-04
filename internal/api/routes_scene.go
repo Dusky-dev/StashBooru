@@ -58,6 +58,8 @@ func (rs sceneRoutes) Routes() chi.Router {
 	// Batch Video Tagging is library-scoped and must not depend on an
 	// arbitrary anchor Video remaining addressable while a background job runs.
 	r.Post("/tagging-batch", handleSceneTaggingBatch)
+	r.Get("/overlap", rs.VideoOverlap)
+	r.Post("/overlap", rs.VideoOverlap)
 
 	r.Route("/{sceneId}", func(r chi.Router) {
 		r.Use(rs.SceneCtx)

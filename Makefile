@@ -335,6 +335,11 @@ lint:
 test:
 	go test ./...
 
+# Non-destructive labelled FFmpeg fixtures and actual P10 interval matching.
+.PHONY: test-video-overlap
+test-video-overlap:
+	python3 scripts/tests/video_overlap_fixtures.py --test
+
 # runs all tests - including integration tests
 .PHONY: it
 it:

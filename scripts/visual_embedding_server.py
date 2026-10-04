@@ -26,6 +26,7 @@ from urllib.parse import parse_qs, urlsplit
 
 import visual_embedding_worker as worker
 import media_conversion_worker as converter
+import video_overlap_worker as video_overlap
 
 try:
     import camie_tagger_worker as camie
@@ -96,6 +97,12 @@ class VisualEmbeddingHandler(BaseHTTPRequestHandler):
             return
 
         path = urlsplit(self.path).path.rstrip("/")
+        if path == "/v1/video-overlap/capabilities":
+            try:
+                self._send_json(HTTPStatus.OK, video_overlap.capabilities())
+            except Exception as error:
+                self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": str(error)})
+            return
         if path == "/v1/convert/capabilities":
             try:
                 self._send_json(HTTPStatus.OK, converter.capabilities())
@@ -176,6 +183,9 @@ class VisualEmbeddingHandler(BaseHTTPRequestHandler):
 
         parsed = urlsplit(self.path)
         path = parsed.path.rstrip("/")
+        if path == "/v1/video-overlap/sample":
+            self._video_overlap()
+            return
         if path == "/v1/convert":
             self._convert()
             return
@@ -291,6 +301,28 @@ class VisualEmbeddingHandler(BaseHTTPRequestHandler):
                     self.send_header("X-Stash-Conversion", base64.b64encode(json.dumps(metadata).encode()).decode())
                     self.end_headers()
                     shutil.copyfileobj(stream, self.wfile, 1024 * 1024)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        except Exception as error:
+            self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
+        finally:
+            if source is not None:
+                source.unlink(missing_ok=True)
+            _conversion_lock.release()
+
+    def _video_overlap(self) -> None:
+        if not _conversion_lock.acquire(blocking=False):
+            self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "video processor is busy; retry later"})
+            return
+        source = None
+        try:
+            raw = self.headers.get("X-Stash-Video-Options", "{}")
+            if len(raw) > 1024:
+                raise ValueError("video options too large")
+            options = video_overlap.options(json.loads(raw))
+            source = self._read_upload_to_temp()
+            if source is not None:
+                self._send_json(HTTPStatus.OK, video_overlap.sample(source, options, self._disconnected))
         except (BrokenPipeError, ConnectionResetError):
             pass
         except Exception as error:
