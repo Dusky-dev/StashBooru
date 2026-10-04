@@ -1073,3 +1073,19 @@ and JXL codec measurements, supported-platform/version conformance, native
 logical-media reads, catalogue activation/rollback, live-reference GC, concurrent
 cache and application backup/restore remain open. P13 completes the last listed
 roadmap prototype; production replacement of originals is a separate milestone.
+
+Published as [PR #137](https://github.com/Dusky-dev/StashBooru/pull/137), targeting
+P12's feature branch. Verified implementation
+`262d59d9843dcb9e53163ac88e83f1bd213d64ef` has tree
+`8b11972f1571db24772b203d9d7e07df2ea9d0f5`, exactly matching locally tested
+`5b600ca1ec15a2598ed078887ec7eb22ff15709b`. Fetch, empty tree diff and explicit
+ancestor checks confirmed both P12 and fresh merged-P11 develop ancestry on
+2026-10-04. This subsequent publication-note commit changes documentation only.
+
+On the implementation head, [Gallery block storage](https://github.com/Dusky-dev/StashBooru/actions/runs/37222868235)
+passed its 25 acceptance tests, 26 measured fixture contracts and benchmark
+artifact publication on Ubuntu. Media converter and backend generation also
+passed. Native tests, seven platform builds and Go lint were still running at
+that check. Final-head checks are tracked on the PR separately from these
+confirmed local and implementation-head results. P12 #136 remains unmerged;
+neither PR nor develop was merged automatically.
