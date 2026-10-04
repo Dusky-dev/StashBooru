@@ -346,6 +346,12 @@ test-image-delta:
 	python3 -m unittest discover -s scripts/tests -p test_image_delta_storage.py -v
 	python3 scripts/tests/image_delta_fixtures.py
 
+# P13 bounded offline gallery packs; retained sources and immutable revisions.
+.PHONY: test-gallery-block
+test-gallery-block:
+	python3 -m unittest discover -s scripts/tests -p test_gallery_block_storage.py -v
+	python3 scripts/tests/gallery_block_fixtures.py
+
 # runs all tests - including integration tests
 .PHONY: it
 it:
