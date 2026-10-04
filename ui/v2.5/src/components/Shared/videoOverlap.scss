@@ -1,0 +1,30 @@
+.video-overlap-pair {
+  border: 1px solid rgb(128 128 128 / 45%);
+  border-radius: 0.25rem;
+  overflow-wrap: anywhere;
+}
+
+.video-overlap-comparison video {
+  background: #111;
+  display: block;
+  margin: 0.75rem 0;
+  max-height: 34vh;
+  width: 100%;
+}
+
+.video-overlap-audio {
+  max-width: 12rem;
+}
+
+@media (max-width: 575.98px) {
+  .video-overlap-comparison video {
+    max-height: 19vh;
+    object-fit: contain;
+  }
+}
+
+.video-overlap-review .modal-body,
+.video-overlap-comparison .modal-body {
+  max-height: calc(100vh - 11rem);
+  overflow: auto;
+}

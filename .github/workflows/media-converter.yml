@@ -5,18 +5,26 @@ on:
     paths:
       - scripts/media_conversion_worker.py
       - scripts/media_upscale_worker.py
+      - scripts/video_overlap_worker.py
       - scripts/visual_embedding_server.py
       - scripts/tests/test_media*.py
+      - scripts/tests/video_overlap_fixtures.py
+      - Makefile
       - pkg/mediaconvert/**
+      - pkg/videooverlap/**
       - .github/workflows/media-converter.yml
   push:
     branches: [develop]
     paths:
       - scripts/media_conversion_worker.py
       - scripts/media_upscale_worker.py
+      - scripts/video_overlap_worker.py
       - scripts/visual_embedding_server.py
       - scripts/tests/test_media*.py
+      - scripts/tests/video_overlap_fixtures.py
+      - Makefile
       - pkg/mediaconvert/**
+      - pkg/videooverlap/**
       - .github/workflows/media-converter.yml
 
 jobs:
@@ -28,3 +36,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ffmpeg libjxl-tools python3-pil
       - name: Exercise real codecs and remote conversion
         run: python3 -m unittest discover -s scripts/tests -p 'test_media*.py' -v
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Check labelled video overlap intervals
+        run: make test-video-overlap
