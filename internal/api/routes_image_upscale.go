@@ -160,17 +160,20 @@ func validateDerivativeUpscaler(capabilities mediaconvert.Capabilities, options 
 }
 
 func imageUpscaleSource(ctx context.Context, imageID int) (models.File, error) {
-	mgr := manager.GetInstance()
+	return imageDerivativeSource(ctx, manager.GetInstance().Repository, imageID)
+}
+
+func imageDerivativeSource(ctx context.Context, repository models.Repository, imageID int) (models.File, error) {
 	var source models.File
-	err := txn.WithReadTxn(ctx, mgr.Repository.TxnManager, func(ctx context.Context) error {
-		im, err := mgr.Repository.Image.Find(ctx, imageID)
+	err := txn.WithReadTxn(ctx, repository.TxnManager, func(ctx context.Context) error {
+		im, err := repository.Image.Find(ctx, imageID)
 		if err != nil {
 			return err
 		}
 		if im == nil || im.PrimaryFileID == nil {
 			return fmt.Errorf("image has no primary file")
 		}
-		files, err := mgr.Repository.File.Find(ctx, *im.PrimaryFileID)
+		files, err := repository.File.Find(ctx, *im.PrimaryFileID)
 		if err != nil {
 			return err
 		}
@@ -181,10 +184,10 @@ func imageUpscaleSource(ctx context.Context, imageID int) (models.File, error) {
 			return fmt.Errorf("image primary file is not a still-image file")
 		}
 		if files[0].Base().FrameCount > 1 {
-			return fmt.Errorf("non-destructive upscaling currently supports still images only")
+			return fmt.Errorf("image derivatives currently support still images only")
 		}
 		if files[0].Base().ZipFileID != nil {
-			return fmt.Errorf("extract archived media before upscaling")
+			return fmt.Errorf("extract archived media before creating derivatives")
 		}
 		source = files[0].Clone()
 		source.Base().Fingerprints = append(models.Fingerprints(nil), files[0].Base().Fingerprints...)
@@ -332,6 +335,11 @@ func upscaledImageFingerprints(source models.Fingerprints, sourceMD5, outputMD5 
 // Called inside the file/image creation transaction, including native Copyright
 // links, which are stored separately from models.Image's ordinary relationships.
 func registerUpscaledImageDerivative(ctx context.Context, repository models.Repository, sourceImageID int, sourceFileID models.FileID, derived *models.ImageFile) error {
+	return registerImageDerivative(ctx, repository, sourceImageID, sourceFileID, derived, nil, nil)
+}
+
+// Shared native copy transaction for upscaling and reviewed restoration.
+func registerImageDerivative(ctx context.Context, repository models.Repository, sourceImageID int, sourceFileID models.FileID, derived *models.ImageFile, amend func(*models.CreateImageInput), createdID *int) error {
 	sourceImage, err := repository.Image.Find(ctx, sourceImageID)
 	if err != nil {
 		return err
@@ -375,6 +383,9 @@ func registerUpscaledImageDerivative(ctx context.Context, repository models.Repo
 		FileIDs:      []models.FileID{derived.Base().ID},
 		CustomFields: customFields,
 	}
+	if amend != nil {
+		amend(input)
+	}
 	if err := repository.Image.Create(ctx, input); err != nil {
 		return err
 	}
@@ -382,5 +393,24 @@ func registerUpscaledImageDerivative(ctx context.Context, repository models.Repo
 	for _, copyright := range copyrights {
 		copyrightIDs = append(copyrightIDs, copyright.ID)
 	}
-	return repository.Copyright.SetImageCopyrights(ctx, clone.ID, copyrightIDs)
+	if err := repository.Copyright.SetImageCopyrights(ctx, clone.ID, copyrightIDs); err != nil {
+		return err
+	}
+	if repository.ImageArtist != nil {
+		artists, err := repository.ImageArtist.FindByImageID(ctx, sourceImageID)
+		if err != nil {
+			return err
+		}
+		artistIDs := make([]int, len(artists))
+		for i, artist := range artists {
+			artistIDs[i] = artist.ID
+		}
+		if err := repository.ImageArtist.SetImageArtists(ctx, clone.ID, artistIDs); err != nil {
+			return err
+		}
+	}
+	if createdID != nil {
+		*createdID = clone.ID
+	}
+	return nil
 }

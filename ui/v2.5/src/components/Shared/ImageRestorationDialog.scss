@@ -1,0 +1,48 @@
+.image-restoration-dialog {
+  .restoration-controls {
+    align-items: flex-end;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+
+    label { margin-bottom: 0; }
+    input[type="number"] { width: 8rem; }
+  }
+
+  .restoration-canvas-scroll {
+    background: #181818;
+    max-height: 55vh;
+    overflow: auto;
+  }
+
+  .restoration-canvas {
+    position: relative;
+
+    img {
+      display: block;
+      height: auto;
+      width: 100%;
+    }
+
+    canvas:not([hidden]) {
+      cursor: crosshair;
+      height: 100%;
+      inset: 0;
+      position: absolute;
+      touch-action: none;
+      width: 100%;
+    }
+  }
+
+  .restoration-review .Lightbox-reference-comparison-reset {
+    bottom: 0.5rem;
+    top: auto;
+  }
+
+  .restoration-review {
+    height: 55vh;
+    min-height: 20rem;
+    position: relative;
+  }
+}

@@ -40,6 +40,7 @@ import { goBackOrReplace } from "src/utils/history";
 import { FormattedDate } from "src/components/Shared/Date";
 import { GenerateDialog } from "src/components/Dialogs/GenerateDialog";
 import { MediaConversionDialog } from "src/components/Shared/MediaConversionDialog";
+import { ImageRestorationDialog } from "src/components/Shared/ImageRestorationDialog";
 import { MediaUpscalingDialog } from "src/components/Shared/MediaUpscalingDialog";
 
 interface IProps {
@@ -67,6 +68,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
   const [isConverterOpen, setIsConverterOpen] = useState(false);
   const [isUpscalerOpen, setIsUpscalerOpen] = useState(false);
+  const [isRestorationOpen, setIsRestorationOpen] = useState(false);
   const [isKnowledgeTagDialogOpen, setIsKnowledgeTagDialogOpen] =
     useState(false);
 
@@ -227,6 +229,13 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
             Upscale image…
           </Dropdown.Item>
           <Dropdown.Item
+            key="restore-image"
+            className="bg-secondary text-white"
+            onClick={() => setIsRestorationOpen(true)}
+          >
+            Mask restoration…
+          </Dropdown.Item>
+          <Dropdown.Item
             key="convert-media"
             className="bg-secondary text-white"
             onClick={() => setIsConverterOpen(true)}
@@ -360,6 +369,15 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
           selectedIds={[image.id]}
           onHide={() => {
             setIsUpscalerOpen(false);
+            void onMetadataApplied();
+          }}
+        />
+      )}
+      {isRestorationOpen && (
+        <ImageRestorationDialog
+          imageID={image.id}
+          onHide={() => {
+            setIsRestorationOpen(false);
             void onMetadataApplied();
           }}
         />

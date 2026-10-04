@@ -1,0 +1,28 @@
+name: Image restoration
+
+on:
+  pull_request:
+    paths:
+      - scripts/image_restoration_worker.py
+      - scripts/visual_embedding_server.py
+      - scripts/tests/test_image_restoration.py
+      - pkg/imagerestore/**
+      - .github/workflows/image-restoration.yml
+  push:
+    branches: [develop]
+    paths:
+      - scripts/image_restoration_worker.py
+      - scripts/visual_embedding_server.py
+      - scripts/tests/test_image_restoration.py
+      - pkg/imagerestore/**
+      - .github/workflows/image-restoration.yml
+
+jobs:
+  restoration-contract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install image decoder
+        run: sudo apt-get update && sudo apt-get install -y python3-pil
+      - name: Check mask, adapter and authenticated remote contract
+        run: python3 -m unittest discover -s scripts/tests -p test_image_restoration.py -v
