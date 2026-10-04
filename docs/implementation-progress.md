@@ -2,11 +2,11 @@
 
 Updated: 2026-10-04
 
-Current baseline: `develop` at `c63027cf995304614a2e42c31c41d7fecbcdbc99`
-(merged PR #134). P01–P10 are complete and merged. Current package: P11 masked
-still-image restoration, implemented and locally verified on
-`feat/p11-image-restoration-20261004`. See [P11 notes](p11-image-restoration.md).
-Published in [PR #135](https://github.com/Dusky-dev/StashBooru/pull/135).
+Current baseline: `develop` at `03f3bd88969f8b04414dca7781ddd1c96bf53c93`
+(merged PR #135). P01–P11 are merged; P11's actual model/GPU acceptance remains
+open. Current package: P12 non-destructive image delta benchmark and offline
+recovery prototype on `feat/p12-image-delta-prototype-20261004`.
+See [P12 notes](p12-image-delta-storage.md) and the recorded benchmark.
 
 | Package | Status | Notes |
 | --- | --- | --- |
@@ -20,7 +20,8 @@ Published in [PR #135](https://github.com/Dusky-dev/StashBooru/pull/135).
 | P08 — visual stacks / variant filmstrip | Complete; PR #131 merged | Durable catalogue grouping, native controls and reviewed proposals passed backend gates, 30 UI tests, production builds, and desktop/mobile Chromium/Firefox workflows. See [P08 notes](p08-visual-stacks.md). |
 | P09 — conversion review / savings thresholds | Complete; PR #133 merged | Estimate, verified saved trials, reviewed apply, both savings minimums, cache/expiry/revalidation and native restore. See [P09 notes](p09-conversion-review.md). |
 | P10 — Video overlap / containment | Complete; PR #134 merged | Versioned PTS samples, indexed retrieval, exact/near-complete/contained/partial/compilation evidence, durable index checkpoints and synchronized segment review. See [P10 notes](p10-video-overlap.md). |
-| P11 — mask-based image restoration | Implemented; PR #135 open | Local checks passed. Native manual-mask editor, bounded offline inpainting adapter, preview/comparison, new derivative and retained masks/provenance. Actual model/GPU validation remains. See [P11 notes](p11-image-restoration.md). |
+| P11 — mask-based image restoration | Merged; PR #135 | Final CI and nine local restoration tests rechecked. Native mask editor/adapter, reviewed new derivative and provenance; actual model/GPU validation remains. See [P11 notes](p11-image-restoration.md). |
+| P12 — image delta storage | Offline prototype implemented; PR #136 open | Byte/pixel contracts, measured base selection and fallbacks, full accounting, self-contained pack/verify/extract/recover. 22 tests and 20 fixture runs passed locally and in the new CI workflow; production activation and owner-stack calibration remain gated. See [P12 notes](p12-image-delta-storage.md). |
 
 ## P04 completed behavior
 
@@ -923,3 +924,80 @@ Its tree `12f8890e7de76748246887ac95a9168555b8f5b2` matches locally verified
 `92eea899ac1290433bc22de6b1b448bc5f243590` exactly. Fetch/diff confirmed the
 publication on 2026-10-04; these subsequent notes are documentation only.
 GitHub CI status is tracked on the PR separately from confirmed local checks.
+
+## P11 recheck and P12 offline storage prototype — 2026-10-04
+
+Fresh `develop` baseline is `03f3bd88969f8b04414dca7781ddd1c96bf53c93`,
+the merge of P11 PR #135. Its final head
+`a0273de1d65606426ee1b1846ee0cb3a3cc026ef` was rechecked: Build (generation,
+test and all platform builds), Go lint, Media converter and Image restoration
+all passed. The nine restoration tests passed locally again. Actual model/GPU
+inference, VRAM/time measurement and seam inspection remain open.
+
+P12 is implemented on `feat/p12-image-delta-prototype-20261004`. This is the
+bounded first benchmark/recovery prototype, with original files retained:
+
+- Offline `benchmark`, `pack`, `verify`, `extract` and `recover`; byte-exact is
+  default and pixel-exact is explicit. No catalogue, native relationships,
+  source bytes, file activation or application worker protocol is changed.
+- Every bounded base is compared with independently stored files/representations.
+  Complete unique blobs, manifests, indexes and required metadata sidecars are
+  counted. Both delta minima and actual net savings are enforced; losing
+  deltas retain independent storage. Display representative and base are separate.
+- Exact full-stream/plane residuals preserve every low-level, alpha, transparent
+  RGB, border and target-canvas value. Integer prediction is versioned; no
+  heatmap threshold establishes equality. Multichannel16 and unsupported pixel
+  decoders reject rather than silently truncate; byte mode retains all bytes.
+- Self-contained SHA-256 blobs/manifest/index support one member plus at most
+  one independent base. Portable exports keep source and export fingerprints
+  separate. ICC/Exif/PNG metadata and opaque JPEG APP/COM data are preserved
+  under the documented embedding/sidecar contract.
+- Durable verified staging, atomic no-overwrite publication, interrupted-stage
+  recovery, independent extraction after originals are removed, per-member
+  corrupt/missing-dependant diagnostics and bounded hostile-input validation.
+  A hard-killed extraction can restart into a new directory from the intact pack.
+
+Final local verification:
+
+- `python3 -m unittest discover -s scripts/tests -p 'test_image_*.py' -v`:
+  **31 passed**, comprising 22 P12 acceptance/recovery/CLI tests and nine P11
+  adapter tests. Restoration diffusion/PyTorch remain stubbed; actual Pillow,
+  NumPy, authenticated HTTP and process-exit recovery executed.
+- `python3 scripts/tests/image_delta_fixtures.py --output <new-report.json>`:
+  **20 verified** group/contract runs. The checked report is
+  `docs/benchmarks/p12-image-delta-20261004.json`; fixtures use repository artwork
+  derivatives plus seeded random/high-bit-depth data, not owner-library stacks.
+- Localized-edit fixture: originals 644,143 B; pixel-exact shared-base archive
+  255,007 B (about 60% savings); byte-exact independent archive 645,764 B.
+  Recompressed JPEG/resolution cases demonstrate real no-delta fallbacks.
+  Physical prototype storage includes retained originals as a separate total.
+- `make test-image-delta` passed its acceptance and fixture checks before the
+  final CLI/provenance accounting refinements; the final combined suite and
+  benchmark above cover those refinements. The Makefile's existing Go-env probes
+  print missing-Go diagnostics in this container; the Python target succeeds.
+- Python syntax/AST and CI YAML checks passed; no unused Python imports were
+  found; `git diff --check` passed. No native schema/GraphQL/UI or locked
+  dependency changes; local Go/UI gates were not rerun for this offline package.
+  The new Image delta storage CI workflow tests recovery and publishes its report.
+
+See [P12 notes](p12-image-delta-storage.md) for commands, archive format,
+exact-byte results, consumer inventory and the production gate. Owner-stack
+calibration (including JXL), cross-platform/version runtime, native logical reads,
+live-base GC, concurrent cache and journalled application activation/backup/restore
+remain separate before any original eviction. No production activation occurred.
+
+Next roadmap prototype is P13 bounded Gallery block sharing. P13 is unstarted.
+
+Published as [PR #136](https://github.com/Dusky-dev/StashBooru/pull/136).
+Verified implementation commit `e85e1e6e44746e59afe4e95514255dead5ee9ce3`
+has Git tree `0af2dec7e3e6c582a171e354cb0a69f510b8656f`, exactly matching
+locally verified `89f477a7c2bb643753eec94780c00780cf85ca64`. Fresh develop was
+still the merged P11 baseline before publication. The branch was fetched and
+diff/ancestry checked; this following update changes publication documentation
+only. Merge and deployment remain separate owner actions.
+
+On the implementation head, the new [Image delta storage prototype workflow](https://github.com/Dusky-dev/StashBooru/actions/runs/37219023641)
+passed all 22 acceptance tests and the 20 measured fixture contracts, and
+published its JSON artifact. Build, Go lint and Media converter were still
+running at that check. Final-head CI is tracked on the PR separately from the
+confirmed local/implementation-head results.

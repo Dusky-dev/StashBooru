@@ -340,6 +340,12 @@ test:
 test-video-overlap:
 	python3 scripts/tests/video_overlap_fixtures.py --test
 
+# P12 offline prototype: no catalogue writes or original-file replacement.
+.PHONY: test-image-delta
+test-image-delta:
+	python3 -m unittest discover -s scripts/tests -p test_image_delta_storage.py -v
+	python3 scripts/tests/image_delta_fixtures.py
+
 # runs all tests - including integration tests
 .PHONY: it
 it:
