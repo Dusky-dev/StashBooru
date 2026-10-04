@@ -2,11 +2,12 @@
 
 Updated: 2026-10-04
 
-Current baseline: `develop` at `03f3bd88969f8b04414dca7781ddd1c96bf53c93`
-(merged PR #135). P01–P11 are merged; P11's actual model/GPU acceptance remains
-open. Current package: P12 non-destructive image delta benchmark and offline
-recovery prototype on `feat/p12-image-delta-prototype-20261004`.
-See [P12 notes](p12-image-delta-storage.md) and the recorded benchmark.
+Current baseline: `develop` at `a061a22cbbd3c8fee30dd14e1b5c13e45326d984`
+(merged PR #138). P01–P13's listed implementation/prototype packages are merged.
+P11's actual model/GPU acceptance and P12/P13's production activation gates remain
+open. Current package: the owner-approved three-item Jobs/stack QoL batch on
+`feat/qol-jobs-stacks-20261004`, published as [PR #139](https://github.com/Dusky-dev/StashBooru/pull/139). See
+[QoL notes](qol-jobs-stacks.md). Maintenance/cleanup follows this batch's merge.
 
 | Package | Status | Notes |
 | --- | --- | --- |
@@ -21,7 +22,58 @@ See [P12 notes](p12-image-delta-storage.md) and the recorded benchmark.
 | P09 — conversion review / savings thresholds | Complete; PR #133 merged | Estimate, verified saved trials, reviewed apply, both savings minimums, cache/expiry/revalidation and native restore. See [P09 notes](p09-conversion-review.md). |
 | P10 — Video overlap / containment | Complete; PR #134 merged | Versioned PTS samples, indexed retrieval, exact/near-complete/contained/partial/compilation evidence, durable index checkpoints and synchronized segment review. See [P10 notes](p10-video-overlap.md). |
 | P11 — mask-based image restoration | Merged; PR #135 | Final CI and nine local restoration tests rechecked. Native mask editor/adapter, reviewed new derivative and provenance; actual model/GPU validation remains. See [P11 notes](p11-image-restoration.md). |
-| P12 — image delta storage | Offline prototype implemented; PR #136 open | Byte/pixel contracts, measured base selection and fallbacks, full accounting, self-contained pack/verify/extract/recover. 22 tests and 20 fixture runs passed locally and in the new CI workflow; production activation and owner-stack calibration remain gated. See [P12 notes](p12-image-delta-storage.md). |
+| P12 — image delta storage | Offline prototype merged; PR #136 | Byte/pixel contracts, measured base selection and fallbacks, full accounting, self-contained pack/verify/extract/recover. 22 tests and 20 fixture runs passed locally and in the new CI workflow; production activation and owner-stack calibration remain gated. See [P12 notes](p12-image-delta-storage.md). |
+| P13 — Gallery shared blocks | Offline prototype merged; PRs #137/#138 | #137 initially merged into the P12 feature branch; #138 landed the unchanged tested P13 tree on develop. Production activation remains gated. See [P13 notes](p13-gallery-block-storage.md). |
+| QoL — Jobs and stack review | Implemented; PR #139 open | Retained failed jobs and Copy error; representative/compare shortcuts; touch/mouse draft reordering with up/down controls. See [QoL notes](qol-jobs-stacks.md). |
+
+## Jobs and stack QoL — 2026-10-04
+
+- User approved the first three QoL suggestions after P01–P13: failed jobs stay
+  until dismissed with Copy error, quick representative/comparison actions, and
+  drag reordering with existing keyboard controls retained. Presets and conversion
+  CSV/JSON exports remain deferred.
+- Started from P12 develop `cf2c9fdb38d756797f587f5ddbbba36d8d034281`, then rebased
+  onto fresh `a061a22cbbd3c8fee30dd14e1b5c13e45326d984` after the owner merged #138.
+  The baseline tree is `538a8e8ae00e192e926139404f898f70a9471cf8`, exactly the
+  previously verified final P13 tree. No PR was merged or deployed by the agent.
+- Application-wide job monitoring retains failures in this tab through navigation
+  and refresh until individual/all-failure dismissal. Job ID plus creation time
+  separates server restarts. Stale in-flight queries cannot overwrite events or
+  resurrect dismissed/expired jobs. Successful/cancelled jobs still expire after
+  ten seconds. Copy preserves full error text and handles clipboard rejection.
+  This is tab history, not durable server history while the app is disconnected.
+- Stack shortcuts use existing typed, version-checked mutations and native shared
+  still-image comparison. Order/labels/active member persist, stale writes reject,
+  and caller switches/dismissals dispose cache observers and pending local updates.
+  Reordering supports captured mouse/pen/touch handles, edge scrolling, live
+  announcements, Escape/outside cancellation and existing up/down controls.
+  The draft remains local until Save.
+- `pnpm run gqlgen` passed. `make validate-ui` passed **42 tests**, JS/CSS lint,
+  TypeScript and formatting with Node 20.20.1/pnpm 10.33.0, matching CI's Node 20
+  major and the repository lock. `make ui-only` passed production bundling and
+  built-in composition. There is no backend schema, migration or dependency-lock
+  change; the subscription requests the already available job `addTime` field.
+- Mounted Chromium **143.0.7499.0** passed 1440×1000 desktop and 390×844 mobile,
+  including real browser touch events, keyboard reorder, cancellation, draft/save,
+  typed equal IDs, retained labels/representative, stale-version rejection, late
+  snapshots, expiry, navigation/refresh/dismissal, clipboard fallback/failure,
+  active-caller changes and closing during an unresolved mutation. One viewer,
+  no unmounted updates and no horizontal page overflow were asserted. The isolated
+  Apollo fixture also passed a standalone TypeScript check. These are synthetic
+  automated fixtures; no human manual, physical-device or real-file decoding
+  validation is claimed.
+- Dated verification: final application-code local commit
+  `dfa2f4c8b0985408f82ff8bb57d248c5633d4ccd` has tree
+  `fda0a7fb4ce6f7a2516f0ab770d40fa4052acad2`. The following commit adds validated
+  fixture metadata, screenshots and documentation. Published implementation
+  `b7b0cacd63101f7fe0d905dbe486a404951b69af` has tree
+  `6048b341f418d8aa744339200504856a872b6216`, exactly matching local documentation
+  head `d8c684019bd81b843d2cdc1b299c842affec7ada`. PR #139 targets develop directly;
+  GitHub checks are tracked on its exact head. This following publication-note
+  commit changes documentation only.
+- Next: review and merge this focused QoL PR after checks, then maintenance and
+  cleanup. Physical P11 inference and native P12/P13 production/recovery integration
+  remain separately scoped acceptance work.
 
 ## P04 completed behavior
 
@@ -1087,5 +1139,8 @@ passed its 25 acceptance tests, 26 measured fixture contracts and benchmark
 artifact publication on Ubuntu. Media converter and backend generation also
 passed. Native tests, seven platform builds and Go lint were still running at
 that check. Final-head checks are tracked on the PR separately from these
-confirmed local and implementation-head results. P12 #136 remains unmerged;
-neither PR nor develop was merged automatically.
+confirmed local and implementation-head results. Those were the original
+publication statuses. P12 #136 subsequently merged into develop; #137 merged into
+P12's branch, and owner-merged #138 landed the same P13 tree on develop. No merge
+or deployment was performed by the agent. The current checkpoint above supersedes
+these historical CI snapshots.

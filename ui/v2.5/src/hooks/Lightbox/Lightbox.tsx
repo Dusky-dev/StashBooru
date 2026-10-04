@@ -2,6 +2,11 @@ import {
   StackFilmstrip,
   useViewerStack,
 } from "src/components/VisualStacks/StackFilmstrip";
+import {
+  memberImage,
+  viewerReference,
+} from "src/components/VisualStacks/media";
+import { stackKey } from "src/components/VisualStacks/identity";
 import React, {
   useCallback,
   useEffect,
@@ -140,6 +145,7 @@ interface IProps {
   showNavigation: boolean;
   slideshowEnabled?: boolean;
   slideshowAutostart?: boolean;
+  referenceImage?: ILightboxImage;
   page?: number;
   pages?: number;
   pageSize?: number;
@@ -158,6 +164,7 @@ export const LightboxComponent: React.FC<IProps> = ({
   showNavigation,
   slideshowEnabled = false,
   slideshowAutostart = false,
+  referenceImage: providedReferenceImage,
   page,
   pageSize = 40,
   totalCount,
@@ -179,7 +186,7 @@ export const LightboxComponent: React.FC<IProps> = ({
     variables: { id: referenceImageID ?? "" },
     skip: !referenceImageID,
   });
-  const referenceImage = referenceImageData?.findImage as
+  const urlReferenceImage = referenceImageData?.findImage as
     | ILightboxImage
     | undefined;
   const [referenceComparisonMode, setReferenceComparisonModeState] =
@@ -288,6 +295,36 @@ export const LightboxComponent: React.FC<IProps> = ({
     isVisible && !isSwitchingPage
   );
   const currentDisplayImage = stackViewer.displayImage;
+  const [stackComparison, setStackComparison] = useState<{
+    id: string;
+    enabled: boolean;
+  }>();
+  const stackID = stackViewer.stack?.id;
+  const representative = stackViewer.stack?.members.find(
+    (member) => member.representative
+  );
+  const providedReference = viewerReference(providedReferenceImage);
+  const providedStackComparison = Boolean(
+    providedReference &&
+      stackViewer.stack?.members.some(
+        (member) => member.id === stackKey(providedReference)
+      )
+  );
+  const comparingRepresentative =
+    stackID !== undefined &&
+    (stackComparison?.id === stackID
+      ? stackComparison.enabled
+      : providedStackComparison);
+  const referenceImage =
+    comparingRepresentative && representative
+      ? memberImage(representative)
+      : providedStackComparison
+        ? undefined
+        : (providedReferenceImage ?? urlReferenceImage);
+  useEffect(() => {
+    if (stackComparison && stackComparison.id !== stackID)
+      setStackComparison(undefined);
+  }, [stackID, stackComparison]);
   const stackSize = stackViewer.stack?.members.length ?? 0;
   const allowNavigation = images.length > 1 || pageCallback || stackSize > 1;
 
@@ -1309,9 +1346,21 @@ export const LightboxComponent: React.FC<IProps> = ({
         </div>
         {stackViewer.stack && (
           <StackFilmstrip
+            key={stackViewer.stack.id}
             stack={stackViewer.stack}
             selectedKey={stackViewer.selectedKey}
             onSelect={stackViewer.select}
+            comparingRepresentative={comparingRepresentative}
+            onCompareRepresentative={() => {
+              setStackComparison({
+                id: stackViewer.stack!.id,
+                enabled: !comparingRepresentative,
+              });
+              if (!comparingRepresentative) setReferenceComparisonMode("both");
+              setSlideshowInterval(null);
+              setZoom(1);
+              setResetPosition((value) => !value);
+            }}
             onPreviousResult={
               images.length > 1 || pageCallback
                 ? () => handleLeft(false)

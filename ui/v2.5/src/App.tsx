@@ -11,6 +11,7 @@ import { Helmet } from "react-helmet";
 import cloneDeep from "lodash-es/cloneDeep";
 import mergeWith from "lodash-es/mergeWith";
 import { ToastProvider } from "src/hooks/Toast";
+import { JobQueueProvider } from "src/hooks/JobQueue";
 import { LightboxProvider } from "src/hooks/Lightbox/context";
 import { initPolyfills } from "src/polyfills";
 
@@ -375,23 +376,25 @@ export const App: React.FC = () => {
           >
             <AppContainer>
               <ConfigurationProvider configuration={config.data!.configuration}>
-                {maybeRenderReleaseNotes()}
-                <ConnectionMonitor />
-                <TroubleshootingModeOverlay />
-                <Suspense fallback={<LoadingIndicator />}>
-                  <LightboxProvider>
-                    <ManualProvider>
-                      <InteractiveProvider>
-                        <Helmet
-                          {...titleProps}
-                          htmlAttributes={htmlAttributes}
-                        />
-                        {maybeRenderNavbar()}
-                        <MainContainer>{renderContent()}</MainContainer>
-                      </InteractiveProvider>
-                    </ManualProvider>
-                  </LightboxProvider>
-                </Suspense>
+                <JobQueueProvider>
+                  {maybeRenderReleaseNotes()}
+                  <ConnectionMonitor />
+                  <TroubleshootingModeOverlay />
+                  <Suspense fallback={<LoadingIndicator />}>
+                    <LightboxProvider>
+                      <ManualProvider>
+                        <InteractiveProvider>
+                          <Helmet
+                            {...titleProps}
+                            htmlAttributes={htmlAttributes}
+                          />
+                          {maybeRenderNavbar()}
+                          <MainContainer>{renderContent()}</MainContainer>
+                        </InteractiveProvider>
+                      </ManualProvider>
+                    </LightboxProvider>
+                  </Suspense>
+                </JobQueueProvider>
               </ConfigurationProvider>
             </AppContainer>
           </PluginsLoader>

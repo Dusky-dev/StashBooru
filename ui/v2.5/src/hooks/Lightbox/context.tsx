@@ -27,6 +27,7 @@ export interface IState {
   totalCount?: number;
   slideshowEnabled: boolean;
   slideshowAutostart?: boolean;
+  referenceImage?: ILightboxImage;
   onClose?: () => void;
 }
 interface IContext {
@@ -69,6 +70,7 @@ export const LightboxProvider: React.FC = ({ children }) => {
     showNavigation: true,
     slideshowEnabled: false,
   });
+  const [viewerSession, setViewerSession] = useState(0);
 
   const activeHistoryID = useRef<number>();
   const nextHistoryID = useRef(0);
@@ -130,6 +132,7 @@ export const LightboxProvider: React.FC = ({ children }) => {
             ...currentState,
             isVisible: false,
             slideshowAutostart: false,
+            referenceImage: undefined,
           }
         : currentState
     );
@@ -146,7 +149,11 @@ export const LightboxProvider: React.FC = ({ children }) => {
         activeOwnerRef.current !== owner
       )
         return;
-      if (state.isVisible === true) activeOwnerRef.current = owner;
+      if (state.isVisible === true) {
+        if (!isVisibleRef.current || activeOwnerRef.current !== owner)
+          setViewerSession((session) => session + 1);
+        activeOwnerRef.current = owner;
+      }
       if (state.isVisible === true && !isVisibleRef.current) {
         pushLightboxHistory();
         isVisibleRef.current = true;
@@ -158,6 +165,7 @@ export const LightboxProvider: React.FC = ({ children }) => {
 
       setLightboxState((currentState: IState) => ({
         ...currentState,
+        ...(state.isVisible === true ? { referenceImage: undefined } : {}),
         ...state,
       }));
     },
@@ -229,6 +237,7 @@ export const LightboxProvider: React.FC = ({ children }) => {
       <Suspense fallback={null}>
         {lightboxState.isVisible && (
           <LightboxComponent
+            key={viewerSession}
             {...lightboxState}
             hide={onHide}
             onDeleteImage={onDeleteImage}

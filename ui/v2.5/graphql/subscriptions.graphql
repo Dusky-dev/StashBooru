@@ -9,6 +9,7 @@ subscription JobsSubscribe {
       progress
       error
       startTime
+      addTime
     }
   }
 }

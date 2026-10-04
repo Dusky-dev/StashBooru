@@ -54,6 +54,7 @@ export const useLightbox = (
           isLoading: current.state.isLoading ?? false,
           slideshowEnabled: current.state.slideshowEnabled ?? false,
           slideshowAutostart: current.state.slideshowAutostart ?? false,
+          referenceImage: current.state.referenceImage,
           ...props,
           isVisible: true,
           page: props.page ?? current.state.page,
