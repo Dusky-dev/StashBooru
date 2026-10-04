@@ -2,7 +2,8 @@
 
 Implemented from merged P09 `develop` at
 `57443b7a8773de267cad81ba80c461fc8363a15e` on
-`feat/p10-video-overlap-20261004`. Native media/files/relationships and existing
+`feat/p10-video-overlap-20261004` in [PR #134](https://github.com/Dusky-dev/StashBooru/pull/134).
+Native media/files/relationships and existing
 conversion restore journals are preserved. No catalogue migration, GraphQL
 generation, model download or dependency upgrade is required.
 

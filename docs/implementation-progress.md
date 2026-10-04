@@ -5,7 +5,8 @@ Updated: 2026-10-04
 Current baseline: `develop` at `57443b7a8773de267cad81ba80c461fc8363a15e`
 (merged PR #133). P01–P09 are complete and merged. Current package: P10 Video
 overlap/containment review, implemented and verified on
-`feat/p10-video-overlap-20261004`. See [P10 notes](p10-video-overlap.md).
+`feat/p10-video-overlap-20261004` in [PR #134](https://github.com/Dusky-dev/StashBooru/pull/134).
+See [P10 notes](p10-video-overlap.md).
 
 | Package | Status | Notes |
 | --- | --- | --- |
@@ -18,7 +19,7 @@ overlap/containment review, implemented and verified on
 | P07 — native global All media page | Complete | PRs #119–#129 are merged. The standalone follow-up below removes screenshot posters during automatic Video startup. Equal Copyright/Variant image heights and native preview navigation are retained. |
 | P08 — visual stacks / variant filmstrip | Complete; PR #131 merged | Durable catalogue grouping, native controls and reviewed proposals passed backend gates, 30 UI tests, production builds, and desktop/mobile Chromium/Firefox workflows. See [P08 notes](p08-visual-stacks.md). |
 | P09 — conversion review / savings thresholds | Complete; PR #133 merged | Estimate, verified saved trials, reviewed apply, both savings minimums, cache/expiry/revalidation and native restore. See [P09 notes](p09-conversion-review.md). |
-| P10 — Video overlap / containment | Complete; publication below | Versioned PTS samples, indexed retrieval, exact/near-complete/contained/partial/compilation evidence, durable index checkpoints and synchronized segment review. See [P10 notes](p10-video-overlap.md). |
+| P10 — Video overlap / containment | Complete; PR #134 open | Versioned PTS samples, indexed retrieval, exact/near-complete/contained/partial/compilation evidence, durable index checkpoints and synchronized segment review. See [P10 notes](p10-video-overlap.md). |
 
 ## P04 completed behavior
 
@@ -847,5 +848,15 @@ real-library recall calibration are outside this first version. Common-posting,
 candidate and alignment limits are disclosed. The derived sidecar is rebuilt
 after native catalogue restore/import; it is not a new backup contract.
 
-Publication commit/PR verification is recorded below. P11 remains unstarted;
-merge and production deployment are not performed.
+Published as [PR #134](https://github.com/Dusky-dev/StashBooru/pull/134). Verified
+implementation commit `9bcd1a380dd2a70cfce49196224afde9abe82335` has Git tree
+`4d737177947ec52a227038b1fd398321a4d426ab`, exactly matching locally checked
+commit `7f59d3ee8fddbe65065246437392bb60bc96fd32`. Fetch/diff confirmed that tree
+and preserved merged P09 ancestry on 2026-10-04. This subsequent publication-note
+commit changes documentation only.
+
+GitHub [Build](https://github.com/Dusky-dev/StashBooru/actions/runs/37200848871),
+[Go lint](https://github.com/Dusky-dev/StashBooru/actions/runs/37200848905) and
+[Media converter](https://github.com/Dusky-dev/StashBooru/actions/runs/37200848862)
+were in progress at the publication check; local results above are confirmed.
+P11 remains unstarted; merge and production deployment are not performed.
