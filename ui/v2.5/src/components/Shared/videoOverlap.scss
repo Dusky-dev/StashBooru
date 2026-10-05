@@ -1,6 +1,6 @@
 .video-overlap-pair {
-  border: 1px solid rgb(128 128 128 / 45%);
-  border-radius: 0.25rem;
+  border: 1px solid $card-border-color;
+  border-radius: $border-radius;
   overflow-wrap: anywhere;
 }
 

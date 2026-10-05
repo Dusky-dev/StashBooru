@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
@@ -24,6 +25,17 @@ export default defineConfig(() => {
 
   return {
     base: "",
+    define: {
+      "import.meta.env.VITE_APP_STASHBOORU_VERSION": JSON.stringify(
+        readFileSync(
+          new URL(
+            "../../internal/build/stashbooru-version.txt",
+            import.meta.url
+          ),
+          "utf8"
+        ).trim()
+      ),
+    },
     build: {
       outDir: "build",
       sourcemap: sourcemap,

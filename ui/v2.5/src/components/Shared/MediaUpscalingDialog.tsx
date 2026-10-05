@@ -509,10 +509,11 @@ export const MediaUpscalingDialog: React.FC<{
                   )}
                   <p>
                     <Link
-                      to="/settings?tab=system#media-upscaling"
+                      to="/settings?tab=processing#media-upscaling"
                       onClick={onHide}
                     >
-                      Edit upscaler defaults and model paths in System settings
+                      Edit upscaler defaults and model paths in Processing
+                      settings
                     </Link>
                   </p>
                   <Button

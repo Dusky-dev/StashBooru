@@ -510,10 +510,10 @@ export const MediaConversionDialog: React.FC<{
                 </Form.Control>
                 <Form.Text>
                   <Link
-                    to="/settings?tab=system#media-converter"
+                    to="/settings?tab=processing#media-converter"
                     onClick={onHide}
                   >
-                    Edit format defaults in System settings
+                    Edit format defaults in Processing settings
                   </Link>
                 </Form.Text>
               </Form.Group>

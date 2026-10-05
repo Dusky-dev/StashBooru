@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"regexp"
 	"runtime"
 	"strings"
 	"time"
@@ -26,7 +25,7 @@ const developmentTag string = "latest_develop"
 const defaultSHLength int = 8 // default length of SHA short hash returned by <git rev-parse --short HEAD>
 
 // apiReleasesURL and apiTagsURL build the GitHub API endpoints for the
-// repository configured via build.UpdateRepo (defaults to stashapp/stash).
+// repository configured via build.UpdateRepo (defaults to Dusky-dev/StashBooru).
 func apiReleasesURL() string {
 	return apiRepoBase + build.UpdateRepo() + "/releases"
 }
@@ -150,7 +149,10 @@ func makeGithubRequest(ctx context.Context, url string, output interface{}) erro
 		Transport: transport,
 	}
 
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return err
+	}
 
 	req.Header.Add("Accept", apiAcceptHeader) // gh api recommendation , send header with api version
 	logger.Debugf("Github API request: %s", url)
@@ -161,12 +163,12 @@ func makeGithubRequest(ctx context.Context, url string, output interface{}) erro
 		return fmt.Errorf("Github API request failed: %w", err)
 	}
 
+	defer response.Body.Close()
+
 	if response.StatusCode != http.StatusOK {
 		//nolint:staticcheck // ST1005 Github is a proper capitalized noun
 		return fmt.Errorf("Github API request failed: %s", response.Status)
 	}
-
-	defer response.Body.Close()
 
 	data, err := io.ReadAll(response.Body)
 	if err != nil {
@@ -182,10 +184,8 @@ func makeGithubRequest(ctx context.Context, url string, output interface{}) erro
 	return nil
 }
 
-// GetLatestRelease gets latest release information from github API
-// If running a build from the "master" branch, then the latest full release
-// is used, otherwise it uses the release that is tagged with "latest_develop"
-// which is the latest pre-release build.
+// GetLatestRelease checks stable StashBooru releases, independently of the
+// upstream Stash version and the latest_develop snapshot.
 func GetLatestRelease(ctx context.Context) (*LatestRelease, error) {
 	arch := runtime.GOARCH
 
@@ -199,14 +199,7 @@ func GetLatestRelease(ctx context.Context) (*LatestRelease, error) {
 	platform := fmt.Sprintf("%s/%s", runtime.GOOS, arch)
 	wantedRelease := getWantedRelease(platform)
 
-	url := apiReleasesURL()
-	if build.IsDevelop() {
-		// get the release tagged with the development tag
-		url += "/tags/" + developmentTag
-	} else {
-		// just get the latest full release
-		url += "/latest"
-	}
+	url := apiReleasesURL() + "/latest"
 
 	var release githubReleasesResponse
 	err := makeGithubRequest(ctx, url, &release)
@@ -214,13 +207,9 @@ func GetLatestRelease(ctx context.Context) (*LatestRelease, error) {
 		return nil, err
 	}
 
-	version := release.Name
-	if release.Prerelease {
-		// find version in prerelease name
-		re := regexp.MustCompile(`v[\w-\.]+-\d+-g[0-9a-f]+`)
-		if match := re.FindString(version); match != "" {
-			version = match
-		}
+	version, err := stashBooruReleaseVersion(release)
+	if err != nil {
+		return nil, err
 	}
 
 	latestHash, err := getReleaseHash(ctx, release.Tag_name)
@@ -233,7 +222,7 @@ func GetLatestRelease(ctx context.Context) (*LatestRelease, error) {
 		releaseDate = publishedAt.Format("2006-01-02")
 	}
 
-	var releaseUrl string
+	releaseUrl := release.Html_url
 	if wantedRelease != "" {
 		for _, asset := range release.Assets {
 			if asset.Name == wantedRelease {
@@ -252,7 +241,7 @@ func GetLatestRelease(ctx context.Context) (*LatestRelease, error) {
 	return &LatestRelease{
 		Version:   version,
 		Hash:      latestHash,
-		ShortHash: latestHash[:shLength],
+		ShortHash: latestHash[:min(shLength, len(latestHash))],
 		Date:      releaseDate,
 		Url:       releaseUrl,
 	}, nil
@@ -298,19 +287,28 @@ func getReleaseHash(ctx context.Context, tagName string) (string, error) {
 	return "", errors.New("invalid Github API response")
 }
 
+func stashBooruReleaseVersion(release githubReleasesResponse) (string, error) {
+	const prefix = "stashbooru-v"
+	version := strings.TrimPrefix(release.Tag_name, prefix)
+	if release.Draft || release.Prerelease || !strings.HasPrefix(release.Tag_name, prefix) {
+		return "", errors.New("no stable StashBooru release is available")
+	}
+	if _, valid := build.CompareStableVersions(version, build.StashBooruVersion()); !valid {
+		return "", errors.New("invalid StashBooru release version")
+	}
+	return version, nil
+}
+
 func printLatestVersion(ctx context.Context) {
 	latestRelease, err := GetLatestRelease(ctx)
 	if err != nil {
-		logger.Errorf("Couldn't retrieve latest version: %v", err)
+		logger.Warnf("Couldn't check StashBooru updates: %v", err)
+		return
+	}
+	comparison, valid := build.CompareStableVersions(latestRelease.Version, build.StashBooruVersion())
+	if valid && comparison > 0 {
+		logger.Infof("New StashBooru version available: %s (%s)", latestRelease.Version, latestRelease.Url)
 	} else {
-		_, githash, _ := build.Version()
-		switch githash {
-		case "":
-			logger.Infof("Latest version: %s (%s)", latestRelease.Version, latestRelease.ShortHash)
-		case latestRelease.ShortHash:
-			logger.Infof("Version %s (%s) is already the latest released", latestRelease.Version, latestRelease.ShortHash)
-		default:
-			logger.Infof("New version available: %s (%s)", latestRelease.Version, latestRelease.ShortHash)
-		}
+		logger.Infof("StashBooru %s; latest stable release: %s", build.StashBooruVersion(), latestRelease.Version)
 	}
 }

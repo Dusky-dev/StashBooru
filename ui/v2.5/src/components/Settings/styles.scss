@@ -9,6 +9,8 @@
 }
 
 .setting-section {
+  scroll-margin-top: 4.5rem;
+
   &:not(:first-child) {
     margin-top: 1.5em;
   }
@@ -137,6 +139,57 @@
         margin-left: auto;
       }
     }
+  }
+}
+
+.settings-actions,
+.processing-status,
+.processing-settings-nav {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.settings-actions {
+  justify-content: flex-end;
+}
+
+.processing-settings-nav {
+  gap: 0.5rem 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.settings-details {
+  border-top: 1px solid $card-border-color;
+  padding-top: 0.75rem;
+
+  summary {
+    cursor: pointer;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+}
+
+.processing-settings {
+  .setting > div:last-child {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .sub-heading {
+    margin-bottom: 0.75rem;
+  }
+
+  .card,
+  .setting,
+  fieldset {
+    min-width: 0;
+  }
+
+  .alert,
+  code {
+    overflow-wrap: anywhere;
   }
 }
 

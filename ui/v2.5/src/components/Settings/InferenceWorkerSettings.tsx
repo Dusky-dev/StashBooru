@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { Button, Card, Form } from "react-bootstrap";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Alert, Button, Card, Form } from "react-bootstrap";
 
 import { useToast } from "src/hooks/Toast";
 import { Setting } from "./Inputs";
@@ -24,24 +24,38 @@ export const InferenceWorkerSettings: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
+  const mounted = useRef(true);
+  const refreshController = useRef<AbortController>();
 
   const refresh = useCallback(async () => {
+    refreshController.current?.abort();
+    const controller = new AbortController();
+    refreshController.current = controller;
     setLoading(true);
     try {
-      const response = await fetch("image/visual-similarity/remote-config");
+      const response = await fetch("image/visual-similarity/remote-config", {
+        signal: controller.signal,
+      });
       const config = await readResponse<InferenceWorkerConfig>(response);
+      if (controller.signal.aborted || !mounted.current) return;
       setRemoteURL(config.url);
       setTokenConfigured(config.tokenConfigured);
       setError(undefined);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (!controller.signal.aborted && mounted.current)
+        setError(e instanceof Error ? e.message : String(e));
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted && mounted.current) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
+    mounted.current = true;
     void refresh();
+    return () => {
+      mounted.current = false;
+      refreshController.current?.abort();
+    };
   }, [refresh]);
 
   const save = useCallback(
@@ -65,16 +79,19 @@ export const InferenceWorkerSettings: React.FC = () => {
           body: JSON.stringify(payload),
         });
         const config = await readResponse<InferenceWorkerConfig>(response);
+        if (!mounted.current) return;
         setRemoteURL(config.url);
         setTokenConfigured(config.tokenConfigured);
         setRemoteToken("");
         setError(undefined);
         Toast.success("Saved inference worker settings.");
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
-        Toast.error(e);
+        if (mounted.current) {
+          setError(e instanceof Error ? e.message : String(e));
+          Toast.error(e);
+        }
       } finally {
-        setSaving(false);
+        if (mounted.current) setSaving(false);
       }
     },
     [Toast, remoteToken, remoteURL]
@@ -82,47 +99,56 @@ export const InferenceWorkerSettings: React.FC = () => {
 
   return (
     <div className="setting-section" id="inference-worker">
-      <h1>Inference worker</h1>
+      <h1>Processing worker</h1>
       <div className="sub-heading">
-        Shared GPU/CPU worker used by Visual Similarity, EVA02/Image Tagging,
-        optional Camie inference, media conversion and image upscaling. Leave
-        the URL empty to run supported work on this StashBooru server.
+        Share one remote worker across similarity, tagging, conversion,
+        upscaling, restoration and Video indexing. Each operation checks its
+        required capabilities. Leave the URL empty for supported local work.
       </div>
       <Card>
         <Setting
           className="flex-column align-items-stretch"
           heading="Remote worker"
           subHeading={
-            error ??
-            "Set one remote worker here instead of configuring it separately for each inference feature. Existing worker deployments remain compatible."
+            "Connection settings are saved on this server. Models are installed on the machine that performs the work."
           }
         >
           <div className="mt-3 w-100">
-            <Form.Control
-              className="mb-2"
-              type="url"
-              value={remoteURL}
-              disabled={loading || saving}
-              placeholder="http://gpu-pc:8000"
-              onChange={(event) => setRemoteURL(event.currentTarget.value)}
-            />
-            <Form.Control
-              className="mb-2"
-              type="password"
-              value={remoteToken}
-              disabled={loading || saving}
-              placeholder={
-                tokenConfigured
-                  ? "Bearer token saved — leave blank to keep it"
-                  : "Optional bearer token"
-              }
-              onChange={(event) => setRemoteToken(event.currentTarget.value)}
-            />
-            <div className="d-flex flex-wrap justify-content-end">
+            {error && <Alert variant="danger">{error}</Alert>}
+            <Form.Group controlId="inference-worker-url">
+              <Form.Label>Worker URL</Form.Label>
+              <Form.Control
+                className="text-input"
+                type="url"
+                value={remoteURL}
+                disabled={loading || saving}
+                placeholder="http://gpu-pc:8000"
+                onChange={(event) => setRemoteURL(event.currentTarget.value)}
+              />
+            </Form.Group>
+            <Form.Group controlId="inference-worker-token">
+              <Form.Label>Bearer token</Form.Label>
+              <Form.Control
+                className="text-input"
+                type="password"
+                autoComplete="new-password"
+                value={remoteToken}
+                disabled={loading || saving}
+                placeholder={
+                  tokenConfigured
+                    ? "Bearer token saved — leave blank to keep it"
+                    : "Optional bearer token"
+                }
+                onChange={(event) => setRemoteToken(event.currentTarget.value)}
+              />
+              <Form.Text className="text-muted">
+                Leave blank to keep a saved token; use Clear token to remove it.
+              </Form.Text>
+            </Form.Group>
+            <div className="settings-actions">
               {tokenConfigured ? (
                 <Button
-                  className="mr-2 mb-2"
-                  variant="outline-secondary"
+                  variant="secondary"
                   disabled={loading || saving}
                   onClick={() => void save(true)}
                 >
@@ -130,16 +156,14 @@ export const InferenceWorkerSettings: React.FC = () => {
                 </Button>
               ) : null}
               <Button
-                className="mr-2 mb-2"
-                variant="outline-secondary"
+                variant="secondary"
                 disabled={loading || saving}
                 onClick={() => void refresh()}
               >
-                Refresh
+                Reload saved worker
               </Button>
               <Button
-                className="mb-2"
-                variant="secondary"
+                variant="primary"
                 disabled={loading || saving}
                 onClick={() => void save(false)}
               >

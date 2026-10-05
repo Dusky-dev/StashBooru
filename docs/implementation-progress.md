@@ -1,13 +1,15 @@
 # StashBooru implementation progress
 
-Updated: 2026-10-04
+Updated: 2026-10-05
 
-Current baseline: `develop` at `a061a22cbbd3c8fee30dd14e1b5c13e45326d984`
-(merged PR #138). P01–P13's listed implementation/prototype packages are merged.
-P11's actual model/GPU acceptance and P12/P13's production activation gates remain
-open. Current package: the owner-approved three-item Jobs/stack QoL batch on
-`feat/qol-jobs-stacks-20261004`, published as [PR #139](https://github.com/Dusky-dev/StashBooru/pull/139). See
-[QoL notes](qol-jobs-stacks.md). Maintenance/cleanup follows this batch's merge.
+Current baseline: `develop` at `5162463028e69420f32c7f5ff629bb36b9057008`
+(merged PR #139). P01–P13's listed implementation/prototype packages and the
+three-item Jobs/stack QoL batch are merged. P11 model/GPU acceptance and P12/P13
+production activation gates remain open. Current package: owner-requested
+maintenance and independent StashBooru 1.0 release on
+`maintenance/features-ui-settings-20261005`.
+See [maintenance notes](maintenance-2026-10-05.md), [feature guide](features.md)
+and [release procedure](releases.md). GitHub publication/check results follow below.
 
 | Package | Status | Notes |
 | --- | --- | --- |
@@ -24,7 +26,7 @@ open. Current package: the owner-approved three-item Jobs/stack QoL batch on
 | P11 — mask-based image restoration | Merged; PR #135 | Final CI and nine local restoration tests rechecked. Native mask editor/adapter, reviewed new derivative and provenance; actual model/GPU validation remains. See [P11 notes](p11-image-restoration.md). |
 | P12 — image delta storage | Offline prototype merged; PR #136 | Byte/pixel contracts, measured base selection and fallbacks, full accounting, self-contained pack/verify/extract/recover. 22 tests and 20 fixture runs passed locally and in the new CI workflow; production activation and owner-stack calibration remain gated. See [P12 notes](p12-image-delta-storage.md). |
 | P13 — Gallery shared blocks | Offline prototype merged; PRs #137/#138 | #137 initially merged into the P12 feature branch; #138 landed the unchanged tested P13 tree on develop. Production activation remains gated. See [P13 notes](p13-gallery-block-storage.md). |
-| QoL — Jobs and stack review | Implemented; PR #139 open | Retained failed jobs and Copy error; representative/compare shortcuts; touch/mouse draft reordering with up/down controls. See [QoL notes](qol-jobs-stacks.md). |
+| QoL — Jobs and stack review | Complete; PR #139 merged | Retained failed jobs and Copy error; representative/compare shortcuts; touch/mouse draft reordering with up/down controls. See [QoL notes](qol-jobs-stacks.md). |
 
 ## Jobs and stack QoL — 2026-10-04
 

@@ -6,6 +6,7 @@ import { useSettings } from "./context";
 interface ISettingGroup {
   id?: string;
   headingID?: string;
+  heading?: React.ReactNode;
   subHeadingID?: string;
   advanced?: boolean;
 }
@@ -14,6 +15,7 @@ export const SettingSection: React.FC<PropsWithChildren<ISettingGroup>> = ({
   id,
   children,
   headingID,
+  heading,
   subHeadingID,
   advanced,
 }) => {
@@ -24,7 +26,10 @@ export const SettingSection: React.FC<PropsWithChildren<ISettingGroup>> = ({
 
   return (
     <div className="setting-section" id={id}>
-      <h1>{headingID ? intl.formatMessage({ id: headingID }) : undefined}</h1>
+      <h1>
+        {heading ??
+          (headingID ? intl.formatMessage({ id: headingID }) : undefined)}
+      </h1>
       {subHeadingID ? (
         <div className="sub-heading">
           {intl.formatMessage({ id: subHeadingID })}

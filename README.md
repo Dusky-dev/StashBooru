@@ -1,4 +1,4 @@
-# StashBooru
+# StashBooru 1.0
 
 [![Build](https://github.com/Dusky-dev/StashBooru/actions/workflows/build.yml/badge.svg?branch=develop)](https://github.com/Dusky-dev/StashBooru/actions/workflows/build.yml)
 [![Development builds](https://img.shields.io/badge/builds-latest__develop-blue?logo=github)](https://github.com/Dusky-dev/StashBooru/releases/tag/latest_develop)
@@ -11,6 +11,11 @@ It keeps Stash's self-hosted Go backend, media scanning, player, galleries, plug
 
 > [!IMPORTANT]
 > StashBooru is an independent fork and is under active development. Fork-specific database migrations and metadata types may diverge from upstream Stash. Back up your database before testing new development builds or moving a library between StashBooru and upstream Stash.
+
+StashBooru uses independent stable versions (`stashbooru-v1.0.0`). Settings → About
+shows the installed fork version alongside the upstream Stash build, checks stable
+fork releases, and links to downloads. Installation remains manual.
+See [release notes](docs/releases/stashbooru-1.0.0.md) and [release maintenance](docs/releases.md).
 
 ## Terminology
 
@@ -28,6 +33,9 @@ StashBooru uses anime/booru-oriented names in the UI while some upstream-compati
 
 ## What StashBooru adds
 
+See the [feature guide](docs/features.md) for where to find each tool, processing
+and restore behavior, model requirements, and current limitations.
+
 ### Native anime/booru metadata
 
 - **Copyrights are a first-class metadata category**, separate from ordinary Tags.
@@ -41,7 +49,7 @@ StashBooru uses anime/booru-oriented names in the UI while some upstream-compati
 
 StashBooru is designed around mixed libraries rather than treating every media type as a separate island.
 
-- Unified **All** media views combine relevant Images, Videos, Galleries, and Collections on supported entity pages.
+- The top-level **All** page combines Images and Videos with shared filters, ordering and selection. Entity pages retain their related-media views.
 - Grid, List, Wall, and Tagger-style views are available where supported.
 - View mode, zoom, media tabs, and reference-comparison preferences are remembered per view.
 - Image and Video file information is shown directly in **Details** instead of living in a redundant File Info tab.
@@ -62,17 +70,30 @@ Filename-derived Copyright values can also represent multiple series with `+`, w
 
 ### Visual similarity and reference comparison
 
-Image similarity uses an optional **EVA02 embedding index** instead of relying only on pHash.
+Image similarity offers **Same image / variants (pHash)** and **Related content (EVA02)** modes.
 
 - Local ONNX inference or a separate remote inference worker.
 - Embeddings and Stash metadata remain stored in StashBooru even when inference is remote.
-- Image-card **Find similar** uses cosine similarity over the embedding index.
+- Image-card **Find similar** defaults to pHash. Switch to Related content for cosine similarity over the optional EVA02 index.
 - Large libraries are supported beyond sqlite-vec's 4096-result KNN limit.
-- Reference previews support **Selected image**, **Both images**, and a draggable **Slider** comparison mode.
+- Reference previews support **Selected image**, **Both images**, **Slider**, **Blink**, and difference heatmap/regions for still-image review.
 - Comparison pan/zoom is synchronized and the reference remains stationary while browsing matches.
 - File size, resolution, duration, and bitrate are shown in comparison views when applicable.
 
 The visual-similarity model is opt-in and is never downloaded silently.
+
+### Review and processing tools
+
+- **Visual stacks** group ordered variants with filmstrip navigation, representative actions and draft drag/keyboard reordering.
+- **Media conversion** offers savings estimates, verified trials, reviewed application and original-file restore history.
+- **Image upscaling** creates new copies by default, with replacement and its own restore cache available explicitly.
+- **Video overlap review** indexes and compares timestamped segments, including contained clips and compilations.
+- **Mask restoration** previews a generated still-image derivative while preserving the source; it requires a configured inpainting model.
+- **Image delta / Gallery sharing** are non-destructive offline storage prototypes. Production activation and original eviction remain gated.
+
+Processing setup is grouped under **Settings → Processing**; hierarchy inheritance
+is in **Settings → Library**. Failed jobs remain in **Tasks** until dismissed,
+with Copy error and history scoped to the current browser tab.
 
 ## Installation
 
@@ -107,7 +128,7 @@ StashBooru retains Stash's FFmpeg dependency. Linux users should normally instal
 
 ### EVA02 visual similarity
 
-Open **Settings → System → Visual Similarity** to see worker/model/index status. The model can be installed explicitly from the UI and the image library can then be indexed. A remote embedding worker can also be configured if inference should run on another machine/GPU.
+Open **Settings → Processing → Similarity and tagging** to see worker/model/index status. The model can be installed explicitly from the UI and the image library can then be indexed. A remote embedding worker can also be configured if inference should run on another machine/GPU.
 
 ### Camie Tagger v2
 
@@ -124,7 +145,7 @@ With the standard Docker cache layout, the local worker expects these under:
 /cache/visual-embeddings/camie/
 ```
 
-The Visual Similarity/Image Tagging UI reports the paths and readiness detected by the running server. Remote inference can be used instead when configured.
+The Similarity and tagging settings report the paths and readiness detected by the running server. Remote inference can be used instead when configured.
 
 ## Using StashBooru
 
