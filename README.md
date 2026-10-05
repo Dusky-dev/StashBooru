@@ -1,4 +1,4 @@
-# StashBooru 1.0
+# StashBooru
 
 [![Build](https://github.com/Dusky-dev/StashBooru/actions/workflows/build.yml/badge.svg?branch=develop)](https://github.com/Dusky-dev/StashBooru/actions/workflows/build.yml)
 [![Development builds](https://img.shields.io/badge/builds-latest__develop-blue?logo=github)](https://github.com/Dusky-dev/StashBooru/releases/tag/latest_develop)
