@@ -1,3 +1,4 @@
+import { ProcessingBackendOptions } from "./ProcessingBackendOptions";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -27,7 +28,6 @@ import {
   videoRanges,
   videoTime,
 } from "./videoOverlap";
-import "./videoOverlap.scss";
 
 const preferenceKey = "stash.video-overlap.keeper.v1";
 
@@ -419,7 +419,7 @@ export function VideoOverlapDialog({
             </Col>
             <Col md={4}>
               <Form.Group controlId="video-overlap-backend">
-                <Form.Label>Index backend</Form.Label>
+                <Form.Label>Run on</Form.Label>
                 <Form.Control
                   as="select"
                   value={config.backend}
@@ -431,9 +431,7 @@ export function VideoOverlapDialog({
                     })
                   }
                 >
-                  <option value="auto">Auto: remote, then local</option>
-                  <option value="local">Local CPU</option>
-                  <option value="remote">Remote only</option>
+                  <ProcessingBackendOptions />
                 </Form.Control>
               </Form.Group>
             </Col>
@@ -517,8 +515,8 @@ export function VideoOverlapDialog({
           <p className="small">
             Jobs use these settings; Save keeps them as the default. Unchanged
             entries are skipped. Up to 3,600 existing frames per Video; longer
-            videos use a wider grid. Remote workers need the P10 sampler and
-            server update. Decoder/settings or active-file changes require
+            Videos use a wider grid. Remote workers must support Video frame
+            indexing. Changing the decoder, settings or source file requires
             reindexing.
           </p>
           <Row>

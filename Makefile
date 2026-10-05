@@ -120,7 +120,7 @@ ifndef GITHASH
 	$(eval GITHASH := $(shell git rev-parse --short HEAD))
 endif
 ifndef STASH_VERSION
-	$(eval STASH_VERSION := $(shell git describe --tags --exclude latest_develop))
+	$(eval STASH_VERSION := $(shell git describe --tags --match 'v[0-9]*' --exclude latest_develop))
 endif
 ifndef OFFICIAL_BUILD
 	$(eval OFFICIAL_BUILD := false)

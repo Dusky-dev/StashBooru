@@ -298,7 +298,7 @@ func Initialize() (*Server, error) {
 		}
 	})
 
-	logger.Infof("stash version: %s", build.VersionString())
+	logger.Infof("StashBooru %s; upstream Stash build: %s", build.StashBooruVersion(), build.VersionString())
 	go printLatestVersion(context.TODO())
 
 	return server, nil

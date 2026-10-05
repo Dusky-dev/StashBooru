@@ -8,6 +8,7 @@ declare module "*.md" {
 // XXbiome-ignore @typescript-eslint/naming-convention: intentional
 interface ImportMetaEnv {
   readonly VITE_APP_GITHASH?: string;
+  readonly VITE_APP_STASHBOORU_VERSION: string;
   readonly VITE_APP_STASH_VERSION?: string;
   readonly VITE_APP_DATE?: string;
   readonly VITE_APP_PLATFORM_URL?: string;

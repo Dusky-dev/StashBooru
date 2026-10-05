@@ -1,98 +1,33 @@
 import React from "react";
-import { Button } from "react-bootstrap";
+import { Alert, Button } from "react-bootstrap";
 import { useIntl } from "react-intl";
 import { useLatestVersion } from "src/core/StashService";
 import { ExternalLink } from "../Shared/ExternalLink";
 import { ConstantSetting, SettingGroup } from "./Inputs";
 import { SettingSection } from "./SettingSection";
+import { compareStableVersions } from "./releaseVersion";
 
 export const SettingsAboutPanel: React.FC = () => {
   const gitHash = import.meta.env.VITE_APP_GITHASH;
   const stashVersion = import.meta.env.VITE_APP_STASH_VERSION;
+  const version = import.meta.env.VITE_APP_STASHBOORU_VERSION;
   const buildTime = import.meta.env.VITE_APP_DATE;
-
   const intl = useIntl();
-
-  const {
-    data: dataLatest,
-    error: errorLatest,
-    loading: loadingLatest,
-    refetch,
-    networkStatus,
-  } = useLatestVersion();
-
-  function renderLatestVersion() {
-    if (errorLatest) {
-      return (
-        <SettingGroup
-          settingProps={{
-            heading: errorLatest.message,
-          }}
-        />
-      );
-    } else if (!dataLatest || loadingLatest || networkStatus === 4) {
-      return (
-        <SettingGroup
-          settingProps={{
-            headingID: "loading.generic",
-          }}
-        />
-      );
-    } else {
-      let heading = dataLatest.latestversion.version;
-      const hashString = dataLatest.latestversion.shorthash;
-      if (gitHash !== hashString) {
-        heading +=
-          " " +
-          intl.formatMessage({
-            id: "config.about.new_version_notice",
-          });
-      }
-      return (
-        <SettingGroup
-          settingProps={{
-            heading,
-          }}
-        >
-          <div className="setting">
-            <div>
-              <h3>
-                {intl.formatMessage({
-                  id: "config.about.build_hash",
-                })}
-              </h3>
-              <div className="value">{hashString}</div>
-            </div>
-            <div>
-              <a href={dataLatest.latestversion.url}>
-                <Button>
-                  {intl.formatMessage({ id: "actions.download" })}
-                </Button>
-              </a>
-              <Button onClick={() => refetch()}>
-                {intl.formatMessage({
-                  id: "config.about.check_for_new_version",
-                })}
-              </Button>
-            </div>
-          </div>
-          <ConstantSetting
-            headingID="config.about.release_date"
-            value={dataLatest.latestversion.release_date}
-          />
-        </SettingGroup>
-      );
-    }
-  }
+  const { data, error, loading, refetch, networkStatus } = useLatestVersion();
+  const checking = loading || networkStatus === 4;
+  const latest = data?.latestversion;
+  const comparison = latest
+    ? compareStableVersions(latest.version, version)
+    : undefined;
 
   return (
     <>
-      <SettingSection headingID="config.about.version">
-        <SettingGroup
-          settingProps={{
-            heading: stashVersion,
-          }}
-        >
+      <SettingSection heading={`StashBooru ${version}`}>
+        <SettingGroup settingProps={{ heading: "Installed build" }}>
+          <ConstantSetting
+            headingID="config.about.upstream_version"
+            value={stashVersion ?? "Unknown"}
+          />
           <ConstantSetting
             headingID="config.about.build_hash"
             value={gitHash}
@@ -101,16 +36,75 @@ export const SettingsAboutPanel: React.FC = () => {
             headingID="config.about.build_time"
             value={buildTime}
           />
+          <p className="px-3">
+            StashBooru releases use their own version numbers. The upstream
+            Stash version identifies the base this build was derived from.
+          </p>
         </SettingGroup>
       </SettingSection>
-
-      <SettingSection headingID="config.about.latest_version">
-        {renderLatestVersion()}
+      <SettingSection heading="StashBooru updates">
+        <div className="p-3">
+          <p>
+            Checks stable StashBooru releases on GitHub. Development snapshots
+            and upstream Stash releases are excluded. Updates are downloaded and
+            installed manually.
+          </p>
+          {checking ? (
+            <p role="status">Checking for updates…</p>
+          ) : error ? (
+            <Alert variant="warning">
+              Could not check for updates: {error.message}
+            </Alert>
+          ) : latest ? (
+            <>
+              <p role="status">
+                {comparison === undefined
+                  ? "Could not compare release versions."
+                  : comparison > 0
+                    ? `StashBooru ${latest.version} is available.`
+                    : comparison === 0
+                      ? "You are running the latest stable StashBooru release."
+                      : `This build is newer than the latest stable release (${latest.version}).`}
+              </p>
+              <p>
+                Latest release: {latest.version} · {latest.release_date}
+              </p>
+            </>
+          ) : null}
+          <div className="settings-actions">
+            <Button
+              disabled={checking}
+              onClick={() => {
+                void refetch().catch(() => undefined);
+              }}
+            >
+              Check for updates
+            </Button>
+            {latest?.url && !error && !checking && (
+              <a className="btn btn-secondary" href={latest.url}>
+                Download release
+              </a>
+            )}
+            <ExternalLink href="https://github.com/Dusky-dev/StashBooru/releases">
+              Release notes
+            </ExternalLink>
+            <ExternalLink
+              href={`https://github.com/Dusky-dev/StashBooru/blob/stashbooru-v${import.meta.env.VITE_APP_STASHBOORU_VERSION}/docs/features.md`}
+            >
+              Feature guide
+            </ExternalLink>
+          </div>
+        </div>
       </SettingSection>
-
       <SettingSection headingID="config.categories.about">
         <div className="setting">
           <div>
+            <p>
+              <ExternalLink href="https://github.com/Dusky-dev/StashBooru">
+                StashBooru on GitHub
+              </ExternalLink>
+            </p>
+            <p>Built on Stash. Upstream resources:</p>
             <p>
               {intl.formatMessage(
                 { id: "config.about.stash_home" },

@@ -33,12 +33,12 @@ parents and profile Tags are never inserted into the native direct tables.
 A direct Tag that is also supplied by a profile remains an intentional direct
 assignment.
 
-## Shared System and Tagging defaults
+## Shared Library and Tagging defaults
 
-System settings independently enable Character, Artist, Copyright and Tag
+Library settings independently enable Character, Artist, Copyright and Tag
 ancestor inclusion; all four default to enabled. Image/Video detail reads,
 Tagging inherited-Tag previews and the existing-library review use these same
-defaults. Tagging settings link to the shared System controls.
+defaults. Tagging settings link to the shared Library controls.
 
 A domain switch controls that domain's ancestors and their profile Tags.
 Direct entity profile Tags remain available when that entity's ancestor
@@ -72,7 +72,7 @@ retain their native stored-link scope.
 ## Preview and apply for the existing library
 
 Settings → Tasks → **Review library inheritance** reviews all existing Images
-and Videos against four proposed shared defaults. System settings link to this
+and Videos against four proposed shared defaults. Library settings link to this
 task. The native Jobs queue reports progress and supports cancellation.
 
 Preview reads native rows in a SQLite read transaction using ID pagination

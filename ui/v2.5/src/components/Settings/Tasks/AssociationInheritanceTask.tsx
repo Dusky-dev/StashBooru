@@ -303,7 +303,7 @@ export const AssociationInheritanceTask: React.FC = () => {
       <h2>{message("heading")}</h2>
       <p>{message("description")}</p>
       <p>
-        <Link to="/settings?tab=system#association-inheritance-settings">
+        <Link to="/settings?tab=library#association-inheritance-settings">
           {message("shared_defaults")}
         </Link>
       </p>

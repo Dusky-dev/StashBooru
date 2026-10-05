@@ -102,9 +102,7 @@ try {
       });
     });
     await page.goto(`${baseURL}/tests/browser/fixtures/image-restoration.html`);
-    await page
-      .getByRole("combobox", { name: "Processing backend" })
-      .selectOption("remote");
+    await page.getByRole("combobox", { name: "Run on" }).selectOption("remote");
     await page
       .getByRole("button", { name: "Prepare source", exact: true })
       .click();

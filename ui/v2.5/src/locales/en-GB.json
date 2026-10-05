@@ -251,6 +251,7 @@
   },
   "config": {
     "about": {
+      "upstream_version": "Upstream Stash version",
       "build_hash": "Build hash:",
       "build_time": "Build time:",
       "check_for_new_version": "Check for new version",
@@ -331,6 +332,7 @@
       "heading": "Application Paths"
     },
     "categories": {
+      "processing": "Processing",
       "about": "About",
       "changelog": "Changelog",
       "interface": "Interface",

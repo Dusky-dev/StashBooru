@@ -39,7 +39,7 @@ export const AssociationInheritanceSettings: React.FC = () => {
       headingID="config.association_inheritance.heading"
       subHeadingID="config.association_inheritance.description"
     >
-      <p>
+      <p className="px-3 pt-3 mb-0">
         <Link to="/settings?tab=tasks#association-inheritance-task">
           {intl.formatMessage({
             id: "config.association_inheritance.review.preview_link",

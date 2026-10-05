@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Tab, Nav, Row, Col, Form } from "react-bootstrap";
 import { Redirect, useLocation } from "react-router-dom";
 import { LinkContainer } from "react-router-bootstrap";
@@ -17,45 +17,56 @@ import { SettingsServicesPanel } from "./SettingsServicesPanel";
 import { SettingsContext, useSettings } from "./context";
 import { SettingsLibraryPanel } from "./SettingsLibraryPanel";
 import { SettingsSecurityPanel } from "./SettingsSecurityPanel";
-import { InferenceWorkerSettings } from "./InferenceWorkerSettings";
-import { VisualSimilaritySettings } from "./VisualSimilaritySettings";
-import { MediaConversionSettings } from "./MediaConversionSettings";
-import { MediaUpscalingSettings } from "./MediaUpscalingSettings";
-import { AssociationInheritanceSettings } from "./AssociationInheritanceSettings";
+import { SettingsProcessingPanel } from "./SettingsProcessingPanel";
+import {
+  resolveSettingsTab,
+  settingsSearch,
+  SettingsTab,
+} from "./settingsNavigation";
 import Changelog from "../Changelog/Changelog";
 import { TroubleshootingModeButton } from "../TroubleshootingMode/TroubleshootingModeButton";
 import { useTroubleshootingMode } from "../TroubleshootingMode/useTroubleshootingMode";
 
-const validTabs = [
-  "tasks",
-  "library",
-  "interface",
-  "security",
-  "metadata-providers",
-  "services",
-  "system",
-  "plugins",
-  "logs",
-  "tools",
-  "changelog",
-  "about",
-] as const;
-type TabKey = (typeof validTabs)[number];
-
-const defaultTab: TabKey = "tasks";
-
-function isTabKey(tab: string | null): tab is TabKey {
-  return validTabs.includes(tab as TabKey);
-}
-
-const SettingTabs: React.FC<{ tab: TabKey }> = ({ tab }) => {
-  const { advancedMode, setAdvancedMode } = useSettings();
+const SettingTabs: React.FC<{ tab: SettingsTab }> = ({ tab }) => {
+  const { advancedMode, setAdvancedMode, loading } = useSettings();
+  const { hash } = useLocation();
   const { isActive: troubleshootingModeActive } = useTroubleshootingMode();
+
+  useEffect(() => {
+    if (!hash || loading) return;
+    const pane = document.getElementById(`configuration-tabs-tabpane-${tab}`);
+    if (!pane) return;
+    let frame = 0;
+    const align = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const target = document.getElementById(hash.slice(1));
+        if (target && pane.contains(target))
+          target.scrollIntoView({ block: "start" });
+      });
+    };
+    // Async worker/configuration responses can change section heights. Keep a
+    // bookmark aligned through that initial layout, until the user takes over.
+    const observer = new ResizeObserver(align);
+    observer.observe(pane);
+    align();
+    const stop = () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
+    const events = ["pointerdown", "wheel", "touchstart", "keydown"] as const;
+    for (const event of events)
+      window.addEventListener(event, stop, { passive: true });
+    return () => {
+      stop();
+      for (const event of events) window.removeEventListener(event, stop);
+    };
+  }, [hash, tab, loading]);
 
   const titleProps = useTitleProps({ id: "settings" });
 
   return (
-    <Tab.Container activeKey={tab} id="configuration-tabs">
+    <Tab.Container activeKey={tab} id="configuration-tabs" mountOnEnter>
       <Helmet {...titleProps} />
       <Row>
         <Col id="settings-menu-container" sm={3} md={3} xl={2}>
@@ -71,6 +82,16 @@ const SettingTabs: React.FC<{ tab: TabKey }> = ({ tab }) => {
               <LinkContainer to="/settings?tab=library">
                 <Nav.Link eventKey="library">
                   <FormattedMessage id="library" />
+                </Nav.Link>
+              </LinkContainer>
+            </Nav.Item>
+            <Nav.Item>
+              <LinkContainer to="/settings?tab=processing">
+                <Nav.Link eventKey="processing">
+                  <FormattedMessage
+                    id="config.categories.processing"
+                    defaultMessage="Processing"
+                  />
                 </Nav.Link>
               </LinkContainer>
             </Nav.Item>
@@ -170,6 +191,9 @@ const SettingTabs: React.FC<{ tab: TabKey }> = ({ tab }) => {
             <Tab.Pane eventKey="library">
               <SettingsLibraryPanel />
             </Tab.Pane>
+            <Tab.Pane eventKey="processing" mountOnEnter>
+              <SettingsProcessingPanel />
+            </Tab.Pane>
             <Tab.Pane eventKey="interface">
               <SettingsInterfacePanel />
             </Tab.Pane>
@@ -189,11 +213,6 @@ const SettingTabs: React.FC<{ tab: TabKey }> = ({ tab }) => {
               <SettingsScrapingPanel />
             </Tab.Pane>
             <Tab.Pane eventKey="system">
-              <InferenceWorkerSettings />
-              <VisualSimilaritySettings />
-              <AssociationInheritanceSettings />
-              <MediaConversionSettings />
-              <MediaUpscalingSettings />
               <SettingsConfigurationPanel />
             </Tab.Pane>
             <Tab.Pane eventKey="plugins" unmountOnExit>
@@ -217,14 +236,14 @@ const SettingTabs: React.FC<{ tab: TabKey }> = ({ tab }) => {
 
 export const Settings: React.FC = () => {
   const location = useLocation();
-  const tab = new URLSearchParams(location.search).get("tab");
+  const tab = resolveSettingsTab(location.search, location.hash);
 
-  if (!isTabKey(tab)) {
+  if (new URLSearchParams(location.search).get("tab") !== tab) {
     return (
       <Redirect
         to={{
           ...location,
-          search: `tab=${defaultTab}`,
+          search: settingsSearch(location.search, tab),
         }}
       />
     );

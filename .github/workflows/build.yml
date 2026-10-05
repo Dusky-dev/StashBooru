@@ -67,6 +67,9 @@ jobs:
     - name: Install UI dependencies
       run: make pre-ui
 
+    - name: Validate release guards
+      run: python3 -m unittest discover -s scripts/tests -p test_release_stashbooru.py
+
     - name: Generate
       run: make generate
 
@@ -75,7 +78,7 @@ jobs:
       id: cache-ui
       with:
         path: ui/v2.5/build
-        key: ${{ runner.os }}-ui-build-${{ hashFiles('ui/v2.5/pnpm-lock.yaml', 'ui/v2.5/public/**', 'ui/v2.5/src/**', 'graphql/**/*.graphql') }}
+        key: ${{ runner.os }}-ui-build-${{ hashFiles('ui/v2.5/pnpm-lock.yaml', 'ui/v2.5/public/**', 'ui/v2.5/src/**', 'ui/v2.5/vite.config.js', 'internal/build/stashbooru-version.txt', 'graphql/**/*.graphql') }}-${{ github.sha }}
 
     - name: Validate UI
       # skip UI validation for pull requests if UI is unchanged
@@ -285,9 +288,9 @@ jobs:
 
     - name: Generate checksums
       run: |
-        git describe --tags --exclude latest_develop | tee CHECKSUMS_SHA1
+        git describe --tags --match 'v[0-9]*' --exclude latest_develop | tee CHECKSUMS_SHA1
         sha1sum dist/Stash.app.zip dist/stash-* dist/stash-ui.zip | sed 's/dist\///g' | tee -a CHECKSUMS_SHA1
-        echo "STASH_VERSION=$(git describe --tags --exclude latest_develop)" >> $GITHUB_ENV
+        echo "STASH_VERSION=$(git describe --tags --match 'v[0-9]*' --exclude latest_develop)" >> $GITHUB_ENV
         echo "RELEASE_DATE=$(date +'%Y-%m-%d %H:%M:%S %Z')" >> $GITHUB_ENV
 
     - name: Upload Windows binary
@@ -332,7 +335,9 @@ jobs:
 
     - name: Update latest_develop tag
       if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/develop' }}
-      run: git tag -f latest_develop; git push -f --tags
+      run: |
+        git tag -f latest_develop
+        git push -f origin refs/tags/latest_develop
 
     - name: Development Release
       if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/develop' }}
@@ -353,6 +358,14 @@ jobs:
           dist/stash-freebsd
           dist/stash-ui.zip
           CHECKSUMS_SHA1
+
+    # A deliberate release branch push publishes the exact tested build, without
+    # merging develop or changing the upstream Stash tag namespace.
+    - name: Publish stable StashBooru release
+      if: ${{ github.repository == 'Dusky-dev/StashBooru' && github.event_name == 'push' && startsWith(github.ref, 'refs/heads/releases/stashbooru-') }}
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: bash scripts/release-stashbooru.sh
 
     - name: Master release
       # NOTE: this isn't perfect, but should cover most scenarios

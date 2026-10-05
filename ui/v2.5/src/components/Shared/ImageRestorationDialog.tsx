@@ -1,3 +1,4 @@
+import { ProcessingBackendOptions } from "./ProcessingBackendOptions";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Button, Form, Modal, Spinner } from "react-bootstrap";
 import { Link } from "react-router-dom";
@@ -6,7 +7,6 @@ import {
   ReferenceComparisonMode,
 } from "src/hooks/Lightbox/ReferenceComparison";
 import { featherMask, maskPNG } from "./restorationMask";
-import "./ImageRestorationDialog.scss";
 
 interface Capabilities {
   available: boolean;
@@ -383,7 +383,7 @@ export function ImageRestorationDialog({
         {session?.notice && <Alert variant="warning">{session.notice}</Alert>}
         <div className="restoration-controls">
           <Form.Label>
-            Processing backend
+            Run on
             <Form.Control
               as="select"
               value={backend}
@@ -391,9 +391,7 @@ export function ImageRestorationDialog({
               onChange={(e) => setBackend(e.target.value)}
               className="input-control"
             >
-              <option value="auto">Auto (remote preferred)</option>
-              <option value="remote">Remote only</option>
-              <option value="local">Local only</option>
+              <ProcessingBackendOptions />
             </Form.Control>
           </Form.Label>
           <Button

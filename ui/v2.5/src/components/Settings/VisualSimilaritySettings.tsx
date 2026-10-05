@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { Badge, Button, Card, Form } from "react-bootstrap";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Alert, Badge, Button, Card, Col, Form, Row } from "react-bootstrap";
 import { Link, useHistory } from "react-router-dom";
 import { useIntl } from "react-intl";
 
@@ -73,38 +73,55 @@ export const VisualSimilaritySettings: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [savingCamie, setSavingCamie] = useState(false);
+  const [configLoaded, setConfigLoaded] = useState(false);
+  const [configError, setConfigError] = useState("");
+  const mounted = useRef(true);
+  const refreshController = useRef<AbortController>();
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (includeConfig = false) => {
+    refreshController.current?.abort();
+    const controller = new AbortController();
+    refreshController.current = controller;
     setLoading(true);
-    try {
-      const statusResponse = await fetch("image/visual-similarity/status");
-      setStatus(await readResponse<VisualSimilarityStatus>(statusResponse));
-      setStatusError(undefined);
-    } catch (error) {
-      setStatus(undefined);
-      setStatusError(error instanceof Error ? error.message : String(error));
+    const get = <T,>(path: string) =>
+      fetch(`image/visual-similarity/${path}`, {
+        signal: controller.signal,
+      }).then(readResponse<T>);
+    const [embedding, camie, config] = await Promise.allSettled([
+      get<VisualSimilarityStatus>("status"),
+      get<CamieStatus>("camie/status"),
+      includeConfig
+        ? get<CamieConfig>("camie/config")
+        : Promise.resolve(undefined),
+    ]);
+    if (controller.signal.aborted || !mounted.current) return;
+    setStatus(embedding.status === "fulfilled" ? embedding.value : undefined);
+    setStatusError(
+      embedding.status === "rejected" ? String(embedding.reason) : undefined
+    );
+    setCamieStatus(camie.status === "fulfilled" ? camie.value : undefined);
+    setCamieStatusError(
+      camie.status === "rejected" ? String(camie.reason) : undefined
+    );
+    if (includeConfig) {
+      if (config.status === "fulfilled" && config.value) {
+        setCamieConfig(config.value);
+        setConfigLoaded(true);
+        setConfigError("");
+      } else if (config.status === "rejected") {
+        setConfigError(String(config.reason));
+      }
     }
-
-    try {
-      const [camieResponse, camieConfigResponse] = await Promise.all([
-        fetch("image/visual-similarity/camie/status"),
-        fetch("image/visual-similarity/camie/config"),
-      ]);
-      setCamieStatus(await readResponse<CamieStatus>(camieResponse));
-      setCamieConfig(await readResponse<CamieConfig>(camieConfigResponse));
-      setCamieStatusError(undefined);
-    } catch (error) {
-      setCamieStatus(undefined);
-      setCamieStatusError(
-        error instanceof Error ? error.message : String(error)
-      );
-    } finally {
-      setLoading(false);
-    }
+    setLoading(false);
   }, []);
 
   useEffect(() => {
-    void refresh();
+    mounted.current = true;
+    void refresh(true);
+    return () => {
+      mounted.current = false;
+      refreshController.current?.abort();
+    };
   }, [refresh]);
 
   const saveCamieConfig = useCallback(async () => {
@@ -115,12 +132,14 @@ export const VisualSimilaritySettings: React.FC = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(camieConfig),
       });
-      setCamieConfig(await readResponse<CamieConfig>(response));
+      const saved = await readResponse<CamieConfig>(response);
+      if (!mounted.current) return;
+      setCamieConfig(saved);
       Toast.success("Saved tagging defaults.");
     } catch (error) {
-      Toast.error(error);
+      if (mounted.current) Toast.error(error);
     } finally {
-      setSavingCamie(false);
+      if (mounted.current) setSavingCamie(false);
     }
   }, [Toast, camieConfig]);
 
@@ -132,10 +151,11 @@ export const VisualSimilaritySettings: React.FC = () => {
           method: "POST",
         });
         await readResponse<VisualSimilarityJobResponse>(response);
-        history.push("/settings?tab=tasks");
+        if (mounted.current) history.push("/settings?tab=tasks");
       } catch (error) {
-        Toast.error(error);
-        setSubmitting(false);
+        if (mounted.current) Toast.error(error);
+      } finally {
+        if (mounted.current) setSubmitting(false);
       }
     },
     [Toast, history]
@@ -145,281 +165,299 @@ export const VisualSimilaritySettings: React.FC = () => {
     ? `${status.indexedImages.toLocaleString()} / ${status.totalImages.toLocaleString()} images indexed`
     : "Index status unavailable";
   const isRemote = status?.backend === "remote";
-  const isCamieRemote = camieStatus?.backend === "remote";
-  const camieSubHeading =
-    camieStatusError ??
-    camieStatus?.workerError ??
-    "Optional anime knowledge model for character, copyright, artist, general, and meta tag predictions. StashBooru never downloads or bundles Camie; supply the model and metadata files yourself.";
+  const validConfig =
+    configLoaded &&
+    [camieConfig.threshold, camieConfig.eva02Threshold].every(
+      (v) => Number.isFinite(v) && v >= 0.001 && v <= 0.999
+    ) &&
+    Number.isInteger(camieConfig.limit) &&
+    camieConfig.limit >= 1 &&
+    camieConfig.limit <= 200;
+
+  function workerStatus(value?: VisualSimilarityStatus | CamieStatus) {
+    if (loading) return <Badge variant="secondary">Checking…</Badge>;
+    if (!value) return <Badge variant="secondary">Status unavailable</Badge>;
+    return (
+      <div className="processing-status">
+        <Badge variant={value.backend === "remote" ? "info" : "secondary"}>
+          {value.backend === "remote" ? "Remote worker" : "This server"}
+        </Badge>
+        <Badge variant={value.workerOK ? "success" : "secondary"}>
+          {value.workerOK ? "Worker ready" : "Worker unavailable"}
+        </Badge>
+        <Badge variant={value.installed ? "success" : "secondary"}>
+          {value.installed ? "Model ready" : "Model files missing"}
+        </Badge>
+      </div>
+    );
+  }
 
   return (
     <div className="setting-section" id="visual-similarity">
-      <h1>Visual Similarity</h1>
+      <h1>Similarity and tagging</h1>
       <div className="sub-heading">
-        Anime/cartoon-aware EVA02 image embeddings with cosine nearest-neighbour
-        search. Inference uses the shared worker configured above while the
-        embedding index remains in StashBooru.
+        Find similar defaults to <strong>Same image / variants (pHash)</strong>.
+        Switch to <strong>Related content (EVA02)</strong> for similar subjects
+        or composition. pHash needs generated perceptual hashes; EVA02 needs its
+        own model and image index. Neither mode proves two files are identical.
       </div>
       <Card>
         <Setting
-          heading="Embedding model"
-          subHeading={
-            statusError ??
-            status?.workerError ??
-            status?.modelPath ??
-            "Checking the visual embedding worker..."
-          }
+          className="flex-column align-items-stretch"
+          heading="Related-content index"
+          subHeading={`${indexSummary}. Generate embeddings after installing the model. Unchanged images are skipped.`}
         >
-          <div className="d-flex align-items-center flex-wrap justify-content-end">
-            <Badge className="mr-2" variant={isRemote ? "info" : "secondary"}>
-              {isRemote ? "Remote" : "Local"}
-            </Badge>
-            <Badge
-              className="mr-2"
-              variant={status?.workerOK ? "success" : "secondary"}
-            >
-              {loading
-                ? "Checking"
-                : status?.workerOK
-                  ? "Worker ready"
-                  : "Worker unavailable"}
-            </Badge>
-            <Badge
-              className="mr-2"
-              variant={status?.installed ? "success" : "secondary"}
-            >
-              {status?.installed ? "Model installed" : "Model not installed"}
-            </Badge>
-            {isRemote ? (
-              <Badge variant="secondary">Model managed remotely</Badge>
-            ) : (
+          <div className="mt-3 w-100">
+            {workerStatus(status)}
+            {(statusError || status?.workerError) && (
+              <Alert variant="warning" className="mt-2">
+                {statusError || status?.workerError}
+              </Alert>
+            )}
+            <div className="settings-actions mt-3">
+              {!isRemote && !status?.installed && (
+                <Button
+                  variant="secondary"
+                  disabled={loading || submitting || !status?.workerOK}
+                  onClick={() => void startJob("download")}
+                >
+                  Download EVA02 model
+                </Button>
+              )}
+              <Button
+                disabled={
+                  loading ||
+                  submitting ||
+                  !status?.installed ||
+                  !status.workerOK
+                }
+                onClick={() => void startJob("index")}
+              >
+                Generate visual embeddings
+              </Button>
               <Button
                 variant="secondary"
-                disabled={submitting || !status?.workerOK}
-                onClick={() => void startJob("download")}
+                disabled={loading || submitting}
+                onClick={() => void refresh(!configLoaded)}
               >
-                {status?.installed ? "Re-download model" : "Download model"}
+                Refresh status
               </Button>
-            )}
+            </div>
+            <p className="small text-muted mt-2 mb-0">
+              For pHash matching, generate Image perceptual hashes in{" "}
+              <Link to="/settings?tab=tasks">Tasks</Link>. The EVA02 index stays
+              on this server when inference runs remotely.
+            </p>
+            <details className="settings-details mt-3">
+              <summary>EVA02 model details</summary>
+              <div className="pt-2">
+                {status && (
+                  <p className="text-break">
+                    {status.model} · {status.revision} · {status.dimensions}{" "}
+                    dimensions
+                  </p>
+                )}
+                {status?.modelPath && (
+                  <p className="text-break">
+                    <code>{status.modelPath}</code>
+                  </p>
+                )}
+                {isRemote ? (
+                  <p className="mb-0">
+                    Install or update the model on the remote worker.
+                  </p>
+                ) : (
+                  <>
+                    <p>Model downloads start only when requested.</p>
+                    {status?.installed && (
+                      <Button
+                        variant="secondary"
+                        disabled={loading || submitting || !status.workerOK}
+                        onClick={() => void startJob("download")}
+                      >
+                        Re-download EVA02 model
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
+            </details>
           </div>
         </Setting>
-
         <Setting
           className="flex-column align-items-stretch"
           heading="Tagging defaults"
-          subHeading="Defaults used by Image Metadata inference and Video frame analysis. Camie/frame inference and EVA02 use independent thresholds; the per-category limit is shared."
+          subHeading="Server-wide defaults for Image Tagging and Video frame analysis. Higher thresholds keep fewer predictions. Filename metadata works without Camie."
         >
-          <div className="mt-3 w-100">
-            <p>
-              <Link to="/settings?tab=system#association-inheritance-settings">
-                {intl.formatMessage({
-                  id: "config.association_inheritance.review.shared_defaults",
-                })}
-              </Link>
-            </p>
-            <div className="d-flex flex-wrap align-items-end mb-2">
-              <Form.Group className="mr-3 mb-2">
-                <Form.Label>Camie / frame threshold</Form.Label>
+          <Form
+            className="mt-3 w-100"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (validConfig && !savingCamie) void saveCamieConfig();
+            }}
+          >
+            {configError && <Alert variant="danger">{configError}</Alert>}
+            <fieldset disabled={loading || savingCamie || !configLoaded}>
+              <Row>
+                <Form.Group
+                  as={Col}
+                  xs={12}
+                  md={4}
+                  controlId="tagging-camie-threshold"
+                >
+                  <Form.Label>Camie / frame threshold</Form.Label>
+                  <Form.Control
+                    className="text-input"
+                    type="number"
+                    min="0.001"
+                    max="0.999"
+                    step="any"
+                    value={camieConfig.threshold}
+                    required
+                    onChange={(event) =>
+                      setCamieConfig({
+                        ...camieConfig,
+                        threshold: Number(event.currentTarget.value),
+                      })
+                    }
+                  />
+                </Form.Group>
+                <Form.Group
+                  as={Col}
+                  xs={12}
+                  md={4}
+                  controlId="tagging-eva02-threshold"
+                >
+                  <Form.Label>EVA02 tagging threshold</Form.Label>
+                  <Form.Control
+                    className="text-input"
+                    type="number"
+                    min="0.001"
+                    max="0.999"
+                    step="any"
+                    value={camieConfig.eva02Threshold}
+                    required
+                    onChange={(event) =>
+                      setCamieConfig({
+                        ...camieConfig,
+                        eva02Threshold: Number(event.currentTarget.value),
+                      })
+                    }
+                  />
+                </Form.Group>
+                <Form.Group
+                  as={Col}
+                  xs={12}
+                  md={4}
+                  controlId="tagging-category-limit"
+                >
+                  <Form.Label>Per-category limit</Form.Label>
+                  <Form.Control
+                    className="text-input"
+                    type="number"
+                    min="1"
+                    max="200"
+                    step="1"
+                    value={camieConfig.limit}
+                    required
+                    onChange={(event) =>
+                      setCamieConfig({
+                        ...camieConfig,
+                        limit: Number(event.currentTarget.value),
+                      })
+                    }
+                  />
+                </Form.Group>
+              </Row>
+              <Form.Check
+                className="mb-2"
+                type="checkbox"
+                id="camie-filename-enabled"
+                checked={camieConfig.filenameEnabled}
+                onChange={(event) =>
+                  setCamieConfig({
+                    ...camieConfig,
+                    filenameEnabled: event.currentTarget.checked,
+                  })
+                }
+                label="Read metadata from filenames"
+              />
+              <Form.Group controlId="camie-filename-layout">
+                <Form.Label>Filename layout</Form.Label>
                 <Form.Control
-                  type="number"
-                  min="0.001"
-                  max="0.999"
-                  step="0.01"
-                  value={camieConfig.threshold}
+                  className="text-input"
+                  type="text"
+                  disabled={!camieConfig.filenameEnabled}
+                  value={camieConfig.filenameLayout}
                   onChange={(event) =>
-                    setCamieConfig((current) => ({
-                      ...current,
-                      threshold: Number.parseFloat(event.currentTarget.value),
-                    }))
+                    setCamieConfig({
+                      ...camieConfig,
+                      filenameLayout: event.currentTarget.value,
+                    })
                   }
-                  style={{ width: "10rem" }}
                 />
+                <Form.Text className="text-muted">
+                  Supported tokens: <code>%artist%</code>,{" "}
+                  <code>%copyright%</code>, <code>%character%</code>,{" "}
+                  <code>%md5%</code>, <code>%ext%</code>. Matched filename
+                  identities take priority over inferred identities.
+                </Form.Text>
               </Form.Group>
-              <Form.Group className="mr-3 mb-2">
-                <Form.Label>EVA02 threshold</Form.Label>
-                <Form.Control
-                  type="number"
-                  min="0.001"
-                  max="0.999"
-                  step="0.01"
-                  value={camieConfig.eva02Threshold}
-                  onChange={(event) =>
-                    setCamieConfig((current) => ({
-                      ...current,
-                      eva02Threshold: Number.parseFloat(
-                        event.currentTarget.value
-                      ),
-                    }))
-                  }
-                  style={{ width: "9rem" }}
-                />
-              </Form.Group>
-              <Form.Group className="mb-2">
-                <Form.Label>Per-category limit</Form.Label>
-                <Form.Control
-                  type="number"
-                  min="1"
-                  max="200"
-                  value={camieConfig.limit}
-                  onChange={(event) =>
-                    setCamieConfig((current) => ({
-                      ...current,
-                      limit: Number.parseInt(event.currentTarget.value, 10),
-                    }))
-                  }
-                  style={{ width: "9rem" }}
-                />
-              </Form.Group>
-            </div>
-            <div className="d-flex justify-content-end mb-2">
-              <Button
-                variant="secondary"
-                disabled={savingCamie}
-                onClick={() => void saveCamieConfig()}
-              >
-                {savingCamie ? "Saving..." : "Save tagging defaults"}
-              </Button>
-            </div>
-          </div>
+              <p className="small">
+                <Link to="/settings?tab=library#association-inheritance-settings">
+                  {intl.formatMessage({
+                    id: "config.association_inheritance.review.shared_defaults",
+                  })}
+                </Link>
+              </p>
+              <div className="settings-actions">
+                <Button type="submit" disabled={!validConfig || savingCamie}>
+                  {savingCamie ? "Saving…" : "Save tagging defaults"}
+                </Button>
+              </div>
+            </fieldset>
+          </Form>
         </Setting>
-
         <Setting
           className="flex-column align-items-stretch"
           heading="Camie Tagger v2 (optional)"
-          subHeading={camieSubHeading}
+          subHeading="Adds Character, Copyright, Artist and general Tag predictions. Supply its model and metadata on the selected worker; Camie is never downloaded automatically."
         >
           <div className="mt-3 w-100">
-            <div className="d-flex align-items-center flex-wrap mb-2">
-              <Badge
-                className="mr-2 mb-1"
-                variant={isCamieRemote ? "info" : "secondary"}
-              >
-                {isCamieRemote ? "Remote" : "Local"}
-              </Badge>
-              <Badge
-                className="mr-2 mb-1"
-                variant={camieStatus?.workerOK ? "success" : "secondary"}
-              >
-                {loading
-                  ? "Checking"
-                  : camieStatus?.workerOK
-                    ? "Worker ready"
-                    : "Worker unavailable"}
-              </Badge>
-              <Badge
-                className="mr-2 mb-1"
-                variant={camieStatus?.installed ? "success" : "secondary"}
-              >
-                {camieStatus?.installed ? "Model ready" : "Model files missing"}
-              </Badge>
-              {camieStatus?.tagCount ? (
-                <Badge className="mb-1" variant="secondary">
-                  {camieStatus.tagCount.toLocaleString()} tags
-                </Badge>
-              ) : null}
-            </div>
-            {camieStatus?.modelPath ? (
-              <div className="mb-2 text-break">
-                <strong>Model:</strong> <code>{camieStatus.modelPath}</code>
+            {workerStatus(camieStatus)}
+            {(camieStatusError || camieStatus?.workerError) && (
+              <Alert variant="warning" className="mt-2">
+                {camieStatusError || camieStatus?.workerError}
+              </Alert>
+            )}
+            <details className="settings-details mt-3">
+              <summary>Camie model setup</summary>
+              <div className="pt-2 text-break">
+                {camieStatus?.modelPath && (
+                  <p>
+                    <strong>Model:</strong> <code>{camieStatus.modelPath}</code>
+                  </p>
+                )}
+                {camieStatus?.metadataPath && (
+                  <p>
+                    <strong>Metadata:</strong>{" "}
+                    <code>{camieStatus.metadataPath}</code>
+                  </p>
+                )}
+                <p className="mb-0">
+                  Install <code>camie-tagger-v2.onnx</code> and{" "}
+                  <code>camie-tagger-v2-metadata.json</code>
+                  {camieStatus?.backend === "remote"
+                    ? " on the remote worker"
+                    : " on this server"}
+                  , then refresh status.
+                  {camieStatus?.tagCount
+                    ? ` ${camieStatus.tagCount.toLocaleString()} model tags detected.`
+                    : ""}
+                </p>
               </div>
-            ) : null}
-            {camieStatus?.metadataPath ? (
-              <div className="text-break mb-3">
-                <strong>Metadata:</strong>{" "}
-                <code>{camieStatus.metadataPath}</code>
-              </div>
-            ) : null}
-            <Form.Check
-              className="mb-2"
-              type="checkbox"
-              id="camie-filename-enabled"
-              checked={camieConfig.filenameEnabled}
-              onChange={(event) =>
-                setCamieConfig((current) => ({
-                  ...current,
-                  filenameEnabled: event.currentTarget.checked,
-                }))
-              }
-              label="Use filename metadata together with Camie predictions"
-            />
-            <Form.Group className="mb-2">
-              <Form.Label>Filename layout</Form.Label>
-              <Form.Control
-                type="text"
-                disabled={!camieConfig.filenameEnabled}
-                value={camieConfig.filenameLayout}
-                onChange={(event) =>
-                  setCamieConfig((current) => ({
-                    ...current,
-                    filenameLayout: event.currentTarget.value,
-                  }))
-                }
-              />
-              <Form.Text className="text-muted">
-                Supported tokens: <code>%artist%</code>,{" "}
-                <code>%copyright%</code>, <code>%character%</code>,{" "}
-                <code>%md5%</code>, and <code>%ext%</code>. The default matches
-                Imgbrd-style names such as{" "}
-                <code>[%artist%](%copyright%).%character%_%md5%.%ext%</code>.
-              </Form.Text>
-            </Form.Group>
-            <div className="d-flex justify-content-end mb-2">
-              <Button
-                variant="secondary"
-                disabled={savingCamie}
-                onClick={() => void saveCamieConfig()}
-              >
-                {savingCamie ? "Saving..." : "Save Camie filename settings"}
-              </Button>
-            </div>
-            {!camieStatus?.installed && camieStatus?.workerOK ? (
-              <div className="mt-2 text-muted">
-                Place <code>camie-tagger-v2.onnx</code> and{" "}
-                <code>camie-tagger-v2-metadata.json</code> at the paths above,
-                then refresh status. Camie is never downloaded automatically.
-              </div>
-            ) : null}
+            </details>
           </div>
-        </Setting>
-
-        <Setting
-          heading="Image similarity index"
-          subHeading={`${indexSummary}. Embeddings are regenerated only when the source image changes.`}
-        >
-          <div className="d-flex align-items-center flex-wrap justify-content-end">
-            {status ? (
-              <Badge
-                className="mr-2"
-                variant={
-                  status.indexedImages === status.totalImages &&
-                  status.totalImages > 0
-                    ? "success"
-                    : "secondary"
-                }
-              >
-                {status.dimensions}D EVA02
-              </Badge>
-            ) : null}
-            <Button
-              variant="primary"
-              disabled={submitting || !status?.installed}
-              onClick={() => void startJob("index")}
-            >
-              Generate visual embeddings
-            </Button>
-          </div>
-        </Setting>
-
-        <Setting
-          heading="Image Find similar"
-          subHeading="After indexing, the Find similar button on image cards uses the EVA02 embedding index and returns nearest matches first. pHash remains separate for perceptual duplicate-style matching."
-        >
-          <Button
-            variant="secondary"
-            disabled={loading}
-            onClick={() => void refresh()}
-          >
-            Refresh status
-          </Button>
         </Setting>
       </Card>
     </div>

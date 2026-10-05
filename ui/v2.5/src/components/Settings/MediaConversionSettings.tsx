@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Alert, Button, Card, Form, Spinner, Table } from "react-bootstrap";
 import { useToast } from "src/hooks/Toast";
+import { Link } from "react-router-dom";
+import { ProcessingBackendOptions } from "../Shared/ProcessingBackendOptions";
 import {
   conversionEndpoint,
   conversionResponse,
@@ -216,49 +218,54 @@ export const MediaConversionSettings: React.FC = () => {
     <div className="setting-section" id="media-converter">
       <h1>Media converter</h1>
       <div className="sub-heading">
-        Choose the output, quality, effort, decode speed and safety options for
-        each input format. Single and batch conversions use these saved
-        defaults.
+        Set server-wide defaults for new conversion jobs. Review estimated
+        savings or run a verified trial from selected media before replacing
+        files. Original-file restore history is available in the converter.
       </div>
       <Card className="p-3">
-        <h5>Compression savings and trials</h5>
+        <h2 className="h5">Compression savings</h2>
         <SavingsThresholdFields
           value={savings}
           onChange={setSavings}
           disabled={saving || !settings}
           prefix="converter-global"
         />
-        <Form.Group controlId="converter-trial-cache">
-          <Form.Label>Trial cache limit (GiB)</Form.Label>
-          <Form.Control
-            className="text-input"
-            type="number"
-            min={0}
-            step={0.25}
-            value={trialCacheGiB}
-            disabled={saving || !settings}
-            onChange={(e) => setTrialCacheGiB(Number(e.target.value))}
-          />
-          <Form.Text className="text-muted">
-            Separate from original-file restore backups. Zero disables saved
-            trials; expired outputs are cleaned during startup and converter
-            jobs. Reducing the limit evicts oldest reviewed outputs on the next
-            job.
-          </Form.Text>
-        </Form.Group>
-        <Form.Group controlId="converter-trial-expiry">
-          <Form.Label>Trial expiry (hours)</Form.Label>
-          <Form.Control
-            className="text-input"
-            type="number"
-            min={1}
-            max={168}
-            step={1}
-            value={trialTTLHours}
-            disabled={saving || !settings}
-            onChange={(e) => setTrialTTLHours(Number(e.target.value))}
-          />
-        </Form.Group>
+        <details className="settings-details mb-3">
+          <summary>Saved trial storage and expiry</summary>
+          <div className="pt-3">
+            <Form.Group controlId="converter-trial-cache">
+              <Form.Label>Trial cache limit (GiB)</Form.Label>
+              <Form.Control
+                className="text-input"
+                type="number"
+                min={0}
+                step={0.25}
+                value={trialCacheGiB}
+                disabled={saving || !settings}
+                onChange={(e) => setTrialCacheGiB(Number(e.target.value))}
+              />
+              <Form.Text className="text-muted">
+                Separate from original-file restore backups. Zero disables saved
+                trials; expired outputs are cleaned during startup and converter
+                jobs. Reducing the limit evicts oldest reviewed outputs on the
+                next job.
+              </Form.Text>
+            </Form.Group>
+            <Form.Group controlId="converter-trial-expiry">
+              <Form.Label>Trial expiry (hours)</Form.Label>
+              <Form.Control
+                className="text-input"
+                type="number"
+                min={1}
+                max={168}
+                step={1}
+                value={trialTTLHours}
+                disabled={saving || !settings}
+                onChange={(e) => setTrialTTLHours(Number(e.target.value))}
+              />
+            </Form.Group>
+          </div>
+        </details>
         <Form.Group controlId="converter-default-backend">
           <Form.Label>Run on</Form.Label>
           <Form.Control
@@ -268,22 +275,22 @@ export const MediaConversionSettings: React.FC = () => {
             disabled={saving || !settings}
             onChange={(e) => setBackend(e.target.value)}
           >
-            <option value="auto">Automatic — prefer remote worker</option>
-            <option value="local">This StashBooru server</option>
-            <option value="remote">Remote inference worker</option>
+            <ProcessingBackendOptions />
           </Form.Control>
         </Form.Group>
         <p>
           Automatic mode prefers the shared remote inference worker configured
           above when it is reachable. Otherwise, conversions run on this server.
-          The processor defaults to <strong>Prefer GPU, otherwise CPU</strong>.
+          Explicit server-only and remote-only choices do not fall back. The
+          processor defaults to <strong>Prefer GPU, otherwise CPU</strong>.
         </p>
         <p className="text-muted">
           Animated PNG and WebP are detected separately from still images.
           Formats without a specific rule use Other images or Other videos.
           Decode-speed defaults stay editable independently of the selected
           worker; unsupported controls are skipped at conversion time. Existing
-          library animation inspection is available from Tasks.
+          library animation inspection is available from{" "}
+          <Link to="/settings?tab=tasks#animation-inspection-task">Tasks</Link>.
         </p>
         {error && <Alert variant="danger">{error}</Alert>}
         {workerCapabilityError && (
@@ -296,6 +303,7 @@ export const MediaConversionSettings: React.FC = () => {
         {!settings && !error && <Spinner animation="border" role="status" />}
         {settings && (
           <>
+            <h2 className="h5">Format rules</h2>
             <Table responsive size="sm">
               <thead>
                 <tr>
@@ -617,7 +625,7 @@ export const MediaConversionSettings: React.FC = () => {
                 }
                 onClick={() => void save()}
               >
-                {saving ? "Saving…" : "Save format defaults"}
+                {saving ? "Saving…" : "Save conversion defaults"}
               </Button>
             </div>
             <Form.Text className="text-muted">

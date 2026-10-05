@@ -9,7 +9,7 @@ continues past individual failures; each failed item reports its reason.
 
 ## Defaults and worker selection
 
-Open **Settings → System → Media converter**, just below the tagging settings,
+Open **Settings → Processing → Media converter**, in the processing section,
 to set **input format → output format, quality, effort and decode speed** rules and **Run on**
 (automatic/local/remote). The conversion dialog defaults to **Saved defaults**, showing the resolved
 output formats with a link back to these settings. A mixed batch resolves each
@@ -34,7 +34,7 @@ configured remote tagging worker first, using the existing URL and bearer token.
 A working remote converter is used without starting local codec probes. If the
 remote is unconfigured or unavailable (including a 10-second probe timeout),
 the converter uses this server and displays the fallback. Explicit local/remote
-choices are in System settings. **Recheck worker** refreshes the selection; it is also
+choices are in Processing settings. **Recheck worker** refreshes the selection; it is also
 checked again when a job starts. A running batch keeps its selected worker and
 the format defaults read at its start.
 
@@ -215,7 +215,7 @@ absolute path when launching StashBooru elsewhere. `STASH_PYTHON` overrides
 `python3`. StashBooru's configured FFmpeg/ffprobe paths are passed to the local
 worker.
 
-Remote conversion reuses the **Visual Similarity remote tagging URL and bearer
+Remote conversion reuses the **Processing worker URL and bearer
 token**. Update the remote checkout to the same branch/version and restart
 `scripts/visual_embedding_server.py`; keep `media_conversion_worker.py` and
 `media_upscale_worker.py` beside it.
