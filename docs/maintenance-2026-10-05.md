@@ -2,6 +2,7 @@
 
 Baseline: `develop` at `5162463028e69420f32c7f5ff629bb36b9057008`, after PR #139.
 Branch: `maintenance/features-ui-settings-20261005`.
+[PR #140](https://github.com/Dusky-dev/StashBooru/pull/140).
 Owner scope: clean up the added features, clarify their operation, unify settings
 and styling, then publish StashBooru 1.0 with independent update checking.
 
