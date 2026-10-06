@@ -35,7 +35,7 @@ const AutoTagOptions: React.FC<IAutoTagOptions> = ({
   options,
   setOptions: setOptionsState,
 }) => {
-  const { performers, studios, tags } = options;
+  const { performers, studios, tags, copyrights } = options;
   const wildcard = ["*"];
 
   function set(v?: boolean) {
@@ -62,6 +62,13 @@ const AutoTagOptions: React.FC<IAutoTagOptions> = ({
         checked={!!studios?.length}
         headingID="studios"
         onChange={(v) => setOptions({ studios: set(v) })}
+      />
+      <BooleanSetting
+        id="autotag-copyrights"
+        checked={!!copyrights?.length}
+        headingID="copyrights"
+        subHeading="Match Copyright names and aliases in Image and Video paths."
+        onChange={(v) => setOptions({ copyrights: set(v) })}
       />
       <BooleanSetting
         id="autotag-tags"
@@ -105,6 +112,7 @@ export const LibraryTasks: React.FC = () => {
   );
   const [autoTagOptions, setAutoTagOptions] =
     useState<GQL.AutoTagMetadataInput>({
+      copyrights: ["*"],
       performers: ["*"],
       studios: ["*"],
       tags: ["*"],

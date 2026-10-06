@@ -157,6 +157,59 @@ SELECT 1 FROM copyright_aliases a WHERE a.copyright_id = c.id AND a.alias LIKE ?
 		return nil, 0, err
 	}
 
+	if ff.GetSort("sort_name") == "hierarchy" {
+		// Build one sortable path per possible root. The minimum path makes
+		// multi-parent Copyrights deterministic while keeping every parent before
+		// its descendants. The relation-order position is respected when present;
+		// otherwise siblings use their configured sort name and ID.
+		query := `WITH RECURSIVE copyright_paths(id, root_key, path_key) AS (
+SELECT c.id,
+       LOWER(COALESCE(NULLIF(c.sort_name, ''), c.name)) || ':' || printf('%010d', c.id),
+       LOWER(COALESCE(NULLIF(c.sort_name, ''), c.name)) || ':' || printf('%010d', c.id)
+FROM copyrights c
+WHERE NOT EXISTS (SELECT 1 FROM copyright_relations root_relation WHERE root_relation.child_id = c.id)
+UNION ALL
+SELECT relation.child_id,
+       paths.root_key,
+       paths.path_key || '/' ||
+       printf('%010d', COALESCE(relation_order.position, 2147483647)) || ':' ||
+       LOWER(COALESCE(NULLIF(child.sort_name, ''), child.name)) || ':' ||
+       printf('%010d', child.id)
+FROM copyright_paths paths
+INNER JOIN copyright_relations relation ON relation.parent_id = paths.id
+INNER JOIN copyrights child ON child.id = relation.child_id
+LEFT JOIN copyright_relation_order relation_order
+  ON relation_order.parent_id = relation.parent_id AND relation_order.child_id = relation.child_id
+), copyright_hierarchy_order AS (
+SELECT id, MIN(root_key) AS root_key, MIN(path_key) AS path_key
+FROM copyright_paths
+GROUP BY id
+)
+SELECT c.id, c.name, c.sort_name, c.description, c.favorite, c.created_at, c.updated_at
+FROM copyrights c
+LEFT JOIN copyright_hierarchy_order hierarchy_order ON hierarchy_order.id = c.id` + where +
+			" ORDER BY hierarchy_order.root_key COLLATE NOCASE ASC, hierarchy_order.path_key COLLATE NOCASE ASC, c.id ASC"
+		queryArgs := append([]interface{}{}, args...)
+		if !ff.IsGetAll() {
+			pageSize := ff.GetPageSize()
+			query += " LIMIT ? OFFSET ?"
+			queryArgs = append(queryArgs, pageSize, (ff.GetPage()-1)*pageSize)
+		}
+		var rows []copyrightRow
+		if err := dbWrapper.Select(ctx, &rows, query, queryArgs...); err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, 0, err
+		}
+		ret := make([]*models.Copyright, 0, len(rows))
+		for _, row := range rows {
+			item := row.model()
+			if err := s.loadAliases(ctx, item); err != nil {
+				return nil, 0, err
+			}
+			ret = append(ret, item)
+		}
+		return ret, count, nil
+	}
+
 	sortColumn := "COALESCE(NULLIF(c.sort_name, ''), c.name)"
 	switch ff.GetSort("sort_name") {
 	case "name":

@@ -61,3 +61,12 @@ func TestAssociationInheritanceSettingsDefaultToEnabledAndCanBeDisabled(t *testi
 	assert.True(t, settings.Copyrights)
 	assert.True(t, settings.Tags)
 }
+
+func TestCopyrightAutoTagDefaults(t *testing.T) {
+	c := InitializeEmpty()
+	c.SetInterface(DefaultAutoTagSettings, &AutoTagMetadataOptions{Copyrights: []string{"*"}, Tags: []string{}})
+	assert.Equal(t, []string{"*"}, c.GetDefaultAutoTagSettings().Copyrights)
+	c.SetInterface(DefaultAutoTagSettings, map[string]interface{}{"performers": []string{"*"}})
+	assert.Empty(t, c.GetDefaultAutoTagSettings().Copyrights, "old defaults do not silently enable Copyrights")
+	assert.Equal(t, []string{"*"}, c.GetDefaultAutoTagSettings().Performers)
+}

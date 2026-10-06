@@ -7,7 +7,7 @@
 | **All** | Browse Images and Videos together, with shared filters and typed selections. Individual Images and Videos pages remain available. |
 | **Settings → Library** | Media folders, scan rules and automatic ancestor/profile associations. Inheritance switches save automatically. |
 | **Settings → Processing** | Shared worker connection, similarity/tagging defaults, conversion rules and upscaling setup. Use each section's Save button. |
-| **Settings → Tasks** | Jobs, generated files/hashes, animation inspection, association review, Video overlap indexing and database management. |
+| **Settings → Tasks** | Jobs, generated files/hashes, animation inspection, Character merging, association review, Video overlap indexing and database management. |
 | **Settings → System** | Application paths, FFmpeg, transcodes and other server settings. |
 
 Processing defaults apply to new jobs. Conversion/tagging defaults and model paths
@@ -44,11 +44,29 @@ Copyrights, Tags, Artists and Character variants retain native hierarchy links.
 Library inheritance switches control effective ancestor/profile associations.
 Removing a child does not remove an explicitly assigned parent. Use the Tasks
 association preview to inspect the effects of changing shared defaults.
+The Copyright list defaults to **Hierarchy** sorting, which keeps each Main
+Copyright above its Sub-Copyrights and respects saved sibling order. Name,
+Sort Name, count and date sorts remain available when a flat list is wanted.
 
 Image Tagging and Video frame analysis can review filename, lookup and model
 results before applying them. Filename metadata works without Camie. Camie is
 optional and requires its model and metadata files on the selected worker. Tagging
 thresholds control predictions; they do not tune Find similar distance.
+
+### Character cleanup and Copyright auto-tagging
+
+In **Settings → Tasks → Merge duplicate Characters**, preview matching full names,
+reversed first/last names and unique short names such as “Miku” / “Hatsune Miku”.
+Both entries must have identical directly assigned native Copyrights. Missing
+context, ambiguous short names, variants and conflicting profiles are skipped with
+reasons. Review the surviving names and Copyrights, then apply eligible groups as
+a cancellable job. Media links and compatible profile values are retained; removed
+names become Copyright-qualified aliases. See [matching rules and limits](character-dedup.md).
+
+In Tasks' **Advanced mode → Auto Tag**, enable **Copyrights** to match Copyright
+names/aliases against Image and Video paths. **Selective Auto Tag** limits the
+paths searched. This creates native Copyright links; Galleries have no Copyright
+relationship. Existing saved task options keep Copyrights off until enabled.
 
 ## Conversion, upscaling and restoration
 

@@ -106,7 +106,14 @@ const client = new ApolloClient({
           data = { configuration: config };
         else if (operation.operationName === "JobQueue")
           data = { jobQueue: [] };
-        else if (operation.operationName === "ConfigureDefaults") {
+        else if (operation.operationName === "ConfigureUI") {
+          changes.push({ ui: operation.variables.partial });
+          Object.assign(config.ui, operation.variables.partial);
+          data = { configureUI: config.ui };
+        } else if (operation.operationName === "MetadataAutoTag") {
+          changes.push({ autoTagRun: operation.variables.input });
+          data = { metadataAutoTag: "17" };
+        } else if (operation.operationName === "ConfigureDefaults") {
           changes.push(operation.variables.input);
           Object.assign(config.defaults, operation.variables.input);
           data = { configureDefaults: config.defaults };
