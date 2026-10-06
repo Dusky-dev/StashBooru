@@ -7,6 +7,7 @@ RUN apk add --no-cache make git
 COPY ./ui/v2.5/package.json ./ui/v2.5/pnpm-lock.yaml /stash/ui/v2.5/
 WORKDIR /stash
 COPY Makefile /stash/
+COPY ./internal/build/stashbooru-version.txt /stash/internal/build/stashbooru-version.txt
 COPY ./graphql /stash/graphql/
 COPY ./ui /stash/ui/
 # pnpm install with npm
