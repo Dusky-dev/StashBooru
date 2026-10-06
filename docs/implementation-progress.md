@@ -5,7 +5,8 @@ Updated: 2026-10-06
 Current baseline: `develop` at `f5579d46940dcc8ad6a96d69c264908f36be85d6`
 (PR #140 merged; StashBooru 1.0.0 released). Current owner-requested package:
 conservative Character duplicate merging and native Copyright task auto-tagging,
-on `feat/character-dedup-copyright-autotag-20261006`.
+on `feat/character-dedup-copyright-autotag-20261006`. Published as [PR #141](https://github.com/Dusky-dev/StashBooru/pull/141)
+at remote head `8cbbef390f481f863915482f10978572efb0b10d`.
 See [Character matching notes](character-dedup.md) and [feature guide](features.md).
 P11 model/GPU acceptance and P12/P13 production activation gates remain open.
 
