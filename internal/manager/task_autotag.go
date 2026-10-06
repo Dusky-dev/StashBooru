@@ -33,12 +33,13 @@ func (j *autoTagJob) Execute(ctx context.Context, progress *job.Progress) error 
 	if err != nil {
 		return err
 	}
-	if len(input.Performers)+len(input.Studios)+len(input.Tags) == 0 {
+	switch {
+	case len(input.Performers)+len(input.Studios)+len(input.Tags) == 0:
 		progress.SetTotal(0)
-	} else if j.isFileBasedAutoTag(input) {
+	case j.isFileBasedAutoTag(input):
 		// doing file-based auto-tag
 		j.autoTagFiles(ctx, progress, input.Paths, len(input.Performers) > 0, len(input.Studios) > 0, len(input.Tags) > 0)
-	} else {
+	default:
 		// doing specific performer/studio/tag auto-tag
 		j.autoTagSpecific(ctx, progress)
 	}
