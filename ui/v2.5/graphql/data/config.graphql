@@ -197,6 +197,7 @@ fragment ConfigDefaultSettingsData on ConfigDefaultSettingsResult {
   }
 
   autoTag {
+    copyrights
     performers
     studios
     tags

@@ -222,6 +222,9 @@ func Initialize() (*Server, error) {
 	r.Mount("/downloads", server.getDownloadsRoutes())
 
 	inheritanceRoutes := newAssociationInheritanceRoutes(repo, cfg, mgr.JobManager)
+	dedupRoutes := characterDedupRoutes{repository: repo, jobs: mgr.JobManager}
+	r.Get("/character-dedup", dedupRoutes.Get)
+	r.Post("/character-dedup", dedupRoutes.Post)
 	r.Get("/association-inheritance", inheritanceRoutes.Get)
 	r.Post("/association-inheritance", inheritanceRoutes.Post)
 	r.Mount("/plugin", server.getPluginRoutes())

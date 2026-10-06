@@ -156,4 +156,15 @@ UPDATE copyrights SET created_at = '2026-01-01 00:00:00', updated_at = '2026-01-
 	require.Equal(t, 1, total)
 	require.Len(t, items, 1)
 	require.Equal(t, 2, items[0].ID)
+
+	// Alpha and Beta are children of Zulu. Flat alphabetical sorting puts both
+	// children above the parent; hierarchy sorting keeps the parent first and
+	// follows the explicitly saved sibling order (Beta, then Alpha).
+	_, err = tx.Exec(`INSERT INTO copyright_relations (parent_id, child_id) VALUES (1, 2), (1, 3);
+INSERT INTO copyright_relation_order (parent_id, child_id, position) VALUES (1, 3, 0), (1, 2, 1)`)
+	require.NoError(t, err)
+	hierarchySort := "hierarchy"
+	hierarchyItems, _, err := store.Query(ctx, &models.FindFilterType{Sort: &hierarchySort})
+	require.NoError(t, err)
+	require.Equal(t, []int{4, 1, 3, 2}, []int{hierarchyItems[0].ID, hierarchyItems[1].ID, hierarchyItems[2].ID, hierarchyItems[3].ID})
 }

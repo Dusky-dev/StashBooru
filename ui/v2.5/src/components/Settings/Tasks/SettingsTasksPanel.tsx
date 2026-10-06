@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useIntl } from "react-intl";
 import { LoadingIndicator } from "src/components/Shared/LoadingIndicator";
+import { CharacterDedupTask } from "./CharacterDedupTask";
 import { LibraryTasks } from "./LibraryTasks";
 import { AnimationInspectionTask } from "./AnimationInspectionTask";
 import { AssociationInheritanceTask } from "./AssociationInheritanceTask";
@@ -41,6 +42,8 @@ export const SettingsTasksPanel: React.FC = () => {
 
       <div className="tasks-panel-tasks">
         <LibraryTasks />
+        <hr />
+        <CharacterDedupTask />
         <hr />
         <AnimationInspectionTask />
         <hr />

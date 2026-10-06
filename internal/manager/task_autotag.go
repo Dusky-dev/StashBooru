@@ -29,12 +29,22 @@ func (j *autoTagJob) Execute(ctx context.Context, progress *job.Progress) error 
 	begin := time.Now()
 
 	input := j.input
-	if j.isFileBasedAutoTag(input) {
+	copyrights, err := j.findAutoTagCopyrights(ctx)
+	if err != nil {
+		return err
+	}
+	if len(input.Performers)+len(input.Studios)+len(input.Tags) == 0 {
+		progress.SetTotal(0)
+	} else if j.isFileBasedAutoTag(input) {
 		// doing file-based auto-tag
 		j.autoTagFiles(ctx, progress, input.Paths, len(input.Performers) > 0, len(input.Studios) > 0, len(input.Tags) > 0)
 	} else {
 		// doing specific performer/studio/tag auto-tag
 		j.autoTagSpecific(ctx, progress)
+	}
+
+	if err := j.autoTagCopyrights(ctx, progress, copyrights); err != nil {
+		return err
 	}
 
 	logger.Infof("Finished auto-tag after %s", time.Since(begin).String())

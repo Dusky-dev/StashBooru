@@ -1388,6 +1388,7 @@
   "name": "Name",
   "sort_name": "Sort Name",
   "copyright_hierarchy": {
+    "tree_sort": "Hierarchy",
     "sort_name_label": "Sort alphabetically as (optional)",
     "sort_name_help": "Optional name used only for alphabetical sorting. For example, enter “Legend of Zelda” to sort “The Legend of Zelda” under L. Leave blank to use the displayed name.",
     "parent_help": "Choose the Main Copyrights this Copyright belongs to. The hierarchy can be nested to any depth; a Copyright cannot be its own ancestor.",

@@ -28,4 +28,6 @@ type AutoTagMetadataOptions struct {
 	Studios []string `json:"studios"`
 	// IDs of tags to tag files with, or "*" for all
 	Tags []string `json:"tags"`
+	// IDs of native Copyrights to tag Images and Videos with, or "*" for all.
+	Copyrights []string `json:"copyrights"`
 }
