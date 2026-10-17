@@ -1,6 +1,17 @@
 # Remote ML inference worker
 
-`visual_embedding_server.py` lets a separate machine perform EVA02 embedding inference for StashBooru and, optionally, Camie Tagger v2 knowledge inference. StashBooru still owns the job queue, image metadata, SQLite embedding index, and any future metadata application; the remote service only receives image bytes and returns inference results.
+`visual_embedding_server.py` lets a separate machine perform EVA02 inference,
+optional Camie Tagger v2 inference, conversion/upscaling, Video overlap sampling
+and optional mask restoration. StashBooru owns the job queue, catalogue, metadata
+application, index and file activation. The remote service processes bounded
+inputs and returns results; it does not modify the database.
+
+Use the server and companion modules from the same StashBooru version. Keep
+`visual_embedding_worker.py`, `camie_tagger_worker.py`,
+`media_conversion_worker.py`, `media_upscale_worker.py`,
+`video_overlap_worker.py` and `image_restoration_worker.py` beside the server.
+Some modules are imported on startup even when their optional model is unused;
+copying only the old embeddings server is insufficient.
 
 ## GPU machine setup
 
@@ -42,7 +53,9 @@ camie-tagger-v2.onnx
 camie-tagger-v2-metadata.json
 ```
 
-By default the worker expects them under its visual-embedding cache in a `camie` subdirectory. The exact expected paths are reported by `GET /v1/camie/status` and by **Settings > System > Visual Similarity**.
+By default the worker expects them under its visual-embedding cache in a `camie`
+subdirectory. The exact expected paths are reported by `GET /v1/camie/status` and
+by **Settings → Processing → Similarity and tagging**.
 
 You can also set explicit paths on the GPU machine:
 
@@ -55,15 +68,21 @@ Camie uses the same `STASH_EMBEDDING_ONNX_PROVIDERS` selection as EVA02, so a CU
 
 ## StashBooru setup
 
-Open **Settings > System > Visual Similarity** and enter the remote worker URL, for example:
+Open **Settings → Processing → Worker** and enter the remote worker URL, for example:
 
 ```text
 http://192.168.1.50:8000
 ```
 
-Enter the same bearer token if one was configured, then click **Save worker**. EVA02 status should change to **Remote**, **Worker ready**, and **Model installed**. The optional Camie section uses the same URL and token and reports whether its two manually supplied files are present.
+Enter the same bearer token if one was configured, then click **Save worker**.
+Check EVA02/Camie readiness under **Similarity and tagging**; each reports its
+own model status. Conversion, upscaling, overlap and restoration probe their own
+capabilities. A reachable embeddings worker does not prove that another codec or
+model is installed. The URL/token are shared; tool-specific Run on and hardware
+choices still apply. Local model path settings do not configure the remote host.
 
-Leave the URL blank and save to switch both inference clients back to local workers.
+Leave the URL blank and save to switch inference back to local workers. Explicit
+remote-only processing must instead report that no remote worker is configured.
 
 ## API
 
@@ -72,7 +91,7 @@ The same worker also supports local/remote media conversion. Update
 tools and Pillow. See [media converter setup and recovery](../docs/media-converter.md)
 for formats, CPU/GPU support, video upload limits and the converter endpoints.
 
-The service exposes these inference endpoints:
+The service exposes these endpoints:
 
 - `GET /v1/status` — reports EVA02 model compatibility/readiness.
 - `POST /v1/embed` — accepts one image as an `application/octet-stream` request body and returns the normalized 1024-D EVA02 embedding.
@@ -81,6 +100,10 @@ The service exposes these inference endpoints:
 - `POST /v1/convert` — streams verified converted bytes. Options are JSON in `X-Stash-Conversion-Options`; optional `upscaler` is `waifu2x` or `seedvr2`, with `upscaleScale` 2 or 4. Length, MD5 and base64 JSON metadata are returned in response headers.
 - `GET /v1/camie/status` — reports optional Camie model/metadata paths and readiness.
 - `POST /v1/camie/tag?threshold=0.492&limit=50` — accepts one image and returns Camie predictions with `name`, `category`, and `score`.
+- `GET /v1/video-overlap/capabilities` and `POST /v1/video-overlap/sample` — bounded
+  timestamped Video sampling, without a remote catalogue/index. See [P10 transport](../docs/p10-video-overlap.md).
+- `GET /v1/restoration/capabilities` and `POST /v1/restoration` — optional mask
+  restoration with an explicitly installed inpainting model. See [P11 setup and transport](../docs/p11-image-restoration.md).
 
 `limit` is a per-category result cap. StashBooru defaults to Camie's macro-optimized threshold of `0.492`.
 
@@ -90,9 +113,8 @@ Do not expose an unauthenticated worker directly to the public internet. Use a f
 
 ## Update an existing embeddings-only worker
 
-Replace the server and worker together, and put both converter modules in the
-same directory. Keep your existing model paths, token and launch environment.
-The provided bundle also includes the optional Camie module. Restart your worker:
+Replace the server and all companion modules listed above together. Keep your
+existing model paths, token and launch environment, then restart your worker:
 
 ```bash
 python3 visual_embedding_server.py --host 0.0.0.0 --port 8000 --max-upload-mb 4096
@@ -142,8 +164,14 @@ not promise a particular maximum resolution on an RTX 3060. Only installed
 models are advertised; Hugging Face offline mode is enabled during invocation.
 SeedVR2 upscaling and tagging are serialized to avoid concurrent model inference.
 
-Choose the upscaler in the converter, then 2× or 4×. This first integration
-supports **still images only** and verifies the requested dimensions and frame
-count before encoding. Animated/video SeedVR2 restoration is not enabled in this
-path. CLI adapters and validation are tested without weights; validate real GPU
-inference on the worker before applying a large batch.
+Open **Upscale images…** from an Image or selected Images, then choose the
+upscaler and 2× or 4×. Current UI separates upscaling from conversion. It creates
+new Images by default; explicit replacement uses its own restore cache. Configure
+browser job defaults separately from server model paths under **Settings →
+Processing → Upscaling**. Remote paths remain worker-owned environment settings.
+
+This integration supports **still images only** and verifies the requested
+dimensions and frame count before encoding. Animated/video SeedVR2 processing is
+not enabled in this path. CLI adapters and validation are tested without weights;
+validate real GPU inference on the worker before applying a large batch. SeedVR2
+upscaling is separate from P11 mask-based inpainting.

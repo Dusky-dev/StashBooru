@@ -1,5 +1,11 @@
 # StashBooru feature guide
 
+This guide covers the fork's user-facing additions to upstream Stash, including
+features predating P01–P13. See the [documentation index](README.md) for detailed
+setup and acceptance notes. It describes current `develop`; individual stable
+releases can lag behind it. The [booru browser roadmap](booru-browser-roadmap.md)
+describes requested future work separately.
+
 ## Where things live
 
 | Location | Use it for |
@@ -8,12 +14,27 @@
 | **Settings → Library** | Media folders, scan rules and automatic ancestor/profile associations. Inheritance switches save automatically. |
 | **Settings → Processing** | Shared worker connection, similarity/tagging defaults, conversion rules and upscaling setup. Use each section's Save button. |
 | **Settings → Tasks** | Jobs, generated files/hashes, animation inspection, Character merging, association review, Video overlap indexing and database management. |
+| **Settings → Tools** | Metadata Health, Alias Collision Inspector and EVA02 Visual Similarity Triage, including explicit add-only metadata copying. |
 | **Settings → System** | Application paths, FFmpeg, transcodes and other server settings. |
 
 Processing defaults apply to new jobs. Conversion/tagging defaults and model paths
 are saved on the server. Upscaling job defaults are saved in the current browser;
 their Save button does not change server paths. Old System bookmarks for moved
 sections redirect to the new location.
+
+## Browse a mixed library
+
+The navbar's **All** page uses native Image/Video filters, ordering, selections,
+cards and players. Equal numeric Image and Video IDs remain different selections.
+Images/Videos pages and entity-related media remain available. Grid, List, Wall
+and Tagger displays appear where supported; view/zoom and media-tab preferences
+are remembered per view. Primary file format is available for sorting Images and
+Videos and in bulk-edit filters. File properties appear in Details.
+
+Character cards use portrait artwork, Artists square artwork and Copyrights
+landscape artwork. Character Copyrights and Variants appear together. Native
+Video previews own the active player, stop on dismissal and advance through
+explicit navigation rather than cycling when playback ends. See [All page notes](p07-global-media.md).
 
 ## Find similar and compare
 
@@ -30,6 +51,12 @@ The shared Image comparison offers both images, slider, blink and a difference
 heatmap with highlighted regions. It compares bounded previews; it is not a
 byte-equality check or whole-animation verification. Automatic geometric alignment
 and Video-frame comparison are not currently included.
+
+**Settings → Tools → Visual Similarity Triage** uses EVA02 clusters, not pHash
+groups. It suggests a preferred Image and can explicitly add missing metadata to
+selected other members. It does not merge/delete Images; a connected cluster is
+not proof that every pair is a duplicate. The planned browser's pHash grouping
+and red disfavored-tag comparison are [separate work](booru-browser-roadmap.md#b05--phash-groups-compare-and-tag-warnings).
 
 ## Stacks and metadata
 
@@ -48,10 +75,37 @@ The Copyright list defaults to **Hierarchy** sorting, which keeps each Main
 Copyright above its Sub-Copyrights and respects saved sibling order. Name,
 Sort Name, count and date sorts remain available when a flat list is wanted.
 
-Image Tagging and Video frame analysis can review filename, lookup and model
-results before applying them. Filename metadata works without Camie. Camie is
-optional and requires its model and metadata files on the selected worker. Tagging
-thresholds control predictions; they do not tune Find similar distance.
+Copyrights have their own aliases, artwork, favorites and media/Character links;
+they remain separate from ordinary Tags. Multiple Artists can be attached to an
+Image/Video. Character variants keep their own profiles, and disambiguation can
+link to a native Copyright or Artist. The hierarchy's Main/Sub tabs, branch paths
+and descendant filters keep these identities separate. Artist context links do
+not imply authorship.
+
+Image Tagging reviews **Local → Booru → Camie → EVA02 → Library** sources. Video
+Tagging reviews **Local → Booru → Frames**. Only Local loads on opening; network
+lookups, inference and library suggestions are explicit. Select predictions and
+resolve ambiguous targets before applying the change plan. Filename identity
+metadata takes precedence in populated categories. Camie and EVA02 have independent
+thresholds; these do not tune Find similar distance. Bulk Image model tagging is
+in Generate; native Auto Tag matches names/paths without a model.
+
+See [metadata and tagging](metadata-and-tagging.md) for filename tokens, provider
+lookup behavior, model setup, direct/calculated relationships and ambiguity rules.
+Existing MD5 lookup enriches local media. Remote content browsing, follows and
+ignored/already-downloaded marks are not yet implemented.
+
+### Profile artwork and metadata diagnostics
+
+**Set image → From gallery…** offers a context-filtered, paged Image picker and
+crop/rotate/pan/zoom editor for profile artwork. Applying artwork keeps the source
+media unchanged. Supported entity image routes can fall back to a related Image
+when explicit artwork is absent.
+
+**Settings → Tools → Metadata Health** reports duplicate/same-name identities,
+legacy Copyright Tags, Artist-link drift, orphaned links and ambiguous migration
+candidates. **Alias Collision Inspector** shows conflicting canonical/alias
+matches. Both diagnose without automatically repairing or merging records.
 
 ### Character cleanup and Copyright auto-tagging
 
@@ -104,6 +158,45 @@ contained, partial and compilation matches. Indexing is incremental and resumes
 after cancellation/restart. Inspect both matched timelines and unmatched content;
 partial overlap is not a reason to automatically delete an entire Video.
 
+## Animation detection and timing
+
+Scanning inspects image frame counts and adds the native `animated` Tag for
+multi-frame images without removing existing metadata. Native cards/walls display
+animation-format badges beyond GIF, including APNG, AJXL and animated WebP/AVIF.
+Missing inspectors leave animation status unknown. Use **Settings → Tasks →
+Animation inspection → Inspect existing images** for older records; JXL inspection
+needs libjxl tools on the catalogue server even with remote conversion.
+
+Animated Image headers show average FPS across the whole timeline, including long
+holds. Conversion verifies timing/frame count separately. Rescan with file
+rescanning enabled to refresh missing/stale timing. The converter documents
+zero-delay normalization and supported animation/color/audio checks in
+[animation timing](media-converter.md#animated-image-frame-rate).
+
+## Local HTTPS
+
+Normal HTTP installations also attempt a secondary HTTPS listener, enabled by
+default on port **9443**, using the same application handler/authentication. An
+existing explicit TLS configuration keeps its single-listener behavior. Failure
+to start the extra listener is logged and leaves normal HTTP available.
+
+Configuration keys in `config.yml`:
+
+```yaml
+local_https:
+  enabled: true
+  port: 9443
+  hosts: ["stash.local", "192.168.1.50"]
+```
+
+Without custom paths, the server keeps a self-signed `stash-local.crt` and
+`stash-local.key` beside its configuration. Clients must trust the certificate to
+remove browser warnings. Set additional LAN names/IPs explicitly; Docker bridge
+networking cannot discover the host's LAN address. Publish port 9443 separately
+when using that listener in a container. Custom `cert_path` and `key_path` must be
+supplied together. Set `enabled: false` to disable the secondary listener. This
+does not change the separately configured processing worker's HTTP/TLS setup.
+
 ## Experimental storage and backups
 
 Image delta storage and Gallery block sharing currently run as optional offline
@@ -120,6 +213,14 @@ fixture tests.
 StashBooru database backups are incompatible with vanilla Stash. Keep media and
 required sidecar/packed payloads in your backup plan; a database-only backup does
 not contain those bytes.
+
+The warning accompanies the backup section and saved/downloaded database backup
+dialog. The current backup action documents whether blobs are included; it
+does not include media files, generated assets, original-file restore caches or
+offline packed-storage payloads. Keep the appropriate data directories separately.
+P01's additional product-manifest/restore-preflight work was deferred by the owner;
+the warning is not a guarantee of automated compatibility detection. Restore
+caches are bounded and can evict originals.
 
 ## Versions and updates
 

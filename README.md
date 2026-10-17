@@ -35,6 +35,10 @@ StashBooru uses anime/booru-oriented names in the UI while some upstream-compati
 
 See the [feature guide](docs/features.md) for where to find each tool, processing
 and restore behavior, model requirements, and current limitations.
+The [documentation index](docs/README.md) links every fork guide, delivered package
+and experimental tool. The [booru browser plan](docs/booru-browser-roadmap.md)
+tracks remote browsing, review marks, follows and selective downloads; those are
+planned additions, separate from the existing MD5 metadata lookup.
 
 ### Native anime/booru metadata
 
@@ -63,10 +67,16 @@ Supported sources include:
 - **Local filename metadata** using a configurable filename layout. Supported tokens include `%artist%`, `%copyright%`, `%character%`, `%md5%`, and `%ext%`.
 - **Booru MD5 lookup** against Danbooru, Gelbooru, Yande.re, Konachan, and Safebooru.
 - Optional **Camie Tagger v2** inference for Character, Artist, Copyright, general, and meta predictions.
+- Explicit **EVA02** tag predictions and suggestions from similar indexed local Images.
 
 Image Tagging keeps source provenance visible (`local`, `booru`, `Camie`, and existing local entities), lets you choose exactly what to apply, can create missing metadata, and supports bulk tagging jobs. Local filename identity metadata is authoritative for Characters, Artists, and Copyrights when it is present, preventing conflicting Camie identity predictions from being mixed into the same category.
 
 Filename-derived Copyright values can also represent multiple series with `+`, while names containing literal repeated/trailing plus signs such as `C++` are preserved.
+
+Opening Image/Video Tagging loads Local metadata only. Other sources run on an
+explicit action, with reviewed application and ambiguity handling. Video Tagging
+also offers sampled-frame analysis and batch review. See [metadata and tagging](docs/metadata-and-tagging.md)
+for source priority, filenames, model requirements, native Auto Tag and inheritance.
 
 ### Visual similarity and reference comparison
 
@@ -94,6 +104,13 @@ The visual-similarity model is opt-in and is never downloaded silently.
 Processing setup is grouped under **Settings → Processing**; hierarchy inheritance
 is in **Settings → Library**. Failed jobs remain in **Tasks** until dismissed,
 with Copy error and history scoped to the current browser tab.
+
+Settings → Tools also provides **Metadata Health**, **Alias Collision Inspector**
+and **EVA02 Visual Similarity Triage**, including explicit add-only metadata copying.
+Profile artwork has a context-aware gallery picker and crop/rotate editor. Scans
+detect animated formats and provide an inspection task for existing Images.
+Normal HTTP installations can also use the secondary local HTTPS listener on
+9443; see [configuration and certificate behavior](docs/features.md#local-https).
 
 ## Installation
 

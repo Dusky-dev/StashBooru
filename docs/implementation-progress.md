@@ -1,9 +1,65 @@
 # StashBooru implementation progress
 
-Updated: 2026-10-06
+Updated: 2026-10-17
 
-Current baseline: `develop` at `f5579d46940dcc8ad6a96d69c264908f36be85d6`
-(PR #140 merged; StashBooru 1.0.0 released). Current owner-requested package:
+Current baseline: `develop` at `8fc869d8792f9f47643ea102d960788946068f41`
+(PR #141 and the subsequent upstream synchronization are present). Current branch:
+`docs/fork-guide-booru-roadmap-20261017`. Active package: **B00 — documentation and
+scoped booru-browser roadmap**. See the [documentation index](README.md),
+[feature guide](features.md), [metadata guide](metadata-and-tagging.md) and
+[B01–B06 plan](booru-browser-roadmap.md). Next: **B01 — read-only Gelbooru browser**;
+remote browser implementation has not started in this package.
+
+P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
+acceptance and P12/P13 production activation remain open gates; they are not
+silently promoted to verified production features by this documentation update.
+
+## B00 — fork documentation and booru-browser plan — 2026-10-17
+
+- Read the owner's handoff, root AGENTS.md, current progress/package guides and
+  open PR state (none at the start). Working tree was clean at the baseline.
+- Audited the fork-only history and changed paths against the upstream parent
+  `bdee3c83d33d802765332967f09db756e2877bcc` of the current merge. Read current
+  native metadata/tagging, similarity/triage, settings, artwork, backup, HTTPS
+  and worker sources rather than treating historical PR descriptions as live UI.
+- Added a documentation index and metadata/tagging guide; expanded the feature
+  guide and README to cover pre-P01 features as well as P01–P13 and later QoL.
+  Coverage includes native Copyrights/multiple Artists, variants/context,
+  hierarchy/inheritance, mixed browsing/preferences/format filters, all explicit
+  Image/Video tagging sources and bulk workflows, artwork editing/fallbacks,
+  Metadata Health/alias diagnostics, EVA02 triage/add-only metadata copying,
+  pHash/EVA02 search, bounded comparison, stacks, conversion/trials/restore,
+  upscaling, animation inspection/timing, Video overlap, mask restoration,
+  storage prototypes, jobs, local HTTPS and independent versions/releases.
+- Corrected worker setup's old System navigation, missing companion-module list,
+  separate upscaling UI/cache and new overlap/restoration endpoints. Corrected
+  converter documentation's old inspection location and historical schema-91
+  wording. Existing implementation/API behavior is unchanged.
+- Added B01–B06 with explicit outcomes, dependencies and acceptance checks:
+  read-only browser; durable ignored/manual-download/current-local evidence;
+  metadata and Artist × Copyright intersections; recoverable downloads; pHash
+  review/Compare/red accessible tag warnings; follows/compound-search feed.
+  Existing MD5 enrichment, favorites and EVA02 clusters are identified separately.
+- Important status details retained: P01's further backup contract was deferred
+  by the owner; P02 has two modes without Combined; P03 lacks automatic alignment
+  and whole-animation equality checks. Dormant taxonomy controls are not described
+  as active features. New browser behavior remains explicitly planned.
+- Migration/API/dependency impact: none. Documentation only; no media writes,
+  model downloads, production changes, direct develop push or automatic merge.
+- Verification: `git diff --cached --check` passed. A one-off documentation check
+  passed for all eight changed Markdown files, 80 relative file/heading links
+  and fenced-code pairs. Source review checked current UI labels/source priority,
+  model/config defaults, backup contents, HTTPS settings and worker routes/imports.
+  Historical package records and benchmark files were preserved. No runtime build,
+  model inference or live-provider tests were run for this documentation-only diff.
+- Publication: feature branch `docs/fork-guide-booru-roadmap-20261017`; review link
+  recorded in the PR. Next package is B01, with official Gelbooru API verification
+  before implementation. No runtime/browser feature is claimed by B00.
+
+## Previous checkpoint — 2026-10-06
+
+Baseline at that checkpoint: `develop` at `f5579d46940dcc8ad6a96d69c264908f36be85d6`
+(PR #140 merged; StashBooru 1.0.0 released). Owner-requested package:
 conservative Character duplicate merging and native Copyright task auto-tagging,
 on `feat/character-dedup-copyright-autotag-20261006`. Published as [PR #141](https://github.com/Dusky-dev/StashBooru/pull/141)
 at remote head `8cbbef390f481f863915482f10978572efb0b10d`.
