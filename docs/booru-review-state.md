@@ -56,7 +56,7 @@ This is conservative, bounded matching rather than an exhaustive catalogue scan:
 | Display | Meaning |
 | --- | --- |
 | In library link | Current primary-file bytes match the MD5 supplied by the provider. This relies on that provider's hash metadata; no remote original is fetched. |
-| Local match unknown — no remote MD5 | The provider supplied no supported content MD5. |
+| Local match unknown · no remote MD5 | The provider supplied no supported content MD5. |
 | No indexed primary-file MD5 match | No matching active candidate was found in the native MD5 index; this does not prove absence from the entire library. |
 | Local check incomplete | Candidates could not all be verified, the indexed file changed/is missing, the database check failed or a resource limit was reached. |
 

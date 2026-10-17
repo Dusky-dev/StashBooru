@@ -4,8 +4,8 @@ Updated: 2026-10-17
 
 Current baseline: `develop` at `598d6849668303369fb2a2c5783160a00172ba59`
 (owner merged #144). Current branch: `feat/b02-booru-review-state-20261017`.
-Active package: **B02 — durable ignored/manual-download marks and current-file
-MD5 matches**. The owner deferred further browsing layout revisions until more
+Delivered in [PR #145](https://github.com/Dusky-dev/StashBooru/pull/145):
+**B02 — durable ignored/manual-download marks and current-file MD5 matches**. The owner deferred further browsing layout revisions until more
 browsing testing. See [B02 guide](booru-review-state.md). Next: **B03 — metadata
 import and Artist × Copyright selection**. B03–B06 remain planned.
 
@@ -34,7 +34,34 @@ silently promoted to verified production features by this documentation update.
 - Existing native IDs, files, metadata, relationships and workers are preserved;
   there are no remote originals, metadata imports, jobs or model downloads. Native
   deletion/replacement is re-evaluated on status refresh without deleting marks.
-- Validation/publication in progress; final results follow after checks.
+- Verification on 2026-10-17 UTC passed: focused HTTP/integration tests; full
+  `make test`; full `make it`; `make lint` with golangci-lint v2.11.4 (zero issues);
+  all 52 UI tests plus JS/CSS lint, TypeScript and formatting with Node 20.20.1 /
+  locked pnpm 10.33.0; production `make ui-only`; 83 relative documentation file
+  links; and `git diff --check`. Final conflict/ID follow-ups were checked with
+  the full integration suite, backend lint, TypeScript and mounted browser fixture.
+- Migration tests cover fresh schema 97, upgrade 96→97 and the existing P08
+  95→96→97 path without losing native records. Tests cover database close/reopen,
+  independent marks, instance isolation, exact uint64 remote IDs, atomic stale
+  bulk rollback, versioned undo/tombstones and concurrent writers. Current-file
+  tests rehash actual bytes, reject same-size/mtime replacements, and refresh
+  after file loss, primary-file removal and native Video deletion while retaining
+  manual history. Regular-file limits, cancellation and HTTP validation are tested.
+- Mounted Chrome Headless Shell 143 passed at 1440×1000 and 390×844 for single/bulk
+  marks, undo, conflict recovery/write disabling, hidden-selection clearing,
+  show-ignored URL state and provider paging, reload persistence, source isolation,
+  typed native links and manual marks without invented local links. Existing
+  settings/search/inspection/refresh/back/failure/race/cancel/cleanup/overflow cases
+  passed too. Desktop/mobile screenshots were visually reviewed. Fixtures use
+  mocked providers and synthetic local bytes/artwork; no human manual, live-account,
+  real-media playback or GPU testing is claimed.
+- Published as [PR #145](https://github.com/Dusky-dev/StashBooru/pull/145). Local
+  implementation `ed91d16dd5d164ae7031b3889868acc0caa24c5d` and remote
+  `735d422c1d1b0e0718321d3129d3efb1c4224d06` share verified tree
+  `8eb4b114575a0aca5953d3c9fa9a6763cd2190b3`. The final checkpoint changes only
+  documentation and screenshot-readiness waits in the fixture. GitHub generation,
+  Go lint and browser checks passed on that implementation; final-head CI refreshes
+  after the final push. No agent merge/deployment; next is B03 after owner review.
 
 ## B01 follow-up — source settings and compact browser — 2026-10-17
 

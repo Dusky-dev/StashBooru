@@ -624,6 +624,12 @@ try {
     await dan
       .getByRole("button", { name: "Inspect Danbooru post 112", exact: true })
       .waitFor();
+    await dan
+      .getByRole("button", { name: "Select visible", exact: true })
+      .click({ trial: true });
+    await gel
+      .getByRole("button", { name: "Select visible", exact: true })
+      .click({ trial: true });
     if (process.env.STASH_BROWSER_SCREENSHOTS) {
       fs.mkdirSync(process.env.STASH_BROWSER_SCREENSHOTS, { recursive: true });
       await page.screenshot({
