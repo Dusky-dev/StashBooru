@@ -1,3 +1,4 @@
+import { SourceSettings } from "../BooruBrowser/SourceSettings";
 import React, { PropsWithChildren, useMemo, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { Button } from "react-bootstrap";
@@ -351,6 +352,10 @@ export const SettingsScrapingPanel: React.FC = () => {
 
   return (
     <>
+      <section className="setting-section" id="booru-sources">
+        <h1>Booru sources</h1>
+        <SourceSettings />
+      </section>
       <StashBoxSetting
         value={general.stashBoxes ?? []}
         onChange={(v) => saveGeneral({ stashBoxes: v })}

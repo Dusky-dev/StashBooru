@@ -8,7 +8,7 @@ and follows remain later [roadmap packages](booru-browser-roadmap.md).
 
 ## Search and inspect
 
-Choose up to eight sources, enter a query and select **Search selected sources**.
+Choose up to eight sources, enter a query and select **Search**.
 Opening the browser without a query, editing the query and changing checkboxes
 do not search automatically. Each selected source has independent results,
 Previous/Next, cancellation and retry. One unavailable/rate-limited source does
@@ -18,8 +18,7 @@ source site in a separate tab.
 
 The same query is sent unchanged to each source. Space-separated tags and
 underscores are common to the first four engines; Philomena uses its own syntax,
-including tags with spaces and comma/AND combinations. Source help appears with
-each result section. Provider ratings, search limits, account filters and metatags
+including tags with spaces and comma/AND combinations. Expand **Search help** in the sidebar for each selected source. Provider ratings, search limits, account filters and metatags
 remain provider-specific. Unsupported/rejected queries are errors rather than
 being silently simplified to a broader search.
 
@@ -53,10 +52,44 @@ every tag as general or guessing Artist/Character/Copyright identity.
 These are API adapters and presets, not a claim of complete Grabber site/login
 parity. Shimmie, Szurubooru, Sankaku, Pixiv, HTML scraping, executable source
 plugins and browser-session login are not implemented. Compatible instances of
-the five engines above can be added through server configuration. More engines
+the five engines above can be added in **Source settings**. More engines
 need their own documented adapter and the same acceptance checks.
 
-## Server configuration
+## Source settings
+
+Open **Source settings** in the browser header, or **Settings → Metadata Providers
+→ Booru sources**. These settings apply to everyone using this server.
+
+- **Edit** a preset to add credentials, change its CDN hosts or disable it. Use the
+  username + API key for Danbooru/e621, user ID + API key for Gelbooru JSON DAPI,
+  or API key alone for Philomena. Moebooru remains anonymous.
+- **Add custom booru**: choose a stable source ID, display name, supported API
+  engine and public HTTPS site URL. Include an installation path if needed. Add
+  separate image/CDN hostnames when previews live outside the site host. Choosing
+  an engine means the site must implement that engine's supported JSON API.
+- A blank API key keeps the saved key. **Remove saved credentials on save** clears
+  the key and account fields. Saved keys never return to the browser. When the URL
+  or engine changes, re-enter or explicitly remove the existing key so it cannot
+  silently move to another host.
+- **Enable this source** controls availability in searches. Disabled definitions
+  remain editable. Custom sources can be removed; presets can be reset, removing
+  their overrides and saved credentials. IDs cannot be renamed in the editor.
+- **Save source** persists immediately without restarting StashBooru. The browser's
+  source list and current searches refresh after a save. **Reload saved sources**
+  discards the current editor draft. A stale editor gets a conflict error rather
+  than overwriting another tab or an external file edit.
+
+The browser keeps search/sources and categorized page tags in a left sidebar,
+with compact thumbnail rows on the right. On narrow screens controls stack above
+a two-column grid and page tags expand with **Show page tags**. Category labels
+accompany category colors. Counts cover only the selected source's loaded page,
+with up to 20 tags per category; these are not provider-wide related-tag counts.
+Selecting a tag prepares a query; press **Search** to run it. Independent source
+paging, inspection URLs and raw provider syntax retain their previous behavior.
+These definitions configure the remote browser; the existing local-media MD5
+lookup provider list is unchanged.
+
+## Server configuration file
 
 The optional **`booru-browser.json` beside `config.yml`** contains an array of
 source overrides/additions. Missing file means the ten presets. A complete entry
@@ -91,13 +124,18 @@ Example (replace placeholders with your own values):
 ]
 ```
 
-Protect this file like other server secrets; do not commit live credentials.
+The settings UI writes this same file with atomic replacement and owner-only
+permissions (`0600` on Unix). Keys remain plaintext server configuration. Protect
+its filesystem and backups like other server secrets; do not commit live keys.
+Manual file edits remain supported.
 Source/configuration errors are redacted in HTTP responses. The source-list API
 returns only public fields and whether credentials are configured. API keys are
-never sent to the web UI or put into its search/remote-post URLs. Configuration
+never returned to the web UI or put into its search/remote-post URLs. Newly
+entered keys travel only in the JSON settings request body. Configuration
 is re-read for new requests; replace the file atomically to avoid partial reads.
 Invalid configuration fails visibly rather than silently enabling a different
-source. A definition is configuration, not arbitrary executable Grabber code.
+source; repair malformed files on the server before editing in the UI. Settings
+are limited to 1 MiB and 64 overrides, with up to 64 image hosts per source. A definition is configuration, not arbitrary executable Grabber code.
 
 Sources must use public HTTPS and port 443, without URL credentials, query or
 fragment. Optional path prefixes are preserved. Preview hosts are restricted to
@@ -121,8 +159,10 @@ No unbounded catalogue scan, model inference or database migration is introduced
 Adapter tests cover all five families, numeric/string IDs, current/legacy e621,
 unknown tags/metadata, paging, hostile URLs, DNS destinations, credentials,
 redirects, throttling, cancellation and response bounds. Route tests cover public
-source configuration/redaction and invalid searches. The browser fixture covers
-desktop/mobile search, partial failure/retry, independent paging, URL inspection,
+source configuration/redaction, credential retention/removal, preset/custom
+lifecycle, concurrent stale edits, atomic write failure and cross-site writes.
+The browser fixture covers desktop/mobile settings, custom sources, credential
+clearing, conflict recovery, disabling/removal, page tags, search, partial failure/retry, independent paging, URL inspection,
 refresh/back, stale requests, cancellation, cleanup and page overflow with
 synthetic media and mocked transports.
 
@@ -154,3 +194,9 @@ Primary references checked for this package:
   provide additional current wire-format compatibility evidence where public
   provider documentation is incomplete. Compatibility is independently implemented
   and tested here; it does not establish support for all their login mechanisms.
+
+Settings use the normal application authentication. `GET /booru-browser/settings`
+returns redacted definitions and a revision; `POST` to the same route requires
+JSON, that revision, `action` (`save`, `remove`, `reset`) and a `source` definition.
+`clearAPIKey` deliberately removes credentials. Stale revisions return 409;
+cross-origin browser writes are rejected.

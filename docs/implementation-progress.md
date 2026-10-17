@@ -2,18 +2,59 @@
 
 Updated: 2026-10-17
 
-Current baseline: `develop` at `2af939ff5b2a4d90336f0afbda8b8a5e2f514d76`
-(PR #142 merged; its tree matches the locally verified B00 checkpoint). Current
-branch: `feat/b01-multi-booru-browser-20261017`. Active package: **B01 — multi-source
-read-only browser**, broadened at the owner's direction from one Gelbooru adapter
-to engine-based support similar to Grabber. See the [browser guide](booru-browser.md)
-and [B01–B06 plan](booru-browser-roadmap.md). Next: **B02 — durable ignored/manual
-already-downloaded marks and verified local matches**. B02–B06 are not implemented
-by this package.
+Current baseline: `develop` at `8eed7af01eb31a63ed611aca09e23f96d17103c7`
+(owner merged browser PR #143; Build, Go lint and mounted-browser CI passed).
+Current branch: `feat/booru-settings-layout-20261017`. Delivered in
+[PR #144](https://github.com/Dusky-dev/StashBooru/pull/144): **B01 follow-up — source
+settings and compact browser**, requested by the owner. See the
+[browser guide](booru-browser.md). Next is **B02 — durable ignored/manual
+already-downloaded marks and verified local matches**. B02–B06 remain planned.
 
 P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
+
+## B01 follow-up — source settings and compact browser — 2026-10-17
+
+- Started clean from the owner's merged #143 on develop
+  `8eed7af01eb31a63ed611aca09e23f96d17103c7`, on the branch named above.
+- Adds settings in the browser and Settings → Metadata Providers → Booru sources:
+  supported engine credentials, compatible custom sites, CDN hosts, enabled state,
+  custom removal and preset reset, persisted in the existing server JSON file.
+- Saved keys are never returned. Blank keys retain credentials; explicit clearing
+  removes them. URL/engine changes require key replacement/removal. Strict bounded
+  JSON, normal authentication, same-origin browser writes, revision conflict
+  detection and atomic owner-only file writes apply. Keys remain plaintext server
+  secrets; no new engine/login compatibility is claimed.
+- Replaces the large form/cards with a search/source sidebar, categorized page tags
+  and compact thumbnails. Mobile has stacked controls, two-column previews and
+  expandable tags. Tag counts cover one loaded source page; clicking a tag prepares
+  a draft without searching. Per-source paging/errors, inspection URLs, cancellation
+  and remote IDs remain independent.
+- No database/schema/migration/dependency-lock changes, catalogue writes, model
+  downloads, develop push, agent merge or deployment. B02–B06 remain outside scope.
+- Verification on 2026-10-17 UTC: fresh backend/UI generation; full `make test`;
+  full `make it`; `make lint` (golangci-lint v2.11.4, zero issues); and adapter
+  `go test -race ./pkg/booru` passed. Full UI validation passed all 51 tests,
+  JS/CSS lint, TypeScript and formatting with Node 20.20.1 / pnpm 10.33.0.
+  Final duplicate-ID protection was additionally checked with component lint,
+  TypeScript, formatting and the mounted fixture. Production `make ui-only`,
+  49 relative documentation file links and `git diff --check` passed.
+- Mounted Chrome Headless Shell 143 passed at 1440×1000 and 390×844: credential
+  entry/blank retention/clearing, stale-edit recovery, duplicate-ID rejection,
+  custom creation/reload/disable/removal, tag drafts, independent paging/errors,
+  inspection/back/refresh, failed previews, cancellation, cleanup and overflow.
+  Desktop/mobile screenshots were visually reviewed, including the mobile editor.
+  The fixture uses mocked APIs and synthetic artwork. No human manual testing,
+  live-account authentication, real-media playback or deployment is claimed.
+- Published in [PR #144](https://github.com/Dusky-dev/StashBooru/pull/144).
+  Verified local implementation `80d24f1c9ccbbe2bc04d492abac6dbbb2d424dd7` and remote
+  `3fdeecadfa93aeafffc0c07d99fb7aa7d8691a4b` share tree
+  `a96233d1941ae39dc6713db39559cab6d7d9ecdc`. The final ledger checkpoint changes
+  documentation only. GitHub generation, all seven platform builds, integration
+  tests, Go lint and the browser workflow passed on preceding implementation
+  `0b16fe37525e03181ecd44a299fcfd54d9c4f681`; final-head CI refreshes after publication.
+  No agent merge/deployment. Next is B02, after owner review of this follow-up.
 
 ## B01 — multi-source read-only browser — 2026-10-17
 

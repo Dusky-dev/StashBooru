@@ -95,7 +95,10 @@ See [metadata and tagging](metadata-and-tagging.md) for filename tokens, provide
 lookup behavior, model setup, direct/calculated relationships and ambiguity rules.
 Existing MD5 lookup enriches local media. The separate [Booru browser](booru-browser.md)
 supports read-only multi-source search through Danbooru, Gelbooru, Moebooru, e621
-and Philomena adapters, with ten presets and compatible custom server definitions.
+and Philomena adapters, with ten presets and compatible custom definitions.
+**Source settings** (also **Settings → Metadata Providers → Booru sources**) edits
+API keys, engine, URL, image hosts and enabled state. Its Danbooru-inspired sidebar
+and compact thumbnail grid include categorized loaded-page tag counts.
 Follows and ignored/already-downloaded marks remain later packages.
 
 ### Profile artwork and metadata diagnostics

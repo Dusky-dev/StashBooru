@@ -1,30 +1,135 @@
 .booru-browser {
   margin: 0 auto;
-  max-width: 1600px;
+  max-width: 1900px;
   overflow-wrap: anywhere;
+
+  .booru-heading {
+    align-items: center;
+    border-bottom: 1px solid var(--secondary);
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+
+    h2 {
+      font-size: 1.5rem;
+      margin: 0;
+    }
+
+    span {
+      font-size: 0.8rem;
+    }
+
+    .btn {
+      flex-shrink: 0;
+    }
+  }
+
+  .booru-layout:not([hidden]) {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: 230px minmax(0, 1fr);
+  }
+
+  .booru-sidebar {
+    border-right: 1px solid var(--secondary);
+    padding-right: 1.25rem;
+
+    legend {
+      align-items: center;
+      display: flex;
+      font-size: 1rem;
+      justify-content: space-between;
+    }
+
+    .form-label {
+      font-weight: 600;
+    }
+  }
 
   .booru-source-options {
     display: grid;
-    gap: 0.4rem 1rem;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+    gap: 0.35rem;
+    max-height: 290px;
+    overflow-y: auto;
+    padding: 0.25rem 0.25rem 0.5rem;
+
+    .form-check {
+      line-height: 1.3;
+    }
+
+    small {
+      font-size: 0.7rem;
+    }
+  }
+
+  .booru-help {
+    font-size: 0.8rem;
+    margin: 0.75rem 0 1.25rem;
+  }
+
+  .booru-help summary {
+    cursor: pointer;
+  }
+
+  .booru-help p {
+    margin: 0.5rem 0;
+  }
+
+  .booru-results {
+    min-width: 0;
+  }
+
+  .booru-empty {
+    padding: 3rem 1rem;
+    text-align: center;
   }
 
   .booru-source {
-    border-top: 1px solid var(--secondary);
-    padding-top: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .booru-results-header {
+    align-items: baseline;
+    border-bottom: 1px solid var(--secondary);
+    display: flex;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+    gap: 0.35rem 0.8rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+
+    h3 {
+      font-size: 1.1rem;
+      margin: 0;
+    }
   }
 
   .booru-grid {
     display: grid;
-    gap: 0.75rem;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr));
+    gap: 1rem 0.75rem;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+
+  .booru-post {
+    min-width: 0;
   }
 
   .booru-preview-button {
-    display: block;
-    height: 180px;
-    padding: 0.25rem;
+    align-items: center;
+    background: rgb(0 0 0 / 12%);
+    border: 1px solid var(--secondary);
+    border-radius: 2px;
+    display: flex;
+    height: 170px;
+    justify-content: center;
+    padding: 0.2rem;
     width: 100%;
+
+    &:hover, &:focus-visible {
+      border-color: var(--primary);
+    }
 
     img {
       height: 100%;
@@ -33,8 +138,183 @@
     }
   }
 
+  .booru-post-caption {
+    align-items: baseline;
+    display: flex;
+    flex-wrap: wrap;
+    font-size: 0.75rem;
+    gap: 0.15rem 0.5rem;
+    justify-content: space-between;
+    padding: 0.25rem 0;
+
+    .btn {
+      font-size: inherit;
+    }
+
+    small {
+      opacity: 0.75;
+    }
+  }
+
+  .booru-tags-toggle {
+    display: none;
+  }
+
   .booru-pagination {
-    gap: 0.75rem;
+    gap: 0.5rem;
+  }
+
+  .booru-page-tags {
+    border-top: 1px solid var(--secondary);
+    padding-top: 1rem;
+
+    h4 {
+      font-size: 1rem;
+    }
+
+    h5 {
+      font-size: 0.8rem;
+      margin: 0.75rem 0 0.25rem;
+      text-transform: capitalize;
+    }
+
+    ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    li {
+      align-items: baseline;
+      display: flex;
+      gap: 0.5rem;
+      justify-content: space-between;
+    }
+
+    .btn {
+      color: inherit;
+      font-size: 0.8rem;
+      padding: 0.1rem 0;
+      text-align: left;
+    }
+
+    .text-muted {
+      font-size: 0.75rem;
+    }
+
+    .tag-artist {
+      color: #ef9292;
+    }
+
+    .tag-character {
+      color: #91ce8d;
+    }
+
+    .tag-copyright {
+      color: #c7a0e9;
+    }
+
+    .tag-general {
+      color: #8ebfe9;
+    }
+
+    .tag-meta {
+      color: #e6cc87;
+    }
+  }
+
+  .booru-library-note {
+    border-top: 1px solid var(--secondary);
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+  }
+
+  @media (max-width: 767px) {
+    .booru-layout:not([hidden]) {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .booru-sidebar {
+      border-bottom: 1px solid var(--secondary);
+      border-right: 0;
+      padding: 0 0 0.75rem;
+    }
+
+    .booru-source-options {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      max-height: 160px;
+    }
+
+    .booru-page-tags .booru-tags-toggle {
+      display: inline-block;
+      margin-bottom: 0.5rem;
+    }
+
+    .booru-tag-body:not(.is-expanded) {
+      display: none;
+    }
+
+    .booru-help {
+      margin-bottom: 0;
+    }
+
+    .booru-library-note {
+      border: 0;
+      margin: 0.75rem 0 0;
+      padding: 0;
+    }
+
+    .booru-grid {
+      gap: 0.75rem 0.5rem;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .booru-preview-button {
+      height: 155px;
+    }
+  }
+}
+
+.booru-source-settings {
+  overflow-wrap: anywhere;
+
+  .booru-settings-toolbar {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .booru-settings-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .booru-settings-list li {
+    align-items: center;
+    border-bottom: 1px solid var(--secondary);
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    padding: 0.65rem 0;
+  }
+}
+
+.booru-settings-editor {
+  overflow-wrap: anywhere;
+
+  .booru-settings-fields {
+    display: grid;
+    gap: 0 1rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-width: 575px) {
+    .booru-settings-fields {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
 }
 
@@ -52,10 +332,10 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.4rem;
+  }
 
-    .badge {
-      text-align: left;
-      white-space: normal;
-    }
+  .booru-tags .badge {
+    text-align: left;
+    white-space: normal;
   }
 }

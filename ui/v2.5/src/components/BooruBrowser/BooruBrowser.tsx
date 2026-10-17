@@ -1,13 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Alert,
-  Badge,
-  Button,
-  Card,
-  Form,
-  Modal,
-  Spinner,
-} from "react-bootstrap";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Badge, Button, Form, Modal, Spinner } from "react-bootstrap";
 import { FormattedMessage } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
 import { ExternalLink } from "../Shared/ExternalLink";
@@ -20,6 +12,7 @@ import {
   readBrowserSearch,
   remoteURL,
 } from "./browser";
+import { SourceSettings } from "./SourceSettings";
 import "./styles.scss";
 
 const message = (id: string, defaultMessage: string) => (
@@ -155,6 +148,7 @@ function SourceResults({
   onPage,
   onInspect,
   onClose,
+  onResult,
 }: {
   source: BooruSource;
   query: string;
@@ -163,6 +157,7 @@ function SourceResults({
   onPage: (page: number) => void;
   onInspect: (id: string) => void;
   onClose: () => void;
+  onResult: (id: string, signature: string, posts: BooruPost[]) => void;
 }) {
   const [result, setResult] = useState<BooruResult>();
   const [error, setError] = useState("");
@@ -176,6 +171,7 @@ function SourceResults({
     setResult(undefined);
     setError("");
     setLoading(true);
+    onResult(source.id, `${query}:${page}`, []);
     const params = new URLSearchParams({
       source: source.id,
       q: query,
@@ -185,7 +181,10 @@ function SourceResults({
     void fetch(`booru-browser/search?${params}`, { signal: request.signal })
       .then(readBooruResponse<BooruResult>)
       .then((value) => {
-        if (!request.signal.aborted) setResult(value);
+        if (!request.signal.aborted) {
+          setResult(value);
+          onResult(source.id, `${query}:${page}`, value.posts);
+        }
       })
       .catch((cause: unknown) => {
         if (!request.signal.aborted)
@@ -195,29 +194,33 @@ function SourceResults({
         if (!request.signal.aborted) setLoading(false);
       });
     return () => request.abort();
-  }, [source.id, query, page, retry]);
+  }, [source.id, query, page, retry, onResult]);
   const post = result?.posts.find((item) => item.id === inspect);
   return (
     <section
-      className="booru-source mb-4"
+      className="booru-source"
       aria-label={source.name}
       aria-busy={loading}
     >
-      <div className="d-flex flex-wrap align-items-center mb-2">
-        <h3 className="mr-3 mb-1">{source.name}</h3>
-        <Badge variant="secondary" className="mr-2">
-          {source.engine}
-        </Badge>
-        <span>
-          {message("page", "Page")} {page}
+      <header className="booru-results-header">
+        <h3>{source.name}</h3>
+        <span className="text-muted">
+          {source.engine} · {message("page", "Page")} {page}
         </span>
-      </div>
-      <p className="small text-muted mb-1">{source.queryHelp}</p>
-      <p className="small text-muted">
-        {source.authentication}{" "}
-        {source.credentialsConfigured &&
-          message("configured", "Credentials configured.")}
-      </p>
+        {result && (
+          <span className="text-muted">
+            {result.posts.length} posts
+            {result.total !== undefined
+              ? ` / ${result.total.toLocaleString()} matches`
+              : " · total unknown"}
+          </span>
+        )}
+        {remoteURL(source.url) && (
+          <ExternalLink className="ml-auto" href={source.url}>
+            Visit source ↗
+          </ExternalLink>
+        )}
+      </header>
       {loading && (
         <p role="status">
           <Spinner animation="border" size="sm" className="mr-2" />
@@ -249,21 +252,6 @@ function SourceResults({
       )}
       {result && (
         <>
-          <p className="small text-muted">
-            <FormattedMessage
-              id="booru_browser.returned_posts"
-              defaultMessage="{count, plural, one {# post on this page.} other {# posts on this page.}}"
-              values={{ count: result.posts.length }}
-            />{" "}
-            {result.total !== undefined ? (
-              <>
-                {message("reported_total", "Provider-reported matches:")}{" "}
-                {result.total.toLocaleString()}.
-              </>
-            ) : (
-              message("unknown_total", "Total matches unknown.")
-            )}
-          </p>
           {result.posts.length === 0 && (
             <Alert variant="info">
               {message("empty", "No posts returned for this page and query.")}
@@ -271,7 +259,7 @@ function SourceResults({
           )}
           <div className="booru-grid">
             {result.posts.map((item) => (
-              <Card key={`${source.id}:${item.id}`} className="booru-post">
+              <article key={`${source.id}:${item.id}`} className="booru-post">
                 <Button
                   variant="link"
                   className="booru-preview-button"
@@ -290,7 +278,7 @@ function SourceResults({
                     </span>
                   )}
                 </Button>
-                <Card.Body className="p-2">
+                <div className="booru-post-caption">
                   <Button
                     variant="link"
                     className="p-0"
@@ -298,7 +286,7 @@ function SourceResults({
                   >
                     #{item.id}
                   </Button>
-                  <small className="d-block">
+                  <small>
                     {item.width && item.height
                       ? `${item.width} × ${item.height}`
                       : message(
@@ -307,18 +295,14 @@ function SourceResults({
                         )}{" "}
                     {item.rating && ` · ${item.rating}`}
                   </small>
-                  {remoteURL(item.postURL) && (
-                    <ExternalLink href={remoteURL(item.postURL)}>
-                      {message("open_post", "Open remote post")}
-                    </ExternalLink>
-                  )}
-                </Card.Body>
-              </Card>
+                </div>
+              </article>
             ))}
           </div>
           <div className="d-flex flex-wrap mt-3 booru-pagination">
             <Button
               variant="secondary"
+              size="sm"
               disabled={page <= 1}
               onClick={() => onPage(page - 1)}
             >
@@ -326,6 +310,7 @@ function SourceResults({
             </Button>
             <Button
               variant="secondary"
+              size="sm"
               disabled={!result.hasMore || page >= 750}
               onClick={() => onPage(page + 1)}
             >
@@ -368,6 +353,17 @@ export default function BooruBrowser() {
   const [sources, setSources] = useState<BooruSource[]>();
   const [sourceError, setSourceError] = useState("");
   const [loadAttempt, setLoadAttempt] = useState(0);
+  const [showSettings, setShowSettings] = useState(false);
+  const [tagSource, setTagSource] = useState("");
+  const [tagPages, setTagPages] = useState<
+    Record<string, { signature: string; posts: BooruPost[] }>
+  >({});
+  const onResult = useCallback(
+    (id: string, signature: string, posts: BooruPost[]) => {
+      setTagPages((previous) => ({ ...previous, [id]: { signature, posts } }));
+    },
+    []
+  );
   const [query, setQuery] = useState(active.query);
   const [selected, setSelected] = useState(active.sources);
   const sourceSelection = active.sources.join(",");
@@ -377,7 +373,7 @@ export default function BooruBrowser() {
   useEffect(() => {
     setSelected(sourceSelection.split(","));
   }, [sourceSelection]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Reload intentionally repeats the source-list request after a configuration failure.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Reload intentionally repeats the source-list request after a configuration failure or settings save.
   useEffect(() => {
     const request = new AbortController();
     setSourceError("");
@@ -404,156 +400,350 @@ export default function BooruBrowser() {
     active.sources.some((id) => !sources.some((source) => source.id === id));
   return (
     <div className="booru-browser">
-      <h2>{message("title", "Booru browser")}</h2>
-      <p>
-        {message(
-          "intro",
-          "Search remote sources and inspect their tags. Searches do not import media or change your catalogue."
-        )}
-      </p>
-      {sourceError && (
-        <Alert variant="danger">
-          <span>{sourceError}</span>{" "}
-          <Button
-            variant="secondary"
-            onClick={() => setLoadAttempt((value) => value + 1)}
-          >
-            {message("retry", "Retry source")}
-          </Button>
-        </Alert>
-      )}
-      {!sources && !sourceError && (
-        <p role="status">{message("loading_sources", "Loading sources…")}</p>
-      )}
-      {sources && (
-        <Form
-          onSubmit={(event) => {
-            event.preventDefault();
-            history.push({
-              pathname: "/booru",
-              search: browserSearchURL({
-                sources: selected,
-                query: query.trim(),
-                pages: {},
-              }),
-            });
-          }}
+      <header className="booru-heading">
+        <div>
+          <h2>{message("title", "Booru browser")}</h2>
+          <span className="text-muted">Remote posts · Browse and inspect</span>
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setShowSettings((value) => !value)}
         >
-          <fieldset>
-            <legend>
-              {message("sources", "Sources — choose up to eight")}
-            </legend>
-            <div className="booru-source-options">
-              {sources.map((source) => (
-                <Form.Check
-                  key={source.id}
-                  id={`booru-source-${source.id}`}
-                  type="checkbox"
-                  label={`${source.name} · ${source.engine}`}
-                  checked={selected.includes(source.id)}
-                  disabled={
-                    !selected.includes(source.id) && selected.length >= 8
-                  }
-                  onChange={() =>
-                    setSelected((value) =>
-                      value.includes(source.id)
-                        ? value.filter((id) => id !== source.id)
-                        : [...value, source.id]
-                    )
-                  }
+          {showSettings ? "Back to posts" : "Source settings"}
+        </Button>
+      </header>
+      {showSettings && (
+        <section aria-label="Source settings" className="booru-settings-panel">
+          <h3>Source settings</h3>
+          <SourceSettings
+            onSaved={() => setLoadAttempt((value) => value + 1)}
+          />
+        </section>
+      )}
+      <div className="booru-layout" hidden={showSettings}>
+        <aside className="booru-sidebar" aria-label="Search and tags">
+          {sourceError && (
+            <Alert variant="danger">
+              <span>{sourceError}</span>{" "}
+              <Button
+                variant="secondary"
+                onClick={() => setLoadAttempt((value) => value + 1)}
+              >
+                {message("retry", "Retry source")}
+              </Button>
+            </Alert>
+          )}
+          {!sources && !sourceError && (
+            <p role="status">
+              {message("loading_sources", "Loading sources…")}
+            </p>
+          )}
+          {sources && (
+            <Form
+              onSubmit={(event) => {
+                event.preventDefault();
+                history.push({
+                  pathname: "/booru",
+                  search: browserSearchURL({
+                    sources: selected,
+                    query: query.trim(),
+                    pages: {},
+                  }),
+                });
+              }}
+            >
+              <Form.Group controlId="booru-query" className="mb-2">
+                <Form.Label>Search</Form.Label>
+                <Form.Control
+                  aria-label="Search tags (native source syntax)"
+                  value={query}
+                  onChange={(event) => setQuery(event.currentTarget.value)}
+                  maxLength={1024}
+                  placeholder="Search tags…"
                 />
-              ))}
-            </div>
-          </fieldset>
-          <Form.Group controlId="booru-query" className="mt-3">
-            <Form.Label>
-              {message("query", "Search tags (native source syntax)")}
-            </Form.Label>
-            <Form.Control
-              value={query}
-              onChange={(event) => setQuery(event.currentTarget.value)}
-              maxLength={1024}
-              placeholder="landscape rating:safe"
-            />
-            <Form.Text className="text-muted">
-              {message(
-                "syntax_help",
-                "The same query is sent unchanged to each selected source. Search syntax, ratings and account limits differ by engine; see each source's help below."
-              )}
-            </Form.Text>
-          </Form.Group>
-          <Button
-            type="submit"
-            disabled={
-              !query.trim() || selected.length === 0 || selected.length > 8
-            }
-          >
-            {message("search", "Search selected sources")}
-          </Button>
-        </Form>
-      )}
-      {(active.error || unknown) && (
-        <Alert className="mt-3" variant="warning" role="alert">
-          {active.error ||
-            message(
-              "unknown_source",
-              "This search includes a source that is no longer enabled. Choose sources and search again."
+              </Form.Group>
+              <Button
+                type="submit"
+                size="sm"
+                className="w-100 mb-3"
+                aria-label="Search selected sources"
+                disabled={
+                  !query.trim() || selected.length === 0 || selected.length > 8
+                }
+              >
+                Search
+              </Button>
+              <fieldset>
+                <legend>
+                  {message("sources", "Sources")}{" "}
+                  <small className="text-muted">{selected.length}/8</small>
+                </legend>
+                <div className="booru-source-options">
+                  {sources.map((source) => (
+                    <Form.Check
+                      key={source.id}
+                      id={`booru-source-${source.id}`}
+                      type="checkbox"
+                      label={
+                        <span>
+                          {source.name}
+                          <small className="text-muted d-block">
+                            {source.engine}
+                            {source.credentialsConfigured ? " · key saved" : ""}
+                          </small>
+                        </span>
+                      }
+                      aria-label={`${source.name} · ${source.engine}`}
+                      checked={selected.includes(source.id)}
+                      disabled={
+                        !selected.includes(source.id) && selected.length >= 8
+                      }
+                      onChange={() =>
+                        setSelected((value) =>
+                          value.includes(source.id)
+                            ? value.filter((id) => id !== source.id)
+                            : [...value, source.id]
+                        )
+                      }
+                    />
+                  ))}
+                </div>
+              </fieldset>
+              <details className="booru-help">
+                <summary>Search help</summary>
+                <p>
+                  The same query is sent unchanged to selected sources. Syntax
+                  and account limits vary.
+                </p>
+                {sources
+                  .filter((source) => selected.includes(source.id))
+                  .map((source) => (
+                    <p key={source.id}>
+                      <strong>{source.name}</strong>
+                      <br />
+                      {source.queryHelp}
+                      <br />
+                      {source.authentication}
+                    </p>
+                  ))}
+              </details>
+            </Form>
+          )}
+          <PageTags
+            sources={[
+              ...(sources?.filter((source) =>
+                active.sources.includes(source.id)
+              ) ?? []),
+            ].sort(
+              (a, b) =>
+                active.sources.indexOf(a.id) - active.sources.indexOf(b.id)
             )}
-        </Alert>
-      )}
-      {active.query.trim() && !active.error && !unknown && sources && (
-        <>
-          <p className="mt-4 text-muted">
-            {message(
-              "listing_help",
-              "Results are grouped and paged separately by source. Duplicate remote posts are retained with their provenance. Live listings can change between pages; counts are not a saved snapshot."
-            )}
+            selected={tagSource}
+            onSource={setTagSource}
+            pages={tagPages}
+            query={active.query}
+            activePages={active.pages}
+            onTag={setQuery}
+          />
+          <p className="small text-muted booru-library-note">
+            Remote listings. Local download status is not checked.
           </p>
-          {active.sources.map((id) => {
-            const source = sources.find((item) => item.id === id);
-            return (
-              source && (
-                <SourceResults
-                  key={`${id}:${active.query}:${active.pages[id]}`}
-                  source={source}
-                  query={active.query}
-                  page={active.pages[id]}
-                  inspect={
-                    active.inspect?.source === id
-                      ? active.inspect.id
-                      : undefined
-                  }
-                  onPage={(page) =>
-                    history.push({
-                      search: browserSearchURL({
-                        ...active,
-                        pages: { ...active.pages, [id]: page },
-                        inspect: undefined,
-                      }),
-                    })
-                  }
-                  onInspect={(postID) =>
-                    history.push({
-                      search: browserSearchURL({
-                        ...active,
-                        inspect: { source: id, id: postID },
-                      }),
-                    })
-                  }
-                  onClose={() =>
-                    history.replace({
-                      search: browserSearchURL({
-                        ...active,
-                        inspect: undefined,
-                      }),
-                    })
-                  }
-                />
-              )
-            );
-          })}
-        </>
-      )}
+        </aside>
+        <section className="booru-results" aria-label="Remote posts">
+          {(!active.query.trim() || !sources) && !sourceError && (
+            <div className="booru-empty">
+              <h3>Discover posts</h3>
+              <p>Choose your sources, enter tags, and search.</p>
+              <p className="small text-muted">
+                API keys and custom sites are available in Source settings.
+              </p>
+            </div>
+          )}
+          {(active.error || unknown) && (
+            <Alert className="mt-3" variant="warning" role="alert">
+              {active.error ||
+                message(
+                  "unknown_source",
+                  "This search includes a source that is no longer enabled. Choose sources and search again."
+                )}
+            </Alert>
+          )}
+          {active.query.trim() &&
+            !active.error &&
+            !unknown &&
+            sources &&
+            active.sources.map((id) => {
+              const source = sources.find((item) => item.id === id);
+              return (
+                source && (
+                  <SourceResults
+                    key={`${id}:${active.query}:${active.pages[id]}:${loadAttempt}`}
+                    source={source}
+                    onResult={onResult}
+                    query={active.query}
+                    page={active.pages[id]}
+                    inspect={
+                      active.inspect?.source === id
+                        ? active.inspect.id
+                        : undefined
+                    }
+                    onPage={(page) =>
+                      history.push({
+                        search: browserSearchURL({
+                          ...active,
+                          pages: { ...active.pages, [id]: page },
+                          inspect: undefined,
+                        }),
+                      })
+                    }
+                    onInspect={(postID) =>
+                      history.push({
+                        search: browserSearchURL({
+                          ...active,
+                          inspect: { source: id, id: postID },
+                        }),
+                      })
+                    }
+                    onClose={() =>
+                      history.replace({
+                        search: browserSearchURL({
+                          ...active,
+                          inspect: undefined,
+                        }),
+                      })
+                    }
+                  />
+                )
+              );
+            })}
+        </section>
+      </div>
     </div>
+  );
+}
+
+function PageTags({
+  sources,
+  selected,
+  onSource,
+  pages,
+  query,
+  activePages,
+  onTag,
+}: {
+  sources: BooruSource[];
+  selected: string;
+  onSource: (id: string) => void;
+  pages: Record<string, { signature: string; posts: BooruPost[] }>;
+  query: string;
+  activePages: Record<string, number>;
+  onTag: (name: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const source = sources.find((item) => item.id === selected) ?? sources[0];
+  const loaded = source ? pages[source.id] : undefined;
+  const posts =
+    source && loaded?.signature === `${query}:${activePages[source.id]}`
+      ? loaded.posts
+      : [];
+  const counts = new Map<
+    string,
+    { name: string; category: string; count: number }
+  >();
+  for (const post of posts)
+    for (const tag of post.tags) {
+      const key = `${tag.category}:${tag.name}`;
+      const old = counts.get(key);
+      counts.set(key, { ...tag, count: (old?.count ?? 0) + 1 });
+    }
+  const categories = [
+    "artist",
+    "copyright",
+    "character",
+    "species",
+    "general",
+    "meta",
+    "lore",
+    "unknown",
+  ];
+  const groups = [
+    ...new Set([
+      ...categories,
+      ...[...counts.values()].map((tag) => tag.category),
+    ]),
+  ];
+  return (
+    <section className="booru-page-tags" aria-label="Tags on this page">
+      <h4>Tags on this page</h4>
+      <Button
+        variant="secondary"
+        size="sm"
+        className="booru-tags-toggle"
+        aria-expanded={expanded}
+        aria-controls="booru-page-tag-body"
+        onClick={() => setExpanded((value) => !value)}
+      >
+        {expanded ? "Hide page tags" : "Show page tags"}
+      </Button>
+      <div
+        id="booru-page-tag-body"
+        className={`booru-tag-body ${expanded ? "is-expanded" : ""}`}
+      >
+        {sources.length > 1 && (
+          <Form.Control
+            as="select"
+            size="sm"
+            aria-label="Tag source"
+            value={source?.id}
+            onChange={(e) => onSource(e.currentTarget.value)}
+          >
+            {sources.map((item) => (
+              <option value={item.id} key={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </Form.Control>
+        )}
+        <p className="small text-muted">
+          Select a tag to prepare a new search. Counts cover this loaded page
+          only.
+        </p>
+        {posts.length === 0 && (
+          <p className="small text-muted">No loaded tags from this source.</p>
+        )}
+        {groups.map((category) => {
+          const tags = [...counts.values()]
+            .filter((tag) => tag.category === category)
+            .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+            .slice(0, 20);
+          return (
+            tags.length > 0 && (
+              <div
+                key={category}
+                className={`booru-tag-category tag-${categories.includes(category) ? category : "unknown"}`}
+              >
+                <h5>{category === "unknown" ? "Uncategorized" : category}</h5>
+                <ul>
+                  {tags.map((tag) => (
+                    <li key={tag.name}>
+                      <Button
+                        variant="link"
+                        size="sm"
+                        title={`Use tag ${tag.name}`}
+                        onClick={() => onTag(tag.name)}
+                      >
+                        {tag.name.replace(/_/g, " ")}
+                      </Button>
+                      <span className="text-muted">{tag.count}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )
+          );
+        })}
+      </div>
+    </section>
   );
 }

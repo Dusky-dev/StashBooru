@@ -48,7 +48,7 @@ const sources = ["danbooru", "gelbooru", "philomena"].map((id) => ({
 
 function result(source, query, page) {
   const id = query === "fast" ? 900 : query === "slow" ? 800 : page * 100 + 1;
-  return {
+  const response = {
     sourceID: source,
     page,
     limit: 24,
@@ -76,6 +76,15 @@ function result(source, query, page) {
       },
     ],
   };
+  if (query === "gallery")
+    response.posts = Array.from({ length: 12 }, (_, index) => ({
+      ...response.posts[0],
+      id: String(id + index),
+      width: index % 2 ? 480 : 640,
+      height: index % 2 ? 640 : 480,
+      tags: response.posts[0].tags.slice(0, 2),
+    }));
+  return response;
 }
 
 try {
@@ -97,14 +106,81 @@ try {
     let denied = true;
     let sourcesDenied = false;
     const delayed = [];
+    let savedSources = sources.map((source) => ({
+      ...source,
+      mediaHosts: [],
+      login: "",
+      userID: source.id === "gelbooru" ? "42" : "",
+      disabled: false,
+      preset: true,
+      apiKeyConfigured: source.credentialsConfigured,
+    }));
+    let revision = 1;
+    let conflict = false;
+    const writes = [];
+    const settingsView = () => ({
+      revision: String(revision),
+      sources: savedSources,
+    });
+    const publicSources = () =>
+      savedSources
+        .filter((source) => !source.disabled)
+        .map((source) => ({
+          ...source,
+          credentialsConfigured: source.apiKeyConfigured,
+        }));
     await page.route("**/booru-browser/**", async (route) => {
       const url = new URL(route.request().url());
+      if (url.pathname.endsWith("/settings")) {
+        if (route.request().method() === "GET") {
+          await route.fulfill({ json: settingsView() });
+          return;
+        }
+        const payload = route.request().postDataJSON();
+        writes.push(payload);
+        if (conflict || payload.revision !== String(revision)) {
+          conflict = false;
+          await route.fulfill({
+            status: 409,
+            json: {
+              error:
+                "Source settings changed. Reload saved sources before saving again.",
+            },
+          });
+          return;
+        }
+        const old = savedSources.find(
+          (source) => source.id === payload.source.id
+        );
+        if (payload.action === "remove")
+          savedSources = savedSources.filter(
+            (source) => source.id !== payload.source.id
+          );
+        else {
+          const { apiKey, ...source } = payload.source;
+          const next = {
+            ...sources[0],
+            ...old,
+            ...source,
+            preset: old?.preset ?? false,
+            apiKeyConfigured: payload.clearAPIKey
+              ? false
+              : !!apiKey || !!old?.apiKeyConfigured,
+          };
+          savedSources = savedSources
+            .filter((source) => source.id !== next.id)
+            .concat(next);
+        }
+        revision++;
+        await route.fulfill({ json: settingsView() });
+        return;
+      }
       if (url.pathname.endsWith("/sources")) {
         await route.fulfill({
           status: sourcesDenied ? 500 : 200,
           json: sourcesDenied
             ? { error: "Configuration unavailable" }
-            : sources,
+            : publicSources(),
         });
         return;
       }
@@ -140,6 +216,186 @@ try {
       0,
       "opening the browser searched automatically"
     );
+    await page
+      .getByRole("button", { name: "Source settings", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Edit Danbooru", exact: true })
+      .click();
+    const editor = page.getByRole("dialog");
+    await editor.getByLabel("Username", { exact: true }).fill("fixture-user");
+    await editor.getByLabel("API key", { exact: true }).fill("fixture-secret");
+    await editor
+      .getByRole("button", { name: "Save source", exact: true })
+      .click();
+    await editor.waitFor({ state: "hidden" });
+    assert.equal(writes.at(-1).source.apiKey, "fixture-secret");
+    await page
+      .getByRole("button", { name: "Edit Danbooru", exact: true })
+      .click();
+    assert.equal(
+      await editor.getByLabel("API key", { exact: true }).inputValue(),
+      "",
+      "saved key returned to input"
+    );
+    await editor
+      .getByRole("button", { name: "Save source", exact: true })
+      .click();
+    await editor.waitFor({ state: "hidden" });
+    assert.equal(writes.at(-1).source.apiKey, "");
+    assert.equal(writes.at(-1).clearAPIKey, false);
+    await page
+      .getByRole("button", { name: "Edit Danbooru", exact: true })
+      .click();
+    await editor
+      .getByLabel("Remove saved credentials on save", { exact: true })
+      .check();
+    await editor
+      .getByRole("button", { name: "Save source", exact: true })
+      .click();
+    await editor.waitFor({ state: "hidden" });
+    assert.equal(writes.at(-1).clearAPIKey, true);
+    assert.equal(writes.at(-1).source.login, "");
+    await page
+      .getByRole("button", { name: "Edit Danbooru", exact: true })
+      .click();
+    await editor.getByLabel("API key", { exact: true }).fill("unsaved-secret");
+    await editor.getByLabel("Username", { exact: true }).fill("fixture-user");
+    conflict = true;
+    await editor
+      .getByRole("button", { name: "Save source", exact: true })
+      .click();
+    await editor
+      .getByRole("alert")
+      .filter({ hasText: "settings changed" })
+      .waitFor();
+    assert.equal(
+      await editor.getByLabel("API key", { exact: true }).inputValue(),
+      "unsaved-secret",
+      "failed save discarded draft"
+    );
+    await editor
+      .getByRole("button", { name: "Reload saved sources", exact: true })
+      .click();
+    await editor.waitFor({ state: "hidden" });
+    await page
+      .getByRole("button", { name: "Add custom booru", exact: true })
+      .click();
+    await editor.getByLabel("Name", { exact: true }).fill("Fixture custom");
+    await editor
+      .getByLabel("Source ID", { exact: true })
+      .fill("fixture-custom");
+    await editor
+      .getByLabel("API engine", { exact: true })
+      .selectOption("gelbooru");
+    await editor
+      .getByLabel("Site URL", { exact: true })
+      .fill("https://custom.example.org");
+    await editor
+      .getByLabel("Additional image hosts", { exact: true })
+      .fill("cdn.example.org");
+    await editor.getByLabel("User ID", { exact: true }).fill("42");
+    await editor
+      .getByLabel("API key", { exact: true })
+      .fill("fixture-custom-secret");
+    const writesBeforeDuplicate = writes.length;
+    await editor.getByLabel("Source ID", { exact: true }).fill("danbooru");
+    await editor
+      .getByRole("button", { name: "Save source", exact: true })
+      .click();
+    await editor
+      .getByRole("alert")
+      .filter({ hasText: "already in use" })
+      .waitFor();
+    assert.equal(
+      writes.length,
+      writesBeforeDuplicate,
+      "duplicate custom ID overwrote a source"
+    );
+    await editor
+      .getByLabel("Source ID", { exact: true })
+      .fill("fixture-custom");
+    assert.equal(
+      await editor.evaluate(
+        (element) => element.scrollWidth > window.innerWidth + 1
+      ),
+      false,
+      "settings editor overflow"
+    );
+    await page.waitForFunction(() => {
+      const dialog = document.querySelector(".modal.show .modal-dialog");
+      return dialog && getComputedStyle(dialog).transform === "none";
+    });
+    await editor.evaluate((element) => {
+      element.scrollTop = 0;
+    });
+    if (process.env.STASH_BROWSER_SCREENSHOTS) {
+      fs.mkdirSync(process.env.STASH_BROWSER_SCREENSHOTS, { recursive: true });
+      await page.screenshot({
+        path: path.join(
+          process.env.STASH_BROWSER_SCREENSHOTS,
+          `booru-settings-${viewport.width}.png`
+        ),
+        fullPage: false,
+      });
+    }
+    await editor
+      .getByRole("button", { name: "Save source", exact: true })
+      .click();
+    await editor.waitFor({ state: "hidden" });
+    assert.equal(writes.at(-1).source.engine, "gelbooru");
+    assert.deepEqual(writes.at(-1).source.mediaHosts, ["cdn.example.org"]);
+    await page
+      .getByRole("button", { name: "Back to posts", exact: true })
+      .click();
+    await page
+      .getByLabel("Fixture custom · gelbooru", { exact: true })
+      .waitFor();
+    await page.reload();
+    await page
+      .getByLabel("Fixture custom · gelbooru", { exact: true })
+      .waitFor();
+    await page
+      .getByRole("button", { name: "Source settings", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Edit Fixture custom", exact: true })
+      .click();
+    assert.equal(
+      await editor.getByLabel("API key", { exact: true }).inputValue(),
+      ""
+    );
+    await editor.getByLabel("Enable this source", { exact: true }).uncheck();
+    await editor
+      .getByRole("button", { name: "Save source", exact: true })
+      .click();
+    await editor.waitFor({ state: "hidden" });
+    await page
+      .getByRole("button", { name: "Back to posts", exact: true })
+      .click();
+    await page
+      .getByLabel("Fixture custom · gelbooru", { exact: true })
+      .waitFor({ state: "hidden" });
+    await page
+      .getByRole("button", { name: "Source settings", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Edit Fixture custom", exact: true })
+      .click();
+    await editor
+      .getByRole("button", { name: "Remove custom source", exact: true })
+      .click();
+    await editor.waitFor({ state: "hidden" });
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Edit Fixture custom", exact: true })
+        .count(),
+      0
+    );
+    await page
+      .getByRole("button", { name: "Back to posts", exact: true })
+      .click();
+    assert.equal(requests.length, 0, "editing settings issued searches");
     await page.getByLabel("Gelbooru · gelbooru", { exact: true }).check();
     await page
       .getByLabel("Search tags (native source syntax)", { exact: true })
@@ -160,6 +416,32 @@ try {
     await gel.getByRole("alert").filter({ hasText: "60 seconds" }).waitFor();
     assert.equal(requests.length, 2);
 
+    const tagPanel = page.getByRole("region", {
+      name: "Tags on this page",
+      exact: true,
+    });
+    if (viewport.width < 768)
+      await tagPanel
+        .getByRole("button", { name: "Show page tags", exact: true })
+        .click();
+    await tagPanel
+      .getByRole("button", { name: "artist a", exact: true })
+      .click();
+    assert.equal(
+      await page
+        .getByLabel("Search tags (native source syntax)", { exact: true })
+        .inputValue(),
+      "artist_a"
+    );
+    assert.equal(
+      requests.length,
+      2,
+      "using a sidebar tag searched automatically"
+    );
+    if (viewport.width < 768)
+      await tagPanel
+        .getByRole("button", { name: "Hide page tags", exact: true })
+        .click();
     await page
       .getByLabel("Search tags (native source syntax)", { exact: true })
       .fill("draft query");
@@ -255,6 +537,13 @@ try {
     );
     assert.equal(overflow, false, "page overflow");
 
+    await input.fill("gallery");
+    await page
+      .getByRole("button", { name: "Search selected sources", exact: true })
+      .click();
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 112", exact: true })
+      .waitFor();
     if (process.env.STASH_BROWSER_SCREENSHOTS) {
       fs.mkdirSync(process.env.STASH_BROWSER_SCREENSHOTS, { recursive: true });
       await page.screenshot({
@@ -332,7 +621,7 @@ try {
     assert.deepEqual(errors, []);
     await page.close();
     console.log(
-      `Booru browser ${viewport.width}×${viewport.height}: search/paging/inspection/refresh/back, partial failures/retry, missing previews, races/cancel/cleanup and overflow passed.`
+      `Booru browser ${viewport.width}×${viewport.height}: settings create/credentials/clear/conflict/reload/disable/remove; tag sidebar/search/paging/inspection/refresh/back, partial failures/retry, missing previews, races/cancel/cleanup and overflow passed.`
     );
   }
 } finally {

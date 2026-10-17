@@ -223,6 +223,8 @@ func Initialize() (*Server, error) {
 	r.Mount("/downloads", server.getDownloadsRoutes())
 	booruRoutes := booruBrowserRoutes{configPath: cfg.GetConfigPath(), client: booru.NewClient()}
 	r.Get("/booru-browser/sources", booruRoutes.Sources)
+	r.Get("/booru-browser/settings", booruRoutes.Settings)
+	r.Post("/booru-browser/settings", booruRoutes.UpdateSettings)
 	r.Get("/booru-browser/search", booruRoutes.Search)
 
 	inheritanceRoutes := newAssociationInheritanceRoutes(repo, cfg, mgr.JobManager)
