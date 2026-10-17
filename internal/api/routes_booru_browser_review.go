@@ -36,7 +36,7 @@ type booruReviewUpdate struct {
 }
 type booruReviewMatch struct {
 	Kind     string `json:"kind"`
-	ID       int    `json:"id"`
+	ID       string `json:"id"`
 	FileID   string `json:"fileID"`
 	Evidence string `json:"evidence"`
 }

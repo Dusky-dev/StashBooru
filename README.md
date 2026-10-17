@@ -84,10 +84,11 @@ The navbar's **Booru** browser searches selected sources through Danbooru,
 Gelbooru JSON DAPI, Moebooru, e621 and Philomena adapters. It includes ten presets
 and compatible custom instances managed in **Source settings**, with API keys
 and per-source enable/disable controls. A compact sidebar, categorized page tags
-and thumbnail grid support independent paging/errors and preview/tag inspection. Query and inspection state survive refresh/back
-navigation. Review marks now persist ignored/manual-download history, with bounded current-file
-MD5 matches shown separately. Downloads and follows remain later packages. See
-[B02 review state](docs/booru-review-state.md). See [browser setup and limits](docs/booru-browser.md).
+and thumbnail grid support independent paging/errors and preview/tag inspection.
+Query and inspection state survive refresh/back navigation. Review marks persist
+ignored/manual-download history, with bounded current-file MD5 matches shown
+separately. Downloads and follows remain later packages. See
+[B02 review state](docs/booru-review-state.md) and [browser setup and limits](docs/booru-browser.md).
 
 ### Visual similarity and reference comparison
 

@@ -752,6 +752,18 @@ try {
     await dan
       .getByRole("button", { name: "Select visible", exact: true })
       .click();
+    await page.getByLabel("Show ignored posts", { exact: true }).uncheck();
+    await page.getByLabel("Show ignored posts", { exact: true }).check();
+    assert.equal(
+      await dan
+        .getByLabel("Select Danbooru post 101", { exact: true })
+        .isChecked(),
+      false,
+      "hidden selections were resurrected by the filter"
+    );
+    await dan
+      .getByRole("button", { name: "Select visible", exact: true })
+      .click();
     await dan
       .getByRole("button", { name: "Mark selected downloaded", exact: true })
       .click();
@@ -777,6 +789,13 @@ try {
       .filter({ hasText: "Nothing was changed" })
       .waitFor();
     await dan.getByText("Ignored", { exact: true }).waitFor();
+    assert.equal(
+      await dan
+        .getByRole("button", { name: "Unignore selected", exact: true })
+        .isDisabled(),
+      true,
+      "stale review writes remained enabled"
+    );
     await dan
       .getByRole("button", { name: "Reload review status", exact: true })
       .click();

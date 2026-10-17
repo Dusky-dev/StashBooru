@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -204,7 +205,7 @@ func (rs booruBrowserRoutes) matchBooruLocal(parent context.Context, posts []boo
 			if candidate.Kind == models.MediaKindVideo {
 				kind = "scene"
 			}
-			rows[i].Matches = append(rows[i].Matches, booruReviewMatch{Kind: kind, ID: candidate.ID, FileID: candidate.FileID.String(), Evidence: "current-file-md5"})
+			rows[i].Matches = append(rows[i].Matches, booruReviewMatch{Kind: kind, ID: strconv.Itoa(candidate.ID), FileID: candidate.FileID.String(), Evidence: "current-file-md5"})
 		}
 		if len(rows[i].Matches) > 0 {
 			rows[i].MatchStatus = "verified"

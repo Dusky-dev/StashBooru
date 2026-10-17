@@ -1,10 +1,12 @@
 # Booru content browser: delivery plan
 
 Status: **B01–B02 implemented on the current task branch; validation is recorded in the progress ledger. B03–B06 planned.** Baseline: `develop`
-`8fc869d8792f9f47643ea102d960788946068f41`, reviewed 2026-10-17.
+`598d6849668303369fb2a2c5783160a00172ba59`, reviewed 2026-10-17 UTC.
 This is the next roadmap after the delivered P01–P13 scopes. The owner broadened
-B01 on 2026-10-17 to an engine-based browser inspired by Grabber. B01 searches several remote sources; B02 adds durable review marks and verified
-current-file matches. Follows and downloads remain later packages. See [browser operation and source configuration](booru-browser.md).
+B01 on 2026-10-17 to an engine-based browser inspired by Grabber. B01 searches
+several remote sources; B02 adds durable review marks and verified current-file
+matches. Follows and downloads remain later packages. See
+[browser operation and source configuration](booru-browser.md).
 
 The owner requested a content browser, ignored/already-downloaded marks, pHash
 groups with Compare, tag differences with disfavored tags in red, following

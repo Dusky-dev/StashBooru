@@ -12,7 +12,7 @@ export interface ReviewState {
   checkedAt?: string;
   matches?: {
     kind: "image" | "scene";
-    id: number;
+    id: string;
     fileID: string;
     evidence: string;
   }[];
@@ -155,7 +155,7 @@ export function BooruReview({
   );
 
   async function apply(changes: ReviewChange[], isUndo = false) {
-    if (busy || !states || !changes.length) return;
+    if (busy || error || !states || !changes.length) return;
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
@@ -264,7 +264,7 @@ export function BooruReview({
             <Button
               size="sm"
               variant="secondary"
-              disabled={busy || !states}
+              disabled={busy || !!error || !states}
               onClick={() => void apply(undo, true)}
             >
               Undo last review change
@@ -276,7 +276,7 @@ export function BooruReview({
         <Button
           size="sm"
           variant="secondary"
-          disabled={busy || !states || !visible.length}
+          disabled={busy || !!error || !states || !visible.length}
           onClick={() => setSelected(visible.map((post) => post.id))}
         >
           Select visible
@@ -293,7 +293,7 @@ export function BooruReview({
         <Button
           size="sm"
           variant="secondary"
-          disabled={busy || !states || !targets.length}
+          disabled={busy || !!error || !states || !targets.length}
           onClick={() => mark(targets, "ignored", true)}
         >
           Ignore selected
@@ -301,7 +301,7 @@ export function BooruReview({
         <Button
           size="sm"
           variant="secondary"
-          disabled={busy || !states || !targets.length}
+          disabled={busy || !!error || !states || !targets.length}
           onClick={() => mark(targets, "ignored", false)}
         >
           Unignore selected
@@ -309,7 +309,7 @@ export function BooruReview({
         <Button
           size="sm"
           variant="secondary"
-          disabled={busy || !states || !targets.length}
+          disabled={busy || !!error || !states || !targets.length}
           onClick={() => mark(targets, "downloaded", true)}
         >
           Mark selected downloaded
@@ -317,7 +317,7 @@ export function BooruReview({
         <Button
           size="sm"
           variant="secondary"
-          disabled={busy || !states || !targets.length}
+          disabled={busy || !!error || !states || !targets.length}
           onClick={() => mark(targets, "downloaded", false)}
         >
           Clear selected manual marks
@@ -340,7 +340,7 @@ export function BooruReview({
                 aria-label={`Select ${source.name} post ${post.id}`}
                 label="Select"
                 checked={targets.includes(post.id)}
-                disabled={busy || !state}
+                disabled={busy || !!error || !state}
                 onChange={() =>
                   setSelected((ids) =>
                     ids.includes(post.id)
@@ -354,7 +354,7 @@ export function BooruReview({
                 <Button
                   variant="secondary"
                   size="sm"
-                  disabled={busy || !state}
+                  disabled={busy || !!error || !state}
                   onClick={() => mark([post.id], "ignored", !state?.ignoredAt)}
                 >
                   {state?.ignoredAt ? "Unignore" : "Ignore"}
@@ -362,7 +362,7 @@ export function BooruReview({
                 <Button
                   variant="secondary"
                   size="sm"
-                  disabled={busy || !state}
+                  disabled={busy || !!error || !state}
                   onClick={() =>
                     mark([post.id], "downloaded", !state?.downloadedAt)
                   }

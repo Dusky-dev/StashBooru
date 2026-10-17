@@ -76,6 +76,7 @@ func TestB02ReviewPersistenceIsolationConflictsAndUndo(t *testing.T) {
 	undone := b02Write(t, rs, dan, models.BooruReviewChange{PostID: "1", Version: bulk[0].Version, Ignored: b02Bool(false)}, models.BooruReviewChange{PostID: "2", Version: bulk[1].Version, Ignored: b02Bool(false)})
 	require.NotEmpty(t, undone[0].DownloadedAt)
 	require.Greater(t, undone[1].Version, 0, "cleared rows keep versions to reject ABA edits")
+	b02Write(t, rs, dan, models.BooruReviewChange{PostID: "18446744073709551615", Downloaded: b02Bool(true)})
 	require.NoError(t, db.Close())
 	db = sqlite.NewDatabase()
 	require.NoError(t, db.Open(path))
@@ -84,6 +85,10 @@ func TestB02ReviewPersistenceIsolationConflictsAndUndo(t *testing.T) {
 	persisted := b02Read(t, rs, dan, booruReviewPost{ID: "1"}, booruReviewPost{ID: "2"})
 	require.NotEmpty(t, persisted[0].DownloadedAt)
 	require.Equal(t, undone[1].Version, persisted[1].Version)
+	large := b02Read(t, rs, dan, booruReviewPost{ID: "18446744073709551615"})
+	require.Equal(t, "18446744073709551615", large[0].PostID)
+	require.NotEmpty(t, large[0].DownloadedAt)
+
 	// The same settings ID at a different site is a new instance.
 	config := fmt.Sprintf(`[{"id":"danbooru","name":"Other","engine":"danbooru","url":"https://other.example.org"}]`)
 	require.NoError(t, os.WriteFile(filepath.Join(rs.configPath, "booru-browser.json"), []byte(config), 0600))
