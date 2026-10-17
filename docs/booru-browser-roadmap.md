@@ -1,9 +1,11 @@
 # Booru content browser: delivery plan
 
-Status: **planned, not implemented**. Baseline: `develop`
+Status: **B01 implemented; validation recorded in the progress ledger. B02–B06 planned.** Baseline: `develop`
 `8fc869d8792f9f47643ea102d960788946068f41`, reviewed 2026-10-17.
-This is the next roadmap after the delivered P01–P13 scopes, not a claim that
-the current app already searches, follows or downloads remote booru posts.
+This is the next roadmap after the delivered P01–P13 scopes. The owner broadened
+B01 on 2026-10-17 to an engine-based browser inspired by Grabber. Current B01
+searches several remote sources; follows, review marks and downloads remain
+later packages. See [browser operation and source configuration](booru-browser.md).
 
 The owner requested a content browser, ignored/already-downloaded marks, pHash
 groups with Compare, tag differences with disfavored tags in red, following
@@ -29,12 +31,12 @@ Implement one package at a time, complete its acceptance checks and update the
 | Package | Usable outcome | Dependency |
 | --- | --- | --- |
 | B00 — documentation and scope | Current feature guides and this staged contract. | Current branch; documentation only. |
-| B01 — read-only browser | Search one provider, browse bounded pages, inspect tags/source and open remote posts. | B00. Start with Gelbooru; verify its current official API/auth rules before coding. |
+| B01 — read-only browser | Search selected sources through five API families, page each independently, inspect tags/previews and open remote posts. Ten presets and server-configured compatible instances. | B00. Broadened by owner direction; see [B01 guide](booru-browser.md) for scope and limits. |
 | B02 — persistent review marks | Ignore, undo, show ignored, manually mark already downloaded, and display verified local matches separately. | B01 and its stable source/post identity. |
 | B03 — metadata and selection review | Import supported metadata and select Artist × Copyright intersections before downloading. | B01–B02; reuse native metadata review. |
 | B04 — reviewed downloads | Download the reviewed bounded selection into the library, with cancellation, retries and verified local links. | B03; native scan/import and recoverable staging. |
 | B05 — pHash groups and tag comparison | Review similar images, Compare, inspect shared/unique tags and red disfavored-tag warnings. | B02–B04 for stable remote/local identity; reuse P02/P03/P08. |
-| B06 — follows and feed | Follow Artists and Copyrights/series, including compound searches; view new posts and resume feeds. | B01–B04; second-provider support only after B01 parity checks. |
+| B06 — follows and feed | Follow Artists and Copyrights/series, including compound searches; view new posts and resume feeds. | B01–B04; each additional engine needs B01 adapter acceptance checks. |
 
 Do not implement all rows in one PR. A package can have a backend/API PR followed
 by its UI PR, but remains in progress until its user workflow and acceptance
@@ -84,7 +86,10 @@ tags, browse previews and inspect source tags plus the remote post link. Clearly
 distinguish remote previews from imported local media. Opening search must not
 create catalogue entities, download originals or start inference.
 
-The first adapter is Gelbooru. Use supported stable ordering and bounded pages,
+The initial adapters are Danbooru, Gelbooru JSON DAPI, Moebooru, e621 and Philomena,
+following the owner's broader-source direction. Keep per-source paging/errors
+and native query syntax explicit; do not claim Grabber-wide engine/login parity.
+Use supported stable ordering and bounded pages,
 retain the query when returning from a preview, and cancel obsolete searches.
 Record total semantics as exact, provider estimate or unknown. If an underlying
 page API shifts while new posts arrive, de-duplicate seen IDs and expose that

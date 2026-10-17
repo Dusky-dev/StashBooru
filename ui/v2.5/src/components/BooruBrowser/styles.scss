@@ -1,0 +1,61 @@
+.booru-browser {
+  margin: 0 auto;
+  max-width: 1600px;
+  overflow-wrap: anywhere;
+
+  .booru-source-options {
+    display: grid;
+    gap: 0.4rem 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  }
+
+  .booru-source {
+    border-top: 1px solid var(--secondary);
+    padding-top: 1rem;
+  }
+
+  .booru-grid {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr));
+  }
+
+  .booru-preview-button {
+    display: block;
+    height: 180px;
+    padding: 0.25rem;
+    width: 100%;
+
+    img {
+      height: 100%;
+      object-fit: contain;
+      width: 100%;
+    }
+  }
+
+  .booru-pagination {
+    gap: 0.75rem;
+  }
+}
+
+.booru-browser-inspection {
+  overflow-wrap: anywhere;
+
+  .booru-sample {
+    display: block;
+    max-height: 55vh;
+    object-fit: contain;
+    width: 100%;
+  }
+
+  .booru-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+
+    .badge {
+      text-align: left;
+      white-space: normal;
+    }
+  }
+}

@@ -37,8 +37,8 @@ See the [feature guide](docs/features.md) for where to find each tool, processin
 and restore behavior, model requirements, and current limitations.
 The [documentation index](docs/README.md) links every fork guide, delivered package
 and experimental tool. The [booru browser plan](docs/booru-browser-roadmap.md)
-tracks remote browsing, review marks, follows and selective downloads; those are
-planned additions, separate from the existing MD5 metadata lookup.
+tracks the read-only browser and later review marks, follows and selective
+downloads, separately from the existing MD5 metadata lookup.
 
 ### Native anime/booru metadata
 
@@ -77,6 +77,15 @@ Opening Image/Video Tagging loads Local metadata only. Other sources run on an
 explicit action, with reviewed application and ambiguity handling. Video Tagging
 also offers sampled-frame analysis and batch review. See [metadata and tagging](docs/metadata-and-tagging.md)
 for source priority, filenames, model requirements, native Auto Tag and inheritance.
+
+### Remote booru browsing
+
+The navbar's **Booru** browser searches selected sources through Danbooru,
+Gelbooru JSON DAPI, Moebooru, e621 and Philomena adapters. It includes ten presets
+and server-configured compatible instances, with independent paging/errors and
+remote preview/tag inspection. Query and inspection state survive refresh/back
+navigation. It is read-only; local-copy checks, ignores, downloads and follows are
+later packages. See [browser setup and limits](docs/booru-browser.md).
 
 ### Visual similarity and reference comparison
 

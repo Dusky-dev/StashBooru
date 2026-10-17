@@ -1,0 +1,49 @@
+name: Booru browser
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/booru-browser.yml'
+      - 'pkg/booru/**'
+      - 'internal/api/routes_booru_browser*'
+      - 'ui/v2.5/src/components/BooruBrowser/**'
+      - 'ui/v2.5/tests/browser/booru-browser.mjs'
+      - 'ui/v2.5/tests/browser/fixtures/booru-browser.*'
+      - 'ui/v2.5/pnpm-lock.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        with:
+          package_json_file: ui/v2.5/package.json
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: pnpm
+          cache-dependency-path: ui/v2.5/pnpm-lock.yaml
+      - name: Install locked UI dependencies
+        run: pnpm --dir ui/v2.5 install --frozen-lockfile
+      - name: Install isolated browser test tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/booru-tools" playwright@1.57.0
+          node "$RUNNER_TEMP/booru-tools/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Mounted desktop and mobile workflows
+        working-directory: ui/v2.5
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/booru-tools/node_modules/playwright/index.mjs
+          STASH_BROWSER_SCREENSHOTS: ${{ runner.temp }}/booru-screenshots
+        run: node tests/browser/booru-browser.mjs
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: booru-browser-screenshots
+          path: ${{ runner.temp }}/booru-screenshots
+          if-no-files-found: ignore
+          retention-days: 7

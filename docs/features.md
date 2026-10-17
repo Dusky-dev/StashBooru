@@ -4,13 +4,14 @@ This guide covers the fork's user-facing additions to upstream Stash, including
 features predating P01–P13. See the [documentation index](README.md) for detailed
 setup and acceptance notes. It describes current `develop`; individual stable
 releases can lag behind it. The [booru browser roadmap](booru-browser-roadmap.md)
-describes requested future work separately.
+separates the read-only B01 browser from later requested work.
 
 ## Where things live
 
 | Location | Use it for |
 | --- | --- |
 | **All** | Browse Images and Videos together, with shared filters and typed selections. Individual Images and Videos pages remain available. |
+| **Booru** (navbar globe) | Search remote sources, page them independently and inspect previews/raw tags. This does not import media or check existing local copies. |
 | **Settings → Library** | Media folders, scan rules and automatic ancestor/profile associations. Inheritance switches save automatically. |
 | **Settings → Processing** | Shared worker connection, similarity/tagging defaults, conversion rules and upscaling setup. Use each section's Save button. |
 | **Settings → Tasks** | Jobs, generated files/hashes, animation inspection, Character merging, association review, Video overlap indexing and database management. |
@@ -92,8 +93,10 @@ in Generate; native Auto Tag matches names/paths without a model.
 
 See [metadata and tagging](metadata-and-tagging.md) for filename tokens, provider
 lookup behavior, model setup, direct/calculated relationships and ambiguity rules.
-Existing MD5 lookup enriches local media. Remote content browsing, follows and
-ignored/already-downloaded marks are not yet implemented.
+Existing MD5 lookup enriches local media. The separate [Booru browser](booru-browser.md)
+supports read-only multi-source search through Danbooru, Gelbooru, Moebooru, e621
+and Philomena adapters, with ten presets and compatible custom server definitions.
+Follows and ignored/already-downloaded marks remain later packages.
 
 ### Profile artwork and metadata diagnostics
 

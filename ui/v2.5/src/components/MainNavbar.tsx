@@ -27,6 +27,7 @@ import {
   faChartColumn,
   faCopyright,
   faFilm,
+  faGlobe,
   faHeart,
   faImage,
   faImages,
@@ -319,6 +320,21 @@ export const MainNavbar: React.FC = () => {
   function renderUtilityButtons() {
     return (
       <>
+        <NavLink
+          className="nav-utility"
+          exact
+          to="/booru"
+          onClick={handleDismiss}
+          title={intl.formatMessage({
+            id: "booru_browser.title",
+            defaultMessage: "Booru browser",
+          })}
+        >
+          <Icon icon={faGlobe} />
+          <span className="ml-1 d-none d-sm-inline">
+            <FormattedMessage id="booru_browser.nav" defaultMessage="Booru" />
+          </span>
+        </NavLink>
         <Nav.Link
           className="nav-utility"
           href="https://opencollective.com/stashapp"

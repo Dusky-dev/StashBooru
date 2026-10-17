@@ -2,17 +2,62 @@
 
 Updated: 2026-10-17
 
-Current baseline: `develop` at `8fc869d8792f9f47643ea102d960788946068f41`
-(PR #141 and the subsequent upstream synchronization are present). Current branch:
-`docs/fork-guide-booru-roadmap-20261017`. Active package: **B00 — documentation and
-scoped booru-browser roadmap**. See the [documentation index](README.md),
-[feature guide](features.md), [metadata guide](metadata-and-tagging.md) and
-[B01–B06 plan](booru-browser-roadmap.md). Next: **B01 — read-only Gelbooru browser**;
-remote browser implementation has not started in this package.
+Current baseline: `develop` at `2af939ff5b2a4d90336f0afbda8b8a5e2f514d76`
+(PR #142 merged; its tree matches the locally verified B00 checkpoint). Current
+branch: `feat/b01-multi-booru-browser-20261017`. Active package: **B01 — multi-source
+read-only browser**, broadened at the owner's direction from one Gelbooru adapter
+to engine-based support similar to Grabber. See the [browser guide](booru-browser.md)
+and [B01–B06 plan](booru-browser-roadmap.md). Next: **B02 — durable ignored/manual
+already-downloaded marks and verified local matches**. B02–B06 are not implemented
+by this package.
 
 P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
+
+## B01 — multi-source read-only browser — 2026-10-17
+
+- Started from the verified B00 tree on develop `8fc869d879`; fresh develop after
+  the owner's merge of #142 is `2af939ff5b2a4d90336f0afbda8b8a5e2f514d76`, tree
+  `072920c77d23f6d70a7843d51739b5c350f323c6`, identical to that local B00 tree.
+  The browser branch publishes on this merged baseline, without merging itself.
+- New `pkg/booru` adapters cover Danbooru, Gelbooru JSON DAPI, Moebooru, current/
+  legacy e621 and Philomena. Ten presets plus server-owned compatible definitions
+  in `booru-browser.json`; ID-only disabled entries remove presets. Credentials
+  are server-side and redacted from source listings and transport/config errors.
+- Native `/booru` page and navbar globe use normal React/Bootstrap components.
+  Up to eight selected sources search independently, with separate errors,
+  cancel/retry and paging. URL state retains query/source/page/inspection;
+  source-tag categories and missing metadata remain explicit. No original-file
+  download, metadata/entity import, database write or model inference occurs.
+- Bounded public-HTTPS transport validates/pins DNS destinations, blocks private/
+  reserved/mixed DNS results and redirects, limits concurrency and per-host rate,
+  honors bounded Retry-After, and cancels obsolete work. Raw queries retain native
+  source syntax. The existing local-file MD5 lookup path is unchanged.
+- Validation passed: backend/UI generation; full `make test`; full `make it`;
+  `go test -race ./pkg/booru`; focused route tests with Makefile SQLite include
+  flags; `make lint` with CI's golangci-lint v2.11.4; all 51 UI tests plus JS/CSS
+  lint, TypeScript and formatting (`make validate-ui` equivalent, Node 20.20.1 /
+  locked pnpm 10.33.0); production `make ui-only`; diff whitespace checks.
+- Mounted Chrome Headless Shell 143 passed desktop 1440×1000 and mobile 390×844
+  search, independent paging, inspection, refresh/back, partial failure/retry,
+  stale-response rejection, cancellation, cleanup and overflow checks. The fixture
+  uses native theme styles, mocked APIs and synthetic artwork; no human manual
+  testing or real-media playback is claimed. A dedicated Booru browser PR workflow
+  runs these checks with isolated pinned Playwright tooling.
+- Live check limits: a small metadata-only probe obtained usable Safebooru JSON
+  through the environment's outbound proxy; the other sampled providers returned
+  non-JSON intermediary pages. The native public-DNS/direct transport could not
+  reach Safebooru here. This does not verify live account access or every preset;
+  fixture compatibility is not advertised as universal live availability.
+- Remaining limits: five API families, not Grabber-wide engine/login parity;
+  custom sites require server-file configuration; private/local URLs and environment
+  proxies are not supported; Moebooru password login is absent; flat tag categories
+  stay unknown. Listings are live per-source numbered pages, without cross-page/
+  cross-source deduplication, snapshot totals, ignores, follows or downloads.
+- Migration/API/dependency impact: no migration, GraphQL/schema or dependency-lock
+  change. Adds authenticated read-only source/search HTTP routes; existing media
+  IDs, metadata, files and workers remain untouched. Publication recorded below.
 
 ## B00 — fork documentation and booru-browser plan — 2026-10-17
 
