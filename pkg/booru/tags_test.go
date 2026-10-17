@@ -52,3 +52,20 @@ func TestTagDatabaseRejectsMalformedReplacement(t *testing.T) {
 		t.Fatal("cancelled search returned tags")
 	}
 }
+
+func TestE621NumericCategoriesRemainSourceSpecific(t *testing.T) {
+	csv := "contributor_a,2,1,\ncanine,5,100,\ntagging,7,5,\nlore_tag,8,10,\n"
+	index, err := ReadTagCSVForEngine(strings.NewReader(csv), "e621")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for prefix, want := range map[string]string{"co": "contributor", "ca": "species", "ta": "meta", "lo": "lore"} {
+		got := index.Suggest(context.Background(), prefix)
+		if len(got) != 1 || got[0].Category != want {
+			t.Fatal(prefix, got)
+		}
+	}
+	if _, err := ReadTagCSV(strings.NewReader(csv)); err == nil {
+		t.Fatal("e621 numbers silently reclassified as Danbooru")
+	}
+}

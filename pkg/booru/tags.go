@@ -3,6 +3,7 @@ package booru
 import (
 	"context"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
 	"slices"
@@ -35,16 +36,22 @@ func (t *TagIndex) Count() int { return len(t.tags) }
 // ReadTagCSV accepts the tagcomplete database format: name,type,count,aliases.
 // Header rows from Danbooru tag exports are accepted when the required columns
 // name/category/post_count are present. No catalogue metadata is modified.
-func ReadTagCSV(input io.Reader) (*TagIndex, error) {
+func ReadTagCSV(input io.Reader) (*TagIndex, error) { return ReadTagCSVForEngine(input, "danbooru") }
+
+func ReadTagCSVForEngine(input io.Reader, engine string) (*TagIndex, error) {
 	reader := csv.NewReader(io.LimitReader(input, MaxTagCSVBytes+1))
 	reader.FieldsPerRecord = -1
 	index := &TagIndex{}
 	seen := map[string]bool{}
 	nameCol, typeCol, countCol, aliasCol := 0, 1, 2, 3
+	numeric := map[string]string{"0": "general", "1": "artist", "3": "copyright", "4": "character", "5": "meta"}
+	if engine == "e621" {
+		numeric = map[string]string{"0": "general", "1": "artist", "2": "contributor", "3": "copyright", "4": "character", "5": "species", "6": "invalid", "7": "meta", "8": "lore"}
+	}
 	row := 0
 	for {
 		fields, err := reader.Read()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil || reader.InputOffset() > MaxTagCSVBytes {
@@ -84,25 +91,11 @@ func ReadTagCSV(input io.Reader) (*TagIndex, error) {
 			return nil, fmt.Errorf("invalid/duplicate tag at row %d, or more than one million tags", row)
 		}
 		category := get(typeCol)
-		switch category {
-		case "0":
-			category = "general"
-		case "1":
-			category = "artist"
-		case "3":
-			category = "copyright"
-		case "4":
-			category = "character"
-		case "5":
-			category = "meta"
-		case "6":
-			category = "invalid"
-		case "7":
-			category = "lore"
-		case "8":
-			category = "species"
+
+		if name, ok := numeric[category]; ok {
+			category = name
 		}
-		if !slices.Contains([]string{"general", "artist", "copyright", "character", "meta", "invalid", "lore", "species", "unknown"}, category) {
+		if !slices.Contains([]string{"general", "artist", "copyright", "character", "meta", "invalid", "lore", "species", "contributor", "circle", "faults", "unknown"}, category) {
 			return nil, fmt.Errorf("unsupported tag category at row %d", row)
 		}
 		var count int64

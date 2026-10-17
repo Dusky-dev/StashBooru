@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"net/url"
 	"os"
@@ -72,7 +73,7 @@ func (rs booruBrowserRoutes) Tags(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		h := sha256.New()
-		index, readErr := booru.ReadTagCSV(io.TeeReader(file, h))
+		index, readErr := booru.ReadTagCSVForEngine(io.TeeReader(file, h), source.Engine)
 		file.Close()
 		if readErr != nil {
 			booruTagDatabases.Unlock()
@@ -108,7 +109,8 @@ func (rs booruBrowserRoutes) ImportTags(w http.ResponseWriter, r *http.Request) 
 		writeBooruError(w, 403, "origin", "Upload from this server's interface.")
 		return
 	}
-	if !strings.HasPrefix(r.Header.Get("Content-Type"), "text/csv") {
+	mediaType, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if mediaType != "text/csv" {
 		writeBooruError(w, 415, "tags", "Upload a text/csv database.")
 		return
 	}
@@ -141,7 +143,7 @@ func (rs booruBrowserRoutes) ImportTags(w http.ResponseWriter, r *http.Request) 
 		writeBooruError(w, 500, "tags", "Cannot verify database.")
 		return
 	}
-	index, err := booru.ReadTagCSV(f)
+	index, err := booru.ReadTagCSVForEngine(f, source.Engine)
 	if err != nil {
 		writeBooruError(w, 400, "tags", fmt.Sprintf("Database rejected: %s", err))
 		return

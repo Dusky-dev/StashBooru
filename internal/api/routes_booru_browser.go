@@ -111,6 +111,13 @@ func (rs booruBrowserRoutes) Search(w http.ResponseWriter, r *http.Request) {
 		}
 		for i := range result.Posts {
 			result.Posts[i].MediaKey = rememberBooruPost(source, result.Posts[i])
+			key := result.Posts[i].MediaKey
+			if result.Posts[i].PreviewURL != "" {
+				result.Posts[i].PreviewURL = "booru-browser/media?key=" + key + "&kind=preview"
+			}
+			if result.Posts[i].SampleURL != "" {
+				result.Posts[i].SampleURL = "booru-browser/media?key=" + key + "&kind=sample"
+			}
 		}
 		writeVisualSimilarityJSON(w, result)
 		return

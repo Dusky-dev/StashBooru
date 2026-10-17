@@ -4,6 +4,7 @@ import { type BooruPost, readBooruResponse } from "./browser";
 
 interface DownloadState {
   jobID: number;
+  token: string;
   status: string;
   error?: string;
   url?: string;
@@ -14,15 +15,23 @@ function rememberedJob(identity: string): DownloadState | undefined {
   try {
     const saved = JSON.parse(sessionStorage.getItem(identity) ?? "null") as {
       jobID: number;
+      token: string;
       created: number;
     } | null;
     if (
       saved &&
       Number.isSafeInteger(saved.jobID) &&
       saved.jobID > 0 &&
+      typeof saved.token === "string" &&
+      /^[a-f0-9]{32}$/.test(saved.token) &&
       Date.now() - saved.created < 3600000
     )
-      return { jobID: saved.jobID, status: "queued", converted: false };
+      return {
+        jobID: saved.jobID,
+        token: saved.token,
+        status: "queued",
+        converted: false,
+      };
   } catch {
     /* Storage may be disabled. Jobs still work in the current view. */
   }
@@ -38,7 +47,7 @@ export function BooruDownload({
   const identity = `booru-download:${instance}:${post.id}`;
   const [convert, setConvert] = useState(false);
   const [ready, setReady] = useState(false);
-  const [state, setState] = useState<DownloadState>(() =>
+  const [state, setState] = useState<DownloadState | undefined>(() =>
     rememberedJob(identity)
   );
   const [busy, setBusy] = useState(false);
@@ -62,6 +71,7 @@ export function BooruDownload({
     return () => controller.abort();
   }, []);
   const jobID = state?.jobID;
+  const token = state?.token;
   const terminal =
     state && ["complete", "failed", "cancelled"].includes(state.status);
   useEffect(() => {
@@ -70,13 +80,17 @@ export function BooruDownload({
     let timer: number;
     const poll = async () => {
       try {
-        const response = await fetch(`booru-browser/download?jobID=${jobID}`, {
-          signal: controller.signal,
-        });
+        const response = await fetch(
+          `booru-browser/download?${new URLSearchParams({ jobID: String(jobID), token: token ?? "" })}`,
+          {
+            signal: controller.signal,
+          }
+        );
         if (response.status === 404 || response.status === 410) {
           if (!controller.signal.aborted)
             setState({
               jobID,
+              token: token ?? "",
               status: "failed",
               converted: false,
               error:
@@ -102,7 +116,7 @@ export function BooruDownload({
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [jobID, terminal]);
+  }, [jobID, token, terminal]);
   const running = !!state && !terminal;
   async function start() {
     setBusy(true);
@@ -112,12 +126,16 @@ export function BooruDownload({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key: post.mediaKey, convert }),
-      }).then(readBooruResponse<{ jobID: number }>);
+      }).then(readBooruResponse<{ jobID: number; token: string }>);
       setState({ ...result, status: "queued", converted: false });
       try {
         sessionStorage.setItem(
           identity,
-          JSON.stringify({ jobID: result.jobID, created: Date.now() })
+          JSON.stringify({
+            jobID: result.jobID,
+            token: result.token,
+            created: Date.now(),
+          })
         );
       } catch {
         /* Optional reload recovery. */
@@ -134,7 +152,7 @@ export function BooruDownload({
       await fetch("booru-browser/download", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cancel: jobID }),
+        body: JSON.stringify({ cancel: jobID, token }),
       }).then(readBooruResponse);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));

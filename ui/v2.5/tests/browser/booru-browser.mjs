@@ -156,6 +156,16 @@ try {
         return;
       }
       if (url.pathname.endsWith("/tags")) {
+        if (
+          url.searchParams.get("source") === "gelbooru" &&
+          url.searchParams.get("q")?.startsWith("az")
+        ) {
+          await route.fulfill({
+            status: 500,
+            json: { error: "Fixture tag database unavailable" },
+          });
+          return;
+        }
         if (route.request().method() === "POST") {
           assert.equal(
             route.request().headers()["x-booru-revision"] ?? "",
@@ -201,6 +211,7 @@ try {
           if (payload.cancel)
             downloadState = {
               jobID: 71,
+              token: "c".repeat(32),
               status: "cancelled",
               converted: false,
             };
@@ -209,12 +220,14 @@ try {
             downloadState = failNextDownload
               ? {
                   jobID: 71,
+                  token: "c".repeat(32),
                   status: "failed",
                   error: "Fixture checksum mismatch",
                   converted: false,
                 }
               : {
                   jobID: 71,
+                  token: "c".repeat(32),
                   status: "complete",
                   converted: payload.convert,
                   url: "downloads/abc123/danbooru-101.jxl",
@@ -222,7 +235,7 @@ try {
                 };
             failNextDownload = false;
           }
-          await route.fulfill({ json: { jobID: 71 } });
+          await route.fulfill({ json: { jobID: 71, token: "c".repeat(32) } });
         } else await route.fulfill({ json: downloadState });
         return;
       }
@@ -580,6 +593,7 @@ try {
       .getByRole("button", { name: "Back to posts", exact: true })
       .click();
     assert.equal(requests.length, 0, "editing settings issued searches");
+    await page.getByLabel("Gelbooru · gelbooru", { exact: true }).check();
     const queryInput = page.getByLabel("Search tags (native source syntax)", {
       exact: true,
     });
@@ -588,9 +602,20 @@ try {
     await queryInput.press("ArrowLeft");
     await queryInput.press("ArrowRight");
     await page.getByRole("option", { name: /blue_hair/ }).waitFor();
+    if (process.env.STASH_BROWSER_SCREENSHOTS)
+      await page.screenshot({
+        path: path.join(
+          process.env.STASH_BROWSER_SCREENSHOTS,
+          `booru-autocomplete-${viewport.width}.png`
+        ),
+      });
     await queryInput.press("Enter");
     assert.equal(await queryInput.inputValue(), "cat -blue_hair fox");
-    assert.equal(requests.length, 0, "autocomplete submitted a search");
+    assert.equal(
+      requests.length,
+      0,
+      "autocomplete submitted a search despite a partial database failure"
+    );
 
     await page.getByLabel("Gelbooru · gelbooru", { exact: true }).check();
     await page
@@ -665,6 +690,17 @@ try {
     await dialog
       .getByRole("link", { name: "Save JPEG XL", exact: true })
       .waitFor();
+    if (process.env.STASH_BROWSER_SCREENSHOTS) {
+      await dialog
+        .getByRole("region", { name: "Download this post" })
+        .scrollIntoViewIfNeeded();
+      await page.screenshot({
+        path: path.join(
+          process.env.STASH_BROWSER_SCREENSHOTS,
+          `booru-download-${viewport.width}.png`
+        ),
+      });
+    }
     assert.equal(downloadRequests.at(-1).convert, true);
     assert.equal(downloadRequests.at(-1).key, "a".repeat(48));
     failNextDownload = true;

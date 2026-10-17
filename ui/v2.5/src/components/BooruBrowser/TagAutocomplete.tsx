@@ -20,6 +20,7 @@ export function TagAutocomplete({
   sources: BooruSource[];
 }) {
   const input = useRef<HTMLInputElement>(null);
+  const list = useRef<HTMLUListElement>(null);
   const [caret, setCaret] = useState(value.length);
   const [items, setItems] = useState<Suggestion[]>([]);
   const [active, setActive] = useState(0);
@@ -41,7 +42,7 @@ export function TagAutocomplete({
     )
       return () => controller.abort();
     const timer = window.setTimeout(() => {
-      void Promise.all(
+      void Promise.allSettled(
         sources.map(async (source) => {
           const params = new URLSearchParams({
             source: source.id,
@@ -67,7 +68,14 @@ export function TagAutocomplete({
       )
         .then((results) => {
           if (controller.signal.aborted) return;
-          const combined = results
+          const available = results.flatMap((result) =>
+            result.status === "fulfilled" ? [result.value] : []
+          );
+          if (available.length < results.length)
+            setNotice(
+              "Some tag databases are unavailable. Suggestions from the others are shown."
+            );
+          const combined = available
             .flatMap((result) => result.items)
             .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
           const unique = combined
@@ -79,7 +87,10 @@ export function TagAutocomplete({
             .slice(0, 20);
           setItems(unique);
           setActive(0);
-          if (results.every((result) => result.count === 0))
+          if (
+            available.length === results.length &&
+            available.every((result) => result.count === 0)
+          )
             setNotice(
               "Upload a tag CSV in Source settings to enable autocomplete."
             );
@@ -112,6 +123,10 @@ export function TagAutocomplete({
     });
   }
   const open = items.length > 0 && !dismissed;
+  useEffect(() => {
+    if (open)
+      list.current?.children.item(active)?.scrollIntoView({ block: "nearest" });
+  }, [active, open]);
   return (
     <div className="booru-autocomplete">
       <input
@@ -163,6 +178,7 @@ export function TagAutocomplete({
       />
       {open && (
         <ul
+          ref={list}
           id="booru-tag-suggestions"
           role="listbox"
           aria-label="Tag suggestions"

@@ -94,14 +94,16 @@ in Generate; native Auto Tag matches names/paths without a model.
 See [metadata and tagging](metadata-and-tagging.md) for filename tokens, provider
 lookup behavior, model setup, direct/calculated relationships and ambiguity rules.
 Existing MD5 lookup enriches local media. The separate [Booru browser](booru-browser.md)
-supports read-only multi-source search through Danbooru, Gelbooru, Moebooru, e621
+supports multi-source search through Danbooru, Gelbooru, Moebooru, e621
 and Philomena adapters, with ten presets and compatible custom definitions.
 **Source settings** (also **Settings → Metadata Providers → Booru sources**) edits
 API keys, engine, URL, image hosts and enabled state. Its Danbooru-inspired sidebar
 and compact thumbnail grid include categorized loaded-page tag counts.
 [B02 review state](booru-review-state.md) adds persistent ignored/manual-download
 marks, bulk undo, a show-ignored filter and bounded current-file MD5 matches.
-Follows and actual downloads remain later packages.
+Explicit [computer downloads and CSV autocomplete](booru-downloads-autocomplete.md)
+are available, including optional JPEG → JPEG XL preparation. Follows and durable
+catalogue import remain later packages.
 
 ### Profile artwork and metadata diagnostics
 
@@ -241,8 +243,3 @@ Development snapshots (`latest_develop`) are available from GitHub separately.
 Download the matching platform release and follow your existing installation
 procedure. The check does not install updates. A network/rate-limit failure is
 shown as a failed check, not as proof that the installation is up to date.
-
-The browser also supports [same-origin thumbnails, file downloads and CSV tag
-autocomplete](booru-downloads-autocomplete.md). JPEG downloads can use the existing
-converter to produce JPEG XL before saving. File exports do not import native
-catalogue entries or change manual download marks.

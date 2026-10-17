@@ -54,7 +54,8 @@ The original stays staged until conversion and download registration finish.
 Completed files use the native generated-download store and expire after one
 hour, or 30 seconds after the first download finishes. At most 100 preparation
 entries are retained. Preparation times out after 30 minutes of execution;
-entries still queued after an hour are cancelled. Reopening the same post or
+entries still queued after an hour are cancelled. Opaque job tokens prevent reused Job IDs after restart from resuming another
+export. Reopening the same post or
 refreshing in the same tab recovers its last Job ID using session storage. If
 storage is disabled, keep the inspection open until saving. Server restarts do
 not resume these temporary exports: prepare again. A process crash can leave
@@ -81,9 +82,12 @@ Supported formats:
 | [tagcomplete CSV](https://github.com/DominikDoom/a1111-sd-webui-tagcomplete#csv-tag-data) | `name,type,count,"alias_one,alias_two"`, without a header. Count and aliases are optional. |
 | Danbooru-style CSV export | Header containing `name` and `category`/`type`; optional `post_count`/`count`, `aliases` and other columns such as `id`. |
 
-Numeric categories are 0 general, 1 Artist, 3 Copyright, 4 Character, 5 meta,
-6 invalid, 7 lore and 8 species. These category names, plus `unknown`, are also
-accepted. Duplicate/invalid names, negative counts, malformed CSV and unknown
+Numeric categories follow the selected engine: Danbooru-compatible CSV uses
+0 general, 1 Artist, 3 Copyright, 4 Character and 5 meta. e621 uses
+[its own mapping](https://github.com/e621ng/e621ng/blob/master/app/logical/tag_category.rb):
+2 contributor, 5 species, 6 invalid, 7 meta and 8 lore, with 0/1/3/4 unchanged.
+Category names (including `unknown`, `circle` and `faults`) are also accepted;
+use names for custom engine category schemes. Duplicate/invalid names, negative counts, malformed CSV and unknown
 categories reject the upload. Limits: 64 MiB, one million tags, two million
 names/aliases, 32 aliases per tag and 256 UTF-8 bytes per name. Files must be
 uncompressed CSV; SQLite/JSON/Grabber database files are not accepted. Prefix

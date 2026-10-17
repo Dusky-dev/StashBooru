@@ -53,7 +53,11 @@ func (rs booruBrowserRoutes) UpdateDownloadSettings(w http.ResponseWriter, r *ht
 	}
 	booruDownloadSettingsMu.Lock()
 	defer booruDownloadSettingsMu.Unlock()
-	data, _ := json.Marshal(value)
+	data, err := json.Marshal(value)
+	if err != nil {
+		writeBooruError(w, 500, "settings", "Cannot encode download settings.")
+		return
+	}
 	if err := writeBooruAtomic(rs.configPath, "booru-downloads.json", data); err != nil {
 		writeBooruError(w, 500, "settings", "Cannot save download settings.")
 		return
@@ -86,9 +90,11 @@ type booruDownloadRequest struct {
 	Key     string `json:"key"`
 	Convert bool   `json:"convert"`
 	Cancel  int    `json:"cancel,omitempty"`
+	Token   string `json:"token,omitempty"`
 }
 type booruDownloadState struct {
 	JobID       int    `json:"jobID"`
+	Token       string `json:"token"`
 	Status      string `json:"status"`
 	Error       string `json:"error,omitempty"`
 	URL         string `json:"url,omitempty"`
@@ -116,7 +122,7 @@ func (rs booruBrowserRoutes) DownloadStatus(w http.ResponseWriter, r *http.Reque
 	if state != nil && native != nil && native.Status == job.StatusCancelled {
 		state.Status, state.Error = "cancelled", "Download cancelled."
 	}
-	if state == nil {
+	if state == nil || state.Token != r.URL.Query().Get("token") {
 		writeBooruError(w, 404, "download", "Download expired or the server restarted. Start it again.")
 		return
 	}
@@ -139,7 +145,7 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 		booruDownloads.Lock()
 		state := booruDownloads.jobs[input.Cancel]
 		booruDownloads.Unlock()
-		if state == nil {
+		if state == nil || state.Token != input.Token {
 			writeBooruError(w, 404, "download", "Download not found.")
 			return
 		}
@@ -161,7 +167,7 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 		writeBooruError(w, 400, "download", "Original unavailable or larger than the 128 MiB download limit.")
 		return
 	}
-	state := &booruDownloadState{Status: "queued"}
+	state := &booruDownloadState{Status: "queued", Token: mediaconvert.NewID()}
 	booruDownloads.Lock()
 	if len(booruDownloads.jobs) >= 100 {
 		booruDownloads.Unlock()
@@ -243,7 +249,9 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 			}
 			n, readErr := io.ReadFull(encoded, header)
 			encoded.Close()
-			if (readErr != nil && readErr != io.EOF && readErr != io.ErrUnexpectedEOF) || !((n >= 2 && header[0] == 0xff && header[1] == 0x0a) || (n == 12 && bytes.Equal(header, []byte{0, 0, 0, 12, 'J', 'X', 'L', ' ', 13, 10, 135, 10}))) {
+			isCodestream := n >= 2 && header[0] == 0xff && header[1] == 0x0a
+			isContainer := n == 12 && bytes.Equal(header, []byte{0, 0, 0, 12, 'J', 'X', 'L', ' ', 13, 10, 135, 10})
+			if (readErr != nil && !errors.Is(readErr, io.EOF) && !errors.Is(readErr, io.ErrUnexpectedEOF)) || (!isCodestream && !isContainer) {
 				return fmt.Errorf("converter output is not JPEG XL")
 			}
 			if outputMD5, err = mediaconvert.MD5(output); err != nil {
@@ -292,5 +300,5 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 		defer booruDownloads.Unlock()
 		delete(booruDownloads.jobs, id)
 	})
-	writeVisualSimilarityJSON(w, map[string]int{"jobID": id})
+	writeVisualSimilarityJSON(w, map[string]any{"jobID": id, "token": state.Token})
 }

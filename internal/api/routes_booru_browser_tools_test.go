@@ -58,7 +58,7 @@ func TestBooruSnapshotMediaIsolation(t *testing.T) {
 		t.Fatal(w.Body.String(), err)
 	}
 	key := result.Posts[0].MediaKey
-	if len(key) != 48 || strings.Contains(w.Body.String(), "original.jpg") {
+	if len(key) != 48 || (strings.Contains(w.Body.String(), "original.jpg") || strings.Contains(w.Body.String(), "preview.jpg")) {
 		t.Fatal("snapshot exposed original URL or no opaque key")
 	}
 	w = httptest.NewRecorder()
@@ -173,7 +173,10 @@ func TestBooruDownloadJobPublishesOnlyCompleteFiles(t *testing.T) {
 			key := rememberBooruPost(source, booru.Post{ID: "42", OriginalURL: source.URL + "/original.png"})
 			w := httptest.NewRecorder()
 			rs.StartDownload(w, toolRequest("POST", "/", `{"key":"`+key+`","convert":false}`, "application/json"))
-			var result struct{ JobID int }
+			var result struct {
+				JobID int
+				Token string
+			}
 			if json.Unmarshal(w.Body.Bytes(), &result) != nil || result.JobID == 0 {
 				t.Fatal(w.Code, w.Body.String())
 			}
@@ -181,7 +184,7 @@ func TestBooruDownloadJobPublishesOnlyCompleteFiles(t *testing.T) {
 			deadline := time.Now().Add(5 * time.Second)
 			for time.Now().Before(deadline) {
 				w = httptest.NewRecorder()
-				rs.DownloadStatus(w, httptest.NewRequest("GET", fmt.Sprintf("/?jobID=%d", result.JobID), nil))
+				rs.DownloadStatus(w, httptest.NewRequest("GET", fmt.Sprintf("/?jobID=%d&token=%s", result.JobID, result.Token), nil))
 				_ = json.Unmarshal(w.Body.Bytes(), &state)
 				if state.Status == "complete" || state.Status == "failed" {
 					break
@@ -243,13 +246,16 @@ func TestBooruJPEGDownloadUsesConverterAndSeparatesHashes(t *testing.T) {
 	key := rememberBooruPost(source, booru.Post{ID: "99", OriginalURL: source.URL + "/original.jpg"})
 	w := httptest.NewRecorder()
 	rs.StartDownload(w, toolRequest("POST", "/", `{"key":"`+key+`","convert":true}`, "application/json"))
-	var reply struct{ JobID int }
+	var reply struct {
+		JobID int
+		Token string
+	}
 	_ = json.Unmarshal(w.Body.Bytes(), &reply)
 	var state booruDownloadState
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
 		w = httptest.NewRecorder()
-		rs.DownloadStatus(w, httptest.NewRequest("GET", fmt.Sprintf("/?jobID=%d", reply.JobID), nil))
+		rs.DownloadStatus(w, httptest.NewRequest("GET", fmt.Sprintf("/?jobID=%d&token=%s", reply.JobID, reply.Token), nil))
 		_ = json.Unmarshal(w.Body.Bytes(), &state)
 		if state.Status == "complete" || state.Status == "failed" {
 			break
@@ -286,15 +292,28 @@ func TestBooruQueuedDownloadCanBeCancelled(t *testing.T) {
 	key := rememberBooruPost(source, booru.Post{ID: "100", OriginalURL: source.URL + "/original.png"})
 	w := httptest.NewRecorder()
 	rs.StartDownload(w, toolRequest("POST", "/", `{"key":"`+key+`","convert":false}`, "application/json"))
-	var reply struct{ JobID int }
+	var reply struct {
+		JobID int
+		Token string
+	}
 	_ = json.Unmarshal(w.Body.Bytes(), &reply)
 	w = httptest.NewRecorder()
-	rs.StartDownload(w, toolRequest("POST", "/", fmt.Sprintf(`{"cancel":%d}`, reply.JobID), "application/json"))
+	rs.StartDownload(w, toolRequest("POST", "/", fmt.Sprintf(`{"cancel":%d,"token":"wrong"}`, reply.JobID), "application/json"))
+	if w.Code != 404 {
+		t.Fatal("forged job token cancelled a download")
+	}
+	w = httptest.NewRecorder()
+	rs.DownloadStatus(w, httptest.NewRequest("GET", fmt.Sprintf("/?jobID=%d&token=wrong", reply.JobID), nil))
+	if w.Code != 404 {
+		t.Fatal("reused Job ID exposed another export")
+	}
+	w = httptest.NewRecorder()
+	rs.StartDownload(w, toolRequest("POST", "/", fmt.Sprintf(`{"cancel":%d,"token":"%s"}`, reply.JobID, reply.Token), "application/json"))
 	if w.Code != 200 {
 		t.Fatal(w.Body.String())
 	}
 	w = httptest.NewRecorder()
-	rs.DownloadStatus(w, httptest.NewRequest("GET", fmt.Sprintf("/?jobID=%d", reply.JobID), nil))
+	rs.DownloadStatus(w, httptest.NewRequest("GET", fmt.Sprintf("/?jobID=%d&token=%s", reply.JobID, reply.Token), nil))
 	var state booruDownloadState
 	_ = json.Unmarshal(w.Body.Bytes(), &state)
 	if state.Status != "cancelled" || state.URL != "" {

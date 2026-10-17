@@ -3,6 +3,7 @@ package booru
 import (
 	"context"
 	"crypto/md5" //nolint:gosec // Provider content checksum, not authentication.
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -78,7 +79,7 @@ func (c *Client) FetchMedia(ctx context.Context, source Source, input MediaReque
 	}
 	prefix := make([]byte, 512)
 	n, err := io.ReadFull(res.Body, prefix)
-	if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
 		return ret, fmt.Errorf("cannot read media")
 	}
 	if int64(n) > input.Limit {
@@ -95,6 +96,8 @@ func (c *Client) FetchMedia(ctx context.Context, source Source, input MediaReque
 		ret.Extension = "gif"
 	case "image/webp":
 		ret.Extension = "webp"
+	case "image/bmp":
+		ret.Extension = "bmp"
 	case "image/tiff":
 		ret.Extension = "tiff"
 	case "video/mp4":

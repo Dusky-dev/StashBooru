@@ -48,7 +48,8 @@ original handoff. In particular:
 
 The [remote browser](booru-browser.md) reads provider content;
 [B02 review state](booru-review-state.md) persists local ignored/manual-download
-marks and checks current indexed files. Disfavored-tag comparison, follows and
+marks and checks current indexed files. [Downloads and autocomplete](booru-downloads-autocomplete.md)
+add explicit computer exports and per-source CSV databases. Disfavored-tag comparison, follows and
 Artist × Copyright selection remain planned in the [roadmap](booru-browser-roadmap.md). Existing MD5 metadata
 lookup and local entity favorites remain separate workflows.
 
