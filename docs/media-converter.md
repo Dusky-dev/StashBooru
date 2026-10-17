@@ -156,10 +156,12 @@ other animated images on native cards/walls and Unified Media cards/walls. GIF
 keeps its existing format badge, including one-frame GIFs; the `animated` tag is
 only assigned when there is more than one frame.
 
-Existing images gain metadata on their next normal scan. **Inspect existing
-images** in converter settings queues that scan without forcing rehashing of
-unchanged files. Follow progress in Tasks. This release advances the database
-schema to 91; use Stash's normal database migration flow on upgrade.
+Existing images gain metadata on their next normal scan. **Settings → Tasks →
+Animation inspection → Inspect existing images** queues that inspection without
+forcing rehashing of unchanged files. Use a file-rescan-enabled scan to refresh
+stale animation timing. Follow progress in Tasks. Animation inspection was
+introduced with migration 91; later fork migrations also exist. Use the current
+build's normal database migration flow on upgrade.
 
 Original fingerprints are retained as `source_md5`, `source_phash`,
 `source_oshash`, etc. The active file receives its actual MD5/OSHash, keeping
@@ -217,19 +219,23 @@ worker.
 
 Remote conversion reuses the **Processing worker URL and bearer
 token**. Update the remote checkout to the same branch/version and restart
-`scripts/visual_embedding_server.py`; keep `media_conversion_worker.py` and
-`media_upscale_worker.py` beside it.
+`scripts/visual_embedding_server.py` with its matching companion modules;
+see the complete list in [worker setup](../scripts/visual_embedding_server.md).
 Install FFmpeg, libjxl tools and Pillow on that machine. Existing model settings
 are unchanged and conversion does not download models.
 
-Optional 2×/4× still-image upscaling uses installed waifu2x or SeedVR2 before
-encoding. It shares the same verified replacement, original metadata and restore
-cache. Enabling it selects **Keep outputs even when they are larger**. It does
-not flatten GIFs/videos: disable upscaling to convert those. waifu2x supports
-Vulkan GPU or CPU with automatic fallback; SeedVR2 requires its own working GPU
-environment. See [remote worker setup](../scripts/visual_embedding_server.md).
-Model inference requires installation on your machine and is not exercised by
-the codec-only CI tests.
+Current UI has a separate **Upscale images…** dialog for installed waifu2x or
+SeedVR2 at 2×/4×. It supports still Images and creates a new Image with metadata
+by default. Explicit replacement uses the **dedicated upscaling restore cache**,
+separate from converter history; older legacy upscale records can remain in
+converter history. New-copy mode does not consume an original-file restore entry.
+Compression-only savings thresholds do not apply to intentional upscaling.
+
+waifu2x supports Vulkan GPU or CPU with configured fallback; SeedVR2 requires its
+own working GPU environment. Configure defaults/local model paths under
+**Settings → Processing → Upscaling**; remote models must be installed on that
+worker. See [remote worker setup](../scripts/visual_embedding_server.md). Model
+inference is not exercised by codec-only CI tests.
 
 For large videos, increase the worker's upload limit explicitly, for example:
 
