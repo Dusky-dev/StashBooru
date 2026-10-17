@@ -102,14 +102,25 @@ func (s Source) Validate() error {
 	if !slices.Contains([]string{"danbooru", "gelbooru", "moebooru", "e621", "philomena"}, s.Engine) {
 		return fmt.Errorf("unsupported API engine")
 	}
+	if len(s.URL) > 2048 || len(s.MediaHosts) > 64 {
+		return fmt.Errorf("source URL is limited to 2048 bytes and at most 64 image hosts")
+	}
 	u, err := url.Parse(s.URL)
 	if err != nil || u.Scheme != "https" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || !publicHostname(u.Hostname()) || (u.Port() != "" && u.Port() != "443") {
 		return fmt.Errorf("source URL must be public HTTPS without credentials, query, fragment or custom port")
 	}
 	for _, host := range s.MediaHosts {
-		if !publicHostname(host) || strings.ContainsAny(host, "/:@*?#") {
+		if len(host) > 253 || !publicHostname(host) || strings.ContainsAny(host, "/:@*?#") {
 			return fmt.Errorf("mediaHosts must contain public hostnames without wildcards")
 		}
+	}
+	for _, credential := range []string{s.APIKey, s.Login, s.UserID} {
+		if len(credential) > 4096 || strings.ContainsAny(credential, "\r\n\x00") {
+			return fmt.Errorf("credentials must be at most 4096 bytes without control characters")
+		}
+	}
+	if (s.Engine == "gelbooru" && s.Login != "") || (s.Engine != "gelbooru" && s.UserID != "") || (s.Engine == "philomena" && s.Login != "") {
+		return fmt.Errorf("credentials do not match the selected engine")
 	}
 	if s.Engine == "moebooru" && (s.Login != "" || s.APIKey != "" || s.UserID != "") {
 		return fmt.Errorf("moebooru supports anonymous search only in this version")
@@ -125,15 +136,15 @@ func (s Source) Validate() error {
 
 func (s Source) Public() PublicSource {
 	help := "Space-separated tags; underscores inside names. Native provider syntax and account search limits apply."
-	auth := "Optional login and API key, configured on the server."
+	auth := "Optional login and API key, configured in Source settings."
 	switch s.Engine {
 	case "gelbooru":
-		auth = "API key and user ID may be required; configure them on the server."
+		auth = "API key and user ID may be required; configure them in Source settings."
 	case "moebooru":
 		auth = "Anonymous search; legacy password login is not supported."
 	case "philomena":
 		help = "Native Philomena syntax: tags may contain spaces; combine tags with commas or AND."
-		auth = "Optional API key on the server; provider content filters still apply."
+		auth = "Optional API key in Source settings; provider content filters still apply."
 	}
 	return PublicSource{ID: s.ID, Name: s.Name, Engine: s.Engine, URL: s.URL, QueryHelp: help,
 		CredentialsConfigured: s.APIKey != "", Authentication: auth, CategorizedTags: s.Engine == "danbooru" || s.Engine == "e621"}

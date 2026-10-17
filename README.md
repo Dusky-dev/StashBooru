@@ -82,8 +82,9 @@ for source priority, filenames, model requirements, native Auto Tag and inherita
 
 The navbar's **Booru** browser searches selected sources through Danbooru,
 Gelbooru JSON DAPI, Moebooru, e621 and Philomena adapters. It includes ten presets
-and server-configured compatible instances, with independent paging/errors and
-remote preview/tag inspection. Query and inspection state survive refresh/back
+and compatible custom instances managed in **Source settings**, with API keys
+and per-source enable/disable controls. A compact sidebar, categorized page tags
+and thumbnail grid support independent paging/errors and preview/tag inspection. Query and inspection state survive refresh/back
 navigation. It is read-only; local-copy checks, ignores, downloads and follows are
 later packages. See [browser setup and limits](docs/booru-browser.md).
 

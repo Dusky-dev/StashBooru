@@ -31,7 +31,7 @@ Implement one package at a time, complete its acceptance checks and update the
 | Package | Usable outcome | Dependency |
 | --- | --- | --- |
 | B00 — documentation and scope | Current feature guides and this staged contract. | Current branch; documentation only. |
-| B01 — read-only browser | Search selected sources through five API families, page each independently, inspect tags/previews and open remote posts. Ten presets and server-configured compatible instances. | B00. Broadened by owner direction; see [B01 guide](booru-browser.md) for scope and limits. |
+| B01 — read-only browser | Search selected sources through five API families, page each independently, inspect tags/previews and open remote posts. Ten presets, editable credentials/custom instances and a compact sidebar/grid. | B00. Broadened by owner direction; see [B01 guide](booru-browser.md) for scope and limits. |
 | B02 — persistent review marks | Ignore, undo, show ignored, manually mark already downloaded, and display verified local matches separately. | B01 and its stable source/post identity. |
 | B03 — metadata and selection review | Import supported metadata and select Artist × Copyright intersections before downloading. | B01–B02; reuse native metadata review. |
 | B04 — reviewed downloads | Download the reviewed bounded selection into the library, with cancellation, retries and verified local links. | B03; native scan/import and recoverable staging. |
@@ -103,6 +103,12 @@ URL refresh/back navigation; desktop/mobile keyboard and preview cleanup. Run a
 small explicit live provider smoke check where access permits, recording its
 date and limitations separately from mocked tests. Keep existing MD5 lookup tests
 passing. No public provider credentials are required in CI.
+
+The owner's B01 follow-up adds **Source settings** in the browser and Metadata
+Providers settings: write-only keys, custom compatible instances, disabled
+sources and conflict-safe atomic saves. The browser uses a Danbooru-inspired
+search/tag sidebar and compact thumbnails. These settings still target the same
+five adapters; B02–B06 remain separate packages.
 
 ## B02 — ignored and already-downloaded state
 
