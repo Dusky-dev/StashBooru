@@ -34,6 +34,7 @@ import (
 	"github.com/stashapp/stash/internal/build"
 	"github.com/stashapp/stash/internal/manager"
 	"github.com/stashapp/stash/internal/manager/config"
+	"github.com/stashapp/stash/pkg/booru"
 	"github.com/stashapp/stash/pkg/fsutil"
 	"github.com/stashapp/stash/pkg/logger"
 	"github.com/stashapp/stash/pkg/plugin"
@@ -220,6 +221,9 @@ func Initialize() (*Server, error) {
 	r.Mount("/group", server.getGroupRoutes())
 	r.Mount("/tag", server.getTagRoutes())
 	r.Mount("/downloads", server.getDownloadsRoutes())
+	booruRoutes := booruBrowserRoutes{configPath: cfg.GetConfigPath(), client: booru.NewClient()}
+	r.Get("/booru-browser/sources", booruRoutes.Sources)
+	r.Get("/booru-browser/search", booruRoutes.Search)
 
 	inheritanceRoutes := newAssociationInheritanceRoutes(repo, cfg, mgr.JobManager)
 	dedupRoutes := characterDedupRoutes{repository: repo, jobs: mgr.JobManager}
