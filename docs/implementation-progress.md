@@ -57,7 +57,12 @@ silently promoted to verified production features by this documentation update.
   cross-source deduplication, snapshot totals, ignores, follows or downloads.
 - Migration/API/dependency impact: no migration, GraphQL/schema or dependency-lock
   change. Adds authenticated read-only source/search HTTP routes; existing media
-  IDs, metadata, files and workers remain untouched. Publication recorded below.
+  IDs, metadata, files and workers remain untouched.
+- Published as [PR #143](https://github.com/Dusky-dev/StashBooru/pull/143), head
+  `d55d4c713aeef6f508d3e7ea5f703309f51c2d5f`. Its tree
+  `993cc934e7b8d6b681561e8f62b5efcc9e5e41aa` exactly matches locally reviewed
+  `e0eef7daa8842653395d462561b688a4b08b2f1f`. GitHub Build, Go lint and the new
+  browser workflow remain PR gates. No agent merge/deployment; next is B02.
 
 ## B00 — fork documentation and booru-browser plan — 2026-10-17
 

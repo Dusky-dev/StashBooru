@@ -30,6 +30,10 @@ jobs:
           cache-dependency-path: ui/v2.5/pnpm-lock.yaml
       - name: Install locked UI dependencies
         run: pnpm --dir ui/v2.5 install --frozen-lockfile
+      - name: Prepare UI source dependencies
+        run: |
+          pnpm --dir ui/v2.5 run gqlgen
+          pnpm --dir ui/v2.5 run prepare-builtins
       - name: Install isolated browser test tools
         run: |
           npm install --prefix "$RUNNER_TEMP/booru-tools" playwright@1.57.0
