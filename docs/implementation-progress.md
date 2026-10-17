@@ -52,8 +52,11 @@ silently promoted to verified production features by this documentation update.
   model/config defaults, backup contents, HTTPS settings and worker routes/imports.
   Historical package records and benchmark files were preserved. No runtime build,
   model inference or live-provider tests were run for this documentation-only diff.
-- Publication: feature branch `docs/fork-guide-booru-roadmap-20261017`; review link
-  recorded in the PR. Next package is B01, with official Gelbooru API verification
+- Publication: [PR #142](https://github.com/Dusky-dev/StashBooru/pull/142), branch
+  `docs/fork-guide-booru-roadmap-20261017`. Published implementation commit
+  `242b1c1bf74f6012b338aba09c4702f8e78c0dc3` has tree
+  `4acb5e74c3e7fdb7b66486c5cad745a176b8810e`, matching locally reviewed
+  `cda00063941c995dcfea6c021f5080489b1b1d77`. Next is B01, with official Gelbooru API verification
   before implementation. No runtime/browser feature is claimed by B00.
 
 ## Previous checkpoint — 2026-10-06
