@@ -99,7 +99,9 @@ and Philomena adapters, with ten presets and compatible custom definitions.
 **Source settings** (also **Settings → Metadata Providers → Booru sources**) edits
 API keys, engine, URL, image hosts and enabled state. Its Danbooru-inspired sidebar
 and compact thumbnail grid include categorized loaded-page tag counts.
-Follows and ignored/already-downloaded marks remain later packages.
+[B02 review state](booru-review-state.md) adds persistent ignored/manual-download
+marks, bulk undo, a show-ignored filter and bounded current-file MD5 matches.
+Follows and actual downloads remain later packages.
 
 ### Profile artwork and metadata diagnostics
 

@@ -1,4 +1,5 @@
 export interface BooruSource {
+  instance: string;
   id: string;
   name: string;
   engine: string;
@@ -39,6 +40,7 @@ export interface BrowserSearch {
   query: string;
   pages: Record<string, number>;
   inspect?: { source: string; id: string };
+  showIgnored?: boolean;
   error?: string;
 }
 
@@ -72,6 +74,9 @@ export function readBrowserSearch(search: string): BrowserSearch {
     }
     result.pages[source] = page;
   }
+  if (params.get("ignored") === "1") result.showIgnored = true;
+  else if (params.has("ignored") && params.get("ignored") !== "0")
+    result.error = "Invalid ignored-post filter.";
   const inspect = params.get("inspect")?.split(":");
   if (
     inspect?.length === 2 &&
@@ -91,6 +96,7 @@ export function browserSearchURL(value: BrowserSearch): string {
       params.set(`p.${source}`, String(value.pages[source]));
     }
   }
+  if (value.showIgnored) params.set("ignored", "1");
   if (value.query) params.set("q", value.query);
   if (value.inspect) {
     params.set("inspect", `${value.inspect.source}:${value.inspect.id}`);

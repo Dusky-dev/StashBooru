@@ -86,3 +86,21 @@ test("Search failures show JSON messages and retry hints, never provider HTML", 
     posts: [],
   });
 });
+
+test("Ignored-post filters round-trip without changing the provider query or pages", () => {
+  const active = readBrowserSearch(
+    "?source=danbooru&q=literal+-tag&p.danbooru=3&ignored=1"
+  );
+  assert.equal(active.showIgnored, true);
+  assert.equal(readBrowserSearch(browserSearchURL(active)).showIgnored, true);
+  const hidden = readBrowserSearch(
+    browserSearchURL({ ...active, showIgnored: undefined })
+  );
+  assert.equal(hidden.showIgnored, undefined);
+  assert.equal(hidden.query, active.query);
+  assert.equal(hidden.pages.danbooru, 3);
+  assert.match(
+    readBrowserSearch("?ignored=oops").error ?? "",
+    /Invalid ignored-post filter/
+  );
+});

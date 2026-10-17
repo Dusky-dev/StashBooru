@@ -126,6 +126,7 @@ func (db *Database) Repository() models.Repository {
 		Image:          db.Image,
 		Media:          &MediaStore{stores: db.storeRepository},
 		VisualStack:    &VisualStackStore{files: db.File},
+		BooruReview:    &BooruReviewStore{},
 		ImageArtist:    NewImageArtistStore(db.Studio),
 		Group:          db.Group,
 		Performer:      db.Performer,

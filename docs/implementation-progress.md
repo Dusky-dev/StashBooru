@@ -2,17 +2,39 @@
 
 Updated: 2026-10-17
 
-Current baseline: `develop` at `8eed7af01eb31a63ed611aca09e23f96d17103c7`
-(owner merged browser PR #143; Build, Go lint and mounted-browser CI passed).
-Current branch: `feat/booru-settings-layout-20261017`. Delivered in
-[PR #144](https://github.com/Dusky-dev/StashBooru/pull/144): **B01 follow-up — source
-settings and compact browser**, requested by the owner. See the
-[browser guide](booru-browser.md). Next is **B02 — durable ignored/manual
-already-downloaded marks and verified local matches**. B02–B06 remain planned.
+Current baseline: `develop` at `598d6849668303369fb2a2c5783160a00172ba59`
+(owner merged #144). Current branch: `feat/b02-booru-review-state-20261017`.
+Active package: **B02 — durable ignored/manual-download marks and current-file
+MD5 matches**. The owner deferred further browsing layout revisions until more
+browsing testing. See [B02 guide](booru-review-state.md). Next: **B03 — metadata
+import and Artist × Copyright selection**. B03–B06 remain planned.
 
 P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
+
+## B02 — durable review state — 2026-10-17 UTC
+
+- Fresh develop baseline `598d6849668303369fb2a2c5783160a00172ba59` after #144;
+  clean working tree, no relevant open PR. Continues the staged roadmap without
+  redesigning browsing or implementing B03–B06.
+- Migration 97 adds versioned, library-wide ignored/manual-download marks, public
+  source provenance and timestamps. Stable normalized engine/URL instance keys
+  isolate changed sites; equal provider IDs remain distinct. Credential/display
+  edits do not reset history. Cleared tombstones retain versions.
+- Atomic bounded single/bulk changes, separate mark dimensions, last-change undo,
+  conflict recovery and show-ignored URL state keep provider paging/totals intact.
+  Manual history never fabricates native media links or starts a download.
+- Local links require rehashing indexed active-primary-file bytes against the
+  remote MD5, plus filesystem stability and native-link revalidation. Typed Image/
+  Video IDs remain distinct. Checks are bounded to 50 posts, 100 candidates,
+  64 MiB/file, 256 MiB/request, five seconds and two concurrent checks. Missing
+  hashes, ZIP members, large/changed/unavailable files remain unknown/incomplete.
+  No checksum cache or review flag falsely proves current local presence.
+- Existing native IDs, files, metadata, relationships and workers are preserved;
+  there are no remote originals, metadata imports, jobs or model downloads. Native
+  deletion/replacement is re-evaluated on status refresh without deleting marks.
+- Validation/publication in progress; final results follow after checks.
 
 ## B01 follow-up — source settings and compact browser — 2026-10-17
 

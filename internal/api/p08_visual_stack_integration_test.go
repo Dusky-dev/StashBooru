@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stashapp/stash/internal/manager/config"
 	"github.com/stashapp/stash/pkg/models"
 	"github.com/stashapp/stash/pkg/sqlite"
 	"github.com/stretchr/testify/require"
@@ -279,6 +280,7 @@ func TestP08ReviewedPairsRequireCurrentEvidenceAndNeverJoinTransitively(t *testi
 }
 
 func TestP08MigrationUpgrades95AndPreservesNativeRecords(t *testing.T) {
+	config.InitializeEmpty()
 	path := filepath.Join(t.TempDir(), "upgrade.sqlite")
 	database := sqlite.NewDatabase()
 	require.NoError(t, database.Open(path))
@@ -290,15 +292,16 @@ func TestP08MigrationUpgrades95AndPreservesNativeRecords(t *testing.T) {
 	// Reconstruct schema 95 by removing exactly the P08 migration's objects.
 	conn, err := sql.Open("sqlite3", path)
 	require.NoError(t, err)
-	_, err = conn.Exec(`DROP TRIGGER visual_stack_member_deleted; DROP TABLE visual_stack_members; DROP TABLE visual_stacks; UPDATE schema_migrations SET version=95,dirty=0;`)
+	_, err = conn.Exec(`DROP TABLE booru_review; DROP TRIGGER visual_stack_member_deleted; DROP TABLE visual_stack_members; DROP TABLE visual_stacks; UPDATE schema_migrations SET version=95,dirty=0;`)
 	require.NoError(t, err)
 	require.NoError(t, conn.Close())
 	database = sqlite.NewDatabase()
 	require.Error(t, database.Open(path))
 	migrator, err := sqlite.NewMigrator(database)
 	require.NoError(t, err)
-	require.Equal(t, uint(96), migrator.RequiredSchemaVersion())
+	require.Equal(t, uint(97), migrator.RequiredSchemaVersion())
 	require.NoError(t, migrator.RunMigration(context.Background(), 96))
+	require.NoError(t, migrator.RunMigration(context.Background(), 97))
 	migrator.Close()
 	require.NoError(t, database.Open(path))
 	defer database.Close()

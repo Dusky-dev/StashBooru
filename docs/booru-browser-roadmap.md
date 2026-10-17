@@ -1,11 +1,10 @@
 # Booru content browser: delivery plan
 
-Status: **B01 implemented; validation recorded in the progress ledger. B02–B06 planned.** Baseline: `develop`
+Status: **B01–B02 implemented on the current task branch; validation is recorded in the progress ledger. B03–B06 planned.** Baseline: `develop`
 `8fc869d8792f9f47643ea102d960788946068f41`, reviewed 2026-10-17.
 This is the next roadmap after the delivered P01–P13 scopes. The owner broadened
-B01 on 2026-10-17 to an engine-based browser inspired by Grabber. Current B01
-searches several remote sources; follows, review marks and downloads remain
-later packages. See [browser operation and source configuration](booru-browser.md).
+B01 on 2026-10-17 to an engine-based browser inspired by Grabber. B01 searches several remote sources; B02 adds durable review marks and verified
+current-file matches. Follows and downloads remain later packages. See [browser operation and source configuration](booru-browser.md).
 
 The owner requested a content browser, ignored/already-downloaded marks, pHash
 groups with Compare, tag differences with disfavored tags in red, following
@@ -32,7 +31,7 @@ Implement one package at a time, complete its acceptance checks and update the
 | --- | --- | --- |
 | B00 — documentation and scope | Current feature guides and this staged contract. | Current branch; documentation only. |
 | B01 — read-only browser | Search selected sources through five API families, page each independently, inspect tags/previews and open remote posts. Ten presets, editable credentials/custom instances and a compact sidebar/grid. | B00. Broadened by owner direction; see [B01 guide](booru-browser.md) for scope and limits. |
-| B02 — persistent review marks | Ignore, undo, show ignored, manually mark already downloaded, and display verified local matches separately. | B01 and its stable source/post identity. |
+| B02 — persistent review marks | Ignore, undo, show ignored, manually mark already downloaded, and display verified local matches separately. See [B02 guide](booru-review-state.md). | B01 and its stable source/post identity. |
 | B03 — metadata and selection review | Import supported metadata and select Artist × Copyright intersections before downloading. | B01–B02; reuse native metadata review. |
 | B04 — reviewed downloads | Download the reviewed bounded selection into the library, with cancellation, retries and verified local links. | B03; native scan/import and recoverable staging. |
 | B05 — pHash groups and tag comparison | Review similar images, Compare, inspect shared/unique tags and red disfavored-tag warnings. | B02–B04 for stable remote/local identity; reuse P02/P03/P08. |

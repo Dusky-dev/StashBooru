@@ -1,10 +1,11 @@
 # Booru browser — B01
 
-Open **Booru** (globe) in the navbar, or `/booru`. This read-only browser searches
+Open **Booru** (globe) in the navbar, or `/booru`. This browser searches
 remote posts and displays their previews and metadata. It does not download
-originals, import entities, change the catalogue or check existing local copies.
-Ignored/downloaded marks, metadata import, reviewed downloads, pHash comparison
-and follows remain later [roadmap packages](booru-browser-roadmap.md).
+originals, import entities or change native media metadata.
+[B02 review state](booru-review-state.md) adds durable ignored/manual-download
+marks and bounded current-file MD5 matches. Metadata import, reviewed downloads,
+pHash comparison and follows remain later [roadmap packages](booru-browser-roadmap.md).
 
 ## Search and inspect
 
