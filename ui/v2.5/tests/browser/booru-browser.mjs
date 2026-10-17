@@ -298,6 +298,23 @@ try {
     await editor
       .getByLabel("API key", { exact: true })
       .fill("fixture-custom-secret");
+    const writesBeforeDuplicate = writes.length;
+    await editor.getByLabel("Source ID", { exact: true }).fill("danbooru");
+    await editor
+      .getByRole("button", { name: "Save source", exact: true })
+      .click();
+    await editor
+      .getByRole("alert")
+      .filter({ hasText: "already in use" })
+      .waitFor();
+    assert.equal(
+      writes.length,
+      writesBeforeDuplicate,
+      "duplicate custom ID overwrote a source"
+    );
+    await editor
+      .getByLabel("Source ID", { exact: true })
+      .fill("fixture-custom");
     assert.equal(
       await editor.evaluate(
         (element) => element.scrollWidth > window.innerWidth + 1

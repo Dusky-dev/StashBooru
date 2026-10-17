@@ -8,7 +8,7 @@ and follows remain later [roadmap packages](booru-browser-roadmap.md).
 
 ## Search and inspect
 
-Choose up to eight sources, enter a query and select **Search selected sources**.
+Choose up to eight sources, enter a query and select **Search**.
 Opening the browser without a query, editing the query and changing checkboxes
 do not search automatically. Each selected source has independent results,
 Previous/Next, cancellation and retry. One unavailable/rate-limited source does

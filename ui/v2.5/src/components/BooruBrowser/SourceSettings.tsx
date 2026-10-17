@@ -75,6 +75,15 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
   }
   async function save(action: "save" | "remove" | "reset") {
     if (!settings || !draft) return;
+    if (
+      creating &&
+      settings.sources.some((source) => source.id === draft.id.trim())
+    ) {
+      setError(
+        "Source ID is already in use. Edit that source or choose a new ID."
+      );
+      return;
+    }
     const controller = new AbortController();
     request.current = controller;
     setBusy(true);
@@ -244,9 +253,10 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
                       pattern="[a-z0-9][a-z0-9_-]{0,63}"
                       disabled={!creating}
                       value={draft.id}
-                      onChange={(e) =>
-                        setDraft({ ...draft, id: e.currentTarget.value })
-                      }
+                      onChange={(e) => {
+                        setDraft({ ...draft, id: e.currentTarget.value });
+                        setError("");
+                      }}
                     />
                     <Form.Text muted>
                       Unique lowercase name used in search links.
