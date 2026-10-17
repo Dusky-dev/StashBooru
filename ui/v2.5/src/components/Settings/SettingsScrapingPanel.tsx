@@ -352,7 +352,10 @@ export const SettingsScrapingPanel: React.FC = () => {
 
   return (
     <>
-<section className="setting-section" id="booru-sources"><h1>Booru sources</h1><SourceSettings /></section>
+      <section className="setting-section" id="booru-sources">
+        <h1>Booru sources</h1>
+        <SourceSettings />
+      </section>
       <StashBoxSetting
         value={general.stashBoxes ?? []}
         onChange={(v) => saveGeneral({ stashBoxes: v })}
