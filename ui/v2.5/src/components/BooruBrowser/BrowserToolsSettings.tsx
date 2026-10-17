@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Form } from "react-bootstrap";
 import { type BooruSource, readBooruResponse } from "./browser";
 
@@ -15,6 +15,13 @@ export function BrowserToolsSettings() {
   const [file, setFile] = useState<File>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const [notice, setNotice] = useState("");
   const [attempt, setAttempt] = useState(0);
   // biome-ignore lint/correctness/useExhaustiveDependencies: Reload explicitly retries persisted settings.
@@ -76,11 +83,12 @@ export function BrowserToolsSettings() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ jpegToJXL: convert }),
       }).then(readBooruResponse);
-      setNotice("Download preference saved.");
+      if (mounted.current) setNotice("Download preference saved.");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      if (mounted.current)
+        setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
   }
   async function upload() {
@@ -105,15 +113,17 @@ export function BrowserToolsSettings() {
         },
         body: file,
       }).then(readBooruResponse<TagDatabase>);
+      if (!mounted.current) return;
       setDatabase(result);
       setFile(undefined);
       setNotice(
         `Imported ${result.count.toLocaleString()} tags for ${source.name}.`
       );
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      if (mounted.current)
+        setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
   }
   return (

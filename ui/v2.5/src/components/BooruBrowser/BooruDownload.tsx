@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Form } from "react-bootstrap";
 import { type BooruPost, readBooruResponse } from "./browser";
 
@@ -52,6 +52,13 @@ export function BooruDownload({
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   useEffect(() => {
     const controller = new AbortController();
     void fetch("booru-browser/download-settings", { signal: controller.signal })
@@ -106,7 +113,8 @@ export function BooruDownload({
         }
       } catch (cause) {
         if (!controller.signal.aborted) {
-          setError(cause instanceof Error ? cause.message : String(cause));
+          if (mounted.current)
+            setError(cause instanceof Error ? cause.message : String(cause));
           timer = window.setTimeout(() => void poll(), 3000);
         }
       }
@@ -127,7 +135,8 @@ export function BooruDownload({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key: post.mediaKey, convert }),
       }).then(readBooruResponse<{ jobID: number; token: string }>);
-      setState({ ...result, status: "queued", converted: false });
+      if (mounted.current)
+        setState({ ...result, status: "queued", converted: false });
       try {
         sessionStorage.setItem(
           identity,
@@ -141,9 +150,10 @@ export function BooruDownload({
         /* Optional reload recovery. */
       }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      if (mounted.current)
+        setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
   }
   async function cancel() {
@@ -155,9 +165,10 @@ export function BooruDownload({
         body: JSON.stringify({ cancel: jobID, token }),
       }).then(readBooruResponse);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      if (mounted.current)
+        setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
   }
   return (

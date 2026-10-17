@@ -125,6 +125,8 @@ try {
     let downloadState;
     const downloadRequests = [];
     let failNextDownload = false;
+    let holdNextDownload = false;
+    let delayNextDownload = false;
     const writes = [];
     const review = new Map();
     let reviewConflict = false;
@@ -217,23 +219,35 @@ try {
             };
           else {
             downloadRequests.push(payload);
-            downloadState = failNextDownload
+            downloadState = holdNextDownload
               ? {
                   jobID: 71,
                   token: "c".repeat(32),
-                  status: "failed",
-                  error: "Fixture checksum mismatch",
+                  status: "queued",
                   converted: false,
                 }
-              : {
-                  jobID: 71,
-                  token: "c".repeat(32),
-                  status: "complete",
-                  converted: payload.convert,
-                  url: "downloads/abc123/danbooru-101.jxl",
-                  filename: "danbooru-101.jxl",
-                };
+              : failNextDownload
+                ? {
+                    jobID: 71,
+                    token: "c".repeat(32),
+                    status: "failed",
+                    error: "Fixture checksum mismatch",
+                    converted: false,
+                  }
+                : {
+                    jobID: 71,
+                    token: "c".repeat(32),
+                    status: "complete",
+                    converted: payload.convert,
+                    url: "downloads/abc123/danbooru-101.jxl",
+                    filename: "danbooru-101.jxl",
+                  };
             failNextDownload = false;
+            holdNextDownload = false;
+          }
+          if (delayNextDownload) {
+            delayNextDownload = false;
+            await new Promise((resolve) => setTimeout(resolve, 400));
           }
           await route.fulfill({ json: { jobID: 71, token: "c".repeat(32) } });
         } else await route.fulfill({ json: downloadState });
@@ -718,6 +732,61 @@ try {
       "failed download retained a save link"
     );
 
+    holdNextDownload = true;
+    await dialog
+      .getByRole("button", { name: "Prepare again", exact: true })
+      .click();
+    await dialog
+      .getByRole("button", { name: "Cancel download", exact: true })
+      .click();
+    await dialog.getByText("Job #71: cancelled", { exact: true }).waitFor();
+    holdNextDownload = true;
+    await dialog
+      .getByRole("button", { name: "Prepare again", exact: true })
+      .click();
+    await dialog
+      .getByRole("button", { name: "Cancel download", exact: true })
+      .waitFor();
+    await page.keyboard.press("Escape");
+    await dialog.waitFor({ state: "hidden" });
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 101", exact: true })
+      .click();
+    await dialog
+      .getByRole("button", { name: "Cancel download", exact: true })
+      .waitFor();
+    downloadState = {
+      jobID: 71,
+      token: "c".repeat(32),
+      status: "complete",
+      converted: true,
+      url: "downloads/abc123/danbooru-101.jxl",
+      filename: "danbooru-101.jxl",
+    };
+    await dialog
+      .getByRole("link", { name: "Save JPEG XL", exact: true })
+      .waitFor();
+    await page.evaluate(() => {
+      for (const key of Object.keys(sessionStorage))
+        if (key.startsWith("booru-download:")) sessionStorage.removeItem(key);
+    });
+    delayNextDownload = true;
+    await dialog
+      .getByRole("button", { name: "Prepare again", exact: true })
+      .click();
+    await page.keyboard.press("Escape");
+    await dialog.waitFor({ state: "hidden" });
+    await page.waitForFunction(() =>
+      Object.keys(sessionStorage).some((key) =>
+        key.startsWith("booru-download:")
+      )
+    );
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 101", exact: true })
+      .click();
+    await dialog
+      .getByRole("link", { name: "Save JPEG XL", exact: true })
+      .waitFor();
     await page.keyboard.press("Escape");
     await dialog.waitFor({ state: "hidden" });
     assert.equal(
@@ -1037,7 +1106,7 @@ try {
     assert.deepEqual(errors, []);
     await page.close();
     console.log(
-      `Booru browser ${viewport.width}×${viewport.height}: same-origin PNG thumbnails, CSV upload/alias keyboard autocomplete, JPEG XL preference/download/failure; durable review/bulk/undo/filters/conflicts/typed links; settings create/credentials/clear/conflict/reload/disable/remove; tag sidebar/search/paging/inspection/refresh/back, partial failures/retry, missing previews, races/cancel/cleanup and overflow passed.`
+      `Booru browser ${viewport.width}×${viewport.height}: same-origin PNG thumbnails, CSV upload/alias keyboard autocomplete, JPEG XL preference/download/failure/cancel/reopen; durable review/bulk/undo/filters/conflicts/typed links; settings create/credentials/clear/conflict/reload/disable/remove; tag sidebar/search/paging/inspection/refresh/back, partial failures/retry, missing previews, races/cancel/cleanup and overflow passed.`
     );
   }
 } finally {
