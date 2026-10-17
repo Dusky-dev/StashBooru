@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -8,16 +9,27 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/stashapp/stash/internal/manager"
 	"github.com/stashapp/stash/pkg/booru"
+	"github.com/stashapp/stash/pkg/job"
+	"github.com/stashapp/stash/pkg/mediaconvert"
 	"github.com/stashapp/stash/pkg/models"
 )
 
+type booruBrowserClient interface {
+	Search(context.Context, booru.Source, string, int, int) (booru.Result, error)
+	FetchMedia(context.Context, booru.Source, booru.MediaRequest, io.Writer) (booru.MediaInfo, error)
+}
+
 // These routes share the server's normal authentication. They never modify the
-// catalogue, create jobs, or accept an arbitrary URL from the browser.
+// catalogue without import review, or accept an arbitrary URL from the browser.
 type booruBrowserRoutes struct {
 	repository models.Repository
 	configPath string
-	client     *booru.Client
+	client     booruBrowserClient
+	jobs       *job.Manager
+	downloads  *manager.DownloadStore
+	converter  func(context.Context) (mediaconvert.Client, mediaconvert.Capabilities, string, error)
 }
 
 func (rs booruBrowserRoutes) sources() ([]booru.Source, error) {
@@ -96,6 +108,9 @@ func (rs booruBrowserRoutes) Search(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(status)
 			writeVisualSimilarityJSON(w, failure)
 			return
+		}
+		for i := range result.Posts {
+			result.Posts[i].MediaKey = rememberBooruPost(source, result.Posts[i])
 		}
 		writeVisualSimilarityJSON(w, result)
 		return

@@ -241,3 +241,8 @@ Development snapshots (`latest_develop`) are available from GitHub separately.
 Download the matching platform release and follow your existing installation
 procedure. The check does not install updates. A network/rate-limit failure is
 shown as a failed check, not as proof that the installation is up to date.
+
+The browser also supports [same-origin thumbnails, file downloads and CSV tag
+autocomplete](booru-downloads-autocomplete.md). JPEG downloads can use the existing
+converter to produce JPEG XL before saving. File exports do not import native
+catalogue entries or change manual download marks.

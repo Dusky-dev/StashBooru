@@ -104,3 +104,25 @@ test("Ignored-post filters round-trip without changing the provider query or pag
     /Invalid ignored-post filter/
   );
 });
+
+test("Autocomplete replaces only the caret token and preserves exclusions and Philomena commas", async () => {
+  const { completionToken, applyCompletion } = await import(
+    "../src/components/BooruBrowser/completion.ts"
+  );
+  for (const [query, caret, comma, name, expected] of [
+    ["cat -blu dog", 8, false, "blue_hair", "cat -blue_hair dog"],
+    ["~blu fox", 4, false, "blue_eyes", "~blue_eyes fox"],
+    [
+      "artist_a, blue h, rating:safe",
+      16,
+      true,
+      "blue hair",
+      "artist_a, blue hair, rating:safe",
+    ],
+  ] as const) {
+    assert.equal(
+      applyCompletion(query, completionToken(query, caret, comma), name),
+      expected
+    );
+  }
+});

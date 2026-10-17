@@ -2,16 +2,44 @@
 
 Updated: 2026-10-17
 
-Current baseline: `develop` at `598d6849668303369fb2a2c5783160a00172ba59`
-(owner merged #144). Current branch: `feat/b02-booru-review-state-20261017`.
-Delivered in [PR #145](https://github.com/Dusky-dev/StashBooru/pull/145):
-**B02 — durable ignored/manual-download marks and current-file MD5 matches**. The owner deferred further browsing layout revisions until more
-browsing testing. See [B02 guide](booru-review-state.md). Next: **B03 — metadata
-import and Artist × Copyright selection**. B03–B06 remain planned.
+Current baseline: `develop` at `598d6849668303369fb2a2c5783160a00172ba59`.
+PR #145 (B02 review state) is open and unmerged at
+`07325d0b505314622caeaf7c6e7a90dd59f7774f`. Current branch:
+`feat/booru-media-autocomplete-20261017`, stacked on that exact published head.
+The owner requested thumbnail/download/converter/autocomplete usability before
+continuing B03. This slice implements explicit downloads to the user's computer;
+B03 metadata selection and B04 durable catalogue import remain planned.
+See [downloads/autocomplete guide](booru-downloads-autocomplete.md).
 
 P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
+
+## Browser media and autocomplete — 2026-10-17 UTC
+
+- Fresh develop and open PRs checked; clean starting tree; preserved #145's
+  published ancestry. This is a separate owner-requested usability slice.
+- Same-origin thumbnail/sample delivery uses opaque, expiring server-issued
+  post snapshots, source-instance checks, public DNS/CDN validation, bounded
+  transfers and safe redirects. Danbooru asset variants/dimensions are parsed.
+- Native cancellable Jobs prepare an explicit post's original for download to
+  the user's computer. Original byte counts and provider MD5 are checked when
+  known. Optional JPEG → JPEG XL uses the existing local/remote converter and
+  JPEG reconstruction settings; converted output has its own checksum.
+- Native generated-download storage expires unused exports, waits for active
+  readers and guards timers against reused keys. Ordinary failure/cancel cleans
+  staging. Session storage recovers the last job in the same tab. No automatic
+  catalogue import, native entity changes, false match links or review marks.
+- Per-instance CSV databases support tagcomplete and header-based Danbooru tag
+  exports. Atomic validated replacement and revision conflicts retain the last
+  installed database on failure. Names/aliases/categories/counts drive debounced
+  prefix completion, keyboard/mouse selection and cursor-token replacement.
+- Verification is in progress on this draft. Focused transport/CSV/API tests
+  and desktop/mobile browser fixtures passed before final cleanup changes;
+  final checks and exact verification SHA will replace this checkpoint.
+- Known scope: explicit single-post computer exports, no durable restart/resume
+  or library import; no live-account/CDN or real JPEG XL codec claim. Provider
+  connectivity and configured worker capabilities remain deployment checks.
 
 ## B02 — durable review state — 2026-10-17 UTC
 

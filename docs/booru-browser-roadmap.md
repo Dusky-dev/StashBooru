@@ -172,6 +172,15 @@ empty selection returns none; exclusions survive query decomposition; unsupporte
 syntax never broadens scope; ambiguous names stay unbound; repeated metadata import
 is idempotent; curated data and native Copyright identities survive.
 
+## Browser usability slice — 2026-10-17
+
+At the owner's request, thumbnails, explicit downloads to the user's computer,
+optional JPEG → JPEG XL conversion and per-source CSV database autocomplete were
+prioritized before B03. See [the guide](booru-downloads-autocomplete.md). Native
+Jobs, the existing converter and generated-download store are reused. These
+exports neither import catalogue metadata nor create in-library links/marks;
+they do not complete B03/B04's durable catalogue import acceptance criteria.
+
 ## B04 — downloads and catalogue import
 
 Review original-vs-preview choice, destination, number of files, known bytes and

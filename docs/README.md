@@ -11,7 +11,8 @@ the latest stable release.
 | --- | --- |
 | [Feature guide](features.md) | Navigation, mixed browsing, similarity, stacks, processing, diagnostics, animation, local HTTPS and backups. |
 | [Metadata and tagging](metadata-and-tagging.md) | Native Copyrights, multiple Artists, Character variants, linked disambiguation, inheritance, filenames, booru lookups and reviewed model predictions. |
-| [Booru browser](booru-browser.md) | Read-only multi-source search, five engine families, remote previews/tags, independent paging and server-side source/credential configuration. |
+| [Booru browser](booru-browser.md) | Multi-source search, five engine families, thumbnails/tags, independent paging and server-side source/credential configuration. |
+| [Booru downloads and autocomplete](booru-downloads-autocomplete.md) | Same-origin thumbnails, original/JPEG XL file downloads and per-source CSV tag databases. |
 | [Booru review state](booru-review-state.md) | Durable ignored/manual-download marks, bulk undo, provider-page filtering and current-file MD5 evidence. |
 | [Media converter](media-converter.md) | Formats, quality/effort/decode speed, animation timing, worker setup, replacement, restore/unrestore and recovery. |
 | [Conversion review](p09-conversion-review.md) | Estimates, verified trials, savings minimums, cache expiry and reviewed apply. |
