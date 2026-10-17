@@ -115,6 +115,7 @@ CSV ranking/aliases and atomic replacement, native queued cancellation, export
 publication and original/output checksum separation. A mock remote converter
 exercises the real converter client and generated-download store. Mounted browser
 fixtures cover desktop/mobile PNG thumbnails, uploads, keyboard completion,
-conversion preferences, download completion/failure, and existing review/search
+conversion preferences, download completion/failure/cancellation, reopen
+recovery and closing during a pending request, plus existing review/search
 behavior. They do not establish live-account/provider availability or real
 JPEG XL encoder acceptance on the deployment machine.

@@ -6,6 +6,8 @@ Current baseline: `develop` at `598d6849668303369fb2a2c5783160a00172ba59`.
 PR #145 (B02 review state) is open and unmerged at
 `07325d0b505314622caeaf7c6e7a90dd59f7774f`. Current branch:
 `feat/booru-media-autocomplete-20261017`, stacked on that exact published head.
+Delivered for review in [PR #146](https://github.com/Dusky-dev/StashBooru/pull/146);
+merge #145 first, then retarget #146 to develop. No agent merge or deployment.
 The owner requested thumbnail/download/converter/autocomplete usability before
 continuing B03. This slice implements explicit downloads to the user's computer;
 B03 metadata selection and B04 durable catalogue import remain planned.
@@ -34,9 +36,31 @@ silently promoted to verified production features by this documentation update.
   exports. Atomic validated replacement and revision conflicts retain the last
   installed database on failure. Names/aliases/categories/counts drive debounced
   prefix completion, keyboard/mouse selection and cursor-token replacement.
-- Verification is in progress on this draft. Focused transport/CSV/API tests
-  and desktop/mobile browser fixtures passed before final cleanup changes;
-  final checks and exact verification SHA will replace this checkpoint.
+- Verification on 2026-10-17 UTC passed: focused transport/CSV/API/expiry tests;
+  full `make test`; full `make it` with SQLite integration tags; `make lint`
+  (golangci-lint 2.11.4, zero issues); all 53 UI tests plus JS/CSS lint,
+  TypeScript and formatting on Node 20.20.1 / locked pnpm 10.33.0; production
+  `make ui-only`; 73 relative guide/index links; and `git diff --check`.
+- Mounted Chrome Headless Shell 143 passed at 1440×1000 and 390×844: same-origin
+  PNG thumbnails, database upload, partial database failures, alias completion
+  at the caret with keyboard/exclusion preservation, conversion preference,
+  prepared download success/failure, queued cancellation, reopen recovery and
+  closing during a delayed preparation request. Existing search/paging/provider
+  failure/settings/review/bulk/undo/conflict/native-link/race/cleanup cases passed.
+  Desktop/mobile screenshots of autocomplete, downloads and settings were reviewed.
+- Backend gates ran on local implementation `5594d3b4572b8cb78cf7cb5bedf06572e7fc7918`
+  (remote `8ad6ff6e9dde499b10b90af532aedeec07354a9f`, identical tree
+  `88d8c3321d35068ebd1abca9d811c308187f4ee6`). Final UI lifecycle/fixture
+  follow-up `f6e5a485d4ac8900e0edcd25786bbb7929d7aa7b` and remote
+  `5f2dded114255c8658cc607fe1bb0b1ee45f38e9` share verified tree
+  `edac871170ae836462f7c8183b3157593e9b1480`; backend source is unchanged.
+  All UI checks, mounted fixtures and production bundling passed on that follow-up.
+  This final checkpoint changes documentation only. GitHub browser CI passed on
+  the prior implementation; final-head CI refreshes after publication.
+- Tests use synthetic bytes/artwork and a mock remote converter. They verify
+  native Jobs/converter-client/download-store integration, not real codec output,
+  live-account access, human manual testing or GPU acceptance. No code/model
+  dependencies or encoder binaries were installed by this package.
 - Known scope: explicit single-post computer exports, no durable restart/resume
   or library import; no live-account/CDN or real JPEG XL codec claim. Provider
   connectivity and configured worker capabilities remain deployment checks.
