@@ -37,7 +37,7 @@ See the [feature guide](docs/features.md) for where to find each tool, processin
 and restore behavior, model requirements, and current limitations.
 The [documentation index](docs/README.md) links every fork guide, delivered package
 and experimental tool. The [booru browser plan](docs/booru-browser-roadmap.md)
-tracks the read-only browser and later review marks, follows and selective
+tracks delivered browsing, review marks and single-post downloads, plus later follows and selective
 downloads, separately from the existing MD5 metadata lookup.
 
 ### Native anime/booru metadata

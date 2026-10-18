@@ -4,14 +4,14 @@ This guide covers the fork's user-facing additions to upstream Stash, including
 features predating P01–P13. See the [documentation index](README.md) for detailed
 setup and acceptance notes. It describes current `develop`; individual stable
 releases can lag behind it. The [booru browser roadmap](booru-browser-roadmap.md)
-separates the read-only B01 browser from later requested work.
+separates delivered browsing/review/import slices from later metadata and follow work.
 
 ## Where things live
 
 | Location | Use it for |
 | --- | --- |
 | **All** | Browse Images and Videos together, with shared filters and typed selections. Individual Images and Videos pages remain available. |
-| **Booru** (navbar globe) | Search remote sources, inspect previews/tags, persist review marks and check current-file MD5 matches. No media import. |
+| **Booru** (navbar globe) | Browse sources, preserve page/draft state, use CSV autocomplete, inspect previews/tags, keep review marks and download a post into Stash with a default/custom folder and optional converter defaults. |
 | **Settings → Library** | Media folders, scan rules and automatic ancestor/profile associations. Inheritance switches save automatically. |
 | **Settings → Processing** | Shared worker connection, similarity/tagging defaults, conversion rules and upscaling setup. Use each section's Save button. |
 | **Settings → Tasks** | Jobs, generated files/hashes, animation inspection, Character merging, association review, Video overlap indexing and database management. |

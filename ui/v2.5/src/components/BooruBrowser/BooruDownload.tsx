@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Form } from "react-bootstrap";
+import { Link } from "react-router-dom";
 import { type BooruPost, readBooruResponse } from "./browser";
 import { FolderPicker } from "./FolderPicker";
 interface DownloadState {
@@ -237,9 +238,9 @@ export function BooruDownload({
         </span>
       )}
       {libraryURL && (
-        <a className="btn btn-success btn-sm mt-2" href={libraryURL}>
+        <Link className="btn btn-success btn-sm mt-2" to={libraryURL}>
           Open in Stash
-        </a>
+        </Link>
       )}
       {(state?.library?.path || state?.savedPath) && (
         <small className="d-block">

@@ -7,14 +7,15 @@ downloads into Stash, optional saved converter defaults, and per-source CSV tag
 databases via upload or server path. Native scan registers media; Artist/Character/
 Copyright/tag metadata import remains separate reviewed work.
 [B02 review state](booru-review-state.md) adds durable ignored/manual-download
-marks and bounded current-file MD5 matches. Metadata import, catalogue downloads,
+marks and bounded current-file MD5 matches. Metadata entity review, batch downloads,
 pHash comparison and follows remain later [roadmap packages](booru-browser-roadmap.md).
 
 ## Search and inspect
 
 Choose up to eight sources, enter a query and select **Search**.
-Opening the browser without a query, editing the query and changing checkboxes
-do not search automatically. Each selected source has independent results,
+A fresh browser without saved state does not search automatically. Refresh/bare-route
+visits restore the saved submitted page. Editing the query and changing checkboxes
+do not submit a search. Each selected source has independent results,
 Previous/Next, cancellation and retry. One unavailable/rate-limited source does
 not discard another source's results. Inspect a thumbnail or post number to view
 the larger remote preview and grouped raw tags; **Open remote post** visits the
