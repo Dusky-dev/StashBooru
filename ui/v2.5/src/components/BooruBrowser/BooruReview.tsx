@@ -1,6 +1,16 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Alert, Button, Form } from "react-bootstrap";
 import { Link } from "react-router-dom";
+import {
+  faBan,
+  faCheck,
+  faRotateRight,
+  faXmark,
+  faCheckDouble,
+  faArrowUpRightFromSquare,
+} from "@fortawesome/free-solid-svg-icons";
+import { BooruIconButton } from "./BooruControls";
+import { Icon } from "../Shared/Icon";
 import { type BooruPost, type BooruSource, readBooruResponse } from "./browser";
 
 export interface ReviewState {
@@ -25,7 +35,46 @@ interface ReviewChange {
   downloaded?: boolean;
 }
 
-export function ReviewEvidence({ state }: { state?: ReviewState }) {
+export function ReviewEvidence({
+  state,
+  compact = false,
+}: {
+  state?: ReviewState;
+  compact?: boolean;
+}) {
+  if (compact)
+    return (
+      <div className="booru-review-evidence booru-evidence-compact">
+        {state?.ignoredAt && (
+          <span
+            role="img"
+            aria-label="Ignored"
+            title={`Ignored ${state.ignoredAt}`}
+          >
+            <Icon icon={faBan} />
+          </span>
+        )}
+        {state?.downloadedAt && (
+          <span
+            role="img"
+            aria-label="Marked downloaded · manual"
+            title={`Marked downloaded · manual ${state.downloadedAt}`}
+          >
+            <Icon icon={faCheck} />
+          </span>
+        )}
+        {state?.matches?.map((match) => (
+          <Link
+            key={`${match.kind}:${match.id}:${match.fileID}`}
+            to={`/${match.kind === "image" ? "images" : "scenes"}/${match.id}`}
+            aria-label={`In library · ${match.kind === "image" ? "Image" : "Video"} #${match.id}`}
+            title={`Current-file MD5 verified · ${match.kind} #${match.id}`}
+          >
+            <Icon icon={faArrowUpRightFromSquare} />
+          </Link>
+        ))}
+      </div>
+    );
   if (!state)
     return <small className="text-muted">Review status not loaded</small>;
   return (
@@ -62,12 +111,21 @@ export function BooruReview({
   showIgnored,
   onStates,
   children,
+  preview,
 }: {
   source: BooruSource;
   posts: BooruPost[];
   showIgnored: boolean;
   onStates: (states: ReviewState[]) => void;
-  children: (post: BooruPost, controls: ReactNode) => ReactNode;
+  children: (
+    post: BooruPost,
+    controls: ReactNode,
+    selected: boolean
+  ) => ReactNode;
+  preview?: (actions: {
+    ignore: (id: string) => void;
+    busy: boolean;
+  }) => ReactNode;
 }) {
   const [states, setStates] = useState<ReviewState[]>();
   const [selected, setSelected] = useState<string[]>([]);
@@ -273,55 +331,57 @@ export function BooruReview({
         </div>
       )}
       <div className="booru-review-toolbar" aria-label="Review selection">
-        <Button
-          size="sm"
-          variant="secondary"
-          disabled={busy || !!error || !states || !visible.length}
-          onClick={() => setSelected(visible.map((post) => post.id))}
-        >
-          Select visible
-        </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          disabled={!targets.length}
-          onClick={() => setSelected([])}
-        >
-          Clear selection
-        </Button>
-        <span>{targets.length} selected</span>
-        <Button
-          size="sm"
-          variant="secondary"
-          disabled={busy || !!error || !states || !targets.length}
-          onClick={() => mark(targets, "ignored", true)}
-        >
-          Ignore selected
-        </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          disabled={busy || !!error || !states || !targets.length}
-          onClick={() => mark(targets, "ignored", false)}
-        >
-          Unignore selected
-        </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          disabled={busy || !!error || !states || !targets.length}
-          onClick={() => mark(targets, "downloaded", true)}
-        >
-          Mark selected downloaded
-        </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          disabled={busy || !!error || !states || !targets.length}
-          onClick={() => mark(targets, "downloaded", false)}
-        >
-          Clear selected manual marks
-        </Button>
+        {targets.length > 0 ? (
+          <>
+            <div className="selected-items-info">
+              <BooruIconButton
+                icon={faXmark}
+                label="Clear selection"
+                onClick={() => setSelected([])}
+              />
+              <span className="selected-count" aria-live="polite">
+                {targets.length} selected
+              </span>
+              <BooruIconButton
+                icon={faCheckDouble}
+                label="Select visible"
+                disabled={busy || !!error || !states}
+                onClick={() => setSelected(visible.map((post) => post.id))}
+              />
+            </div>
+            <BooruIconButton
+              icon={faBan}
+              label="Ignore selected"
+              disabled={busy || !!error || !states}
+              onClick={() => mark(targets, "ignored", true)}
+            />
+            <BooruIconButton
+              icon={faRotateRight}
+              label="Unignore selected"
+              disabled={busy || !!error || !states}
+              onClick={() => mark(targets, "ignored", false)}
+            />
+            <BooruIconButton
+              icon={faCheck}
+              label="Mark selected downloaded"
+              disabled={busy || !!error || !states}
+              onClick={() => mark(targets, "downloaded", true)}
+            />
+            <BooruIconButton
+              icon={faXmark}
+              label="Clear selected manual marks"
+              disabled={busy || !!error || !states}
+              onClick={() => mark(targets, "downloaded", false)}
+            />
+          </>
+        ) : (
+          <BooruIconButton
+            icon={faCheckDouble}
+            label="Select visible"
+            disabled={busy || !!error || !states || !visible.length}
+            onClick={() => setSelected(visible.map((post) => post.id))}
+          />
+        )}
       </div>
       {!visible.length && posts.length > 0 && (
         <p>
@@ -335,10 +395,10 @@ export function BooruReview({
           return children(
             post,
             <>
-              <Form.Check
-                id={`booru-select-${source.id}-${post.id}`}
+              <Form.Control
+                type="checkbox"
+                className="card-check mousetrap"
                 aria-label={`Select ${source.name} post ${post.id}`}
-                label="Select"
                 checked={targets.includes(post.id)}
                 disabled={busy || !!error || !state}
                 onChange={() =>
@@ -349,33 +409,38 @@ export function BooruReview({
                   )
                 }
               />
-              <ReviewEvidence state={state} />
               <div className="booru-review-actions">
-                <Button
-                  variant="secondary"
-                  size="sm"
+                <BooruIconButton
+                  icon={faBan}
+                  label={state?.ignoredAt ? "Unignore" : "Ignore"}
+                  aria-pressed={!!state?.ignoredAt}
                   disabled={busy || !!error || !state}
                   onClick={() => mark([post.id], "ignored", !state?.ignoredAt)}
-                >
-                  {state?.ignoredAt ? "Unignore" : "Ignore"}
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
+                />
+                <BooruIconButton
+                  icon={faCheck}
+                  label={
+                    state?.downloadedAt
+                      ? "Clear manual mark"
+                      : "Mark downloaded"
+                  }
+                  aria-pressed={!!state?.downloadedAt}
                   disabled={busy || !!error || !state}
                   onClick={() =>
                     mark([post.id], "downloaded", !state?.downloadedAt)
                   }
-                >
-                  {state?.downloadedAt
-                    ? "Clear manual mark"
-                    : "Mark downloaded"}
-                </Button>
+                />
+                <ReviewEvidence state={state} compact />
               </div>
-            </>
+            </>,
+            targets.includes(post.id)
           );
         })}
       </div>
+      {preview?.({
+        ignore: (id) => mark([id], "ignored", true),
+        busy: busy || !!error || !states,
+      })}
     </>
   );
 }

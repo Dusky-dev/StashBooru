@@ -5,6 +5,7 @@ import {
   readBooruResponse,
   readBrowserSearch,
   remoteURL,
+  motionPreviewURL,
 } from "../src/components/BooruBrowser/browser.ts";
 
 test("Browser filters round-trip with native expressions and independent paging", () => {
@@ -15,10 +16,42 @@ test("Browser filters round-trip with native expressions and independent paging"
     sort: "popular" as const,
     rating: "safe" as const,
     media: "videos" as const,
+    pageSize: 40,
   };
   assert.deepEqual(readBrowserSearch(browserSearchURL(value)), value);
   assert.ok(readBrowserSearch("?sort=unsupported").error);
   assert.ok(readBrowserSearch("?rating=unsupported").error);
+});
+
+test("Page size rejects unsafe provider requests and survives refresh", () => {
+  for (const limit of ["0", "51", "-1", "1.5", "1e2", "NaN", ""])
+    assert.ok(readBrowserSearch(`?limit=${limit}`).error);
+  assert.equal(
+    readBrowserSearch("?source=danbooru&limit=50&p.danbooru=2").pageSize,
+    50
+  );
+});
+
+test("Animated previews require an opaque key, a supported format and bounded size", () => {
+  const post = {
+    id: "1",
+    sourceID: "danbooru",
+    postURL: "https://example.org/1",
+    tags: [],
+    mediaKey: "a".repeat(48),
+    downloadAvailable: true,
+    format: "webm",
+    bytes: 24 * 1048576,
+  };
+  assert.match(motionPreviewURL(post) ?? "", /kind=motion/);
+  assert.ok(motionPreviewURL({ ...post, format: "gif" }));
+  assert.equal(motionPreviewURL({ ...post, bytes: post.bytes + 1 }), undefined);
+  assert.equal(motionPreviewURL({ ...post, format: "mkv" }), undefined);
+  assert.equal(motionPreviewURL({ ...post, mediaKey: "forged" }), undefined);
+  assert.equal(
+    motionPreviewURL({ ...post, downloadAvailable: false }),
+    undefined
+  );
 });
 
 test("Search chips preserve quoted expressions, exclusions and comma tags", async () => {

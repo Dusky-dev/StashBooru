@@ -96,7 +96,7 @@ lookup behavior, model setup, direct/calculated relationships and ambiguity rule
 Existing MD5 lookup enriches local media. The separate [Booru browser](booru-browser.md)
 supports multi-source search through Danbooru, Gelbooru, Moebooru, e621
 and Philomena adapters, with ten presets and compatible custom definitions.
-**Source settings** (also **Settings → Metadata Providers → Booru sources**) edits
+**Booru → Settings** (also **Settings → Metadata Providers → Booru sources**) edits
 API keys, engine, URL, image hosts and enabled state. Its Danbooru-inspired sidebar
 and compact thumbnail grid include categorized loaded-page tag counts.
 [B02 review state](booru-review-state.md) adds persistent ignored/manual-download

@@ -2,18 +2,23 @@
 
 B02 adds library-wide review marks to the existing browser. It does not download
 remote originals, import metadata/entities, change native media relationships or
-create jobs. The browsing layout remains the B01 layout while broader browsing
-revisions await owner testing.
+create jobs. The current browser integrates these marks with compact thumbnail
+icon actions and keyboard inspection.
 
 ## Review a provider page
 
 Each post offers **Ignore** / **Unignore** and **Mark downloaded** / **Clear manual
 mark**. These are independent choices. Unignoring never clears a download mark.
+Thumbnail icons summarize ignored/manual marks and verified local links; open
+inspection for full evidence and match status. Down arrow in inspection marks
+that post ignored using the same version/conflict checks.
 A manual download mark records a historical claim and the time it was marked;
 it does not assert that any file currently exists or create a local media link.
 
-**Select visible** or individual **Select** checkboxes prepare bounded bulk edits
-on the current source page. Bulk ignore/unignore and manual mark/clear operations
+Use **Select visible** or Stash-style card checkboxes for bounded bulk edits on
+the current source page. With no selection the bulk actions stay hidden. Selecting
+posts reveals the native-style selected-items counter, clear (×), select-all and
+bulk icon actions. Tooltips and accessible labels name each action. Bulk ignore/unignore and manual mark/clear operations
 are atomic: one stale version rejects the entire selection without partial edits.
 **Undo last review change** reverses the last successful change on this source
 page. Undo uses the returned versions, so another client's edits cannot be

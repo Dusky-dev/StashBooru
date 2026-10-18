@@ -445,46 +445,12 @@
     padding: 1rem;
   }
 
-  .booru-filter-panel {
-    summary {
-      cursor: pointer;
-      font-weight: 600;
-      margin-bottom: 0.6rem;
-    }
-    border-top: 1px solid var(--secondary);
-    margin-top: 1rem;
-    padding-top: 0.5rem;
-
-    .form-group { margin-bottom: 0.65rem; }
-    .form-label { font-size: 0.8rem; }
-  }
-
   .booru-page-tags {
     background: rgb(0 0 0 / 8%);
     border: 1px solid var(--secondary);
     border-radius: 8px;
     margin-top: 1rem;
     padding: 0.85rem;
-  }
-
-  .booru-card-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-    margin-bottom: 0.5rem;
-    max-height: 3rem;
-    overflow: hidden;
-
-    .btn {
-      background: rgb(127 127 127 / 12%);
-      border-radius: 4px;
-      font-size: 0.7rem;
-      max-width: 100%;
-      overflow: hidden;
-      padding: 0.1rem 0.3rem;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
   }
 
   .booru-rating {
@@ -505,20 +471,68 @@
   .rating-explicit { color: #f2a0a0; }
 
   .booru-download-compact {
-    border-bottom: 1px solid var(--secondary);
-    margin-bottom: 0.5rem;
-    padding-bottom: 0.5rem;
-
-    .btn {
-      font-size: 0.7rem;
-      padding: 0.2rem 0.4rem;
-    }
+    align-items: center;
+    display: flex;
+    gap: 0.15rem;
+    margin: 0;
+    padding: 0;
 
     .alert {
-      font-size: 0.75rem;
+      margin: 0;
       padding: 0.4rem;
     }
   }
+
+  .booru-card-actions, .booru-review-actions, .booru-evidence-compact {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.15rem;
+    margin: 0;
+  }
+
+  .booru-evidence-compact { flex-direction: row; }
+
+  .booru-post {
+    position: relative;
+
+    &.selected { border-color: var(--primary); }
+
+    .card-check {
+      height: 1.1rem;
+      left: 0.85rem;
+      margin: 0;
+      opacity: 1;
+      position: absolute;
+      top: 0.85rem;
+      width: 1.1rem;
+      z-index: 2;
+    }
+  }
+
+  .booru-results-toolbar, .booru-filter-icons, .booru-display-switches {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .booru-display-switches {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .booru-results-toolbar { justify-content: flex-end; }
+  .page-size-selector { flex: 0 0 6rem; }
+
+  .booru-icon-button {
+    min-height: 30px;
+    min-width: 30px;
+    padding: 0.2rem 0.35rem;
+  }
+  .booru-review-actions .btn { font-size: 0.85rem; }
+  .booru-icon-menu.active { box-shadow: inset 0 -2px var(--primary); }
+
 }
 
 .booru-query-chips {
@@ -566,3 +580,13 @@
   &.tag-meta { color: #e6cc87; }
   &.tag-general { color: #8ebfe9; }
 }
+
+.booru-preview-navigation {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.booru-motion-preview { margin-bottom: 0.75rem; }

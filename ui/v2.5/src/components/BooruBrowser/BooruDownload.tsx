@@ -1,7 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { type Ref, useEffect, useRef, useState } from "react";
 import { Alert, Button, Form } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import { type BooruPost, readBooruResponse } from "./browser";
+import {
+  faDownload,
+  faFolderOpen,
+  faRotateRight,
+  faXmark,
+  faArrowUpRightFromSquare,
+} from "@fortawesome/free-solid-svg-icons";
+import { Icon } from "../Shared/Icon";
 import { FolderPicker } from "./FolderPicker";
 import { loadDownloadPreferences } from "./downloadPreferences";
 interface DownloadState {
@@ -42,10 +50,12 @@ export function BooruDownload({
   post,
   instance,
   compact = false,
+  downloadRef,
 }: {
   post: BooruPost;
   instance: string;
   compact?: boolean;
+  downloadRef?: Ref<HTMLButtonElement>;
 }) {
   const identity = `booru-download:${instance}:${post.id}`;
   const [state, setState] = useState<DownloadState | undefined>(() =>
@@ -222,6 +232,7 @@ export function BooruDownload({
             . Maximum 128 MiB.
           </p>
           <Form.Check
+            type="switch"
             id={`booru-convert-${post.sourceID}-${post.id}`}
             label="Convert using Media converter defaults"
             checked={convert}
@@ -235,13 +246,15 @@ export function BooruDownload({
           <p className="booru-destination">
             Default folder:{" "}
             {directory ||
-              "Not configured — set it in Downloads & autocomplete, or use Download to…"}
+              "Not configured — set it in Settings, or use Download to…"}
           </p>
         </>
       )}
       {error && <Alert variant="warning">{error}</Alert>}
       {state?.error && <Alert variant="warning">{state.error}</Alert>}
       <Button
+        ref={downloadRef}
+        className={compact ? "minimal booru-icon-button" : undefined}
         size="sm"
         disabled={busy || running || !ready || !available || !directory}
         aria-label={
@@ -254,17 +267,17 @@ export function BooruDownload({
         }
         onClick={() => void start(directory)}
       >
-        {compact
-          ? terminal
-            ? "Retry"
-            : "Download"
-          : terminal
-            ? "Retry download to Stash"
-            : "Download to Stash"}
+        {compact ? (
+          <Icon icon={terminal ? faRotateRight : faDownload} />
+        ) : terminal ? (
+          "Retry download to Stash"
+        ) : (
+          "Download to Stash"
+        )}
       </Button>
       <Button
         size="sm"
-        className="ml-2"
+        className={compact ? "minimal booru-icon-button" : "ml-2"}
         variant="secondary"
         disabled={busy || running || !ready || !available}
         aria-label={
@@ -274,7 +287,7 @@ export function BooruDownload({
         }
         onClick={() => setPicker(true)}
       >
-        {compact ? "Folder…" : "Download to…"}
+        {compact ? <Icon icon={faFolderOpen} /> : "Download to…"}
       </Button>
       {running && (
         <Button
@@ -282,27 +295,43 @@ export function BooruDownload({
           className="ml-2"
           variant="secondary"
           disabled={busy}
+          aria-label="Cancel download"
+          title="Cancel download"
           onClick={() => void cancel()}
         >
-          Cancel download
+          {compact ? <Icon icon={faXmark} /> : "Cancel download"}
         </Button>
       )}
-      {state && (
+      {state && !compact && (
         <span className="d-block mt-2" role="status">
           Job #{state.jobID}: {state.status}
         </span>
       )}
       {libraryURL && (
-        <Link className="btn btn-success btn-sm mt-2" to={libraryURL}>
-          Open in Stash
+        <Link
+          className={
+            compact
+              ? "btn btn-success btn-sm minimal booru-icon-button"
+              : "btn btn-success btn-sm mt-2"
+          }
+          to={libraryURL}
+          aria-label="Open in Stash"
+          title="Open in Stash"
+        >
+          {compact ? <Icon icon={faArrowUpRightFromSquare} /> : "Open in Stash"}
         </Link>
       )}
-      {(state?.library?.path || state?.savedPath) && (
+      {!compact && (state?.library?.path || state?.savedPath) && (
         <small className="d-block">
           Saved: {state.library?.path || state.savedPath}
         </small>
       )}
-      {state?.library?.notice && <p>{state.library.notice}</p>}
+      {!compact && state?.library?.notice && <p>{state.library.notice}</p>}
+      {compact && running && (
+        <span className="sr-only" role="status">
+          Download {state?.status ?? "queued"}
+        </span>
+      )}
       {!available && !compact && (
         <small className="d-block">
           Original unavailable, over the size limit, or its source needs a CDN

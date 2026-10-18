@@ -21,15 +21,17 @@ import (
 )
 
 type browserToolsClient struct {
-	failure bool
-	staged  string
-	jpeg    bool
+	failure      bool
+	staged       string
+	jpeg         bool
+	mediaRequest booru.MediaRequest
 }
 
 func (c *browserToolsClient) Search(_ context.Context, s booru.Source, _ string, p, l int) (booru.Result, error) {
 	return booru.Result{SourceID: s.ID, Posts: []booru.Post{{ID: "1", SourceID: s.ID, OriginalURL: s.URL + "/original.jpg", PreviewURL: s.URL + "/preview.jpg", DownloadAvailable: true}}, Page: p, Limit: l}, nil
 }
 func (c *browserToolsClient) FetchMedia(ctx context.Context, s booru.Source, in booru.MediaRequest, w io.Writer) (booru.MediaInfo, error) {
+	c.mediaRequest = in
 	if f, ok := w.(*os.File); ok {
 		c.staged = f.Name()
 	}
@@ -41,6 +43,36 @@ func (c *browserToolsClient) FetchMedia(ctx context.Context, s booru.Source, in 
 		return booru.MediaInfo{ContentType: "image/jpeg", Extension: "jpg", MD5: fmt.Sprintf("%x", md5.Sum([]byte("fixture-original"))), Bytes: 16}, err
 	}
 	return booru.MediaInfo{ContentType: "image/png", Extension: "png", MD5: fmt.Sprintf("%x", md5.Sum([]byte("fixture-original"))), Bytes: 16}, err
+}
+func TestBooruMotionPreviewBoundsAndRanges(t *testing.T) {
+	client := &browserToolsClient{}
+	rs := booruBrowserRoutes{configPath: t.TempDir(), client: client}
+	source := booru.Defaults()[0]
+	post := booru.Post{ID: "99", Format: "webm", OriginalURL: source.URL + "/motion.webm", Bytes: 16}
+	key := rememberBooruPost(source, post)
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/booru-browser/media?key="+key+"&kind=motion", nil)
+	r.Header.Set("Range", "bytes=0-6")
+	rs.Media(w, r)
+	if w.Code != http.StatusPartialContent || w.Body.String() != "fixture" || w.Header().Get("Content-Range") != "bytes 0-6/16" {
+		t.Fatal("bounded preview seeking failed", w.Code, w.Body.String(), w.Header())
+	}
+	if client.mediaRequest.ImagesOnly || client.mediaRequest.Limit != 24<<20 || client.mediaRequest.URL != post.OriginalURL {
+		t.Fatal("incorrect motion request", client.mediaRequest)
+	}
+	for _, invalid := range []booru.Post{
+		{ID: "99", Format: "jpg", OriginalURL: source.URL + "/original.jpg"},
+		{ID: "99", Format: "webm", OriginalURL: post.OriginalURL, Bytes: 25 << 20},
+		{ID: "99", Format: "gif"},
+	} {
+		client.mediaRequest = booru.MediaRequest{}
+		key := rememberBooruPost(source, invalid)
+		w := httptest.NewRecorder()
+		rs.Media(w, httptest.NewRequest("GET", "/booru-browser/media?key="+key+"&kind=motion", nil))
+		if w.Code < 400 || client.mediaRequest.URL != "" {
+			t.Fatal("invalid motion request reached transport", w.Code, client.mediaRequest)
+		}
+	}
 }
 func toolRequest(method, path, body, contentType string) *http.Request {
 	r := httptest.NewRequest(method, path, strings.NewReader(body))
