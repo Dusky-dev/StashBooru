@@ -106,7 +106,10 @@
       .form-control { width: 100%; }
     }
 
-    .zoom-slider-container { width: 110px; }
+    .zoom-slider-container {
+      display: flex;
+      width: 110px;
+    }
     .dropdown-menu { z-index: 1040; }
   }
 
