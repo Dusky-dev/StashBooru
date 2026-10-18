@@ -100,6 +100,7 @@ function result(source, query, page) {
     response.posts = Array.from({ length: 12 }, (_, index) => ({
       ...response.posts[0],
       id: String(id + index),
+      mediaKey: String(id + index).padStart(48, "a"),
       format: index % 3 === 0 ? "webm" : index === 1 ? "gif" : "png",
       width: index % 2 ? 480 : 640,
       height: index % 2 ? 640 : 480,
@@ -1525,6 +1526,10 @@ try {
       return video?.readyState >= 2 && video.videoWidth === 64 && !video.paused;
     });
     assert.equal(motionRequests.length, 1);
+    assert.equal(
+      new URL(motionRequests[0]).searchParams.get("key"),
+      "101".padStart(48, "a")
+    );
     // Native player arrows must retain their playback behavior.
     await preview.locator("video").focus();
     await page.keyboard.press("ArrowRight");
@@ -1545,6 +1550,10 @@ try {
       const image = document.querySelector(".booru-motion-preview img");
       return image?.complete && image.naturalWidth === 8;
     });
+    assert.equal(
+      new URL(motionRequests.at(-1)).searchParams.get("key"),
+      "102".padStart(48, "a")
+    );
     await preview
       .getByRole("button", { name: "Stop animated preview", exact: true })
       .click();
@@ -1569,10 +1578,9 @@ try {
       .getByRole("button", { name: "Next preview (Right arrow)", exact: true })
       .focus();
     await page.keyboard.press("ArrowUp");
-    assert.equal(
-      (await keyboardDownload).postDataJSON().destination,
-      defaultDirectory
-    );
+    const keyboardPayload = (await keyboardDownload).postDataJSON();
+    assert.equal(keyboardPayload.destination, defaultDirectory);
+    assert.equal(keyboardPayload.key, "103".padStart(48, "a"));
     const keyboardIgnore = page.waitForRequest(
       (request) =>
         request.method() === "POST" &&
@@ -1585,10 +1593,9 @@ try {
       .getByRole("button", { name: "Next preview (Right arrow)", exact: true })
       .focus();
     await page.keyboard.press("ArrowDown");
-    assert.equal(
-      (await keyboardIgnore).postDataJSON().changes[0].ignored,
-      true
-    );
+    const ignored = (await keyboardIgnore).postDataJSON().changes[0];
+    assert.equal(ignored.ignored, true);
+    assert.equal(ignored.id, "103");
     await preview.getByText("Ignored", { exact: true }).waitFor();
     await preview
       .getByRole("button", { name: "Next preview (Right arrow)", exact: true })

@@ -14,7 +14,7 @@ pHash comparison and follows remain later [roadmap packages](booru-browser-roadm
 
 Choose up to eight sources, enter a query and select **Search**.
 A fresh browser without saved state does not search automatically. Refresh/bare-route
-visits restore the saved submitted page. Editing the query and changing checkboxes
+visits restore the saved submitted page. Editing the query and changing source switches
 do not submit a search. Each selected source has independent results,
 Previous/Next, cancellation and retry. One unavailable/rate-limited source does
 not discard another source's results. Inspect a thumbnail or post number to view

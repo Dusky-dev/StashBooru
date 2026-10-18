@@ -104,8 +104,10 @@ marks, bulk undo, a show-ignored filter and bounded current-file MD5 matches.
 [Downloads and live/CSV autocomplete](booru-downloads-autocomplete.md) support native
 Stash import into a default/custom folder, optional converter defaults, upload or
 server CSV paths, live tag suggestions with CSV fallback, card downloads, search chips,
-sort/rating controls, loaded-page media filters and refresh persistence. Follows, metadata entity review and
-bounded batch import remain later packages.
+sort/rating icon menus, loaded-page media filters and refresh persistence. Native dark
+inputs/switches, card selection/counters and page-size controls match the rest of Stash.
+Inspection supports keyboard navigation/download/ignore and explicit bounded video/GIF
+playback. Follows, metadata entity review and bounded batch import remain later packages.
 
 ### Profile artwork and metadata diagnostics
 

@@ -168,7 +168,7 @@ are cached in memory. Include `booru-tags/`, `booru-downloads.json` and
 ## Refresh and preview recovery
 
 The browser remembers its submitted query, source pages, inspection, unfinished
-search text/checkbox selection, settings view, tag sidebar source and scroll
+search text/source selection, settings view, tag sidebar source and scroll
 position in local browser storage. Refreshing or opening the bare `/booru` route
 restores that state. An explicit query URL takes precedence. Submitted results
 are fetched again, so live provider listings can still shift between requests.
@@ -189,7 +189,7 @@ access restrictions still apply.
 
 Asset keys last at most 30 minutes in a 4096-entry bounded cache. Server media
 retrieval uses four slots, two-minute deadlines and limits of 8 MiB per thumbnail
-and 24 MiB per sample. HTML/SVG are refused by the server media route. Direct CDN
+and 24 MiB per sample or explicit animated original. HTML/SVG are refused by the server media route. Direct CDN
 fallback uses the browser's normal image handling and network access.
 
 ## Verification scope
