@@ -138,6 +138,7 @@ try {
     let downloadState;
     let holdNextPreferences = false;
     let heldPreferences;
+    let onHeldEditorPreferences;
     const downloadRequests = [];
     let failNextDownload = false;
     let holdNextDownload = false;
@@ -177,6 +178,19 @@ try {
               roots: ["/library"],
             },
           };
+          return;
+        }
+        if (route.request().method() === "GET" && onHeldEditorPreferences) {
+          const resolve = onHeldEditorPreferences;
+          onHeldEditorPreferences = undefined;
+          resolve({
+            route,
+            json: {
+              convert: defaultJXL,
+              defaultDirectory,
+              roots: ["/library"],
+            },
+          });
           return;
         }
         if (route.request().method() === "POST") {
@@ -1348,9 +1362,26 @@ try {
     await dan
       .getByRole("button", { name: "Inspect Danbooru post 103", exact: true })
       .waitFor();
+    const editorPreferencesRequested = new Promise((resolve) => {
+      onHeldEditorPreferences = resolve;
+    });
     await page
       .getByRole("button", { name: "Source settings", exact: true })
       .click();
+    const editorPreferences = await editorPreferencesRequested;
+    assert.equal(
+      await page
+        .getByLabel("Default Stash download folder", { exact: true })
+        .isDisabled(),
+      true
+    );
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Choose default folder", exact: true })
+        .isDisabled(),
+      true
+    );
+    await editorPreferences.route.fulfill({ json: editorPreferences.json });
     await page
       .getByLabel("Default Stash download folder", { exact: true })
       .fill("/library/custom");
@@ -1361,6 +1392,8 @@ try {
       .getByRole("button", { name: "Save download settings", exact: true })
       .click();
     await page.getByText("Download settings saved.", { exact: true }).waitFor();
+    assert.equal(defaultDirectory, "/library/custom");
+    assert.equal(defaultJXL, false);
     assert.ok(heldPreferences, "card preferences request was not held");
     await heldPreferences.route.fulfill({ json: heldPreferences.json });
     heldPreferences = undefined;
