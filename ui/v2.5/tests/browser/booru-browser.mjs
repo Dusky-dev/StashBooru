@@ -60,7 +60,16 @@ function result(source, query, page) {
         id: String(id),
         sourceID: source,
         postURL: `https://${source}.example.org/posts/${id}`,
-        mediaKey: (query === "broken" ? "b" : "a").repeat(48),
+        mediaKey: (query === "broken"
+          ? "b"
+          : query === "proxy-fail"
+            ? "d"
+            : "a"
+        ).repeat(48),
+        directPreviewURL:
+          query === "proxy-fail"
+            ? "https://cdn.example.org/preview.svg"
+            : undefined,
         downloadAvailable: true,
         previewURL: `https://cdn.example.org/${query === "broken" ? "missing.jpg" : "preview.svg"}`,
         sampleURL: `https://cdn.example.org/${query === "broken" ? "missing.jpg" : "preview.svg"}`,
@@ -96,6 +105,7 @@ try {
     { width: 390, height: 844 },
   ]) {
     const page = await browser.newPage({ viewport });
+    page.setDefaultNavigationTimeout(60000);
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
     page.on("console", (entry) => {
@@ -121,6 +131,7 @@ try {
     let revision = 1;
     let conflict = false;
     let defaultJXL = false;
+    let defaultDirectory = "/library";
     let tagDatabase = { count: 0, revision: "" };
     let downloadState;
     const downloadRequests = [];
@@ -152,9 +163,36 @@ try {
     await page.route("**/booru-browser/**", async (route) => {
       const url = new URL(route.request().url());
       if (url.pathname.endsWith("/download-settings")) {
-        if (route.request().method() === "POST")
-          defaultJXL = route.request().postDataJSON().jpegToJXL;
-        await route.fulfill({ json: { jpegToJXL: defaultJXL } });
+        if (route.request().method() === "POST") {
+          const data = route.request().postDataJSON();
+          defaultJXL = data.convert;
+          defaultDirectory = data.defaultDirectory;
+        }
+        await route.fulfill({
+          json: { convert: defaultJXL, defaultDirectory, roots: ["/library"] },
+        });
+        return;
+      }
+      if (url.pathname.endsWith("/directories")) {
+        const current = url.searchParams.get("path");
+        await route.fulfill({
+          json: {
+            directories:
+              current === "/library"
+                ? ["/library/custom"]
+                : current
+                  ? []
+                  : ["/library"],
+            parent: current === "/library/custom" ? "/library" : "",
+          },
+        });
+        return;
+      }
+      if (url.pathname.endsWith("/tag-path")) {
+        const data = route.request().postDataJSON();
+        assert.equal(data.path, "/models/tags.csv");
+        tagDatabase = { count: 2, revision: "path-installed", path: data.path };
+        await route.fulfill({ json: tagDatabase });
         return;
       }
       if (url.pathname.endsWith("/tags")) {
@@ -195,7 +233,9 @@ try {
         return;
       }
       if (url.pathname.endsWith("/media")) {
-        if (url.searchParams.get("key") === "b".repeat(48))
+        if (
+          ["b".repeat(48), "d".repeat(48)].includes(url.searchParams.get("key"))
+        )
           await route.fulfill({ status: 502, body: "Unavailable" });
         else
           await route.fulfill({
@@ -239,7 +279,12 @@ try {
                     token: "c".repeat(32),
                     status: "complete",
                     converted: payload.convert,
-                    url: "downloads/abc123/danbooru-101.jxl",
+                    library: {
+                      kind: "image",
+                      id: "42",
+                      path: "/library/danbooru-101.jxl",
+                      converted: true,
+                    },
                     filename: "danbooru-101.jxl",
                   };
             failNextDownload = false;
@@ -411,13 +456,22 @@ try {
       .getByRole("button", { name: "Source settings", exact: true })
       .click();
     await page
-      .getByLabel("Convert JPEG downloads to JPEG XL by default")
+      .getByLabel("Convert new downloads using Media converter defaults")
       .check();
     await page
-      .getByRole("button", { name: "Save download preference", exact: true })
+      .getByRole("button", { name: "Save download settings", exact: true })
+      .click();
+    await page.getByText("Download settings saved.", { exact: true }).waitFor();
+    await page
+      .getByLabel("Autocomplete database CSV path on the server", {
+        exact: true,
+      })
+      .fill("/models/tags.csv");
+    await page
+      .getByRole("button", { name: "Load database from path", exact: true })
       .click();
     await page
-      .getByText("Download preference saved.", { exact: true })
+      .getByText("Imported 2 tags for Danbooru.", { exact: true })
       .waitFor();
     await page.getByLabel("Tag database CSV", { exact: true }).setInputFiles({
       name: "danbooru.csv",
@@ -695,14 +749,14 @@ try {
     assert.equal(requests.length, 2, "inspection refetched searches");
     assert.ok(
       await dialog
-        .getByLabel("Convert JPEG to JPEG XL before downloading")
+        .getByLabel("Convert using Media converter defaults")
         .isChecked()
     );
     await dialog
-      .getByRole("button", { name: "Prepare download", exact: true })
+      .getByRole("button", { name: "Download to Stash", exact: true })
       .click();
     await dialog
-      .getByRole("link", { name: "Save JPEG XL", exact: true })
+      .getByRole("link", { name: "Open in Stash", exact: true })
       .waitFor();
     if (process.env.STASH_BROWSER_SCREENSHOTS) {
       await dialog
@@ -717,24 +771,40 @@ try {
     }
     assert.equal(downloadRequests.at(-1).convert, true);
     assert.equal(downloadRequests.at(-1).key, "a".repeat(48));
+    assert.equal(downloadRequests.at(-1).destination, "/library");
+    await dialog
+      .getByRole("button", { name: "Download to…", exact: true })
+      .click();
+    const picker = page
+      .getByRole("dialog")
+      .filter({ hasText: "Choose Stash download folder" });
+    await picker
+      .getByRole("button", { name: "/library/custom", exact: true })
+      .click();
+    await picker
+      .getByRole("button", { name: "Use this folder", exact: true })
+      .click();
+    await dialog.getByText("Job #71: complete", { exact: true }).waitFor();
+    assert.equal(downloadRequests.at(-1).destination, "/library/custom");
+
     failNextDownload = true;
     await dialog
-      .getByRole("button", { name: "Prepare again", exact: true })
+      .getByRole("button", { name: "Retry download to Stash", exact: true })
       .click();
     await dialog
       .getByText("Fixture checksum mismatch", { exact: true })
       .waitFor();
     assert.equal(
       await dialog
-        .getByRole("link", { name: "Save JPEG XL", exact: true })
+        .getByRole("link", { name: "Open in Stash", exact: true })
         .count(),
       0,
-      "failed download retained a save link"
+      "failed download retained a library link"
     );
 
     holdNextDownload = true;
     await dialog
-      .getByRole("button", { name: "Prepare again", exact: true })
+      .getByRole("button", { name: "Retry download to Stash", exact: true })
       .click();
     await dialog
       .getByRole("button", { name: "Cancel download", exact: true })
@@ -742,7 +812,7 @@ try {
     await dialog.getByText("Job #71: cancelled", { exact: true }).waitFor();
     holdNextDownload = true;
     await dialog
-      .getByRole("button", { name: "Prepare again", exact: true })
+      .getByRole("button", { name: "Retry download to Stash", exact: true })
       .click();
     await dialog
       .getByRole("button", { name: "Cancel download", exact: true })
@@ -760,11 +830,16 @@ try {
       token: "c".repeat(32),
       status: "complete",
       converted: true,
-      url: "downloads/abc123/danbooru-101.jxl",
+      library: {
+        kind: "image",
+        id: "42",
+        path: "/library/danbooru-101.jxl",
+        converted: true,
+      },
       filename: "danbooru-101.jxl",
     };
     await dialog
-      .getByRole("link", { name: "Save JPEG XL", exact: true })
+      .getByRole("link", { name: "Open in Stash", exact: true })
       .waitFor();
     await page.evaluate(() => {
       for (const key of Object.keys(sessionStorage))
@@ -772,7 +847,7 @@ try {
     });
     delayNextDownload = true;
     await dialog
-      .getByRole("button", { name: "Prepare again", exact: true })
+      .getByRole("button", { name: "Retry download to Stash", exact: true })
       .click();
     await page.keyboard.press("Escape");
     await dialog.waitFor({ state: "hidden" });
@@ -785,7 +860,7 @@ try {
       .getByRole("button", { name: "Inspect Danbooru post 101", exact: true })
       .click();
     await dialog
-      .getByRole("link", { name: "Save JPEG XL", exact: true })
+      .getByRole("link", { name: "Open in Stash", exact: true })
       .waitFor();
     await page.keyboard.press("Escape");
     await dialog.waitFor({ state: "hidden" });
@@ -893,19 +968,13 @@ try {
     await page
       .getByRole("button", { name: "Search selected sources", exact: true })
       .click();
-    await dan
-      .getByText("Remote preview could not be loaded. Use Open remote post.", {
-        exact: true,
-      })
-      .waitFor();
+    await dan.getByText(/Remote preview could not be loaded\./).waitFor();
     await dan
       .getByRole("button", { name: "Inspect Danbooru post 101", exact: true })
       .click();
     await page
       .getByRole("dialog")
-      .getByText("Remote preview could not be loaded. Use Open remote post.", {
-        exact: true,
-      })
+      .getByText(/Remote preview could not be loaded\./)
       .waitFor();
     assert.equal(
       await page
@@ -1074,6 +1143,50 @@ try {
     await page.goto(`${baseURL}/booru?source=danbooru&q=cat&p.danbooru=-1`);
     await page.getByRole("alert").filter({ hasText: "Invalid page" }).waitFor();
     assert.equal(requests.length, beforeInvalid, "invalid URL searched");
+    // Refresh restores the submitted provider page and separate unfinished form.
+    await page.goto(
+      `${baseURL}/booru?source=danbooru&q=landscape&p.danbooru=2`
+    );
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 201", exact: true })
+      .waitFor();
+    await page
+      .getByLabel("Search tags (native source syntax)", { exact: true })
+      .fill("unfinished -blue");
+    await page.getByLabel("Gelbooru · gelbooru", { exact: true }).check();
+    await page.reload();
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 201", exact: true })
+      .waitFor();
+    assert.equal(
+      await page
+        .getByLabel("Search tags (native source syntax)", { exact: true })
+        .inputValue(),
+      "unfinished -blue"
+    );
+    assert.ok(
+      await page.getByLabel("Gelbooru · gelbooru", { exact: true }).isChecked()
+    );
+    await page.goto(`${baseURL}/booru`);
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 201", exact: true })
+      .waitFor();
+    assert.ok(page.url().includes("p.danbooru=2"));
+    assert.equal(
+      await page
+        .getByLabel("Search tags (native source syntax)", { exact: true })
+        .inputValue(),
+      "unfinished -blue"
+    );
+    await page.goto(`${baseURL}/booru?source=danbooru&q=proxy-fail`);
+    await dan.locator("img").first().waitFor();
+    await page.waitForFunction(() => {
+      const image = document.querySelector(".booru-post img");
+      return (
+        image?.src.startsWith("https://cdn.example.org/") &&
+        image.naturalWidth > 0
+      );
+    });
     sourcesDenied = true;
     await page.goto(`${baseURL}/booru`);
     await page
@@ -1106,7 +1219,7 @@ try {
     assert.deepEqual(errors, []);
     await page.close();
     console.log(
-      `Booru browser ${viewport.width}×${viewport.height}: same-origin PNG thumbnails, CSV upload/alias keyboard autocomplete, JPEG XL preference/download/failure/cancel/reopen; durable review/bulk/undo/filters/conflicts/typed links; settings create/credentials/clear/conflict/reload/disable/remove; tag sidebar/search/paging/inspection/refresh/back, partial failures/retry, missing previews, races/cancel/cleanup and overflow passed.`
+      `Booru browser ${viewport.width}×${viewport.height}: same-origin PNG thumbnails, CSV upload/alias keyboard autocomplete, converter defaults/library destination/custom folder/download/failure/cancel/reopen; durable review/bulk/undo/filters/conflicts/typed links; settings create/credentials/clear/conflict/reload/disable/remove; tag sidebar/search/paging/inspection/refresh/back, partial failures/retry, missing previews, races/cancel/cleanup and overflow passed.`
     );
   }
 } finally {

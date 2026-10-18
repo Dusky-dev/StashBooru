@@ -29,6 +29,8 @@ type Post struct {
 	PreviewURL        string `json:"previewURL,omitempty"`
 	SampleURL         string `json:"sampleURL,omitempty"`
 	OriginalURL       string `json:"-"`
+	DirectPreviewURL  string `json:"directPreviewURL,omitempty"`
+	DirectSampleURL   string `json:"directSampleURL,omitempty"`
 	MediaKey          string `json:"mediaKey,omitempty"`
 	DownloadAvailable bool   `json:"downloadAvailable"`
 	Width             int64  `json:"width,omitempty"`

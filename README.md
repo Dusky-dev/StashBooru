@@ -87,8 +87,9 @@ and per-source enable/disable controls. A compact sidebar, categorized page tags
 and thumbnail grid support independent paging/errors and preview/tag inspection.
 Query and inspection state survive refresh/back navigation. Review marks persist
 ignored/manual-download history, with bounded current-file MD5 matches shown
-separately. Explicit computer downloads support optional JPEG → JPEG XL and
-per-source CSV autocomplete databases. Catalogue import and follows remain later
+separately. Downloads save into a default or selected Stash library folder, using native scan
+and optional saved converter defaults. CSV autocomplete supports upload or server
+paths, and browser state survives refresh. Metadata review and follows remain later
 packages. See
 [B02 review state](docs/booru-review-state.md), [downloads and autocomplete](docs/booru-downloads-autocomplete.md), and [browser setup and limits](docs/booru-browser.md).
 

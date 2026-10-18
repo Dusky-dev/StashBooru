@@ -1,21 +1,40 @@
 # StashBooru implementation progress
 
-Updated: 2026-10-17
+Updated: 2026-10-18
 
-Current baseline: `develop` at `598d6849668303369fb2a2c5783160a00172ba59`.
-PR #145 (B02 review state) is open and unmerged at
-`07325d0b505314622caeaf7c6e7a90dd59f7774f`. Current branch:
-`feat/booru-media-autocomplete-20261017`, stacked on that exact published head.
-Delivered for review in [PR #146](https://github.com/Dusky-dev/StashBooru/pull/146);
-merge #145 first, then retarget #146 to develop. No agent merge or deployment.
-The owner requested thumbnail/download/converter/autocomplete usability before
-continuing B03. This slice implements explicit downloads to the user's computer;
-B03 metadata selection and B04 durable catalogue import remain planned.
+Current baseline: `develop` at `4b21a0dda1bd1580cadc605db7586a74b2f7e3ee`.
+PR #145 is merged. PR #146 was merged into the prior B02 feature branch at
+`9be2db6430aa05f22e186ffb315ff333d764bb4e`, and was not in develop at this
+checkpoint. Branch `fix/booru-library-downloads-20261018` includes that work and
+fixes the owner's reported missing controls and workflow problems.
 See [downloads/autocomplete guide](booru-downloads-autocomplete.md).
 
 P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
+
+## Booru library downloads and workflow corrections — 2026-10-18 UTC
+
+- Fresh develop, clean tree and closed/merged PRs checked. B02 is in develop;
+  B01 media/autocomplete #146 landed on the previous feature branch. Its source
+  is included on this feature branch without modifying develop.
+- Download to Stash imports a verified original through native Scan handlers,
+  with a configurable default folder and per-request Download to… picker.
+  Library containment/symlink checks, no-overwrite publication, receipts and
+  explicit retry retain files on failed registration/conversion.
+- Optional conversion calls the existing converter with saved format/encoding/
+  worker/savings defaults and its native activation/recovery path. No hard-coded
+  JPEG XL/quality/effort/CPU override remains. Existing metadata/IDs are retained.
+- A dedicated Downloads & autocomplete entry exposes upload and server CSV path
+  loading, including persisted paths and atomic/revision-checked replacement.
+- Local browser memory separates submitted pages/queries from unfinished drafts,
+  preserving refresh/bare-route navigation. HTTPS upgrades, public CDN fallback,
+  detailed preview errors and Refresh previews provide recovery.
+- Verification is in progress on the draft checkpoint. Desktop/mobile core
+  workflows passed; final refresh/fallback/native-scan/defaults gates are running.
+- Limits: one post per explicit Job, 128 MiB original, existing configured library
+  destinations and hard-link support. Metadata entity/tag review and batch import
+  remain later work. No live-account or real JPEG XL codec acceptance claim.
 
 ## Browser media and autocomplete — 2026-10-17 UTC
 

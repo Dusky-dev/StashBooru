@@ -7,6 +7,7 @@
     align-items: center;
     border-bottom: 1px solid var(--secondary);
     display: flex;
+    flex-wrap: wrap;
     gap: 1rem;
     justify-content: space-between;
     margin-bottom: 1.25rem;
@@ -413,4 +414,16 @@
   input[type="file"] {
     max-width: 100%;
   }
+}
+
+.booru-folders {
+  list-style: none;
+  max-height: 300px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  padding: 0;
+}
+
+.booru-destination {
+  overflow-wrap: anywhere;
 }

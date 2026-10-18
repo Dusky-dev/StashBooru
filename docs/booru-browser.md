@@ -3,8 +3,9 @@
 Open **Booru** (globe) in the navbar, or `/booru`. This browser searches
 remote posts and displays their previews and metadata.
 [Downloads and autocomplete](booru-downloads-autocomplete.md) adds explicit file
-exports, optional JPEG → JPEG XL conversion, and per-source CSV tag databases.
-It does not import entities or change native media metadata.
+downloads into Stash, optional saved converter defaults, and per-source CSV tag
+databases via upload or server path. Native scan registers media; Artist/Character/
+Copyright/tag metadata import remains separate reviewed work.
 [B02 review state](booru-review-state.md) adds durable ignored/manual-download
 marks and bounded current-file MD5 matches. Metadata import, catalogue downloads,
 pHash comparison and follows remain later [roadmap packages](booru-browser-roadmap.md).

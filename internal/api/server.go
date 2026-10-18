@@ -221,7 +221,7 @@ func Initialize() (*Server, error) {
 	r.Mount("/group", server.getGroupRoutes())
 	r.Mount("/tag", server.getTagRoutes())
 	r.Mount("/downloads", server.getDownloadsRoutes())
-	booruRoutes := booruBrowserRoutes{configPath: cfg.GetConfigPath(), client: booru.NewClient(), repository: repo, jobs: mgr.JobManager, downloads: mgr.DownloadStore, converter: booruDownloadConverter}
+	booruRoutes := booruBrowserRoutes{configPath: cfg.GetConfigPath(), client: booru.NewClient(), repository: repo, jobs: mgr.JobManager, downloads: mgr.DownloadStore, libraryRoots: func() []string { return cfg.GetStashPaths().Paths() }, importFile: booruImportFile}
 	r.Get("/booru-browser/sources", booruRoutes.Sources)
 	r.Get("/booru-browser/settings", booruRoutes.Settings)
 	r.Post("/booru-browser/settings", booruRoutes.UpdateSettings)
@@ -233,6 +233,8 @@ func Initialize() (*Server, error) {
 	r.Post("/booru-browser/download", booruRoutes.StartDownload)
 	r.Get("/booru-browser/tags", booruRoutes.Tags)
 	r.Post("/booru-browser/tags", booruRoutes.ImportTags)
+	r.Post("/booru-browser/tag-path", booruRoutes.ImportTagPath)
+	r.Get("/booru-browser/directories", booruRoutes.Directories)
 	r.Post("/booru-browser/review/read", booruRoutes.ReadReview)
 	r.Post("/booru-browser/review/update", booruRoutes.UpdateReview)
 

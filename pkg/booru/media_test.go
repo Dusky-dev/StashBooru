@@ -103,3 +103,11 @@ func TestOriginalURLsAndModernDanbooruVariants(t *testing.T) {
 		t.Fatal("original must not become thumbnail", err)
 	}
 }
+
+func TestLegacyPostMediaURLsUpgradeOnlyOnAllowedHosts(t *testing.T) {
+	source := testSource("gelbooru")
+	result, err := parse(source, []byte(`[{"id":1,"preview_url":"http://cdn.example.org/preview.jpg","file_url":"http://evil.example.org/original.jpg"}]`), 1, 24)
+	if err != nil || result.Posts[0].PreviewURL != "https://cdn.example.org/preview.jpg" || result.Posts[0].DownloadAvailable {
+		t.Fatal(result, err)
+	}
+}

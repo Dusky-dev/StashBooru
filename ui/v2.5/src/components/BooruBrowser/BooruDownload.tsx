@@ -1,39 +1,38 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Form } from "react-bootstrap";
 import { type BooruPost, readBooruResponse } from "./browser";
-
+import { FolderPicker } from "./FolderPicker";
 interface DownloadState {
   jobID: number;
   token: string;
   status: string;
   error?: string;
-  url?: string;
-  filename?: string;
-  converted: boolean;
+  savedPath?: string;
+  library?: {
+    kind: string;
+    id: string;
+    path: string;
+    converted: boolean;
+    notice?: string;
+  };
 }
 function rememberedJob(identity: string): DownloadState | undefined {
   try {
-    const saved = JSON.parse(sessionStorage.getItem(identity) ?? "null") as {
+    const value = JSON.parse(sessionStorage.getItem(identity) ?? "null") as {
       jobID: number;
       token: string;
       created: number;
     } | null;
     if (
-      saved &&
-      Number.isSafeInteger(saved.jobID) &&
-      saved.jobID > 0 &&
-      typeof saved.token === "string" &&
-      /^[a-f0-9]{32}$/.test(saved.token) &&
-      Date.now() - saved.created < 3600000
+      value &&
+      Number.isSafeInteger(value.jobID) &&
+      value.jobID > 0 &&
+      /^[a-f0-9]{32}$/.test(value.token) &&
+      Date.now() - value.created < 3600000
     )
-      return {
-        jobID: saved.jobID,
-        token: saved.token,
-        status: "queued",
-        converted: false,
-      };
+      return { ...value, status: "queued" };
   } catch {
-    /* Storage may be disabled. Jobs still work in the current view. */
+    /* Optional UI recovery. */
   }
   return undefined;
 }
@@ -45,11 +44,13 @@ export function BooruDownload({
   instance: string;
 }) {
   const identity = `booru-download:${instance}:${post.id}`;
-  const [convert, setConvert] = useState(false);
-  const [ready, setReady] = useState(false);
   const [state, setState] = useState<DownloadState | undefined>(() =>
     rememberedJob(identity)
   );
+  const [convert, setConvert] = useState(false);
+  const [directory, setDirectory] = useState("");
+  const [picker, setPicker] = useState(false);
+  const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const mounted = useRef(true);
@@ -62,10 +63,11 @@ export function BooruDownload({
   useEffect(() => {
     const controller = new AbortController();
     void fetch("booru-browser/download-settings", { signal: controller.signal })
-      .then(readBooruResponse<{ jpegToJXL: boolean }>)
+      .then(readBooruResponse<{ convert: boolean; defaultDirectory: string }>)
       .then((settings) => {
         if (!controller.signal.aborted) {
-          setConvert(settings.jpegToJXL);
+          setConvert(settings.convert);
+          setDirectory(settings.defaultDirectory);
           setReady(true);
         }
       })
@@ -77,44 +79,41 @@ export function BooruDownload({
       });
     return () => controller.abort();
   }, []);
-  const jobID = state?.jobID;
-  const token = state?.token;
+  const jobID = state?.jobID,
+    token = state?.token;
   const terminal =
-    state && ["complete", "failed", "cancelled"].includes(state.status);
+    !!state && ["complete", "failed", "cancelled"].includes(state.status);
+  const running = !!state && !terminal;
   useEffect(() => {
-    if (!jobID || terminal) return;
+    if (!jobID || !token || terminal) return;
     const controller = new AbortController();
     let timer: number;
     const poll = async () => {
       try {
         const response = await fetch(
-          `booru-browser/download?${new URLSearchParams({ jobID: String(jobID), token: token ?? "" })}`,
-          {
-            signal: controller.signal,
-          }
+          `booru-browser/download?${new URLSearchParams({ jobID: String(jobID), token })}`,
+          { signal: controller.signal }
         );
         if (response.status === 404 || response.status === 410) {
           if (!controller.signal.aborted)
             setState({
               jobID,
-              token: token ?? "",
+              token,
               status: "failed",
-              converted: false,
               error:
-                "Prepared download expired or the server restarted. Prepare it again.",
+                "Job expired or the server restarted. Retry; saved files are retained.",
             });
           return;
         }
-        const result = await readBooruResponse<DownloadState>(response);
+        const value = await readBooruResponse<DownloadState>(response);
         if (!controller.signal.aborted) {
-          setState(result);
+          setState(value);
           setError("");
           timer = window.setTimeout(() => void poll(), 1000);
         }
       } catch (cause) {
         if (!controller.signal.aborted) {
-          if (mounted.current)
-            setError(cause instanceof Error ? cause.message : String(cause));
+          setError(cause instanceof Error ? cause.message : String(cause));
           timer = window.setTimeout(() => void poll(), 3000);
         }
       }
@@ -125,29 +124,23 @@ export function BooruDownload({
       window.clearTimeout(timer);
     };
   }, [jobID, token, terminal]);
-  const running = !!state && !terminal;
-  async function start() {
+  async function start(destination: string) {
     setBusy(true);
     setError("");
     try {
       const result = await fetch("booru-browser/download", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: post.mediaKey, convert }),
+        body: JSON.stringify({ key: post.mediaKey, convert, destination }),
       }).then(readBooruResponse<{ jobID: number; token: string }>);
-      if (mounted.current)
-        setState({ ...result, status: "queued", converted: false });
+      if (mounted.current) setState({ ...result, status: "queued" });
       try {
         sessionStorage.setItem(
           identity,
-          JSON.stringify({
-            jobID: result.jobID,
-            token: result.token,
-            created: Date.now(),
-          })
+          JSON.stringify({ ...result, created: Date.now() })
         );
       } catch {
-        /* Optional reload recovery. */
+        /* Job can still finish in Stash. */
       }
     } catch (cause) {
       if (mounted.current)
@@ -171,48 +164,67 @@ export function BooruDownload({
       if (mounted.current) setBusy(false);
     }
   }
+  const available =
+    !!post.mediaKey &&
+    !!post.downloadAvailable &&
+    (post.bytes ?? 0) <= 128 * 1048576;
+  const libraryURL =
+    state?.library && /^\d+$/.test(state.library.id)
+      ? state.library.kind === "image"
+        ? `/images/${state.library.id}`
+        : state.library.kind === "scene"
+          ? `/scenes/${state.library.id}`
+          : undefined
+      : undefined;
   return (
     <section className="booru-download mb-3" aria-label="Download this post">
-      <h6>Download</h6>
+      <h6>Download into Stash</h6>
       <p className="mb-1">
-        Original file
+        Original
         {post.bytes
-          ? ` · ${(post.bytes / 1048576).toFixed(2)} MiB`
+          ? ` · ${post.bytes.toLocaleString()} bytes`
           : " · size unknown"}
-        . Maximum 128 MiB. Saved to your computer.
+        . Maximum 128 MiB.
       </p>
       <Form.Check
         id={`booru-convert-${post.sourceID}-${post.id}`}
-        label="Convert JPEG to JPEG XL before downloading"
+        label="Convert using Media converter defaults"
         checked={convert}
         disabled={busy || running || !ready}
         onChange={(event) => setConvert(event.currentTarget.checked)}
       />
       <small className="d-block text-muted mb-2">
-        Uses Media converter settings and JPEG reconstruction. Other formats
-        remain original. No catalogue entry or review mark is created.
+        Uses the converter's saved format, quality, effort, worker and savings
+        policy. Originals follow its normal recovery rules.
       </small>
+      <p className="booru-destination">
+        Default folder:{" "}
+        {directory ||
+          "Not configured — set it in Downloads & autocomplete, or use Download to…"}
+      </p>
       {error && <Alert variant="warning">{error}</Alert>}
       {state?.error && <Alert variant="warning">{state.error}</Alert>}
       <Button
         size="sm"
-        disabled={
-          busy ||
-          running ||
-          !ready ||
-          !post.mediaKey ||
-          !post.downloadAvailable ||
-          (post.bytes ?? 0) > 128 * 1048576
-        }
-        onClick={() => void start()}
+        disabled={busy || running || !ready || !available || !directory}
+        onClick={() => void start(directory)}
       >
-        {terminal ? "Prepare again" : "Prepare download"}
+        {terminal ? "Retry download to Stash" : "Download to Stash"}
+      </Button>
+      <Button
+        size="sm"
+        className="ml-2"
+        variant="secondary"
+        disabled={busy || running || !ready || !available}
+        onClick={() => setPicker(true)}
+      >
+        Download to…
       </Button>
       {running && (
         <Button
           size="sm"
-          variant="secondary"
           className="ml-2"
+          variant="secondary"
           disabled={busy}
           onClick={() => void cancel()}
         >
@@ -220,34 +232,35 @@ export function BooruDownload({
         </Button>
       )}
       {state && (
-        <span className="ml-2" role="status">
+        <span className="d-block mt-2" role="status">
           Job #{state.jobID}: {state.status}
         </span>
       )}
-      {state?.status === "complete" &&
-        state.url &&
-        /^downloads\/[a-zA-Z0-9]+\/[a-z0-9_-]+-\d+\.[a-z0-9]+$/.test(
-          state.url
-        ) && (
-          <a
-            className="btn btn-success btn-sm ml-2"
-            href={state.url}
-            download={state.filename}
-          >
-            Save {state.converted ? "JPEG XL" : "original"}
-          </a>
-        )}
-      {terminal && (
-        <small className="d-block mt-1">
-          Prepared files expire after one hour, or shortly after saving. Prepare
-          again if the link expired.
+      {libraryURL && (
+        <a className="btn btn-success btn-sm mt-2" href={libraryURL}>
+          Open in Stash
+        </a>
+      )}
+      {(state?.library?.path || state?.savedPath) && (
+        <small className="d-block">
+          Saved: {state.library?.path || state.savedPath}
         </small>
       )}
-      {!post.downloadAvailable && (
+      {state?.library?.notice && <p>{state.library.notice}</p>}
+      {!available && (
         <small className="d-block">
-          The provider did not supply an allowed original URL. Check the
-          source's CDN hosts or open the remote post.
+          Original unavailable, over the size limit, or its source needs a CDN
+          configuration update.
         </small>
+      )}
+      {picker && (
+        <FolderPicker
+          initial={directory}
+          onClose={(value) => {
+            setPicker(false);
+            if (value) void start(value);
+          }}
+        />
       )}
     </section>
   );

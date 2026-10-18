@@ -1,121 +1,144 @@
-# Booru thumbnails, downloads and autocomplete
+# Booru downloads, previews and autocomplete
 
-Open **Booru → Source settings → Downloads and autocomplete** to set the default
-JPEG conversion preference and install a tag database. These preferences and
-databases are shared by everyone using this server.
+Open **Booru → Downloads & autocomplete**. The same controls are available under
+**Source settings** and **Settings → Metadata Providers → Booru sources**.
+Preferences and autocomplete databases are shared by this Stash server.
 
-## Thumbnails
+## Download into Stash
 
-Thumbnails and inspection samples use authenticated, same-origin StashBooru
-requests. The server sends the site's Referer and its StashBooru User-Agent,
-validates public DNS and configured CDN hosts on every connection/redirect, and
-never forwards API credentials to a separate CDN host. Danbooru media-asset
-variants and `image_width`/`image_height` are supported alongside older responses.
+Set **Default Stash download folder** and save. **Choose default folder** browses
+existing directories inside configured Stash libraries. You can also enter an
+absolute server directory. Add a library under Stash's normal configuration first
+if the desired directory is outside the existing libraries.
 
-Only server-issued, unpredictable keys from successful search results can fetch
-media. A browser cannot provide an arbitrary proxy URL. Keys expire after 30
-minutes, after eviction from the bounded 4096-entry cache, or when the source is
-disabled/its URL or engine changes. Refresh the search after expiration. Four
-concurrent media requests, two-minute deadlines and 8 MiB thumbnail/24 MiB sample
-limits bound retrieval. Only recognized image bytes are displayed; HTML, SVG,
-unsafe redirects and unavailable assets produce a fallback. Originals never
-silently replace missing thumbnails. Custom sources may need their image/CDN
-hosts added in Source settings. Provider access policies still apply.
+Inspect a post and choose:
 
-## Download an original, optionally as JPEG XL
+- **Download to Stash** to use the saved default directory.
+- **Download to…** to browse/select a directory for this download only. This does
+  not change the default directory.
+- **Convert using Media converter defaults** to run the existing converter after
+  native import. Its default checkbox state comes from the browser settings.
 
-1. Inspect a post to open its **Download** section. Review its known size, or the
-   explicit unknown-size notice. The original must be available from an allowed
-   host and be at most **128 MiB**.
-2. Optionally enable **Convert JPEG to JPEG XL before downloading**. Set its
-   default in Source settings. Other input formats remain original.
-3. Select **Prepare download**. The native Jobs queue shows download/conversion
-   progress; **Cancel download** cancels queued or running work.
-4. When preparation completes, use **Save original** or **Save JPEG XL** to save
-   to your computer. Failed or cancelled jobs do not publish a Save link.
+The native Jobs queue downloads the original, checks its actual size and provider
+MD5 when supplied, saves it without overwriting an existing file, and runs the
+native scanner on that file. **Open in Stash** links the registered Image or Video.
+Source-post URLs are added without replacing existing URLs or curated metadata.
+Artist/Character/Copyright/tag imports still require the separate metadata review
+workflow; saving a file does not silently create those entities or review marks.
 
-Original transfers check actual byte length, supported media signatures and the
-provider MD5 when supplied. Missing MD5 remains unknown. A separate checksum is
-calculated for the completed output; the original JPEG MD5 is never represented
-as the JXL file's current checksum. Partial files are removed on ordinary failure
-or cancellation. Downloads do not modify review marks or imply a catalogue match.
+Downloads are explicitly bounded to one reviewed post and a 128 MiB original.
+A native scan can reject a file because of configured exclusions or extensions;
+the error is shown and the saved file remains available for retry. The filesystem
+must support hard links for atomic publication without overwriting files.
+Destination paths are checked against actual configured library roots, including
+symlink escape checks. Existing files with different bytes are never overwritten.
 
-JPEG XL uses the existing Media converter worker selection, including explicit
-local/remote requirements. Configure it in **Settings → Media converter** first.
-The worker must advertise JPEG XL. The existing converter performs encoding and
-its codec checks; this path requests CPU, quality 100, distance 0, effort 7 and
-allows larger output, using `cjxl`'s JPEG reconstruction path. No new encoder or
-model is installed automatically. A failed conversion does not silently publish
-the unconverted original. The output must have JPEG XL bytes, valid worker
-metadata and size at most 256 MiB. Browser JPEG XL playback support is separate
-from saving the file.
+A receipt in `booru-download-history/` records public source/post identity, original
+MD5, destination and imported result. Retrying reuses an unchanged existing file
+and scans/registers it again rather than creating another copy in that directory.
+A completed receipt is checked against current file bytes before reuse. A changed,
+missing or unregistered native entry is not assumed to be in-library just because
+a previous Job succeeded. Failed imports and cancelled Jobs retain already-saved
+files; partial transfers and unpublished staging files are removed. Receipts and
+native scans permit explicit retry after restart; automatic resume is not added.
+Reopening a post in the same tab recovers the last live Job ID using session
+storage. Expired/restarted Jobs can be retried. Current Job status expires after
+one hour; persistent library files and receipts are retained.
 
-The original stays staged until conversion and download registration finish.
-Completed files use the native generated-download store and expire after one
-hour, or 30 seconds after the first download finishes. At most 100 preparation
-entries are retained. Preparation times out after 30 minutes of execution;
-entries still queued after an hour are cancelled. Opaque job tokens prevent reused Job IDs after restart from resuming another
-export. Reopening the same post or
-refreshing in the same tab recovers its last Job ID using session storage. If
-storage is disabled, keep the inspection open until saving. Server restarts do
-not resume these temporary exports: prepare again. A process crash can leave
-unregistered files in the operating system's temporary directory; its normal
-cleanup applies. This is not a durable download-to-library queue.
+## Conversion uses the converter's saved defaults
 
-**Catalogue import remains B03/B04:** this explicit file-export action does not
-scan into the library, create Image/Video/Artist/Character/Copyright records,
-import provider tags or create automatic download marks. Those operations need
-the separate metadata and import review workflow.
+The browser no longer forces JPEG XL, quality 100, effort 7 or CPU. It uses the
+native Media converter's saved input-format mapping, encoding quality, effort,
+lossless/alpha/audio options, decode-speed controls, worker selection and savings
+policy. For JPEG → JPEG XL, configure that mapping and its quality in **Media
+converter** first, then enable browser conversion.
 
-## Install a booru autocomplete database
+The original is first imported as a normal native file. The existing converter
+then updates that same file/media identity through its activation and recovery
+system, retaining metadata and relationships. Its normal original-cache and
+restore rules apply. A savings-policy skip keeps the original and reports why.
+A conversion failure leaves the imported original available in Stash and reports
+the failure. Repeating a download does not automatically re-encode an already
+converted result or restore an original over a curated current file.
 
-Choose **Tag database source**, select a CSV, then **Upload tag database**.
-Uploading replaces that source instance's previous database atomically after
-validation. A stale upload is rejected; reload settings before retrying. A failed
-upload leaves the installed database intact. No database is fetched from the
-internet automatically, and suggestions make no provider API calls.
+No new encoder, model or alternate conversion implementation is installed. The
+selected worker must support the configured formats. Browser JPEG XL playback
+support is separate from saving/importing the converted file.
 
-Supported formats:
+## Install an autocomplete database
+
+Choose **Tag database source**, then use either:
+
+- **Autocomplete database CSV path on the server → Load database from path**.
+  Enter an absolute path, for example `/models/autocomplete/danbooru.csv`. This
+  reads a regular CSV file on the Stash host, including mounted model/data folders.
+- **Tag database CSV → Upload tag database** to upload a file from your computer.
+
+Both paths validate and atomically install a per-source copy. The server path is
+remembered; press **Load database from path** again after updating that source
+file. There is no automatic directory scan or periodic reload. A failed load or
+stale upload leaves the installed database intact. Reload settings after a revision
+conflict. These are search suggestions, separate from native catalogue tags.
 
 | Format | Columns |
 | --- | --- |
-| [tagcomplete CSV](https://github.com/DominikDoom/a1111-sd-webui-tagcomplete#csv-tag-data) | `name,type,count,"alias_one,alias_two"`, without a header. Count and aliases are optional. |
-| Danbooru-style CSV export | Header containing `name` and `category`/`type`; optional `post_count`/`count`, `aliases` and other columns such as `id`. |
+| [tagcomplete CSV](https://github.com/DominikDoom/a1111-sd-webui-tagcomplete#csv-tag-data) | `name,type,count,"alias_one,alias_two"`, without a header; count/aliases optional. |
+| Danbooru-style CSV export | Header containing `name` and `category`/`type`; optional `post_count`/`count`, `aliases`, and other columns such as `id`. |
 
-Numeric categories follow the selected engine: Danbooru-compatible CSV uses
-0 general, 1 Artist, 3 Copyright, 4 Character and 5 meta. e621 uses
-[its own mapping](https://github.com/e621ng/e621ng/blob/master/app/logical/tag_category.rb):
-2 contributor, 5 species, 6 invalid, 7 meta and 8 lore, with 0/1/3/4 unchanged.
-Category names (including `unknown`, `circle` and `faults`) are also accepted;
-use names for custom engine category schemes. Duplicate/invalid names, negative counts, malformed CSV and unknown
-categories reject the upload. Limits: 64 MiB, one million tags, two million
-names/aliases, 32 aliases per tag and 256 UTF-8 bytes per name. Files must be
-uncompressed CSV; SQLite/JSON/Grabber database files are not accepted. Prefix
-matching uses names and aliases, with the most-used 20 canonical tags first.
+Numeric categories follow the selected engine. Danbooru-compatible data uses
+0 general, 1 Artist, 3 Copyright, 4 Character, 5 meta. e621 uses its own mapping:
+2 contributor, 5 species, 6 invalid, 7 meta, 8 lore, with 0/1/3/4 unchanged.
+Category names including `unknown`, `circle` and `faults` are accepted for custom
+schemes. Limits: 64 MiB, one million tags, two million names/aliases, 32 aliases
+per tag and 256 UTF-8 bytes per name. Uncompressed CSV is supported; SQLite/JSON
+and Grabber database files are not.
 
-Type at least two characters in Search. Suggestions show the category, post
-count, source and matching alias. Use Up/Down, Enter or Tab to choose; Escape
-closes the list. Clicking also works. Completion replaces the token at the
-cursor and preserves surrounding tags and exclusion operators. When only
-Philomena sources are selected, commas delimit tags with spaces. Other/mixed
-sources use whitespace delimiters. Provider search syntax is otherwise unchanged;
-metatag expressions containing a colon are not completed or rewritten.
+Type at least two characters. Suggestions include categories, counts, sources and
+matching aliases. Up/Down selects, Enter/Tab completes, Escape dismisses; clicking
+also works. Completion replaces the token at the cursor and preserves exclusions
+and surrounding tags. Philomena-only searches use comma-delimited tags with
+spaces; other/mixed sources use whitespace. Metatag expressions containing a colon
+are left alone. One unavailable database does not discard other sources' results.
+No provider API request or automatic internet database download is involved.
 
-Databases live beside config.yml in `booru-tags/<source-instance>.csv` and are
-loaded lazily, with at most four immutable indexes cached in memory. Uploads and
-configuration survive restart; memory cache does not. Same engine/normalized URL
-aliases share a database, credential edits retain it, and URL/engine changes
-isolate it. Include `booru-tags/` and `booru-downloads.json` in server configuration
-backups. Source API keys stay only in the existing `booru-browser.json`.
+Databases live beside config.yml in `booru-tags/<instance>.csv`, with saved path
+metadata alongside them. Matching engine/normalized URL aliases share a database;
+credential changes retain it, URL/engine changes isolate it. At most four indexes
+are cached in memory. Include `booru-tags/`, `booru-downloads.json` and
+`booru-download-history/` in configuration backups. API keys stay in the existing
+`booru-browser.json`.
+
+## Refresh and preview recovery
+
+The browser remembers its submitted query, source pages, inspection, unfinished
+search text/checkbox selection, settings view, tag sidebar source and scroll
+position in local browser storage. Refreshing or opening the bare `/booru` route
+restores that state. An explicit query URL takes precedence. Submitted results
+are fetched again, so live provider listings can still shift between requests.
+Disabled storage leaves URL-based navigation available.
+
+Preview/sample requests first use Stash's authenticated media route. Only opaque
+keys issued for configured source/post snapshots can fetch bytes; arbitrary proxy
+URLs are rejected. The server uses public DNS and declared CDN hosts, HTTPS-only
+redirects, source Referer and its User-Agent. API credentials never go to another
+CDN host. Legacy HTTP media URLs are upgraded to HTTPS before validation.
+
+If server delivery fails, an available public, query-free provider/CDN URL can be
+tried directly by the browser. Signed/credential-bearing URLs are not exposed as
+fallbacks. If both paths fail, the inspector shows a useful server error and
+**Refresh previews** fetches fresh search keys. Missing thumbnails never trigger
+silent original-file downloads. Site credentials, CDN allowlists and provider
+access restrictions still apply.
+
+Asset keys last at most 30 minutes in a 4096-entry bounded cache. Server media
+retrieval uses four slots, two-minute deadlines and limits of 8 MiB per thumbnail
+and 24 MiB per sample. HTML/SVG are refused by the server media route. Direct CDN
+fallback uses the browser's normal image handling and network access.
 
 ## Verification scope
 
-Automated tests cover parsers, media transport/redirect/checksum/type boundaries,
-CSV ranking/aliases and atomic replacement, native queued cancellation, export
-publication and original/output checksum separation. A mock remote converter
-exercises the real converter client and generated-download store. Mounted browser
-fixtures cover desktop/mobile PNG thumbnails, uploads, keyboard completion,
-conversion preferences, download completion/failure/cancellation, reopen
-recovery and closing during a pending request, plus existing review/search
-behavior. They do not establish live-account/provider availability or real
-JPEG XL encoder acceptance on the deployment machine.
+Tests cover native scan registration/idempotence, saved converter settings,
+destination/symlink boundaries, retention after import failure, retry without
+overwrite, CSV path import/revision behavior, preview transport and browser
+refresh/fallback/default/custom folder flows. Synthetic fixtures and a local PNG
+scan are separate from live-account testing or real JPEG XL codec acceptance.

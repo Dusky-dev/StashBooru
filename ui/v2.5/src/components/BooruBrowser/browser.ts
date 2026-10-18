@@ -16,6 +16,8 @@ export interface BooruPost {
   postURL: string;
   previewURL?: string;
   sampleURL?: string;
+  directPreviewURL?: string;
+  directSampleURL?: string;
   mediaKey?: string;
   downloadAvailable?: boolean;
   width?: number;
@@ -150,4 +152,46 @@ export function booruMediaURL(
   if (!(kind === "preview" ? post.previewURL : post.sampleURL))
     return undefined;
   return `booru-browser/media?${new URLSearchParams({ key: post.mediaKey, kind })}`;
+}
+
+export interface BrowserMemory {
+  search: string;
+  query: string;
+  sources: string[];
+  settings: boolean;
+  tagSource: string;
+  scroll: number;
+}
+const key = "booru-browser-state-v1";
+export function readBrowserMemory(): BrowserMemory | undefined {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw || raw.length > 16384) return undefined;
+    const value = JSON.parse(raw) as BrowserMemory;
+    if (
+      typeof value.search !== "string" ||
+      readBrowserSearch(value.search).error ||
+      typeof value.query !== "string" ||
+      value.query.length > 1024 ||
+      !Array.isArray(value.sources) ||
+      value.sources.length > 8 ||
+      value.sources.some(
+        (s) => typeof s !== "string" || !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(s)
+      ) ||
+      typeof value.settings !== "boolean" ||
+      typeof value.tagSource !== "string" ||
+      !Number.isFinite(value.scroll)
+    )
+      return undefined;
+    return value;
+  } catch {
+    return undefined;
+  }
+}
+export function saveBrowserMemory(value: BrowserMemory) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* Browsing still works when storage is unavailable. */
+  }
 }

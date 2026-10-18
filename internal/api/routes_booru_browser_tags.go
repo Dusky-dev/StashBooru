@@ -3,6 +3,7 @@ package api
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"mime"
@@ -56,7 +57,7 @@ func (rs booruBrowserRoutes) Tags(w http.ResponseWriter, r *http.Request) {
 	if os.IsNotExist(err) {
 		delete(booruTagDatabases.entries, path)
 		booruTagDatabases.Unlock()
-		writeVisualSimilarityJSON(w, map[string]any{"count": 0, "revision": "", "suggestions": []booru.Suggestion{}})
+		writeVisualSimilarityJSON(w, map[string]any{"path": rs.tagDatabasePath(source), "count": 0, "revision": "", "suggestions": []booru.Suggestion{}})
 		return
 	}
 	if err != nil || stat.Size() > booru.MaxTagCSVBytes {
@@ -91,7 +92,7 @@ func (rs booruBrowserRoutes) Tags(w http.ResponseWriter, r *http.Request) {
 		booruTagDatabases.entries[path] = db
 	}
 	booruTagDatabases.Unlock()
-	writeVisualSimilarityJSON(w, map[string]any{"count": db.index.Count(), "revision": db.revision, "suggestions": db.index.Suggest(r.Context(), r.URL.Query().Get("q"))})
+	writeVisualSimilarityJSON(w, map[string]any{"path": rs.tagDatabasePath(source), "count": db.index.Count(), "revision": db.revision, "suggestions": db.index.Suggest(r.Context(), r.URL.Query().Get("q"))})
 }
 func booruSameOrigin(r *http.Request) bool {
 	if r.Header.Get("Sec-Fetch-Site") == "cross-site" {
@@ -104,6 +105,10 @@ func booruSameOrigin(r *http.Request) bool {
 	return true
 }
 func (rs booruBrowserRoutes) ImportTags(w http.ResponseWriter, r *http.Request) {
+	rs.importTagCSV(w, r, "")
+}
+
+func (rs booruBrowserRoutes) importTagCSV(w http.ResponseWriter, r *http.Request, databasePath string) {
 	w.Header().Set("Cache-Control", "no-store")
 	if !booruSameOrigin(r) {
 		writeBooruError(w, 403, "origin", "Upload from this server's interface.")
@@ -184,6 +189,60 @@ func (rs booruBrowserRoutes) ImportTags(w http.ResponseWriter, r *http.Request) 
 		writeBooruError(w, 500, "tags", "Cannot save database.")
 		return
 	}
+	metadata, encodeErr := json.Marshal(map[string]string{"path": databasePath})
+	if encodeErr != nil {
+		writeBooruError(w, 500, "tags", "Cannot save database path.")
+		return
+	}
+	if err := writeBooruAtomic(dir, source.Instance()+".path.json", metadata); err != nil {
+		delete(booruTagDatabases.entries, path)
+		writeBooruError(w, 500, "tags", "CSV installed, but its path could not be saved. Reload settings.")
+		return
+	}
 	delete(booruTagDatabases.entries, path)
-	writeVisualSimilarityJSON(w, map[string]any{"count": index.Count(), "revision": hex.EncodeToString(h.Sum(nil)), "suggestions": []booru.Suggestion{}})
+	writeVisualSimilarityJSON(w, map[string]any{"path": databasePath, "count": index.Count(), "revision": hex.EncodeToString(h.Sum(nil)), "suggestions": []booru.Suggestion{}})
+}
+
+func (rs booruBrowserRoutes) tagDatabasePath(source booru.Source) string {
+	data, err := os.ReadFile(filepath.Join(rs.configPath, "booru-tags", source.Instance()+".path.json"))
+	if err != nil || len(data) > 8192 {
+		return ""
+	}
+	var value struct {
+		Path string `json:"path"`
+	}
+	if json.Unmarshal(data, &value) != nil {
+		return ""
+	}
+	return value.Path
+}
+func (rs booruBrowserRoutes) ImportTagPath(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Path     string `json:"path"`
+		Revision string `json:"revision"`
+	}
+	if !readBooruReviewJSON(w, r, &input) {
+		return
+	}
+	if !filepath.IsAbs(input.Path) || len(input.Path) > 4096 || !strings.EqualFold(filepath.Ext(input.Path), ".csv") {
+		writeBooruError(w, 400, "tags", "Enter an absolute server path to a CSV database.")
+		return
+	}
+	file, err := os.Open(input.Path)
+	if err != nil {
+		writeBooruError(w, 400, "tags", "Cannot open that CSV path on the Stash server.")
+		return
+	}
+	defer file.Close()
+	stat, err := file.Stat()
+	if err != nil || !stat.Mode().IsRegular() || stat.Size() > booru.MaxTagCSVBytes {
+		writeBooruError(w, 400, "tags", "Database must be a regular CSV file of at most 64 MiB.")
+		return
+	}
+	copy := r.Clone(r.Context())
+	copy.Header = r.Header.Clone()
+	copy.Header.Set("Content-Type", "text/csv")
+	copy.Header.Set("X-Booru-Revision", input.Revision)
+	copy.Body = file
+	rs.importTagCSV(w, copy, input.Path)
 }

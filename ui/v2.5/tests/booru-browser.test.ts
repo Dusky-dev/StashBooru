@@ -126,3 +126,38 @@ test("Autocomplete replaces only the caret token and preserves exclusions and Ph
     );
   }
 });
+
+test("Browser memory keeps a submitted page and unfinished draft separately", async () => {
+  const { readBrowserMemory, saveBrowserMemory } = await import(
+    "../src/components/BooruBrowser/browser.ts"
+  );
+  let stored: string | null = null;
+  const previous = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: () => stored,
+      setItem: (_key: string, value: string) => {
+        stored = value;
+      },
+    },
+  });
+  try {
+    const state = {
+      search: "?source=gelbooru&q=landscape&p.gelbooru=3",
+      query: "unfinished -blue",
+      sources: ["gelbooru", "danbooru"],
+      settings: false,
+      tagSource: "gelbooru",
+      scroll: 612,
+    };
+    saveBrowserMemory(state);
+    assert.deepEqual(readBrowserMemory(), state);
+    stored =
+      '{"search":"?source=../bad","query":"a","sources":[],"settings":false,"tagSource":"","scroll":0}';
+    assert.equal(readBrowserMemory(), undefined);
+  } finally {
+    if (previous) Object.defineProperty(globalThis, "localStorage", previous);
+    else Reflect.deleteProperty(globalThis, "localStorage");
+  }
+});

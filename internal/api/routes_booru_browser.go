@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -12,7 +13,6 @@ import (
 	"github.com/stashapp/stash/internal/manager"
 	"github.com/stashapp/stash/pkg/booru"
 	"github.com/stashapp/stash/pkg/job"
-	"github.com/stashapp/stash/pkg/mediaconvert"
 	"github.com/stashapp/stash/pkg/models"
 )
 
@@ -24,12 +24,13 @@ type booruBrowserClient interface {
 // These routes share the server's normal authentication. They never modify the
 // catalogue without import review, or accept an arbitrary URL from the browser.
 type booruBrowserRoutes struct {
-	repository models.Repository
-	configPath string
-	client     booruBrowserClient
-	jobs       *job.Manager
-	downloads  *manager.DownloadStore
-	converter  func(context.Context) (mediaconvert.Client, mediaconvert.Capabilities, string, error)
+	repository   models.Repository
+	configPath   string
+	client       booruBrowserClient
+	jobs         *job.Manager
+	downloads    *manager.DownloadStore
+	libraryRoots func() []string
+	importFile   func(context.Context, string, booru.Source, booru.Post, bool, *job.Progress) (booruLibraryResult, error)
 }
 
 func (rs booruBrowserRoutes) sources() ([]booru.Source, error) {
@@ -112,6 +113,12 @@ func (rs booruBrowserRoutes) Search(w http.ResponseWriter, r *http.Request) {
 		for i := range result.Posts {
 			result.Posts[i].MediaKey = rememberBooruPost(source, result.Posts[i])
 			key := result.Posts[i].MediaKey
+			if u, err := url.Parse(result.Posts[i].PreviewURL); err == nil && u.Scheme == "https" && u.RawQuery == "" {
+				result.Posts[i].DirectPreviewURL = u.String()
+			}
+			if u, err := url.Parse(result.Posts[i].SampleURL); err == nil && u.Scheme == "https" && u.RawQuery == "" {
+				result.Posts[i].DirectSampleURL = u.String()
+			}
 			if result.Posts[i].PreviewURL != "" {
 				result.Posts[i].PreviewURL = "booru-browser/media?key=" + key + "&kind=preview"
 			}

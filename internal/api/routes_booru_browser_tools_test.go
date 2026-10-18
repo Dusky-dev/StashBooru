@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5" //nolint:gosec // Fixture transport checksum.
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -19,7 +18,6 @@ import (
 	"github.com/stashapp/stash/internal/manager"
 	"github.com/stashapp/stash/pkg/booru"
 	"github.com/stashapp/stash/pkg/job"
-	"github.com/stashapp/stash/pkg/mediaconvert"
 )
 
 type browserToolsClient struct {
@@ -40,9 +38,9 @@ func (c *browserToolsClient) FetchMedia(ctx context.Context, s booru.Source, in 
 	}
 	_, err := w.Write([]byte("fixture-original"))
 	if c.jpeg {
-		return booru.MediaInfo{ContentType: "image/jpeg", Extension: "jpg", MD5: "fixture-md5", Bytes: 16}, err
+		return booru.MediaInfo{ContentType: "image/jpeg", Extension: "jpg", MD5: fmt.Sprintf("%x", md5.Sum([]byte("fixture-original"))), Bytes: 16}, err
 	}
-	return booru.MediaInfo{ContentType: "image/png", Extension: "png", MD5: "fixture-md5", Bytes: 16}, err
+	return booru.MediaInfo{ContentType: "image/png", Extension: "png", MD5: fmt.Sprintf("%x", md5.Sum([]byte("fixture-original"))), Bytes: 16}, err
 }
 func toolRequest(method, path, body, contentType string) *http.Request {
 	r := httptest.NewRequest(method, path, strings.NewReader(body))
@@ -58,7 +56,7 @@ func TestBooruSnapshotMediaIsolation(t *testing.T) {
 		t.Fatal(w.Body.String(), err)
 	}
 	key := result.Posts[0].MediaKey
-	if len(key) != 48 || (strings.Contains(w.Body.String(), "original.jpg") || strings.Contains(w.Body.String(), "preview.jpg")) {
+	if len(key) != 48 || strings.Contains(w.Body.String(), "original.jpg") || !strings.HasPrefix(result.Posts[0].PreviewURL, "booru-browser/media?") {
 		t.Fatal("snapshot exposed original URL or no opaque key")
 	}
 	w = httptest.NewRecorder()
@@ -144,7 +142,7 @@ func TestBooruDownloadSettingsPersistAndRejectCrossSite(t *testing.T) {
 		t.Fatal(w.Body.String())
 	}
 	got, err := rs.downloadSettings()
-	if err != nil || !got.JPEGToJXL {
+	if err != nil || !got.Convert {
 		t.Fatal(got, err)
 	}
 	for _, body := range []string{`{"apiKey":"secret"}`, `{"jpegToJXL":true} {}`} {
@@ -172,7 +170,7 @@ func TestBooruDownloadJobPublishesOnlyCompleteFiles(t *testing.T) {
 			source := booru.Defaults()[0]
 			key := rememberBooruPost(source, booru.Post{ID: "42", OriginalURL: source.URL + "/original.png"})
 			w := httptest.NewRecorder()
-			rs.StartDownload(w, toolRequest("POST", "/", `{"key":"`+key+`","convert":false}`, "application/json"))
+			rs.StartDownload(w, toolRequest("POST", "/", `{"key":"`+key+`","convert":false,"computer":true}`, "application/json"))
 			var result struct {
 				JobID int
 				Token string
@@ -219,66 +217,6 @@ func TestBooruDownloadJobPublishesOnlyCompleteFiles(t *testing.T) {
 	}
 }
 
-func TestBooruJPEGDownloadUsesConverterAndSeparatesHashes(t *testing.T) {
-	encoded := []byte{0xff, 0x0a, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	var options mediaconvert.Options
-	worker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if err := json.Unmarshal([]byte(r.Header.Get("X-Stash-Conversion-Options")), &options); err != nil {
-			t.Error(err)
-		}
-		input, _ := io.ReadAll(r.Body)
-		if string(input) != "fixture-original" {
-			t.Error("wrong converter input")
-		}
-		metadata, _ := json.Marshal(mediaconvert.Result{Width: 2, Height: 2, Frames: 1, Size: int64(len(encoded)), Format: "jxl"})
-		w.Header().Set("Content-Length", fmt.Sprint(len(encoded)))
-		w.Header().Set("X-Stash-Conversion", base64.StdEncoding.EncodeToString(metadata))
-		w.Header().Set("X-Stash-Content-MD5", fmt.Sprintf("%x", md5.Sum(encoded))) //nolint:gosec // Fixture checksum.
-		_, _ = w.Write(encoded)
-	}))
-	defer worker.Close()
-	jobs := job.NewManager()
-	defer jobs.Stop()
-	rs := booruBrowserRoutes{configPath: t.TempDir(), client: &browserToolsClient{jpeg: true}, jobs: jobs, downloads: manager.NewDownloadStore(), converter: func(context.Context) (mediaconvert.Client, mediaconvert.Capabilities, string, error) {
-		return mediaconvert.Client{URL: worker.URL}, mediaconvert.Capabilities{Formats: []mediaconvert.Format{{ID: "jxl", Extension: "jxl", Family: "image", Available: true}}}, "", nil
-	}}
-	source := booru.Defaults()[0]
-	key := rememberBooruPost(source, booru.Post{ID: "99", OriginalURL: source.URL + "/original.jpg"})
-	w := httptest.NewRecorder()
-	rs.StartDownload(w, toolRequest("POST", "/", `{"key":"`+key+`","convert":true}`, "application/json"))
-	var reply struct {
-		JobID int
-		Token string
-	}
-	_ = json.Unmarshal(w.Body.Bytes(), &reply)
-	var state booruDownloadState
-	deadline := time.Now().Add(5 * time.Second)
-	for time.Now().Before(deadline) {
-		w = httptest.NewRecorder()
-		rs.DownloadStatus(w, httptest.NewRequest("GET", fmt.Sprintf("/?jobID=%d&token=%s", reply.JobID, reply.Token), nil))
-		_ = json.Unmarshal(w.Body.Bytes(), &state)
-		if state.Status == "complete" || state.Status == "failed" {
-			break
-		}
-		time.Sleep(5 * time.Millisecond)
-	}
-	if state.Status != "complete" || !state.Converted || !strings.HasSuffix(state.Filename, ".jxl") || state.OriginalMD5 == state.OutputMD5 || options.Format != "jxl" || options.Quality != 100 || options.Distance != 0 || options.Hardware != "cpu" {
-		t.Fatal(state, options)
-	}
-	hash := strings.Split(state.URL, "/")[1]
-	w = httptest.NewRecorder()
-	ctx, cancel := context.WithCancel(context.Background())
-	rs.downloads.Serve(hash, w, httptest.NewRequest("GET", "/", nil).WithContext(ctx))
-	cancel()
-	if !bytes.Equal(w.Body.Bytes(), encoded) {
-		t.Fatal("wrong exported bytes")
-	}
-	rs.downloads.ExpireFile(hash, time.Millisecond)
-	booruDownloads.Lock()
-	delete(booruDownloads.jobs, reply.JobID)
-	booruDownloads.Unlock()
-}
-
 func TestBooruQueuedDownloadCanBeCancelled(t *testing.T) {
 	jobs := job.NewManager()
 	defer jobs.Stop()
@@ -291,7 +229,7 @@ func TestBooruQueuedDownloadCanBeCancelled(t *testing.T) {
 	source := booru.Defaults()[0]
 	key := rememberBooruPost(source, booru.Post{ID: "100", OriginalURL: source.URL + "/original.png"})
 	w := httptest.NewRecorder()
-	rs.StartDownload(w, toolRequest("POST", "/", `{"key":"`+key+`","convert":false}`, "application/json"))
+	rs.StartDownload(w, toolRequest("POST", "/", `{"key":"`+key+`","convert":false,"computer":true}`, "application/json"))
 	var reply struct {
 		JobID int
 		Token string

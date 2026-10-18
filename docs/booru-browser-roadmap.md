@@ -181,6 +181,10 @@ Jobs, the existing converter and generated-download store are reused. These
 exports neither import catalogue metadata nor create in-library links/marks;
 they do not complete B03/B04's durable catalogue import acceptance criteria.
 
+The 2026-10-18 correction adds explicit single-post native scan/import, default and
+custom library folders, persistent receipts/retry, and saved converter defaults.
+B03 entity/tag review and B04 bounded batches/restart automation remain planned.
+
 ## B04 — downloads and catalogue import
 
 Review original-vs-preview choice, destination, number of files, known bytes and

@@ -101,9 +101,10 @@ API keys, engine, URL, image hosts and enabled state. Its Danbooru-inspired side
 and compact thumbnail grid include categorized loaded-page tag counts.
 [B02 review state](booru-review-state.md) adds persistent ignored/manual-download
 marks, bulk undo, a show-ignored filter and bounded current-file MD5 matches.
-Explicit [computer downloads and CSV autocomplete](booru-downloads-autocomplete.md)
-are available, including optional JPEG → JPEG XL preparation. Follows and durable
-catalogue import remain later packages.
+[Downloads and CSV autocomplete](booru-downloads-autocomplete.md) support native
+Stash import into a default/custom folder, optional converter defaults, upload or
+server CSV paths, and refresh persistence. Follows, metadata entity review and
+bounded batch import remain later packages.
 
 ### Profile artwork and metadata diagnostics
 

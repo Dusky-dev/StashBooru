@@ -1,12 +1,10 @@
 package api
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -20,7 +18,10 @@ import (
 )
 
 type booruDownloadSettings struct {
-	JPEGToJXL bool `json:"jpegToJXL"`
+	JPEGToJXL        bool     `json:"jpegToJXL,omitempty"` // Legacy preference, migrated to converter defaults.
+	Convert          bool     `json:"convert"`
+	DefaultDirectory string   `json:"defaultDirectory"`
+	Roots            []string `json:"roots,omitempty"`
 }
 
 var booruDownloadSettingsMu sync.Mutex
@@ -29,12 +30,20 @@ func (rs booruBrowserRoutes) downloadSettings() (booruDownloadSettings, error) {
 	var value booruDownloadSettings
 	data, err := os.ReadFile(filepath.Join(rs.configPath, "booru-downloads.json"))
 	if errors.Is(err, os.ErrNotExist) {
+		if rs.libraryRoots != nil {
+			value.Roots = rs.libraryRoots()
+		}
 		return value, nil
 	}
-	if err != nil || len(data) > 1024 {
+	if err != nil || len(data) > 8192 {
 		return value, fmt.Errorf("cannot read download settings")
 	}
 	err = json.Unmarshal(data, &value)
+	value.Convert = value.Convert || value.JPEGToJXL
+	value.JPEGToJXL = false
+	if rs.libraryRoots != nil {
+		value.Roots = rs.libraryRoots()
+	}
 	return value, err
 }
 func (rs booruBrowserRoutes) DownloadSettings(w http.ResponseWriter, r *http.Request) {
@@ -51,6 +60,17 @@ func (rs booruBrowserRoutes) UpdateDownloadSettings(w http.ResponseWriter, r *ht
 	if !readBooruReviewJSON(w, r, &value) {
 		return
 	}
+	if value.DefaultDirectory != "" {
+		dir, err := rs.destination(value.DefaultDirectory)
+		if err != nil {
+			writeBooruError(w, 400, "directory", err.Error())
+			return
+		}
+		value.DefaultDirectory = dir
+	}
+	value.Convert = value.Convert || value.JPEGToJXL
+	value.JPEGToJXL = false
+	value.Roots = nil
 	booruDownloadSettingsMu.Lock()
 	defer booruDownloadSettingsMu.Unlock()
 	data, err := json.Marshal(value)
@@ -87,21 +107,25 @@ func writeBooruAtomic(dir, name string, data []byte) error {
 }
 
 type booruDownloadRequest struct {
-	Key     string `json:"key"`
-	Convert bool   `json:"convert"`
-	Cancel  int    `json:"cancel,omitempty"`
-	Token   string `json:"token,omitempty"`
+	Key         string `json:"key"`
+	Convert     bool   `json:"convert"`
+	Cancel      int    `json:"cancel,omitempty"`
+	Token       string `json:"token,omitempty"`
+	Destination string `json:"destination,omitempty"`
+	Computer    bool   `json:"computer,omitempty"`
 }
 type booruDownloadState struct {
-	JobID       int    `json:"jobID"`
-	Token       string `json:"token"`
-	Status      string `json:"status"`
-	Error       string `json:"error,omitempty"`
-	URL         string `json:"url,omitempty"`
-	Filename    string `json:"filename,omitempty"`
-	OriginalMD5 string `json:"originalMD5,omitempty"`
-	OutputMD5   string `json:"outputMD5,omitempty"`
-	Converted   bool   `json:"converted"`
+	JobID       int                 `json:"jobID"`
+	Token       string              `json:"token"`
+	Status      string              `json:"status"`
+	Error       string              `json:"error,omitempty"`
+	URL         string              `json:"url,omitempty"`
+	Filename    string              `json:"filename,omitempty"`
+	OriginalMD5 string              `json:"originalMD5,omitempty"`
+	OutputMD5   string              `json:"outputMD5,omitempty"`
+	Converted   bool                `json:"converted"`
+	Library     *booruLibraryResult `json:"library,omitempty"`
+	SavedPath   string              `json:"savedPath,omitempty"`
 }
 
 var booruDownloads = struct {
@@ -127,9 +151,6 @@ func (rs booruBrowserRoutes) DownloadStatus(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	writeVisualSimilarityJSON(w, state)
-}
-func booruDownloadConverter(ctx context.Context) (mediaconvert.Client, mediaconvert.Capabilities, string, error) {
-	return conversionClient(ctx, "")
 }
 
 func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Request) {
@@ -167,6 +188,30 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 		writeBooruError(w, 400, "download", "Original unavailable or larger than the 128 MiB download limit.")
 		return
 	}
+	destination := ""
+	if !input.Computer {
+		if input.Destination == "" {
+			settings, err := rs.downloadSettings()
+			if err != nil {
+				writeBooruError(w, 500, "settings", "Cannot read destination settings.")
+				return
+			}
+			input.Destination = settings.DefaultDirectory
+		}
+		var err error
+		destination, err = rs.destination(input.Destination)
+		if err != nil {
+			writeBooruError(w, 400, "directory", err.Error())
+			return
+		}
+		if rs.importFile == nil {
+			writeBooruError(w, 503, "import", "Native import is unavailable.")
+			return
+		}
+	} else if input.Convert {
+		writeBooruError(w, 400, "convert", "Conversion uses Stash's converter defaults after importing. Choose Download to Stash.")
+		return
+	}
 	state := &booruDownloadState{Status: "queued", Token: mediaconvert.NewID()}
 	booruDownloads.Lock()
 	if len(booruDownloads.jobs) >= 100 {
@@ -192,6 +237,31 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 				state.Status = "complete"
 			}
 		}()
+		if !input.Computer {
+			receipt := rs.reusableDownloadReceipt(destination, source, post, input.Convert)
+			if receipt != nil && receipt.Library != nil {
+				imported, err := rs.importFile(ctx, receipt.Library.Path, source, post, input.Convert && !receipt.Library.Converted, progress)
+				if err != nil {
+					return fmt.Errorf("existing download needs native scan retry: %w", err)
+				}
+				imported.Converted = imported.Converted || receipt.Library.Converted
+				receipt.Library = &imported
+				receipt.Convert = input.Convert
+				if imported.Path != "" {
+					receipt.OutputMD5, _ = mediaconvert.MD5(imported.Path)
+				}
+				if err := rs.saveDownloadReceipt(*receipt); err != nil {
+					return fmt.Errorf("import recovered but its receipt could not be updated")
+				}
+				booruDownloads.Lock()
+				state.Library = &imported
+				state.Converted = imported.Converted
+				state.SavedPath = imported.Path
+				state.OriginalMD5, state.OutputMD5 = receipt.OriginalMD5, receipt.OutputMD5
+				booruDownloads.Unlock()
+				return nil
+			}
+		}
 		dir, err := os.MkdirTemp("", "stash-booru-download-*")
 		if err != nil {
 			return fmt.Errorf("cannot stage download")
@@ -219,48 +289,52 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 		}
 		outputMD5 := info.MD5
 		converted := false
-		if input.Convert && info.ContentType == "image/jpeg" {
-			if rs.converter == nil {
-				return fmt.Errorf("converter is unavailable")
-			}
-			set("converting")
-			client, caps, _, clientErr := rs.converter(ctx)
-			if clientErr != nil {
-				return fmt.Errorf("converter unavailable; check Media converter settings")
-			}
-			if _, err = conversionOutputFormat(caps, "jxl", "image"); err != nil {
-				return fmt.Errorf("JPEG XL unavailable on the configured converter")
-			}
-			output := filepath.Join(dir, "converted.jxl")
-			// JPEG reconstruction at quality 100 avoids a second lossy encode. The
-			// original remains staged until conversion and transfer registration finish.
-			result, convertErr := client.Convert(ctx, path, output, mediaconvert.Options{Format: "jxl", Hardware: "cpu", Quality: 100, Distance: 0, Effort: 7, AllowLarger: true})
-			if convertErr != nil {
-				return fmt.Errorf("JPEG XL conversion failed; no file was published")
-			}
-			stat, statErr := os.Stat(output)
-			if statErr != nil || stat.Size() <= 0 || stat.Size() > 256<<20 || result.Size != stat.Size() || result.Frames != 1 || result.Width <= 0 || result.Height <= 0 {
-				return fmt.Errorf("converter returned invalid JPEG XL output")
-			}
-			header := make([]byte, 12)
-			encoded, openErr := os.Open(output)
-			if openErr != nil {
-				return fmt.Errorf("cannot verify converted output")
-			}
-			n, readErr := io.ReadFull(encoded, header)
-			encoded.Close()
-			isCodestream := n >= 2 && header[0] == 0xff && header[1] == 0x0a
-			isContainer := n == 12 && bytes.Equal(header, []byte{0, 0, 0, 12, 'J', 'X', 'L', ' ', 13, 10, 135, 10})
-			if (readErr != nil && !errors.Is(readErr, io.EOF) && !errors.Is(readErr, io.ErrUnexpectedEOF)) || (!isCodestream && !isContainer) {
-				return fmt.Errorf("converter output is not JPEG XL")
-			}
-			if outputMD5, err = mediaconvert.MD5(output); err != nil {
-				return fmt.Errorf("cannot verify converted output")
-			}
-			path, info.Extension, info.ContentType, converted = output, "jxl", "image/jxl", true
-		}
+
 		if err = ctx.Err(); err != nil {
 			return err
+		}
+		if !input.Computer {
+			// Stage in the destination filesystem, then publish without replacing any
+			// existing file. A durable receipt permits retry after scan/conversion errors.
+			valid, validateErr := rs.destination(destination)
+			if validateErr != nil || valid != destination {
+				return fmt.Errorf("destination changed while downloading; file was not published")
+			}
+			saved, saveErr := publishBooruFile(ctx, path, destination, source.Instance(), post.ID, info.MD5, info.Extension)
+			if saveErr != nil {
+				return saveErr
+			}
+			booruDownloads.Lock()
+			state.SavedPath = saved
+			booruDownloads.Unlock()
+			receipt := booruDownloadReceipt{Source: source.Public(), Post: post, OriginalMD5: info.MD5, SavedPath: saved, Convert: input.Convert, Directory: destination}
+			if err := rs.saveDownloadReceipt(receipt); err != nil {
+				return fmt.Errorf("file saved, but receipt could not be written; retry native scan for %s", saved)
+			}
+			set("importing")
+			if input.Convert {
+				set("importing/converting")
+			}
+			imported, importErr := rs.importFile(ctx, saved, source, post, input.Convert, progress)
+			booruDownloads.Lock()
+			state.Library = &imported
+			state.Converted = imported.Converted
+			state.Filename = filepath.Base(imported.Path)
+			booruDownloads.Unlock()
+			receipt.Library = &imported
+			if imported.Path != "" {
+				receipt.OutputMD5, _ = mediaconvert.MD5(imported.Path)
+			}
+			if saveErr := rs.saveDownloadReceipt(receipt); saveErr != nil {
+				return fmt.Errorf("file imported, but receipt update failed; original remains in Stash")
+			}
+			if importErr != nil {
+				return fmt.Errorf("file saved in Stash; import/conversion needs retry: %w", importErr)
+			}
+			booruDownloads.Lock()
+			state.OriginalMD5, state.OutputMD5 = info.MD5, receipt.OutputMD5
+			booruDownloads.Unlock()
+			return nil
 		}
 		// Native DownloadStore owns this completed file; partial/staged files are
 		// always removed. Nothing is imported or marked in-library by an export.

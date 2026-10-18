@@ -181,9 +181,9 @@ func parsePost(source Source, raw object) (Post, error) {
 			}
 		}
 	}
-	post.OriginalURL = source.mediaURL(original)
+	post.OriginalURL = source.postMediaURL(original)
 	post.DownloadAvailable = post.OriginalURL != ""
-	post.PostURL, post.PreviewURL, post.SampleURL = postURL, source.mediaURL(preview), source.mediaURL(sample)
+	post.PostURL, post.PreviewURL, post.SampleURL = postURL, source.postMediaURL(preview), source.postMediaURL(sample)
 	// Do not substitute a potentially huge original for a missing preview.
 	if post.SampleURL == "" {
 		post.SampleURL = post.PreviewURL
@@ -274,4 +274,16 @@ func parseTags(raw object, post *Post) error {
 		}
 	}
 	return nil
+}
+
+// Some compatible APIs still advertise HTTP media URLs. Upgrade them before
+// validation; requests and redirects remain HTTPS-only on declared CDN hosts.
+func (s Source) postMediaURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err == nil && u.Scheme == "http" && (u.Port() == "" || u.Port() == "80") {
+		u.Scheme = "https"
+		u.Host = u.Hostname()
+		raw = u.String()
+	}
+	return s.mediaURL(raw)
 }

@@ -52,7 +52,7 @@ func (c *Client) FetchMedia(ctx context.Context, source Source, input MediaReque
 		req.Header.Set("Referer", strings.TrimRight(source.URL, "/")+"/")
 		req.Header.Del("Authorization")
 		base, _ := url.Parse(source.URL)
-		if strings.EqualFold(req.URL.Host, base.Host) && (source.Engine == "danbooru" || source.Engine == "e621") && source.APIKey != "" {
+		if strings.EqualFold(req.URL.Hostname(), base.Hostname()) && (source.Engine == "danbooru" || source.Engine == "e621") && source.APIKey != "" {
 			req.SetBasicAuth(source.Login, source.APIKey)
 		}
 	}
