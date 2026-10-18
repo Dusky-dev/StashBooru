@@ -39,11 +39,11 @@ func (rs booruBrowserRoutes) destination(value string) (string, error) {
 		return "", fmt.Errorf("destination must be a directory")
 	}
 	for _, root := range rs.libraryRoots() {
-		real, err := filepath.EvalSymlinks(root)
-		if err == nil && fsutil.IsPathInDir(real, path) {
+		resolvedRoot, err := filepath.EvalSymlinks(root)
+		if err == nil && fsutil.IsPathInDir(resolvedRoot, path) {
 			// Keep the configured library namespace for native scan filters, even
 			// when the library root is a symlink to a different filesystem path.
-			relative, relErr := filepath.Rel(real, path)
+			relative, relErr := filepath.Rel(resolvedRoot, path)
 			if relErr == nil {
 				return filepath.Join(filepath.Clean(root), relative), nil
 			}

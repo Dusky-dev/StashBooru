@@ -16,6 +16,14 @@ import (
 	"github.com/stashapp/stash/pkg/job"
 )
 
+func booruTestJSON(t *testing.T, value any) []byte {
+	t.Helper()
+	data, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return data
+}
 func waitBooruDownload(t *testing.T, rs booruBrowserRoutes, id int, token string) booruDownloadState {
 	t.Helper()
 	deadline := time.Now().Add(4 * time.Second)
@@ -55,7 +63,7 @@ func TestBooruLibraryDownloadRetainsFileAndRetriesImport(t *testing.T) {
 	key := rememberBooruPost(source, booru.Post{ID: "1", OriginalURL: source.URL + "/file.png", PostURL: source.URL + "/posts/1"})
 	start := func() booruDownloadState {
 		w := httptest.NewRecorder()
-		body, _ := json.Marshal(map[string]any{"key": key, "convert": true, "destination": root})
+		body := booruTestJSON(t, map[string]any{"key": key, "convert": true, "destination": root})
 		rs.StartDownload(w, toolRequest("POST", "/", string(body), "application/json"))
 		var reply struct {
 			JobID int
@@ -120,7 +128,7 @@ func TestBooruDestinationAndDefaultFolderValidation(t *testing.T) {
 			t.Fatal("symlink library lost native scan namespace", resolved, err)
 		}
 	}
-	data, _ := json.Marshal(map[string]any{"convert": true, "defaultDirectory": root})
+	data := booruTestJSON(t, map[string]any{"convert": true, "defaultDirectory": root})
 	w := httptest.NewRecorder()
 	rs.UpdateDownloadSettings(w, toolRequest("POST", "/", string(data), "application/json"))
 	if w.Code != 200 {
@@ -144,7 +152,7 @@ func TestBooruAutocompleteCanLoadServerPath(t *testing.T) {
 		t.Fatal(err)
 	}
 	endpoint := "/?source=" + source.ID + "&instance=" + source.Instance()
-	body, _ := json.Marshal(map[string]string{"path": path, "revision": ""})
+	body := booruTestJSON(t, map[string]string{"path": path, "revision": ""})
 	w := httptest.NewRecorder()
 	rs.ImportTagPath(w, toolRequest("POST", endpoint, string(body), "application/json"))
 	if w.Code != 200 {
@@ -160,7 +168,7 @@ func TestBooruAutocompleteCanLoadServerPath(t *testing.T) {
 	_ = os.WriteFile(bad, []byte("invalid"), 0600)
 	var view struct{ Revision string }
 	_ = json.Unmarshal(w.Body.Bytes(), &view)
-	body, _ = json.Marshal(map[string]string{"path": bad, "revision": view.Revision})
+	body = booruTestJSON(t, map[string]string{"path": bad, "revision": view.Revision})
 	w = httptest.NewRecorder()
 	rs.ImportTagPath(w, toolRequest("POST", endpoint, string(body), "application/json"))
 	if w.Code != 400 || rs.tagDatabasePath(source) != path {

@@ -239,10 +239,10 @@ func (rs booruBrowserRoutes) ImportTagPath(w http.ResponseWriter, r *http.Reques
 		writeBooruError(w, 400, "tags", "Database must be a regular CSV file of at most 64 MiB.")
 		return
 	}
-	copy := r.Clone(r.Context())
-	copy.Header = r.Header.Clone()
-	copy.Header.Set("Content-Type", "text/csv")
-	copy.Header.Set("X-Booru-Revision", input.Revision)
-	copy.Body = file
-	rs.importTagCSV(w, copy, input.Path)
+	requestClone := r.Clone(r.Context())
+	requestClone.Header = r.Header.Clone()
+	requestClone.Header.Set("Content-Type", "text/csv")
+	requestClone.Header.Set("X-Booru-Revision", input.Revision)
+	requestClone.Body = file
+	rs.importTagCSV(w, requestClone, input.Path)
 }
