@@ -49,51 +49,57 @@ func (rs booruBrowserRoutes) Tags(w http.ResponseWriter, r *http.Request) {
 		writeBooruError(w, 409, "source", "Source changed. Reload sources before using its tag database.")
 		return
 	}
+	db, err := rs.tagDatabase(source)
+	if err != nil {
+		writeBooruError(w, 500, "tags", err.Error())
+		return
+	}
+	items := []booru.Suggestion{}
+	count := 0
+	if db.index != nil {
+		count = db.index.Count()
+		items = db.index.Suggest(r.Context(), r.URL.Query().Get("q"))
+	}
+	writeVisualSimilarityJSON(w, map[string]any{"path": rs.tagDatabasePath(source), "count": count, "revision": db.revision, "suggestions": items})
+}
+
+func (rs booruBrowserRoutes) tagDatabase(source booru.Source) (booruTagDatabase, error) {
 	path := filepath.Join(rs.configPath, "booru-tags", source.Instance()+".csv")
-	// Serialize loads/imports to prevent cache/file revisions from diverging. An
-	// immutable index can be searched concurrently after releasing this lock.
 	booruTagDatabases.Lock()
+	defer booruTagDatabases.Unlock()
 	stat, err := os.Stat(path)
 	if os.IsNotExist(err) {
 		delete(booruTagDatabases.entries, path)
-		booruTagDatabases.Unlock()
-		writeVisualSimilarityJSON(w, map[string]any{"path": rs.tagDatabasePath(source), "count": 0, "revision": "", "suggestions": []booru.Suggestion{}})
-		return
+		return booruTagDatabase{}, nil
 	}
 	if err != nil || stat.Size() > booru.MaxTagCSVBytes {
-		booruTagDatabases.Unlock()
-		writeBooruError(w, 500, "tags", "Cannot read tag database.")
-		return
+		return booruTagDatabase{}, fmt.Errorf("cannot read tag database")
 	}
 	db, cached := booruTagDatabases.entries[path]
-	if !cached || db.size != stat.Size() || !db.mod.Equal(stat.ModTime()) {
-		file, openErr := os.Open(path)
-		if openErr != nil {
-			booruTagDatabases.Unlock()
-			writeBooruError(w, 500, "tags", "Cannot open tag database.")
-			return
-		}
-		h := sha256.New()
-		index, readErr := booru.ReadTagCSVForEngine(io.TeeReader(file, h), source.Engine)
-		file.Close()
-		if readErr != nil {
-			booruTagDatabases.Unlock()
-			writeBooruError(w, 500, "tags", "Invalid tag database. Upload a valid CSV to replace it.")
-			return
-		}
-		db = booruTagDatabase{index, hex.EncodeToString(h.Sum(nil)), stat.ModTime(), stat.Size()}
-		// The cache holds at most four databases; disk persistence is independent.
-		if len(booruTagDatabases.entries) >= 4 {
-			for key := range booruTagDatabases.entries {
-				delete(booruTagDatabases.entries, key)
-				break
-			}
-		}
-		booruTagDatabases.entries[path] = db
+	if cached && db.size == stat.Size() && db.mod.Equal(stat.ModTime()) {
+		return db, nil
 	}
-	booruTagDatabases.Unlock()
-	writeVisualSimilarityJSON(w, map[string]any{"path": rs.tagDatabasePath(source), "count": db.index.Count(), "revision": db.revision, "suggestions": db.index.Suggest(r.Context(), r.URL.Query().Get("q"))})
+	file, err := os.Open(path)
+	if err != nil {
+		return booruTagDatabase{}, fmt.Errorf("cannot open tag database")
+	}
+	defer file.Close()
+	h := sha256.New()
+	index, err := booru.ReadTagCSVForEngine(io.TeeReader(file, h), source.Engine)
+	if err != nil {
+		return booruTagDatabase{}, fmt.Errorf("invalid tag database; upload a valid CSV to replace it")
+	}
+	db = booruTagDatabase{index, hex.EncodeToString(h.Sum(nil)), stat.ModTime(), stat.Size()}
+	if len(booruTagDatabases.entries) >= 4 {
+		for key := range booruTagDatabases.entries {
+			delete(booruTagDatabases.entries, key)
+			break
+		}
+	}
+	booruTagDatabases.entries[path] = db
+	return db, nil
 }
+
 func booruSameOrigin(r *http.Request) bool {
 	if r.Header.Get("Sec-Fetch-Site") == "cross-site" {
 		return false

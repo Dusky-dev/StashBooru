@@ -2,15 +2,43 @@
 
 Updated: 2026-10-18
 
-Current baseline: `develop` at `a6c4a94109de0be7a78a36cc6a6ff84fbc166309`.
-PR #147 is merged. [PR #148](https://github.com/Dusky-dev/StashBooru/pull/148) on
-`fix/gelbooru-tag-csv-duplicates-20261018` fixes the
-reported database rejection in the published Gelbooru tag snapshot.
-See [downloads/autocomplete guide](booru-downloads-autocomplete.md).
+Current baseline: `develop` at `471f304f3456f01b47badbfb9ab578f05e51335c`.
+PR #148 is merged. Branch `feat/booru-live-browser-20261018` integrates live
+completion and the requested Stash Browser-inspired workflow into the existing
+browser. See [browser guide](booru-browser.md) and
+[downloads/autocomplete guide](booru-downloads-autocomplete.md).
 
 P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
+
+## Integrated live browser workflow — 2026-10-18 UTC
+
+- Owner approved adapting Codename-11/Stash-Downloader's UI/live completion into
+  the existing browser. Reference commit `842621160cddf9b7b12c7c2b51ef489a98a191b4`;
+  MIT copyright/license retained in `docs/third-party/stash-browser-MIT.txt`.
+- Started on the published #148 head while it was pending; fresh develop now
+  merges #148 at `471f304f3456f01b47badbfb9ab578f05e51335c`. Fast-forwarded the
+  feature branch to it; its baseline file tree is identical to the reviewed head.
+- Native sidebar includes removable chips, editable native queries, sort/rating
+  controls, loaded-page media filtering, thumbnail visibility and a live/CSV-only
+  autocomplete selector. Mobile filters collapse independently from search.
+- Live completion supports Danbooru, Gelbooru/Rule34, Moebooru, e621 and Philomena
+  endpoints. Shared host/global throttles, redacted credentials, bounded payloads,
+  cancellation and an isolated 512-entry/five-minute cache retain native transport
+  rules. Failed live requests can use the existing installed CSV without modifying it.
+- Card Download/Folder actions use existing native Jobs, default/custom library
+  destinations and saved converter defaults. Card/inspector job state and saved
+  preferences synchronize; an obsolete settings response cannot restore old defaults.
+- Default source/query/paging/preview/review behavior remains integrated. No new
+  entity import, inference, bulk download automation, model or encoder is added.
+- Verification: previous full backend gates and mounted desktop/mobile workflows
+  passed. Final corrected provider-order, preference-race, UI/production and
+  documentation checks are being recorded before ready-for-review.
+- Live unauthenticated endpoint smoke attempts from this environment returned
+  non-JSON responses. Fixture coverage is separate from deployed/authenticated
+  provider acceptance; CSV fallback remains available. No broad live-site,
+  real-codec or physical GPU acceptance is claimed.
 
 ## Gelbooru CSV duplicate compatibility — 2026-10-18 UTC
 

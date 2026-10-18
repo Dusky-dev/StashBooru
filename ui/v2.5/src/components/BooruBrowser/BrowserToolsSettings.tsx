@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Form } from "react-bootstrap";
 import { type BooruSource, readBooruResponse } from "./browser";
 import { FolderPicker } from "./FolderPicker";
+import { invalidateDownloadPreferences } from "./downloadPreferences";
 interface TagDatabase {
   count: number;
   revision: string;
@@ -103,6 +104,8 @@ export function BrowserToolsSettings() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ convert, defaultDirectory: directory }),
     }).then(readBooruResponse);
+    invalidateDownloadPreferences();
+    window.dispatchEvent(new Event("booru-download-settings"));
     if (mounted.current) setNotice("Download settings saved.");
   }
   async function install(fromPath: boolean) {

@@ -7,6 +7,53 @@ import {
   remoteURL,
 } from "../src/components/BooruBrowser/browser.ts";
 
+test("Browser filters round-trip with native expressions and independent paging", () => {
+  const value = {
+    sources: ["gelbooru"],
+    query: "cat -blue_hair",
+    pages: { gelbooru: 3 },
+    sort: "popular" as const,
+    rating: "safe" as const,
+    media: "videos" as const,
+  };
+  assert.deepEqual(readBrowserSearch(browserSearchURL(value)), value);
+  assert.ok(readBrowserSearch("?sort=unsupported").error);
+  assert.ok(readBrowserSearch("?rating=unsupported").error);
+});
+
+test("Search chips preserve quoted expressions, exclusions and comma tags", async () => {
+  const { queryTerms, removeQueryTerm } = await import(
+    "../src/components/BooruBrowser/completion.ts"
+  );
+  const query = 'cat source:"two words" -blue_hair';
+  const terms = queryTerms(query);
+  assert.deepEqual(
+    terms.map((t) => t.name),
+    ["cat", 'source:"two words"', "-blue_hair"]
+  );
+  assert.equal(removeQueryTerm(query, terms[1]), "cat  -blue_hair");
+  const comma = "artist:a, blue hair, safe";
+  assert.equal(
+    removeQueryTerm(comma, queryTerms(comma, true)[1], true),
+    "artist:a,  safe"
+  );
+});
+
+test("Loaded-page media filters leave unknown formats distinct", async () => {
+  const { postMediaKind } = await import(
+    "../src/components/BooruBrowser/browser.ts"
+  );
+  const post = {
+    id: "1",
+    sourceID: "danbooru",
+    postURL: "https://example.org/1",
+    tags: [],
+  };
+  assert.equal(postMediaKind({ ...post, format: "webm" }), "videos");
+  assert.equal(postMediaKind({ ...post, format: "jxl" }), "images");
+  assert.equal(postMediaKind(post), "unknown");
+});
+
 test("Booru URL preserves source order, literal query, per-source page and preview identity", () => {
   const value = {
     sources: ["gelbooru", "custom"],

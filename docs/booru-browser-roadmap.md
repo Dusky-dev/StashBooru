@@ -1,9 +1,10 @@
 # Booru content browser: delivery plan
 
 Status: **B01–B02 plus explicit single-post native downloads and autocomplete fixes
-are implemented on the current task branch; validation is recorded in the progress
+and the integrated live-completion/sidebar/card workflow are implemented on the
+current task branch; validation is recorded in the progress
 ledger. B03 metadata review, B04 batch/restart automation and B05–B06 remain planned.**
-Baseline: `develop` `4b21a0dda1bd1580cadc605db7586a74b2f7e3ee`, reviewed 2026-10-18 UTC.
+Baseline: `develop` `471f304f3456f01b47badbfb9ab578f05e51335c`, reviewed 2026-10-18 UTC.
 This is the next roadmap after the delivered P01–P13 scopes. The owner broadened
 B01 on 2026-10-17 to an engine-based browser inspired by Grabber. B01 searches
 several remote sources; B02 adds durable review marks and verified current-file
