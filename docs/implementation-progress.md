@@ -3,7 +3,8 @@
 Updated: 2026-10-18
 
 Current baseline: `develop` at `a6c4a94109de0be7a78a36cc6a6ff84fbc166309`.
-PR #147 is merged. Branch `fix/gelbooru-tag-csv-duplicates-20261018` fixes the
+PR #147 is merged. [PR #148](https://github.com/Dusky-dev/StashBooru/pull/148) on
+`fix/gelbooru-tag-csv-duplicates-20261018` fixes the
 reported database rejection in the published Gelbooru tag snapshot.
 See [downloads/autocomplete guide](booru-downloads-autocomplete.md).
 
@@ -25,13 +26,26 @@ silently promoted to verified production features by this documentation update.
   (first record on ties) and a bounded, deduplicated alias union. Counts are not
   summed. Every row is still validated before merging. Invalid-name and unique
   tag-limit failures now have separate error messages.
-- Both original and cleaned full snapshots pass the actual Go importer with
-  234,010 tags. The cleaned copy provides compatibility for the prior build.
-  Focused parser regression tests pass; full backend/HTTP checks are in progress.
-  Upload/reload tests include duplicate names and retain revision-conflict and
-  invalid-replacement preservation checks. No UI source changed.
-- Next: record remaining backend gates and publish the focused fix. This does
-  not make stale snapshot categories authoritative or refresh the database.
+- Both original and cleaned full snapshots pass the actual patched Go importer
+  with 234,010 tags. The prior importer separately reproduced the exact reported
+  record-7130 failure and accepted the cleaned copy with 234,010 tags, verifying
+  compatibility for the existing build.
+- Local `go test ./pkg/booru` passed, including category/count selection, stable
+  ties, alias preservation/deduplication, invalid duplicate rejection and alias
+  union limits. Upload/reload tests now include duplicate names and retain
+  revision-conflict and invalid-replacement preservation checks.
+- GitHub lint, generation/UI validation and mounted-browser checks passed on
+  `c4dede2d69716031f1b40b4f491252bc1e4a389e` (local implementation
+  `5465ba6d3aa518e93f8deab682832ccbc295cb15`, identical tree
+  `f93ae9b5ec2ccdcf72ac9bb0bbef838e0b5023e9`). Full `make it` also passed
+  in GitHub CI, including upload/reload/atomic-replacement regression coverage.
+  Redundant cold-cache local broad tests/lint were stopped after CI passed;
+  only the focused parser tests/full-snapshot checks are claimed locally.
+  All 73 relative guide/index links and `git diff --check` passed. This final
+  checkpoint changes documentation only; no UI source changed.
+- Next: load the original snapshot after updating to the focused fix, or use
+  the cleaned compatibility CSV with the prior build. Deduplication does not
+  make stale snapshot categories authoritative or refresh the database.
 
 ## Booru library downloads and workflow corrections — 2026-10-18 UTC
 
