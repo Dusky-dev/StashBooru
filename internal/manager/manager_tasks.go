@@ -117,9 +117,9 @@ type ScanMetaDataFilterInput struct {
 	MinModTime *time.Time `json:"minModTime"`
 }
 
-func (s *Manager) Scan(ctx context.Context, input ScanMetadataInput) (int, error) {
+func (s *Manager) newScanJob(input ScanMetadataInput) (*ScanJob, error) {
 	if err := s.validateFFmpeg(); err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	cfg := config.GetInstance()
@@ -156,7 +156,25 @@ func (s *Manager) Scan(ctx context.Context, input ScanMetadataInput) (int, error
 		subscriptions: s.scanSubs,
 	}
 
-	return s.JobManager.Add(ctx, "Scanning...", &scanJob), nil
+	return &scanJob, nil
+}
+
+func (s *Manager) Scan(ctx context.Context, input ScanMetadataInput) (int, error) {
+	scanJob, err := s.newScanJob(input)
+	if err != nil {
+		return 0, err
+	}
+	return s.JobManager.Add(ctx, "Scanning...", scanJob), nil
+}
+
+// ScanNow runs native scan handlers within an existing Job. It must not queue
+// another Job and wait for it while occupying the serial JobManager queue.
+func (s *Manager) ScanNow(ctx context.Context, input ScanMetadataInput, progress *job.Progress) error {
+	scanJob, err := s.newScanJob(input)
+	if err != nil {
+		return err
+	}
+	return scanJob.Execute(ctx, progress)
 }
 
 func (s *Manager) Import(ctx context.Context) (int, error) {

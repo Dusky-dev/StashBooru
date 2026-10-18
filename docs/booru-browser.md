@@ -1,17 +1,21 @@
-# Booru browser — B01
+# Booru browser
 
 Open **Booru** (globe) in the navbar, or `/booru`. This browser searches
-remote posts and displays their previews and metadata. It does not download
-originals, import entities or change native media metadata.
+remote posts and displays their previews and metadata.
+[Downloads and autocomplete](booru-downloads-autocomplete.md) adds explicit file
+downloads into Stash, optional saved converter defaults, and per-source CSV tag
+databases via upload or server path. Native scan registers media; Artist/Character/
+Copyright/tag metadata import remains separate reviewed work.
 [B02 review state](booru-review-state.md) adds durable ignored/manual-download
-marks and bounded current-file MD5 matches. Metadata import, reviewed downloads,
+marks and bounded current-file MD5 matches. Metadata entity review, batch downloads,
 pHash comparison and follows remain later [roadmap packages](booru-browser-roadmap.md).
 
 ## Search and inspect
 
 Choose up to eight sources, enter a query and select **Search**.
-Opening the browser without a query, editing the query and changing checkboxes
-do not search automatically. Each selected source has independent results,
+A fresh browser without saved state does not search automatically. Refresh/bare-route
+visits restore the saved submitted page. Editing the query and changing checkboxes
+do not submit a search. Each selected source has independent results,
 Previous/Next, cancellation and retry. One unavailable/rate-limited source does
 not discard another source's results. Inspect a thumbnail or post number to view
 the larger remote preview and grouped raw tags; **Open remote post** visits the
@@ -32,10 +36,12 @@ deduplication yet. Totals are unknown except for provider-reported Philomena
 totals; these are not verified snapshot totals. Numbered browsing ends at page
 750; narrow the query to continue.
 
-Preview bytes come directly from the configured provider/CDN to the browser,
-without a StashBooru media proxy. A missing/blocked/unsupported preview has a
-fallback message and remote link. Originals are never substituted for missing
-thumbnails. Dimensions, byte size, rating and MD5 are provider metadata; unknown
+Preview bytes use a bounded same-origin media route backed by server-owned
+search keys, validated provider/CDN hosts and public DNS. Missing, expired,
+blocked or unsupported previews have a fallback message and remote link.
+Originals are never substituted for missing thumbnails. See
+[thumbnail limits](booru-downloads-autocomplete.md#thumbnails).
+Dimensions, byte size, rating and MD5 are provider metadata; unknown
 fields stay unknown. A preview is not proof of full-file identity or quality.
 Flat tag APIs are labelled **category not supplied**, rather than classifying
 every tag as general or guessing Artist/Character/Copyright identity.

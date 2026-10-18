@@ -180,7 +180,7 @@ func publicAddress(addr netip.Addr) bool {
 }
 
 func (s Source) mediaURL(raw string) string {
-	if raw == "" {
+	if raw == "" || len(raw) > 8192 {
 		return ""
 	}
 	base, _ := url.Parse(strings.TrimRight(s.URL, "/") + "/")

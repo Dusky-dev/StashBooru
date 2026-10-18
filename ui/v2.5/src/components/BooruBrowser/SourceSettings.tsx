@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Form, Modal } from "react-bootstrap";
 import { readBooruResponse } from "./browser";
 import "./styles.scss";
+import { BrowserToolsSettings } from "./BrowserToolsSettings";
 
 interface SourceSetting {
   id: string;
@@ -150,6 +151,7 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
         </Alert>
       )}
       {!draft && error && <Alert variant="danger">{error}</Alert>}
+      {!draft && <BrowserToolsSettings key={settings?.revision} />}
       <div className="booru-settings-toolbar">
         <Button
           size="sm"

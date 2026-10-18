@@ -11,7 +11,8 @@ the latest stable release.
 | --- | --- |
 | [Feature guide](features.md) | Navigation, mixed browsing, similarity, stacks, processing, diagnostics, animation, local HTTPS and backups. |
 | [Metadata and tagging](metadata-and-tagging.md) | Native Copyrights, multiple Artists, Character variants, linked disambiguation, inheritance, filenames, booru lookups and reviewed model predictions. |
-| [Booru browser](booru-browser.md) | Read-only multi-source search, five engine families, remote previews/tags, independent paging and server-side source/credential configuration. |
+| [Booru browser](booru-browser.md) | Multi-source search, five engine families, thumbnails/tags, independent paging and server-side source/credential configuration. |
+| [Booru downloads and autocomplete](booru-downloads-autocomplete.md) | Preview recovery, native Stash downloads with folder/default-converter settings, browser persistence, and uploaded/server-path CSV databases. |
 | [Booru review state](booru-review-state.md) | Durable ignored/manual-download marks, bulk undo, provider-page filtering and current-file MD5 evidence. |
 | [Media converter](media-converter.md) | Formats, quality/effort/decode speed, animation timing, worker setup, replacement, restore/unrestore and recovery. |
 | [Conversion review](p09-conversion-review.md) | Estimates, verified trials, savings minimums, cache expiry and reviewed apply. |
@@ -47,7 +48,8 @@ original handoff. In particular:
 
 The [remote browser](booru-browser.md) reads provider content;
 [B02 review state](booru-review-state.md) persists local ignored/manual-download
-marks and checks current indexed files. Disfavored-tag comparison, follows and
+marks and checks current indexed files. [Downloads and autocomplete](booru-downloads-autocomplete.md)
+add native Stash downloads, folder choices and per-source CSV databases. Disfavored-tag comparison, follows and
 Artist × Copyright selection remain planned in the [roadmap](booru-browser-roadmap.md). Existing MD5 metadata
 lookup and local entity favorites remain separate workflows.
 

@@ -1,17 +1,116 @@
 # StashBooru implementation progress
 
-Updated: 2026-10-17
+Updated: 2026-10-18
 
-Current baseline: `develop` at `598d6849668303369fb2a2c5783160a00172ba59`
-(owner merged #144). Current branch: `feat/b02-booru-review-state-20261017`.
-Delivered in [PR #145](https://github.com/Dusky-dev/StashBooru/pull/145):
-**B02 — durable ignored/manual-download marks and current-file MD5 matches**. The owner deferred further browsing layout revisions until more
-browsing testing. See [B02 guide](booru-review-state.md). Next: **B03 — metadata
-import and Artist × Copyright selection**. B03–B06 remain planned.
+Current baseline: `develop` at `4b21a0dda1bd1580cadc605db7586a74b2f7e3ee`.
+PR #145 is merged. PR #146 was merged into the prior B02 feature branch at
+`9be2db6430aa05f22e186ffb315ff333d764bb4e`, and was not in develop at this
+checkpoint. [PR #147](https://github.com/Dusky-dev/StashBooru/pull/147) on
+`fix/booru-library-downloads-20261018` includes that work and
+fixes the owner's reported missing controls and workflow problems.
+See [downloads/autocomplete guide](booru-downloads-autocomplete.md).
 
 P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
+
+## Booru library downloads and workflow corrections — 2026-10-18 UTC
+
+- Fresh develop, clean tree and closed/merged PRs checked. B02 is in develop;
+  B01 media/autocomplete #146 landed on the previous feature branch. Its source
+  is included on this feature branch without modifying develop.
+- Download to Stash imports a verified original through native Scan handlers,
+  with a configurable default folder and per-request Download to… picker.
+  Library containment/symlink checks, no-overwrite publication, receipts and
+  explicit retry retain files on failed registration/conversion.
+- Optional conversion calls the existing converter with saved format/encoding/
+  worker/savings defaults and its native activation/recovery path. No hard-coded
+  JPEG XL/quality/effort/CPU override remains. Existing metadata/IDs are retained.
+- A dedicated Downloads & autocomplete entry exposes upload and server CSV path
+  loading, including persisted paths and atomic/revision-checked replacement.
+- Local browser memory separates submitted pages/queries from unfinished drafts,
+  preserving refresh/bare-route navigation. HTTPS upgrades, public CDN fallback,
+  detailed preview errors and Refresh previews provide recovery.
+- Verification on 2026-10-18 UTC passed: full `make test`; focused API/manager
+  `TestBooru` tests with integration tags; `make lint` with golangci-lint 2.11.4
+  (zero issues); all 54 UI tests plus JS/CSS lint, TypeScript and formatting;
+  production `make ui-only`; 73 relative documentation links; `git diff --check`.
+- The native integration test used real SQLite, PNG, FFmpeg and FFprobe: two
+  scans inside native Jobs produced one Image with its actual primary File ID.
+  The converter-defaults integration test checks a saved non-default format,
+  quality/effort/lossless/allow-larger options and remote backend selection.
+- Mounted Chrome Headless Shell 143 passed at 1440×1000 and 390×844: native
+  download/default/custom folder payloads, converter preference, server CSV path,
+  upload/autocomplete, typed native links, failure/cancellation/reopen cleanup,
+  page-two refresh/bare-route restoration with an unfinished query/source draft,
+  and direct public-CDN fallback after failed same-origin media delivery. Existing
+  search/settings/review/bulk/undo/conflict/race/overflow cases also passed.
+  Synthetic screenshots were reviewed at both viewport sizes.
+- Checked implementation: local `6f1f933b0605bb8e91f44b4ab1fc8a3f6f9812ad`
+  and remote `5a7ce570665a6651ed8c65453562a62629c5f2f5` have identical tree
+  `62fe8789d947533025870f32a182544bd08a9f71`. UI source is unchanged from
+  the validated production/mounted-browser follow-up. This checkpoint is
+  documentation only. GitHub full `make it`, browser, generation/UI, lint and all
+  seven platform builds passed on that remote implementation. The redundant local
+  full-integration compile was stopped after CI confirmed the same source; local
+  focused integration tests had already passed, with no skips.
+- A live unauthenticated Safebooru metadata/preview/sample smoke request returned
+  successful JPEG responses through the environment's proxy. It does not verify
+  the application's native transport, all providers, authenticated accounts,
+  real JPEG XL codec output or physical GPU execution.
+- Limits: one post per explicit Job, 128 MiB original, existing configured library
+  destinations and hard-link support. Metadata entity/tag review and batch import
+  remain later work. Next: test native transport/downloads with the deployed
+  provider credentials and configured converter worker, then review metadata
+  import as a separate package. No live-account or real JPEG XL acceptance claim.
+
+## Browser media and autocomplete — 2026-10-17 UTC
+
+- Fresh develop and open PRs checked; clean starting tree; preserved #145's
+  published ancestry. This is a separate owner-requested usability slice.
+- Same-origin thumbnail/sample delivery uses opaque, expiring server-issued
+  post snapshots, source-instance checks, public DNS/CDN validation, bounded
+  transfers and safe redirects. Danbooru asset variants/dimensions are parsed.
+- Native cancellable Jobs prepare an explicit post's original for download to
+  the user's computer. Original byte counts and provider MD5 are checked when
+  known. Optional JPEG → JPEG XL uses the existing local/remote converter and
+  JPEG reconstruction settings; converted output has its own checksum.
+- Native generated-download storage expires unused exports, waits for active
+  readers and guards timers against reused keys. Ordinary failure/cancel cleans
+  staging. Session storage recovers the last job in the same tab. No automatic
+  catalogue import, native entity changes, false match links or review marks.
+- Per-instance CSV databases support tagcomplete and header-based Danbooru tag
+  exports. Atomic validated replacement and revision conflicts retain the last
+  installed database on failure. Names/aliases/categories/counts drive debounced
+  prefix completion, keyboard/mouse selection and cursor-token replacement.
+- Verification on 2026-10-17 UTC passed: focused transport/CSV/API/expiry tests;
+  full `make test`; full `make it` with SQLite integration tags; `make lint`
+  (golangci-lint 2.11.4, zero issues); all 53 UI tests plus JS/CSS lint,
+  TypeScript and formatting on Node 20.20.1 / locked pnpm 10.33.0; production
+  `make ui-only`; 73 relative guide/index links; and `git diff --check`.
+- Mounted Chrome Headless Shell 143 passed at 1440×1000 and 390×844: same-origin
+  PNG thumbnails, database upload, partial database failures, alias completion
+  at the caret with keyboard/exclusion preservation, conversion preference,
+  prepared download success/failure, queued cancellation, reopen recovery and
+  closing during a delayed preparation request. Existing search/paging/provider
+  failure/settings/review/bulk/undo/conflict/native-link/race/cleanup cases passed.
+  Desktop/mobile screenshots of autocomplete, downloads and settings were reviewed.
+- Backend gates ran on local implementation `5594d3b4572b8cb78cf7cb5bedf06572e7fc7918`
+  (remote `8ad6ff6e9dde499b10b90af532aedeec07354a9f`, identical tree
+  `88d8c3321d35068ebd1abca9d811c308187f4ee6`). Final UI lifecycle/fixture
+  follow-up `f6e5a485d4ac8900e0edcd25786bbb7929d7aa7b` and remote
+  `5f2dded114255c8658cc607fe1bb0b1ee45f38e9` share verified tree
+  `edac871170ae836462f7c8183b3157593e9b1480`; backend source is unchanged.
+  All UI checks, mounted fixtures and production bundling passed on that follow-up.
+  This final checkpoint changes documentation only. GitHub browser CI passed on
+  the prior implementation; final-head CI refreshes after publication.
+- Tests use synthetic bytes/artwork and a mock remote converter. They verify
+  native Jobs/converter-client/download-store integration, not real codec output,
+  live-account access, human manual testing or GPU acceptance. No code/model
+  dependencies or encoder binaries were installed by this package.
+- Known scope: explicit single-post computer exports, no durable restart/resume
+  or library import; no live-account/CDN or real JPEG XL codec claim. Provider
+  connectivity and configured worker capabilities remain deployment checks.
 
 ## B02 — durable review state — 2026-10-17 UTC
 

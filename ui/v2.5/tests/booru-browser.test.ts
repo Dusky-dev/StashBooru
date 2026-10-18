@@ -104,3 +104,60 @@ test("Ignored-post filters round-trip without changing the provider query or pag
     /Invalid ignored-post filter/
   );
 });
+
+test("Autocomplete replaces only the caret token and preserves exclusions and Philomena commas", async () => {
+  const { completionToken, applyCompletion } = await import(
+    "../src/components/BooruBrowser/completion.ts"
+  );
+  for (const [query, caret, comma, name, expected] of [
+    ["cat -blu dog", 8, false, "blue_hair", "cat -blue_hair dog"],
+    ["~blu fox", 4, false, "blue_eyes", "~blue_eyes fox"],
+    [
+      "artist_a, blue h, rating:safe",
+      16,
+      true,
+      "blue hair",
+      "artist_a, blue hair, rating:safe",
+    ],
+  ] as const) {
+    assert.equal(
+      applyCompletion(query, completionToken(query, caret, comma), name),
+      expected
+    );
+  }
+});
+
+test("Browser memory keeps a submitted page and unfinished draft separately", async () => {
+  const { readBrowserMemory, saveBrowserMemory } = await import(
+    "../src/components/BooruBrowser/browser.ts"
+  );
+  let stored: string | null = null;
+  const previous = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: () => stored,
+      setItem: (_key: string, value: string) => {
+        stored = value;
+      },
+    },
+  });
+  try {
+    const state = {
+      search: "?source=gelbooru&q=landscape&p.gelbooru=3",
+      query: "unfinished -blue",
+      sources: ["gelbooru", "danbooru"],
+      settings: false,
+      tagSource: "gelbooru",
+      scroll: 612,
+    };
+    saveBrowserMemory(state);
+    assert.deepEqual(readBrowserMemory(), state);
+    stored =
+      '{"search":"?source=../bad","query":"a","sources":[],"settings":false,"tagSource":"","scroll":0}';
+    assert.equal(readBrowserMemory(), undefined);
+  } finally {
+    if (previous) Object.defineProperty(globalThis, "localStorage", previous);
+    else Reflect.deleteProperty(globalThis, "localStorage");
+  }
+});

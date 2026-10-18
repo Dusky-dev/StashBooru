@@ -1,11 +1,14 @@
 # Booru content browser: delivery plan
 
-Status: **B01–B02 implemented on the current task branch; validation is recorded in the progress ledger. B03–B06 planned.** Baseline: `develop`
-`598d6849668303369fb2a2c5783160a00172ba59`, reviewed 2026-10-17 UTC.
+Status: **B01–B02 plus explicit single-post native downloads and autocomplete fixes
+are implemented on the current task branch; validation is recorded in the progress
+ledger. B03 metadata review, B04 batch/restart automation and B05–B06 remain planned.**
+Baseline: `develop` `4b21a0dda1bd1580cadc605db7586a74b2f7e3ee`, reviewed 2026-10-18 UTC.
 This is the next roadmap after the delivered P01–P13 scopes. The owner broadened
 B01 on 2026-10-17 to an engine-based browser inspired by Grabber. B01 searches
 several remote sources; B02 adds durable review marks and verified current-file
-matches. Follows and downloads remain later packages. See
+matches. Single-post downloads are available; follows and reviewed batches remain
+later packages. See
 [browser operation and source configuration](booru-browser.md).
 
 The owner requested a content browser, ignored/already-downloaded marks, pHash
@@ -171,6 +174,19 @@ posts occur once; the two example queries return only the intended intersections
 empty selection returns none; exclusions survive query decomposition; unsupported
 syntax never broadens scope; ambiguous names stay unbound; repeated metadata import
 is idempotent; curated data and native Copyright identities survive.
+
+## Browser usability slice — 2026-10-17
+
+At the owner's request, thumbnails, explicit downloads to the user's computer,
+optional JPEG → JPEG XL conversion and per-source CSV database autocomplete were
+prioritized before B03. See [the guide](booru-downloads-autocomplete.md). Native
+Jobs, the existing converter and generated-download store are reused. These
+exports neither import catalogue metadata nor create in-library links/marks;
+they do not complete B03/B04's durable catalogue import acceptance criteria.
+
+The 2026-10-18 correction adds explicit single-post native scan/import, default and
+custom library folders, persistent receipts/retry, and saved converter defaults.
+B03 entity/tag review and B04 bounded batches/restart automation remain planned.
 
 ## B04 — downloads and catalogue import
 

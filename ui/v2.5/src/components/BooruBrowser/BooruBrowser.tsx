@@ -11,8 +11,12 @@ import {
   readBooruResponse,
   readBrowserSearch,
   remoteURL,
+  booruMediaURL,
 } from "./browser";
 import { BooruReview, ReviewEvidence, type ReviewState } from "./BooruReview";
+import { TagAutocomplete } from "./TagAutocomplete";
+import { BooruDownload } from "./BooruDownload";
+import { readBrowserMemory, saveBrowserMemory } from "./browser";
 import { SourceSettings } from "./SourceSettings";
 import "./styles.scss";
 
@@ -28,14 +32,16 @@ function PostInspection({
   source,
   onHide,
   review,
+  onRefresh,
 }: {
   post: BooruPost;
   source: BooruSource;
   onHide: () => void;
   review?: ReviewState;
+  onRefresh: () => void;
 }) {
   const groups = [...new Set(post.tags.map((tag) => tag.category))];
-  const sample = remoteURL(post.sampleURL);
+  const sample = booruMediaURL(post, "sample");
   return (
     <Modal show onHide={onHide} size="lg" className="booru-browser-inspection">
       <Modal.Header closeButton>
@@ -50,6 +56,7 @@ function PostInspection({
             key={sample}
             className="booru-sample"
             src={sample}
+            fallbackSrc={remoteURL(post.directSampleURL)}
             alt={`${source.name} #${post.id}`}
           />
         ) : (
@@ -70,6 +77,11 @@ function PostInspection({
             MD5: <code>{post.md5}</code>
           </p>
         )}
+        <BooruDownload
+          key={post.mediaKey}
+          post={post}
+          instance={source.instance}
+        />
         {groups.length === 0 && (
           <p>{message("no_tags", "The provider supplied no tags.")}</p>
         )}
@@ -93,6 +105,9 @@ function PostInspection({
         ))}
       </Modal.Body>
       <Modal.Footer>
+        <Button variant="secondary" onClick={onRefresh}>
+          Refresh previews
+        </Button>
         {remoteURL(post.postURL) && (
           <ExternalLink
             className="btn btn-primary"
@@ -113,27 +128,44 @@ function RemoteImage({
   src,
   alt,
   className,
+  fallbackSrc,
 }: {
   src: string;
   alt: string;
   className?: string;
+  fallbackSrc?: string;
 }) {
+  const [direct, setDirect] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [reason, setReason] = useState("");
+  useEffect(() => {
+    const controller = new AbortController();
+    if (failed)
+      void fetch(src, { signal: controller.signal })
+        .then(async (response) => {
+          if (!response.ok) await readBooruResponse(response);
+        })
+        .catch((cause: Error) => {
+          if (!controller.signal.aborted) setReason(cause.message);
+        });
+    return () => controller.abort();
+  }, [failed, src]);
   return failed ? (
     <span>
-      {message(
-        "preview_failed",
-        "Remote preview could not be loaded. Use Open remote post."
-      )}
+      Remote preview could not be loaded.{" "}
+      {reason || "Use Refresh previews or open the remote post."}
     </span>
   ) : (
     <img
-      src={src}
+      src={direct ? fallbackSrc : src}
       alt={alt}
       className={className}
       loading="lazy"
       referrerPolicy="no-referrer"
-      onError={() => setFailed(true)}
+      onError={() => {
+        if (!direct && fallbackSrc) setDirect(true);
+        else setFailed(true);
+      }}
     />
   );
 }
@@ -273,10 +305,11 @@ function SourceResults({
                   onClick={() => onInspect(item.id)}
                   aria-label={`Inspect ${source.name} post ${item.id}`}
                 >
-                  {remoteURL(item.previewURL) ? (
+                  {booruMediaURL(item, "preview") ? (
                     <RemoteImage
                       key={item.previewURL}
-                      src={remoteURL(item.previewURL) || ""}
+                      src={booruMediaURL(item, "preview") || ""}
+                      fallbackSrc={remoteURL(item.directPreviewURL)}
                       alt={`${source.name} #${item.id}`}
                     />
                   ) : (
@@ -352,6 +385,7 @@ function SourceResults({
           source={source}
           onHide={onClose}
           review={review.find((state) => state.id === post.id)}
+          onRefresh={() => setRetry((value) => value + 1)}
         />
       )}
     </section>
@@ -361,15 +395,26 @@ function SourceResults({
 export default function BooruBrowser() {
   const location = useLocation();
   const history = useHistory();
+  const remembered = useMemo(() => readBrowserMemory(), []);
+  const effectiveSearch = location.search || remembered?.search || "";
+  const restoreDraft = !!remembered && effectiveSearch === remembered.search;
   const active = useMemo(
-    () => readBrowserSearch(location.search),
-    [location.search]
+    () => readBrowserSearch(effectiveSearch),
+    [effectiveSearch]
   );
+  useEffect(() => {
+    if (!location.search && remembered?.search)
+      history.replace({ pathname: "/booru", search: remembered.search });
+  }, [location.search, remembered, history]);
   const [sources, setSources] = useState<BooruSource[]>();
   const [sourceError, setSourceError] = useState("");
   const [loadAttempt, setLoadAttempt] = useState(0);
-  const [showSettings, setShowSettings] = useState(false);
-  const [tagSource, setTagSource] = useState("");
+  const [showSettings, setShowSettings] = useState(
+    restoreDraft ? (remembered?.settings ?? false) : false
+  );
+  const [tagSource, setTagSource] = useState(
+    restoreDraft ? (remembered?.tagSource ?? "") : ""
+  );
   const [tagPages, setTagPages] = useState<
     Record<string, { signature: string; posts: BooruPost[] }>
   >({});
@@ -379,15 +424,67 @@ export default function BooruBrowser() {
     },
     []
   );
-  const [query, setQuery] = useState(active.query);
-  const [selected, setSelected] = useState(active.sources);
-  const sourceSelection = active.sources.join(",");
+  const [query, setQuery] = useState(
+    restoreDraft ? (remembered?.query ?? active.query) : active.query
+  );
+  const [selected, setSelected] = useState(
+    restoreDraft ? (remembered?.sources ?? active.sources) : active.sources
+  );
+  const lastQuery = useRef(active.query);
+  const sourceSignature = active.sources.join(",");
+  const lastSources = useRef(sourceSignature);
   useEffect(() => {
-    setQuery(active.query);
+    if (lastQuery.current !== active.query) {
+      setQuery(active.query);
+      lastQuery.current = active.query;
+    }
   }, [active.query]);
   useEffect(() => {
-    setSelected(sourceSelection.split(","));
-  }, [sourceSelection]);
+    if (lastSources.current !== sourceSignature) {
+      setSelected(sourceSignature.split(","));
+      lastSources.current = sourceSignature;
+    }
+  }, [sourceSignature]);
+  const memory = useRef({
+    search: effectiveSearch,
+    query,
+    sources: selected,
+    settings: showSettings,
+    tagSource,
+    scroll: restoreDraft ? (remembered?.scroll ?? 0) : 0,
+  });
+  useEffect(() => {
+    memory.current = {
+      ...memory.current,
+      search: effectiveSearch,
+      query,
+      sources: selected,
+      settings: showSettings,
+      tagSource,
+    };
+    saveBrowserMemory(memory.current);
+  }, [effectiveSearch, query, selected, showSettings, tagSource]);
+  useEffect(() => {
+    const rememberScroll = () => {
+      if (document.body.classList.contains("modal-open")) return;
+      memory.current.scroll = window.scrollY;
+      saveBrowserMemory(memory.current);
+    };
+    window.addEventListener("scroll", rememberScroll, { passive: true });
+    return () => window.removeEventListener("scroll", rememberScroll);
+  }, []);
+  const restoreScroll = useRef(restoreDraft);
+  useEffect(() => {
+    if (
+      restoreScroll.current &&
+      (Object.keys(tagPages).length >= active.sources.length || !active.query)
+    ) {
+      restoreScroll.current = false;
+      window.requestAnimationFrame(() =>
+        window.scrollTo(0, remembered?.scroll ?? 0)
+      );
+    }
+  }, [tagPages, active, remembered]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: Reload intentionally repeats the source-list request after a configuration failure or settings save.
   useEffect(() => {
     const request = new AbortController();
@@ -420,13 +517,32 @@ export default function BooruBrowser() {
           <h2>{message("title", "Booru browser")}</h2>
           <span className="text-muted">Remote posts · Browse and inspect</span>
         </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => setShowSettings((value) => !value)}
-        >
-          {showSettings ? "Back to posts" : "Source settings"}
-        </Button>
+        <div className="d-flex flex-wrap">
+          <Button
+            variant="secondary"
+            size="sm"
+            className="mr-2"
+            onClick={() => {
+              setShowSettings(true);
+              window.setTimeout(
+                () =>
+                  document
+                    .getElementById("booru-tools-settings")
+                    ?.scrollIntoView({ block: "start" }),
+                0
+              );
+            }}
+          >
+            Downloads & autocomplete
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowSettings((value) => !value)}
+          >
+            {showSettings ? "Back to posts" : "Source settings"}
+          </Button>
+        </div>
       </header>
       {showSettings && (
         <section aria-label="Source settings" className="booru-settings-panel">
@@ -471,12 +587,12 @@ export default function BooruBrowser() {
             >
               <Form.Group controlId="booru-query" className="mb-2">
                 <Form.Label>Search</Form.Label>
-                <Form.Control
-                  aria-label="Search tags (native source syntax)"
+                <TagAutocomplete
                   value={query}
-                  onChange={(event) => setQuery(event.currentTarget.value)}
-                  maxLength={1024}
-                  placeholder="Search tags…"
+                  onChange={setQuery}
+                  sources={sources.filter((source) =>
+                    selected.includes(source.id)
+                  )}
                 />
               </Form.Group>
               <Button
