@@ -125,8 +125,8 @@ CDN host. Legacy HTTP media URLs are upgraded to HTTPS before validation.
 
 If server delivery fails, an available public, query-free provider/CDN URL can be
 tried directly by the browser. Query-bearing URLs are not exposed as fallbacks; this does not classify every
-provider-specific signed URL format. If both paths fail, the inspector shows a useful server error and
-**Refresh previews** fetches fresh search keys. Missing thumbnails never trigger
+provider-specific signed URL format. If both paths fail, the inspector shows a
+useful server error and **Refresh previews** fetches fresh search keys. Missing thumbnails never trigger
 silent original-file downloads. Site credentials, CDN allowlists and provider
 access restrictions still apply.
 

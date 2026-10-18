@@ -5,7 +5,8 @@ Updated: 2026-10-18
 Current baseline: `develop` at `4b21a0dda1bd1580cadc605db7586a74b2f7e3ee`.
 PR #145 is merged. PR #146 was merged into the prior B02 feature branch at
 `9be2db6430aa05f22e186ffb315ff333d764bb4e`, and was not in develop at this
-checkpoint. Branch `fix/booru-library-downloads-20261018` includes that work and
+checkpoint. [PR #147](https://github.com/Dusky-dev/StashBooru/pull/147) on
+`fix/booru-library-downloads-20261018` includes that work and
 fixes the owner's reported missing controls and workflow problems.
 See [downloads/autocomplete guide](booru-downloads-autocomplete.md).
 
@@ -30,11 +31,38 @@ silently promoted to verified production features by this documentation update.
 - Local browser memory separates submitted pages/queries from unfinished drafts,
   preserving refresh/bare-route navigation. HTTPS upgrades, public CDN fallback,
   detailed preview errors and Refresh previews provide recovery.
-- Verification is in progress on the draft checkpoint. Desktop/mobile core
-  workflows passed; final refresh/fallback/native-scan/defaults gates are running.
+- Verification on 2026-10-18 UTC passed: full `make test`; focused API/manager
+  `TestBooru` tests with integration tags; `make lint` with golangci-lint 2.11.4
+  (zero issues); all 54 UI tests plus JS/CSS lint, TypeScript and formatting;
+  production `make ui-only`; 73 relative documentation links; `git diff --check`.
+- The native integration test used real SQLite, PNG, FFmpeg and FFprobe: two
+  scans inside native Jobs produced one Image with its actual primary File ID.
+  The converter-defaults integration test checks a saved non-default format,
+  quality/effort/lossless/allow-larger options and remote backend selection.
+- Mounted Chrome Headless Shell 143 passed at 1440×1000 and 390×844: native
+  download/default/custom folder payloads, converter preference, server CSV path,
+  upload/autocomplete, typed native links, failure/cancellation/reopen cleanup,
+  page-two refresh/bare-route restoration with an unfinished query/source draft,
+  and direct public-CDN fallback after failed same-origin media delivery. Existing
+  search/settings/review/bulk/undo/conflict/race/overflow cases also passed.
+  Synthetic screenshots were reviewed at both viewport sizes.
+- Checked implementation: local `6f1f933b0605bb8e91f44b4ab1fc8a3f6f9812ad`
+  and remote `5a7ce570665a6651ed8c65453562a62629c5f2f5` have identical tree
+  `62fe8789d947533025870f32a182544bd08a9f71`. UI source is unchanged from
+  the validated production/mounted-browser follow-up. This checkpoint is
+  documentation only. GitHub full `make it`, browser, generation/UI, lint and all
+  seven platform builds passed on that remote implementation. The redundant local
+  full-integration compile was stopped after CI confirmed the same source; local
+  focused integration tests had already passed, with no skips.
+- A live unauthenticated Safebooru metadata/preview/sample smoke request returned
+  successful JPEG responses through the environment's proxy. It does not verify
+  the application's native transport, all providers, authenticated accounts,
+  real JPEG XL codec output or physical GPU execution.
 - Limits: one post per explicit Job, 128 MiB original, existing configured library
   destinations and hard-link support. Metadata entity/tag review and batch import
-  remain later work. No live-account or real JPEG XL codec acceptance claim.
+  remain later work. Next: test native transport/downloads with the deployed
+  provider credentials and configured converter worker, then review metadata
+  import as a separate package. No live-account or real JPEG XL acceptance claim.
 
 ## Browser media and autocomplete — 2026-10-17 UTC
 
