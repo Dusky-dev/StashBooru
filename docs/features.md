@@ -11,7 +11,7 @@ separates delivered browsing/review/import slices from later metadata and follow
 | Location | Use it for |
 | --- | --- |
 | **All** | Browse Images and Videos together, with shared filters and typed selections. Individual Images and Videos pages remain available. |
-| **Booru** (navbar globe) | Browse sources, preserve page/draft state, use CSV autocomplete, inspect previews/tags, keep review marks and download a post into Stash with a default/custom folder and optional converter defaults. |
+| **Booru** (navbar globe) | Browse sources, preserve page/draft state, use live/CSV autocomplete and sidebar filters, inspect previews/tags, keep review marks and download a post into Stash with a default/custom folder and optional converter defaults. |
 | **Settings → Library** | Media folders, scan rules and automatic ancestor/profile associations. Inheritance switches save automatically. |
 | **Settings → Processing** | Shared worker connection, similarity/tagging defaults, conversion rules and upscaling setup. Use each section's Save button. |
 | **Settings → Tasks** | Jobs, generated files/hashes, animation inspection, Character merging, association review, Video overlap indexing and database management. |
@@ -101,9 +101,10 @@ API keys, engine, URL, image hosts and enabled state. Its Danbooru-inspired side
 and compact thumbnail grid include categorized loaded-page tag counts.
 [B02 review state](booru-review-state.md) adds persistent ignored/manual-download
 marks, bulk undo, a show-ignored filter and bounded current-file MD5 matches.
-[Downloads and CSV autocomplete](booru-downloads-autocomplete.md) support native
+[Downloads and live/CSV autocomplete](booru-downloads-autocomplete.md) support native
 Stash import into a default/custom folder, optional converter defaults, upload or
-server CSV paths, and refresh persistence. Follows, metadata entity review and
+server CSV paths, live tag suggestions with CSV fallback, card downloads, search chips,
+sort/rating controls, loaded-page media filters and refresh persistence. Follows, metadata entity review and
 bounded batch import remain later packages.
 
 ### Profile artwork and metadata diagnostics

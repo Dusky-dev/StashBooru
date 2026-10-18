@@ -70,11 +70,13 @@ type hostGate struct {
 // host gate apply even when several clients search the same site. No retries
 // occur automatically; a provider's throttle is surfaced for explicit retry.
 type Client struct {
-	http     *http.Client
-	global   chan struct{}
-	hosts    sync.Map
-	interval time.Duration
-	media    chan struct{}
+	http              *http.Client
+	global            chan struct{}
+	hosts             sync.Map
+	interval          time.Duration
+	media             chan struct{}
+	autocompleteMu    sync.Mutex
+	autocompleteCache map[string]autocompleteEntry
 }
 
 func NewClient() *Client {
@@ -129,7 +131,7 @@ func ValidateQuery(query string, page, limit int) error {
 	return nil
 }
 
-func (s Source) request(ctx context.Context, query string, page, limit int) (*http.Request, error) {
+func (s Source) request(ctx context.Context, query string, page, limit int, options ...SearchOptions) (*http.Request, error) {
 	base := strings.TrimRight(s.URL, "/")
 	path := "/posts.json"
 	values := url.Values{"tags": {query}, "page": {strconv.Itoa(page)}, "limit": {strconv.Itoa(limit)}}
@@ -146,6 +148,9 @@ func (s Source) request(ctx context.Context, query string, page, limit int) (*ht
 	case "philomena":
 		path = "/api/v1/json/search/images"
 		values = url.Values{"q": {query}, "page": {strconv.Itoa(page)}, "per_page": {strconv.Itoa(limit)}, "sf": {"id"}, "sd": {"desc"}}
+		if len(options) > 0 && options[0].Sort == "popular" {
+			values.Set("sf", "score")
+		}
 		if s.APIKey != "" {
 			values.Set("key", s.APIKey)
 		}
@@ -165,71 +170,29 @@ func (s Source) request(ctx context.Context, query string, page, limit int) (*ht
 }
 
 func (c *Client) Search(ctx context.Context, source Source, query string, page, limit int) (Result, error) {
+	return c.SearchFiltered(ctx, source, query, page, limit, SearchOptions{})
+}
+func (c *Client) SearchFiltered(ctx context.Context, source Source, query string, page, limit int, options SearchOptions) (Result, error) {
 	if err := source.Validate(); err != nil {
 		return Result{}, &Error{Code: "configuration", Message: "The source configuration is invalid."}
 	}
 	if err := ValidateQuery(query, page, limit); err != nil {
 		return Result{}, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
-	defer cancel()
-	base, _ := url.Parse(source.URL)
-	host := strings.ToLower(strings.TrimSuffix(base.Hostname(), "."))
-	entry, _ := c.hosts.LoadOrStore(host, &hostGate{busy: make(chan struct{}, 1)})
-	gate := entry.(*hostGate)
-	select {
-	case gate.busy <- struct{}{}:
-		defer func() { <-gate.busy }()
-	case <-ctx.Done():
-		return Result{}, requestError(ctx)
+	query, err := source.filterQuery(query, options)
+	if err != nil {
+		return Result{}, err
 	}
-	if remaining := time.Until(gate.retryUntil); remaining > 0 {
-		return Result{}, &Error{Code: "rate-limited", Message: "Provider requested a pause before retrying.", RetryAfter: int(remaining.Seconds()) + 1}
+	if err = ValidateQuery(query, page, limit); err != nil {
+		return Result{}, err
 	}
-	timer := time.NewTimer(time.Until(gate.last.Add(c.interval)))
-	defer timer.Stop()
-	select {
-	case <-timer.C:
-	case <-ctx.Done():
-		return Result{}, requestError(ctx)
-	}
-	select {
-	case c.global <- struct{}{}:
-		defer func() { <-c.global }()
-	case <-ctx.Done():
-		return Result{}, requestError(ctx)
-	}
-	gate.last = time.Now()
-	req, err := source.request(ctx, query, page, limit)
+	req, err := source.request(ctx, query, page, limit, options)
 	if err != nil {
 		return Result{}, &Error{Code: "configuration", Message: "Cannot construct the provider request."}
 	}
-	client := *c.http
-	client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error {
-		// Never forward credentials or follow a provider's arbitrary redirect.
-		return http.ErrUseLastResponse
-	}
-	response, err := client.Do(req)
+	data, err := c.fetchJSON(ctx, source, req, responseLimit)
 	if err != nil {
-		// Do not return url.Error: its URL may contain API credentials.
-		return Result{}, requestError(ctx)
-	}
-	defer response.Body.Close()
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		failure := &Error{Code: "provider-error", Message: fmt.Sprintf("Provider returned HTTP %d. Try again later or check its API requirements.", response.StatusCode)}
-		switch response.StatusCode {
-		case http.StatusUnauthorized, http.StatusForbidden:
-			failure.Code, failure.Message = "authentication", "Provider denied access. Check server-side API credentials, account restrictions or its current API policy."
-		case http.StatusTooManyRequests:
-			failure.Code, failure.Message = "rate-limited", "Provider rate limit reached. Wait before retrying."
-			failure.RetryAfter = retryDelay(response.Header.Get("Retry-After"))
-			gate.retryUntil = time.Now().Add(time.Duration(failure.RetryAfter) * time.Second)
-		}
-		return Result{}, failure
-	}
-	data, err := io.ReadAll(io.LimitReader(response.Body, responseLimit+1))
-	if err != nil || len(data) > responseLimit {
-		return Result{}, &Error{Code: "invalid-response", Message: "Provider response could not be read or exceeded 8 MiB."}
+		return Result{}, err
 	}
 	result, err := parse(source, data, page, limit)
 	if err != nil {
@@ -254,4 +217,66 @@ func retryDelay(raw string) int {
 		}
 	}
 	return max(0, min(seconds, 3600))
+}
+
+// fetchJSON shares search/autocomplete host throttles, cancellation and redirect policy.
+func (c *Client) fetchJSON(ctx context.Context, source Source, req *http.Request, maxBytes int) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	base, _ := url.Parse(source.URL)
+	host := strings.ToLower(strings.TrimSuffix(base.Hostname(), "."))
+	entry, _ := c.hosts.LoadOrStore(host, &hostGate{busy: make(chan struct{}, 1)})
+	gate := entry.(*hostGate)
+	select {
+	case gate.busy <- struct{}{}:
+		defer func() { <-gate.busy }()
+	case <-ctx.Done():
+		return nil, requestError(ctx)
+	}
+	if remaining := time.Until(gate.retryUntil); remaining > 0 {
+		return nil, &Error{Code: "rate-limited", Message: "Provider requested a pause before retrying.", RetryAfter: int(remaining.Seconds()) + 1}
+	}
+	timer := time.NewTimer(time.Until(gate.last.Add(c.interval)))
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+	case <-ctx.Done():
+		return nil, requestError(ctx)
+	}
+	select {
+	case c.global <- struct{}{}:
+		defer func() { <-c.global }()
+	case <-ctx.Done():
+		return nil, requestError(ctx)
+	}
+	gate.last = time.Now()
+	req = req.Clone(ctx)
+	client := *c.http
+	client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error {
+		// Never forward credentials or follow a provider's arbitrary redirect.
+		return http.ErrUseLastResponse
+	}
+	response, err := client.Do(req)
+	if err != nil {
+		// Do not return url.Error: its URL may contain API credentials.
+		return nil, requestError(ctx)
+	}
+	defer response.Body.Close()
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		failure := &Error{Code: "provider-error", Message: fmt.Sprintf("Provider returned HTTP %d. Try again later or check its API requirements.", response.StatusCode)}
+		switch response.StatusCode {
+		case http.StatusUnauthorized, http.StatusForbidden:
+			failure.Code, failure.Message = "authentication", "Provider denied access. Check server-side API credentials, account restrictions or its current API policy."
+		case http.StatusTooManyRequests:
+			failure.Code, failure.Message = "rate-limited", "Provider rate limit reached. Wait before retrying."
+			failure.RetryAfter = retryDelay(response.Header.Get("Retry-After"))
+			gate.retryUntil = time.Now().Add(time.Duration(failure.RetryAfter) * time.Second)
+		}
+		return nil, failure
+	}
+	data, err := io.ReadAll(io.LimitReader(response.Body, int64(maxBytes)+1))
+	if err != nil || len(data) > maxBytes {
+		return nil, &Error{Code: "invalid-response", Message: "Provider response could not be read or exceeded its size limit."}
+	}
+	return data, nil
 }

@@ -3,6 +3,7 @@ import { Alert, Button, Form } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import { type BooruPost, readBooruResponse } from "./browser";
 import { FolderPicker } from "./FolderPicker";
+import { loadDownloadPreferences } from "./downloadPreferences";
 interface DownloadState {
   jobID: number;
   token: string;
@@ -40,9 +41,11 @@ function rememberedJob(identity: string): DownloadState | undefined {
 export function BooruDownload({
   post,
   instance,
+  compact = false,
 }: {
   post: BooruPost;
   instance: string;
+  compact?: boolean;
 }) {
   const identity = `booru-download:${instance}:${post.id}`;
   const [state, setState] = useState<DownloadState | undefined>(() =>
@@ -62,24 +65,45 @@ export function BooruDownload({
     };
   }, []);
   useEffect(() => {
-    const controller = new AbortController();
-    void fetch("booru-browser/download-settings", { signal: controller.signal })
-      .then(readBooruResponse<{ convert: boolean; defaultDirectory: string }>)
-      .then((settings) => {
-        if (!controller.signal.aborted) {
-          setConvert(settings.convert);
-          setDirectory(settings.defaultDirectory);
-          setReady(true);
-        }
-      })
-      .catch((cause: Error) => {
-        if (!controller.signal.aborted) {
-          setError(cause.message);
-          setReady(true);
-        }
-      });
-    return () => controller.abort();
+    let active = true;
+    let generation = 0;
+    const load = () => {
+      const requested = ++generation;
+      setReady(false);
+      void loadDownloadPreferences()
+        .then((settings) => {
+          if (active && requested === generation) {
+            setConvert(settings.convert);
+            setDirectory(settings.defaultDirectory);
+            setReady(true);
+            setError("");
+          }
+        })
+        .catch((cause: Error) => {
+          if (active && requested === generation) {
+            setError(cause.message);
+            setReady(true);
+          }
+        });
+    };
+    load();
+    window.addEventListener("booru-download-settings", load);
+    return () => {
+      active = false;
+      window.removeEventListener("booru-download-settings", load);
+    };
   }, []);
+
+  useEffect(() => {
+    const changed = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{ identity: string; state: DownloadState }>
+      ).detail;
+      if (detail?.identity === identity) setState(detail.state);
+    };
+    window.addEventListener("booru-download-job", changed);
+    return () => window.removeEventListener("booru-download-job", changed);
+  }, [identity]);
   const jobID = state?.jobID,
     token = state?.token;
   const terminal =
@@ -143,6 +167,11 @@ export function BooruDownload({
       } catch {
         /* Job can still finish in Stash. */
       }
+      window.dispatchEvent(
+        new CustomEvent("booru-download-job", {
+          detail: { identity, state: result },
+        })
+      );
     } catch (cause) {
       if (mounted.current)
         setError(cause instanceof Error ? cause.message : String(cause));
@@ -178,48 +207,74 @@ export function BooruDownload({
           : undefined
       : undefined;
   return (
-    <section className="booru-download mb-3" aria-label="Download this post">
-      <h6>Download into Stash</h6>
-      <p className="mb-1">
-        Original
-        {post.bytes
-          ? ` · ${post.bytes.toLocaleString()} bytes`
-          : " · size unknown"}
-        . Maximum 128 MiB.
-      </p>
-      <Form.Check
-        id={`booru-convert-${post.sourceID}-${post.id}`}
-        label="Convert using Media converter defaults"
-        checked={convert}
-        disabled={busy || running || !ready}
-        onChange={(event) => setConvert(event.currentTarget.checked)}
-      />
-      <small className="d-block text-muted mb-2">
-        Uses the converter's saved format, quality, effort, worker and savings
-        policy. Originals follow its normal recovery rules.
-      </small>
-      <p className="booru-destination">
-        Default folder:{" "}
-        {directory ||
-          "Not configured — set it in Downloads & autocomplete, or use Download to…"}
-      </p>
+    <section
+      className={`booru-download ${compact ? "booru-download-compact" : "mb-3"}`}
+      aria-label={compact ? `Download post ${post.id}` : "Download this post"}
+    >
+      {!compact && (
+        <>
+          <h6>Download into Stash</h6>
+          <p className="mb-1">
+            Original
+            {post.bytes
+              ? ` · ${post.bytes.toLocaleString()} bytes`
+              : " · size unknown"}
+            . Maximum 128 MiB.
+          </p>
+          <Form.Check
+            id={`booru-convert-${post.sourceID}-${post.id}`}
+            label="Convert using Media converter defaults"
+            checked={convert}
+            disabled={busy || running || !ready}
+            onChange={(event) => setConvert(event.currentTarget.checked)}
+          />
+          <small className="d-block text-muted mb-2">
+            Uses the converter's saved format, quality, effort, worker and
+            savings policy. Originals follow its normal recovery rules.
+          </small>
+          <p className="booru-destination">
+            Default folder:{" "}
+            {directory ||
+              "Not configured — set it in Downloads & autocomplete, or use Download to…"}
+          </p>
+        </>
+      )}
       {error && <Alert variant="warning">{error}</Alert>}
       {state?.error && <Alert variant="warning">{state.error}</Alert>}
       <Button
         size="sm"
         disabled={busy || running || !ready || !available || !directory}
+        aria-label={
+          compact ? `Download ${post.sourceID} post ${post.id}` : undefined
+        }
+        title={
+          compact
+            ? `Save to ${directory || "configured default folder"}${convert ? " using converter defaults" : ""}`
+            : undefined
+        }
         onClick={() => void start(directory)}
       >
-        {terminal ? "Retry download to Stash" : "Download to Stash"}
+        {compact
+          ? terminal
+            ? "Retry"
+            : "Download"
+          : terminal
+            ? "Retry download to Stash"
+            : "Download to Stash"}
       </Button>
       <Button
         size="sm"
         className="ml-2"
         variant="secondary"
         disabled={busy || running || !ready || !available}
+        aria-label={
+          compact
+            ? `Choose download folder for ${post.sourceID} post ${post.id}`
+            : undefined
+        }
         onClick={() => setPicker(true)}
       >
-        Download to…
+        {compact ? "Folder…" : "Download to…"}
       </Button>
       {running && (
         <Button
@@ -248,7 +303,7 @@ export function BooruDownload({
         </small>
       )}
       {state?.library?.notice && <p>{state.library.notice}</p>}
-      {!available && (
+      {!available && !compact && (
         <small className="d-block">
           Original unavailable, over the size limit, or its source needs a CDN
           configuration update.

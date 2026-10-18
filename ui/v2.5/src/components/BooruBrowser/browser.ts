@@ -45,6 +45,9 @@ export interface BrowserSearch {
   pages: Record<string, number>;
   inspect?: { source: string; id: string };
   showIgnored?: boolean;
+  sort?: "newest" | "popular" | "updated";
+  rating?: "safe" | "questionable" | "explicit";
+  media?: "images" | "videos";
   error?: string;
 }
 
@@ -81,6 +84,16 @@ export function readBrowserSearch(search: string): BrowserSearch {
   if (params.get("ignored") === "1") result.showIgnored = true;
   else if (params.has("ignored") && params.get("ignored") !== "0")
     result.error = "Invalid ignored-post filter.";
+  for (const [key, choices] of Object.entries({
+    sort: ["newest", "popular", "updated"],
+    rating: ["safe", "questionable", "explicit"],
+    media: ["images", "videos"],
+  })) {
+    const value = params.get(key);
+    if (value && !choices.includes(value))
+      result.error = "Invalid browser filter.";
+    else if (value) Object.assign(result, { [key]: value });
+  }
   const inspect = params.get("inspect")?.split(":");
   if (
     inspect?.length === 2 &&
@@ -101,6 +114,8 @@ export function browserSearchURL(value: BrowserSearch): string {
     }
   }
   if (value.showIgnored) params.set("ignored", "1");
+  for (const key of ["sort", "rating", "media"] as const)
+    if (value[key]) params.set(key, value[key]);
   if (value.query) params.set("q", value.query);
   if (value.inspect) {
     params.set("inspect", `${value.inspect.source}:${value.inspect.id}`);
@@ -161,6 +176,8 @@ export interface BrowserMemory {
   settings: boolean;
   tagSource: string;
   scroll: number;
+  thumbnails?: boolean;
+  autocomplete?: "live" | "database";
 }
 const key = "booru-browser-state-v1";
 export function readBrowserMemory(): BrowserMemory | undefined {
@@ -180,6 +197,10 @@ export function readBrowserMemory(): BrowserMemory | undefined {
       ) ||
       typeof value.settings !== "boolean" ||
       typeof value.tagSource !== "string" ||
+      (value.thumbnails !== undefined &&
+        typeof value.thumbnails !== "boolean") ||
+      (value.autocomplete !== undefined &&
+        !["live", "database"].includes(value.autocomplete)) ||
       !Number.isFinite(value.scroll)
     )
       return undefined;
@@ -194,4 +215,39 @@ export function saveBrowserMemory(value: BrowserMemory) {
   } catch {
     /* Browsing still works when storage is unavailable. */
   }
+}
+
+export function postMediaKind(
+  post: BooruPost
+): "images" | "videos" | "unknown" {
+  const ext = post.format?.toLowerCase();
+  if (ext && ["mp4", "webm", "mkv", "mov", "avi", "m4v"].includes(ext))
+    return "videos";
+  if (
+    ext &&
+    [
+      "jpg",
+      "jpeg",
+      "png",
+      "gif",
+      "apng",
+      "webp",
+      "avif",
+      "jxl",
+      "bmp",
+      "tiff",
+    ].includes(ext)
+  )
+    return "images";
+  return "unknown";
+}
+
+export function browserResultSignature(
+  query: string,
+  page: number,
+  sort?: string,
+  rating?: string,
+  media?: string
+) {
+  return JSON.stringify([query, page, sort ?? "", rating ?? "", media ?? ""]);
 }

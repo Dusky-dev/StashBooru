@@ -91,7 +91,22 @@ func (rs booruBrowserRoutes) Search(w http.ResponseWriter, r *http.Request) {
 		if source.ID != query.Get("source") {
 			continue
 		}
-		result, err := rs.client.Search(r.Context(), source, query.Get("q"), page, limit)
+		options := booru.SearchOptions{Sort: query.Get("sort"), Rating: query.Get("rating")}
+		if !options.Validate() {
+			writeBooruError(w, 400, "invalid-query", "Invalid sort or rating filter.")
+			return
+		}
+		var result booru.Result
+		if filtered, ok := rs.client.(interface {
+			SearchFiltered(context.Context, booru.Source, string, int, int, booru.SearchOptions) (booru.Result, error)
+		}); ok {
+			result, err = filtered.SearchFiltered(r.Context(), source, query.Get("q"), page, limit, options)
+		} else if options.Sort != "" || options.Rating != "" {
+			writeBooruError(w, 400, "unsupported-filter", "Filters unavailable for this source.")
+			return
+		} else {
+			result, err = rs.client.Search(r.Context(), source, query.Get("q"), page, limit)
+		}
 		if err != nil {
 			failure := &booru.Error{Code: "unavailable", Message: "Provider search failed."}
 			var providerError *booru.Error
@@ -99,6 +114,9 @@ func (rs booruBrowserRoutes) Search(w http.ResponseWriter, r *http.Request) {
 				failure = providerError
 			}
 			status := http.StatusBadGateway
+			if failure.Code == "invalid-query" || failure.Code == "unsupported-filter" {
+				status = http.StatusBadRequest
+			}
 			if failure.Code == "rate-limited" {
 				status = http.StatusTooManyRequests
 			}

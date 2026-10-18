@@ -151,7 +151,7 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
         </Alert>
       )}
       {!draft && error && <Alert variant="danger">{error}</Alert>}
-      {!draft && <BrowserToolsSettings key={settings?.revision} />}
+      {!draft && settings && <BrowserToolsSettings key={settings.revision} />}
       <div className="booru-settings-toolbar">
         <Button
           size="sm"

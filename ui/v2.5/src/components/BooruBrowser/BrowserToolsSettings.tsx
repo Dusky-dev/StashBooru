@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Form } from "react-bootstrap";
 import { type BooruSource, readBooruResponse } from "./browser";
 import { FolderPicker } from "./FolderPicker";
+import { invalidateDownloadPreferences } from "./downloadPreferences";
 interface TagDatabase {
   count: number;
   revision: string;
@@ -31,6 +32,7 @@ export function BrowserToolsSettings() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: Explicit reload retries the saved settings request.
   useEffect(() => {
     const controller = new AbortController();
+    setLoaded(false);
     void Promise.all([
       fetch("booru-browser/sources", { signal: controller.signal }).then(
         readBooruResponse<BooruSource[]>
@@ -103,6 +105,8 @@ export function BrowserToolsSettings() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ convert, defaultDirectory: directory }),
     }).then(readBooruResponse);
+    invalidateDownloadPreferences();
+    window.dispatchEvent(new Event("booru-download-settings"));
     if (mounted.current) setNotice("Download settings saved.");
   }
   async function install(fromPath: boolean) {
@@ -160,7 +164,7 @@ export function BrowserToolsSettings() {
         <Form.Label>Default Stash download folder</Form.Label>
         <Form.Control
           value={directory}
-          disabled={busy}
+          disabled={busy || !loaded}
           onChange={(event) => setDirectory(event.currentTarget.value)}
           placeholder="/path/to/stash/downloads"
         />
@@ -168,7 +172,7 @@ export function BrowserToolsSettings() {
       <Button
         variant="secondary"
         size="sm"
-        disabled={busy}
+        disabled={busy || !loaded}
         onClick={() => setPicker(true)}
       >
         Choose default folder
@@ -223,7 +227,7 @@ export function BrowserToolsSettings() {
         <Form.Label>Autocomplete database CSV path on the server</Form.Label>
         <Form.Control
           value={databasePath}
-          disabled={busy}
+          disabled={busy || !database}
           onChange={(event) => setDatabasePath(event.currentTarget.value)}
           placeholder="/models/autocomplete/danbooru.csv"
         />
@@ -246,7 +250,7 @@ export function BrowserToolsSettings() {
         type="file"
         accept=".csv,text/csv"
         aria-label="Tag database CSV"
-        disabled={busy}
+        disabled={busy || !database}
         onChange={(event) => setFile(event.currentTarget.files?.[0])}
       />
       <div className="mt-2 d-flex flex-wrap">

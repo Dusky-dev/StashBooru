@@ -232,6 +232,7 @@ func Initialize() (*Server, error) {
 	r.Get("/booru-browser/download", booruRoutes.DownloadStatus)
 	r.Post("/booru-browser/download", booruRoutes.StartDownload)
 	r.Get("/booru-browser/tags", booruRoutes.Tags)
+	r.Get("/booru-browser/autocomplete", booruRoutes.Autocomplete)
 	r.Post("/booru-browser/tags", booruRoutes.ImportTags)
 	r.Post("/booru-browser/tag-path", booruRoutes.ImportTagPath)
 	r.Get("/booru-browser/directories", booruRoutes.Directories)

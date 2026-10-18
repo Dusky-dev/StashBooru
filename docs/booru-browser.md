@@ -3,8 +3,8 @@
 Open **Booru** (globe) in the navbar, or `/booru`. This browser searches
 remote posts and displays their previews and metadata.
 [Downloads and autocomplete](booru-downloads-autocomplete.md) adds explicit file
-downloads into Stash, optional saved converter defaults, and per-source CSV tag
-databases via upload or server path. Native scan registers media; Artist/Character/
+downloads into Stash, optional saved converter defaults, and live tag completion with optional per-source CSV databases via upload or
+server path. Native scan registers media; Artist/Character/
 Copyright/tag metadata import remains separate reviewed work.
 [B02 review state](booru-review-state.md) adds durable ignored/manual-download
 marks and bounded current-file MD5 matches. Metadata entity review, batch downloads,
@@ -21,11 +21,41 @@ not discard another source's results. Inspect a thumbnail or post number to view
 the larger remote preview and grouped raw tags; **Open remote post** visits the
 source site in a separate tab.
 
-The same query is sent unchanged to each source. Space-separated tags and
+With the sort/rating controls at their defaults, the same query is sent unchanged
+to each source. Other control values append the selected engine's native filter
+syntax; Philomena uses its native sort parameter and rating-tag expression. Space-separated tags and
 underscores are common to the first four engines; Philomena uses its own syntax,
 including tags with spaces and comma/AND combinations. Expand **Search help** in the sidebar for each selected source. Provider ratings, search limits, account filters and metatags
 remain provider-specific. Unsupported/rejected queries are errors rather than
 being silently simplified to a broader search.
+
+The sidebar groups sources, a native expression input, removable search-term
+chips and **Filters & display**. Chips preserve exclusions and quoted expressions;
+the full text input remains editable. Suggestions carry category/source labels.
+Enter/Tab completes a highlighted suggestion; **Ctrl+Enter** submits the search.
+Clicking a card tag appends it to the draft; page tags prepare a query as before.
+
+**Sort by** offers provider default, newest and popular. Updated ordering is
+available for Danbooru, e621 and Moebooru; Gelbooru/Philomena reject an explicit
+unsupported updated-sort URL. **Rating** offers All ratings, Safe / General,
+Questionable and Explicit. Safe means General on current Danbooru/Gelbooru;
+Philomena's Questionable selection also includes Suggestive. Leave these controls
+at their defaults when writing your own order/rating expressions.
+
+**Media on this page** filters the currently loaded page into Images or Videos.
+It does not refetch or repaginate the provider, and totals still include all media.
+Missing formats remain unknown rather than being guessed. **Show thumbnails**
+controls grid image loading; inspecting a post remains an explicit preview action.
+These controls, per-source pages and inspection persist through refresh/back.
+Autocomplete mode and thumbnail visibility are local browser preferences.
+**Filters & display** starts collapsed on mobile; sources/search stay accessible.
+
+Each card exposes **Download** (saved default folder/converter preference) and
+**Folder…** (choose an existing library folder). These use the same native Jobs,
+checksums, import and converter flow as the inspector. Changes saved in download
+settings refresh mounted card preferences, including when an older request ends
+late. Cards and the inspector share newly queued job identity. Downloading remains
+an explicit action, separate from manual review marks.
 
 Query, selected sources, per-source page and inspected post identity are in the
 URL, supporting refresh/back navigation. This is a live listing, not a persistent
@@ -40,7 +70,7 @@ Preview bytes use a bounded same-origin media route backed by server-owned
 search keys, validated provider/CDN hosts and public DNS. Missing, expired,
 blocked or unsupported previews have a fallback message and remote link.
 Originals are never substituted for missing thumbnails. See
-[thumbnail limits](booru-downloads-autocomplete.md#thumbnails).
+[thumbnail limits](booru-downloads-autocomplete.md#refresh-and-preview-recovery).
 Dimensions, byte size, rating and MD5 are provider metadata; unknown
 fields stay unknown. A preview is not proof of full-file identity or quality.
 Flat tag APIs are labelled **category not supplied**, rather than classifying
@@ -207,3 +237,11 @@ returns redacted definitions and a revision; `POST` to the same route requires
 JSON, that revision, `action` (`save`, `remove`, `reset`) and a `source` definition.
 `clearAPIKey` deliberately removes credentials. Stale revisions return 409;
 cross-origin browser writes are rejected.
+
+## Design reference
+
+The integrated sidebar, search chips, card actions and live completion approach
+use [Codename-11/Stash-Downloader's Stash Browser](https://github.com/Codename-11/Stash-Downloader)
+as a reference, adapted to native StashBooru React/Go components. Its copyright
+and [MIT license notice](third-party/stash-browser-MIT.txt) are retained. A separate
+plugin installation or Python proxy is not required for this browser.

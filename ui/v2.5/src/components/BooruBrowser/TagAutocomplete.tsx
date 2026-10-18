@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { type BooruSource, readBooruResponse } from "./browser";
-import { completionToken, applyCompletion } from "./completion";
+import {
+  completionToken,
+  applyCompletion,
+  queryTerms,
+  removeQueryTerm,
+} from "./completion";
 
 interface Suggestion {
   name: string;
@@ -14,10 +19,12 @@ export function TagAutocomplete({
   value,
   onChange,
   sources,
+  mode = "live",
 }: {
   value: string;
   onChange: (value: string) => void;
   sources: BooruSource[];
+  mode?: "live" | "database";
 }) {
   const input = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLUListElement>(null);
@@ -28,6 +35,10 @@ export function TagAutocomplete({
   const [notice, setNotice] = useState("");
   const comma =
     sources.length > 0 && sources.every((s) => s.engine === "philomena");
+  useEffect(
+    () => setCaret((current) => Math.min(current, value.length)),
+    [value]
+  );
   const token = completionToken(value, caret, comma);
   const sourceKey = sources.map((s) => `${s.id}:${s.instance}`).join(",");
   // biome-ignore lint/correctness/useExhaustiveDependencies: Stable source identity list governs requests.
@@ -37,7 +48,7 @@ export function TagAutocomplete({
     setNotice("");
     if (
       token.prefix.length < 2 ||
-      token.prefix.includes(":") ||
+      (!comma && token.prefix.includes(":")) ||
       sources.length === 0
     )
       return () => controller.abort();
@@ -48,17 +59,19 @@ export function TagAutocomplete({
             source: source.id,
             instance: source.instance,
             q: token.prefix,
+            mode,
           });
-          const result = await fetch(`booru-browser/tags?${params}`, {
+          const result = await fetch(`booru-browser/autocomplete?${params}`, {
             signal: controller.signal,
           }).then(
             readBooruResponse<{
-              count: number;
+              mode: string;
+              notice?: string;
               suggestions: Omit<Suggestion, "source">[];
             }>
           );
           return {
-            count: result.count,
+            notice: result.notice,
             items: result.suggestions.map((item) => ({
               ...item,
               source: source.name,
@@ -71,9 +84,13 @@ export function TagAutocomplete({
           const available = results.flatMap((result) =>
             result.status === "fulfilled" ? [result.value] : []
           );
-          if (available.length < results.length)
+          if (available.length === 0)
             setNotice(
-              "Some tag databases are unavailable. Suggestions from the others are shown."
+              "Autocomplete unavailable. Check source access or select Installed CSV only in Filters & display."
+            );
+          else if (available.length < results.length)
+            setNotice(
+              "Some sources are unavailable. Suggestions from the others are shown."
             );
           const combined = available
             .flatMap((result) => result.items)
@@ -89,24 +106,27 @@ export function TagAutocomplete({
           setActive(0);
           if (
             available.length === results.length &&
-            available.every((result) => result.count === 0)
+            available.some((result) => result.notice)
           )
             setNotice(
-              "Upload a tag CSV in Source settings to enable autocomplete."
+              available
+                .map((result) => result.notice)
+                .filter(Boolean)
+                .join(" ")
             );
         })
         .catch(() => {
           if (!controller.signal.aborted)
             setNotice(
-              "Autocomplete unavailable. Check the tag databases in Source settings."
+              "Autocomplete unavailable. Check source access or the optional CSV database in settings."
             );
         });
-    }, 180);
+    }, 350);
     return () => {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [token.prefix, sourceKey]);
+  }, [token.prefix, sourceKey, mode]);
   function choose(item: Suggestion) {
     const next = applyCompletion(value, token, item.name);
     if (new TextEncoder().encode(next).length > 1024) {
@@ -129,6 +149,28 @@ export function TagAutocomplete({
   }, [active, open]);
   return (
     <div className="booru-autocomplete">
+      {value.trim() && (
+        <div className="booru-query-chips" aria-label="Search terms">
+          {queryTerms(value, comma)
+            .slice(0, 30)
+            .map((term) => (
+              <span
+                className={`booru-query-chip ${term.name.startsWith("-") ? "is-excluded" : ""}`}
+                key={`${term.start}:${term.name}`}
+              >
+                <span>{term.name.replace(/_/g, " ")}</span>
+                <button
+                  type="button"
+                  aria-label={`Remove search term ${term.name}`}
+                  onClick={() => onChange(removeQueryTerm(value, term, comma))}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+        </div>
+      )}
+
       <input
         ref={input}
         id="booru-query"
@@ -157,6 +199,11 @@ export function TagAutocomplete({
         onBlur={() => setDismissed(true)}
         onFocus={() => setDismissed(false)}
         onKeyDown={(event) => {
+          if (event.ctrlKey && event.key === "Enter") {
+            event.preventDefault();
+            event.currentTarget.form?.requestSubmit();
+            return;
+          }
           if (event.key === "Escape") {
             setDismissed(true);
             return;
@@ -197,6 +244,11 @@ export function TagAutocomplete({
                 tabIndex={-1}
                 className={active === index ? "active" : ""}
               >
+                <span
+                  className={`booru-category-label tag-${["artist", "character", "copyright", "general", "meta", "species"].includes(item.category) ? item.category : "unknown"}`}
+                >
+                  {item.category}
+                </span>{" "}
                 <strong>{item.name}</strong>
                 <small>
                   {item.category} · {item.count.toLocaleString()} ·{" "}

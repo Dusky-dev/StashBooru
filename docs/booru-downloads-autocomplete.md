@@ -2,7 +2,8 @@
 
 Open **Booru → Downloads & autocomplete**. The same controls are available under
 **Source settings** and **Settings → Metadata Providers → Booru sources**.
-Preferences and autocomplete databases are shared by this Stash server.
+Download preferences and installed CSV databases are shared by this Stash server.
+Autocomplete mode and thumbnail visibility are remembered in this browser.
 
 ## Download into Stash
 
@@ -10,8 +11,12 @@ Set **Default Stash download folder** and save. **Choose default folder** browse
 existing directories inside configured Stash libraries. You can also enter an
 absolute server directory. Add a library under Stash's normal configuration first
 if the desired directory is outside the existing libraries.
+Wait for saved settings to load before editing. Saving updates the defaults used
+by cards already open in this browser.
 
-Inspect a post and choose:
+Each thumbnail card has **Download** and **Folder…** actions. These use the saved
+conversion checkbox and default folder; **Folder…** overrides only that download.
+Inspect a post for full progress, conversion controls and destination details:
 
 - **Download to Stash** to use the saved default directory.
 - **Download to…** to browse/select a directory for this download only. This does
@@ -65,7 +70,38 @@ No new encoder, model or alternate conversion implementation is installed. The
 selected worker must support the configured formats. Browser JPEG XL playback
 support is separate from saving/importing the converted file.
 
-## Install an autocomplete database
+## Live autocomplete and optional CSV fallback
+
+Autocomplete defaults to **Live, with CSV fallback** in **Filters & display**.
+It queries the selected sources through the authenticated server route; a CSV
+file is optional. **Installed CSV only** uses the installed per-source databases
+without contacting providers. A failed live request falls back to the installed
+CSV when available and shows a notice. No usable live response or database gives
+an explicit unavailable notice; other selected sources can still supply results.
+
+| Engine | Live endpoint |
+| --- | --- |
+| Danbooru | `/autocomplete.json`, tag-query mode. |
+| Gelbooru | `/index.php?page=autocomplete2`; Rule34 uses its public `api.rule34.xxx/autocomplete.php`. |
+| Moebooru | `/tag.json`, prefix name and count ordering. |
+| e621 | `/tags.json`, prefix name matching and count ordering. |
+| Philomena | `/autocomplete/tags`; at least three prefix bytes are needed. |
+
+Credentials stay in the server configuration. Requests share the browser's
+public-HTTPS transport, redirect rejection, one-request-per-second host gate,
+global concurrency and provider rate-limit cooldown with searches. Completion
+waits 350 ms after typing, aborts obsolete requests, limits responses to 512 KiB
+and 200 raw records, and returns at most 20 suggestions. Successful results use a
+five-minute, 512-entry cache isolated by source instance, credentials and prefix.
+Errors are not cached as empty success. Site/API access restrictions still apply;
+compatible custom sites must expose the selected engine's endpoint.
+
+Counts and categories come from each provider. Missing categories remain unknown;
+Rule34's label may supply a count without a category. This is autocomplete data,
+not a native Artist/Character/Copyright mapping. No original media is downloaded
+by typing a tag.
+
+## Install an optional autocomplete database
 
 Choose **Tag database source**, then use either:
 
@@ -109,7 +145,8 @@ also works. Completion replaces the token at the cursor and preserves exclusions
 and surrounding tags. Philomena-only searches use comma-delimited tags with
 spaces; other/mixed sources use whitespace. Metatag expressions containing a colon
 are left alone. One unavailable database does not discard other sources' results.
-No provider API request or automatic internet database download is involved.
+CSV-only mode performs no provider API request. No database is downloaded
+automatically; live mode requests only bounded suggestions for the typed prefix.
 
 Databases live beside config.yml in `booru-tags/<instance>.csv`, with saved path
 metadata alongside them. Matching engine/normalized URL aliases share a database;
@@ -147,7 +184,9 @@ fallback uses the browser's normal image handling and network access.
 
 ## Verification scope
 
-Tests cover native scan registration/idempotence, saved converter settings,
+Tests cover live engine endpoints, credentials/cache isolation, shared throttling,
+cancellation, CSV fallback and source changes, native scan registration/idempotence,
+saved converter settings,
 destination/symlink boundaries, retention after import failure, retry without
 overwrite, CSV path import/revision behavior, preview transport and browser
 refresh/fallback/default/custom folder flows. Synthetic fixtures and a local PNG

@@ -7,6 +7,9 @@ import {
   type BooruPost,
   type BooruResult,
   type BooruSource,
+  type BrowserSearch,
+  postMediaKind,
+  browserResultSignature,
   browserSearchURL,
   readBooruResponse,
   readBrowserSearch,
@@ -180,10 +183,16 @@ function SourceResults({
   onClose,
   onResult,
   showIgnored,
+  filters,
+  thumbnails,
+  onTag,
 }: {
   source: BooruSource;
   query: string;
   showIgnored: boolean;
+  filters: Pick<BrowserSearch, "sort" | "rating" | "media">;
+  thumbnails: boolean;
+  onTag: (name: string) => void;
   page: number;
   inspect?: string;
   onPage: (page: number) => void;
@@ -192,6 +201,24 @@ function SourceResults({
   onResult: (id: string, signature: string, posts: BooruPost[]) => void;
 }) {
   const [result, setResult] = useState<BooruResult>();
+  const visiblePosts = useMemo(
+    () =>
+      result?.posts.filter(
+        (post) => !filters.media || postMediaKind(post) === filters.media
+      ) ?? [],
+    [result, filters.media]
+  );
+  const signature = browserResultSignature(
+    query,
+    page,
+    filters.sort,
+    filters.rating,
+    filters.media
+  );
+  useEffect(
+    () => onResult(source.id, signature, visiblePosts),
+    [onResult, source.id, signature, visiblePosts]
+  );
   const [review, setReview] = useState<ReviewState[]>([]);
   const onReview = useCallback((value: ReviewState[]) => setReview(value), []);
   const [error, setError] = useState("");
@@ -205,19 +232,20 @@ function SourceResults({
     setResult(undefined);
     setError("");
     setLoading(true);
-    onResult(source.id, `${query}:${page}`, []);
+
     const params = new URLSearchParams({
       source: source.id,
       q: query,
       page: String(page),
       limit: "24",
+      ...(filters.sort ? { sort: filters.sort } : {}),
+      ...(filters.rating ? { rating: filters.rating } : {}),
     });
     void fetch(`booru-browser/search?${params}`, { signal: request.signal })
       .then(readBooruResponse<BooruResult>)
       .then((value) => {
         if (!request.signal.aborted) {
           setResult(value);
-          onResult(source.id, `${query}:${page}`, value.posts);
         }
       })
       .catch((cause: unknown) => {
@@ -228,7 +256,7 @@ function SourceResults({
         if (!request.signal.aborted) setLoading(false);
       });
     return () => request.abort();
-  }, [source.id, query, page, retry, onResult]);
+  }, [source.id, query, page, retry, filters.sort, filters.rating]);
   const post = result?.posts.find((item) => item.id === inspect);
   return (
     <section
@@ -291,9 +319,16 @@ function SourceResults({
               {message("empty", "No posts returned for this page and query.")}
             </Alert>
           )}
+          {filters.media && (
+            <p className="small text-muted">
+              Showing {visiblePosts.length} of {result.posts.length} posts on
+              this loaded page. Provider totals and pagination include all
+              media.
+            </p>
+          )}
           <BooruReview
             source={source}
-            posts={result.posts}
+            posts={visiblePosts}
             showIgnored={showIgnored}
             onStates={onReview}
           >
@@ -305,7 +340,16 @@ function SourceResults({
                   onClick={() => onInspect(item.id)}
                   aria-label={`Inspect ${source.name} post ${item.id}`}
                 >
-                  {booruMediaURL(item, "preview") ? (
+                  {item.rating && (
+                    <span
+                      className={`booru-rating rating-${["s", "safe", "g", "general"].includes(item.rating) ? "safe" : ["q", "questionable", "sensitive"].includes(item.rating) ? "questionable" : "explicit"}`}
+                    >
+                      {item.rating}
+                    </span>
+                  )}
+                  {!thumbnails ? (
+                    <span>Thumbnails hidden</span>
+                  ) : booruMediaURL(item, "preview") ? (
                     <RemoteImage
                       key={item.previewURL}
                       src={booruMediaURL(item, "preview") || ""}
@@ -336,6 +380,20 @@ function SourceResults({
                     {item.rating && ` · ${item.rating}`}
                   </small>
                 </div>
+                <div className="booru-card-tags">
+                  {item.tags.slice(0, 3).map((tag) => (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      key={`${tag.category}:${tag.name}`}
+                      title={`Add ${tag.name} to search`}
+                      onClick={() => onTag(tag.name)}
+                    >
+                      {tag.name.replace(/_/g, " ")}
+                    </Button>
+                  ))}
+                </div>
+                <BooruDownload post={item} instance={source.instance} compact />
                 {controls}
               </article>
             )}
@@ -412,6 +470,13 @@ export default function BooruBrowser() {
   const [showSettings, setShowSettings] = useState(
     restoreDraft ? (remembered?.settings ?? false) : false
   );
+  const [filtersOpen, setFiltersOpen] = useState(
+    () => window.matchMedia("(min-width: 768px)").matches
+  );
+  const [thumbnails, setThumbnails] = useState(remembered?.thumbnails ?? true);
+  const [autocomplete, setAutocomplete] = useState<"live" | "database">(
+    remembered?.autocomplete ?? "live"
+  );
   const [tagSource, setTagSource] = useState(
     restoreDraft ? (remembered?.tagSource ?? "") : ""
   );
@@ -452,6 +517,8 @@ export default function BooruBrowser() {
     settings: showSettings,
     tagSource,
     scroll: restoreDraft ? (remembered?.scroll ?? 0) : 0,
+    thumbnails,
+    autocomplete,
   });
   useEffect(() => {
     memory.current = {
@@ -461,9 +528,19 @@ export default function BooruBrowser() {
       sources: selected,
       settings: showSettings,
       tagSource,
+      thumbnails,
+      autocomplete,
     };
     saveBrowserMemory(memory.current);
-  }, [effectiveSearch, query, selected, showSettings, tagSource]);
+  }, [
+    effectiveSearch,
+    query,
+    selected,
+    showSettings,
+    tagSource,
+    thumbnails,
+    autocomplete,
+  ]);
   useEffect(() => {
     const rememberScroll = () => {
       if (document.body.classList.contains("modal-open")) return;
@@ -572,40 +649,22 @@ export default function BooruBrowser() {
           )}
           {sources && (
             <Form
+              className="booru-search-card"
               onSubmit={(event) => {
                 event.preventDefault();
                 history.push({
                   pathname: "/booru",
                   search: browserSearchURL({
+                    ...active,
                     sources: selected,
                     query: query.trim(),
                     pages: {},
+                    inspect: undefined,
                     showIgnored: active.showIgnored,
                   }),
                 });
               }}
             >
-              <Form.Group controlId="booru-query" className="mb-2">
-                <Form.Label>Search</Form.Label>
-                <TagAutocomplete
-                  value={query}
-                  onChange={setQuery}
-                  sources={sources.filter((source) =>
-                    selected.includes(source.id)
-                  )}
-                />
-              </Form.Group>
-              <Button
-                type="submit"
-                size="sm"
-                className="w-100 mb-3"
-                aria-label="Search selected sources"
-                disabled={
-                  !query.trim() || selected.length === 0 || selected.length > 8
-                }
-              >
-                Search
-              </Button>
               <fieldset>
                 <legend>
                   {message("sources", "Sources")}{" "}
@@ -642,11 +701,145 @@ export default function BooruBrowser() {
                   ))}
                 </div>
               </fieldset>
+              <Form.Group controlId="booru-query" className="mb-2">
+                <Form.Label>Search</Form.Label>
+                <TagAutocomplete
+                  mode={autocomplete}
+                  value={query}
+                  onChange={setQuery}
+                  sources={sources.filter((source) =>
+                    selected.includes(source.id)
+                  )}
+                />
+              </Form.Group>
+              <Button
+                type="submit"
+                size="sm"
+                className="w-100 mb-3"
+                aria-label="Search selected sources"
+                disabled={
+                  !query.trim() || selected.length === 0 || selected.length > 8
+                }
+              >
+                Search
+              </Button>
+              <details
+                className="booru-filter-panel"
+                open={filtersOpen}
+                onToggle={(event) => setFiltersOpen(event.currentTarget.open)}
+              >
+                <summary>Filters & display</summary>
+                <Form.Group controlId="booru-sort">
+                  <Form.Label>Sort by</Form.Label>
+                  <Form.Control
+                    as="select"
+                    size="sm"
+                    value={active.sort ?? ""}
+                    onChange={(event) =>
+                      history.push({
+                        search: browserSearchURL({
+                          ...active,
+                          sort: (event.currentTarget.value ||
+                            undefined) as BrowserSearch["sort"],
+                          pages: {},
+                          inspect: undefined,
+                        }),
+                      })
+                    }
+                  >
+                    <option value="">Provider default</option>
+                    <option value="newest">Newest</option>
+                    <option value="popular">Popular</option>
+                    <option
+                      value="updated"
+                      disabled={sources.some(
+                        (s) =>
+                          selected.includes(s.id) &&
+                          ["gelbooru", "philomena"].includes(s.engine)
+                      )}
+                    >
+                      Updated
+                    </option>
+                  </Form.Control>
+                </Form.Group>
+                <Form.Group controlId="booru-rating">
+                  <Form.Label>Rating</Form.Label>
+                  <Form.Control
+                    as="select"
+                    size="sm"
+                    value={active.rating ?? ""}
+                    onChange={(event) =>
+                      history.push({
+                        search: browserSearchURL({
+                          ...active,
+                          rating: (event.currentTarget.value ||
+                            undefined) as BrowserSearch["rating"],
+                          pages: {},
+                          inspect: undefined,
+                        }),
+                      })
+                    }
+                  >
+                    <option value="">All ratings</option>
+                    <option value="safe">Safe / General</option>
+                    <option value="questionable">Questionable</option>
+                    <option value="explicit">Explicit</option>
+                  </Form.Control>
+                </Form.Group>
+                <Form.Group controlId="booru-media">
+                  <Form.Label>Media on this page</Form.Label>
+                  <Form.Control
+                    as="select"
+                    size="sm"
+                    value={active.media ?? ""}
+                    onChange={(event) =>
+                      history.push({
+                        search: browserSearchURL({
+                          ...active,
+                          media: (event.currentTarget.value ||
+                            undefined) as BrowserSearch["media"],
+                          inspect: undefined,
+                        }),
+                      })
+                    }
+                  >
+                    <option value="">All media</option>
+                    <option value="images">Images</option>
+                    <option value="videos">Videos</option>
+                  </Form.Control>
+                </Form.Group>
+                <Form.Group controlId="booru-autocomplete-mode">
+                  <Form.Label>Autocomplete</Form.Label>
+                  <Form.Control
+                    as="select"
+                    size="sm"
+                    value={autocomplete}
+                    onChange={(event) =>
+                      setAutocomplete(
+                        event.currentTarget.value as "live" | "database"
+                      )
+                    }
+                  >
+                    <option value="live">Live, with CSV fallback</option>
+                    <option value="database">Installed CSV only</option>
+                  </Form.Control>
+                </Form.Group>
+                <Form.Check
+                  id="booru-thumbnails"
+                  label="Show thumbnails"
+                  checked={thumbnails}
+                  onChange={(event) =>
+                    setThumbnails(event.currentTarget.checked)
+                  }
+                />
+              </details>
               <details className="booru-help">
                 <summary>Search help</summary>
                 <p>
-                  The same query is sent unchanged to selected sources. Syntax
-                  and account limits vary.
+                  Your expression keeps its native syntax. Sort and rating
+                  controls add provider filters. Leave controls at Provider
+                  default / All ratings when entering your own order or rating
+                  expressions. Ctrl+Enter searches directly.
                 </p>
                 {sources
                   .filter((source) => selected.includes(source.id))
@@ -689,6 +882,7 @@ export default function BooruBrowser() {
             pages={tagPages}
             query={active.query}
             activePages={active.pages}
+            filters={active}
             onTag={setQuery}
           />
           <p className="small text-muted booru-library-note">
@@ -724,8 +918,17 @@ export default function BooruBrowser() {
               return (
                 source && (
                   <SourceResults
-                    key={`${id}:${active.query}:${active.pages[id]}:${loadAttempt}`}
+                    key={`${id}:${active.query}:${active.pages[id]}:${loadAttempt}:${active.sort}:${active.rating}`}
                     source={source}
+                    filters={active}
+                    thumbnails={thumbnails}
+                    onTag={(name) =>
+                      setQuery((current) =>
+                        current.trim()
+                          ? `${current}${source.engine === "philomena" ? ", " : " "}${name}`
+                          : name
+                      )
+                    }
                     showIgnored={!!active.showIgnored}
                     onResult={onResult}
                     query={active.query}
@@ -777,6 +980,7 @@ function PageTags({
   pages,
   query,
   activePages,
+  filters,
   onTag,
 }: {
   sources: BooruSource[];
@@ -785,13 +989,22 @@ function PageTags({
   pages: Record<string, { signature: string; posts: BooruPost[] }>;
   query: string;
   activePages: Record<string, number>;
+  filters: Pick<BrowserSearch, "sort" | "rating" | "media">;
   onTag: (name: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const source = sources.find((item) => item.id === selected) ?? sources[0];
   const loaded = source ? pages[source.id] : undefined;
   const posts =
-    source && loaded?.signature === `${query}:${activePages[source.id]}`
+    source &&
+    loaded?.signature ===
+      browserResultSignature(
+        query,
+        activePages[source.id],
+        filters.sort,
+        filters.rating,
+        filters.media
+      )
       ? loaded.posts
       : [];
   const counts = new Map<
