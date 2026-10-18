@@ -221,11 +221,13 @@ func Initialize() (*Server, error) {
 	r.Mount("/group", server.getGroupRoutes())
 	r.Mount("/tag", server.getTagRoutes())
 	r.Mount("/downloads", server.getDownloadsRoutes())
-	booruRoutes := booruBrowserRoutes{configPath: cfg.GetConfigPath(), client: booru.NewClient()}
+	booruRoutes := booruBrowserRoutes{configPath: cfg.GetConfigPath(), client: booru.NewClient(), repository: repo}
 	r.Get("/booru-browser/sources", booruRoutes.Sources)
 	r.Get("/booru-browser/settings", booruRoutes.Settings)
 	r.Post("/booru-browser/settings", booruRoutes.UpdateSettings)
 	r.Get("/booru-browser/search", booruRoutes.Search)
+	r.Post("/booru-browser/review/read", booruRoutes.ReadReview)
+	r.Post("/booru-browser/review/update", booruRoutes.UpdateReview)
 
 	inheritanceRoutes := newAssociationInheritanceRoutes(repo, cfg, mgr.JobManager)
 	dedupRoutes := characterDedupRoutes{repository: repo, jobs: mgr.JobManager}

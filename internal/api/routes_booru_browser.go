@@ -9,11 +9,13 @@ import (
 	"strconv"
 
 	"github.com/stashapp/stash/pkg/booru"
+	"github.com/stashapp/stash/pkg/models"
 )
 
 // These routes share the server's normal authentication. They never modify the
 // catalogue, create jobs, or accept an arbitrary URL from the browser.
 type booruBrowserRoutes struct {
+	repository models.Repository
 	configPath string
 	client     *booru.Client
 }

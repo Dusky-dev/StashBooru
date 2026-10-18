@@ -12,6 +12,7 @@ import {
   readBrowserSearch,
   remoteURL,
 } from "./browser";
+import { BooruReview, ReviewEvidence, type ReviewState } from "./BooruReview";
 import { SourceSettings } from "./SourceSettings";
 import "./styles.scss";
 
@@ -26,10 +27,12 @@ function PostInspection({
   post,
   source,
   onHide,
+  review,
 }: {
   post: BooruPost;
   source: BooruSource;
   onHide: () => void;
+  review?: ReviewState;
 }) {
   const groups = [...new Set(post.tags.map((tag) => tag.category))];
   const sample = remoteURL(post.sampleURL);
@@ -41,12 +44,7 @@ function PostInspection({
         </Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        <p>
-          {message(
-            "remote_preview",
-            "Remote preview — this browser does not yet check whether the post is already in your library."
-          )}
-        </p>
+        <ReviewEvidence state={review} />
         {sample ? (
           <RemoteImage
             key={sample}
@@ -149,9 +147,11 @@ function SourceResults({
   onInspect,
   onClose,
   onResult,
+  showIgnored,
 }: {
   source: BooruSource;
   query: string;
+  showIgnored: boolean;
   page: number;
   inspect?: string;
   onPage: (page: number) => void;
@@ -160,6 +160,8 @@ function SourceResults({
   onResult: (id: string, signature: string, posts: BooruPost[]) => void;
 }) {
   const [result, setResult] = useState<BooruResult>();
+  const [review, setReview] = useState<ReviewState[]>([]);
+  const onReview = useCallback((value: ReviewState[]) => setReview(value), []);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [retry, setRetry] = useState(0);
@@ -257,8 +259,13 @@ function SourceResults({
               {message("empty", "No posts returned for this page and query.")}
             </Alert>
           )}
-          <div className="booru-grid">
-            {result.posts.map((item) => (
+          <BooruReview
+            source={source}
+            posts={result.posts}
+            showIgnored={showIgnored}
+            onStates={onReview}
+          >
+            {(item, controls) => (
               <article key={`${source.id}:${item.id}`} className="booru-post">
                 <Button
                   variant="link"
@@ -296,9 +303,10 @@ function SourceResults({
                     {item.rating && ` · ${item.rating}`}
                   </small>
                 </div>
+                {controls}
               </article>
-            ))}
-          </div>
+            )}
+          </BooruReview>
           <div className="d-flex flex-wrap mt-3 booru-pagination">
             <Button
               variant="secondary"
@@ -338,7 +346,14 @@ function SourceResults({
           )}
         </>
       )}
-      {post && <PostInspection post={post} source={source} onHide={onClose} />}
+      {post && (
+        <PostInspection
+          post={post}
+          source={source}
+          onHide={onClose}
+          review={review.find((state) => state.id === post.id)}
+        />
+      )}
     </section>
   );
 }
@@ -449,6 +464,7 @@ export default function BooruBrowser() {
                     sources: selected,
                     query: query.trim(),
                     pages: {},
+                    showIgnored: active.showIgnored,
                   }),
                 });
               }}
@@ -530,6 +546,19 @@ export default function BooruBrowser() {
               </details>
             </Form>
           )}
+          <Form.Check
+            id="booru-show-ignored"
+            label="Show ignored posts"
+            checked={!!active.showIgnored}
+            onChange={(event) =>
+              history.push({
+                search: browserSearchURL({
+                  ...active,
+                  showIgnored: event.currentTarget.checked || undefined,
+                }),
+              })
+            }
+          />
           <PageTags
             sources={[
               ...(sources?.filter((source) =>
@@ -547,7 +576,8 @@ export default function BooruBrowser() {
             onTag={setQuery}
           />
           <p className="small text-muted booru-library-note">
-            Remote listings. Local download status is not checked.
+            Manual marks are history. Local links require current-file MD5
+            verification.
           </p>
         </aside>
         <section className="booru-results" aria-label="Remote posts">
@@ -580,6 +610,7 @@ export default function BooruBrowser() {
                   <SourceResults
                     key={`${id}:${active.query}:${active.pages[id]}:${loadAttempt}`}
                     source={source}
+                    showIgnored={!!active.showIgnored}
                     onResult={onResult}
                     query={active.query}
                     page={active.pages[id]}

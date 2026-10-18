@@ -34,6 +34,7 @@ const browser = await engines.chromium.launch({
 });
 const sources = ["danbooru", "gelbooru", "philomena"].map((id) => ({
   id,
+  instance: `fixture-${id}`,
   name: id[0].toUpperCase() + id.slice(1),
   engine: id,
   url: `https://${id}.example.org`,
@@ -118,6 +119,16 @@ try {
     let revision = 1;
     let conflict = false;
     const writes = [];
+    const review = new Map();
+    let reviewConflict = false;
+    const reviewState = (source, instance, id) =>
+      review.get(`${source}:${instance}:${id}`) ?? {
+        id,
+        version: 0,
+        ignoredAt: "",
+        downloadedAt: "",
+        updatedAt: "",
+      };
     const settingsView = () => ({
       revision: String(revision),
       sources: savedSources,
@@ -131,6 +142,75 @@ try {
         }));
     await page.route("**/booru-browser/**", async (route) => {
       const url = new URL(route.request().url());
+      if (url.pathname.endsWith("/review/read")) {
+        const payload = route.request().postDataJSON();
+        await route.fulfill({
+          json: payload.posts.map((post) => ({
+            ...reviewState(payload.source, payload.instance, post.id),
+            checkedAt: "2026-10-17T23:30:00Z",
+            matchStatus: "no-indexed-match",
+            matches:
+              payload.source === "danbooru" && post.id === "101"
+                ? [
+                    {
+                      kind: "image",
+                      id: 42,
+                      fileID: "1",
+                      evidence: "current-file-md5",
+                    },
+                    {
+                      kind: "scene",
+                      id: 42,
+                      fileID: "2",
+                      evidence: "current-file-md5",
+                    },
+                  ]
+                : [],
+          })),
+        });
+        return;
+      }
+      if (url.pathname.endsWith("/review/update")) {
+        const payload = route.request().postDataJSON();
+        if (
+          reviewConflict ||
+          payload.changes.some(
+            (change) =>
+              reviewState(payload.source, payload.instance, change.id)
+                .version !== change.version
+          )
+        ) {
+          reviewConflict = false;
+          await route.fulfill({
+            status: 409,
+            json: {
+              error:
+                "Review state changed. Nothing was changed; reload review status.",
+            },
+          });
+          return;
+        }
+        const states = payload.changes.map((change) => {
+          const state = {
+            ...reviewState(payload.source, payload.instance, change.id),
+            version: change.version + 1,
+            updatedAt: "2026-10-17T23:30:00Z",
+          };
+          if (change.ignored !== undefined)
+            state.ignoredAt = change.ignored ? "2026-10-17T23:30:00Z" : "";
+          if (change.downloaded !== undefined)
+            state.downloadedAt = change.downloaded
+              ? "2026-10-17T23:30:00Z"
+              : "";
+          review.set(
+            `${payload.source}:${payload.instance}:${change.id}`,
+            state
+          );
+          return state;
+        });
+        await route.fulfill({ json: states });
+        return;
+      }
       if (url.pathname.endsWith("/settings")) {
         if (route.request().method() === "GET") {
           await route.fulfill({ json: settingsView() });
@@ -544,6 +624,12 @@ try {
     await dan
       .getByRole("button", { name: "Inspect Danbooru post 112", exact: true })
       .waitFor();
+    await dan
+      .getByRole("button", { name: "Select visible", exact: true })
+      .click({ trial: true });
+    await gel
+      .getByRole("button", { name: "Select visible", exact: true })
+      .click({ trial: true });
     if (process.env.STASH_BROWSER_SCREENSHOTS) {
       fs.mkdirSync(process.env.STASH_BROWSER_SCREENSHOTS, { recursive: true });
       await page.screenshot({
@@ -580,6 +666,156 @@ try {
       "inspection overflow"
     );
     await page.keyboard.press("Escape");
+    // B02 states are independent, persisted and filtered only within this provider page.
+    await dan
+      .getByRole("button", { name: "Mark downloaded", exact: true })
+      .click();
+    await dan
+      .getByText("Marked downloaded · manual", { exact: true })
+      .waitFor();
+    assert.equal(
+      await gel
+        .getByText("Marked downloaded · manual", { exact: true })
+        .count(),
+      0,
+      "state leaked to the same ID on another provider"
+    );
+    await dan.getByRole("button", { name: "Ignore", exact: true }).click();
+    await dan
+      .getByText("0 shown / 1 provider posts · 1 ignored hidden", {
+        exact: true,
+      })
+      .waitFor();
+    assert.equal(
+      await dan
+        .getByRole("button", { name: "Inspect Danbooru post 101", exact: true })
+        .count(),
+      0
+    );
+    assert.equal(
+      await dan.getByRole("button", { name: "Next", exact: true }).isEnabled(),
+      true,
+      "local filtering changed provider paging"
+    );
+    await dan
+      .getByRole("button", { name: "Undo last review change", exact: true })
+      .click();
+    await dan
+      .getByText("Marked downloaded · manual", { exact: true })
+      .waitFor();
+    await dan.getByRole("button", { name: "Ignore", exact: true }).click();
+    await dan
+      .getByText("0 shown / 1 provider posts · 1 ignored hidden", {
+        exact: true,
+      })
+      .waitFor();
+    await page.getByLabel("Show ignored posts", { exact: true }).check();
+    await dan.getByText("Ignored", { exact: true }).waitFor();
+    assert.ok(page.url().includes("ignored=1"));
+    await page.reload();
+    await dan.getByText("Ignored", { exact: true }).waitFor();
+    await dan
+      .getByText("Marked downloaded · manual", { exact: true })
+      .waitFor();
+    await dan.getByRole("button", { name: "Unignore", exact: true }).click();
+    await dan.getByRole("button", { name: "Ignore", exact: true }).waitFor();
+    await dan
+      .getByRole("button", { name: "Clear manual mark", exact: true })
+      .click();
+    await dan
+      .getByRole("button", { name: "Mark downloaded", exact: true })
+      .waitFor();
+    assert.equal(
+      await dan
+        .getByRole("link", { name: "In library · Image #42", exact: true })
+        .getAttribute("href"),
+      "/images/42"
+    );
+    assert.equal(
+      await dan
+        .getByRole("link", { name: "In library · Video #42", exact: true })
+        .getAttribute("href"),
+      "/scenes/42"
+    );
+    await gel
+      .getByRole("button", { name: "Mark downloaded", exact: true })
+      .click();
+    await gel
+      .getByText("Marked downloaded · manual", { exact: true })
+      .waitFor();
+    assert.equal(
+      await gel.getByRole("link", { name: /In library/ }).count(),
+      0,
+      "manual marking fabricated a local link"
+    );
+    await dan
+      .getByRole("button", { name: "Select visible", exact: true })
+      .click();
+    await dan
+      .getByRole("button", { name: "Ignore selected", exact: true })
+      .click();
+    await dan.getByText("Ignored", { exact: true }).waitFor();
+    await dan
+      .getByRole("button", { name: "Select visible", exact: true })
+      .click();
+    await page.getByLabel("Show ignored posts", { exact: true }).uncheck();
+    await page.getByLabel("Show ignored posts", { exact: true }).check();
+    assert.equal(
+      await dan
+        .getByLabel("Select Danbooru post 101", { exact: true })
+        .isChecked(),
+      false,
+      "hidden selections were resurrected by the filter"
+    );
+    await dan
+      .getByRole("button", { name: "Select visible", exact: true })
+      .click();
+    await dan
+      .getByRole("button", { name: "Mark selected downloaded", exact: true })
+      .click();
+    await dan
+      .getByText("Marked downloaded · manual", { exact: true })
+      .waitFor();
+    await dan
+      .getByRole("button", { name: "Undo last review change", exact: true })
+      .click();
+    await dan
+      .getByRole("button", { name: "Mark downloaded", exact: true })
+      .waitFor();
+    await dan.getByText("Ignored", { exact: true }).waitFor();
+    await dan
+      .getByRole("button", { name: "Select visible", exact: true })
+      .click();
+    reviewConflict = true;
+    await dan
+      .getByRole("button", { name: "Unignore selected", exact: true })
+      .click();
+    await dan
+      .getByRole("alert")
+      .filter({ hasText: "Nothing was changed" })
+      .waitFor();
+    await dan.getByText("Ignored", { exact: true }).waitFor();
+    assert.equal(
+      await dan
+        .getByRole("button", { name: "Unignore selected", exact: true })
+        .isDisabled(),
+      true,
+      "stale review writes remained enabled"
+    );
+    await dan
+      .getByRole("button", { name: "Reload review status", exact: true })
+      .click();
+    await dan.getByRole("button", { name: "Unignore", exact: true }).click();
+    await dan.getByRole("button", { name: "Ignore", exact: true }).waitFor();
+    await page.getByLabel("Show ignored posts", { exact: true }).uncheck();
+    const searchesBeforeFilter = requests.length;
+    await page.getByLabel("Show ignored posts", { exact: true }).check();
+    await page.getByLabel("Show ignored posts", { exact: true }).uncheck();
+    assert.equal(
+      requests.length,
+      searchesBeforeFilter,
+      "changing review filters refetched provider searches"
+    );
     await page.goto(`${baseURL}/booru?source=disabled&q=cat`);
     await page
       .getByRole("alert")
@@ -621,7 +857,7 @@ try {
     assert.deepEqual(errors, []);
     await page.close();
     console.log(
-      `Booru browser ${viewport.width}×${viewport.height}: settings create/credentials/clear/conflict/reload/disable/remove; tag sidebar/search/paging/inspection/refresh/back, partial failures/retry, missing previews, races/cancel/cleanup and overflow passed.`
+      `Booru browser ${viewport.width}×${viewport.height}: durable review/bulk/undo/filters/conflicts/typed links; settings create/credentials/clear/conflict/reload/disable/remove; tag sidebar/search/paging/inspection/refresh/back, partial failures/retry, missing previews, races/cancel/cleanup and overflow passed.`
     );
   }
 } finally {

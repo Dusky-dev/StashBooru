@@ -261,3 +261,35 @@ func TestSourceConfiguration(t *testing.T) {
 		t.Fatal("query limits bypassed")
 	}
 }
+
+func TestSourceInstanceIdentity(t *testing.T) {
+	source := Defaults()[0]
+	identity := source.Instance()
+	alias := source
+	alias.ID = "my-alias"
+	alias.Name = "Display rename"
+	alias.Login = "account"
+	alias.APIKey = "private-secret"
+	alias.MediaHosts = []string{"cdn.example.org"}
+	if alias.Instance() != identity {
+		t.Fatal("display and credentials must not change review identity")
+	}
+	alias.URL = "https://DANBOORU.DONMAI.US:443/"
+	if alias.Instance() != identity {
+		t.Fatal("equivalent public URLs changed identity")
+	}
+	alias.URL = "https://other.example.org"
+	if alias.Instance() == identity {
+		t.Fatal("another site inherited review state")
+	}
+	alias = source
+	alias.Engine = "gelbooru"
+	if alias.Instance() == identity {
+		t.Fatal("another API engine inherited review state")
+	}
+	alias = source
+	alias.URL += "/other-installation"
+	if alias.Instance() == identity {
+		t.Fatal("another installation inherited review state")
+	}
+}

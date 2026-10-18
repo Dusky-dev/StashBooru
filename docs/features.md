@@ -11,7 +11,7 @@ separates the read-only B01 browser from later requested work.
 | Location | Use it for |
 | --- | --- |
 | **All** | Browse Images and Videos together, with shared filters and typed selections. Individual Images and Videos pages remain available. |
-| **Booru** (navbar globe) | Search remote sources, page them independently and inspect previews/raw tags. This does not import media or check existing local copies. |
+| **Booru** (navbar globe) | Search remote sources, inspect previews/tags, persist review marks and check current-file MD5 matches. No media import. |
 | **Settings → Library** | Media folders, scan rules and automatic ancestor/profile associations. Inheritance switches save automatically. |
 | **Settings → Processing** | Shared worker connection, similarity/tagging defaults, conversion rules and upscaling setup. Use each section's Save button. |
 | **Settings → Tasks** | Jobs, generated files/hashes, animation inspection, Character merging, association review, Video overlap indexing and database management. |
@@ -99,7 +99,9 @@ and Philomena adapters, with ten presets and compatible custom definitions.
 **Source settings** (also **Settings → Metadata Providers → Booru sources**) edits
 API keys, engine, URL, image hosts and enabled state. Its Danbooru-inspired sidebar
 and compact thumbnail grid include categorized loaded-page tag counts.
-Follows and ignored/already-downloaded marks remain later packages.
+[B02 review state](booru-review-state.md) adds persistent ignored/manual-download
+marks, bulk undo, a show-ignored filter and bounded current-file MD5 matches.
+Follows and actual downloads remain later packages.
 
 ### Profile artwork and metadata diagnostics
 

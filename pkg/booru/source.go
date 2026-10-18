@@ -3,6 +3,8 @@
 package booru
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -33,6 +35,7 @@ type Source struct {
 }
 
 type PublicSource struct {
+	Instance              string `json:"instance"`
 	ID                    string `json:"id"`
 	Name                  string `json:"name"`
 	Engine                string `json:"engine"`
@@ -146,7 +149,7 @@ func (s Source) Public() PublicSource {
 		help = "Native Philomena syntax: tags may contain spaces; combine tags with commas or AND."
 		auth = "Optional API key in Source settings; provider content filters still apply."
 	}
-	return PublicSource{ID: s.ID, Name: s.Name, Engine: s.Engine, URL: s.URL, QueryHelp: help,
+	return PublicSource{Instance: s.Instance(), ID: s.ID, Name: s.Name, Engine: s.Engine, URL: s.URL, QueryHelp: help,
 		CredentialsConfigured: s.APIKey != "", Authentication: auth, CategorizedTags: s.Engine == "danbooru" || s.Engine == "e621"}
 }
 
@@ -199,4 +202,19 @@ func (s Source) mediaURL(raw string) string {
 	}
 	u.Fragment = ""
 	return u.String()
+}
+
+// Instance excludes credentials and display IDs. Changing the API engine or URL
+// isolates review history; aliases of the same normalized instance share it.
+func (s Source) Instance() string {
+	u, err := url.Parse(s.URL)
+	if err != nil {
+		return ""
+	}
+	host := strings.ToLower(strings.TrimSuffix(u.Hostname(), "."))
+	if u.Port() != "" && u.Port() != "443" {
+		host += ":" + u.Port()
+	}
+	sum := sha256.Sum256([]byte(s.Engine + "\nhttps://" + host + strings.TrimRight(u.EscapedPath(), "/")))
+	return hex.EncodeToString(sum[:])
 }

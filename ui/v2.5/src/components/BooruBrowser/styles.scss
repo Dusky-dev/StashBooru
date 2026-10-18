@@ -339,3 +339,31 @@
     white-space: normal;
   }
 }
+
+.booru-browser {
+  .booru-review-toolbar, .booru-review-actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    font-size: 0.75rem;
+    gap: 0.35rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .booru-review-evidence {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.75rem;
+    gap: 0.2rem;
+    margin: 0.3rem 0;
+  }
+
+  .booru-review-actions .btn {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.3rem;
+  }
+}
+
+.booru-browser-inspection .booru-review-evidence {
+  margin-bottom: 1rem;
+}
