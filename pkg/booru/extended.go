@@ -362,7 +362,10 @@ func (c *Client) searchShimmie(ctx context.Context, s Source, query string, page
 	for _, row := range envelope.Posts {
 		raw := object{}
 		for _, attr := range row.Attrs {
-			v, _ := json.Marshal(attr.Value)
+			v, err := json.Marshal(attr.Value)
+			if err != nil {
+				return result, extendedParseError()
+			}
 			raw[attr.Name.Local] = v
 		}
 		post, err := parsePost(s, raw)
