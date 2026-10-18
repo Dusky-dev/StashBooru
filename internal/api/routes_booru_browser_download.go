@@ -21,6 +21,7 @@ type booruDownloadSettings struct {
 	JPEGToJXL        bool     `json:"jpegToJXL,omitempty"` // Legacy preference, migrated to converter defaults.
 	Convert          bool     `json:"convert"`
 	DefaultDirectory string   `json:"defaultDirectory"`
+	FilenameTemplate string   `json:"filenameTemplate,omitempty"`
 	Roots            []string `json:"roots,omitempty"`
 }
 
@@ -39,6 +40,9 @@ func (rs booruBrowserRoutes) downloadSettings() (booruDownloadSettings, error) {
 		return value, fmt.Errorf("cannot read download settings")
 	}
 	err = json.Unmarshal(data, &value)
+	if err == nil {
+		err = booru.ValidateFilenameTemplate(value.FilenameTemplate)
+	}
 	value.Convert = value.Convert || value.JPEGToJXL
 	value.JPEGToJXL = false
 	if rs.libraryRoots != nil {
@@ -58,6 +62,10 @@ func (rs booruBrowserRoutes) DownloadSettings(w http.ResponseWriter, r *http.Req
 func (rs booruBrowserRoutes) UpdateDownloadSettings(w http.ResponseWriter, r *http.Request) {
 	var value booruDownloadSettings
 	if !readBooruReviewJSON(w, r, &value) {
+		return
+	}
+	if err := booru.ValidateFilenameTemplate(value.FilenameTemplate); err != nil {
+		writeBooruError(w, 400, "filename", err.Error())
 		return
 	}
 	if value.DefaultDirectory != "" {
@@ -188,15 +196,15 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 		writeBooruError(w, 400, "download", "Original unavailable or larger than the 128 MiB download limit.")
 		return
 	}
+	preferences, err := rs.downloadSettings()
+	if err != nil {
+		writeBooruError(w, 500, "settings", "Cannot read download settings.")
+		return
+	}
 	destination := ""
 	if !input.Computer {
 		if input.Destination == "" {
-			settings, err := rs.downloadSettings()
-			if err != nil {
-				writeBooruError(w, 500, "settings", "Cannot read destination settings.")
-				return
-			}
-			input.Destination = settings.DefaultDirectory
+			input.Destination = preferences.DefaultDirectory
 		}
 		var err error
 		destination, err = rs.destination(input.Destination)
@@ -238,7 +246,7 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 			}
 		}()
 		if !input.Computer {
-			receipt := rs.reusableDownloadReceipt(destination, source, post, input.Convert)
+			receipt := rs.reusableDownloadReceipt(destination, source, post, input.Convert, preferences.FilenameTemplate)
 			if receipt != nil && receipt.Library != nil {
 				imported, err := rs.importFile(ctx, receipt.Library.Path, source, post, input.Convert && !receipt.Library.Converted, progress)
 				if err != nil {
@@ -300,14 +308,14 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 			if validateErr != nil || valid != destination {
 				return fmt.Errorf("destination changed while downloading; file was not published")
 			}
-			saved, saveErr := publishBooruFile(ctx, path, destination, source.Instance(), post.ID, info.MD5, info.Extension)
+			saved, saveErr := rs.publishTemplatedBooruFile(ctx, path, destination, source, post, info.MD5, info.Extension, preferences.FilenameTemplate)
 			if saveErr != nil {
 				return saveErr
 			}
 			booruDownloads.Lock()
 			state.SavedPath = saved
 			booruDownloads.Unlock()
-			receipt := booruDownloadReceipt{Source: source.Public(), Post: post, OriginalMD5: info.MD5, SavedPath: saved, Convert: input.Convert, Directory: destination}
+			receipt := booruDownloadReceipt{Source: source.Public(), Post: post, OriginalMD5: info.MD5, SavedPath: saved, Convert: input.Convert, Directory: destination, Template: preferences.FilenameTemplate}
 			if err := rs.saveDownloadReceipt(receipt); err != nil {
 				return fmt.Errorf("file saved, but receipt could not be written; retry native scan for %s", saved)
 			}

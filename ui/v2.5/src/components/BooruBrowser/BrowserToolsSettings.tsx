@@ -15,6 +15,7 @@ export function BrowserToolsSettings() {
     [databasePath, setDatabasePath] = useState("");
   const [convert, setConvert] = useState(false),
     [directory, setDirectory] = useState("");
+  const [filenameTemplate, setFilenameTemplate] = useState("");
   const [picker, setPicker] = useState(false),
     [loaded, setLoaded] = useState(false),
     [busy, setBusy] = useState(false);
@@ -40,7 +41,11 @@ export function BrowserToolsSettings() {
       fetch("booru-browser/download-settings", {
         signal: controller.signal,
       }).then(
-        readBooruResponse<{ convert: boolean; defaultDirectory: string }>
+        readBooruResponse<{
+          convert: boolean;
+          defaultDirectory: string;
+          filenameTemplate?: string;
+        }>
       ),
     ])
       .then(([list, settings]) => {
@@ -51,6 +56,7 @@ export function BrowserToolsSettings() {
           );
           setConvert(settings.convert);
           setDirectory(settings.defaultDirectory);
+          setFilenameTemplate(settings.filenameTemplate ?? "");
           setLoaded(true);
           setError("");
         }
@@ -103,7 +109,11 @@ export function BrowserToolsSettings() {
     await fetch("booru-browser/download-settings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ convert, defaultDirectory: directory }),
+      body: JSON.stringify({
+        convert,
+        defaultDirectory: directory,
+        filenameTemplate,
+      }),
     }).then(readBooruResponse);
     invalidateDownloadPreferences();
     window.dispatchEvent(new Event("booru-download-settings"));
@@ -178,6 +188,22 @@ export function BrowserToolsSettings() {
       >
         Choose default folder
       </Button>
+      <Form.Group controlId="booru-filename-template" className="mt-3">
+        <Form.Label>Download filename template</Form.Label>
+        <Form.Control
+          className="text-input"
+          value={filenameTemplate}
+          disabled={busy || !loaded}
+          onChange={(event) => setFilenameTemplate(event.currentTarget.value)}
+          placeholder="%artist%/%copyright%/%character%/%md5%.%ext%"
+        />
+        <Form.Text muted>
+          Common Grabber tokens: %artist%, %copyright%, %character%, %id%,
+          %md5%, %ext%, %filename%, %websitename%, %position%, %num%. Use / for
+          subfolders. Blank keeps existing naming. Unknown metadata becomes
+          unknown; existing files are never overwritten.
+        </Form.Text>
+      </Form.Group>
       <Form.Check
         type="switch"
         className="mt-3"

@@ -241,3 +241,21 @@ test("Browser memory keeps a submitted page and unfinished draft separately", as
     else Reflect.deleteProperty(globalThis, "localStorage");
   }
 });
+
+test("Favorites and opaque gallery identities survive URLs without stale result signatures", async () => {
+  const value = {
+    sources: ["pawchive"],
+    query: "",
+    pages: { pawchive: 2 },
+    favorites: true,
+    inspect: { source: "pawchive", id: "a" + "b".repeat(32) },
+  };
+  assert.deepEqual(readBrowserSearch(browserSearchURL(value)), value);
+  const { browserResultSignature } = await import(
+    "../src/components/BooruBrowser/browser.ts"
+  );
+  assert.notEqual(
+    browserResultSignature("", 1, undefined, undefined, undefined, 24, true),
+    browserResultSignature("", 1)
+  );
+});

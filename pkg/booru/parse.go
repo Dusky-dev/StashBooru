@@ -111,7 +111,7 @@ func parsePost(source Source, raw object) (Post, error) {
 	}
 	post := Post{ID: id, SourceID: source.ID, Width: number(raw["width"]), Height: number(raw["height"]),
 		Bytes: number(raw["file_size"]), MD5: text(raw["md5"]), Rating: text(raw["rating"]),
-		Format: text(raw["file_ext"]), Tags: []Tag{}}
+		Format: text(raw["file_ext"]), Tags: []Tag{}, RemoteID: id, Title: text(raw["title"]), Author: text(raw["author"]), AuthorID: text(raw["creator_id"]), Filename: text(raw["file_name"]), CreatedAt: text(raw["created_at"]), Score: number(raw["score"])}
 	preview, sample := text(raw["preview_file_url"]), text(raw["large_file_url"])
 	original := text(raw["file_url"])
 	if post.Width == 0 {

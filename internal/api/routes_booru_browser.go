@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -128,22 +127,18 @@ func (rs booruBrowserRoutes) Search(w http.ResponseWriter, r *http.Request) {
 			writeVisualSimilarityJSON(w, failure)
 			return
 		}
-		for i := range result.Posts {
-			result.Posts[i].MediaKey = rememberBooruPost(source, result.Posts[i])
-			key := result.Posts[i].MediaKey
-			if u, err := url.Parse(result.Posts[i].PreviewURL); err == nil && u.Scheme == "https" && u.RawQuery == "" {
-				result.Posts[i].DirectPreviewURL = u.String()
-			}
-			if u, err := url.Parse(result.Posts[i].SampleURL); err == nil && u.Scheme == "https" && u.RawQuery == "" {
-				result.Posts[i].DirectSampleURL = u.String()
-			}
-			if result.Posts[i].PreviewURL != "" {
-				result.Posts[i].PreviewURL = "booru-browser/media?key=" + key + "&kind=preview"
-			}
-			if result.Posts[i].SampleURL != "" {
-				result.Posts[i].SampleURL = "booru-browser/media?key=" + key + "&kind=sample"
-			}
+		assets := len(result.Posts)
+		for _, post := range result.Posts {
+			assets += len(post.Attachments)
 		}
+		if assets > 256 {
+			writeBooruError(w, 502, "media", "Provider page contains more than 256 media files. Reduce posts per page.")
+			return
+		}
+		for i := range result.Posts {
+			result.Posts[i] = publicBooruPost(source, result.Posts[i])
+		}
+
 		writeVisualSimilarityJSON(w, result)
 		return
 	}

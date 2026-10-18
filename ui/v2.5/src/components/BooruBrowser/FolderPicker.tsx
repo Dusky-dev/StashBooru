@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Alert, Button, Form, Modal } from "react-bootstrap";
+import { faHouse } from "@fortawesome/free-solid-svg-icons";
+import { Icon } from "../Shared/Icon";
 import { readBooruResponse } from "./browser";
 
 export function FolderPicker({
@@ -16,6 +18,11 @@ export function FolderPicker({
     parent: string;
   }>();
   const [error, setError] = useState("");
+  useEffect(() => {
+    if (path === directory) return;
+    const timer = window.setTimeout(() => setDirectory(path), 400);
+    return () => window.clearTimeout(timer);
+  }, [path, directory]);
   useEffect(() => {
     const controller = new AbortController();
     setError("");
@@ -41,6 +48,15 @@ export function FolderPicker({
     <Modal show onHide={() => onClose()}>
       <Modal.Header closeButton>
         <Modal.Title>Choose Stash download folder</Modal.Title>
+        <Button
+          size="sm"
+          variant="secondary"
+          className="ml-auto"
+          onClick={() => navigate("")}
+          title="Root"
+        >
+          <Icon icon={faHouse} /> Root
+        </Button>
       </Modal.Header>
       <Modal.Body>
         <Form.Group controlId="booru-folder-path">
@@ -49,19 +65,14 @@ export function FolderPicker({
             className="text-input"
             value={path}
             onChange={(event) => setPath(event.currentTarget.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                setDirectory(path);
+              }
+            }}
           />
         </Form.Group>
-        <Button size="sm" onClick={() => setDirectory(path)}>
-          Open directory
-        </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          className="ml-2"
-          onClick={() => navigate("")}
-        >
-          Library roots
-        </Button>
         {error && (
           <Alert variant="warning" className="mt-2">
             {error}

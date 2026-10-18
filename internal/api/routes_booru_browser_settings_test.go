@@ -35,7 +35,7 @@ func settingsWrite(rs booruBrowserRoutes, body string) *httptest.ResponseRecorde
 }
 func TestBooruSettingsCredentialLifecycleAndSources(t *testing.T) {
 	rs := booruBrowserRoutes{configPath: t.TempDir()}
-	if len(settingsRead(t, rs).Sources) != 10 {
+	if len(settingsRead(t, rs).Sources) != len(booru.Defaults()) {
 		t.Fatal("presets missing")
 	}
 	save := func(action string, source booru.Source, clearCredentials bool, want int) {
@@ -86,7 +86,7 @@ func TestBooruSettingsCredentialLifecycleAndSources(t *testing.T) {
 	save("save", source, false, 400)
 	source.Login = ""
 	save("remove", source, false, 200)
-	if len(settingsRead(t, rs).Sources) != 10 {
+	if len(settingsRead(t, rs).Sources) != len(booru.Defaults()) {
 		t.Fatal("custom source was not removed")
 	}
 	preset := booru.Defaults()[0]

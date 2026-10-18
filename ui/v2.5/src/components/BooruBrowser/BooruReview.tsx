@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Alert, Button, Form } from "react-bootstrap";
+import Gallery from "react-photo-gallery";
 import { Link } from "react-router-dom";
 import {
   faBan,
@@ -112,8 +113,12 @@ export function BooruReview({
   onStates,
   children,
   preview,
+  displayMode = "grid",
+  zoom = 0,
 }: {
   source: BooruSource;
+  displayMode?: "grid" | "wall";
+  zoom?: number;
   posts: BooruPost[];
   showIgnored: boolean;
   onStates: (states: ReviewState[]) => void;
@@ -292,6 +297,48 @@ export function BooruReview({
       }))
     );
   }
+  const renderPost = (post: BooruPost) => {
+    const state = states?.find((item) => item.id === post.id);
+    return children(
+      post,
+      <>
+        <Form.Control
+          type="checkbox"
+          className="card-check mousetrap"
+          aria-label={`Select ${source.name} post ${post.id}`}
+          checked={targets.includes(post.id)}
+          disabled={busy || !!error || !state}
+          onChange={() =>
+            setSelected((ids) =>
+              ids.includes(post.id)
+                ? ids.filter((id) => id !== post.id)
+                : [...ids, post.id]
+            )
+          }
+        />
+        <div className="booru-review-actions">
+          <BooruIconButton
+            icon={faBan}
+            label={state?.ignoredAt ? "Unignore" : "Ignore"}
+            aria-pressed={!!state?.ignoredAt}
+            disabled={busy || !!error || !state}
+            onClick={() => mark([post.id], "ignored", !state?.ignoredAt)}
+          />
+          <BooruIconButton
+            icon={faCheck}
+            label={
+              state?.downloadedAt ? "Clear manual mark" : "Mark downloaded"
+            }
+            aria-pressed={!!state?.downloadedAt}
+            disabled={busy || !!error || !state}
+            onClick={() => mark([post.id], "downloaded", !state?.downloadedAt)}
+          />
+          <ReviewEvidence state={state} compact />
+        </div>
+      </>,
+      targets.includes(post.id)
+    );
+  };
   return (
     <>
       <div className="booru-review-toolbar">
@@ -389,53 +436,44 @@ export function BooruReview({
           Next to continue.
         </p>
       )}
-      <div className="booru-grid">
-        {visible.map((post) => {
-          const state = states?.find((item) => item.id === post.id);
-          return children(
-            post,
-            <>
-              <Form.Control
-                type="checkbox"
-                className="card-check mousetrap"
-                aria-label={`Select ${source.name} post ${post.id}`}
-                checked={targets.includes(post.id)}
-                disabled={busy || !!error || !state}
-                onChange={() =>
-                  setSelected((ids) =>
-                    ids.includes(post.id)
-                      ? ids.filter((id) => id !== post.id)
-                      : [...ids, post.id]
-                  )
-                }
-              />
-              <div className="booru-review-actions">
-                <BooruIconButton
-                  icon={faBan}
-                  label={state?.ignoredAt ? "Unignore" : "Ignore"}
-                  aria-pressed={!!state?.ignoredAt}
-                  disabled={busy || !!error || !state}
-                  onClick={() => mark([post.id], "ignored", !state?.ignoredAt)}
-                />
-                <BooruIconButton
-                  icon={faCheck}
-                  label={
-                    state?.downloadedAt
-                      ? "Clear manual mark"
-                      : "Mark downloaded"
-                  }
-                  aria-pressed={!!state?.downloadedAt}
-                  disabled={busy || !!error || !state}
-                  onClick={() =>
-                    mark([post.id], "downloaded", !state?.downloadedAt)
-                  }
-                />
-                <ReviewEvidence state={state} compact />
+      <div
+        className={displayMode === "wall" ? "booru-wall" : "booru-grid"}
+        style={
+          displayMode === "grid"
+            ? {
+                gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${[140, 180, 240, 320][zoom]}px), 1fr))`,
+              }
+            : undefined
+        }
+      >
+        {displayMode === "wall" && visible.length ? (
+          <Gallery
+            photos={visible.map((post) => ({
+              key: post.id,
+              src: post.previewURL ?? "",
+              width:
+                Math.min(
+                  8,
+                  Math.max(0.125, (post.width || 1) / (post.height || 1))
+                ) * 1000,
+              height: 1000,
+            }))}
+            direction="row"
+            margin={2}
+            targetRowHeight={[140, 190, 260, 340][zoom]}
+            renderImage={({ photo, margin }) => (
+              <div
+                key={photo.key}
+                className="booru-wall-item"
+                style={{ width: photo.width, height: photo.height, margin }}
+              >
+                {renderPost(visible.find((post) => post.id === photo.key)!)}
               </div>
-            </>,
-            targets.includes(post.id)
-          );
-        })}
+            )}
+          />
+        ) : (
+          visible.map(renderPost)
+        )}
       </div>
       {preview?.({
         ignore: (id) => mark([id], "ignored", true),

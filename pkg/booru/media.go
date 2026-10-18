@@ -49,7 +49,15 @@ func (c *Client) FetchMedia(ctx context.Context, source Source, input MediaReque
 	}
 	headers := func(req *http.Request) {
 		req.Header.Set("User-Agent", "StashBooru/1.0 (https://github.com/Dusky-dev/StashBooru)")
-		req.Header.Set("Referer", strings.TrimRight(source.URL, "/")+"/")
+		referer := strings.TrimRight(source.URL, "/") + "/"
+		if source.Engine == "pixiv" {
+			referer = "https://www.pixiv.net/"
+		}
+		req.Header.Set("Referer", referer)
+		req.Header.Del("Cookie")
+		if source.Engine == "pawchive" && source.APIKey != "" && strings.EqualFold(req.URL.Hostname(), "file.pawchive.pw") {
+			req.AddCookie(&http.Cookie{Name: "session", Value: source.APIKey})
+		}
 		req.Header.Del("Authorization")
 		base, _ := url.Parse(source.URL)
 		if strings.EqualFold(req.URL.Hostname(), base.Hostname()) && (source.Engine == "danbooru" || source.Engine == "e621") && source.APIKey != "" {

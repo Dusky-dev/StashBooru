@@ -288,6 +288,10 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
                       <option value="moebooru">Moebooru</option>
                       <option value="e621">e621 / e926</option>
                       <option value="philomena">Philomena</option>
+                      <option value="shimmie">Shimmie / Paheal</option>
+                      <option value="pixiv">Pixiv App API</option>
+                      <option value="pawchive">Pawchive</option>
+                      <option value="kemono">Kemono</option>
                     </Form.Control>
                   </Form.Group>
                   <Form.Group controlId="booru-setting-url">
@@ -322,10 +326,10 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
                     site host and its subdomains are already allowed.
                   </Form.Text>
                 </Form.Group>
-                {draft.engine === "moebooru" ? (
+                {["moebooru", "shimmie", "kemono"].includes(draft.engine) ? (
                   <p>
-                    Moebooru supports anonymous browsing. Password login is not
-                    supported.
+                    This engine supports anonymous browsing. Password login is
+                    not supported.
                   </p>
                 ) : (
                   <>
@@ -366,7 +370,13 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
                         </Form.Group>
                       )}
                       <Form.Group controlId="booru-setting-key">
-                        <Form.Label>API key</Form.Label>
+                        <Form.Label>
+                          {draft.engine === "pixiv"
+                            ? "Pixiv OAuth access token"
+                            : draft.engine === "pawchive"
+                              ? "File-host session cookie value (optional)"
+                              : "API key"}
+                        </Form.Label>
                         <Form.Control
                           className="text-input"
                           type="password"
