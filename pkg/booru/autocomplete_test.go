@@ -64,7 +64,7 @@ func TestAutocompleteCacheCredentialsBoundsAndCancellation(t *testing.T) {
 	if _, err := client.Autocomplete(ctx, s, "blue"); err == nil {
 		t.Fatal("cancelled cached lookup succeeded")
 	}
-	for _, prefix := range []string{"x", "x\nsecret", "foo*", strings.Repeat("x", 81)} {
+	for _, prefix := range []string{"x", "  ", "x\nsecret", "foo*", strings.Repeat("x", 81)} {
 		if _, err := client.Autocomplete(context.Background(), s, prefix); err == nil {
 			t.Fatal("accepted invalid prefix")
 		}

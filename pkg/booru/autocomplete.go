@@ -21,6 +21,7 @@ type autocompleteEntry struct {
 }
 
 func ValidatePrefix(prefix string) bool {
+	prefix = strings.TrimSpace(prefix)
 	return len(prefix) >= 2 && len(prefix) <= 80 && validTagText(prefix) && !strings.ContainsAny(prefix, "*?\\\"")
 }
 
