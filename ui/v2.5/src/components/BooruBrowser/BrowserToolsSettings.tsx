@@ -163,6 +163,7 @@ export function BrowserToolsSettings() {
       <Form.Group controlId="booru-default-directory">
         <Form.Label>Default Stash download folder</Form.Label>
         <Form.Control
+          className="text-input"
           value={directory}
           disabled={busy || !loaded}
           onChange={(event) => setDirectory(event.currentTarget.value)}
@@ -178,6 +179,7 @@ export function BrowserToolsSettings() {
         Choose default folder
       </Button>
       <Form.Check
+        type="switch"
         className="mt-3"
         id="booru-default-convert"
         label="Convert new downloads using Media converter defaults"
@@ -202,6 +204,7 @@ export function BrowserToolsSettings() {
       <Form.Group controlId="booru-tag-source">
         <Form.Label>Tag database source</Form.Label>
         <Form.Control
+          className="text-input"
           as="select"
           value={sourceID}
           disabled={busy}
@@ -226,6 +229,7 @@ export function BrowserToolsSettings() {
       <Form.Group controlId="booru-database-path">
         <Form.Label>Autocomplete database CSV path on the server</Form.Label>
         <Form.Control
+          className="text-input"
           value={databasePath}
           disabled={busy || !database}
           onChange={(event) => setDatabasePath(event.currentTarget.value)}

@@ -1,7 +1,7 @@
 # Booru downloads, previews and autocomplete
 
-Open **Booru → Downloads & autocomplete**. The same controls are available under
-**Source settings** and **Settings → Metadata Providers → Booru sources**.
+Open **Booru → Settings** for sources, credentials, downloads and autocomplete.
+The same controls are available under **Settings → Metadata Providers → Booru sources**.
 Download preferences and installed CSV databases are shared by this Stash server.
 Autocomplete mode and thumbnail visibility are remembered in this browser.
 
@@ -14,8 +14,8 @@ if the desired directory is outside the existing libraries.
 Wait for saved settings to load before editing. Saving updates the defaults used
 by cards already open in this browser.
 
-Each thumbnail card has **Download** and **Folder…** actions. These use the saved
-conversion checkbox and default folder; **Folder…** overrides only that download.
+Each thumbnail card has **Download** and **Choose download folder** icon actions. These use the saved
+conversion switch and default folder; the folder action overrides only that download.
 Inspect a post for full progress, conversion controls and destination details:
 
 - **Download to Stash** to use the saved default directory.
@@ -70,9 +70,19 @@ No new encoder, model or alternate conversion implementation is installed. The
 selected worker must support the configured formats. Browser JPEG XL playback
 support is separate from saving/importing the converted file.
 
+## Animated previews
+
+Inspection offers explicit playback for MP4/WebM videos and GIF/APNG images up to
+24 MiB. Browsing thumbnails loads no animated originals. The authenticated motion
+route accepts only an existing server snapshot, rechecks the enabled source/CDN,
+checks actual media bytes through the native client and supports bounded byte-range
+responses for seeking. Stop/navigation/close release playback. Unsupported codecs
+and oversized files retain static previews, download and remote-post options.
+This preview never imports a file or marks it downloaded.
+
 ## Live autocomplete and optional CSV fallback
 
-Autocomplete defaults to **Live, with CSV fallback** in **Filters & display**.
+Autocomplete defaults to **Live, with CSV fallback** in the **Autocomplete** icon menu.
 It queries the selected sources through the authenticated server route; a CSV
 file is optional. **Installed CSV only** uses the installed per-source databases
 without contacting providers. A failed live request falls back to the installed
@@ -158,7 +168,7 @@ are cached in memory. Include `booru-tags/`, `booru-downloads.json` and
 ## Refresh and preview recovery
 
 The browser remembers its submitted query, source pages, inspection, unfinished
-search text/checkbox selection, settings view, tag sidebar source and scroll
+search text/source selection, settings view, tag sidebar source and scroll
 position in local browser storage. Refreshing or opening the bare `/booru` route
 restores that state. An explicit query URL takes precedence. Submitted results
 are fetched again, so live provider listings can still shift between requests.
@@ -179,7 +189,7 @@ access restrictions still apply.
 
 Asset keys last at most 30 minutes in a 4096-entry bounded cache. Server media
 retrieval uses four slots, two-minute deadlines and limits of 8 MiB per thumbnail
-and 24 MiB per sample. HTML/SVG are refused by the server media route. Direct CDN
+and 24 MiB per sample or explicit animated original. HTML/SVG are refused by the server media route. Direct CDN
 fallback uses the browser's normal image handling and network access.
 
 ## Verification scope

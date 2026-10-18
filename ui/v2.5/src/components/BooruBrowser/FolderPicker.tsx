@@ -46,6 +46,7 @@ export function FolderPicker({
         <Form.Group controlId="booru-folder-path">
           <Form.Label>Server directory</Form.Label>
           <Form.Control
+            className="text-input"
             value={path}
             onChange={(event) => setPath(event.currentTarget.value)}
           />

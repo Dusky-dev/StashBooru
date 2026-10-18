@@ -240,6 +240,7 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
                   <Form.Group controlId="booru-setting-name">
                     <Form.Label>Name</Form.Label>
                     <Form.Control
+                      className="text-input"
                       required
                       maxLength={120}
                       value={draft.name}
@@ -251,6 +252,7 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
                   <Form.Group controlId="booru-setting-id">
                     <Form.Label>Source ID</Form.Label>
                     <Form.Control
+                      className="text-input"
                       required
                       pattern="[a-z0-9][a-z0-9_-]{0,63}"
                       disabled={!creating}
@@ -267,6 +269,7 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
                   <Form.Group controlId="booru-setting-engine">
                     <Form.Label>API engine</Form.Label>
                     <Form.Control
+                      className="text-input"
                       as="select"
                       value={draft.engine}
                       onChange={(e) => {
@@ -290,6 +293,7 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
                   <Form.Group controlId="booru-setting-url">
                     <Form.Label>Site URL</Form.Label>
                     <Form.Control
+                      className="text-input"
                       required
                       type="url"
                       placeholder="https://booru.example.org"
@@ -306,6 +310,7 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
                 <Form.Group controlId="booru-setting-hosts">
                   <Form.Label>Additional image hosts</Form.Label>
                   <Form.Control
+                    className="text-input"
                     as="textarea"
                     rows={2}
                     value={hosts}
@@ -330,6 +335,7 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
                         <Form.Group controlId="booru-setting-login">
                           <Form.Label>Username</Form.Label>
                           <Form.Control
+                            className="text-input"
                             value={draft.login}
                             autoComplete="off"
                             onChange={(e) =>
@@ -346,6 +352,7 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
                         <Form.Group controlId="booru-setting-userid">
                           <Form.Label>User ID</Form.Label>
                           <Form.Control
+                            className="text-input"
                             value={draft.userID}
                             autoComplete="off"
                             onChange={(e) =>
@@ -361,6 +368,7 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
                       <Form.Group controlId="booru-setting-key">
                         <Form.Label>API key</Form.Label>
                         <Form.Control
+                          className="text-input"
                           type="password"
                           autoComplete="new-password"
                           value={apiKey}
@@ -379,6 +387,7 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
                       </Form.Group>
                     </div>
                     <Form.Check
+                      type="switch"
                       id="booru-setting-clear"
                       label="Remove saved credentials on save"
                       checked={clearKey}
@@ -390,6 +399,7 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
                   </>
                 )}
                 <Form.Check
+                  type="switch"
                   id="booru-setting-enabled"
                   className="mt-3"
                   label="Enable this source"

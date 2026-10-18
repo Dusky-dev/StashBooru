@@ -45,6 +45,7 @@ export interface BrowserSearch {
   pages: Record<string, number>;
   inspect?: { source: string; id: string };
   showIgnored?: boolean;
+  pageSize?: number;
   sort?: "newest" | "popular" | "updated";
   rating?: "safe" | "questionable" | "explicit";
   media?: "images" | "videos";
@@ -94,6 +95,12 @@ export function readBrowserSearch(search: string): BrowserSearch {
       result.error = "Invalid browser filter.";
     else if (value) Object.assign(result, { [key]: value });
   }
+  if (params.has("limit")) {
+    const limit = params.get("limit") ?? "";
+    if (!/^\d+$/.test(limit) || Number(limit) < 1 || Number(limit) > 50)
+      result.error = "Page size must be from 1 to 50.";
+    else result.pageSize = Number(limit);
+  }
   const inspect = params.get("inspect")?.split(":");
   if (
     inspect?.length === 2 &&
@@ -113,6 +120,7 @@ export function browserSearchURL(value: BrowserSearch): string {
       params.set(`p.${source}`, String(value.pages[source]));
     }
   }
+  if (value.pageSize) params.set("limit", String(value.pageSize));
   if (value.showIgnored) params.set("ignored", "1");
   for (const key of ["sort", "rating", "media"] as const)
     if (value[key]) params.set(key, value[key]);
@@ -167,6 +175,20 @@ export function booruMediaURL(
   if (!(kind === "preview" ? post.previewURL : post.sampleURL))
     return undefined;
   return `booru-browser/media?${new URLSearchParams({ key: post.mediaKey, kind })}`;
+}
+
+// Animated originals are fetched only after an explicit Play action, bounded by
+// the server's preview route. Unsupported codecs remain remote/download-only.
+export function motionPreviewURL(post: BooruPost): string | undefined {
+  if (
+    !post.mediaKey ||
+    !/^[a-f0-9]{48}$/.test(post.mediaKey) ||
+    !post.downloadAvailable ||
+    (post.bytes ?? 0) > 24 * 1048576 ||
+    !["mp4", "webm", "gif", "apng"].includes(post.format?.toLowerCase() ?? "")
+  )
+    return undefined;
+  return `booru-browser/media?${new URLSearchParams({ key: post.mediaKey, kind: "motion" })}`;
 }
 
 export interface BrowserMemory {
@@ -247,7 +269,15 @@ export function browserResultSignature(
   page: number,
   sort?: string,
   rating?: string,
-  media?: string
+  media?: string,
+  pageSize?: number
 ) {
-  return JSON.stringify([query, page, sort ?? "", rating ?? "", media ?? ""]);
+  return JSON.stringify([
+    query,
+    page,
+    sort ?? "",
+    rating ?? "",
+    media ?? "",
+    pageSize ?? 24,
+  ]);
 }

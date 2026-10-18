@@ -2,16 +2,58 @@
 
 Updated: 2026-10-18
 
-Current baseline: `develop` at `471f304f3456f01b47badbfb9ab578f05e51335c`.
-PR #148 is merged. Branch `feat/booru-live-browser-20261018` integrates live
-completion and the requested Stash Browser-inspired workflow into the existing
-browser. See [browser guide](booru-browser.md) and
+Current baseline: `develop` at `ce2ae8df1f4a900f5a76ba7185f1b247cdb786a2`.
+PR #149 is merged. Branch `feat/booru-native-controls-20261018` refines the browser
+with native Stash controls, compact cards and keyboard/animated inspection.
+Review: [PR #150](https://github.com/Dusky-dev/StashBooru/pull/150).
+See [browser guide](booru-browser.md), [review guide](booru-review-state.md) and
 [downloads/autocomplete guide](booru-downloads-autocomplete.md).
-Review: [PR #149](https://github.com/Dusky-dev/StashBooru/pull/149).
 
 P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
+
+## Native browser controls and animated inspection — 2026-10-18 UTC
+
+- Fresh develop `ce2ae8df1f4a900f5a76ba7185f1b247cdb786a2`, merged #149,
+  no open PRs and a clean tree checked before starting this owner-requested slice.
+- Dark `text-input` controls, native custom switches, card-check selection,
+  selected-items counters and the shared bounded PageSizeSelector replace the
+  standalone browser controls. Bulk actions appear after selection. Source/API,
+  download/converter and optional CSV tools share one Settings entry point.
+- Sort, rating, media and autocomplete use labelled icon menus. Thumbnail/ignored
+  switches stay together. Cards remove tags/dimensions/verbose status; download,
+  folder, ignore/manual mark and native links use named icon actions. Inspection
+  retains full evidence, tags, errors and job progress.
+- Left/Right navigate the loaded source page, respecting hidden ignored posts;
+  Up downloads using saved defaults, Down marks ignored through existing versioned
+  review handlers. Native player/input controls and nested dialogs keep their keys.
+  Repeated keydown events cannot repeat download/ignore writes.
+- Explicit MP4/WebM/GIF/APNG playback uses a 24 MiB bounded, authenticated snapshot
+  route with existing source/CDN/media validation and byte-range seeking. Browsing
+  does not preload animated originals. Stop/navigation/close release playback.
+  Distinct media/job keys fix a stale-player issue caught by the mounted test.
+- Local checks: 59 UI tests, JS/CSS lint, TypeScript/formatting and production
+  bundling passed. Mounted 1440×1000 and 390×844 passed real decoded synthetic WebM,
+  animated GIF, player cleanup, keyboard actions, page size persistence, native
+  switches, compact selection and existing download/review/settings/race flows.
+  Synthetic desktop/mobile screenshots were reviewed. The final fixture uses
+  distinct per-post media keys and checks actual playback/download/ignore targets.
+- Full local `make test` and `make it` passed, including motion bounds, format
+  rejection and HTTP byte-range tests. Backend generation, all 59 UI tests,
+  JS/CSS lint, TypeScript, formatting and final `make ui-only` passed locally.
+  GitHub generation/UI/production, Go lint and desktop/mobile checks passed on
+  published runtime `ffe9b0cadea576f2bbb05acb5ef7c663f9f6849d`, matching local
+  `5a9f52734f240571aa43702b9b1a4287b34c622a` at tree
+  `d1179d95c5c2718bf13a3288215bd96e079177b7`. Downstream CI integration/platform
+  jobs are linked from PR #150. All 92 relative links in the updated guides/indexes
+  and `git diff --check` passed. The final checkpoint strengthens fixture identity
+  assertions and updates documentation; runtime source is unchanged.
+- Limits: navigation stays within the current loaded source page; animated
+  previews need a supported browser codec and an available original up to 24 MiB.
+  Deployed provider credentials/network and real provider media remain separate
+  acceptance. Metadata import, follows, pHash grouping and batch automation remain
+  separate packages. No merge or deployment is performed by this change.
 
 ## Integrated live browser workflow — 2026-10-18 UTC
 

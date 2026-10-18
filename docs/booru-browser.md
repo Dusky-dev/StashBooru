@@ -14,7 +14,7 @@ pHash comparison and follows remain later [roadmap packages](booru-browser-roadm
 
 Choose up to eight sources, enter a query and select **Search**.
 A fresh browser without saved state does not search automatically. Refresh/bare-route
-visits restore the saved submitted page. Editing the query and changing checkboxes
+visits restore the saved submitted page. Editing the query and changing source switches
 do not submit a search. Each selected source has independent results,
 Previous/Next, cancellation and retry. One unavailable/rate-limited source does
 not discard another source's results. Inspect a thumbnail or post number to view
@@ -30,10 +30,12 @@ remain provider-specific. Unsupported/rejected queries are errors rather than
 being silently simplified to a broader search.
 
 The sidebar groups sources, a native expression input, removable search-term
-chips and **Filters & display**. Chips preserve exclusions and quoted expressions;
+chips and compact filter icon menus. Chips preserve exclusions and quoted expressions;
 the full text input remains editable. Suggestions carry category/source labels.
 Enter/Tab completes a highlighted suggestion; **Ctrl+Enter** submits the search.
-Clicking a card tag appends it to the draft; page tags prepare a query as before.
+Page tags prepare a query. Thumbnail cards keep only the preview, post number,
+rating, selection and icon actions; grouped tags and detailed evidence remain in
+the inspector. Buttons have accessible names and hover tooltips.
 
 **Sort by** offers provider default, newest and popular. Updated ordering is
 available for Danbooru, e621 and Moebooru; Gelbooru/Philomena reject an explicit
@@ -48,14 +50,35 @@ Missing formats remain unknown rather than being guessed. **Show thumbnails**
 controls grid image loading; inspecting a post remains an explicit preview action.
 These controls, per-source pages and inspection persist through refresh/back.
 Autocomplete mode and thumbnail visibility are local browser preferences.
-**Filters & display** starts collapsed on mobile; sources/search stay accessible.
+The filter icons stay available on desktop and mobile. **Show thumbnails** and
+**Show ignored posts** are grouped as native Stash switches. Sources and settings
+checkboxes use the same switch style; card selection uses Stash's card checkbox.
 
-Each card exposes **Download** (saved default folder/converter preference) and
-**Folder…** (choose an existing library folder). These use the same native Jobs,
+**Posts per source page** uses Stash's page-size selector, with a maximum of 50.
+Changing it resets source pages and closes inspection; its `limit` URL parameter
+survives refresh/back. Provider filters and ignore marks may reduce the visible
+count without automatically filling the page.
+
+Each card exposes a **Download** icon (saved default folder/converter preference)
+and **Choose download folder** icon (choose an existing library folder). These use the same native Jobs,
 checksums, import and converter flow as the inspector. Changes saved in download
 settings refresh mounted card preferences, including when an older request ends
 late. Cards and the inspector share newly queued job identity. Downloading remains
 an explicit action, separate from manual review marks.
+
+Inspect a post to use **Previous/Next preview** or the Left/Right arrow keys within
+that source's currently loaded page. Ignored posts are skipped unless shown;
+navigation stops at page boundaries. Up arrow starts the same guarded default
+library download; Down arrow marks the current post ignored. Keys do not repeat
+download/ignore writes when held, and text fields, nested folder dialogs and native
+video controls keep their normal keyboard behavior. Ignoring does not close the
+inspector; the next navigation skips hidden ignored posts.
+
+For MP4/WebM videos and GIF/APNG images, **Play animated preview** explicitly loads
+the original through the protected preview route, up to 24 MiB. Video starts muted
+with native playback/seek controls. Stop, navigate or close to release playback.
+Large or unsupported formats retain their static preview and remote/download
+options. Browsing thumbnails does not prefetch animated originals.
 
 Query, selected sources, per-source page and inspected post identity are in the
 URL, supporting refresh/back navigation. This is a live listing, not a persistent
@@ -89,13 +112,15 @@ every tag as general or guessing Artist/Character/Copyright identity.
 These are API adapters and presets, not a claim of complete Grabber site/login
 parity. Shimmie, Szurubooru, Sankaku, Pixiv, HTML scraping, executable source
 plugins and browser-session login are not implemented. Compatible instances of
-the five engines above can be added in **Source settings**. More engines
+the five engines above can be added in **Settings**. More engines
 need their own documented adapter and the same acceptance checks.
 
 ## Source settings
 
-Open **Source settings** in the browser header, or **Settings → Metadata Providers
-→ Booru sources**. These settings apply to everyone using this server.
+Open **Settings** in the browser header, or **Settings → Metadata Providers
+→ Booru sources**. This single panel combines source/API credentials, downloads, converter preferences
+and optional CSV autocomplete databases. Saved server settings apply to everyone
+using this server.
 
 - **Edit** a preset to add credentials, change its CDN hosts or disable it. Use the
   username + API key for Danbooru/e621, user ID + API key for Gelbooru JSON DAPI,

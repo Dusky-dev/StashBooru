@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -78,21 +79,34 @@ func (rs booruBrowserRoutes) Media(w http.ResponseWriter, r *http.Request) {
 	}
 	asset := post.PreviewURL
 	limit := int64(8 << 20)
+	imagesOnly := true
 	switch r.URL.Query().Get("kind") {
 	case "preview":
 	case "sample":
 		asset, limit = post.SampleURL, 24<<20
+	case "motion":
+		switch strings.ToLower(post.Format) {
+		case "mp4", "webm", "gif", "apng":
+		default:
+			writeBooruError(w, 400, "media", "No supported animated preview is available.")
+			return
+		}
+		asset, limit, imagesOnly = post.OriginalURL, 24<<20, false
+		if asset == "" || post.Bytes > limit {
+			writeBooruError(w, 413, "media", "Animated preview unavailable or over 24 MiB. Use Download or open the remote post.")
+			return
+		}
 	default:
 		writeBooruError(w, 400, "media", "Invalid preview kind.")
 		return
 	}
 	var buf bytes.Buffer
-	info, err := rs.client.FetchMedia(r.Context(), source, booru.MediaRequest{URL: asset, Limit: limit, ImagesOnly: true}, &buf)
+	info, err := rs.client.FetchMedia(r.Context(), source, booru.MediaRequest{URL: asset, Limit: limit, ImagesOnly: imagesOnly}, &buf)
 	if err != nil {
 		writeBooruError(w, 502, "media", err.Error())
 		return
 	}
 	w.Header().Set("Content-Type", info.ContentType)
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	_, _ = w.Write(buf.Bytes())
+	http.ServeContent(w, r, "preview", time.Time{}, bytes.NewReader(buf.Bytes()))
 }

@@ -86,7 +86,7 @@ export function TagAutocomplete({
           );
           if (available.length === 0)
             setNotice(
-              "Autocomplete unavailable. Check source access or select Installed CSV only in Filters & display."
+              "Autocomplete unavailable. Check source access or select Installed CSV only in the Autocomplete menu."
             );
           else if (available.length < results.length)
             setNotice(
@@ -174,7 +174,7 @@ export function TagAutocomplete({
       <input
         ref={input}
         id="booru-query"
-        className="form-control"
+        className="form-control text-input"
         role="combobox"
         aria-label="Search tags (native source syntax)"
         aria-autocomplete="list"
