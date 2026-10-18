@@ -1373,11 +1373,17 @@ try {
     await page
       .getByRole("button", { name: "Back to posts", exact: true })
       .click();
+    const cardDownloadRequest = page.waitForRequest(
+      (request) =>
+        request.method() === "POST" &&
+        new URL(request.url()).pathname.endsWith("/booru-browser/download")
+    );
     await dan
       .getByRole("button", { name: "Download danbooru post 103", exact: true })
       .click();
-    assert.equal(downloadRequests.at(-1).destination, "/library/custom");
-    assert.equal(downloadRequests.at(-1).convert, false);
+    const cardPayload = (await cardDownloadRequest).postDataJSON();
+    assert.equal(cardPayload.destination, "/library/custom");
+    assert.equal(cardPayload.convert, false);
     sourcesDenied = true;
     await page.goto(`${baseURL}/booru`);
     await page
