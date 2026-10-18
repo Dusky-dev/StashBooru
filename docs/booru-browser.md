@@ -21,28 +21,86 @@ not discard another source's results. Inspect a thumbnail or post number to view
 the larger remote preview and grouped raw tags; **Open remote post** visits the
 source site in a separate tab.
 
-With the sort/rating controls at their defaults, the same query is sent unchanged
-to each source. Other control values append the selected engine's native filter
+With the rating control at its default, the same query is sent unchanged
+to each source. Other rating values append the selected engine's native filter
 syntax; Philomena uses its native sort parameter and rating-tag expression. Space-separated tags and
 underscores are common to the first four engines; Philomena uses its own syntax,
 including tags with spaces and comma/AND combinations. Expand **Search help** in the sidebar for each selected source. Provider ratings, search limits, account filters and metatags
 remain provider-specific. Unsupported/rejected queries are errors rather than
 being silently simplified to a broader search.
 
-The sidebar groups sources, a native expression input, removable search-term
-chips and compact filter icon menus. Chips preserve exclusions and quoted expressions;
-the full text input remains editable. Suggestions carry category/source labels.
-Enter/Tab completes a highlighted suggestion; **Ctrl+Enter** submits the search.
-Page tags prepare a query. Thumbnail cards keep only the preview, post number,
-rating, selection and icon actions; grouped tags and detailed evidence remain in
-the inspector. Buttons have accessible names and hover tooltips.
+The top search card shows the selected sources above Stash's list toolbar.
+The toolbar contains Sources, the editable native expression and removable term
+chips, Search, rating/media/autocomplete icons, display operations, Favorites,
+saved search filters, page size, Grid/Wall and thumbnail zoom. The sidebar retains
+loaded-page tags and source help. Source switches stay open while choosing up to
+eight sources. Suggestions carry category/source labels; Enter/Tab completes a
+highlighted suggestion and **Ctrl+Enter** submits.
 
-**Sort by** offers provider default, newest and popular. Updated ordering is
-available for Danbooru, e621 and Moebooru; Gelbooru/Philomena reject an explicit
-unsupported updated-sort URL. **Rating** offers All ratings, Safe / General,
-Questionable and Explicit. Safe means General on current Danbooru/Gelbooru;
-Philomena's Questionable selection also includes Suggestive. Leave these controls
-at their defaults when writing your own order/rating expressions.
+Cards retain only the preview, number, rating, selection and named icon actions.
+Artist, Copyright and Character icons prepare a query: a single tag fills Search;
+multiple tags open a chooser. Only provider-supplied categories appear; flat tags
+are not guessed. The inspector retains all remote metadata and detailed evidence.
+
+**Rating** offers All ratings, Safe / General, Questionable and Explicit on the
+original engines. Safe means General on current Danbooru/Gelbooru;
+Philomena's Questionable also includes Suggestive. Leave All ratings selected for
+native rating expressions. Pixiv, Shimmie and archive adapters currently require
+All ratings and provider ordering. The sort selector has been removed; native
+order expressions and older supported sort URLs remain available.
+
+**Grid** lays cards out in columns; **Wall** fits their aspect ratios into justified
+rows. The native zoom slider resizes cards/rows in four steps. View and zoom are
+remembered locally across refreshes. Per-source pagination indexes show the source,
+page and available count; unknown totals remain explicitly unknown. The redundant
+results header is removed.
+
+## Favorites and saved filters
+
+The star in each card saves/removes that post in **StashBooru Favorites**. The star
+in the toolbar opens saved posts from the selected sources. These favorites are
+shared by this Stash server; they do not synchronize remote accounts. Each saved
+post keeps its approved media references, bounded core taxonomy and gallery attachments.
+Snapshots keep up to 64 core tags with names/labels up to 200 bytes; ordinary tags
+remain available in live search/inspection rather than the saved projection.
+Favorites can be inspected and downloaded after a refresh/restart. Remote files
+can disappear or their URLs can expire; return to the provider search to refresh
+and re-save changed media. A disabled or changed source is not reopened through
+an old favorite. Removing a favorite refreshes that source's favorite listing.
+
+The separate filter icon opens **Saved search filters**. Name and save the current
+query/source/filter combination, select a saved name to apply it, or use its trash
+icon to delete it. Saving an existing name replaces that filter. Up to 100 named
+filters and 500 favorite posts are stored in private `booru-bookmarks.json`, with
+an 8 MiB metadata bound and atomic updates. This is separate from ignored/manual
+Downloaded history. No remote follow or automated download is created.
+
+## Provider additions
+
+| Source / engine | Search and authentication | Media limitations |
+| --- | --- | --- |
+| Paheal / Shimmie | Native tags via the Danbooru XML API; anonymous | Categories may be unavailable; no live completion endpoint. |
+| Pixiv | OAuth **access token** in source API key; text search, `user:123` for artist works, `id:123` for a work | Static illustration/manga pages selectable in the inspector. Ugoira frame ZIPs are explicitly unavailable. No login/token refresh is implemented; replace expired tokens in Settings. |
+| Pawchive | `*` for recent posts, text of at least three bytes, or `creator:service:id`; anonymous API | Optional API key is the `session` cookie value, sent only to `file.pawchive.pw`. Preview-only/deferred/unavailable originals cannot be downloaded. |
+| Kemono | Same archive query forms; anonymous API | Supported image/video attachments only; ZIPs/documents are counted as omitted. |
+
+Custom sources can select these engines and configure their HTTPS API root/CDN
+hosts in Settings. Preset hostnames can change; failures remain visible for retry
+or source configuration. Media is validated through existing size, host, public
+DNS and format checks. The adapters use the APIs independently; no Grabber source
+code or login flow is embedded.
+
+Pixiv/archive APIs use fixed upstream blocks of 30/50 posts. The browser slices
+aligned blocks for the selected page size without skipping records. A gallery is
+one card: choose **Media file** in inspection to preview/download a particular
+attachment. Keyboard Up downloads the selected attachment. Ignore/Favorite apply
+to the post; alternate files do not inherit first-file MD5 evidence. Up to 200
+additional attachments per post and 256 media snapshots per result are accepted;
+reduce page size if galleries exceed the result bound. Downloads remain one
+explicitly chosen file at a time. No text/ZIP import or bulk gallery download is
+added. Installed CSV completion remains available on these new engines.
+
+## Display, downloads and inspection
 
 **Media on this page** filters the currently loaded page into Images or Videos.
 It does not refetch or repaginate the provider, and totals still include all media.
@@ -86,7 +144,7 @@ snapshot: new/changed remote posts can shift page boundaries. Results are groupe
 by source, de-duplicated by post ID within each returned page, and retain distinct
 source/post identity across providers. There is no cross-source or cross-page
 deduplication yet. Totals are unknown except for provider-reported Philomena
-totals; these are not verified snapshot totals. Numbered browsing ends at page
+and Shimmie counts; these are not verified snapshot totals. Numbered browsing ends at page
 750; narrow the query to continue.
 
 Preview bytes use a bounded same-origin media route backed by server-owned
@@ -108,11 +166,15 @@ every tag as general or guessing Artist/Character/Copyright identity.
 | Moebooru | Yande.re, Konachan | Anonymous search only; legacy password-hash login is not implemented. |
 | e621 | e621, e926 | Optional login + API key using HTTP Basic; current v2 and legacy response layouts are understood. |
 | Philomena | Derpibooru | Optional API key; the source's content filters still apply. |
+| Shimmie XML | Paheal | Anonymous API. |
+| Pixiv App API | Pixiv | OAuth access token; no automatic refresh/login. |
+| Pawchive | Pawchive | Anonymous API; optional file-host session cookie value. |
+| Kemono | Kemono | Anonymous API. |
 
 These are API adapters and presets, not a claim of complete Grabber site/login
-parity. Shimmie, Szurubooru, Sankaku, Pixiv, HTML scraping, executable source
-plugins and browser-session login are not implemented. Compatible instances of
-the five engines above can be added in **Settings**. More engines
+parity. Szurubooru, Sankaku, HTML scraping, executable source plugins and
+browser-session login are not implemented. Compatible instances of
+the engines above can be added in **Settings**. More engines
 need their own documented adapter and the same acceptance checks.
 
 ## Source settings
@@ -128,7 +190,7 @@ using this server.
 - **Add custom booru**: choose a stable source ID, display name, supported API
   engine and public HTTPS site URL. Include an installation path if needed. Add
   separate image/CDN hostnames when previews live outside the site host. Choosing
-  an engine means the site must implement that engine's supported JSON API.
+  an engine means the site must implement that engine's supported API.
 - A blank API key keeps the saved key. **Remove saved credentials on save** clears
   the key and account fields. Saved keys never return to the browser. When the URL
   or engine changes, re-enter or explicitly remove the existing key so it cannot
@@ -141,8 +203,8 @@ using this server.
   discards the current editor draft. A stale editor gets a conflict error rather
   than overwriting another tab or an external file edit.
 
-The browser keeps search/sources and categorized page tags in a left sidebar,
-with compact thumbnail rows on the right. On narrow screens controls stack above
+Search and source selection stay in the top toolbar; categorized page tags
+and source help remain in the left sidebar, with thumbnails on the right. On narrow screens controls stack above
 a two-column grid and page tags expand with **Show page tags**. Category labels
 accompany category colors. Counts cover only the selected source's loaded page,
 with up to 20 tags per category; these are not provider-wide related-tag counts.
@@ -154,7 +216,7 @@ lookup provider list is unchanged.
 ## Server configuration file
 
 The optional **`booru-browser.json` beside `config.yml`** contains an array of
-source overrides/additions. Missing file means the ten presets. A complete entry
+source overrides/additions. Missing file means the fourteen presets. A complete entry
 with an existing ID replaces that preset; an ID-only disabled entry removes it.
 Custom source IDs are stable lowercase letters/digits/underscores/hyphens, up to
 64 characters. Keep IDs stable for bookmarks and future review/follow records.

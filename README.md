@@ -80,18 +80,23 @@ for source priority, filenames, model requirements, native Auto Tag and inherita
 
 ### Remote booru browsing
 
-The navbar's **Booru** browser searches selected sources through Danbooru,
-Gelbooru JSON DAPI, Moebooru, e621 and Philomena adapters. It includes ten presets
-and compatible custom instances managed in **Booru → Settings**, with API keys
-and per-source enable/disable controls. A compact sidebar, categorized page tags
-and thumbnail grid support independent paging/errors and preview/tag inspection.
-Query and inspection state survive refresh/back navigation. Review marks persist
-ignored/manual-download history, with bounded current-file MD5 matches shown
-separately. Downloads save into a default or selected Stash library folder, using native scan
-and optional saved converter defaults. Live autocomplete has optional uploaded/server-path
-CSV fallback. Search chips, sort/rating controls, page-media filters and card download
-actions share the existing browser; state survives refresh. Metadata review and follows remain later
-packages. See
+The navbar's **Booru** browser supports Danbooru, Gelbooru JSON DAPI, Moebooru,
+e621, Philomena, Shimmie/Paheal, Pixiv, Pawchive and Kemono adapters. Fourteen
+presets and compatible custom instances are managed in **Booru → Settings**, with
+engine-specific credentials and enable/disable controls. The native list toolbar
+combines source selection, search chips, rating/media filters, page size, Grid/Wall
+views and persistent zoom; selected sources stay visible above it. A tag sidebar,
+core taxonomy icon choosers and gallery inspection retain remote metadata without
+crowding thumbnails. Paging, query and inspection survive refresh/back.
+
+Server Favorites are separate from named saved search filters and ignored/manual
+Downloaded history. Bounded current-file MD5 matches remain separate evidence.
+Native Jobs download a chosen file into the default or selected library folder,
+with safe common Grabber filename tokens/subfolders and optional saved converter
+defaults. Live autocomplete has optional uploaded/server-path CSV fallback;
+new provider adapters can use CSV completion. Pixiv requires an access token;
+Ugoira frame ZIPs and archive documents are not imported. Metadata entity review,
+remote follows and bulk gallery downloads remain later packages. See
 [B02 review state](docs/booru-review-state.md), [downloads and autocomplete](docs/booru-downloads-autocomplete.md), and [browser setup and limits](docs/booru-browser.md).
 
 ### Visual similarity and reference comparison
