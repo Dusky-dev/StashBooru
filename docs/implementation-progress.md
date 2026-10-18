@@ -7,6 +7,7 @@ PR #148 is merged. Branch `feat/booru-live-browser-20261018` integrates live
 completion and the requested Stash Browser-inspired workflow into the existing
 browser. See [browser guide](booru-browser.md) and
 [downloads/autocomplete guide](booru-downloads-autocomplete.md).
+Review: [PR #149](https://github.com/Dusky-dev/StashBooru/pull/149).
 
 P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
@@ -30,15 +31,38 @@ silently promoted to verified production features by this documentation update.
 - Card Download/Folder actions use existing native Jobs, default/custom library
   destinations and saved converter defaults. Card/inspector job state and saved
   preferences synchronize; an obsolete settings response cannot restore old defaults.
+  Editors wait for saved settings before accepting changes, including server CSV
+  paths. The source editor no longer mounts an editable form that its initial
+  configuration load immediately replaces.
 - Default source/query/paging/preview/review behavior remains integrated. No new
   entity import, inference, bulk download automation, model or encoder is added.
-- Verification: previous full backend gates and mounted desktop/mobile workflows
-  passed. Final corrected provider-order, preference-race, UI/production and
-  documentation checks are being recorded before ready-for-review.
+- Verified local runtime `c6a5dbf5990538d9d9802381b93033bc7ed3d792` and published
+  `0f8ae749b5d1f914af074c477caea0ac18287849` have identical tree
+  `46852c82fb1c54b526e880691f5d739a77369da2`. Full `make test` and `make it`
+  passed locally. All 57 UI tests, JS/CSS lint, TypeScript, formatting and
+  production `make ui-only` passed on the final UI source.
+- Mounted Chrome Headless Shell passed at 1440×1000 and 390×844, including live
+  suggestions before CSV installation, CSV-only completion, native query chips,
+  sort/rating URL state, loaded-page filtering without a search request, thumbnail
+  persistence, card downloads and shared jobs, delayed editor loading and a late
+  obsolete preferences response. The actual outgoing download payload retains
+  the newly saved folder and conversion flag. Existing search, settings, review,
+  import links, folder, preview fallback, cancellation and cleanup checks passed.
+  Synthetic screenshots were visually reviewed at both viewport sizes.
+- GitHub full integration tests, generation/UI, Go lint and seven platform builds
+  passed on backend-identical `e92f7d1fb645ef4b5cac0246f6fb641dc5c3c2c7`.
+  Its browser check exposed the settings race fixed and verified above. The local
+  concurrent lint retry exhausted compiler memory; isolated GitHub lint passed.
+  Final check runs and synthetic screenshot artifacts are attached to PR #149.
+  All 91 relative links in the updated guides/indexes and `git diff --check`
+  passed. This final checkpoint updates documentation only.
 - Live unauthenticated endpoint smoke attempts from this environment returned
   non-JSON responses. Fixture coverage is separate from deployed/authenticated
   provider acceptance; CSV fallback remains available. No broad live-site,
   real-codec or physical GPU acceptance is claimed.
+- Next: test this browser with deployed provider credentials and library/converter
+  settings. Continue reviewed metadata import as a separate roadmap package;
+  follows, pHash comparison and batch automation remain outside this UI slice.
 
 ## Gelbooru CSV duplicate compatibility — 2026-10-18 UTC
 

@@ -11,11 +11,12 @@ Set **Default Stash download folder** and save. **Choose default folder** browse
 existing directories inside configured Stash libraries. You can also enter an
 absolute server directory. Add a library under Stash's normal configuration first
 if the desired directory is outside the existing libraries.
+Wait for saved settings to load before editing. Saving updates the defaults used
+by cards already open in this browser.
 
 Each thumbnail card has **Download** and **Folder…** actions. These use the saved
 conversion checkbox and default folder; **Folder…** overrides only that download.
 Inspect a post for full progress, conversion controls and destination details:
-
 
 - **Download to Stash** to use the saved default directory.
 - **Download to…** to browse/select a directory for this download only. This does
