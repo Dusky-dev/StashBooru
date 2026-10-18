@@ -84,7 +84,7 @@ func TestBooruCSVAtomicUploadAndRevisions(t *testing.T) {
 	rs := booruBrowserRoutes{configPath: t.TempDir()}
 	source := booru.Defaults()[0]
 	path := "/booru-browser/tags?source=" + source.ID + "&instance=" + source.Instance()
-	csv := "blue_hair,0,42,azure_hair\nartist_a,1,4,\n"
+	csv := "blue_hair,0,42,azure_hair\nartist_a,1,4,\nblue_hair,0,12,azure_hair\n"
 	upload := func(body, revision string) *httptest.ResponseRecorder {
 		w := httptest.NewRecorder()
 		r := toolRequest("POST", path, body, "text/csv")

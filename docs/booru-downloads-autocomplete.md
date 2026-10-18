@@ -80,6 +80,16 @@ file. There is no automatic directory scan or periodic reload. A failed load or
 stale upload leaves the installed database intact. Reload settings after a revision
 conflict. These are search suggestions, separate from native catalogue tags.
 
+Repeated tag names in provider snapshots are combined into one suggestion. The
+row with the highest post count supplies its count/category; ties keep the first
+row. Aliases are combined without counting duplicates twice. Counts are never
+added together, and malformed duplicate rows still reject the replacement.
+
+A ready-made [Gelbooru CSV snapshot](https://github.com/DraconicDragon/dbr-e621-lists-archive/blob/main/tag-lists/gelbooru/gelbooru_2026-06-10_pt20.csv)
+is available from DraconicDragon. It is dated June 2026, uses a post threshold of
+20 and has no aliases. Select Gelbooru before installing it. This is a community
+snapshot, not an automatically refreshed official database.
+
 | Format | Columns |
 | --- | --- |
 | [tagcomplete CSV](https://github.com/DominikDoom/a1111-sd-webui-tagcomplete#csv-tag-data) | `name,type,count,"alias_one,alias_two"`, without a header; count/aliases optional. |

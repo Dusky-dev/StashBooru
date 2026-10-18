@@ -36,13 +36,16 @@ func (t *TagIndex) Count() int { return len(t.tags) }
 // ReadTagCSV accepts the tagcomplete database format: name,type,count,aliases.
 // Header rows from Danbooru tag exports are accepted when the required columns
 // name/category/post_count are present. No catalogue metadata is modified.
+// Repeated names retain the busiest row's count/category (first row on ties),
+// and their aliases are combined within the normal per-tag/index limits.
 func ReadTagCSV(input io.Reader) (*TagIndex, error) { return ReadTagCSVForEngine(input, "danbooru") }
 
 func ReadTagCSVForEngine(input io.Reader, engine string) (*TagIndex, error) {
 	reader := csv.NewReader(io.LimitReader(input, MaxTagCSVBytes+1))
 	reader.FieldsPerRecord = -1
 	index := &TagIndex{}
-	seen := map[string]bool{}
+	seen := map[string]int{}
+	aliasesByTag := map[int][]string{}
 	nameCol, typeCol, countCol, aliasCol := 0, 1, 2, 3
 	numeric := map[string]string{"0": "general", "1": "artist", "3": "copyright", "4": "character", "5": "meta"}
 	if engine == "e621" {
@@ -87,8 +90,8 @@ func ReadTagCSVForEngine(input io.Reader, engine string) (*TagIndex, error) {
 			return strings.TrimSpace(fields[col])
 		}
 		name := get(nameCol)
-		if !validTagText(name) || seen[name] || len(index.tags) >= 1_000_000 {
-			return nil, fmt.Errorf("invalid/duplicate tag at row %d, or more than one million tags", row)
+		if !validTagText(name) {
+			return nil, fmt.Errorf("invalid tag name at row %d: expected 1–256 UTF-8 bytes without control characters", row)
 		}
 		category := get(typeCol)
 
@@ -112,10 +115,20 @@ func ReadTagCSVForEngine(input io.Reader, engine string) (*TagIndex, error) {
 		if len(aliases) > 32 {
 			return nil, fmt.Errorf("too many aliases at row %d", row)
 		}
-		id := len(index.tags)
-		index.tags = append(index.tags, Suggestion{Name: name, Category: category, Count: count})
-		seen[name] = true
-		index.keys = append(index.keys, tagKey{strings.ToLower(name), id})
+		id, duplicate := seen[name]
+		if !duplicate {
+			if len(index.tags) >= 1_000_000 {
+				return nil, fmt.Errorf("database exceeds one million unique tags at row %d", row)
+			}
+			id = len(index.tags)
+			index.tags = append(index.tags, Suggestion{Name: name, Category: category, Count: count})
+			seen[name] = id
+			index.keys = append(index.keys, tagKey{strings.ToLower(name), id})
+		} else if count > index.tags[id].Count {
+			// Paged provider snapshots can repeat names with stale counts/types.
+			// Keep one suggestion using the busiest row; ties keep the first row.
+			index.tags[id].Count, index.tags[id].Category = count, category
+		}
 		for _, alias := range aliases {
 			alias = strings.TrimSpace(alias)
 			if alias == "" {
@@ -124,7 +137,15 @@ func ReadTagCSVForEngine(input io.Reader, engine string) (*TagIndex, error) {
 			if !validTagText(alias) {
 				return nil, fmt.Errorf("invalid alias at row %d", row)
 			}
-			index.keys = append(index.keys, tagKey{strings.ToLower(alias), id})
+			key := strings.ToLower(alias)
+			if key == strings.ToLower(name) || slices.Contains(aliasesByTag[id], key) {
+				continue
+			}
+			if len(aliasesByTag[id]) >= 32 {
+				return nil, fmt.Errorf("too many aliases for tag at row %d", row)
+			}
+			aliasesByTag[id] = append(aliasesByTag[id], key)
+			index.keys = append(index.keys, tagKey{key, id})
 		}
 		if len(index.keys) > 2_000_000 {
 			return nil, fmt.Errorf("database exceeds two million names/aliases")

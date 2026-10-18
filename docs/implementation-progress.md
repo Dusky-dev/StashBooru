@@ -2,17 +2,50 @@
 
 Updated: 2026-10-18
 
-Current baseline: `develop` at `4b21a0dda1bd1580cadc605db7586a74b2f7e3ee`.
-PR #145 is merged. PR #146 was merged into the prior B02 feature branch at
-`9be2db6430aa05f22e186ffb315ff333d764bb4e`, and was not in develop at this
-checkpoint. [PR #147](https://github.com/Dusky-dev/StashBooru/pull/147) on
-`fix/booru-library-downloads-20261018` includes that work and
-fixes the owner's reported missing controls and workflow problems.
+Current baseline: `develop` at `a6c4a94109de0be7a78a36cc6a6ff84fbc166309`.
+PR #147 is merged. [PR #148](https://github.com/Dusky-dev/StashBooru/pull/148) on
+`fix/gelbooru-tag-csv-duplicates-20261018` fixes the
+reported database rejection in the published Gelbooru tag snapshot.
 See [downloads/autocomplete guide](booru-downloads-autocomplete.md).
 
 P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
+
+## Gelbooru CSV duplicate compatibility — 2026-10-18 UTC
+
+- Started from fresh develop `a6c4a94109de0be7a78a36cc6a6ff84fbc166309`
+  after #147, with a clean tree. No browsing/UI/converter scope changes.
+- Reproduced the owner's row-7130 error with the recommended community CSV:
+  `gelbooru_2026-06-10_pt20.csv`, 5,366,510 bytes, SHA-256
+  `54c4eda3d7a8b8f58ab4db4fb530c9c241840388ba099e628c27dd17f7174a17`.
+  It has 234,090 records but 234,010 distinct trimmed tag names. The first repeat
+  is `final_fantasy_v` at records 7129/7130; several others disagree on category
+  or count. The reported one-million limit was not the cause.
+- Import now merges names, taking the highest-count record's category/count
+  (first record on ties) and a bounded, deduplicated alias union. Counts are not
+  summed. Every row is still validated before merging. Invalid-name and unique
+  tag-limit failures now have separate error messages.
+- Both original and cleaned full snapshots pass the actual patched Go importer
+  with 234,010 tags. The prior importer separately reproduced the exact reported
+  record-7130 failure and accepted the cleaned copy with 234,010 tags, verifying
+  compatibility for the existing build.
+- Local `go test ./pkg/booru` passed, including category/count selection, stable
+  ties, alias preservation/deduplication, invalid duplicate rejection and alias
+  union limits. Upload/reload tests now include duplicate names and retain
+  revision-conflict and invalid-replacement preservation checks.
+- GitHub lint, generation/UI validation and mounted-browser checks passed on
+  `c4dede2d69716031f1b40b4f491252bc1e4a389e` (local implementation
+  `5465ba6d3aa518e93f8deab682832ccbc295cb15`, identical tree
+  `f93ae9b5ec2ccdcf72ac9bb0bbef838e0b5023e9`). Full `make it` also passed
+  in GitHub CI, including upload/reload/atomic-replacement regression coverage.
+  Redundant cold-cache local broad tests/lint were stopped after CI passed;
+  only the focused parser tests/full-snapshot checks are claimed locally.
+  All 73 relative guide/index links and `git diff --check` passed. This final
+  checkpoint changes documentation only; no UI source changed.
+- Next: load the original snapshot after updating to the focused fix, or use
+  the cleaned compatibility CSV with the prior build. Deduplication does not
+  make stale snapshot categories authoritative or refresh the database.
 
 ## Booru library downloads and workflow corrections — 2026-10-18 UTC
 
