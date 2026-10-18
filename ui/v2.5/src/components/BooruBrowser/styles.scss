@@ -141,7 +141,7 @@
     }
     .booru-post-caption { display: none; }
 
-    .booru-core-tags, .booru-card-actions {
+    .booru-core-tags, .booru-card-actions, .booru-review-actions {
       background: rgb(0 0 0 / 75%);
       left: 0;
       position: absolute;
@@ -154,10 +154,8 @@
       top: 0;
     }
 
-    .booru-card-actions {
-      bottom: 0;
-      flex-wrap: wrap;
-    }
+    .booru-card-actions { bottom: 32px; }
+    .booru-review-actions { bottom: 0; }
   }
 
   .booru-grid {

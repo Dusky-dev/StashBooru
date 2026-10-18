@@ -676,8 +676,8 @@ function SourceResults({
                     instance={source.instance}
                     compact
                   />
-                  {controls}
                 </div>
+                {controls}
               </article>
             )}
           </BooruReview>

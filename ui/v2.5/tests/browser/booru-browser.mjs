@@ -1546,13 +1546,40 @@ try {
     await page.reload();
     await dan.locator(".booru-wall-item").first().waitFor();
     assert.equal(await page.locator(".zoom-slider").inputValue(), "2");
+    await page.waitForFunction(() => {
+      const img = document.querySelector(".booru-wall-item img");
+      const box = img?.getBoundingClientRect();
+      return (
+        img?.complete &&
+        img.naturalWidth > 0 &&
+        box?.width > 1 &&
+        box?.height > 1
+      );
+    });
+    await dan
+      .locator(".booru-wall-item img")
+      .first()
+      .evaluate((img) => img.decode());
+    const wallCheck = dan
+      .locator(".booru-wall-item")
+      .first()
+      .locator(".card-check");
+    const wallBounds = await dan
+      .locator(".booru-wall-item")
+      .first()
+      .boundingBox();
+    const checkBounds = await wallCheck.boundingBox();
+    assert.ok(
+      checkBounds.y - wallBounds.y < 30,
+      "wall checkbox left the top corner"
+    );
     if (process.env.STASH_BROWSER_SCREENSHOTS)
       await page.screenshot({
         path: path.join(
           process.env.STASH_BROWSER_SCREENSHOTS,
           `booru-wall-${viewport.width}.png`
         ),
-        fullPage: true,
+        fullPage: false,
       });
     await page.getByRole("button", { name: "Grid view", exact: true }).click();
     await page.locator(".zoom-slider").fill("0");
