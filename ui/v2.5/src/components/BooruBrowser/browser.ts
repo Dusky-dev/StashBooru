@@ -16,6 +16,8 @@ export interface BooruPost {
   postURL: string;
   previewURL?: string;
   sampleURL?: string;
+  mediaKey?: string;
+  downloadAvailable?: boolean;
   width?: number;
   height?: number;
   bytes?: number;
@@ -137,4 +139,15 @@ export async function readBooruResponse<T>(response: Response): Promise<T> {
     throw new Error(error);
   }
   return response.json() as Promise<T>;
+}
+
+// Keys are issued only for server-owned provider snapshots. Never proxy a URL supplied by the browser.
+export function booruMediaURL(
+  post: BooruPost,
+  kind: "preview" | "sample"
+): string | undefined {
+  if (!post.mediaKey || !/^[a-f0-9]{48}$/.test(post.mediaKey)) return undefined;
+  if (!(kind === "preview" ? post.previewURL : post.sampleURL))
+    return undefined;
+  return `booru-browser/media?${new URLSearchParams({ key: post.mediaKey, kind })}`;
 }

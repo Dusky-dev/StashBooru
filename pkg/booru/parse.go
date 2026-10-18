@@ -113,6 +113,13 @@ func parsePost(source Source, raw object) (Post, error) {
 		Bytes: number(raw["file_size"]), MD5: text(raw["md5"]), Rating: text(raw["rating"]),
 		Format: text(raw["file_ext"]), Tags: []Tag{}}
 	preview, sample := text(raw["preview_file_url"]), text(raw["large_file_url"])
+	original := text(raw["file_url"])
+	if post.Width == 0 {
+		post.Width = number(raw["image_width"])
+	}
+	if post.Height == 0 {
+		post.Height = number(raw["image_height"])
+	}
 	if preview == "" {
 		preview = text(raw["preview_url"])
 	}
@@ -129,25 +136,53 @@ func parsePost(source Source, raw object) (Post, error) {
 		postURL += "/images/" + id
 		reps := child(raw["representations"])
 		preview, sample = text(reps["thumb"]), text(reps["large"])
+		original = text(reps["full"])
 		post.Format = text(raw["format"])
 		post.Bytes = number(raw["size"])
 	case "e621":
 		postURL += "/posts/" + id
 		// Current v2 and legacy API responses describe different wire layouts.
 		if files := child(raw["files"]); files != nil {
-			original, meta := child(files["original"]), child(files["meta"])
-			post.Width, post.Height = number(original["width"]), number(original["height"])
+			originalFile, meta := child(files["original"]), child(files["meta"])
+			post.Width, post.Height = number(originalFile["width"]), number(originalFile["height"])
 			post.Bytes, post.MD5, post.Format = number(meta["size"]), text(meta["md5"]), text(meta["ext"])
+			original = text(originalFile["url"])
+			if original == "" {
+				original = text(originalFile[post.Format])
+			}
 			preview, sample = text(child(files["preview"])["jpg"]), text(child(files["sample"])["jpg"])
 		} else {
 			file := child(raw["file"])
 			post.Width, post.Height = number(file["width"]), number(file["height"])
 			post.Bytes, post.MD5, post.Format = number(file["size"]), text(file["md5"]), text(file["ext"])
+			original = text(file["url"])
 			preview, sample = text(child(raw["preview"])["url"]), text(child(raw["sample"])["url"])
 		}
 	default:
 		postURL += "/posts/" + id
+		if asset := child(raw["media_asset"]); asset != nil {
+			var variants []object
+			_ = json.Unmarshal(asset["variants"], &variants)
+			for _, variant := range variants {
+				switch text(variant["type"]) {
+				case "180x180":
+					if preview == "" {
+						preview = text(variant["url"])
+					}
+				case "sample":
+					if sample == "" {
+						sample = text(variant["url"])
+					}
+				case "original":
+					if original == "" {
+						original = text(variant["url"])
+					}
+				}
+			}
+		}
 	}
+	post.OriginalURL = source.mediaURL(original)
+	post.DownloadAvailable = post.OriginalURL != ""
 	post.PostURL, post.PreviewURL, post.SampleURL = postURL, source.mediaURL(preview), source.mediaURL(sample)
 	// Do not substitute a potentially huge original for a missing preview.
 	if post.SampleURL == "" {

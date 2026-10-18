@@ -1,10 +1,12 @@
-# Booru browser — B01
+# Booru browser
 
 Open **Booru** (globe) in the navbar, or `/booru`. This browser searches
-remote posts and displays their previews and metadata. It does not download
-originals, import entities or change native media metadata.
+remote posts and displays their previews and metadata.
+[Downloads and autocomplete](booru-downloads-autocomplete.md) adds explicit file
+exports, optional JPEG → JPEG XL conversion, and per-source CSV tag databases.
+It does not import entities or change native media metadata.
 [B02 review state](booru-review-state.md) adds durable ignored/manual-download
-marks and bounded current-file MD5 matches. Metadata import, reviewed downloads,
+marks and bounded current-file MD5 matches. Metadata import, catalogue downloads,
 pHash comparison and follows remain later [roadmap packages](booru-browser-roadmap.md).
 
 ## Search and inspect
@@ -32,10 +34,12 @@ deduplication yet. Totals are unknown except for provider-reported Philomena
 totals; these are not verified snapshot totals. Numbered browsing ends at page
 750; narrow the query to continue.
 
-Preview bytes come directly from the configured provider/CDN to the browser,
-without a StashBooru media proxy. A missing/blocked/unsupported preview has a
-fallback message and remote link. Originals are never substituted for missing
-thumbnails. Dimensions, byte size, rating and MD5 are provider metadata; unknown
+Preview bytes use a bounded same-origin media route backed by server-owned
+search keys, validated provider/CDN hosts and public DNS. Missing, expired,
+blocked or unsupported previews have a fallback message and remote link.
+Originals are never substituted for missing thumbnails. See
+[thumbnail limits](booru-downloads-autocomplete.md#thumbnails).
+Dimensions, byte size, rating and MD5 are provider metadata; unknown
 fields stay unknown. A preview is not proof of full-file identity or quality.
 Flat tag APIs are labelled **category not supplied**, rather than classifying
 every tag as general or guessing Artist/Character/Copyright identity.

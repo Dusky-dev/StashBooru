@@ -11,8 +11,11 @@ import {
   readBooruResponse,
   readBrowserSearch,
   remoteURL,
+  booruMediaURL,
 } from "./browser";
 import { BooruReview, ReviewEvidence, type ReviewState } from "./BooruReview";
+import { TagAutocomplete } from "./TagAutocomplete";
+import { BooruDownload } from "./BooruDownload";
 import { SourceSettings } from "./SourceSettings";
 import "./styles.scss";
 
@@ -35,7 +38,7 @@ function PostInspection({
   review?: ReviewState;
 }) {
   const groups = [...new Set(post.tags.map((tag) => tag.category))];
-  const sample = remoteURL(post.sampleURL);
+  const sample = booruMediaURL(post, "sample");
   return (
     <Modal show onHide={onHide} size="lg" className="booru-browser-inspection">
       <Modal.Header closeButton>
@@ -70,6 +73,11 @@ function PostInspection({
             MD5: <code>{post.md5}</code>
           </p>
         )}
+        <BooruDownload
+          key={post.mediaKey}
+          post={post}
+          instance={source.instance}
+        />
         {groups.length === 0 && (
           <p>{message("no_tags", "The provider supplied no tags.")}</p>
         )}
@@ -273,10 +281,10 @@ function SourceResults({
                   onClick={() => onInspect(item.id)}
                   aria-label={`Inspect ${source.name} post ${item.id}`}
                 >
-                  {remoteURL(item.previewURL) ? (
+                  {booruMediaURL(item, "preview") ? (
                     <RemoteImage
                       key={item.previewURL}
-                      src={remoteURL(item.previewURL) || ""}
+                      src={booruMediaURL(item, "preview") || ""}
                       alt={`${source.name} #${item.id}`}
                     />
                   ) : (
@@ -471,12 +479,12 @@ export default function BooruBrowser() {
             >
               <Form.Group controlId="booru-query" className="mb-2">
                 <Form.Label>Search</Form.Label>
-                <Form.Control
-                  aria-label="Search tags (native source syntax)"
+                <TagAutocomplete
                   value={query}
-                  onChange={(event) => setQuery(event.currentTarget.value)}
-                  maxLength={1024}
-                  placeholder="Search tags…"
+                  onChange={setQuery}
+                  sources={sources.filter((source) =>
+                    selected.includes(source.id)
+                  )}
                 />
               </Form.Group>
               <Button

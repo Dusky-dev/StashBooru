@@ -97,18 +97,33 @@ func (s *DownloadStore) waitAndRemoveFile(hash string, w *http.ResponseWriter, r
 		f.wg.Done()
 	}()
 
-	go f.once.Do(func() {
-		// leave it up for 30 seconds after the first request to allow for multiple requests
-		time.Sleep(30 * time.Second)
-
-		f.wg.Wait()
-		s.mutex.Lock()
-		defer s.mutex.Unlock()
-
-		delete(s.m, hash)
-		err := os.Remove(f.path)
-		if err != nil {
-			logger.Errorf("error removing %s after downloading: %s", f.path, err.Error())
-		}
+	f.once.Do(func() {
+		time.AfterFunc(30*time.Second, func() { s.expireFile(hash, f) })
 	})
+}
+
+// ExpireFile also releases generated files that are never fetched by a browser.
+func (s *DownloadStore) ExpireFile(key string, after time.Duration) {
+	s.mutex.Lock()
+	f := s.m[key]
+	s.mutex.Unlock()
+	if f != nil {
+		time.AfterFunc(after, func() { s.expireFile(key, f) })
+	}
+}
+
+func (s *DownloadStore) expireFile(key string, f *storeFile) {
+	// Remove registration before waiting: no new readers can join the group.
+	// Compare the entry too, so an old timer cannot evict a reused random key.
+	s.mutex.Lock()
+	if s.m[key] != f {
+		s.mutex.Unlock()
+		return
+	}
+	delete(s.m, key)
+	s.mutex.Unlock()
+	f.wg.Wait()
+	if err := os.Remove(f.path); err != nil && !os.IsNotExist(err) {
+		logger.Errorf("error removing generated download: %s", err)
+	}
 }

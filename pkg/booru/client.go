@@ -23,18 +23,21 @@ type Tag struct {
 }
 
 type Post struct {
-	ID         string `json:"id"`
-	SourceID   string `json:"sourceID"`
-	PostURL    string `json:"postURL"`
-	PreviewURL string `json:"previewURL,omitempty"`
-	SampleURL  string `json:"sampleURL,omitempty"`
-	Width      int64  `json:"width,omitempty"`
-	Height     int64  `json:"height,omitempty"`
-	Bytes      int64  `json:"bytes,omitempty"`
-	MD5        string `json:"md5,omitempty"`
-	Rating     string `json:"rating,omitempty"`
-	Format     string `json:"format,omitempty"`
-	Tags       []Tag  `json:"tags"`
+	ID                string `json:"id"`
+	SourceID          string `json:"sourceID"`
+	PostURL           string `json:"postURL"`
+	PreviewURL        string `json:"previewURL,omitempty"`
+	SampleURL         string `json:"sampleURL,omitempty"`
+	OriginalURL       string `json:"-"`
+	MediaKey          string `json:"mediaKey,omitempty"`
+	DownloadAvailable bool   `json:"downloadAvailable"`
+	Width             int64  `json:"width,omitempty"`
+	Height            int64  `json:"height,omitempty"`
+	Bytes             int64  `json:"bytes,omitempty"`
+	MD5               string `json:"md5,omitempty"`
+	Rating            string `json:"rating,omitempty"`
+	Format            string `json:"format,omitempty"`
+	Tags              []Tag  `json:"tags"`
 }
 
 type Result struct {
@@ -69,6 +72,7 @@ type Client struct {
 	global   chan struct{}
 	hosts    sync.Map
 	interval time.Duration
+	media    chan struct{}
 }
 
 func NewClient() *Client {
@@ -83,7 +87,7 @@ func NewClient() *Client {
 		MaxConnsPerHost:       2,
 		IdleConnTimeout:       30 * time.Second,
 	}
-	return &Client{http: &http.Client{Transport: transport, Timeout: 15 * time.Second}, global: make(chan struct{}, 4), interval: time.Second}
+	return &Client{http: &http.Client{Transport: transport, Timeout: 15 * time.Second}, global: make(chan struct{}, 4), interval: time.Second, media: make(chan struct{}, 4)}
 }
 
 func publicDialContext(ctx context.Context, network, address string) (net.Conn, error) {
