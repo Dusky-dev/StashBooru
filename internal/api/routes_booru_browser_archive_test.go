@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -286,7 +287,7 @@ func TestBooruArchiveInitiatorCancellationDoesNotAbortWaiter(t *testing.T) {
 		waiterResult <- err
 	}()
 	cancelLeader()
-	if err := <-leaderResult; err != context.Canceled {
+	if err := <-leaderResult; !errors.Is(err, context.Canceled) {
 		t.Fatalf("initiator ignored cancellation: %v", err)
 	}
 	close(release)
