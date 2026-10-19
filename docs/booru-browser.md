@@ -154,7 +154,7 @@ Downloaded history. No remote follow or automated download is created.
 
 | Source / engine | Search and authentication | Media limitations |
 | --- | --- | --- |
-| Paheal / Shimmie | Native tags via the Danbooru XML API; anonymous | Categories may be unavailable; no live completion endpoint. |
+| Paheal / Shimmie | Native tags through the anonymous Danbooru XML endpoint (`/api/danbooru/find_posts`) | Category information may be unavailable; no live completion endpoint. The legacy `/api/danbooru/find_posts/index.xml` URL can return HTML rather than posts XML, so older StashBooru versions may show an unsupported-data error. |
 | Pixiv | OAuth **access token** in source API key; text search, `user:123` for artist works, `id:123` for a work | Static illustration/manga pages selectable in the inspector. Ugoira frame ZIPs are explicitly unavailable. No login/token refresh is implemented; replace expired tokens in Settings. |
 | Pawchive | Artist-name directory search, or `*` for recent posts; anonymous API. Text post search is unsupported because the API ignores it | Optional API key is the `session` cookie value, sent only to `file.pawchive.pw`. Preview-only/deferred/unavailable originals cannot be downloaded. |
 | Kemono | Artist-name directory search, `*` for recent posts, or text of at least three bytes; anonymous API | Supported image/video attachments only; ZIPs/documents are counted as omitted. |
