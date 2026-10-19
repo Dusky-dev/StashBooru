@@ -334,7 +334,7 @@ function PostInspection({
                       else downloads.current.delete(asset.id);
                     }}
                   />
-                  )}
+                )}
                 <div className="booru-hash">
                   {asset.md5 && (
                     <span>
