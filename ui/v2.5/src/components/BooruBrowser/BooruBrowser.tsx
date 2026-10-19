@@ -139,7 +139,6 @@ function PostInspection({
   useLayoutEffect(() => {
     setStream({ identity, count: 3 });
     activeIndex.current = 0;
-    downloads.current.clear();
   }, [identity]);
   useEffect(() => {
     if (visibleCount >= assets.length) return;
@@ -252,6 +251,7 @@ function PostInspection({
                 key={asset.id}
                 className="booru-inspection-asset"
                 data-asset-index={index}
+                tabIndex={-1}
                 aria-label={`Media ${index + 1} of ${assets.length}`}
                 onFocusCapture={() => {
                   activeIndex.current = index;
