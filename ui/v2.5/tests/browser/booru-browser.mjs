@@ -1592,7 +1592,11 @@ try {
       })
       .waitFor();
     assert.equal(await dan.locator(".booru-post").count(), 9);
-    assert.equal(requests.length, requestsBeforeAI, "AI toggle refetched provider");
+    assert.equal(
+      requests.length,
+      requestsBeforeAI,
+      "AI toggle refetched provider"
+    );
     await page.reload();
     await dan
       .getByText("Showing 9 of 12 posts on this loaded page.", {
