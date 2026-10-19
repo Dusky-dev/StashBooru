@@ -15,6 +15,7 @@ import (
 // do not guess categories from suffixes or apply categories from other sites.
 const (
 	rule34CategoryBatchSize   = 100
+	rule34CategoryNamesMaxBytes = 3072
 	rule34CategoryMaxBatches  = 5
 	rule34CategoryMaxCached   = 8192
 	rule34CategoryCacheExpiry = 24 * time.Hour
@@ -104,9 +105,18 @@ func (c *Client) CategorizeRule34Tags(ctx context.Context, source Source, posts 
 	}
 
 	categories := make(map[string]string)
-	for start := 0; start < len(pending) && ctx.Err() == nil; start += rule34CategoryBatchSize {
-		end := min(start+rule34CategoryBatchSize, len(pending))
+	for start, batches := 0, 0; start < len(pending) && ctx.Err() == nil && batches < rule34CategoryMaxBatches; batches++ {
+		end, nameBytes := start, 0
+		for end < len(pending) && end-start < rule34CategoryBatchSize {
+			length := len(pending[end])
+			if end > start && nameBytes+length+1 > rule34CategoryNamesMaxBytes {
+				break
+			}
+			nameBytes += length + 1
+			end++
+		}
 		batch := pending[start:end]
+		start = end
 		names := make(map[string]bool, len(batch))
 		for _, name := range batch {
 			names[name] = true
