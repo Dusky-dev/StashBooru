@@ -55,6 +55,18 @@ func TestBooruSavedBlankSearchesRemainExecutable(t *testing.T) {
 	if !ok || strings.Contains(search, "q=") {
 		t.Fatal("favorites changed into a provider query", search)
 	}
+	search, ok = normalizeSavedBooruSearch("?source=danbooru&q=gallery&ai=hide")
+	if !ok || !strings.Contains(search, "ai=hide") {
+		t.Fatal("AI-generated visibility lost from saved search", search)
+	}
+	for _, invalid := range []string{
+		"?source=danbooru&q=gallery&ai=show",
+		"?source=danbooru&q=gallery&ai=hide&ai=hide",
+	} {
+		if _, ok := normalizeSavedBooruSearch(invalid); ok {
+			t.Fatal("invalid or duplicate AI filter accepted", invalid)
+		}
+	}
 }
 
 func TestBooruBookmarksPersistGalleryAndRejectStaleSource(t *testing.T) {
