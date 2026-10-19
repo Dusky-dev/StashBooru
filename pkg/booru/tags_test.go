@@ -109,3 +109,15 @@ func TestTagDatabaseDuplicateAliasUnionRemainsBounded(t *testing.T) {
 		t.Fatal("duplicate rows bypassed the per-tag alias limit")
 	}
 }
+
+func TestTagCategoryRequiresExactCanonicalName(t *testing.T) {
+	index, err := ReadTagCSV(strings.NewReader("artist_a,1,10,alias_a\nseries_a,3,5,\nhero,4,3,\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range map[string]string{"ARTIST_A": "artist", "series_a": "copyright", "hero": "character", "alias_a": "", "artist": ""} {
+		if got := index.Category(name); got != want {
+			t.Fatal(name, got, want)
+		}
+	}
+}

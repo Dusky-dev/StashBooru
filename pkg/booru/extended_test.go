@@ -22,7 +22,7 @@ func TestPawchiveRejectsUnfilteredTextSearch(t *testing.T) {
 		}
 		want := "/api/v1/posts"
 		if calls == 2 {
-			want = "/api/v1/patreon/user/42/posts"
+			want = "/api/v1/patreon/user/42"
 		}
 		if r.URL.Path != want {
 			t.Fatal("incorrect browse endpoint", r.URL)
@@ -41,7 +41,7 @@ func TestPawchiveRejectsUnfilteredTextSearch(t *testing.T) {
 			t.Fatal(query, err)
 		}
 	}
-	if calls != 2 || !strings.Contains(s.Public().QueryHelp, "Text search is unsupported") {
+	if calls != 2 || !strings.Contains(s.Public().QueryHelp, "post search is unsupported") {
 		t.Fatal("supported browsing or query guidance lost", calls, s.Public())
 	}
 }

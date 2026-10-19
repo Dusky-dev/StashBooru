@@ -12,7 +12,11 @@ const server = await createServer({
       name: "booru-fixture-route",
       configureServer(app) {
         app.middlewares.use((req, _res, next) => {
-          if (req.url.startsWith("/booru?") || req.url === "/booru") {
+          if (
+            req.url.startsWith("/booru?") ||
+            req.url === "/booru" ||
+            req.url.startsWith("/booru/settings")
+          ) {
             req.url =
               "/tests/browser/fixtures/booru-browser.html" +
               (req.url.includes("?")
@@ -40,20 +44,22 @@ const previewVideo = Buffer.from(
   "GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYECGFOAZwEAAAAAAAJjEU2bdLpNu4tTq4QVSalmU6yBoU27i1OrhBZUrmtTrIHYTbuMU6uEElTDZ1OsggEeTbuMU6uEHFO7a1OsggJN7AEAAAAAAABZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVSalmsirXsYMPQkBNgI1MYXZmNjAuMTYuMTAwV0GNTGF2ZjYwLjE2LjEwMESJiECPQAAAAAAAFlSua8GuAQAAAAAAADjXgQFzxYjrxSoRqelINZyBACK1nIN1bmSIgQCGhVZfVlA4g4EBI+ODhAvrwgDgibCBQLqBQJqBAhJUw2f8c3OgY8CAZ8iaRaOHRU5DT0RFUkSHjUxhdmY2MC4xNi4xMDBzc9ZjwItjxYjrxSoRqelINWfIoUWjh0VOQ09ERVJEh5RMYXZjNjAuMzEuMTAyIGxpYnZweGfIoUWjiERVUkFUSU9ORIeTMDA6MDA6MDEuMDAwMDAwMDAwAB9DtnVAqOeBAKPDgQAAgJADAJ0BKkAAQAAARwiFhYiFhIgCAgJ1qgP4AgboQVwx0hMAVVgA/v9NEv/8WFfxYV/FhX/xYV/8/M7txfzmAKOWgQDIANEBAAEQEAAYABhYL/QACI6AAKOWgQGQANEBAAEQEAAYABhYL/QACI6AAKOWgQJYANEBAAEQEAAYABhYL/QACI6AAKOWgQMgANEBAAEQEAAYABhYL/QACI6AABxTu2uRu4+zgQC3iveBAfGCAZ/wgQM=",
   "base64"
 );
-const sources = ["danbooru", "gelbooru", "philomena"].map((id) => ({
-  id,
-  instance: `fixture-${id}`,
-  name: id[0].toUpperCase() + id.slice(1),
-  engine: id,
-  url: `https://${id}.example.org`,
-  queryHelp:
-    id === "philomena"
-      ? "Native Philomena syntax: commas or AND."
-      : "Space-separated tags, native provider syntax.",
-  authentication: "Optional API credentials on the server.",
-  credentialsConfigured: id === "gelbooru",
-  categorizedTags: id === "danbooru",
-}));
+const sources = ["danbooru", "gelbooru", "philomena", "pawchive", "kemono"].map(
+  (id) => ({
+    id,
+    instance: `fixture-${id}`,
+    name: id[0].toUpperCase() + id.slice(1),
+    engine: id,
+    url: `https://${id}.example.org`,
+    queryHelp:
+      id === "philomena"
+        ? "Native Philomena syntax: commas or AND."
+        : "Space-separated tags, native provider syntax.",
+    authentication: "Optional API credentials on the server.",
+    credentialsConfigured: id === "gelbooru",
+    categorizedTags: id === "danbooru",
+  })
+);
 
 function result(source, query, page) {
   const id = query === "fast" ? 900 : query === "slow" ? 800 : page * 100 + 1;
@@ -110,6 +116,23 @@ function result(source, query, page) {
         { name: "character_b", category: "character" },
       ],
     }));
+  if (query === "details")
+    Object.assign(response.posts[0], {
+      id: "107",
+      mediaKey: "7".repeat(48),
+      width: 4083,
+      height: 4672,
+      bytes: 889 * 1024,
+      format: "jxl",
+      rating: "s",
+      tags: [
+        { name: "artist_a", category: "artist" },
+        { name: "artist_b", category: "artist" },
+        { name: "series_a", category: "copyright" },
+        { name: "character_a", category: "character" },
+        { name: "character_b", category: "character" },
+      ],
+    });
   if (query === "attachments") {
     response.posts[0].attachments = [
       {
@@ -153,6 +176,14 @@ try {
       )
         errors.push(message.text());
     });
+    const sourceOption = (name) =>
+      page
+        .locator(".booru-source-selector")
+        .getByRole("menuitemradio", { name, exact: true, includeHidden: true });
+    async function chooseSource(name) {
+      await page.getByRole("button", { name: "Source", exact: true }).click();
+      await sourceOption(name).click();
+    }
     async function setChecked(input, checked) {
       if ((await input.isChecked()) === checked) return;
       const inputID = await input.getAttribute("id");
@@ -186,6 +217,7 @@ try {
         Rating: {
           "": "All ratings",
           safe: "Safe / General",
+          sensitive: "Sensitive",
           questionable: "Questionable",
           explicit: "Explicit",
         },
@@ -218,6 +250,8 @@ try {
     const bookmarks = { favorites: [], searches: [] };
     const requests = [];
     const autocompleteRequests = [];
+    const reviewWrites = [];
+    const lateCompletions = [];
     let denied = true;
     let sourcesDenied = false;
     const delayed = [];
@@ -270,6 +304,23 @@ try {
         }));
     await page.route("**/booru-browser/**", async (route) => {
       const url = new URL(route.request().url());
+      if (url.pathname.endsWith("/creators")) {
+        const q = url.searchParams.get("q");
+        await route.fulfill({
+          json: {
+            creators:
+              q === "Artist Name"
+                ? [
+                    { id: "111", name: "Artist Name", service: "patreon" },
+                    { id: "420", name: "Artist Name", service: "fanbox" },
+                  ]
+                : [],
+            page: 1,
+            hasMore: false,
+          },
+        });
+        return;
+      }
       if (url.pathname.endsWith("/bookmarks")) {
         if (route.request().method() === "POST") {
           const value = route.request().postDataJSON();
@@ -382,6 +433,10 @@ try {
           mode: url.searchParams.get("mode"),
           query: url.searchParams.get("q"),
         });
+        if (url.searchParams.get("q") === "late") {
+          lateCompletions.push(route);
+          return;
+        }
         if (
           url.searchParams.get("source") === "gelbooru" &&
           url.searchParams.get("q")?.startsWith("az")
@@ -396,16 +451,26 @@ try {
           json: {
             mode:
               url.searchParams.get("mode") === "database" ? "database" : "live",
-            suggestions: url.searchParams.get("q")?.startsWith("az")
-              ? [
-                  {
-                    name: "blue_hair",
-                    category: "general",
-                    count: 42,
-                    alias: "azure_hair",
-                  },
-                ]
-              : [],
+            suggestions:
+              url.searchParams.get("q") === "blue_hair"
+                ? [
+                    { name: "blue_hair", category: "general", count: 42 },
+                    {
+                      name: "blue_hair_ornament",
+                      category: "general",
+                      count: 4,
+                    },
+                  ]
+                : url.searchParams.get("q")?.startsWith("az")
+                  ? [
+                      {
+                        name: "blue_hair",
+                        category: "general",
+                        count: 42,
+                        alias: "azure_hair",
+                      },
+                    ]
+                  : [],
           },
         });
         return;
@@ -551,6 +616,7 @@ try {
       }
       if (url.pathname.endsWith("/review/update")) {
         const payload = route.request().postDataJSON();
+        reviewWrites.push(payload);
         if (
           reviewConflict ||
           payload.changes.some(
@@ -674,9 +740,7 @@ try {
           })
     );
     await page.goto(`${baseURL}/booru`);
-    await page
-      .getByLabel("Gelbooru · gelbooru", { exact: true })
-      .waitFor({ state: "attached" });
+    await sourceOption("Gelbooru").waitFor({ state: "attached" });
     assert.equal(
       requests.length,
       0,
@@ -690,6 +754,7 @@ try {
     await page.getByRole("option", { name: /blue_hair/ }).waitFor();
     assert.equal(tagDatabase.count, 0);
     assert.equal(autocompleteRequests.at(-1).mode, "live");
+    await initialInput.press("ArrowDown");
     await initialInput.press("Enter");
     await page
       .getByRole("button", {
@@ -700,6 +765,7 @@ try {
     assert.equal(await initialInput.inputValue(), "");
     assert.equal(requests.length, 0);
     await page.getByRole("button", { name: "Settings", exact: true }).click();
+    assert.equal(new URL(page.url()).pathname, "/booru/settings");
     await setChecked(
       page.getByLabel("Convert new downloads using Media converter defaults"),
       true
@@ -863,13 +929,9 @@ try {
     await page
       .getByRole("button", { name: "Back to posts", exact: true })
       .click();
-    await page
-      .getByLabel("Fixture custom · gelbooru", { exact: true })
-      .waitFor({ state: "attached" });
+    await sourceOption("Fixture custom").waitFor({ state: "attached" });
     await page.reload();
-    await page
-      .getByLabel("Fixture custom · gelbooru", { exact: true })
-      .waitFor({ state: "attached" });
+    await sourceOption("Fixture custom").waitFor({ state: "attached" });
     await page.getByRole("button", { name: "Settings", exact: true }).click();
     await page
       .getByRole("button", { name: "Edit Fixture custom", exact: true })
@@ -889,9 +951,7 @@ try {
     await page
       .getByRole("button", { name: "Back to posts", exact: true })
       .click();
-    await page
-      .getByLabel("Fixture custom · gelbooru", { exact: true })
-      .waitFor({ state: "hidden" });
+    await sourceOption("Fixture custom").waitFor({ state: "hidden" });
     await page.getByRole("button", { name: "Settings", exact: true }).click();
     await page
       .getByRole("button", { name: "Edit Fixture custom", exact: true })
@@ -910,10 +970,7 @@ try {
       .getByRole("button", { name: "Back to posts", exact: true })
       .click();
     assert.equal(requests.length, 0, "editing settings issued searches");
-    await setChecked(
-      page.getByLabel("Gelbooru · gelbooru", { exact: true }),
-      true
-    );
+
     const queryInput = page.getByLabel("Search tags (native source syntax)", {
       exact: true,
     });
@@ -929,6 +986,7 @@ try {
           `booru-autocomplete-${viewport.width}.png`
         ),
       });
+    await queryInput.press("ArrowDown");
     await queryInput.press("Enter");
     assert.equal(await queryInput.inputValue(), "cat -blue_hair fox");
     assert.equal(
@@ -937,10 +995,6 @@ try {
       "autocomplete submitted a search despite a partial database failure"
     );
 
-    await setChecked(
-      page.getByLabel("Gelbooru · gelbooru", { exact: true }),
-      true
-    );
     await page
       .getByLabel("Search tags (native source syntax)", { exact: true })
       .fill("landscape");
@@ -957,8 +1011,7 @@ try {
     await dan
       .getByRole("button", { name: "Inspect Danbooru post 101", exact: true })
       .waitFor();
-    await gel.getByRole("alert").filter({ hasText: "60 seconds" }).waitFor();
-    assert.equal(requests.length, 2);
+    assert.equal(requests.length, 1);
 
     const tagPanel = page.getByRole("region", {
       name: "Tags on this page",
@@ -979,7 +1032,7 @@ try {
     );
     assert.equal(
       requests.length,
-      2,
+      1,
       "using a sidebar tag searched automatically"
     );
     if (viewport.width < 768)
@@ -1001,7 +1054,7 @@ try {
       .waitFor();
     assert.equal(await dialog.locator("script").count(), 0);
     assert.ok(page.url().includes("inspect=danbooru%3A101"));
-    assert.equal(requests.length, 2, "inspection refetched searches");
+    assert.equal(requests.length, 1, "inspection refetched searches");
     assert.ok(
       await dialog
         .getByLabel("Convert using Media converter defaults")
@@ -1141,13 +1194,15 @@ try {
     assert.ok(page.url().includes("p.danbooru=2"));
     assert.equal(
       requests.filter((r) => r.source === "gelbooru").length,
-      1,
-      "paging one source refetched another"
+      0,
+      "paging fetched an unselected source"
     );
     await page.goBack();
     await dan
       .getByRole("button", { name: "Inspect Danbooru post 101", exact: true })
       .waitFor();
+    await chooseSource("Gelbooru");
+    await gel.getByRole("alert").filter({ hasText: "60 seconds" }).waitFor();
     denied = false;
     await gel
       .getByRole("button", { name: "Retry source", exact: true })
@@ -1172,6 +1227,7 @@ try {
       .last()
       .click();
 
+    await chooseSource("Danbooru");
     const input = page.getByLabel("Search tags (native source syntax)", {
       exact: true,
     });
@@ -1180,7 +1236,7 @@ try {
       .getByRole("button", { name: "Search selected sources", exact: true })
       .click();
     await page.waitForFunction(
-      () => document.querySelectorAll('[aria-busy="true"]').length === 2
+      () => document.querySelectorAll('[aria-busy="true"]').length === 1
     );
     await input.fill("fast");
     await page
@@ -1214,9 +1270,7 @@ try {
     await dan
       .getByRole("button", { name: "Select visible", exact: true })
       .click({ trial: true });
-    await gel
-      .getByRole("button", { name: "Select visible", exact: true })
-      .click({ trial: true });
+    assert.equal(await gel.count(), 0, "unselected provider was mounted");
     if (process.env.STASH_BROWSER_SCREENSHOTS) {
       fs.mkdirSync(process.env.STASH_BROWSER_SCREENSHOTS, { recursive: true });
       await page.screenshot({
@@ -1321,6 +1375,7 @@ try {
         .getAttribute("href"),
       "/scenes/42"
     );
+    await chooseSource("Gelbooru");
     await gel
       .getByRole("button", { name: "Mark downloaded", exact: true })
       .click();
@@ -1332,6 +1387,7 @@ try {
       0,
       "manual marking fabricated a local link"
     );
+    await chooseSource("Danbooru");
     await dan
       .getByRole("button", { name: "Select visible", exact: true })
       .click();
@@ -1434,10 +1490,7 @@ try {
     await page
       .getByLabel("Search tags (native source syntax)", { exact: true })
       .fill("unfinished -blue");
-    await setChecked(
-      page.getByLabel("Gelbooru · gelbooru", { exact: true }),
-      true
-    );
+
     await page.reload();
     await dan
       .getByRole("button", { name: "Inspect Danbooru post 201", exact: true })
@@ -1448,8 +1501,9 @@ try {
         .inputValue(),
       "unfinished -blue"
     );
-    assert.ok(
-      await page.getByLabel("Gelbooru · gelbooru", { exact: true }).isChecked()
+    assert.equal(
+      await sourceOption("Danbooru").getAttribute("aria-checked"),
+      "true"
     );
     await page.goto(`${baseURL}/booru`);
     await dan
@@ -1829,6 +1883,13 @@ try {
       .getByRole("button", { name: "Inspect Danbooru post 101", exact: true })
       .click();
     const preview = page.getByRole("dialog");
+    await page.waitForFunction(() =>
+      document.activeElement?.classList.contains("modal-content")
+    );
+    await page.keyboard.press("ArrowRight");
+    await preview.getByText("Danbooru #102", { exact: true }).waitFor();
+    await page.keyboard.press("ArrowLeft");
+    await preview.getByText("Danbooru #101", { exact: true }).waitFor();
     await preview
       .getByRole("button", {
         name: "Previous preview (Left arrow)",
@@ -1997,6 +2058,236 @@ try {
     const cardPayload = (await cardDownloadRequest).postDataJSON();
     assert.equal(cardPayload.destination, "/library/custom");
     assert.equal(cardPayload.convert, false);
+    // The browser now selects exactly one site, including legacy URLs.
+    await page.goto(
+      `${baseURL}/booru?source=danbooru&source=gelbooru&q=gallery`
+    );
+    await dan.locator(".booru-post").first().waitFor();
+    assert.equal(await gel.count(), 0);
+    await page.getByRole("button", { name: "Source", exact: true }).click();
+    assert.equal(
+      await page.locator(".booru-source-selector .booru-source-icon").count(),
+      6
+    );
+    assert.equal(
+      await page
+        .locator('.booru-source-selector input[type="checkbox"]')
+        .count(),
+      0
+    );
+    await page.locator(".booru-heading h2").click();
+    const beforeSettingsURL = page.url();
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    assert.equal(new URL(page.url()).pathname, "/booru/settings");
+    await page.reload();
+    await page
+      .getByRole("region", { name: "Booru settings", exact: true })
+      .waitFor();
+    await page.goBack();
+    await dan.locator(".booru-post").first().waitFor();
+    assert.equal(page.url(), beforeSettingsURL);
+    const refinedInput = page.getByLabel("Search tags (native source syntax)", {
+      exact: true,
+    });
+    // Enter searches typed text; only an explicit Down+Enter accepts a suggestion.
+    await pickFilter("Autocomplete", "live");
+    await refinedInput.fill("az");
+    await page.getByRole("option", { name: /blue_hair/ }).waitFor();
+    await refinedInput.press("Enter");
+    await dan.locator(".booru-post").first().waitFor();
+    assert.equal(new URL(page.url()).searchParams.get("q"), "az");
+    assert.equal(await refinedInput.inputValue(), "az");
+    assert.equal(
+      await page.getByRole("listbox", { name: "Tag suggestions" }).count(),
+      0
+    );
+    await refinedInput.fill("blue_hair");
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector("#booru-query")
+          ?.getAttribute("aria-expanded") === "false"
+    );
+    await page.waitForResponse(
+      (r) =>
+        new URL(r.url()).pathname.endsWith("/autocomplete") &&
+        new URL(r.url()).searchParams.get("q") === "blue_hair"
+    );
+    assert.equal(
+      await page.getByRole("listbox", { name: "Tag suggestions" }).count(),
+      0
+    );
+    await refinedInput.fill("az");
+    await page.getByRole("option", { name: /blue_hair/ }).waitFor();
+    const beforeComplete = requests.length;
+    await refinedInput.press("ArrowDown");
+    await refinedInput.press("Enter");
+    assert.equal(await refinedInput.inputValue(), "blue_hair");
+    assert.equal(requests.length, beforeComplete);
+    await refinedInput.fill("late");
+    await page.waitForRequest(
+      (r) =>
+        new URL(r.url()).pathname.endsWith("/autocomplete") &&
+        new URL(r.url()).searchParams.get("q") === "late"
+    );
+    await refinedInput.press("Enter");
+    for (const route of lateCompletions.splice(0))
+      await route
+        .fulfill({
+          json: {
+            suggestions: [
+              { name: "late_result", category: "general", count: 1 },
+            ],
+            mode: "live",
+          },
+        })
+        .catch(() => {});
+    assert.equal(new URL(page.url()).searchParams.get("q"), "late");
+    assert.equal(
+      await page.getByRole("listbox", { name: "Tag suggestions" }).count(),
+      0
+    );
+    // Every rating has its own color; Sensitive remains distinct from General.
+    await pickFilter("Rating", "sensitive");
+    await dan.locator(".booru-post").first().waitFor();
+    assert.equal(new URL(page.url()).searchParams.get("rating"), "sensitive");
+    assert.ok(
+      await page
+        .getByRole("button", { name: "Rating", exact: true })
+        .evaluate((el) => el.classList.contains("rating-sensitive"))
+    );
+    await pickFilter("Rating", "");
+    await page.getByRole("button", { name: "Grid view", exact: true }).click();
+    const size = page.getByRole("slider", {
+      name: "Thumbnail size",
+      exact: true,
+    });
+    await size.focus();
+    await size.press("Home");
+    const smallHeight = await dan
+      .locator(".booru-preview-button")
+      .first()
+      .evaluate((el) => el.getBoundingClientRect().height);
+    await size.press("End");
+    const largeHeight = await dan
+      .locator(".booru-preview-button")
+      .first()
+      .evaluate((el) => el.getBoundingClientRect().height);
+    assert.ok(
+      largeHeight > smallHeight + 150,
+      `zoom did not grow previews: ${smallHeight} -> ${largeHeight}`
+    );
+    // Core taxonomy actions and compact native metadata in inspection.
+    await page.goto(`${baseURL}/booru?source=danbooru&q=details`);
+    const detailsCard = dan.locator(".booru-post").first();
+    await detailsCard
+      .getByRole("button", { name: "Artists for post 107", exact: true })
+      .click();
+    const coreChooser = page
+      .getByRole("dialog")
+      .filter({ hasText: "Choose Artists" });
+    await coreChooser
+      .getByRole("button", { name: "artist_b", exact: true })
+      .click();
+    assert.equal(await refinedInput.inputValue(), "artist_b");
+    await detailsCard
+      .getByRole("button", { name: "Copyrights for post 107", exact: true })
+      .click();
+    assert.equal(await refinedInput.inputValue(), "series_a");
+    await detailsCard
+      .getByRole("button", { name: "Inspect Danbooru post 107", exact: true })
+      .click();
+    const detailPreview = page.getByRole("dialog");
+    await page.waitForFunction(() =>
+      document.activeElement?.classList.contains("modal-content")
+    );
+    await detailPreview
+      .getByText("8K (4083 × 4672)", { exact: true })
+      .waitFor();
+    await detailPreview.getByText("889 KiB", { exact: true }).waitFor();
+    await detailPreview.getByText("JXL", { exact: true }).waitFor();
+    await detailPreview
+      .locator(".booru-hash")
+      .getByText("No indexed primary-file MD5 match", { exact: true })
+      .waitFor();
+    assert.equal(
+      await detailPreview
+        .getByText("Download into Stash", { exact: true })
+        .count(),
+      0
+    );
+    assert.equal(
+      await detailPreview
+        .getByText(/Uses the converter.s saved format/)
+        .count(),
+      0
+    );
+    assert.equal(await detailPreview.getByText(/Default folder:/).count(), 0);
+    assert.equal(
+      await detailPreview.locator(".booru-tag.tag-artist").count(),
+      2
+    );
+    if (process.env.STASH_BROWSER_SCREENSHOTS) {
+      await detailPreview
+        .locator(".booru-file-details")
+        .scrollIntoViewIfNeeded();
+      await page.screenshot({
+        path: path.join(
+          process.env.STASH_BROWSER_SCREENSHOTS,
+          `booru-inspection-${viewport.width}.png`
+        ),
+      });
+    }
+    const reviewWritesBeforeTag = reviewWrites.length;
+    await detailPreview
+      .getByRole("button", { name: "Tag artist_a", exact: true })
+      .click();
+    await page.keyboard.press("ArrowDown");
+    assert.equal(
+      reviewWrites.length,
+      reviewWritesBeforeTag,
+      "tag menu navigation ignored the post"
+    );
+    await detailPreview
+      .getByRole("menuitem", { name: "Add to search", exact: true })
+      .click();
+    await detailPreview.waitFor({ state: "hidden" });
+    assert.equal(await refinedInput.inputValue(), "series_a artist_a");
+    await detailsCard
+      .getByRole("button", { name: "Inspect Danbooru post 107", exact: true })
+      .click();
+    await detailPreview
+      .getByRole("button", { name: "Tag series_a", exact: true })
+      .click();
+    await detailPreview
+      .getByRole("menuitem", { name: "Replace search", exact: true })
+      .click();
+    await detailPreview.waitFor({ state: "hidden" });
+    assert.equal(await refinedInput.inputValue(), "series_a");
+    // Artist names resolve to the selected service/identity on both archives.
+    for (const name of ["Pawchive", "Kemono"]) {
+      await chooseSource(name);
+      await page.getByLabel("Artist name", { exact: true }).fill("Artist Name");
+      await page.getByRole("button", { name: /Artist Name fanbox/ }).click();
+      await page
+        .getByRole("region", { name, exact: true })
+        .locator(".booru-post")
+        .first()
+        .waitFor();
+      assert.equal(
+        new URL(page.url()).searchParams.get("q"),
+        "creator:fanbox:420"
+      );
+      assert.equal(requests.at(-1).source, name.toLowerCase());
+      await page.reload();
+      await page
+        .getByRole("region", { name, exact: true })
+        .locator(".booru-post")
+        .first()
+        .waitFor();
+    }
+    await page.goto(`${baseURL}/booru?source=danbooru&q=gallery`);
+    await dan.locator(".booru-post").first().waitFor();
     sourcesDenied = true;
     await page.goto(`${baseURL}/booru`);
     await page
@@ -2007,9 +2298,7 @@ try {
     await page
       .getByRole("button", { name: "Retry source", exact: true })
       .click();
-    await page
-      .getByLabel("Danbooru · danbooru", { exact: true })
-      .waitFor({ state: "attached" });
+    await sourceOption("Danbooru").waitFor({ state: "attached" });
     await page
       .getByLabel("Search tags (native source syntax)", { exact: true })
       .fill("slow");

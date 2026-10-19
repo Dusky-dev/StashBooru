@@ -53,7 +53,7 @@ export interface BrowserSearch {
   pageSize?: number;
   favorites?: boolean;
   sort?: "newest" | "popular" | "updated";
-  rating?: "safe" | "questionable" | "explicit";
+  rating?: "safe" | "sensitive" | "questionable" | "explicit";
   media?: "images" | "videos";
   error?: string;
 }
@@ -62,18 +62,19 @@ const validSource = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 
 export function readBrowserSearch(search: string): BrowserSearch {
   const params = new URLSearchParams(search);
-  const sources = [...new Set(params.getAll("source"))];
+  const requestedSources = [...new Set(params.getAll("source"))];
+  const sources = requestedSources.slice(0, 1);
   if (sources.length === 0) sources.push("danbooru");
   const query = params.get("q") ?? "";
   const result: BrowserSearch = { sources, query, pages: {} };
   if (
-    sources.length > 8 ||
-    sources.some((source) => !validSource.test(source)) ||
+    requestedSources.length > 8 ||
+    requestedSources.some((source) => !validSource.test(source)) ||
     new TextEncoder().encode(query).length > 1024 ||
     ["\r", "\n", "\0"].some((control) => query.includes(control))
   ) {
     result.error =
-      "Invalid search URL. Choose up to eight sources and a search of at most 1024 bytes.";
+      "Invalid search URL. Choose one source and a search of at most 1024 bytes.";
   }
   for (const source of sources) {
     const raw = params.get(`p.${source}`) ?? "1";
@@ -93,7 +94,7 @@ export function readBrowserSearch(search: string): BrowserSearch {
     result.error = "Invalid ignored-post filter.";
   for (const [key, choices] of Object.entries({
     sort: ["newest", "popular", "updated"],
-    rating: ["safe", "questionable", "explicit"],
+    rating: ["safe", "sensitive", "questionable", "explicit"],
     media: ["images", "videos"],
   })) {
     const value = params.get(key);

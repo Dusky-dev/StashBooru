@@ -85,7 +85,7 @@ e621, Philomena, Shimmie/Paheal, Pixiv, Pawchive and Kemono adapters. Fourteen
 presets and compatible custom instances are managed in **Booru → Settings**, with
 engine-specific credentials and enable/disable controls. The native list toolbar
 combines source selection, search chips, rating/media filters, page size, Grid/Wall
-views and persistent zoom; selected sources stay visible above it. A tag sidebar,
+views and persistent zoom; the selected site and its icon stay visible above it. Pawchive/Kemono artist search works by name; settings has its own Back-aware page. A tag sidebar,
 core taxonomy icon choosers and gallery inspection retain remote metadata without
 crowding thumbnails. Paging, query and inspection survive refresh/back.
 

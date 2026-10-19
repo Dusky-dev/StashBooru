@@ -56,3 +56,9 @@ export function removeQueryTerm(
   }
   return (value.slice(0, start) + value.slice(end)).trim();
 }
+
+export function appendSearchTag(query: string, name: string, comma: boolean) {
+  if (queryTerms(query, comma).some((term) => term.name === name)) return query;
+  const current = query.trim() === "*" ? "" : query.trim();
+  return current ? `${current}${comma ? ", " : " "}${name}` : name;
+}

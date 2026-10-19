@@ -223,6 +223,7 @@ func Initialize() (*Server, error) {
 	r.Mount("/downloads", server.getDownloadsRoutes())
 	booruRoutes := booruBrowserRoutes{configPath: cfg.GetConfigPath(), client: booru.NewClient(), repository: repo, jobs: mgr.JobManager, downloads: mgr.DownloadStore, libraryRoots: func() []string { return cfg.GetStashPaths().Paths() }, importFile: booruImportFile}
 	r.Get("/booru-browser/sources", booruRoutes.Sources)
+	r.Get("/booru-browser/creators", booruRoutes.Creators)
 	r.Get("/booru-browser/bookmarks", booruRoutes.Bookmarks)
 	r.Post("/booru-browser/bookmarks", booruRoutes.UpdateBookmarks)
 	r.Get("/booru-browser/favorites", booruRoutes.Favorites)

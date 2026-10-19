@@ -35,7 +35,12 @@ export function BooruIconMenu({
   label: string;
   icon: IconDefinition;
   value: string;
-  options: { value: string; label: string; disabled?: boolean }[];
+  options: {
+    value: string;
+    label: string;
+    disabled?: boolean;
+    className?: string;
+  }[];
   onChange: (value: string) => void;
 }) {
   return (
@@ -43,7 +48,7 @@ export function BooruIconMenu({
       <Dropdown.Toggle
         variant="secondary"
         size="sm"
-        className={`minimal booru-icon-menu ${value ? "active" : ""}`}
+        className={`minimal booru-icon-menu ${value ? "active" : ""} ${options.find((option) => option.value === value)?.className ?? ""}`}
         aria-label={label}
         title={`${label}: ${options.find((option) => option.value === value)?.label ?? ""}`}
       >
@@ -54,6 +59,7 @@ export function BooruIconMenu({
         {options.map((option) => (
           <Dropdown.Item
             key={option.value}
+            className={option.className}
             role="menuitemradio"
             aria-checked={value === option.value}
             active={value === option.value}

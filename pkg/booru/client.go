@@ -89,6 +89,9 @@ type Client struct {
 	media             chan struct{}
 	autocompleteMu    sync.Mutex
 	autocompleteCache map[string]autocompleteEntry
+	creatorMu         sync.Mutex
+	creatorCache      map[string]creatorEntry
+	creatorPending    map[string]chan struct{}
 }
 
 func NewClient() *Client {

@@ -87,24 +87,14 @@ test("Loaded-page media filters leave unknown formats distinct", async () => {
   assert.equal(postMediaKind(post), "unknown");
 });
 
-test("Booru URL preserves source order, literal query, per-source page and preview identity", () => {
-  const value = {
-    sources: ["gelbooru", "custom"],
-    query: "猫 + a&b -excluded",
-    pages: { gelbooru: 2, custom: 1 },
-    inspect: { source: "custom", id: "9007199254740993" },
-  };
-  assert.deepEqual(readBrowserSearch(browserSearchURL(value)), value);
-  const updated = readBrowserSearch(
-    browserSearchURL({
-      ...value,
-      pages: { ...value.pages, custom: 3 },
-      inspect: undefined,
-    })
+test("Legacy multi-source URLs select the first source and discard other preview identities", () => {
+  const state = readBrowserSearch(
+    "?source=gelbooru&source=custom&q=cat&p.gelbooru=2&inspect=custom:42"
   );
-  assert.equal(updated.pages.gelbooru, 2);
-  assert.equal(updated.pages.custom, 3);
-  assert.equal(updated.inspect, undefined);
+  assert.deepEqual(state.sources, ["gelbooru"]);
+  assert.deepEqual(state.pages, { gelbooru: 2 });
+  assert.equal(state.inspect, undefined);
+  assert.equal(readBrowserSearch("?rating=sensitive").rating, "sensitive");
 });
 
 test("Booru URL validation rejects invalid/broad states without changing query semantics", () => {
@@ -257,5 +247,57 @@ test("Favorites and opaque gallery identities survive URLs without stale result 
   assert.notEqual(
     browserResultSignature("", 1, undefined, undefined, undefined, 24, true),
     browserResultSignature("", 1)
+  );
+});
+
+test("Preview tag actions preserve native query syntax and rating identities", async () => {
+  const { normalizedRating, supportsSensitiveRating } = await import(
+    "../src/components/BooruBrowser/presentation.ts"
+  );
+  const { appendSearchTag } = await import(
+    "../src/components/BooruBrowser/completion.ts"
+  );
+  assert.equal(appendSearchTag("cat", "blue_hair", false), "cat blue_hair");
+  assert.equal(
+    appendSearchTag("cat blue_hair", "blue_hair", false),
+    "cat blue_hair"
+  );
+  assert.equal(appendSearchTag("*", "artist_a", false), "artist_a");
+  assert.equal(
+    appendSearchTag("safe, blue hair", "green eyes", true),
+    "safe, blue hair, green eyes"
+  );
+  assert.equal(
+    normalizedRating("s", {
+      engine: "danbooru",
+      url: "https://danbooru.donmai.us",
+    }),
+    "sensitive"
+  );
+  assert.equal(
+    normalizedRating("s", { engine: "e621", url: "https://e621.net" }),
+    "safe"
+  );
+  assert.equal(
+    normalizedRating("sensitive", {
+      engine: "gelbooru",
+      url: "https://gelbooru.com",
+    }),
+    "sensitive"
+  );
+  assert.equal(
+    normalizedRating("s", { engine: "gelbooru", url: "https://gelbooru.com" }),
+    "sensitive"
+  );
+  assert.equal(
+    normalizedRating("s", { engine: "gelbooru", url: "https://rule34.xxx" }),
+    "safe"
+  );
+  assert.equal(
+    supportsSensitiveRating({
+      engine: "gelbooru",
+      url: "https://rule34.xxx",
+    } as Parameters<typeof supportsSensitiveRating>[0]),
+    false
   );
 });

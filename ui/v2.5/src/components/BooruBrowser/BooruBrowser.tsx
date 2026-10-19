@@ -67,7 +67,22 @@ import { TagAutocomplete } from "./TagAutocomplete";
 import { BooruDownload } from "./BooruDownload";
 import { readBrowserMemory, saveBrowserMemory } from "./browser";
 import { SourceSettings } from "./SourceSettings";
+import { SourceIcon } from "./SourceIcon";
+import { CreatorSearch } from "./CreatorSearch";
+import { appendSearchTag } from "./completion";
+import TextUtils from "src/utils/text";
+import { FileSize } from "../Shared/FileSize";
+import { normalizedRating, supportsSensitiveRating } from "./presentation";
 import "./styles.scss";
+
+const tagCategoryLabels: Record<string, string> = {
+  artist: "Artists",
+  copyright: "Copyrights",
+  character: "Characters",
+  general: "General",
+  meta: "Metadata",
+  species: "Species",
+};
 
 const message = (id: string, defaultMessage: string) => (
   <FormattedMessage
@@ -86,6 +101,7 @@ function PostInspection({
   onNext,
   onIgnore,
   reviewBusy,
+  onTag,
 }: {
   post: BooruPost;
   source: BooruSource;
@@ -96,8 +112,22 @@ function PostInspection({
   onNext?: () => void;
   onIgnore: () => void;
   reviewBusy: boolean;
+  onTag: (name: string, mode: "add" | "replace") => void;
 }) {
-  const groups = [...new Set(post.tags.map((tag) => tag.category))];
+  const groups = [...new Set(post.tags.map((tag) => tag.category))].sort(
+    (a, b) => {
+      const order = [
+        "artist",
+        "copyright",
+        "character",
+        "general",
+        "species",
+        "meta",
+        "unknown",
+      ];
+      return order.indexOf(a) - order.indexOf(b);
+    }
+  );
   const identity = `${source.instance}:${post.id}`;
   const [assetSelection, setAssetSelection] = useState({ identity, index: 0 });
   const assetIndex =
@@ -117,16 +147,24 @@ function PostInspection({
       onHide={onHide}
       size="lg"
       className="booru-browser-inspection"
+      onEntered={(node: HTMLElement) => {
+        const content = node.querySelector<HTMLElement>(".modal-content");
+        if (content) {
+          content.tabIndex = -1;
+          content.focus({ preventScroll: true });
+        }
+      }}
       onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
         const target = event.target as HTMLElement;
         if (
+          event.defaultPrevented ||
           event.altKey ||
           event.ctrlKey ||
           event.metaKey ||
           event.shiftKey ||
           !event.currentTarget.contains(target) ||
           target.closest(
-            'input, textarea, select, video, audio, [contenteditable="true"], [role="combobox"], [role="menu"]'
+            'input, textarea, select, video, audio, .dropdown, [contenteditable="true"], [role="combobox"], [role="menu"]'
           )
         )
           return;
@@ -171,7 +209,6 @@ function PostInspection({
           />
         </nav>
         {post.mediaNotice && <Alert variant="info">{post.mediaNotice}</Alert>}
-        <ReviewEvidence state={assetIndex === 0 ? review : undefined} />
         {assets.length > 1 && (
           <Form.Group>
             <Form.Label htmlFor="booru-asset">Media file</Form.Label>
@@ -216,18 +253,27 @@ function PostInspection({
             </Alert>
           )}
         </MotionPreview>
-        <p className="mt-2">
-          {asset.width && asset.height
-            ? `${asset.width} × ${asset.height} · `
-            : ""}
-          {asset.bytes ? `${asset.bytes.toLocaleString()} B · ` : ""}
-          {asset.format} {post.rating && ` · Rating: ${post.rating}`}
-        </p>
-        {asset.md5 && (
-          <p className="booru-hash">
-            MD5: <code>{asset.md5}</code>
-          </p>
-        )}
+        <div className="booru-file-details mt-2">
+          {!!asset.width && !!asset.height && (
+            <span>
+              {TextUtils.resolution(asset.width, asset.height)} ({asset.width} ×{" "}
+              {asset.height})
+            </span>
+          )}
+          {!!asset.bytes && (
+            <span>
+              <FileSize size={asset.bytes} />
+            </span>
+          )}
+          {asset.format && <span>{asset.format.toUpperCase()}</span>}
+          {post.rating && (
+            <span
+              className={`booru-rating-label rating-${normalizedRating(post.rating, source)}`}
+            >
+              {normalizedRating(post.rating, source)}
+            </span>
+          )}
+        </div>
         <BooruDownload
           key={`download:${asset.id}:${asset.mediaKey}`}
           downloadRef={download}
@@ -242,19 +288,56 @@ function PostInspection({
             <h6>
               {category === "unknown"
                 ? message("unknown_category", "Tags — category not supplied")
-                : category}
+                : (tagCategoryLabels[category] ?? category)}
             </h6>
             <div className="booru-tags">
               {post.tags
                 .filter((tag) => tag.category === category)
                 .map((tag) => (
-                  <Badge key={`${category}:${tag.name}`} variant="secondary">
-                    {tag.name}
-                  </Badge>
+                  <Dropdown
+                    key={`${category}:${tag.name}`}
+                    className="booru-preview-tag"
+                  >
+                    <Dropdown.Toggle
+                      variant="link"
+                      className={`booru-tag tag-${category}`}
+                      aria-label={`Tag ${tag.label ?? tag.name}`}
+                    >
+                      {tag.label ?? tag.name}
+                    </Dropdown.Toggle>
+                    <Dropdown.Menu role="menu">
+                      <Dropdown.Item
+                        role="menuitem"
+                        onClick={() => {
+                          onTag(tag.name, "add");
+                          onHide();
+                        }}
+                      >
+                        Add to search
+                      </Dropdown.Item>
+                      <Dropdown.Item
+                        role="menuitem"
+                        onClick={() => {
+                          onTag(tag.name, "replace");
+                          onHide();
+                        }}
+                      >
+                        Replace search
+                      </Dropdown.Item>
+                    </Dropdown.Menu>
+                  </Dropdown>
                 ))}
             </div>
           </section>
         ))}
+        <div className="booru-hash">
+          {asset.md5 && (
+            <span>
+              MD5: <code>{asset.md5}</code>
+            </span>
+          )}
+          {assetIndex === 0 && <ReviewEvidence state={review} />}
+        </div>
       </Modal.Body>
       <Modal.Footer>
         <Button
@@ -443,7 +526,7 @@ function SourceResults({
   bookmarks?: Bookmarks;
   bookmarkBusy: boolean;
   onBookmark: (action: BookmarkAction) => void;
-  onTag: (name: string) => void;
+  onTag: (name: string, mode?: "add" | "replace") => void;
   page: number;
   inspect?: string;
   onPage: (page: number) => void;
@@ -608,6 +691,7 @@ function SourceResults({
                 <PostInspection
                   post={post}
                   source={source}
+                  onTag={onTag}
                   onHide={onClose}
                   review={review.find((state) => state.id === post.id)}
                   reviewBusy={busy}
@@ -640,9 +724,9 @@ function SourceResults({
                 >
                   {item.rating && (
                     <span
-                      className={`booru-rating rating-${["s", "safe", "g", "general"].includes(item.rating) ? "safe" : ["q", "questionable", "sensitive"].includes(item.rating) ? "questionable" : "explicit"}`}
+                      className={`booru-rating rating-${normalizedRating(item.rating, source)}`}
                     >
-                      {item.rating}
+                      {normalizedRating(item.rating, source)}
                     </span>
                   )}
                   {!thumbnails ? (
@@ -746,15 +830,17 @@ export default function BooruBrowser() {
     [effectiveSearch]
   );
   useEffect(() => {
-    if (!location.search && remembered?.search)
+    if (
+      location.pathname === "/booru" &&
+      !location.search &&
+      remembered?.search
+    )
       history.replace({ pathname: "/booru", search: remembered.search });
-  }, [location.search, remembered, history]);
+  }, [location.pathname, location.search, remembered, history]);
   const [sources, setSources] = useState<BooruSource[]>();
   const [sourceError, setSourceError] = useState("");
   const [loadAttempt, setLoadAttempt] = useState(0);
-  const [showSettings, setShowSettings] = useState(
-    restoreDraft ? (remembered?.settings ?? false) : false
-  );
+  const showSettings = location.pathname === "/booru/settings";
   const [displayMode, setDisplayMode] = useState<"grid" | "wall">(
     remembered?.displayMode ?? "grid"
   );
@@ -811,9 +897,7 @@ export default function BooruBrowser() {
   const [query, setQuery] = useState(
     restoreDraft ? (remembered?.query ?? active.query) : active.query
   );
-  const [selected, setSelected] = useState(
-    restoreDraft ? (remembered?.sources ?? active.sources) : active.sources
-  );
+  const [selected, setSelected] = useState(active.sources.slice(0, 1));
   const lastQuery = useRef(active.query);
   const sourceSignature = active.sources.join(",");
   const lastSources = useRef(sourceSignature);
@@ -825,7 +909,7 @@ export default function BooruBrowser() {
   }, [active.query]);
   useEffect(() => {
     if (lastSources.current !== sourceSignature) {
-      setSelected(sourceSignature.split(","));
+      setSelected(sourceSignature.split(",").slice(0, 1));
       lastSources.current = sourceSignature;
     }
   }, [sourceSignature]);
@@ -898,7 +982,9 @@ export default function BooruBrowser() {
         if (!request.signal.aborted) {
           setSources(value);
           setSelected((current) =>
-            current.filter((id) => value.some((source) => source.id === id))
+            current
+              .filter((id) => value.some((source) => source.id === id))
+              .slice(0, 1)
           );
         }
       })
@@ -910,6 +996,7 @@ export default function BooruBrowser() {
       });
     return () => request.abort();
   }, [loadAttempt]);
+  const selectedSource = sources?.find((source) => source.id === selected[0]);
   const unsupportedRating =
     !!active.favorites ||
     selected.some((id) =>
@@ -931,7 +1018,20 @@ export default function BooruBrowser() {
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => setShowSettings((value) => !value)}
+            onClick={() => {
+              if (
+                showSettings &&
+                (location.state as { booruSettingsFrom?: boolean } | undefined)
+                  ?.booruSettingsFrom
+              )
+                history.goBack();
+              else
+                history.push({
+                  pathname: showSettings ? "/booru" : "/booru/settings",
+                  search: effectiveSearch,
+                  state: { booruSettingsFrom: !showSettings },
+                });
+            }}
           >
             <Icon icon={showSettings ? faArrowLeft : faGear} />{" "}
             {showSettings ? "Back to posts" : "Settings"}
@@ -972,47 +1072,64 @@ export default function BooruBrowser() {
               .filter((source) => selected.includes(source.id))
               .map((source) => (
                 <Badge key={source.id} variant="secondary">
-                  {source.name}
+                  <SourceIcon source={source} /> {source.name}
                 </Badge>
               ))}
             {active.favorites && <Badge variant="primary">Favorites</Badge>}
           </div>
           <div className="filtered-list-toolbar btn-toolbar">
-            <Dropdown className="btn-group">
-              <Dropdown.Toggle variant="secondary" id="booru-sources">
-                Sources ({selected.length}/8)
+            <Dropdown className="btn-group booru-source-selector">
+              <Dropdown.Toggle
+                variant="secondary"
+                id="booru-sources"
+                aria-label="Source"
+              >
+                {selectedSource ? (
+                  <>
+                    <SourceIcon
+                      key={selectedSource.instance}
+                      source={selectedSource}
+                    />{" "}
+                    {selectedSource.name}
+                  </>
+                ) : (
+                  "Choose source"
+                )}
               </Dropdown.Toggle>
               <Dropdown.Menu renderOnMount>
-                <div className="booru-source-options">
-                  {sources.map((source) => (
-                    <Form.Check
-                      key={source.id}
-                      id={`booru-source-${source.id}`}
-                      type="switch"
-                      label={
-                        <span>
-                          {source.name}
-                          <small className="text-muted d-block">
-                            {source.engine}
-                            {source.credentialsConfigured ? " · key saved" : ""}
-                          </small>
-                        </span>
-                      }
-                      aria-label={`${source.name} · ${source.engine}`}
-                      checked={selected.includes(source.id)}
-                      disabled={
-                        !selected.includes(source.id) && selected.length >= 8
-                      }
-                      onChange={() =>
-                        setSelected((value) =>
-                          value.includes(source.id)
-                            ? value.filter((id) => id !== source.id)
-                            : [...value, source.id]
-                        )
-                      }
-                    />
-                  ))}
-                </div>
+                {sources.map((source) => (
+                  <Dropdown.Item
+                    key={source.id}
+                    role="menuitemradio"
+                    aria-label={source.name}
+                    aria-checked={selected[0] === source.id}
+                    active={selected[0] === source.id}
+                    onClick={() => {
+                      const nextQuery =
+                        selected[0] !== source.id &&
+                        (query.startsWith("creator:") ||
+                          source.engine === "pawchive")
+                          ? "*"
+                          : query.trim();
+                      setSelected([source.id]);
+                      setQuery(nextQuery);
+                      history.push({
+                        pathname: "/booru",
+                        search: browserSearchURL({
+                          ...active,
+                          sources: [source.id],
+                          query: nextQuery,
+                          pages: {},
+                          inspect: undefined,
+                          rating: undefined,
+                          sort: undefined,
+                        }),
+                      });
+                    }}
+                  >
+                    <SourceIcon source={source} /> {source.name}
+                  </Dropdown.Item>
+                ))}
               </Dropdown.Menu>
             </Dropdown>
             <Form.Group
@@ -1023,6 +1140,8 @@ export default function BooruBrowser() {
               <TagAutocomplete
                 mode={autocomplete}
                 value={query}
+                submittedValue={active.query}
+                submissionKey={location.key}
                 onChange={setQuery}
                 sources={sources.filter((source) =>
                   selected.includes(source.id)
@@ -1053,16 +1172,28 @@ export default function BooruBrowser() {
                   {
                     value: "safe",
                     label: "Safe / General",
+                    className: "rating-safe",
                     disabled: unsupportedRating,
+                  },
+                  {
+                    value: "sensitive",
+                    label: "Sensitive",
+                    className: "rating-sensitive",
+                    disabled:
+                      unsupportedRating ||
+                      !selectedSource ||
+                      !supportsSensitiveRating(selectedSource),
                   },
                   {
                     value: "questionable",
                     label: "Questionable",
+                    className: "rating-questionable",
                     disabled: unsupportedRating,
                   },
                   {
                     value: "explicit",
                     label: "Explicit",
+                    className: "rating-explicit",
                     disabled: unsupportedRating,
                   },
                 ]}
@@ -1238,6 +1369,29 @@ export default function BooruBrowser() {
               {message("loading_sources", "Loading sources…")}
             </p>
           )}
+          {selectedSource &&
+            ["pawchive", "kemono"].includes(selectedSource.engine) && (
+              <CreatorSearch
+                key={selectedSource.instance}
+                source={selectedSource}
+                onChoose={(value) => {
+                  setQuery(value);
+                  history.push({
+                    pathname: "/booru",
+                    search: browserSearchURL({
+                      ...active,
+                      sources: [selectedSource.id],
+                      query: value,
+                      pages: {},
+                      inspect: undefined,
+                      favorites: undefined,
+                      rating: undefined,
+                      sort: undefined,
+                    }),
+                  });
+                }}
+              />
+            )}
           <details className="booru-help">
             <summary>Search help</summary>
             <p>
@@ -1316,9 +1470,23 @@ export default function BooruBrowser() {
                     bookmarks={bookmarks}
                     bookmarkBusy={bookmarkBusy}
                     onBookmark={(action) => void saveBookmark(action)}
-                    onTag={(name) => {
-                      setQuery(name);
-                      document.getElementById("booru-query")?.focus();
+                    onTag={(name, mode = "replace") => {
+                      const value =
+                        mode === "replace"
+                          ? name
+                          : appendSearchTag(
+                              query,
+                              name,
+                              source.engine === "philomena"
+                            );
+                      if (new TextEncoder().encode(value).length > 1024) {
+                        setBookmarkError("Search would exceed 1024 bytes.");
+                        return;
+                      }
+                      setQuery(value);
+                      window.requestAnimationFrame(() =>
+                        document.getElementById("booru-query")?.focus()
+                      );
                     }}
                     displayMode={displayMode}
                     zoom={zoom}
@@ -1388,7 +1556,7 @@ function PageTags({
     BrowserSearch,
     "sort" | "rating" | "media" | "pageSize" | "favorites"
   >;
-  onTag: (name: string) => void;
+  onTag: (name: string, mode?: "add" | "replace") => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const source = sources.find((item) => item.id === selected) ?? sources[0];

@@ -1,4 +1,10 @@
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  type CSSProperties,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { Alert, Button, Form } from "react-bootstrap";
 import Gallery from "react-photo-gallery";
 import { Link } from "react-router-dom";
@@ -440,9 +446,10 @@ export function BooruReview({
         className={displayMode === "wall" ? "booru-wall" : "booru-grid"}
         style={
           displayMode === "grid"
-            ? {
+            ? ({
                 gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${[140, 180, 240, 320][zoom]}px), 1fr))`,
-              }
+                "--booru-thumbnail-height": `${[180, 240, 310, 390][zoom]}px`,
+              } as CSSProperties)
             : undefined
         }
       >

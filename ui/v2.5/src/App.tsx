@@ -263,7 +263,11 @@ export const App: React.FC = () => {
             <Route exact path="/" component={FrontPage} />
             <Route path="/scenes" component={Scenes} />
             <Route path="/images" component={Images} />
-            <Route exact path="/booru" component={BooruBrowser} />
+            <Route
+              exact
+              path={["/booru", "/booru/settings"]}
+              component={BooruBrowser}
+            />
             <Route
               exact
               path={["/media", "/media/images", "/media/videos"]}

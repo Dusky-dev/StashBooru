@@ -33,6 +33,19 @@ type TagIndex struct {
 
 func (t *TagIndex) Count() int { return len(t.tags) }
 
+// Category uses only an exact canonical name, never a prefix or alias guess.
+func (t *TagIndex) Category(name string) string {
+	key := strings.ToLower(name)
+	at := sort.Search(len(t.keys), func(i int) bool { return t.keys[i].key >= key })
+	for ; at < len(t.keys) && t.keys[at].key == key; at++ {
+		tag := t.tags[t.keys[at].tag]
+		if strings.EqualFold(tag.Name, name) {
+			return tag.Category
+		}
+	}
+	return ""
+}
+
 // ReadTagCSV accepts the tagcomplete database format: name,type,count,aliases.
 // Header rows from Danbooru tag exports are accepted when the required columns
 // name/category/post_count are present. No catalogue metadata is modified.
