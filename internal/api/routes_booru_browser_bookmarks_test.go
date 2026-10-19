@@ -15,7 +15,7 @@ import (
 )
 
 func TestBooruSavedBlankSearchesRemainExecutable(t *testing.T) {
-	for _, search := range []string{"?source=danbooru", "?source=danbooru&q=", "?source=danbooru&q=+++"} {
+	for _, search := range []string{"?source=danbooru", "?source=danbooru&q=", "?source=danbooru&q=+++", "?source=pixiv", "?source=pixiv&q="} {
 		t.Run(search, func(t *testing.T) {
 			rs := booruBrowserRoutes{configPath: t.TempDir()}
 			body := booruTestJSON(t, map[string]string{"action": "search", "name": "Recent", "search": search})
@@ -26,12 +26,12 @@ func TestBooruSavedBlankSearchesRemainExecutable(t *testing.T) {
 				t.Fatal(w.Code, w.Body.String())
 			}
 			params, err := url.ParseQuery(strings.TrimPrefix(bookmarks.Searches[0].Search, "?"))
-			if err != nil || params.Get("q") != "*" || params.Get("source") != "danbooru" {
+			if err != nil || !params.Has("q") || params.Get("q") != "" {
 				t.Fatal("saved filter cannot execute", bookmarks, err)
 			}
 			data, err := os.ReadFile(filepath.Join(rs.configPath, "booru-bookmarks.json"))
-			if err != nil || !strings.Contains(string(data), "q=%2A") {
-				t.Fatal("wildcard not persisted", string(data), err)
+			if err != nil || !strings.Contains(string(data), "q=") {
+				t.Fatal("explicit blank query not persisted", string(data), err)
 			}
 			// Simulate a bookmark accepted by the previous version and a restart.
 			legacy := booruTestJSON(t, booruBookmarks{Searches: []booruSavedSearch{{Name: "Recent", Search: search}}})
@@ -41,8 +41,8 @@ func TestBooruSavedBlankSearchesRemainExecutable(t *testing.T) {
 			restarted := booruBrowserRoutes{configPath: rs.configPath}
 			w = httptest.NewRecorder()
 			restarted.Bookmarks(w, httptest.NewRequest("GET", "/", nil))
-			if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &bookmarks) != nil || bookmarks.Searches[0].Search != "?q=%2A&source=danbooru" {
-				t.Fatal("legacy filter still blank", w.Code, w.Body.String())
+			if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &bookmarks) != nil || bookmarks.Searches[0].Search != "?q=&source="+params.Get("source") {
+				t.Fatal("legacy filter lacks an explicit blank query", w.Code, w.Body.String())
 			}
 		})
 	}

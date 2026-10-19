@@ -15,8 +15,10 @@ that post ignored using the same version/conflict checks.
 A manual download mark records a historical claim and the time it was marked;
 it does not assert that any file currently exists or create a local media link.
 
-Use **Select visible** or Stash-style card checkboxes for bounded bulk edits on
-the current source page. With no selection the bulk actions stay hidden. Selecting
+Start selection with a Stash-style card checkbox. While any post is selected,
+clicking anywhere in another card toggles selection instead of preview/search/download.
+Clear selection restores normal actions. **Select visible** is available in the
+selection controls for bounded bulk edits on the current page. With no selection the bulk actions stay hidden. Selecting
 posts reveals the native-style selected-items counter, clear (×), select-all and
 bulk icon actions. Tooltips and accessible labels name each action. Bulk ignore/unignore and manual mark/clear operations
 are atomic: one stale version rejects the entire selection without partial edits.
@@ -28,13 +30,12 @@ The durable marks live in the server database.
 
 Ignored posts are hidden by default. **Show ignored posts** restores them for
 review or unignore; its `ignored=1` URL parameter survives refresh/back. Filtering
-only changes the currently loaded provider page. The header reports provider
-posts, shown posts and ignored posts hidden; the provider's totals, Previous/Next
-and page numbers remain unchanged. A page with every post ignored still has its
+only changes the currently loaded provider page. Previous/Next remain unchanged;
+the always-visible review/status toolbar is removed. A page with every post ignored still has its
 provider pagination. There is no automatic page filling, remote query rewriting,
 cross-page review selection or all-ignored-history listing in B02.
 
-**Reload review status** fetches current marks and rechecks local evidence without
+On a review error, **Reload review status** fetches current marks and rechecks local evidence without
 searching the provider again. Returning focus to the browser also refreshes review
 status. A conflict leaves the edit unapplied; reload status before trying again.
 If review storage cannot be read, the browser reports the failure, disables review

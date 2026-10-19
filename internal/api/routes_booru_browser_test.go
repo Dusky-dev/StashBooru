@@ -19,7 +19,7 @@ func TestBooruBrowserSourcesAndReadOnlyValidation(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &sources); err != nil || len(sources) != len(booru.Defaults()) || w.Header().Get("Cache-Control") != "no-store" {
 		t.Fatalf("bad sources response: %s %v", w.Body.String(), err)
 	}
-	for _, query := range []string{"source=unknown&q=cat", "source=danbooru&q=", "source=danbooru&q=cat&page=-1", "source=danbooru&q=cat&limit=1000", "source=danbooru&q=cat&page=garbage"} {
+	for _, query := range []string{"source=unknown&q=cat", "source=danbooru&q=cat&page=-1", "source=danbooru&q=cat&limit=1000", "source=danbooru&q=cat&page=garbage"} {
 		w = httptest.NewRecorder()
 		rs.Search(w, httptest.NewRequest("GET", "/booru-browser/search?"+query, nil))
 		if w.Code != 400 {

@@ -12,10 +12,13 @@ pHash comparison and follows remain later [roadmap packages](booru-browser-roadm
 
 ## Search and inspect
 
-Choose one site from **Source**, enter a query and select **Search**. Each site
+Choose one site from **Source**, enter a query (or leave it blank) and select **Search**.
+Blank submission opens the default listing; Pixiv uses daily rankings. Each site
 has an icon, with a local initial fallback if its favicon is unavailable. Changing
-sites opens that site's listing for the current query; Pawchive starts with recent
-posts. Legacy multi-source links and saved filters use their first source.
+sites opens that site's listing for the current query. Archive creator expressions
+are cleared when changing sites. Up/down icons reorder the source menu without
+changing the selected site; order is saved in this browser. Pawchive opens recent
+posts when selected because its API cannot filter post-text queries. Legacy multi-source links and saved filters use their first source.
 A fresh browser without saved state does not search automatically. Refresh and
 bare `/booru` visits restore the submitted page and unfinished search draft.
 Previous/Next, cancellation and retry apply to the selected site. Inspect a
@@ -35,10 +38,11 @@ including tags with spaces and comma/AND combinations. Expand **Search help** in
 remain provider-specific. Unsupported/rejected queries are errors rather than
 being silently simplified to a broader search.
 
-The top search card shows the selected site above Stash's list toolbar.
+The selected site and icon stay in Source inside Stash's list toolbar.
 The toolbar contains Source, the editable native expression and removable term
 chips, Search, rating/media/autocomplete icons, display operations, Favorites,
-saved search filters, page size, Grid/Wall and thumbnail zoom. The sidebar retains
+saved search filters, sorting, page size, Grid/Wall and thumbnail zoom.
+Dropdown highlights clear when closed; keyboard focus stays visible. The sidebar retains
 loaded-page tags and source help. Source is a single-choice menu. Suggestions
 carry category/source labels. **Enter** searches the typed expression; use
 **Down then Enter** to choose a suggestion. Tab accepts only an explicitly
@@ -47,11 +51,14 @@ open, including when a delayed response arrives. Editing starts a fresh completi
 
 
 Cards retain only the preview, number, rating, selection and named icon actions.
-Artist, Copyright and Character icons prepare a query: a single tag fills Search;
-multiple tags open a chooser. Categories come from the provider or an exact canonical-name match in the
+Artist, Copyright and Character icons search immediately: a single tag starts a
+search; multiple tags open a chooser, then search the chosen tag. Sidebar tags behave
+the same way. Disable **Search immediately when clicking tags** in Booru Settings
+to only fill the draft. This preference is saved in this browser. Categories come from the provider or an exact canonical-name match in the
 installed per-source CSV. Prefixes and aliases never guess categories for flat tags.
 The inspector groups and colors tags by category. Click a tag for **Add to search**
-or **Replace search**; these prepare the search field and close the preview.
+or **Replace search**; these update and submit the query and close the preview.
+With immediate search disabled, they only update the draft and close the preview.
 Metadata uses the native resolution label, dimensions, file-size units and uppercase
 format. The MD5 and local-match evidence share the bottom row. Download actions
 retain the converter switch, without repeating the settings explanatory text.
@@ -62,35 +69,48 @@ engines without that rating. The menu entries and selected underline use matchin
 colors. Safe means General on current Danbooru/Gelbooru;
 Philomena's Questionable also includes Suggestive. Leave All ratings selected for
 native rating expressions. Pixiv, Shimmie and archive adapters currently require
-All ratings and provider ordering. The sort selector has been removed; native
-order expressions and older supported sort URLs remain available.
+All ratings and provider ordering. **Sort by** offers Provider default, Recent,
+Oldest, Popular, Score high/low and Updated where supported. Popular uses provider
+score ordering, not a computed time-window ranking. Use Provider default when
+entering native order expressions.
 
 **Grid** lays cards out in columns; **Wall** fits their aspect ratios into justified
 rows. The native zoom slider resizes both preview height and column width in Grid,
 and row height in Wall, in four steps. View and zoom are
-remembered locally across refreshes. Per-source pagination indexes show the source,
-page and available count; unknown totals remain explicitly unknown. The redundant
-results header is removed.
+remembered locally across refreshes. Previous/Next remain at the bottom. The
+pagination index, redundant results header and always-visible review toolbar are
+removed. Rating sits beside the post number in the card caption.
 
 ## Favorites and saved filters
 
-The star in each card saves/removes that post in **StashBooru Favorites**. The star
-in the toolbar opens saved posts from the selected sources. These favorites are
-shared by this Stash server; they do not synchronize remote accounts. Each saved
-post keeps its approved media references, bounded core taxonomy and gallery attachments.
-Snapshots keep up to 64 core tags with names/labels up to 200 bytes; ordinary tags
-remain available in live search/inspection rather than the saved projection.
-Favorites can be inspected and downloaded after a refresh/restart. Remote files
-can disappear or their URLs can expire; return to the provider search to refresh
-and re-save changed media. A disabled or changed source is not reopened through
-an old favorite. Removing a favorite refreshes that source's favorite listing.
+The toolbar star opens the selected site's **account favorites**. Save its API key
+and login (Danbooru/e621) or user ID (Gelbooru/DAPI) in Source settings, then choose
+**Browse account favorites**. Credentials stay on the server. These are read-only
+listings in provider order: inspection/download/review work as in search, while
+query, rating and sort filters are cleared. Loaded-page media filtering still works.
+
+Danbooru uses `ordfav:username` post search, e621 its authenticated favorites
+endpoint, and Gelbooru its favorite-index API followed by bounded post detail
+lookups. Gelbooru totals are advisory: a full page keeps Next available even when
+its reported count is lower. All use the existing transport, rate gates and response limits. A Gelbooru
+page may require one detail request per favorite; cancellation is supported.
+Unsupported engines or missing credentials are explained in the menu. Some DAPI
+clones do not expose the favorites API and return a provider error. Provider
+privacy/content restrictions and removed posts still apply. Changing account or
+source during a request rejects its response.
+
+The local card favorite icon is removed. Previously saved StashBooru favorite data
+is preserved in `booru-bookmarks.json`; the UI no longer displays or adds local post
+favorites. Remote favorite creation/removal is not implemented.
 
 The separate filter icon opens **Saved search filters**. Name and save the current
 query/source/filter combination, select a saved name to apply it, or use its trash
-icon to delete it. Saving an existing name replaces that filter. Outside Favorites, an empty query
-is saved as `*` so the filter opens recent posts. Previously saved blank filters
-are repaired when loaded. Up to 100 named
-filters and 500 favorite posts are stored in private `booru-bookmarks.json`, with
+icon to delete it. Saving an existing name replaces that filter. Empty queries
+are saved as explicit `q=` submissions, preserving the provider's default listing
+(including Pixiv daily rankings). Legacy blank filters are repaired when loaded.
+Account favorites filters keep an empty query even when the text box has an
+unsubmitted draft. Up to 100 named
+filters and legacy local favorite snapshots are stored in private `booru-bookmarks.json`, with
 an 8 MiB metadata bound and atomic updates. This is separate from ignored/manual
 Downloaded history. No remote follow or automated download is created.
 
@@ -113,7 +133,7 @@ Pixiv/archive APIs use fixed upstream blocks of 30/50 posts. The browser slices
 aligned blocks for the selected page size without skipping records. A gallery is
 one card: choose **Media file** in inspection to preview/download a particular
 attachment. Moving to another post resets the selector to its primary file while
-keeping keyboard navigation active. Keyboard Up downloads the selected attachment. Ignore/Favorite apply
+keeping keyboard navigation active. Keyboard Up downloads the selected attachment. Ignore applies
 to the post; alternate files do not inherit first-file MD5 evidence. Up to 200
 additional attachments per post and 256 media snapshots per result are accepted;
 reduce page size if galleries exceed the result bound. Downloads remain one
@@ -124,7 +144,8 @@ added. Installed CSV completion remains available on these new engines.
 
 **Media on this page** filters the currently loaded page into Images or Videos.
 It does not refetch or repaginate the provider, and totals still include all media.
-Missing formats remain unknown rather than being guessed. **Show thumbnails**
+When `file_ext` is absent, the adapter reads the original URL extension without
+downloading it. Missing/unrecognized formats remain unknown; GIF/APNG are images. **Show thumbnails**
 controls grid image loading; inspecting a post remains an explicit preview action.
 These controls, per-source pages and inspection persist through refresh/back.
 Autocomplete mode and thumbnail visibility are local browser preferences.

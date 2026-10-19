@@ -85,12 +85,14 @@ e621, Philomena, Shimmie/Paheal, Pixiv, Pawchive and Kemono adapters. Fourteen
 presets and compatible custom instances are managed in **Booru → Settings**, with
 engine-specific credentials and enable/disable controls. The native list toolbar
 combines source selection, search chips, rating/media filters, page size, Grid/Wall
-views and persistent zoom; the selected site and its icon stay visible above it. Pawchive/Kemono artist search works by name; settings has its own Back-aware page. A tag sidebar,
+views and persistent zoom; the selected site and icon stay in its reorderable menu. Pawchive/Kemono artist search works by name; settings has its own Back-aware page. A tag sidebar,
 core taxonomy icon choosers and gallery inspection retain remote metadata without
 crowding thumbnails. Paging, query and inspection survive refresh/back.
 
-Server Favorites are separate from named saved search filters and ignored/manual
-Downloaded history. Bounded current-file MD5 matches remain separate evidence.
+Configured account Favorites for Danbooru, Gelbooru/DAPI and e621 are separate from
+named saved search filters and ignored/manual Downloaded history. Tag clicks search
+immediately by default, with a draft-only preference in Settings. Blank searches
+and directional score/date sorting are supported where the provider allows. Bounded current-file MD5 matches remain separate evidence.
 Native Jobs download a chosen file into the default or selected library folder,
 with safe common Grabber filename tokens/subfolders and optional saved converter
 defaults. Live autocomplete has optional uploaded/server-path CSV fallback;

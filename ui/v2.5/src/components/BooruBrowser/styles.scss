@@ -113,15 +113,6 @@
     .dropdown-menu { z-index: 1040; }
   }
 
-  .booru-selected-sources {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .pagination-index-container { margin-bottom: 0.75rem; }
-
   .booru-core-tags {
     display: flex;
     gap: 0.25rem;
@@ -139,7 +130,17 @@
       height: 100%;
       padding: 0;
     }
-    .booru-post-caption { display: none; }
+
+    .booru-post-caption {
+      background: rgb(0 0 0 / 75%);
+      bottom: 64px;
+      display: flex;
+      left: 0;
+      padding: 0.15rem 0.35rem;
+      position: absolute;
+      right: 0;
+      z-index: 2;
+    }
 
     .booru-core-tags, .booru-card-actions, .booru-review-actions {
       background: rgb(0 0 0 / 75%);
@@ -402,7 +403,7 @@
 }
 
 .booru-browser {
-  .booru-review-toolbar, .booru-review-actions {
+  .booru-selection-actions, .booru-review-notice, .booru-review-actions {
     align-items: center;
     display: flex;
     flex-wrap: wrap;
@@ -512,10 +513,7 @@
     font-size: 0.65rem;
     max-width: 90%;
     padding: 0.1rem 0.35rem;
-    position: absolute;
-    right: 0.4rem;
-    top: 0.4rem;
-    z-index: 1;
+
   }
 
   .rating-safe { color: #90ce9a; }
@@ -742,4 +740,38 @@
 
   .btn { text-align: left; }
   small { display: block; }
+}
+
+.booru-source-option {
+  align-items: center;
+  display: flex;
+
+  > .dropdown-item {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.booru-browser {
+  .btn:focus:not(:focus-visible):not(:active):not(.active) { box-shadow: none; }
+
+  .btn-secondary:focus:not(:focus-visible):not(:active):not(.active) {
+    background-color: var(--secondary);
+    border-color: var(--secondary);
+  }
+
+  .btn-primary:focus:not(:focus-visible):not(:active):not(.active) {
+    background-color: var(--primary);
+    border-color: var(--primary);
+  }
+
+  .minimal.btn:focus:not(:focus-visible):not(:active):not(.active) {
+    background: none;
+    border: none;
+  }
+
+  .btn:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
 }

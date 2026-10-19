@@ -11,7 +11,7 @@ type SearchOptions struct {
 }
 
 func (o SearchOptions) Validate() bool {
-	return (o.Sort == "" || o.Sort == "newest" || o.Sort == "popular" || o.Sort == "updated") &&
+	return (o.Sort == "" || o.Sort == "newest" || o.Sort == "popular" || o.Sort == "updated" || o.Sort == "oldest" || o.Sort == "score_asc" || o.Sort == "score_desc") &&
 		(o.Rating == "" || o.Rating == "safe" || o.Rating == "sensitive" || o.Rating == "questionable" || o.Rating == "explicit")
 }
 
@@ -26,6 +26,9 @@ func (s Source) filterQuery(query string, options SearchOptions) (string, error)
 		return "", &Error{Code: "unsupported-filter", Message: "This source does not expose a separate Sensitive rating."}
 	}
 	if s.Engine == "philomena" {
+		if strings.TrimSpace(query) == "" {
+			query = "*"
+		}
 		if options.Rating != "" {
 			rating := options.Rating
 			if rating == "questionable" {
@@ -37,8 +40,14 @@ func (s Source) filterQuery(query string, options SearchOptions) (string, error)
 	}
 	if options.Sort != "" {
 		order := "id_desc"
-		if options.Sort == "popular" {
+		if options.Sort == "popular" || options.Sort == "score_desc" {
 			order = "score"
+		}
+		if options.Sort == "score_asc" {
+			order = "score_asc"
+		}
+		if options.Sort == "oldest" {
+			order = "id_asc"
 		}
 		if options.Sort == "updated" {
 			order = "change"
@@ -47,7 +56,11 @@ func (s Source) filterQuery(query string, options SearchOptions) (string, error)
 			}
 		}
 		if s.Engine == "gelbooru" {
-			query += " sort:" + strings.TrimSuffix(order, "_desc") + ":desc"
+			direction := "desc"
+			if strings.HasSuffix(order, "_asc") {
+				direction = "asc"
+			}
+			query += " sort:" + strings.TrimSuffix(strings.TrimSuffix(order, "_desc"), "_asc") + ":" + direction
 		} else {
 			query += " order:" + order
 		}

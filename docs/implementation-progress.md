@@ -2,7 +2,7 @@
 
 Updated: 2026-10-19
 
-Current baseline: `develop` at `9c059fe95d240e234337cd14b5b46b6177861b65`.
+Current baseline: `develop` at `e45586347603f2c58ae40d68787cc71a0173a48f`.
 PR #151 is merged. Branch `feat/booru-search-preview-refinement-20261019` improves
 single-site browsing, artist lookup, settings navigation and preview controls.
 Review: [PR #152](https://github.com/Dusky-dev/StashBooru/pull/152). See [browser guide](booru-browser.md) and
@@ -11,6 +11,74 @@ Review: [PR #152](https://github.com/Dusky-dev/StashBooru/pull/152). See [browse
 P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
+
+## Browser controls and account favorites — 2026-10-19
+
+- Baseline: merged #152 at `e45586347603f2c58ae40d68787cc71a0173a48f`.
+  Branch `feat/booru-controls-favorites-20261019`; no merge or deployment.
+- Source dropdown gets persistent up/down ordering. Redundant source badges,
+  pagination index and always-visible review toolbar are removed. Native sort menu
+  restores Recent/Oldest/Popular/directional score/Updated for supported engines.
+- Tags submit immediately by default; a browser-local Settings switch retains the
+  draft-only workflow. Preview tag actions own navigation to avoid stale close
+  callbacks reverting the new query. Dropdown active highlights track open state;
+  keyboard focus is retained. Blank submissions are explicit `q=` URLs.
+- Card selection captures the whole card while a selection is active, including
+  action buttons; Clear selection restores normal preview/download/tag actions.
+  Rating moves to the opposite side of the caption. Missing provider file_ext is
+  filled from the original URL extension for loaded-page media filtering.
+- Account favorites replace local card favorites in the UI. Danbooru native
+  ordered favorites, e621 favorites and Gelbooru index/detail APIs use server-owned
+  credentials and bounded existing transport. Account/source changes reject stale
+  responses. Legacy local favorites remain stored. No remote favorite writes.
+- Endpoint evidence: maintained gallery-dl Gelbooru extractor, Danbooru/e621
+  controllers and PixivPy ranking client. Authenticated provider acceptance remains
+  separate from synthetic tests.
+- Runtime checkpoint local `cf5bee2a0` / published `119472d705c8da6f74e8490c009de1c1bee0babf`,
+  identical tree `51f5e715cca2b72faa5ed3acc1f28585b6252296`.
+  Review: [PR #153](https://github.com/Dusky-dev/StashBooru/pull/153).
+  Provider regressions, all 61 UI tests, JS/CSS lint, TypeScript/formatting and
+  production bundling passed. Mounted 1440×1000 and 390×844 passed, and synthetic
+  desktop/mobile screenshots were inspected. All 40 relative doc links passed.
+- Follow-up handles explicit zero-count deleted favorite details without losing
+  provider pagination, and rejects Recent for blank Pixiv daily rankings. Provider
+  regressions passed; types/lint/production were repeated. CI exposed a mobile
+  fixture race issuing Up before the next post's download settings were ready;
+  the test now waits for the enabled Download/Retry action after remembered job
+  recovery before exercising the shortcut. Pawchive retains recent-post startup
+  on source changes instead of inheriting unsupported post-text queries.
+- Final local runtime `db3d80da8ff716e3b1edaddc8a0558959fdf7f42`, tree
+  `391c98b2e8f456beb2d93bea641ab8fe80e65f7a`, passed provider regressions, full
+  `make test`, `make it` and `make lint` (**0 issues**). All 61 UI tests, JS/CSS
+  lint, TypeScript/formatting and production bundling passed; final types/scoped
+  lint/production and mounted 1440×1000 + 390×844 passed after the provider guards.
+  Final mounted coverage includes persistent source ordering, both tag-click
+  modes, preview add/replace redirects, blank submission, media filtering without
+  a provider refetch, whole-card selection/action suppression, caption ratings,
+  account favorites refresh and existing download/player/review/race workflows.
+- Codex Review completed with no findings on published `119472d` and `0773f35`.
+  GitHub generation/browser passed; the second lint runner hit an external schema
+  fetch timeout before code analysis (first runner and local full lint passed).
+  Fresh final-head CI and Codex Review outcomes are attached to PR #153. This
+  checkpoint changes documentation only. Live authenticated provider acceptance
+  remains unverified; no merge or deployment is performed.
+
+- Codex Review on `0d1d662` identified two valid P2 regressions. Gelbooru's full
+  favorite-page signal now takes precedence over advisory totals, matching the
+  maintained client's forward pagination. A regression covers under-reported
+  totals and the page-750 cap. Wall view now shows the number/rating caption above
+  its action rows; mounted checks assert ratings are visible and screenshots were
+  inspected. Both changes preserve the requested caption placement.
+- Saved filters retain explicit blank submissions instead of converting them to
+  `*` (important for Pixiv rankings). Favorites filters omit an unsubmitted draft;
+  API/legacy normalization and mounted save/apply/delete/reload regressions pass.
+- Verified correction runtime `42512e336a2578becacf937b8822c2f12d46924d`, tree
+  `9c0c099e565b658c166bd823cd36729f0f411503`: full `make test`, `make it`,
+  `make lint` (**0 issues**), all 61 UI tests, JS/CSS lint, TypeScript/formatting,
+  production bundling and mounted 1440×1000 / 390×844 passed again. This ledger
+  checkpoint is documentation only; current-head CI and re-review are attached to
+  PR #153. Authenticated real-provider acceptance remains separate.
+
 
 ## Single-site browsing and preview refinement — 2026-10-19
 
