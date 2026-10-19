@@ -74,6 +74,11 @@ and explicit decisions take precedence over this file.
 
 ## Validation
 
+- For each assigned PR, inspect Codex Review findings, verify them against the
+  current code and requirements, and implement sound fixes with appropriate
+  regression checks. Assess suggestions independently rather than applying them
+  automatically. Recheck review feedback after publishing relevant changes.
+
 - Match checks to the change. Documentation-only edits need review and
   `git diff --check`; avoid full builds or artificial tests for such edits.
 - Backend changes: use focused tests first, then the applicable repository

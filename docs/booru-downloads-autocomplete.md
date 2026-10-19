@@ -124,11 +124,12 @@ This preview never imports a file or marks it downloaded.
 ## Live autocomplete and optional CSV fallback
 
 Autocomplete defaults to **Live, with CSV fallback** in the **Autocomplete** icon menu.
-It queries the selected sources through the authenticated server route; a CSV
-file is optional. **Installed CSV only** uses the installed per-source databases
+It queries the selected source through the authenticated server route; a CSV
+file is optional. **Installed CSV only** uses the installed per-source database
 without contacting providers. A failed live request falls back to the installed
 CSV when available and shows a notice. No usable live response or database gives
-an explicit unavailable notice; other selected sources can still supply results.
+an explicit unavailable notice. Artist-directory search on Pawchive/Kemono is a
+separate provider lookup, available by name in the browser sidebar.
 
 | Engine | Live endpoint |
 | --- | --- |
@@ -191,7 +192,7 @@ per tag and 256 UTF-8 bytes per name. Uncompressed CSV is supported; SQLite/JSON
 and Grabber database files are not.
 
 Type at least two characters. Suggestions include categories, counts, sources and
-matching aliases. Up/Down selects, Enter/Tab completes, Escape dismisses; clicking
+matching aliases. Up/Down selects, Down then Enter / highlighted Tab completes, Escape dismisses; clicking
 also works. Completion replaces the token at the cursor and preserves exclusions
 and surrounding tags. Philomena-only searches use comma-delimited tags with
 spaces; other/mixed sources use whitespace. Metatag expressions containing a colon
@@ -242,3 +243,9 @@ destination/symlink boundaries, retention after import failure, retry without
 overwrite, CSV path import/revision behavior, preview transport and browser
 refresh/fallback/default/custom folder flows. Synthetic fixtures and a local PNG
 scan are separate from live-account testing or real JPEG XL codec acceptance.
+
+The browser now uses one source at a time. Enter searches the typed query unless
+an autocomplete row was explicitly selected with an arrow key; an exact tag or a
+submitted query closes suggestions. Settings has a dedicated `/booru/settings`
+route, so Back returns to the browser. Preview downloads keep the default-converter
+switch and folder actions; detailed policy and default-folder text stay in Settings.

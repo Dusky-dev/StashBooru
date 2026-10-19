@@ -135,6 +135,17 @@ func (rs booruBrowserRoutes) Search(w http.ResponseWriter, r *http.Request) {
 			writeBooruError(w, 502, "media", "Provider page contains more than 256 media files. Reduce posts per page.")
 			return
 		}
+		if db, err := rs.tagDatabase(source); err == nil && db.index != nil {
+			for i := range result.Posts {
+				for j, tag := range result.Posts[i].Tags {
+					if tag.Category == "unknown" {
+						if category := db.index.Category(tag.Name); category != "" {
+							result.Posts[i].Tags[j].Category = category
+						}
+					}
+				}
+			}
+		}
 		for i := range result.Posts {
 			result.Posts[i] = publicBooruPost(source, result.Posts[i])
 		}

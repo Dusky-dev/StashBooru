@@ -112,7 +112,10 @@ func (c *Client) searchExtended(ctx context.Context, s Source, query string, pag
 			if len(parts) != 3 || !safeProviderPart(parts[1]) || !safeProviderPart(parts[2]) {
 				return result, &Error{Code: "invalid-query", Message: "Use creator:service:id alone to browse a creator."}
 			}
-			endpoint = "/api/v1/" + url.PathEscape(parts[1]) + "/user/" + url.PathEscape(parts[2]) + "/posts"
+			endpoint = "/api/v1/" + url.PathEscape(parts[1]) + "/user/" + url.PathEscape(parts[2])
+			if s.Engine == "kemono" {
+				endpoint += "/posts"
+			}
 		} else if query != "*" {
 			if s.Engine == "pawchive" {
 				return result, &Error{Code: "unsupported-query", Message: "Pawchive's API does not filter text searches. Use * for recent posts or creator:service:id to browse a creator."}

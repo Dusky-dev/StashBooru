@@ -12,45 +12,62 @@ pHash comparison and follows remain later [roadmap packages](booru-browser-roadm
 
 ## Search and inspect
 
-Choose up to eight sources, enter a query and select **Search**.
-A fresh browser without saved state does not search automatically. Refresh/bare-route
-visits restore the saved submitted page. Editing the query and changing source switches
-do not submit a search. Each selected source has independent results,
-Previous/Next, cancellation and retry. One unavailable/rate-limited source does
-not discard another source's results. Inspect a thumbnail or post number to view
-the larger remote preview and grouped raw tags; **Open remote post** visits the
-source site in a separate tab.
+Choose one site from **Source**, enter a query and select **Search**. Each site
+has an icon, with a local initial fallback if its favicon is unavailable. Changing
+sites opens that site's listing for the current query; Pawchive starts with recent
+posts. Legacy multi-source links and saved filters use their first source.
+A fresh browser without saved state does not search automatically. Refresh and
+bare `/booru` visits restore the submitted page and unfinished search draft.
+Previous/Next, cancellation and retry apply to the selected site. Inspect a
+thumbnail to open the larger preview; **Open remote post** opens the source site.
+
+On Pawchive and Kemono, **Find an artist** searches the provider's artist directory
+by name. Select the matching artist/service to browse their posts; no numeric
+creator expression needs to be typed. Matching names on different services remain
+separate choices. Directory errors have a retry action. Post-text search remains
+available on Kemono; Pawchive's posts API ignores text queries, so those are rejected.
 
 With the rating control at its default, the same query is sent unchanged
-to each source. Other rating values append the selected engine's native filter
+to the selected source. Other rating values append the selected engine's native filter
 syntax; Philomena uses its native sort parameter and rating-tag expression. Space-separated tags and
 underscores are common to the first four engines; Philomena uses its own syntax,
 including tags with spaces and comma/AND combinations. Expand **Search help** in the sidebar for each selected source. Provider ratings, search limits, account filters and metatags
 remain provider-specific. Unsupported/rejected queries are errors rather than
 being silently simplified to a broader search.
 
-The top search card shows the selected sources above Stash's list toolbar.
-The toolbar contains Sources, the editable native expression and removable term
+The top search card shows the selected site above Stash's list toolbar.
+The toolbar contains Source, the editable native expression and removable term
 chips, Search, rating/media/autocomplete icons, display operations, Favorites,
 saved search filters, page size, Grid/Wall and thumbnail zoom. The sidebar retains
-loaded-page tags and source help. Source switches stay open while choosing up to
-eight sources. Suggestions carry category/source labels; Enter/Tab completes a
-highlighted suggestion and **Ctrl+Enter** submits.
+loaded-page tags and source help. Source is a single-choice menu. Suggestions
+carry category/source labels. **Enter** searches the typed expression; use
+**Down then Enter** to choose a suggestion. Tab accepts only an explicitly
+highlighted suggestion. Exact tags and submitted searches do not leave a popup
+open, including when a delayed response arrives. Editing starts a fresh completion.
+
 
 Cards retain only the preview, number, rating, selection and named icon actions.
 Artist, Copyright and Character icons prepare a query: a single tag fills Search;
-multiple tags open a chooser. Only provider-supplied categories appear; flat tags
-are not guessed. The inspector retains all remote metadata and detailed evidence.
+multiple tags open a chooser. Categories come from the provider or an exact canonical-name match in the
+installed per-source CSV. Prefixes and aliases never guess categories for flat tags.
+The inspector groups and colors tags by category. Click a tag for **Add to search**
+or **Replace search**; these prepare the search field and close the preview.
+Metadata uses the native resolution label, dimensions, file-size units and uppercase
+format. The MD5 and local-match evidence share the bottom row. Download actions
+retain the converter switch, without repeating the settings explanatory text.
 
-**Rating** offers All ratings, Safe / General, Questionable and Explicit on the
-original engines. Safe means General on current Danbooru/Gelbooru;
+**Rating** offers All ratings, Safe / General, Sensitive, Questionable and Explicit.
+Sensitive is separate on Danbooru and compatible Gelbooru sites; it is disabled on
+engines without that rating. The menu entries and selected underline use matching
+colors. Safe means General on current Danbooru/Gelbooru;
 Philomena's Questionable also includes Suggestive. Leave All ratings selected for
 native rating expressions. Pixiv, Shimmie and archive adapters currently require
 All ratings and provider ordering. The sort selector has been removed; native
 order expressions and older supported sort URLs remain available.
 
 **Grid** lays cards out in columns; **Wall** fits their aspect ratios into justified
-rows. The native zoom slider resizes cards/rows in four steps. View and zoom are
+rows. The native zoom slider resizes both preview height and column width in Grid,
+and row height in Wall, in four steps. View and zoom are
 remembered locally across refreshes. Per-source pagination indexes show the source,
 page and available count; unknown totals remain explicitly unknown. The redundant
 results header is removed.
@@ -83,8 +100,8 @@ Downloaded history. No remote follow or automated download is created.
 | --- | --- | --- |
 | Paheal / Shimmie | Native tags via the Danbooru XML API; anonymous | Categories may be unavailable; no live completion endpoint. |
 | Pixiv | OAuth **access token** in source API key; text search, `user:123` for artist works, `id:123` for a work | Static illustration/manga pages selectable in the inspector. Ugoira frame ZIPs are explicitly unavailable. No login/token refresh is implemented; replace expired tokens in Settings. |
-| Pawchive | `*` for recent posts or `creator:service:id`; anonymous API. Text search is unsupported because the API ignores it | Optional API key is the `session` cookie value, sent only to `file.pawchive.pw`. Preview-only/deferred/unavailable originals cannot be downloaded. |
-| Kemono | `*` for recent posts, text of at least three bytes, or `creator:service:id`; anonymous API | Supported image/video attachments only; ZIPs/documents are counted as omitted. |
+| Pawchive | Artist-name directory search, or `*` for recent posts; anonymous API. Text post search is unsupported because the API ignores it | Optional API key is the `session` cookie value, sent only to `file.pawchive.pw`. Preview-only/deferred/unavailable originals cannot be downloaded. |
+| Kemono | Artist-name directory search, `*` for recent posts, or text of at least three bytes; anonymous API | Supported image/video attachments only; ZIPs/documents are counted as omitted. |
 
 Custom sources can select these engines and configure their HTTPS API root/CDN
 hosts in Settings. Preset hostnames can change; failures remain visible for retry
@@ -182,8 +199,11 @@ need their own documented adapter and the same acceptance checks.
 
 ## Source settings
 
-Open **Settings** in the browser header, or **Settings → Metadata Providers
-→ Booru sources**. This single panel combines source/API credentials, downloads, converter preferences
+Open **Settings** in the browser header (`/booru/settings`). The browser Back
+button returns to the posts/query/page that opened settings, including after a
+settings refresh. **Back to posts** also works when settings was opened directly.
+The existing application entry is **Settings → Metadata Providers
+→ Booru sources**. This settings page combines source/API credentials, downloads, converter preferences
 and optional CSV autocomplete databases. Saved server settings apply to everyone
 using this server.
 
@@ -335,3 +355,13 @@ use [Codename-11/Stash-Downloader's Stash Browser](https://github.com/Codename-1
 as a reference, adapted to native StashBooru React/Go components. Its copyright
 and [MIT license notice](third-party/stash-browser-MIT.txt) are retained. A separate
 plugin installation or Python proxy is not required for this browser.
+
+### Artist directory API
+
+`GET /booru-browser/creators?source=<id>&instance=<instance>&q=<name>&page=1`
+returns up to 50 matching name/service/ID records per page for a configured Pawchive
+or Kemono source. It rechecks source identity after the request. The public provider
+directory is bounded to 64 MiB / 500,000 rows, with two indexes cached for ten minutes;
+concurrent loads of the same source share a request. Normal public-DNS, redirect,
+rate-limit and cancellation rules apply. Invalid records are omitted. No account
+favorites or automatic downloads are created by artist lookup.

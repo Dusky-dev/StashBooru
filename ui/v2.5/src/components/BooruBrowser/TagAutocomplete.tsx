@@ -20,19 +20,28 @@ export function TagAutocomplete({
   onChange,
   sources,
   mode = "live",
+  submittedValue,
+  submissionKey,
 }: {
   value: string;
   onChange: (value: string) => void;
   sources: BooruSource[];
   mode?: "live" | "database";
+  submittedValue?: string;
+  submissionKey?: string;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLUListElement>(null);
   const [caret, setCaret] = useState(value.length);
   const [items, setItems] = useState<Suggestion[]>([]);
-  const [active, setActive] = useState(0);
+  const [active, setActive] = useState(-1);
   const [dismissed, setDismissed] = useState(false);
+  const [focused, setFocused] = useState(false);
   const [notice, setNotice] = useState("");
+  useEffect(() => {
+    if (submittedValue !== undefined || submissionKey !== undefined)
+      setDismissed(true);
+  }, [submittedValue, submissionKey]);
   const comma =
     sources.length > 0 && sources.every((s) => s.engine === "philomena");
   useEffect(
@@ -103,7 +112,7 @@ export function TagAutocomplete({
             )
             .slice(0, 20);
           setItems(unique);
-          setActive(0);
+          setActive(-1);
           if (
             available.length === results.length &&
             available.some((result) => result.notice)
@@ -142,7 +151,12 @@ export function TagAutocomplete({
       input.current?.setSelectionRange(position, position);
     });
   }
-  const open = items.length > 0 && !dismissed;
+  const exact =
+    token.end === caret &&
+    items.some(
+      (item) => item.name.toLowerCase() === token.prefix.toLowerCase()
+    );
+  const open = focused && items.length > 0 && !dismissed && !exact;
   useEffect(() => {
     if (open)
       list.current?.children.item(active)?.scrollIntoView({ block: "nearest" });
@@ -180,7 +194,9 @@ export function TagAutocomplete({
         aria-autocomplete="list"
         aria-expanded={open}
         aria-controls="booru-tag-suggestions"
-        aria-activedescendant={open ? `booru-suggestion-${active}` : undefined}
+        aria-activedescendant={
+          open && active >= 0 ? `booru-suggestion-${active}` : undefined
+        }
         autoComplete="off"
         value={value}
         maxLength={1024}
@@ -192,15 +208,18 @@ export function TagAutocomplete({
               event.currentTarget.value.length
           );
           setDismissed(false);
+          setActive(-1);
+          setItems([]);
         }}
         onSelect={(event) =>
           setCaret(event.currentTarget.selectionStart ?? value.length)
         }
-        onBlur={() => setDismissed(true)}
-        onFocus={() => setDismissed(false)}
+        onBlur={() => setFocused(false)}
+        onFocus={() => setFocused(true)}
         onKeyDown={(event) => {
           if (event.ctrlKey && event.key === "Enter") {
             event.preventDefault();
+            setDismissed(true);
             event.currentTarget.form?.requestSubmit();
             return;
           }
@@ -208,16 +227,23 @@ export function TagAutocomplete({
             setDismissed(true);
             return;
           }
+          if (event.key === "Enter" && (!open || active < 0)) {
+            setDismissed(true);
+            return;
+          }
           if (!open) return;
           if (event.key === "ArrowDown" || event.key === "ArrowUp") {
             event.preventDefault();
-            setActive(
-              (index) =>
-                (index + (event.key === "ArrowDown" ? 1 : items.length - 1)) %
-                items.length
+            setActive((index) =>
+              index < 0
+                ? event.key === "ArrowDown"
+                  ? 0
+                  : items.length - 1
+                : (index + (event.key === "ArrowDown" ? 1 : items.length - 1)) %
+                  items.length
             );
           }
-          if (event.key === "Enter" || event.key === "Tab") {
+          if (active >= 0 && (event.key === "Enter" || event.key === "Tab")) {
             event.preventDefault();
             choose(items[active]);
           }
@@ -260,7 +286,7 @@ export function TagAutocomplete({
           ))}
         </ul>
       )}
-      {notice && !dismissed && (
+      {notice && !dismissed && focused && !exact && (
         <small className="text-muted" role="status">
           {notice}
         </small>

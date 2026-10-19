@@ -222,33 +222,14 @@ export function BooruDownload({
       aria-label={compact ? `Download post ${post.id}` : "Download this post"}
     >
       {!compact && (
-        <>
-          <h6>Download into Stash</h6>
-          <p className="mb-1">
-            Original
-            {post.bytes
-              ? ` · ${post.bytes.toLocaleString()} bytes`
-              : " · size unknown"}
-            . Maximum 128 MiB.
-          </p>
-          <Form.Check
-            type="switch"
-            id={`booru-convert-${post.sourceID}-${post.id}`}
-            label="Convert using Media converter defaults"
-            checked={convert}
-            disabled={busy || running || !ready}
-            onChange={(event) => setConvert(event.currentTarget.checked)}
-          />
-          <small className="d-block text-muted mb-2">
-            Uses the converter's saved format, quality, effort, worker and
-            savings policy. Originals follow its normal recovery rules.
-          </small>
-          <p className="booru-destination">
-            Default folder:{" "}
-            {directory ||
-              "Not configured — set it in Settings, or use Download to…"}
-          </p>
-        </>
+        <Form.Check
+          type="switch"
+          id={`booru-convert-${post.sourceID}-${post.id}`}
+          label="Convert using Media converter defaults"
+          checked={convert}
+          disabled={busy || running || !ready}
+          onChange={(event) => setConvert(event.currentTarget.checked)}
+        />
       )}
       {error && <Alert variant="warning">{error}</Alert>}
       {state?.error && <Alert variant="warning">{state.error}</Alert>}

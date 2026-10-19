@@ -2,15 +2,66 @@
 
 Updated: 2026-10-19
 
-Current baseline: `develop` at `d29d8767db06f1b14abb2928a7edf1c911100779`.
-PR #150 is merged. Branch `feat/booru-providers-toolbar-20261018` adds the requested
-provider adapters, filename settings and native toolbar/Favorites workflow.
-Review: [PR #151](https://github.com/Dusky-dev/StashBooru/pull/151).
-See [browser guide](booru-browser.md) and [downloads/autocomplete guide](booru-downloads-autocomplete.md).
+Current baseline: `develop` at `9c059fe95d240e234337cd14b5b46b6177861b65`.
+PR #151 is merged. Branch `feat/booru-search-preview-refinement-20261019` improves
+single-site browsing, artist lookup, settings navigation and preview controls.
+Review: [PR #152](https://github.com/Dusky-dev/StashBooru/pull/152). See [browser guide](booru-browser.md) and
+[downloads/autocomplete guide](booru-downloads-autocomplete.md).
 
 P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
+
+## Single-site browsing and preview refinement — 2026-10-19
+
+- Fresh merged-#151 baseline `9c059fe95d240e234337cd14b5b46b6177861b65`.
+  Work is isolated from the preserved unfinished checkout. The owner's policy to
+  independently assess Codex Review and implement sound findings is recorded in
+  `AGENTS.md`; no merge or deployment is authorized by publication.
+- One source with a favicon/initial fallback replaces the multi-select switches.
+  Legacy URLs/filters use their first source; source changes reset incompatible
+  rating/order and archive creator expressions. The selected URL source also
+  governs startup, including old saved browser state.
+- Pawchive/Kemono artist lookup searches their public directories by name and
+  service and opens a selected creator's posts. Directories use the existing
+  protected transport, cancellation/rate gates and source-identity rechecks;
+  bounded payload/row/cache limits and concurrent-load coalescing apply. Pawchive
+  creator posts use its native endpoint; unsupported post text queries still reject.
+- Enter submits typed text; Down+Enter accepts a suggestion. Exact/submitted
+  terms and late responses do not reopen completion. Editing can complete the
+  same text again. Settings uses `/booru/settings` with refresh and Back support.
+- Grid zoom changes preview height and column width; Wall keeps native row zoom.
+  Sensitive has a distinct engine-aware filter/color, including current Danbooru
+  and Gelbooru versus legacy three-rating sources. Core taxonomy remains icon
+  actions with a chooser for multiple tags; exact installed-CSV categories can
+  fill unknown provider categories without treating aliases/prefixes as evidence.
+- Preview content receives focus on entry and preserves consecutive arrows across
+  posts. Player/input/dropdown keys stay local to their controls; a new regression
+  caught and fixed Down navigating a tag menu also issuing an ignore write.
+  Category-colored tags offer add/replace query actions. Native resolution/size/
+  uppercase format replace verbose metadata; MD5/evidence share the bottom row.
+  Download controls retain the default-converter switch without settings prose.
+- Runtime checkpoint: local `f1c84a28aeb5befceb2d457443bdf17573961117`.
+  Full `make test` / `make it`, backend/UI generation, 61 UI tests, JS/CSS lint,
+  TypeScript/formatting and production bundling passed. Lint/type/production were
+  repeated after the final preview keyboard guard. Mounted 1440×1000 and 390×844
+  passed the new source/artist/settings/completion/height/metadata/menu-key flows
+  and the existing jobs/download/converter/review/player/race suite. Synthetic
+  preview/desktop/mobile screenshots were inspected; live credentials/network
+  acceptance remains separate. Go lint requested a test-only switch rewrite;
+  final package tests/lint and publication details are recorded below.
+- Test-style checkpoint `336b311b5da4e5708a9263253094e779bc10dee3` passed final
+  provider tests and full `make lint` with **0 issues**. Published runtime
+  `0092c2172b289b61cb04b6a5b72c9f85d2a8e07c` has the identical verified tree
+  `6431a5c4a9f4a1141d38b11b7dbcd05f0d2823ff`. Fresh develop is still the baseline
+  above. This final checkpoint updates the ledger only. Current head CI and
+  independently assessed Codex Review outcomes are attached to PR #152.
+- Codex Review identified Kemono's retired `/creators.txt` path. Verified against
+  the maintained [gallery-dl Kemono client](https://github.com/mikf/gallery-dl/blob/master/gallery_dl/extractor/kemono.py):
+  its public index uses `/api/v1/creators` with `Accept: text/css`. The adapter now
+  uses that endpoint; provider regressions assert the live path and retain the
+  engine-specific Accept header. Other findings are assessed against current
+  behavior rather than accepted automatically.
 
 ## PR #151 review corrections — 2026-10-19
 
