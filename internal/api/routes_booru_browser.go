@@ -78,7 +78,7 @@ func (rs booruBrowserRoutes) Search(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if err != nil || booru.ValidateQuery(query.Get("q"), page, limit) != nil {
-		writeBooruError(w, http.StatusBadRequest, "invalid-query", "Enter search tags, a page from 1–750 and page size from 1–50.")
+		writeBooruError(w, http.StatusBadRequest, "invalid-query", "Use a query of at most 1024 bytes, a page from 1–750 and page size from 1–50.")
 		return
 	}
 	sources, err := rs.sources()
@@ -135,17 +135,7 @@ func (rs booruBrowserRoutes) Search(w http.ResponseWriter, r *http.Request) {
 			writeBooruError(w, 502, "media", "Provider page contains more than 256 media files. Reduce posts per page.")
 			return
 		}
-		if db, err := rs.tagDatabase(source); err == nil && db.index != nil {
-			for i := range result.Posts {
-				for j, tag := range result.Posts[i].Tags {
-					if tag.Category == "unknown" {
-						if category := db.index.Category(tag.Name); category != "" {
-							result.Posts[i].Tags[j].Category = category
-						}
-					}
-				}
-			}
-		}
+		rs.categorizeBooruPosts(source, result.Posts)
 		for i := range result.Posts {
 			result.Posts[i] = publicBooruPost(source, result.Posts[i])
 		}
@@ -154,6 +144,20 @@ func (rs booruBrowserRoutes) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeBooruError(w, http.StatusBadRequest, "unknown-source", "Choose an enabled source from the server's source list.")
+}
+
+func (rs booruBrowserRoutes) categorizeBooruPosts(source booru.Source, posts []booru.Post) {
+	if db, err := rs.tagDatabase(source); err == nil && db.index != nil {
+		for i := range posts {
+			for j, tag := range posts[i].Tags {
+				if tag.Category == "unknown" {
+					if category := db.index.Category(tag.Name); category != "" {
+						posts[i].Tags[j].Category = category
+					}
+				}
+			}
+		}
+	}
 }
 
 func writeBooruError(w http.ResponseWriter, status int, code, message string) {

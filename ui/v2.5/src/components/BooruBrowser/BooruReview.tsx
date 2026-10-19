@@ -131,7 +131,8 @@ export function BooruReview({
   children: (
     post: BooruPost,
     controls: ReactNode,
-    selected: boolean
+    selected: boolean,
+    selection: { active: boolean; toggle: () => void }
   ) => ReactNode;
   preview?: (actions: {
     ignore: (id: string) => void;
@@ -342,34 +343,43 @@ export function BooruReview({
           <ReviewEvidence state={state} compact />
         </div>
       </>,
-      targets.includes(post.id)
+      targets.includes(post.id),
+      {
+        active: targets.length > 0,
+        toggle: () => {
+          if (!busy && !error && state)
+            setSelected((ids) =>
+              ids.includes(post.id)
+                ? ids.filter((id) => id !== post.id)
+                : [...ids, post.id]
+            );
+        },
+      }
     );
   };
   return (
     <>
-      <div className="booru-review-toolbar">
-        <span>
-          {visible.length} shown / {posts.length} provider posts ·{" "}
-          {posts.length - visible.length} ignored hidden
+      {busy && (
+        <span className="sr-only" role="status">
+          Checking review status…
         </span>
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={busy}
-          onClick={() => setAttempt((value) => value + 1)}
-        >
-          Reload review status
-        </Button>
-        {busy && <span role="status">Checking review status…</span>}
-      </div>
+      )}
       {error && (
         <Alert variant="warning">
           {error} Reload review status before retrying. Review changes are
-          atomic.
+          atomic.{" "}
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={busy}
+            onClick={() => setAttempt((value) => value + 1)}
+          >
+            Reload review status
+          </Button>
         </Alert>
       )}
       {notice && (
-        <div role="status" className="booru-review-toolbar">
+        <div role="status" className="booru-review-notice">
           <span>{notice}</span>
           {undo && (
             <Button
@@ -383,59 +393,50 @@ export function BooruReview({
           )}
         </div>
       )}
-      <div className="booru-review-toolbar" aria-label="Review selection">
-        {targets.length > 0 ? (
-          <>
-            <div className="selected-items-info">
-              <BooruIconButton
-                icon={faXmark}
-                label="Clear selection"
-                onClick={() => setSelected([])}
-              />
-              <span className="selected-count" aria-live="polite">
-                {targets.length} selected
-              </span>
-              <BooruIconButton
-                icon={faCheckDouble}
-                label="Select visible"
-                disabled={busy || !!error || !states}
-                onClick={() => setSelected(visible.map((post) => post.id))}
-              />
-            </div>
-            <BooruIconButton
-              icon={faBan}
-              label="Ignore selected"
-              disabled={busy || !!error || !states}
-              onClick={() => mark(targets, "ignored", true)}
-            />
-            <BooruIconButton
-              icon={faRotateRight}
-              label="Unignore selected"
-              disabled={busy || !!error || !states}
-              onClick={() => mark(targets, "ignored", false)}
-            />
-            <BooruIconButton
-              icon={faCheck}
-              label="Mark selected downloaded"
-              disabled={busy || !!error || !states}
-              onClick={() => mark(targets, "downloaded", true)}
-            />
+      {targets.length > 0 && (
+        <div className="booru-selection-actions" aria-label="Review selection">
+          <div className="selected-items-info">
             <BooruIconButton
               icon={faXmark}
-              label="Clear selected manual marks"
-              disabled={busy || !!error || !states}
-              onClick={() => mark(targets, "downloaded", false)}
+              label="Clear selection"
+              onClick={() => setSelected([])}
             />
-          </>
-        ) : (
+            <span className="selected-count" aria-live="polite">
+              {targets.length} selected
+            </span>
+            <BooruIconButton
+              icon={faCheckDouble}
+              label="Select visible"
+              disabled={busy || !!error || !states}
+              onClick={() => setSelected(visible.map((post) => post.id))}
+            />
+          </div>
           <BooruIconButton
-            icon={faCheckDouble}
-            label="Select visible"
-            disabled={busy || !!error || !states || !visible.length}
-            onClick={() => setSelected(visible.map((post) => post.id))}
+            icon={faBan}
+            label="Ignore selected"
+            disabled={busy || !!error || !states}
+            onClick={() => mark(targets, "ignored", true)}
           />
-        )}
-      </div>
+          <BooruIconButton
+            icon={faRotateRight}
+            label="Unignore selected"
+            disabled={busy || !!error || !states}
+            onClick={() => mark(targets, "ignored", false)}
+          />
+          <BooruIconButton
+            icon={faCheck}
+            label="Mark selected downloaded"
+            disabled={busy || !!error || !states}
+            onClick={() => mark(targets, "downloaded", true)}
+          />
+          <BooruIconButton
+            icon={faXmark}
+            label="Clear selected manual marks"
+            disabled={busy || !!error || !states}
+            onClick={() => mark(targets, "downloaded", false)}
+          />
+        </div>
+      )}
       {!visible.length && posts.length > 0 && (
         <p>
           All posts on this provider page are ignored. Show ignored posts or use

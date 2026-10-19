@@ -227,6 +227,7 @@ func Initialize() (*Server, error) {
 	r.Get("/booru-browser/bookmarks", booruRoutes.Bookmarks)
 	r.Post("/booru-browser/bookmarks", booruRoutes.UpdateBookmarks)
 	r.Get("/booru-browser/favorites", booruRoutes.Favorites)
+	r.Get("/booru-browser/account-favorites", booruRoutes.AccountFavorites)
 	r.Get("/booru-browser/settings", booruRoutes.Settings)
 	r.Post("/booru-browser/settings", booruRoutes.UpdateSettings)
 	r.Get("/booru-browser/search", booruRoutes.Search)

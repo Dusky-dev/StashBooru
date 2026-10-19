@@ -4,7 +4,6 @@ import {
   faFilter,
   faSave,
   faTrash,
-  faStar,
   faPalette,
   faUser,
   faCopyright,
@@ -157,28 +156,5 @@ export function CoreTagActions({
         </Modal>
       )}
     </div>
-  );
-}
-export function FavoriteAction({
-  post,
-  saved,
-  busy,
-  onSave,
-}: {
-  post: BooruPost;
-  saved: boolean;
-  busy: boolean;
-  onSave: (action: BookmarkAction) => void;
-}) {
-  return (
-    <BooruIconButton
-      icon={faStar}
-      active={saved}
-      label={`${saved ? "Remove favorite" : "Favorite"} post ${post.remoteID ?? post.id}`}
-      disabled={busy || !post.mediaKey}
-      onClick={() =>
-        onSave({ action: "favorite", key: post.mediaKey, favorite: !saved })
-      }
-    />
   );
 }

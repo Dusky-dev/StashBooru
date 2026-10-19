@@ -2,7 +2,7 @@
 
 Updated: 2026-10-19
 
-Current baseline: `develop` at `9c059fe95d240e234337cd14b5b46b6177861b65`.
+Current baseline: `develop` at `e45586347603f2c58ae40d68787cc71a0173a48f`.
 PR #151 is merged. Branch `feat/booru-search-preview-refinement-20261019` improves
 single-site browsing, artist lookup, settings navigation and preview controls.
 Review: [PR #152](https://github.com/Dusky-dev/StashBooru/pull/152). See [browser guide](booru-browser.md) and
@@ -11,6 +11,29 @@ Review: [PR #152](https://github.com/Dusky-dev/StashBooru/pull/152). See [browse
 P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
+
+## Browser controls and account favorites — 2026-10-19
+
+- Baseline: merged #152 at `e45586347603f2c58ae40d68787cc71a0173a48f`.
+  Branch `feat/booru-controls-favorites-20261019`; no merge or deployment.
+- Source dropdown gets persistent up/down ordering. Redundant source badges,
+  pagination index and always-visible review toolbar are removed. Native sort menu
+  restores Recent/Oldest/Popular/directional score/Updated for supported engines.
+- Tags submit immediately by default; a browser-local Settings switch retains the
+  draft-only workflow. Preview tag actions own navigation to avoid stale close
+  callbacks reverting the new query. Dropdown active highlights track open state;
+  keyboard focus is retained. Blank submissions are explicit `q=` URLs.
+- Card selection captures the whole card while a selection is active, including
+  action buttons; Clear selection restores normal preview/download/tag actions.
+  Rating moves to the opposite side of the caption. Missing provider file_ext is
+  filled from the original URL extension for loaded-page media filtering.
+- Account favorites replace local card favorites in the UI. Danbooru native
+  ordered favorites, e621 favorites and Gelbooru index/detail APIs use server-owned
+  credentials and bounded existing transport. Account/source changes reject stale
+  responses. Legacy local favorites remain stored. No remote favorite writes.
+- Endpoint evidence: maintained gallery-dl Gelbooru extractor, Danbooru/e621
+  controllers and PixivPy ranking client. Authenticated provider acceptance remains
+  separate from synthetic tests. Validation is running; final results follow.
 
 ## Single-site browsing and preview refinement — 2026-10-19
 

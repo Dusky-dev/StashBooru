@@ -45,6 +45,7 @@ type PublicSource struct {
 	CredentialsConfigured bool   `json:"credentialsConfigured"`
 	Authentication        string `json:"authentication"`
 	CategorizedTags       bool   `json:"categorizedTags"`
+	AccountFavorites      bool   `json:"accountFavorites"`
 }
 
 func Defaults() []Source {
@@ -175,7 +176,7 @@ func (s Source) Public() PublicSource {
 		auth = "Optional API key in Source settings; provider content filters still apply."
 	}
 	return PublicSource{Instance: s.Instance(), ID: s.ID, Name: s.Name, Engine: s.Engine, URL: s.URL, QueryHelp: help,
-		CredentialsConfigured: s.APIKey != "", Authentication: auth, CategorizedTags: s.Engine == "danbooru" || s.Engine == "e621"}
+		AccountFavorites: s.AccountFavoritesAvailable(), CredentialsConfigured: s.APIKey != "", Authentication: auth, CategorizedTags: s.Engine == "danbooru" || s.Engine == "e621"}
 }
 
 func publicHostname(host string) bool {

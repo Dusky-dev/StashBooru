@@ -10,7 +10,6 @@ import {
 } from "react";
 import {
   Alert,
-  Badge,
   Button,
   ButtonGroup,
   Dropdown,
@@ -34,14 +33,13 @@ import {
   faTags,
   faPlay,
   faStop,
+  faSortAmountDown,
 } from "@fortawesome/free-solid-svg-icons";
 import { Icon } from "../Shared/Icon";
 import { ZoomSelect } from "../List/ZoomSlider";
-import { PaginationIndex } from "../List/Pagination";
 import {
   SavedSearchFilters,
   CoreTagActions,
-  FavoriteAction,
   type Bookmarks,
   type BookmarkAction,
 } from "./BooruBookmarks";
@@ -67,7 +65,7 @@ import { TagAutocomplete } from "./TagAutocomplete";
 import { BooruDownload } from "./BooruDownload";
 import { readBrowserMemory, saveBrowserMemory } from "./browser";
 import { SourceSettings } from "./SourceSettings";
-import { SourceIcon } from "./SourceIcon";
+import { SourceSelector } from "./SourceSelector";
 import { CreatorSearch } from "./CreatorSearch";
 import { appendSearchTag } from "./completion";
 import TextUtils from "src/utils/text";
@@ -310,7 +308,6 @@ function PostInspection({
                         role="menuitem"
                         onClick={() => {
                           onTag(tag.name, "add");
-                          onHide();
                         }}
                       >
                         Add to search
@@ -319,7 +316,6 @@ function PostInspection({
                         role="menuitem"
                         onClick={() => {
                           onTag(tag.name, "replace");
-                          onHide();
                         }}
                       >
                         Replace search
@@ -493,6 +489,7 @@ function RemoteImage({
 }
 
 function SourceResults({
+  suspended,
   source,
   query,
   page,
@@ -507,12 +504,10 @@ function SourceResults({
   favorites,
   displayMode,
   zoom,
-  bookmarks,
-  bookmarkBusy,
-  onBookmark,
   onTag,
 }: {
   source: BooruSource;
+  suspended: boolean;
   query: string;
   showIgnored: boolean;
   filters: Pick<
@@ -523,9 +518,6 @@ function SourceResults({
   favorites: boolean;
   displayMode: "grid" | "wall";
   zoom: number;
-  bookmarks?: Bookmarks;
-  bookmarkBusy: boolean;
-  onBookmark: (action: BookmarkAction) => void;
   onTag: (name: string, mode?: "add" | "replace") => void;
   page: number;
   inspect?: string;
@@ -563,6 +555,7 @@ function SourceResults({
   const controller = useRef<AbortController>();
   // biome-ignore lint/correctness/useExhaustiveDependencies: Retry intentionally repeats the same read after a source failure.
   useEffect(() => {
+    if (suspended) return;
     const request = new AbortController();
     controller.current = request;
     setResult(undefined);
@@ -579,7 +572,7 @@ function SourceResults({
       ...(filters.rating ? { rating: filters.rating } : {}),
     });
     void fetch(
-      `booru-browser/${favorites ? "favorites" : "search"}?${params}`,
+      `booru-browser/${favorites ? "account-favorites" : "search"}?${params}`,
       { signal: request.signal }
     )
       .then(readBooruResponse<BooruResult>)
@@ -606,6 +599,7 @@ function SourceResults({
     filters.sort,
     filters.rating,
     filters.pageSize,
+    suspended,
   ]);
   const post = result?.posts.find((item) => item.id === inspect);
   const navigation = visiblePosts.filter(
@@ -621,21 +615,6 @@ function SourceResults({
       aria-label={source.name}
       aria-busy={loading}
     >
-      <div className="pagination-index-container">
-        {result?.total !== undefined ? (
-          <PaginationIndex
-            itemsPerPage={filters.pageSize ?? 24}
-            currentPage={page}
-            totalItems={result.total}
-            metadataByline={source.name}
-          />
-        ) : (
-          <span>
-            {source.name} · Page {page}
-            {result ? ` · ${result.posts.length} posts · total unknown` : ""}
-          </span>
-        )}
-      </div>
       {loading && (
         <p role="status">
           <Spinner animation="border" size="sm" className="mr-2" />
@@ -711,10 +690,20 @@ function SourceResults({
               )
             }
           >
-            {(item, controls, isSelected) => (
+            {(item, controls, isSelected, selection) => (
               <article
                 key={`${source.id}:${item.id}`}
                 className={`booru-post ${isSelected ? "selected" : ""}`}
+                onClickCapture={(event) => {
+                  if (
+                    selection.active &&
+                    !(event.target as HTMLElement).closest(".card-check")
+                  ) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    selection.toggle();
+                  }
+                }}
               >
                 <Button
                   variant="link"
@@ -722,13 +711,6 @@ function SourceResults({
                   onClick={() => onInspect(item.id)}
                   aria-label={`Inspect ${source.name} post ${item.id}`}
                 >
-                  {item.rating && (
-                    <span
-                      className={`booru-rating rating-${normalizedRating(item.rating, source)}`}
-                    >
-                      {normalizedRating(item.rating, source)}
-                    </span>
-                  )}
                   {!thumbnails ? (
                     <span>Thumbnails hidden</span>
                   ) : booruMediaURL(item, "preview") ? (
@@ -752,20 +734,16 @@ function SourceResults({
                   >
                     #{item.remoteID ?? item.id}
                   </Button>
+                  {item.rating && (
+                    <span
+                      className={`booru-rating rating-${normalizedRating(item.rating, source)}`}
+                    >
+                      {normalizedRating(item.rating, source)}
+                    </span>
+                  )}
                 </div>
                 <CoreTagActions post={item} onTag={onTag} />
                 <div className="booru-card-actions">
-                  <FavoriteAction
-                    post={item}
-                    saved={
-                      !!bookmarks?.favorites.some(
-                        (f) =>
-                          f.instance === source.instance && f.id === item.id
-                      )
-                    }
-                    busy={bookmarkBusy || !bookmarks}
-                    onSave={onBookmark}
-                  />
                   <BooruDownload
                     post={item}
                     instance={source.instance}
@@ -837,6 +815,8 @@ export default function BooruBrowser() {
     )
       history.replace({ pathname: "/booru", search: remembered.search });
   }, [location.pathname, location.search, remembered, history]);
+  const hasSearch =
+    new URLSearchParams(effectiveSearch).has("q") || active.favorites;
   const [sources, setSources] = useState<BooruSource[]>();
   const [sourceError, setSourceError] = useState("");
   const [loadAttempt, setLoadAttempt] = useState(0);
@@ -845,6 +825,10 @@ export default function BooruBrowser() {
     remembered?.displayMode ?? "grid"
   );
   const [zoom, setZoom] = useState(remembered?.zoom ?? 0);
+  const [sourceOrder, setSourceOrder] = useState(remembered?.sourceOrder ?? []);
+  const [searchOnTagClick, setSearchOnTagClick] = useState(
+    remembered?.searchOnTagClick ?? true
+  );
   const [bookmarks, setBookmarks] = useState<Bookmarks>();
   const [bookmarkBusy, setBookmarkBusy] = useState(false);
   const [bookmarkError, setBookmarkError] = useState("");
@@ -924,6 +908,8 @@ export default function BooruBrowser() {
     displayMode,
     zoom,
     autocomplete,
+    sourceOrder,
+    searchOnTagClick,
   });
   useEffect(() => {
     memory.current = {
@@ -937,6 +923,8 @@ export default function BooruBrowser() {
       displayMode,
       zoom,
       autocomplete,
+      sourceOrder,
+      searchOnTagClick,
     };
     saveBrowserMemory(memory.current);
   }, [
@@ -949,6 +937,8 @@ export default function BooruBrowser() {
     displayMode,
     zoom,
     autocomplete,
+    sourceOrder,
+    searchOnTagClick,
   ]);
   useEffect(() => {
     const rememberScroll = () => {
@@ -1004,6 +994,37 @@ export default function BooruBrowser() {
         sources?.find((source) => source.id === id)?.engine ?? ""
       )
     );
+  function searchTag(name: string, mode: "add" | "replace" = "replace") {
+    const value =
+      mode === "replace"
+        ? name
+        : appendSearchTag(query, name, selectedSource?.engine === "philomena");
+    if (new TextEncoder().encode(value).length > 1024) {
+      setBookmarkError("Search would exceed 1024 bytes.");
+      return;
+    }
+    setQuery(value);
+    if (searchOnTagClick) {
+      history.push({
+        pathname: "/booru",
+        search: browserSearchURL({
+          ...active,
+          sources: selected,
+          query: value,
+          pages: {},
+          inspect: undefined,
+          favorites: undefined,
+        }),
+      });
+    } else {
+      history.replace({
+        search: browserSearchURL({ ...active, inspect: undefined }),
+      });
+      window.requestAnimationFrame(() =>
+        document.getElementById("booru-query")?.focus()
+      );
+    }
+  }
   const unknown =
     sources &&
     active.sources.some((id) => !sources.some((source) => source.id === id));
@@ -1041,6 +1062,19 @@ export default function BooruBrowser() {
       {showSettings && (
         <section aria-label="Booru settings" className="booru-settings-panel">
           <h3>Booru settings</h3>
+          <Form.Check
+            type="switch"
+            id="booru-search-on-tag"
+            label="Search immediately when clicking tags"
+            checked={searchOnTagClick}
+            onChange={(event) =>
+              setSearchOnTagClick(event.currentTarget.checked)
+            }
+          />
+          <p className="small text-muted">
+            Disable to only fill the search box. This preference and source
+            order are saved in this browser.
+          </p>
           <SourceSettings
             onSaved={() => setLoadAttempt((value) => value + 1)}
           />
@@ -1057,7 +1091,6 @@ export default function BooruBrowser() {
               search: browserSearchURL({
                 ...active,
                 favorites: undefined,
-                sort: undefined,
                 sources: selected,
                 query: query.trim(),
                 pages: {},
@@ -1067,71 +1100,34 @@ export default function BooruBrowser() {
             });
           }}
         >
-          <div className="booru-selected-sources" aria-label="Selected sources">
-            {(sources ?? [])
-              .filter((source) => selected.includes(source.id))
-              .map((source) => (
-                <Badge key={source.id} variant="secondary">
-                  <SourceIcon source={source} /> {source.name}
-                </Badge>
-              ))}
-            {active.favorites && <Badge variant="primary">Favorites</Badge>}
-          </div>
           <div className="filtered-list-toolbar btn-toolbar">
-            <Dropdown className="btn-group booru-source-selector">
-              <Dropdown.Toggle
-                variant="secondary"
-                id="booru-sources"
-                aria-label="Source"
-              >
-                {selectedSource ? (
-                  <>
-                    <SourceIcon
-                      key={selectedSource.instance}
-                      source={selectedSource}
-                    />{" "}
-                    {selectedSource.name}
-                  </>
-                ) : (
-                  "Choose source"
-                )}
-              </Dropdown.Toggle>
-              <Dropdown.Menu renderOnMount>
-                {sources.map((source) => (
-                  <Dropdown.Item
-                    key={source.id}
-                    role="menuitemradio"
-                    aria-label={source.name}
-                    aria-checked={selected[0] === source.id}
-                    active={selected[0] === source.id}
-                    onClick={() => {
-                      const nextQuery =
-                        selected[0] !== source.id &&
-                        (query.startsWith("creator:") ||
-                          source.engine === "pawchive")
-                          ? "*"
-                          : query.trim();
-                      setSelected([source.id]);
-                      setQuery(nextQuery);
-                      history.push({
-                        pathname: "/booru",
-                        search: browserSearchURL({
-                          ...active,
-                          sources: [source.id],
-                          query: nextQuery,
-                          pages: {},
-                          inspect: undefined,
-                          rating: undefined,
-                          sort: undefined,
-                        }),
-                      });
-                    }}
-                  >
-                    <SourceIcon source={source} /> {source.name}
-                  </Dropdown.Item>
-                ))}
-              </Dropdown.Menu>
-            </Dropdown>
+            <SourceSelector
+              sources={sources}
+              selected={selectedSource}
+              order={sourceOrder}
+              onOrder={setSourceOrder}
+              onSelect={(source) => {
+                const nextQuery =
+                  selected[0] !== source.id && query.startsWith("creator:")
+                    ? ""
+                    : query.trim();
+                setSelected([source.id]);
+                setQuery(nextQuery);
+                history.push({
+                  pathname: "/booru",
+                  search: browserSearchURL({
+                    ...active,
+                    sources: [source.id],
+                    query: nextQuery,
+                    pages: {},
+                    inspect: undefined,
+                    rating: undefined,
+                    sort: undefined,
+                    favorites: undefined,
+                  }),
+                });
+              }}
+            />
             <Form.Group
               controlId="booru-query"
               className="booru-toolbar-query mb-0"
@@ -1153,9 +1149,7 @@ export default function BooruBrowser() {
               size="sm"
               className="booru-search-submit"
               aria-label="Search selected sources"
-              disabled={
-                !query.trim() || selected.length === 0 || selected.length > 8
-              }
+              disabled={selected.length === 0}
             >
               Search
             </Button>
@@ -1273,29 +1267,48 @@ export default function BooruBrowser() {
                 />
               </Dropdown.Menu>
             </Dropdown>
-            <div className="saved-filter-dropdown dropdown btn-group">
-              <Button
+            <Dropdown className="saved-filter-dropdown dropdown btn-group">
+              <Dropdown.Toggle
                 variant="secondary"
                 title="Favorites"
                 aria-label="Favorites"
-                onClick={() =>
-                  history.push({
-                    search: browserSearchURL({
-                      ...active,
-                      sources: selected,
-                      favorites: true,
-                      query: "",
-                      rating: undefined,
-                      sort: undefined,
-                      pages: {},
-                      inspect: undefined,
-                    }),
-                  })
-                }
               >
                 <Icon icon={faStar} />
-              </Button>
-            </div>
+              </Dropdown.Toggle>
+              <Dropdown.Menu>
+                <Dropdown.Header>
+                  {selectedSource?.name} account favorites
+                </Dropdown.Header>
+                <Dropdown.Item
+                  disabled={!selectedSource?.accountFavorites}
+                  onClick={() =>
+                    history.push({
+                      search: browserSearchURL({
+                        ...active,
+                        sources: selected,
+                        favorites: true,
+                        query: "",
+                        rating: undefined,
+                        sort: undefined,
+                        pages: {},
+                        inspect: undefined,
+                      }),
+                    })
+                  }
+                >
+                  Browse account favorites
+                </Dropdown.Item>
+                {!selectedSource?.accountFavorites && (
+                  <Dropdown.ItemText>
+                    {["danbooru", "gelbooru", "e621"].includes(
+                      selectedSource?.engine ?? ""
+                    )
+                      ? "Save your account login/user ID and API key in Settings."
+                      : "This engine has no supported account favorites API."}
+                  </Dropdown.ItemText>
+                )}
+              </Dropdown.Menu>
+            </Dropdown>
             <SavedSearchFilters
               bookmarks={bookmarks}
               busy={bookmarkBusy}
@@ -1308,6 +1321,75 @@ export default function BooruBrowser() {
               })}
               onSave={(action) => void saveBookmark(action)}
               onSelect={(search) => history.push({ search })}
+            />
+            <BooruIconMenu
+              label="Sort by"
+              icon={faSortAmountDown}
+              className="sort-by-select dropdown btn-group"
+              value={active.sort ?? ""}
+              options={[
+                { value: "", label: "Provider default" },
+                {
+                  value: "newest",
+                  label: "Recent",
+                  disabled: !!active.favorites,
+                },
+                {
+                  value: "oldest",
+                  label: "Oldest",
+                  disabled:
+                    !!active.favorites ||
+                    ["shimmie", "pixiv", "pawchive", "kemono"].includes(
+                      selectedSource?.engine ?? ""
+                    ),
+                },
+                {
+                  value: "popular",
+                  label: "Popular",
+                  disabled:
+                    !!active.favorites ||
+                    ["shimmie", "pixiv", "pawchive", "kemono"].includes(
+                      selectedSource?.engine ?? ""
+                    ),
+                },
+                {
+                  value: "score_desc",
+                  label: "Score: high to low",
+                  disabled:
+                    !!active.favorites ||
+                    ["shimmie", "pixiv", "pawchive", "kemono"].includes(
+                      selectedSource?.engine ?? ""
+                    ),
+                },
+                {
+                  value: "score_asc",
+                  label: "Score: low to high",
+                  disabled:
+                    !!active.favorites ||
+                    ["shimmie", "pixiv", "pawchive", "kemono"].includes(
+                      selectedSource?.engine ?? ""
+                    ),
+                },
+                {
+                  value: "updated",
+                  label: "Updated",
+                  disabled:
+                    !!active.favorites ||
+                    !["danbooru", "e621", "moebooru"].includes(
+                      selectedSource?.engine ?? ""
+                    ),
+                },
+              ]}
+              onChange={(value) =>
+                history.push({
+                  search: browserSearchURL({
+                    ...active,
+                    sort: (value || undefined) as BrowserSearch["sort"],
+                    pages: {},
+                    inspect: undefined,
+                  }),
+                })
+              }
             />
             <PageSizeSelector
               pageSize={active.pageSize ?? 24}
@@ -1427,7 +1509,7 @@ export default function BooruBrowser() {
             query={active.query}
             activePages={active.pages}
             filters={active}
-            onTag={setQuery}
+            onTag={searchTag}
           />
           <p className="small text-muted booru-library-note">
             Manual marks are history. Local links require current-file MD5
@@ -1435,17 +1517,16 @@ export default function BooruBrowser() {
           </p>
         </aside>
         <section className="booru-results" aria-label="Remote posts">
-          {((!active.query.trim() && !active.favorites) || !sources) &&
-            !sourceError && (
-              <div className="booru-empty">
-                <h3>Discover posts</h3>
-                <p>Choose your sources, enter tags, and search.</p>
-                <p className="small text-muted">
-                  API keys, custom sites, downloads and autocomplete are
-                  available in Settings.
-                </p>
-              </div>
-            )}
+          {(!hasSearch || !sources) && !sourceError && (
+            <div className="booru-empty">
+              <h3>Discover posts</h3>
+              <p>Choose your sources, enter tags, and search.</p>
+              <p className="small text-muted">
+                API keys, custom sites, downloads and autocomplete are available
+                in Settings.
+              </p>
+            </div>
+          )}
           {(active.error || unknown) && (
             <Alert className="mt-3" variant="warning" role="alert">
               {active.error ||
@@ -1455,7 +1536,7 @@ export default function BooruBrowser() {
                 )}
             </Alert>
           )}
-          {(active.query.trim() || active.favorites) &&
+          {hasSearch &&
             !active.error &&
             !unknown &&
             sources &&
@@ -1464,30 +1545,11 @@ export default function BooruBrowser() {
               return (
                 source && (
                   <SourceResults
-                    key={`${id}:${active.favorites ? bookmarks?.favorites.map((f) => `${f.instance}:${f.id}`).join(",") : ""}:${active.favorites}:${active.query}:${active.pages[id]}:${loadAttempt}:${active.sort}:${active.rating}:${active.pageSize}`}
+                    key={`${id}:${active.favorites}:${active.query}:${active.pages[id]}:${loadAttempt}:${active.sort}:${active.rating}:${active.pageSize}`}
                     source={source}
+                    suspended={showSettings}
                     favorites={!!active.favorites}
-                    bookmarks={bookmarks}
-                    bookmarkBusy={bookmarkBusy}
-                    onBookmark={(action) => void saveBookmark(action)}
-                    onTag={(name, mode = "replace") => {
-                      const value =
-                        mode === "replace"
-                          ? name
-                          : appendSearchTag(
-                              query,
-                              name,
-                              source.engine === "philomena"
-                            );
-                      if (new TextEncoder().encode(value).length > 1024) {
-                        setBookmarkError("Search would exceed 1024 bytes.");
-                        return;
-                      }
-                      setQuery(value);
-                      window.requestAnimationFrame(() =>
-                        document.getElementById("booru-query")?.focus()
-                      );
-                    }}
+                    onTag={searchTag}
                     displayMode={displayMode}
                     zoom={zoom}
                     filters={active}
@@ -1635,8 +1697,8 @@ function PageTags({
           </Form.Control>
         )}
         <p className="small text-muted">
-          Select a tag to prepare a new search. Counts cover this loaded page
-          only.
+          Counts cover this loaded page only. Tag-click search behavior can be
+          changed in Settings.
         </p>
         {posts.length === 0 && (
           <p className="small text-muted">No loaded tags from this source.</p>

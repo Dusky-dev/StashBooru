@@ -182,6 +182,9 @@ func parsePost(source Source, raw object) (Post, error) {
 		}
 	}
 	post.OriginalURL = source.postMediaURL(original)
+	if post.Format == "" {
+		post.Format = mediaExtension(original)
+	}
 	post.DownloadAvailable = post.OriginalURL != ""
 	post.PostURL, post.PreviewURL, post.SampleURL = postURL, source.postMediaURL(preview), source.postMediaURL(sample)
 	// Do not substitute a potentially huge original for a missing preview.

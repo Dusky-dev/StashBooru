@@ -73,6 +73,10 @@ func (c *Client) searchExtended(ctx context.Context, s Source, query string, pag
 		block = 30
 		endpoint = "/v1/search/illust"
 		params = url.Values{"word": {query}, "search_target": {"partial_match_for_tags"}, "sort": {"date_desc"}, "filter": {"for_android"}}
+		if strings.TrimSpace(query) == "" {
+			endpoint = "/v1/illust/ranking"
+			params = url.Values{"mode": {"day"}, "filter": {"for_android"}}
+		}
 		if strings.HasPrefix(query, "user:") {
 			id := strings.TrimPrefix(query, "user:")
 			if !postID.MatchString(id) {
@@ -116,7 +120,7 @@ func (c *Client) searchExtended(ctx context.Context, s Source, query string, pag
 			if s.Engine == "kemono" {
 				endpoint += "/posts"
 			}
-		} else if query != "*" {
+		} else if query != "*" && strings.TrimSpace(query) != "" {
 			if s.Engine == "pawchive" {
 				return result, &Error{Code: "unsupported-query", Message: "Pawchive's API does not filter text searches. Use * for recent posts or creator:service:id to browse a creator."}
 			}

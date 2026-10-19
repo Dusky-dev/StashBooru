@@ -56,7 +56,8 @@ const sources = ["danbooru", "gelbooru", "philomena", "pawchive", "kemono"].map(
         ? "Native Philomena syntax: commas or AND."
         : "Space-separated tags, native provider syntax.",
     authentication: "Optional API credentials on the server.",
-    credentialsConfigured: id === "gelbooru",
+    credentialsConfigured: ["danbooru", "gelbooru"].includes(id),
+    accountFavorites: ["danbooru", "gelbooru"].includes(id),
     categorizedTags: id === "danbooru",
   })
 );
@@ -184,6 +185,15 @@ try {
       await page.getByRole("button", { name: "Source", exact: true }).click();
       await sourceOption(name).click();
     }
+    async function selectVisible() {
+      const button = dan.getByRole("button", {
+        name: "Select visible",
+        exact: true,
+      });
+      if (!(await button.count()))
+        await dan.locator(".card-check").first().check();
+      await button.click();
+    }
     async function setChecked(input, checked) {
       if ((await input.isChecked()) === checked) return;
       const inputID = await input.getAttribute("id");
@@ -210,7 +220,10 @@ try {
       const choices = {
         "Sort by": {
           "": "Provider default",
-          newest: "Newest",
+          newest: "Recent",
+          oldest: "Oldest",
+          score_asc: "Score: low to high",
+          score_desc: "Score: high to low",
           popular: "Popular",
           updated: "Updated",
         },
@@ -351,11 +364,9 @@ try {
         await route.fulfill({ json: bookmarks });
         return;
       }
-      if (url.pathname.endsWith("/favorites")) {
+      if (url.pathname.endsWith("/account-favorites")) {
         const value = result(url.searchParams.get("source"), "favorite", 1);
-        value.posts = bookmarks.favorites.length
-          ? [{ ...value.posts[0], id: bookmarks.favorites[0].id }]
-          : [];
+        value.posts = [{ ...value.posts[0], id: "777" }];
         value.total = value.posts.length;
         value.hasMore = false;
         await route.fulfill({ json: value });
@@ -1030,11 +1041,9 @@ try {
         .inputValue(),
       "artist_a"
     );
-    assert.equal(
-      requests.length,
-      1,
-      "using a sidebar tag searched automatically"
-    );
+    await page.waitForURL((url) => url.searchParams.get("q") === "artist_a");
+    await dan.locator(".booru-post").first().waitFor();
+    assert.equal(requests.length, 2, "sidebar tag did not search immediately");
     if (viewport.width < 768)
       await tagPanel
         .getByRole("button", { name: "Hide page tags", exact: true })
@@ -1054,7 +1063,7 @@ try {
       .waitFor();
     assert.equal(await dialog.locator("script").count(), 0);
     assert.ok(page.url().includes("inspect=danbooru%3A101"));
-    assert.equal(requests.length, 1, "inspection refetched searches");
+    assert.equal(requests.length, 2, "inspection refetched searches");
     assert.ok(
       await dialog
         .getByLabel("Convert using Media converter defaults")
@@ -1267,9 +1276,7 @@ try {
     await dan
       .getByRole("button", { name: "Inspect Danbooru post 112", exact: true })
       .waitFor();
-    await dan
-      .getByRole("button", { name: "Select visible", exact: true })
-      .click({ trial: true });
+    await dan.locator(".card-check").first().click({ trial: true });
     assert.equal(await gel.count(), 0, "unselected provider was mounted");
     if (process.env.STASH_BROWSER_SCREENSHOTS) {
       fs.mkdirSync(process.env.STASH_BROWSER_SCREENSHOTS, { recursive: true });
@@ -1317,8 +1324,8 @@ try {
     );
     await dan.getByRole("button", { name: "Ignore", exact: true }).click();
     await dan
-      .getByText("0 shown / 1 provider posts · 1 ignored hidden", {
-        exact: true,
+      .getByText("All posts on this provider page are ignored.", {
+        exact: false,
       })
       .waitFor();
     assert.equal(
@@ -1340,8 +1347,8 @@ try {
       .waitFor();
     await dan.getByRole("button", { name: "Ignore", exact: true }).click();
     await dan
-      .getByText("0 shown / 1 provider posts · 1 ignored hidden", {
-        exact: true,
+      .getByText("All posts on this provider page are ignored.", {
+        exact: false,
       })
       .waitFor();
     await setChecked(
@@ -1388,16 +1395,12 @@ try {
       "manual marking fabricated a local link"
     );
     await chooseSource("Danbooru");
-    await dan
-      .getByRole("button", { name: "Select visible", exact: true })
-      .click();
+    await selectVisible();
     await dan
       .getByRole("button", { name: "Ignore selected", exact: true })
       .click();
     await dan.getByLabel("Ignored", { exact: true }).waitFor();
-    await dan
-      .getByRole("button", { name: "Select visible", exact: true })
-      .click();
+    await selectVisible();
     await setChecked(
       page.getByLabel("Show ignored posts", { exact: true }),
       false
@@ -1413,9 +1416,7 @@ try {
       false,
       "hidden selections were resurrected by the filter"
     );
-    await dan
-      .getByRole("button", { name: "Select visible", exact: true })
-      .click();
+    await selectVisible();
     await dan
       .getByRole("button", { name: "Mark selected downloaded", exact: true })
       .click();
@@ -1429,9 +1430,7 @@ try {
       .getByRole("button", { name: "Mark downloaded", exact: true })
       .waitFor();
     await dan.getByLabel("Ignored", { exact: true }).waitFor();
-    await dan
-      .getByRole("button", { name: "Select visible", exact: true })
-      .click();
+    await selectVisible();
     reviewConflict = true;
     await dan
       .getByRole("button", { name: "Unignore selected", exact: true })
@@ -1450,6 +1449,9 @@ try {
     );
     await dan
       .getByRole("button", { name: "Reload review status", exact: true })
+      .click();
+    await dan
+      .getByRole("button", { name: "Clear selection", exact: true })
       .click();
     await dan.getByRole("button", { name: "Unignore", exact: true }).click();
     await dan.getByRole("button", { name: "Ignore", exact: true }).waitFor();
@@ -1533,8 +1535,18 @@ try {
       .waitFor();
     assert.equal(
       await page.getByRole("button", { name: "Sort by", exact: true }).count(),
-      0
+      1
     );
+    await pickFilter("Sort by", "score_asc");
+    await dan.locator(".booru-post").first().waitFor();
+    assert.ok(page.url().includes("sort=score_asc"));
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Sort by", exact: true })
+        .getAttribute("aria-expanded"),
+      "false"
+    );
+    await pickFilter("Sort by", "");
     await dan
       .getByRole("button", { name: "Inspect Danbooru post 102", exact: true })
       .waitFor();
@@ -1554,6 +1566,20 @@ try {
       searchesBeforeMedia,
       "loaded-page media filter refetched provider"
     );
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Media on this page", exact: true })
+        .getAttribute("class")
+        .then((c) => c.includes("active")),
+      false
+    );
+    await pickFilter("Media on this page", "images");
+    await dan
+      .getByText("Showing 8 of 12 posts on this loaded page.", { exact: false })
+      .waitFor();
+    assert.equal(await dan.locator(".booru-post").count(), 8);
+    assert.equal(requests.length, searchesBeforeMedia);
+    await pickFilter("Media on this page", "videos");
     await setChecked(
       page.getByLabel("Show thumbnails", { exact: true }),
       false
@@ -1610,7 +1636,9 @@ try {
     assert.ok(
       await page.locator(".filtered-list-toolbar .page-size-selector").count()
     );
-    assert.ok(await page.locator(".pagination-index-container").count());
+    assert.equal(await page.locator(".pagination-index-container").count(), 0);
+    assert.equal(await page.locator(".booru-review-toolbar").count(), 0);
+    assert.equal(await page.locator(".booru-selected-sources").count(), 0);
     await page.getByRole("button", { name: "Wall view", exact: true }).click();
     await dan.locator(".booru-wall-item").first().waitFor();
     await page.locator(".zoom-slider").fill("2");
@@ -1654,6 +1682,27 @@ try {
       });
     await page.getByRole("button", { name: "Grid view", exact: true }).click();
     await page.locator(".zoom-slider").fill("0");
+    const defaultTagCard = dan.locator(".booru-post").first();
+    await defaultTagCard
+      .getByRole("button", { name: /^Artists for post/ })
+      .click();
+    await page.waitForURL((url) => url.searchParams.get("q") === "artist_a");
+    await dan.locator(".booru-post").first().waitFor();
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    assert.equal(
+      await page
+        .getByLabel("Search immediately when clicking tags", { exact: true })
+        .isChecked(),
+      true
+    );
+    await setChecked(
+      page.getByLabel("Search immediately when clicking tags", { exact: true }),
+      false
+    );
+    await page
+      .getByRole("button", { name: "Back to posts", exact: true })
+      .click();
+    await page.goto(`${baseURL}/booru?source=danbooru&q=gallery`);
     const firstCard = dan.locator(".booru-post").first();
     await firstCard.getByRole("button", { name: /^Artists for post/ }).click();
     assert.equal(
@@ -1674,10 +1723,10 @@ try {
     await page
       .getByRole("button", { name: "Saved search filters", exact: true })
       .click();
-    await firstCard.getByRole("button", { name: /^Favorite post/ }).click();
-    await firstCard
-      .getByRole("button", { name: /^Remove favorite post/ })
-      .waitFor();
+    assert.equal(
+      await firstCard.getByRole("button", { name: /^Favorite post/ }).count(),
+      0
+    );
     await firstCard
       .getByRole("button", { name: /^Characters for post/ })
       .click();
@@ -1694,21 +1743,17 @@ try {
       "character_b"
     );
     await page.getByRole("button", { name: "Favorites", exact: true }).click();
-    await dan.locator(".booru-post").first().waitFor();
-    assert.ok(page.url().includes("favorites=1"));
-    await dan
-      .locator(".booru-post")
-      .first()
-      .getByRole("button", { name: /^Remove favorite post/ })
+    await page
+      .getByRole("button", { name: "Browse account favorites", exact: true })
       .click();
     await dan
-      .getByText("No posts returned for this page and query.", { exact: true })
+      .getByRole("button", { name: "Inspect Danbooru post 777", exact: true })
       .waitFor();
+    assert.ok(page.url().includes("favorites=1"));
     await page.reload();
     await dan
-      .getByText("No posts returned for this page and query.", { exact: true })
+      .getByRole("button", { name: "Inspect Danbooru post 777", exact: true })
       .waitFor();
-
     await page
       .getByRole("button", { name: "Saved search filters", exact: true })
       .click();
@@ -2177,6 +2222,80 @@ try {
       largeHeight > smallHeight + 150,
       `zoom did not grow previews: ${smallHeight} -> ${largeHeight}`
     );
+    // Reorder any second source without depending on configuration overlay order.
+    await page.getByRole("button", { name: "Source", exact: true }).click();
+    const movingName = await page
+      .locator(".booru-source-option")
+      .nth(1)
+      .getByRole("menuitemradio")
+      .getAttribute("aria-label");
+    await page
+      .getByRole("button", { name: `Move ${movingName} up`, exact: true })
+      .click();
+    assert.equal(
+      await page
+        .locator(".booru-source-option")
+        .first()
+        .getByRole("menuitemradio")
+        .getAttribute("aria-label"),
+      movingName
+    );
+    assert.equal(
+      await page
+        .getByRole("button", { name: `Move ${movingName} up`, exact: true })
+        .isDisabled(),
+      true
+    );
+    await page.locator(".booru-heading h2").click();
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Source", exact: true })
+        .getAttribute("aria-expanded"),
+      "false"
+    );
+    await page.reload();
+    await page.getByRole("button", { name: "Source", exact: true }).click();
+    assert.equal(
+      await page
+        .locator(".booru-source-option")
+        .first()
+        .getByRole("menuitemradio")
+        .getAttribute("aria-label"),
+      movingName
+    );
+    await sourceOption("Danbooru").click();
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Source", exact: true })
+        .getAttribute("class")
+        .then((c) => c.includes("active")),
+      false
+    );
+    await page.goto(`${baseURL}/booru?source=danbooru&q=gallery`);
+    const selectionCards = dan.locator(".booru-post");
+    await selectionCards.nth(0).locator(".card-check").check();
+    await selectionCards.nth(1).locator(".booru-preview-button").click();
+    await selectionCards.nth(2).locator(".booru-post-caption .btn").click();
+    const downloadsBeforeSelect = downloadRequests.length;
+    await selectionCards
+      .nth(3)
+      .getByRole("button", { name: /^Download danbooru post/ })
+      .click();
+    assert.equal(await dan.locator(".card-check:checked").count(), 4);
+    assert.equal(downloadRequests.length, downloadsBeforeSelect);
+    assert.equal(await page.getByRole("dialog").count(), 0);
+    await selectionCards.nth(1).locator(".booru-preview-button").click();
+    assert.equal(await dan.locator(".card-check:checked").count(), 3);
+    await dan
+      .getByRole("button", { name: "Clear selection", exact: true })
+      .click();
+    await selectionCards.nth(1).locator(".booru-preview-button").click();
+    await page.getByRole("dialog").waitFor();
+    await page.keyboard.press("Escape");
+    await refinedInput.fill("");
+    await refinedInput.press("Enter");
+    await dan.locator(".booru-post").first().waitFor();
+    assert.equal(new URL(page.url()).searchParams.get("q"), "");
     // Core taxonomy actions and compact native metadata in inspection.
     await page.goto(`${baseURL}/booru?source=danbooru&q=details`);
     const detailsCard = dan.locator(".booru-post").first();
@@ -2190,6 +2309,11 @@ try {
       .getByRole("button", { name: "artist_b", exact: true })
       .click();
     assert.equal(await refinedInput.inputValue(), "artist_b");
+    assert.equal(
+      new URL(page.url()).searchParams.get("q"),
+      "details",
+      "disabled tag setting still searched"
+    );
     await detailsCard
       .getByRole("button", { name: "Copyrights for post 107", exact: true })
       .click();
@@ -2264,6 +2388,56 @@ try {
       .click();
     await detailPreview.waitFor({ state: "hidden" });
     assert.equal(await refinedInput.inputValue(), "series_a");
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await setChecked(
+      page.getByLabel("Search immediately when clicking tags", { exact: true }),
+      true
+    );
+    await page
+      .getByRole("button", { name: "Back to posts", exact: true })
+      .click();
+    await page.goto(`${baseURL}/booru?source=danbooru&q=details`);
+    await refinedInput.fill("details");
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 107", exact: true })
+      .click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Tag artist_a", exact: true })
+      .click();
+    await page
+      .getByRole("dialog")
+      .getByRole("menuitem", { name: "Add to search", exact: true })
+      .click();
+    await page.waitForURL(
+      (url) => url.searchParams.get("q") === "details artist_a"
+    );
+    await page.getByRole("dialog").waitFor({ state: "hidden" });
+    await dan.locator(".booru-post").first().waitFor();
+    await dan
+      .locator(".booru-post")
+      .first()
+      .getByRole("button", { name: /^Inspect/ })
+      .click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Tag series_a", exact: true })
+      .click();
+    await page
+      .getByRole("dialog")
+      .getByRole("menuitem", { name: "Replace search", exact: true })
+      .click();
+    await page.waitForURL((url) => url.searchParams.get("q") === "series_a");
+    await page.getByRole("dialog").waitFor({ state: "hidden" });
+    if (viewport.width < 768)
+      await page
+        .getByRole("button", { name: "Show page tags", exact: true })
+        .click();
+    await page
+      .getByRole("region", { name: "Tags on this page", exact: true })
+      .getByRole("button", { name: "artist a", exact: true })
+      .click();
+    await page.waitForURL((url) => url.searchParams.get("q") === "artist_a");
     // Artist names resolve to the selected service/identity on both archives.
     for (const name of ["Pawchive", "Kemono"]) {
       await chooseSource(name);

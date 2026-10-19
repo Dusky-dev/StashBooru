@@ -7,6 +7,7 @@ export interface BooruSource {
   queryHelp: string;
   authentication: string;
   credentialsConfigured: boolean;
+  accountFavorites?: boolean;
   categorizedTags: boolean;
 }
 
@@ -52,7 +53,13 @@ export interface BrowserSearch {
   showIgnored?: boolean;
   pageSize?: number;
   favorites?: boolean;
-  sort?: "newest" | "popular" | "updated";
+  sort?:
+    | "newest"
+    | "popular"
+    | "updated"
+    | "oldest"
+    | "score_asc"
+    | "score_desc";
   rating?: "safe" | "sensitive" | "questionable" | "explicit";
   media?: "images" | "videos";
   error?: string;
@@ -93,7 +100,7 @@ export function readBrowserSearch(search: string): BrowserSearch {
   else if (params.has("ignored") && params.get("ignored") !== "0")
     result.error = "Invalid ignored-post filter.";
   for (const [key, choices] of Object.entries({
-    sort: ["newest", "popular", "updated"],
+    sort: ["newest", "popular", "updated", "oldest", "score_asc", "score_desc"],
     rating: ["safe", "sensitive", "questionable", "explicit"],
     media: ["images", "videos"],
   })) {
@@ -133,7 +140,7 @@ export function browserSearchURL(value: BrowserSearch): string {
   if (value.showIgnored) params.set("ignored", "1");
   for (const key of ["sort", "rating", "media"] as const)
     if (value[key]) params.set(key, value[key]);
-  if (value.query) params.set("q", value.query);
+  params.set("q", value.query);
   if (value.inspect) {
     params.set("inspect", `${value.inspect.source}:${value.inspect.id}`);
   }
@@ -211,6 +218,8 @@ export interface BrowserMemory {
   autocomplete?: "live" | "database";
   displayMode?: "grid" | "wall";
   zoom?: number;
+  sourceOrder?: string[];
+  searchOnTagClick?: boolean;
 }
 const key = "booru-browser-state-v1";
 export function readBrowserMemory(): BrowserMemory | undefined {
@@ -238,6 +247,15 @@ export function readBrowserMemory(): BrowserMemory | undefined {
         !["grid", "wall"].includes(value.displayMode)) ||
       (value.zoom !== undefined &&
         (!Number.isInteger(value.zoom) || value.zoom < 0 || value.zoom > 3)) ||
+      (value.searchOnTagClick !== undefined &&
+        typeof value.searchOnTagClick !== "boolean") ||
+      (value.sourceOrder !== undefined &&
+        (!Array.isArray(value.sourceOrder) ||
+          value.sourceOrder.length > 128 ||
+          value.sourceOrder.some(
+            (id) => typeof id !== "string" || !validSource.test(id)
+          ) ||
+          new Set(value.sourceOrder).size !== value.sourceOrder.length)) ||
       !Number.isFinite(value.scroll)
     )
       return undefined;

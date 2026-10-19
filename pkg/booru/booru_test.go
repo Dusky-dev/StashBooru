@@ -252,7 +252,7 @@ func TestSourceConfiguration(t *testing.T) {
 			t.Errorf("unsafe config accepted: %s", raw)
 		}
 	}
-	for _, query := range []string{"", " ", strings.Repeat("x", 1025), "cat\nfoo"} {
+	for _, query := range []string{strings.Repeat("x", 1025), "cat\nfoo"} {
 		if ValidateQuery(query, 1, 24) == nil {
 			t.Error("invalid query accepted")
 		}

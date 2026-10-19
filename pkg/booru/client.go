@@ -137,8 +137,8 @@ func dialPublicAddresses(ctx context.Context, network, port string, ips []netip.
 }
 
 func ValidateQuery(query string, page, limit int) error {
-	if strings.TrimSpace(query) == "" || len(query) > 1024 || strings.ContainsAny(query, "\x00\r\n") {
-		return &Error{Code: "invalid-query", Message: "Enter a search of 1–1024 bytes without control lines."}
+	if len(query) > 1024 || strings.ContainsAny(query, "\x00\r\n") {
+		return &Error{Code: "invalid-query", Message: "Enter a search of at most 1024 bytes without control lines."}
 	}
 	if page < 1 || page > MaxPage || limit < 1 || limit > MaxLimit {
 		return &Error{Code: "invalid-page", Message: "Page must be 1–750 and page size 1–50."}
@@ -163,8 +163,13 @@ func (s Source) request(ctx context.Context, query string, page, limit int, opti
 	case "philomena":
 		path = "/api/v1/json/search/images"
 		values = url.Values{"q": {query}, "page": {strconv.Itoa(page)}, "per_page": {strconv.Itoa(limit)}, "sf": {"id"}, "sd": {"desc"}}
-		if len(options) > 0 && options[0].Sort == "popular" {
-			values.Set("sf", "score")
+		if len(options) > 0 {
+			if options[0].Sort == "popular" || options[0].Sort == "score_desc" || options[0].Sort == "score_asc" {
+				values.Set("sf", "score")
+			}
+			if options[0].Sort == "oldest" || options[0].Sort == "score_asc" {
+				values.Set("sd", "asc")
+			}
 		}
 		if s.APIKey != "" {
 			values.Set("key", s.APIKey)
