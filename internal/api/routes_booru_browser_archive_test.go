@@ -302,8 +302,8 @@ func TestBooruArchiveInitiatorCancellationDoesNotAbortWaiter(t *testing.T) {
 func TestBooruConfigurableFileSizeLimits(t *testing.T) {
 	for _, test := range []struct {
 		value int
-		want int
-		bad  bool
+		want  int
+		bad   bool
 	}{
 		{value: 0, want: 256},
 		{value: 256, want: 256},
