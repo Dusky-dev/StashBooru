@@ -51,13 +51,15 @@ export function BooruDownload({
   instance,
   compact = false,
   downloadRef,
+  archiveFile,
 }: {
   post: BooruPost;
   instance: string;
   compact?: boolean;
   downloadRef?: Ref<HTMLButtonElement>;
+  archiveFile?: number;
 }) {
-  const identity = `booru-download:${instance}:${post.id}`;
+  const identity = `booru-download:${instance}:${post.id}${archiveFile === undefined ? "" : `:archive:${archiveFile}`}`;
   const [state, setState] = useState<DownloadState | undefined>(() =>
     rememberedJob(identity)
   );
@@ -166,7 +168,7 @@ export function BooruDownload({
       const result = await fetch("booru-browser/download", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: post.mediaKey, convert, destination }),
+        body: JSON.stringify({ key: post.mediaKey, convert, destination, archiveFile }),
       }).then(readBooruResponse<{ jobID: number; token: string }>);
       if (mounted.current) setState({ ...result, status: "queued" });
       try {
@@ -206,7 +208,7 @@ export function BooruDownload({
   }
   const available =
     !!post.mediaKey &&
-    !!post.downloadAvailable &&
+    (archiveFile !== undefined || !!post.downloadAvailable) &&
     (post.bytes ?? 0) <= 128 * 1048576;
   const libraryURL =
     state?.library && /^\d+$/.test(state.library.id)
