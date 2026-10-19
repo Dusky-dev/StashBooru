@@ -80,8 +80,8 @@ func TestBooruArchiveNoSymlinksOrNonMediaBytes(t *testing.T) {
 	header.SetMode(os.ModeSymlink | 0777)
 	w, err := zw.CreateHeader(header)
 	if err != nil {
-			t.Fatal(err)
-		}
+		t.Fatal(err)
+	}
 	if _, err := w.Write([]byte("target")); err != nil {
 		t.Fatal(err)
 	}
