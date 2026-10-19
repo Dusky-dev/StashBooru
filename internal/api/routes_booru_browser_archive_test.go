@@ -126,9 +126,8 @@ func TestBooruArchiveRejectsForgedDirectoryBeforeZIPReader(t *testing.T) {
 			binary.LittleEndian.PutUint32(data[len(data)-22+12:], 3<<20)
 		},
 		"forged-entry-count": func(data []byte) {
-			binary.LittleEndian.PutUint16(data[len(data)-22+8:], 1)
-			binary.LittleEndian.PutUint16(data[len(data)-22+10:], 1)
-			binary.LittleEndian.PutUint16(data[len(data)-22+28:], 0)
+			binary.LittleEndian.PutUint16(data[len(data)-22+8:], 0)
+			binary.LittleEndian.PutUint16(data[len(data)-22+10:], 0)
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
