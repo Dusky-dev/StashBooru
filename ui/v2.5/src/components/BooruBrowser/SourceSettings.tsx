@@ -396,6 +396,26 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
                         </Form.Text>
                       </Form.Group>
                     </div>
+                    {draft.engine === "gelbooru" &&
+                      /^https:\/\/(?:www\.|api\.)?rule34\.xxx(?:\/|$)/i.test(
+                        draft.url
+                      ) && (
+                        <p className="small">
+                          Rule34.xxx requires both a User ID and an API key even
+                          for ordinary searches. Find them under{" "}
+                          <a
+                            href="https://rule34.xxx/index.php?page=account&s=options"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Account Options → API Access Credentials
+                          </a>
+                          . Generate a key if needed, then enter the separate
+                          values after <code>user_id=</code> and{" "}
+                          <code>api_key=</code>. StashBooru automatically uses
+                          the API host; keep the source URL as the site address.
+                        </p>
+                      )}
                     <Form.Check
                       type="switch"
                       id="booru-setting-clear"
