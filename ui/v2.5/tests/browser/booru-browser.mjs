@@ -110,7 +110,7 @@ function result(source, query, page) {
         { name: "character_b", category: "character" },
       ],
     }));
-  if (query === "attachments")
+  if (query === "attachments") {
     response.posts[0].attachments = [
       {
         ...response.posts[0],
@@ -121,6 +121,19 @@ function result(source, query, page) {
         attachments: undefined,
       },
     ];
+    response.posts.push({
+      ...response.posts[0],
+      id: "102",
+      mediaKey: "f".repeat(48),
+      attachments: [
+        {
+          ...response.posts[0].attachments[0],
+          id: "p" + "9".repeat(32),
+          mediaKey: "9".repeat(48),
+        },
+      ],
+    });
+  }
   return response;
 }
 
@@ -273,11 +286,15 @@ try {
             bookmarks.searches = bookmarks.searches.filter(
               (item) => item.name !== value.name
             );
-            if (value.action === "search")
+            if (value.action === "search") {
+              const params = new URLSearchParams(value.search);
+              if (!params.get("q")?.trim() && params.get("favorites") !== "1")
+                params.set("q", "*");
               bookmarks.searches.push({
                 name: value.name,
-                search: value.search,
+                search: `?${params}`,
               });
+            }
           }
         }
         await route.fulfill({ json: bookmarks });
@@ -1659,8 +1676,25 @@ try {
     await page
       .getByRole("button", { name: "Saved search filters", exact: true })
       .click();
-    await page.goto(`${baseURL}/booru?source=danbooru&q=gallery`);
+    await page.goto(`${baseURL}/booru?source=danbooru`);
+    await page
+      .getByRole("button", { name: "Saved search filters", exact: true })
+      .click();
+    await page.getByLabel("Saved filter name", { exact: true }).fill("Recent");
+    await page
+      .getByRole("button", { name: "Save current search", exact: false })
+      .click();
+    await page.getByRole("button", { name: "Recent", exact: true }).click();
     await dan.locator(".booru-post").first().waitFor();
+    assert.equal(new URL(page.url()).searchParams.get("q"), "*");
+    await page.reload();
+    await dan.locator(".booru-post").first().waitFor();
+    assert.equal(
+      await page
+        .getByLabel("Search tags (native source syntax)", { exact: true })
+        .inputValue(),
+      "*"
+    );
     await page.goto(`${baseURL}/booru?source=danbooru&q=attachments`);
     await dan
       .getByRole("button", { name: "Inspect Danbooru post 101", exact: true })
@@ -1686,6 +1720,51 @@ try {
       .focus();
     await page.keyboard.press("ArrowUp");
     assert.equal((await attachmentRequest).postDataJSON().key, "e".repeat(48));
+    await attachmentPreview
+      .getByRole("button", { name: "Next preview (Right arrow)", exact: true })
+      .focus();
+    await page.keyboard.press("ArrowRight");
+    await attachmentPreview
+      .getByText("Danbooru #102", { exact: true })
+      .waitFor();
+    assert.equal(
+      await attachmentPreview
+        .getByLabel("Media file", { exact: true })
+        .inputValue(),
+      "0"
+    );
+    assert.equal(
+      await attachmentPreview.getByText("MD5:", { exact: false }).count(),
+      1
+    );
+    const nextPrimaryRequest = page.waitForRequest(
+      (request) =>
+        request.method() === "POST" &&
+        new URL(request.url()).pathname.endsWith("/booru-browser/download")
+    );
+    await attachmentPreview
+      .getByRole("button", { name: "Refresh previews", exact: true })
+      .focus();
+    await page.keyboard.press("ArrowUp");
+    assert.equal((await nextPrimaryRequest).postDataJSON().key, "f".repeat(48));
+    await attachmentPreview
+      .getByLabel("Media file", { exact: true })
+      .selectOption("1");
+    await attachmentPreview
+      .getByRole("button", {
+        name: "Previous preview (Left arrow)",
+        exact: true,
+      })
+      .click();
+    await attachmentPreview
+      .getByText("Danbooru #101", { exact: true })
+      .waitFor();
+    assert.equal(
+      await attachmentPreview
+        .getByLabel("Media file", { exact: true })
+        .inputValue(),
+      "0"
+    );
     await attachmentPreview
       .locator(".modal-footer")
       .getByRole("button", { name: "Close", exact: true })

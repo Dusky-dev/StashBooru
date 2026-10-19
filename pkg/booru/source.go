@@ -158,9 +158,12 @@ func (s Source) Public() PublicSource {
 	case "pixiv":
 		help = "Pixiv tag/title search; user:123 for an artist, id:123 for one work. Account restrictions apply."
 		auth = "Pixiv OAuth access token required in API key. Expired tokens must be replaced; this browser does not perform account login."
-	case "pawchive", "kemono":
+	case "pawchive":
+		help = "Use * for recent posts or creator:service:id for a creator. Text search is unsupported because the API ignores it. Page size counts posts; inspection exposes every supported attachment."
+		auth = "Public API; site access restrictions apply. Optional file-host session cookie value in API key."
+	case "kemono":
 		help = "Use * for recent posts, at least three characters for text search, or creator:service:id for a creator. Page size counts posts; inspection exposes every supported attachment."
-		auth = "Public API; site access restrictions apply. Pawchive optionally accepts a file-host session cookie value in API key."
+		auth = "Public API; site access restrictions apply."
 	case "shimmie":
 		auth = "Anonymous Shimmie/Danbooru XML API; category information may be unavailable."
 	case "gelbooru":

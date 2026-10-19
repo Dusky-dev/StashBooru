@@ -114,6 +114,9 @@ func (c *Client) searchExtended(ctx context.Context, s Source, query string, pag
 			}
 			endpoint = "/api/v1/" + url.PathEscape(parts[1]) + "/user/" + url.PathEscape(parts[2]) + "/posts"
 		} else if query != "*" {
+			if s.Engine == "pawchive" {
+				return result, &Error{Code: "unsupported-query", Message: "Pawchive's API does not filter text searches. Use * for recent posts or creator:service:id to browse a creator."}
+			}
 			if len(query) < 3 {
 				return result, &Error{Code: "invalid-query", Message: "Archive text searches need at least three bytes; use * for recent posts."}
 			}

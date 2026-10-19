@@ -70,7 +70,9 @@ an old favorite. Removing a favorite refreshes that source's favorite listing.
 
 The separate filter icon opens **Saved search filters**. Name and save the current
 query/source/filter combination, select a saved name to apply it, or use its trash
-icon to delete it. Saving an existing name replaces that filter. Up to 100 named
+icon to delete it. Saving an existing name replaces that filter. Outside Favorites, an empty query
+is saved as `*` so the filter opens recent posts. Previously saved blank filters
+are repaired when loaded. Up to 100 named
 filters and 500 favorite posts are stored in private `booru-bookmarks.json`, with
 an 8 MiB metadata bound and atomic updates. This is separate from ignored/manual
 Downloaded history. No remote follow or automated download is created.
@@ -81,8 +83,8 @@ Downloaded history. No remote follow or automated download is created.
 | --- | --- | --- |
 | Paheal / Shimmie | Native tags via the Danbooru XML API; anonymous | Categories may be unavailable; no live completion endpoint. |
 | Pixiv | OAuth **access token** in source API key; text search, `user:123` for artist works, `id:123` for a work | Static illustration/manga pages selectable in the inspector. Ugoira frame ZIPs are explicitly unavailable. No login/token refresh is implemented; replace expired tokens in Settings. |
-| Pawchive | `*` for recent posts, text of at least three bytes, or `creator:service:id`; anonymous API | Optional API key is the `session` cookie value, sent only to `file.pawchive.pw`. Preview-only/deferred/unavailable originals cannot be downloaded. |
-| Kemono | Same archive query forms; anonymous API | Supported image/video attachments only; ZIPs/documents are counted as omitted. |
+| Pawchive | `*` for recent posts or `creator:service:id`; anonymous API. Text search is unsupported because the API ignores it | Optional API key is the `session` cookie value, sent only to `file.pawchive.pw`. Preview-only/deferred/unavailable originals cannot be downloaded. |
+| Kemono | `*` for recent posts, text of at least three bytes, or `creator:service:id`; anonymous API | Supported image/video attachments only; ZIPs/documents are counted as omitted. |
 
 Custom sources can select these engines and configure their HTTPS API root/CDN
 hosts in Settings. Preset hostnames can change; failures remain visible for retry
@@ -93,7 +95,8 @@ code or login flow is embedded.
 Pixiv/archive APIs use fixed upstream blocks of 30/50 posts. The browser slices
 aligned blocks for the selected page size without skipping records. A gallery is
 one card: choose **Media file** in inspection to preview/download a particular
-attachment. Keyboard Up downloads the selected attachment. Ignore/Favorite apply
+attachment. Moving to another post resets the selector to its primary file while
+keeping keyboard navigation active. Keyboard Up downloads the selected attachment. Ignore/Favorite apply
 to the post; alternate files do not inherit first-file MD5 evidence. Up to 200
 additional attachments per post and 256 media snapshots per result are accepted;
 reduce page size if galleries exceed the result bound. Downloads remain one

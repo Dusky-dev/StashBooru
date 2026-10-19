@@ -26,6 +26,11 @@ func TestBooruBrowserSourcesAndReadOnlyValidation(t *testing.T) {
 			t.Fatalf("invalid query not rejected: %s %d", query, w.Code)
 		}
 	}
+	w = httptest.NewRecorder()
+	rs.Search(w, httptest.NewRequest("GET", "/booru-browser/search?source=pawchive&q=landscape", nil))
+	if w.Code != 400 || !strings.Contains(w.Body.String(), `"code":"unsupported-query"`) {
+		t.Fatalf("unsupported search reported as a provider outage: %d %s", w.Code, w.Body.String())
+	}
 	path := filepath.Join(rs.configPath, "booru-browser.json")
 	if err := os.WriteFile(path, []byte(`[{"id":"fixture","name":"Fixture","engine":"gelbooru","url":"https://board.example.org","apiKey":"private-secret","userID":"42"}]`), 0600); err != nil {
 		t.Fatal(err)

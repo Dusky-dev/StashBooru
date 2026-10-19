@@ -113,7 +113,7 @@ func (rs booruBrowserRoutes) Search(w http.ResponseWriter, r *http.Request) {
 				failure = providerError
 			}
 			status := http.StatusBadGateway
-			if failure.Code == "invalid-query" || failure.Code == "unsupported-filter" {
+			if failure.Code == "invalid-query" || failure.Code == "unsupported-filter" || failure.Code == "unsupported-query" {
 				status = http.StatusBadRequest
 			}
 			if failure.Code == "rate-limited" {

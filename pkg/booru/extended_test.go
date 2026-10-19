@@ -4,12 +4,47 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 	"testing"
 )
+
+func TestPawchiveRejectsUnfilteredTextSearch(t *testing.T) {
+	s := testSource("pawchive")
+	calls := 0
+	c := testClient(func(r *http.Request) (*http.Response, error) {
+		calls++
+		if r.URL.Query().Has("q") {
+			t.Fatal("text query sent to an unfiltered endpoint")
+		}
+		want := "/api/v1/posts"
+		if calls == 2 {
+			want = "/api/v1/patreon/user/42/posts"
+		}
+		if r.URL.Path != want {
+			t.Fatal("incorrect browse endpoint", r.URL)
+		}
+		return response(200, "[]"), nil
+	})
+	for _, query := range []string{"cat", "a", "title words", "creator:patreon:42 extra"} {
+		result, err := c.Search(context.Background(), s, query, 1, 24)
+		var failure *Error
+		if !errors.As(err, &failure) || (failure.Code != "unsupported-query" && failure.Code != "invalid-query") || len(result.Posts) != 0 || calls != 0 {
+			t.Fatalf("unfiltered search accepted: %q %+v %v calls=%d", query, result, err, calls)
+		}
+	}
+	for _, query := range []string{"*", "creator:patreon:42"} {
+		if _, err := c.Search(context.Background(), s, query, 1, 24); err != nil {
+			t.Fatal(query, err)
+		}
+	}
+	if calls != 2 || !strings.Contains(s.Public().QueryHelp, "Text search is unsupported") {
+		t.Fatal("supported browsing or query guidance lost", calls, s.Public())
+	}
+}
 
 func TestExtendedFixedPageSlicingAndGalleryIdentity(t *testing.T) {
 	for _, engine := range []string{"pixiv", "pawchive", "kemono"} {
@@ -21,6 +56,10 @@ func TestExtendedFixedPageSlicingAndGalleryIdentity(t *testing.T) {
 				s.APIKey = "fixture-token"
 			}
 			var offsets []int
+			query := "landscape"
+			if engine == "pawchive" {
+				query = "*"
+			}
 			c := testClient(func(r *http.Request) (*http.Response, error) {
 				key := "o"
 				if engine == "pixiv" {
@@ -50,7 +89,7 @@ func TestExtendedFixedPageSlicingAndGalleryIdentity(t *testing.T) {
 				}
 				return response(200, string(data)), nil
 			})
-			got, err := c.Search(context.Background(), s, "landscape", 2, 24)
+			got, err := c.Search(context.Background(), s, query, 2, 24)
 			if err != nil || len(got.Posts) != 24 || got.Posts[0].RemoteID != "25" || got.Posts[23].RemoteID != "48" || !got.HasMore {
 				t.Fatalf("wrong slice: %+v %v", got, err)
 			}
@@ -59,7 +98,7 @@ func TestExtendedFixedPageSlicingAndGalleryIdentity(t *testing.T) {
 					t.Fatal("gallery identity lost", p)
 				}
 			}
-			again, err := c.Search(context.Background(), s, "landscape", 4, 24)
+			again, err := c.Search(context.Background(), s, query, 4, 24)
 			if err != nil || len(again.Posts) != 8 || again.HasMore {
 				t.Fatalf("bad last page: %+v %v", again, err)
 			}

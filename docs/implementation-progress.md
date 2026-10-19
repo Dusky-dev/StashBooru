@@ -1,6 +1,6 @@
 # StashBooru implementation progress
 
-Updated: 2026-10-18
+Updated: 2026-10-19
 
 Current baseline: `develop` at `d29d8767db06f1b14abb2928a7edf1c911100779`.
 PR #150 is merged. Branch `feat/booru-providers-toolbar-20261018` adds the requested
@@ -11,6 +11,40 @@ See [browser guide](booru-browser.md) and [downloads/autocomplete guide](booru-d
 P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
+
+## PR #151 review corrections — 2026-10-19
+
+- Reviewed Codex findings on `85c8e77c3de39df5bf626cfb3d656a9d82398405`;
+  fresh develop remains `d29d8767db06f1b14abb2928a7edf1c911100779`.
+  Continue the existing PR/branch; no merge or deployment.
+- Post navigation resets the selected gallery attachment to the primary file.
+  Selection is scoped to source-instance/post identity before actions render;
+  the modal retains focus for consecutive arrow keys. Regression coverage checks
+  secondary-file download, next-post primary download, previous-post reset and
+  the existing uninterrupted keyboard/animated-preview workflow.
+- Blank saved searches outside Favorites persist as `q=*`. Previously accepted
+  blank filters are normalized when loaded. Duplicate query parameters, control
+  lines and query/URL bounds still reject; Favorites retains its own mode.
+- Pawchive text queries now return an explicit unsupported-query input error
+  before any network request. Recent-post and creator browsing remain supported;
+  Kemono retains text search. The [Pawchive frontend notes](https://github.com/dragonjay-lyj/pawchive#notes)
+  document that its upstream posts endpoint ignores `q`; bounded local search is separate.
+  Query help and the browser guide describe the supported behavior.
+- Runtime checkpoint: local `0daf10e8d4dc5334215a3b4891ef9116694aa1b1`.
+  Focused provider/API regressions passed. All 60 UI tests, full JS/CSS lint,
+  TypeScript and formatting passed before the modal-focus refinement; focused
+  lint and TypeScript passed again after that refinement.
+- Full `make test` and `make it` passed, including the final API regressions.
+  Production bundling and mounted 1440×1000 / 390×844 passed on the final runtime;
+  both gallery-reset/download identity and consecutive arrow-key navigation passed.
+  All 24 relative links in the edited guides/ledger and `git diff --check` passed.
+  Full `make lint` passed with no issues. GitHub checks rerun on publication;
+  their current status is attached to PR #151.
+- On reviewed head `85c8e77`, GitHub generation, native tests, lint, browser and
+  six platform builds passed. FreeBSD alone failed while downloading
+  `github.com/klauspost/compress` with a TLS handshake timeout, before compilation.
+  No workflow change is needed for that transient dependency-fetch failure;
+  publication reruns the checks on the corrected head.
 
 ## Providers, filenames and list toolbar — 2026-10-18 UTC
 

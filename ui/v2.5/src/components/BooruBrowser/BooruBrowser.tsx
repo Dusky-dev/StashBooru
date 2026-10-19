@@ -3,6 +3,7 @@ import {
   type KeyboardEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -97,7 +98,14 @@ function PostInspection({
   reviewBusy: boolean;
 }) {
   const groups = [...new Set(post.tags.map((tag) => tag.category))];
-  const [assetIndex, setAssetIndex] = useState(0);
+  const identity = `${source.instance}:${post.id}`;
+  const [assetSelection, setAssetSelection] = useState({ identity, index: 0 });
+  const assetIndex =
+    assetSelection.identity === identity ? assetSelection.index : 0;
+  // Keep the modal mounted so consecutive arrow keys retain their focus target.
+  useLayoutEffect(() => {
+    setAssetSelection({ identity, index: 0 });
+  }, [identity]);
   const assets = [post, ...(post.attachments ?? [])];
   const asset = assets[assetIndex] ?? post;
   const sample = booruMediaURL(asset, "sample");
@@ -173,7 +181,10 @@ function PostInspection({
               className="btn-secondary"
               value={assetIndex}
               onChange={(event) =>
-                setAssetIndex(Number(event.currentTarget.value))
+                setAssetSelection({
+                  identity,
+                  index: Number(event.currentTarget.value),
+                })
               }
             >
               {assets.map((item, index) => (

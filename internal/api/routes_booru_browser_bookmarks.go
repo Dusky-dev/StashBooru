@@ -51,6 +51,12 @@ func (rs booruBrowserRoutes) readBookmarks() (booruBookmarks, error) {
 		return value, fmt.Errorf("bookmark storage exceeds its bounds")
 	}
 	err = json.Unmarshal(data, &value)
+	// Repair previously accepted blank filters when loading them as well.
+	for i := range value.Searches {
+		if search, ok := normalizeSavedBooruSearch(value.Searches[i].Search); ok {
+			value.Searches[i].Search = search
+		}
+	}
 	return value, err
 }
 func publicBookmarks(value booruBookmarks) any {
@@ -71,24 +77,27 @@ func (rs booruBrowserRoutes) Bookmarks(w http.ResponseWriter, r *http.Request) {
 	}
 	writeVisualSimilarityJSON(w, publicBookmarks(value))
 }
-func validSavedBooruSearch(search string) bool {
+func normalizeSavedBooruSearch(search string) (string, bool) {
 	if len(search) > 8192 || !strings.HasPrefix(search, "?") || strings.ContainsAny(search, "\r\n\x00#") {
-		return false
+		return "", false
 	}
 	params, err := url.ParseQuery(strings.TrimPrefix(search, "?"))
 	if err != nil || len(params["source"]) > 8 {
-		return false
+		return "", false
 	}
 	query := params.Get("q")
-	if query == "" {
+	if len(query) > 1024 || strings.ContainsAny(query, "\x00\r\n") {
+		return "", false
+	}
+	if strings.TrimSpace(query) == "" {
 		query = "*"
 	}
 	if booru.ValidateQuery(query, 1, 24) != nil {
-		return false
+		return "", false
 	}
 	for _, id := range params["source"] {
 		if !booruSavedSourceID.MatchString(id) {
-			return false
+			return "", false
 		}
 	}
 	for key, values := range params {
@@ -96,39 +105,46 @@ func validSavedBooruSearch(search string) bool {
 		case "source", "q", "inspect":
 		case "sort":
 			if !((booru.SearchOptions{Sort: params.Get(key)}).Validate()) {
-				return false
+				return "", false
 			}
 		case "rating":
 			if !((booru.SearchOptions{Rating: params.Get(key)}).Validate()) {
-				return false
+				return "", false
 			}
 		case "media":
 			if params.Get(key) != "images" && params.Get(key) != "videos" {
-				return false
+				return "", false
 			}
 		case "favorites", "ignored":
 			if params.Get(key) != "1" {
-				return false
+				return "", false
 			}
 		case "limit":
 			n, e := strconv.Atoi(params.Get(key))
 			if e != nil || n < 1 || n > 50 {
-				return false
+				return "", false
 			}
 		default:
 			if !strings.HasPrefix(key, "p.") {
-				return false
+				return "", false
 			}
 			n, e := strconv.Atoi(params.Get(key))
 			if e != nil || n < 1 || n > 750 {
-				return false
+				return "", false
 			}
 		}
 		if key != "source" && len(values) != 1 {
-			return false
+			return "", false
 		}
 	}
-	return true
+	if strings.TrimSpace(params.Get("q")) == "" && params.Get("favorites") != "1" {
+		params.Set("q", "*")
+	}
+	normalized := "?" + params.Encode()
+	if len(normalized) > 8192 {
+		return "", false
+	}
+	return normalized, true
 }
 func (rs booruBrowserRoutes) saveFavorite(key string) (booruFavorite, error) {
 	source, post, ok := rs.mediaSnapshot(key)
@@ -200,7 +216,8 @@ func (rs booruBrowserRoutes) UpdateBookmarks(w http.ResponseWriter, r *http.Requ
 		value.Favorites = next
 	case "search", "remove-search":
 		input.Name = strings.TrimSpace(input.Name)
-		if input.Name == "" || len(input.Name) > 120 || strings.ContainsAny(input.Name, "\r\n\x00") || (input.Action == "search" && !validSavedBooruSearch(input.Search)) {
+		search, validSearch := normalizeSavedBooruSearch(input.Search)
+		if input.Name == "" || len(input.Name) > 120 || strings.ContainsAny(input.Name, "\r\n\x00") || (input.Action == "search" && !validSearch) {
 			writeBooruError(w, 400, "bookmarks", "Enter a name up to 120 bytes and a valid booru search.")
 			return
 		}
@@ -211,7 +228,7 @@ func (rs booruBrowserRoutes) UpdateBookmarks(w http.ResponseWriter, r *http.Requ
 			}
 		}
 		if input.Action == "search" {
-			next = append(next, booruSavedSearch{Name: input.Name, Search: input.Search})
+			next = append(next, booruSavedSearch{Name: input.Name, Search: search})
 		}
 		if len(next) > 100 {
 			writeBooruError(w, 400, "bookmarks", "At most 100 search filters can be saved.")

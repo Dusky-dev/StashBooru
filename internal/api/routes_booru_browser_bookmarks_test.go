@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,6 +13,49 @@ import (
 	"github.com/stashapp/stash/pkg/booru"
 	"github.com/stashapp/stash/pkg/mediaconvert"
 )
+
+func TestBooruSavedBlankSearchesRemainExecutable(t *testing.T) {
+	for _, search := range []string{"?source=danbooru", "?source=danbooru&q=", "?source=danbooru&q=+++"} {
+		t.Run(search, func(t *testing.T) {
+			rs := booruBrowserRoutes{configPath: t.TempDir()}
+			body := booruTestJSON(t, map[string]string{"action": "search", "name": "Recent", "search": search})
+			w := httptest.NewRecorder()
+			rs.UpdateBookmarks(w, toolRequest("POST", "/", string(body), "application/json"))
+			var bookmarks booruBookmarks
+			if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &bookmarks) != nil || len(bookmarks.Searches) != 1 {
+				t.Fatal(w.Code, w.Body.String())
+			}
+			params, err := url.ParseQuery(strings.TrimPrefix(bookmarks.Searches[0].Search, "?"))
+			if err != nil || params.Get("q") != "*" || params.Get("source") != "danbooru" {
+				t.Fatal("saved filter cannot execute", bookmarks, err)
+			}
+			data, err := os.ReadFile(filepath.Join(rs.configPath, "booru-bookmarks.json"))
+			if err != nil || !strings.Contains(string(data), "q=%2A") {
+				t.Fatal("wildcard not persisted", string(data), err)
+			}
+			// Simulate a bookmark accepted by the previous version and a restart.
+			legacy := booruTestJSON(t, booruBookmarks{Searches: []booruSavedSearch{{Name: "Recent", Search: search}}})
+			if err := os.WriteFile(filepath.Join(rs.configPath, "booru-bookmarks.json"), legacy, 0600); err != nil {
+				t.Fatal(err)
+			}
+			restarted := booruBrowserRoutes{configPath: rs.configPath}
+			w = httptest.NewRecorder()
+			restarted.Bookmarks(w, httptest.NewRequest("GET", "/", nil))
+			if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &bookmarks) != nil || bookmarks.Searches[0].Search != "?q=%2A&source=danbooru" {
+				t.Fatal("legacy filter still blank", w.Code, w.Body.String())
+			}
+		})
+	}
+	for _, search := range []string{"?source=danbooru&q=&q=cat", "?source=danbooru&q=cat&q=", "?q=%0A", "?q=%00", "?q=" + strings.Repeat("+", 1025)} {
+		if _, ok := normalizeSavedBooruSearch(search); ok {
+			t.Fatal("invalid query normalized before validation", search)
+		}
+	}
+	search, ok := normalizeSavedBooruSearch("?source=danbooru&favorites=1")
+	if !ok || strings.Contains(search, "q=") {
+		t.Fatal("favorites changed into a provider query", search)
+	}
+}
 
 func TestBooruBookmarksPersistGalleryAndRejectStaleSource(t *testing.T) {
 	rs := booruBrowserRoutes{configPath: t.TempDir()}
@@ -114,7 +158,7 @@ func TestBooruFavoriteMediaUsesCurrentAllowlist(t *testing.T) {
 		t.Fatal("obsolete allowlist survived restore", post)
 	}
 	for _, query := range []string{"?source=../bad&q=cat", "?source=danbooru&q=cat&limit=999", "?source=danbooru&q=cat&p.danbooru=751", "?source=danbooru&q=cat&rating=unsupported"} {
-		if validSavedBooruSearch(query) {
+		if _, ok := normalizeSavedBooruSearch(query); ok {
 			t.Fatal("invalid saved query", query)
 		}
 	}
