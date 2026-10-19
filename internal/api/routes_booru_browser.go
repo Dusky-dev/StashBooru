@@ -135,7 +135,7 @@ func (rs booruBrowserRoutes) Search(w http.ResponseWriter, r *http.Request) {
 			writeBooruError(w, 502, "media", "Provider page contains more than 256 media files. Reduce posts per page.")
 			return
 		}
-		rs.categorizeBooruPosts(source, result.Posts)
+		rs.categorizeBooruPosts(r.Context(), source, result.Posts)
 		for i := range result.Posts {
 			result.Posts[i] = publicBooruPost(source, result.Posts[i])
 		}
@@ -146,7 +146,7 @@ func (rs booruBrowserRoutes) Search(w http.ResponseWriter, r *http.Request) {
 	writeBooruError(w, http.StatusBadRequest, "unknown-source", "Choose an enabled source from the server's source list.")
 }
 
-func (rs booruBrowserRoutes) categorizeBooruPosts(source booru.Source, posts []booru.Post) {
+func (rs booruBrowserRoutes) categorizeBooruPosts(ctx context.Context, source booru.Source, posts []booru.Post) {
 	if db, err := rs.tagDatabase(source); err == nil && db.index != nil {
 		for i := range posts {
 			for j, tag := range posts[i].Tags {
@@ -156,6 +156,13 @@ func (rs booruBrowserRoutes) categorizeBooruPosts(source booru.Source, posts []b
 					}
 				}
 			}
+		}
+	}
+	if source.IsRule34() {
+		if categorizer, ok := rs.client.(interface {
+			CategorizeRule34Tags(context.Context, booru.Source, []booru.Post)
+		}); ok {
+			categorizer.CategorizeRule34Tags(ctx, source, posts)
 		}
 	}
 }
