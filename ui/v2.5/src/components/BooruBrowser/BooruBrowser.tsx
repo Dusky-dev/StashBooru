@@ -164,13 +164,22 @@ function PostInspection({
     if (!body) return;
     const top = body.getBoundingClientRect().top + 24;
     const items = body.querySelectorAll<HTMLElement>(".booru-inspection-asset");
-    let current = 0;
+    let closest = Number.POSITIVE_INFINITY;
     for (const item of items) {
-      if (item.getBoundingClientRect().top > top) break;
-      if (item.getBoundingClientRect().bottom > top)
-        current = Number(item.dataset.assetIndex) || 0;
+      const bounds = item.getBoundingClientRect();
+      // Prefer the entry crossing the top of the viewport; otherwise select
+      // the nearest entry across a heading/gap between two media files.
+      const distance =
+        bounds.bottom < top
+          ? top - bounds.bottom
+          : bounds.top > top
+            ? bounds.top - top
+            : 0;
+      if (distance < closest) {
+        closest = distance;
+        activeIndex.current = Number(item.dataset.assetIndex) || 0;
+      }
     }
-    activeIndex.current = current;
   }
   const ignore = useRef<HTMLButtonElement>(null);
   return (
