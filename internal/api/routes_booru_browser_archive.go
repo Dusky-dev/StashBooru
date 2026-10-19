@@ -22,13 +22,13 @@ import (
 // These limits apply before inflation and are independent of the provider's
 // advertised content length (which may be missing or untrusted).
 const (
-	booruArchiveMaxBytes  = booruDefaultFileSizeMiB << 20
-	booruArchiveEntryMax  = booruDefaultFileSizeMiB << 20
-	booruArchiveMaxFiles  = 512
-	booruArchiveMaxMedia  = 128
-	booruArchiveCacheSize = 4
-	booruArchiveCacheMaxBytes = 256 << 20
-	booruArchiveVideoCacheMax = 32 << 20
+	booruArchiveMaxBytes       = booruDefaultFileSizeMiB << 20
+	booruArchiveEntryMax       = booruDefaultFileSizeMiB << 20
+	booruArchiveMaxFiles       = 512
+	booruArchiveMaxMedia       = 128
+	booruArchiveCacheSize      = 4
+	booruArchiveCacheMaxBytes  = 256 << 20
+	booruArchiveVideoCacheMax  = 32 << 20
 )
 
 type booruArchiveFile struct {
@@ -220,10 +220,6 @@ func cachedBooruArchiveVideo(ctx context.Context, key string, index int, decode 
 // Limit decompression as well as remote media fetching. ZIP inflation can be
 // expensive independently of the FetchMedia concurrency gate.
 var booruArchiveInflations = make(chan struct{}, 4)
-
-func validBooruArchiveEntry(f *zip.File) bool {
-	return validBooruArchiveEntryWithLimit(f, booruArchiveEntryMax)
-}
 
 func validBooruArchiveEntryWithLimit(f *zip.File, maxBytes int64) bool {
 	if f.FileInfo().IsDir() || !f.Mode().IsRegular() || f.Flags&1 != 0 ||
