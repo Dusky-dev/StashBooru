@@ -2056,7 +2056,7 @@ try {
       await page.waitForFunction(
         (expected) =>
           document.querySelectorAll(
-            '.booru-browser-inspection .booru-inspection-asset'
+            ".booru-browser-inspection .booru-inspection-asset"
           ).length >= expected,
         target
       );
