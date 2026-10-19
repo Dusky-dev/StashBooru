@@ -524,7 +524,12 @@ function SourceResults({
   onPage: (page: number) => void;
   onInspect: (id: string) => void;
   onClose: () => void;
-  onResult: (id: string, signature: string, posts: BooruPost[], ready: boolean) => void;
+  onResult: (
+    id: string,
+    signature: string,
+    posts: BooruPost[],
+    ready: boolean
+  ) => void;
 }) {
   const [result, setResult] = useState<BooruResult>();
   const visiblePosts = useMemo(
