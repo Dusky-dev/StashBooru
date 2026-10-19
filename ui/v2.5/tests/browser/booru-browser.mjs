@@ -2014,7 +2014,11 @@ try {
       1
     );
     assert.equal(
-      await longPreview.getByRole("button", { name: /Download to Stash$/ }).count(),
+      await longPreview
+        .getByRole("button", {
+          name: /^(?:Retry download|Download) to Stash$/,
+        })
+        .count(),
       12,
       "each file needs its own download action"
     );
