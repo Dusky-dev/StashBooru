@@ -11,8 +11,8 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 	"testing"
+	"time"
 )
 
 func zipFixture(t *testing.T, files map[string][]byte) []byte {
