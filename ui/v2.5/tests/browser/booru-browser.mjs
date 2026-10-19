@@ -1836,10 +1836,10 @@ try {
       await attachmentPreview.getByText("MD5:", { exact: false }).count(),
       1
     );
-    // Navigation remounts download controls while saved preferences load.
-    // Check the same enabled state a user sees before issuing the shortcut.
+    // A previously downloaded post can restore a queued job, then become a
+    // completed Retry action. Wait for that action before using the shortcut.
     await attachmentPreview
-      .getByRole("button", { name: "Download to Stash", exact: true })
+      .getByRole("button", { name: /^(?:Retry download|Download) to Stash$/ })
       .click({ trial: true });
     const nextPrimaryRequest = page.waitForRequest(
       (request) =>
@@ -2446,6 +2446,12 @@ try {
     // Artist names resolve to the selected service/identity on both archives.
     for (const name of ["Pawchive", "Kemono"]) {
       await chooseSource(name);
+      if (name === "Pawchive")
+        assert.equal(
+          new URL(page.url()).searchParams.get("q"),
+          "",
+          "Pawchive must start on recent posts instead of an unsupported text query"
+        );
       await page.getByLabel("Artist name", { exact: true }).fill("Artist Name");
       await page.getByRole("button", { name: /Artist Name fanbox/ }).click();
       await page

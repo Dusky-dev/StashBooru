@@ -1108,7 +1108,8 @@ export default function BooruBrowser() {
               onOrder={setSourceOrder}
               onSelect={(source) => {
                 const nextQuery =
-                  selected[0] !== source.id && query.startsWith("creator:")
+                  selected[0] !== source.id &&
+                  (query.startsWith("creator:") || source.engine === "pawchive")
                     ? ""
                     : query.trim();
                 setSelected([source.id]);

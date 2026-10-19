@@ -44,8 +44,24 @@ silently promoted to verified production features by this documentation update.
   provider pagination, and rejects Recent for blank Pixiv daily rankings. Provider
   regressions passed; types/lint/production were repeated. CI exposed a mobile
   fixture race issuing Up before the next post's download settings were ready;
-  the test now asserts the button is enabled before exercising the shortcut.
-  Full Go gates, final mounted run and fresh CI/Codex Review are in progress.
+  the test now waits for the enabled Download/Retry action after remembered job
+  recovery before exercising the shortcut. Pawchive retains recent-post startup
+  on source changes instead of inheriting unsupported post-text queries.
+- Final local runtime `db3d80da8ff716e3b1edaddc8a0558959fdf7f42`, tree
+  `391c98b2e8f456beb2d93bea641ab8fe80e65f7a`, passed provider regressions, full
+  `make test`, `make it` and `make lint` (**0 issues**). All 61 UI tests, JS/CSS
+  lint, TypeScript/formatting and production bundling passed; final types/scoped
+  lint/production and mounted 1440×1000 + 390×844 passed after the provider guards.
+  Final mounted coverage includes persistent source ordering, both tag-click
+  modes, preview add/replace redirects, blank submission, media filtering without
+  a provider refetch, whole-card selection/action suppression, caption ratings,
+  account favorites refresh and existing download/player/review/race workflows.
+- Codex Review completed with no findings on published `119472d` and `0773f35`.
+  GitHub generation/browser passed; the second lint runner hit an external schema
+  fetch timeout before code analysis (first runner and local full lint passed).
+  Fresh final-head CI and Codex Review outcomes are attached to PR #153. This
+  checkpoint changes documentation only. Live authenticated provider acceptance
+  remains unverified; no merge or deployment is performed.
 
 
 ## Single-site browsing and preview refinement — 2026-10-19

@@ -17,7 +17,8 @@ Blank submission opens the default listing; Pixiv uses daily rankings. Each site
 has an icon, with a local initial fallback if its favicon is unavailable. Changing
 sites opens that site's listing for the current query. Archive creator expressions
 are cleared when changing sites. Up/down icons reorder the source menu without
-changing the selected site; order is saved in this browser. Legacy multi-source links and saved filters use their first source.
+changing the selected site; order is saved in this browser. Pawchive opens recent
+posts when selected because its API cannot filter post-text queries. Legacy multi-source links and saved filters use their first source.
 A fresh browser without saved state does not search automatically. Refresh and
 bare `/booru` visits restore the submitted page and unfinished search draft.
 Previous/Next, cancellation and retry apply to the selected site. Inspect a
