@@ -3,6 +3,7 @@ package api
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -41,14 +42,144 @@ type booruArchiveListing struct {
 }
 
 type booruCachedArchive struct {
-	Data    []byte
-	Created time.Time
+	Data       []byte
+	Created    time.Time
+	Expires    *time.Timer
+	VideoIndex int
+	Video      []byte // At most one 24 MiB decoded video per cached archive.
+	VideoMIME  string
 }
 
+type booruArchiveLoad struct {
+	Done chan struct{}
+	Data []byte
+	Err  error
+}
+
+type booruVideoLoad struct {
+	Done chan struct{}
+	Data []byte
+	MIME string
+	Err  error
+}
+
+// All maps, decoded video slots, and entry timers are guarded by Mutex.
 var booruArchiveCache = struct {
 	sync.Mutex
-	entries map[string]booruCachedArchive
-}{entries: make(map[string]booruCachedArchive)}
+	entries map[string]*booruCachedArchive
+	loading map[string]*booruArchiveLoad
+	videos  map[string]*booruVideoLoad
+}{
+	entries: make(map[string]*booruCachedArchive),
+	loading: make(map[string]*booruArchiveLoad),
+	videos:  make(map[string]*booruVideoLoad),
+}
+
+var booruArchiveCacheTTL = 5 * time.Minute
+
+func evictBooruArchiveLocked(key string) {
+	if entry := booruArchiveCache.entries[key]; entry != nil {
+		entry.Expires.Stop()
+		delete(booruArchiveCache.entries, key)
+	}
+}
+
+// Called with the cache mutex held. The timer independently removes idle
+// entries, and identity checks stop a stale timer evicting a replacement.
+func storeBooruArchiveLocked(key string, data []byte) {
+	if len(booruArchiveCache.entries) >= booruArchiveCacheSize {
+		var oldestKey string
+		var oldestTime time.Time
+		for token, entry := range booruArchiveCache.entries {
+			if oldestKey == "" || entry.Created.Before(oldestTime) {
+				oldestKey, oldestTime = token, entry.Created
+			}
+		}
+		evictBooruArchiveLocked(oldestKey)
+	}
+	entry := &booruCachedArchive{Data: data, Created: time.Now(), VideoIndex: -1}
+	booruArchiveCache.entries[key] = entry
+	entry.Expires = time.AfterFunc(booruArchiveCacheTTL, func() {
+		booruArchiveCache.Lock()
+		defer booruArchiveCache.Unlock()
+		if booruArchiveCache.entries[key] == entry {
+			delete(booruArchiveCache.entries, key)
+		}
+	})
+}
+
+// Concurrent requests for the same server-issued media key share one provider
+// fetch. A waiter can cancel without aborting the request doing the download.
+func cachedBooruArchive(ctx context.Context, key string, fetch func(context.Context) ([]byte, error)) ([]byte, error) {
+	booruArchiveCache.Lock()
+	if entry := booruArchiveCache.entries[key]; entry != nil {
+		if time.Since(entry.Created) < booruArchiveCacheTTL {
+			booruArchiveCache.Unlock()
+			return entry.Data, nil
+		}
+		evictBooruArchiveLocked(key)
+	}
+	if pending := booruArchiveCache.loading[key]; pending != nil {
+		booruArchiveCache.Unlock()
+		select {
+		case <-pending.Done:
+			return pending.Data, pending.Err
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+	pending := &booruArchiveLoad{Done: make(chan struct{})}
+	booruArchiveCache.loading[key] = pending
+	booruArchiveCache.Unlock()
+
+	data, err := fetch(ctx)
+	booruArchiveCache.Lock()
+	if err == nil {
+		storeBooruArchiveLocked(key, data)
+	}
+	pending.Data, pending.Err = data, err
+	delete(booruArchiveCache.loading, key)
+	close(pending.Done)
+	booruArchiveCache.Unlock()
+	return data, err
+}
+
+// Cache only the most recently accessed decoded video per archive, so HTTP
+// range requests do not reinflate the same 24 MiB entry for each seek.
+func cachedBooruArchiveVideo(ctx context.Context, key string, index int, decode func(context.Context) ([]byte, string, error)) ([]byte, string, error) {
+	id := key + ":" + strconv.Itoa(index)
+	booruArchiveCache.Lock()
+	if entry := booruArchiveCache.entries[key]; entry != nil && entry.VideoIndex == index && entry.Video != nil {
+		data, mime := entry.Video, entry.VideoMIME
+		booruArchiveCache.Unlock()
+		return data, mime, nil
+	}
+	if pending := booruArchiveCache.videos[id]; pending != nil {
+		booruArchiveCache.Unlock()
+		select {
+		case <-pending.Done:
+			return pending.Data, pending.MIME, pending.Err
+		case <-ctx.Done():
+			return nil, "", ctx.Err()
+		}
+	}
+	pending := &booruVideoLoad{Done: make(chan struct{})}
+	booruArchiveCache.videos[id] = pending
+	booruArchiveCache.Unlock()
+
+	data, mime, err := decode(ctx)
+	booruArchiveCache.Lock()
+	if err == nil {
+		if entry := booruArchiveCache.entries[key]; entry != nil {
+			entry.VideoIndex, entry.Video, entry.VideoMIME = index, data, mime
+		}
+	}
+	pending.Data, pending.MIME, pending.Err = data, mime, err
+	delete(booruArchiveCache.videos, id)
+	close(pending.Done)
+	booruArchiveCache.Unlock()
+	return data, mime, err
+}
 
 // Limit decompression as well as remote media fetching. ZIP inflation can be
 // expensive independently of the FetchMedia concurrency gate.
@@ -230,45 +361,21 @@ func (rs booruBrowserRoutes) loadBooruArchive(r *http.Request, key string) ([]by
 	if post.Bytes > booruArchiveMaxBytes {
 		return nil, fmt.Errorf("archive exceeds the 64 MiB preview limit; open the remote post")
 	}
-	booruArchiveCache.Lock()
-	now := time.Now()
-	for token, entry := range booruArchiveCache.entries {
-		if now.Sub(entry.Created) > 5*time.Minute {
-			delete(booruArchiveCache.entries, token)
+	return cachedBooruArchive(r.Context(), key, func(ctx context.Context) ([]byte, error) {
+		var buf bytes.Buffer
+		_, err := rs.client.FetchMedia(ctx, source, booru.MediaRequest{
+			URL: post.OriginalURL, Limit: booruArchiveMaxBytes,
+			ExpectedBytes: post.Bytes, ExpectedMD5: post.MD5, AllowZIP: true,
+		}, &buf)
+		if err != nil {
+			return nil, err
 		}
-	}
-	if entry, ok := booruArchiveCache.entries[key]; ok {
-		booruArchiveCache.Unlock()
-		return entry.Data, nil // Immutable cached byte slice.
-	}
-	booruArchiveCache.Unlock()
-
-	var buf bytes.Buffer
-	_, err := rs.client.FetchMedia(r.Context(), source, booru.MediaRequest{
-		URL: post.OriginalURL, Limit: booruArchiveMaxBytes,
-		ExpectedBytes: post.Bytes, ExpectedMD5: post.MD5, AllowZIP: true,
-	}, &buf)
-	if err != nil {
-		return nil, err
-	}
-	data := buf.Bytes()
-	if _, _, err = indexBooruArchive(data); err != nil {
-		return nil, err
-	}
-	booruArchiveCache.Lock()
-	defer booruArchiveCache.Unlock()
-	if len(booruArchiveCache.entries) >= booruArchiveCacheSize {
-		var oldestKey string
-		var oldestTime time.Time
-		for token, entry := range booruArchiveCache.entries {
-			if oldestKey == "" || entry.Created.Before(oldestTime) {
-				oldestKey, oldestTime = token, entry.Created
-			}
+		data := buf.Bytes()
+		if _, _, err = indexBooruArchive(data); err != nil {
+			return nil, err
 		}
-		delete(booruArchiveCache.entries, oldestKey)
-	}
-	booruArchiveCache.entries[key] = booruCachedArchive{Data: data, Created: time.Now()}
-	return data, nil
+		return data, nil
+	})
 }
 
 // Archive serves a listing or one strictly verified image/video from a
