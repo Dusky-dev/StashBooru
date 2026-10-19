@@ -121,6 +121,15 @@ function result(source, query, page) {
         ...response.posts[0].tags.slice(0, 2),
         { name: "character_a", category: "character" },
         { name: "character_b", category: "character" },
+        ...(index === 0
+          ? [{ name: "ai_generated", category: "meta" }]
+          : index === 5
+            ? [{ name: "ai-generated", category: "meta" }]
+            : index === 11
+              ? [{ name: "AI Generated", category: "meta" }]
+              : index === 1
+                ? [{ name: "ai_assisted", category: "meta" }]
+                : []),
       ],
     }));
   if (query === "details")
@@ -1568,12 +1577,52 @@ try {
       .getByRole("button", { name: "Inspect Danbooru post 102", exact: true })
       .waitFor();
     assert.ok(page.url().includes("rating=safe"));
+    const hideAIGenerated = page.getByRole("button", {
+      name: "Hide AI-generated posts on this page",
+      exact: true,
+    });
+    assert.equal(await hideAIGenerated.getAttribute("aria-pressed"), "false");
+    const requestsBeforeAI = requests.length;
+    await hideAIGenerated.click();
+    await page.waitForURL((url) => url.searchParams.get("ai") === "hide");
+    assert.equal(await hideAIGenerated.getAttribute("aria-pressed"), "true");
+    await dan
+      .getByText("Showing 9 of 12 posts on this loaded page.", {
+        exact: false,
+      })
+      .waitFor();
+    assert.equal(await dan.locator(".booru-post").count(), 9);
+    assert.equal(requests.length, requestsBeforeAI, "AI toggle refetched provider");
+    await page.reload();
+    await dan
+      .getByText("Showing 9 of 12 posts on this loaded page.", {
+        exact: false,
+      })
+      .waitFor();
+    assert.equal(await hideAIGenerated.getAttribute("aria-pressed"), "true");
+    await hideAIGenerated.click();
+    await page.waitForURL((url) => !url.searchParams.has("ai"));
+    await dan.locator(".booru-post").nth(11).waitFor();
+    assert.equal(await hideAIGenerated.getAttribute("aria-pressed"), "false");
     const searchesBeforeMedia = requests.length;
     await pickFilter("Media on this page", "videos");
     await dan
       .getByText("Showing 4 of 12 posts on this loaded page.", { exact: false })
       .waitFor();
     assert.equal(await dan.locator(".booru-post").count(), 4);
+    await hideAIGenerated.click();
+    await dan
+      .getByText("Showing 3 of 12 posts on this loaded page.", {
+        exact: false,
+      })
+      .waitFor();
+    assert.equal(await dan.locator(".booru-post").count(), 3);
+    await hideAIGenerated.click();
+    await dan
+      .getByText("Showing 4 of 12 posts on this loaded page.", {
+        exact: false,
+      })
+      .waitFor();
     assert.equal(
       requests.length,
       searchesBeforeMedia,
