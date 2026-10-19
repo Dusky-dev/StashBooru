@@ -524,7 +524,7 @@ function SourceResults({
   onPage: (page: number) => void;
   onInspect: (id: string) => void;
   onClose: () => void;
-  onResult: (id: string, signature: string, posts: BooruPost[]) => void;
+  onResult: (id: string, signature: string, posts: BooruPost[], ready: boolean) => void;
 }) {
   const [result, setResult] = useState<BooruResult>();
   const visiblePosts = useMemo(
@@ -543,14 +543,16 @@ function SourceResults({
     filters.pageSize,
     favorites
   );
-  useEffect(
-    () => onResult(source.id, signature, visiblePosts),
-    [onResult, source.id, signature, visiblePosts]
-  );
   const [review, setReview] = useState<ReviewState[]>([]);
   const onReview = useCallback((value: ReviewState[]) => setReview(value), []);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  // Results are not ready for scroll restoration until the provider finishes.
+  // The initial empty posts list is only a loading placeholder.
+  useEffect(
+    () => onResult(source.id, signature, visiblePosts, !loading),
+    [onResult, source.id, signature, visiblePosts, loading]
+  );
   const [retry, setRetry] = useState(0);
   const controller = useRef<AbortController>();
   // biome-ignore lint/correctness/useExhaustiveDependencies: Retry intentionally repeats the same read after a source failure.
@@ -870,11 +872,14 @@ export default function BooruBrowser() {
     restoreDraft ? (remembered?.tagSource ?? "") : ""
   );
   const [tagPages, setTagPages] = useState<
-    Record<string, { signature: string; posts: BooruPost[] }>
+    Record<string, { signature: string; posts: BooruPost[]; ready: boolean }>
   >({});
   const onResult = useCallback(
-    (id: string, signature: string, posts: BooruPost[]) => {
-      setTagPages((previous) => ({ ...previous, [id]: { signature, posts } }));
+    (id: string, signature: string, posts: BooruPost[], ready: boolean) => {
+      setTagPages((previous) => ({
+        ...previous,
+        [id]: { signature, posts, ready },
+      }));
     },
     []
   );
@@ -951,17 +956,35 @@ export default function BooruBrowser() {
   }, []);
   const restoreScroll = useRef(restoreDraft);
   useEffect(() => {
+    // An explicit q= is a submitted search even when its query is blank.
+    // Require the matching source results to finish loading before scrolling;
+    // simply counting mounted SourceResults reports loading placeholders.
+    const resultsReady = active.sources.every((id) => {
+      const page = tagPages[id];
+      return (
+        page?.ready &&
+        page.signature ===
+          browserResultSignature(
+            active.query,
+            active.pages[id],
+            active.sort,
+            active.rating,
+            active.media,
+            active.pageSize,
+            active.favorites
+          )
+      );
+    });
     if (
       restoreScroll.current &&
-      (Object.keys(tagPages).length >= active.sources.length ||
-        (!active.query && !active.favorites))
+      (!hasSearch || !!active.error || (sources && resultsReady))
     ) {
       restoreScroll.current = false;
       window.requestAnimationFrame(() =>
         window.scrollTo(0, remembered?.scroll ?? 0)
       );
     }
-  }, [tagPages, active, remembered]);
+  }, [tagPages, active, remembered, hasSearch, sources]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: Reload intentionally repeats the source-list request after a configuration failure or settings save.
   useEffect(() => {
     const request = new AbortController();
