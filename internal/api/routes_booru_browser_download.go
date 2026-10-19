@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -116,6 +117,7 @@ func writeBooruAtomic(dir, name string, data []byte) error {
 
 type booruDownloadRequest struct {
 	Key         string `json:"key"`
+	ArchiveIndex *int   `json:"archiveIndex,omitempty"`
 	Convert     bool   `json:"convert"`
 	Cancel      int    `json:"cancel,omitempty"`
 	Token       string `json:"token,omitempty"`
@@ -192,6 +194,15 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 		writeBooruError(w, 410, "expired", "Post expired or its source changed. Refresh the search.")
 		return
 	}
+	if input.ArchiveIndex != nil {
+		if *input.ArchiveIndex < 0 || *input.ArchiveIndex >= booruArchiveMaxFiles ||
+			(strings.ToLower(post.Format) != "zip" && strings.ToLower(post.Format) != "cbz") ||
+			post.OriginalURL == "" || source.ApprovedMediaURL(post.OriginalURL) != post.OriginalURL ||
+			post.Bytes > booruArchiveMaxBytes {
+			writeBooruError(w, 400, "archive", "Archive or requested file is unavailable or exceeds preview limits.")
+			return
+		}
+	}
 	if post.OriginalURL == "" || post.Bytes > 128<<20 {
 		writeBooruError(w, 400, "download", "Original unavailable or larger than the 128 MiB download limit.")
 		return
@@ -245,7 +256,7 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 				state.Status = "complete"
 			}
 		}()
-		if !input.Computer {
+		if !input.Computer && input.ArchiveIndex == nil {
 			receipt := rs.reusableDownloadReceipt(destination, source, post, input.Convert, preferences.FilenameTemplate)
 			if receipt != nil && receipt.Library != nil {
 				imported, err := rs.importFile(ctx, receipt.Library.Path, source, post, input.Convert && !receipt.Library.Converted, progress)
@@ -280,7 +291,18 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 		if err != nil {
 			return fmt.Errorf("cannot stage original")
 		}
-		info, err := rs.client.FetchMedia(ctx, source, booru.MediaRequest{URL: post.OriginalURL, Limit: 128 << 20, ExpectedBytes: post.Bytes, ExpectedMD5: post.MD5}, f)
+		var info booru.MediaInfo
+		if input.ArchiveIndex != nil {
+			// Do not download or import the ZIP itself: only the named, verified
+			// entry is staged, and it follows the normal publish/import pipeline.
+			var decoded []byte
+			post, info, decoded, err = rs.archiveDownloadMedia(ctx, input.Key, *input.ArchiveIndex, post)
+			if err == nil {
+				_, err = f.Write(decoded)
+			}
+		} else {
+			info, err = rs.client.FetchMedia(ctx, source, booru.MediaRequest{URL: post.OriginalURL, Limit: 128 << 20, ExpectedBytes: post.Bytes, ExpectedMD5: post.MD5}, f)
+		}
 		if err == nil {
 			err = f.Sync()
 		}
@@ -294,6 +316,13 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 		path := original + "." + info.Extension
 		if err = os.Rename(original, path); err != nil {
 			return fmt.Errorf("cannot stage original")
+		}
+		if input.ArchiveIndex != nil {
+			info.MD5, err = mediaconvert.MD5(path)
+			if err != nil {
+				return fmt.Errorf("cannot hash extracted media: %w", err)
+			}
+			post.MD5 = info.MD5
 		}
 		outputMD5 := info.MD5
 		converted := false
