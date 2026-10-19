@@ -298,3 +298,40 @@ func TestBooruArchiveInitiatorCancellationDoesNotAbortWaiter(t *testing.T) {
 	evictBooruArchiveLocked(key)
 	booruArchiveCache.Unlock()
 }
+
+func TestBooruConfigurableFileSizeLimits(t *testing.T) {
+	for _, test := range []struct {
+		value int
+		want int
+		bad  bool
+	}{
+		{value: 0, want: 256},
+		{value: 256, want: 256},
+		{value: 512, want: 512},
+		{value: 16, want: 16},
+		{value: 15, bad: true},
+		{value: 513, bad: true},
+		{value: -1, bad: true},
+	} {
+		got, err := normalizeBooruFileSizeMiB(test.value)
+		if (err != nil) != test.bad || (!test.bad && got != test.want) {
+			t.Fatalf("size %d normalized to %d (err: %v), want %d, invalid: %t", test.value, got, err, test.want, test.bad)
+		}
+	}
+}
+
+func TestBooruArchiveConfigurableLimit(t *testing.T) {
+	archive := zipFixture(t, map[string][]byte{
+		"sample.png": []byte("just fixture bytes"),
+	})
+	if _, _, err := indexBooruArchiveWithLimit(archive, int64(len(archive)-1)); err == nil {
+		t.Fatal("archive exceeding selected size must be rejected")
+	}
+	listing, _, err := indexBooruArchiveWithLimit(archive, 256<<20)
+	if err != nil || len(listing.Files) != 1 {
+		t.Fatalf("configured archive limit rejected valid fixture: %v, %+v", err, listing)
+	}
+	if _, _, err := indexBooruArchiveWithLimit(archive, 513<<20); err == nil {
+		t.Fatal("archive limit above hard safety cap accepted")
+	}
+}
