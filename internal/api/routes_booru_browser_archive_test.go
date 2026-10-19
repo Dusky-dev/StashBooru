@@ -254,3 +254,46 @@ func TestBooruArchiveVideoRangeReusesDecodedBytes(t *testing.T) {
 		t.Fatalf("video decoded %d times for repeated requests", inflations)
 	}
 }
+
+func TestBooruArchiveInitiatorCancellationDoesNotAbortWaiter(t *testing.T) {
+	key := "test-cancelled-initiator"
+	started := make(chan struct{})
+	release := make(chan struct{})
+	leaderCtx, cancelLeader := context.WithCancel(context.Background())
+	defer cancelLeader()
+	leaderResult := make(chan error, 1)
+	go func() {
+		_, err := cachedBooruArchive(leaderCtx, key, func(ctx context.Context) ([]byte, error) {
+			close(started)
+			select {
+			case <-release:
+				return []byte("archive"), nil
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+		})
+		leaderResult <- err
+	}()
+	<-started
+	waiterResult := make(chan error, 1)
+	go func() {
+		data, err := cachedBooruArchive(context.Background(), key, func(context.Context) ([]byte, error) {
+			return nil, fmt.Errorf("a concurrent waiter unexpectedly fetched")
+		})
+		if err == nil && string(data) != "archive" {
+			err = fmt.Errorf("waiter received invalid archive")
+		}
+		waiterResult <- err
+	}()
+	cancelLeader()
+	if err := <-leaderResult; err != context.Canceled {
+		t.Fatalf("initiator ignored cancellation: %v", err)
+	}
+	close(release)
+	if err := <-waiterResult; err != nil {
+		t.Fatalf("initiator cancellation broke active waiter: %v", err)
+	}
+	booruArchiveCache.Lock()
+	evictBooruArchiveLocked(key)
+	booruArchiveCache.Unlock()
+}
