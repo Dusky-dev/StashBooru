@@ -238,7 +238,7 @@ ratio and at most four cached archives for five minutes. Unsafe paths, symlinks,
 unsupported formats and nested archives are not opened; the inspector reports
 skipped entries. If an archive is too large, corrupt or password-protected,
 open the remote post instead. RAR and 7z are not supported yet; archive contents
-are for preview and not imported into Stash by this feature.
+can be saved individually using **Download to Stash** or **Download to…**. Each extracted media file has its own download job, native scan and optional converter settings.
 
 ### Posts with multiple media files
 
