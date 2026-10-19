@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -107,17 +106,29 @@ func booruArchiveContentType(format string, data []byte) string {
 	detected := http.DetectContentType(data)
 	switch format {
 	case "jpg", "jpeg":
-		if detected == "image/jpeg" { return detected }
+		if detected == "image/jpeg" {
+			return detected
+		}
 	case "png", "apng":
-		if detected == "image/png" { return detected }
+		if detected == "image/png" {
+			return detected
+		}
 	case "gif":
-		if detected == "image/gif" { return detected }
+		if detected == "image/gif" {
+			return detected
+		}
 	case "webp":
-		if detected == "image/webp" { return detected }
+		if detected == "image/webp" {
+			return detected
+		}
 	case "bmp":
-		if detected == "image/bmp" { return detected }
+		if detected == "image/bmp" {
+			return detected
+		}
 	case "tiff":
-		if detected == "image/tiff" { return detected }
+		if detected == "image/tiff" {
+			return detected
+		}
 	case "mp4":
 		if len(data) >= 12 && string(data[4:8]) == "ftyp" &&
 			string(data[8:12]) != "avif" && string(data[8:12]) != "avis" {
