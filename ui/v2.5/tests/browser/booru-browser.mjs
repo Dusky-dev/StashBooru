@@ -103,6 +103,12 @@ function result(source, query, page) {
       },
     ],
   };
+  // Full blank listings must be tall enough to exercise saved scroll position.
+  if (query === "")
+    response.posts = Array.from({ length: 24 }, (_, index) => ({
+      ...response.posts[0],
+      id: String(id + index),
+    }));
   if (query === "gallery")
     response.posts = Array.from({ length: 12 }, (_, index) => ({
       ...response.posts[0],
@@ -268,6 +274,8 @@ try {
     let denied = true;
     let sourcesDenied = false;
     const delayed = [];
+    let holdBlankReload = false;
+    let heldBlankReload;
     let savedSources = sources.map((source) => ({
       ...source,
       mediaHosts: [],
@@ -731,6 +739,11 @@ try {
       });
       if (query === "slow") {
         delayed.push({ route, source, query, number });
+        return;
+      }
+      if (holdBlankReload && source === "danbooru" && query === "") {
+        holdBlankReload = false;
+        heldBlankReload = route;
         return;
       }
       if (source === "gelbooru" && denied) {
@@ -1842,6 +1855,46 @@ try {
         .getByLabel("Search tags (native source syntax)", { exact: true })
         .inputValue(),
       ""
+    );
+    // An explicit blank q= is still a submitted search: wait for its
+    // asynchronous cards before restoring the saved scroll on reload.
+    await page.goto(`${baseURL}/booru?source=danbooru&q=`);
+    await dan.locator(".booru-post").nth(23).waitFor();
+    await page.evaluate(() => window.scrollTo(0, 300));
+    await page.waitForFunction(() => {
+      const memory = JSON.parse(
+        localStorage.getItem("booru-browser-state-v1") ?? "{}"
+      );
+      return window.scrollY > 150 && memory.scroll > 150;
+    });
+    const savedScroll = await page.evaluate(() => window.scrollY);
+    holdBlankReload = true;
+    const blankRequest = page.waitForRequest(
+      (request) =>
+        new URL(request.url()).pathname.endsWith("/booru-browser/search") &&
+        new URL(request.url()).searchParams.get("q") === ""
+    );
+    await page.reload();
+    await blankRequest;
+    await page.waitForFunction(
+      () => document.querySelector('.booru-source[aria-busy="true"]')
+    );
+    assert.ok(heldBlankReload, "blank result was not held for reload");
+    assert.equal(
+      await dan.locator(".booru-post").count(),
+      0,
+      "blank listing was rendered before its response"
+    );
+    assert.equal(
+      await page.evaluate(() => window.scrollY),
+      0,
+      "restored scroll before blank results finished loading"
+    );
+    await heldBlankReload.fulfill({ json: result("danbooru", "", 1) });
+    heldBlankReload = undefined;
+    await page.waitForFunction(
+      (expected) => window.scrollY >= expected - 5,
+      savedScroll
     );
     await page.goto(`${baseURL}/booru?source=danbooru&q=attachments`);
     await dan
