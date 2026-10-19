@@ -819,11 +819,13 @@ function SourceResults({
                 </div>
                 <CoreTagActions post={item} onTag={onTag} />
                 <div className="booru-card-actions">
-                  <BooruDownload
-                    post={item}
-                    instance={source.instance}
-                    compact
-                  />
+                  {!["zip", "cbz"].includes(item.format?.toLowerCase() ?? "") && (
+                    <BooruDownload
+                      post={item}
+                      instance={source.instance}
+                      compact
+                    />
+                  )}
                 </div>
                 {controls}
               </article>
