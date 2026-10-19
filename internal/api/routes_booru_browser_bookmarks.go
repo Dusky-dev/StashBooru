@@ -119,6 +119,10 @@ func normalizeSavedBooruSearch(search string) (string, bool) {
 			if params.Get(key) != "1" {
 				return "", false
 			}
+		case "ai":
+			if params.Get(key) != "hide" {
+				return "", false
+			}
 		case "limit":
 			n, e := strconv.Atoi(params.Get(key))
 			if e != nil || n < 1 || n > 50 {

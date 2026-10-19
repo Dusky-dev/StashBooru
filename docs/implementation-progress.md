@@ -28,6 +28,21 @@ silently promoted to verified production features by this documentation update.
   reaching its end without rendering all 12 immediately. GitHub CI verification
   will be recorded on the new PR.
 
+## Booru AI-generated tag filter — 2026-10-19
+
+- Baseline: current `develop` following Rule34 API updates, feature branch
+  `feat/booru-ai-generated-toggle-20261019`; no merge or deployment.
+- Added a pressed/unpressed **Hide AI-generated posts on this page** icon in
+  `.booru-filter-icons`. It recognizes explicit `ai_generated`, `ai-generated`
+  and spacing/case variants without inferring origin from an image. Assisted
+  artwork and AI-generated backgrounds remain distinct.
+- Saved URL and filters preserve `ai=hide`; tag aggregation, previews, selection
+  and media filters use the visible loaded-page posts. Native provider searches,
+  pagination and totals are unchanged.
+- Mounted browser regression fixture checks toggling, no refetch, combination
+  with media filters and persistence after reload. Verification is pending CI;
+  provider-tag accuracy and untagged AI are not detectable by this filter.
+
 ## Rule34 authenticated API repair — 2026-10-19
 
 - Baseline: `develop` after merged #153. Feature branch

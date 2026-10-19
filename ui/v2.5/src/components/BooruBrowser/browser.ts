@@ -62,6 +62,7 @@ export interface BrowserSearch {
     | "score_desc";
   rating?: "safe" | "sensitive" | "questionable" | "explicit";
   media?: "images" | "videos";
+  hideAI?: boolean;
   error?: string;
 }
 
@@ -115,6 +116,8 @@ export function readBrowserSearch(search: string): BrowserSearch {
       result.error = "Page size must be from 1 to 50.";
     else result.pageSize = Number(limit);
   }
+  if (params.get("ai") === "hide") result.hideAI = true;
+  else if (params.has("ai")) result.error = "Invalid AI-generated filter.";
   if (params.get("favorites") === "1") result.favorites = true;
   const inspect = params.get("inspect")?.split(":");
   if (
@@ -138,6 +141,7 @@ export function browserSearchURL(value: BrowserSearch): string {
   if (value.favorites) params.set("favorites", "1");
   if (value.pageSize) params.set("limit", String(value.pageSize));
   if (value.showIgnored) params.set("ignored", "1");
+  if (value.hideAI) params.set("ai", "hide");
   for (const key of ["sort", "rating", "media"] as const)
     if (value[key]) params.set(key, value[key]);
   params.set("q", value.query);
@@ -297,6 +301,14 @@ export function postMediaKind(
   return "unknown";
 }
 
+// Match only explicit provider tags. AI-assisted and AI-generated backgrounds
+// are distinct tags and do not assert that the whole post is AI-generated.
+export function isAIGeneratedPost(post: BooruPost): boolean {
+  return post.tags.some(
+    (tag) => tag.name.toLowerCase().replace(/[-\s]/g, "_") === "ai_generated"
+  );
+}
+
 export function browserResultSignature(
   query: string,
   page: number,
@@ -304,7 +316,8 @@ export function browserResultSignature(
   rating?: string,
   media?: string,
   pageSize?: number,
-  favorites?: boolean
+  favorites?: boolean,
+  hideAI?: boolean
 ) {
   return JSON.stringify([
     query,
@@ -314,5 +327,6 @@ export function browserResultSignature(
     media ?? "",
     pageSize ?? 24,
     !!favorites,
+    !!hideAI,
   ]);
 }

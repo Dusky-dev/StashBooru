@@ -86,6 +86,19 @@ Metadata uses the native resolution label, dimensions, file-size units and upper
 format. The MD5 and local-match evidence share the bottom row. Download actions
 retain the converter switch, without repeating the settings explanatory text.
 
+**Hide AI-generated posts** is a two-state robot-icon button inside
+`.booru-filter-icons`. It is off by default, and when pressed hides posts on
+the **currently loaded page** that have an explicit `ai_generated`,
+`ai-generated` or equivalent case/spacing variant tag. It does **not**
+classify images from pixels, and `ai_assisted` and
+`ai_generated_background` alone do not count as fully AI-generated.
+The URL preserves the setting as `ai=hide` across refresh, navigation and
+saved searches. The button works together with the media filter, without
+refetching or changing the native provider query. Provider pagination and totals
+still include filtered-out posts; a page may look empty even when later pages
+contain untagged posts. Untagged or incorrectly tagged AI art cannot be
+automatically recognized.
+
 **Rating** offers All ratings, Safe / General, Sensitive, Questionable and Explicit.
 Sensitive is separate on Danbooru and compatible Gelbooru sites; it is disabled on
 engines without that rating. The menu entries and selected underline use matching
