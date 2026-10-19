@@ -132,6 +132,15 @@ function result(source, query, page) {
                 : []),
       ],
     }));
+  if (query === "many-attachments")
+    response.posts[0].attachments = Array.from({ length: 11 }, (_, index) => ({
+      ...response.posts[0],
+      id: `p${(index + 1).toString(16).padStart(32, "a")}`,
+      mediaKey: (index + 1).toString(16).padStart(48, "b"),
+      format: index === 2 ? "webm" : "png",
+      md5: undefined,
+      attachments: undefined,
+    }));
   if (query === "details")
     Object.assign(response.posts[0], {
       id: "107",
@@ -1954,47 +1963,51 @@ try {
       .getByRole("button", { name: "Inspect Danbooru post 101", exact: true })
       .click();
     const attachmentPreview = page.getByRole("dialog");
-    await attachmentPreview
-      .getByLabel("Media file", { exact: true })
-      .selectOption("1");
     assert.equal(
-      await attachmentPreview.getByText("MD5:", { exact: false }).count(),
-      0
+      await attachmentPreview.locator("select#booru-asset").count(),
+      0,
+      "legacy media dropdown should be removed"
     );
+    const mediaSections = attachmentPreview.locator(".booru-inspection-asset");
+    assert.equal(await mediaSections.count(), 2);
     await attachmentPreview
+      .getByRole("region", { name: "Media 2 of 2" })
       .getByRole("button", { name: "Download to Stash", exact: true })
       .click({ trial: true });
+    assert.equal(
+      await mediaSections.nth(1).getByText("MD5:", { exact: false }).count(),
+      0,
+      "attachment must show its own metadata"
+    );
+    assert.equal(
+      await mediaSections.nth(0).getByText("MD5:", { exact: false }).count(),
+      1,
+      "primary MD5 must not disappear when scrolling attachments"
+    );
     const attachmentRequest = page.waitForRequest(
       (request) =>
         request.method() === "POST" &&
         new URL(request.url()).pathname.endsWith("/booru-browser/download")
     );
-    await attachmentPreview
-      .getByRole("button", { name: "Refresh previews", exact: true })
-      .focus();
+    await mediaSections.nth(1).focus();
     await page.keyboard.press("ArrowUp");
     assert.equal((await attachmentRequest).postDataJSON().key, "e".repeat(48));
-    await attachmentPreview
-      .getByRole("button", { name: "Next preview (Right arrow)", exact: true })
-      .focus();
+    await mediaSections.nth(1).focus();
     await page.keyboard.press("ArrowRight");
     await attachmentPreview
       .getByText("Danbooru #102", { exact: true })
       .waitFor();
+    assert.equal(await mediaSections.count(), 2);
     assert.equal(
       await attachmentPreview
-        .getByLabel("Media file", { exact: true })
-        .inputValue(),
-      "0"
+        .locator(".modal-body")
+        .evaluate((element) => element.scrollTop),
+      0,
+      "navigating posts must reset the media scroll position"
     );
-    assert.equal(
-      await attachmentPreview.getByText("MD5:", { exact: false }).count(),
-      1
-    );
-    // A previously downloaded post can restore a queued job, then become a
-    // completed Retry action. Wait for that action before using the shortcut.
     await attachmentPreview
       .getByRole("button", { name: /^(?:Retry download|Download) to Stash$/ })
+      .first()
       .click({ trial: true });
     const nextPrimaryRequest = page.waitForRequest(
       (request) =>
@@ -2007,9 +2020,6 @@ try {
     await page.keyboard.press("ArrowUp");
     assert.equal((await nextPrimaryRequest).postDataJSON().key, "f".repeat(48));
     await attachmentPreview
-      .getByLabel("Media file", { exact: true })
-      .selectOption("1");
-    await attachmentPreview
       .getByRole("button", {
         name: "Previous preview (Left arrow)",
         exact: true,
@@ -2018,13 +2028,59 @@ try {
     await attachmentPreview
       .getByText("Danbooru #101", { exact: true })
       .waitFor();
+    assert.equal(await mediaSections.count(), 2);
     assert.equal(
-      await attachmentPreview
-        .getByLabel("Media file", { exact: true })
-        .inputValue(),
-      "0"
+      await mediaSections.nth(0).getByText("MD5:", { exact: false }).count(),
+      1
     );
     await attachmentPreview
+      .locator(".modal-footer")
+      .getByRole("button", { name: "Close", exact: true })
+      .click();
+
+    await page.goto(`${baseURL}/booru?source=danbooru&q=many-attachments`);
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 101", exact: true })
+      .click();
+    const longPreview = page.getByRole("dialog");
+    const scrollingBody = longPreview.locator(".modal-body");
+    const streamedMedia = longPreview.locator(".booru-inspection-asset");
+    assert.ok(
+      (await streamedMedia.count()) < 12,
+      "gallery mounted every media file instead of loading incrementally"
+    );
+    for (const target of [6, 9, 12]) {
+      await scrollingBody.evaluate((element) => {
+        element.scrollTop = element.scrollHeight;
+      });
+      await page.waitForFunction(
+        (expected) =>
+          document.querySelectorAll(
+            ".booru-browser-inspection .booru-inspection-asset"
+          ).length >= expected,
+        target
+      );
+    }
+    assert.equal(await streamedMedia.count(), 12);
+    assert.equal(
+      await longPreview.locator(".booru-media-load-more").count(),
+      0,
+      "stream should stop loading when all files are present"
+    );
+    assert.equal(
+      await longPreview.getByRole("region", { name: "Media 12 of 12" }).count(),
+      1
+    );
+    assert.equal(
+      await longPreview
+        .getByRole("button", {
+          name: /^(?:Retry download|Download) to Stash$/,
+        })
+        .count(),
+      12,
+      "each file needs its own download action"
+    );
+    await longPreview
       .locator(".modal-footer")
       .getByRole("button", { name: "Close", exact: true })
       .click();

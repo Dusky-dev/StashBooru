@@ -26,7 +26,24 @@ silently promoted to verified production features by this documentation update.
 - Mock-transport regressions verify Paheal's exact API route and parameters,
   realistic posts XML with count/media/tags, and rejection of HTML, negative
   counts and provider records beyond the requested limit. Live Paheal
-  acceptance is not yet verified from this runtime.
+  acceptance remains unverified; browser/build CI passed on the initial PR head,
+  while gofmt was corrected after lint reported its sole source finding.
+
+## Multi-file post inspector stream — 2026-10-19
+
+- Baseline: latest `develop`. Branch
+  `feat/booru-inspector-infinite-media-20261019`; no merge or deployment.
+- Replaces `Media file` `btn-secondary form-control` select with a vertical
+  gallery inside a scrollable post inspector. Shows each media's own preview,
+  metadata, download and hash without selecting a dropdown option.
+- Progressive IntersectionObserver loading mounts three assets per batch
+  near the scroll boundary. Animated/video playback stays on demand;
+  post navigation resets scroll-gallery state and download shortcut target.
+  The stream is bounded by provider-returned supported attachments.
+- Desktop/mobile browser regressions test first/secondary file download,
+  per-file metadata, next/previous post navigation and a 12-file gallery
+  reaching its end without rendering all 12 immediately. GitHub CI verification
+  will be recorded on the new PR.
 
 ## Booru AI-generated tag filter — 2026-10-19
 
