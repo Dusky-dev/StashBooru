@@ -1876,8 +1876,8 @@ try {
     );
     await page.reload();
     await blankRequest;
-    await page.waitForFunction(
-      () => document.querySelector('.booru-source[aria-busy="true"]')
+    await page.waitForFunction(() =>
+      document.querySelector('.booru-source[aria-busy="true"]')
     );
     assert.ok(heldBlankReload, "blank result was not held for reload");
     assert.equal(
