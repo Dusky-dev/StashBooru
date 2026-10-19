@@ -1,6 +1,7 @@
 import { type RefObject, useEffect, useRef, useState } from "react";
 import { Alert } from "react-bootstrap";
 import { type BooruPost, readBooruResponse } from "./browser";
+import { BooruDownload } from "./BooruDownload";
 
 interface ArchiveFile {
   index: number;
@@ -26,9 +27,11 @@ const archiveURL = (key: string, file?: number) =>
 export function BooruArchive({
   post,
   scrollBody,
+  instance,
 }: {
   post: BooruPost;
   scrollBody: RefObject<HTMLDivElement | null>;
+  instance: string;
 }) {
   const [listing, setListing] = useState<ArchiveListing>();
   const [error, setError] = useState("");
@@ -79,7 +82,7 @@ export function BooruArchive({
   return (
     <div className="booru-archive-media" aria-label="Archive media">
       <p className="small text-muted">
-        ZIP/CBZ archive · Previewing supported media without saving extracted
+        ZIP/CBZ archive · Preview, save to Stash, or download individual media
         files
       </p>
       {!listing && !error && <p role="status">Reading archive contents…</p>}
@@ -128,6 +131,21 @@ export function BooruArchive({
                     onError={() => setFailed((prev) => [...prev, file.index])}
                   />
                 )}
+                <div className="booru-archive-actions">
+                  <BooruDownload
+                    post={post}
+                    instance={instance}
+                    archiveIndex={file.index}
+                    archiveName={file.name}
+                  />
+                  <a
+                    className="btn btn-outline-secondary btn-sm"
+                    href={`${src}&download=1`}
+                    download={file.name.split("/").at(-1)}
+                  >
+                    Save file to computer
+                  </a>
+                </div>
               </section>
             );
           })}
