@@ -27,7 +27,7 @@ func (c *Client) AccountFavorites(ctx context.Context, s Source, page, limit int
 	if !s.AccountFavoritesAvailable() {
 		return result, &Error{Code: "unsupported-query", Message: "Account favorites require a supported Danbooru, Gelbooru/DAPI or e621 source with its account credentials saved in Settings."}
 	}
-	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, accountFavoritesDeadline(s.Engine, limit))
 	defer cancel()
 	if s.Engine == "danbooru" {
 		// /favorites.json returns relations, not posts. Keep ordered favorites
@@ -130,4 +130,16 @@ func (c *Client) AccountFavorites(ctx context.Context, s Source, page, limit int
 	// DAPI totals are advisory: a full page must not hide later favorites.
 	result.HasMore = len(rows) == limit && page < MaxPage
 	return result, nil
+}
+
+// accountFavoritesDeadline budgets the Gelbooru favorites index plus up to
+// limit sequential post-detail requests. fetchJSON caps each request at 20s;
+// an overall fixed 60s timeout would truncate otherwise valid large pages.
+// The parent context still cancels immediately when the browser leaves.
+func accountFavoritesDeadline(engine string, limit int) time.Duration {
+	const base = 60 * time.Second
+	if engine == "gelbooru" {
+		return base + time.Duration(limit)*20*time.Second
+	}
+	return base
 }
