@@ -79,6 +79,15 @@ search; multiple tags open a chooser, then search the chosen tag. Sidebar tags b
 the same way. Disable **Search immediately when clicking tags** in Booru Settings
 to only fill the draft. This preference is saved in this browser. Categories come from the provider or an exact canonical-name match in the
 installed per-source CSV. Prefixes and aliases never guess categories for flat tags.
+For **Rule34.xxx**, StashBooru also uses the official authenticated tag DAPI
+to look up exact tag categories in bounded batches after retrieving the posts.
+The site supplies artist, copyright/series, character, general and metadata
+types even though its post JSON contains only flat tag strings. The results
+are cached per Rule34 instance; searches still work when tag lookups fail, and
+any unresolved tags remain uncategorized. Installed per-source CSV types take
+precedence. Automatic enrichment checks at most 500 uncategorized tags per
+search page, so very large pages can retain some unknown tags.
+
 The inspector groups and colors tags by category. Click a tag for **Add to search**
 or **Replace search**; these update and submit the query and close the preview.
 With immediate search disabled, they only update the draft and close the preview.
