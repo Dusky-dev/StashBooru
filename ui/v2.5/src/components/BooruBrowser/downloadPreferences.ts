@@ -3,6 +3,7 @@ import { readBooruResponse } from "./browser";
 interface DownloadPreferences {
   convert: boolean;
   defaultDirectory: string;
+  maxFileSizeMiB: number;
 }
 let pending: Promise<DownloadPreferences> | undefined;
 export function invalidateDownloadPreferences() {
