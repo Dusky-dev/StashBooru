@@ -111,6 +111,9 @@ func storeBooruArchiveLocked(key string, data []byte) {
 // Concurrent requests for the same server-issued media key share one provider
 // fetch. A waiter can cancel without aborting the request doing the download.
 func cachedBooruArchive(ctx context.Context, key string, fetch func(context.Context) ([]byte, error)) ([]byte, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	booruArchiveCache.Lock()
 	if entry := booruArchiveCache.entries[key]; entry != nil {
 		if time.Since(entry.Created) < booruArchiveCacheTTL {
@@ -132,21 +135,35 @@ func cachedBooruArchive(ctx context.Context, key string, fetch func(context.Cont
 	booruArchiveCache.loading[key] = pending
 	booruArchiveCache.Unlock()
 
-	data, err := fetch(ctx)
-	booruArchiveCache.Lock()
-	if err == nil {
-		storeBooruArchiveLocked(key, data)
+	// The shared work does not inherit the initiating HTTP request's
+	// cancellation: a disconnected viewer must not abort other waiting viewers.
+	go func() {
+		fetchCtx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		data, err := fetch(fetchCtx)
+		booruArchiveCache.Lock()
+		if err == nil {
+			storeBooruArchiveLocked(key, data)
+		}
+		pending.Data, pending.Err = data, err
+		delete(booruArchiveCache.loading, key)
+		close(pending.Done)
+		booruArchiveCache.Unlock()
+	}()
+	select {
+	case <-pending.Done:
+		return pending.Data, pending.Err
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	}
-	pending.Data, pending.Err = data, err
-	delete(booruArchiveCache.loading, key)
-	close(pending.Done)
-	booruArchiveCache.Unlock()
-	return data, err
 }
 
 // Cache only the most recently accessed decoded video per archive, so HTTP
 // range requests do not reinflate the same 24 MiB entry for each seek.
 func cachedBooruArchiveVideo(ctx context.Context, key string, index int, decode func(context.Context) ([]byte, string, error)) ([]byte, string, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, "", err
+	}
 	id := key + ":" + strconv.Itoa(index)
 	booruArchiveCache.Lock()
 	if entry := booruArchiveCache.entries[key]; entry != nil && entry.VideoIndex == index && entry.Video != nil {
@@ -167,18 +184,27 @@ func cachedBooruArchiveVideo(ctx context.Context, key string, index int, decode 
 	booruArchiveCache.videos[id] = pending
 	booruArchiveCache.Unlock()
 
-	data, mime, err := decode(ctx)
-	booruArchiveCache.Lock()
-	if err == nil {
-		if entry := booruArchiveCache.entries[key]; entry != nil {
-			entry.VideoIndex, entry.Video, entry.VideoMIME = index, data, mime
+	go func() {
+		decodeCtx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		data, mime, err := decode(decodeCtx)
+		booruArchiveCache.Lock()
+		if err == nil {
+			if entry := booruArchiveCache.entries[key]; entry != nil {
+				entry.VideoIndex, entry.Video, entry.VideoMIME = index, data, mime
+			}
 		}
+		pending.Data, pending.MIME, pending.Err = data, mime, err
+		delete(booruArchiveCache.videos, id)
+		close(pending.Done)
+		booruArchiveCache.Unlock()
+	}()
+	select {
+	case <-pending.Done:
+		return pending.Data, pending.MIME, pending.Err
+	case <-ctx.Done():
+		return nil, "", ctx.Err()
 	}
-	pending.Data, pending.MIME, pending.Err = data, mime, err
-	delete(booruArchiveCache.videos, id)
-	close(pending.Done)
-	booruArchiveCache.Unlock()
-	return data, mime, err
 }
 
 // Limit decompression as well as remote media fetching. ZIP inflation can be
