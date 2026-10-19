@@ -12,6 +12,25 @@ P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
 
+## Download queue reclamation — 2026-10-20
+
+- Baseline: `develop` at `dff85613459f83adfb926d8e5013a751196a6f7a`.
+  Branch: `fix/booru-download-queue-completed-reclaim-20261020`.
+- Fixes the reported 429 "Download queue is full. Completed entries expire after
+  one hour" caused by keeping up to 100 already-finished jobs in the
+  in-memory Booru download status registry.
+- When the registry reaches its 100-slot cap, evict the oldest terminal
+  (complete, failed or cancelled) status before admitting a new download;
+  preserve active queued/downloading/importing jobs, their job cancellation and
+  original file/import receipts. Full active queues still return 429 with a
+  specific explanation. Terminal statuses remain visible until memory pressure
+  or the previous one-hour expiry.
+- Tracks terminal timestamps under the existing registry lock. Adds regression
+  tests for oldest-finished eviction, cancelled jobs, active backpressure,
+  a hundred completed downloads, and retention below capacity.
+- Validation: GitHub CI on the PR is authoritative; no production deployment
+  or merge performed in this change.
+
 ## Paheal XML API endpoint repair — 2026-10-19
 
 - Baseline: current `develop` after #155, feature branch
