@@ -2,17 +2,17 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"crypto/md5" //nolint:gosec // Media identity, not security.
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
