@@ -378,6 +378,31 @@ func (rs booruBrowserRoutes) loadBooruArchive(r *http.Request, key string) ([]by
 	})
 }
 
+// The inflation semaphore only covers decompression and validation, never
+// HTTP response transfer. Range requests reuse bounded decoded video bytes.
+func readBooruArchiveEntry(ctx context.Context, file *zip.File, selected booruArchiveFile) ([]byte, string, error) {
+	select {
+	case booruArchiveInflations <- struct{}{}:
+		defer func() { <-booruArchiveInflations }()
+	case <-ctx.Done():
+		return nil, "", ctx.Err()
+	}
+	entry, err := file.Open()
+	if err != nil {
+		return nil, "", fmt.Errorf("cannot open archive entry: %w", err)
+	}
+	defer entry.Close()
+	decoded, err := io.ReadAll(io.LimitReader(entry, booruArchiveEntryMax+1))
+	if err != nil || uint64(len(decoded)) != selected.Bytes || len(decoded) > booruArchiveEntryMax {
+		return nil, "", fmt.Errorf("archive entry is corrupt or exceeds the preview limit")
+	}
+	mime := booruArchiveContentType(selected.Format, decoded)
+	if mime == "" {
+		return nil, "", fmt.Errorf("archive entry is not a valid supported image or video")
+	}
+	return decoded, mime, nil
+}
+
 // Archive serves a listing or one strictly verified image/video from a
 // server-snapshot-approved ZIP/CBZ. The caller can select an entry index, never
 // a remote URL or filesystem path. Existing application authentication applies.
@@ -420,26 +445,18 @@ func (rs booruBrowserRoutes) Archive(w http.ResponseWriter, r *http.Request) {
 		writeBooruError(w, http.StatusNotFound, "archive", "Unsupported or missing archive media.")
 		return
 	}
-	select {
-	case booruArchiveInflations <- struct{}{}:
-		defer func() { <-booruArchiveInflations }()
-	case <-r.Context().Done():
-		return
+	decode := func(ctx context.Context) ([]byte, string, error) {
+		return readBooruArchiveEntry(ctx, zr.File[n], *selected)
 	}
-	entry, err := zr.File[n].Open()
+	var decoded []byte
+	var mime string
+	if selected.Format == "mp4" || selected.Format == "webm" {
+		decoded, mime, err = cachedBooruArchiveVideo(r.Context(), key, n, decode)
+	} else {
+		decoded, mime, err = decode(r.Context())
+	}
 	if err != nil {
-		writeBooruError(w, http.StatusBadGateway, "archive", "Cannot open archive entry.")
-		return
-	}
-	defer entry.Close()
-	decoded, err := io.ReadAll(io.LimitReader(entry, booruArchiveEntryMax+1))
-	if err != nil || uint64(len(decoded)) != selected.Bytes || len(decoded) > booruArchiveEntryMax {
-		writeBooruError(w, http.StatusUnprocessableEntity, "archive", "Archive entry is corrupt or exceeds the preview limit.")
-		return
-	}
-	mime := booruArchiveContentType(selected.Format, decoded)
-	if mime == "" {
-		writeBooruError(w, http.StatusUnsupportedMediaType, "archive", "Archive entry is not a valid supported image or video.")
+		writeBooruError(w, http.StatusUnprocessableEntity, "archive", err.Error())
 		return
 	}
 	w.Header().Set("Content-Type", mime)
