@@ -65,6 +65,7 @@ import {
 import { BooruReview, ReviewEvidence, type ReviewState } from "./BooruReview";
 import { TagAutocomplete } from "./TagAutocomplete";
 import { BooruDownload } from "./BooruDownload";
+import { BooruArchive } from "./BooruArchive";
 import { readBrowserMemory, saveBrowserMemory } from "./browser";
 import { SourceSettings } from "./SourceSettings";
 import { SourceSelector } from "./SourceSelector";
@@ -278,7 +279,10 @@ function PostInspection({
                     {asset.format && ` · ${asset.format.toUpperCase()}`}
                   </h6>
                 )}
-                <MotionPreview post={asset}>
+                {["zip", "cbz"].includes(asset.format?.toLowerCase() ?? "") ? (
+                  <BooruArchive post={asset} scrollBody={scrollBody} />
+                ) : (
+                  <MotionPreview post={asset}>
                   {sample ? (
                     <RemoteImage
                       key={sample}
@@ -295,7 +299,8 @@ function PostInspection({
                       )}
                     </Alert>
                   )}
-                </MotionPreview>
+                  </MotionPreview>
+                )}
                 <div className="booru-file-details mt-2">
                   {!!asset.width && !!asset.height && (
                     <span>
@@ -317,6 +322,7 @@ function PostInspection({
                     </span>
                   )}
                 </div>
+                {!["zip", "cbz"].includes(asset.format?.toLowerCase() ?? "") && (
                 <BooruDownload
                   key={`download:${asset.id}:${asset.mediaKey}`}
                   post={asset}
@@ -326,6 +332,7 @@ function PostInspection({
                     else downloads.current.delete(asset.id);
                   }}
                 />
+                )}
                 <div className="booru-hash">
                   {asset.md5 && (
                     <span>
