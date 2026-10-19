@@ -2118,6 +2118,8 @@ try {
       .getByRole("button", { name: "Close", exact: true })
       .click();
     await page.goto(`${baseURL}/booru?source=danbooru&q=zip-archive`);
+    // Synthetic one-pixel PNG fixtures need real preview height for scroll testing.
+    await page.addStyleTag({ content: ".booru-archive-file img { min-height: 65vh; }" });
     await dan
       .getByRole("button", { name: "Inspect Danbooru post 101", exact: true })
       .click();
