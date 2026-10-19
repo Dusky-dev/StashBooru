@@ -218,7 +218,9 @@ export function BrowserToolsSettings() {
           step={16}
           value={maxFileSizeMiB}
           disabled={busy || !loaded}
-          onChange={(event) => setMaxFileSizeMiB(Number(event.currentTarget.value))}
+          onChange={(event) =>
+            setMaxFileSizeMiB(Number(event.currentTarget.value))
+          }
         />
         <Form.Text muted>
           Default: 256 MiB. Applies to remote downloads, ZIP/CBZ archives and
@@ -242,7 +244,13 @@ export function BrowserToolsSettings() {
       </p>
       <Button
         size="sm"
-        disabled={busy || !loaded || !Number.isInteger(maxFileSizeMiB) || maxFileSizeMiB < 16 || maxFileSizeMiB > 512}
+        disabled={
+          busy ||
+          !loaded ||
+          !Number.isInteger(maxFileSizeMiB) ||
+          maxFileSizeMiB < 16 ||
+          maxFileSizeMiB > 512
+        }
         onClick={() => void action(save)}
       >
         Save download settings
