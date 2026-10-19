@@ -139,6 +139,7 @@ function PostInspection({
   useLayoutEffect(() => {
     setStream({ identity, count: 3 });
     activeIndex.current = 0;
+    if (scrollBody.current) scrollBody.current.scrollTop = 0;
   }, [identity]);
   useEffect(() => {
     if (visibleCount >= assets.length) return;
