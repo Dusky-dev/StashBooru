@@ -22,13 +22,13 @@ import (
 // These limits apply before inflation and are independent of the provider's
 // advertised content length (which may be missing or untrusted).
 const (
-	booruArchiveMaxBytes       = booruDefaultFileSizeMiB << 20
-	booruArchiveEntryMax       = booruDefaultFileSizeMiB << 20
-	booruArchiveMaxFiles       = 512
-	booruArchiveMaxMedia       = 128
-	booruArchiveCacheSize      = 4
-	booruArchiveCacheMaxBytes  = 256 << 20
-	booruArchiveVideoCacheMax  = 32 << 20
+	booruArchiveMaxBytes      = booruDefaultFileSizeMiB << 20
+	booruArchiveEntryMax      = booruDefaultFileSizeMiB << 20
+	booruArchiveMaxFiles      = 512
+	booruArchiveMaxMedia      = 128
+	booruArchiveCacheSize     = 4
+	booruArchiveCacheMaxBytes = 256 << 20
+	booruArchiveVideoCacheMax = 32 << 20
 )
 
 type booruArchiveFile struct {
