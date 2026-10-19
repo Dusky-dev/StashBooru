@@ -170,7 +170,12 @@ export function BooruDownload({
       const result = await fetch("booru-browser/download", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: post.mediaKey, convert, destination, archiveFile }),
+        body: JSON.stringify({
+          key: post.mediaKey,
+          convert,
+          destination,
+          archiveFile,
+        }),
       }).then(readBooruResponse<{ jobID: number; token: string }>);
       if (mounted.current) setState({ ...result, status: "queued" });
       try {
