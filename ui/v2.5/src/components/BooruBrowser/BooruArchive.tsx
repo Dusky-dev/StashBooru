@@ -70,7 +70,7 @@ export function BooruArchive({
           setVisibleCount((count) => Math.min(listing.files.length, count + 3));
         }
       },
-      { root, rootMargin: "240px 0px" }
+      { root, rootMargin: "0px" }
     );
     observer.observe(target);
     return () => observer.disconnect();
