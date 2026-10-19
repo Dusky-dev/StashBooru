@@ -419,6 +419,12 @@
     padding: 0.75rem 0;
   }
 
+  // Reserve height before archive thumbnails decode, so a slow network cannot
+  // advance the lazy-load sentinel through the whole archive in one tick.
+  .booru-archive-file .booru-sample {
+    min-height: 45vh;
+  }
+
   .booru-archive-filename {
     font-size: 0.8rem;
     margin-bottom: 0.5rem;
