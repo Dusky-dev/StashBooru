@@ -1,17 +1,96 @@
 # StashBooru implementation progress
 
-Updated: 2026-10-18
+Updated: 2026-10-19
 
-Current baseline: `develop` at `ce2ae8df1f4a900f5a76ba7185f1b247cdb786a2`.
-PR #149 is merged. Branch `feat/booru-native-controls-20261018` refines the browser
-with native Stash controls, compact cards and keyboard/animated inspection.
-Review: [PR #150](https://github.com/Dusky-dev/StashBooru/pull/150).
-See [browser guide](booru-browser.md), [review guide](booru-review-state.md) and
-[downloads/autocomplete guide](booru-downloads-autocomplete.md).
+Current baseline: `develop` at `d29d8767db06f1b14abb2928a7edf1c911100779`.
+PR #150 is merged. Branch `feat/booru-providers-toolbar-20261018` adds the requested
+provider adapters, filename settings and native toolbar/Favorites workflow.
+Review: [PR #151](https://github.com/Dusky-dev/StashBooru/pull/151).
+See [browser guide](booru-browser.md) and [downloads/autocomplete guide](booru-downloads-autocomplete.md).
 
 P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
+
+## PR #151 review corrections — 2026-10-19
+
+- Reviewed Codex findings on `85c8e77c3de39df5bf626cfb3d656a9d82398405`;
+  fresh develop remains `d29d8767db06f1b14abb2928a7edf1c911100779`.
+  Continue the existing PR/branch; no merge or deployment.
+- Post navigation resets the selected gallery attachment to the primary file.
+  Selection is scoped to source-instance/post identity before actions render;
+  the modal retains focus for consecutive arrow keys. Regression coverage checks
+  secondary-file download, next-post primary download, previous-post reset and
+  the existing uninterrupted keyboard/animated-preview workflow.
+- Blank saved searches outside Favorites persist as `q=*`. Previously accepted
+  blank filters are normalized when loaded. Duplicate query parameters, control
+  lines and query/URL bounds still reject; Favorites retains its own mode.
+- Pawchive text queries now return an explicit unsupported-query input error
+  before any network request. Recent-post and creator browsing remain supported;
+  Kemono retains text search. The [Pawchive frontend notes](https://github.com/dragonjay-lyj/pawchive#notes)
+  document that its upstream posts endpoint ignores `q`; bounded local search is separate.
+  Query help and the browser guide describe the supported behavior.
+- Runtime checkpoint: local `0daf10e8d4dc5334215a3b4891ef9116694aa1b1`.
+  Focused provider/API regressions passed. All 60 UI tests, full JS/CSS lint,
+  TypeScript and formatting passed before the modal-focus refinement; focused
+  lint and TypeScript passed again after that refinement.
+- Full `make test` and `make it` passed, including the final API regressions.
+  Production bundling and mounted 1440×1000 / 390×844 passed on the final runtime;
+  both gallery-reset/download identity and consecutive arrow-key navigation passed.
+  All 24 relative links in the edited guides/ledger and `git diff --check` passed.
+  Full `make lint` passed with no issues. GitHub checks rerun on publication;
+  their current status is attached to PR #151.
+- On reviewed head `85c8e77`, GitHub generation, native tests, lint, browser and
+  six platform builds passed. FreeBSD alone failed while downloading
+  `github.com/klauspost/compress` with a TLS handshake timeout, before compilation.
+  No workflow change is needed for that transient dependency-fetch failure;
+  publication reruns the checks on the corrected head.
+
+## Providers, filenames and list toolbar — 2026-10-18 UTC
+
+- Fresh develop `d29d8767db06f1b14abb2928a7edf1c911100779`, no open PRs and
+  existing task branch confirmed when resuming. Paheal/Shimmie, Pixiv App API,
+  Pawchive and Kemono adapters added with explicit authentication/query limits.
+- Fixed upstream pagination is sliced without dropping records. Galleries retain
+  separate file identities and an inspector selector; unsupported archive files
+  and unavailable originals are labelled. Existing native Jobs, scanner and saved
+  converter defaults handle each explicit attachment download.
+- Common Grabber filename tokens support safe literal subfolders, collision
+  suffixes and asset/template-bound receipt reuse. Empty settings preserve legacy
+  names. No arbitrary scripting or overwrites are enabled.
+- Search/source selector move into native list toolbar below selected-source
+  badges. Native page size, pagination index, Grid/Wall and zoom replace the
+  redundant results header/sort selector. Core taxonomy icons fill Search or open
+  a chooser. Display switches move into list operations. Folder picker uses a
+  header Root icon and automatic typed-path browsing.
+- Shared server Favorites preserve bounded post/gallery snapshots separately from
+  named search filters. Writes are atomic; disabled/changed sources are rechecked.
+- Local full `make test` and `make it` passed for the implementation. All 60 UI
+  tests, JS/CSS lint, TypeScript/formatting and final production bundling passed.
+  Mounted 1440×1000 and 390×844 passed on local runtime
+  `18eccd2f6a09caa7e24bf05854dd30a512c9a103`: Favorites add/remove/reload,
+  saved filters apply/delete, single/multiple core tags, native toolbar/page size,
+  Grid/Wall zoom persistence, decoded thumbnail geometry and top-corner selection,
+  selected attachment download identity, Root folder navigation, filename setting
+  persistence, decoded WebM/GIF, keyboard controls and prior race/cancellation flows.
+- Published runtime `0d873405c53e8e2efeb2b9986d07c7d8cb154f33` matched that tree
+  (`a38c61926d79be54128f703d9f2a0b7589ab05ff`); GitHub generation/full UI/production
+  and browser checks passed. CI found one unchecked JSON marshal result in Shimmie.
+  The explicit error check is local `f389b5bea94d7854aae6bdd0780b9fe9caa4852a`,
+  published `058d671006601f93fecdef8cebb0d95b1f5b7bb8`, matching tree
+  `3a8bbd5ca0663d88b8e4a9d9d65f8c2fd3958f66`. Provider tests and package lint
+  pass after that change. GitHub full Go lint and mounted desktop/mobile checks
+  passed on `058d671006601f93fecdef8cebb0d95b1f5b7bb8`; UI is unchanged by the
+  correction. Full integration/platform jobs and generation results are linked
+  from PR #151. Final local production bundling used a separate output directory
+  to avoid changing embedded assets during Go checks. Synthetic desktop/mobile
+  screenshots were reviewed separately from real-provider/account acceptance.
+  All 40 relative links in the updated README/guides/ledger and `git diff --check`
+  passed. This documentation checkpoint changes no runtime code.
+- Limits: provider network/account acceptance remains unverified. Pixiv requires
+  a user-provided access token (no refresh/login flow); Ugoira ZIPs, archive
+  documents, remote account favorites/follows and bulk gallery downloads are not
+  implemented. New engines can use CSV completion. No merge/deploy is performed.
 
 ## Native browser controls and animated inspection — 2026-10-18 UTC
 

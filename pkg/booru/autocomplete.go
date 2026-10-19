@@ -34,6 +34,9 @@ func (c *Client) Autocomplete(ctx context.Context, source Source, prefix string)
 	if err := ctx.Err(); err != nil {
 		return nil, requestError(ctx)
 	}
+	if source.Engine == "pixiv" || source.Engine == "pawchive" || source.Engine == "kemono" || source.Engine == "shimmie" {
+		return nil, &Error{Code: "autocomplete", Message: "Live completion unavailable for this engine; install an optional CSV database."}
+	}
 	prefix = strings.ToLower(strings.TrimSpace(prefix))
 	if source.Engine == "philomena" && len(prefix) < 3 {
 		return []Suggestion{}, nil

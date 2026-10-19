@@ -26,7 +26,12 @@ export interface BooruPost {
   md5?: string;
   rating?: string;
   format?: string;
-  tags: { name: string; category: string }[];
+  tags: { name: string; category: string; label?: string }[];
+  attachments?: BooruPost[];
+  remoteID?: string;
+  title?: string;
+  favorite?: boolean;
+  mediaNotice?: string;
 }
 
 export interface BooruResult {
@@ -46,6 +51,7 @@ export interface BrowserSearch {
   inspect?: { source: string; id: string };
   showIgnored?: boolean;
   pageSize?: number;
+  favorites?: boolean;
   sort?: "newest" | "popular" | "updated";
   rating?: "safe" | "questionable" | "explicit";
   media?: "images" | "videos";
@@ -101,11 +107,12 @@ export function readBrowserSearch(search: string): BrowserSearch {
       result.error = "Page size must be from 1 to 50.";
     else result.pageSize = Number(limit);
   }
+  if (params.get("favorites") === "1") result.favorites = true;
   const inspect = params.get("inspect")?.split(":");
   if (
     inspect?.length === 2 &&
     sources.includes(inspect[0]) &&
-    /^[1-9][0-9]{0,19}$/.test(inspect[1])
+    /^(?:[1-9][0-9]{0,19}|[ap][a-f0-9]{32})$/.test(inspect[1])
   ) {
     result.inspect = { source: inspect[0], id: inspect[1] };
   }
@@ -120,6 +127,7 @@ export function browserSearchURL(value: BrowserSearch): string {
       params.set(`p.${source}`, String(value.pages[source]));
     }
   }
+  if (value.favorites) params.set("favorites", "1");
   if (value.pageSize) params.set("limit", String(value.pageSize));
   if (value.showIgnored) params.set("ignored", "1");
   for (const key of ["sort", "rating", "media"] as const)
@@ -200,6 +208,8 @@ export interface BrowserMemory {
   scroll: number;
   thumbnails?: boolean;
   autocomplete?: "live" | "database";
+  displayMode?: "grid" | "wall";
+  zoom?: number;
 }
 const key = "booru-browser-state-v1";
 export function readBrowserMemory(): BrowserMemory | undefined {
@@ -223,6 +233,10 @@ export function readBrowserMemory(): BrowserMemory | undefined {
         typeof value.thumbnails !== "boolean") ||
       (value.autocomplete !== undefined &&
         !["live", "database"].includes(value.autocomplete)) ||
+      (value.displayMode !== undefined &&
+        !["grid", "wall"].includes(value.displayMode)) ||
+      (value.zoom !== undefined &&
+        (!Number.isInteger(value.zoom) || value.zoom < 0 || value.zoom > 3)) ||
       !Number.isFinite(value.scroll)
     )
       return undefined;
@@ -270,7 +284,8 @@ export function browserResultSignature(
   sort?: string,
   rating?: string,
   media?: string,
-  pageSize?: number
+  pageSize?: number,
+  favorites?: boolean
 ) {
   return JSON.stringify([
     query,
@@ -279,5 +294,6 @@ export function browserResultSignature(
     rating ?? "",
     media ?? "",
     pageSize ?? 24,
+    !!favorites,
   ]);
 }

@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -17,7 +16,6 @@ import (
 	"github.com/stashapp/stash/pkg/models"
 )
 
-var booruReviewID = regexp.MustCompile(`^[1-9][0-9]{0,19}$`)
 var booruReviewMD5 = regexp.MustCompile(`^[a-fA-F0-9]{32}$`)
 
 type booruReviewPost struct {
@@ -74,13 +72,7 @@ func readBooruReviewJSON(w http.ResponseWriter, r *http.Request, value any) bool
 	return true
 }
 
-func validBooruReviewID(id string) bool {
-	if !booruReviewID.MatchString(id) {
-		return false
-	}
-	_, err := strconv.ParseUint(id, 10, 64)
-	return err == nil
-}
+func validBooruReviewID(id string) bool { return booru.ValidPostID(id) }
 
 func (rs booruBrowserRoutes) reviewSource(w http.ResponseWriter, id, instance string) *booru.Source {
 	sources, err := rs.sources()

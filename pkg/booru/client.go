@@ -20,6 +20,7 @@ const responseLimit = 8 << 20
 type Tag struct {
 	Name     string `json:"name"`
 	Category string `json:"category"`
+	Label    string `json:"label,omitempty"`
 }
 
 type Post struct {
@@ -40,6 +41,17 @@ type Post struct {
 	Rating            string `json:"rating,omitempty"`
 	Format            string `json:"format,omitempty"`
 	Tags              []Tag  `json:"tags"`
+	Attachments       []Post `json:"attachments,omitempty"`
+	RemoteID          string `json:"remoteID,omitempty"`
+	Title             string `json:"title,omitempty"`
+	Author            string `json:"author,omitempty"`
+	AuthorID          string `json:"authorID,omitempty"`
+	Filename          string `json:"filename,omitempty"`
+	Position          int    `json:"position,omitempty"`
+	Score             int64  `json:"score,omitempty"`
+	CreatedAt         string `json:"createdAt,omitempty"`
+	Favorite          bool   `json:"favorite,omitempty"`
+	MediaNotice       string `json:"mediaNotice,omitempty"`
 }
 
 type Result struct {
@@ -178,6 +190,9 @@ func (c *Client) SearchFiltered(ctx context.Context, source Source, query string
 	}
 	if err := ValidateQuery(query, page, limit); err != nil {
 		return Result{}, err
+	}
+	if source.Engine == "pixiv" || source.Engine == "kemono" || source.Engine == "pawchive" || source.Engine == "shimmie" {
+		return c.searchExtended(ctx, source, query, page, limit, options)
 	}
 	query, err := source.filterQuery(query, options)
 	if err != nil {

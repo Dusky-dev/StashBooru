@@ -233,7 +233,7 @@ func TestPublicNetworkBoundary(t *testing.T) {
 
 func TestSourceConfiguration(t *testing.T) {
 	sources, err := Configure(nil)
-	if err != nil || len(sources) != 10 {
+	if err != nil || len(sources) != len(Defaults()) {
 		t.Fatalf("bad defaults: %v", err)
 	}
 	for _, data := range []string{`null`, `[] []`, `[{"id":"x","name":"x","engine":"unknown","url":"https://x.example.org"}]`, `[{"id":"x","disabled":true},{"id":"x","disabled":true}]`, `[{"id":"x","typo":"value"}]`} {
@@ -242,7 +242,7 @@ func TestSourceConfiguration(t *testing.T) {
 		}
 	}
 	sources, err = Configure([]byte(`[{"id":"danbooru","disabled":true},{"id":"custom","name":"Custom","engine":"danbooru","url":"https://custom.example.org/sub","login":"me","apiKey":"secret"}]`))
-	if err != nil || len(sources) != 10 || sources[len(sources)-1].ID != "custom" {
+	if err != nil || len(sources) != len(Defaults()) || sources[len(sources)-1].ID != "custom" {
 		t.Fatalf("bad overlay: %v", err)
 	}
 	for _, raw := range []string{"http://public.example.org", "https://localhost", "https://127.0.0.1", "https://public.example.org/?api_key=secret", "https://owner:secret@public.example.org", "https://public.example.org:8080"} {

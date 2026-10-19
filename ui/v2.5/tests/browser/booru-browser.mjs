@@ -104,8 +104,36 @@ function result(source, query, page) {
       format: index % 3 === 0 ? "webm" : index === 1 ? "gif" : "png",
       width: index % 2 ? 480 : 640,
       height: index % 2 ? 640 : 480,
-      tags: response.posts[0].tags.slice(0, 2),
+      tags: [
+        ...response.posts[0].tags.slice(0, 2),
+        { name: "character_a", category: "character" },
+        { name: "character_b", category: "character" },
+      ],
     }));
+  if (query === "attachments") {
+    response.posts[0].attachments = [
+      {
+        ...response.posts[0],
+        id: "p" + "e".repeat(32),
+        mediaKey: "e".repeat(48),
+        format: "png",
+        md5: undefined,
+        attachments: undefined,
+      },
+    ];
+    response.posts.push({
+      ...response.posts[0],
+      id: "102",
+      mediaKey: "f".repeat(48),
+      attachments: [
+        {
+          ...response.posts[0].attachments[0],
+          id: "p" + "9".repeat(32),
+          mediaKey: "9".repeat(48),
+        },
+      ],
+    });
+  }
   return response;
 }
 
@@ -127,10 +155,25 @@ try {
     });
     async function setChecked(input, checked) {
       if ((await input.isChecked()) === checked) return;
+      const inputID = await input.getAttribute("id");
+      if (inputID?.startsWith("booru-source-") && !(await input.isVisible()))
+        await page.getByRole("button", { name: /^Sources \(/ }).click();
+      if (
+        ["booru-thumbnails", "booru-show-ignored"].includes(inputID) &&
+        !(await input.isVisible())
+      )
+        await page
+          .getByRole("button", { name: "Display options", exact: true })
+          .click();
       const label = input.locator("xpath=following-sibling::label");
       if (await label.count()) await label.click();
       else await input.setChecked(checked);
       assert.equal(await input.isChecked(), checked);
+      if (
+        inputID?.startsWith("booru-source-") ||
+        ["booru-thumbnails", "booru-show-ignored"].includes(inputID)
+      )
+        await page.locator(".booru-heading h2").click();
     }
     async function pickFilter(label, value) {
       const choices = {
@@ -172,6 +215,7 @@ try {
       )
         errors.push(entry.text());
     });
+    const bookmarks = { favorites: [], searches: [] };
     const requests = [];
     const autocompleteRequests = [];
     let denied = true;
@@ -190,6 +234,7 @@ try {
     let conflict = false;
     let defaultJXL = false;
     let defaultDirectory = "/library";
+    let filenameTemplate = "";
     let tagDatabase = { count: 0, revision: "" };
     let downloadState;
     let motionKind = "webm";
@@ -225,6 +270,46 @@ try {
         }));
     await page.route("**/booru-browser/**", async (route) => {
       const url = new URL(route.request().url());
+      if (url.pathname.endsWith("/bookmarks")) {
+        if (route.request().method() === "POST") {
+          const value = route.request().postDataJSON();
+          if (value.action === "favorite")
+            bookmarks.favorites = value.favorite
+              ? [
+                  {
+                    instance: "fixture-danbooru",
+                    id: value.key.replace(/^a+/, "") || "101",
+                  },
+                ]
+              : [];
+          else {
+            bookmarks.searches = bookmarks.searches.filter(
+              (item) => item.name !== value.name
+            );
+            if (value.action === "search") {
+              const params = new URLSearchParams(value.search);
+              if (!params.get("q")?.trim() && params.get("favorites") !== "1")
+                params.set("q", "*");
+              bookmarks.searches.push({
+                name: value.name,
+                search: `?${params}`,
+              });
+            }
+          }
+        }
+        await route.fulfill({ json: bookmarks });
+        return;
+      }
+      if (url.pathname.endsWith("/favorites")) {
+        const value = result(url.searchParams.get("source"), "favorite", 1);
+        value.posts = bookmarks.favorites.length
+          ? [{ ...value.posts[0], id: bookmarks.favorites[0].id }]
+          : [];
+        value.total = value.posts.length;
+        value.hasMore = false;
+        await route.fulfill({ json: value });
+        return;
+      }
       if (url.pathname.endsWith("/download-settings")) {
         if (route.request().method() === "GET" && holdNextPreferences) {
           holdNextPreferences = false;
@@ -233,6 +318,7 @@ try {
             json: {
               convert: defaultJXL,
               defaultDirectory,
+              filenameTemplate,
               roots: ["/library"],
             },
           };
@@ -246,6 +332,7 @@ try {
             json: {
               convert: defaultJXL,
               defaultDirectory,
+              filenameTemplate,
               roots: ["/library"],
             },
           });
@@ -255,9 +342,15 @@ try {
           const data = route.request().postDataJSON();
           defaultJXL = data.convert;
           defaultDirectory = data.defaultDirectory;
+          filenameTemplate = data.filenameTemplate ?? "";
         }
         await route.fulfill({
-          json: { convert: defaultJXL, defaultDirectory, roots: ["/library"] },
+          json: {
+            convert: defaultJXL,
+            defaultDirectory,
+            filenameTemplate,
+            roots: ["/library"],
+          },
         });
         return;
       }
@@ -581,7 +674,9 @@ try {
           })
     );
     await page.goto(`${baseURL}/booru`);
-    await page.getByLabel("Gelbooru · gelbooru", { exact: true }).waitFor();
+    await page
+      .getByLabel("Gelbooru · gelbooru", { exact: true })
+      .waitFor({ state: "attached" });
     assert.equal(
       requests.length,
       0,
@@ -609,6 +704,9 @@ try {
       page.getByLabel("Convert new downloads using Media converter defaults"),
       true
     );
+    await page
+      .getByLabel("Download filename template", { exact: true })
+      .fill("%artist%/%md5%.%ext%");
     await page
       .getByRole("button", { name: "Save download settings", exact: true })
       .click();
@@ -767,11 +865,11 @@ try {
       .click();
     await page
       .getByLabel("Fixture custom · gelbooru", { exact: true })
-      .waitFor();
+      .waitFor({ state: "attached" });
     await page.reload();
     await page
       .getByLabel("Fixture custom · gelbooru", { exact: true })
-      .waitFor();
+      .waitFor({ state: "attached" });
     await page.getByRole("button", { name: "Settings", exact: true }).click();
     await page
       .getByRole("button", { name: "Edit Fixture custom", exact: true })
@@ -935,6 +1033,14 @@ try {
     const picker = page
       .getByRole("dialog")
       .filter({ hasText: "Choose Stash download folder" });
+    assert.equal(
+      await picker
+        .getByRole("button", { name: "Open directory", exact: true })
+        .count(),
+      0
+    );
+    await picker.getByRole("button", { name: "Root", exact: true }).click();
+    await picker.getByRole("button", { name: "/library", exact: true }).click();
     await picker
       .getByRole("button", { name: "/library/custom", exact: true })
       .click();
@@ -1371,7 +1477,10 @@ try {
     await dan
       .getByRole("button", { name: "Inspect Danbooru post 102", exact: true })
       .waitFor();
-    await pickFilter("Sort by", "popular");
+    assert.equal(
+      await page.getByRole("button", { name: "Sort by", exact: true }).count(),
+      0
+    );
     await dan
       .getByRole("button", { name: "Inspect Danbooru post 102", exact: true })
       .waitFor();
@@ -1379,9 +1488,7 @@ try {
     await dan
       .getByRole("button", { name: "Inspect Danbooru post 102", exact: true })
       .waitFor();
-    assert.ok(
-      page.url().includes("sort=popular") && page.url().includes("rating=safe")
-    );
+    assert.ok(page.url().includes("rating=safe"));
     const searchesBeforeMedia = requests.length;
     await pickFilter("Media on this page", "videos");
     await dan
@@ -1432,7 +1539,7 @@ try {
       .getByLabel("Search tags (native source syntax)", { exact: true })
       .press("Escape");
     await pickFilter("Autocomplete", "live");
-    await pickFilter("Sort by", "");
+
     await pickFilter("Rating", "");
     await page.waitForFunction(
       () => document.documentElement.scrollWidth <= window.innerWidth + 1
@@ -1445,6 +1552,225 @@ try {
         ),
         fullPage: true,
       });
+    assert.equal(await page.locator(".booru-results-header").count(), 0);
+    assert.ok(
+      await page.locator(".filtered-list-toolbar .page-size-selector").count()
+    );
+    assert.ok(await page.locator(".pagination-index-container").count());
+    await page.getByRole("button", { name: "Wall view", exact: true }).click();
+    await dan.locator(".booru-wall-item").first().waitFor();
+    await page.locator(".zoom-slider").fill("2");
+    await page.reload();
+    await dan.locator(".booru-wall-item").first().waitFor();
+    assert.equal(await page.locator(".zoom-slider").inputValue(), "2");
+    await page.waitForFunction(() => {
+      const img = document.querySelector(".booru-wall-item img");
+      const box = img?.getBoundingClientRect();
+      return (
+        img?.complete &&
+        img.naturalWidth > 0 &&
+        box?.width > 1 &&
+        box?.height > 1
+      );
+    });
+    await dan
+      .locator(".booru-wall-item img")
+      .first()
+      .evaluate((img) => img.decode());
+    const wallCheck = dan
+      .locator(".booru-wall-item")
+      .first()
+      .locator(".card-check");
+    const wallBounds = await dan
+      .locator(".booru-wall-item")
+      .first()
+      .boundingBox();
+    const checkBounds = await wallCheck.boundingBox();
+    assert.ok(
+      checkBounds.y - wallBounds.y < 30,
+      "wall checkbox left the top corner"
+    );
+    if (process.env.STASH_BROWSER_SCREENSHOTS)
+      await page.screenshot({
+        path: path.join(
+          process.env.STASH_BROWSER_SCREENSHOTS,
+          `booru-wall-${viewport.width}.png`
+        ),
+        fullPage: false,
+      });
+    await page.getByRole("button", { name: "Grid view", exact: true }).click();
+    await page.locator(".zoom-slider").fill("0");
+    const firstCard = dan.locator(".booru-post").first();
+    await firstCard.getByRole("button", { name: /^Artists for post/ }).click();
+    assert.equal(
+      await page
+        .getByLabel("Search tags (native source syntax)", { exact: true })
+        .inputValue(),
+      "artist_a"
+    );
+    await page
+      .getByRole("button", { name: "Saved search filters", exact: true })
+      .click();
+    await page
+      .getByLabel("Saved filter name", { exact: true })
+      .fill("Artist filter");
+    await page
+      .getByRole("button", { name: "Save current search", exact: false })
+      .click();
+    await page
+      .getByRole("button", { name: "Saved search filters", exact: true })
+      .click();
+    await firstCard.getByRole("button", { name: /^Favorite post/ }).click();
+    await firstCard
+      .getByRole("button", { name: /^Remove favorite post/ })
+      .waitFor();
+    await firstCard
+      .getByRole("button", { name: /^Characters for post/ })
+      .click();
+    const tagChooser = page
+      .getByRole("dialog")
+      .filter({ hasText: "Choose Characters" });
+    await tagChooser
+      .getByRole("button", { name: "character_b", exact: true })
+      .click();
+    assert.equal(
+      await page
+        .getByLabel("Search tags (native source syntax)", { exact: true })
+        .inputValue(),
+      "character_b"
+    );
+    await page.getByRole("button", { name: "Favorites", exact: true }).click();
+    await dan.locator(".booru-post").first().waitFor();
+    assert.ok(page.url().includes("favorites=1"));
+    await dan
+      .locator(".booru-post")
+      .first()
+      .getByRole("button", { name: /^Remove favorite post/ })
+      .click();
+    await dan
+      .getByText("No posts returned for this page and query.", { exact: true })
+      .waitFor();
+    await page.reload();
+    await dan
+      .getByText("No posts returned for this page and query.", { exact: true })
+      .waitFor();
+
+    await page
+      .getByRole("button", { name: "Saved search filters", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Delete search Artist filter", exact: true })
+      .waitFor();
+    await page
+      .getByRole("button", { name: "Artist filter", exact: true })
+      .click();
+    await dan.locator(".booru-post").first().waitFor();
+    assert.equal(new URL(page.url()).searchParams.get("q"), "artist_a");
+    await page
+      .getByRole("button", { name: "Saved search filters", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Delete search Artist filter", exact: true })
+      .click();
+    await page.getByText("No saved filters", { exact: true }).waitFor();
+    await page
+      .getByRole("button", { name: "Saved search filters", exact: true })
+      .click();
+    await page.goto(`${baseURL}/booru?source=danbooru`);
+    await page
+      .getByRole("button", { name: "Saved search filters", exact: true })
+      .click();
+    await page.getByLabel("Saved filter name", { exact: true }).fill("Recent");
+    await page
+      .getByRole("button", { name: "Save current search", exact: false })
+      .click();
+    await page.getByRole("button", { name: "Recent", exact: true }).click();
+    await dan.locator(".booru-post").first().waitFor();
+    assert.equal(new URL(page.url()).searchParams.get("q"), "*");
+    await page.reload();
+    await dan.locator(".booru-post").first().waitFor();
+    assert.equal(
+      await page
+        .getByLabel("Search tags (native source syntax)", { exact: true })
+        .inputValue(),
+      "*"
+    );
+    await page.goto(`${baseURL}/booru?source=danbooru&q=attachments`);
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 101", exact: true })
+      .click();
+    const attachmentPreview = page.getByRole("dialog");
+    await attachmentPreview
+      .getByLabel("Media file", { exact: true })
+      .selectOption("1");
+    assert.equal(
+      await attachmentPreview.getByText("MD5:", { exact: false }).count(),
+      0
+    );
+    await attachmentPreview
+      .getByRole("button", { name: "Download to Stash", exact: true })
+      .click({ trial: true });
+    const attachmentRequest = page.waitForRequest(
+      (request) =>
+        request.method() === "POST" &&
+        new URL(request.url()).pathname.endsWith("/booru-browser/download")
+    );
+    await attachmentPreview
+      .getByRole("button", { name: "Refresh previews", exact: true })
+      .focus();
+    await page.keyboard.press("ArrowUp");
+    assert.equal((await attachmentRequest).postDataJSON().key, "e".repeat(48));
+    await attachmentPreview
+      .getByRole("button", { name: "Next preview (Right arrow)", exact: true })
+      .focus();
+    await page.keyboard.press("ArrowRight");
+    await attachmentPreview
+      .getByText("Danbooru #102", { exact: true })
+      .waitFor();
+    assert.equal(
+      await attachmentPreview
+        .getByLabel("Media file", { exact: true })
+        .inputValue(),
+      "0"
+    );
+    assert.equal(
+      await attachmentPreview.getByText("MD5:", { exact: false }).count(),
+      1
+    );
+    const nextPrimaryRequest = page.waitForRequest(
+      (request) =>
+        request.method() === "POST" &&
+        new URL(request.url()).pathname.endsWith("/booru-browser/download")
+    );
+    await attachmentPreview
+      .getByRole("button", { name: "Refresh previews", exact: true })
+      .focus();
+    await page.keyboard.press("ArrowUp");
+    assert.equal((await nextPrimaryRequest).postDataJSON().key, "f".repeat(48));
+    await attachmentPreview
+      .getByLabel("Media file", { exact: true })
+      .selectOption("1");
+    await attachmentPreview
+      .getByRole("button", {
+        name: "Previous preview (Left arrow)",
+        exact: true,
+      })
+      .click();
+    await attachmentPreview
+      .getByText("Danbooru #101", { exact: true })
+      .waitFor();
+    assert.equal(
+      await attachmentPreview
+        .getByLabel("Media file", { exact: true })
+        .inputValue(),
+      "0"
+    );
+    await attachmentPreview
+      .locator(".modal-footer")
+      .getByRole("button", { name: "Close", exact: true })
+      .click();
+    await page.goto(`${baseURL}/booru?source=danbooru&q=gallery`);
+    await dan.locator(".booru-post").first().waitFor();
     // Native controls and compact cards expose details only in inspection.
     assert.equal(
       await page
@@ -1646,6 +1972,7 @@ try {
       .click();
     await page.getByText("Download settings saved.", { exact: true }).waitFor();
     assert.equal(defaultDirectory, "/library/custom");
+    assert.equal(filenameTemplate, "%artist%/%md5%.%ext%");
     assert.equal(defaultJXL, false);
     assert.ok(heldPreferences, "card preferences request was not held");
     await heldPreferences.route.fulfill({ json: heldPreferences.json });
@@ -1680,7 +2007,9 @@ try {
     await page
       .getByRole("button", { name: "Retry source", exact: true })
       .click();
-    await page.getByLabel("Danbooru · danbooru", { exact: true }).waitFor();
+    await page
+      .getByLabel("Danbooru · danbooru", { exact: true })
+      .waitFor({ state: "attached" });
     await page
       .getByLabel("Search tags (native source syntax)", { exact: true })
       .fill("slow");
@@ -1705,6 +2034,23 @@ try {
       `Booru browser ${viewport.width}×${viewport.height}: native dark inputs/switches/icon filters/card selection/page size, Left/Right/Up/Down inspection keys, decoded WebM and animated GIF with cleanup, compact actions, same-origin PNG thumbnails, CSV upload/alias keyboard autocomplete, converter defaults/library destination/custom folder/download/failure/cancel/reopen; durable review/bulk/undo/filters/conflicts/typed links; settings create/credentials/clear/conflict/reload/disable/remove; tag sidebar/search/paging/inspection/refresh/back, partial failures/retry, missing previews, races/cancel/cleanup and overflow passed.`
     );
   }
+} catch (error) {
+  if (
+    process.env.STASH_BROWSER_SCREENSHOTS &&
+    browser.contexts()[0]?.pages()[0]
+  )
+    await browser
+      .contexts()[0]
+      .pages()[0]
+      .screenshot({
+        path: path.join(
+          process.env.STASH_BROWSER_SCREENSHOTS,
+          "booru-failure.png"
+        ),
+        fullPage: true,
+      })
+      .catch(() => {});
+  throw error;
 } finally {
   await browser.close();
   await server.close();

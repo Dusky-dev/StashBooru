@@ -16,7 +16,7 @@ func TestBooruBrowserSourcesAndReadOnlyValidation(t *testing.T) {
 	w := httptest.NewRecorder()
 	rs.Sources(w, httptest.NewRequest("GET", "/booru-browser/sources", nil))
 	var sources []booru.PublicSource
-	if err := json.Unmarshal(w.Body.Bytes(), &sources); err != nil || len(sources) != 10 || w.Header().Get("Cache-Control") != "no-store" {
+	if err := json.Unmarshal(w.Body.Bytes(), &sources); err != nil || len(sources) != len(booru.Defaults()) || w.Header().Get("Cache-Control") != "no-store" {
 		t.Fatalf("bad sources response: %s %v", w.Body.String(), err)
 	}
 	for _, query := range []string{"source=unknown&q=cat", "source=danbooru&q=", "source=danbooru&q=cat&page=-1", "source=danbooru&q=cat&limit=1000", "source=danbooru&q=cat&page=garbage"} {
@@ -25,6 +25,11 @@ func TestBooruBrowserSourcesAndReadOnlyValidation(t *testing.T) {
 		if w.Code != 400 {
 			t.Fatalf("invalid query not rejected: %s %d", query, w.Code)
 		}
+	}
+	w = httptest.NewRecorder()
+	rs.Search(w, httptest.NewRequest("GET", "/booru-browser/search?source=pawchive&q=landscape", nil))
+	if w.Code != 400 || !strings.Contains(w.Body.String(), `"code":"unsupported-query"`) {
+		t.Fatalf("unsupported search reported as a provider outage: %d %s", w.Code, w.Body.String())
 	}
 	path := filepath.Join(rs.configPath, "booru-browser.json")
 	if err := os.WriteFile(path, []byte(`[{"id":"fixture","name":"Fixture","engine":"gelbooru","url":"https://board.example.org","apiKey":"private-secret","userID":"42"}]`), 0600); err != nil {

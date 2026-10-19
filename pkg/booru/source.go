@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"net/netip"
 	"net/url"
 	"regexp"
@@ -58,6 +59,10 @@ func Defaults() []Source {
 		{ID: "e621", Name: "e621", Engine: "e621", URL: "https://e621.net"},
 		{ID: "e926", Name: "e926", Engine: "e621", URL: "https://e926.net", MediaHosts: []string{"e621.net"}},
 		{ID: "derpibooru", Name: "Derpibooru", Engine: "philomena", URL: "https://derpibooru.org", MediaHosts: []string{"derpicdn.net"}},
+		{ID: "paheal", Name: "Paheal", Engine: "shimmie", URL: "https://rule34.paheal.net", MediaHosts: []string{"paheal.net"}},
+		{ID: "pixiv", Name: "Pixiv", Engine: "pixiv", URL: "https://app-api.pixiv.net", MediaHosts: []string{"pximg.net"}},
+		{ID: "pawchive", Name: "Pawchive", Engine: "pawchive", URL: "https://pawchive.pw", MediaHosts: []string{"file.pawchive.pw", "img.pawchive.pw"}},
+		{ID: "kemono", Name: "Kemono", Engine: "kemono", URL: "https://kemono.cr", MediaHosts: []string{"kemono.su"}},
 	}
 }
 
@@ -102,7 +107,7 @@ func (s Source) Validate() error {
 	if !sourceID.MatchString(s.ID) || strings.TrimSpace(s.Name) == "" || len(s.Name) > 120 {
 		return fmt.Errorf("invalid source ID or name")
 	}
-	if !slices.Contains([]string{"danbooru", "gelbooru", "moebooru", "e621", "philomena"}, s.Engine) {
+	if !slices.Contains([]string{"danbooru", "gelbooru", "moebooru", "e621", "philomena", "shimmie", "pixiv", "pawchive", "kemono"}, s.Engine) {
 		return fmt.Errorf("unsupported API engine")
 	}
 	if len(s.URL) > 2048 || len(s.MediaHosts) > 64 {
@@ -125,6 +130,15 @@ func (s Source) Validate() error {
 	if (s.Engine == "gelbooru" && s.Login != "") || (s.Engine != "gelbooru" && s.UserID != "") || (s.Engine == "philomena" && s.Login != "") {
 		return fmt.Errorf("credentials do not match the selected engine")
 	}
+	if slices.Contains([]string{"shimmie", "kemono"}, s.Engine) && (s.APIKey != "" || s.Login != "" || s.UserID != "") {
+		return fmt.Errorf("this engine supports anonymous API access only")
+	}
+	if slices.Contains([]string{"pixiv", "pawchive"}, s.Engine) && s.Login != "" {
+		return fmt.Errorf("this engine does not use a login field")
+	}
+	if s.Engine == "pawchive" && s.APIKey != "" && (&http.Cookie{Name: "session", Value: s.APIKey}).Valid() != nil {
+		return fmt.Errorf("enter only the session cookie value")
+	}
 	if s.Engine == "moebooru" && (s.Login != "" || s.APIKey != "" || s.UserID != "") {
 		return fmt.Errorf("moebooru supports anonymous search only in this version")
 	}
@@ -141,6 +155,17 @@ func (s Source) Public() PublicSource {
 	help := "Space-separated tags; underscores inside names. Native provider syntax and account search limits apply."
 	auth := "Optional login and API key, configured in Source settings."
 	switch s.Engine {
+	case "pixiv":
+		help = "Pixiv tag/title search; user:123 for an artist, id:123 for one work. Account restrictions apply."
+		auth = "Pixiv OAuth access token required in API key. Expired tokens must be replaced; this browser does not perform account login."
+	case "pawchive":
+		help = "Use * for recent posts or creator:service:id for a creator. Text search is unsupported because the API ignores it. Page size counts posts; inspection exposes every supported attachment."
+		auth = "Public API; site access restrictions apply. Optional file-host session cookie value in API key."
+	case "kemono":
+		help = "Use * for recent posts, at least three characters for text search, or creator:service:id for a creator. Page size counts posts; inspection exposes every supported attachment."
+		auth = "Public API; site access restrictions apply."
+	case "shimmie":
+		auth = "Anonymous Shimmie/Danbooru XML API; category information may be unavailable."
 	case "gelbooru":
 		auth = "API key and user ID may be required; configure them in Source settings."
 	case "moebooru":
@@ -178,6 +203,10 @@ func publicAddress(addr netip.Addr) bool {
 	return addr.IsGlobalUnicast() && !addr.IsPrivate() && !addr.IsLoopback() && !addr.IsLinkLocalUnicast() &&
 		!slices.ContainsFunc(reservedNetworks, func(prefix netip.Prefix) bool { return prefix.Contains(addr) })
 }
+
+// ApprovedMediaURL revalidates a provider-advertised URL against the current
+// source configuration, including snapshots restored after CDN settings change.
+func (s Source) ApprovedMediaURL(raw string) string { return s.postMediaURL(raw) }
 
 func (s Source) mediaURL(raw string) string {
 	if raw == "" || len(raw) > 8192 {

@@ -50,6 +50,47 @@ Reopening a post in the same tab recovers the last live Job ID using session
 storage. Expired/restarted Jobs can be retried. Current Job status expires after
 one hour; persistent library files and receipts are retained.
 
+## Filename templates
+
+**Download filename template** in Settings accepts Grabber's common `%token%`
+vocabulary for native Stash downloads. Leave it blank to retain the existing
+`booru-<instance>-<post>-<MD5>.<extension>` scheme. Example:
+
+```text
+%artist%/%copyright%/%character%/%id%-%position%-%md5%.%ext%
+```
+
+Supported tokens: `%artist%`, `%copyright%`, `%character%`, `%id%` (provider post
+ID), `%asset_id%` (stable attachment identity), `%position%` (one-based file index),
+`%md5%`, `%ext%`, `%filename%` (remote basename without extension), `%rating%`,
+`%website%` (API hostname), `%websitename%`, `%width%`, `%height%`, `%author%`,
+`%authorid%`, `%score%`, `%date%`, `%current_date%`, `%name%`, `%title%`, `%num%`.
+Dates use UTC `MM-DD-YYYY HH.mm` when supplied as RFC3339. Missing text/category
+metadata becomes `unknown`; dimensions/scores can be zero. Categories use supplied
+core tags, not inferred classifications. Multiple core tags join with `, `.
+
+Literal `/` creates subfolders inside the chosen library directory. Values cannot
+introduce folders; forbidden/control characters and Windows reserved names are
+sanitized. Templates must be relative, end in `.%ext%`, and stay within eight
+components/512 bytes; rendered components are capped at 200 bytes. Parent paths,
+unknown tokens, malformed substitutions and symlink template folders are rejected.
+This is a common-token compatibility subset of
+[Grabber filename settings](https://www.bionus.org/imgbrd-grabber/docs/filename.html),
+not its scripting, options or conditional grammar.
+
+`%md5%` and `%ext%` use the original bytes actually downloaded, not guessed URL
+metadata. Subsequent native conversion retains the converter's naming/activation
+rules and changes the output extension as usual. Different existing bytes get a
+numeric suffix (or increment `%num%`); identical bytes at the chosen name can be
+reused. Template/destination and the original asset reference are checked before
+receipt reuse, including nested folders. The legacy computer-export endpoint
+retains its fixed filename; this setting governs **Download to Stash**.
+
+The folder chooser's header **Root** icon returns to configured libraries.
+Entering a server path browses it after a short pause (or Enter); the redundant
+Open directory button is removed. **Use this folder** waits for a valid directory
+listing and remains bounded to configured libraries.
+
 ## Conversion uses the converter's saved defaults
 
 The browser no longer forces JPEG XL, quality 100, effort 7 or CPU. It uses the

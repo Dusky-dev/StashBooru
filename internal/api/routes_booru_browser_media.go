@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -24,7 +25,22 @@ var booruSnapshots = struct {
 }{entries: map[string]booruMediaSnapshot{}}
 
 func rememberBooruPost(source booru.Source, post booru.Post) string {
-	post.Tags = nil // Asset snapshots do not retain the potentially large tag catalogue.
+	// Keep a bounded taxonomy projection for filenames and saved favorites.
+	core := []booru.Tag{}
+	for _, tag := range post.Tags {
+		if len(core) >= 64 {
+			break
+		}
+		if (tag.Category == "artist" || tag.Category == "character" || tag.Category == "copyright") && len(tag.Name) <= 200 && len(tag.Label) <= 200 {
+			core = append(core, tag)
+		}
+	}
+	post.Tags = core
+	refs := []booru.Post{}
+	for _, asset := range post.Attachments {
+		refs = append(refs, booru.Post{ID: asset.ID, MediaKey: asset.MediaKey})
+	}
+	post.Attachments = refs
 	post.MediaKey = ""
 	key := make([]byte, 24)
 	if _, err := rand.Read(key); err != nil {
@@ -109,4 +125,34 @@ func (rs booruBrowserRoutes) Media(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", info.ContentType)
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	http.ServeContent(w, r, "preview", time.Time{}, bytes.NewReader(buf.Bytes()))
+}
+
+// Public responses contain opaque keys and public image fallbacks, never originals.
+func publicBooruPost(source booru.Source, post booru.Post) booru.Post {
+	post.PreviewURL = source.ApprovedMediaURL(post.PreviewURL)
+	post.SampleURL = source.ApprovedMediaURL(post.SampleURL)
+	post.OriginalURL = source.ApprovedMediaURL(post.OriginalURL)
+	post.DownloadAvailable = post.OriginalURL != ""
+	post.DirectPreviewURL, post.DirectSampleURL = "", ""
+
+	for i, asset := range post.Attachments {
+		if len(asset.Tags) == 0 {
+			asset.Tags = post.Tags
+		}
+		post.Attachments[i] = publicBooruPost(source, asset)
+	}
+	post.MediaKey = rememberBooruPost(source, post)
+	if u, err := url.Parse(post.PreviewURL); err == nil && u.Scheme == "https" && u.RawQuery == "" {
+		post.DirectPreviewURL = u.String()
+	}
+	if u, err := url.Parse(post.SampleURL); err == nil && u.Scheme == "https" && u.RawQuery == "" {
+		post.DirectSampleURL = u.String()
+	}
+	if post.PreviewURL != "" {
+		post.PreviewURL = "booru-browser/media?key=" + post.MediaKey + "&kind=preview"
+	}
+	if post.SampleURL != "" {
+		post.SampleURL = "booru-browser/media?key=" + post.MediaKey + "&kind=sample"
+	}
+	return post
 }
