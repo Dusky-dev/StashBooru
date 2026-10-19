@@ -167,3 +167,29 @@ func TestDirectionalProviderSorting(t *testing.T) {
 		}
 	}
 }
+
+func TestDeletedFavoritesKeepProviderPaging(t *testing.T) {
+	s := testSource("gelbooru")
+	s.UserID, s.APIKey = "123", "key"
+	c := testClient(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Query().Get("s") == "favorite" {
+			return response(200, `{"@attributes":{"count":5},"favorite":[{"favorite":42}]}`), nil
+		}
+		return response(200, `{"@attributes":{"count":0}}`), nil
+	})
+	got, err := c.AccountFavorites(context.Background(), s, 1, 1)
+	if err != nil || len(got.Posts) != 0 || !got.HasMore || *got.Total != 5 {
+		t.Fatal(got, err)
+	}
+}
+func TestBlankPixivDoesNotPromiseRecentOrdering(t *testing.T) {
+	s := testSource("pixiv")
+	s.APIKey = "token"
+	c := testClient(func(*http.Request) (*http.Response, error) {
+		t.Fatal("unsupported ordering reached network")
+		return nil, nil
+	})
+	if _, err := c.SearchFiltered(context.Background(), s, "", 1, 24, SearchOptions{Sort: "newest"}); err == nil {
+		t.Fatal("daily rankings treated as recent ordering")
+	}
+}

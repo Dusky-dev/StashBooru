@@ -110,6 +110,12 @@ func (c *Client) AccountFavorites(ctx context.Context, s Source, page, limit int
 		if err != nil {
 			return result, err
 		}
+		// Deleted favorites can have an explicit zero-count detail envelope.
+		// Only that exact empty shape may be skipped; malformed data still fails.
+		var detail object
+		if json.Unmarshal(body, &detail) == nil && detail["post"] == nil && text(child(detail["@attributes"])["count"]) == "0" {
+			continue
+		}
 		posts, err := parse(s, body, 1, 1)
 		if err != nil {
 			return result, extendedParseError()

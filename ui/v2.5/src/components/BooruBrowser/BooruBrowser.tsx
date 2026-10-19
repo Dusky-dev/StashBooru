@@ -1332,7 +1332,10 @@ export default function BooruBrowser() {
                 {
                   value: "newest",
                   label: "Recent",
-                  disabled: !!active.favorites,
+                  disabled:
+                    !!active.favorites ||
+                    (selectedSource?.engine === "pixiv" &&
+                      !active.query.trim()),
                 },
                 {
                   value: "oldest",

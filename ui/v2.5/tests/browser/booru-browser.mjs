@@ -1836,6 +1836,11 @@ try {
       await attachmentPreview.getByText("MD5:", { exact: false }).count(),
       1
     );
+    // Navigation remounts download controls while saved preferences load.
+    // Check the same enabled state a user sees before issuing the shortcut.
+    await attachmentPreview
+      .getByRole("button", { name: "Download to Stash", exact: true })
+      .click({ trial: true });
     const nextPrimaryRequest = page.waitForRequest(
       (request) =>
         request.method() === "POST" &&

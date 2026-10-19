@@ -33,7 +33,20 @@ silently promoted to verified production features by this documentation update.
   responses. Legacy local favorites remain stored. No remote favorite writes.
 - Endpoint evidence: maintained gallery-dl Gelbooru extractor, Danbooru/e621
   controllers and PixivPy ranking client. Authenticated provider acceptance remains
-  separate from synthetic tests. Validation is running; final results follow.
+  separate from synthetic tests.
+- Runtime checkpoint local `cf5bee2a0` / published `119472d705c8da6f74e8490c009de1c1bee0babf`,
+  identical tree `51f5e715cca2b72faa5ed3acc1f28585b6252296`.
+  Review: [PR #153](https://github.com/Dusky-dev/StashBooru/pull/153).
+  Provider regressions, all 61 UI tests, JS/CSS lint, TypeScript/formatting and
+  production bundling passed. Mounted 1440×1000 and 390×844 passed, and synthetic
+  desktop/mobile screenshots were inspected. All 40 relative doc links passed.
+- Follow-up handles explicit zero-count deleted favorite details without losing
+  provider pagination, and rejects Recent for blank Pixiv daily rankings. Provider
+  regressions passed; types/lint/production were repeated. CI exposed a mobile
+  fixture race issuing Up before the next post's download settings were ready;
+  the test now asserts the button is enabled before exercising the shortcut.
+  Full Go gates, final mounted run and fresh CI/Codex Review are in progress.
+
 
 ## Single-site browsing and preview refinement — 2026-10-19
 

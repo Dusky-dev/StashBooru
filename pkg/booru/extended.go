@@ -63,6 +63,9 @@ func (c *Client) searchExtended(ctx context.Context, s Source, query string, pag
 	if s.Engine == "shimmie" {
 		return c.searchShimmie(ctx, s, query, page, limit)
 	}
+	if s.Engine == "pixiv" && strings.TrimSpace(query) == "" && options.Sort != "" {
+		return result, &Error{Code: "unsupported-filter", Message: "Blank Pixiv browsing uses daily rankings. Choose provider default ordering."}
+	}
 	if s.Engine == "pixiv" && s.APIKey == "" {
 		return result, &Error{Code: "authentication", Message: "Pixiv requires an OAuth access token. Add it in this source's API key setting."}
 	}
