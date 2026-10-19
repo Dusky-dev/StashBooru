@@ -62,6 +62,7 @@ func validBooruArchiveEntry(f *zip.File) bool {
 	}
 	name := strings.ReplaceAll(f.Name, "\\", "/")
 	if !utf8.ValidString(name) || len(name) > 256 || strings.ContainsRune(name, 0) ||
+		strings.Contains(f.Name, "\\") ||
 		strings.HasPrefix(name, "/") || strings.Contains(name, ":") ||
 		path.Clean(name) != name || name == "." || name == ".." ||
 		strings.HasPrefix(name, "../") {
