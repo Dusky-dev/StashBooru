@@ -1939,14 +1939,19 @@ try {
     await mediaSections.nth(1).focus();
     await page.keyboard.press("ArrowUp");
     assert.equal((await attachmentRequest).postDataJSON().key, "e".repeat(48));
-    await attachmentPreview
-      .getByRole("button", { name: "Next preview (Right arrow)", exact: true })
-      .focus();
+    await mediaSections.nth(1).focus();
     await page.keyboard.press("ArrowRight");
     await attachmentPreview
       .getByText("Danbooru #102", { exact: true })
       .waitFor();
     assert.equal(await mediaSections.count(), 2);
+    assert.equal(
+      await attachmentPreview
+        .locator(".modal-body")
+        .evaluate((element) => element.scrollTop),
+      0,
+      "navigating posts must reset the media scroll position"
+    );
     await attachmentPreview
       .getByRole("button", { name: /^(?:Retry download|Download) to Stash$/ })
       .first()
