@@ -49,7 +49,7 @@ func TestBooruDownloadQueueRecoversFromHundredCompletedJobs(t *testing.T) {
 	states := make(map[int]*booruDownloadState)
 	for i := 1; i <= booruDownloadJobLimit; i++ {
 		states[i] = &booruDownloadState{
-			Status: "complete",
+			Status:     "complete",
 			FinishedAt: time.Unix(int64(i), 0),
 		}
 	}
