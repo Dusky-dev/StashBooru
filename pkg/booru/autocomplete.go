@@ -34,6 +34,9 @@ func (c *Client) Autocomplete(ctx context.Context, source Source, prefix string)
 	if err := ctx.Err(); err != nil {
 		return nil, requestError(ctx)
 	}
+	if source.isRule34() && (source.APIKey == "" || source.UserID == "") {
+		return nil, &Error{Code: "authentication", Message: "Rule34.xxx requires an API key and user ID. Save both in Booru Settings > Sources."}
+	}
 	if source.Engine == "pixiv" || source.Engine == "pawchive" || source.Engine == "kemono" || source.Engine == "shimmie" {
 		return nil, &Error{Code: "autocomplete", Message: "Live completion unavailable for this engine; install an optional CSV database."}
 	}
@@ -89,10 +92,9 @@ func (s Source) autocompleteRequest(ctx context.Context, prefix string) (*http.R
 	case "gelbooru":
 		path = "/index.php"
 		values = url.Values{"page": {"autocomplete2"}, "term": {prefix}, "type": {"tag_query"}, "limit": {"20"}}
-		u, _ := url.Parse(s.URL)
-		if u.Hostname() == "rule34.xxx" || u.Hostname() == "api.rule34.xxx" {
-			base, path = "https://api.rule34.xxx", "/autocomplete.php"
-			values = url.Values{"q": {prefix}}
+		if s.isRule34() {
+			base, path = s.rule34APIBase(), "/autocomplete.php"
+			values = url.Values{"q": {prefix}, "api_key": {s.APIKey}, "user_id": {s.UserID}}
 		} else if s.APIKey != "" {
 			values.Set("api_key", s.APIKey)
 			values.Set("user_id", s.UserID)

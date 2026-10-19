@@ -147,7 +147,7 @@ func ValidateQuery(query string, page, limit int) error {
 }
 
 func (s Source) request(ctx context.Context, query string, page, limit int, options ...SearchOptions) (*http.Request, error) {
-	base := strings.TrimRight(s.URL, "/")
+	base := s.rule34APIBase()
 	path := "/posts.json"
 	values := url.Values{"tags": {query}, "page": {strconv.Itoa(page)}, "limit": {strconv.Itoa(limit)}}
 	switch s.Engine {
@@ -199,6 +199,9 @@ func (c *Client) SearchFiltered(ctx context.Context, source Source, query string
 	if err := ValidateQuery(query, page, limit); err != nil {
 		return Result{}, err
 	}
+	if source.isRule34() && (source.APIKey == "" || source.UserID == "") {
+		return Result{}, &Error{Code: "authentication", Message: "Rule34.xxx requires an API key and user ID. Sign in at rule34.xxx, open Account > Options > API Access Credentials, generate a key if needed, then save both values in Booru Settings > Sources."}
+	}
 	if source.Engine == "pixiv" || source.Engine == "kemono" || source.Engine == "pawchive" || source.Engine == "shimmie" {
 		return c.searchExtended(ctx, source, query, page, limit, options)
 	}
@@ -246,8 +249,9 @@ func retryDelay(raw string) int {
 func (c *Client) fetchJSON(ctx context.Context, source Source, req *http.Request, maxBytes int) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
-	base, _ := url.Parse(source.URL)
-	host := strings.ToLower(strings.TrimSuffix(base.Hostname(), "."))
+	// Throttle by the actual request host. Rule34 API requests use a separate
+	// host from its human-facing website.
+	host := strings.ToLower(strings.TrimSuffix(req.URL.Hostname(), "."))
 	entry, _ := c.hosts.LoadOrStore(host, &hostGate{busy: make(chan struct{}, 1)})
 	gate := entry.(*hostGate)
 	select {
@@ -290,6 +294,9 @@ func (c *Client) fetchJSON(ctx context.Context, source Source, req *http.Request
 		switch response.StatusCode {
 		case http.StatusUnauthorized, http.StatusForbidden:
 			failure.Code, failure.Message = "authentication", "Provider denied access. Check server-side API credentials, account restrictions or its current API policy."
+			if source.isRule34() {
+				failure.Message = "Rule34.xxx rejected the API request. Check your user ID and API key in Booru Settings > Sources. If both are correct, Rule34 may be blocking the request through Cloudflare or its account/rate restrictions (HTTP " + strconv.Itoa(response.StatusCode) + ")."
+			}
 		case http.StatusTooManyRequests:
 			failure.Code, failure.Message = "rate-limited", "Provider rate limit reached. Wait before retrying."
 			failure.RetryAfter = retryDelay(response.Header.Get("Retry-After"))

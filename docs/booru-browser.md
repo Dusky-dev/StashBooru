@@ -10,6 +10,29 @@ Copyright/tag metadata import remains separate reviewed work.
 marks and bounded current-file MD5 matches. Metadata entity review, batch downloads,
 pHash comparison and follows remain later [roadmap packages](booru-browser-roadmap.md).
 
+## Rule34.xxx API access
+
+Rule34.xxx requires an account **API key** and **User ID** for DAPI searches
+(as of August 2025). In **Booru → Settings → Sources → Rule34**, enter the
+separate values and save. Obtain them from the
+[Rule34 account Options page](https://rule34.xxx/index.php?page=account&s=options)
+under **API Access Credentials**. If the page has no API key, select
+**Generate New Key** and save the account options first. In the displayed
+`&api_key=...&user_id=...` string, paste only the value following each
+parameter into its matching StashBooru field. Do not share the credentials.
+
+Keep the source's website URL as `https://rule34.xxx`. StashBooru
+routes its API searches and live autocomplete to `https://api.rule34.xxx`
+automatically, while post links still open the public site. Existing site
+settings and review identities are preserved. Credentials are kept server-side
+and excluded from public source metadata and error messages.
+
+Without both fields, StashBooru reports the missing credentials instead of
+sending an anonymous request. An HTTP 401/403 **after configuring** credentials
+may instead indicate an invalid key, account restriction, rate enforcement or
+Cloudflare challenge. StashBooru does not bypass such provider restrictions;
+try the official API from your network and check the account before retrying.
+
 ## Search and inspect
 
 Choose one site from **Source**, enter a query (or leave it blank) and select **Search**.
