@@ -134,6 +134,7 @@ func TestShimmieAndExtendedFailures(t *testing.T) {
 		t.Fatal("frame ZIP offered as media", err)
 	}
 }
+
 // Paheal serves posts XML at /api/danbooru/find_posts; the legacy
 // /index.xml path can be served as HTML without an HTTP error status.
 func TestPahealFindPostsAndInvalidXML(t *testing.T) {
