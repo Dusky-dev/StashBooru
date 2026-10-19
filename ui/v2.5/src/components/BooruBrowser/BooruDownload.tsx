@@ -51,13 +51,20 @@ export function BooruDownload({
   instance,
   compact = false,
   downloadRef,
+  archiveIndex,
+  archiveName,
 }: {
   post: BooruPost;
   instance: string;
   compact?: boolean;
   downloadRef?: Ref<HTMLButtonElement>;
+  archiveIndex?: number;
+  archiveName?: string;
 }) {
-  const identity = `booru-download:${instance}:${post.id}`;
+  const identity =
+    archiveIndex === undefined
+      ? `booru-download:${instance}:${post.id}`
+      : `booru-download:${instance}:${post.id}:entry:${archiveIndex}`;
   const [state, setState] = useState<DownloadState | undefined>(() =>
     rememberedJob(identity)
   );
@@ -166,7 +173,7 @@ export function BooruDownload({
       const result = await fetch("booru-browser/download", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: post.mediaKey, convert, destination }),
+        body: JSON.stringify({ key: post.mediaKey, convert, destination, archiveIndex }),
       }).then(readBooruResponse<{ jobID: number; token: string }>);
       if (mounted.current) setState({ ...result, status: "queued" });
       try {
@@ -206,8 +213,9 @@ export function BooruDownload({
   }
   const available =
     !!post.mediaKey &&
-    !!post.downloadAvailable &&
-    (post.bytes ?? 0) <= 128 * 1048576;
+    (archiveIndex !== undefined
+      ? Number.isSafeInteger(archiveIndex) && archiveIndex >= 0 && archiveIndex < 512
+      : !!post.downloadAvailable && (post.bytes ?? 0) <= 128 * 1048576);
   const libraryURL =
     state?.library && /^\d+$/.test(state.library.id)
       ? state.library.kind === "image"
@@ -219,12 +227,12 @@ export function BooruDownload({
   return (
     <section
       className={`booru-download ${compact ? "booru-download-compact" : "mb-3"}`}
-      aria-label={compact ? `Download post ${post.id}` : "Download this post"}
+      aria-label={archiveName ? `Download ${archiveName}` : compact ? `Download post ${post.id}` : "Download this post"}
     >
       {!compact && (
         <Form.Check
           type="switch"
-          id={`booru-convert-${post.sourceID}-${post.id}`}
+          id={`booru-convert-${post.sourceID}-${post.id}${archiveIndex === undefined ? "" : `-${archiveIndex}`}`}
           label="Convert using Media converter defaults"
           checked={convert}
           disabled={busy || running || !ready}
