@@ -30,6 +30,7 @@ import {
   faSliders,
   faShieldHalved,
   faImages,
+  faRobot,
   faTags,
   faPlay,
   faStop,
@@ -53,6 +54,7 @@ import {
   type BooruSource,
   type BrowserSearch,
   postMediaKind,
+  isAIGeneratedPost,
   browserResultSignature,
   browserSearchURL,
   readBooruResponse,
@@ -512,7 +514,7 @@ function SourceResults({
   showIgnored: boolean;
   filters: Pick<
     BrowserSearch,
-    "sort" | "rating" | "media" | "pageSize" | "favorites"
+    "sort" | "rating" | "media" | "pageSize" | "favorites" | "hideAI"
   >;
   thumbnails: boolean;
   favorites: boolean;
@@ -535,9 +537,11 @@ function SourceResults({
   const visiblePosts = useMemo(
     () =>
       result?.posts.filter(
-        (post) => !filters.media || postMediaKind(post) === filters.media
+        (post) =>
+          (!filters.media || postMediaKind(post) === filters.media) &&
+          (!filters.hideAI || !isAIGeneratedPost(post))
       ) ?? [],
-    [result, filters.media]
+    [result, filters.media, filters.hideAI]
   );
   const signature = browserResultSignature(
     query,
@@ -546,7 +550,8 @@ function SourceResults({
     filters.rating,
     filters.media,
     filters.pageSize,
-    favorites
+    favorites,
+    filters.hideAI
   );
   const [review, setReview] = useState<ReviewState[]>([]);
   const onReview = useCallback((value: ReviewState[]) => setReview(value), []);
@@ -658,11 +663,11 @@ function SourceResults({
               {message("empty", "No posts returned for this page and query.")}
             </Alert>
           )}
-          {filters.media && (
+          {(filters.media || filters.hideAI) && (
             <p className="small text-muted">
               Showing {visiblePosts.length} of {result.posts.length} posts on
               this loaded page. Provider totals and pagination include all
-              media.
+              posts; AI-generated detection uses explicit tags only.
             </p>
           )}
           <BooruReview
@@ -1250,6 +1255,21 @@ export default function BooruBrowser() {
                   })
                 }
               />
+              <BooruIconButton
+                icon={faRobot}
+                label="Hide AI-generated posts on this page"
+                active={!!active.hideAI}
+                aria-pressed={!!active.hideAI}
+                onClick={() =>
+                  history.push({
+                    search: browserSearchURL({
+                      ...active,
+                      hideAI: !active.hideAI,
+                      inspect: undefined,
+                    }),
+                  })
+                }
+              />
               <BooruIconMenu
                 label="Autocomplete"
                 icon={faTags}
@@ -1648,7 +1668,7 @@ function PageTags({
   activePages: Record<string, number>;
   filters: Pick<
     BrowserSearch,
-    "sort" | "rating" | "media" | "pageSize" | "favorites"
+    "sort" | "rating" | "media" | "pageSize" | "favorites" | "hideAI"
   >;
   onTag: (name: string, mode?: "add" | "replace") => void;
 }) {
@@ -1665,7 +1685,8 @@ function PageTags({
         filters.rating,
         filters.media,
         filters.pageSize,
-        filters.favorites
+        filters.favorites,
+        filters.hideAI
       )
       ? loaded.posts
       : [];
