@@ -169,6 +169,9 @@ func (s Source) isRule34() bool {
 	return false
 }
 
+// IsRule34 identifies the official Rule34.xxx API and web host aliases.
+func (s Source) IsRule34() bool { return s.isRule34() }
+
 // rule34APIBase routes API requests to the documented API host without
 // changing the site's configured URL (or the instance identity and post links).
 func (s Source) rule34APIBase() string {
@@ -207,7 +210,7 @@ func (s Source) Public() PublicSource {
 		auth = "Optional API key in Source settings; provider content filters still apply."
 	}
 	return PublicSource{Instance: s.Instance(), ID: s.ID, Name: s.Name, Engine: s.Engine, URL: s.URL, QueryHelp: help,
-		AccountFavorites: s.AccountFavoritesAvailable(), CredentialsConfigured: s.APIKey != "", Authentication: auth, CategorizedTags: s.Engine == "danbooru" || s.Engine == "e621"}
+		AccountFavorites: s.AccountFavoritesAvailable(), CredentialsConfigured: s.APIKey != "", Authentication: auth, CategorizedTags: s.Engine == "danbooru" || s.Engine == "e621" || s.isRule34()}
 }
 
 func publicHostname(host string) bool {
