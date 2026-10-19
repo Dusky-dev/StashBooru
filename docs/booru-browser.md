@@ -232,8 +232,8 @@ its ZIP structure and source URL, then exposes supported image and video entries
 as a lazy-scrolling gallery. Entries are streamed to the browser only after
 media signature validation and are never extracted to the server filesystem.
 
-**Limits:** 64 MiB compressed per archive, 512 entries examined, 128 eligible
-media entries per archive, 24 MiB decompressed per entry, limited compression
+**Limits:** 256 MiB per archive by default (configurable 16–512 MiB in Downloads and autocomplete), 512 entries examined, 128 eligible
+media entries per archive, 256 MiB decompressed per entry by default (same configurable limit), limited compression
 ratio and at most four cached archives for five minutes. Unsafe paths, symlinks,
 unsupported formats and nested archives are not opened; the inspector reports
 skipped entries. If an archive is too large, corrupt or password-protected,
