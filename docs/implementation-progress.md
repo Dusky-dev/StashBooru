@@ -56,6 +56,12 @@ silently promoted to verified production features by this documentation update.
   `6431a5c4a9f4a1141d38b11b7dbcd05f0d2823ff`. Fresh develop is still the baseline
   above. This final checkpoint updates the ledger only. Current head CI and
   independently assessed Codex Review outcomes are attached to PR #152.
+- Codex Review identified Kemono's retired `/creators.txt` path. Verified against
+  the maintained [gallery-dl Kemono client](https://github.com/mikf/gallery-dl/blob/master/gallery_dl/extractor/kemono.py):
+  its public index uses `/api/v1/creators` with `Accept: text/css`. The adapter now
+  uses that endpoint; provider regressions assert the live path and retain the
+  engine-specific Accept header. Other findings are assessed against current
+  behavior rather than accepted automatically.
 
 ## PR #151 review corrections — 2026-10-19
 

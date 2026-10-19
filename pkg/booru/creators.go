@@ -122,9 +122,6 @@ func (c *Client) creatorIndex(ctx context.Context, source Source) ([]Creator, er
 
 func (c *Client) fetchCreators(ctx context.Context, source Source) ([]Creator, error) {
 	endpoint := "/api/v1/creators"
-	if source.Engine == "kemono" {
-		endpoint += ".txt"
-	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(source.URL, "/")+endpoint, nil)
 	if err != nil {
 		return nil, extendedParseError()

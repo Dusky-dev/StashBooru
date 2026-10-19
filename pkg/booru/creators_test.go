@@ -18,8 +18,12 @@ func TestCreatorDirectoriesSearchPageAndCache(t *testing.T) {
 			c := testClient(func(r *http.Request) (*http.Response, error) {
 				calls++
 				want := "/api/v1/creators"
+				wantAccept := "application/json"
 				if engine == "kemono" {
-					want += ".txt"
+					wantAccept = "text/css"
+				}
+				if r.Header.Get("Accept") != wantAccept {
+					t.Fatal("wrong directory Accept header", r.Header)
 				}
 				if r.URL.Path != want || r.URL.RawQuery != "" || r.Header.Get("Cookie") != "" || r.Header.Get("Authorization") != "" {
 					t.Fatal("wrong directory request", r.URL, r.Header)
