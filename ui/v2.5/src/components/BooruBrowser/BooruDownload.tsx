@@ -324,8 +324,8 @@ export function BooruDownload({
       )}
       {!available && !compact && (
         <small className="d-block">
-          Original unavailable, larger than the configured {maxFileSizeMiB} MiB limit,
-          or its source needs a CDN configuration update.
+          Original unavailable, larger than the configured {maxFileSizeMiB} MiB
+          limit, or its source needs a CDN configuration update.
         </small>
       )}
       {picker && (
