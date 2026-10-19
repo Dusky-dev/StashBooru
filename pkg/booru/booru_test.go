@@ -293,3 +293,82 @@ func TestSourceInstanceIdentity(t *testing.T) {
 		t.Fatal("another installation inherited review state")
 	}
 }
+
+func TestRule34APIHostAndRequiredCredentials(t *testing.T) {
+	for _, site := range []string{"https://rule34.xxx", "https://www.rule34.xxx", "https://api.rule34.xxx"} {
+		t.Run(site, func(t *testing.T) {
+			source := Source{ID: "rule34", Name: "Rule34", Engine: "gelbooru", URL: site}
+			if !source.isRule34() || source.Validate() != nil {
+				t.Fatal("valid Rule34 source not recognized")
+			}
+			calls := 0
+			client := testClient(func(r *http.Request) (*http.Response, error) {
+				calls++
+				if r.URL.Host != "api.rule34.xxx" || r.URL.Path != "/index.php" ||
+					r.URL.Query().Get("page") != "dapi" || r.URL.Query().Get("s") != "post" ||
+					r.URL.Query().Get("q") != "index" || r.URL.Query().Get("tags") != "landscape" ||
+					r.URL.Query().Get("pid") != "1" || r.URL.Query().Get("api_key") != "test-secret" ||
+					r.URL.Query().Get("user_id") != "42" {
+					t.Fatalf("incorrect authenticated API request: host=%s path=%s", r.URL.Host, r.URL.Path)
+				}
+				return response(200, `{"post":[{"id":123,"tags":"landscape","preview_url":"https://cdn.example.org/a.jpg"}]}`), nil
+			})
+			if _, err := client.Search(context.Background(), source, "landscape", 2, 24); err == nil || calls != 0 ||
+				!strings.Contains(err.Error(), "API key and user ID") {
+				t.Fatalf("missing credentials should fail without network: %v (calls %d)", err, calls)
+			}
+			source.APIKey, source.UserID = "test-secret", "42"
+			got, err := client.Search(context.Background(), source, "landscape", 2, 24)
+			if err != nil || calls != 1 || len(got.Posts) != 1 {
+				t.Fatalf("authenticated API failed: %#v %v (%d calls)", got, err, calls)
+			}
+			if got.Posts[0].PostURL != site+"/index.php?id=123&page=post&s=view" {
+				// An API-specific source URL should still link to the public site.
+				if got.Posts[0].PostURL != "https://api.rule34.xxx/index.php?id=123&page=post&s=view" || site != "https://api.rule34.xxx" {
+					t.Fatalf("post link changed unexpectedly: %s", got.Posts[0].PostURL)
+				}
+			}
+			if strings.Contains(source.Public().Authentication, "may be required") {
+				t.Fatal("Rule34 guidance still claims credentials are optional")
+			}
+		})
+	}
+	clone := testSource("gelbooru")
+	if clone.isRule34() || clone.rule34APIBase() != clone.URL {
+		t.Fatal("third-party DAPI clone was redirected to Rule34")
+	}
+	if _, err := testClient(func(*http.Request) (*http.Response, error) {
+		return response(200, `{"post":[]}`), nil
+	}).Search(context.Background(), clone, "", 1, 24); err != nil {
+		t.Fatal("ordinary DAPI clone should remain anonymous", err)
+	}
+}
+
+func TestRule34AutocompleteAndHTTPDenial(t *testing.T) {
+	source := Source{ID: "rule34", Name: "Rule34", Engine: "gelbooru", URL: "https://rule34.xxx"}
+	called := false
+	client := testClient(func(r *http.Request) (*http.Response, error) {
+		called = true
+		if r.URL.Host != "api.rule34.xxx" || r.URL.Path != "/autocomplete.php" ||
+			r.URL.Query().Get("q") != "ca" || r.URL.Query().Get("api_key") != "test-secret" ||
+			r.URL.Query().Get("user_id") != "42" {
+			t.Fatalf("Rule34 autocomplete missing API host or auth")
+		}
+		return response(200, `[]`), nil
+	})
+	if _, err := client.Autocomplete(context.Background(), source, "ca"); err == nil || called {
+		t.Fatalf("autocomplete should refuse missing credentials: %v", err)
+	}
+	source.APIKey, source.UserID = "test-secret", "42"
+	if _, err := client.Autocomplete(context.Background(), source, "ca"); err != nil || !called {
+		t.Fatalf("Rule34 autocomplete request failed: %v", err)
+	}
+	client = testClient(func(*http.Request) (*http.Response, error) {
+		return response(http.StatusForbidden, "private-key"), nil
+	})
+	_, err := client.Search(context.Background(), source, "ca", 1, 24)
+	if err == nil || !strings.Contains(err.Error(), "Rule34.xxx rejected") ||
+		strings.Contains(err.Error(), source.APIKey) || strings.Contains(err.Error(), "private-key") {
+		t.Fatalf("HTTP 403 lacks safe Rule34 explanation: %v", err)
+	}
+}
