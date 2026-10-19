@@ -3,6 +3,7 @@ package api
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"net/http"
@@ -76,10 +77,72 @@ func validBooruArchiveEntry(f *zip.File) bool {
 	}
 }
 
+// checkBooruZIPDirectory rejects ZIP64, multi-disk archives, oversized central
+// directories and forged entry counts BEFORE zip.NewReader allocates zip.File
+// records. The preview limits do not require ZIP64 or self-extracting prefixes.
+func checkBooruZIPDirectory(data []byte) error {
+	const eocdLength = 22
+	if len(data) < eocdLength {
+		return fmt.Errorf("invalid ZIP end-of-central-directory record")
+	}
+	start := len(data) - eocdLength - 65535
+	if start < 0 {
+		start = 0
+	}
+	for offset := len(data) - eocdLength; offset >= start; offset-- {
+		if binary.LittleEndian.Uint32(data[offset:offset+4]) != 0x06054b50 ||
+			offset+eocdLength+int(binary.LittleEndian.Uint16(data[offset+20:offset+22])) != len(data) {
+			continue
+		}
+		footer := data[offset:]
+		entriesOnDisk := binary.LittleEndian.Uint16(footer[8:10])
+		entries := binary.LittleEndian.Uint16(footer[10:12])
+		directorySize := uint64(binary.LittleEndian.Uint32(footer[12:16]))
+		directoryOffset := uint64(binary.LittleEndian.Uint32(footer[16:20]))
+		if binary.LittleEndian.Uint16(footer[4:6]) != 0 ||
+			binary.LittleEndian.Uint16(footer[6:8]) != 0 || entries != entriesOnDisk ||
+			entries == 0xffff || entries > booruArchiveMaxFiles ||
+			directorySize == 0xffffffff || directoryOffset == 0xffffffff {
+			return fmt.Errorf("ZIP64, multi-disk or excessive archive directory is unsupported")
+		}
+		if directorySize > 2<<20 || directoryOffset+directorySize != uint64(offset) {
+			return fmt.Errorf("archive directory is oversized or malformed")
+		}
+		position := int(directoryOffset)
+		for i := 0; i < int(entries); i++ {
+			if position+46 > offset || binary.LittleEndian.Uint32(data[position:position+4]) != 0x02014b50 {
+				return fmt.Errorf("malformed ZIP central directory")
+			}
+			nameLength := int(binary.LittleEndian.Uint16(data[position+28 : position+30]))
+			extraLength := int(binary.LittleEndian.Uint16(data[position+30 : position+32]))
+			commentLength := int(binary.LittleEndian.Uint16(data[position+32 : position+34]))
+			if binary.LittleEndian.Uint16(data[position+34:position+36]) != 0 ||
+				binary.LittleEndian.Uint32(data[position+20:position+24]) == 0xffffffff ||
+				binary.LittleEndian.Uint32(data[position+24:position+28]) == 0xffffffff ||
+				binary.LittleEndian.Uint32(data[position+42:position+46]) == 0xffffffff ||
+				uint64(binary.LittleEndian.Uint32(data[position+42:position+46])) >= directoryOffset {
+				return fmt.Errorf("unsupported ZIP64 or multi-disk entry")
+			}
+			position += 46 + nameLength + extraLength + commentLength
+			if position > offset {
+				return fmt.Errorf("invalid ZIP central directory bounds")
+			}
+		}
+		if position != offset {
+			return fmt.Errorf("ZIP central directory contains undeclared records")
+		}
+		return nil
+	}
+	return fmt.Errorf("ZIP end-of-central-directory record is missing")
+}
+
 func indexBooruArchive(data []byte) (booruArchiveListing, *zip.Reader, error) {
 	listing := booruArchiveListing{Files: []booruArchiveFile{}}
 	if len(data) == 0 || len(data) > booruArchiveMaxBytes {
 		return listing, nil, fmt.Errorf("archive is empty or exceeds 64 MiB")
+	}
+	if err := checkBooruZIPDirectory(data); err != nil {
+		return listing, nil, err
 	}
 	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
 	if err != nil {
