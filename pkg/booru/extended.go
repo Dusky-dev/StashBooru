@@ -208,7 +208,7 @@ func mediaExtension(raw string) string {
 }
 func supportedArchiveFile(ext string) bool {
 	switch ext {
-	case "jpg", "jpeg", "png", "webp", "gif", "apng", "avif", "jxl", "bmp", "tiff", "mp4", "webm":
+	case "jpg", "jpeg", "png", "webp", "gif", "apng", "avif", "jxl", "bmp", "tiff", "mp4", "webm", "zip", "cbz":
 		return true
 	}
 	return false
@@ -303,6 +303,9 @@ func parseArchivePost(s Source, raw object) (Post, error) {
 	for _, file := range files {
 		filePath := text(file["path"])
 		ext := mediaExtension(filePath)
+		if ext == "" {
+			ext = mediaExtension(text(file["name"]))
+		}
 		if filePath == "" || seen[filePath] {
 			continue
 		}
@@ -342,6 +345,11 @@ func parseArchivePost(s Source, raw object) (Post, error) {
 		}
 		asset.PreviewURL = s.postMediaURL(preview)
 		asset.SampleURL = asset.PreviewURL
+		if ext == "zip" || ext == "cbz" {
+			// Archive thumbnails are not image bytes. The inspector obtains
+			// entries from the bounded, authenticated archive route instead.
+			asset.PreviewURL, asset.SampleURL = "", ""
+		}
 		if len(seen) == 1 {
 			p.OriginalURL, p.DownloadAvailable, p.Format, p.Filename, p.Bytes, p.PreviewURL, p.SampleURL = asset.OriginalURL, asset.DownloadAvailable, asset.Format, asset.Filename, asset.Bytes, asset.PreviewURL, asset.SampleURL
 		} else {
@@ -349,7 +357,7 @@ func parseArchivePost(s Source, raw object) (Post, error) {
 		}
 	}
 	if omitted > 0 {
-		p.MediaNotice = fmt.Sprintf("%d non-media attachments omitted (archives/documents are not imported).", omitted)
+		p.MediaNotice = fmt.Sprintf("%d unsupported attachments omitted (documents and unsupported archives).", omitted)
 	}
 	if !p.DownloadAvailable {
 		p.MediaNotice += " Full media is unavailable; previews are not substituted for originals."

@@ -232,6 +232,7 @@ func Initialize() (*Server, error) {
 	r.Post("/booru-browser/settings", booruRoutes.UpdateSettings)
 	r.Get("/booru-browser/search", booruRoutes.Search)
 	r.Get("/booru-browser/media", booruRoutes.Media)
+	r.Get("/booru-browser/archive", booruRoutes.Archive)
 	r.Get("/booru-browser/download-settings", booruRoutes.DownloadSettings)
 	r.Post("/booru-browser/download-settings", booruRoutes.UpdateDownloadSettings)
 	r.Get("/booru-browser/download", booruRoutes.DownloadStatus)

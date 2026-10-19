@@ -65,6 +65,7 @@ import {
 import { BooruReview, ReviewEvidence, type ReviewState } from "./BooruReview";
 import { TagAutocomplete } from "./TagAutocomplete";
 import { BooruDownload } from "./BooruDownload";
+import { BooruArchive } from "./BooruArchive";
 import { readBrowserMemory, saveBrowserMemory } from "./browser";
 import { SourceSettings } from "./SourceSettings";
 import { SourceSelector } from "./SourceSelector";
@@ -278,24 +279,28 @@ function PostInspection({
                     {asset.format && ` · ${asset.format.toUpperCase()}`}
                   </h6>
                 )}
-                <MotionPreview post={asset}>
-                  {sample ? (
-                    <RemoteImage
-                      key={sample}
-                      className="booru-sample"
-                      src={sample}
-                      fallbackSrc={remoteURL(asset.directSampleURL)}
-                      alt={`${source.name} #${post.id} media ${index + 1}`}
-                    />
-                  ) : (
-                    <Alert variant="secondary">
-                      {message(
-                        "no_preview",
-                        "No supported preview is available. Open the remote post to inspect it."
-                      )}
-                    </Alert>
-                  )}
-                </MotionPreview>
+                {["zip", "cbz"].includes(asset.format?.toLowerCase() ?? "") ? (
+                  <BooruArchive post={asset} scrollBody={scrollBody} />
+                ) : (
+                  <MotionPreview post={asset}>
+                    {sample ? (
+                      <RemoteImage
+                        key={sample}
+                        className="booru-sample"
+                        src={sample}
+                        fallbackSrc={remoteURL(asset.directSampleURL)}
+                        alt={`${source.name} #${post.id} media ${index + 1}`}
+                      />
+                    ) : (
+                      <Alert variant="secondary">
+                        {message(
+                          "no_preview",
+                          "No supported preview is available. Open the remote post to inspect it."
+                        )}
+                      </Alert>
+                    )}
+                  </MotionPreview>
+                )}
                 <div className="booru-file-details mt-2">
                   {!!asset.width && !!asset.height && (
                     <span>
@@ -317,15 +322,19 @@ function PostInspection({
                     </span>
                   )}
                 </div>
-                <BooruDownload
-                  key={`download:${asset.id}:${asset.mediaKey}`}
-                  post={asset}
-                  instance={source.instance}
-                  downloadRef={(button) => {
-                    if (button) downloads.current.set(asset.id, button);
-                    else downloads.current.delete(asset.id);
-                  }}
-                />
+                {!["zip", "cbz"].includes(
+                  asset.format?.toLowerCase() ?? ""
+                ) && (
+                  <BooruDownload
+                    key={`download:${asset.id}:${asset.mediaKey}`}
+                    post={asset}
+                    instance={source.instance}
+                    downloadRef={(button) => {
+                      if (button) downloads.current.set(asset.id, button);
+                      else downloads.current.delete(asset.id);
+                    }}
+                  />
+                )}
                 <div className="booru-hash">
                   {asset.md5 && (
                     <span>
@@ -812,11 +821,15 @@ function SourceResults({
                 </div>
                 <CoreTagActions post={item} onTag={onTag} />
                 <div className="booru-card-actions">
-                  <BooruDownload
-                    post={item}
-                    instance={source.instance}
-                    compact
-                  />
+                  {!["zip", "cbz"].includes(
+                    item.format?.toLowerCase() ?? ""
+                  ) && (
+                    <BooruDownload
+                      post={item}
+                      instance={source.instance}
+                      compact
+                    />
+                  )}
                 </div>
                 {controls}
               </article>

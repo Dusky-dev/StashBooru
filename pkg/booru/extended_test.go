@@ -46,6 +46,24 @@ func TestPawchiveRejectsUnfilteredTextSearch(t *testing.T) {
 	}
 }
 
+func TestArchiveSourceKeepsZIPAndCBZ(t *testing.T) {
+	for _, extension := range []string{"zip", "cbz"} {
+		t.Run(extension, func(t *testing.T) {
+			var raw object
+			body := fmt.Sprintf(`{"id":"123","service":"patreon","user":"42","file":{"path":"/album.%s","name":"album.%s"},"attachments":[{"path":"/page.png"}]}`, extension, extension)
+			if err := json.Unmarshal([]byte(body), &raw); err != nil {
+				t.Fatal(err)
+			}
+			post, err := parseArchivePost(testSource("kemono"), raw)
+			if err != nil || post.Format != extension || post.OriginalURL == "" ||
+				post.PreviewURL != "" || post.SampleURL != "" || len(post.Attachments) != 1 ||
+				post.Attachments[0].Format != "png" {
+				t.Fatalf("ZIP/CBZ attachment unavailable: %+v %v", post, err)
+			}
+		})
+	}
+}
+
 func TestExtendedFixedPageSlicingAndGalleryIdentity(t *testing.T) {
 	for _, engine := range []string{"pixiv", "pawchive", "kemono"} {
 		t.Run(engine, func(t *testing.T) {
@@ -244,7 +262,9 @@ func TestArchiveUnavailableOriginalAndNonMediaNotice(t *testing.T) {
 		t.Fatal(err)
 	}
 	post, err := parseArchivePost(testSource("pawchive"), raw)
-	if err != nil || post.DownloadAvailable || post.OriginalURL != "" || post.PreviewURL == "" || !strings.Contains(post.MediaNotice, "1 non-media") {
+	if err != nil || post.DownloadAvailable || post.OriginalURL != "" || post.PreviewURL == "" ||
+		len(post.Attachments) != 1 || post.Attachments[0].Format != "zip" ||
+		post.Attachments[0].PreviewURL != "" || !strings.Contains(post.MediaNotice, "Full media is unavailable") {
 		t.Fatal(post, err)
 	}
 }

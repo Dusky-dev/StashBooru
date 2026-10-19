@@ -157,7 +157,7 @@ Downloaded history. No remote follow or automated download is created.
 | Paheal / Shimmie | Native tags through the anonymous Danbooru XML endpoint (`/api/danbooru/find_posts`) | Category information may be unavailable; no live completion endpoint. The legacy `/api/danbooru/find_posts/index.xml` URL can return HTML rather than posts XML, so older StashBooru versions may show an unsupported-data error. |
 | Pixiv | OAuth **access token** in source API key; text search, `user:123` for artist works, `id:123` for a work | Static illustration/manga pages selectable in the inspector. Ugoira frame ZIPs are explicitly unavailable. No login/token refresh is implemented; replace expired tokens in Settings. |
 | Pawchive | Artist-name directory search, or `*` for recent posts; anonymous API. Text post search is unsupported because the API ignores it | Optional API key is the `session` cookie value, sent only to `file.pawchive.pw`. Preview-only/deferred/unavailable originals cannot be downloaded. |
-| Kemono | Artist-name directory search, `*` for recent posts, or text of at least three bytes; anonymous API | Supported image/video attachments only; ZIPs/documents are counted as omitted. |
+| Kemono | Artist-name directory search, `*` for recent posts, or text of at least three bytes; anonymous API | Supported image/video attachments and ZIP/CBZ previews; documents and unsupported archives are omitted. |
 
 Custom sources can select these engines and configure their HTTPS API root/CDN
 hosts in Settings. Preset hostnames can change; failures remain visible for retry
@@ -223,6 +223,22 @@ source/post identity across providers. There is no cross-source or cross-page
 deduplication yet. Totals are unknown except for provider-reported Philomena
 and Shimmie counts; these are not verified snapshot totals. Numbered browsing ends at page
 750; narrow the query to continue.
+
+### Archive-contained media (ZIP/CBZ)
+
+Pawchive/Kemono ZIP and CBZ attachments are included in the post inspector.
+The server downloads the archive only when its media section is viewed, validates
+its ZIP structure and source URL, then exposes supported image and video entries
+as a lazy-scrolling gallery. Entries are streamed to the browser only after
+media signature validation and are never extracted to the server filesystem.
+
+**Limits:** 64 MiB compressed per archive, 512 entries examined, 128 eligible
+media entries per archive, 24 MiB decompressed per entry, limited compression
+ratio and at most four cached archives for five minutes. Unsafe paths, symlinks,
+unsupported formats and nested archives are not opened; the inspector reports
+skipped entries. If an archive is too large, corrupt or password-protected,
+open the remote post instead. RAR and 7z are not supported yet; archive contents
+are for preview and not imported into Stash by this feature.
 
 ### Posts with multiple media files
 

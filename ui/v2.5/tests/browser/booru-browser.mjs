@@ -132,6 +132,14 @@ function result(source, query, page) {
                 : []),
       ],
     }));
+  if (query === "zip-archive")
+    Object.assign(response.posts[0], {
+      format: "zip",
+      previewURL: undefined,
+      sampleURL: undefined,
+      md5: undefined,
+      bytes: 4096,
+    });
   if (query === "many-attachments")
     response.posts[0].attachments = Array.from({ length: 11 }, (_, index) => ({
       ...response.posts[0],
@@ -343,6 +351,31 @@ try {
         }));
     await page.route("**/booru-browser/**", async (route) => {
       const url = new URL(route.request().url());
+      if (url.pathname.endsWith("/archive")) {
+        if (url.searchParams.has("file")) {
+          const png = Buffer.from(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lU8AAAAASUVORK5CYII=",
+            "base64"
+          );
+          await route.fulfill({
+            body: png,
+            contentType: "image/png",
+          });
+        } else {
+          await route.fulfill({
+            json: {
+              files: Array.from({ length: 8 }, (_, index) => ({
+                index,
+                name: `album/page-${index + 1}.png`,
+                bytes: 1024,
+                format: "png",
+              })),
+              skipped: 1,
+            },
+          });
+        }
+        return;
+      }
       if (url.pathname.endsWith("/creators")) {
         const q = url.searchParams.get("q");
         await route.fulfill({
@@ -2084,6 +2117,42 @@ try {
       .locator(".modal-footer")
       .getByRole("button", { name: "Close", exact: true })
       .click();
+    await page.goto(`${baseURL}/booru?source=danbooru&q=zip-archive`);
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 101", exact: true })
+      .click();
+    const archiveDialog = page.getByRole("dialog");
+    await archiveDialog
+      .getByText("8 media files in archive", { exact: false })
+      .waitFor();
+    const archiveFiles = archiveDialog.locator(".booru-archive-file");
+    assert.ok((await archiveFiles.count()) < 8, "archive preview was not lazy");
+    for (const target of [6, 8]) {
+      await archiveDialog.locator(".modal-body").evaluate((element) => {
+        element.scrollTop = element.scrollHeight;
+      });
+      await page.waitForFunction(
+        (expected) =>
+          document.querySelectorAll(".booru-archive-file").length >= expected,
+        target
+      );
+    }
+    assert.equal(await archiveFiles.count(), 8);
+    assert.equal(
+      await archiveDialog.locator(".booru-archive-file img").count(),
+      8
+    );
+    assert.equal(
+      await archiveDialog
+        .getByRole("button", { name: "Download to Stash" })
+        .count(),
+      0,
+      "archive bytes must not be offered to unsupported Stash image imports"
+    );
+    await archiveDialog
+      .locator(".modal-footer")
+      .getByRole("button", { name: "Close", exact: true })
+      .click();
     await page.goto(`${baseURL}/booru?source=danbooru&q=gallery`);
     await dan.locator(".booru-post").first().waitFor();
     // Native controls and compact cards expose details only in inspection.
@@ -2385,12 +2454,13 @@ try {
     await refinedInput.press("Enter");
     assert.equal(await refinedInput.inputValue(), "blue_hair");
     assert.equal(requests.length, beforeComplete);
-    await refinedInput.fill("late");
-    await page.waitForRequest(
+    const pendingLateAutocomplete = page.waitForRequest(
       (r) =>
         new URL(r.url()).pathname.endsWith("/autocomplete") &&
         new URL(r.url()).searchParams.get("q") === "late"
     );
+    await refinedInput.fill("late");
+    await pendingLateAutocomplete;
     await refinedInput.press("Enter");
     for (const route of lateCompletions.splice(0))
       await route

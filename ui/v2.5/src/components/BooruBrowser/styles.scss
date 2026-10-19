@@ -413,6 +413,24 @@
     text-align: center;
   }
 
+  .booru-archive-file {
+    border-top: 1px solid var(--secondary);
+    margin: 0.75rem 0;
+    padding: 0.75rem 0;
+  }
+
+  // Reserve height before archive thumbnails decode, so a slow network cannot
+  // advance the lazy-load sentinel through the whole archive in one tick.
+  .booru-archive-file .booru-sample {
+    min-height: 45vh;
+  }
+
+  .booru-archive-filename {
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
+    overflow-wrap: anywhere;
+  }
+
   .booru-sample {
     display: block;
     max-height: 55vh;
