@@ -31,6 +31,24 @@ silently promoted to verified production features by this documentation update.
 - Validation: GitHub CI on the PR is authoritative; no production deployment
   or merge performed in this change.
 
+## Rule34.xxx automatic tag hierarchy — 2026-10-20
+
+- Baseline: `develop` at `b98d93aaf6cba560806ceb22daa5c7d19c7f7fbc`.
+  Branch: `fix/rule34-tag-categories-20261020`. No merge or deployment.
+- Cause: Rule34 post DAPI returns a flat `tags` string despite the site having
+  artist/copyright/character/meta/general categories. Previously the browser
+  required a manually installed CSV to group these tags.
+- The official authenticated Rule34 tag DAPI is now queried for **exact tag
+  names only** after local CSV categorization, in at most five 100-name
+  requests per search page. Unknown, unrequested or invalid types are ignored.
+  The client caches only verified categories for 24 hours per site instance
+  with a bounded 8192-item cache. Lookup failure does not break post searching.
+- Added unit tests for type mappings, provider/auth request shape, strict
+  exact-name matching, cache reuse, API failure, and request bounds.
+  Search has not been tested live against a Rule34 account's credentials.
+- Validation: GitHub CI for the PR; this update does not authorize merge
+  or deployment.
+
 ## Paheal XML API endpoint repair — 2026-10-19
 
 - Baseline: current `develop` after #155, feature branch
