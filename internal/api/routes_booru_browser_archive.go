@@ -321,8 +321,9 @@ func booruArchiveContentType(format string, data []byte) string {
 			return detected
 		}
 	case "tiff":
-		if detected == "image/tiff" {
-			return detected
+		if len(data) >= 4 && (bytes.Equal(data[:4], []byte{0x49, 0x49, 0x2a, 0x00}) ||
+			bytes.Equal(data[:4], []byte{0x4d, 0x4d, 0x00, 0x2a})) {
+			return "image/tiff"
 		}
 	case "mp4":
 		if len(data) >= 12 && string(data[4:8]) == "ftyp" &&
@@ -354,7 +355,7 @@ func (rs booruBrowserRoutes) loadBooruArchive(r *http.Request, key string) ([]by
 	if !ok {
 		return nil, fmt.Errorf("archive preview expired or its source changed; refresh the search")
 	}
-	if post.OriginalURL == "" ||
+	if post.OriginalURL == "" || source.ApprovedMediaURL(post.OriginalURL) != post.OriginalURL ||
 		(strings.ToLower(post.Format) != "zip" && strings.ToLower(post.Format) != "cbz") {
 		return nil, fmt.Errorf("this post does not have a supported ZIP/CBZ archive")
 	}
