@@ -152,6 +152,34 @@ func (s Source) Validate() error {
 	return nil
 }
 
+// isRule34 matches the provider's own two public hosts, never arbitrary DAPI
+// clones or similarly named third-party hosts.
+func (s Source) isRule34() bool {
+	if s.Engine != "gelbooru" {
+		return false
+	}
+	u, err := url.Parse(s.URL)
+	if err != nil {
+		return false
+	}
+	switch strings.ToLower(u.Hostname()) {
+	case "rule34.xxx", "www.rule34.xxx", "api.rule34.xxx":
+		return true
+	}
+	return false
+}
+
+// rule34APIBase routes API requests to the documented API host without
+// changing the site's configured URL (or the instance identity and post links).
+func (s Source) rule34APIBase() string {
+	if !s.isRule34() {
+		return strings.TrimRight(s.URL, "/")
+	}
+	u, _ := url.Parse(s.URL)
+	u.Host = "api.rule34.xxx"
+	return strings.TrimRight(u.String(), "/")
+}
+
 func (s Source) Public() PublicSource {
 	help := "Space-separated tags; underscores inside names. Native provider syntax and account search limits apply."
 	auth := "Optional login and API key, configured in Source settings."
@@ -169,6 +197,9 @@ func (s Source) Public() PublicSource {
 		auth = "Anonymous Shimmie/Danbooru XML API; category information may be unavailable."
 	case "gelbooru":
 		auth = "API key and user ID may be required; configure them in Source settings."
+		if s.isRule34() {
+			auth = "Rule34.xxx requires an account API key and user ID for searches. Generate them on your Rule34 account Options page, then save both in Source settings. API requests use api.rule34.xxx."
+		}
 	case "moebooru":
 		auth = "Anonymous search; legacy password login is not supported."
 	case "philomena":
