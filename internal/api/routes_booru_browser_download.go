@@ -63,6 +63,9 @@ func (rs booruBrowserRoutes) downloadSettings() (booruDownloadSettings, error) {
 	if err == nil {
 		err = booru.ValidateFilenameTemplate(value.FilenameTemplate)
 	}
+	if err != nil {
+		return value, err
+	}
 	value.Convert = value.Convert || value.JPEGToJXL
 	value.JPEGToJXL = false
 	value.MaxFileSizeMiB, err = normalizeBooruFileSizeMiB(value.MaxFileSizeMiB)
