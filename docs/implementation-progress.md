@@ -12,6 +12,23 @@ P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
 
+## Paheal XML API endpoint repair — 2026-10-19
+
+- Baseline: current `develop` after #155, feature branch
+  `fix/paheal-shimmie-find-posts-20261019`; no merge or deployment.
+- Replaced the obsolete Shimmie/Paheal Danbooru XML search URL
+  `/api/danbooru/find_posts/index.xml` with the supported endpoint
+  `/api/danbooru/find_posts`, preserving search tags, 1-based paging,
+  1–50 result limit, server-side throttling and anonymous access.
+- The current Shimmie upstream implementation and maintained booru library
+  document the unsuffixed route; the old route may return HTTP 200 HTML,
+  causing StashBooru's correct XML validation to reject it.
+- Mock-transport regressions verify Paheal's exact API route and parameters,
+  realistic posts XML with count/media/tags, and rejection of HTML, negative
+  counts and provider records beyond the requested limit. Live Paheal
+  acceptance remains unverified; browser/build CI passed on the initial PR head,
+  while gofmt was corrected after lint reported its sole source finding.
+
 ## Multi-file post inspector stream — 2026-10-19
 
 - Baseline: latest `develop`. Branch

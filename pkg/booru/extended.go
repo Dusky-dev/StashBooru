@@ -358,7 +358,10 @@ func parseArchivePost(s Source, raw object) (Post, error) {
 }
 func (c *Client) searchShimmie(ctx context.Context, s Source, query string, page, limit int) (Result, error) {
 	result := Result{SourceID: s.ID, Page: page, Limit: limit, Posts: []Post{}, FetchedAt: time.Now().UTC()}
-	data, err := c.extendedRequest(ctx, s, "/api/danbooru/find_posts/index.xml", url.Values{"tags": {query}, "page": {strconv.Itoa(page)}, "limit": {strconv.Itoa(limit)}})
+	// Modern Shimmie (including Paheal) exposes this route without
+	// /index.xml. The old suffix can return an HTML page with HTTP 200,
+	// which the XML parser correctly rejects as an unsupported response.
+	data, err := c.extendedRequest(ctx, s, "/api/danbooru/find_posts", url.Values{"tags": {query}, "page": {strconv.Itoa(page)}, "limit": {strconv.Itoa(limit)}})
 	if err != nil {
 		return result, err
 	}
