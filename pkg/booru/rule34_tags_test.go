@@ -123,3 +123,24 @@ func TestRule34CategoryLookupLimitsBatches(t *testing.T) {
 		t.Fatalf("category fetch made %d requests, expected bounded %d", calls, rule34CategoryMaxBatches)
 	}
 }
+
+func TestRule34CategoryLookupBoundsNameQueryBytes(t *testing.T) {
+	source := Source{ID: "rule34", Name: "Rule34", Engine: "gelbooru",
+		URL: "https://rule34.xxx", APIKey: "secret", UserID: "42"}
+	calls := 0
+	client := testClient(func(r *http.Request) (*http.Response, error) {
+		calls++
+		if len(r.URL.Query().Get("names")) > rule34CategoryNamesMaxBytes {
+			t.Error("unbounded Rule34 tag names query")
+		}
+		return response(200, `{"tag":[]}`), nil
+	})
+	posts := []Post{{Tags: make([]Tag, 20)}}
+	for i := range posts[0].Tags {
+		posts[0].Tags[i] = Tag{Name: fmt.Sprintf("%03d_%s", i, strings.Repeat("a", 240)), Category: "unknown"}
+	}
+	client.CategorizeRule34Tags(context.Background(), source, posts)
+	if calls < 2 || calls > rule34CategoryMaxBatches {
+		t.Fatalf("expected bounded URL batches for long names, got %d", calls)
+	}
+}
