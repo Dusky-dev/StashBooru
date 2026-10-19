@@ -12,6 +12,24 @@ P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
 
+## Rule34 authenticated API repair — 2026-10-19
+
+- Baseline: `develop` after merged #153. Feature branch
+  `fix/rule34-auth-api-host-20261019`; no merge or deployment.
+- Exact Rule34.xxx hosts (not arbitrary Gelbooru/DAPI clones) now route
+  post searches and live autocomplete to `api.rule34.xxx` with the configured
+  account API key and user ID. Missing credentials fail locally with useful
+  Settings instructions. Human-facing post URLs and configured source identity
+  stay on `rule34.xxx`; server-side secrets remain redacted.
+- Rule34 401/403 errors explain account requirements and possible Cloudflare
+  enforcement without bypassing access controls. Source Settings and the
+  browser guide point to the official account Options page.
+- Regression coverage uses mocked HTTP requests for legacy/default/API hosts,
+  anonymous request rejection, authenticated paging, canonical post URLs,
+  autocomplete, third-party DAPI isolation, and 403 credential redaction.
+  Live authenticated Rule34 access is not validated without user credentials.
+  GitHub CI verification is pending on the PR branch.
+
 ## Browser controls and account favorites — 2026-10-19
 
 - Baseline: merged #152 at `e45586347603f2c58ae40d68787cc71a0173a48f`.
