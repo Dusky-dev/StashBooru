@@ -127,6 +127,12 @@ func parsePost(source Source, raw object) (Post, error) {
 		sample = text(raw["sample_url"])
 	}
 	postURL := strings.TrimRight(source.URL, "/")
+	if source.isRule34() {
+		// Preserve human-facing links even when the user configures the API host.
+		u, _ := url.Parse(source.URL)
+		u.Host = "rule34.xxx"
+		postURL = strings.TrimRight(u.String(), "/")
+	}
 	switch source.Engine {
 	case "gelbooru":
 		postURL += "/index.php?" + url.Values{"page": {"post"}, "s": {"view"}, "id": {id}}.Encode()
