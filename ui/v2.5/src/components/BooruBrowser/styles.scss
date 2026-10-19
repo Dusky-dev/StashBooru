@@ -130,7 +130,17 @@
       height: 100%;
       padding: 0;
     }
-    .booru-post-caption { display: none; }
+
+    .booru-post-caption {
+      background: rgb(0 0 0 / 75%);
+      bottom: 64px;
+      display: flex;
+      left: 0;
+      padding: 0.15rem 0.35rem;
+      position: absolute;
+      right: 0;
+      z-index: 2;
+    }
 
     .booru-core-tags, .booru-card-actions, .booru-review-actions {
       background: rgb(0 0 0 / 75%);

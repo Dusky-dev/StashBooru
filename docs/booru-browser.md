@@ -91,7 +91,8 @@ query, rating and sort filters are cleared. Loaded-page media filtering still wo
 
 Danbooru uses `ordfav:username` post search, e621 its authenticated favorites
 endpoint, and Gelbooru its favorite-index API followed by bounded post detail
-lookups. All use the existing transport, rate gates and response limits. A Gelbooru
+lookups. Gelbooru totals are advisory: a full page keeps Next available even when
+its reported count is lower. All use the existing transport, rate gates and response limits. A Gelbooru
 page may require one detail request per favorite; cancellation is supported.
 Unsupported engines or missing credentials are explained in the menu. Some DAPI
 clones do not expose the favorites API and return a provider error. Provider
@@ -104,9 +105,11 @@ favorites. Remote favorite creation/removal is not implemented.
 
 The separate filter icon opens **Saved search filters**. Name and save the current
 query/source/filter combination, select a saved name to apply it, or use its trash
-icon to delete it. Saving an existing name replaces that filter. Outside Favorites, an empty query
-is saved as `*` so the filter opens recent posts. Previously saved blank filters
-are repaired when loaded. Up to 100 named
+icon to delete it. Saving an existing name replaces that filter. Empty queries
+are saved as explicit `q=` submissions, preserving the provider's default listing
+(including Pixiv daily rankings). Legacy blank filters are repaired when loaded.
+Account favorites filters keep an empty query even when the text box has an
+unsubmitted draft. Up to 100 named
 filters and legacy local favorite snapshots are stored in private `booru-bookmarks.json`, with
 an 8 MiB metadata bound and atomic updates. This is separate from ignored/manual
 Downloaded history. No remote follow or automated download is created.

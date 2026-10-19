@@ -63,6 +63,22 @@ silently promoted to verified production features by this documentation update.
   checkpoint changes documentation only. Live authenticated provider acceptance
   remains unverified; no merge or deployment is performed.
 
+- Codex Review on `0d1d662` identified two valid P2 regressions. Gelbooru's full
+  favorite-page signal now takes precedence over advisory totals, matching the
+  maintained client's forward pagination. A regression covers under-reported
+  totals and the page-750 cap. Wall view now shows the number/rating caption above
+  its action rows; mounted checks assert ratings are visible and screenshots were
+  inspected. Both changes preserve the requested caption placement.
+- Saved filters retain explicit blank submissions instead of converting them to
+  `*` (important for Pixiv rankings). Favorites filters omit an unsubmitted draft;
+  API/legacy normalization and mounted save/apply/delete/reload regressions pass.
+- Verified correction runtime `42512e336a2578becacf937b8822c2f12d46924d`, tree
+  `9c0c099e565b658c166bd823cd36729f0f411503`: full `make test`, `make it`,
+  `make lint` (**0 issues**), all 61 UI tests, JS/CSS lint, TypeScript/formatting,
+  production bundling and mounted 1440×1000 / 390×844 passed again. This ledger
+  checkpoint is documentation only; current-head CI and re-review are attached to
+  PR #153. Authenticated real-provider acceptance remains separate.
+
 
 ## Single-site browsing and preview refinement — 2026-10-19
 

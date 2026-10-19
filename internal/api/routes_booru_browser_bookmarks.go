@@ -138,7 +138,7 @@ func normalizeSavedBooruSearch(search string) (string, bool) {
 		}
 	}
 	if strings.TrimSpace(params.Get("q")) == "" && params.Get("favorites") != "1" {
-		params.Set("q", "*")
+		params.Set("q", "")
 	}
 	normalized := "?" + params.Encode()
 	if len(normalized) > 8192 {

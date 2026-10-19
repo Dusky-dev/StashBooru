@@ -127,9 +127,7 @@ func (c *Client) AccountFavorites(ctx context.Context, s Source, page, limit int
 			result.Posts = append(result.Posts, posts.Posts[0])
 		}
 	}
+	// DAPI totals are advisory: a full page must not hide later favorites.
 	result.HasMore = len(rows) == limit && page < MaxPage
-	if result.Total != nil && int64(page*limit) >= *result.Total {
-		result.HasMore = false
-	}
 	return result, nil
 }

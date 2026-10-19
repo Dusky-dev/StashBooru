@@ -193,3 +193,20 @@ func TestBlankPixivDoesNotPromiseRecentOrdering(t *testing.T) {
 		t.Fatal("daily rankings treated as recent ordering")
 	}
 }
+
+func TestGelbooruFavoritesPagingIgnoresUnderreportedTotal(t *testing.T) {
+	s := testSource("gelbooru")
+	s.UserID, s.APIKey = "123", "key"
+	for _, page := range []int{1, MaxPage} {
+		c := testClient(func(r *http.Request) (*http.Response, error) {
+			if r.URL.Query().Get("s") == "favorite" {
+				return response(200, `{"@attributes":{"count":1},"favorite":[{"favorite":42},{"favorite":43}]}`), nil
+			}
+			return response(200, fmt.Sprintf(`{"post":[{"id":%s}]}`, r.URL.Query().Get("id"))), nil
+		})
+		got, err := c.AccountFavorites(context.Background(), s, page, 2)
+		if err != nil || len(got.Posts) != 2 || got.HasMore != (page < MaxPage) {
+			t.Fatal("reported total truncated full page", page, got, err)
+		}
+	}
+}

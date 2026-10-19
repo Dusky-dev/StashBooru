@@ -353,7 +353,7 @@ try {
             if (value.action === "search") {
               const params = new URLSearchParams(value.search);
               if (!params.get("q")?.trim() && params.get("favorites") !== "1")
-                params.set("q", "*");
+                params.set("q", "");
               bookmarks.searches.push({
                 name: value.name,
                 search: `?${params}`,
@@ -1641,6 +1641,15 @@ try {
     assert.equal(await page.locator(".booru-selected-sources").count(), 0);
     await page.getByRole("button", { name: "Wall view", exact: true }).click();
     await dan.locator(".booru-wall-item").first().waitFor();
+    await dan
+      .locator(".booru-wall-item .booru-post-caption .booru-rating")
+      .first()
+      .waitFor();
+    assert.equal(
+      await dan.locator(".booru-wall-item .booru-rating").count(),
+      12,
+      "Wall lost card ratings"
+    );
     await page.locator(".zoom-slider").fill("2");
     await page.reload();
     await dan.locator(".booru-wall-item").first().waitFor();
@@ -1750,6 +1759,46 @@ try {
       .getByRole("button", { name: "Inspect Danbooru post 777", exact: true })
       .waitFor();
     assert.ok(page.url().includes("favorites=1"));
+    await input.fill("unfinished favorite draft");
+    await page
+      .getByRole("button", { name: "Saved search filters", exact: true })
+      .click();
+    await page
+      .getByLabel("Saved filter name", { exact: true })
+      .fill("Favorite filter");
+    await page
+      .getByRole("button", { name: "Save current search", exact: false })
+      .click();
+    await page
+      .getByRole("button", { name: "Favorite filter", exact: true })
+      .waitFor();
+    assert.equal(
+      new URLSearchParams(
+        bookmarks.searches.find((f) => f.name === "Favorite filter").search
+      ).get("q"),
+      "",
+      "unsubmitted draft invalidated account favorites filter"
+    );
+    await page
+      .getByRole("button", { name: "Favorite filter", exact: true })
+      .click();
+    assert.equal(new URL(page.url()).searchParams.get("favorites"), "1");
+    assert.equal(new URL(page.url()).searchParams.get("q"), "");
+    await page
+      .getByRole("button", { name: "Saved search filters", exact: true })
+      .click();
+    await page
+      .getByRole("button", {
+        name: "Delete search Favorite filter",
+        exact: true,
+      })
+      .click();
+    await page
+      .getByRole("button", { name: "Favorite filter", exact: true })
+      .waitFor({ state: "hidden" });
+    await page
+      .getByRole("button", { name: "Saved search filters", exact: true })
+      .click();
     await page.reload();
     await dan
       .getByRole("button", { name: "Inspect Danbooru post 777", exact: true })
@@ -1785,14 +1834,14 @@ try {
       .click();
     await page.getByRole("button", { name: "Recent", exact: true }).click();
     await dan.locator(".booru-post").first().waitFor();
-    assert.equal(new URL(page.url()).searchParams.get("q"), "*");
+    assert.equal(new URL(page.url()).searchParams.get("q"), "");
     await page.reload();
     await dan.locator(".booru-post").first().waitFor();
     assert.equal(
       await page
         .getByLabel("Search tags (native source syntax)", { exact: true })
         .inputValue(),
-      "*"
+      ""
     );
     await page.goto(`${baseURL}/booru?source=danbooru&q=attachments`);
     await dan

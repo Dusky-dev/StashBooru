@@ -1315,7 +1315,7 @@ export default function BooruBrowser() {
               busy={bookmarkBusy}
               search={browserSearchURL({
                 ...active,
-                query: query.trim(),
+                query: active.favorites ? "" : query.trim(),
                 sources: selected,
                 pages: {},
                 inspect: undefined,
