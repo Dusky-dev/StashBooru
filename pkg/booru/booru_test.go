@@ -322,11 +322,8 @@ func TestRule34APIHostAndRequiredCredentials(t *testing.T) {
 			if err != nil || calls != 1 || len(got.Posts) != 1 {
 				t.Fatalf("authenticated API failed: %#v %v (%d calls)", got, err, calls)
 			}
-			if got.Posts[0].PostURL != site+"/index.php?id=123&page=post&s=view" {
-				// An API-specific source URL should still link to the public site.
-				if got.Posts[0].PostURL != "https://api.rule34.xxx/index.php?id=123&page=post&s=view" || site != "https://api.rule34.xxx" {
-					t.Fatalf("post link changed unexpectedly: %s", got.Posts[0].PostURL)
-				}
+			if got.Posts[0].PostURL != "https://rule34.xxx/index.php?id=123&page=post&s=view" {
+				t.Fatalf("post links must use the canonical public site: %s", got.Posts[0].PostURL)
 			}
 			if strings.Contains(source.Public().Authentication, "may be required") {
 				t.Fatal("Rule34 guidance still claims credentials are optional")
