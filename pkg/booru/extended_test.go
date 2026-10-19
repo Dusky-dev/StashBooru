@@ -107,7 +107,10 @@ func TestExtendedFixedPageSlicingAndGalleryIdentity(t *testing.T) {
 }
 func TestShimmieAndExtendedFailures(t *testing.T) {
 	c := testClient(func(r *http.Request) (*http.Response, error) {
-		if r.URL.Path != "/api/danbooru/find_posts/index.xml" || r.URL.Query().Get("page") != "2" || r.Header.Get("Accept") != "application/xml" {
+		if r.URL.Path != "/api/danbooru/find_posts" ||
+			r.URL.Query().Get("page") != "2" || r.URL.Query().Get("limit") != "2" ||
+			r.URL.Query().Get("tags") != "landscape" ||
+			r.Header.Get("Accept") != "application/xml" {
 			t.Fatal(r.URL)
 		}
 		return response(200, `<posts count="3"><post id="3" tags="landscape" file_url="https://cdn.example.org/one.jpg" preview_url="https://cdn.example.org/thumb.jpg" /></posts>`), nil
@@ -131,6 +134,59 @@ func TestShimmieAndExtendedFailures(t *testing.T) {
 		t.Fatal("frame ZIP offered as media", err)
 	}
 }
+// Paheal serves posts XML at /api/danbooru/find_posts; the legacy
+// /index.xml path can be served as HTML without an HTTP error status.
+func TestPahealFindPostsAndInvalidXML(t *testing.T) {
+	s := Defaults()[10]
+	if s.ID != "paheal" || s.Engine != "shimmie" {
+		t.Fatal("Paheal preset was unexpectedly changed", s)
+	}
+	calls := 0
+	c := testClient(func(r *http.Request) (*http.Response, error) {
+		calls++
+		if r.URL.Host != "rule34.paheal.net" ||
+			r.URL.Path != "/api/danbooru/find_posts" ||
+			r.URL.Query().Get("tags") != "landscape" ||
+			r.URL.Query().Get("page") != "1" ||
+			r.URL.Query().Get("limit") != "2" ||
+			r.Header.Get("Accept") != "application/xml" {
+			t.Fatalf("wrong Paheal XML API request: %s", r.URL.String())
+		}
+		return response(200, `<?xml version="1.0" encoding="UTF-8"?>
+<posts count="3" offset="0">
+  <post id="101" md5="0123456789abcdef0123456789abcdef" file_name="sample.png" file_url="https://rule34.paheal.net/_images/a.png" preview_url="https://rule34.paheal.net/_thumbs/a.png" width="640" height="480" tags="landscape clouds" score="0" />
+  <post id="100" file_url="https://rule34.paheal.net/_images/b.jpg" preview_url="https://rule34.paheal.net/_thumbs/b.jpg" tags="landscape" />
+</posts>`), nil
+	})
+	got, err := c.Search(context.Background(), s, "landscape", 1, 2)
+	if err != nil || calls != 1 || len(got.Posts) != 2 || !got.HasMore ||
+		got.Total == nil || *got.Total != 3 {
+		t.Fatalf("Paheal XML was not parsed: %#v %v (calls %d)", got, err, calls)
+	}
+	first := got.Posts[0]
+	if first.PostURL != "https://rule34.paheal.net/post/view/101" ||
+		first.OriginalURL != "https://rule34.paheal.net/_images/a.png" ||
+		first.PreviewURL != "https://rule34.paheal.net/_thumbs/a.png" ||
+		first.Format != "png" || first.Width != 640 || first.Height != 480 ||
+		len(first.Tags) != 2 {
+		t.Fatal("lost Paheal XML post metadata", first)
+	}
+	for _, body := range []string{
+		`<!DOCTYPE html><html><body>API moved</body></html>`,
+		`<posts count="-1"></posts>`,
+		`<posts><post id="1"/><post id="2"/><post id="3"/></posts>`,
+	} {
+		client := testClient(func(*http.Request) (*http.Response, error) {
+			return response(200, body), nil
+		})
+		_, err := client.Search(context.Background(), s, "landscape", 1, 2)
+		var failure *Error
+		if !errors.As(err, &failure) || failure.Code != "invalid-response" {
+			t.Fatalf("invalid Paheal XML accepted: %q, error %v", body, err)
+		}
+	}
+}
+
 func TestExtendedMediaCredentialScope(t *testing.T) {
 	for _, engine := range []string{"pawchive", "pixiv"} {
 		s := testSource(engine)
