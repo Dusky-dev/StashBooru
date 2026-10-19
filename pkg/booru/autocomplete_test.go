@@ -20,12 +20,21 @@ func TestAutocompleteEngineRequestsAndCategories(t *testing.T) {
 		t.Run(tt.engine+tt.host, func(t *testing.T) {
 			s := testSource(tt.engine)
 			s.URL = "https://" + tt.host
+			if tt.host == "rule34.xxx" {
+				// Rule34 requires account credentials for API access.
+				s.APIKey, s.UserID = "test-secret", "42"
+			}
 			client := testClient(func(r *http.Request) (*http.Response, error) {
 				if r.URL.Path != tt.path || !strings.HasPrefix(r.URL.Query().Get(tt.key), "blue") {
 					t.Fatalf("unexpected endpoint: %s", r.URL.Redacted())
 				}
-				if tt.host == "rule34.xxx" && r.URL.Hostname() != "api.rule34.xxx" {
-					t.Fatal("Rule34 autocomplete must use its API host")
+				if tt.host == "rule34.xxx" {
+					if r.URL.Hostname() != "api.rule34.xxx" {
+						t.Fatal("Rule34 autocomplete must use its API host")
+					}
+					if r.URL.Query().Get("api_key") != s.APIKey || r.URL.Query().Get("user_id") != s.UserID {
+						t.Fatal("Rule34 autocomplete must include server-side credentials")
+					}
 				}
 				return response(200, tt.body), nil
 			})
