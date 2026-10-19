@@ -1,5 +1,6 @@
 import { type RefObject, useEffect, useRef, useState } from "react";
 import { Alert } from "react-bootstrap";
+import { BooruDownload } from "./BooruDownload";
 import { type BooruPost, readBooruResponse } from "./browser";
 
 interface ArchiveFile {
@@ -26,9 +27,11 @@ const archiveURL = (key: string, file?: number) =>
 export function BooruArchive({
   post,
   scrollBody,
+  instance,
 }: {
   post: BooruPost;
   scrollBody: RefObject<HTMLDivElement | null>;
+  instance: string;
 }) {
   const [listing, setListing] = useState<ArchiveListing>();
   const [error, setError] = useState("");
@@ -79,8 +82,7 @@ export function BooruArchive({
   return (
     <div className="booru-archive-media" aria-label="Archive media">
       <p className="small text-muted">
-        ZIP/CBZ archive · Previewing supported media without saving extracted
-        files
+        ZIP/CBZ archive · Preview and save individual extracted media files
       </p>
       {!listing && !error && <p role="status">Reading archive contents…</p>}
       {error && <Alert variant="warning">{error}</Alert>}
@@ -106,6 +108,11 @@ export function BooruArchive({
                   {file.name} · {file.format.toUpperCase()} ·{" "}
                   {(file.bytes / 1048576).toFixed(2)} MiB
                 </div>
+                <BooruDownload
+                  post={post}
+                  instance={instance}
+                  archiveFile={file.index}
+                />
                 {broken ? (
                   <Alert variant="secondary">
                     Media cannot be decoded or exceeds the preview constraints.
