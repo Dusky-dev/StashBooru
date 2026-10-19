@@ -224,6 +224,22 @@ deduplication yet. Totals are unknown except for provider-reported Philomena
 and Shimmie counts; these are not verified snapshot totals. Numbered browsing ends at page
 750; narrow the query to continue.
 
+### Archive-contained media (ZIP/CBZ)
+
+Pawchive/Kemono ZIP and CBZ attachments are included in the post inspector.
+The server downloads the archive only when its media section is viewed, validates
+its ZIP structure and source URL, then exposes supported image and video entries
+as a lazy-scrolling gallery. Entries are streamed to the browser only after
+media signature validation and are never extracted to the server filesystem.
+
+**Limits:** 64 MiB compressed per archive, 512 entries examined, 128 eligible
+media entries per archive, 24 MiB decompressed per entry, limited compression
+ratio and at most four cached archives for five minutes. Unsafe paths, symlinks,
+unsupported formats and nested archives are not opened; the inspector reports
+skipped entries. If an archive is too large, corrupt or password-protected,
+open the remote post instead. RAR and 7z are not supported yet; archive contents
+are for preview and not imported into Stash by this feature.
+
 ### Posts with multiple media files
 
 The post inspector displays every supported file in a **vertical media stream**,
