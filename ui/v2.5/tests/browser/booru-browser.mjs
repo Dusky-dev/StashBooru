@@ -2119,12 +2119,16 @@ try {
       .click();
     await page.goto(`${baseURL}/booru?source=danbooru&q=zip-archive`);
     // Synthetic one-pixel PNG fixtures need real preview height for scroll testing.
-    await page.addStyleTag({ content: ".booru-archive-file img { min-height: 65vh; }" });
+    await page.addStyleTag({
+      content: ".booru-archive-file img { min-height: 65vh; }",
+    });
     await dan
       .getByRole("button", { name: "Inspect Danbooru post 101", exact: true })
       .click();
     const archiveDialog = page.getByRole("dialog");
-    await archiveDialog.getByText("8 media files in archive", { exact: false }).waitFor();
+    await archiveDialog
+      .getByText("8 media files in archive", { exact: false })
+      .waitFor();
     const archiveFiles = archiveDialog.locator(".booru-archive-file");
     assert.ok((await archiveFiles.count()) < 8, "archive preview was not lazy");
     for (const target of [6, 8]) {
@@ -2138,9 +2142,14 @@ try {
       );
     }
     assert.equal(await archiveFiles.count(), 8);
-    assert.equal(await archiveDialog.locator(".booru-archive-file img").count(), 8);
     assert.equal(
-      await archiveDialog.getByRole("button", { name: "Download to Stash" }).count(),
+      await archiveDialog.locator(".booru-archive-file img").count(),
+      8
+    );
+    assert.equal(
+      await archiveDialog
+        .getByRole("button", { name: "Download to Stash" })
+        .count(),
       0,
       "archive bytes must not be offered to unsupported Stash image imports"
     );
