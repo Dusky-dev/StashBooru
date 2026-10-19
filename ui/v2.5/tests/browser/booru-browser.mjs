@@ -2458,12 +2458,13 @@ try {
     await refinedInput.press("Enter");
     assert.equal(await refinedInput.inputValue(), "blue_hair");
     assert.equal(requests.length, beforeComplete);
-    await refinedInput.fill("late");
-    await page.waitForRequest(
+    const pendingLateAutocomplete = page.waitForRequest(
       (r) =>
         new URL(r.url()).pathname.endsWith("/autocomplete") &&
         new URL(r.url()).searchParams.get("q") === "late"
     );
+    await refinedInput.fill("late");
+    await pendingLateAutocomplete;
     await refinedInput.press("Enter");
     for (const route of lateCompletions.splice(0))
       await route
