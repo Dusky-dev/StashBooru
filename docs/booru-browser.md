@@ -211,6 +211,23 @@ deduplication yet. Totals are unknown except for provider-reported Philomena
 and Shimmie counts; these are not verified snapshot totals. Numbered browsing ends at page
 750; narrow the query to continue.
 
+### Posts with multiple media files
+
+The post inspector displays every supported file in a **vertical media stream**,
+rather than the old `Media file` dropdown (`btn-secondary form-control`).
+Each media entry has its own preview, format, resolution, hash when supplied,
+and download controls. As you scroll the modal, more entries are mounted
+three at a time; previews stay lazy and animated/video playback remains
+on-demand. The stream stops at the supported media files the provider already
+returned; it does not crawl additional posts or invent unavailable attachments.
+
+**Up arrow** downloads the media file currently in view or focused; the other
+existing post-navigation/ignore shortcuts are unchanged. Switching posts
+resets to the first media file and releases preview playback. The media list
+uses the modal's scroll area on desktop and mobile, with metadata/tags below
+the list. Missing or unsupported previews keep their individual fallback and
+download/open options.
+
 Preview bytes use a bounded same-origin media route backed by server-owned
 search keys, validated provider/CDN hosts and public DNS. Missing, expired,
 blocked or unsupported previews have a fallback message and remote link.
