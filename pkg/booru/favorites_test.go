@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestAccountFavoritesNativeRequests(t *testing.T) {
@@ -207,6 +208,24 @@ func TestGelbooruFavoritesPagingIgnoresUnderreportedTotal(t *testing.T) {
 		got, err := c.AccountFavorites(context.Background(), s, page, 2)
 		if err != nil || len(got.Posts) != 2 || got.HasMore != (page < MaxPage) {
 			t.Fatal("reported total truncated full page", page, got, err)
+		}
+	}
+}
+
+func TestAccountFavoritesDeadlineMatchesSequentialRequests(t *testing.T) {
+	if got := accountFavoritesDeadline("danbooru", MaxLimit); got != time.Minute {
+		t.Fatal("Danbooru should retain its existing deadline", got)
+	}
+	if got := accountFavoritesDeadline("e621", MaxLimit); got != time.Minute {
+		t.Fatal("e621 should retain its existing deadline", got)
+	}
+	for _, limit := range []int{1, 24, MaxLimit} {
+		got := accountFavoritesDeadline("gelbooru", limit)
+		// The first favorites request fits within the base minute, and each
+		// additional detail request receives the per-request HTTP budget.
+		want := time.Minute + time.Duration(limit)*20*time.Second
+		if got != want {
+			t.Fatalf("Gelbooru page size %d: deadline %s, want %s", limit, got, want)
 		}
 	}
 }
