@@ -226,7 +226,7 @@ export function BooruDownload({
       {!compact && (
         <Form.Check
           type="switch"
-          id={`booru-convert-${post.sourceID}-${post.id}`}
+          id={`booru-convert-${post.sourceID}-${post.id}${archiveFile === undefined ? "" : `-${archiveFile}`}`}
           label="Convert using Media converter defaults"
           checked={convert}
           disabled={busy || running || !ready}
