@@ -92,6 +92,8 @@ type Client struct {
 	creatorMu         sync.Mutex
 	creatorCache      map[string]creatorEntry
 	creatorPending    map[string]chan struct{}
+	rule34CategoryMu sync.Mutex
+	rule34CategoryCache map[string]rule34CategoryEntry
 }
 
 func NewClient() *Client {
