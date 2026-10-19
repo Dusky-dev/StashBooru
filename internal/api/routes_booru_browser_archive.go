@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	mimepkg "mime"
 	"net/http"
 	"path"
 	"strconv"
@@ -487,6 +488,9 @@ func (rs booruBrowserRoutes) Archive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", mime)
+	if r.URL.Query().Get("download") == "1" {
+		w.Header().Set("Content-Disposition", mimepkg.FormatMediaType("attachment", map[string]string{"filename": path.Base(selected.Name)}))
+	}
 	w.Header().Set("Content-Security-Policy", "default-src 'none'; sandbox")
 	http.ServeContent(w, r, selected.Name, time.Time{}, bytes.NewReader(decoded))
 }
