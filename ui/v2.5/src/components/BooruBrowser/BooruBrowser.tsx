@@ -283,22 +283,22 @@ function PostInspection({
                   <BooruArchive post={asset} scrollBody={scrollBody} />
                 ) : (
                   <MotionPreview post={asset}>
-                  {sample ? (
-                    <RemoteImage
-                      key={sample}
-                      className="booru-sample"
-                      src={sample}
-                      fallbackSrc={remoteURL(asset.directSampleURL)}
-                      alt={`${source.name} #${post.id} media ${index + 1}`}
-                    />
-                  ) : (
-                    <Alert variant="secondary">
-                      {message(
-                        "no_preview",
-                        "No supported preview is available. Open the remote post to inspect it."
-                      )}
-                    </Alert>
-                  )}
+                    {sample ? (
+                      <RemoteImage
+                        key={sample}
+                        className="booru-sample"
+                        src={sample}
+                        fallbackSrc={remoteURL(asset.directSampleURL)}
+                        alt={`${source.name} #${post.id} media ${index + 1}`}
+                      />
+                    ) : (
+                      <Alert variant="secondary">
+                        {message(
+                          "no_preview",
+                          "No supported preview is available. Open the remote post to inspect it."
+                        )}
+                      </Alert>
+                    )}
                   </MotionPreview>
                 )}
                 <div className="booru-file-details mt-2">
@@ -322,17 +322,19 @@ function PostInspection({
                     </span>
                   )}
                 </div>
-                {!["zip", "cbz"].includes(asset.format?.toLowerCase() ?? "") && (
-                <BooruDownload
-                  key={`download:${asset.id}:${asset.mediaKey}`}
-                  post={asset}
-                  instance={source.instance}
-                  downloadRef={(button) => {
-                    if (button) downloads.current.set(asset.id, button);
-                    else downloads.current.delete(asset.id);
-                  }}
-                />
-                )}
+                {!["zip", "cbz"].includes(
+                  asset.format?.toLowerCase() ?? ""
+                ) && (
+                  <BooruDownload
+                    key={`download:${asset.id}:${asset.mediaKey}`}
+                    post={asset}
+                    instance={source.instance}
+                    downloadRef={(button) => {
+                      if (button) downloads.current.set(asset.id, button);
+                      else downloads.current.delete(asset.id);
+                    }}
+                  />
+                  )}
                 <div className="booru-hash">
                   {asset.md5 && (
                     <span>
@@ -819,7 +821,9 @@ function SourceResults({
                 </div>
                 <CoreTagActions post={item} onTag={onTag} />
                 <div className="booru-card-actions">
-                  {!["zip", "cbz"].includes(item.format?.toLowerCase() ?? "") && (
+                  {!["zip", "cbz"].includes(
+                    item.format?.toLowerCase() ?? ""
+                  ) && (
                     <BooruDownload
                       post={item}
                       instance={source.instance}
