@@ -280,7 +280,11 @@ function PostInspection({
                   </h6>
                 )}
                 {["zip", "cbz"].includes(asset.format?.toLowerCase() ?? "") ? (
-                  <BooruArchive post={asset} scrollBody={scrollBody} />
+                  <BooruArchive
+                    post={asset}
+                    scrollBody={scrollBody}
+                    instance={source.instance}
+                  />
                 ) : (
                   <MotionPreview post={asset}>
                     {sample ? (

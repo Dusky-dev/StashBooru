@@ -33,7 +33,7 @@ func (c *Client) FetchMedia(ctx context.Context, source Source, input MediaReque
 	if err := ctx.Err(); err != nil {
 		return ret, err
 	}
-	if source.Validate() != nil || input.URL == "" || source.mediaURL(input.URL) != input.URL || input.Limit < 1 || input.Limit > 128<<20 || input.ExpectedBytes > input.Limit {
+	if source.Validate() != nil || input.URL == "" || source.mediaURL(input.URL) != input.URL || input.Limit < 1 || input.Limit > 512<<20 || input.ExpectedBytes > input.Limit {
 		return ret, fmt.Errorf("media is unavailable, unsafe or exceeds the download limit")
 	}
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)

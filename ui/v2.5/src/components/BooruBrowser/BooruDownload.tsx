@@ -51,18 +51,21 @@ export function BooruDownload({
   instance,
   compact = false,
   downloadRef,
+  archiveFile,
 }: {
   post: BooruPost;
   instance: string;
   compact?: boolean;
   downloadRef?: Ref<HTMLButtonElement>;
+  archiveFile?: number;
 }) {
-  const identity = `booru-download:${instance}:${post.id}`;
+  const identity = `booru-download:${instance}:${post.id}${archiveFile === undefined ? "" : `:archive:${archiveFile}`}`;
   const [state, setState] = useState<DownloadState | undefined>(() =>
     rememberedJob(identity)
   );
   const [convert, setConvert] = useState(false);
   const [directory, setDirectory] = useState("");
+  const [maxFileSizeMiB, setMaxFileSizeMiB] = useState(256);
   const [picker, setPicker] = useState(false);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -85,6 +88,7 @@ export function BooruDownload({
           if (active && requested === generation) {
             setConvert(settings.convert);
             setDirectory(settings.defaultDirectory);
+            setMaxFileSizeMiB(settings.maxFileSizeMiB ?? 256);
             setReady(true);
             setError("");
           }
@@ -166,7 +170,12 @@ export function BooruDownload({
       const result = await fetch("booru-browser/download", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: post.mediaKey, convert, destination }),
+        body: JSON.stringify({
+          key: post.mediaKey,
+          convert,
+          destination,
+          archiveFile,
+        }),
       }).then(readBooruResponse<{ jobID: number; token: string }>);
       if (mounted.current) setState({ ...result, status: "queued" });
       try {
@@ -206,8 +215,8 @@ export function BooruDownload({
   }
   const available =
     !!post.mediaKey &&
-    !!post.downloadAvailable &&
-    (post.bytes ?? 0) <= 128 * 1048576;
+    (archiveFile !== undefined || !!post.downloadAvailable) &&
+    (post.bytes ?? 0) <= maxFileSizeMiB * 1048576;
   const libraryURL =
     state?.library && /^\d+$/.test(state.library.id)
       ? state.library.kind === "image"
@@ -224,7 +233,7 @@ export function BooruDownload({
       {!compact && (
         <Form.Check
           type="switch"
-          id={`booru-convert-${post.sourceID}-${post.id}`}
+          id={`booru-convert-${post.sourceID}-${post.id}${archiveFile === undefined ? "" : `-${archiveFile}`}`}
           label="Convert using Media converter defaults"
           checked={convert}
           disabled={busy || running || !ready}
@@ -315,8 +324,8 @@ export function BooruDownload({
       )}
       {!available && !compact && (
         <small className="d-block">
-          Original unavailable, over the size limit, or its source needs a CDN
-          configuration update.
+          Original unavailable, larger than the configured {maxFileSizeMiB} MiB
+          limit, or its source needs a CDN configuration update.
         </small>
       )}
       {picker && (

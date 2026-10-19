@@ -2,6 +2,9 @@ package api
 
 import (
 	"context"
+	"crypto/md5" //nolint:gosec // Media identity, not security.
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -22,13 +26,29 @@ type booruDownloadSettings struct {
 	Convert          bool     `json:"convert"`
 	DefaultDirectory string   `json:"defaultDirectory"`
 	FilenameTemplate string   `json:"filenameTemplate,omitempty"`
+	MaxFileSizeMiB   int      `json:"maxFileSizeMiB"`
 	Roots            []string `json:"roots,omitempty"`
+}
+
+const (
+	booruDefaultFileSizeMiB = 256
+	booruHardMaxFileSizeMiB = 512
+)
+
+func normalizeBooruFileSizeMiB(value int) (int, error) {
+	if value == 0 { // Existing configurations have no size field.
+		return booruDefaultFileSizeMiB, nil
+	}
+	if value < 16 || value > booruHardMaxFileSizeMiB {
+		return 0, fmt.Errorf("file size limit must be between 16 and %d MiB", booruHardMaxFileSizeMiB)
+	}
+	return value, nil
 }
 
 var booruDownloadSettingsMu sync.Mutex
 
 func (rs booruBrowserRoutes) downloadSettings() (booruDownloadSettings, error) {
-	var value booruDownloadSettings
+	value := booruDownloadSettings{MaxFileSizeMiB: booruDefaultFileSizeMiB}
 	data, err := os.ReadFile(filepath.Join(rs.configPath, "booru-downloads.json"))
 	if errors.Is(err, os.ErrNotExist) {
 		if rs.libraryRoots != nil {
@@ -43,8 +63,15 @@ func (rs booruBrowserRoutes) downloadSettings() (booruDownloadSettings, error) {
 	if err == nil {
 		err = booru.ValidateFilenameTemplate(value.FilenameTemplate)
 	}
+	if err != nil {
+		return value, err
+	}
 	value.Convert = value.Convert || value.JPEGToJXL
 	value.JPEGToJXL = false
+	value.MaxFileSizeMiB, err = normalizeBooruFileSizeMiB(value.MaxFileSizeMiB)
+	if err != nil {
+		return value, err
+	}
 	if rs.libraryRoots != nil {
 		value.Roots = rs.libraryRoots()
 	}
@@ -68,6 +95,12 @@ func (rs booruBrowserRoutes) UpdateDownloadSettings(w http.ResponseWriter, r *ht
 		writeBooruError(w, 400, "filename", err.Error())
 		return
 	}
+	limit, err := normalizeBooruFileSizeMiB(value.MaxFileSizeMiB)
+	if err != nil {
+		writeBooruError(w, 400, "size", err.Error())
+		return
+	}
+	value.MaxFileSizeMiB = limit
 	if value.DefaultDirectory != "" {
 		dir, err := rs.destination(value.DefaultDirectory)
 		if err != nil {
@@ -121,6 +154,7 @@ type booruDownloadRequest struct {
 	Token       string `json:"token,omitempty"`
 	Destination string `json:"destination,omitempty"`
 	Computer    bool   `json:"computer,omitempty"`
+	ArchiveFile *int   `json:"archiveFile,omitempty"`
 }
 type booruDownloadState struct {
 	JobID       int                 `json:"jobID"`
@@ -192,14 +226,27 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 		writeBooruError(w, 410, "expired", "Post expired or its source changed. Refresh the search.")
 		return
 	}
-	if post.OriginalURL == "" || post.Bytes > 128<<20 {
-		writeBooruError(w, 400, "download", "Original unavailable or larger than the 128 MiB download limit.")
-		return
-	}
+
 	preferences, err := rs.downloadSettings()
 	if err != nil {
 		writeBooruError(w, 500, "settings", "Cannot read download settings.")
 		return
+	}
+	maxFileBytes := int64(preferences.MaxFileSizeMiB) << 20
+	if post.OriginalURL == "" || post.Bytes > maxFileBytes {
+		writeBooruError(w, 400, "download", fmt.Sprintf("Original unavailable or larger than the %d MiB download limit.", preferences.MaxFileSizeMiB))
+		return
+	}
+	if input.ArchiveFile != nil {
+		if *input.ArchiveFile < 0 || *input.ArchiveFile >= booruArchiveMaxFiles ||
+			(strings.ToLower(post.Format) != "zip" && strings.ToLower(post.Format) != "cbz") {
+			writeBooruError(w, 400, "archive", "Invalid archive file selection.")
+			return
+		}
+		if source.ApprovedMediaURL(post.OriginalURL) != post.OriginalURL || post.Bytes > maxFileBytes {
+			writeBooruError(w, 400, "archive", "Archive source is no longer allowed or exceeds the preview limit.")
+			return
+		}
 	}
 	destination := ""
 	if !input.Computer {
@@ -245,6 +292,37 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 				state.Status = "complete"
 			}
 		}()
+		var archiveBytes []byte
+		var selected booruArchiveFile
+		if input.ArchiveFile != nil {
+			data, err := rs.loadBooruArchive(r.WithContext(ctx), input.Key)
+			if err != nil {
+				return fmt.Errorf("archive could not be fetched: %w", err)
+			}
+			listing, _, err := indexBooruArchiveWithLimit(data, maxFileBytes)
+			if err != nil {
+				return err
+			}
+			found := false
+			for _, item := range listing.Files {
+				if item.Index == *input.ArchiveFile {
+					selected, found = item, true
+					break
+				}
+			}
+			if !found {
+				return fmt.Errorf("selected archive entry is not supported")
+			}
+			archiveBytes = data
+			// A distinct stable receipt and output name for each archive member,
+			// rather than overwriting or deduplicating against the parent archive.
+			identity := sha256.Sum256([]byte(input.Key + ":" + strconv.Itoa(selected.Index)))
+			post.ID = "a" + hex.EncodeToString(identity[:16])
+			post.Filename = filepath.Base(selected.Name)
+			post.Bytes = int64(selected.Bytes)
+			post.MD5 = ""
+			post.Format = selected.Format
+		}
 		if !input.Computer {
 			receipt := rs.reusableDownloadReceipt(destination, source, post, input.Convert, preferences.FilenameTemplate)
 			if receipt != nil && receipt.Library != nil {
@@ -280,7 +358,27 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 		if err != nil {
 			return fmt.Errorf("cannot stage original")
 		}
-		info, err := rs.client.FetchMedia(ctx, source, booru.MediaRequest{URL: post.OriginalURL, Limit: 128 << 20, ExpectedBytes: post.Bytes, ExpectedMD5: post.MD5}, f)
+		var info booru.MediaInfo
+		if input.ArchiveFile != nil {
+			_, reader, archiveErr := indexBooruArchiveWithLimit(archiveBytes, maxFileBytes)
+			if archiveErr != nil {
+				_ = f.Close()
+				return archiveErr
+			}
+			var decoded []byte
+			decoded, info.ContentType, err = readBooruArchiveEntryWithLimit(ctx, reader.File[selected.Index], selected, maxFileBytes)
+			if err == nil {
+				_, err = f.Write(decoded)
+				if err == nil {
+					checksum := md5.Sum(decoded) //nolint:gosec // Content fingerprint.
+					info.MD5 = hex.EncodeToString(checksum[:])
+					info.Extension = selected.Format
+					info.Bytes = int64(len(decoded))
+				}
+			}
+		} else {
+			info, err = rs.client.FetchMedia(ctx, source, booru.MediaRequest{URL: post.OriginalURL, Limit: maxFileBytes, ExpectedBytes: post.Bytes, ExpectedMD5: post.MD5}, f)
+		}
 		if err == nil {
 			err = f.Sync()
 		}

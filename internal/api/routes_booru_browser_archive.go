@@ -22,11 +22,13 @@ import (
 // These limits apply before inflation and are independent of the provider's
 // advertised content length (which may be missing or untrusted).
 const (
-	booruArchiveMaxBytes  = 64 << 20
-	booruArchiveEntryMax  = 24 << 20
-	booruArchiveMaxFiles  = 512
-	booruArchiveMaxMedia  = 128
-	booruArchiveCacheSize = 4
+	booruArchiveMaxBytes      = booruDefaultFileSizeMiB << 20
+	booruArchiveEntryMax      = booruDefaultFileSizeMiB << 20
+	booruArchiveMaxFiles      = 512
+	booruArchiveMaxMedia      = 128
+	booruArchiveCacheSize     = 4
+	booruArchiveCacheMaxBytes = 256 << 20
+	booruArchiveVideoCacheMax = 32 << 20
 )
 
 type booruArchiveFile struct {
@@ -46,7 +48,7 @@ type booruCachedArchive struct {
 	Created    time.Time
 	Expires    *time.Timer
 	VideoIndex int
-	Video      []byte // At most one 24 MiB decoded video per cached archive.
+	Video      []byte // Only small validated videos are retained for range seeking.
 	VideoMIME  string
 }
 
@@ -87,7 +89,11 @@ func evictBooruArchiveLocked(key string) {
 // Called with the cache mutex held. The timer independently removes idle
 // entries, and identity checks stop a stale timer evicting a replacement.
 func storeBooruArchiveLocked(key string, data []byte) {
-	if len(booruArchiveCache.entries) >= booruArchiveCacheSize {
+	var usedBytes int
+	for _, entry := range booruArchiveCache.entries {
+		usedBytes += len(entry.Data) + len(entry.Video)
+	}
+	for len(booruArchiveCache.entries) > 0 && (len(booruArchiveCache.entries) >= booruArchiveCacheSize || usedBytes+len(data) > booruArchiveCacheMaxBytes) {
 		var oldestKey string
 		var oldestTime time.Time
 		for token, entry := range booruArchiveCache.entries {
@@ -95,7 +101,11 @@ func storeBooruArchiveLocked(key string, data []byte) {
 				oldestKey, oldestTime = token, entry.Created
 			}
 		}
+		usedBytes -= len(booruArchiveCache.entries[oldestKey].Data) + len(booruArchiveCache.entries[oldestKey].Video)
 		evictBooruArchiveLocked(oldestKey)
+	}
+	if len(data) > booruArchiveCacheMaxBytes {
+		return // Larger configured archives are fetched but never held indefinitely.
 	}
 	entry := &booruCachedArchive{Data: data, Created: time.Now(), VideoIndex: -1}
 	booruArchiveCache.entries[key] = entry
@@ -189,7 +199,7 @@ func cachedBooruArchiveVideo(ctx context.Context, key string, index int, decode 
 		defer cancel()
 		data, mime, err := decode(decodeCtx)
 		booruArchiveCache.Lock()
-		if err == nil {
+		if err == nil && len(data) <= booruArchiveVideoCacheMax {
 			if entry := booruArchiveCache.entries[key]; entry != nil {
 				entry.VideoIndex, entry.Video, entry.VideoMIME = index, data, mime
 			}
@@ -211,10 +221,10 @@ func cachedBooruArchiveVideo(ctx context.Context, key string, index int, decode 
 // expensive independently of the FetchMedia concurrency gate.
 var booruArchiveInflations = make(chan struct{}, 4)
 
-func validBooruArchiveEntry(f *zip.File) bool {
+func validBooruArchiveEntryWithLimit(f *zip.File, maxBytes int64) bool {
 	if f.FileInfo().IsDir() || !f.Mode().IsRegular() || f.Flags&1 != 0 ||
 		(f.Method != zip.Store && f.Method != zip.Deflate) ||
-		f.UncompressedSize64 == 0 || f.UncompressedSize64 > booruArchiveEntryMax ||
+		f.UncompressedSize64 == 0 || f.UncompressedSize64 > uint64(maxBytes) ||
 		f.CompressedSize64 == 0 || f.UncompressedSize64 > f.CompressedSize64*100+65536 {
 		return false
 	}
@@ -294,9 +304,13 @@ func checkBooruZIPDirectory(data []byte) error {
 }
 
 func indexBooruArchive(data []byte) (booruArchiveListing, *zip.Reader, error) {
+	return indexBooruArchiveWithLimit(data, booruArchiveMaxBytes)
+}
+
+func indexBooruArchiveWithLimit(data []byte, maxBytes int64) (booruArchiveListing, *zip.Reader, error) {
 	listing := booruArchiveListing{Files: []booruArchiveFile{}}
-	if len(data) == 0 || len(data) > booruArchiveMaxBytes {
-		return listing, nil, fmt.Errorf("archive is empty or exceeds 64 MiB")
+	if maxBytes < 1 || maxBytes > booruHardMaxFileSizeMiB<<20 || len(data) == 0 || int64(len(data)) > maxBytes {
+		return listing, nil, fmt.Errorf("archive is empty or exceeds the configured size limit")
 	}
 	if err := checkBooruZIPDirectory(data); err != nil {
 		return listing, nil, err
@@ -309,7 +323,7 @@ func indexBooruArchive(data []byte) (booruArchiveListing, *zip.Reader, error) {
 		return listing, nil, fmt.Errorf("archive contains too many entries")
 	}
 	for i, f := range zr.File {
-		if !validBooruArchiveEntry(f) || len(listing.Files) >= booruArchiveMaxMedia {
+		if !validBooruArchiveEntryWithLimit(f, maxBytes) || len(listing.Files) >= booruArchiveMaxMedia {
 			listing.Skipped++
 			continue
 		}
@@ -376,7 +390,19 @@ func booruArchiveContentType(format string, data []byte) string {
 	return ""
 }
 
+func (rs booruBrowserRoutes) archiveFileLimit() (int64, error) {
+	preferences, err := rs.downloadSettings()
+	if err != nil {
+		return 0, err
+	}
+	return int64(preferences.MaxFileSizeMiB) << 20, nil
+}
+
 func (rs booruBrowserRoutes) loadBooruArchive(r *http.Request, key string) ([]byte, error) {
+	limit, err := rs.archiveFileLimit()
+	if err != nil {
+		return nil, err
+	}
 	source, post, ok := rs.mediaSnapshot(key)
 	if !ok {
 		return nil, fmt.Errorf("archive preview expired or its source changed; refresh the search")
@@ -385,29 +411,36 @@ func (rs booruBrowserRoutes) loadBooruArchive(r *http.Request, key string) ([]by
 		(strings.ToLower(post.Format) != "zip" && strings.ToLower(post.Format) != "cbz") {
 		return nil, fmt.Errorf("this post does not have a supported ZIP/CBZ archive")
 	}
-	if post.Bytes > booruArchiveMaxBytes {
-		return nil, fmt.Errorf("archive exceeds the 64 MiB preview limit; open the remote post")
+	if post.Bytes > limit {
+		return nil, fmt.Errorf("archive exceeds the configured %d MiB limit; open the remote post", limit>>20)
 	}
-	return cachedBooruArchive(r.Context(), key, func(ctx context.Context) ([]byte, error) {
+	data, err := cachedBooruArchive(r.Context(), key, func(ctx context.Context) ([]byte, error) {
 		var buf bytes.Buffer
-		_, err := rs.client.FetchMedia(ctx, source, booru.MediaRequest{
-			URL: post.OriginalURL, Limit: booruArchiveMaxBytes,
+		_, fetchErr := rs.client.FetchMedia(ctx, source, booru.MediaRequest{
+			URL: post.OriginalURL, Limit: limit,
 			ExpectedBytes: post.Bytes, ExpectedMD5: post.MD5, AllowZIP: true,
 		}, &buf)
-		if err != nil {
-			return nil, err
+		if fetchErr != nil {
+			return nil, fetchErr
 		}
-		data := buf.Bytes()
-		if _, _, err = indexBooruArchive(data); err != nil {
-			return nil, err
+		if _, _, fetchErr = indexBooruArchiveWithLimit(buf.Bytes(), limit); fetchErr != nil {
+			return nil, fetchErr
 		}
-		return data, nil
+		return buf.Bytes(), nil
 	})
+	if err == nil {
+		_, _, err = indexBooruArchiveWithLimit(data, limit) // Also revalidate cached bytes after a settings change.
+	}
+	return data, err
 }
 
 // The inflation semaphore only covers decompression and validation, never
 // HTTP response transfer. Range requests reuse bounded decoded video bytes.
 func readBooruArchiveEntry(ctx context.Context, file *zip.File, selected booruArchiveFile) ([]byte, string, error) {
+	return readBooruArchiveEntryWithLimit(ctx, file, selected, booruArchiveEntryMax)
+}
+
+func readBooruArchiveEntryWithLimit(ctx context.Context, file *zip.File, selected booruArchiveFile, maxBytes int64) ([]byte, string, error) {
 	select {
 	case booruArchiveInflations <- struct{}{}:
 		defer func() { <-booruArchiveInflations }()
@@ -419,8 +452,8 @@ func readBooruArchiveEntry(ctx context.Context, file *zip.File, selected booruAr
 		return nil, "", fmt.Errorf("cannot open archive entry: %w", err)
 	}
 	defer entry.Close()
-	decoded, err := io.ReadAll(io.LimitReader(entry, booruArchiveEntryMax+1))
-	if err != nil || uint64(len(decoded)) != selected.Bytes || len(decoded) > booruArchiveEntryMax {
+	decoded, err := io.ReadAll(io.LimitReader(entry, maxBytes+1))
+	if err != nil || uint64(len(decoded)) != selected.Bytes || int64(len(decoded)) > maxBytes {
 		return nil, "", fmt.Errorf("archive entry is corrupt or exceeds the preview limit")
 	}
 	mime := booruArchiveContentType(selected.Format, decoded)
@@ -446,7 +479,12 @@ func (rs booruBrowserRoutes) Archive(w http.ResponseWriter, r *http.Request) {
 		writeBooruError(w, http.StatusBadGateway, "archive", err.Error())
 		return
 	}
-	listing, zr, err := indexBooruArchive(data)
+	limit, err := rs.archiveFileLimit()
+	if err != nil {
+		writeBooruError(w, http.StatusInternalServerError, "archive", "Cannot read archive size configuration.")
+		return
+	}
+	listing, zr, err := indexBooruArchiveWithLimit(data, limit)
 	if err != nil {
 		writeBooruError(w, http.StatusUnprocessableEntity, "archive", err.Error())
 		return
@@ -473,7 +511,7 @@ func (rs booruBrowserRoutes) Archive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	decode := func(ctx context.Context) ([]byte, string, error) {
-		return readBooruArchiveEntry(ctx, zr.File[n], *selected)
+		return readBooruArchiveEntryWithLimit(ctx, zr.File[n], *selected, limit)
 	}
 	var decoded []byte
 	var mime string

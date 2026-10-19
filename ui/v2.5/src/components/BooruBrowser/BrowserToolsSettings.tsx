@@ -16,6 +16,7 @@ export function BrowserToolsSettings() {
   const [convert, setConvert] = useState(false),
     [directory, setDirectory] = useState("");
   const [filenameTemplate, setFilenameTemplate] = useState("");
+  const [maxFileSizeMiB, setMaxFileSizeMiB] = useState(256);
   const [picker, setPicker] = useState(false),
     [loaded, setLoaded] = useState(false),
     [busy, setBusy] = useState(false);
@@ -45,6 +46,7 @@ export function BrowserToolsSettings() {
           convert: boolean;
           defaultDirectory: string;
           filenameTemplate?: string;
+          maxFileSizeMiB: number;
         }>
       ),
     ])
@@ -57,6 +59,7 @@ export function BrowserToolsSettings() {
           setConvert(settings.convert);
           setDirectory(settings.defaultDirectory);
           setFilenameTemplate(settings.filenameTemplate ?? "");
+          setMaxFileSizeMiB(settings.maxFileSizeMiB ?? 256);
           setLoaded(true);
           setError("");
         }
@@ -113,6 +116,7 @@ export function BrowserToolsSettings() {
         convert,
         defaultDirectory: directory,
         filenameTemplate,
+        maxFileSizeMiB,
       }),
     }).then(readBooruResponse);
     invalidateDownloadPreferences();
@@ -204,6 +208,26 @@ export function BrowserToolsSettings() {
           unknown; existing files are never overwritten.
         </Form.Text>
       </Form.Group>
+      <Form.Group controlId="booru-max-file-size" className="mt-3">
+        <Form.Label>Maximum file size (MiB)</Form.Label>
+        <Form.Control
+          className="text-input"
+          type="number"
+          min={16}
+          max={512}
+          step={16}
+          value={maxFileSizeMiB}
+          disabled={busy || !loaded}
+          onChange={(event) =>
+            setMaxFileSizeMiB(Number(event.currentTarget.value))
+          }
+        />
+        <Form.Text muted>
+          Default: 256 MiB. Applies to remote downloads, ZIP/CBZ archives and
+          individual extracted images or videos. Allowed range: 16–512 MiB.
+          Large archives may use substantial server memory while processing.
+        </Form.Text>
+      </Form.Group>
       <Form.Check
         type="switch"
         className="mt-3"
@@ -220,7 +244,13 @@ export function BrowserToolsSettings() {
       </p>
       <Button
         size="sm"
-        disabled={busy || !loaded}
+        disabled={
+          busy ||
+          !loaded ||
+          !Number.isInteger(maxFileSizeMiB) ||
+          maxFileSizeMiB < 16 ||
+          maxFileSizeMiB > 512
+        }
         onClick={() => void action(save)}
       >
         Save download settings
