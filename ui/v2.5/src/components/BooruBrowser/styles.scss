@@ -383,6 +383,36 @@
 .booru-browser-inspection {
   overflow-wrap: anywhere;
 
+  .booru-inspection-media {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .booru-inspection-asset {
+    border-bottom: 1px solid var(--secondary);
+    min-width: 0;
+    padding-bottom: 1rem;
+
+    &:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    &:last-child {
+      border-bottom: 0;
+    }
+  }
+
+  .booru-asset-heading {
+    margin-bottom: 0.75rem;
+  }
+
+  .booru-media-load-more {
+    padding: 0.75rem 0;
+    text-align: center;
+  }
+
   .booru-sample {
     display: block;
     max-height: 55vh;
