@@ -2146,8 +2146,8 @@ try {
       await archiveDialog
         .getByRole("button", { name: "Download to Stash" })
         .count(),
-      0,
-      "archive bytes must not be offered to unsupported Stash image imports"
+      8,
+      "each extracted media file needs its own save action"
     );
     await archiveDialog
       .locator(".modal-footer")
