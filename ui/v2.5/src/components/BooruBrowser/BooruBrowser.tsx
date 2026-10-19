@@ -127,23 +127,59 @@ function PostInspection({
     }
   );
   const identity = `${source.instance}:${post.id}`;
-  const [assetSelection, setAssetSelection] = useState({ identity, index: 0 });
-  const assetIndex =
-    assetSelection.identity === identity ? assetSelection.index : 0;
-  // Keep the modal mounted so consecutive arrow keys retain their focus target.
-  useLayoutEffect(() => {
-    setAssetSelection({ identity, index: 0 });
-  }, [identity]);
   const assets = [post, ...(post.attachments ?? [])];
-  const asset = assets[assetIndex] ?? post;
-  const sample = booruMediaURL(asset, "sample");
-  const download = useRef<HTMLButtonElement>(null);
+  // Incremental rendering prevents posts with many attachments from creating
+  // hundreds of image/player/download components at once.
+  const [stream, setStream] = useState({ identity, count: 3 });
+  const visibleCount = stream.identity === identity ? stream.count : 3;
+  const scrollBody = useRef<HTMLDivElement>(null);
+  const loadMore = useRef<HTMLDivElement>(null);
+  const activeIndex = useRef(0);
+  const downloads = useRef(new Map<string, HTMLButtonElement>());
+  useLayoutEffect(() => {
+    setStream({ identity, count: 3 });
+    activeIndex.current = 0;
+    downloads.current.clear();
+  }, [identity]);
+  useEffect(() => {
+    if (visibleCount >= assets.length) return;
+    const root = scrollBody.current;
+    const target = loadMore.current;
+    if (!root || !target) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting))
+          setStream((current) =>
+            current.identity === identity
+              ? { identity, count: Math.min(assets.length, current.count + 3) }
+              : { identity, count: 3 }
+          );
+      },
+      { root, rootMargin: "240px 0px" }
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [identity, visibleCount, assets.length]);
+  function updateActiveAsset() {
+    const body = scrollBody.current;
+    if (!body) return;
+    const top = body.getBoundingClientRect().top + 24;
+    const items = body.querySelectorAll<HTMLElement>(".booru-inspection-asset");
+    let current = 0;
+    for (const item of items) {
+      if (item.getBoundingClientRect().top > top) break;
+      if (item.getBoundingClientRect().bottom > top)
+        current = Number(item.dataset.assetIndex) || 0;
+    }
+    activeIndex.current = current;
+  }
   const ignore = useRef<HTMLButtonElement>(null);
   return (
     <Modal
       show
       onHide={onHide}
       size="lg"
+      scrollable
       className="booru-browser-inspection"
       onEntered={(node: HTMLElement) => {
         const content = node.querySelector<HTMLElement>(".modal-content");
@@ -176,7 +212,8 @@ function PostInspection({
         event.stopPropagation();
         if (event.key === "ArrowLeft") onPrevious?.();
         if (event.key === "ArrowRight") onNext?.();
-        if (!event.repeat && event.key === "ArrowUp") download.current?.click();
+        if (!event.repeat && event.key === "ArrowUp")
+          downloads.current.get(assets[activeIndex.current]?.id)?.click();
         if (!event.repeat && event.key === "ArrowDown") ignore.current?.click();
       }}
     >
@@ -185,7 +222,7 @@ function PostInspection({
           {source.name} #{post.remoteID ?? post.id}
         </Modal.Title>
       </Modal.Header>
-      <Modal.Body>
+      <Modal.Body ref={scrollBody} onScroll={updateActiveAsset}>
         <nav
           className="booru-preview-navigation"
           aria-label="Preview navigation"
@@ -207,77 +244,94 @@ function PostInspection({
           />
         </nav>
         {post.mediaNotice && <Alert variant="info">{post.mediaNotice}</Alert>}
-        {assets.length > 1 && (
-          <Form.Group>
-            <Form.Label htmlFor="booru-asset">Media file</Form.Label>
-            <Form.Control
-              as="select"
-              id="booru-asset"
-              className="btn-secondary"
-              value={assetIndex}
-              onChange={(event) =>
-                setAssetSelection({
-                  identity,
-                  index: Number(event.currentTarget.value),
-                })
-              }
-            >
-              {assets.map((item, index) => (
-                <option key={item.id} value={index}>
-                  {index + 1} / {assets.length} · {item.format || "media"}
-                </option>
-              ))}
-            </Form.Control>
-          </Form.Group>
-        )}
-        <MotionPreview
-          key={`motion:${asset.id}:${asset.mediaKey}`}
-          post={asset}
-        >
-          {sample ? (
-            <RemoteImage
-              key={sample}
-              className="booru-sample"
-              src={sample}
-              fallbackSrc={remoteURL(asset.directSampleURL)}
-              alt={`${source.name} #${post.id}`}
-            />
-          ) : (
-            <Alert variant="secondary">
-              {message(
-                "no_preview",
-                "No supported preview is available. Open the remote post to inspect it."
-              )}
-            </Alert>
-          )}
-        </MotionPreview>
-        <div className="booru-file-details mt-2">
-          {!!asset.width && !!asset.height && (
-            <span>
-              {TextUtils.resolution(asset.width, asset.height)} ({asset.width} ×{" "}
-              {asset.height})
-            </span>
-          )}
-          {!!asset.bytes && (
-            <span>
-              <FileSize size={asset.bytes} />
-            </span>
-          )}
-          {asset.format && <span>{asset.format.toUpperCase()}</span>}
-          {post.rating && (
-            <span
-              className={`booru-rating-label rating-${normalizedRating(post.rating, source)}`}
-            >
-              {normalizedRating(post.rating, source)}
-            </span>
+        <div className="booru-inspection-media" aria-label="Post media">
+          {assets.slice(0, visibleCount).map((asset, index) => {
+            const sample = booruMediaURL(asset, "sample");
+            return (
+              <section
+                key={asset.id}
+                className="booru-inspection-asset"
+                data-asset-index={index}
+                aria-label={`Media ${index + 1} of ${assets.length}`}
+                onFocusCapture={() => {
+                  activeIndex.current = index;
+                }}
+                onMouseDown={() => {
+                  activeIndex.current = index;
+                }}
+              >
+                {assets.length > 1 && (
+                  <h6 className="booru-asset-heading">
+                    Media {index + 1} of {assets.length}
+                    {asset.format && ` · ${asset.format.toUpperCase()}`}
+                  </h6>
+                )}
+                <MotionPreview post={asset}>
+                  {sample ? (
+                    <RemoteImage
+                      key={sample}
+                      className="booru-sample"
+                      src={sample}
+                      fallbackSrc={remoteURL(asset.directSampleURL)}
+                      alt={`${source.name} #${post.id} media ${index + 1}`}
+                    />
+                  ) : (
+                    <Alert variant="secondary">
+                      {message(
+                        "no_preview",
+                        "No supported preview is available. Open the remote post to inspect it."
+                      )}
+                    </Alert>
+                  )}
+                </MotionPreview>
+                <div className="booru-file-details mt-2">
+                  {!!asset.width && !!asset.height && (
+                    <span>
+                      {TextUtils.resolution(asset.width, asset.height)} (
+                      {asset.width} × {asset.height})
+                    </span>
+                  )}
+                  {!!asset.bytes && (
+                    <span>
+                      <FileSize size={asset.bytes} />
+                    </span>
+                  )}
+                  {asset.format && <span>{asset.format.toUpperCase()}</span>}
+                  {post.rating && (
+                    <span
+                      className={`booru-rating-label rating-${normalizedRating(post.rating, source)}`}
+                    >
+                      {normalizedRating(post.rating, source)}
+                    </span>
+                  )}
+                </div>
+                <BooruDownload
+                  key={`download:${asset.id}:${asset.mediaKey}`}
+                  post={asset}
+                  instance={source.instance}
+                  downloadRef={(button) => {
+                    if (button) downloads.current.set(asset.id, button);
+                    else downloads.current.delete(asset.id);
+                  }}
+                />
+                <div className="booru-hash">
+                  {asset.md5 && (
+                    <span>
+                      MD5: <code>{asset.md5}</code>
+                    </span>
+                  )}
+                  {index === 0 && <ReviewEvidence state={review} />}
+                </div>
+              </section>
+            );
+          })}
+          {visibleCount < assets.length && (
+            <div ref={loadMore} className="booru-media-load-more" role="status">
+              Loading more media ({Math.min(visibleCount, assets.length)} of{" "}
+              {assets.length})…
+            </div>
           )}
         </div>
-        <BooruDownload
-          key={`download:${asset.id}:${asset.mediaKey}`}
-          downloadRef={download}
-          post={asset}
-          instance={source.instance}
-        />
         {groups.length === 0 && (
           <p>{message("no_tags", "The provider supplied no tags.")}</p>
         )}
@@ -326,14 +380,6 @@ function PostInspection({
             </div>
           </section>
         ))}
-        <div className="booru-hash">
-          {asset.md5 && (
-            <span>
-              MD5: <code>{asset.md5}</code>
-            </span>
-          )}
-          {assetIndex === 0 && <ReviewEvidence state={review} />}
-        </div>
       </Modal.Body>
       <Modal.Footer>
         <Button
