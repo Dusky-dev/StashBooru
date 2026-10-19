@@ -79,7 +79,8 @@ export function BooruArchive({
   return (
     <div className="booru-archive-media" aria-label="Archive media">
       <p className="small text-muted">
-        ZIP/CBZ archive · Previewing supported media without saving extracted files
+        ZIP/CBZ archive · Previewing supported media without saving extracted
+        files
       </p>
       {!listing && !error && <p role="status">Reading archive contents…</p>}
       {error && <Alert variant="warning">{error}</Alert>}
@@ -88,7 +89,7 @@ export function BooruArchive({
           <p className="small">
             {listing.files.length} media files in archive
             {listing.skipped > 0 &&
-              ` · ` + listing.skipped + " unsupported or oversized entries skipped"}
+              ` · ${listing.skipped} unsupported or oversized entries skipped`}
           </p>
           {listing.files.length === 0 && (
             <Alert variant="secondary">
