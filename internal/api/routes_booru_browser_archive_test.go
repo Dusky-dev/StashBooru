@@ -114,18 +114,18 @@ func TestBooruArchiveNoSymlinksOrNonMediaBytes(t *testing.T) {
 func TestBooruArchiveRejectsForgedDirectoryBeforeZIPReader(t *testing.T) {
 	archive := zipFixture(t, map[string][]byte{"valid.png": []byte("example")})
 	for name, mutate := range map[string]func([]byte){
-		"too-many-records":    func(data []byte) {
+		"too-many-records": func(data []byte) {
 			binary.LittleEndian.PutUint16(data[len(data)-22+8:], 513)
 			binary.LittleEndian.PutUint16(data[len(data)-22+10:], 513)
 		},
-		"ZIP64-count":         func(data []byte) {
+		"ZIP64-count": func(data []byte) {
 			binary.LittleEndian.PutUint16(data[len(data)-22+8:], 0xffff)
 			binary.LittleEndian.PutUint16(data[len(data)-22+10:], 0xffff)
 		},
 		"oversized-directory": func(data []byte) {
 			binary.LittleEndian.PutUint32(data[len(data)-22+12:], 3<<20)
 		},
-		"forged-entry-count":  func(data []byte) {
+		"forged-entry-count": func(data []byte) {
 			binary.LittleEndian.PutUint16(data[len(data)-22+8:], 0)
 			binary.LittleEndian.PutUint16(data[len(data)-22+10:], 0)
 		},
