@@ -305,7 +305,7 @@ export function postMediaKind(
 // are distinct tags and do not assert that the whole post is AI-generated.
 export function isAIGeneratedPost(post: BooruPost): boolean {
   return post.tags.some(
-    (tag) => tag.name.toLowerCase().replace(/[-\\s]/g, "_") === "ai_generated"
+    (tag) => tag.name.toLowerCase().replace(/[-\s]/g, "_") === "ai_generated"
   );
 }
 
