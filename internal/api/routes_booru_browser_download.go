@@ -160,6 +160,7 @@ type booruDownloadState struct {
 	JobID       int                 `json:"jobID"`
 	Token       string              `json:"token"`
 	Status      string              `json:"status"`
+	FinishedAt  time.Time           `json:"-"` // Set at the terminal status transition.
 	Error       string              `json:"error,omitempty"`
 	URL         string              `json:"url,omitempty"`
 	Filename    string              `json:"filename,omitempty"`
@@ -175,6 +176,38 @@ var booruDownloads = struct {
 	jobs map[int]*booruDownloadState
 }{jobs: map[int]*booruDownloadState{}}
 
+const booruDownloadJobLimit = 100
+
+// Called while holding booruDownloads.Mutex. Keep running and queued jobs;
+// reclaim the oldest completed, failed or cancelled status when at capacity.
+// Evicting a status does not cancel its native job or delete its saved file.
+func reclaimBooruDownloadSlot(states map[int]*booruDownloadState, limit int) bool {
+	if limit <= 0 {
+		return false
+	}
+	for len(states) >= limit {
+		oldestID := -1
+		var oldestTime time.Time
+		for id, state := range states {
+			if state == nil {
+				continue
+			}
+			switch state.Status {
+			case "complete", "failed", "cancelled":
+				if oldestID < 0 || state.FinishedAt.Before(oldestTime) ||
+					(state.FinishedAt.Equal(oldestTime) && id < oldestID) {
+					oldestID, oldestTime = id, state.FinishedAt
+				}
+			}
+		}
+		if oldestID < 0 {
+			return false // All slots are occupied by active downloads.
+		}
+		delete(states, oldestID)
+	}
+	return true
+}
+
 func (rs booruBrowserRoutes) DownloadStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	id, _ := strconv.Atoi(r.URL.Query().Get("jobID"))
@@ -187,6 +220,9 @@ func (rs booruBrowserRoutes) DownloadStatus(w http.ResponseWriter, r *http.Reque
 	state := booruDownloads.jobs[id]
 	if state != nil && native != nil && native.Status == job.StatusCancelled {
 		state.Status, state.Error = "cancelled", "Download cancelled."
+		if state.FinishedAt.IsZero() {
+			state.FinishedAt = time.Now()
+		}
 	}
 	if state == nil || state.Token != r.URL.Query().Get("token") {
 		writeBooruError(w, 404, "download", "Download expired or the server restarted. Start it again.")
@@ -216,6 +252,7 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 		booruDownloads.Lock()
 		if state.Status == "queued" {
 			state.Status, state.Error = "cancelled", "Download cancelled."
+			state.FinishedAt = time.Now()
 		}
 		booruDownloads.Unlock()
 		writeVisualSimilarityJSON(w, map[string]bool{"cancelled": true})
@@ -269,9 +306,9 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 	}
 	state := &booruDownloadState{Status: "queued", Token: mediaconvert.NewID()}
 	booruDownloads.Lock()
-	if len(booruDownloads.jobs) >= 100 {
+	if !reclaimBooruDownloadSlot(booruDownloads.jobs, booruDownloadJobLimit) {
 		booruDownloads.Unlock()
-		writeBooruError(w, 429, "download", "Download queue is full. Completed entries expire after one hour.")
+		writeBooruError(w, 429, "download", "100 downloads are still queued or running. Wait for one to finish or cancel a job.")
 		return
 	}
 	// Hold the state lock through registration so the dispatcher cannot race JobID.
@@ -291,6 +328,7 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 			default:
 				state.Status = "complete"
 			}
+			state.FinishedAt = time.Now()
 		}()
 		var archiveBytes []byte
 		var selected booruArchiveFile
