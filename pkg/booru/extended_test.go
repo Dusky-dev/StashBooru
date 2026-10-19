@@ -262,7 +262,9 @@ func TestArchiveUnavailableOriginalAndNonMediaNotice(t *testing.T) {
 		t.Fatal(err)
 	}
 	post, err := parseArchivePost(testSource("pawchive"), raw)
-	if err != nil || post.DownloadAvailable || post.OriginalURL != "" || post.PreviewURL == "" || !strings.Contains(post.MediaNotice, "1 non-media") {
+	if err != nil || post.DownloadAvailable || post.OriginalURL != "" || post.PreviewURL == "" ||
+		len(post.Attachments) != 1 || post.Attachments[0].Format != "zip" ||
+		post.Attachments[0].PreviewURL != "" || !strings.Contains(post.MediaNotice, "Full media is unavailable") {
 		t.Fatal(post, err)
 	}
 }
