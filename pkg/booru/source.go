@@ -29,6 +29,7 @@ type Source struct {
 	Engine     string   `json:"engine"`
 	URL        string   `json:"url"`
 	MediaHosts []string `json:"mediaHosts,omitempty"`
+	BlacklistTags []string `json:"blacklistTags,omitempty"`
 	Login      string   `json:"login,omitempty"`
 	APIKey     string   `json:"apiKey,omitempty"`
 	UserID     string   `json:"userID,omitempty"`
@@ -110,6 +111,9 @@ func (s Source) Validate() error {
 	}
 	if !slices.Contains([]string{"danbooru", "gelbooru", "moebooru", "e621", "philomena", "shimmie", "pixiv", "pawchive", "kemono"}, s.Engine) {
 		return fmt.Errorf("unsupported API engine")
+	}
+	if err := validateBlacklistTags(s.BlacklistTags); err != nil {
+		return err
 	}
 	if len(s.URL) > 2048 || len(s.MediaHosts) > 64 {
 		return fmt.Errorf("source URL is limited to 2048 bytes and at most 64 image hosts")

@@ -57,6 +57,7 @@ type Post struct {
 type Result struct {
 	SourceID       string    `json:"sourceID"`
 	CategoryStatus string    `json:"categoryStatus,omitempty"`
+	BlacklistedCount int     `json:"blacklistedCount,omitempty"`
 	Posts          []Post    `json:"posts"`
 	Page           int       `json:"page"`
 	Limit          int       `json:"limit"`

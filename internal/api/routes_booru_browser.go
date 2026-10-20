@@ -135,6 +135,8 @@ func (rs booruBrowserRoutes) Search(w http.ResponseWriter, r *http.Request) {
 			writeBooruError(w, 502, "media", "Provider page contains more than 256 media files. Reduce posts per page.")
 			return
 		}
+		// Exclude blacklisted posts before categorizing or granting preview media keys.
+		result = source.FilterBlacklisted(result)
 		result.CategoryStatus = rs.categorizeBooruPosts(r.Context(), source, result.Posts)
 		for i := range result.Posts {
 			result.Posts[i] = publicBooruPost(source, result.Posts[i])
