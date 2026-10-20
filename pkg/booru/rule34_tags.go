@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/xml"
 	"net/http"
 	"net/url"
 	"strings"
@@ -26,12 +27,53 @@ type rule34CategoryEntry struct {
 	expires  time.Time
 }
 
+// The site's tag DAPI normally returns XML even when the post DAPI supports
+// json=1. Keep JSON support for compatible responses, but never infer a tag's
+// category from its spelling or from unrelated API results.
+type rule34TagXMLRow struct {
+	Name     string `xml:"name,attr"`
+	Type     string `xml:"type,attr"`
+	Category string `xml:"category,attr"`
+}
+
+type rule34TagXMLResponse struct {
+	XMLName xml.Name          `xml:"tags"`
+	Tags    []rule34TagXMLRow `xml:"tag"`
+}
+
 func parseRule34TagCategories(data []byte, requested map[string]bool) map[string]string {
 	result := make(map[string]string)
 	data = bytes.TrimSpace(data)
 	if len(data) == 0 {
 		return result
 	}
+	add := func(name, rawType, rawCategory string) {
+		key := strings.ToLower(name)
+		if !requested[key] || !validTagText(name) || strings.ContainsAny(name, " \t\r\n") {
+			return
+		}
+		if rawType == "" {
+			rawType = rawCategory
+		}
+		if category := suggestionCategory("gelbooru", rawType, name); category != "unknown" {
+			result[key] = category
+		}
+	}
+	if data[0] == '<' {
+		// Never accept DTDs or declarations in untrusted provider documents.
+		if bytes.Contains(bytes.ToLower(data), []byte("<!doctype")) {
+			return result
+		}
+		var response rule34TagXMLResponse
+		if xml.Unmarshal(data, &response) != nil || len(response.Tags) > rule34CategoryBatchSize {
+			return result
+		}
+		for _, row := range response.Tags {
+			add(row.Name, row.Type, row.Category)
+		}
+		return result
+	}
+
 	var rows []object
 	if data[0] == '[' {
 		if json.Unmarshal(data, &rows) != nil {
@@ -48,20 +90,7 @@ func parseRule34TagCategories(data []byte, requested map[string]bool) map[string
 		return result
 	}
 	for _, row := range rows {
-		name := text(row["name"])
-		key := strings.ToLower(name)
-		if !requested[key] || !validTagText(name) || strings.ContainsAny(name, " \t\r\n") {
-			continue
-		}
-		rawCategory := text(row["type"])
-		if rawCategory == "" {
-			rawCategory = text(row["category"])
-		}
-		category := suggestionCategory("gelbooru", rawCategory, name)
-		if category == "unknown" {
-			continue
-		}
-		result[key] = category
+		add(text(row["name"]), text(row["type"]), text(row["category"]))
 	}
 	return result
 }
@@ -126,7 +155,7 @@ func (c *Client) CategorizeRule34Tags(ctx context.Context, source Source, posts 
 			names[name] = true
 		}
 		params := url.Values{
-			"page": {"dapi"}, "s": {"tag"}, "q": {"index"}, "json": {"1"},
+			"page": {"dapi"}, "s": {"tag"}, "q": {"index"},
 			"names": {strings.Join(batch, " ")}, "limit": {"100"},
 			"api_key": {source.APIKey}, "user_id": {source.UserID},
 		}
@@ -135,7 +164,7 @@ func (c *Client) CategorizeRule34Tags(ctx context.Context, source Source, posts 
 		if err != nil {
 			break
 		}
-		req.Header.Set("Accept", "application/json")
+		req.Header.Set("Accept", "application/xml")
 		req.Header.Set("User-Agent", "StashBooru/1.0 (https://github.com/Dusky-dev/StashBooru)")
 		data, err := c.fetchJSON(ctx, source, req, 256<<10)
 		if err != nil {

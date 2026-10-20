@@ -46,11 +46,15 @@ func TestRule34CategorizationUsesOfficialAuthenticatedTagAPI(t *testing.T) {
 		if r.URL.Host != "api.rule34.xxx" || r.URL.Path != "/index.php" ||
 			q.Get("page") != "dapi" || q.Get("s") != "tag" || q.Get("q") != "index" ||
 			q.Get("names") != "artist_a hero_a series_a common" ||
+			q.Has("json") || r.Header.Get("Accept") != "application/xml" ||
 			q.Get("api_key") != "private-secret" || q.Get("user_id") != "42" {
 			t.Errorf("incorrect official tag DAPI request")
 		}
-		return response(200, `{"tag":[{"name":"artist_a","type":"1"},
-			{"name":"hero_a","type":"4"},{"name":"series_a","type":"3"},{"name":"common","type":"0"}]}`), nil
+		return response(200, `<?xml version="1.0" encoding="UTF-8"?>
+<tags count="4"><tag id="10" name="artist_a" count="123" type="1"/>
+<tag id="11" name="hero_a" type="4"/>
+<tag id="12" name="series_a" type="3"/>
+<tag id="13" name="common" type="0"/></tags>`), nil
 	})
 	posts := []Post{
 		{Tags: []Tag{{Name: "artist_a", Category: "unknown"}, {Name: "hero_a", Category: "unknown"},
@@ -142,5 +146,69 @@ func TestRule34CategoryLookupBoundsNameQueryBytes(t *testing.T) {
 	client.CategorizeRule34Tags(context.Background(), source, posts)
 	if calls < 2 || calls > rule34CategoryMaxBatches {
 		t.Fatalf("expected bounded URL batches for long names, got %d", calls)
+	}
+}
+
+func TestRule34TagCategoriesXMLResponse(t *testing.T) {
+	requested := map[string]bool{
+		"artist_a": true, "hero_a": true, "series_a": true,
+		"series_b": true, "common": true, "meta_tag": true,
+	}
+	body := `<?xml version="1.0" encoding="UTF-8"?>
+<tags type="array" count="7">
+  <tag id="1" name="artist_a" count="999" type="1"/>
+  <tag id="2" name="hero_a" type="4"/>
+  <tag id="3" name="series_a" type="3"/>
+  <tag id="4" name="series_b" type="2"/>
+  <tag id="5" name="common" type="0"/>
+  <tag id="6" name="meta_tag" type="5"/>
+  <tag id="7" name="unrelated_tag" type="1"/>
+</tags>`
+	categories := parseRule34TagCategories([]byte(body), requested)
+	for name, category := range map[string]string{
+		"artist_a": "artist", "hero_a": "character",
+		"series_a": "copyright",
+		"common":   "general", "meta_tag": "meta",
+	} {
+		if categories[name] != category {
+			t.Errorf("%s: got %q, expected %q", name, categories[name], category)
+		}
+	}
+	if len(categories) != 5 || categories["series_b"] != "" {
+		t.Fatalf("XML parser included missing or unrequested categories: %+v", categories)
+	}
+	for _, invalid := range []string{
+		`<html><tags><tag name="artist_a" type="1"/></tags></html>`,
+		`<!DOCTYPE tags [<!ENTITY x "fake">]><tags><tag name="artist_a" type="1"/></tags>`,
+		`<tags><tag name="artist_a" type="1"></tags>`,
+		`<tags><tag name="artist_a" type="999"/></tags>`,
+	} {
+		if got := parseRule34TagCategories([]byte(invalid), requested); len(got) != 0 {
+			t.Errorf("unexpected categories from invalid XML: %+v", got)
+		}
+	}
+}
+
+func TestRule34DeprecatedTagType2RemainsUncategorized(t *testing.T) {
+	requested := map[string]bool{"deprecated_tag": true, "series": true}
+	for _, body := range []string{
+		`<tags><tag name="deprecated_tag" type="2"/><tag name="series" type="3"/></tags>`,
+		`{"tag":[{"name":"deprecated_tag","type":2},{"name":"series","type":3}]}`,
+	} {
+		got := parseRule34TagCategories([]byte(body), requested)
+		if got["deprecated_tag"] != "" || got["series"] != "copyright" || len(got) != 1 {
+			t.Fatalf("deprecated type must not be cached as copyright: %+v", got)
+		}
+	}
+}
+
+func TestRule34TagCategoriesXMLPreservesExactTagIdentity(t *testing.T) {
+	requested := map[string]bool{"my_tag": true}
+	categories := parseRule34TagCategories(
+		[]byte(`<tags><tag name="my_tag_extra" type="1"/><tag name="MY_TAG" type="4"/></tags>`),
+		requested,
+	)
+	if categories["my_tag"] != "character" || len(categories) != 1 {
+		t.Fatalf("XML tag lookup must match exact names case-insensitively: %+v", categories)
 	}
 }
