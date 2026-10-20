@@ -364,6 +364,7 @@ func parseArchivePost(s Source, raw object) (Post, error) {
 	}
 	return p, nil
 }
+
 // Paheal moved original /_images/ media to a dedicated CDN. Its legacy
 // Shimmie API can still provide the old website URL. Only rewrite an exact
 // Paheal original-media path from the official host (or an absolute path
