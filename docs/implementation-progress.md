@@ -1,5 +1,44 @@
 # StashBooru implementation progress
 
+## Pawchive server-side post searching — 2026-10-21
+
+- Branch `feat/pawchive-server-post-search-20261021`, based on `develop`
+  at `fee5744b72124fe65bebe8e55ab4650a541001f9`.
+- The Pawchive post adapter formerly rejected text searches. An initial
+  implementation forwarded `q=` to `/api/v1/posts`, based on an upstream
+  frontend comment. Codex review identified the upstream README explicitly
+  states global `q=` is ignored; the first integration run confirmed the
+  request returned unrelated real posts. That approach was removed.
+- Keyword mode now scans at most **250 recent posts** in five provider
+  requests (`o=0..200`), comparing case-insensitive text in titles and
+  content. It does NOT send `q=` to the unreliable API or suggest results
+  cover the entire archive. Pages and `HasMore` are computed over real
+  matches inside that bounded window. A `searchNotice` field and browser
+  banner explain the scope. An empty result is not a guarantee the archive
+  contains no older matches. Cancellations/errors stop the scan.
+- Preserve the existing `*`/blank recent-post mode, `creator:service:id`
+  browsing and artist directory chooser, fixed 50-record provider block
+  pagination, record/media parsing and bounded request handling.
+  Pawchive queries do not inherit Kemono's arbitrary three-byte minimum.
+- Source-selection UI no longer clears ordinary text solely because
+  Pawchive was chosen; it still clears creator-specific expressions
+  when switching sources. Source help and user docs have been updated.
+- Regression tests cover mixed matching/unrelated provider rows,
+  case-insensitive title/content matches, single-character terms,
+  recent-post mode and creator mode, post identity/media parsing,
+  malformed creator expressions, correct filtered paging across 250
+  recent records and refusal to scan past the cap. An obsolete API
+  integration assertion and mounted browser expectation were updated.
+- Provider evidence: `dragonjay-lyj/pawchive` frontend source
+  calls `/api/v1/posts?q=`, but its README specifically notes the global
+  q filter is ignored on the upstream API. CI integration confirmed a
+  real `q=landscape` request returned unrelated posts. The new bounded
+  scan avoids depending on this unsupported filtering behavior.
+  Live UI acceptance after merge remains necessary.
+- No merge/deployment is implied; verify CI and reviews first.
+
+
+
 Updated: 2026-10-20
 
 Integration baseline: develop

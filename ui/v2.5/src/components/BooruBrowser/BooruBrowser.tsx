@@ -727,6 +727,9 @@ function SourceResults({
       )}
       {result && (
         <>
+          {result.searchNotice && (
+            <Alert variant="info">{result.searchNotice}</Alert>
+          )}
           {source.id === "rule34" && result.categoryStatus === "loading" && (
             <Alert variant="info">
               Rule34 tag categories are being installed automatically from a
@@ -1220,9 +1223,11 @@ export default function BooruBrowser() {
               order={sourceOrder}
               onOrder={setSourceOrder}
               onSelect={(source) => {
+                // Creator identities are source-specific; ordinary text
+                // searches should survive switching to Pawchive, now that
+                // its API supports server-side post search.
                 const nextQuery =
-                  selected[0] !== source.id &&
-                  (query.startsWith("creator:") || source.engine === "pawchive")
+                  selected[0] !== source.id && query.startsWith("creator:")
                     ? ""
                     : query.trim();
                 setSelected([source.id]);
