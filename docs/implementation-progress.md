@@ -89,7 +89,17 @@ silently promoted to verified production features by this documentation update.
   Refreshed definitions now detect a stale editor, preserve its draft and pause
   Save until the user explicitly reloads the current definition. Mounted coverage
   exercises the conflict and successful subsequent edit at both viewports.
-  Verification of these second follow-up edits is pending CI/re-review.
+  Verification SHA `aaf52554c8e9ef05f65b0b4f543d3ca4d3cf213c`,
+  tree `6263167a5efac5db44912b74e97943f1dfa7b3ab`: full `make it`,
+  backend lint, backend/UI generation, UI validation and production bundling,
+  and both browser workflows passed in GitHub Actions. The new alias regression
+  and draft-preserving conflict workflow passed. Codex re-review completed with
+  no findings on this SHA; all three earlier threads are resolved.
+  [Build/test run](https://github.com/Dusky-dev/StashBooru/actions/runs/39457673229) ·
+  [Following fixture run](https://github.com/Dusky-dev/StashBooru/actions/runs/39457673281).
+  Platform builds remain in progress at this verification checkpoint; no claim
+  of verified cross-platform binaries is made. A subsequent documentation-only
+  handoff commit may supersede that CI run without changing implementation files.
 - The execution environment became unavailable before the final local UI
   validate/build/lint pipeline could be retrieved; those local results are
   unverified. Follow-up verification above is from GitHub Actions. Changes are
