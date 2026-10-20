@@ -25,6 +25,29 @@ silently promoted to verified production features by this documentation update.
   styling across activation, refresh, and deactivation.
 - Verification: GitHub CI on the PR is authoritative; no merge/deployment.
 
+## Rule34 typed post-sidebar fallback — 2026-10-20
+
+- Baseline: `develop` at `dbd65145e94d5316d9933dfa7f5058fa963d09fa`;
+  branch `fix/rule34-post-sidebar-categories-20261020`.
+- User still reports "Tags — category not supplied" after PRs #161 and #162.
+  Rule34 officially documents tag lookup by ID and limit but not our existing
+  bulk `names` query, so a response can be valid but unrelated to requested
+  tags. Previous code spent its entire eight-second window retrying.
+- Stop DAPI category batches after an empty/mismatched batch. For remaining
+  unknown tags, fetch at most three Rule34 public post pages (canonical
+  website host and validated numeric post ID) and read exact tags/categories
+  from `#tag-sidebar li.tag-type-*`. Limit response bytes and CPU tokens,
+  never send API credentials to website pages, and only classify tags
+  already present in a result. Browser search is not blocked on site errors
+  or challenges. Positive results use the existing 24h per-site cache.
+- Bounded fallback may not cover tags appearing only in additional posts or
+  when Cloudflare refuses the page. Installed Rule34 CSV remains the complete
+  offline classification path.
+- Added parser/provider tests for artist/character/copyright/general/meta
+  classes, invalid links/unrelated text, blocked pages, exact matching,
+  cache reuse, and respecting the API batch limits. GitHub CI is authoritative.
+  No merge/deployment performed.
+
 ## Rule34 tag DAPI XML format repair — 2026-10-20
 
 - Baseline: `develop` at `7856430423374f0462fb25e82a206ffbae07ee9c`.
