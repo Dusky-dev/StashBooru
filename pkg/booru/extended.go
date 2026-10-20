@@ -189,7 +189,7 @@ const pawchiveRecentPostScanLimit = 250
 func (c *Client) searchPawchiveRecentPosts(ctx context.Context, source Source, query string, page, limit int) (Result, error) {
 	result := Result{
 		SourceID: source.ID, Page: page, Limit: limit, Posts: []Post{},
-		FetchedAt: time.Now().UTC(),
+		FetchedAt:    time.Now().UTC(),
 		SearchNotice: "Pawchive keyword search checks up to 250 recent posts, not the full archive. Find an artist to browse their older posts.",
 	}
 	start := (page - 1) * limit
