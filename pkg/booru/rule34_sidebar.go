@@ -40,9 +40,10 @@ func parseRule34SidebarCategories(data []byte, requested map[string]bool) map[st
 		tag := string(name)
 		if kind == html.EndTagToken {
 			if depth > 0 {
-				if tag == "ul" {
+				switch tag {
+				case "ul":
 					depth--
-				} else if tag == "li" {
+				case "li":
 					category = ""
 				}
 			}
