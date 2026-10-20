@@ -97,21 +97,21 @@ func parseRule34SidebarCategories(data []byte, requested map[string]bool) map[st
 			continue
 		}
 		q := u.Query()
-		var name string
+		var linkedTag string
 		switch q.Get("page") {
 		case "wiki":
-			name = q.Get("search")
+			linkedTag = q.Get("search")
 		case "post":
 			if q.Get("s") != "list" {
 				continue
 			}
-			name = q.Get("tags")
+			linkedTag = q.Get("tags")
 		default:
 			continue
 		}
 		// Accept a category only for an exact post tag, never arbitrary
 		// links or partial matches from a page's other content.
-		tagName := strings.ToLower(name)
+		tagName := strings.ToLower(linkedTag)
 		if requested[tagName] {
 			categories[tagName] = category
 		}
