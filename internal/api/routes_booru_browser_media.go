@@ -145,8 +145,13 @@ func publicBooruPost(source booru.Source, post booru.Post) booru.Post {
 	if u, err := url.Parse(post.PreviewURL); err == nil && u.Scheme == "https" && u.RawQuery == "" {
 		post.DirectPreviewURL = u.String()
 	}
-	if u, err := url.Parse(post.SampleURL); err == nil && u.Scheme == "https" && u.RawQuery == "" {
-		post.DirectSampleURL = u.String()
+	// Samples promoted from originals must remain behind the bounded
+	// server proxy. Do not retry original media directly from the browser
+	// after an oversized or rejected proxy request.
+	if post.SampleURL != "" && post.SampleURL != post.OriginalURL {
+		if u, err := url.Parse(post.SampleURL); err == nil && u.Scheme == "https" && u.RawQuery == "" {
+			post.DirectSampleURL = u.String()
+		}
 	}
 	if post.PreviewURL != "" {
 		post.PreviewURL = "booru-browser/media?key=" + post.MediaKey + "&kind=preview"
