@@ -220,6 +220,33 @@ silently promoted to verified production features by this documentation update.
   live Paheal CDN downloads still require owner-side acceptance.
   No merge or deployment performed.
 
+## Rule34 automatic category catalog fallback — 2026-10-20
+
+- Base: `develop` at `469ce563d6dc23770120f24ef1422d9a3419575a`;
+  branch `fix/rule34-auto-categories-fallback-20261020`.
+- Reported issue: previous live Rule34 category fixes (#168/#169)
+  still leave tags under "category not supplied". The public website
+  may challenge HTML sidebar requests; `s=tag&q=index&name=...` is
+  undocumented by Rule34's published API and can return no exact matches.
+- Fallback: only when unresolved categories remain, start one bounded
+  installation of the public Rule34-specific `deepghs/site_tags` CSV
+  snapshot (46.2 MB, last Rule34 update 2025-08-02). Cache it in
+  `booru-tags/rule34-auto.csv`, never overwriting a custom CSV.
+  Downloads are limited to 64 MiB with fixed HTTPS source, restricted
+  redirects, timeouts, atomic publish and full CSV validation. Failed
+  installs retry after one hour. The current search does not wait for
+  46 MB; a repeat search uses loaded categories.
+- Priority: installed source CSV, then live confirmed classifications,
+  then historical Rule34 catalog for tags still unknown. No category
+  is guessed from spelling, and other sites are unaffected.
+- Public search responses include a small `categoryStatus` indicator
+  (`loading`, `failed`, or `ready`) so the browser can explain the
+  first install or network failure.
+- Added simulated download, safety, corrupted-file, persisted-catalog
+  and category-priority tests. Actual server access to Hugging Face and
+  real Rule34 account categorization remain acceptance tests; the
+  snapshot predates new tags. No merge or deployment authorized.
+
 ## Rule34 public sidebar wiki-link classification — 2026-10-20
 
 - Baseline: merged `develop` at `fc2651bc4a39022adca438f7524d1ab6008bcdf9`
