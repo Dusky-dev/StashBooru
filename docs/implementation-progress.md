@@ -1,5 +1,31 @@
 # StashBooru implementation progress
 
+## Pawchive full post search correction — 2026-10-21
+
+- Baseline: `develop` at `38dcf44039f13b358e4a110decd053fcd478169e`;
+  branch `fix/pawchive-full-post-search-20261021`.
+- Owner confirmed that Pawchive's own Posts search (`https://pawchive.pw/posts?q=meili`)
+  returns historical posts across the archive, whereas the first implementation
+  of StashBooru PR #175 only inspected 250 recent posts and incorrectly showed
+  no matching posts.
+- Remove `searchPawchiveRecentPosts` entirely. Normal keyword queries now
+  use `/api/v1/posts?q=...` with offset-aligned provider page slices and
+  ordinary `HasMore`, like the website's search. Blank/`*` recent browsing
+  and direct creator browsing are unaffected.
+- Guard compatibility with older Pawchive API versions which silently ignored
+  `q`: when no result titles/content contain the query, compare the returned
+  identities to the equivalent unfiltered offset page; if identical, return
+  a clear unsupported-query error instead of claiming unrelated recent
+  posts are hits. Results indexing other provider fields remain permitted
+  if their identities differ from the unfiltered feed.
+- Add regression tests for a `meili` search spanning 122 provider results
+  (including pages past the old 250-post scan), exact offset pagination,
+  ignored-query detection, provider-indexed non-title matches and
+  `*`/creator browsing. Update source help and user documentation.
+- CI and Codex review still to be checked on the new PR. Live Pawchive API
+  behavior (site vs API compatibility) should be verified by user after merge.
+
+
 ## Booru browser: per-source tag blacklist — 2026-10-21
 
 - Baseline `develop` at `fee5744b72124fe65bebe8e55ab4650a541001f9`,
