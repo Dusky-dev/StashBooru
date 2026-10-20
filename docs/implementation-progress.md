@@ -192,6 +192,29 @@ silently promoted to verified production features by this documentation update.
   this documentation-only clarification. Reviewed docs and `git diff --check`;
   backend verification above remains the implementation checkpoint.
 
+## Paheal original CDN and inspector quality — 2026-10-20
+
+- Baseline: `develop` at `aa1a2b42bf9bfb6b07608350bfbda688e54e91b9`;
+  feature branch `fix/paheal-originals-and-samples-20261020`.
+- Owner reports Paheal previews available only at thumbnail quality and
+  original downloads unavailable. Shimmie's upstream Danbooru API source
+  publishes `file_url` and `preview_url` but no sample URL by default.
+  A reproduced Grabber issue documents Paheal originals moving from
+  `rule34.paheal.net/_images/` to `r34i.paheal-cdn.net/_images/`.
+- Trust precisely `r34i.paheal-cdn.net` for the official Paheal Shimmie
+  source, including old persisted source overrides missing the CDN.
+  Normalize legacy website/relative `/_images/` originals to the HTTPS
+  CDN only for official Paheal. Do not rewrite thumbnail links or arbitrary
+  other hosts; continue validating URLs/redirects and rejecting HTML media.
+- For Paheal posts lacking explicit sample data, use the original as the
+  inspector's sample within the current 24 MiB preview limit. Keep
+  ordinary grid thumbnails and honor explicit samples when present.
+- Added end-to-end adapter + mocked binary download regression cases and
+  CDN allowlist isolation checks. CI verifies the code path; live Paheal CDN
+  downloads could not be tested from this environment. Check a real post's
+  image/preview and download on owner deployment before claiming success.
+  No merge or deployment performed.
+
 ## Rule34 public sidebar wiki-link classification — 2026-10-20
 
 - Baseline: merged `develop` at `fc2651bc4a39022adca438f7524d1ab6008bcdf9`
