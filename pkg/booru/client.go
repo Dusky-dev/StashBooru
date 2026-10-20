@@ -55,8 +55,9 @@ type Post struct {
 }
 
 type Result struct {
-	SourceID  string    `json:"sourceID"`
-	Posts     []Post    `json:"posts"`
+	SourceID       string    `json:"sourceID"`
+	CategoryStatus string    `json:"categoryStatus,omitempty"`
+	Posts          []Post    `json:"posts"`
 	Page      int       `json:"page"`
 	Limit     int       `json:"limit"`
 	HasMore   bool      `json:"hasMore"`
