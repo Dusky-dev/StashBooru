@@ -16,7 +16,6 @@ import (
 // do not guess categories from suffixes or apply categories from other sites.
 const (
 	rule34CategoryBatchSize     = 100
-	rule34CategoryNamesMaxBytes = 3072
 	rule34CategoryMaxExactLookups = 6
 	rule34CategoryMaxCached     = 8192
 	rule34CategoryCacheExpiry   = 24 * time.Hour
