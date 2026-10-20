@@ -625,6 +625,13 @@ function SourceResults({
   const [review, setReview] = useState<ReviewState[]>([]);
   const onReview = useCallback((value: ReviewState[]) => setReview(value), []);
   const [error, setError] = useState("");
+  const pawchiveSearchLink =
+    source.engine === "pawchive" &&
+    !favorites &&
+    query.trim() &&
+    !query.startsWith("creator:")
+      ? remoteURL(`${source.url.replace(/\/$/, "")}/posts?q=${encodeURIComponent(query)}`)
+      : undefined;
   const [loading, setLoading] = useState(true);
   // Results are not ready for scroll restoration until the provider finishes.
   // The initial empty posts list is only a loading placeholder.
@@ -723,6 +730,14 @@ function SourceResults({
           >
             {message("retry", "Retry source")}
           </Button>
+          {pawchiveSearchLink && (
+            <ExternalLink
+              className="btn btn-link btn-sm"
+              href={pawchiveSearchLink}
+            >
+              Open search on Pawchive
+            </ExternalLink>
+          )}
         </Alert>
       )}
       {result && (
