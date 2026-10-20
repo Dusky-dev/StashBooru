@@ -135,7 +135,7 @@ func (rs booruBrowserRoutes) Search(w http.ResponseWriter, r *http.Request) {
 			writeBooruError(w, 502, "media", "Provider page contains more than 256 media files. Reduce posts per page.")
 			return
 		}
-		rs.categorizeBooruPosts(r.Context(), source, result.Posts)
+		result.CategoryStatus = rs.categorizeBooruPosts(r.Context(), source, result.Posts)
 		for i := range result.Posts {
 			result.Posts[i] = publicBooruPost(source, result.Posts[i])
 		}
@@ -146,7 +146,8 @@ func (rs booruBrowserRoutes) Search(w http.ResponseWriter, r *http.Request) {
 	writeBooruError(w, http.StatusBadRequest, "unknown-source", "Choose an enabled source from the server's source list.")
 }
 
-func (rs booruBrowserRoutes) categorizeBooruPosts(ctx context.Context, source booru.Source, posts []booru.Post) {
+func (rs booruBrowserRoutes) categorizeBooruPosts(ctx context.Context, source booru.Source, posts []booru.Post) string {
+	// Explicit per-source CSV and typed provider data always win.
 	if db, err := rs.tagDatabase(source); err == nil && db.index != nil {
 		for i := range posts {
 			for j, tag := range posts[i].Tags {
@@ -158,13 +159,41 @@ func (rs booruBrowserRoutes) categorizeBooruPosts(ctx context.Context, source bo
 			}
 		}
 	}
-	if source.IsRule34() {
-		if categorizer, ok := rs.client.(interface {
-			CategorizeRule34Tags(context.Context, booru.Source, []booru.Post)
-		}); ok {
-			categorizer.CategorizeRule34Tags(ctx, source, posts)
+	if !source.IsRule34() {
+		return ""
+	}
+	// Live exact classifications take precedence over the historical
+	// mirror, which can be stale or not contain newly created Rule34 tags.
+	if categorizer, ok := rs.client.(interface {
+		CategorizeRule34Tags(context.Context, booru.Source, []booru.Post)
+	}); ok {
+		categorizer.CategorizeRule34Tags(ctx, source, posts)
+	}
+	unknown := false
+	for _, post := range posts {
+		for _, tag := range post.Tags {
+			if tag.Category == "unknown" {
+				unknown = true
+				break
+			}
 		}
 	}
+	if !unknown || ctx.Err() != nil {
+		return ""
+	}
+	index, status := rs.rule34Catalog(source)
+	if index != nil {
+		for i := range posts {
+			for j, tag := range posts[i].Tags {
+				if tag.Category == "unknown" {
+					if category := index.Category(tag.Name); category != "" && category != "unknown" {
+						posts[i].Tags[j].Category = category
+					}
+				}
+			}
+		}
+	}
+	return status
 }
 
 func writeBooruError(w http.ResponseWriter, status int, code, message string) {
