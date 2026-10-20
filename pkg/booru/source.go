@@ -60,7 +60,7 @@ func Defaults() []Source {
 		{ID: "e621", Name: "e621", Engine: "e621", URL: "https://e621.net"},
 		{ID: "e926", Name: "e926", Engine: "e621", URL: "https://e926.net", MediaHosts: []string{"e621.net"}},
 		{ID: "derpibooru", Name: "Derpibooru", Engine: "philomena", URL: "https://derpibooru.org", MediaHosts: []string{"derpicdn.net"}},
-		{ID: "paheal", Name: "Paheal", Engine: "shimmie", URL: "https://rule34.paheal.net", MediaHosts: []string{"paheal.net"}},
+		{ID: "paheal", Name: "Paheal", Engine: "shimmie", URL: "https://rule34.paheal.net", MediaHosts: []string{"paheal.net", "r34i.paheal-cdn.net"}},
 		{ID: "pixiv", Name: "Pixiv", Engine: "pixiv", URL: "https://app-api.pixiv.net", MediaHosts: []string{"pximg.net"}},
 		{ID: "pawchive", Name: "Pawchive", Engine: "pawchive", URL: "https://pawchive.pw", MediaHosts: []string{"file.pawchive.pw", "img.pawchive.pw"}},
 		{ID: "kemono", Name: "Kemono", Engine: "kemono", URL: "https://kemono.cr", MediaHosts: []string{"kemono.su"}},
