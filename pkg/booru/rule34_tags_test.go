@@ -153,6 +153,37 @@ func TestRule34CategoryLookupBoundsExactRequests(t *testing.T) {
 	}
 }
 
+func TestRule34LiveLookupProgressesPastAbsentTags(t *testing.T) {
+	source := Source{ID: "rule34", Name: "Rule34", Engine: "gelbooru",
+		URL: "https://rule34.xxx", APIKey: "secret", UserID: "42"}
+	calls := 0
+	client := testClient(func(r *http.Request) (*http.Response, error) {
+		calls++
+		name := r.URL.Query().Get("name")
+		if name == "tag_06" {
+			return response(200, "<tag name=\"tag_06\" type=\"1\"/>"), nil
+		}
+		return response(200, "<tags count=\"0\"/>"), nil
+	})
+	post := Post{Tags: make([]Tag, 7)}
+	for i := range post.Tags {
+		post.Tags[i] = Tag{Name: fmt.Sprintf("tag_%02d", i), Category: "unknown"}
+	}
+	first := []Post{post}
+	client.CategorizeRule34Tags(context.Background(), source, first)
+	if calls != rule34CategoryMaxExactLookups {
+		t.Fatalf("unexpected first live request count: %d", calls)
+	}
+	// Missing records are cached briefly, so repeating the search should
+	// classify additional tags instead of requesting the same absent six.
+	second := []Post{post}
+	client.CategorizeRule34Tags(context.Background(), source, second)
+	if calls != rule34CategoryMaxExactLookups+1 || second[0].Tags[6].Category != "artist" {
+		t.Fatalf("live classification was starved by absent tags: calls=%d last=%s",
+			calls, second[0].Tags[6].Category)
+	}
+}
+
 func TestRule34CategoryLookupLongNamesStayBounded(t *testing.T) {
 	source := Source{ID: "rule34", Name: "Rule34", Engine: "gelbooru",
 		URL: "https://rule34.xxx", APIKey: "secret", UserID: "42"}
