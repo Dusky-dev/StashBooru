@@ -138,12 +138,12 @@ func ReadTagCSVForEngine(input io.Reader, engine string) (*TagIndex, error) {
 		}
 		name := get(nameCol)
 		if !validTagText(name) {
-			// Large, explicitly labeled Rule34/Gelbooru provider exports
-			// occasionally contain empty, overlong or control-character
-			// names. Such rows can never match a valid post tag. Skip only
-			// these unaddressable names, and only up to a small fixed cap;
-			// other CSV formats and structural errors remain strict.
-			if engine == "gelbooru" && explicitHeader {
+			// Rule34/Gelbooru exports occasionally contain invalid names.
+			// They can never match a valid post tag. For headerless files,
+			// require at least one successfully parsed row first, proving
+			// the positional name/type columns are usable. Bound skips;
+			// other engines and structural errors remain strict.
+			if engine == "gelbooru" && (explicitHeader || len(index.tags) > 0) {
 				index.skippedRows++
 				if index.skippedRows > maxSkippedGelbooruCSVRows {
 					return nil, fmt.Errorf("Rule34/Gelbooru CSV has more than %d invalid tag names (latest at row %d)", maxSkippedGelbooruCSVRows, row)
