@@ -167,14 +167,14 @@ func TestRule34TagCategoriesXMLResponse(t *testing.T) {
 	categories := parseRule34TagCategories([]byte(body), requested)
 	for name, category := range map[string]string{
 		"artist_a": "artist", "hero_a": "character",
-		"series_a": "copyright", "series_b": "copyright",
+		"series_a": "copyright",
 		"common": "general", "meta_tag": "meta",
 	} {
 		if categories[name] != category {
 			t.Errorf("%s: got %q, expected %q", name, categories[name], category)
 		}
 	}
-	if len(categories) != 6 {
+	if len(categories) != 5 || categories["series_b"] != "" {
 		t.Fatalf("XML parser included missing or unrequested categories: %+v", categories)
 	}
 	for _, invalid := range []string{
@@ -185,6 +185,19 @@ func TestRule34TagCategoriesXMLResponse(t *testing.T) {
 	} {
 		if got := parseRule34TagCategories([]byte(invalid), requested); len(got) != 0 {
 			t.Errorf("unexpected categories from invalid XML: %+v", got)
+		}
+	}
+}
+
+func TestRule34DeprecatedTagType2RemainsUncategorized(t *testing.T) {
+	requested := map[string]bool{"deprecated_tag": true, "series": true}
+	for _, body := range []string{
+		`<tags><tag name="deprecated_tag" type="2"/><tag name="series" type="3"/></tags>`,
+		`{"tag":[{"name":"deprecated_tag","type":2},{"name":"series","type":3}]}`,
+	} {
+		got := parseRule34TagCategories([]byte(body), requested)
+		if got["deprecated_tag"] != "" || got["series"] != "copyright" || len(got) != 1 {
+			t.Fatalf("deprecated type must not be cached as copyright: %+v", got)
 		}
 	}
 }
