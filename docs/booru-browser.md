@@ -106,6 +106,16 @@ If Rule34 blocks the website or its HTML changes, and the tag API does
 not provide exact typed matches, categories remain unknown rather than
 guessed. This change is covered by provider-shaped regression tests; it
 has **not** been verified end-to-end against the user's live Rule34 account.
+Rule34/Gelbooru's headered CSV exports sometimes contain a few malformed
+names (empty, over 256 UTF-8 bytes, invalid UTF-8, or control characters).
+StashBooru skips at most 2,048 of **those name records only** while importing
+the remaining valid tags, and shows a skipped-row count in the database
+settings and successful upload message. Headerless tagcomplete CSVs and all
+other providers continue to reject malformed names; structurally invalid
+CSV, unsupported categories/counts, and exports with excessive invalid
+names still fail. The installed database remains unchanged if an import
+fails. A malformed row is never entered into search or category lookups.
+
 An installed per-source CSV takes precedence. If live Rule34 tags
 still lack categories, StashBooru now **automatically installs a Rule34-only
 tag catalog** in `booru-tags/rule34-auto.csv` under its configuration
