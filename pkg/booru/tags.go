@@ -14,7 +14,13 @@ import (
 	"unicode/utf8"
 )
 
-const MaxTagCSVBytes = 64 << 20
+const (
+	MaxTagCSVBytes = 64 << 20
+	// A few malformed names in large published Rule34/Gelbooru snapshots
+	// should not invalidate all remaining categories. A bounded allowance
+	// prevents silently accepting an incorrectly mapped or corrupt CSV.
+	maxSkippedGelbooruCSVRows = 2048
+)
 
 type Suggestion struct {
 	Name     string `json:"name"`
@@ -27,11 +33,13 @@ type tagKey struct {
 	tag int
 }
 type TagIndex struct {
-	tags []Suggestion
-	keys []tagKey
+	tags        []Suggestion
+	keys        []tagKey
+	skippedRows int
 }
 
-func (t *TagIndex) Count() int { return len(t.tags) }
+func (t *TagIndex) Count() int       { return len(t.tags) }
+func (t *TagIndex) SkippedRows() int { return t.skippedRows }
 
 // Category uses only an exact canonical name, never a prefix or alias guess.
 func (t *TagIndex) Category(name string) string {
@@ -60,6 +68,7 @@ func ReadTagCSVForEngine(input io.Reader, engine string) (*TagIndex, error) {
 	seen := map[string]int{}
 	aliasesByTag := map[int][]string{}
 	nameCol, typeCol, countCol, aliasCol := 0, 1, 2, 3
+	explicitHeader := false
 	maxTags, maxKeys := 1_000_000, 2_000_000
 	if engine == "gelbooru" {
 		// Rule34/Gelbooru category exports may exceed a million unique names.
@@ -101,6 +110,7 @@ func ReadTagCSVForEngine(input io.Reader, engine string) (*TagIndex, error) {
 				}
 			}
 			if hasName && hasType {
+				explicitHeader = true
 				nameCol, typeCol, countCol, aliasCol = -1, -1, -1, -1
 				for col, value := range fields {
 					switch value {
@@ -128,6 +138,18 @@ func ReadTagCSVForEngine(input io.Reader, engine string) (*TagIndex, error) {
 		}
 		name := get(nameCol)
 		if !validTagText(name) {
+			// Large, explicitly labeled Rule34/Gelbooru provider exports
+			// occasionally contain empty, overlong or control-character
+			// names. Such rows can never match a valid post tag. Skip only
+			// these unaddressable names, and only up to a small fixed cap;
+			// other CSV formats and structural errors remain strict.
+			if engine == "gelbooru" && explicitHeader {
+				index.skippedRows++
+				if index.skippedRows > maxSkippedGelbooruCSVRows {
+					return nil, fmt.Errorf("Rule34/Gelbooru CSV has more than %d invalid tag names (latest at row %d)", maxSkippedGelbooruCSVRows, row)
+				}
+				continue
+			}
 			return nil, fmt.Errorf("invalid tag name at row %d: expected 1–256 UTF-8 bytes without control characters", row)
 		}
 		category := get(typeCol)
