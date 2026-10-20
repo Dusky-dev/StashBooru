@@ -183,7 +183,6 @@ func (s Source) isPaheal() bool {
 	return err == nil && strings.EqualFold(u.Hostname(), "rule34.paheal.net") && strings.TrimRight(u.Path, "/") == ""
 }
 
-
 // rule34APIBase routes API requests to the documented API host without
 // changing the site's configured URL (or the instance identity and post links).
 func (s Source) rule34APIBase() string {
