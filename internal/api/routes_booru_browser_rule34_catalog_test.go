@@ -3,7 +3,6 @@ package api
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -164,6 +163,6 @@ func TestRule34CatalogFailureDoesNotBreakSearch(t *testing.T) {
 	posts := []booru.Post{{Tags: []booru.Tag{{Name: "unresolved", Category: "unknown"}}}}
 	if got := rs.categorizeBooruPosts(context.Background(), source, posts); got != "failed" ||
 		posts[0].Tags[0].Category != "unknown" {
-		t.Fatal(fmt.Sprintf("unavailable fallback broke search: %s %+v", got, posts))
+		t.Fatalf("unavailable fallback broke search: %s %+v", got, posts)
 	}
 }
