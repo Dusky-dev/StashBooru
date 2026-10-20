@@ -61,7 +61,8 @@ func (c *Client) pawchiveCachedSearch(ctx context.Context, source Source, params
 				c.pawchiveSearchCache = make(map[string]pawchiveSearchCacheEntry)
 			}
 			c.pawchiveSearchCache[key] = pawchiveSearchCacheEntry{
-				body: append([]byte(nil), data...), expires: time.Now().Add(pawchiveSearchTTL),
+				body:    append([]byte(nil), data...),
+				expires: time.Now().Add(pawchiveSearchTTL),
 			}
 		}
 		delete(c.pawchiveSearchBusy, key)
