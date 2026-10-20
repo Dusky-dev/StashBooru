@@ -12,6 +12,26 @@ P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
 
+## Rule34 live exact-name tag classification — 2026-10-20
+
+- Baseline: `develop` at `cd6ad046630991d30d30063a7ed58748135d8b14`;
+  branch `fix/rule34-live-exact-tag-types-20261020`.
+- Owner requested live category classification rather than requiring a CSV.
+  Rule34's `autocomplete.php` returns tags without category metadata, while
+  a third-party integration documents a singular `s=tag&name=<tag>` DAPI
+  lookup returning a type; earlier StashBooru attempts relied on the
+  undocumented Gelbooru-style `names` bulk parameter.
+- Keep typed public sidebar first for efficiency, then resolve remaining
+  unknown tags by exact, authenticated `name` requests (max 6 per search,
+  eight-second total lookup budget). Handle both `<tags>` and `<tag>`
+  XML responses, preserve exact name allowlists and 24-hour positive cache.
+  Provider failures never break the search or override installed CSV types.
+- Regression tests cover request shape, exact tag identity, XML variants,
+  rate-budget cap, sidebar-first precedence, 403 fallback and caching.
+- No live Rule34 account verification available; GitHub CI is authoritative.
+  Partial classification can occur due to the hard request/time limits.
+  No merge or deployment performed.
+
 ## Booru AI filter crossed-out icon — 2026-10-20
 
 - Baseline: `develop` at `b14eee5f20df7e724e765c8d04dc6449e4f8db7f`;

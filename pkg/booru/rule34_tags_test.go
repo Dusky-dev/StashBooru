@@ -40,21 +40,19 @@ func TestRule34CategorizationUsesOfficialAuthenticatedTagAPI(t *testing.T) {
 	source := Source{ID: "rule34", Name: "Rule34", Engine: "gelbooru",
 		URL: "https://www.rule34.xxx", APIKey: "private-secret", UserID: "42"}
 	calls := 0
+	types := map[string]string{"artist_a": "1", "hero_a": "4", "series_a": "3", "common": "0"}
 	client := testClient(func(r *http.Request) (*http.Response, error) {
 		calls++
 		q := r.URL.Query()
+		name := q.Get("name")
 		if r.URL.Host != "api.rule34.xxx" || r.URL.Path != "/index.php" ||
 			q.Get("page") != "dapi" || q.Get("s") != "tag" || q.Get("q") != "index" ||
-			q.Get("names") != "artist_a hero_a series_a common" ||
-			q.Has("json") || r.Header.Get("Accept") != "application/xml" ||
+			name == "" || q.Has("names") || q.Has("json") ||
+			r.Header.Get("Accept") != "application/xml" ||
 			q.Get("api_key") != "private-secret" || q.Get("user_id") != "42" {
-			t.Errorf("incorrect official tag DAPI request")
+			t.Errorf("incorrect official exact-name tag DAPI request: %s", r.URL.Path)
 		}
-		return response(200, `<?xml version="1.0" encoding="UTF-8"?>
-<tags count="4"><tag id="10" name="artist_a" count="123" type="1"/>
-<tag id="11" name="hero_a" type="4"/>
-<tag id="12" name="series_a" type="3"/>
-<tag id="13" name="common" type="0"/></tags>`), nil
+		return response(200, fmt.Sprintf("<tag name=%q type=%q/>", name, types[name])), nil
 	})
 	posts := []Post{
 		{Tags: []Tag{{Name: "artist_a", Category: "unknown"}, {Name: "hero_a", Category: "unknown"},
@@ -62,8 +60,8 @@ func TestRule34CategorizationUsesOfficialAuthenticatedTagAPI(t *testing.T) {
 		{Tags: []Tag{{Name: "hero_a", Category: "unknown"}, {Name: "common", Category: "unknown"}}},
 	}
 	client.CategorizeRule34Tags(context.Background(), source, posts)
-	if calls != 1 {
-		t.Fatalf("expected one batched API call, got %d", calls)
+	if calls != 4 {
+		t.Fatalf("expected four exact tag lookups, got %d", calls)
 	}
 	for _, p := range posts {
 		for _, tag := range p.Tags {
@@ -74,8 +72,35 @@ func TestRule34CategorizationUsesOfficialAuthenticatedTagAPI(t *testing.T) {
 	}
 	again := []Post{{Tags: []Tag{{Name: "hero_a", Category: "unknown"}}}}
 	client.CategorizeRule34Tags(context.Background(), source, again)
-	if calls != 1 || again[0].Tags[0].Category != "character" {
+	if calls != 4 || again[0].Tags[0].Category != "character" {
 		t.Fatalf("cached tag category missing or unnecessarily fetched: %v (%d calls)", again, calls)
+	}
+}
+
+func TestRule34LiveLookupAfterSlowPublicSidebar(t *testing.T) {
+	source := Source{ID: "rule34", Name: "Rule34", Engine: "gelbooru",
+		URL: "https://rule34.xxx", APIKey: "secret", UserID: "42"}
+	publicCalls, apiCalls := 0, 0
+	client := testClient(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Host == "rule34.xxx" {
+			publicCalls++
+			if r.URL.Query().Has("api_key") || r.URL.Query().Has("user_id") {
+				t.Error("website page leaked API credentials")
+			}
+			<-r.Context().Done()
+			return nil, r.Context().Err()
+		}
+		apiCalls++
+		if r.URL.Host != "api.rule34.xxx" || r.URL.Query().Get("name") != "artist_a" {
+			t.Error("exact lookup did not reach the authenticated API")
+		}
+		return response(200, "<tags><tag name=\"artist_a\" type=\"1\"/></tags>"), nil
+	})
+	posts := []Post{{ID: "123", Tags: []Tag{{Name: "artist_a", Category: "unknown"}}}}
+	client.CategorizeRule34Tags(context.Background(), source, posts)
+	if publicCalls != 1 || apiCalls != 1 || posts[0].Tags[0].Category != "artist" {
+		t.Fatalf("slow sidebar prevented live classification: public=%d api=%d category=%s",
+			publicCalls, apiCalls, posts[0].Tags[0].Category)
 	}
 }
 
@@ -106,47 +131,78 @@ func TestRule34CategoryLookupFailsOpenAndDoesNotGuess(t *testing.T) {
 	}
 }
 
-func TestRule34CategoryLookupLimitsBatches(t *testing.T) {
+func TestRule34CategoryLookupBoundsExactRequests(t *testing.T) {
 	source := Source{ID: "rule34", Name: "Rule34", Engine: "gelbooru",
 		URL: "https://api.rule34.xxx", APIKey: "secret", UserID: "42"}
 	calls := 0
 	client := testClient(func(r *http.Request) (*http.Response, error) {
 		calls++
-		names := strings.Fields(r.URL.Query().Get("names"))
-		if len(names) > rule34CategoryBatchSize || len(names) == 0 {
-			t.Errorf("unbounded category batch: %d", len(names))
+		name := r.URL.Query().Get("name")
+		if len(name) == 0 || len(name) > 256 || r.URL.Query().Has("names") {
+			t.Errorf("invalid exact-name lookup %q", name)
 		}
-		return response(200, `{"tag":[{"name":"`+names[0]+`","type":"0"}]}`), nil
+		return response(200, fmt.Sprintf("<tags count=\"1\"><tag name=%q type=\"0\"/></tags>", name)), nil
 	})
 	posts := []Post{{Tags: make([]Tag, 800)}}
 	for i := range posts[0].Tags {
 		posts[0].Tags[i] = Tag{Name: fmt.Sprintf("tag_%04d", i), Category: "unknown"}
 	}
 	client.CategorizeRule34Tags(context.Background(), source, posts)
-	if calls != rule34CategoryMaxBatches {
-		t.Fatalf("category fetch made %d requests, expected bounded %d", calls, rule34CategoryMaxBatches)
+	if calls != rule34CategoryMaxExactLookups {
+		t.Fatalf("category fetch made %d requests, expected bounded %d", calls, rule34CategoryMaxExactLookups)
 	}
 }
 
-func TestRule34CategoryLookupBoundsNameQueryBytes(t *testing.T) {
+func TestRule34LiveLookupProgressesPastAbsentTags(t *testing.T) {
 	source := Source{ID: "rule34", Name: "Rule34", Engine: "gelbooru",
 		URL: "https://rule34.xxx", APIKey: "secret", UserID: "42"}
 	calls := 0
 	client := testClient(func(r *http.Request) (*http.Response, error) {
 		calls++
-		if len(r.URL.Query().Get("names")) > rule34CategoryNamesMaxBytes {
-			t.Error("unbounded Rule34 tag names query")
+		name := r.URL.Query().Get("name")
+		if name == "tag_06" {
+			return response(200, "<tag name=\"tag_06\" type=\"1\"/>"), nil
 		}
-		names := strings.Fields(r.URL.Query().Get("names"))
-		return response(200, `{"tag":[{"name":"`+names[0]+`","type":"0"}]}`), nil
+		return response(200, "<tags count=\"0\"/>"), nil
+	})
+	post := Post{Tags: make([]Tag, 7)}
+	for i := range post.Tags {
+		post.Tags[i] = Tag{Name: fmt.Sprintf("tag_%02d", i), Category: "unknown"}
+	}
+	first := []Post{post}
+	client.CategorizeRule34Tags(context.Background(), source, first)
+	if calls != rule34CategoryMaxExactLookups {
+		t.Fatalf("unexpected first live request count: %d", calls)
+	}
+	// Missing records are cached briefly, so repeating the search should
+	// classify additional tags instead of requesting the same absent six.
+	second := []Post{post}
+	client.CategorizeRule34Tags(context.Background(), source, second)
+	if calls != rule34CategoryMaxExactLookups+1 || second[0].Tags[6].Category != "artist" {
+		t.Fatalf("live classification was starved by absent tags: calls=%d last=%s",
+			calls, second[0].Tags[6].Category)
+	}
+}
+
+func TestRule34CategoryLookupLongNamesStayBounded(t *testing.T) {
+	source := Source{ID: "rule34", Name: "Rule34", Engine: "gelbooru",
+		URL: "https://rule34.xxx", APIKey: "secret", UserID: "42"}
+	calls := 0
+	client := testClient(func(r *http.Request) (*http.Response, error) {
+		calls++
+		name := r.URL.Query().Get("name")
+		if len(name) > 256 {
+			t.Error("unbounded Rule34 exact-name query")
+		}
+		return response(200, fmt.Sprintf("<tags><tag name=%q type=\"0\"/></tags>", name)), nil
 	})
 	posts := []Post{{Tags: make([]Tag, 20)}}
 	for i := range posts[0].Tags {
 		posts[0].Tags[i] = Tag{Name: fmt.Sprintf("%03d_%s", i, strings.Repeat("a", 240)), Category: "unknown"}
 	}
 	client.CategorizeRule34Tags(context.Background(), source, posts)
-	if calls < 2 || calls > rule34CategoryMaxBatches {
-		t.Fatalf("expected bounded URL batches for long names, got %d", calls)
+	if calls != rule34CategoryMaxExactLookups {
+		t.Fatalf("expected %d bounded exact requests, got %d", rule34CategoryMaxExactLookups, calls)
 	}
 }
 
@@ -200,6 +256,22 @@ func TestRule34DeprecatedTagType2RemainsUncategorized(t *testing.T) {
 		if got["deprecated_tag"] != "" || got["series"] != "copyright" || len(got) != 1 {
 			t.Fatalf("deprecated type must not be cached as copyright: %+v", got)
 		}
+	}
+}
+
+func TestRule34SingularXMLResponsePreservesTagIdentity(t *testing.T) {
+	requested := map[string]bool{"hero": true}
+	for _, payload := range []string{
+		"<tag name=\"hero\" type=\"4\"/>",
+		"<?xml version=\"1.0\"?><tag name=\"hero\" type=\"4\"/>",
+	} {
+		got := parseRule34TagCategories([]byte(payload), requested)
+		if got["hero"] != "character" || len(got) != 1 {
+			t.Fatalf("singular Rule34 response not classified: %+v", got)
+		}
+	}
+	if got := parseRule34TagCategories([]byte("<tag name=\"other\" type=\"1\"/>"), requested); len(got) != 0 {
+		t.Fatalf("unrelated tag category accepted: %+v", got)
 	}
 }
 
