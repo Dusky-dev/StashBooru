@@ -79,6 +79,29 @@ func toolRequest(method, path, body, contentType string) *http.Request {
 	r.Header.Set("Content-Type", contentType)
 	return r
 }
+func TestPahealPromotedOriginalNeverBecomesDirectBrowserFallback(t *testing.T) {
+	source := booru.Defaults()[10]
+	original := "https://r34i.paheal-cdn.net/01/23/0123456789abcdef0123456789abcdef"
+	thumbnail := "https://rule34.paheal.net/_thumbs/preview.jpg"
+	post := booru.Post{
+		ID: "123", PreviewURL: thumbnail, SampleURL: original,
+		OriginalURL: original, DownloadAvailable: true,
+	}
+	public := publicBooruPost(source, post)
+	if public.DirectSampleURL != "" || public.DirectPreviewURL != thumbnail ||
+		!strings.Contains(public.SampleURL, "kind=sample") || !public.DownloadAvailable ||
+		public.MediaKey == "" {
+		t.Fatalf("promoted original leaked into direct browser fallback: %+v", public)
+	}
+	// A real lower-resolution sample retains the existing direct fallback.
+	medium := "https://rule34.paheal.net/_samples/preview.jpg"
+	post.SampleURL = medium
+	public = publicBooruPost(source, post)
+	if public.DirectSampleURL != medium {
+		t.Fatal("real sample fallback was incorrectly removed")
+	}
+}
+
 func TestBooruSnapshotMediaIsolation(t *testing.T) {
 	rs := booruBrowserRoutes{configPath: t.TempDir(), client: &browserToolsClient{}}
 	w := httptest.NewRecorder()
