@@ -48,13 +48,8 @@ func (rs booruBrowserRoutes) Follows(w http.ResponseWriter, r *http.Request) {
 		writeBooruError(w, 503, "follows", "Follow storage is unavailable.")
 		return
 	}
-	sources, err := rs.sources()
-	if err != nil {
-		writeBooruError(w, 500, "configuration", "Cannot load booru source settings.")
-		return
-	}
 	var rows []models.BooruFollow
-	err = rs.repository.WithReadTxn(r.Context(), func(ctx context.Context) error {
+	err := rs.repository.WithReadTxn(r.Context(), func(ctx context.Context) error {
 		var err error
 		rows, err = rs.repository.BooruFollow.List(ctx)
 		return err
@@ -63,9 +58,15 @@ func (rs booruBrowserRoutes) Follows(w http.ResponseWriter, r *http.Request) {
 		writeBooruError(w, 500, "follows", "Cannot load follows.")
 		return
 	}
+	sources, sourceErr := rs.sources()
 	views := make([]booruFollowView, 0, len(rows))
 	for _, row := range rows {
-		views = append(views, resolveBooruFollow(row, sources))
+		view := resolveBooruFollow(row, sources)
+		if sourceErr != nil {
+			view.Status = "configuration-error"
+			view.ResolvedSource = ""
+		}
+		views = append(views, view)
 	}
 	writeVisualSimilarityJSON(w, views)
 }

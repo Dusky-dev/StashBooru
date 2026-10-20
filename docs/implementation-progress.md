@@ -35,6 +35,11 @@ silently promoted to verified production features by this documentation update.
   native entity/category verification, query execution/decomposition, remote
   requests, jobs, automatic downloads, polling, feed cursors or seen-state claims.
   Pixiv/Pawchive/Kemono creator follows remain deferred to a separate contract.
+- Codex Review on published `45f2755ce5797bdff6adc59c1d67c02eb39ad97e`
+  found a valid recovery gap: the list endpoint also needs to work with broken
+  source settings so a reloaded client can recover IDs/versions for unfollow.
+  It now reads stored definitions first and reports `configuration-error`
+  availability; malformed/unreadable settings have integration regressions.
 - Verification is in progress on this checkpoint: focused definition/API,
   persistence, conflicting writes, source changes/aliases, capacity, fresh DB
   and upgrade-from-97 tests, plus existing 95/96 upgrade regressions. Full backend

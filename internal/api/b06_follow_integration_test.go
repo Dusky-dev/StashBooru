@@ -180,8 +180,20 @@ func TestB06SourceBindingAndCredentials(t *testing.T) {
 	require.Equal(t, "source-unavailable", b06List(t, rs)[0].Status)
 	// A broken config must not trap an active follow.
 	require.NoError(t, os.WriteFile(settings, []byte(`broken`), 0600))
+	// Simulate a reloaded client: recover the ID/version from storage instead of
+	// relying on the mutation response retained before configuration broke.
+	rows = b06List(t, rs)
+	require.Equal(t, row.ID, rows[0].ID)
+	require.Equal(t, row.Version, rows[0].Version)
+	require.Equal(t, "configuration-error", rows[0].Status)
+	require.Empty(t, rows[0].ResolvedSource)
+	row = rows[0].BooruFollow
 	row = b06Mutation(t, rs, booruFollowMutation{Action: "unfollow", ID: row.ID, Version: row.Version}, 200)
 	require.False(t, row.Active)
+	require.NoError(t, os.Remove(settings))
+	// An unreadable source path also leaves the persisted list accessible.
+	require.NoError(t, os.Mkdir(settings, 0700))
+	require.Equal(t, "configuration-error", b06List(t, rs)[0].Status)
 	require.NoError(t, os.Remove(settings))
 	for _, source := range booru.Defaults() {
 		if !supportsBooruFollow(source) {

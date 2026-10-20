@@ -39,6 +39,9 @@ reports `available`, `source-changed` or `source-unavailable`, plus the current
 `resolvedSource` when an enabled alias matches the exact instance. Restoring the
 original source recovers availability; credentials can rotate without changing
 identity. No account name, API key or cookie is copied to the follow table.
+If source settings cannot be read/parsed, the stored list still loads with
+`configuration-error` availability and its current IDs/versions. A client can
+reload and unfollow without repairing settings first.
 
 The first phase accepts Danbooru, Gelbooru-compatible DAPI, Moebooru, e621,
 Philomena and Shimmie source engines. Pixiv, Pawchive and Kemono creator-service
@@ -94,7 +97,7 @@ Unfollow/refollow accept only action, ID and current version:
 
 Use `refollow` to reactivate that record. Update/refollow require its original
 instance to be available; unfollow works even if the source is disabled or the
-source settings file is broken. Unfollow retains identity and version history.
+source settings file is broken. Unfollow retains identity and version counters.
 It never clears ignored/downloaded marks, removes local files or changes native
 Favorites. No action here makes a provider request or starts a download/job.
 
