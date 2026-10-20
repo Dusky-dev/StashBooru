@@ -1,5 +1,18 @@
 # StashBooru implementation progress
 
+## Booru blacklist input format — 2026-10-21
+
+- Baseline `develop` at `38dcf44039f13b358e4a110decd053fcd478169e`. Follow-up to merged PR #176.
+- The source-settings blacklist editor now accepts whitespace-separated
+  booru tags (`tag1 tag2 tag3`) instead of one tag per line. Newlines are also
+  accepted. Existing stored tags containing spaces are displayed with underscores
+  so editing and saving preserves their matching behavior.
+- Browser acceptance fixture now covers space-separated entry, reload and
+  mixed newline/space entry. Documentation reflects the booru-style format.
+- No backend filtering, storage schema or per-source matching changes.
+  Validate UI formatting and mounted browser checks in PR CI.
+
+
 ## Pawchive full post search correction — 2026-10-21
 
 - Baseline: `develop` at `38dcf44039f13b358e4a110decd053fcd478169e`;
