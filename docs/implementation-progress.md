@@ -1,5 +1,33 @@
 # StashBooru implementation progress
 
+## Pawchive server-side post searching — 2026-10-21
+
+- Branch `feat/pawchive-server-post-search-20261021`, based on `develop`
+  at `fee5744b72124fe65bebe8e55ab4650a541001f9`.
+- The Pawchive post adapter previously rejected all nonempty text searches,
+  citing an outdated assumption that `GET /api/v1/posts?q=...` ignored q.
+  Current community Pawchive frontend source sends server-side q searches
+  directly with offset pagination, so this adapter now forwards query text
+  to that endpoint rather than silently scanning or filtering recent posts.
+- Preserve the existing `*`/blank recent-post mode, `creator:service:id`
+  browsing and artist directory chooser, fixed 50-record provider block
+  pagination, record/media parsing and bounded request handling.
+  Pawchive queries do not inherit Kemono's arbitrary three-byte minimum.
+- Source-selection UI no longer clears ordinary text solely because
+  Pawchive was chosen; it still clears creator-specific expressions
+  when switching sources. Source help and user docs have been updated.
+- Tests cover encoded multiword queries, single-character queries,
+  recent-post mode, creator mode, identity/path/asset parsing,
+  strict creator-expression validation and offset-aligned filtered paging.
+- Provider evidence: `dragonjay-lyj/pawchive` current
+  `src/lib/api.ts` and `src/app/search/page.tsx`, which state
+  Pawchive's public posts endpoint accepts `q=` and paginate with `o=`.
+  Live requests from this execution environment could not reach the
+  provider API, so a user-side end-to-end test remains necessary.
+- No merge/deployment is implied; verify CI and reviews first.
+
+
+
 Updated: 2026-10-20
 
 Integration baseline: develop
