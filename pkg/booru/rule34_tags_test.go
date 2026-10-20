@@ -285,3 +285,41 @@ func TestRule34TagCategoriesXMLPreservesExactTagIdentity(t *testing.T) {
 		t.Fatalf("XML tag lookup must match exact names case-insensitively: %+v", categories)
 	}
 }
+
+func TestRule34LiveLookupPrioritizesCSVMissingTags(t *testing.T) {
+	source := Source{ID: "rule34", Name: "Rule34", Engine: "gelbooru",
+		URL: "https://rule34.xxx", APIKey: "secret", UserID: "42"}
+	apiNames := []string{}
+	client := testClient(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Host == "rule34.xxx" {
+			return response(http.StatusForbidden, "public sidebar unavailable"), nil
+		}
+		if r.URL.Host != "api.rule34.xxx" {
+			t.Fatalf("unexpected Rule34 destination %s", r.URL.Host)
+		}
+		name := r.URL.Query().Get("name")
+		apiNames = append(apiNames, name)
+		category := "0"
+		if name == "new_character" {
+			category = "4"
+		}
+		return response(http.StatusOK, fmt.Sprintf("<tag name=%q type=%q/>", name, category)), nil
+	})
+	posts := []Post{{ID: "123", Tags: make([]Tag, 0, rule34CategoryBatchSize+2)}}
+	for i := 0; i < rule34CategoryBatchSize+1; i++ {
+		posts[0].Tags = append(posts[0].Tags,
+			Tag{Name: fmt.Sprintf("csv_covered_%03d", i), Category: "unknown"})
+	}
+	posts[0].Tags = append(posts[0].Tags, Tag{Name: "new_character", Category: "unknown"})
+	client.CategorizeRule34TagsPrioritized(context.Background(), source, posts,
+		func(name string) bool { return name == "new_character" })
+	if len(apiNames) != rule34CategoryMaxExactLookups || apiNames[0] != "new_character" {
+		t.Fatalf("CSV-covered names starved the new tag: %v", apiNames)
+	}
+	if posts[0].Tags[len(posts[0].Tags)-1].Category != "character" {
+		t.Fatalf("new tag was not live classified: %+v", posts[0].Tags[len(posts[0].Tags)-1])
+	}
+	if posts[0].Tags[0].Category != "general" {
+		t.Fatal("CSV-covered tags were never attempted live after new tags")
+	}
+}
