@@ -19,6 +19,7 @@ const (
 	rule34CategoryMaxExactLookups = 6
 	rule34CategoryMaxCached     = 8192
 	rule34CategoryCacheExpiry   = 24 * time.Hour
+	rule34CategoryMissExpiry    = 5 * time.Minute
 )
 
 type rule34CategoryEntry struct {
@@ -102,6 +103,22 @@ func parseRule34TagCategories(data []byte, requested map[string]bool) map[string
 	return result
 }
 
+// Avoid retrying unchanged/missing tag records ahead of other tags on each
+// search. Only cache negative results for structurally valid tag XML, never
+// for provider errors, site challenges, HTML, or unrelated JSON.
+func validRule34TagXML(data []byte) bool {
+	data = bytes.TrimSpace(data)
+	if len(data) == 0 || data[0] != '<' ||
+		bytes.Contains(bytes.ToLower(data), []byte("<!doctype")) {
+		return false
+	}
+	var root struct{ XMLName xml.Name }
+	if xml.Unmarshal(data, &root) != nil {
+		return false
+	}
+	return root.XMLName.Local == "tags" || root.XMLName.Local == "tag"
+}
+
 // CategorizeRule34Tags best-effort enriches post tags from the documented
 // Gelbooru-compatible tag DAPI. Searches and local CSV classification remain
 // usable when the provider refuses tag lookups or the network is unavailable.
@@ -164,6 +181,7 @@ func (c *Client) CategorizeRule34Tags(ctx context.Context, source Source, posts 
 	// remaining tags individually and cache confirmed categories across pages.
 	// One-host throttling and the deadline bound these optional requests.
 	attempts := 0
+	misses := make(map[string]bool)
 	for _, name := range pending {
 		if !missing[name] || ctx.Err() != nil || attempts >= rule34CategoryMaxExactLookups {
 			continue
@@ -188,18 +206,23 @@ func (c *Client) CategorizeRule34Tags(ctx context.Context, source Source, posts 
 		if category := parseRule34TagCategories(data, map[string]bool{name: true})[name]; category != "" {
 			categories[name] = category
 			delete(missing, name)
+		} else if validRule34TagXML(data) {
+			misses[name] = true
 		}
 	}
-	if len(categories) == 0 {
+	if len(categories) == 0 && len(misses) == 0 {
 		return
 	}
 	c.rule34CategoryMu.Lock()
-	if len(c.rule34CategoryCache)+len(categories) > rule34CategoryMaxCached {
+	if len(c.rule34CategoryCache)+len(categories)+len(misses) > rule34CategoryMaxCached {
 		clear(c.rule34CategoryCache)
 	}
 	expiry := time.Now().Add(rule34CategoryCacheExpiry)
 	for name, category := range categories {
 		c.rule34CategoryCache[instance+name] = rule34CategoryEntry{category: category, expires: expiry}
+	}
+	for name := range misses {
+		c.rule34CategoryCache[instance+name] = rule34CategoryEntry{category: "unknown", expires: time.Now().Add(rule34CategoryMissExpiry)}
 	}
 	c.rule34CategoryMu.Unlock()
 	for i := range posts {
