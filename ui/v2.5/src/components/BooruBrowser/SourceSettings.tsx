@@ -351,8 +351,8 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
                     placeholder={"unwanted_tag\nanother tag"}
                   />
                   <Form.Text muted>
-                    One exact tag per line (up to 256); matching ignores case and
-                    treats spaces and underscores alike. Hide matching posts
+                    One exact tag per line (up to 256); matching ignores case
+                    and treats spaces and underscores alike. Hide matching posts
                     from searches and account favorites on this booru only.
                     Provider totals and pagination remain unchanged.
                   </Form.Text>

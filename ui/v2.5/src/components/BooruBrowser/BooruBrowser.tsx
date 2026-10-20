@@ -738,7 +738,10 @@ function SourceResults({
             <Alert variant="info">
               {result.blacklistedCount
                 ? "All posts on this page were hidden by this booru’s tag blacklist."
-                : message("empty", "No posts returned for this page and query.")}
+                : message(
+                    "empty",
+                    "No posts returned for this page and query."
+                  )}
             </Alert>
           )}
           {!!result.blacklistedCount && (
