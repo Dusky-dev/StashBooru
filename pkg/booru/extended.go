@@ -114,6 +114,13 @@ func (c *Client) searchExtended(ctx context.Context, s Source, query string, pag
 			return result, nil
 		}
 	} else {
+		// The upstream Pawchive /posts?q= endpoint currently ignores q
+		// for some searches. A bounded local scan of recent posts is the
+		// only reliable keyword mode; never present unfiltered rows as hits.
+		if s.Engine == "pawchive" && query != "*" && strings.TrimSpace(query) != "" &&
+			!strings.HasPrefix(query, "creator:") {
+			return c.searchPawchiveRecentPosts(ctx, s, query, page, limit)
+		}
 		if strings.HasPrefix(query, "creator:") {
 			parts := strings.Split(query, ":")
 			if len(parts) != 3 || !safeProviderPart(parts[1]) || !safeProviderPart(parts[2]) {
@@ -124,11 +131,7 @@ func (c *Client) searchExtended(ctx context.Context, s Source, query string, pag
 				endpoint += "/posts"
 			}
 		} else if query != "*" && strings.TrimSpace(query) != "" {
-			// Pawchive's public posts API now accepts server-side q= search,
-			// including terms that are shorter than Kemono's 3-byte minimum.
-			// Do not download unfiltered pages and filter them locally: doing
-			// so gives incorrect page counts and misses older matching posts.
-			if s.Engine != "pawchive" && len(query) < 3 {
+			if len(query) < 3 {
 				return result, &Error{Code: "invalid-query", Message: "Archive text searches need at least three bytes; use * for recent posts."}
 			}
 			params.Set("q", query)
@@ -176,6 +179,62 @@ func (c *Client) searchExtended(ctx context.Context, s Source, query string, pag
 	result.HasMore = result.HasMore && page < MaxPage
 	return result, nil
 }
+// Pawchive ignores global q= filters on some deployed API versions.
+// Scan a fixed, modest prefix of recent posts with unfiltered requests;
+// filtered pagination and HasMore then describe ONLY those scanned posts.
+// This is deliberately not described as archive-wide keyword search.
+const pawchiveRecentPostScanLimit = 250
+
+func (c *Client) searchPawchiveRecentPosts(ctx context.Context, source Source, query string, page, limit int) (Result, error) {
+	result := Result{
+		SourceID: source.ID, Page: page, Limit: limit, Posts: []Post{},
+		FetchedAt: time.Now().UTC(),
+		SearchNotice: "Pawchive keyword search checks up to 250 recent posts, not the full archive. Find an artist to browse their older posts.",
+	}
+	start := (page - 1) * limit
+	if start >= pawchiveRecentPostScanLimit {
+		return result, nil
+	}
+	needle := strings.ToLower(strings.TrimSpace(query))
+	matches := make([]Post, 0, limit+1)
+	for offset := 0; offset < pawchiveRecentPostScanLimit; offset += 50 {
+		if ctx.Err() != nil {
+			return result, requestError(ctx)
+		}
+		data, err := c.extendedRequest(ctx, source, "/api/v1/posts", url.Values{
+			"o": {strconv.Itoa(offset)},
+		})
+		if err != nil {
+			return result, err
+		}
+		rows, err := extendedRows(source.Engine, data)
+		if err != nil || len(rows) > 50 {
+			return result, extendedParseError()
+		}
+		for _, raw := range rows {
+			// Check provider title and body, not metadata or unrelated
+			// filename IDs. A partial phrase match is case insensitive.
+			if !strings.Contains(strings.ToLower(text(raw["title"])+" "+text(raw["content"])), needle) {
+				continue
+			}
+			post, err := parseArchivePost(source, raw)
+			if err != nil {
+				return result, extendedParseError()
+			}
+			matches = append(matches, post)
+		}
+		if len(rows) < 50 {
+			break
+		}
+	}
+	if start < len(matches) {
+		end := min(start+limit, len(matches))
+		result.Posts = matches[start:end]
+		result.HasMore = end < len(matches) && page < MaxPage
+	}
+	return result, nil
+}
+
 func extendedParseError() error {
 	return &Error{Code: "invalid-response", Message: "Provider returned unsupported data or exceeded its bounds. Check API access and source settings."}
 }
