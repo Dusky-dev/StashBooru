@@ -79,8 +79,9 @@ search; multiple tags open a chooser, then search the chosen tag. Sidebar tags b
 the same way. Disable **Search immediately when clicking tags** in Booru Settings
 to only fill the draft. This preference is saved in this browser. Categories come from the provider or an exact canonical-name match in the
 installed per-source CSV. Prefixes and aliases never guess categories for flat tags.
-For **Rule34.xxx**, StashBooru also uses the official authenticated tag DAPI
-to look up exact tag categories in bounded batches after retrieving the posts.
+For **Rule34.xxx**, StashBooru uses the official authenticated tag DAPI
+(whose tag responses are XML, unlike the JSON post API) to look up exact tag
+categories in bounded batches after retrieving the posts.
 The site supplies artist, copyright/series, character, general and metadata
 types even though its post JSON contains only flat tag strings. The results
 are cached per Rule34 instance; searches still work when tag lookups fail, and
