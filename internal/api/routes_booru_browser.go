@@ -147,12 +147,26 @@ func (rs booruBrowserRoutes) Search(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rs booruBrowserRoutes) categorizeBooruPosts(ctx context.Context, source booru.Source, posts []booru.Post) string {
-	// Explicit per-source CSV and typed provider data always win.
+	// Rule34 post DAPI returns flat tags. Resolve them live before applying
+	// a local snapshot: otherwise a CSV category would mark the tag as
+	// known, preventing CategorizeRule34Tags from ever querying Rule34.
+	// Typed provider tags are never overwritten.
+	if source.IsRule34() {
+		if categorizer, ok := rs.client.(interface {
+			CategorizeRule34Tags(context.Context, booru.Source, []booru.Post)
+		}); ok {
+			categorizer.CategorizeRule34Tags(ctx, source, posts)
+		}
+	}
+
+	// User-installed CSV is the offline fallback for tags still unknown
+	// after live categorization, regardless of whether the live API
+	// was unavailable or simply had no category for an exact name.
 	if db, err := rs.tagDatabase(source); err == nil && db.index != nil {
 		for i := range posts {
 			for j, tag := range posts[i].Tags {
 				if tag.Category == "unknown" {
-					if category := db.index.Category(tag.Name); category != "" {
+					if category := db.index.Category(tag.Name); category != "" && category != "unknown" {
 						posts[i].Tags[j].Category = category
 					}
 				}
@@ -161,13 +175,6 @@ func (rs booruBrowserRoutes) categorizeBooruPosts(ctx context.Context, source bo
 	}
 	if !source.IsRule34() {
 		return ""
-	}
-	// Live exact classifications take precedence over the historical
-	// mirror, which can be stale or not contain newly created Rule34 tags.
-	if categorizer, ok := rs.client.(interface {
-		CategorizeRule34Tags(context.Context, booru.Source, []booru.Post)
-	}); ok {
-		categorizer.CategorizeRule34Tags(ctx, source, posts)
 	}
 	unknown := false
 	for _, post := range posts {
@@ -181,6 +188,8 @@ func (rs booruBrowserRoutes) categorizeBooruPosts(ctx context.Context, source bo
 	if !unknown || ctx.Err() != nil {
 		return ""
 	}
+	// A historical auto-catalog remains the last resort, never a reason
+	// to suppress live Rule34 lookups or invalidate an installed CSV.
 	index, status := rs.rule34Catalog(source)
 	if index != nil {
 		for i := range posts {
@@ -195,7 +204,6 @@ func (rs booruBrowserRoutes) categorizeBooruPosts(ctx context.Context, source bo
 	}
 	return status
 }
-
 func writeBooruError(w http.ResponseWriter, status int, code, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
