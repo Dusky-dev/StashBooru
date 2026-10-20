@@ -94,6 +94,9 @@ func TestPawchiveRecentAndCreatorModesUnaffected(t *testing.T) {
 			t.Fatalf("recent/creator browsing unexpectedly sent a query: %s", r.URL)
 		}
 		paths = append(paths, r.URL.Path)
+		if r.URL.Path == "/api/v1/patreon/user/42" {
+			return response(http.StatusOK, `[{"id":"42","user":"42","service":"patreon","title":"Archived creator work"}]`), nil
+		}
 		return response(http.StatusOK, "[]"), nil
 	})
 	for _, query := range []string{"*", "creator:patreon:42"} {
