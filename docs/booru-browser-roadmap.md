@@ -255,7 +255,7 @@ and keyboard access; long tags; cross-provider equal names; preview/full-image
 labels; desktop/mobile comparison and cancellation cleanup. Retain current P03
 bounded still-image limits and avoid whole-animation equality claims.
 
-## B06 — follows and favorite searches
+## B06 — Following across content sources
 
 The owner prioritized this package ahead of pHash comparison on 2026-10-20.
 The first independent phase, [B06a definitions/API](booru-follows.md), persists
@@ -264,6 +264,17 @@ It does not complete B06 or introduce a feed/browser UI. B06b will add on-demand
 sync, durable snapshots/seen state and the management/feed interface. B03's native
 entity mapping and intersection builder remain deferred; a B06a query is stored
 as supplied rather than being decomposed or broadened.
+
+The owner clarified that Following extends to Twitter and other similar sites,
+not only boorus. The shared feed/management contract must support both booru
+tags/queries and provider accounts/profiles through adapters, with optional
+provider metadata and independent pagination/checkpoint capabilities. Account
+targets require stable provider account IDs and a distinct target kind; matching
+handles, display names and booru Artist tags must not be equated automatically.
+Extend the schema through a preserving migration when a creator adapter ships.
+The first adapter remains booru-focused; Twitter and other browser/site adapters
+are later additions, and current API support must stay explicit. See
+[the broader Following contract](booru-follows.md#broader-following-scope).
 
 Follow a provider Artist, Copyright/series, Character or a saved compound query.
 Series follows refer to native Copyright mappings; descendant expansion is an

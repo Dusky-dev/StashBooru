@@ -60,6 +60,13 @@ silently promoted to verified production features by this documentation update.
 - Next B06 phase: bounded on-demand feed synchronization, durable snapshots and
   revision-specific checkpoint/seen semantics, followed by management/feed UI.
   Native Artist × Copyright selection remains B03 and must preserve constraints.
+- Owner scope clarification after the B06a checkpoint: Following extends to
+  Twitter and similar creator/account sites. Updated the guide/roadmap to require
+  a shared feed contract with provider adapters, stable account IDs, a distinct
+  future account target kind, optional tag metadata and preserving migrations.
+  Those site adapters remain later work; no runtime/API capability was added by
+  this documentation-only clarification. Reviewed docs and `git diff --check`;
+  backend verification above remains the implementation checkpoint.
 
 ## Download queue reclamation — 2026-10-20
 

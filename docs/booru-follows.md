@@ -5,6 +5,30 @@ follow intent for provider Artists, Characters, Copyrights/series and exact
 provider-native queries. It does **not** add a Following screen or fetch a feed
 yet. Browser UI refinements are a separate workstream. B06 remains in progress.
 
+## Broader Following scope
+
+The owner clarified on 2026-10-20 that Following also covers accounts/profiles on
+Twitter and similar sites. The intended product is one Following feed across
+content sources, with booru tag/query follows as its first supported target type.
+Twitter and other site adapters can be added to the content browser later; this
+phase does not implement or advertise those integrations.
+
+The next feed design must separate shared follow management, snapshots, seen
+state and checkpoints from each provider's target resolution and pagination.
+Creator/account follows need a distinct target type and stable provider account
+identity, with handles/display names as changeable presentation data. Add that
+contract through a versioned migration when its adapter ships, preserving current
+follow IDs and source bindings. Do not encode a social account as a booru Artist
+tag or infer that matching names belong to the same person across sites.
+
+Feed items must allow source-specific metadata: Artist/Character/Copyright tags
+are optional capabilities, with absent categories remaining unknown. A future
+content-browser adapter should reuse the same provider identity and credential
+configuration as Following. Each provider needs its own acceptance checks before
+being offered; using an engine-compatible custom booru is separate from adding
+a new social-site engine. Following remains local library intent, with downloads
+and any remote account-follow action requiring their own explicit action.
+
 ## What persists
 
 Each follow has an opaque ID, display name, category, exact target, source engine
