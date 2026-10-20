@@ -77,7 +77,7 @@ func TestRule34LiveCategoriesTakePrecedenceOverInstalledCSV(t *testing.T) {
 	}
 	client := &rule34CategorySpyClient{liveCategories: map[string]string{
 		"changed_role": "copyright",
-		"live_only": "artist",
+		"live_only":    "artist",
 	}}
 	rs := booruBrowserRoutes{configPath: dir, client: client}
 	posts := []booru.Post{{Tags: []booru.Tag{
