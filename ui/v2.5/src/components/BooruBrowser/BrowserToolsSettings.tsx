@@ -312,8 +312,9 @@ export function BrowserToolsSettings() {
       <p className="text-muted mt-3">
         Or upload a CSV from your computer. Format: name,type,count,"aliases",
         or a Danbooru CSV export. Up to 64 MiB (up to two million unique
-        tags for Gelbooru/Rule34). Headered Rule34/Gelbooru exports may skip
-        a bounded number of invalid-name records; the import reports how many.
+        tags for Gelbooru/Rule34). Rule34/Gelbooru exports may skip
+        a bounded number of invalid-name records after their columns are
+        validated; the import reports how many.
         Loading replaces this source's autocomplete database and leaves
         catalogue tags alone.
       </p>
