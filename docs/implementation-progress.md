@@ -40,10 +40,23 @@ silently promoted to verified production features by this documentation update.
   source settings so a reloaded client can recover IDs/versions for unfollow.
   It now reads stored definitions first and reports `configuration-error`
   availability; malformed/unreadable settings have integration regressions.
-- Verification is in progress on this checkpoint: focused definition/API,
-  persistence, conflicting writes, source changes/aliases, capacity, fresh DB
-  and upgrade-from-97 tests, plus existing 95/96 upgrade regressions. Full backend
-  gates and Codex Review will be recorded before handoff. No merge/deployment.
+- Implementation verification: local
+  `a871adddcbfd89c8ae4cdb147458b10ea02cc601` / published
+  `ecb8130a30743e6c10e76f03a73be90bc4b38c35`, identical tree
+  `d9f81c305e201ee84653771c48dd4759564e2514`.
+  [PR #163](https://github.com/Dusky-dev/StashBooru/pull/163).
+- Passed `make generate-backend`, focused follow/model/API/schema tests (including
+  95/96/97 upgrades), full `make test`, full `make it`, and `make lint` (**0
+  issues**). The fresh checkout required `make touch-ui` / backend generation
+  before API compilation; no generated files were edited by hand. Also passed
+  40 relative documentation links and `git diff --check`. UI source is unchanged;
+  no mounted UI/feed or live provider acceptance is claimed by this API phase.
+- Codex Review's recovery finding is fixed and resolved. Re-review completed on
+  `ecb8130a30743e6c10e76f03a73be90bc4b38c35` with no findings/unresolved
+  findings. CI on that implementation passed generation, lint, tests and six
+  platform builds at recording time; macOS was still running, with no failures.
+  This following documentation-only checkpoint records the verified implementation;
+  its new CI run is separate. No merge/deployment.
 - Next B06 phase: bounded on-demand feed synchronization, durable snapshots and
   revision-specific checkpoint/seen semantics, followed by management/feed UI.
   Native Artist × Copyright selection remains B03 and must preserve constraints.
