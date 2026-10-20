@@ -40,8 +40,11 @@ Blank submission opens the default listing; Pixiv uses daily rankings. Each site
 has an icon, with a local initial fallback if its favicon is unavailable. Changing
 sites opens that site's listing for the current query. Archive creator expressions
 are cleared when changing sites. Up/down icons reorder the source menu without
-changing the selected site; order is saved in this browser. Pawchive opens recent
-posts when selected because its API cannot filter post-text queries. Legacy multi-source links and saved filters use their first source.
+changing the selected site; order is saved in this browser. Pawchive now
+accepts ordinary post-text queries as server-side searches. Switching to
+Pawchive preserves an ordinary typed query, but clears creator-specific
+expressions from another source. Use `*` or a blank search for recent posts.
+Legacy multi-source links and saved filters use their first source.
 A fresh browser without saved state does not search automatically. Refresh and
 bare `/booru` visits restore the submitted page and unfinished search draft.
 Previous/Next, cancellation and retry apply to the selected site. Inspect a
@@ -50,8 +53,11 @@ thumbnail to open the larger preview; **Open remote post** opens the source site
 On Pawchive and Kemono, **Find an artist** searches the provider's artist directory
 by name. Select the matching artist/service to browse their posts; no numeric
 creator expression needs to be typed. Matching names on different services remain
-separate choices. Directory errors have a retry action. Post-text search remains
-available on Kemono; Pawchive's posts API ignores text queries, so those are rejected.
+separate choices. Directory errors have a retry action. Post-text search is
+available on **both Pawchive and Kemono**. Pawchive sends `q=` to its public
+`/api/v1/posts` endpoint, which filters search results server-side, rather
+than limiting a client-side scan to recent posts. Provider-side availability
+and indexing still determine which matches are returned.
 
 With the rating control at its default, the same query is sent unchanged
 to the selected source. Other rating values append the selected engine's native filter
@@ -227,7 +233,7 @@ Downloaded history. No remote follow or automated download is created.
 | --- | --- | --- |
 | Paheal / Shimmie | Native tags through the anonymous Danbooru XML endpoint (`/api/danbooru/find_posts`) | Category information may be unavailable; no live completion endpoint. Originals on the hash-sharded `r34i.paheal-cdn.net` CDN are supported, including for older saved source settings. The inspector uses original resolution if there is no separate provider sample and the original fits the 24 MiB proxy limit; card thumbnails remain small. The legacy `/api/danbooru/find_posts/index.xml` URL can return HTML rather than XML. |
 | Pixiv | OAuth **access token** in source API key; text search, `user:123` for artist works, `id:123` for a work | Static illustration/manga pages selectable in the inspector. Ugoira frame ZIPs are explicitly unavailable. No login/token refresh is implemented; replace expired tokens in Settings. |
-| Pawchive | Artist-name directory search, or `*` for recent posts; anonymous API. Text post search is unsupported because the API ignores it | Optional API key is the `session` cookie value, sent only to `file.pawchive.pw`. Preview-only/deferred/unavailable originals cannot be downloaded. |
+| Pawchive | Server-side post-text search via `/api/v1/posts?q=...`, `*` for recent posts, or artist-name directory search; anonymous API | Optional API key is the `session` cookie value, sent only to `file.pawchive.pw`. Preview-only/deferred/unavailable originals cannot be downloaded. |
 | Kemono | Artist-name directory search, `*` for recent posts, or text of at least three bytes; anonymous API | Supported image/video attachments and ZIP/CBZ previews; documents and unsupported archives are omitted. |
 
 Paheal may return old `rule34.paheal.net/_images/` links in its XML
