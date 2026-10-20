@@ -121,7 +121,6 @@ func TestPawchiveRecentSearchPaginationAndScanCap(t *testing.T) {
 	}
 }
 
-
 func TestArchiveSourceKeepsZIPAndCBZ(t *testing.T) {
 	for _, extension := range []string{"zip", "cbz"} {
 		t.Run(extension, func(t *testing.T) {
