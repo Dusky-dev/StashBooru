@@ -1653,7 +1653,9 @@ try {
     );
     assert.equal(await dan.locator(".booru-post").count(), 1);
     await blacklistToggle.click();
-    await page.waitForURL((url) => url.searchParams.get("blacklist") === "show");
+    await page.waitForURL(
+      (url) => url.searchParams.get("blacklist") === "show"
+    );
     await dan
       .getByRole("button", { name: "Inspect Danbooru post 101", exact: true })
       .waitFor();
@@ -1976,7 +1978,9 @@ try {
       .waitFor();
     assert.ok(page.url().includes("favorites=1"));
     await blacklistToggle.click();
-    await page.waitForURL((url) => url.searchParams.get("blacklist") === "show");
+    await page.waitForURL(
+      (url) => url.searchParams.get("blacklist") === "show"
+    );
     await dan
       .getByRole("button", { name: "Inspect Danbooru post 776", exact: true })
       .waitFor();

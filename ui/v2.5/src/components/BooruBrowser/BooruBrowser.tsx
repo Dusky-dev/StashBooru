@@ -583,7 +583,13 @@ function SourceResults({
   showIgnored: boolean;
   filters: Pick<
     BrowserSearch,
-    "sort" | "rating" | "media" | "pageSize" | "favorites" | "hideAI" | "showBlacklisted"
+    | "sort"
+    | "rating"
+    | "media"
+    | "pageSize"
+    | "favorites"
+    | "hideAI"
+    | "showBlacklisted"
   >;
   thumbnails: boolean;
   favorites: boolean;
@@ -1785,7 +1791,13 @@ function PageTags({
   activePages: Record<string, number>;
   filters: Pick<
     BrowserSearch,
-    "sort" | "rating" | "media" | "pageSize" | "favorites" | "hideAI" | "showBlacklisted"
+    | "sort"
+    | "rating"
+    | "media"
+    | "pageSize"
+    | "favorites"
+    | "hideAI"
+    | "showBlacklisted"
   >;
   onTag: (name: string, mode?: "add" | "replace") => void;
 }) {
