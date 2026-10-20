@@ -30,14 +30,25 @@ func TestBooruSearchPerSourceBlacklist(t *testing.T) {
 	configured := booru.Defaults()[0]
 	configured.BlacklistTags = []string{"hidden tag"}
 	data, err := json.Marshal([]booru.Source{configured})
-	if err != nil { t.Fatal(err) }
-	if err := os.WriteFile(filepath.Join(rs.configPath, "booru-browser.json"), data, 0600); err != nil { t.Fatal(err) }
-	for _, tc := range []struct{ source string; wantHidden int }{{"danbooru", 1}, {"gelbooru", 0}} {
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(rs.configPath, "booru-browser.json"), data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		source     string
+		wantHidden int
+	}{{"danbooru", 1}, {"gelbooru", 0}} {
 		w := httptest.NewRecorder()
 		rs.Search(w, httptest.NewRequest("GET", "/?source="+tc.source+"&page=2&limit=2", nil))
-		if w.Code != 200 { t.Fatalf("%s: %d %s", tc.source, w.Code, w.Body.String()) }
+		if w.Code != 200 {
+			t.Fatalf("%s: %d %s", tc.source, w.Code, w.Body.String())
+		}
 		var got booru.Result
-		if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil { t.Fatal(err) }
+		if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+			t.Fatal(err)
+		}
 		if got.BlacklistedCount != tc.wantHidden || len(got.Posts) != 2-tc.wantHidden || got.Total == nil || *got.Total != 50 || !got.HasMore || got.Page != 2 {
 			t.Fatalf("%s: wrong source filtering or pagination: %+v", tc.source, got)
 		}
@@ -53,14 +64,27 @@ func TestBooruSettingsBlacklistRoundTrip(t *testing.T) {
 	preset.BlacklistTags = []string{"artist_a", "another tag"}
 	update := booruSettingsUpdate{Revision: settingsRead(t, rs).Revision, Action: "save", Source: preset}
 	payload, err := json.Marshal(update)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	w := settingsWrite(rs, string(payload))
-	if w.Code != 200 { t.Fatal(w.Code, w.Body.String()) }
+	if w.Code != 200 {
+		t.Fatal(w.Code, w.Body.String())
+	}
 	view := settingsRead(t, rs)
-	if len(view.Sources[0].BlacklistTags) != 2 || view.Sources[0].BlacklistTags[1] != "another tag" { t.Fatal("blacklist not returned to editor") }
+	if len(view.Sources[0].BlacklistTags) != 2 || view.Sources[0].BlacklistTags[1] != "another tag" {
+		t.Fatal("blacklist not returned to editor")
+	}
 	preset.BlacklistTags = []string{"bad", "BAD"}
 	update = booruSettingsUpdate{Revision: view.Revision, Action: "save", Source: preset}
-	payload, _ = json.Marshal(update)
-	if w = settingsWrite(rs, string(payload)); w.Code != 400 { t.Fatalf("accepted duplicate blacklist: %d", w.Code) }
-	if len(settingsRead(t, rs).Sources[0].BlacklistTags) != 2 { t.Fatal("rejected save changed stored blacklist") }
+	payload, err = json.Marshal(update)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if w = settingsWrite(rs, string(payload)); w.Code != 400 {
+		t.Fatalf("accepted duplicate blacklist: %d", w.Code)
+	}
+	if len(settingsRead(t, rs).Sources[0].BlacklistTags) != 2 {
+		t.Fatal("rejected save changed stored blacklist")
+	}
 }

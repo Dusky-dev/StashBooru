@@ -55,15 +55,15 @@ type Post struct {
 }
 
 type Result struct {
-	SourceID       string    `json:"sourceID"`
-	CategoryStatus string    `json:"categoryStatus,omitempty"`
-	BlacklistedCount int     `json:"blacklistedCount,omitempty"`
-	Posts          []Post    `json:"posts"`
-	Page           int       `json:"page"`
-	Limit          int       `json:"limit"`
-	HasMore        bool      `json:"hasMore"`
-	Total          *int64    `json:"total,omitempty"`
-	FetchedAt      time.Time `json:"fetchedAt"`
+	SourceID         string    `json:"sourceID"`
+	CategoryStatus   string    `json:"categoryStatus,omitempty"`
+	BlacklistedCount int       `json:"blacklistedCount,omitempty"`
+	Posts            []Post    `json:"posts"`
+	Page             int       `json:"page"`
+	Limit            int       `json:"limit"`
+	HasMore          bool      `json:"hasMore"`
+	Total            *int64    `json:"total,omitempty"`
+	FetchedAt        time.Time `json:"fetchedAt"`
 }
 
 type Error struct {

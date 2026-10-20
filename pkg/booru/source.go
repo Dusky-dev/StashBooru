@@ -24,16 +24,16 @@ var sourceID = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,63}$`)
 // Source is server-owned configuration. Credentials must never be serialized
 // into the public Sources response, browser URLs, or transport errors.
 type Source struct {
-	ID         string   `json:"id"`
-	Name       string   `json:"name"`
-	Engine     string   `json:"engine"`
-	URL        string   `json:"url"`
-	MediaHosts []string `json:"mediaHosts,omitempty"`
+	ID            string   `json:"id"`
+	Name          string   `json:"name"`
+	Engine        string   `json:"engine"`
+	URL           string   `json:"url"`
+	MediaHosts    []string `json:"mediaHosts,omitempty"`
 	BlacklistTags []string `json:"blacklistTags,omitempty"`
-	Login      string   `json:"login,omitempty"`
-	APIKey     string   `json:"apiKey,omitempty"`
-	UserID     string   `json:"userID,omitempty"`
-	Disabled   bool     `json:"disabled,omitempty"`
+	Login         string   `json:"login,omitempty"`
+	APIKey        string   `json:"apiKey,omitempty"`
+	UserID        string   `json:"userID,omitempty"`
+	Disabled      bool     `json:"disabled,omitempty"`
 }
 
 type PublicSource struct {
