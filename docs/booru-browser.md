@@ -418,9 +418,11 @@ using this server.
   the key and account fields. Saved keys never return to the browser. When the URL
   or engine changes, re-enter or explicitly remove the existing key so it cannot
   silently move to another host.
-- **Tag blacklist for this booru** accepts one exact tag per line (up to 256
-  entries, each at most 256 UTF-8 bytes). Matches ignore case and treat spaces
-  and underscores as equivalent. Matching posts, including posts with matching
+- **Tag blacklist for this booru** accepts space-separated tags such as
+  `tag1 tag2 tag3` (up to 256 entries, each at most 256 UTF-8 bytes).
+  Use underscores for multiword tags (`long_hair`). Saved legacy tag names
+  containing spaces display with underscores. Matches ignore case and treat
+  spaces and underscores as equivalent. Matching posts, including posts with matching
   tags on their attachments, are omitted from searches and account favorites
   for that source only. The server filters before issuing preview keys, so the
   blocked posts do not appear in the grid, preview navigation or page tags.
