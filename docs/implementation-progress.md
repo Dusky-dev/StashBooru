@@ -22,9 +22,11 @@ silently promoted to verified production features by this documentation update.
   JSON, silently discarding the XML and retaining `unknown` tag types.
 - Request standard tag-DAPI XML (no `json=1`), parse bounded XML `tags/tag`
   attributes and exact allowlisted tag names, retaining JSON compatibility.
-  Reject HTML/malformed XML/DTD; recognize numeric copyright type 2 as well
-  as type 3 for Rule34. Existing optional CSV priority, per-instance cache,
-  timeouts, batching and search-failure fallback remain unchanged.
+  Reject HTML/malformed XML/DTD. Honor the established Gelbooru tag
+  category mapping: type 3 represents copyright; deprecated type 2 remains
+  uncategorized (Codex review correction on PR #162), including in cached
+  results. Existing optional CSV priority, per-instance cache, timeouts,
+  batching and search-failure fallback remain unchanged.
 - Regression tests now exercise realistic XML, actual HTTP Accept/query shape,
   exact matching, unsupported structures, and backward-compatible JSON.
 - The provider's authenticated tag API cannot be fully verified without
