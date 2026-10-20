@@ -125,7 +125,9 @@ func (rs booruBrowserRoutes) rule34Catalog(source booru.Source) (*booru.TagIndex
 		if err == nil {
 			info, statErr := file.Stat()
 			if statErr == nil && info.Mode().IsRegular() && info.Size() <= rule34AutoCatalogLimit {
-				index, err = booru.ReadTagCSVForEngine(file, "gelbooru")
+				if cached, parseErr := booru.ReadTagCSVForEngine(file, "gelbooru"); parseErr == nil {
+					index = cached
+				}
 			}
 			file.Close()
 		}
@@ -133,7 +135,9 @@ func (rs booruBrowserRoutes) rule34Catalog(source booru.Source) (*booru.TagIndex
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 			defer cancel()
 			client := &http.Client{Timeout: 2 * time.Minute}
-			index, err = downloadRule34AutoCatalog(ctx, path, client)
+			if downloaded, fetchErr := downloadRule34AutoCatalog(ctx, path, client); fetchErr == nil {
+				index = downloaded
+			}
 		}
 		rule34AutoCatalogs.Lock()
 		defer rule34AutoCatalogs.Unlock()
