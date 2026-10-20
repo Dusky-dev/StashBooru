@@ -179,6 +179,7 @@ func (c *Client) searchExtended(ctx context.Context, s Source, query string, pag
 	result.HasMore = result.HasMore && page < MaxPage
 	return result, nil
 }
+
 // Pawchive ignores global q= filters on some deployed API versions.
 // Scan a fixed, modest prefix of recent posts with unfiltered requests;
 // filtered pagination and HasMore then describe ONLY those scanned posts.
