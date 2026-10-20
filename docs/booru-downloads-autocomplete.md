@@ -200,8 +200,10 @@ Numeric categories follow the selected engine. Danbooru-compatible data uses
 additionally accepts deprecated type 2 as unknown. e621 uses its own mapping:
 2 contributor, 5 species, 6 invalid, 7 meta, 8 lore, with 0/1/3/4 unchanged.
 Category names including `unknown`, `circle` and `faults` are accepted for custom
-schemes. Limits: 64 MiB, one million tags, two million names/aliases, 32 aliases
-per tag and 256 UTF-8 bytes per name. Uncompressed CSV is supported; SQLite/JSON
+schemes. Limits: 64 MiB, one million tags and two million names/aliases
+for most engines; Gelbooru/Rule34 CSVs allow up to two million unique tags
+and three million names/aliases. All engines retain 32 aliases per tag and
+256 UTF-8 bytes per name. Uncompressed CSV is supported; SQLite/JSON
 and Grabber database files are not.
 
 Type at least two characters. Suggestions include categories, counts, sources and
