@@ -12,8 +12,8 @@
   on queries matching artist metadata (not post titles), it often did.
 - Remove the active probe. A single Pawchive `q=` request per required
   50-post provider page is the normal path. Since some older Pawchive
-  APIs may ignore `q=`, flag ambiguous pages lacking visible title/body
-  matches instead of claiming that their filtering was verified.
+  APIs may ignore `q=`, flag pages with any result lacking a visible
+  title/body match instead of claiming that their filtering was verified.
 - Brief in-memory cache of successful public Pawchive keyword pages,
   coalescing concurrent duplicate reads, with 90s TTL, 32-entry limit
   and 1 MiB/entry cap. Do not cache errors or user-specific creator data.
