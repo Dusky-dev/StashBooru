@@ -220,6 +220,30 @@ silently promoted to verified production features by this documentation update.
   live Paheal CDN downloads still require owner-side acceptance.
   No merge or deployment performed.
 
+## Rule34 live category priority and quiet fallback — 2026-10-20
+
+- Baseline: `develop` at `ad91eb1843dbe38686848bd74e538cd90b35dc50`,
+  branch `fix/rule34-live-category-priority-and-hide-warning-20261020`.
+- Owner observed the "Automatic Rule34 tag categories could not be
+  installed" warning every search and requested live classification even
+  when a manually installed Rule34 CSV succeeds.
+- Correct a real precedence bug: `categorizeBooruPosts` formerly applied
+  installed CSV before `CategorizeRule34Tags`. Live categorization only
+  examines `unknown` tags, so the CSV silently suppressed all lookups
+  for tags it covered. The handler now calls live categorization first,
+  fills unknown tags from the installed CSV second, and invokes the
+  historical auto-catalog only for remaining unknown tags.
+- Remove the repeated automatic catalog failure alert from the browser.
+  The optional installation continues as before, but a blocked mirror
+  no longer interrupts the UI. A first-install loading notice remains.
+- Add API-level regression tests showing a live category beats a
+  conflicting CSV category, CSV backfills unavailable live entries,
+  pretyped provider categories remain stable, live calls are attempted
+  on repeat searches, and unrelated providers do not make Rule34
+  lookups. No schema changes.
+- Verify through CI; live Rule34 API traffic requires user-side testing
+  after merge. Do not merge or deploy without owner approval.
+
 ## Rule34 CSV malformed-name tolerance — 2026-10-20
 
 - Baseline: `develop` at `ec26085c629ed3b8c9e4f712effa118c6fee45da`;
