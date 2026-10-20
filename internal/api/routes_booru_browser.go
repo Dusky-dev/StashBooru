@@ -65,6 +65,11 @@ func (rs booruBrowserRoutes) Sources(w http.ResponseWriter, r *http.Request) {
 func (rs booruBrowserRoutes) Search(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	query := r.URL.Query()
+	blacklistMode := query["blacklist"]
+	if len(blacklistMode) != 0 && (len(blacklistMode) != 1 || blacklistMode[0] != "show") {
+		writeBooruError(w, http.StatusBadRequest, "invalid-query", "Invalid blacklist filter.")
+		return
+	}
 	page, err := strconv.Atoi(query.Get("page"))
 	if query.Get("page") == "" {
 		page, err = 1, nil
@@ -136,7 +141,10 @@ func (rs booruBrowserRoutes) Search(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Exclude blacklisted posts before categorizing or granting preview media keys.
-		result = source.FilterBlacklisted(result)
+		// An explicit browser toggle can temporarily reveal saved blacklist entries.
+		if len(blacklistMode) == 0 {
+			result = source.FilterBlacklisted(result)
+		}
 		result.CategoryStatus = rs.categorizeBooruPosts(r.Context(), source, result.Posts)
 		for i := range result.Posts {
 			result.Posts[i] = publicBooruPost(source, result.Posts[i])

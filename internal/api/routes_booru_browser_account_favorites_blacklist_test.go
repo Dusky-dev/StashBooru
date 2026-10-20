@@ -32,16 +32,32 @@ func TestAccountFavoritesRespectsSourceBlacklist(t *testing.T) {
 			HasMore: true,
 		}, nil
 	}}
-	w := httptest.NewRecorder()
-	rs.AccountFavorites(w, httptest.NewRequest("GET", "/?source=fixture&instance="+s.Instance(), nil))
-	if w.Code != 200 {
-		t.Fatal(w.Code, w.Body.String())
+	for _, tc := range []struct {
+		mode       string
+		wantHidden int
+		wantPosts  int
+	}{{"", 1, 1}, {"&blacklist=show", 0, 2}} {
+		w := httptest.NewRecorder()
+		rs.AccountFavorites(w, httptest.NewRequest("GET", "/?source=fixture&instance="+s.Instance()+tc.mode, nil))
+		if w.Code != 200 {
+			t.Fatal(w.Code, w.Body.String())
+		}
+		var got booru.Result
+		if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+			t.Fatal(err)
+		}
+		if got.BlacklistedCount != tc.wantHidden || len(got.Posts) != tc.wantPosts || !got.HasMore || got.Posts[len(got.Posts)-1].ID != "2" {
+			t.Fatalf("wrong favorites for blacklist mode %q: %+v", tc.mode, got)
+		}
+		if tc.wantHidden == 0 && got.Posts[0].ID != "1" {
+			t.Fatalf("missing formerly blacklisted favorite: %+v", got)
+		}
 	}
-	var got booru.Result
-	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
-		t.Fatal(err)
-	}
-	if got.BlacklistedCount != 1 || len(got.Posts) != 1 || got.Posts[0].ID != "2" || !got.HasMore {
-		t.Fatalf("bad filtered favorites: %+v", got)
+	for _, bad := range []string{"&blacklist=", "&blacklist=off", "&blacklist=show&blacklist=show"} {
+		w := httptest.NewRecorder()
+		rs.AccountFavorites(w, httptest.NewRequest("GET", "/?source=fixture&instance="+s.Instance()+bad, nil))
+		if w.Code != 400 {
+			t.Fatalf("accepted invalid favorites blacklist mode %q: %d", bad, w.Code)
+		}
 	}
 }

@@ -421,7 +421,12 @@ using this server.
   blocked posts do not appear in the grid, preview navigation or page tags.
   Provider page numbers, `hasMore` and totals are left unchanged: a page can
   have fewer visible posts, or none, without being the last page. Source
-  settings and the blacklist are shared by all users of the server.
+  settings and the blacklist are shared by all users of the server. The
+  **Hide blacklisted posts** icon beside the AI-generated filter is enabled by
+  default. Click it to temporarily show blacklisted posts in searches or account
+  favorites for the selected source, and click again to hide them. This state
+  is stored in the browser search URL (`blacklist=show`) and can be bookmarked
+  without changing the saved tag list.
 - **Enable this source** controls availability in searches. Disabled definitions
   remain editable. Custom sources can be removed; presets can be reset, removing
   their overrides and saved credentials. IDs cannot be renamed in the editor.

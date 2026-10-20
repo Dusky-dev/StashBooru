@@ -66,6 +66,7 @@ export interface BrowserSearch {
   rating?: "safe" | "sensitive" | "questionable" | "explicit";
   media?: "images" | "videos";
   hideAI?: boolean;
+  showBlacklisted?: boolean;
   error?: string;
 }
 
@@ -121,6 +122,8 @@ export function readBrowserSearch(search: string): BrowserSearch {
   }
   if (params.get("ai") === "hide") result.hideAI = true;
   else if (params.has("ai")) result.error = "Invalid AI-generated filter.";
+  if (params.get("blacklist") === "show") result.showBlacklisted = true;
+  else if (params.has("blacklist")) result.error = "Invalid blacklist filter.";
   if (params.get("favorites") === "1") result.favorites = true;
   const inspect = params.get("inspect")?.split(":");
   if (
@@ -145,6 +148,7 @@ export function browserSearchURL(value: BrowserSearch): string {
   if (value.pageSize) params.set("limit", String(value.pageSize));
   if (value.showIgnored) params.set("ignored", "1");
   if (value.hideAI) params.set("ai", "hide");
+  if (value.showBlacklisted) params.set("blacklist", "show");
   for (const key of ["sort", "rating", "media"] as const)
     if (value[key]) params.set(key, value[key]);
   params.set("q", value.query);
@@ -320,7 +324,8 @@ export function browserResultSignature(
   media?: string,
   pageSize?: number,
   favorites?: boolean,
-  hideAI?: boolean
+  hideAI?: boolean,
+  showBlacklisted?: boolean
 ) {
   return JSON.stringify([
     query,
@@ -331,5 +336,6 @@ export function browserResultSignature(
     pageSize ?? 24,
     !!favorites,
     !!hideAI,
+    !!showBlacklisted,
   ]);
 }
