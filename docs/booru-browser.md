@@ -69,7 +69,7 @@ are never cached or automatically retried. When Pawchive omits
 If the API is rate-limited, the browser links to the corresponding
 search on Pawchive's website. Some older Pawchive API versions ignored
 `q=`; without another API probe, StashBooru cannot verify all returned
-matches. If no result has a matching title/body, a notice warns that
+matches. If any result lacks a visible title/body match, a notice warns that
 the provider may instead have matched creator metadata or returned an
 unfiltered feed. Check the website if results look unrelated.
 Provider indexing, availability, rate limits and its maximum offset apply.
