@@ -220,6 +220,30 @@ silently promoted to verified production features by this documentation update.
   live Paheal CDN downloads still require owner-side acceptance.
   No merge or deployment performed.
 
+## Rule34 CSV malformed-name tolerance — 2026-10-20
+
+- Baseline: `develop` at `ec26085c629ed3b8c9e4f712effa118c6fee45da`;
+  branch `fix/rule34-skip-malformed-tag-csv-rows-20261020`.
+- Owner reports manually uploading a category database fails on CSV row
+  78,268 with "invalid tag name ... expected 1–256 UTF-8 bytes without
+  control characters". Actual file/row contents were not provided; the
+  message only proves the validation failed.
+- For Rule34/Gelbooru CSV exports, skip at most 2,048 rows containing
+  invalid names while preserving all other valid categories. For headerless
+  positional CSV, at least one prior record must validate successfully
+  before skipping. This does not change other booru engines, strict
+  CSV structure/category/count parsing, or the
+  atomic write contract. Reject catalogs with too many invalid names or
+  no valid tags. Skip counts are persisted in the parsed index and exposed
+  by both upload and settings endpoints.
+- Show skipped-row totals on import success and in tag settings. Update
+  the outdated one-million-tag label for Gelbooru's existing 2M limit.
+- Unit tests cover empty, control-character, and overlong names; strict
+  rejection of malformed files; a malformed record at row 78,268;
+  bounds; category results after bad rows; and API reload after upload.
+- A real owner CSV and live StashBooru Rule34 browsing are still required
+  to confirm the exact file works. The PR is not merged/deployed.
+
 ## Rule34 automatic category catalog fallback — 2026-10-20
 
 - Base: `develop` at `469ce563d6dc23770120f24ef1422d9a3419575a`;

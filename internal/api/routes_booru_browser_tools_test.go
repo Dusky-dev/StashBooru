@@ -189,6 +189,47 @@ func TestBooruCSVAtomicUploadAndRevisions(t *testing.T) {
 		t.Fatal("stale instance")
 	}
 }
+func TestRule34CSVUploadReportsSkippedBadNamesAndPersists(t *testing.T) {
+	rs := booruBrowserRoutes{configPath: t.TempDir()}
+	var source booru.Source
+	for _, candidate := range booru.Defaults() {
+		if candidate.ID == "rule34" {
+			source = candidate
+			break
+		}
+	}
+	if source.ID == "" {
+		t.Fatal("Rule34 default missing")
+	}
+	path := "/booru-browser/tags?source=" + source.ID + "&instance=" + source.Instance()
+	body := "type,count,name,ambiguous,id\n" +
+		"1,4,artist_a,False,1\n" +
+		"0,3,,False,2\n" +
+		"4,2,character_a,False,3\n"
+	w := httptest.NewRecorder()
+	request := toolRequest("POST", path, body, "text/csv")
+	request.Header.Set("X-Booru-Revision", "")
+	rs.ImportTags(w, request)
+	var payload struct {
+		Count, SkippedRows int
+		Revision           string
+	}
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &payload) != nil ||
+		payload.Count != 2 || payload.SkippedRows != 1 || payload.Revision == "" {
+		t.Fatalf("bad CSV import result: %d %s", w.Code, w.Body.String())
+	}
+
+	booruTagDatabases.Lock()
+	booruTagDatabases.entries = map[string]booruTagDatabase{}
+	booruTagDatabases.Unlock()
+	w = httptest.NewRecorder()
+	rs.Tags(w, httptest.NewRequest("GET", path+"&q=character", nil))
+	if json.Unmarshal(w.Body.Bytes(), &payload) != nil ||
+		payload.Count != 2 || payload.SkippedRows != 1 {
+		t.Fatalf("skipped-row report not persisted: %d %s", w.Code, w.Body.String())
+	}
+}
+
 func TestBooruDownloadSettingsPersistAndRejectCrossSite(t *testing.T) {
 	rs := booruBrowserRoutes{configPath: t.TempDir()}
 	w := httptest.NewRecorder()

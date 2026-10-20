@@ -55,12 +55,13 @@ func (rs booruBrowserRoutes) Tags(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	items := []booru.Suggestion{}
-	count := 0
+	count, skippedRows := 0, 0
 	if db.index != nil {
 		count = db.index.Count()
+		skippedRows = db.index.SkippedRows()
 		items = db.index.Suggest(r.Context(), r.URL.Query().Get("q"))
 	}
-	writeVisualSimilarityJSON(w, map[string]any{"path": rs.tagDatabasePath(source), "count": count, "revision": db.revision, "suggestions": items})
+	writeVisualSimilarityJSON(w, map[string]any{"path": rs.tagDatabasePath(source), "count": count, "skippedRows": skippedRows, "revision": db.revision, "suggestions": items})
 }
 
 func (rs booruBrowserRoutes) tagDatabase(source booru.Source) (booruTagDatabase, error) {
@@ -206,7 +207,7 @@ func (rs booruBrowserRoutes) importTagCSV(w http.ResponseWriter, r *http.Request
 		return
 	}
 	delete(booruTagDatabases.entries, path)
-	writeVisualSimilarityJSON(w, map[string]any{"path": databasePath, "count": index.Count(), "revision": hex.EncodeToString(h.Sum(nil)), "suggestions": []booru.Suggestion{}})
+	writeVisualSimilarityJSON(w, map[string]any{"path": databasePath, "count": index.Count(), "skippedRows": index.SkippedRows(), "revision": hex.EncodeToString(h.Sum(nil)), "suggestions": []booru.Suggestion{}})
 }
 
 func (rs booruBrowserRoutes) tagDatabasePath(source booru.Source) string {

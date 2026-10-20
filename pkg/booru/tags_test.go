@@ -54,6 +54,85 @@ func TestRule34CSVReorderedHeaderAndDeprecatedType(t *testing.T) {
 	}
 }
 
+// Published Rule34/Gelbooru exports may have occasional missing or
+// unrepresentable names. Skipping those rows preserves the other valid
+// categories, including tags appearing after the bad record.
+func TestRule34CSVSkipsBoundedMalformedNames(t *testing.T) {
+	input := "type,count,name,ambiguous,id\n" +
+		"1,20,artist_a,False,1\n" +
+		"4,10,,False,2\n" +
+		"0,7,control\x00tag,False,3\n" +
+		"0,5," + strings.Repeat("a", 257) + ",False,4\n" +
+		"3,4,series_a,False,5\n" +
+		"0,2,scene_a,False,6\n"
+	index, err := ReadTagCSVForEngine(strings.NewReader(input), "gelbooru")
+	if err != nil {
+		t.Fatal("valid provider rows should survive isolated invalid names", err)
+	}
+	if index.Count() != 3 || index.SkippedRows() != 3 {
+		t.Fatalf("unexpected import statistics: count=%d skipped=%d", index.Count(), index.SkippedRows())
+	}
+	for name, want := range map[string]string{
+		"artist_a": "artist", "series_a": "copyright", "scene_a": "general",
+	} {
+		if got := index.Category(name); got != want {
+			t.Errorf("lost valid tag after bad record %s: %s != %s", name, got, want)
+		}
+	}
+}
+
+// Unrecognized layouts, all-invalid snapshots and non-Gelbooru
+// formats retain strict validation rather than silently dropping rows.
+func TestTagCSVInvalidNameToleranceIsSourceScoped(t *testing.T) {
+	for _, test := range []struct {
+		engine, data string
+	}{
+		{"gelbooru", ",4,12,\nartist_a,1,20,\n"},
+		{"danbooru", "name,type,count\nartist_a,1,20\n,4,12\n"},
+		{"e621", "name,type,count\nartist_a,1,20\n,4,12\n"},
+		{"gelbooru", "name,type,count\n,1,20\n"},
+		{"gelbooru", "name,type,count\nartist_a,1,20\nfoo,999,2\n"},
+		{"gelbooru", "name,type,count\nartist_a,1,20\n\\\"unterminated"},
+	} {
+		if _, err := ReadTagCSVForEngine(strings.NewReader(test.data), test.engine); err == nil {
+			t.Errorf("%s unexpectedly accepted malformed CSV %q", test.engine, test.data)
+		}
+	}
+	// Headerless positional tagcomplete format is also supported once
+	// at least one earlier tag has established valid columns.
+	headerless, err := ReadTagCSVForEngine(strings.NewReader(
+		"artist_a,1,20,\n,4,12,\ncharacter_a,4,30,\n"), "gelbooru")
+	if err != nil || headerless.SkippedRows() != 1 ||
+		headerless.Category("character_a") != "character" {
+		t.Fatalf("headerless export lost tags after malformed name: index=%v err=%v", headerless, err)
+	}
+
+	var input strings.Builder
+	input.WriteString("type,count,name,ambiguous,id\n")
+	for i := 0; i < maxSkippedGelbooruCSVRows+1; i++ {
+		input.WriteString("0,1,,False,1\n")
+	}
+	input.WriteString("1,10,valid_artist,False,2\n")
+	if _, err := ReadTagCSVForEngine(strings.NewReader(input.String()), "gelbooru"); err == nil {
+		t.Fatal("accepted unlimited malformed provider names")
+	}
+}
+
+func TestRule34CSVRecordsAfterRow78268CanBeRead(t *testing.T) {
+	// Reproduce the failing row position without claiming access to the
+	// owner's actual CSV. The error message does not reveal its contents.
+	var input strings.Builder
+	input.WriteString("type,count,name,ambiguous,id\n")
+	input.WriteString(strings.Repeat("0,1,common_tag,False,1\n", 78266))
+	input.WriteString("0,1,,False,78268\n") // CSV record 78268 is malformed
+	input.WriteString("4,1,new_character,False,78269\n")
+	index, err := ReadTagCSVForEngine(strings.NewReader(input.String()), "gelbooru")
+	if err != nil || index.Count() != 2 || index.SkippedRows() != 1 ||
+		index.Category("new_character") != "character" {
+		t.Fatalf("skipped wrong record or lost later tags: index=%v err=%v", index, err)
+	}
+}
+
 func TestReorderedCSVHeaderRequiresBothNameAndCategory(t *testing.T) {
 	index, err := ReadTagCSVForEngine(strings.NewReader(
 		"count,type,name,id\n99,1,known_artist,22\n"), "gelbooru")
