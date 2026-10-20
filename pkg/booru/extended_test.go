@@ -12,37 +12,94 @@ import (
 	"testing"
 )
 
-func TestPawchiveRejectsUnfilteredTextSearch(t *testing.T) {
+func TestPawchiveServerPostSearchAndCreatorModes(t *testing.T) {
 	s := testSource("pawchive")
-	calls := 0
+	var requests []string
 	c := testClient(func(r *http.Request) (*http.Response, error) {
-		calls++
-		if r.URL.Query().Has("q") {
-			t.Fatal("text query sent to an unfiltered endpoint")
+		if r.Method != http.MethodGet || r.URL.Host != "pawchive.pw" ||
+			r.Header.Get("Accept") != "application/json" || r.Header.Get("Cookie") != "" ||
+			r.Header.Get("Authorization") != "" {
+			t.Fatalf("invalid public Pawchive request: %v", r)
 		}
-		want := "/api/v1/posts"
-		if calls == 2 {
-			want = "/api/v1/patreon/user/42"
+		requests = append(requests, r.URL.RequestURI())
+		switch len(requests) {
+		case 1:
+			if r.URL.Path != "/api/v1/posts" || r.URL.Query().Get("q") != "title words" ||
+				r.URL.Query().Get("o") != "0" {
+				t.Fatalf("search query was not sent to Pawchive: %s", r.URL)
+			}
+			return response(200, `[{"id":"301","user":"42","service":"patreon","title":"Title words",
+				"file":{"path":"/sample.jpg","name":"sample.jpg"}}]`), nil
+		case 2:
+			if r.URL.Path != "/api/v1/posts" || r.URL.Query().Get("q") != "x" {
+				t.Fatalf("short post query was not sent to Pawchive: %s", r.URL)
+			}
+			return response(200, "[]"), nil
+		case 3:
+			if r.URL.Path != "/api/v1/posts" || r.URL.Query().Has("q") {
+				t.Fatalf("recent posts are not unfiltered: %s", r.URL)
+			}
+			return response(200, "[]"), nil
+		case 4:
+			if r.URL.Path != "/api/v1/patreon/user/42" || r.URL.Query().Has("q") {
+				t.Fatalf("creator browsing changed: %s", r.URL)
+			}
+			return response(200, "[]"), nil
+		default:
+			t.Fatalf("unexpected Pawchive request: %s", r.URL)
+			return nil, nil
 		}
-		if r.URL.Path != want {
-			t.Fatal("incorrect browse endpoint", r.URL)
-		}
-		return response(200, "[]"), nil
 	})
-	for _, query := range []string{"cat", "a", "title words", "creator:patreon:42 extra"} {
-		result, err := c.Search(context.Background(), s, query, 1, 24)
-		var failure *Error
-		if !errors.As(err, &failure) || (failure.Code != "unsupported-query" && failure.Code != "invalid-query") || len(result.Posts) != 0 || calls != 0 {
-			t.Fatalf("unfiltered search accepted: %q %+v %v calls=%d", query, result, err, calls)
-		}
+	first, err := c.Search(context.Background(), s, "title words", 1, 24)
+	if err != nil || len(first.Posts) != 1 || first.Posts[0].Title != "Title words" ||
+		first.Posts[0].PostURL != "https://pawchive.pw/patreon/user/42/post/301" ||
+		first.Posts[0].OriginalURL == "" {
+		t.Fatalf("failed to parse filtered posts: %+v %v", first, err)
 	}
-	for _, query := range []string{"*", "creator:patreon:42"} {
+	for _, query := range []string{"x", "*", "creator:patreon:42"} {
 		if _, err := c.Search(context.Background(), s, query, 1, 24); err != nil {
 			t.Fatal(query, err)
 		}
 	}
-	if calls != 2 || !strings.Contains(s.Public().QueryHelp, "post search is unsupported") {
-		t.Fatal("supported browsing or query guidance lost", calls, s.Public())
+	if len(requests) != 4 || !strings.Contains(s.Public().QueryHelp, "Search post text") {
+		t.Fatalf("post search or source help missing: %v %s", requests, s.Public().QueryHelp)
+	}
+	for _, query := range []string{"creator:patreon:42 extra", "creator:patreon", "creator:patreon:../../etc"} {
+		if _, err := c.Search(context.Background(), s, query, 1, 24); err == nil || len(requests) != 4 {
+			t.Fatalf("invalid creator expression caused upstream request: %q %v", query, err)
+		}
+	}
+}
+
+func TestPawchiveTextSearchOffsetPaging(t *testing.T) {
+	s := testSource("pawchive")
+	var offsets []int
+	c := testClient(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Path != "/api/v1/posts" || r.URL.Query().Get("q") != "blue sky" {
+			t.Fatalf("post search term changed across provider blocks: %s", r.URL)
+		}
+		offset, err := strconv.Atoi(r.URL.Query().Get("o"))
+		if err != nil || offset%50 != 0 {
+			t.Fatalf("invalid Pawchive upstream paging offset: %s", r.URL)
+		}
+		offsets = append(offsets, offset)
+		rows := []map[string]any{}
+		for i := offset; i < offset+50 && i < 85; i++ {
+			rows = append(rows, map[string]any{
+				"id": strconv.Itoa(i + 1), "user": "42",
+				"service": "patreon", "title": fmt.Sprintf("match %d", i),
+			})
+		}
+		data, _ := json.Marshal(rows)
+		return response(http.StatusOK, string(data)), nil
+	})
+	result, err := c.Search(context.Background(), s, "blue sky", 3, 24)
+	if err != nil || len(result.Posts) != 24 || result.Posts[0].RemoteID != "49" ||
+		result.Posts[23].RemoteID != "72" || !result.HasMore {
+		t.Fatalf("filtered page was not sliced from aligned upstream blocks: %+v %v", result, err)
+	}
+	if len(offsets) != 2 || offsets[0] != 0 || offsets[1] != 50 {
+		t.Fatalf("unexpected aligned upstream offsets: %v", offsets)
 	}
 }
 
