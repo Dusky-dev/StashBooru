@@ -1,15 +1,18 @@
 import { type ComponentProps, useState } from "react";
 import { Button, Dropdown } from "react-bootstrap";
 import { type IconDefinition } from "@fortawesome/fontawesome-svg-core";
+import { faSlash } from "@fortawesome/free-solid-svg-icons";
 import { Icon } from "../Shared/Icon";
 
 export function BooruIconButton({
   icon,
   label,
+  crossedOut = false,
   ...props
 }: {
   icon: IconDefinition;
   label: string;
+  crossedOut?: boolean;
 } & Omit<ComponentProps<typeof Button>, "children">) {
   return (
     <Button
@@ -20,7 +23,10 @@ export function BooruIconButton({
       title={label}
       {...props}
     >
-      <Icon icon={icon} />
+      <span className="booru-icon-glyph" aria-hidden="true">
+        <Icon icon={icon} />
+        {crossedOut && <Icon icon={faSlash} className="booru-icon-slash" />}
+      </span>
     </Button>
   );
 }

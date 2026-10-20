@@ -12,6 +12,19 @@ P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
 
+## Booru AI filter crossed-out icon — 2026-10-20
+
+- Baseline: `develop` at `b14eee5f20df7e724e765c8d04dc6449e4f8db7f`;
+  branch `fix/booru-ai-filter-crossed-icon-20261020`.
+- AI-generated filter stays a two-state robot control, but the **hide AI**
+  state draws a slash over the robot rather than adding an active/highlighted
+  button appearance. The unfiltered state displays the normal robot.
+- Existing `aria-pressed`, URL persistence (`ai=hide`), loaded-page
+  filtering and lack of provider refetch are unchanged.
+- Added Playwright assertions for the slash icon and absence of selected
+  styling across activation, refresh, and deactivation.
+- Verification: GitHub CI on the PR is authoritative; no merge/deployment.
+
 ## Rule34 tag DAPI XML format repair — 2026-10-20
 
 - Baseline: `develop` at `7856430423374f0462fb25e82a206ffbae07ee9c`.
