@@ -148,8 +148,9 @@ func (s *CopyrightStore) Query(ctx context.Context, filter *models.FindFilterTyp
 	if ff.Q != nil && strings.TrimSpace(*ff.Q) != "" {
 		q := "%" + strings.TrimSpace(*ff.Q) + "%"
 		where = ` WHERE c.name LIKE ? COLLATE NOCASE OR c.sort_name LIKE ? COLLATE NOCASE OR EXISTS (
-SELECT 1 FROM copyright_aliases a WHERE a.copyright_id = c.id AND a.alias LIKE ? COLLATE NOCASE)`
-		args = append(args, q, q, q)
+SELECT 1 FROM copyright_aliases a WHERE a.copyright_id = c.id AND a.alias LIKE ? COLLATE NOCASE) OR EXISTS (
+SELECT 1 FROM provider_identities p WHERE p.copyright_id=c.id AND (p.target LIKE ? COLLATE NOCASE OR p.label LIKE ? COLLATE NOCASE))`
+		args = append(args, q, q, q, q, q)
 	}
 
 	var count int

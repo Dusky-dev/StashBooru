@@ -15,6 +15,31 @@ P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
 
+## B03a — shared provider identities — 2026-10-20
+
+- Owner prioritized Artist/Character/Copyright identity unification after merging
+  #163 and #164. General tags remain unchanged. Baseline develop:
+  `aa1a2b42bf9bfb6b07608350bfbda688e54e91b9`; branch
+  `feat/provider-identities-20261020`. No other PR was open at initial inspection.
+- Reuse native Artist (Studio), Character (Performer) and Copyright IDs; add
+  provider-scoped raw tag/account bindings, not synthetic root tags or global
+  aliases. Store exact provider targets and independent source identity.
+  Explicit connections are reversible, renamed native records resolve dynamically,
+  rejected candidates are retained, and decision versions reject stale writes.
+- Migration 100 preserves native records, relationships, general tags and follows.
+  New metadata observations never create authoritative native entities or
+  relationships. Name normalization is suggestion evidence only.
+- First usable slice in progress: linking from post identifiers, creating/linking
+  native records, suggestions and bulk review, Sources & aliases on native records,
+  plus bounded scanning of saved download receipts and cached feed metadata.
+  Remote artist-profile crawling and automatic catalogue reassignment/merges are
+  outside this slice. Unknown/missing source metadata is not guessed.
+- The execution environment remains unavailable; source changes are prepared and
+  published through GitHub. Combined behavior must pass focused regression and
+  CI generation/lint/backend/UI/browser checks plus Codex Review before readiness.
+  No local execution, live provider or production acceptance is claimed.
+- See [Provider identities](provider-identities.md) for the contract and limits.
+
 ## Following merge preparation — 2026-10-20
 
 - Merge current develop into `feat/booru-follow-foundation-20261020`,

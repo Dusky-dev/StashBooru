@@ -569,7 +569,8 @@ func (qb *StudioStore) makeQuery(ctx context.Context, studioFilter *models.Studi
 
 	if q := findFilter.Q; q != nil && *q != "" {
 		query.join(studioAliasesTable, "", "studio_aliases.studio_id = studios.id")
-		searchColumns := []string{"studios.name", "studio_aliases.alias"}
+		query.join("provider_identities", "studio_provider_identities", "studio_provider_identities.studio_id = studios.id")
+		searchColumns := []string{"studios.name", "studio_aliases.alias", "studio_provider_identities.target", "studio_provider_identities.label"}
 		query.parseQueryString(searchColumns, *q)
 	}
 
