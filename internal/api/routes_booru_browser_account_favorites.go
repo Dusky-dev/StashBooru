@@ -66,7 +66,7 @@ func (rs booruBrowserRoutes) AccountFavorites(w http.ResponseWriter, r *http.Req
 		writeBooruError(w, 502, "favorites", "Provider exceeded the favorites page limit.")
 		return
 	}
-	rs.categorizeBooruPosts(source, result.Posts)
+	rs.categorizeBooruPosts(r.Context(), source, result.Posts)
 	for i := range result.Posts {
 		result.Posts[i] = publicBooruPost(source, result.Posts[i])
 	}
