@@ -168,7 +168,7 @@ func TestRule34TagCategoriesXMLResponse(t *testing.T) {
 	for name, category := range map[string]string{
 		"artist_a": "artist", "hero_a": "character",
 		"series_a": "copyright",
-		"common": "general", "meta_tag": "meta",
+		"common":   "general", "meta_tag": "meta",
 	} {
 		if categories[name] != category {
 			t.Errorf("%s: got %q, expected %q", name, categories[name], category)
