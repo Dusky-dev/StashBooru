@@ -60,7 +60,7 @@ func TestPawchiveRejectsIgnoredKeywordFiltering(t *testing.T) {
 		}
 		return response(http.StatusOK, `[
 			{"id":"301","user":"42","service":"patreon","title":"Unrelated recent post"},
-			{"id":"302","user":"42","service":"patreon","title":"Another recent post"}
+			{"id":"302","user":"42","service":"patreon","title":"Meili random recent post"}
 		]`), nil
 	})
 	result, err := c.Search(context.Background(), s, "meili", 1, 24)
