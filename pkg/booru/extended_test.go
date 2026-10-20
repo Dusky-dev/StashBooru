@@ -269,7 +269,9 @@ func TestPahealCDNOriginalCanBeDownloaded(t *testing.T) {
 			r.Header.Get("Referer") != "https://rule34.paheal.net/" {
 			t.Errorf("download request targeted incorrect media host or referer: %s", r.URL)
 		}
-		return response(200, body), nil
+		res := response(200, body)
+		res.ContentLength = -1
+		return res, nil
 	})
 	var dest bytes.Buffer
 	info, err := client.FetchMedia(context.Background(), s, MediaRequest{
