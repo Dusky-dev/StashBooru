@@ -77,6 +77,33 @@ func TestRule34CategorizationUsesOfficialAuthenticatedTagAPI(t *testing.T) {
 	}
 }
 
+func TestRule34LiveLookupAfterSlowPublicSidebar(t *testing.T) {
+	source := Source{ID: "rule34", Name: "Rule34", Engine: "gelbooru",
+		URL: "https://rule34.xxx", APIKey: "secret", UserID: "42"}
+	publicCalls, apiCalls := 0, 0
+	client := testClient(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Host == "rule34.xxx" {
+			publicCalls++
+			if r.URL.Query().Has("api_key") || r.URL.Query().Has("user_id") {
+				t.Error("website page leaked API credentials")
+			}
+			<-r.Context().Done()
+			return nil, r.Context().Err()
+		}
+		apiCalls++
+		if r.URL.Host != "api.rule34.xxx" || r.URL.Query().Get("name") != "artist_a" {
+			t.Error("exact lookup did not reach the authenticated API")
+		}
+		return response(200, "<tags><tag name=\"artist_a\" type=\"1\"/></tags>"), nil
+	})
+	posts := []Post{{ID: "123", Tags: []Tag{{Name: "artist_a", Category: "unknown"}}}}
+	client.CategorizeRule34Tags(context.Background(), source, posts)
+	if publicCalls != 1 || apiCalls != 1 || posts[0].Tags[0].Category != "artist" {
+		t.Fatalf("slow sidebar prevented live classification: public=%d api=%d category=%s",
+			publicCalls, apiCalls, posts[0].Tags[0].Category)
+	}
+}
+
 func TestRule34CategoryLookupFailsOpenAndDoesNotGuess(t *testing.T) {
 	source := Source{ID: "rule34", Name: "Rule34", Engine: "gelbooru",
 		URL: "https://rule34.xxx", APIKey: "secret", UserID: "42"}
