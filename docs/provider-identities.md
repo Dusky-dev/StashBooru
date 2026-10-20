@@ -65,7 +65,10 @@ Following changes are later work.
 5. Native profiles expose **Sources & aliases → Manage connections**. Native
    catalogue text searches recognize connected source names and IDs. A fresh
    browser search displays the current canonical name while source searches use
-   the exact original tag/account selector.
+   the exact original tag/account selector. Artist/Character text searches evaluate
+   each term across all connected identifiers: exclusions such as `-foo` exclude
+   the entire entity, and required terms can match different connected sources.
+   Character suggestions also recognize native `Name (Disambiguation)` names.
 
 Filters and keyset pages are represented in the URL. Mobile Review scrolls the
 connection panel into view. Stale decisions fail atomically, retain an error,
@@ -77,14 +80,18 @@ The job reads cached Following metadata (including historical/ignored entries)
 and regular JSON download receipts of at most 64 KiB. It skips malformed, oversized,
 symlinked and unverifiable-source files. It never reads downloaded media or
 requests remote pages. Broken current source settings do not hide receipt source
-provenance or immutable saved follow source definitions.
+provenance or immutable saved follow source definitions. Scans use configured or
+default provider names; unavailable custom providers retain existing recorded
+names, and new observations fall back to the saved source ID. User follow labels
+never replace provider names.
 
 Only one scan is queued/running per library. It has a ten-minute timeout and a
 100,000-directory-entry bound. Cancel keeps previously committed observations.
 Repeat scans are idempotent; progress counts observations, including repeated
 identifiers, rather than newly created identities. Status is in memory and resets
 on restart; connections and explicit decisions remain in SQLite. Cancellation
-through Stash’s native job queue is also reflected in scan status. A restart or
+through Stash’s native job queue is also reflected in scan status. Explicit
+cancellation finishes as cancelled in the native Jobs UI; a timeout is a failure. A restart or
 cancel resumes by rescanning, rather than through a persisted file cursor.
 
 The global identity cache holds at most 100,000 entries. Existing connections

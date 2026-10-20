@@ -83,12 +83,13 @@ func (s *ProviderIdentityStore) Observe(ctx context.Context, input []models.Iden
  (instance,source_id,source_name,engine,source_url,kind,form,target,label,label_rank,context,updated_at)
  VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
  ON CONFLICT(instance,kind,form,target) DO UPDATE SET
- source_id=excluded.source_id,source_name=excluded.source_name,
+ source_id=CASE WHEN ? THEN provider_identities.source_id ELSE excluded.source_id END,
+ source_name=CASE WHEN ? THEN provider_identities.source_name ELSE excluded.source_name END,
  label=CASE WHEN excluded.label_rank>=provider_identities.label_rank THEN excluded.label ELSE provider_identities.label END,
  label_rank=MAX(provider_identities.label_rank,excluded.label_rank),
  context=CASE WHEN excluded.context!='' THEN excluded.context ELSE provider_identities.context END,
  updated_at=excluded.updated_at`,
-			o.Instance, o.SourceID, o.SourceName, o.Engine, o.SourceURL, o.Kind, o.Form, o.Target, o.Label, o.LabelRank, o.Context, time.Now().UTC().Format(time.RFC3339Nano))
+			o.Instance, o.SourceID, o.SourceName, o.Engine, o.SourceURL, o.Kind, o.Form, o.Target, o.Label, o.LabelRank, o.Context, time.Now().UTC().Format(time.RFC3339Nano), o.PreserveSource, o.PreserveSource)
 		if err != nil {
 			return nil, err
 		}
@@ -212,16 +213,18 @@ func (s *ProviderIdentityStore) Candidates(ctx context.Context, kind, query stri
 	}
 	table, column, aliases, aliasColumn := identityNative(kind)
 	disambiguation := "''"
+	candidateName := "COALESCE(n.name,'')"
 	if kind == "character" {
 		disambiguation = "COALESCE(n.disambiguation,'')"
+		candidateName += "||CASE WHEN COALESCE(n.disambiguation,'')!='' THEN ' ('||n.disambiguation||')' ELSE '' END"
 	}
 	// Candidate names are evidence for review, never automatic identity proof.
 	sqlQuery := fmt.Sprintf(`SELECT n.id,COALESCE(n.name,'') AS name,%s AS disambiguation,
  EXISTS(SELECT 1 FROM provider_identity_rejections r WHERE r.identity_id=? AND r.entity_id=n.id) AS rejected
- FROM %s n WHERE (replace(COALESCE(n.name,''),'_',' ') LIKE ? ESCAPE '!'
+ FROM %s n WHERE (replace(%s,'_',' ') LIKE ? ESCAPE '!'
  OR EXISTS(SELECT 1 FROM %s a WHERE a.%s=n.id AND replace(a.alias,'_',' ') LIKE ? ESCAPE '!')
  OR EXISTS(SELECT 1 FROM provider_identities p WHERE p.%s=n.id AND (p.target LIKE ? ESCAPE '!' OR p.label LIKE ? ESCAPE '!')))`,
-		disambiguation, table, aliases, aliasColumn, column)
+		disambiguation, table, candidateName, aliases, aliasColumn, column)
 	q := identityLike(query)
 	args := []any{identityID, q, q, q, q}
 	if !includeRejected {
@@ -246,4 +249,34 @@ func (s *ProviderIdentityStore) DiscardUnresolved(ctx context.Context, kind stri
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+// Each term is evaluated across an entity's complete alias/identifier set.
+// A row join makes a negative term pass through a different connected row.
+func (qb *queryBuilder) parseIdentityQueryString(kind, query string) {
+	table, column, aliases, aliasColumn := identityNative(kind)
+	match := fmt.Sprintf(`(COALESCE(%s.name,'') LIKE ?
+      OR EXISTS(SELECT 1 FROM %s a WHERE a.%s=%s.id AND a.alias LIKE ?)
+      OR EXISTS(SELECT 1 FROM provider_identities p WHERE p.%s=%s.id AND (p.target LIKE ? OR p.label LIKE ?)))`,
+		table, aliases, aliasColumn, table, column, table)
+	addTerm := func(term string) { value := like(term); qb.addArg(value, value, value, value) }
+	specs := models.ParseSearchString(query)
+	for _, term := range specs.MustHave {
+		qb.addWhere(match)
+		addTerm(term)
+	}
+	for _, term := range specs.MustNot {
+		qb.addWhere("NOT " + match)
+		addTerm(term)
+	}
+	for _, set := range specs.AnySets {
+		clauses := []string{}
+		for _, term := range set {
+			clauses = append(clauses, match)
+			addTerm(term)
+		}
+		if len(clauses) > 0 {
+			qb.addWhere("(" + strings.Join(clauses, " OR ") + ")")
+		}
+	}
 }

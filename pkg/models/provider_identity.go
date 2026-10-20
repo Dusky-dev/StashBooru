@@ -17,17 +17,18 @@ var (
 const MaxProviderIdentities = 100000
 
 type IdentityObservation struct {
-	Instance   string
-	SourceID   string
-	SourceName string
-	Engine     string
-	SourceURL  string
-	Kind       string
-	Form       string
-	Target     string
-	Label      string
-	LabelRank  int
-	Context    string
+	PreserveSource bool // Saved follow fallback lacks current provider display metadata.
+	Instance       string
+	SourceID       string
+	SourceName     string
+	Engine         string
+	SourceURL      string
+	Kind           string
+	Form           string
+	Target         string
+	Label          string
+	LabelRank      int
+	Context        string
 }
 
 type ProviderIdentity struct {

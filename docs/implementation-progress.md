@@ -63,6 +63,20 @@ silently promoted to verified production features by this documentation update.
   Earlier backend test failure was an old Copyright fixture lacking migration
   100, now migrated and checked locally. The inherited late-autocomplete browser
   failure did not reproduce in the full current desktop/mobile suite.
+- Hardened publication `05d3ae8efbc13558daf6b81601b30f73c1d610f7` has tree
+  `b63ecc177ca981c230416dec281c3e31a6c6fb3e`, matching locally verified
+  `29da2a1438b4849df3e2405277e3edb310572263`. CI generation/UI validation,
+  lint and all three mounted browser workflows passed on that revision.
+- Codex Review of `8f7dbfb` completed with four viable P2 findings. Addressed
+  them in local `c1c957d` (see Git history for the full commit): native scan
+  cancellation now returns cleanly; timeout recovery uses a fresh parent-bounded
+  read context; feed scans use configured/default source metadata and preserve
+  custom-source names; Artist/Character queries evaluate terms with correlated
+  EXISTS across all aliases/connections. Also match qualified Character names.
+  Regression tests exercise actual native job cancellation, forced write timeout,
+  unavailable custom-source provenance, negative/AND/OR searches for both types,
+  and Character disambiguation. Focused API/SQLite regressions pass; full Go
+  gates are rerunning after these backend changes. UI source is unchanged.
 - Synthetic captures are committed under `docs/screenshots/provider-identities-*`.
   They were visually inspected. Live provider/production acceptance remains
   unverified. Final-head CI and Codex Review are in progress; #171 is not merged.

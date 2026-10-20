@@ -122,8 +122,11 @@ func (rs booruBrowserRoutes) IdentityScan(w http.ResponseWriter, r *http.Request
 		identityScans.Lock()
 		defer identityScans.Unlock()
 		switch {
-		case state.Status == "cancelled" || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded):
+		case state.Status == "cancelled" || errors.Is(err, context.Canceled):
 			state.Status, state.Error = "cancelled", "Scan stopped. Saved observations remain; repeat the scan to continue."
+			return nil // Let the native job manager finish STOPPING as CANCELLED.
+		case errors.Is(err, context.DeadlineExceeded):
+			state.Status, state.Error = "failed", "Scan timed out. Saved observations remain; repeat the scan to continue."
 		case errors.Is(err, models.ErrIdentityLimit):
 			state.Status, state.Error = "failed", "Identity cache is full. Discard unreviewed metadata and retry; connections and decisions remain."
 		case err != nil:
@@ -141,6 +144,10 @@ func (rs booruBrowserRoutes) IdentityScan(w http.ResponseWriter, r *http.Request
 func (rs booruBrowserRoutes) scanIdentityMetadata(ctx context.Context, progress func(int, int, int)) error {
 	scanned, observations, skipped := 0, 0, 0
 	sources := map[string]booru.Source{}
+	fallbackSources := map[string]bool{}
+	for _, source := range booru.Defaults() {
+		sources[source.Instance()] = source
+	}
 	if configured, err := rs.sources(); err == nil {
 		for _, source := range configured {
 			sources[source.Instance()] = source
@@ -150,9 +157,14 @@ func (rs booruBrowserRoutes) scanIdentityMetadata(ctx context.Context, progress 
 		if err := rs.repository.WithReadTxn(ctx, func(ctx context.Context) error {
 			follows, err := rs.repository.BooruFollow.List(ctx)
 			for _, follow := range follows {
-				source := booru.Source{ID: follow.SourceID, Name: follow.Name, Engine: follow.Engine, URL: follow.SourceURL}
+				if _, known := sources[follow.Instance]; known {
+					continue
+				}
+				// A follow name is a user label, not a provider display name.
+				source := booru.Source{ID: follow.SourceID, Name: follow.SourceID, Engine: follow.Engine, URL: follow.SourceURL}
 				if source.Validate() == nil && source.Instance() == follow.Instance {
 					sources[follow.Instance] = source
+					fallbackSources[follow.Instance] = true
 				}
 			}
 			return err
@@ -160,11 +172,14 @@ func (rs booruBrowserRoutes) scanIdentityMetadata(ctx context.Context, progress 
 			return err
 		}
 	}
-	observe := func(source booru.Source, post booru.Post) error {
+	observe := func(source booru.Source, post booru.Post, preserveSource bool) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 		input, _ := identityPostObservations(source, []booru.Post{post})
+		for i := range input {
+			input[i].PreserveSource = preserveSource
+		}
 		if len(input) == 0 {
 			skipped++
 			return nil
@@ -198,7 +213,7 @@ func (rs booruBrowserRoutes) scanIdentityMetadata(ctx context.Context, progress 
 				scanned++
 				var payload followingStoredPost
 				if source, ok := sources[post.Instance]; ok && json.Unmarshal(post.Payload, &payload) == nil {
-					if err := observe(source, payload.Post); err != nil {
+					if err := observe(source, payload.Post, fallbackSources[post.Instance]); err != nil {
 						progress(scanned, observations, skipped)
 						return err
 					}
@@ -253,7 +268,7 @@ func (rs booruBrowserRoutes) scanIdentityMetadata(ctx context.Context, progress 
 			if !ok || source.Validate() != nil || source.Instance() != receipt.Source.Instance {
 				skipped++
 			} else {
-				if err := observe(source, receipt.Post); err != nil {
+				if err := observe(source, receipt.Post, false); err != nil {
 					progress(scanned, observations, skipped)
 					return err
 				}

@@ -298,7 +298,9 @@ func (rs booruBrowserRoutes) captureIdentityPosts(parent context.Context, source
 
 	if err != nil {
 		// Capacity or a failed refresh must not hide existing connections.
-		_ = rs.repository.WithReadTxn(ctx, func(ctx context.Context) error {
+		recovery, stop := context.WithTimeout(parent, 2*time.Second)
+		defer stop()
+		_ = rs.repository.WithReadTxn(recovery, func(ctx context.Context) error {
 			for i, o := range input {
 				row, lookupErr := rs.repository.ProviderIdentity.Lookup(ctx, o.Instance, o.Kind, o.Form, o.Target)
 				if lookupErr != nil {
