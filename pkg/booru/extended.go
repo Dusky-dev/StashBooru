@@ -158,6 +158,23 @@ func (c *Client) searchExtended(ctx context.Context, s Source, query string, pag
 		if err != nil || len(rows) > block {
 			return result, extendedParseError()
 		}
+		// Avoid another provider request to compare every q result with an
+		// unfiltered page. Pawchive can rate limit those extra reads.
+		// Some deployments may ignore q, while others index creator data
+		// not visible in a post's title/body; disclose that ambiguity.
+		if s.Engine == "pawchive" && params.Has("q") && len(rows) > 0 {
+			visibleMatch := false
+			needle := strings.ToLower(strings.TrimSpace(query))
+			for _, raw := range rows {
+				if strings.Contains(strings.ToLower(text(raw["title"])+" "+text(raw["content"])), needle) {
+					visibleMatch = true
+					break
+				}
+			}
+			if !visibleMatch {
+				result.SearchNotice = "Pawchive returned results without visible title/text matches. They may match creator metadata, or this API version may ignore search filters. Verify the results on Pawchive."
+			}
+		}
 		for i, raw := range rows {
 			at := offset + i
 			if at < start || at >= end {
