@@ -120,10 +120,13 @@ fails. A malformed row is never entered into search or category lookups.
 
 For Rule34, live-confirmed categories take precedence over installed
 per-source CSV entries, including when the CSV already has a type for the
-same tag. The CSV fills in unresolved tags, then an optional historical
-auto-catalog covers any remaining gaps. Live lookup is still attempted on
-each search for flat Rule34 tags, subject to its bounded request budget,
-timeouts and caching, even when the installed CSV covers all tags.
+same tag. The live lookup queue gives **CSV-missing tags first priority**
+within the provider's bounded 100-name discovery budget, then uses
+remaining slots to refresh tags already covered by CSV. The CSV fills in
+unresolved tags, then an optional historical auto-catalog covers any
+remaining gaps. Live lookup is still attempted on each search for flat
+Rule34 tags, subject to its bounded request budget, timeouts and
+caching, even when the installed CSV covers all tags.
 If live lookups fail or are unavailable, installed CSV categories remain
 usable. If live Rule34 tags still lack categories, StashBooru
 **automatically installs a Rule34-only
