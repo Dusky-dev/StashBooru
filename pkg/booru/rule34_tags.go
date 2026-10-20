@@ -15,11 +15,11 @@ import (
 // publishes category/type metadata. Resolve only exact provider tag names;
 // do not guess categories from suffixes or apply categories from other sites.
 const (
-	rule34CategoryBatchSize     = 100
+	rule34CategoryBatchSize       = 100
 	rule34CategoryMaxExactLookups = 6
-	rule34CategoryMaxCached     = 8192
-	rule34CategoryCacheExpiry   = 24 * time.Hour
-	rule34CategoryMissExpiry    = 5 * time.Minute
+	rule34CategoryMaxCached       = 8192
+	rule34CategoryCacheExpiry     = 24 * time.Hour
+	rule34CategoryMissExpiry      = 5 * time.Minute
 )
 
 type rule34CategoryEntry struct {
