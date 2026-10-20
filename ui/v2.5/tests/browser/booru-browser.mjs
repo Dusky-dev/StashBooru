@@ -883,7 +883,7 @@ try {
     await editor.getByLabel("API key", { exact: true }).fill("fixture-secret");
     await editor
       .getByLabel("Tag blacklist for this booru", { exact: true })
-      .fill("Unwanted_Tag\nanother tag");
+      .fill("Unwanted_Tag another_tag third_tag");
     await editor
       .getByRole("button", { name: "Save source", exact: true })
       .click();
@@ -891,7 +891,8 @@ try {
     assert.equal(writes.at(-1).source.apiKey, "fixture-secret");
     assert.deepEqual(writes.at(-1).source.blacklistTags, [
       "Unwanted_Tag",
-      "another tag",
+      "another_tag",
+      "third_tag",
     ]);
     await page
       .getByRole("button", { name: "Edit Danbooru", exact: true })
@@ -905,13 +906,21 @@ try {
       await editor
         .getByLabel("Tag blacklist for this booru", { exact: true })
         .inputValue(),
-      "Unwanted_Tag\nanother tag",
+      "Unwanted_Tag another_tag third_tag",
       "saved blacklist did not populate editor"
     );
+    await editor
+      .getByLabel("Tag blacklist for this booru", { exact: true })
+      .fill("Unwanted_Tag\nanother_tag third_tag");
     await editor
       .getByRole("button", { name: "Save source", exact: true })
       .click();
     await editor.waitFor({ state: "hidden" });
+    assert.deepEqual(writes.at(-1).source.blacklistTags, [
+      "Unwanted_Tag",
+      "another_tag",
+      "third_tag",
+    ]);
     assert.equal(writes.at(-1).source.apiKey, "");
     assert.equal(writes.at(-1).clearAPIKey, false);
     await page

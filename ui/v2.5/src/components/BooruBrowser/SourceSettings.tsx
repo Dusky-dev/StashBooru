@@ -71,7 +71,7 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
   function edit(source: SourceSetting, isNew = false) {
     setDraft({ ...source });
     setHosts(source.mediaHosts.join("\n"));
-    setBlacklist((source.blacklistTags ?? []).join("\n"));
+    setBlacklist((source.blacklistTags ?? []).map((tag) => tag.replace(/\s+/g, "_")).join(" "));
     setAPIKey("");
     setClearKey(false);
     setCreating(isNew);
@@ -101,14 +101,7 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
         engine: draft.engine,
         url: draft.url.trim().replace(/\/+$/, ""),
         mediaHosts: hosts.split(/[\s,]+/).filter(Boolean),
-        blacklistTags: [
-          ...new Set(
-            blacklist
-              .split(/\r?\n/)
-              .map((tag) => tag.trim())
-              .filter(Boolean)
-          ),
-        ],
+        blacklistTags: [...new Set(blacklist.split(/\s+/).filter(Boolean))],
         login: clearKey ? "" : draft.login.trim(),
         userID: clearKey ? "" : draft.userID.trim(),
         disabled: draft.disabled,
@@ -348,11 +341,11 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
                     rows={4}
                     value={blacklist}
                     onChange={(e) => setBlacklist(e.currentTarget.value)}
-                    placeholder={"unwanted_tag\nanother tag"}
+                    placeholder="unwanted_tag another_tag third_tag"
                   />
                   <Form.Text muted>
-                    One exact tag per line (up to 256); matching ignores case
-                    and treats spaces and underscores alike. Hide matching posts
+                    Space-separated exact tags (up to 256); use underscores in
+                    multiword tags. Matching ignores case. Hide matching posts
                     from searches and account favorites on this booru only.
                     Provider totals and pagination remain unchanged.
                   </Form.Text>
