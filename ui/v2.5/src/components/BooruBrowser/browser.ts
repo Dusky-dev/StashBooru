@@ -38,6 +38,7 @@ export interface BooruPost {
 export interface BooruResult {
   sourceID: string;
   categoryStatus?: "loading" | "ready" | "failed";
+  blacklistedCount?: number;
   searchNotice?: string;
   posts: BooruPost[];
   page: number;

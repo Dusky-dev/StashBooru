@@ -10,6 +10,7 @@ interface SourceSetting {
   engine: string;
   url: string;
   mediaHosts: string[];
+  blacklistTags?: string[];
   login: string;
   userID: string;
   disabled: boolean;
@@ -26,6 +27,7 @@ const newSource = (): SourceSetting => ({
   engine: "danbooru",
   url: "",
   mediaHosts: [],
+  blacklistTags: [],
   login: "",
   userID: "",
   disabled: false,
@@ -37,6 +39,7 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
   const [settings, setSettings] = useState<SettingsResponse>();
   const [draft, setDraft] = useState<SourceSetting>();
   const [hosts, setHosts] = useState("");
+  const [blacklist, setBlacklist] = useState("");
   const [apiKey, setAPIKey] = useState("");
   const [clearKey, setClearKey] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -68,6 +71,7 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
   function edit(source: SourceSetting, isNew = false) {
     setDraft({ ...source });
     setHosts(source.mediaHosts.join("\n"));
+    setBlacklist((source.blacklistTags ?? []).join("\n"));
     setAPIKey("");
     setClearKey(false);
     setCreating(isNew);
@@ -97,6 +101,14 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
         engine: draft.engine,
         url: draft.url.trim().replace(/\/+$/, ""),
         mediaHosts: hosts.split(/[\s,]+/).filter(Boolean),
+        blacklistTags: [
+          ...new Set(
+            blacklist
+              .split(/\r?\n/)
+              .map((tag) => tag.trim())
+              .filter(Boolean)
+          ),
+        ],
         login: clearKey ? "" : draft.login.trim(),
         userID: clearKey ? "" : draft.userID.trim(),
         disabled: draft.disabled,
@@ -182,6 +194,8 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
               <small className="d-block text-muted">
                 {source.engine} · {source.disabled ? "Disabled" : "Enabled"} ·{" "}
                 {source.apiKeyConfigured ? "API key saved" : "No API key"}
+                {(source.blacklistTags?.length ?? 0) > 0 &&
+                  ` · ${source.blacklistTags?.length} blacklisted tags`}
                 {!source.preset && " · Custom"}
               </small>
             </div>
@@ -324,6 +338,23 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
                   <Form.Text muted>
                     Optional CDN hostnames, separated by commas or newlines. The
                     site host and its subdomains are already allowed.
+                  </Form.Text>
+                </Form.Group>
+                <Form.Group controlId="booru-setting-blacklist">
+                  <Form.Label>Tag blacklist for this booru</Form.Label>
+                  <Form.Control
+                    className="text-input"
+                    as="textarea"
+                    rows={4}
+                    value={blacklist}
+                    onChange={(e) => setBlacklist(e.currentTarget.value)}
+                    placeholder={"unwanted_tag\nanother tag"}
+                  />
+                  <Form.Text muted>
+                    One exact tag per line (up to 256); matching ignores case
+                    and treats spaces and underscores alike. Hide matching posts
+                    from searches and account favorites on this booru only.
+                    Provider totals and pagination remain unchanged.
                   </Form.Text>
                 </Form.Group>
                 {["moebooru", "shimmie", "kemono"].includes(draft.engine) ? (

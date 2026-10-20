@@ -27,6 +27,7 @@ type booruSourceSetting struct {
 	Engine           string   `json:"engine"`
 	URL              string   `json:"url"`
 	MediaHosts       []string `json:"mediaHosts"`
+	BlacklistTags    []string `json:"blacklistTags"`
 	Login            string   `json:"login"`
 	UserID           string   `json:"userID"`
 	Disabled         bool     `json:"disabled"`
@@ -91,7 +92,11 @@ func booruSettingsView(data []byte, configured []booru.Source) booruSettingsResp
 		if hosts == nil {
 			hosts = []string{}
 		}
-		response.Sources = append(response.Sources, booruSourceSetting{ID: source.ID, Name: source.Name, Engine: source.Engine, URL: source.URL, MediaHosts: hosts, Login: source.Login, UserID: source.UserID, Disabled: source.Disabled, Preset: preset, APIKeyConfigured: source.APIKey != ""})
+		tags := source.BlacklistTags
+		if tags == nil {
+			tags = []string{}
+		}
+		response.Sources = append(response.Sources, booruSourceSetting{ID: source.ID, Name: source.Name, Engine: source.Engine, URL: source.URL, MediaHosts: hosts, BlacklistTags: tags, Login: source.Login, UserID: source.UserID, Disabled: source.Disabled, Preset: preset, APIKeyConfigured: source.APIKey != ""})
 	}
 	return response
 }

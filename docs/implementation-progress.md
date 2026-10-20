@@ -1,5 +1,24 @@
 # StashBooru implementation progress
 
+## Booru browser: per-source tag blacklist — 2026-10-21
+
+- Baseline `develop` at `fee5744b72124fe65bebe8e55ab4650a541001f9`,
+  subsequently merged with `develop` at `e7b68a5ba102133360cbd2b26d2a01213ea589ca`.
+  The focused PR adds `blacklistTags` per source in server configuration and
+  the settings editor, with exact-tag filtering (case-insensitive,
+  spaces/underscores equivalent) for normal searches and account favorites.
+- Posts whose own or attachment tags are blocked are omitted before
+  category lookup, preview media-key projection and browser display.
+  The provider's pagination and totals remain unchanged. A page-local
+  `blacklistedCount` explains hidden results.
+- Settings validation rejects duplicate, malformed and oversized tag lists.
+  Regression test sources cover validation, attachment matching, cross-source
+  isolation, settings round-trips, provider pagination and favorites.
+- CI: source tests, lint and desktop/mobile fixture acceptance should be
+  verified on this merged branch; production provider acceptance remains open.
+  Codex's missing-fixture-blacklist finding was addressed and resolved.
+
+
 ## Pawchive server-side post searching — 2026-10-21
 
 - Branch `feat/pawchive-server-post-search-20261021`, based on `develop`

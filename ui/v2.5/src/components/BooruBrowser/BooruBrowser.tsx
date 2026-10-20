@@ -739,8 +739,20 @@ function SourceResults({
           )}
           {result.posts.length === 0 && (
             <Alert variant="info">
-              {message("empty", "No posts returned for this page and query.")}
+              {result.blacklistedCount
+                ? "All posts on this page were hidden by this booru’s tag blacklist."
+                : message(
+                    "empty",
+                    "No posts returned for this page and query."
+                  )}
             </Alert>
+          )}
+          {!!result.blacklistedCount && (
+            <p className="small text-muted">
+              Hidden {result.blacklistedCount} post(s) on this page by{" "}
+              {source.name}’s tag blacklist. Provider totals and pagination
+              still include these posts.
+            </p>
           )}
           {(filters.media || filters.hideAI) && (
             <p className="small text-muted">

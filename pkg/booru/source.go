@@ -24,15 +24,16 @@ var sourceID = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,63}$`)
 // Source is server-owned configuration. Credentials must never be serialized
 // into the public Sources response, browser URLs, or transport errors.
 type Source struct {
-	ID         string   `json:"id"`
-	Name       string   `json:"name"`
-	Engine     string   `json:"engine"`
-	URL        string   `json:"url"`
-	MediaHosts []string `json:"mediaHosts,omitempty"`
-	Login      string   `json:"login,omitempty"`
-	APIKey     string   `json:"apiKey,omitempty"`
-	UserID     string   `json:"userID,omitempty"`
-	Disabled   bool     `json:"disabled,omitempty"`
+	ID            string   `json:"id"`
+	Name          string   `json:"name"`
+	Engine        string   `json:"engine"`
+	URL           string   `json:"url"`
+	MediaHosts    []string `json:"mediaHosts,omitempty"`
+	BlacklistTags []string `json:"blacklistTags,omitempty"`
+	Login         string   `json:"login,omitempty"`
+	APIKey        string   `json:"apiKey,omitempty"`
+	UserID        string   `json:"userID,omitempty"`
+	Disabled      bool     `json:"disabled,omitempty"`
 }
 
 type PublicSource struct {
@@ -110,6 +111,9 @@ func (s Source) Validate() error {
 	}
 	if !slices.Contains([]string{"danbooru", "gelbooru", "moebooru", "e621", "philomena", "shimmie", "pixiv", "pawchive", "kemono"}, s.Engine) {
 		return fmt.Errorf("unsupported API engine")
+	}
+	if err := validateBlacklistTags(s.BlacklistTags); err != nil {
+		return err
 	}
 	if len(s.URL) > 2048 || len(s.MediaHosts) > 64 {
 		return fmt.Errorf("source URL is limited to 2048 bytes and at most 64 image hosts")
