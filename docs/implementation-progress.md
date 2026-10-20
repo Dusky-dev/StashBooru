@@ -1,6 +1,6 @@
 # StashBooru implementation progress
 
-Updated: 2026-10-19
+Updated: 2026-10-20
 
 Current baseline: `develop` at `e45586347603f2c58ae40d68787cc71a0173a48f`.
 PR #151 is merged. Branch `feat/booru-search-preview-refinement-20261019` improves
@@ -11,6 +11,30 @@ Review: [PR #152](https://github.com/Dusky-dev/StashBooru/pull/152). See [browse
 P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
+
+## Rule34 public sidebar wiki-link classification — 2026-10-20
+
+- Baseline: merged `develop` at `fc2651bc4a39022adca438f7524d1ab6008bcdf9`
+  (including PR #168); feature branch
+  `fix/rule34-live-sidebar-wiki-tags-20261020`.
+- Site evidence: the public post page displays five typed tag groups.
+  Third-party Rule34 sidebar integration reads canonical wiki `search=` links
+  as well as post-list `tags=` links. The previous StashBooru parser only
+  accepted post-list links, potentially discarding usable live typed tags.
+- Accept canonical wiki links only inside typed `#tag-sidebar` rows, with
+  exact matching against the requested post tags and no off-host links.
+  Fetch a bounded public HTML prefix to retain early sidebars when the
+  full post page exceeds 512 KiB due to comments. JSON API bounds, host
+  throttles, redirects and credential isolation are unchanged.
+- Added provider-shaped parser and search-path fixtures for wiki-only
+  links, oversized HTML pages and preservation of JSON size checks.
+  These fixtures are not captured live provider responses.
+- Network in the development runtime could not query `api.rule34.xxx`
+  or retrieve raw public HTML; no live account/end-to-end verification.
+  Rule34's official tag help only documents `id` and `limit`, so the
+  alternative exact `name` endpoint is not a verified guarantee.
+  Follow-up acceptance needs anonymized provider status/category counts
+  from the user's running server. No merge or deployment.
 
 ## Rule34 live exact-name tag classification — 2026-10-20
 
