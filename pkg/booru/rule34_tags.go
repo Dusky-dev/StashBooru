@@ -41,15 +41,6 @@ type rule34TagXMLResponse struct {
 	Tags    []rule34TagXMLRow `xml:"tag"`
 }
 
-func rule34TagCategory(value string) string {
-	// Rule34/Gelbooru variants use 2 as another copyright identifier.
-	// Do not extend this mapping to non-Rule34 sources.
-	if value == "2" {
-		return "copyright"
-	}
-	return suggestionCategory("gelbooru", value, "")
-}
-
 func parseRule34TagCategories(data []byte, requested map[string]bool) map[string]string {
 	result := make(map[string]string)
 	data = bytes.TrimSpace(data)
@@ -64,7 +55,7 @@ func parseRule34TagCategories(data []byte, requested map[string]bool) map[string
 		if rawType == "" {
 			rawType = rawCategory
 		}
-		if category := rule34TagCategory(rawType); category != "unknown" {
+		if category := suggestionCategory("gelbooru", rawType, name); category != "unknown" {
 			result[key] = category
 		}
 	}
