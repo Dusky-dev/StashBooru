@@ -1220,9 +1220,11 @@ export default function BooruBrowser() {
               order={sourceOrder}
               onOrder={setSourceOrder}
               onSelect={(source) => {
+                // Creator identities are source-specific; ordinary text
+                // searches should survive switching to Pawchive, now that
+                // its API supports server-side post search.
                 const nextQuery =
-                  selected[0] !== source.id &&
-                  (query.startsWith("creator:") || source.engine === "pawchive")
+                  selected[0] !== source.id && query.startsWith("creator:")
                     ? ""
                     : query.trim();
                 setSelected([source.id]);
