@@ -170,9 +170,26 @@ func (c *Client) CategorizeRule34Tags(ctx context.Context, source Source, posts 
 		if err != nil {
 			break // Do not fail the post search on optional category enrichment.
 		}
-		for name, category := range parseRule34TagCategories(data, names) {
+		found := parseRule34TagCategories(data, names)
+		for name, category := range found {
 			categories[name] = category
 		}
+		// Rule34's published tag API documents ID lookup, not bulk "names"
+		// search. An empty/mismatched first response means more requests with
+		// the same unsupported filter are unlikely to help; save time for the
+		// public post-sidebar fallback instead.
+		if len(found) == 0 {
+			break
+		}
+	}
+	missing := make(map[string]bool)
+	for _, name := range pending {
+		if categories[name] == "" {
+			missing[name] = true
+		}
+	}
+	for name, category := range c.rule34SidebarFallback(ctx, source, posts, missing) {
+		categories[name] = category
 	}
 	if len(categories) == 0 {
 		return
