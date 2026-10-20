@@ -249,6 +249,17 @@ func retryDelay(raw string) int {
 
 // fetchJSON shares search/autocomplete host throttles, cancellation and redirect policy.
 func (c *Client) fetchJSON(ctx context.Context, source Source, req *http.Request, maxBytes int) ([]byte, error) {
+	return c.fetchProviderBody(ctx, source, req, maxBytes, false)
+}
+
+// fetchHTMLPrefix reads only a bounded prefix of a public HTML page. Rule34
+// post pages can include large comment sections after the tag sidebar; parsing
+// just the prefix avoids discarding the already-present categorization.
+func (c *Client) fetchHTMLPrefix(ctx context.Context, source Source, req *http.Request, maxBytes int) ([]byte, error) {
+	return c.fetchProviderBody(ctx, source, req, maxBytes, true)
+}
+
+func (c *Client) fetchProviderBody(ctx context.Context, source Source, req *http.Request, maxBytes int, allowPrefix bool) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	// Throttle by the actual request host. Rule34 API requests use a separate
@@ -307,8 +318,11 @@ func (c *Client) fetchJSON(ctx context.Context, source Source, req *http.Request
 		return nil, failure
 	}
 	data, err := io.ReadAll(io.LimitReader(response.Body, int64(maxBytes)+1))
-	if err != nil || len(data) > maxBytes {
+	if err != nil || (len(data) > maxBytes && !allowPrefix) {
 		return nil, &Error{Code: "invalid-response", Message: "Provider response could not be read or exceeded its size limit."}
+	}
+	if len(data) > maxBytes {
+		return data[:maxBytes], nil
 	}
 	return data, nil
 }
