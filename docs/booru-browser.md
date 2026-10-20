@@ -79,14 +79,21 @@ search; multiple tags open a chooser, then search the chosen tag. Sidebar tags b
 the same way. Disable **Search immediately when clicking tags** in Booru Settings
 to only fill the draft. This preference is saved in this browser. Categories come from the provider or an exact canonical-name match in the
 installed per-source CSV. Prefixes and aliases never guess categories for flat tags.
-For **Rule34.xxx**, StashBooru classifies post tags **live** without requiring
-a CSV. The server first reads typed tag links from up to three representative
-public post sidebars. Tags still unresolved are looked up by their exact
-`name` on Rule34's authenticated tag DAPI (`s=tag&q=index&name=...`),
-rather than the unsupported bulk `names` query. The tag API returns the
-numeric artist, character, copyright, general and metadata categories. No
-API credentials are sent to the public post pages, and only exact matching
-provider tag names are accepted. Confirmed categories are cached for 24 hours.
+For **Rule34.xxx**, StashBooru attempts live post-tag classification
+without requiring a CSV. The server first reads typed tag links from up to
+three representative public post sidebars, accepting both wiki `search=` links
+and post-list `tags=` links inside `#tag-sidebar`. It reads a bounded HTML
+prefix so long comment threads after the sidebar do not invalidate otherwise
+usable categories. The resulting tag names must exactly match tags on the
+search page. No API credentials are sent to public post pages.
+
+For tags still unresolved, StashBooru attempts exact `name` lookups on the
+authenticated Rule34 tag DAPI (`s=tag&q=index&name=...`), rather than the
+unsupported Gelbooru bulk `names` query. Rule34's published DAPI help
+documents tag lookup by `id` and `limit`, **not** `name`; therefore
+classification through the `name` parameter is not guaranteed. Parsed
+numeric types are used only for exact returned names, and confirmed categories
+are cached for 24 hours.
 
 To avoid overwhelming Rule34, the live fallback makes at most six
 single-name tag requests per search and shares an eight-second lookup
@@ -95,9 +102,12 @@ leave some tags under **Tags — category not supplied**, and new results can
 become classified as the positive cache fills across subsequent searches.
 Valid but unmatched tag records are cached as unknown for five minutes,
 preventing the same absent tags from consuming every subsequent request.
-If Rule34 blocks both the website and tag API, categories remain unknown
-rather than guessed. An installed per-source CSV takes precedence and is
-still available as an optional offline fallback.
+If Rule34 blocks the website or its HTML changes, and the tag API does
+not provide exact typed matches, categories remain unknown rather than
+guessed. This change is covered by provider-shaped regression tests; it
+has **not** been verified end-to-end against the user's live Rule34 account.
+An installed per-source CSV takes precedence and remains an optional
+offline fallback.
 
 The inspector groups and colors tags by category. Click a tag for **Add to search**
 or **Replace search**; these update and submit the query and close the preview.
