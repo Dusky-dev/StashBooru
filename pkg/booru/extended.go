@@ -124,10 +124,11 @@ func (c *Client) searchExtended(ctx context.Context, s Source, query string, pag
 				endpoint += "/posts"
 			}
 		} else if query != "*" && strings.TrimSpace(query) != "" {
-			if s.Engine == "pawchive" {
-				return result, &Error{Code: "unsupported-query", Message: "Pawchive's API does not filter text searches. Use * for recent posts or creator:service:id to browse a creator."}
-			}
-			if len(query) < 3 {
+			// Pawchive's public posts API now accepts server-side q= search,
+			// including terms that are shorter than Kemono's 3-byte minimum.
+			// Do not download unfiltered pages and filter them locally: doing
+			// so gives incorrect page counts and misses older matching posts.
+			if s.Engine != "pawchive" && len(query) < 3 {
 				return result, &Error{Code: "invalid-query", Message: "Archive text searches need at least three bytes; use * for recent posts."}
 			}
 			params.Set("q", query)
