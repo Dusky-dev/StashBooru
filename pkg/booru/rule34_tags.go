@@ -151,7 +151,12 @@ func (c *Client) CategorizeRule34Tags(ctx context.Context, source Source, posts 
 	}
 	// The website's sidebar may provide every category for a post with one
 	// request. Try it before the per-name API to minimize provider traffic.
-	for name, category := range c.rule34SidebarFallback(ctx, source, posts, missing) {
+	// A slow or Cloudflare-challenged public page must not consume the time
+	// reserved for authenticated exact-name tag API requests.
+	sidebarCtx, sidebarCancel := context.WithTimeout(ctx, 2*time.Second)
+	sidebarCategories := c.rule34SidebarFallback(sidebarCtx, source, posts, missing)
+	sidebarCancel()
+	for name, category := range sidebarCategories {
 		categories[name] = category
 	}
 	// Rule34's tag DAPI does not document Gelbooru's bulk "names" filter.
