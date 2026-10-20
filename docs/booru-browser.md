@@ -79,15 +79,21 @@ search; multiple tags open a chooser, then search the chosen tag. Sidebar tags b
 the same way. Disable **Search immediately when clicking tags** in Booru Settings
 to only fill the draft. This preference is saved in this browser. Categories come from the provider or an exact canonical-name match in the
 installed per-source CSV. Prefixes and aliases never guess categories for flat tags.
-For **Rule34.xxx**, StashBooru uses the official authenticated tag DAPI
-(whose tag responses are XML, unlike the JSON post API) to look up exact tag
-categories in bounded batches after retrieving the posts.
-The site supplies artist, copyright/series, character, general and metadata
-types even though its post JSON contains only flat tag strings. The results
-are cached per Rule34 instance; searches still work when tag lookups fail, and
-any unresolved tags remain uncategorized. Installed per-source CSV types take
-precedence. Automatic enrichment checks at most 500 uncategorized tags per
-search page, so very large pages can retain some unknown tags.
+For **Rule34.xxx**, StashBooru first tries to classify flat post tags
+through the authenticated tag API. The site's published API documentation
+does not guarantee the bulk-name filter used for this lookup. If no requested
+categories are returned, StashBooru also reads the typed tag sidebar of up to
+three representative public post pages, matching only exact tag links in the
+`#tag-sidebar` element. This fallback does **not** send account credentials
+to those pages. It recognizes artists, characters, copyrights/series, general
+tags and metadata without guessing categories from names. Local CSV types
+take precedence and verified provider results are cached for 24 hours.
+
+This is best-effort rather than a guarantee for every tag: it stops at three
+post pages or the existing eight-second lookup deadline, and a Cloudflare
+challenge or blocked web page may prevent the fallback. Unresolved tags remain
+under **Tags — category not supplied** instead of being misclassified. For
+complete offline classification, use an up-to-date per-source tag CSV database.
 
 The inspector groups and colors tags by category. Click a tag for **Add to search**
 or **Replace search**; these update and submit the query and close the preview.

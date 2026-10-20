@@ -116,7 +116,7 @@ func TestRule34CategoryLookupLimitsBatches(t *testing.T) {
 		if len(names) > rule34CategoryBatchSize || len(names) == 0 {
 			t.Errorf("unbounded category batch: %d", len(names))
 		}
-		return response(200, `{"tag":[]}`), nil
+		return response(200, `{"tag":[{"name":"`+names[0]+`","type":"0"}]}`), nil
 	})
 	posts := []Post{{Tags: make([]Tag, 800)}}
 	for i := range posts[0].Tags {
@@ -137,7 +137,8 @@ func TestRule34CategoryLookupBoundsNameQueryBytes(t *testing.T) {
 		if len(r.URL.Query().Get("names")) > rule34CategoryNamesMaxBytes {
 			t.Error("unbounded Rule34 tag names query")
 		}
-		return response(200, `{"tag":[]}`), nil
+		names := strings.Fields(r.URL.Query().Get("names"))
+		return response(200, `{"tag":[{"name":"`+names[0]+`","type":"0"}]}`), nil
 	})
 	posts := []Post{{Tags: make([]Tag, 20)}}
 	for i := range posts[0].Tags {

@@ -138,7 +138,11 @@ func (c *Client) CategorizeRule34Tags(ctx context.Context, source Source, posts 
 	}
 
 	categories := make(map[string]string)
-	for start, batches := 0, 0; start < len(pending) && ctx.Err() == nil && batches < rule34CategoryMaxBatches; batches++ {
+	// Leave a few seconds for the sidebar fallback if the tag API itself
+	// stalls. The overall search still retains its eight-second budget.
+	tagCtx, tagCancel := context.WithTimeout(ctx, 3*time.Second)
+	defer tagCancel()
+	for start, batches := 0, 0; start < len(pending) && tagCtx.Err() == nil && batches < rule34CategoryMaxBatches; batches++ {
 		end, nameBytes := start, 0
 		for end < len(pending) && end-start < rule34CategoryBatchSize {
 			length := len(pending[end])
@@ -159,20 +163,37 @@ func (c *Client) CategorizeRule34Tags(ctx context.Context, source Source, posts 
 			"names": {strings.Join(batch, " ")}, "limit": {"100"},
 			"api_key": {source.APIKey}, "user_id": {source.UserID},
 		}
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet,
+		req, err := http.NewRequestWithContext(tagCtx, http.MethodGet,
 			source.rule34APIBase()+"/index.php?"+params.Encode(), nil)
 		if err != nil {
 			break
 		}
 		req.Header.Set("Accept", "application/xml")
 		req.Header.Set("User-Agent", "StashBooru/1.0 (https://github.com/Dusky-dev/StashBooru)")
-		data, err := c.fetchJSON(ctx, source, req, 256<<10)
+		data, err := c.fetchJSON(tagCtx, source, req, 256<<10)
 		if err != nil {
 			break // Do not fail the post search on optional category enrichment.
 		}
-		for name, category := range parseRule34TagCategories(data, names) {
+		found := parseRule34TagCategories(data, names)
+		for name, category := range found {
 			categories[name] = category
 		}
+		// Rule34's published tag API documents ID lookup, not bulk "names"
+		// search. An empty/mismatched first response means more requests with
+		// the same unsupported filter are unlikely to help; save time for the
+		// public post-sidebar fallback instead.
+		if len(found) == 0 {
+			break
+		}
+	}
+	missing := make(map[string]bool)
+	for _, name := range pending {
+		if categories[name] == "" {
+			missing[name] = true
+		}
+	}
+	for name, category := range c.rule34SidebarFallback(ctx, source, posts, missing) {
+		categories[name] = category
 	}
 	if len(categories) == 0 {
 		return
