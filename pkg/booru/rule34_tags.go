@@ -123,6 +123,17 @@ func validRule34TagXML(data []byte) bool {
 // Gelbooru-compatible tag DAPI. Searches and local CSV classification remain
 // usable when the provider refuses tag lookups or the network is unavailable.
 func (c *Client) CategorizeRule34Tags(ctx context.Context, source Source, posts []Post) {
+	c.categorizeRule34Tags(ctx, source, posts, nil)
+}
+
+// CategorizeRule34TagsPrioritized checks tags missing from the installed
+// CSV first. CSV-covered tags remain eligible for live reclassification
+// after those gaps, within the same bounded provider request budget.
+func (c *Client) CategorizeRule34TagsPrioritized(ctx context.Context, source Source, posts []Post, missingFromCSV func(string) bool) {
+	c.categorizeRule34Tags(ctx, source, posts, missingFromCSV)
+}
+
+func (c *Client) categorizeRule34Tags(ctx context.Context, source Source, posts []Post, missingFromCSV func(string) bool) {
 	if !source.isRule34() || ctx.Err() != nil || len(posts) == 0 ||
 		source.APIKey == "" || source.UserID == "" {
 		return
@@ -133,6 +144,7 @@ func (c *Client) CategorizeRule34Tags(ctx context.Context, source Source, posts 
 	defer cancel()
 	instance := source.Instance() + ":"
 	pending := make([]string, 0, rule34CategoryBatchSize)
+	coveredByCSV := make([]string, 0, rule34CategoryBatchSize)
 	seen := make(map[string]bool)
 	now := time.Now()
 	c.rule34CategoryMu.Lock()
@@ -150,13 +162,23 @@ func (c *Client) CategorizeRule34Tags(ctx context.Context, source Source, posts 
 				tag.Category = cached.category
 			} else if !seen[name] && validTagText(tag.Name) && !strings.ContainsAny(name, " \t\r\n") {
 				seen[name] = true
-				if len(pending) < rule34CategoryBatchSize {
+				if missingFromCSV != nil && !missingFromCSV(name) {
+					if len(coveredByCSV) < rule34CategoryBatchSize {
+						coveredByCSV = append(coveredByCSV, name)
+					}
+				} else if len(pending) < rule34CategoryBatchSize {
 					pending = append(pending, name)
 				}
 			}
 		}
 	}
 	c.rule34CategoryMu.Unlock()
+	// Selecting the first 100 tags by provider order could starve new tags
+	// that are absent from CSV when a large post has many older CSV-covered
+	// tags. Fill the reserved slots only after CSV-missing tags are queued.
+	if len(pending) < rule34CategoryBatchSize {
+		pending = append(pending, coveredByCSV[:min(rule34CategoryBatchSize-len(pending), len(coveredByCSV))]...)
+	}
 	if len(pending) == 0 {
 		return
 	}
