@@ -133,7 +133,7 @@ func (c *Client) rule34PostSidebar(ctx context.Context, source Source, id string
 	}
 	req.Header.Set("Accept", "text/html")
 	req.Header.Set("User-Agent", "StashBooru/1.0 (https://github.com/Dusky-dev/StashBooru)")
-	data, err := c.fetchJSON(ctx, source, req, rule34SidebarMaxBytes)
+	data, err := c.fetchHTMLPrefix(ctx, source, req, rule34SidebarMaxBytes)
 	if err != nil {
 		return nil, err
 	}
