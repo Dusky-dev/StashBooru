@@ -39,6 +39,9 @@ silently promoted to verified production features by this documentation update.
 - Accept name/type CSV headers in any column order. Preserve Gelbooru-family
   deprecated type 2 as `unknown`; do not interpret it as copyright. Do not
   change Danbooru or e621 category mappings.
+- Increased the optional Gelbooru-family CSV ceiling to two million unique
+  tags and three million total names/aliases, while retaining the 64 MiB
+  input-size boundary and existing per-tag alias limit.
 - Added input regression tests and installation guidance for the 2025 community
   Rule34 snapshot. This makes per-source **manual** CSV installation usable
   without relying on provider tag metadata, but does not silently download or
