@@ -60,7 +60,19 @@ func ReadTagCSVForEngine(input io.Reader, engine string) (*TagIndex, error) {
 	seen := map[string]int{}
 	aliasesByTag := map[int][]string{}
 	nameCol, typeCol, countCol, aliasCol := 0, 1, 2, 3
+	maxTags, maxKeys := 1_000_000, 2_000_000
+	if engine == "gelbooru" {
+		// Rule34/Gelbooru category exports may exceed a million unique names.
+		// Only raise these caps for explicitly installed Gelbooru-family CSVs;
+		// the 64 MiB input limit and per-tag alias bounds still apply.
+		maxTags, maxKeys = 2_000_000, 3_000_000
+	}
 	numeric := map[string]string{"0": "general", "1": "artist", "3": "copyright", "4": "character", "5": "meta"}
+	if engine == "gelbooru" {
+		// Gelbooru/Rule34's type 2 marks deprecated tags. Keep them in
+		// the index without misclassifying them as copyright.
+		numeric["2"] = "unknown"
+	}
 	if engine == "e621" {
 		numeric = map[string]string{"0": "general", "1": "artist", "2": "contributor", "3": "copyright", "4": "character", "5": "species", "6": "invalid", "7": "meta", "8": "lore"}
 	}
@@ -76,7 +88,19 @@ func ReadTagCSVForEngine(input io.Reader, engine string) (*TagIndex, error) {
 		row++
 		if row == 1 {
 			fields[0] = strings.TrimPrefix(fields[0], "\ufeff")
-			if fields[0] == "name" || fields[0] == "id" || fields[0] == "tag" {
+			// Provider exports may place type/count before name (for example
+			// Rule34's type,count,name,ambiguous,id snapshot). Identify a
+			// header by column names rather than requiring name in column 1.
+			hasName, hasType := false, false
+			for _, field := range fields {
+				switch field {
+				case "name", "tag":
+					hasName = true
+				case "type", "category":
+					hasType = true
+				}
+			}
+			if hasName && hasType {
 				nameCol, typeCol, countCol, aliasCol = -1, -1, -1, -1
 				for col, value := range fields {
 					switch value {
@@ -130,8 +154,8 @@ func ReadTagCSVForEngine(input io.Reader, engine string) (*TagIndex, error) {
 		}
 		id, duplicate := seen[name]
 		if !duplicate {
-			if len(index.tags) >= 1_000_000 {
-				return nil, fmt.Errorf("database exceeds one million unique tags at row %d", row)
+			if len(index.tags) >= maxTags {
+				return nil, fmt.Errorf("database exceeds %d unique tags at row %d", maxTags, row)
 			}
 			id = len(index.tags)
 			index.tags = append(index.tags, Suggestion{Name: name, Category: category, Count: count})
@@ -160,8 +184,8 @@ func ReadTagCSVForEngine(input io.Reader, engine string) (*TagIndex, error) {
 			aliasesByTag[id] = append(aliasesByTag[id], key)
 			index.keys = append(index.keys, tagKey{key, id})
 		}
-		if len(index.keys) > 2_000_000 {
-			return nil, fmt.Errorf("database exceeds two million names/aliases")
+		if len(index.keys) > maxKeys {
+			return nil, fmt.Errorf("database exceeds %d names/aliases", maxKeys)
 		}
 	}
 	if len(index.tags) == 0 {

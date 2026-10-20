@@ -1331,7 +1331,7 @@ export default function BooruBrowser() {
               <BooruIconButton
                 icon={faRobot}
                 label="Hide AI-generated posts on this page"
-                active={!!active.hideAI}
+                crossedOut={!!active.hideAI}
                 aria-pressed={!!active.hideAI}
                 onClick={() =>
                   history.push({

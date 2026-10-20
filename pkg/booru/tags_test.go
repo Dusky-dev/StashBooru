@@ -25,6 +25,51 @@ func TestTagDatabaseFormatsAliasesAndRanking(t *testing.T) {
 		}
 	}
 }
+func TestRule34CSVReorderedHeaderAndDeprecatedType(t *testing.T) {
+	// Rule34 exports type,count,name,ambiguous,id (not name-first tagcomplete).
+	csv := "\ufefftype,count,name,ambiguous,id\n" +
+		"1,100,artist_a,False,1001\n" +
+		"4,90,hero_a,False,1002\n" +
+		"3,80,series_a,False,1003\n" +
+		"0,70,ordinary,False,1004\n" +
+		"5,60,metadata,False,1005\n" +
+		"2,50,old_tag,False,1006\n"
+	index, err := ReadTagCSVForEngine(strings.NewReader(csv), "gelbooru")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if index.Count() != 6 {
+		t.Fatalf("lost Rule34 tags: %d", index.Count())
+	}
+	for name, want := range map[string]string{
+		"artist_a": "artist", "hero_a": "character", "series_a": "copyright",
+		"ordinary": "general", "metadata": "meta", "old_tag": "unknown",
+	} {
+		if got := index.Category(name); got != want {
+			t.Errorf("%s: got category %q, expected %q", name, got, want)
+		}
+	}
+	if got := index.Category("not_in_file"); got != "" {
+		t.Fatalf("invented absent tag category %q", got)
+	}
+}
+
+func TestReorderedCSVHeaderRequiresBothNameAndCategory(t *testing.T) {
+	index, err := ReadTagCSVForEngine(strings.NewReader(
+		"count,type,name,id\n99,1,known_artist,22\n"), "gelbooru")
+	if err != nil || index.Category("known_artist") != "artist" {
+		t.Fatalf("reordered header misread: index=%v err=%v", index, err)
+	}
+	for _, input := range []string{
+		"count,category,id\n10,artist,123\n",
+		"count,name,id\n10,known,123\n",
+	} {
+		if _, err := ReadTagCSVForEngine(strings.NewReader(input), "gelbooru"); err == nil {
+			t.Fatalf("accepted incomplete header %q", input)
+		}
+	}
+}
+
 func TestTagDatabaseRejectsMalformedReplacement(t *testing.T) {
 	for _, csv := range []string{"", "name,post_count\nfoo,3", "foo,0,-1,", "foo,9,1,", "foo,0,nope,", "\"unterminated", "foo,0,1,\"alias,\ncontrol\""} {
 		if _, err := ReadTagCSV(strings.NewReader(csv)); err == nil {
