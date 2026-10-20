@@ -185,7 +185,7 @@ func ReadTagCSVForEngine(input io.Reader, engine string) (*TagIndex, error) {
 			index.keys = append(index.keys, tagKey{key, id})
 		}
 		if len(index.keys) > maxKeys {
-			return nil, fmt.Errorf("database exceeds two million names/aliases")
+			return nil, fmt.Errorf("database exceeds %d names/aliases", maxKeys)
 		}
 	}
 	if len(index.tags) == 0 {
