@@ -155,7 +155,7 @@ func (c *Client) searchExtended(ctx context.Context, s Source, query string, pag
 		// recent feed. When any title/body doesn't visibly match,
 		// compare identities against the unfiltered page before using
 		// the results. We must not silently show unrelated posts.
-		if s.Engine == "pawchive" && query != "*" && strings.TrimSpace(query) != "" && len(rows) > 0 {
+		if s.Engine == "pawchive" && endpoint == "/api/v1/posts" && params.Has("q") && len(rows) > 0 {
 			ignored, err := c.pawchiveQueryIgnored(ctx, s, params, query, rows)
 			if err != nil {
 				return result, err
