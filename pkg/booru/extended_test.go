@@ -50,25 +50,24 @@ func TestPawchiveFullArchiveKeywordSearch(t *testing.T) {
 	}
 }
 
-func TestPawchiveRejectsIgnoredKeywordFiltering(t *testing.T) {
+func TestPawchiveSingleRequestWhenTextIsNotIndexedOnPost(t *testing.T) {
 	s := testSource("pawchive")
 	var urls []string
 	c := testClient(func(r *http.Request) (*http.Response, error) {
 		urls = append(urls, r.URL.RequestURI())
-		if r.URL.Path != "/api/v1/posts" || r.URL.Query().Get("o") != "0" {
-			t.Fatalf("wrong provider search probe: %s", r.URL)
+		if r.URL.Path != "/api/v1/posts" || r.URL.Query().Get("o") != "0" ||
+			r.URL.Query().Get("q") != "meili" {
+			t.Fatalf("wrong Pawchive keyword request: %s", r.URL)
 		}
 		return response(http.StatusOK, `[
-			{"id":"301","user":"42","service":"patreon","title":"Unrelated recent post"},
-			{"id":"302","user":"42","service":"patreon","title":"Meili random recent post"}
+			{"id":"301","user":"42","service":"patreon","title":"Old creator work"},
+			{"id":"302","user":"42","service":"patreon","title":"Another archived post"}
 		]`), nil
 	})
 	result, err := c.Search(context.Background(), s, "meili", 1, 24)
-	var failure *Error
-	if !errors.As(err, &failure) || failure.Code != "unsupported-query" ||
-		len(result.Posts) != 0 || len(urls) != 2 ||
-		!strings.Contains(urls[0], "q=meili") || strings.Contains(urls[1], "q=") {
-		t.Fatalf("ignored Pawchive q gave false search hits: %+v %v urls=%v", result, err, urls)
+	if err != nil || len(result.Posts) != 2 || len(urls) != 1 ||
+		!strings.Contains(result.SearchNotice, "may ignore search filters") {
+		t.Fatalf("Pawchive added a duplicate provider probe or hid the ambiguity: %+v %v urls=%v", result, err, urls)
 	}
 }
 
