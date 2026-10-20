@@ -17,7 +17,6 @@
   be completed after publication; this environment cannot run a local Git
   checkout. Tests are included but not claimed as locally executed.
 
-
 Updated: 2026-10-20
 
 Integration baseline: develop

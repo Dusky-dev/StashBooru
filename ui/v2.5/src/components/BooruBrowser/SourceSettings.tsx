@@ -101,7 +101,14 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
         engine: draft.engine,
         url: draft.url.trim().replace(/\/+$/, ""),
         mediaHosts: hosts.split(/[\s,]+/).filter(Boolean),
-        blacklistTags: [...new Set(blacklist.split(/\r?\n/).map((tag) => tag.trim()).filter(Boolean))],
+        blacklistTags: [
+          ...new Set(
+            blacklist
+              .split(/\r?\n/)
+              .map((tag) => tag.trim())
+              .filter(Boolean)
+          ),
+        ],
         login: clearKey ? "" : draft.login.trim(),
         userID: clearKey ? "" : draft.userID.trim(),
         disabled: draft.disabled,
