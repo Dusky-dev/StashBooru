@@ -118,8 +118,15 @@ CSV, unsupported categories/counts, and exports with excessive invalid
 names still fail. The installed database remains unchanged if an import
 fails. A malformed row is never entered into search or category lookups.
 
-An installed per-source CSV takes precedence. If live Rule34 tags
-still lack categories, StashBooru now **automatically installs a Rule34-only
+For Rule34, live-confirmed categories take precedence over installed
+per-source CSV entries, including when the CSV already has a type for the
+same tag. The CSV fills in unresolved tags, then an optional historical
+auto-catalog covers any remaining gaps. Live lookup is still attempted on
+each search for flat Rule34 tags, subject to its bounded request budget,
+timeouts and caching, even when the installed CSV covers all tags.
+If live lookups fail or are unavailable, installed CSV categories remain
+usable. If live Rule34 tags still lack categories, StashBooru
+**automatically installs a Rule34-only
 tag catalog** in `booru-tags/rule34-auto.csv` under its configuration
 directory, without a manual CSV upload. The catalog is a 46.2 MB public
 snapshot from [deepghs/site_tags on Hugging Face](https://huggingface.co/datasets/deepghs/site_tags/blob/main/rule34.xxx/tags.csv).
@@ -129,8 +136,10 @@ The first affected search starts a bounded, asynchronous install; the
 browser shows a notice, and **search again after installation** to load
 the categories. The file is downloaded once per installation and cached on
 disk. No API credentials, tags, or search queries are sent to Hugging Face.
-If the Stash server cannot access the dataset, the browser shows an
-explicit failure notice and search still works. The download is limited
+If the Stash server cannot access the dataset, search still works with
+live and manually installed categories, without a repeated download-failure
+banner. Automatic installation failures remain silent in the browser.
+The download is limited
 to 64 MiB and redirected only to allowed Hugging Face storage hosts.
 Remove the cached `rule34-auto.csv` and restart the server to fetch a
 replacement snapshot. Your installed source-specific CSV is never
