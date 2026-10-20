@@ -147,22 +147,31 @@ func (rs booruBrowserRoutes) Search(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rs booruBrowserRoutes) categorizeBooruPosts(ctx context.Context, source booru.Source, posts []booru.Post) string {
-	// Rule34 post DAPI returns flat tags. Resolve them live before applying
-	// a local snapshot: otherwise a CSV category would mark the tag as
-	// known, preventing CategorizeRule34Tags from ever querying Rule34.
-	// Typed provider tags are never overwritten.
+	// Load the CSV for lookup prioritization, but DO NOT apply its types
+	// until after live Rule34 classification. Older CSV-known tags must
+	// not starve CSV-missing tags in the live 100-name lookup budget.
+	db, dbErr := rs.tagDatabase(source)
 	if source.IsRule34() {
 		if categorizer, ok := rs.client.(interface {
+			CategorizeRule34TagsPrioritized(context.Context, booru.Source, []booru.Post, func(string) bool)
+		}); ok {
+			categorizer.CategorizeRule34TagsPrioritized(ctx, source, posts, func(name string) bool {
+				if dbErr != nil || db.index == nil {
+					return true
+				}
+				category := db.index.Category(name)
+				return category == "" || category == "unknown"
+			})
+		} else if categorizer, ok := rs.client.(interface {
 			CategorizeRule34Tags(context.Context, booru.Source, []booru.Post)
 		}); ok {
 			categorizer.CategorizeRule34Tags(ctx, source, posts)
 		}
 	}
 
-	// User-installed CSV is the offline fallback for tags still unknown
-	// after live categorization, regardless of whether the live API
-	// was unavailable or simply had no category for an exact name.
-	if db, err := rs.tagDatabase(source); err == nil && db.index != nil {
+	// Confirmed live categories and provider types win. User-installed
+	// CSV fills in only unresolved names, even when live API is blocked.
+	if dbErr == nil && db.index != nil {
 		for i := range posts {
 			for j, tag := range posts[i].Tags {
 				if tag.Category == "unknown" {
