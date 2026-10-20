@@ -305,6 +305,7 @@ try {
     let savedSources = sources.map((source) => ({
       ...source,
       mediaHosts: [],
+      blacklistTags: [],
       login: "",
       userID: source.id === "gelbooru" ? "42" : "",
       disabled: false,
@@ -881,10 +882,17 @@ try {
     await editor.getByLabel("Username", { exact: true }).fill("fixture-user");
     await editor.getByLabel("API key", { exact: true }).fill("fixture-secret");
     await editor
+      .getByLabel("Tag blacklist for this booru", { exact: true })
+      .fill("Unwanted_Tag\nanother tag");
+    await editor
       .getByRole("button", { name: "Save source", exact: true })
       .click();
     await editor.waitFor({ state: "hidden" });
     assert.equal(writes.at(-1).source.apiKey, "fixture-secret");
+    assert.deepEqual(writes.at(-1).source.blacklistTags, [
+      "Unwanted_Tag",
+      "another tag",
+    ]);
     await page
       .getByRole("button", { name: "Edit Danbooru", exact: true })
       .click();
@@ -892,6 +900,13 @@ try {
       await editor.getByLabel("API key", { exact: true }).inputValue(),
       "",
       "saved key returned to input"
+    );
+    assert.equal(
+      await editor
+        .getByLabel("Tag blacklist for this booru", { exact: true })
+        .inputValue(),
+      "Unwanted_Tag\nanother tag",
+      "saved blacklist did not populate editor"
     );
     await editor
       .getByRole("button", { name: "Save source", exact: true })
