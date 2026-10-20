@@ -630,7 +630,9 @@ function SourceResults({
     !favorites &&
     query.trim() &&
     !query.startsWith("creator:")
-      ? remoteURL(`${source.url.replace(/\/$/, "")}/posts?q=${encodeURIComponent(query)}`)
+      ? remoteURL(
+          `${source.url.replace(/\/$/, "")}/posts?q=${encodeURIComponent(query)}`
+        )
       : undefined;
   const [loading, setLoading] = useState(true);
   // Results are not ready for scroll restoration until the provider finishes.
