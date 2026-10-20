@@ -71,7 +71,11 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
   function edit(source: SourceSetting, isNew = false) {
     setDraft({ ...source });
     setHosts(source.mediaHosts.join("\n"));
-    setBlacklist((source.blacklistTags ?? []).map((tag) => tag.replace(/\s+/g, "_")).join(" "));
+    setBlacklist(
+      (source.blacklistTags ?? [])
+        .map((tag) => tag.replace(/\s+/g, "_"))
+        .join(" ")
+    );
     setAPIKey("");
     setClearKey(false);
     setCreating(isNew);
