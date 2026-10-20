@@ -364,6 +364,33 @@ func parseArchivePost(s Source, raw object) (Post, error) {
 	}
 	return p, nil
 }
+// Paheal moved original /_images/ media to a dedicated CDN. Its legacy
+// Shimmie API can still provide the old website URL. Only rewrite an exact
+// Paheal original-media path from the official host (or an absolute path
+// relative to it); never rewrite thumbnails or arbitrary provider URLs.
+func pahealOriginalMediaURL(s Source, raw string) string {
+	if !s.isPaheal() {
+		return raw
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.User != nil ||
+		(u.Scheme != "" && u.Scheme != "http" && u.Scheme != "https") ||
+		(u.Port() != "" && u.Port() != "80" && u.Port() != "443") ||
+		!strings.HasPrefix(u.Path, "/_images/") ||
+		strings.EqualFold(u.Path, "/_images/") {
+		return raw
+	}
+	if host := u.Hostname(); host != "" && !strings.EqualFold(host, "rule34.paheal.net") {
+		return raw
+	}
+	if u.Hostname() == "" && u.Scheme != "" {
+		return raw
+	}
+	u.Scheme = "https"
+	u.Host = "r34i.paheal-cdn.net"
+	return u.String()
+}
+
 func (c *Client) searchShimmie(ctx context.Context, s Source, query string, page, limit int) (Result, error) {
 	result := Result{SourceID: s.ID, Page: page, Limit: limit, Posts: []Post{}, FetchedAt: time.Now().UTC()}
 	// Modern Shimmie (including Paheal) exposes this route without
@@ -386,7 +413,11 @@ func (c *Client) searchShimmie(ctx context.Context, s Source, query string, page
 	for _, row := range envelope.Posts {
 		raw := object{}
 		for _, attr := range row.Attrs {
-			v, err := json.Marshal(attr.Value)
+			value := attr.Value
+			if attr.Name.Local == "file_url" {
+				value = pahealOriginalMediaURL(s, value)
+			}
+			v, err := json.Marshal(value)
 			if err != nil {
 				return result, extendedParseError()
 			}
@@ -398,7 +429,20 @@ func (c *Client) searchShimmie(ctx context.Context, s Source, query string, page
 		}
 		post.PostURL = strings.TrimRight(s.URL, "/") + "/post/view/" + post.ID
 		post.RemoteID = post.ID
-		post.Format = mediaExtension(post.OriginalURL)
+		if ext := mediaExtension(post.OriginalURL); ext != "" {
+			post.Format = ext
+		}
+		// Legacy Paheal find_posts XML commonly has only preview_url and
+		// file_url, not a medium-sized sample. Keep thumbnails for the grid
+		// but show the original in inspection when within its proxy limit.
+		if s.isPaheal() && text(raw["sample_url"]) == "" &&
+			text(raw["large_file_url"]) == "" && post.OriginalURL != "" &&
+			(post.Bytes == 0 || post.Bytes <= 24<<20) {
+			switch post.Format {
+			case "jpg", "jpeg", "png", "webp", "gif", "bmp", "avif", "jxl", "tiff":
+				post.SampleURL = post.OriginalURL
+			}
+		}
 		result.Posts = append(result.Posts, post)
 	}
 	result.Total = envelope.Count
