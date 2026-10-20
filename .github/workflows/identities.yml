@@ -17,7 +17,6 @@ on:
       - 'ui/v2.5/tests/browser/fixtures/identities*'
       - 'ui/v2.5/pnpm-lock.yaml'
 
-
 permissions:
   contents: read
 

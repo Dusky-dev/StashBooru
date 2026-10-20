@@ -83,7 +83,8 @@ Only one scan is queued/running per library. It has a ten-minute timeout and a
 100,000-directory-entry bound. Cancel keeps previously committed observations.
 Repeat scans are idempotent; progress counts observations, including repeated
 identifiers, rather than newly created identities. Status is in memory and resets
-on restart; connections and explicit decisions remain in SQLite. A restart or
+on restart; connections and explicit decisions remain in SQLite. Cancellation
+through Stash’s native job queue is also reflected in scan status. A restart or
 cancel resumes by rescanning, rather than through a persisted file cursor.
 
 The global identity cache holds at most 100,000 entries. Existing connections
@@ -105,7 +106,6 @@ no-store responses.
   with Character disambiguation and explicit optional rejected matches.
 - `POST /identities/update`: observe, link, unlink, create, reject, restore or discard.
   Decisions include identity IDs and current versions; native targets are typed.
-
 - `GET/POST /identities/scan`: current status and idempotent start/cancel through
   the native job queue. Cancellation includes the current job ID.
 

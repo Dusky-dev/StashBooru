@@ -370,6 +370,14 @@ func TestProviderIdentityScanQueuedCancelAndDuplicateStart(t *testing.T) {
 	var duplicate identityScanState
 	require.NoError(t, json.Unmarshal(second, &duplicate))
 	require.Equal(t, state.JobID, duplicate.JobID)
+	jobs.CancelJob(state.JobID)
+	w := httptest.NewRecorder()
+	rs.IdentityScan(w, httptest.NewRequest("GET", "/identities/scan", nil))
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &duplicate))
+	require.Equal(t, "cancelled", duplicate.Status)
+	restarted := feedRequest(t, rs.IdentityScan, map[string]any{"action": "start"}, 200)
+	require.NoError(t, json.Unmarshal(restarted, &state))
+	require.Equal(t, "queued", state.Status)
 	feedRequest(t, rs.IdentityScan, map[string]any{"action": "cancel", "jobID": state.JobID + 1}, 409)
 	feedRequest(t, rs.IdentityScan, map[string]any{"action": "cancel", "jobID": state.JobID}, 200)
 	require.Eventually(t, func() bool {
@@ -380,4 +388,30 @@ func TestProviderIdentityScanQueuedCancelAndDuplicateStart(t *testing.T) {
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &result))
 		return result.Status == "cancelled"
 	}, time.Second, 10*time.Millisecond)
+}
+
+func TestProviderIdentityAccountServiceScopeAndDirectoryLabelPriority(t *testing.T) {
+	rs, db, _ := identityTestRoutes(t)
+	defer db.Close()
+	source := booru.Source{ID: "paw", Name: "Pawchive", Engine: "pawchive", URL: "https://pawchive.pw"}
+	require.NoError(t, rs.repository.WithTxn(context.Background(), func(ctx context.Context) error {
+		rows, err := rs.repository.ProviderIdentity.Observe(ctx, []models.IdentityObservation{
+			identityObservation(source, "artist", "creator:patreon:49481727", "Waligner", "", 2),
+			identityObservation(source, "artist", "creator:fanbox:49481727", "Different account", "", 2),
+		})
+		require.NoError(t, err)
+		require.NotEqual(t, rows[0].ID, rows[1].ID)
+		return nil
+	}))
+	posts := []booru.Post{{Tags: []booru.Tag{{Name: "creator:patreon:49481727", Category: "artist", Label: "patreon/49481727"}}}}
+	rs.captureIdentityPosts(context.Background(), source, posts)
+	require.NoError(t, rs.repository.WithReadTxn(context.Background(), func(ctx context.Context) error {
+		rows, err := rs.repository.ProviderIdentity.List(ctx, models.IdentityFilter{Kind: "artist", Limit: 51})
+		require.NoError(t, err)
+		require.Len(t, rows, 2)
+		require.Equal(t, "Waligner", rows[0].Label)
+		require.Zero(t, rows[0].EntityID, "matching names are never automatic proof")
+		return nil
+	}))
+	require.Equal(t, "patreon/49481727", posts[0].Tags[0].Label)
 }

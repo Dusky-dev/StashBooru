@@ -194,9 +194,10 @@ func (s *ProviderIdentityStore) Decide(ctx context.Context, action string, input
 	if affected != 1 {
 		return nil, models.ErrIdentityConflict
 	}
-	if action == "reject" {
+	switch action {
+	case "reject":
 		_, err = dbWrapper.Exec(ctx, "INSERT OR IGNORE INTO provider_identity_rejections(identity_id,entity_id) VALUES(?,?)", input.ID, input.EntityID)
-	} else if action == "restore" || action == "link" {
+	case "restore", "link":
 		_, err = dbWrapper.Exec(ctx, "DELETE FROM provider_identity_rejections WHERE identity_id=? AND entity_id=?", input.ID, input.EntityID)
 	}
 	if err != nil {

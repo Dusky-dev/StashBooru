@@ -41,12 +41,31 @@ silently promoted to verified production features by this documentation update.
   creator directory labels and cancellable native scan jobs are implemented.
   Canonical display names remain separate from original provider labels/targets.
   Cache recovery retains explicit decisions and capacity never hides existing links.
-- Focused API/SQLite identity and Copyright tests pass; full UI validation
-  (61 unit tests, lint, TypeScript, formatting), production bundle, backend
-  generation and mounted 1440px/390px identity workflows pass locally. The
-  mobile fixture uses a `/stash/` base prefix. Captures were visually inspected.
-  Full Go gates, inherited Booru/Following browser regressions and current Codex
-  Review are in progress. No live provider/production acceptance is claimed.
+- Published implementation `8f7dbfb0dce69e8e5e4fefa19b5bd941cb12eb79` has tree
+  `9620e3182053c9baad50f6dd5f4bdff7373d89b9`, identical to locally tested
+  `3b6f75a54299d2632218b13a0b61a1d74200079f`. Fetch and empty tree diff
+  verified publication. Both original feature and fresh develop ancestry remain.
+- Local checks: `make generate-backend`, `make test`, `make it`, `make lint`
+  (**0 issues**), locked-pnpm `validate` (**61 unit tests**, lint, TypeScript,
+  formatting), production UI bundle, and mounted Identity, Booru and Following
+  desktop/mobile workflows pass. Final hardening was rechecked with focused
+  identity/SQLite tests and lint; UI event/label changes reran validation,
+  production bundling and the mounted identity suite. No generated-code edits.
+- Identity coverage includes transactional rollback after a later target fails,
+  native deletion/rename, category/source/service isolation, label priority,
+  stale decisions, scan receipt bounds/symlinks, cached feed provenance under
+  broken settings, repeated scan/cancel, cache capacity/recovery and native
+  job-queue cancellation. Mounted checks cover linking/batch/create/reject/
+  restore/unlink, source aliases, native profiles, refresh/back, conflict
+  recovery, scan retry and unmount cleanup at 1440px and 390px (`/stash/`).
+- First expanded-head CI passed Identity and Following browser workflows; its
+  generation job found two fixable test-script lint declarations, now corrected.
+  Earlier backend test failure was an old Copyright fixture lacking migration
+  100, now migrated and checked locally. The inherited late-autocomplete browser
+  failure did not reproduce in the full current desktop/mobile suite.
+- Synthetic captures are committed under `docs/screenshots/provider-identities-*`.
+  They were visually inspected. Live provider/production acceptance remains
+  unverified. Final-head CI and Codex Review are in progress; #171 is not merged.
 - See [Provider identities](provider-identities.md) for the contract and limits.
 
 ## Following merge preparation — 2026-10-20

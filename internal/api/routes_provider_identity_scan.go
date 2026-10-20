@@ -33,12 +33,30 @@ var identityScans = struct {
 	states map[string]*identityScanState
 }{states: map[string]*identityScanState{}}
 
+// Called with identityScans locked; GetJob returns a synchronized snapshot.
+// Native job-queue cancellation can bypass the scan's own cancel endpoint.
+func (rs booruBrowserRoutes) reconcileIdentityScan(state *identityScanState) {
+	if state == nil || rs.jobs == nil || (state.Status != "queued" && state.Status != "running") {
+		return
+	}
+	current := rs.jobs.GetJob(state.JobID)
+	switch {
+	case current == nil:
+		state.Status, state.Error = "failed", "Scan is no longer in the job queue. Repeat the scan; saved metadata remains."
+	case current.Status == job.StatusCancelled || current.Status == job.StatusStopping:
+		state.Status, state.Error = "cancelled", "Scan cancelled in the job queue. Saved observations remain."
+	case current.Status == job.StatusFailed:
+		state.Status, state.Error = "failed", "Scan job failed. Repeat the scan; saved metadata remains."
+	}
+}
+
 func (rs booruBrowserRoutes) IdentityScan(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	if r.Method == http.MethodGet {
 		identityScans.Lock()
 		state := identityScanState{Status: "idle"}
 		if current := identityScans.states[rs.configPath]; current != nil {
+			rs.reconcileIdentityScan(current)
 			state = *current
 		}
 		identityScans.Unlock()
@@ -58,6 +76,7 @@ func (rs booruBrowserRoutes) IdentityScan(w http.ResponseWriter, r *http.Request
 	}
 	identityScans.Lock()
 	current := identityScans.states[rs.configPath]
+	rs.reconcileIdentityScan(current)
 	if input.Action == "cancel" {
 		if current == nil || current.JobID != input.JobID || (current.Status != "queued" && current.Status != "running") {
 			identityScans.Unlock()

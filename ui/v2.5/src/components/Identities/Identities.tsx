@@ -153,7 +153,7 @@ export default function Identities() {
     const p = new URLSearchParams(values);
     history.push(`/identities?${p}`);
   }
-  function review(row: ProviderIdentity) {
+  function review(row: ProviderIdentity, scroll = true) {
     setSelected([row.id]);
     setRejected(false);
     setDisambiguation("");
@@ -161,9 +161,13 @@ export default function Identities() {
     const unknownAccount = row.form === "account" && row.label === row.target;
     setQuery(unknownAccount ? "" : readable.slice(0, 80));
     setName(unknownAccount ? "" : readable);
-    requestAnimationFrame(() =>
-      resolution.current?.scrollIntoView({ behavior: "smooth", block: "start" })
-    );
+    if (scroll)
+      requestAnimationFrame(() =>
+        resolution.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        })
+      );
   }
   async function mutate(action: string, entityID = 0) {
     const controller = new AbortController();
@@ -366,12 +370,12 @@ export default function Identities() {
                 <Form.Check
                   type="switch"
                   id={`identity-${row.id}`}
-                  label={`Select ${row.label}`}
+                  label={`Select ${row.entityName || (row.form === "account" && row.label === row.target ? "Unresolved artist account" : identityName(row.label, kind))}`}
                   checked={selected.includes(row.id)}
                   disabled={busy}
                   onChange={(event) => {
                     if (event.currentTarget.checked && selected.length === 0)
-                      review(row);
+                      review(row, false);
                     else
                       setSelected((old) =>
                         event.currentTarget.checked
