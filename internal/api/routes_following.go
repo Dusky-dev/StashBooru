@@ -118,16 +118,20 @@ func (rs booruBrowserRoutes) FollowingFeed(w http.ResponseWriter, r *http.Reques
 			if stored.Post.Title != "" {
 				content.Title = stored.Post.Title
 			}
-			for _, source := range sources {
-				if source.Instance() != row.Instance {
-					continue
+			// Keep the alias used for sync, including its current credentials.
+			// Another alias is a fallback only if the original binding is gone.
+			var source booru.Source
+			for _, candidate := range sources {
+				if candidate.Instance() == row.Instance && (source.ID == "" || candidate.ID == stored.Post.SourceID) {
+					source = candidate
 				}
+			}
+			if source.ID != "" {
 				stored.Post.OriginalURL = stored.Original
 				post := publicBooruPost(source, stored.Post)
 				content.Thumbnail = post.PreviewURL
 				params := url.Values{"source": {source.ID}, "q": {"id:" + row.PostID}, "inspect": {source.ID + ":" + row.PostID}}
 				content.BrowseURL = "/booru?" + params.Encode()
-				break
 			}
 		}
 		items = append(items, followingPostView{FollowingPost: row, Content: content})
@@ -231,6 +235,7 @@ func (rs booruBrowserRoutes) SyncFollow(w http.ResponseWriter, r *http.Request) 
 	posts := make([]models.FollowingSnapshot, 0, len(page.Posts))
 	for i := len(page.Posts) - 1; i >= 0; i-- {
 		post := followingDurablePost(page.Posts[i])
+		post.SourceID = source.ID // Server-selected provenance, not provider input.
 		payload, err := json.Marshal(followingStoredPost{Post: post, Original: post.OriginalURL})
 		if err != nil || len(payload) > models.MaxFollowingPayload {
 			fail(&booru.Error{Code: "metadata-limit", Message: "A post exceeds the 64 KiB feed metadata limit. No page or checkpoint was saved."})

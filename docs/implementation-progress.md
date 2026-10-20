@@ -69,10 +69,33 @@ silently promoted to verified production features by this documentation update.
   reload epochs retain their dependencies with explicit Biome explanations.
   A dedicated Following mounted-browser workflow now runs both viewport/prefix
   fixtures rather than relying on the separate booru browser suite.
-- Verification of these follow-up edits is pending CI. The execution environment
-  became unavailable before the final local UI validate/build/lint pipeline could
-  be retrieved; those local results are unverified. Follow-up edits are published
-  through the connector with a branch-head lease, without touching develop.
+- Follow-up verification SHA:
+  `0ac8c161538b79ad38af91796eff6aee8e55a933`, tree
+  `4f9cefdfb7f53d6a135de1db5f3ffe741f0647dc`.
+  GitHub Actions passed full `make it` (including the signed-payload/restart and
+  URL-policy regressions), backend lint, backend/UI generation, `make validate-ui`
+  (61 tests, JS/CSS lint, TypeScript, formatting), production `make ui`, the
+  dedicated Following desktop/mobile/prefix workflow and the existing booru
+  browser workflow. [Build/test run](https://github.com/Dusky-dev/StashBooru/actions/runs/39456302183) ·
+  [Following fixture run](https://github.com/Dusky-dev/StashBooru/actions/runs/39456302374).
+  Platform builds were still running at this checkpoint. The valid original
+  signed-URL thread was resolved after integration success.
+- Fresh Codex Review on `0ac8c16` identified two further valid recovery issues.
+  Feed projection now prefers the server-stamped snapshot source alias so an
+  anonymous built-in alias cannot replace the credentialed alias used for sync.
+  It still falls back to the same instance if the original alias is removed or
+  rebound, and uses current rotated credentials. Integration coverage exercises
+  preview grants, browser links, credential rotation and unavailable/rebound aliases.
+  Refreshed definitions now detect a stale editor, preserve its draft and pause
+  Save until the user explicitly reloads the current definition. Mounted coverage
+  exercises the conflict and successful subsequent edit at both viewports.
+  Verification of these second follow-up edits is pending CI/re-review.
+- The execution environment became unavailable before the final local UI
+  validate/build/lint pipeline could be retrieved; those local results are
+  unverified. Follow-up verification above is from GitHub Actions. Changes are
+  published through the connector with a branch-head lease, without touching
+  develop. Changed text has no trailing whitespace; all 19 relative links in
+  this ledger resolve in the published tree.
   Screenshots below are the previously inspected synthetic implementation fixture,
   not evidence of live-provider operation.
   [Desktop](screenshots/following-desktop.png) ·

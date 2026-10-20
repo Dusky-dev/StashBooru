@@ -14,8 +14,8 @@ content sources, with booru tag/query follows as its first supported target type
 Twitter and other site adapters can be added to the content browser later; this
 phase does not implement or advertise those integrations.
 
-The next feed design must separate shared follow management, snapshots, seen
-state and checkpoints from each provider's target resolution and pagination.
+The feed separates shared follow management, snapshots, seen state and checkpoints
+from each provider's target resolution and pagination.
 Creator/account follows need a distinct target type and stable provider account
 identity, with handles/display names as changeable presentation data. Add that
 contract through a versioned migration when its adapter ships, preserving current
@@ -39,8 +39,8 @@ two counters:
 - `version` changes on every accepted mutation. Send the current version to
   prevent an older tab from overwriting another change.
 - `queryRevision` changes only when the category or target changes. Renaming,
-  unfollowing and refollowing retain it. A future feed must partition its history
-  by this revision and choose an explicit cursor policy for a changed target.
+  unfollowing and refollowing retain it. The feed partitions history by this
+  revision; a changed target starts a new recent-window baseline.
 
 Targets retain case, punctuation and whitespace exactly. In particular, storing
 a compound query does not drop its series or exclusion terms. Definition storage does
@@ -71,6 +71,11 @@ restart. New uploads during a pending run are picked up by the next check. Each
 follow and query revision has its own cursor. Changing category/target starts a
 new recent window; previous matches remain accessible through **Include History**.
 Unfollow/refollow without a target change retains the existing cursor.
+
+If a follow changes in another tab while you edit, saving pauses after the
+conflict reload. Your draft stays visible. **Reload latest follow** explicitly
+loads the current definition/version before you edit and save again; **Cancel
+edit** discards the draft.
 
 Checks are explicit: opening/reloading the page, filtering, opening a thumbnail
 or visiting a post never polls a provider or starts downloads. **Reload saved
@@ -147,7 +152,10 @@ site configured under the same display ID cannot inherit the follow. Listing
 reports `available`, `source-changed` or `source-unavailable`, plus the current
 `resolvedSource` when an enabled alias matches the exact instance. Restoring the
 original source recovers availability; credentials can rotate without changing
-identity. No account name, API key or cookie is copied to the follow table.
+identity. Saved posts prefer the source alias used for their check, with its
+current credentials, for preview grants and browser links. Another matching
+instance alias is used only if that alias is unavailable or points elsewhere.
+No account name, API key or cookie is copied to the follow table.
 If source settings cannot be read/parsed, the stored list still loads with
 `configuration-error` availability and its current IDs/versions. A client can
 reload and unfollow without repairing settings first.

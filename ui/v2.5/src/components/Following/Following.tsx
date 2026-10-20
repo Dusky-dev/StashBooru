@@ -308,6 +308,14 @@ export default function Following() {
     history.push({ pathname: "/following", search: next.toString() });
   }
 
+  function editFollow(follow: Follow) {
+    setEditing(follow);
+    setName(follow.name);
+    setKind(follow.kind);
+    setTarget(follow.target);
+    setSourceID(follow.resolvedSource ?? follow.source);
+  }
+
   function resetForm() {
     setEditing(undefined);
     setName("");
@@ -316,6 +324,8 @@ export default function Following() {
     setSourceID(sources.find((s) => s.engine === "danbooru")?.id ?? "");
   }
 
+  const currentEdit = follows.find((follow) => follow.id === editing?.id);
+  const editChanged = !!editing && currentEdit?.version !== editing.version;
   const locked = !!busy;
   const next = new URLSearchParams(location.search);
   if (page?.next) next.set("before", page.next);
@@ -391,6 +401,12 @@ export default function Following() {
             }}
           >
             <h3>{editing ? "Edit follow" : "Add follow"}</h3>
+            {editChanged && (
+              <Alert variant="warning">
+                This follow changed elsewhere. Reload its current definition
+                before saving. Your draft is kept until you reload or cancel.
+              </Alert>
+            )}
             <Form.Group controlId="following-source">
               <Form.Label>Source</Form.Label>
               <Form.Control
@@ -462,12 +478,22 @@ export default function Following() {
                 type="submit"
                 disabled={
                   locked ||
+                  editChanged ||
                   !!sourceError ||
                   !sources.some((s) => s.id === sourceID)
                 }
               >
                 {editing ? "Save changes" : "Follow"}
               </Button>
+              {editChanged && currentEdit && (
+                <Button
+                  variant="secondary"
+                  disabled={locked}
+                  onClick={() => editFollow(currentEdit)}
+                >
+                  Reload latest follow
+                </Button>
+              )}
               {editing && (
                 <Button
                   variant="secondary"
@@ -535,13 +561,7 @@ export default function Following() {
                   disabled={
                     locked || follow.status !== "available" || !!listError
                   }
-                  onClick={() => {
-                    setEditing(follow);
-                    setName(follow.name);
-                    setKind(follow.kind);
-                    setTarget(follow.target);
-                    setSourceID(follow.resolvedSource ?? follow.source);
-                  }}
+                  onClick={() => editFollow(follow)}
                 >
                   Edit
                 </Button>

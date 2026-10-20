@@ -9,6 +9,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -411,4 +412,55 @@ func TestFollowingSnapshotsOmitSignedMediaAndTokensAcrossRestart(t *testing.T) {
 	require.Contains(t, rows[1].Content.Thumbnail, "booru-browser/media?key=")
 	require.NoError(t, json.Unmarshal(snapshots[1].Payload, &stored))
 	require.Equal(t, source.URL+"/original-secret.jpg", stored.Original)
+}
+
+func TestFollowingFeedPrefersSnapshotAliasAndCurrentCredentials(t *testing.T) {
+	config.InitializeEmpty()
+	db := sqlite.NewDatabase()
+	require.NoError(t, db.Open(filepath.Join(t.TempDir(), "feed.sqlite")))
+	defer db.Close()
+	rs := booruBrowserRoutes{configPath: t.TempDir(), repository: db.Repository()}
+	builtin := booru.Defaults()[0]
+	alias := builtin
+	alias.ID, alias.Name, alias.Login, alias.APIKey = "private-dan", "Private Danbooru", "account", "first-secret"
+	settings := filepath.Join(rs.configPath, "booru-browser.json")
+	saveAlias := func() {
+		data, err := json.Marshal([]booru.Source{alias})
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(settings, data, 0600))
+	}
+	saveAlias()
+	follow := b06Mutation(t, rs, b06Create(alias, "artist", "artist_a"), 200)
+	rs.client = feedFixtureClient{page: func(_ context.Context, source booru.Source, _, _, _ string) (booru.FollowPage, error) {
+		require.Equal(t, alias.ID, source.ID)
+		posts := feedPosts("10")
+		posts[0].SourceID = builtin.ID // Sync stamps the server-selected alias.
+		return booru.FollowPage{Posts: posts, Cursor: "saved"}, nil
+	}}
+	feedSync(t, rs, follow, 200)
+	assertAlias := func(id, key string) {
+		rows := feedRead(t, rs, "")
+		require.Len(t, rows, 1)
+		browse, err := url.Parse(rows[0].Content.BrowseURL)
+		require.NoError(t, err)
+		require.Equal(t, id, browse.Query().Get("source"))
+		preview, err := url.Parse(rows[0].Content.Thumbnail)
+		require.NoError(t, err)
+		source, _, ok := rs.mediaSnapshot(preview.Query().Get("key"))
+		require.True(t, ok)
+		require.Equal(t, id, source.ID)
+		require.Equal(t, key, source.APIKey)
+		require.NotContains(t, string(rows[0].Payload), "first-secret")
+		require.NotContains(t, string(rows[0].Payload), "rotated-secret")
+	}
+	assertAlias(alias.ID, alias.APIKey)
+	alias.APIKey = "rotated-secret"
+	saveAlias()
+	assertAlias(alias.ID, alias.APIKey)
+	alias.URL = "https://other.example.org"
+	saveAlias()
+	assertAlias(builtin.ID, "")
+	alias = booru.Source{ID: "private-dan", Disabled: true}
+	saveAlias()
+	assertAlias(builtin.ID, "")
 }

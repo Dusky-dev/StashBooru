@@ -141,7 +141,11 @@ try {
           return route.fulfill({ json: follow });
         }
         const follow = follows.find((f) => f.id === body.id);
-        assert.equal(body.version, follow.version);
+        if (body.version !== follow.version)
+          return route.fulfill({
+            status: 409,
+            json: { error: "Follow changed. Reload and retry." },
+          });
         if (body.action === "update") {
           if (body.target !== follow.target || body.kind !== follow.kind) {
             follow.queryRevision++;
@@ -369,6 +373,40 @@ try {
       () => document.querySelectorAll(".following-post").length === 25
     );
     await series.getByRole("button", { name: "Edit", exact: true }).click();
+    follows[1].version++;
+    follows[1].queryRevision++;
+    follows[1].target = "series_remote";
+    await page
+      .getByLabel("Exact provider tag or query", { exact: true })
+      .fill("series_draft");
+    await page
+      .getByRole("button", { name: "Save changes", exact: true })
+      .click();
+    const reloadEdit = page.getByRole("button", {
+      name: "Reload latest follow",
+      exact: true,
+    });
+    await reloadEdit.waitFor();
+    assert.equal(
+      await page
+        .getByLabel("Exact provider tag or query", { exact: true })
+        .inputValue(),
+      "series_draft",
+      "conflict recovery must keep the draft until explicitly reloaded"
+    );
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Save changes", exact: true })
+        .isDisabled(),
+      true
+    );
+    await reloadEdit.click();
+    assert.equal(
+      await page
+        .getByLabel("Exact provider tag or query", { exact: true })
+        .inputValue(),
+      "series_remote"
+    );
     assert.equal(
       await page.getByLabel("Source", { exact: true }).isDisabled(),
       true
