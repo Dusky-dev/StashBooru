@@ -1,16 +1,47 @@
 # StashBooru implementation progress
 
-Updated: 2026-10-19
+Updated: 2026-10-20
 
-Current baseline: `develop` at `e45586347603f2c58ae40d68787cc71a0173a48f`.
-PR #151 is merged. Branch `feat/booru-search-preview-refinement-20261019` improves
-single-site browsing, artist lookup, settings navigation and preview controls.
-Review: [PR #152](https://github.com/Dusky-dev/StashBooru/pull/152). See [browser guide](booru-browser.md) and
-[downloads/autocomplete guide](booru-downloads-autocomplete.md).
+Current baseline: `develop` at `7856430423374f0462fb25e82a206ffbae07ee9c`.
+The owner assigned ongoing Booru browser refinements to another agent and
+prioritized Following before pHash comparison. Branch
+`feat/booru-follow-foundation-20261020` delivers B06a definitions/API; B06 feed/UI
+remain planned. See [Following scope/API](booru-follows.md).
 
 P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
+
+## B06a — durable follow definitions and API — 2026-10-20
+
+- Baseline: clean `develop` at
+  `7856430423374f0462fb25e82a206ffbae07ee9c`; feature branch
+  `feat/booru-follow-foundation-20261020`. Initial open PR inspection found only
+  #162 (Rule34 tag DAPI response repair), with no follow/migration overlap.
+- Scope: library-wide Artist, Character, Copyright/series and exact native-query
+  follow definitions for tag-based booru engines. This is the independent backend
+  phase of B06; it neither changes browser UI nor claims a usable Following feed.
+- Migration 98 adds `booru_follows`. IDs and engine/URL instance identity are
+  immutable. Query targets retain exact case, punctuation and whitespace.
+  Versions reject stale concurrent edits; category/target changes increment
+  a separate query revision. Rename/unfollow/refollow retain that revision.
+- GET/POST `/booru-browser/follows` use existing authentication, JSON bounds,
+  same-origin protection and no-store responses. Duplicate instance/category/
+  target definitions are rejected across source aliases. Current availability
+  resolves an enabled alias without copying credentials or rewriting history.
+  Reusing a source ID for another site cannot retarget follows. Unfollow works
+  even with broken/disabled source settings and retains independent review marks.
+- Bounded to 500 definitions including inactive records. No deletion API,
+  native entity/category verification, query execution/decomposition, remote
+  requests, jobs, automatic downloads, polling, feed cursors or seen-state claims.
+  Pixiv/Pawchive/Kemono creator follows remain deferred to a separate contract.
+- Verification is in progress on this checkpoint: focused definition/API,
+  persistence, conflicting writes, source changes/aliases, capacity, fresh DB
+  and upgrade-from-97 tests, plus existing 95/96 upgrade regressions. Full backend
+  gates and Codex Review will be recorded before handoff. No merge/deployment.
+- Next B06 phase: bounded on-demand feed synchronization, durable snapshots and
+  revision-specific checkpoint/seen semantics, followed by management/feed UI.
+  Native Artist × Copyright selection remains B03 and must preserve constraints.
 
 ## Download queue reclamation — 2026-10-20
 

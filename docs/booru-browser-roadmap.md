@@ -3,7 +3,9 @@
 Status: **B01–B02 plus explicit single-post native downloads and autocomplete fixes
 and the integrated live-completion/sidebar/card workflow are implemented on the
 current task branch; validation is recorded in the progress
-ledger. B03 metadata review, B04 batch/restart automation and B05–B06 remain planned.**
+ledger. B03 metadata review, B04 batch/restart automation and B05 remain planned.
+B06a durable follow definitions/API are implemented on the current feature branch;
+the B06 feed/UI remain planned.**
 Baseline: `develop` `471f304f3456f01b47badbfb9ab578f05e51335c`, reviewed 2026-10-18 UTC.
 This is the next roadmap after the delivered P01–P13 scopes. The owner broadened
 B01 on 2026-10-17 to an engine-based browser inspired by Grabber. B01 searches
@@ -254,6 +256,14 @@ labels; desktop/mobile comparison and cancellation cleanup. Retain current P03
 bounded still-image limits and avoid whole-animation equality claims.
 
 ## B06 — follows and favorite searches
+
+The owner prioritized this package ahead of pHash comparison on 2026-10-20.
+The first independent phase, [B06a definitions/API](booru-follows.md), persists
+exact provider targets with immutable source identity and conflict-safe revisions.
+It does not complete B06 or introduce a feed/browser UI. B06b will add on-demand
+sync, durable snapshots/seen state and the management/feed interface. B03's native
+entity mapping and intersection builder remain deferred; a B06a query is stored
+as supplied rather than being decomposed or broadened.
 
 Follow a provider Artist, Copyright/series, Character or a saved compound query.
 Series follows refer to native Copyright mappings; descendant expansion is an
