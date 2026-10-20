@@ -94,6 +94,13 @@ does not erase it. **Remove seen snapshots** frees the bounded feed cache, retai
 seen decisions, follow cursors, native media and ignore/download history. If a
 different follow rediscovers a pruned post, its seen state is retained.
 
+Saved media locations must be query-free HTTPS URLs without user information or
+fragments. Query-bearing locations (including signed URLs) and ephemeral preview
+grants are omitted rather than storing credentials or stripping a required
+signature. Such posts retain their metadata and **Browse / Download** link, but
+may have no cached preview; open the browser to fetch fresh provider metadata.
+The same rule applies to attachment previews.
+
 The snapshot cache holds at most **5000 posts**, with at most **64 KiB** of metadata
 per post. A page that exceeds capacity or metadata limits fails atomically;
 its posts/matches and cursor do not partially commit. Review and mark items seen,

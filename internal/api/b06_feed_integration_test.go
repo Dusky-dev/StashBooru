@@ -350,3 +350,65 @@ func TestFollowingPaginationMatchBoundsAndCancelledChecks(t *testing.T) {
 		return err
 	}))
 }
+
+func TestFollowingSnapshotsOmitSignedMediaAndTokensAcrossRestart(t *testing.T) {
+	config.InitializeEmpty()
+	path := filepath.Join(t.TempDir(), "feed.sqlite")
+	db := sqlite.NewDatabase()
+	require.NoError(t, db.Open(path))
+	rs := booruBrowserRoutes{configPath: t.TempDir(), repository: db.Repository()}
+	source := booru.Defaults()[0]
+	follow := b06Mutation(t, rs, b06Create(source, "artist", "artist_a"), 200)
+	posts := feedPosts("10", "9")
+	signed := &posts[0]
+	signed.PreviewURL += "?X-Amz-Credential=private-credential&X-Amz-Signature=secret-signature"
+	signed.SampleURL = source.URL + "/sample.jpg?Policy=private-policy&Signature=secret-signature"
+	signed.OriginalURL += "?X-Goog-Credential=private-credential&X-Goog-Signature=secret-signature"
+	signed.MediaKey, signed.DirectPreviewURL, signed.DirectSampleURL = "ephemeral-grant", signed.PreviewURL, signed.SampleURL
+	signed.Attachments = []booru.Post{{
+		ID:               "10",
+		PreviewURL:       signed.PreviewURL,
+		SampleURL:        signed.SampleURL,
+		MediaKey:         "ephemeral-grant",
+		DirectPreviewURL: signed.PreviewURL,
+	}}
+	// The existing transport accepts these provider-approved URLs for transient
+	// use. Following must enforce its stricter durable-storage policy itself.
+	require.Equal(t, signed.PreviewURL, source.ApprovedMediaURL(signed.PreviewURL))
+	rs.client = feedFixtureClient{page: func(context.Context, booru.Source, string, string, string) (booru.FollowPage, error) {
+		return booru.FollowPage{Posts: posts, Cursor: "saved"}, nil
+	}}
+	feedSync(t, rs, follow, 200)
+	require.NoError(t, db.Close())
+	db = sqlite.NewDatabase()
+	require.NoError(t, db.Open(path))
+	defer db.Close()
+	rs.repository = db.Repository()
+	var snapshots []models.FollowingPost
+	require.NoError(t, rs.repository.WithReadTxn(context.Background(), func(ctx context.Context) error {
+		var err error
+		snapshots, err = rs.repository.Following.List(ctx, models.FollowingFilter{Limit: 25})
+		return err
+	}))
+	require.Len(t, snapshots, 2)
+	require.Equal(t, "10", snapshots[0].PostID)
+	for _, forbidden := range []string{"private-credential", "secret-signature", "private-policy", "ephemeral-grant", "X-Amz", "X-Goog"} {
+		require.NotContains(t, string(snapshots[0].Payload), forbidden)
+	}
+	var stored followingStoredPost
+	require.NoError(t, json.Unmarshal(snapshots[0].Payload, &stored))
+	require.Empty(t, stored.Original)
+	require.Empty(t, stored.Post.PreviewURL)
+	require.Empty(t, stored.Post.SampleURL)
+	require.False(t, stored.Post.DownloadAvailable)
+	require.Len(t, stored.Post.Attachments, 1)
+	require.Empty(t, stored.Post.Attachments[0].PreviewURL)
+	rows := feedRead(t, rs, "")
+	require.Empty(t, rows[0].Content.Thumbnail)
+	require.NotEmpty(t, rows[0].Content.URL)
+	require.NotEmpty(t, rows[0].Content.Tags)
+	require.NotEmpty(t, rows[0].Content.BrowseURL, "fresh metadata stays available through the browser")
+	require.Contains(t, rows[1].Content.Thumbnail, "booru-browser/media?key=")
+	require.NoError(t, json.Unmarshal(snapshots[1].Payload, &stored))
+	require.Equal(t, source.URL+"/original-secret.jpg", stored.Original)
+}

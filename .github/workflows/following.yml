@@ -1,0 +1,58 @@
+name: Following feed
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/following.yml'
+      - 'pkg/booru/**'
+      - 'internal/api/routes_following*'
+      - 'internal/api/routes_booru_follows*'
+      - 'internal/api/b06_*'
+      - 'pkg/models/following.go'
+      - 'pkg/sqlite/following.go'
+      - 'pkg/sqlite/migrations/*following*'
+      - 'ui/v2.5/src/components/Following/**'
+      - 'ui/v2.5/tests/browser/following.mjs'
+      - 'ui/v2.5/tests/browser/fixtures/following*'
+      - 'ui/v2.5/pnpm-lock.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        with:
+          package_json_file: ui/v2.5/package.json
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: pnpm
+          cache-dependency-path: ui/v2.5/pnpm-lock.yaml
+      - name: Install locked UI dependencies
+        run: pnpm --dir ui/v2.5 install --frozen-lockfile
+      - name: Prepare UI source dependencies
+        run: |
+          pnpm --dir ui/v2.5 run gqlgen
+          pnpm --dir ui/v2.5 run prepare-builtins
+      - name: Install isolated browser test tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/following-tools" playwright@1.57.0
+          node "$RUNNER_TEMP/following-tools/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Mounted desktop and mobile workflows
+        working-directory: ui/v2.5
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/following-tools/node_modules/playwright/index.mjs
+          STASH_BROWSER_SCREENSHOTS: ${{ runner.temp }}/following-screenshots
+        run: node tests/browser/following.mjs
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: following-feed-screenshots
+          path: ${{ runner.temp }}/following-screenshots
+          if-no-files-found: ignore
+          retention-days: 7

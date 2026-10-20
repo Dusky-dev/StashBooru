@@ -86,9 +86,9 @@ function Snapshot({
   seen: () => void;
   filter: (id: string, historic: boolean) => void;
 }) {
-  const [failed, setFailed] = useState(false);
+  const [failedThumbnail, setFailedThumbnail] = useState<string>();
   const content = item.content;
-  useEffect(() => setFailed(false), [content.thumbnail]);
+  const failed = !!content.thumbnail && failedThumbnail === content.thumbnail;
   return (
     <article className="following-post card" aria-label={content.title}>
       <div className="following-thumbnail">
@@ -97,7 +97,7 @@ function Snapshot({
             src={new URL(content.thumbnail, document.baseURI).toString()}
             alt=""
             loading="lazy"
-            onError={() => setFailed(true)}
+            onError={() => setFailedThumbnail(content.thumbnail)}
           />
         ) : (
           <span>{failed ? "Preview unavailable" : "No cached preview"}</span>
@@ -209,6 +209,7 @@ export default function Following() {
     };
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: epoch explicitly reloads definitions and source settings after mutations.
   useEffect(() => {
     const controller = new AbortController();
     request<Follow[]>("following/follows", controller.signal)
@@ -238,6 +239,7 @@ export default function Following() {
     return () => controller.abort();
   }, [epoch]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: epoch explicitly reloads snapshots and preview grants after mutations.
   useEffect(() => {
     const controller = new AbortController();
     setPage(undefined);

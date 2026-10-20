@@ -35,6 +35,29 @@ type followingPostView struct {
 	Content followingContent `json:"content"`
 }
 
+// followingDurableMediaURL deliberately omits every query-bearing URL: provider
+// signing schemes are open-ended, and removing a signature produces a broken
+// URL. Keep only stable HTTPS locations; the browser can fetch fresh metadata.
+func followingDurableMediaURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" {
+		return ""
+	}
+	return raw
+}
+
+func followingDurablePost(post booru.Post) booru.Post {
+	post.MediaKey, post.DirectPreviewURL, post.DirectSampleURL = "", "", ""
+	post.PreviewURL = followingDurableMediaURL(post.PreviewURL)
+	post.SampleURL = followingDurableMediaURL(post.SampleURL)
+	post.OriginalURL = followingDurableMediaURL(post.OriginalURL)
+	post.DownloadAvailable = post.OriginalURL != ""
+	for i, asset := range post.Attachments {
+		post.Attachments[i] = followingDurablePost(asset)
+	}
+	return post
+}
+
 func (rs booruBrowserRoutes) FollowingFeed(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	if rs.repository.Following == nil {
@@ -207,8 +230,7 @@ func (rs booruBrowserRoutes) SyncFollow(w http.ResponseWriter, r *http.Request) 
 	// from the current source policy when a cached feed page is read.
 	posts := make([]models.FollowingSnapshot, 0, len(page.Posts))
 	for i := len(page.Posts) - 1; i >= 0; i-- {
-		post := page.Posts[i]
-		post.MediaKey, post.DirectPreviewURL, post.DirectSampleURL = "", "", ""
+		post := followingDurablePost(page.Posts[i])
 		payload, err := json.Marshal(followingStoredPost{Post: post, Original: post.OriginalURL})
 		if err != nil || len(payload) > models.MaxFollowingPayload {
 			fail(&booru.Error{Code: "metadata-limit", Message: "A post exceeds the 64 KiB feed metadata limit. No page or checkpoint was saved."})

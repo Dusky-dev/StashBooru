@@ -2,11 +2,14 @@
 
 Updated: 2026-10-20
 
-Current baseline: `develop` at `7856430423374f0462fb25e82a206ffbae07ee9c`.
-The owner assigned ongoing Booru browser refinements to another agent and
-prioritized Following before pHash comparison. Branch
-`feat/booru-follow-foundation-20261020` delivers B06a definitions/API; B06 feed/UI
-remain planned. See [Following scope/API](booru-follows.md).
+Following implementation base: B06a at `22c2cfdc2b3529bbec57092bde599fb57dbd1a52`.
+Fresh `develop` inspection on 2026-10-20:
+`52724d798d52ed4f1a4443466f8394942bf33ffa`; unrelated browser work remains
+with its assigned agent. [PR #163](https://github.com/Dusky-dev/StashBooru/pull/163)
+is still open. [PR #164](https://github.com/Dusky-dev/StashBooru/pull/164),
+branch `feat/following-feed-20261020`, is stacked on it and delivers B06b's
+on-demand feed/UI. Retarget after #163 merges; no merge or deployment authorized.
+See [Following scope/API](booru-follows.md).
 
 P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
@@ -49,7 +52,31 @@ silently promoted to verified production features by this documentation update.
   1440×1000 and 390×844 (also `/stash/` base prefix), including refresh/back,
   failure/retry, explicit seen state, pruning/rediscovery, query revisions,
   pagination, preview failure, cancellation and repeated leave/return cleanup.
-  Layout screenshots were visually inspected. Full gates/review are in progress.
+  Layout screenshots were visually inspected. Full `make test` and `make it`
+  passed on implementation `8ca9c63d4fdbb6cfc11dd5f6eb479e38d8fd0ce7`
+  (local `da3ddef`, identical tree
+  `ca6b566973528f542e97afe0bab50cd2edb07500`). Remote lint passed; CI generation
+  reached 61 passing UI tests but failed on three intentional hook-dependency
+  triggers. Backend integration/build jobs were skipped because generation failed.
+- Codex Review identified signed media URLs in snapshots. This is valid: transient
+  media allowlisting is not a durable credential policy. Following now omits
+  every query-bearing media URL, user information, fragments and ephemeral
+  grants (including nested previews), retaining query-free HTTPS locations.
+  It does not create broken URLs by stripping signatures. Added signed URL unit
+  cases and restart/persisted-payload integration coverage; provider metadata and
+  browser links remain available when cached previews are omitted.
+- CI correction: failed-preview state is keyed to its thumbnail URL; intentional
+  reload epochs retain their dependencies with explicit Biome explanations.
+  A dedicated Following mounted-browser workflow now runs both viewport/prefix
+  fixtures rather than relying on the separate booru browser suite.
+- Verification of these follow-up edits is pending CI. The execution environment
+  became unavailable before the final local UI validate/build/lint pipeline could
+  be retrieved; those local results are unverified. Follow-up edits are published
+  through the connector with a branch-head lease, without touching develop.
+  Screenshots below are the previously inspected synthetic implementation fixture,
+  not evidence of live-provider operation.
+  [Desktop](screenshots/following-desktop.png) ·
+  [Mobile](screenshots/following-mobile.png).
 - Live smoke: one bounded public testbooru request on 2026-10-20 could not reach
   the endpoint before its deadline. No live authentication/provider acceptance is
   claimed; mocked fixture behavior is separate from real provider operation.
