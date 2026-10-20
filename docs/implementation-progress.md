@@ -192,6 +192,34 @@ silently promoted to verified production features by this documentation update.
   this documentation-only clarification. Reviewed docs and `git diff --check`;
   backend verification above remains the implementation checkpoint.
 
+## Paheal original CDN and inspector quality — 2026-10-20
+
+- Baseline: `develop` at `aa1a2b42bf9bfb6b07608350bfbda688e54e91b9`;
+  feature branch `fix/paheal-originals-and-samples-20261020`.
+- Owner reports Paheal previews available only at thumbnail quality and
+  original downloads unavailable. Shimmie's upstream Danbooru API source
+  publishes `file_url` and `preview_url` but no sample URL by default.
+  A reproduced Grabber issue documents Paheal originals moving from
+  `rule34.paheal.net/_images/` to `r34i.paheal-cdn.net/_images/`.
+- Codex review #170 identified three valid issues, addressed on the same
+  branch: the special CDN host must match **exactly** (including for old
+  persisted overrides), old `/_images/` paths need the sharded
+  `/<2hex>/<2hex>/<32hex>` CDN layout, and promoted originals must
+  not become public direct-preview fallbacks if the server proxy rejects them.
+- Normalize legacy website/relative original links only when a full MD5
+  is verified in post metadata or an exact 32-hex filename; preserve
+  unresolvable originals instead of inventing paths. Keep original format
+  from the legacy URL or filename when CDN paths have no extension.
+  Do not rewrite thumbnails or other providers; retain media/redirect bounds.
+- For Paheal posts lacking explicit sample data, use the original as the
+  inspector's sample within the current 24 MiB preview limit. Keep
+  ordinary grid thumbnails and honor explicit samples when present.
+- Added adapter + mocked binary download regressions, including exact
+  host rejection, sharded-path construction, image format retention, and
+  server-only high-resolution preview fallback. CI verifies code paths;
+  live Paheal CDN downloads still require owner-side acceptance.
+  No merge or deployment performed.
+
 ## Rule34 public sidebar wiki-link classification — 2026-10-20
 
 - Baseline: merged `develop` at `fc2651bc4a39022adca438f7524d1ab6008bcdf9`
