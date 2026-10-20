@@ -40,7 +40,7 @@ func rule34CatalogRedirectAllowed(raw string) bool {
 		return false
 	}
 	switch strings.ToLower(u.Hostname()) {
-	case "huggingface.co", "cdn-lfs.hf.co", "cas-bridge.xethub.hf.co":
+	case "huggingface.co", "cdn-lfs.hf.co", "cdn-lfs-us-1.hf.co", "cdn-lfs-eu-1.hf.co", "cas-bridge.xethub.hf.co":
 		return true
 	}
 	return false
