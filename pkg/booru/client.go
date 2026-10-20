@@ -82,17 +82,17 @@ type hostGate struct {
 // host gate apply even when several clients search the same site. No retries
 // occur automatically; a provider's throttle is surfaced for explicit retry.
 type Client struct {
-	http              *http.Client
-	global            chan struct{}
-	hosts             sync.Map
-	interval          time.Duration
-	media             chan struct{}
-	autocompleteMu    sync.Mutex
-	autocompleteCache map[string]autocompleteEntry
-	creatorMu         sync.Mutex
-	creatorCache      map[string]creatorEntry
-	creatorPending    map[string]chan struct{}
-	rule34CategoryMu sync.Mutex
+	http                *http.Client
+	global              chan struct{}
+	hosts               sync.Map
+	interval            time.Duration
+	media               chan struct{}
+	autocompleteMu      sync.Mutex
+	autocompleteCache   map[string]autocompleteEntry
+	creatorMu           sync.Mutex
+	creatorCache        map[string]creatorEntry
+	creatorPending      map[string]chan struct{}
+	rule34CategoryMu    sync.Mutex
 	rule34CategoryCache map[string]rule34CategoryEntry
 }
 
