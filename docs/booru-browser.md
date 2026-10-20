@@ -186,10 +186,21 @@ Downloaded history. No remote follow or automated download is created.
 
 | Source / engine | Search and authentication | Media limitations |
 | --- | --- | --- |
-| Paheal / Shimmie | Native tags through the anonymous Danbooru XML endpoint (`/api/danbooru/find_posts`) | Category information may be unavailable; no live completion endpoint. The legacy `/api/danbooru/find_posts/index.xml` URL can return HTML rather than posts XML, so older StashBooru versions may show an unsupported-data error. |
+| Paheal / Shimmie | Native tags through the anonymous Danbooru XML endpoint (`/api/danbooru/find_posts`) | Category information may be unavailable; no live completion endpoint. Originals on `r34i.paheal-cdn.net` are supported, including for older saved source settings. The inspector uses original resolution if there is no separate provider sample and the original fits the 24 MiB proxy limit; card thumbnails remain small. The legacy `/api/danbooru/find_posts/index.xml` URL can return HTML rather than XML. |
 | Pixiv | OAuth **access token** in source API key; text search, `user:123` for artist works, `id:123` for a work | Static illustration/manga pages selectable in the inspector. Ugoira frame ZIPs are explicitly unavailable. No login/token refresh is implemented; replace expired tokens in Settings. |
 | Pawchive | Artist-name directory search, or `*` for recent posts; anonymous API. Text post search is unsupported because the API ignores it | Optional API key is the `session` cookie value, sent only to `file.pawchive.pw`. Preview-only/deferred/unavailable originals cannot be downloaded. |
 | Kemono | Artist-name directory search, `*` for recent posts, or text of at least three bytes; anonymous API | Supported image/video attachments and ZIP/CBZ previews; documents and unsupported archives are omitted. |
+
+Paheal may return old `rule34.paheal.net/_images/` links in its XML
+even though its originals are served from `r34i.paheal-cdn.net`.
+For the official Paheal source only, StashBooru rewrites those exact legacy
+original paths to the dedicated HTTPS CDN, while leaving thumbnail URLs
+and unrelated sites alone. The original remains separate from the grid
+thumbnail and is used for downloads. Actual availability depends on the
+provider: a deleted original or CDN rejection still produces an error.
+Live Paheal CDN responses were not available to validate in the development
+environment; the reported host migration and upstream Shimmie API source
+inform the compatibility fix.
 
 Custom sources can select these engines and configure their HTTPS API root/CDN
 hosts in Settings. Preset hostnames can change; failures remain visible for retry
