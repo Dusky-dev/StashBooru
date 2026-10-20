@@ -228,10 +228,11 @@ silently promoted to verified production features by this documentation update.
   78,268 with "invalid tag name ... expected 1–256 UTF-8 bytes without
   control characters". Actual file/row contents were not provided; the
   message only proves the validation failed.
-- For **explicitly headered** Rule34/Gelbooru CSV exports, skip at most
-  2,048 rows containing invalid names while preserving all other valid
-  categories. This does not change headerless tagcomplete imports, other
-  booru engines, strict CSV structure/category/count parsing, or the
+- For Rule34/Gelbooru CSV exports, skip at most 2,048 rows containing
+  invalid names while preserving all other valid categories. For headerless
+  positional CSV, at least one prior record must validate successfully
+  before skipping. This does not change other booru engines, strict
+  CSV structure/category/count parsing, or the
   atomic write contract. Reject catalogs with too many invalid names or
   no valid tags. Skip counts are persisted in the parsed index and exposed
   by both upload and settings endpoints.
