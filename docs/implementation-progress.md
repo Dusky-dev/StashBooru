@@ -12,6 +12,25 @@ P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
 
+## Rule34 tag DAPI XML format repair — 2026-10-20
+
+- Baseline: `develop` at `7856430423374f0462fb25e82a206ffbae07ee9c`.
+  Branch: `fix/rule34-tag-dapi-xml-20261020`; owner has merged PR #161.
+- Follow-up to user report that Rule34 tags still appeared under
+  "Tags — category not supplied." Rule34's documented tag DAPI provides XML
+  responses; the preceding implementation requested `json=1` and only parsed
+  JSON, silently discarding the XML and retaining `unknown` tag types.
+- Request standard tag-DAPI XML (no `json=1`), parse bounded XML `tags/tag`
+  attributes and exact allowlisted tag names, retaining JSON compatibility.
+  Reject HTML/malformed XML/DTD; recognize numeric copyright type 2 as well
+  as type 3 for Rule34. Existing optional CSV priority, per-instance cache,
+  timeouts, batching and search-failure fallback remain unchanged.
+- Regression tests now exercise realistic XML, actual HTTP Accept/query shape,
+  exact matching, unsupported structures, and backward-compatible JSON.
+- The provider's authenticated tag API cannot be fully verified without
+  live account credentials. Code validation is tracked on GitHub Actions;
+  this is not a deployment and does not authorize merge.
+
 ## Download queue reclamation — 2026-10-20
 
 - Baseline: `develop` at `dff85613459f83adfb926d8e5013a751196a6f7a`.
