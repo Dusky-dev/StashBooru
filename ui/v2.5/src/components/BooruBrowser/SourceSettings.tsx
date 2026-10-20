@@ -10,7 +10,7 @@ interface SourceSetting {
   engine: string;
   url: string;
   mediaHosts: string[];
-  blacklistTags: string[];
+  blacklistTags?: string[];
   login: string;
   userID: string;
   disabled: boolean;
@@ -71,7 +71,7 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
   function edit(source: SourceSetting, isNew = false) {
     setDraft({ ...source });
     setHosts(source.mediaHosts.join("\n"));
-    setBlacklist(source.blacklistTags.join("\n"));
+    setBlacklist((source.blacklistTags ?? []).join("\n"));
     setAPIKey("");
     setClearKey(false);
     setCreating(isNew);
@@ -194,8 +194,8 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
               <small className="d-block text-muted">
                 {source.engine} · {source.disabled ? "Disabled" : "Enabled"} ·{" "}
                 {source.apiKeyConfigured ? "API key saved" : "No API key"}
-                {source.blacklistTags.length > 0 &&
-                  ` · ${source.blacklistTags.length} blacklisted tags`}
+                {(source.blacklistTags?.length ?? 0) > 0 &&
+                  ` · ${source.blacklistTags?.length} blacklisted tags`}
                 {!source.preset && " · Custom"}
               </small>
             </div>
