@@ -152,7 +152,7 @@ func (c *Client) searchExtended(ctx context.Context, s Source, query string, pag
 			return result, extendedParseError()
 		}
 		// Some Pawchive releases accepted q but returned an unfiltered
-		// recent feed. When no returned title/body contains the term,
+		// recent feed. When any title/body doesn't visibly match,
 		// compare identities against the unfiltered page before using
 		// the results. We must not silently show unrelated posts.
 		if s.Engine == "pawchive" && query != "*" && strings.TrimSpace(query) != "" && len(rows) > 0 {
@@ -189,16 +189,22 @@ func (c *Client) searchExtended(ctx context.Context, s Source, query string, pag
 	return result, nil
 }
 
-// Older Pawchive releases ignored q=. Probe an unfiltered page only
-// if none of the server's returned titles/bodies visibly contains the term.
-// The provider may index other fields, so nonmatching titles alone are not
-// enough to reject a response; equal IDs prove it returned recent posts.
+// Older Pawchive releases ignored q=. Probe an unfiltered page whenever
+// the returned records are not ALL obvious title/body matches: even a random
+// recent post can coincidentally include the query. The provider may index
+// other fields, so a nonmatching title alone is not enough to reject a
+// response. Identical ordered identities prove the filter was ignored.
 func (c *Client) pawchiveQueryIgnored(ctx context.Context, source Source, params url.Values, query string, rows []object) (bool, error) {
 	needle := strings.ToLower(strings.TrimSpace(query))
+	allTextMatches := true
 	for _, row := range rows {
-		if strings.Contains(strings.ToLower(text(row["title"])+" "+text(row["content"])), needle) {
-			return false, nil
+		if !strings.Contains(strings.ToLower(text(row["title"])+" "+text(row["content"])), needle) {
+			allTextMatches = false
+			break
 		}
+	}
+	if allTextMatches {
+		return false, nil
 	}
 	unfiltered := url.Values{"o": {params.Get("o")}}
 	data, err := c.extendedRequest(ctx, source, "/api/v1/posts", unfiltered)
