@@ -74,6 +74,10 @@ func (c *Client) CategorizeRule34Tags(ctx context.Context, source Source, posts 
 		source.APIKey == "" || source.UserID == "" {
 		return
 	}
+	// Category discovery is optional: never hold a post search indefinitely
+	// when a tag API becomes slow or rate-limited.
+	ctx, cancel := context.WithTimeout(ctx, 8*time.Second)
+	defer cancel()
 	instance := source.Instance() + ":"
 	pending := make([]string, 0, rule34CategoryBatchSize*rule34CategoryMaxBatches)
 	seen := make(map[string]bool)
