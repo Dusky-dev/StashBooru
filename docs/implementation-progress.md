@@ -2,15 +2,86 @@
 
 Updated: 2026-10-20
 
-Current baseline: `develop` at `e45586347603f2c58ae40d68787cc71a0173a48f`.
-PR #151 is merged. Branch `feat/booru-search-preview-refinement-20261019` improves
-single-site browsing, artist lookup, settings navigation and preview controls.
-Review: [PR #152](https://github.com/Dusky-dev/StashBooru/pull/152). See [browser guide](booru-browser.md) and
-[downloads/autocomplete guide](booru-downloads-autocomplete.md).
+Integration baseline: `develop` at
+`52724d798d52ed4f1a4443466f8394942bf33ffa`.
+The owner authorized resolving and merging PR #163, then retargeting, verifying
+and merging PR #164 on 2026-10-20. The browser work and its Rule34 fixes are
+retained. This branch integrates B06a definitions/API; B06b feed/UI remains in
+PR #164. See [Following scope/API](booru-follows.md).
 
 P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
+
+## Following merge preparation — 2026-10-20
+
+- Merge current develop into `feat/booru-follow-foundation-20261020`,
+  preserving the existing branch head
+  `22c2cfdc2b3529bbec57092bde599fb57dbd1a52` and develop
+  `52724d798d52ed4f1a4443466f8394942bf33ffa` as parents.
+- The only overlapping file is this progress document. Retain both the B06a
+  records and all Rule34/browser records. Runtime source changes are disjoint;
+  migration 98 remains the next schema after develop's 97.
+- The execution environment is unavailable. Verify the combined tree through
+  GitHub Actions and current Codex Review before merging #163; then integrate
+  the resulting develop into #164 and verify the feed against that base.
+- Owner authorization covers these two PR merges, not production deployment.
+
+## B06a — durable follow definitions and API — 2026-10-20
+
+- Baseline: clean `develop` at
+  `7856430423374f0462fb25e82a206ffbae07ee9c`; feature branch
+  `feat/booru-follow-foundation-20261020`. Initial open PR inspection found only
+  #162 (Rule34 tag DAPI response repair), with no follow/migration overlap.
+- Scope: library-wide Artist, Character, Copyright/series and exact native-query
+  follow definitions for tag-based booru engines. This is the independent backend
+  phase of B06; it neither changes browser UI nor claims a usable Following feed.
+- Migration 98 adds `booru_follows`. IDs and engine/URL instance identity are
+  immutable. Query targets retain exact case, punctuation and whitespace.
+  Versions reject stale concurrent edits; category/target changes increment
+  a separate query revision. Rename/unfollow/refollow retain that revision.
+- GET/POST `/booru-browser/follows` use existing authentication, JSON bounds,
+  same-origin protection and no-store responses. Duplicate instance/category/
+  target definitions are rejected across source aliases. Current availability
+  resolves an enabled alias without copying credentials or rewriting history.
+  Reusing a source ID for another site cannot retarget follows. Unfollow works
+  even with broken/disabled source settings and retains independent review marks.
+- Bounded to 500 definitions including inactive records. No deletion API,
+  native entity/category verification, query execution/decomposition, remote
+  requests, jobs, automatic downloads, polling, feed cursors or seen-state claims.
+  Pixiv/Pawchive/Kemono creator follows remain deferred to a separate contract.
+- Codex Review on published `45f2755ce5797bdff6adc59c1d67c02eb39ad97e`
+  found a valid recovery gap: the list endpoint also needs to work with broken
+  source settings so a reloaded client can recover IDs/versions for unfollow.
+  It now reads stored definitions first and reports `configuration-error`
+  availability; malformed/unreadable settings have integration regressions.
+- Implementation verification: local
+  `a871adddcbfd89c8ae4cdb147458b10ea02cc601` / published
+  `ecb8130a30743e6c10e76f03a73be90bc4b38c35`, identical tree
+  `d9f81c305e201ee84653771c48dd4759564e2514`.
+  [PR #163](https://github.com/Dusky-dev/StashBooru/pull/163).
+- Passed `make generate-backend`, focused follow/model/API/schema tests (including
+  95/96/97 upgrades), full `make test`, full `make it`, and `make lint` (**0
+  issues**). The fresh checkout required `make touch-ui` / backend generation
+  before API compilation; no generated files were edited by hand. Also passed
+  40 relative documentation links and `git diff --check`. UI source is unchanged;
+  no mounted UI/feed or live provider acceptance is claimed by this API phase.
+- Codex Review's recovery finding is fixed and resolved. Re-review completed on
+  `ecb8130a30743e6c10e76f03a73be90bc4b38c35` with no findings/unresolved
+  findings. CI on that implementation passed generation, lint, tests and six
+  platform builds at recording time; macOS was still running, with no failures.
+  This following documentation-only checkpoint records the verified implementation;
+  its new CI run is separate. No merge/deployment.
+- Next B06 phase: bounded on-demand feed synchronization, durable snapshots and
+  revision-specific checkpoint/seen semantics, followed by management/feed UI.
+  Native Artist × Copyright selection remains B03 and must preserve constraints.
+- Owner scope clarification after the B06a checkpoint: Following extends to
+  Twitter and similar creator/account sites. Updated the guide/roadmap to require
+  a shared feed contract with provider adapters, stable account IDs, a distinct
+  future account target kind, optional tag metadata and preserving migrations.
+  Those site adapters remain later work; no runtime/API capability was added by
+  this documentation-only clarification. Reviewed docs and `git diff --check`;
+  backend verification above remains the implementation checkpoint.
 
 ## Rule34 public sidebar wiki-link classification — 2026-10-20
 
