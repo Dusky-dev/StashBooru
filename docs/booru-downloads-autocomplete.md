@@ -178,13 +178,26 @@ is available from DraconicDragon. It is dated June 2026, uses a post threshold o
 20 and has no aliases. Select Gelbooru before installing it. This is a community
 snapshot, not an automatically refreshed official database.
 
+For **Rule34.xxx tag categories**, a community
+[Rule34 tag CSV snapshot](https://huggingface.co/datasets/deepghs/site_tags/blob/main/rule34.xxx/tags.csv)
+is available from DeepGHS (`type,count,name,ambiguous,id`, last synced
+August 2025). Download the CSV, choose **Rule34.xxx** in Tag database source,
+then **Upload tag database** (or load its absolute path on the server).
+This imports the actual Rule34 category assignments and bypasses unreliable
+live type lookups, including on providers that reject post-page requests.
+It is not official or automatically updated; newly introduced tags may
+remain under **Tags — category not supplied**. Deprecated type 2 is retained
+as unknown, not guessed as copyright. Installation must complete successfully
+before categories appear in browser search results.
+
 | Format | Columns |
 | --- | --- |
 | [tagcomplete CSV](https://github.com/DominikDoom/a1111-sd-webui-tagcomplete#csv-tag-data) | `name,type,count,"alias_one,alias_two"`, without a header; count/aliases optional. |
-| Danbooru-style CSV export | Header containing `name` and `category`/`type`; optional `post_count`/`count`, `aliases`, and other columns such as `id`. |
+| Danbooru-style CSV export | Header containing `name` and `category`/`type` in **any column order**; optional `post_count`/`count`, `aliases`, and other columns such as `id`. |
 
 Numeric categories follow the selected engine. Danbooru-compatible data uses
-0 general, 1 Artist, 3 Copyright, 4 Character, 5 meta. e621 uses its own mapping:
+0 general, 1 Artist, 3 Copyright, 4 Character, 5 meta. Gelbooru/Rule34
+additionally accepts deprecated type 2 as unknown. e621 uses its own mapping:
 2 contributor, 5 species, 6 invalid, 7 meta, 8 lore, with 0/1/3/4 unchanged.
 Category names including `unknown`, `circle` and `faults` are accepted for custom
 schemes. Limits: 64 MiB, one million tags, two million names/aliases, 32 aliases
