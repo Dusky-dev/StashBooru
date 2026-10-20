@@ -167,6 +167,43 @@ func TestRule34SidebarResolvedTagsAvoidRedundantLiveLookups(t *testing.T) {
 	}
 }
 
+func TestRule34SidebarAllowsLongCommentsAfterTagList(t *testing.T) {
+	source := Source{ID: "rule34", Name: "Rule34", Engine: "gelbooru",
+		URL: "https://rule34.xxx", APIKey: "test-secret", UserID: "42"}
+	body := `<html><body><ul id="tag-sidebar">
+		<li class="tag-type-artist"><a href="/index.php?page=wiki&amp;s=list&amp;search=creator_name">?</a></li>
+		</ul>` + strings.Repeat("<p>long post comment</p>", rule34SidebarMaxBytes/10)
+	if len(body) <= rule34SidebarMaxBytes {
+		t.Fatal("test page must exceed the HTML prefix limit")
+	}
+	client := testClient(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Host != "rule34.xxx" {
+			t.Error("HTML should be requested from the public Rule34 host")
+		}
+		return response(200, body), nil
+	})
+	got, err := client.rule34PostSidebar(context.Background(), source, "1",
+		map[string]bool{"creator_name": true})
+	if err != nil || got["creator_name"] != "artist" {
+		t.Fatalf("large post lost early sidebar category: %v (%v)", got, err)
+	}
+}
+
+func TestRule34HTMLPrefixDoesNotRelaxJSONSizeLimit(t *testing.T) {
+	source := Source{ID: "rule34", Name: "Rule34", Engine: "gelbooru", URL: "https://rule34.xxx"}
+	client := testClient(func(*http.Request) (*http.Response, error) {
+		return response(200, strings.Repeat("x", 1024)), nil
+	})
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet,
+		"https://api.rule34.xxx/index.php", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.fetchJSON(context.Background(), source, req, 512); err == nil {
+		t.Fatal("API JSON must still reject oversized responses")
+	}
+}
+
 func TestRule34SidebarBlockedFailsOpenAndStopsRetrying(t *testing.T) {
 	source := Source{ID: "rule34", Name: "Rule34", Engine: "gelbooru",
 		URL: "https://rule34.xxx", APIKey: "secret", UserID: "42"}
