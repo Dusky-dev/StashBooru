@@ -13,9 +13,9 @@ import (
 // A CSV entry used to mark the tag as known before this live categorizer
 // ran, so a newly retyped tag was never checked against the live source.
 type rule34CategorySpyClient struct {
-	calls             int
-	sawUnknownBefore  bool
-	liveCategories    map[string]string
+	calls            int
+	sawUnknownBefore bool
+	liveCategories   map[string]string
 }
 
 func (c *rule34CategorySpyClient) Search(context.Context, booru.Source, string, int, int) (booru.Result, error) {
