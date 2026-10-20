@@ -434,7 +434,11 @@ func (c *Client) searchShimmie(ctx context.Context, s Source, query string, page
 		original := text(raw["file_url"])
 		originalFormat := mediaExtension(original)
 		if rewritten := pahealOriginalMediaURL(s, original, text(raw["md5"])); rewritten != original {
-			raw["file_url"], _ = json.Marshal(rewritten)
+			encoded, err := json.Marshal(rewritten)
+			if err != nil {
+				return result, extendedParseError()
+			}
+			raw["file_url"] = encoded
 		}
 		post, err := parsePost(s, raw)
 		if err != nil {
