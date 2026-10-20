@@ -236,10 +236,17 @@ silently promoted to verified production features by this documentation update.
 - Remove the repeated automatic catalog failure alert from the browser.
   The optional installation continues as before, but a blocked mirror
   no longer interrupts the UI. A first-install loading notice remains.
-- Add API-level regression tests showing a live category beats a
-  conflicting CSV category, CSV backfills unavailable live entries,
-  pretyped provider categories remain stable, live calls are attempted
-  on repeat searches, and unrelated providers do not make Rule34
+- Codex review caught the 100-name live lookup budget starvation case:
+  if the CSV covers more than 100 early tags, a later CSV-missing tag
+  could be excluded before lookup. The API now supplies an exact-name
+  CSV-missing priority predicate to the Rule34 client; it reserves live
+  request slots for CSV-missing tags first, then tries CSV-covered tags.
+  Calls without CSV priorities retain the original behavior.
+- Add API and booru-layer regression tests showing a live category
+  beats a conflicting CSV category, CSV backfills unavailable live
+  entries, CSV-missing tags stay ahead of 100+ covered tags, pretyped
+  provider categories remain stable, live calls are attempted on
+  repeat searches, and unrelated providers do not make Rule34
   lookups. No schema changes.
 - Verify through CI; live Rule34 API traffic requires user-side testing
   after merge. Do not merge or deploy without owner approval.
