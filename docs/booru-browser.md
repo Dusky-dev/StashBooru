@@ -112,8 +112,8 @@ For headerless CSV files, at least one earlier record must validate the
 positional columns before any bad names can be skipped.
 StashBooru skips at most 2,048 of **those name records only** while importing
 the remaining valid tags, and shows a skipped-row count in the database
-settings and successful upload message. Headerless tagcomplete CSVs and all
-other providers continue to reject malformed names; structurally invalid
+settings and successful upload message. Other providers still
+reject malformed names; structurally invalid
 CSV, unsupported categories/counts, and exports with excessive invalid
 names still fail. The installed database remains unchanged if an import
 fails. A malformed row is never entered into search or category lookups.
