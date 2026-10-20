@@ -2772,8 +2772,8 @@ try {
       if (name === "Pawchive")
         assert.equal(
           new URL(page.url()).searchParams.get("q"),
-          "",
-          "Pawchive must start on recent posts instead of an unsupported text query"
+          "artist_a",
+          "Pawchive must preserve ordinary post search text when switching sources"
         );
       await page.getByLabel("Artist name", { exact: true }).fill("Artist Name");
       await page.getByRole("button", { name: /Artist Name fanbox/ }).click();
