@@ -1,5 +1,35 @@
 # StashBooru implementation progress
 
+## Pawchive 429 rate limit — reduce request pressure — 2026-10-21
+
+- Baseline: `develop` at `5f8f98ea7d14d6c430b72e92a01521cd37ff87fa`;
+  branch `fix/pawchive-rate-limit-request-efficiency-20261021`.
+- Owner reported `Provider rate limit reached. Wait before retrying.` on
+  Pawchive post search after merged PR #177.
+- Code audit: for every Pawchive keyword result page, StashBooru
+  could issue an additional `/api/v1/posts?o=...` request to check
+  whether the API ignored `q=`. This could double request volume;
+  on queries matching artist metadata (not post titles), it often did.
+- Remove the active probe. A single Pawchive `q=` request per required
+  50-post provider page is the normal path. Since some older Pawchive
+  APIs may ignore `q=`, flag ambiguous pages lacking visible title/body
+  matches instead of claiming that their filtering was verified.
+- Brief in-memory cache of successful public Pawchive keyword pages,
+  coalescing concurrent duplicate reads, with 90s TTL, 32-entry limit
+  and 1 MiB/entry cap. Do not cache errors or user-specific creator data.
+- For a Pawchive 429 without `Retry-After`, honor a 60-second host
+  cooldown (not a bypass/retry). The API response passes `retryAfter`
+  to the browser. Link the same search on Pawchive's own site from the
+  error card so users can continue when API access is blocked.
+- Regression tests cover single outbound request per query block,
+  ambiguous-index notice, cache hit, concurrent coalescing, distinct
+  offset pages, 429 with no retry header, failure non-caching and
+  no caching of unfiltered browsing.
+- An upstream 429 on the first request is controlled by Pawchive and
+  cannot be removed by this patch; respect any provider Retry-After.
+  Live provider acceptance remains user-side. CI pending.
+
+
 ## Pawchive full post search correction — 2026-10-21
 
 - Baseline: `develop` at `38dcf44039f13b358e4a110decd053fcd478169e`;
