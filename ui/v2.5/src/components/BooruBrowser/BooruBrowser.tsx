@@ -727,6 +727,9 @@ function SourceResults({
       )}
       {result && (
         <>
+          {result.searchNotice && (
+            <Alert variant="info">{result.searchNotice}</Alert>
+          )}
           {source.id === "rule34" && result.categoryStatus === "loading" && (
             <Alert variant="info">
               Rule34 tag categories are being installed automatically from a
