@@ -1624,10 +1624,14 @@ try {
       exact: true,
     });
     assert.equal(await hideAIGenerated.getAttribute("aria-pressed"), "false");
+    assert.equal(await hideAIGenerated.locator('svg[data-icon="slash"]').count(), 0);
+    assert.ok(!(await hideAIGenerated.getAttribute("class")).includes("active"));
     const requestsBeforeAI = requests.length;
     await hideAIGenerated.click();
     await page.waitForURL((url) => url.searchParams.get("ai") === "hide");
     assert.equal(await hideAIGenerated.getAttribute("aria-pressed"), "true");
+    assert.equal(await hideAIGenerated.locator('svg[data-icon="slash"]').count(), 1);
+    assert.ok(!(await hideAIGenerated.getAttribute("class")).includes("active"));
     await dan
       .getByText("Showing 9 of 12 posts on this loaded page.", {
         exact: false,
@@ -1646,10 +1650,12 @@ try {
       })
       .waitFor();
     assert.equal(await hideAIGenerated.getAttribute("aria-pressed"), "true");
+    assert.equal(await hideAIGenerated.locator('svg[data-icon="slash"]').count(), 1);
     await hideAIGenerated.click();
     await page.waitForURL((url) => !url.searchParams.has("ai"));
     await dan.locator(".booru-post").nth(11).waitFor();
     assert.equal(await hideAIGenerated.getAttribute("aria-pressed"), "false");
+    assert.equal(await hideAIGenerated.locator('svg[data-icon="slash"]').count(), 0);
     const searchesBeforeMedia = requests.length;
     await pickFilter("Media on this page", "videos");
     await dan
