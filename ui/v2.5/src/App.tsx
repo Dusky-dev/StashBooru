@@ -82,6 +82,9 @@ const Media = lazyComponent(() => import("./components/Media/Media"));
 const BooruBrowser = lazyComponent(
   () => import("./components/BooruBrowser/BooruBrowser")
 );
+const Following = lazyComponent(
+  () => import("./components/Following/Following")
+);
 const Setup = lazyComponent(() => import("./components/Setup/Setup"));
 const Migrate = lazyComponent(() => import("./components/Setup/Migrate"));
 
@@ -263,6 +266,7 @@ export const App: React.FC = () => {
             <Route exact path="/" component={FrontPage} />
             <Route path="/scenes" component={Scenes} />
             <Route path="/images" component={Images} />
+            <Route exact path="/following" component={Following} />
             <Route
               exact
               path={["/booru", "/booru/settings"]}

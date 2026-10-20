@@ -12,6 +12,48 @@ P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
 
+## B06b — on-demand Following feed and management page — 2026-10-20
+
+- Branch `feat/following-feed-20261020`, based on B06a's published
+  `22c2cfdc2b3529bbec57092bde599fb57dbd1a52` / local
+  `bcd1029` (identical tree `7d856e206d3d8ce2906a7bdef2f1e46ffc76a7cb`).
+  B06a PR #163 is still open, so this phase is stacked on its feature branch.
+  Initial open-PR inspection found no competing follow-feed work. Browser UI is
+  assigned to another agent; this phase adds a separate Following page.
+- Migration 99 adds provider-independent opaque cursors/payloads, bounded saved
+  post snapshots, per-follow/revision match provenance and explicit seen decisions.
+  Same instance/post identity merges multiple follows. Seen tombstones survive
+  pruning; native media and ignored/downloaded history remain independent.
+- Initial fetch adapter: Danbooru-compatible sequential ID pages, using the exact
+  predicate. First success is an explicit recent-50 baseline; later runs freeze
+  an upper ID and exhaust newer IDs one page/request, resuming after failures or
+  restart. Query changes start a new recent window and keep older matches in
+  History. No timestamp-only cursor, moving page offsets or automatic polling.
+- Snapshot/match/cursor writes commit together, guarded by follow and checkpoint
+  versions. Failed pages do not advance the resume cursor; guarded sanitized
+  diagnostics persist across reload. Source/credential changes and stale requests
+  discard fetched results. Cancellation remains bounded by the existing client.
+- Cache: 5000 posts, 64 KiB metadata/post and 50 displayed match explanations with
+  truncation indicated. Explicit seen/unseen decisions are versioned. Removing
+  seen snapshots retains decisions, cursors, native files and review history.
+- Adds `/following/follows` aliases, feed/sync/seen/prune endpoints, a utility-nav
+  Following entry and independent themed management/feed page. Filters/paging
+  are URL state; preview grants are re-created from current source policy.
+  Mobile shows the feed first. Browse/Download reuses the existing post browser.
+- Supported sync is deliberately Danbooru-only in this phase. Other stored booru
+  definitions remain visible with checks disabled. Account/profile targets for
+  Twitter and similar sites retain their broader planned contract; native
+  mappings, intersection selection, polling and edit/deletion resync are deferred.
+- Focused provider/API/storage/migration regressions passed, including current
+  95/96/97 upgrade fixtures and upgrade from 98. Mounted fixture workflows passed
+  1440×1000 and 390×844 (also `/stash/` base prefix), including refresh/back,
+  failure/retry, explicit seen state, pruning/rediscovery, query revisions,
+  pagination, preview failure, cancellation and repeated leave/return cleanup.
+  Layout screenshots were visually inspected. Full gates/review are in progress.
+- Live smoke: one bounded public testbooru request on 2026-10-20 could not reach
+  the endpoint before its deadline. No live authentication/provider acceptance is
+  claimed; mocked fixture behavior is separate from real provider operation.
+
 ## B06a — durable follow definitions and API — 2026-10-20
 
 - Baseline: clean `develop` at

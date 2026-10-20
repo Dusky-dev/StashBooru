@@ -323,6 +323,16 @@ export const MainNavbar: React.FC = () => {
         <NavLink
           className="nav-utility"
           exact
+          to="/following"
+          onClick={handleDismiss}
+          title="Following"
+        >
+          <Icon icon={faHeart} />
+          <span className="ml-1 d-none d-sm-inline">Following</span>
+        </NavLink>
+        <NavLink
+          className="nav-utility"
+          exact
           to="/booru"
           onClick={handleDismiss}
           title={intl.formatMessage({
