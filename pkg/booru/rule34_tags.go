@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/xml"
 	"net/http"
 	"net/url"
 	"strings"
@@ -14,16 +15,30 @@ import (
 // publishes category/type metadata. Resolve only exact provider tag names;
 // do not guess categories from suffixes or apply categories from other sites.
 const (
-	rule34CategoryBatchSize     = 100
-	rule34CategoryNamesMaxBytes = 3072
-	rule34CategoryMaxBatches    = 5
-	rule34CategoryMaxCached     = 8192
-	rule34CategoryCacheExpiry   = 24 * time.Hour
+	rule34CategoryBatchSize       = 100
+	rule34CategoryMaxExactLookups = 6
+	rule34CategoryMaxCached       = 8192
+	rule34CategoryCacheExpiry     = 24 * time.Hour
+	rule34CategoryMissExpiry      = 5 * time.Minute
 )
 
 type rule34CategoryEntry struct {
 	category string
 	expires  time.Time
+}
+
+// The site's tag DAPI normally returns XML even when the post DAPI supports
+// json=1. Keep JSON support for compatible responses, but never infer a tag's
+// category from its spelling or from unrelated API results.
+type rule34TagXMLRow struct {
+	Name     string `xml:"name,attr"`
+	Type     string `xml:"type,attr"`
+	Category string `xml:"category,attr"`
+}
+
+type rule34TagXMLResponse struct {
+	XMLName xml.Name          `xml:"tags"`
+	Tags    []rule34TagXMLRow `xml:"tag"`
 }
 
 func parseRule34TagCategories(data []byte, requested map[string]bool) map[string]string {
@@ -32,6 +47,41 @@ func parseRule34TagCategories(data []byte, requested map[string]bool) map[string
 	if len(data) == 0 {
 		return result
 	}
+	add := func(name, rawType, rawCategory string) {
+		key := strings.ToLower(name)
+		if !requested[key] || !validTagText(name) || strings.ContainsAny(name, " \t\r\n") {
+			return
+		}
+		if rawType == "" {
+			rawType = rawCategory
+		}
+		if category := suggestionCategory("gelbooru", rawType, name); category != "unknown" {
+			result[key] = category
+		}
+	}
+	if data[0] == '<' {
+		// Never accept DTDs or declarations in untrusted provider documents.
+		if bytes.Contains(bytes.ToLower(data), []byte("<!doctype")) {
+			return result
+		}
+		var response rule34TagXMLResponse
+		if xml.Unmarshal(data, &response) == nil && len(response.Tags) <= rule34CategoryBatchSize {
+			for _, row := range response.Tags {
+				add(row.Name, row.Type, row.Category)
+			}
+			return result
+		}
+		// Singular `name` lookups can respond with a single <tag /> root.
+		var row rule34TagXMLRow
+		if xml.Unmarshal(data, &row) == nil {
+			var root struct{ XMLName xml.Name }
+			if xml.Unmarshal(data, &root) == nil && root.XMLName.Local == "tag" {
+				add(row.Name, row.Type, row.Category)
+			}
+		}
+		return result
+	}
+
 	var rows []object
 	if data[0] == '[' {
 		if json.Unmarshal(data, &rows) != nil {
@@ -48,22 +98,25 @@ func parseRule34TagCategories(data []byte, requested map[string]bool) map[string
 		return result
 	}
 	for _, row := range rows {
-		name := text(row["name"])
-		key := strings.ToLower(name)
-		if !requested[key] || !validTagText(name) || strings.ContainsAny(name, " \t\r\n") {
-			continue
-		}
-		rawCategory := text(row["type"])
-		if rawCategory == "" {
-			rawCategory = text(row["category"])
-		}
-		category := suggestionCategory("gelbooru", rawCategory, name)
-		if category == "unknown" {
-			continue
-		}
-		result[key] = category
+		add(text(row["name"]), text(row["type"]), text(row["category"]))
 	}
 	return result
+}
+
+// Avoid retrying unchanged/missing tag records ahead of other tags on each
+// search. Only cache negative results for structurally valid tag XML, never
+// for provider errors, site challenges, HTML, or unrelated JSON.
+func validRule34TagXML(data []byte) bool {
+	data = bytes.TrimSpace(data)
+	if len(data) == 0 || data[0] != '<' ||
+		bytes.Contains(bytes.ToLower(data), []byte("<!doctype")) {
+		return false
+	}
+	var root struct{ XMLName xml.Name }
+	if xml.Unmarshal(data, &root) != nil {
+		return false
+	}
+	return root.XMLName.Local == "tags" || root.XMLName.Local == "tag"
 }
 
 // CategorizeRule34Tags best-effort enriches post tags from the documented
@@ -79,7 +132,7 @@ func (c *Client) CategorizeRule34Tags(ctx context.Context, source Source, posts 
 	ctx, cancel := context.WithTimeout(ctx, 8*time.Second)
 	defer cancel()
 	instance := source.Instance() + ":"
-	pending := make([]string, 0, rule34CategoryBatchSize*rule34CategoryMaxBatches)
+	pending := make([]string, 0, rule34CategoryBatchSize)
 	seen := make(map[string]bool)
 	now := time.Now()
 	c.rule34CategoryMu.Lock()
@@ -97,7 +150,7 @@ func (c *Client) CategorizeRule34Tags(ctx context.Context, source Source, posts 
 				tag.Category = cached.category
 			} else if !seen[name] && validTagText(tag.Name) && !strings.ContainsAny(name, " \t\r\n") {
 				seen[name] = true
-				if len(pending) < rule34CategoryBatchSize*rule34CategoryMaxBatches {
+				if len(pending) < rule34CategoryBatchSize {
 					pending = append(pending, name)
 				}
 			}
@@ -109,25 +162,34 @@ func (c *Client) CategorizeRule34Tags(ctx context.Context, source Source, posts 
 	}
 
 	categories := make(map[string]string)
-	for start, batches := 0, 0; start < len(pending) && ctx.Err() == nil && batches < rule34CategoryMaxBatches; batches++ {
-		end, nameBytes := start, 0
-		for end < len(pending) && end-start < rule34CategoryBatchSize {
-			length := len(pending[end])
-			if end > start && nameBytes+length+1 > rule34CategoryNamesMaxBytes {
-				break
-			}
-			nameBytes += length + 1
-			end++
+	missing := make(map[string]bool, len(pending))
+	for _, name := range pending {
+		missing[name] = true
+	}
+	// The website's sidebar may provide every category for a post with one
+	// request. Try it before the per-name API to minimize provider traffic.
+	// A slow or Cloudflare-challenged public page must not consume the time
+	// reserved for authenticated exact-name tag API requests.
+	sidebarCtx, sidebarCancel := context.WithTimeout(ctx, 2*time.Second)
+	sidebarCategories := c.rule34SidebarFallback(sidebarCtx, source, posts, missing)
+	sidebarCancel()
+	for name, category := range sidebarCategories {
+		categories[name] = category
+	}
+	// Rule34's tag DAPI does not document Gelbooru's bulk "names" filter.
+	// The exact "name" parameter works on the Rule34 tag endpoint; resolve
+	// remaining tags individually and cache confirmed categories across pages.
+	// One-host throttling and the deadline bound these optional requests.
+	attempts := 0
+	misses := make(map[string]bool)
+	for _, name := range pending {
+		if !missing[name] || ctx.Err() != nil || attempts >= rule34CategoryMaxExactLookups {
+			continue
 		}
-		batch := pending[start:end]
-		start = end
-		names := make(map[string]bool, len(batch))
-		for _, name := range batch {
-			names[name] = true
-		}
+		attempts++
 		params := url.Values{
-			"page": {"dapi"}, "s": {"tag"}, "q": {"index"}, "json": {"1"},
-			"names": {strings.Join(batch, " ")}, "limit": {"100"},
+			"page": {"dapi"}, "s": {"tag"}, "q": {"index"},
+			"name": {name}, "limit": {"1"},
 			"api_key": {source.APIKey}, "user_id": {source.UserID},
 		}
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet,
@@ -135,26 +197,32 @@ func (c *Client) CategorizeRule34Tags(ctx context.Context, source Source, posts 
 		if err != nil {
 			break
 		}
-		req.Header.Set("Accept", "application/json")
+		req.Header.Set("Accept", "application/xml")
 		req.Header.Set("User-Agent", "StashBooru/1.0 (https://github.com/Dusky-dev/StashBooru)")
-		data, err := c.fetchJSON(ctx, source, req, 256<<10)
+		data, err := c.fetchJSON(ctx, source, req, 64<<10)
 		if err != nil {
-			break // Do not fail the post search on optional category enrichment.
+			break // An unavailable provider must never fail the post search.
 		}
-		for name, category := range parseRule34TagCategories(data, names) {
+		if category := parseRule34TagCategories(data, map[string]bool{name: true})[name]; category != "" {
 			categories[name] = category
+			delete(missing, name)
+		} else if validRule34TagXML(data) {
+			misses[name] = true
 		}
 	}
-	if len(categories) == 0 {
+	if len(categories) == 0 && len(misses) == 0 {
 		return
 	}
 	c.rule34CategoryMu.Lock()
-	if len(c.rule34CategoryCache)+len(categories) > rule34CategoryMaxCached {
+	if len(c.rule34CategoryCache)+len(categories)+len(misses) > rule34CategoryMaxCached {
 		clear(c.rule34CategoryCache)
 	}
 	expiry := time.Now().Add(rule34CategoryCacheExpiry)
 	for name, category := range categories {
 		c.rule34CategoryCache[instance+name] = rule34CategoryEntry{category: category, expires: expiry}
+	}
+	for name := range misses {
+		c.rule34CategoryCache[instance+name] = rule34CategoryEntry{category: "unknown", expires: time.Now().Add(rule34CategoryMissExpiry)}
 	}
 	c.rule34CategoryMu.Unlock()
 	for i := range posts {

@@ -79,14 +79,35 @@ search; multiple tags open a chooser, then search the chosen tag. Sidebar tags b
 the same way. Disable **Search immediately when clicking tags** in Booru Settings
 to only fill the draft. This preference is saved in this browser. Categories come from the provider or an exact canonical-name match in the
 installed per-source CSV. Prefixes and aliases never guess categories for flat tags.
-For **Rule34.xxx**, StashBooru also uses the official authenticated tag DAPI
-to look up exact tag categories in bounded batches after retrieving the posts.
-The site supplies artist, copyright/series, character, general and metadata
-types even though its post JSON contains only flat tag strings. The results
-are cached per Rule34 instance; searches still work when tag lookups fail, and
-any unresolved tags remain uncategorized. Installed per-source CSV types take
-precedence. Automatic enrichment checks at most 500 uncategorized tags per
-search page, so very large pages can retain some unknown tags.
+For **Rule34.xxx**, StashBooru attempts live post-tag classification
+without requiring a CSV. The server first reads typed tag links from up to
+three representative public post sidebars, accepting both wiki `search=` links
+and post-list `tags=` links inside `#tag-sidebar`. It reads a bounded HTML
+prefix so long comment threads after the sidebar do not invalidate otherwise
+usable categories. The resulting tag names must exactly match tags on the
+search page. No API credentials are sent to public post pages.
+
+For tags still unresolved, StashBooru attempts exact `name` lookups on the
+authenticated Rule34 tag DAPI (`s=tag&q=index&name=...`), rather than the
+unsupported Gelbooru bulk `names` query. Rule34's published DAPI help
+documents tag lookup by `id` and `limit`, **not** `name`; therefore
+classification through the `name` parameter is not guaranteed. Parsed
+numeric types are used only for exact returned names, and confirmed categories
+are cached for 24 hours.
+
+To avoid overwhelming Rule34, the live fallback makes at most six
+single-name tag requests per search and shares an eight-second lookup
+deadline with sidebar parsing. This is **best effort**: the first search may
+leave some tags under **Tags — category not supplied**, and new results can
+become classified as the positive cache fills across subsequent searches.
+Valid but unmatched tag records are cached as unknown for five minutes,
+preventing the same absent tags from consuming every subsequent request.
+If Rule34 blocks the website or its HTML changes, and the tag API does
+not provide exact typed matches, categories remain unknown rather than
+guessed. This change is covered by provider-shaped regression tests; it
+has **not** been verified end-to-end against the user's live Rule34 account.
+An installed per-source CSV takes precedence and remains an optional
+offline fallback.
 
 The inspector groups and colors tags by category. Click a tag for **Add to search**
 or **Replace search**; these update and submit the query and close the preview.
@@ -96,7 +117,9 @@ format. The MD5 and local-match evidence share the bottom row. Download actions
 retain the converter switch, without repeating the settings explanatory text.
 
 **Hide AI-generated posts** is a two-state robot-icon button inside
-`.booru-filter-icons`. It is off by default, and when pressed hides posts on
+`.booru-filter-icons`. The robot gets a diagonal slash when filtering is
+enabled rather than using a highlighted button state. It is off by default,
+and when pressed hides posts on
 the **currently loaded page** that have an explicit `ai_generated`,
 `ai-generated` or equivalent case/spacing variant tag. It does **not**
 classify images from pixels, and `ai_assisted` and

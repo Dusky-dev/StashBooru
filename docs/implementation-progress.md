@@ -2,18 +2,40 @@
 
 Updated: 2026-10-20
 
-Following implementation base: B06a at `22c2cfdc2b3529bbec57092bde599fb57dbd1a52`.
-Fresh `develop` inspection on 2026-10-20:
-`52724d798d52ed4f1a4443466f8394942bf33ffa`; unrelated browser work remains
-with its assigned agent. [PR #163](https://github.com/Dusky-dev/StashBooru/pull/163)
-is still open. [PR #164](https://github.com/Dusky-dev/StashBooru/pull/164),
-branch `feat/following-feed-20261020`, is stacked on it and delivers B06b's
-on-demand feed/UI. Retarget after #163 merges; no merge or deployment authorized.
+Integration baseline: develop
+`52724d798d52ed4f1a4443466f8394942bf33ffa`, integrated into B06a as
+`baa8574b6f4e6f35ee51942eff30335c86b9fd75`.
+The owner authorized resolving and merging #163, then retargeting, verifying
+and merging #164 on 2026-10-20. This branch includes B06b's on-demand feed/UI
+and preserves the newer Rule34/browser fixes. #164 remains stacked until #163
+merges; then target develop and verify that the tested base is unchanged.
 See [Following scope/API](booru-follows.md).
 
 P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
+
+## Following merge preparation — 2026-10-20
+
+- Merge current develop into `feat/booru-follow-foundation-20261020`,
+  preserving the existing branch head
+  `22c2cfdc2b3529bbec57092bde599fb57dbd1a52` and develop
+  `52724d798d52ed4f1a4443466f8394942bf33ffa` as parents.
+- The only overlapping file is this progress document. Retain both the B06a
+  records and all Rule34/browser records. Runtime source changes are disjoint;
+  migration 98 remains the next schema after develop's 97.
+- The execution environment is unavailable. Verify the combined tree through
+  GitHub Actions and current Codex Review before merging #163; then integrate
+  the resulting develop into #164 and verify the feed against that base.
+- Owner authorization covers these two PR merges, not production deployment.
+- Also prepare `feat/following-feed-20261020` against the updated foundation
+  while #163 is verified. Preserve both the feed branch's
+  `dc2d46af827460986c659e0486e44806c7e888ea` and the updated foundation
+  `baa8574b6f4e6f35ee51942eff30335c86b9fd75` as parents.
+  Only this ledger overlaps the intervening develop changes. Feed and browser
+  source blobs are retained exactly. Verify both branches in CI; merge #163
+  first and only then retarget/merge #164. Existing acceptance is synthetic;
+  live provider authentication/custom-instance acceptance remains unverified.
 
 ## B06b — on-demand Following feed and management page — 2026-10-20
 
@@ -169,6 +191,130 @@ silently promoted to verified production features by this documentation update.
   Those site adapters remain later work; no runtime/API capability was added by
   this documentation-only clarification. Reviewed docs and `git diff --check`;
   backend verification above remains the implementation checkpoint.
+
+## Rule34 public sidebar wiki-link classification — 2026-10-20
+
+- Baseline: merged `develop` at `fc2651bc4a39022adca438f7524d1ab6008bcdf9`
+  (including PR #168); feature branch
+  `fix/rule34-live-sidebar-wiki-tags-20261020`.
+- Site evidence: the public post page displays five typed tag groups.
+  Third-party Rule34 sidebar integration reads canonical wiki `search=` links
+  as well as post-list `tags=` links. The previous StashBooru parser only
+  accepted post-list links, potentially discarding usable live typed tags.
+- Accept canonical wiki links only inside typed `#tag-sidebar` rows, with
+  exact matching against the requested post tags and no off-host links.
+  Fetch a bounded public HTML prefix to retain early sidebars when the
+  full post page exceeds 512 KiB due to comments. JSON API bounds, host
+  throttles, redirects and credential isolation are unchanged.
+- Added provider-shaped parser and search-path fixtures for wiki-only
+  links, oversized HTML pages and preservation of JSON size checks.
+  These fixtures are not captured live provider responses.
+- Network in the development runtime could not query `api.rule34.xxx`
+  or retrieve raw public HTML; no live account/end-to-end verification.
+  Rule34's official tag help only documents `id` and `limit`, so the
+  alternative exact `name` endpoint is not a verified guarantee.
+  Follow-up acceptance needs anonymized provider status/category counts
+  from the user's running server. No merge or deployment.
+
+## Rule34 live exact-name tag classification — 2026-10-20
+
+- Baseline: `develop` at `cd6ad046630991d30d30063a7ed58748135d8b14`;
+  branch `fix/rule34-live-exact-tag-types-20261020`.
+- Owner requested live category classification rather than requiring a CSV.
+  Rule34's `autocomplete.php` returns tags without category metadata, while
+  a third-party integration documents a singular `s=tag&name=<tag>` DAPI
+  lookup returning a type; earlier StashBooru attempts relied on the
+  undocumented Gelbooru-style `names` bulk parameter.
+- Keep typed public sidebar first for efficiency, then resolve remaining
+  unknown tags by exact, authenticated `name` requests (max 6 per search,
+  eight-second total lookup budget). Handle both `<tags>` and `<tag>`
+  XML responses, preserve exact name allowlists and 24-hour positive cache.
+  Provider failures never break the search or override installed CSV types.
+- Regression tests cover request shape, exact tag identity, XML variants,
+  rate-budget cap, sidebar-first precedence, 403 fallback and caching.
+- No live Rule34 account verification available; GitHub CI is authoritative.
+  Partial classification can occur due to the hard request/time limits.
+  No merge or deployment performed.
+
+## Booru AI filter crossed-out icon — 2026-10-20
+
+- Baseline: `develop` at `b14eee5f20df7e724e765c8d04dc6449e4f8db7f`;
+  branch `fix/booru-ai-filter-crossed-icon-20261020`.
+- AI-generated filter stays a two-state robot control, but the **hide AI**
+  state draws a slash over the robot rather than adding an active/highlighted
+  button appearance. The unfiltered state displays the normal robot.
+- Existing `aria-pressed`, URL persistence (`ai=hide`), loaded-page
+  filtering and lack of provider refetch are unchanged.
+- Added Playwright assertions for the slash icon and absence of selected
+  styling across activation, refresh, and deactivation.
+- Verification: GitHub CI on the PR is authoritative; no merge/deployment.
+
+## Rule34 offline category import compatibility — 2026-10-20
+
+- Baseline: `develop` at `6a5127d4928ab80b7c68c65eebb1b22e253680ca`;
+  branch `fix/rule34-csv-import-categories-20261020`.
+- Rule34 category lookups still report all tags unknown in the user's setup
+  despite merged PRs #161/#162/#166. Provider responses have not been
+  inspected from the user's Stash server, so no claim of a verified live fix.
+- Confirmed community Rule34 tag CSV data has header
+  `type,count,name,ambiguous,id`. Our CSV importer previously only detected
+  a header if `name`, `id` or `tag` was the **first** column; the Rule34
+  export would be rejected, even though typed labels are available offline.
+- Accept name/type CSV headers in any column order. Preserve Gelbooru-family
+  deprecated type 2 as `unknown`; do not interpret it as copyright. Do not
+  change Danbooru or e621 category mappings.
+- Increased the optional Gelbooru-family CSV ceiling to two million unique
+  tags and three million total names/aliases, while retaining the 64 MiB
+  input-size boundary and existing per-tag alias limit.
+- Added input regression tests and installation guidance for the 2025 community
+  Rule34 snapshot. This makes per-source **manual** CSV installation usable
+  without relying on provider tag metadata, but does not silently download or
+  install an external database.
+- CI and any provider/live validation must be verified on the PR. Not merged.
+
+## Rule34 typed post-sidebar fallback — 2026-10-20
+
+- Baseline: `develop` at `dbd65145e94d5316d9933dfa7f5058fa963d09fa`;
+  branch `fix/rule34-post-sidebar-categories-20261020`.
+- User still reports "Tags — category not supplied" after PRs #161 and #162.
+  Rule34 officially documents tag lookup by ID and limit but not our existing
+  bulk `names` query, so a response can be valid but unrelated to requested
+  tags. Previous code spent its entire eight-second window retrying.
+- Stop DAPI category batches after an empty/mismatched batch. For remaining
+  unknown tags, fetch at most three Rule34 public post pages (canonical
+  website host and validated numeric post ID) and read exact tags/categories
+  from `#tag-sidebar li.tag-type-*`. Limit response bytes and CPU tokens,
+  never send API credentials to website pages, and only classify tags
+  already present in a result. Browser search is not blocked on site errors
+  or challenges. Positive results use the existing 24h per-site cache.
+- Bounded fallback may not cover tags appearing only in additional posts or
+  when Cloudflare refuses the page. Installed Rule34 CSV remains the complete
+  offline classification path.
+- Added parser/provider tests for artist/character/copyright/general/meta
+  classes, invalid links/unrelated text, blocked pages, exact matching,
+  cache reuse, and respecting the API batch limits. GitHub CI is authoritative.
+  No merge/deployment performed.
+
+## Rule34 tag DAPI XML format repair — 2026-10-20
+
+- Baseline: `develop` at `7856430423374f0462fb25e82a206ffbae07ee9c`.
+  Branch: `fix/rule34-tag-dapi-xml-20261020`; owner has merged PR #161.
+- Follow-up to user report that Rule34 tags still appeared under
+  "Tags — category not supplied." Rule34's documented tag DAPI provides XML
+  responses; the preceding implementation requested `json=1` and only parsed
+  JSON, silently discarding the XML and retaining `unknown` tag types.
+- Request standard tag-DAPI XML (no `json=1`), parse bounded XML `tags/tag`
+  attributes and exact allowlisted tag names, retaining JSON compatibility.
+  Reject HTML/malformed XML/DTD. Honor the established Gelbooru tag
+  category mapping: type 3 represents copyright; deprecated type 2 remains
+  uncategorized (Codex review correction on PR #162), including in cached
+  results. Existing optional CSV priority, per-instance cache, timeouts,
+  batching and search-failure fallback remain unchanged.
+- Regression tests now exercise realistic XML, actual HTTP Accept/query shape,
+  exact matching, unsupported structures, and backward-compatible JSON.
+- The provider's authenticated tag API cannot be fully verified without
+  live account credentials. Code validation is tracked on GitHub Actions;
+  this is not a deployment and does not authorize merge.
 
 ## Download queue reclamation — 2026-10-20
 
