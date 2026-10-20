@@ -106,8 +106,47 @@ If Rule34 blocks the website or its HTML changes, and the tag API does
 not provide exact typed matches, categories remain unknown rather than
 guessed. This change is covered by provider-shaped regression tests; it
 has **not** been verified end-to-end against the user's live Rule34 account.
-An installed per-source CSV takes precedence and remains an optional
-offline fallback.
+Rule34/Gelbooru CSV exports sometimes contain a few malformed names
+(empty, over 256 UTF-8 bytes, invalid UTF-8, or control characters).
+For headerless CSV files, at least one earlier record must validate the
+positional columns before any bad names can be skipped.
+StashBooru skips at most 2,048 of **those name records only** while importing
+the remaining valid tags, and shows a skipped-row count in the database
+settings and successful upload message. Other providers still
+reject malformed names; structurally invalid
+CSV, unsupported categories/counts, and exports with excessive invalid
+names still fail. The installed database remains unchanged if an import
+fails. A malformed row is never entered into search or category lookups.
+
+For Rule34, live-confirmed categories take precedence over installed
+per-source CSV entries, including when the CSV already has a type for the
+same tag. The live lookup queue gives **CSV-missing tags first priority**
+within the provider's bounded 100-name discovery budget, then uses
+remaining slots to refresh tags already covered by CSV. The CSV fills in
+unresolved tags, then an optional historical auto-catalog covers any
+remaining gaps. Live lookup is still attempted on each search for flat
+Rule34 tags, subject to its bounded request budget, timeouts and
+caching, even when the installed CSV covers all tags.
+If live lookups fail or are unavailable, installed CSV categories remain
+usable. If live Rule34 tags still lack categories, StashBooru
+**automatically installs a Rule34-only
+tag catalog** in `booru-tags/rule34-auto.csv` under its configuration
+directory, without a manual CSV upload. The catalog is a 46.2 MB public
+snapshot from [deepghs/site_tags on Hugging Face](https://huggingface.co/datasets/deepghs/site_tags/blob/main/rule34.xxx/tags.csv).
+It was last updated for Rule34 on **August 2, 2025**, so newer tags may
+still remain uncategorized and live classifications take precedence.
+The first affected search starts a bounded, asynchronous install; the
+browser shows a notice, and **search again after installation** to load
+the categories. The file is downloaded once per installation and cached on
+disk. No API credentials, tags, or search queries are sent to Hugging Face.
+If the Stash server cannot access the dataset, search still works with
+live and manually installed categories, without a repeated download-failure
+banner. Automatic installation failures remain silent in the browser.
+The download is limited
+to 64 MiB and redirected only to allowed Hugging Face storage hosts.
+Remove the cached `rule34-auto.csv` and restart the server to fetch a
+replacement snapshot. Your installed source-specific CSV is never
+overwritten.
 
 The inspector groups and colors tags by category. Click a tag for **Add to search**
 or **Replace search**; these update and submit the query and close the preview.
@@ -186,10 +225,28 @@ Downloaded history. No remote follow or automated download is created.
 
 | Source / engine | Search and authentication | Media limitations |
 | --- | --- | --- |
-| Paheal / Shimmie | Native tags through the anonymous Danbooru XML endpoint (`/api/danbooru/find_posts`) | Category information may be unavailable; no live completion endpoint. The legacy `/api/danbooru/find_posts/index.xml` URL can return HTML rather than posts XML, so older StashBooru versions may show an unsupported-data error. |
+| Paheal / Shimmie | Native tags through the anonymous Danbooru XML endpoint (`/api/danbooru/find_posts`) | Category information may be unavailable; no live completion endpoint. Originals on the hash-sharded `r34i.paheal-cdn.net` CDN are supported, including for older saved source settings. The inspector uses original resolution if there is no separate provider sample and the original fits the 24 MiB proxy limit; card thumbnails remain small. The legacy `/api/danbooru/find_posts/index.xml` URL can return HTML rather than XML. |
 | Pixiv | OAuth **access token** in source API key; text search, `user:123` for artist works, `id:123` for a work | Static illustration/manga pages selectable in the inspector. Ugoira frame ZIPs are explicitly unavailable. No login/token refresh is implemented; replace expired tokens in Settings. |
 | Pawchive | Artist-name directory search, or `*` for recent posts; anonymous API. Text post search is unsupported because the API ignores it | Optional API key is the `session` cookie value, sent only to `file.pawchive.pw`. Preview-only/deferred/unavailable originals cannot be downloaded. |
 | Kemono | Artist-name directory search, `*` for recent posts, or text of at least three bytes; anonymous API | Supported image/video attachments and ZIP/CBZ previews; documents and unsupported archives are omitted. |
+
+Paheal may return old `rule34.paheal.net/_images/` links in its XML
+even though its originals are served from `r34i.paheal-cdn.net`.
+For the official Paheal source only, StashBooru converts those legacy
+paths to the CDN's hash-sharded `/<first-2>/<next-2>/<full-md5>` layout,
+without the old `/_images/` prefix or file extension. This requires an exact
+32-hex-digit MD5 from the post's metadata or filename; if neither contains a
+valid hash, StashBooru preserves the original URL instead of inventing a
+CDN path. Thumbnail URLs and unrelated providers are unchanged. Only
+the exact `r34i.paheal-cdn.net` host is implicitly trusted, not its
+subdomains. The original remains separate from the grid thumbnail and
+is used for downloads. When temporarily used as the inspector sample,
+the original is fetched exclusively through the server's 24 MiB media
+proxy, never as an unrestricted direct-browser fallback. Actual availability
+depends on the provider: a deleted original or CDN rejection still errors.
+Live Paheal CDN responses were not available to validate in the development
+environment; the reported host migration and upstream Shimmie API source
+inform the compatibility fix.
 
 Custom sources can select these engines and configure their HTTPS API root/CDN
 hosts in Settings. Preset hostnames can change; failures remain visible for retry

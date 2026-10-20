@@ -1,3 +1,4 @@
+import { IdentityLink } from "../Identities/identity";
 import {
   type ReactNode,
   type KeyboardEvent,
@@ -378,9 +379,9 @@ function PostInspection({
                     <Dropdown.Toggle
                       variant="link"
                       className={`booru-tag tag-${category}`}
-                      aria-label={`Tag ${tag.label ?? tag.name}`}
+                      aria-label={`Tag ${tag.canonicalName ?? tag.label ?? tag.name}`}
                     >
-                      {tag.label ?? tag.name}
+                      {tag.canonicalName ?? tag.label ?? tag.name}
                     </Dropdown.Toggle>
                     <Dropdown.Menu role="menu">
                       <Dropdown.Item
@@ -399,6 +400,13 @@ function PostInspection({
                       >
                         Replace search
                       </Dropdown.Item>
+                      <IdentityLink
+                        source={source}
+                        kind={tag.category}
+                        target={tag.name}
+                        label={tag.label}
+                        identityID={tag.identityID}
+                      />
                     </Dropdown.Menu>
                   </Dropdown>
                 ))}
@@ -727,6 +735,13 @@ function SourceResults({
       )}
       {result && (
         <>
+          {source.id === "rule34" && result.categoryStatus === "loading" && (
+            <Alert variant="info">
+              Rule34 tag categories are being installed automatically from a
+              public catalog. Run the search again after the catalog is ready;
+              no CSV upload is needed.
+            </Alert>
+          )}
           {result.posts.length === 0 && (
             <Alert variant="info">
               {message("empty", "No posts returned for this page and query.")}

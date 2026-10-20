@@ -27,7 +27,13 @@ export interface BooruPost {
   md5?: string;
   rating?: string;
   format?: string;
-  tags: { name: string; category: string; label?: string }[];
+  tags: {
+    name: string;
+    category: string;
+    label?: string;
+    identityID?: string;
+    canonicalName?: string;
+  }[];
   attachments?: BooruPost[];
   remoteID?: string;
   title?: string;
@@ -37,6 +43,7 @@ export interface BooruPost {
 
 export interface BooruResult {
   sourceID: string;
+  categoryStatus?: "loading" | "ready" | "failed";
   posts: BooruPost[];
   page: number;
   limit: number;

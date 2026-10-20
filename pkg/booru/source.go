@@ -172,6 +172,17 @@ func (s Source) isRule34() bool {
 // IsRule34 identifies the official Rule34.xxx API and web host aliases.
 func (s Source) IsRule34() bool { return s.isRule34() }
 
+// isPaheal matches only the official Paheal Shimmie site. Its original
+// images may live on a separate CDN even for saved source configurations
+// predating the updated default MediaHosts list.
+func (s Source) isPaheal() bool {
+	if s.Engine != "shimmie" {
+		return false
+	}
+	u, err := url.Parse(s.URL)
+	return err == nil && strings.EqualFold(u.Hostname(), "rule34.paheal.net") && strings.TrimRight(u.Path, "/") == ""
+}
+
 // rule34APIBase routes API requests to the documented API host without
 // changing the site's configured URL (or the instance identity and post links).
 func (s Source) rule34APIBase() string {
@@ -254,7 +265,16 @@ func (s Source) mediaURL(raw string) string {
 	}
 	host := strings.ToLower(u.Hostname())
 	hosts := append([]string{base.Hostname()}, s.MediaHosts...)
-	if !slices.ContainsFunc(hosts, func(allowed string) bool {
+	// The official Paheal CDN is a single hostname, not an allowed
+	// domain suffix. This check precedes the general MediaHosts rules
+	// even if an older saved configuration explicitly includes the CDN.
+	isPahealCDN := s.isPaheal() && (host == "r34i.paheal-cdn.net" ||
+		strings.HasSuffix(host, ".r34i.paheal-cdn.net"))
+	if isPahealCDN {
+		if host != "r34i.paheal-cdn.net" {
+			return ""
+		}
+	} else if !slices.ContainsFunc(hosts, func(allowed string) bool {
 		return host == strings.ToLower(allowed) || strings.HasSuffix(host, "."+strings.ToLower(allowed))
 	}) {
 		return ""

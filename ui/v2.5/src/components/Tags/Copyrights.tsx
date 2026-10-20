@@ -1,3 +1,4 @@
+import { IdentitySources } from "src/components/Identities/identity";
 import React, { useEffect, useMemo, useState } from "react";
 import { FormattedMessage } from "react-intl";
 import { Helmet } from "react-helmet";
@@ -88,6 +89,7 @@ const CopyrightDetailsPanel: React.FC<{
             fullWidth={fullWidth}
           />
         ) : null}
+        <IdentitySources kind="copyright" entityID={copyright.id} />
       </div>
       {hasMain || hasSub ? (
         <Tabs

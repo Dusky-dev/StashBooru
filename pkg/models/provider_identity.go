@@ -78,6 +78,7 @@ type ProviderIdentityReaderWriter interface {
 	List(context.Context, IdentityFilter) ([]ProviderIdentity, error)
 	Decide(context.Context, string, IdentityDecision) (*ProviderIdentity, error)
 	Candidates(context.Context, string, string, int64, bool) ([]IdentityCandidate, error)
+	DiscardUnresolved(context.Context, string) (int64, error)
 }
 
 func IdentityKind(kind string) bool {

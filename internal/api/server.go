@@ -227,6 +227,8 @@ func Initialize() (*Server, error) {
 	r.Get("/booru-browser/bookmarks", booruRoutes.Bookmarks)
 	r.Get("/booru-browser/follows", booruRoutes.Follows)
 	r.Post("/booru-browser/follows", booruRoutes.UpdateFollow)
+	r.Get("/identities/scan", booruRoutes.IdentityScan)
+	r.Post("/identities/scan", booruRoutes.IdentityScan)
 	r.Get("/identities/list", booruRoutes.IdentityList)
 	r.Get("/identities/candidates", booruRoutes.IdentityCandidates)
 	r.Post("/identities/update", booruRoutes.IdentityMutation)

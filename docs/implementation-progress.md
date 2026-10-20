@@ -1,6 +1,6 @@
 # StashBooru implementation progress
 
-Updated: 2026-10-20
+Updated: 2026-10-21
 
 Integration baseline: develop
 `52724d798d52ed4f1a4443466f8394942bf33ffa`, integrated into B06a as
@@ -34,10 +34,19 @@ silently promoted to verified production features by this documentation update.
   plus bounded scanning of saved download receipts and cached feed metadata.
   Remote artist-profile crawling and automatic catalogue reassignment/merges are
   outside this slice. Unknown/missing source metadata is not guessed.
-- The execution environment remains unavailable; source changes are prepared and
-  published through GitHub. Combined behavior must pass focused regression and
-  CI generation/lint/backend/UI/browser checks plus Codex Review before readiness.
-  No local execution, live provider or production acceptance is claimed.
+- Resumed on 2026-10-21 with a working execution environment. Integrated fresh
+  develop `fee5744b72124fe65bebe8e55ab4650a541001f9`, preserving current Rule34
+  live-category priority and Paheal/browser corrections. PR #171 remains draft.
+- Linking UI, native profile Sources & aliases, post actions, batch decisions,
+  creator directory labels and cancellable native scan jobs are implemented.
+  Canonical display names remain separate from original provider labels/targets.
+  Cache recovery retains explicit decisions and capacity never hides existing links.
+- Focused API/SQLite identity and Copyright tests pass; full UI validation
+  (61 unit tests, lint, TypeScript, formatting), production bundle, backend
+  generation and mounted 1440px/390px identity workflows pass locally. The
+  mobile fixture uses a `/stash/` base prefix. Captures were visually inspected.
+  Full Go gates, inherited Booru/Following browser regressions and current Codex
+  Review are in progress. No live provider/production acceptance is claimed.
 - See [Provider identities](provider-identities.md) for the contract and limits.
 
 ## Following merge preparation — 2026-10-20
@@ -216,6 +225,116 @@ silently promoted to verified production features by this documentation update.
   Those site adapters remain later work; no runtime/API capability was added by
   this documentation-only clarification. Reviewed docs and `git diff --check`;
   backend verification above remains the implementation checkpoint.
+
+## Paheal original CDN and inspector quality — 2026-10-20
+
+- Baseline: `develop` at `aa1a2b42bf9bfb6b07608350bfbda688e54e91b9`;
+  feature branch `fix/paheal-originals-and-samples-20261020`.
+- Owner reports Paheal previews available only at thumbnail quality and
+  original downloads unavailable. Shimmie's upstream Danbooru API source
+  publishes `file_url` and `preview_url` but no sample URL by default.
+  A reproduced Grabber issue documents Paheal originals moving from
+  `rule34.paheal.net/_images/` to `r34i.paheal-cdn.net/_images/`.
+- Codex review #170 identified three valid issues, addressed on the same
+  branch: the special CDN host must match **exactly** (including for old
+  persisted overrides), old `/_images/` paths need the sharded
+  `/<2hex>/<2hex>/<32hex>` CDN layout, and promoted originals must
+  not become public direct-preview fallbacks if the server proxy rejects them.
+- Normalize legacy website/relative original links only when a full MD5
+  is verified in post metadata or an exact 32-hex filename; preserve
+  unresolvable originals instead of inventing paths. Keep original format
+  from the legacy URL or filename when CDN paths have no extension.
+  Do not rewrite thumbnails or other providers; retain media/redirect bounds.
+- For Paheal posts lacking explicit sample data, use the original as the
+  inspector's sample within the current 24 MiB preview limit. Keep
+  ordinary grid thumbnails and honor explicit samples when present.
+- Added adapter + mocked binary download regressions, including exact
+  host rejection, sharded-path construction, image format retention, and
+  server-only high-resolution preview fallback. CI verifies code paths;
+  live Paheal CDN downloads still require owner-side acceptance.
+  No merge or deployment performed.
+
+## Rule34 live category priority and quiet fallback — 2026-10-20
+
+- Baseline: `develop` at `ad91eb1843dbe38686848bd74e538cd90b35dc50`,
+  branch `fix/rule34-live-category-priority-and-hide-warning-20261020`.
+- Owner observed the "Automatic Rule34 tag categories could not be
+  installed" warning every search and requested live classification even
+  when a manually installed Rule34 CSV succeeds.
+- Correct a real precedence bug: `categorizeBooruPosts` formerly applied
+  installed CSV before `CategorizeRule34Tags`. Live categorization only
+  examines `unknown` tags, so the CSV silently suppressed all lookups
+  for tags it covered. The handler now calls live categorization first,
+  fills unknown tags from the installed CSV second, and invokes the
+  historical auto-catalog only for remaining unknown tags.
+- Remove the repeated automatic catalog failure alert from the browser.
+  The optional installation continues as before, but a blocked mirror
+  no longer interrupts the UI. A first-install loading notice remains.
+- Codex review caught the 100-name live lookup budget starvation case:
+  if the CSV covers more than 100 early tags, a later CSV-missing tag
+  could be excluded before lookup. The API now supplies an exact-name
+  CSV-missing priority predicate to the Rule34 client; it reserves live
+  request slots for CSV-missing tags first, then tries CSV-covered tags.
+  Calls without CSV priorities retain the original behavior.
+- Add API and booru-layer regression tests showing a live category
+  beats a conflicting CSV category, CSV backfills unavailable live
+  entries, CSV-missing tags stay ahead of 100+ covered tags, pretyped
+  provider categories remain stable, live calls are attempted on
+  repeat searches, and unrelated providers do not make Rule34
+  lookups. No schema changes.
+- Verify through CI; live Rule34 API traffic requires user-side testing
+  after merge. Do not merge or deploy without owner approval.
+
+## Rule34 CSV malformed-name tolerance — 2026-10-20
+
+- Baseline: `develop` at `ec26085c629ed3b8c9e4f712effa118c6fee45da`;
+  branch `fix/rule34-skip-malformed-tag-csv-rows-20261020`.
+- Owner reports manually uploading a category database fails on CSV row
+  78,268 with "invalid tag name ... expected 1–256 UTF-8 bytes without
+  control characters". Actual file/row contents were not provided; the
+  message only proves the validation failed.
+- For Rule34/Gelbooru CSV exports, skip at most 2,048 rows containing
+  invalid names while preserving all other valid categories. For headerless
+  positional CSV, at least one prior record must validate successfully
+  before skipping. This does not change other booru engines, strict
+  CSV structure/category/count parsing, or the
+  atomic write contract. Reject catalogs with too many invalid names or
+  no valid tags. Skip counts are persisted in the parsed index and exposed
+  by both upload and settings endpoints.
+- Show skipped-row totals on import success and in tag settings. Update
+  the outdated one-million-tag label for Gelbooru's existing 2M limit.
+- Unit tests cover empty, control-character, and overlong names; strict
+  rejection of malformed files; a malformed record at row 78,268;
+  bounds; category results after bad rows; and API reload after upload.
+- A real owner CSV and live StashBooru Rule34 browsing are still required
+  to confirm the exact file works. The PR is not merged/deployed.
+
+## Rule34 automatic category catalog fallback — 2026-10-20
+
+- Base: `develop` at `469ce563d6dc23770120f24ef1422d9a3419575a`;
+  branch `fix/rule34-auto-categories-fallback-20261020`.
+- Reported issue: previous live Rule34 category fixes (#168/#169)
+  still leave tags under "category not supplied". The public website
+  may challenge HTML sidebar requests; `s=tag&q=index&name=...` is
+  undocumented by Rule34's published API and can return no exact matches.
+- Fallback: only when unresolved categories remain, start one bounded
+  installation of the public Rule34-specific `deepghs/site_tags` CSV
+  snapshot (46.2 MB, last Rule34 update 2025-08-02). Cache it in
+  `booru-tags/rule34-auto.csv`, never overwriting a custom CSV.
+  Downloads are limited to 64 MiB with fixed HTTPS source, restricted
+  redirects, timeouts, atomic publish and full CSV validation. Failed
+  installs retry after one hour. The current search does not wait for
+  46 MB; a repeat search uses loaded categories.
+- Priority: installed source CSV, then live confirmed classifications,
+  then historical Rule34 catalog for tags still unknown. No category
+  is guessed from spelling, and other sites are unaffected.
+- Public search responses include a small `categoryStatus` indicator
+  (`loading`, `failed`, or `ready`) so the browser can explain the
+  first install or network failure.
+- Added simulated download, safety, corrupted-file, persisted-catalog
+  and category-priority tests. Actual server access to Hugging Face and
+  real Rule34 account categorization remain acceptance tests; the
+  snapshot predates new tags. No merge or deployment authorized.
 
 ## Rule34 public sidebar wiki-link classification — 2026-10-20
 

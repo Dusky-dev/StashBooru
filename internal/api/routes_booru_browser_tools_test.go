@@ -79,6 +79,29 @@ func toolRequest(method, path, body, contentType string) *http.Request {
 	r.Header.Set("Content-Type", contentType)
 	return r
 }
+func TestPahealPromotedOriginalNeverBecomesDirectBrowserFallback(t *testing.T) {
+	source := booru.Defaults()[10]
+	original := "https://r34i.paheal-cdn.net/01/23/0123456789abcdef0123456789abcdef"
+	thumbnail := "https://rule34.paheal.net/_thumbs/preview.jpg"
+	post := booru.Post{
+		ID: "123", PreviewURL: thumbnail, SampleURL: original,
+		OriginalURL: original, DownloadAvailable: true,
+	}
+	public := publicBooruPost(source, post)
+	if public.DirectSampleURL != "" || public.DirectPreviewURL != thumbnail ||
+		!strings.Contains(public.SampleURL, "kind=sample") || !public.DownloadAvailable ||
+		public.MediaKey == "" {
+		t.Fatalf("promoted original leaked into direct browser fallback: %+v", public)
+	}
+	// A real lower-resolution sample retains the existing direct fallback.
+	medium := "https://rule34.paheal.net/_samples/preview.jpg"
+	post.SampleURL = medium
+	public = publicBooruPost(source, post)
+	if public.DirectSampleURL != medium {
+		t.Fatal("real sample fallback was incorrectly removed")
+	}
+}
+
 func TestBooruSnapshotMediaIsolation(t *testing.T) {
 	rs := booruBrowserRoutes{configPath: t.TempDir(), client: &browserToolsClient{}}
 	w := httptest.NewRecorder()
@@ -166,6 +189,47 @@ func TestBooruCSVAtomicUploadAndRevisions(t *testing.T) {
 		t.Fatal("stale instance")
 	}
 }
+func TestRule34CSVUploadReportsSkippedBadNamesAndPersists(t *testing.T) {
+	rs := booruBrowserRoutes{configPath: t.TempDir()}
+	var source booru.Source
+	for _, candidate := range booru.Defaults() {
+		if candidate.ID == "rule34" {
+			source = candidate
+			break
+		}
+	}
+	if source.ID == "" {
+		t.Fatal("Rule34 default missing")
+	}
+	path := "/booru-browser/tags?source=" + source.ID + "&instance=" + source.Instance()
+	body := "type,count,name,ambiguous,id\n" +
+		"1,4,artist_a,False,1\n" +
+		"0,3,,False,2\n" +
+		"4,2,character_a,False,3\n"
+	w := httptest.NewRecorder()
+	request := toolRequest("POST", path, body, "text/csv")
+	request.Header.Set("X-Booru-Revision", "")
+	rs.ImportTags(w, request)
+	var payload struct {
+		Count, SkippedRows int
+		Revision           string
+	}
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &payload) != nil ||
+		payload.Count != 2 || payload.SkippedRows != 1 || payload.Revision == "" {
+		t.Fatalf("bad CSV import result: %d %s", w.Code, w.Body.String())
+	}
+
+	booruTagDatabases.Lock()
+	booruTagDatabases.entries = map[string]booruTagDatabase{}
+	booruTagDatabases.Unlock()
+	w = httptest.NewRecorder()
+	rs.Tags(w, httptest.NewRequest("GET", path+"&q=character", nil))
+	if json.Unmarshal(w.Body.Bytes(), &payload) != nil ||
+		payload.Count != 2 || payload.SkippedRows != 1 {
+		t.Fatalf("skipped-row report not persisted: %d %s", w.Code, w.Body.String())
+	}
+}
+
 func TestBooruDownloadSettingsPersistAndRejectCrossSite(t *testing.T) {
 	rs := booruBrowserRoutes{configPath: t.TempDir()}
 	w := httptest.NewRecorder()

@@ -1,3 +1,4 @@
+import { IdentitySources } from "src/components/Identities/identity";
 import React, { PropsWithChildren } from "react";
 import { useIntl } from "react-intl";
 import { TagLink } from "src/components/Shared/TagLink";
@@ -249,7 +250,10 @@ export const PerformerDetailsPanel: React.FC<IPerformerDetails> =
             fullWidth={fullWidth}
           />
           {(fullWidth || !collapsed) && (
-            <CustomFields values={performer.custom_fields} />
+            <>
+              <CustomFields values={performer.custom_fields} />
+              <IdentitySources kind="character" entityID={performer.id} />
+            </>
           )}
         </PerformerDetailGroup>
       </>

@@ -1,0 +1,59 @@
+.identity-page {
+  max-width: 1500px;
+  overflow-wrap: anywhere;
+
+  .form-control {
+    background-color: #30404d;
+    color: #f5f8fa;
+  }
+
+  .identity-toolbar {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+
+    > .form-control {
+      flex: 1 1 14rem;
+      width: auto;
+    }
+  }
+
+  .identity-layout {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 420px);
+  }
+
+  .identity-row,
+  .identity-resolution,
+  .identity-candidate {
+    border: 1px solid #5c7080;
+    border-radius: 0.25rem;
+    padding: 1rem;
+  }
+
+  .identity-row {
+    margin-bottom: 1rem;
+  }
+
+  .identity-resolution {
+    align-self: start;
+    scroll-margin-top: 5rem;
+  }
+
+  code {
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+
+  @media (max-width: 760px) {
+    .identity-layout {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+}
+
+.identity-sources code {
+  overflow-wrap: anywhere;
+}

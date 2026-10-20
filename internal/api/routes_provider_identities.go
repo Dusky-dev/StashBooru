@@ -134,6 +134,20 @@ func (rs booruBrowserRoutes) IdentityMutation(w http.ResponseWriter, r *http.Req
 		identityError(w, models.ErrIdentityInvalid)
 		return
 	}
+	if input.Action == "discard" {
+		var count int64
+		err := rs.repository.WithTxn(r.Context(), func(ctx context.Context) error {
+			var err error
+			count, err = rs.repository.ProviderIdentity.DiscardUnresolved(ctx, input.Kind)
+			return err
+		})
+		if err != nil {
+			identityError(w, err)
+			return
+		}
+		writeVisualSimilarityJSON(w, map[string]any{"discarded": count})
+		return
+	}
 	if input.Action == "observe" {
 		source := rs.reviewSource(w, input.Source, input.Instance)
 		if source == nil {
@@ -257,7 +271,7 @@ func identityError(w http.ResponseWriter, err error) {
 	case errors.Is(err, models.ErrIdentityInvalid):
 		writeBooruError(w, 400, "identities", "Select valid identities, categories and current versions.")
 	case errors.Is(err, models.ErrIdentityLimit):
-		writeBooruError(w, 409, "identity-limit", "The 100,000-identity cache is full. Existing connections remain available.")
+		writeBooruError(w, 409, "identity-limit", "The 100,000-identity cache is full. Existing connections remain available. Discard unreviewed metadata to make room.")
 	default:
 		writeBooruError(w, 500, "identities", "Cannot save identity metadata. Retry after reloading.")
 	}
@@ -269,28 +283,7 @@ func (rs booruBrowserRoutes) captureIdentityPosts(parent context.Context, source
 	if rs.repository.ProviderIdentity == nil {
 		return
 	}
-	input := []models.IdentityObservation{}
-	type position struct{ post, tag int }
-	positions := []position{}
-	for i, post := range posts {
-		contextTags := []string{}
-		for _, tag := range post.Tags {
-			if tag.Category == "copyright" && len(contextTags) < 10 && len(tag.Name) <= 200 {
-				contextTags = append(contextTags, tag.Name)
-			}
-		}
-		for j, tag := range post.Tags {
-			if !models.IdentityKind(tag.Category) || len(input) >= 2000 {
-				continue
-			}
-			label, rank := tag.Label, 1
-			if label == "" || source.Engine == "pawchive" || source.Engine == "kemono" {
-				label, rank = tag.Name, 0
-			}
-			input = append(input, identityObservation(source, tag.Category, tag.Name, label, strings.Join(contextTags, ", "), rank))
-			positions = append(positions, position{i, j})
-		}
-	}
+	input, positions := identityPostObservations(source, posts)
 	if len(input) == 0 {
 		return
 	}
@@ -302,14 +295,53 @@ func (rs booruBrowserRoutes) captureIdentityPosts(parent context.Context, source
 		rows, err = rs.repository.ProviderIdentity.Observe(ctx, input)
 		return err
 	})
+
 	if err != nil {
-		return // Provider browsing must remain usable when the cache is full.
+		// Capacity or a failed refresh must not hide existing connections.
+		_ = rs.repository.WithReadTxn(ctx, func(ctx context.Context) error {
+			for i, o := range input {
+				row, lookupErr := rs.repository.ProviderIdentity.Lookup(ctx, o.Instance, o.Kind, o.Form, o.Target)
+				if lookupErr != nil {
+					return lookupErr
+				}
+				if row != nil {
+					p := positions[i]
+					posts[p.post].Tags[p.tag].CanonicalName = row.EntityName
+					posts[p.post].Tags[p.tag].IdentityID = strconv.FormatInt(row.ID, 10)
+				}
+			}
+			return nil
+		})
+		return
 	}
 	for i, row := range rows {
 		p := positions[i]
-		if row.EntityID > 0 {
-			posts[p.post].Tags[p.tag].Label = row.EntityName
-		}
+		posts[p.post].Tags[p.tag].CanonicalName = row.EntityName
 		posts[p.post].Tags[p.tag].IdentityID = strconv.FormatInt(row.ID, 10)
 	}
+}
+
+func identityPostObservations(source booru.Source, posts []booru.Post) ([]models.IdentityObservation, []struct{ post, tag int }) {
+	input := []models.IdentityObservation{}
+	positions := []struct{ post, tag int }{}
+	for i, post := range posts {
+		contextTags := []string{}
+		for _, tag := range post.Tags {
+			if tag.Category == "copyright" && len(contextTags) < 10 && len(tag.Name) <= 200 {
+				contextTags = append(contextTags, tag.Name)
+			}
+		}
+		for j, tag := range post.Tags {
+			if !models.IdentityKind(tag.Category) || !models.IdentityText(tag.Name, 1024) || len(input) >= 2000 {
+				continue
+			}
+			label, rank := tag.Label, 1
+			if label == "" || source.Engine == "pawchive" || source.Engine == "kemono" {
+				label, rank = tag.Name, 0
+			}
+			input = append(input, identityObservation(source, tag.Category, tag.Name, label, strings.Join(contextTags, ", "), rank))
+			positions = append(positions, struct{ post, tag int }{i, j})
+		}
+	}
+	return input, positions
 }

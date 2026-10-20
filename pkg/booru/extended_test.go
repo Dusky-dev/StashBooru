@@ -184,8 +184,9 @@ func TestPahealFindPostsAndInvalidXML(t *testing.T) {
 	}
 	first := got.Posts[0]
 	if first.PostURL != "https://rule34.paheal.net/post/view/101" ||
-		first.OriginalURL != "https://rule34.paheal.net/_images/a.png" ||
+		first.OriginalURL != "https://r34i.paheal-cdn.net/01/23/0123456789abcdef0123456789abcdef" ||
 		first.PreviewURL != "https://rule34.paheal.net/_thumbs/a.png" ||
+		first.SampleURL != first.OriginalURL || !first.DownloadAvailable ||
 		first.Format != "png" || first.Width != 640 || first.Height != 480 ||
 		len(first.Tags) != 2 {
 		t.Fatal("lost Paheal XML post metadata", first)
@@ -203,6 +204,109 @@ func TestPahealFindPostsAndInvalidXML(t *testing.T) {
 		if !errors.As(err, &failure) || failure.Code != "invalid-response" {
 			t.Fatalf("invalid Paheal XML accepted: %q, error %v", body, err)
 		}
+	}
+}
+
+// The Paheal preset and previously saved overrides must both trust the
+// exact media CDN while keeping arbitrary offsite hosts rejected.
+func TestPahealOriginalCDNSafetyAndSavedSettings(t *testing.T) {
+	s := Defaults()[10]
+	if s.ID != "paheal" || s.Validate() != nil {
+		t.Fatal("Paheal default is unavailable")
+	}
+	const cdn = "https://r34i.paheal-cdn.net/01/23/0123456789abcdef0123456789abcdef"
+	if s.mediaURL(cdn) != cdn {
+		t.Fatal("Paheal CDN original rejected")
+	}
+	// Settings created before this patch keep a copied MediaHosts list.
+	s.MediaHosts = []string{"paheal.net", "r34i.paheal-cdn.net"}
+	if s.mediaURL(cdn) != cdn {
+		t.Fatal("Paheal CDN rejected by legacy source configuration")
+	}
+	for _, raw := range []string{
+		"https://r34i.paheal-cdn.net.evil.example/01/23/a",
+		"https://sub.r34i.paheal-cdn.net/01/23/a",
+		"https://different.paheal-cdn.net/01/23/a",
+		"http://r34i.paheal-cdn.net/01/23/a",
+	} {
+		if s.mediaURL(raw) != "" {
+			t.Fatalf("unexpected Paheal media approval: %s", raw)
+		}
+	}
+	other := testSource("shimmie")
+	if other.mediaURL(cdn) != "" {
+		t.Fatal("unrelated Shimmie site implicitly trusted Paheal CDN")
+	}
+}
+
+func TestPahealOriginalURLRewriteOnlyForOfficialMedia(t *testing.T) {
+	s := Defaults()[10]
+	const hash = "0123456789abcdef0123456789abcdef"
+	const shard = "https://r34i.paheal-cdn.net/01/23/0123456789abcdef0123456789abcdef"
+	for _, tc := range []struct{ input, md5, want string }{
+		{"https://rule34.paheal.net/_images/a.png", hash, shard},
+		{"http://rule34.paheal.net/_images/a.png", hash, shard},
+		{"/_images/a.png", hash, shard},
+		{"https://rule34.paheal.net/_images/" + hash + ".jpg", "", shard},
+		{"https://rule34.paheal.net/_images/" + strings.ToUpper(hash) + ".JPG", "", shard},
+		{"https://r34i.paheal-cdn.net/01/23/" + hash, hash, shard},
+		{"https://rule34.paheal.net/_images/a.png", "", "https://rule34.paheal.net/_images/a.png"},
+		{"https://rule34.paheal.net/_thumbs/a.png", hash, "https://rule34.paheal.net/_thumbs/a.png"},
+		{"https://other.example/_images/a.png", hash, "https://other.example/_images/a.png"},
+		{"https://rule34.paheal.net/post/view/123", hash, "https://rule34.paheal.net/post/view/123"},
+		{"https://evil.example/_images/a.png?api_key=secret", hash, "https://evil.example/_images/a.png?api_key=secret"},
+	} {
+		if got := pahealOriginalMediaURL(s, tc.input, tc.md5); got != tc.want {
+			t.Errorf("rewrite %q (md5 %q): got %q want %q", tc.input, tc.md5, got, tc.want)
+		}
+	}
+	const unrelated = "https://rule34.paheal.net/_images/a.jpg"
+	if got := pahealOriginalMediaURL(testSource("shimmie"), unrelated, hash); got != unrelated {
+		t.Fatalf("Paheal rewrite applied to unrelated Shimmie source: %q", got)
+	}
+}
+
+func TestPahealCDNOriginalCanBeDownloaded(t *testing.T) {
+	s := Defaults()[10]
+	s.MediaHosts = []string{"paheal.net"} // persisted from an older installation
+	body := "\xff\xd8\xff" + "fixture-jpeg-data"
+	client := testClient(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Hostname() != "r34i.paheal-cdn.net" ||
+			r.URL.Path != "/01/23/0123456789abcdef0123456789abcdef" ||
+			r.Header.Get("Referer") != "https://rule34.paheal.net/" {
+			t.Errorf("download request targeted incorrect media host or referer: %s", r.URL)
+		}
+		res := response(200, body)
+		res.ContentLength = -1
+		return res, nil
+	})
+	var dest bytes.Buffer
+	info, err := client.FetchMedia(context.Background(), s, MediaRequest{
+		URL: "https://r34i.paheal-cdn.net/01/23/0123456789abcdef0123456789abcdef", Limit: 1024,
+	}, &dest)
+	if err != nil || info.Extension != "jpg" || dest.String() != body {
+		t.Fatalf("Paheal original failed full download: %v (%+v)", err, info)
+	}
+}
+
+func TestPahealSampleRetainsExplicitProviderSample(t *testing.T) {
+	s := Defaults()[10]
+	c := testClient(func(*http.Request) (*http.Response, error) {
+		return response(200, `<posts count="1"><post id="12"
+			md5="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+			file_name="12.png" file_url="https://rule34.paheal.net/_images/12.png"
+			preview_url="https://rule34.paheal.net/_thumbs/12.png"
+			sample_url="https://rule34.paheal.net/_samples/12.png" /></posts>`), nil
+	})
+	result, err := c.Search(context.Background(), s, "", 1, 10)
+	if err != nil || len(result.Posts) != 1 {
+		t.Fatalf("search failed: %v", err)
+	}
+	p := result.Posts[0]
+	if p.SampleURL != "https://rule34.paheal.net/_samples/12.png" ||
+		p.OriginalURL != "https://r34i.paheal-cdn.net/aa/aa/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" ||
+		!p.DownloadAvailable {
+		t.Fatalf("explicit provider sample lost: %+v", p)
 	}
 }
 

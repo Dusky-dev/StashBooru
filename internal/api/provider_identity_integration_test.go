@@ -6,10 +6,12 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"github.com/stashapp/stash/pkg/job"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stashapp/stash/internal/manager/config"
 	"github.com/stashapp/stash/pkg/booru"
@@ -62,7 +64,7 @@ func TestProviderIdentityCrossSiteLinkRenameSearchUnlinkAndRestart(t *testing.T)
 	account = identityTestDecide(t, rs, "link", "artist", []models.IdentityDecision{{ID: account.ID, Version: account.Version, EntityID: created.EntityID}}, "", 200)[0]
 	posts := []booru.Post{{Tags: []booru.Tag{{Name: b.Target, Category: "artist"}, {Name: "lowres", Category: "general"}}}}
 	rs.captureIdentityPosts(context.Background(), gel, posts)
-	require.Equal(t, "Waligner", posts[0].Tags[0].Label)
+	require.Equal(t, "Waligner", posts[0].Tags[0].CanonicalName)
 	require.Equal(t, "waligner_(artist)", posts[0].Tags[0].Name)
 	require.NotEmpty(t, posts[0].Tags[0].IdentityID)
 	require.Empty(t, posts[0].Tags[1].IdentityID)
@@ -94,6 +96,8 @@ func TestProviderIdentityCrossSiteLinkRenameSearchUnlinkAndRestart(t *testing.T)
 		current, err := rs.repository.ProviderIdentity.Find(ctx, b.ID)
 		require.NoError(t, err)
 		require.Zero(t, current.EntityID, "observing again must not silently re-link")
+		require.Empty(t, posts[0].Tags[0].CanonicalName)
+		require.Empty(t, posts[0].Tags[0].Label)
 		return nil
 	}))
 	feedRequest(t, rs.IdentityMutation, identityMutation{Action: "observe", Kind: "general", Source: dan.ID, Instance: dan.Instance(), Target: "lowres"}, 400)
@@ -204,4 +208,176 @@ func TestProviderIdentityMigration99PreservesCatalogue(t *testing.T) {
 		require.Equal(t, "Keep me", found.Title)
 		return nil
 	}))
+}
+
+func TestProviderIdentityCharacterCopyrightAndAtomicTargetFailure(t *testing.T) {
+	rs, db, _ := identityTestRoutes(t)
+	defer db.Close()
+	source := booru.Defaults()[0]
+	first := identityTestObserve(t, rs, source, "character", "saber_(fate)")
+	second := identityTestObserve(t, rs, source, "character", "artoria_pendragon")
+	body := feedRequest(t, rs.IdentityMutation, identityMutation{Action: "create", Kind: "character", Name: "Saber", Disambiguation: "Fate", Changes: []models.IdentityDecision{{ID: first.ID, Version: 1}}}, 200)
+	var linked []models.ProviderIdentity
+	require.NoError(t, json.Unmarshal(body, &linked))
+	first = linked[0]
+	// A failure after the first write rolls back the whole batch.
+	identityTestDecide(t, rs, "link", "character", []models.IdentityDecision{{ID: second.ID, Version: 1, EntityID: first.EntityID}, {ID: first.ID, Version: first.Version, EntityID: 999999}}, "", 409)
+	require.NoError(t, rs.repository.WithReadTxn(context.Background(), func(ctx context.Context) error {
+		row, err := rs.repository.ProviderIdentity.Find(ctx, second.ID)
+		require.NoError(t, err)
+		require.Zero(t, row.EntityID)
+		require.Equal(t, 1, row.Version)
+		matches, err := rs.repository.ProviderIdentity.Candidates(ctx, "character", "Saber", second.ID, false)
+		require.NoError(t, err)
+		require.Len(t, matches, 1)
+		require.Equal(t, "Fate", matches[0].Disambiguation)
+		q := first.Target
+		rows, count, err := rs.repository.Performer.Query(ctx, nil, &models.FindFilterType{Q: &q})
+		require.NoError(t, err)
+		require.Equal(t, 1, count)
+		require.Equal(t, first.EntityID, rows[0].ID)
+		return nil
+	}))
+	copyright := identityTestObserve(t, rs, source, "copyright", "fate_(series)")
+	copyright = identityTestDecide(t, rs, "create", "copyright", []models.IdentityDecision{{ID: copyright.ID, Version: 1}}, "Fate", 200)[0]
+	require.NoError(t, rs.repository.WithReadTxn(context.Background(), func(ctx context.Context) error {
+		q := copyright.Target
+		rows, count, err := rs.repository.Copyright.Query(ctx, &models.FindFilterType{Q: &q})
+		require.NoError(t, err)
+		require.Equal(t, 1, count)
+		require.Equal(t, copyright.EntityID, rows[0].ID)
+		parents, err := rs.repository.Copyright.FindParents(ctx, copyright.EntityID)
+		require.NoError(t, err)
+		require.Empty(t, parents)
+		return nil
+	}))
+}
+
+func TestProviderIdentityScanReceiptsFeedBoundsDecisionsAndCancellation(t *testing.T) {
+	rs, db, _ := identityTestRoutes(t)
+	defer db.Close()
+	source := booru.Defaults()[0]
+	a := identityTestObserve(t, rs, source, "artist", "kept_artist")
+	a = identityTestDecide(t, rs, "create", "artist", []models.IdentityDecision{{ID: a.ID, Version: 1}}, "Curated name", 200)[0]
+	post := booru.Post{ID: "42", Tags: []booru.Tag{{Name: a.Target, Category: "artist", Label: "Remote name"}, {Name: "receipt_character", Category: "character"}, {Name: "lowres", Category: "general"}}}
+	require.NoError(t, rs.saveDownloadReceipt(booruDownloadReceipt{Source: booru.PublicSource{ID: source.ID, Name: source.Name, Engine: source.Engine, URL: source.URL, Instance: source.Instance()}, Post: post}))
+	directory := filepath.Join(rs.configPath, "booru-download-history")
+	receipt, ok := readIdentityReceipt(filepath.Join(directory, receiptName(source.Instance(), post.ID)))
+	require.True(t, ok)
+	require.Equal(t, "42", receipt.Post.ID)
+	require.NoError(t, os.WriteFile(filepath.Join(directory, "broken.json"), []byte("{"), 0600))
+	require.NoError(t, os.WriteFile(filepath.Join(directory, "large.json"), make([]byte, 64<<10+1), 0600))
+	require.NoError(t, os.Symlink(filepath.Join(directory, receiptName(source.Instance(), post.ID)), filepath.Join(directory, "linked.json")))
+	require.NoError(t, rs.repository.WithTxn(context.Background(), func(ctx context.Context) error {
+		follow, err := rs.repository.BooruFollow.Create(ctx, models.BooruReviewProvider{Instance: source.Instance(), SourceID: source.ID, Engine: source.Engine, URL: source.URL}, models.BooruFollowDefinition{Name: "Saved", Kind: "artist", Target: a.Target})
+		if err != nil {
+			return err
+		}
+		payload, err := json.Marshal(followingStoredPost{Post: booru.Post{Tags: []booru.Tag{{Name: "feed_copyright", Category: "copyright"}}}})
+		if err != nil {
+			return err
+		}
+		_, err = rs.repository.Following.ApplyPage(ctx, *follow, 0, "opaque", false, []models.FollowingSnapshot{{PostID: "9", Payload: payload}})
+		return err
+	}))
+	// Invalid current settings must not hide saved source provenance.
+	require.NoError(t, os.WriteFile(filepath.Join(rs.configPath, "booru-browser.json"), []byte("{"), 0600))
+	var scanned, observations, skipped int
+	progress := func(s, o, k int) { scanned, observations, skipped = s, o, k }
+	require.NoError(t, rs.scanIdentityMetadata(context.Background(), progress))
+	require.Equal(t, 5, scanned)
+	require.Equal(t, 3, observations)
+	require.Equal(t, 3, skipped)
+	require.NoError(t, rs.scanIdentityMetadata(context.Background(), progress))
+	require.NoError(t, rs.repository.WithReadTxn(context.Background(), func(ctx context.Context) error {
+		rows, err := rs.repository.ProviderIdentity.List(ctx, models.IdentityFilter{Limit: 51})
+		require.NoError(t, err)
+		require.Len(t, rows, 3)
+		row, err := rs.repository.ProviderIdentity.Find(ctx, a.ID)
+		require.NoError(t, err)
+		require.Equal(t, a.EntityID, row.EntityID)
+		require.Equal(t, a.Version, row.Version)
+		require.Equal(t, "Curated name", row.EntityName)
+		require.Equal(t, "Remote name", row.Label)
+		return nil
+	}))
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	require.ErrorIs(t, rs.scanIdentityMetadata(ctx, progress), context.Canceled)
+	// Recovery never removes bindings or explicit unlink/reject decisions.
+	require.NoError(t, os.Remove(filepath.Join(rs.configPath, "booru-browser.json")))
+	untouched := identityTestObserve(t, rs, source, "artist", "unreviewed")
+	unlinked := identityTestObserve(t, rs, source, "artist", "explicit_unlink")
+	identityTestDecide(t, rs, "unlink", "artist", []models.IdentityDecision{{ID: unlinked.ID, Version: 1}}, "", 200)
+	feedRequest(t, rs.IdentityMutation, identityMutation{Action: "discard", Kind: "artist"}, 200)
+	require.NoError(t, rs.repository.WithReadTxn(context.Background(), func(ctx context.Context) error {
+		gone, err := rs.repository.ProviderIdentity.Find(ctx, untouched.ID)
+		require.NoError(t, err)
+		require.Nil(t, gone)
+		kept, err := rs.repository.ProviderIdentity.Find(ctx, unlinked.ID)
+		require.NoError(t, err)
+		require.NotNil(t, kept)
+		return nil
+	}))
+}
+
+func TestProviderIdentityCapacityKeepsExistingConnectionsVisible(t *testing.T) {
+	rs, db, path := identityTestRoutes(t)
+	defer db.Close()
+	source := booru.Defaults()[0]
+	a := identityTestObserve(t, rs, source, "artist", "kept")
+	a = identityTestDecide(t, rs, "create", "artist", []models.IdentityDecision{{ID: a.ID, Version: 1}}, "Kept canonical", 200)[0]
+	conn, err := sql.Open("sqlite3", path)
+	require.NoError(t, err)
+	_, err = conn.Exec(`WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n WHERE x<99999)
+ INSERT INTO provider_identities(instance,source_id,source_name,engine,source_url,kind,form,target,label,updated_at)
+ SELECT p.instance,p.source_id,p.source_name,p.engine,p.source_url,'artist','tag','capacity_'||n.x,'capacity','2026-10-20' FROM n CROSS JOIN provider_identities p WHERE p.id=?`, a.ID)
+	require.NoError(t, err)
+	require.NoError(t, conn.Close())
+	feedRequest(t, rs.IdentityMutation, identityMutation{Action: "observe", Kind: "artist", Source: source.ID, Instance: source.Instance(), Target: "new_at_capacity"}, 409)
+	// A mixed fresh/known page must still project existing bindings.
+	posts := []booru.Post{{Tags: []booru.Tag{{Name: "new_at_capacity", Category: "artist"}, {Name: a.Target, Category: "artist", Label: "Original provider label"}}}}
+	rs.captureIdentityPosts(context.Background(), source, posts)
+	require.Equal(t, "Kept canonical", posts[0].Tags[1].CanonicalName)
+	require.Equal(t, "Original provider label", posts[0].Tags[1].Label)
+	require.NotEmpty(t, posts[0].Tags[1].IdentityID)
+	feedRequest(t, rs.IdentityMutation, identityMutation{Action: "discard", Kind: "artist"}, 200)
+	require.NoError(t, rs.repository.WithReadTxn(context.Background(), func(ctx context.Context) error {
+		rows, err := rs.repository.ProviderIdentity.List(ctx, models.IdentityFilter{Limit: 51})
+		require.NoError(t, err)
+		require.Len(t, rows, 1)
+		require.Equal(t, a.ID, rows[0].ID)
+		return nil
+	}))
+}
+
+func TestProviderIdentityScanQueuedCancelAndDuplicateStart(t *testing.T) {
+	rs, db, _ := identityTestRoutes(t)
+	defer db.Close()
+	jobs := job.NewManager()
+	defer jobs.Stop()
+	rs.jobs = jobs
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	jobs.Add(context.Background(), "hold", job.MakeJobExec(func(context.Context, *job.Progress) error { close(entered); <-release; return nil }))
+	<-entered
+	defer close(release)
+	first := feedRequest(t, rs.IdentityScan, map[string]any{"action": "start"}, 200)
+	var state identityScanState
+	require.NoError(t, json.Unmarshal(first, &state))
+	require.Equal(t, "queued", state.Status)
+	second := feedRequest(t, rs.IdentityScan, map[string]any{"action": "start"}, 200)
+	var duplicate identityScanState
+	require.NoError(t, json.Unmarshal(second, &duplicate))
+	require.Equal(t, state.JobID, duplicate.JobID)
+	feedRequest(t, rs.IdentityScan, map[string]any{"action": "cancel", "jobID": state.JobID + 1}, 409)
+	feedRequest(t, rs.IdentityScan, map[string]any{"action": "cancel", "jobID": state.JobID}, 200)
+	require.Eventually(t, func() bool {
+		w := httptest.NewRecorder()
+		rs.IdentityScan(w, httptest.NewRequest("GET", "/identities/scan", nil))
+		require.Equal(t, 200, w.Code)
+		var result identityScanState
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &result))
+		return result.Status == "cancelled"
+	}, time.Second, 10*time.Millisecond)
 }

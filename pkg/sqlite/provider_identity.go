@@ -172,25 +172,32 @@ func (s *ProviderIdentityStore) Decide(ctx context.Context, action string, input
 			return nil, models.ErrIdentityConflict
 		}
 	}
-	switch action {
-	case "link":
-		_, err = dbWrapper.Exec(ctx, "UPDATE provider_identities SET "+column+"=?,version=version+1 WHERE id=? AND version=?", input.EntityID, input.ID, input.Version)
-		if err == nil {
-			_, err = dbWrapper.Exec(ctx, "DELETE FROM provider_identity_rejections WHERE identity_id=? AND entity_id=?", input.ID, input.EntityID)
-		}
-	case "unlink":
-		_, err = dbWrapper.Exec(ctx, "UPDATE provider_identities SET "+column+"=NULL,version=version+1 WHERE id=? AND version=?", input.ID, input.Version)
-	case "reject", "restore":
-		if action == "reject" {
-			_, err = dbWrapper.Exec(ctx, "INSERT OR IGNORE INTO provider_identity_rejections(identity_id,entity_id) VALUES(?,?)", input.ID, input.EntityID)
-		} else {
-			_, err = dbWrapper.Exec(ctx, "DELETE FROM provider_identity_rejections WHERE identity_id=? AND entity_id=?", input.ID, input.EntityID)
-		}
-		if err == nil {
-			_, err = dbWrapper.Exec(ctx, "UPDATE provider_identities SET version=version+1 WHERE id=? AND version=?", input.ID, input.Version)
-		}
-	default:
-		return nil, models.ErrIdentityInvalid
+
+	assignment := "version=version+1"
+	args := []any{}
+	if action == "link" {
+		assignment += "," + column + "=?"
+		args = append(args, input.EntityID)
+	}
+	if action == "unlink" {
+		assignment += "," + column + "=NULL"
+	}
+	args = append(args, input.ID, input.Version)
+	result, err := dbWrapper.Exec(ctx, "UPDATE provider_identities SET "+assignment+" WHERE id=? AND version=?", args...)
+	if err != nil {
+		return nil, err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+	if affected != 1 {
+		return nil, models.ErrIdentityConflict
+	}
+	if action == "reject" {
+		_, err = dbWrapper.Exec(ctx, "INSERT OR IGNORE INTO provider_identity_rejections(identity_id,entity_id) VALUES(?,?)", input.ID, input.EntityID)
+	} else if action == "restore" || action == "link" {
+		_, err = dbWrapper.Exec(ctx, "DELETE FROM provider_identity_rejections WHERE identity_id=? AND entity_id=?", input.ID, input.EntityID)
 	}
 	if err != nil {
 		return nil, err
@@ -224,4 +231,18 @@ func (s *ProviderIdentityStore) Candidates(ctx context.Context, kind, query stri
 	rows := []models.IdentityCandidate{}
 	err := dbWrapper.Select(ctx, &rows, sqlQuery, args...)
 	return rows, err
+}
+
+// Explicit unlink/reject decisions and bound identifiers are never discarded.
+func (s *ProviderIdentityStore) DiscardUnresolved(ctx context.Context, kind string) (int64, error) {
+	if !models.IdentityKind(kind) {
+		return 0, models.ErrIdentityInvalid
+	}
+	result, err := dbWrapper.Exec(ctx, `DELETE FROM provider_identities WHERE kind=? AND version=1
+      AND studio_id IS NULL AND performer_id IS NULL AND copyright_id IS NULL
+      AND NOT EXISTS(SELECT 1 FROM provider_identity_rejections r WHERE r.identity_id=provider_identities.id)`, kind)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
