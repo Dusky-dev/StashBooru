@@ -81,13 +81,13 @@ func TestRule34CSVSkipsBoundedMalformedNames(t *testing.T) {
 	}
 }
 
-// Headerless tagcomplete data, all-invalid snapshots and non-Gelbooru
+// Unrecognized layouts, all-invalid snapshots and non-Gelbooru
 // formats retain strict validation rather than silently dropping rows.
 func TestTagCSVInvalidNameToleranceIsSourceScoped(t *testing.T) {
 	for _, test := range []struct {
 		engine, data string
 	}{
-		{"gelbooru", "artist_a,1,20,\n,4,12,\n"},
+		{"gelbooru", ",4,12,\nartist_a,1,20,\n"},
 		{"danbooru", "name,type,count\nartist_a,1,20\n,4,12\n"},
 		{"e621", "name,type,count\nartist_a,1,20\n,4,12\n"},
 		{"gelbooru", "name,type,count\n,1,20\n"},
@@ -98,6 +98,15 @@ func TestTagCSVInvalidNameToleranceIsSourceScoped(t *testing.T) {
 			t.Errorf("%s unexpectedly accepted malformed CSV %q", test.engine, test.data)
 		}
 	}
+	// Headerless positional tagcomplete format is also supported once
+	// at least one earlier tag has established valid columns.
+	headerless, err := ReadTagCSVForEngine(strings.NewReader(
+		"artist_a,1,20,\n,4,12,\ncharacter_a,4,30,\n"), "gelbooru")
+	if err != nil || headerless.SkippedRows() != 1 ||
+		headerless.Category("character_a") != "character" {
+		t.Fatalf("headerless export lost tags after malformed name: index=%v err=%v", headerless, err)
+	}
+
 	var input strings.Builder
 	input.WriteString("type,count,name,ambiguous,id\n")
 	for i := 0; i < maxSkippedGelbooruCSVRows+1; i++ {
