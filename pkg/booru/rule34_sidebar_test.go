@@ -42,6 +42,73 @@ func TestRule34SidebarCategoriesReadExactLinksOnly(t *testing.T) {
 	}
 }
 
+// A Rule34 sidebar may expose the canonical tag only through a wiki
+// search link ("?" is the visible anchor text), not a post-list tag link.
+// These provider-shaped fixtures exercise the link patterns without claiming
+// that a live account request was executed.
+func TestRule34SidebarWikiOnlyLinks(t *testing.T) {
+	requested := map[string]bool{
+		"creator_name": true, "hero_name": true, "series_name": true,
+		"common_tag": true, "meta_tag": true, "wrong": true,
+	}
+	body := `<html><body>
+		<a href="/index.php?page=wiki&amp;s=list&amp;search=wrong">outside</a>
+		<ul id="tag-sidebar">
+			<li class="tag-type-artist"><a href="/index.php?page=wiki&amp;s=list&amp;search=creator_name">?</a></li>
+			<li class="tag-type-character"><a href="index.php?page=wiki&amp;s=list&amp;search=hero_name">?</a></li>
+			<li class="tag-type-copyright"><a href="/index.php?page=wiki&amp;s=list&amp;search=series_name">?</a></li>
+			<li class="tag-type-general"><a href="/index.php?page=wiki&amp;s=list&amp;search=common_tag">?</a></li>
+			<li class="tag-type-metadata"><a href="/index.php?page=wiki&amp;s=list&amp;search=meta_tag">?</a></li>
+			<li class="tag-type-artist"><a href="https://elsewhere.invalid/index.php?page=wiki&amp;search=wrong">?</a></li>
+		</ul>
+	</body></html>`
+	got := parseRule34SidebarCategories([]byte(body), requested)
+	for tag, want := range map[string]string{
+		"creator_name": "artist", "hero_name": "character",
+		"series_name": "copyright", "common_tag": "general", "meta_tag": "meta",
+	} {
+		if got[tag] != want {
+			t.Errorf("wiki link %q: got %q; want %q", tag, got[tag], want)
+		}
+	}
+	if len(got) != 5 || got["wrong"] != "" {
+		t.Fatalf("unexpected category from untrusted/outside link: %#v", got)
+	}
+}
+
+func TestRule34WikiSidebarEnrichesSearchPosts(t *testing.T) {
+	source := Source{ID: "rule34", Name: "Rule34", Engine: "gelbooru",
+		URL: "https://rule34.xxx", APIKey: "test-secret", UserID: "42"}
+	apiCalls, webCalls := 0, 0
+	client := testClient(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Host == "api.rule34.xxx" {
+			apiCalls++
+			return response(200, "<tags count=\"0\"/>"), nil
+		}
+		webCalls++
+		if r.URL.Host != "rule34.xxx" || r.URL.Query().Get("api_key") != "" ||
+			r.URL.Query().Get("user_id") != "" {
+			t.Errorf("incorrect or credential-bearing sidebar URL")
+		}
+		return response(200, `<ul id="tag-sidebar">
+			<li class="tag-type-artist"><a href="/index.php?page=wiki&amp;s=list&amp;search=artist_a">?</a></li>
+			<li class="tag-type-character"><a href="/index.php?page=wiki&amp;s=list&amp;search=hero_a">?</a></li>
+			<li class="tag-type-copyright"><a href="/index.php?page=wiki&amp;s=list&amp;search=series_a">?</a></li>
+			</ul>`), nil
+	})
+	posts := []Post{{ID: "1", Tags: []Tag{{Name: "artist_a", Category: "unknown"},
+		{Name: "hero_a", Category: "unknown"}, {Name: "series_a", Category: "unknown"}}}}
+	client.CategorizeRule34Tags(context.Background(), source, posts)
+	if webCalls != 1 || apiCalls != 0 {
+		t.Fatalf("expected one wiki-only sidebar and zero tag DAPI requests, got %d/%d", webCalls, apiCalls)
+	}
+	for _, tag := range posts[0].Tags {
+		if tag.Category == "unknown" {
+			t.Fatalf("search result still untyped after wiki sidebar: %s", tag.Name)
+		}
+	}
+}
+
 func TestRule34SidebarResolvedTagsAvoidRedundantLiveLookups(t *testing.T) {
 	source := Source{ID: "rule34", Name: "Rule34", Engine: "gelbooru",
 		URL: "https://rule34.xxx", APIKey: "private-secret", UserID: "42"}
