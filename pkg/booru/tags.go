@@ -61,6 +61,11 @@ func ReadTagCSVForEngine(input io.Reader, engine string) (*TagIndex, error) {
 	aliasesByTag := map[int][]string{}
 	nameCol, typeCol, countCol, aliasCol := 0, 1, 2, 3
 	numeric := map[string]string{"0": "general", "1": "artist", "3": "copyright", "4": "character", "5": "meta"}
+	if engine == "gelbooru" {
+		// Gelbooru/Rule34's type 2 marks deprecated tags. Keep them in
+		// the index without misclassifying them as copyright.
+		numeric["2"] = "unknown"
+	}
 	if engine == "e621" {
 		numeric = map[string]string{"0": "general", "1": "artist", "2": "contributor", "3": "copyright", "4": "character", "5": "species", "6": "invalid", "7": "meta", "8": "lore"}
 	}
@@ -76,7 +81,19 @@ func ReadTagCSVForEngine(input io.Reader, engine string) (*TagIndex, error) {
 		row++
 		if row == 1 {
 			fields[0] = strings.TrimPrefix(fields[0], "\ufeff")
-			if fields[0] == "name" || fields[0] == "id" || fields[0] == "tag" {
+			// Provider exports may place type/count before name (for example
+			// Rule34's type,count,name,ambiguous,id snapshot). Identify a
+			// header by column names rather than requiring name in column 1.
+			hasName, hasType := false, false
+			for _, field := range fields {
+				switch field {
+				case "name", "tag":
+					hasName = true
+				case "type", "category":
+					hasType = true
+				}
+			}
+			if hasName && hasType {
 				nameCol, typeCol, countCol, aliasCol = -1, -1, -1, -1
 				for col, value := range fields {
 					switch value {
