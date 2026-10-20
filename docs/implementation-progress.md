@@ -25,6 +25,29 @@ silently promoted to verified production features by this documentation update.
   styling across activation, refresh, and deactivation.
 - Verification: GitHub CI on the PR is authoritative; no merge/deployment.
 
+## Rule34 offline category import compatibility — 2026-10-20
+
+- Baseline: `develop` at `6a5127d4928ab80b7c68c65eebb1b22e253680ca`;
+  branch `fix/rule34-csv-import-categories-20261020`.
+- Rule34 category lookups still report all tags unknown in the user's setup
+  despite merged PRs #161/#162/#166. Provider responses have not been
+  inspected from the user's Stash server, so no claim of a verified live fix.
+- Confirmed community Rule34 tag CSV data has header
+  `type,count,name,ambiguous,id`. Our CSV importer previously only detected
+  a header if `name`, `id` or `tag` was the **first** column; the Rule34
+  export would be rejected, even though typed labels are available offline.
+- Accept name/type CSV headers in any column order. Preserve Gelbooru-family
+  deprecated type 2 as `unknown`; do not interpret it as copyright. Do not
+  change Danbooru or e621 category mappings.
+- Increased the optional Gelbooru-family CSV ceiling to two million unique
+  tags and three million total names/aliases, while retaining the 64 MiB
+  input-size boundary and existing per-tag alias limit.
+- Added input regression tests and installation guidance for the 2025 community
+  Rule34 snapshot. This makes per-source **manual** CSV installation usable
+  without relying on provider tag metadata, but does not silently download or
+  install an external database.
+- CI and any provider/live validation must be verified on the PR. Not merged.
+
 ## Rule34 typed post-sidebar fallback — 2026-10-20
 
 - Baseline: `develop` at `dbd65145e94d5316d9933dfa7f5058fa963d09fa`;
