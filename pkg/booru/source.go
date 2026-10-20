@@ -180,7 +180,7 @@ func (s Source) isPaheal() bool {
 		return false
 	}
 	u, err := url.Parse(s.URL)
-	return err == nil && strings.EqualFold(u.Hostname(), "rule34.paheal.net") && u.Path == ""
+	return err == nil && strings.EqualFold(u.Hostname(), "rule34.paheal.net") && strings.TrimRight(u.Path, "/") == ""
 }
 
 
