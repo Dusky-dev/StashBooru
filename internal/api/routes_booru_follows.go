@@ -14,8 +14,10 @@ var booruFollowID = regexp.MustCompile(`^[A-Z2-7]{26,64}$`)
 
 type booruFollowView struct {
 	models.BooruFollow
-	Status         string `json:"status"`
-	ResolvedSource string `json:"resolvedSource,omitempty"`
+	Status         string                      `json:"status"`
+	ResolvedSource string                      `json:"resolvedSource,omitempty"`
+	SyncSupported  bool                        `json:"syncSupported"`
+	Feed           *models.FollowingCheckpoint `json:"feed,omitempty"`
 }
 
 // Display IDs may be renamed. An enabled alias of the exact same engine/URL can
@@ -49,9 +51,19 @@ func (rs booruBrowserRoutes) Follows(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var rows []models.BooruFollow
+	states := map[string]models.FollowingCheckpoint{}
 	err := rs.repository.WithReadTxn(r.Context(), func(ctx context.Context) error {
 		var err error
 		rows, err = rs.repository.BooruFollow.List(ctx)
+		if err == nil && rs.repository.Following != nil {
+			for _, row := range rows {
+				state, readErr := rs.repository.Following.Checkpoint(ctx, row.ID, row.QueryRevision)
+				if readErr != nil {
+					return readErr
+				}
+				states[row.ID] = state
+			}
+		}
 		return err
 	})
 	if err != nil {
@@ -62,9 +74,14 @@ func (rs booruBrowserRoutes) Follows(w http.ResponseWriter, r *http.Request) {
 	views := make([]booruFollowView, 0, len(rows))
 	for _, row := range rows {
 		view := resolveBooruFollow(row, sources)
+		view.SyncSupported = row.Engine == "danbooru" && view.Status == "available"
+		if state, ok := states[row.ID]; ok {
+			view.Feed = &state
+		}
 		if sourceErr != nil {
 			view.Status = "configuration-error"
 			view.ResolvedSource = ""
+			view.SyncSupported = false
 		}
 		views = append(views, view)
 	}

@@ -24,6 +24,7 @@ type Repository struct {
 	VisualStack    VisualStackReaderWriter
 	BooruReview    BooruReviewReaderWriter
 	BooruFollow    BooruFollowReaderWriter
+	Following      FollowingReaderWriter
 	ImageArtist    ImageArtistReaderWriter
 	Group          GroupReaderWriter
 	Performer      PerformerReaderWriter

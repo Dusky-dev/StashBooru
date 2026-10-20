@@ -1,0 +1,97 @@
+.following-page {
+  margin: 0 auto;
+  max-width: 1700px;
+  overflow-wrap: anywhere;
+
+  header,
+  .following-actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  header {
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+
+  h3 {
+    font-size: 1.15rem;
+  }
+
+  h4 {
+    font-size: 1rem;
+  }
+
+  .following-layout {
+    display: grid;
+    gap: 1.25rem;
+    grid-template-columns: 320px minmax(0, 1fr);
+  }
+
+  aside,
+  section {
+    min-width: 0;
+  }
+
+  .form-control {
+    background-color: #252a30;
+    border-color: #59616b;
+    color: #f4f4f4;
+  }
+
+  .following-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  }
+
+  .following-post {
+    overflow: hidden;
+  }
+
+  .following-thumbnail {
+    align-items: center;
+    aspect-ratio: 1;
+    background: #15191e;
+    display: flex;
+    justify-content: center;
+
+    img {
+      height: 100%;
+      object-fit: contain;
+      width: 100%;
+    }
+  }
+
+  .following-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    max-height: 180px;
+    overflow: auto;
+  }
+
+  .following-matches {
+    margin: 0.5rem 0;
+  }
+
+  code {
+    white-space: pre-wrap;
+  }
+
+  @media (max-width: 760px) {
+    .following-layout {
+      grid-template-columns: minmax(0, 1fr);
+
+      > aside {
+        order: 2;
+      }
+
+      > section {
+        order: 1;
+      }
+    }
+  }
+}

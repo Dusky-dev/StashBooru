@@ -13,3 +13,9 @@ func TestStashBooruSchemaIncludesFollowMigration(t *testing.T) {
 		t.Fatalf("schema version %d does not include follow migration 98", appSchemaVersion)
 	}
 }
+
+func TestStashBooruSchemaIncludesFollowingFeedMigration(t *testing.T) {
+	if appSchemaVersion < 99 {
+		t.Fatalf("schema version %d does not include Following migration 99", appSchemaVersion)
+	}
+}

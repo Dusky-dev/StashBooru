@@ -99,7 +99,7 @@ defaults. Live autocomplete has optional uploaded/server-path CSV fallback;
 new provider adapters can use CSV completion. Pixiv requires an access token;
 Ugoira frame ZIPs and archive documents are not imported. Metadata entity review,
 remote follows and bulk gallery downloads remain later packages. See
-[B02 review state](docs/booru-review-state.md), [downloads and autocomplete](docs/booru-downloads-autocomplete.md), [browser setup and limits](docs/booru-browser.md), and [Following definitions/API (B06a)](docs/booru-follows.md).
+[B02 review state](docs/booru-review-state.md), [downloads and autocomplete](docs/booru-downloads-autocomplete.md), [browser setup and limits](docs/booru-browser.md), and [Following definitions and on-demand feed](docs/booru-follows.md).
 
 ### Visual similarity and reference comparison
 

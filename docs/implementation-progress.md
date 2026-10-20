@@ -2,12 +2,14 @@
 
 Updated: 2026-10-20
 
-Integration baseline: `develop` at
-`52724d798d52ed4f1a4443466f8394942bf33ffa`.
-The owner authorized resolving and merging PR #163, then retargeting, verifying
-and merging PR #164 on 2026-10-20. The browser work and its Rule34 fixes are
-retained. This branch integrates B06a definitions/API; B06b feed/UI remains in
-PR #164. See [Following scope/API](booru-follows.md).
+Integration baseline: develop
+`52724d798d52ed4f1a4443466f8394942bf33ffa`, integrated into B06a as
+`baa8574b6f4e6f35ee51942eff30335c86b9fd75`.
+The owner authorized resolving and merging #163, then retargeting, verifying
+and merging #164 on 2026-10-20. This branch includes B06b's on-demand feed/UI
+and preserves the newer Rule34/browser fixes. #164 remains stacked until #163
+merges; then target develop and verify that the tested base is unchanged.
+See [Following scope/API](booru-follows.md).
 
 P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
@@ -26,6 +28,113 @@ silently promoted to verified production features by this documentation update.
   GitHub Actions and current Codex Review before merging #163; then integrate
   the resulting develop into #164 and verify the feed against that base.
 - Owner authorization covers these two PR merges, not production deployment.
+- Also prepare `feat/following-feed-20261020` against the updated foundation
+  while #163 is verified. Preserve both the feed branch's
+  `dc2d46af827460986c659e0486e44806c7e888ea` and the updated foundation
+  `baa8574b6f4e6f35ee51942eff30335c86b9fd75` as parents.
+  Only this ledger overlaps the intervening develop changes. Feed and browser
+  source blobs are retained exactly. Verify both branches in CI; merge #163
+  first and only then retarget/merge #164. Existing acceptance is synthetic;
+  live provider authentication/custom-instance acceptance remains unverified.
+
+## B06b — on-demand Following feed and management page — 2026-10-20
+
+- Branch `feat/following-feed-20261020`, based on B06a's published
+  `22c2cfdc2b3529bbec57092bde599fb57dbd1a52` / local
+  `bcd1029` (identical tree `7d856e206d3d8ce2906a7bdef2f1e46ffc76a7cb`).
+  B06a PR #163 is still open, so this phase is stacked on its feature branch.
+  Initial open-PR inspection found no competing follow-feed work. Browser UI is
+  assigned to another agent; this phase adds a separate Following page.
+- Migration 99 adds provider-independent opaque cursors/payloads, bounded saved
+  post snapshots, per-follow/revision match provenance and explicit seen decisions.
+  Same instance/post identity merges multiple follows. Seen tombstones survive
+  pruning; native media and ignored/downloaded history remain independent.
+- Initial fetch adapter: Danbooru-compatible sequential ID pages, using the exact
+  predicate. First success is an explicit recent-50 baseline; later runs freeze
+  an upper ID and exhaust newer IDs one page/request, resuming after failures or
+  restart. Query changes start a new recent window and keep older matches in
+  History. No timestamp-only cursor, moving page offsets or automatic polling.
+- Snapshot/match/cursor writes commit together, guarded by follow and checkpoint
+  versions. Failed pages do not advance the resume cursor; guarded sanitized
+  diagnostics persist across reload. Source/credential changes and stale requests
+  discard fetched results. Cancellation remains bounded by the existing client.
+- Cache: 5000 posts, 64 KiB metadata/post and 50 displayed match explanations with
+  truncation indicated. Explicit seen/unseen decisions are versioned. Removing
+  seen snapshots retains decisions, cursors, native files and review history.
+- Adds `/following/follows` aliases, feed/sync/seen/prune endpoints, a utility-nav
+  Following entry and independent themed management/feed page. Filters/paging
+  are URL state; preview grants are re-created from current source policy.
+  Mobile shows the feed first. Browse/Download reuses the existing post browser.
+- Supported sync is deliberately Danbooru-only in this phase. Other stored booru
+  definitions remain visible with checks disabled. Account/profile targets for
+  Twitter and similar sites retain their broader planned contract; native
+  mappings, intersection selection, polling and edit/deletion resync are deferred.
+- Focused provider/API/storage/migration regressions passed, including current
+  95/96/97 upgrade fixtures and upgrade from 98. Mounted fixture workflows passed
+  1440×1000 and 390×844 (also `/stash/` base prefix), including refresh/back,
+  failure/retry, explicit seen state, pruning/rediscovery, query revisions,
+  pagination, preview failure, cancellation and repeated leave/return cleanup.
+  Layout screenshots were visually inspected. Full `make test` and `make it`
+  passed on implementation `8ca9c63d4fdbb6cfc11dd5f6eb479e38d8fd0ce7`
+  (local `da3ddef`, identical tree
+  `ca6b566973528f542e97afe0bab50cd2edb07500`). Remote lint passed; CI generation
+  reached 61 passing UI tests but failed on three intentional hook-dependency
+  triggers. Backend integration/build jobs were skipped because generation failed.
+- Codex Review identified signed media URLs in snapshots. This is valid: transient
+  media allowlisting is not a durable credential policy. Following now omits
+  every query-bearing media URL, user information, fragments and ephemeral
+  grants (including nested previews), retaining query-free HTTPS locations.
+  It does not create broken URLs by stripping signatures. Added signed URL unit
+  cases and restart/persisted-payload integration coverage; provider metadata and
+  browser links remain available when cached previews are omitted.
+- CI correction: failed-preview state is keyed to its thumbnail URL; intentional
+  reload epochs retain their dependencies with explicit Biome explanations.
+  A dedicated Following mounted-browser workflow now runs both viewport/prefix
+  fixtures rather than relying on the separate booru browser suite.
+- Follow-up verification SHA:
+  `0ac8c161538b79ad38af91796eff6aee8e55a933`, tree
+  `4f9cefdfb7f53d6a135de1db5f3ffe741f0647dc`.
+  GitHub Actions passed full `make it` (including the signed-payload/restart and
+  URL-policy regressions), backend lint, backend/UI generation, `make validate-ui`
+  (61 tests, JS/CSS lint, TypeScript, formatting), production `make ui`, the
+  dedicated Following desktop/mobile/prefix workflow and the existing booru
+  browser workflow. [Build/test run](https://github.com/Dusky-dev/StashBooru/actions/runs/39456302183) ·
+  [Following fixture run](https://github.com/Dusky-dev/StashBooru/actions/runs/39456302374).
+  Platform builds were still running at this checkpoint. The valid original
+  signed-URL thread was resolved after integration success.
+- Fresh Codex Review on `0ac8c16` identified two further valid recovery issues.
+  Feed projection now prefers the server-stamped snapshot source alias so an
+  anonymous built-in alias cannot replace the credentialed alias used for sync.
+  It still falls back to the same instance if the original alias is removed or
+  rebound, and uses current rotated credentials. Integration coverage exercises
+  preview grants, browser links, credential rotation and unavailable/rebound aliases.
+  Refreshed definitions now detect a stale editor, preserve its draft and pause
+  Save until the user explicitly reloads the current definition. Mounted coverage
+  exercises the conflict and successful subsequent edit at both viewports.
+  Verification SHA `aaf52554c8e9ef05f65b0b4f543d3ca4d3cf213c`,
+  tree `6263167a5efac5db44912b74e97943f1dfa7b3ab`: full `make it`,
+  backend lint, backend/UI generation, UI validation and production bundling,
+  and both browser workflows passed in GitHub Actions. The new alias regression
+  and draft-preserving conflict workflow passed. Codex re-review completed with
+  no findings on this SHA; all three earlier threads are resolved.
+  [Build/test run](https://github.com/Dusky-dev/StashBooru/actions/runs/39457673229) ·
+  [Following fixture run](https://github.com/Dusky-dev/StashBooru/actions/runs/39457673281).
+  Platform builds remain in progress at this verification checkpoint; no claim
+  of verified cross-platform binaries is made. A subsequent documentation-only
+  handoff commit may supersede that CI run without changing implementation files.
+- The execution environment became unavailable before the final local UI
+  validate/build/lint pipeline could be retrieved; those local results are
+  unverified. Follow-up verification above is from GitHub Actions. Changes are
+  published through the connector with a branch-head lease, without touching
+  develop. Changed text has no trailing whitespace; all 19 relative links in
+  this ledger resolve in the published tree.
+  Screenshots below are the previously inspected synthetic implementation fixture,
+  not evidence of live-provider operation.
+  [Desktop](screenshots/following-desktop.png) ·
+  [Mobile](screenshots/following-mobile.png).
+- Live smoke: one bounded public testbooru request on 2026-10-20 could not reach
+  the endpoint before its deadline. No live authentication/provider acceptance is
+  claimed; mocked fixture behavior is separate from real provider operation.
 
 ## B06a — durable follow definitions and API — 2026-10-20
 

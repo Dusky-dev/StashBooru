@@ -128,6 +128,7 @@ func (db *Database) Repository() models.Repository {
 		VisualStack:    &VisualStackStore{files: db.File},
 		BooruReview:    &BooruReviewStore{},
 		BooruFollow:    &BooruFollowStore{},
+		Following:      &FollowingStore{},
 		ImageArtist:    NewImageArtistStore(db.Studio),
 		Group:          db.Group,
 		Performer:      db.Performer,
