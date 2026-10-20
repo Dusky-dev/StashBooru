@@ -365,11 +365,12 @@ func parseArchivePost(s Source, raw object) (Post, error) {
 	return p, nil
 }
 
-// Paheal moved original /_images/ media to a dedicated CDN. Its legacy
-// Shimmie API can still provide the old website URL. Only rewrite an exact
-// Paheal original-media path from the official host (or an absolute path
-// relative to it); never rewrite thumbnails or arbitrary provider URLs.
-func pahealOriginalMediaURL(s Source, raw string) string {
+// Paheal's original CDN uses the hash-sharded path /aa/bb/<md5>
+// without an extension, not the old website's /_images/<name>.<ext>.
+// Only rewrite official Paheal original links when a full MD5 can be
+// established from the post metadata or the legacy filename. Never
+// synthesize a CDN URL from an unverified/partial filename.
+func pahealOriginalMediaURL(s Source, raw, providerMD5 string) string {
 	if !s.isPaheal() {
 		return raw
 	}
@@ -387,8 +388,18 @@ func pahealOriginalMediaURL(s Source, raw string) string {
 	if u.Hostname() == "" && u.Scheme != "" {
 		return raw
 	}
+	hash := strings.ToLower(providerMD5)
+	if !md5Hash.MatchString(hash) {
+		name := path.Base(u.Path)
+		hash = strings.ToLower(strings.TrimSuffix(name, path.Ext(name)))
+	}
+	if !md5Hash.MatchString(hash) {
+		return raw
+	}
 	u.Scheme = "https"
 	u.Host = "r34i.paheal-cdn.net"
+	u.Path = "/" + hash[:2] + "/" + hash[2:4] + "/" + hash
+	u.RawPath = ""
 	return u.String()
 }
 
@@ -414,15 +425,16 @@ func (c *Client) searchShimmie(ctx context.Context, s Source, query string, page
 	for _, row := range envelope.Posts {
 		raw := object{}
 		for _, attr := range row.Attrs {
-			value := attr.Value
-			if attr.Name.Local == "file_url" {
-				value = pahealOriginalMediaURL(s, value)
-			}
-			v, err := json.Marshal(value)
+			v, err := json.Marshal(attr.Value)
 			if err != nil {
 				return result, extendedParseError()
 			}
 			raw[attr.Name.Local] = v
+		}
+		original := text(raw["file_url"])
+		originalFormat := mediaExtension(original)
+		if rewritten := pahealOriginalMediaURL(s, original, text(raw["md5"])); rewritten != original {
+			raw["file_url"], _ = json.Marshal(rewritten)
 		}
 		post, err := parsePost(s, raw)
 		if err != nil {
@@ -432,6 +444,11 @@ func (c *Client) searchShimmie(ctx context.Context, s Source, query string, page
 		post.RemoteID = post.ID
 		if ext := mediaExtension(post.OriginalURL); ext != "" {
 			post.Format = ext
+		} else if post.Format == "" {
+			post.Format = originalFormat
+			if post.Format == "" {
+				post.Format = mediaExtension(post.Filename)
+			}
 		}
 		// Legacy Paheal find_posts XML commonly has only preview_url and
 		// file_url, not a medium-sized sample. Keep thumbnails for the grid
