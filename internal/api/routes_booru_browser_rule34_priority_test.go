@@ -15,6 +15,7 @@ import (
 type rule34CategorySpyClient struct {
 	calls            int
 	sawUnknownBefore bool
+	sawPriority      bool
 	liveCategories   map[string]string
 }
 
@@ -43,6 +44,12 @@ func (c *rule34CategorySpyClient) CategorizeRule34Tags(_ context.Context, source
 			}
 		}
 	}
+}
+
+func (c *rule34CategorySpyClient) CategorizeRule34TagsPrioritized(ctx context.Context, source booru.Source, posts []booru.Post, missingFromCSV func(string) bool) {
+	c.sawPriority = missingFromCSV("live_only") &&
+		!missingFromCSV("changed_role") && !missingFromCSV("csv_only_character")
+	c.CategorizeRule34Tags(ctx, source, posts)
 }
 
 func TestRule34LiveCategoriesTakePrecedenceOverInstalledCSV(t *testing.T) {
@@ -82,8 +89,9 @@ func TestRule34LiveCategoriesTakePrecedenceOverInstalledCSV(t *testing.T) {
 	if status := rs.categorizeBooruPosts(context.Background(), source, posts); status != "" {
 		t.Fatalf("fully categorized posts should not install automatic catalog: %q", status)
 	}
-	if client.calls != 1 || !client.sawUnknownBefore {
-		t.Fatalf("CSV suppressed live categorizer: calls=%d sawUnknown=%t", client.calls, client.sawUnknownBefore)
+	if client.calls != 1 || !client.sawUnknownBefore || !client.sawPriority {
+		t.Fatalf("CSV suppressed or incorrectly prioritized live categorizer: calls=%d sawUnknown=%t priority=%t",
+			client.calls, client.sawUnknownBefore, client.sawPriority)
 	}
 	for i, want := range []string{"copyright", "character", "artist", "meta"} {
 		if got := posts[0].Tags[i].Category; got != want {
