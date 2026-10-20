@@ -106,8 +106,23 @@ If Rule34 blocks the website or its HTML changes, and the tag API does
 not provide exact typed matches, categories remain unknown rather than
 guessed. This change is covered by provider-shaped regression tests; it
 has **not** been verified end-to-end against the user's live Rule34 account.
-An installed per-source CSV takes precedence and remains an optional
-offline fallback.
+An installed per-source CSV takes precedence. If live Rule34 tags
+still lack categories, StashBooru now **automatically installs a Rule34-only
+tag catalog** in `booru-tags/rule34-auto.csv` under its configuration
+directory, without a manual CSV upload. The catalog is a 46.2 MB public
+snapshot from [deepghs/site_tags on Hugging Face](https://huggingface.co/datasets/deepghs/site_tags/blob/main/rule34.xxx/tags.csv).
+It was last updated for Rule34 on **August 2, 2025**, so newer tags may
+still remain uncategorized and live classifications take precedence.
+The first affected search starts a bounded, asynchronous install; the
+browser shows a notice, and **search again after installation** to load
+the categories. The file is downloaded once per installation and cached on
+disk. No API credentials, tags, or search queries are sent to Hugging Face.
+If the Stash server cannot access the dataset, the browser shows an
+explicit failure notice and search still works. The download is limited
+to 64 MiB and redirected only to allowed Hugging Face storage hosts.
+Remove the cached `rule34-auto.csv` and restart the server to fetch a
+replacement snapshot. Your installed source-specific CSV is never
+overwritten.
 
 The inspector groups and colors tags by category. Click a tag for **Add to search**
 or **Replace search**; these update and submit the query and close the preview.

@@ -727,6 +727,20 @@ function SourceResults({
       )}
       {result && (
         <>
+          {source.id === "rule34" && result.categoryStatus === "loading" && (
+            <Alert variant="info">
+              Rule34 tag categories are being installed automatically from a
+              public catalog. Run the search again after the catalog is ready;
+              no CSV upload is needed.
+            </Alert>
+          )}
+          {source.id === "rule34" && result.categoryStatus === "failed" && (
+            <Alert variant="warning">
+              Automatic Rule34 tag categories could not be installed. Check
+              server access to Hugging Face, or install a Rule34 tag CSV in
+              Settings. Live categories remain best-effort.
+            </Alert>
+          )}
           {result.posts.length === 0 && (
             <Alert variant="info">
               {message("empty", "No posts returned for this page and query.")}
