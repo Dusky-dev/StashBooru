@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	stdhtml "html"
 	"net/http"
 	"net/url"
 	"strings"
@@ -87,16 +88,30 @@ func parseRule34SidebarCategories(data []byte, requested map[string]bool) map[st
 		if tag != "a" || category == "" {
 			continue
 		}
-		u, err := url.Parse(attrs["href"])
+		// Rule34 rows can expose the canonical tag through a wiki search
+		// link, a post-list link, or both. The wiki link is often the
+		// first anchor ("?"); its text is not the tag name.
+		u, err := url.Parse(stdhtml.UnescapeString(attrs["href"]))
 		if err != nil || u.IsAbs() || u.Host != "" ||
 			(u.Path != "" && !strings.HasSuffix(u.Path, "/index.php") && u.Path != "index.php") {
 			continue
 		}
 		q := u.Query()
-		if q.Get("page") != "post" || q.Get("s") != "list" {
+		var name string
+		switch q.Get("page") {
+		case "wiki":
+			name = q.Get("search")
+		case "post":
+			if q.Get("s") != "list" {
+				continue
+			}
+			name = q.Get("tags")
+		default:
 			continue
 		}
-		tagName := strings.ToLower(q.Get("tags"))
+		// Accept a category only for an exact post tag, never arbitrary
+		// links or partial matches from a page's other content.
+		tagName := strings.ToLower(name)
 		if requested[tagName] {
 			categories[tagName] = category
 		}
