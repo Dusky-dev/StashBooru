@@ -93,6 +93,8 @@ single-name tag requests per search and shares an eight-second lookup
 deadline with sidebar parsing. This is **best effort**: the first search may
 leave some tags under **Tags — category not supplied**, and new results can
 become classified as the positive cache fills across subsequent searches.
+Valid but unmatched tag records are cached as unknown for five minutes,
+preventing the same absent tags from consuming every subsequent request.
 If Rule34 blocks both the website and tag API, categories remain unknown
 rather than guessed. An installed per-source CSV takes precedence and is
 still available as an optional offline fallback.
