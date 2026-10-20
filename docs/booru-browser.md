@@ -397,6 +397,15 @@ using this server.
   the key and account fields. Saved keys never return to the browser. When the URL
   or engine changes, re-enter or explicitly remove the existing key so it cannot
   silently move to another host.
+- **Tag blacklist for this booru** accepts one exact tag per line (up to 256
+  entries, each at most 256 UTF-8 bytes). Matches ignore case and treat spaces
+  and underscores as equivalent. Matching posts, including posts with matching
+  tags on their attachments, are omitted from searches and account favorites
+  for that source only. The server filters before issuing preview keys, so the
+  blocked posts do not appear in the grid, preview navigation or page tags.
+  Provider page numbers, `hasMore` and totals are left unchanged: a page can
+  have fewer visible posts, or none, without being the last page. Source
+  settings and the blacklist are shared by all users of the server.
 - **Enable this source** controls availability in searches. Disabled definitions
   remain editable. Custom sources can be removed; presets can be reset, removing
   their overrides and saved credentials. IDs cannot be renamed in the editor.
@@ -435,7 +444,8 @@ Example (replace placeholders with your own values):
     "engine": "gelbooru",
     "url": "https://gelbooru.com",
     "apiKey": "YOUR_API_KEY",
-    "userID": "YOUR_USER_ID"
+    "userID": "YOUR_USER_ID",
+    "blacklistTags": ["unwanted_tag", "another tag"]
   },
   { "id": "rule34", "disabled": true },
   {

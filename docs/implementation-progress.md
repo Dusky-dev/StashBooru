@@ -1,5 +1,23 @@
 # StashBooru implementation progress
 
+## Booru browser: per-source tag blacklist — 2026-10-21
+
+- Baseline `develop` at `fee5744b72124fe65bebe8e55ab4650a541001f9`.
+  The focused PR adds `blacklistTags` per source in server configuration and
+  the settings editor, with exact-tag filtering (case-insensitive,
+  spaces/underscores equivalent) for normal searches and account favorites.
+- Posts whose own or attachment tags are blocked are omitted before
+  category lookup, preview media-key projection and browser display.
+  The provider's pagination and totals remain unchanged. A page-local
+  `blacklistedCount` explains hidden results.
+- Settings validation rejects duplicate, malformed and oversized tag lists.
+  Regression test sources cover validation, attachment matching, cross-source
+  isolation, settings round-trips, provider pagination and favorites.
+- Verification: focused CI, UI checks and live-provider acceptance remain to
+  be completed after publication; this environment cannot run a local Git
+  checkout. Tests are included but not claimed as locally executed.
+
+
 Updated: 2026-10-20
 
 Integration baseline: develop
