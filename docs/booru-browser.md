@@ -97,7 +97,9 @@ format. The MD5 and local-match evidence share the bottom row. Download actions
 retain the converter switch, without repeating the settings explanatory text.
 
 **Hide AI-generated posts** is a two-state robot-icon button inside
-`.booru-filter-icons`. It is off by default, and when pressed hides posts on
+`.booru-filter-icons`. The robot gets a diagonal slash when filtering is
+enabled rather than using a highlighted button state. It is off by default,
+and when pressed hides posts on
 the **currently loaded page** that have an explicit `ai_generated`,
 `ai-generated` or equivalent case/spacing variant tag. It does **not**
 classify images from pixels, and `ai_assisted` and
