@@ -42,7 +42,7 @@ func TestRule34SidebarCategoriesReadExactLinksOnly(t *testing.T) {
 	}
 }
 
-func TestRule34SidebarFallbackAfterUnsupportedBulkTagLookup(t *testing.T) {
+func TestRule34SidebarResolvedTagsAvoidRedundantLiveLookups(t *testing.T) {
 	source := Source{ID: "rule34", Name: "Rule34", Engine: "gelbooru",
 		URL: "https://rule34.xxx", APIKey: "private-secret", UserID: "42"}
 	apiCalls, pageCalls := 0, 0
@@ -50,12 +50,8 @@ func TestRule34SidebarFallbackAfterUnsupportedBulkTagLookup(t *testing.T) {
 		switch r.URL.Host {
 		case "api.rule34.xxx":
 			apiCalls++
-			if r.URL.Query().Get("names") == "" {
-				t.Error("missing scoped tag names")
-			}
-			// A provider which ignores the undocumented names filter can
-			// return valid XML, but not any of our requested tag names.
-			return response(200, `<tags count="1"><tag name="other_tag" type="1"/></tags>`), nil
+			t.Error("fully classified sidebar tags should not trigger tag API lookups")
+			return response(200, "<tags count=\"0\"/>"), nil
 		case "rule34.xxx":
 			pageCalls++
 			if r.URL.Path != "/index.php" || r.URL.Query().Get("page") != "post" ||
@@ -87,8 +83,8 @@ func TestRule34SidebarFallbackAfterUnsupportedBulkTagLookup(t *testing.T) {
 		{ID: "124", Tags: []Tag{{Name: "series_a", Category: "unknown"}, {Name: "scene", Category: "unknown"}}},
 	}
 	client.CategorizeRule34Tags(context.Background(), source, posts)
-	if apiCalls != 1 || pageCalls != 2 {
-		t.Fatalf("expected 1 ignored DAPI lookup and 2 HTML sidebars, got %d API and %d pages", apiCalls, pageCalls)
+	if apiCalls != 0 || pageCalls != 2 {
+		t.Fatalf("expected no redundant tag API lookup and 2 HTML sidebars, got %d API and %d pages", apiCalls, pageCalls)
 	}
 	for _, post := range posts {
 		for _, tag := range post.Tags {
@@ -99,7 +95,7 @@ func TestRule34SidebarFallbackAfterUnsupportedBulkTagLookup(t *testing.T) {
 	}
 	again := []Post{{ID: "125", Tags: []Tag{{Name: "hero_a", Category: "unknown"}}}}
 	client.CategorizeRule34Tags(context.Background(), source, again)
-	if apiCalls != 1 || pageCalls != 2 || again[0].Tags[0].Category != "character" {
+	if apiCalls != 0 || pageCalls != 2 || again[0].Tags[0].Category != "character" {
 		t.Fatal("sidebar categories should reuse the existing cache")
 	}
 }
@@ -121,8 +117,8 @@ func TestRule34SidebarBlockedFailsOpenAndStopsRetrying(t *testing.T) {
 		{ID: "124", Tags: []Tag{{Name: "b", Category: "unknown"}}},
 	}
 	client.CategorizeRule34Tags(context.Background(), source, posts)
-	if apiCalls != 1 || pageCalls != 1 {
-		t.Fatalf("blocked site retried useless lookups: api=%d page=%d", apiCalls, pageCalls)
+	if apiCalls != 2 || pageCalls != 1 {
+		t.Fatalf("blocked sidebar should fall back to two exact tag lookups: api=%d page=%d", apiCalls, pageCalls)
 	}
 	for _, post := range posts {
 		if post.Tags[0].Category != "unknown" {
