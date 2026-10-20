@@ -17,7 +17,7 @@ import (
 const (
 	rule34CategoryBatchSize     = 100
 	rule34CategoryNamesMaxBytes = 3072
-	rule34CategoryMaxBatches    = 5
+	rule34CategoryMaxExactLookups = 6
 	rule34CategoryMaxCached     = 8192
 	rule34CategoryCacheExpiry   = 24 * time.Hour
 )
@@ -65,11 +65,19 @@ func parseRule34TagCategories(data []byte, requested map[string]bool) map[string
 			return result
 		}
 		var response rule34TagXMLResponse
-		if xml.Unmarshal(data, &response) != nil || len(response.Tags) > rule34CategoryBatchSize {
+		if xml.Unmarshal(data, &response) == nil && len(response.Tags) <= rule34CategoryBatchSize {
+			for _, row := range response.Tags {
+				add(row.Name, row.Type, row.Category)
+			}
 			return result
 		}
-		for _, row := range response.Tags {
-			add(row.Name, row.Type, row.Category)
+		// Singular `name` lookups can respond with a single <tag /> root.
+		var row rule34TagXMLRow
+		if xml.Unmarshal(data, &row) == nil {
+			var root struct{ XMLName xml.Name }
+			if xml.Unmarshal(data, &root) == nil && root.XMLName.Local == "tag" {
+				add(row.Name, row.Type, row.Category)
+			}
 		}
 		return result
 	}
@@ -108,7 +116,7 @@ func (c *Client) CategorizeRule34Tags(ctx context.Context, source Source, posts 
 	ctx, cancel := context.WithTimeout(ctx, 8*time.Second)
 	defer cancel()
 	instance := source.Instance() + ":"
-	pending := make([]string, 0, rule34CategoryBatchSize*rule34CategoryMaxBatches)
+	pending := make([]string, 0, rule34CategoryBatchSize)
 	seen := make(map[string]bool)
 	now := time.Now()
 	c.rule34CategoryMu.Lock()
@@ -126,7 +134,7 @@ func (c *Client) CategorizeRule34Tags(ctx context.Context, source Source, posts 
 				tag.Category = cached.category
 			} else if !seen[name] && validTagText(tag.Name) && !strings.ContainsAny(name, " \t\r\n") {
 				seen[name] = true
-				if len(pending) < rule34CategoryBatchSize*rule34CategoryMaxBatches {
+				if len(pending) < rule34CategoryBatchSize {
 					pending = append(pending, name)
 				}
 			}
@@ -138,62 +146,45 @@ func (c *Client) CategorizeRule34Tags(ctx context.Context, source Source, posts 
 	}
 
 	categories := make(map[string]string)
-	// Leave a few seconds for the sidebar fallback if the tag API itself
-	// stalls. The overall search still retains its eight-second budget.
-	tagCtx, tagCancel := context.WithTimeout(ctx, 3*time.Second)
-	defer tagCancel()
-	for start, batches := 0, 0; start < len(pending) && tagCtx.Err() == nil && batches < rule34CategoryMaxBatches; batches++ {
-		end, nameBytes := start, 0
-		for end < len(pending) && end-start < rule34CategoryBatchSize {
-			length := len(pending[end])
-			if end > start && nameBytes+length+1 > rule34CategoryNamesMaxBytes {
-				break
-			}
-			nameBytes += length + 1
-			end++
+	missing := make(map[string]bool, len(pending))
+	for _, name := range pending {
+		missing[name] = true
+	}
+	// The website's sidebar may provide every category for a post with one
+	// request. Try it before the per-name API to minimize provider traffic.
+	for name, category := range c.rule34SidebarFallback(ctx, source, posts, missing) {
+		categories[name] = category
+	}
+	// Rule34's tag DAPI does not document Gelbooru's bulk "names" filter.
+	// The exact "name" parameter works on the Rule34 tag endpoint; resolve
+	// remaining tags individually and cache confirmed categories across pages.
+	// One-host throttling and the deadline bound these optional requests.
+	attempts := 0
+	for _, name := range pending {
+		if !missing[name] || ctx.Err() != nil || attempts >= rule34CategoryMaxExactLookups {
+			continue
 		}
-		batch := pending[start:end]
-		start = end
-		names := make(map[string]bool, len(batch))
-		for _, name := range batch {
-			names[name] = true
-		}
+		attempts++
 		params := url.Values{
 			"page": {"dapi"}, "s": {"tag"}, "q": {"index"},
-			"names": {strings.Join(batch, " ")}, "limit": {"100"},
+			"name": {name}, "limit": {"1"},
 			"api_key": {source.APIKey}, "user_id": {source.UserID},
 		}
-		req, err := http.NewRequestWithContext(tagCtx, http.MethodGet,
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet,
 			source.rule34APIBase()+"/index.php?"+params.Encode(), nil)
 		if err != nil {
 			break
 		}
 		req.Header.Set("Accept", "application/xml")
 		req.Header.Set("User-Agent", "StashBooru/1.0 (https://github.com/Dusky-dev/StashBooru)")
-		data, err := c.fetchJSON(tagCtx, source, req, 256<<10)
+		data, err := c.fetchJSON(ctx, source, req, 64<<10)
 		if err != nil {
-			break // Do not fail the post search on optional category enrichment.
+			break // An unavailable provider must never fail the post search.
 		}
-		found := parseRule34TagCategories(data, names)
-		for name, category := range found {
+		if category := parseRule34TagCategories(data, map[string]bool{name: true})[name]; category != "" {
 			categories[name] = category
+			delete(missing, name)
 		}
-		// Rule34's published tag API documents ID lookup, not bulk "names"
-		// search. An empty/mismatched first response means more requests with
-		// the same unsupported filter are unlikely to help; save time for the
-		// public post-sidebar fallback instead.
-		if len(found) == 0 {
-			break
-		}
-	}
-	missing := make(map[string]bool)
-	for _, name := range pending {
-		if categories[name] == "" {
-			missing[name] = true
-		}
-	}
-	for name, category := range c.rule34SidebarFallback(ctx, source, posts, missing) {
-		categories[name] = category
 	}
 	if len(categories) == 0 {
 		return
