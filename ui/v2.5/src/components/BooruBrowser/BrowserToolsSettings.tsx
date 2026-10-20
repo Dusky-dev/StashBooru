@@ -5,6 +5,7 @@ import { FolderPicker } from "./FolderPicker";
 import { invalidateDownloadPreferences } from "./downloadPreferences";
 interface TagDatabase {
   count: number;
+  skippedRows?: number;
   revision: string;
   path?: string;
 }
@@ -157,7 +158,10 @@ export function BrowserToolsSettings() {
       setDatabasePath(result.path ?? "");
       setFile(undefined);
       setNotice(
-        `Imported ${result.count.toLocaleString()} tags for ${source.name}.`
+        `Imported ${result.count.toLocaleString()} tags for ${source.name}.` +
+          (result.skippedRows
+            ? ` Skipped ${result.skippedRows.toLocaleString()} records with invalid tag names.`
+            : "")
       );
     }
   }
@@ -281,6 +285,12 @@ export function BrowserToolsSettings() {
         {database
           ? `${database.count.toLocaleString()} tags installed.`
           : "Loading tag database…"}
+        {!!database?.skippedRows && (
+          <span className="d-block text-warning">
+            {database.skippedRows.toLocaleString()} invalid-name records were
+            skipped during import.
+          </span>
+        )}
       </p>
       <Form.Group controlId="booru-database-path">
         <Form.Label>Autocomplete database CSV path on the server</Form.Label>
@@ -301,9 +311,11 @@ export function BrowserToolsSettings() {
       </Button>
       <p className="text-muted mt-3">
         Or upload a CSV from your computer. Format: name,type,count,"aliases",
-        or a Danbooru CSV export. Up to 64 MiB and one million tags. Loading
-        replaces this source's autocomplete database and leaves catalogue tags
-        alone.
+        or a Danbooru CSV export. Up to 64 MiB (up to two million unique
+        tags for Gelbooru/Rule34). Headered Rule34/Gelbooru exports may skip
+        a bounded number of invalid-name records; the import reports how many.
+        Loading replaces this source's autocomplete database and leaves
+        catalogue tags alone.
       </p>
       <input
         key={`${sourceID}:${database?.revision ?? ""}`}
