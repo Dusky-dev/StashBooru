@@ -21,7 +21,7 @@ func (largeMediaPageClient) Search(_ context.Context, source booru.Source, _ str
 		}
 		for j := 0; j < 24; j++ {
 			post.Attachments = append(post.Attachments, booru.Post{
-				ID: fmt.Sprint(1000+i*24+j), SourceID: source.ID,
+				ID: fmt.Sprint(1000 + i*24 + j), SourceID: source.ID,
 				PreviewURL: fmt.Sprintf("https://img.pawchive.pw/thumbnail/data/%d-%d.png", i, j),
 			})
 		}
@@ -71,7 +71,7 @@ func TestBooruLargePageMediaSnapshotRetention(t *testing.T) {
 	first := ""
 	for i := 0; i < 4300; i++ {
 		key := rememberBooruPost(source, booru.Post{
-			ID: fmt.Sprint(i+1), SourceID: source.ID,
+			ID: fmt.Sprint(i + 1), SourceID: source.ID,
 			PreviewURL: "https://img.pawchive.pw/thumbnail/data/example.png",
 		})
 		if key == "" {
