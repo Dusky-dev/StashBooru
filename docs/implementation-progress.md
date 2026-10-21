@@ -1,5 +1,6 @@
 # StashBooru implementation progress
 
+Updated: 2026-10-21
 
 ## Large archive media-page fix — 2026-10-21
 
@@ -163,20 +164,93 @@
 
 
 
-Updated: 2026-10-20
 
-Integration baseline: develop
-`52724d798d52ed4f1a4443466f8394942bf33ffa`, integrated into B06a as
-`baa8574b6f4e6f35ee51942eff30335c86b9fd75`.
-The owner authorized resolving and merging #163, then retargeting, verifying
-and merging #164 on 2026-10-20. This branch includes B06b's on-demand feed/UI
-and preserves the newer Rule34/browser fixes. #164 remains stacked until #163
-merges; then target develop and verify that the tested base is unchanged.
-See [Following scope/API](booru-follows.md).
+Current work: B03a shared provider identities, [PR #171](https://github.com/Dusky-dev/StashBooru/pull/171),
+branch `feat/provider-identities-20261020`, against develop
+`a312a80063418ca68bc70da4821d37aa194140cf`. The owner-authorized #163/#164
+Following merges are complete; this identity PR has not been merged or deployed.
+Current-head verification and review status are recorded on #171.
 
 P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
 silently promoted to verified production features by this documentation update.
+
+## B03a — shared provider identities — 2026-10-20
+
+- Owner prioritized Artist/Character/Copyright identity unification after merging
+  #163 and #164. General tags remain unchanged. Baseline develop:
+  `aa1a2b42bf9bfb6b07608350bfbda688e54e91b9`; branch
+  `feat/provider-identities-20261020`. No other PR was open at initial inspection.
+- Reuse native Artist (Studio), Character (Performer) and Copyright IDs; add
+  provider-scoped raw tag/account bindings, not synthetic root tags or global
+  aliases. Store exact provider targets and independent source identity.
+  Explicit connections are reversible, renamed native records resolve dynamically,
+  rejected candidates are retained, and decision versions reject stale writes.
+- Migration 100 preserves native records, relationships, general tags and follows.
+  New metadata observations never create authoritative native entities or
+  relationships. Name normalization is suggestion evidence only.
+- First usable slice: linking from post identifiers, creating/linking
+  native records, suggestions and bulk review, Sources & aliases on native records,
+  plus bounded scanning of saved download receipts and cached feed metadata.
+  Remote artist-profile crawling and automatic catalogue reassignment/merges are
+  outside this slice. Unknown/missing source metadata is not guessed.
+- Resumed on 2026-10-21 with a working execution environment. Integrated fresh
+  develop `fee5744b72124fe65bebe8e55ab4650a541001f9`, preserving current Rule34
+  live-category priority and Paheal/browser corrections. PR #171 remains draft.
+- Linking UI, native profile Sources & aliases, post actions, batch decisions,
+  creator directory labels and cancellable native scan jobs are implemented.
+  Canonical display names remain separate from original provider labels/targets.
+  Cache recovery retains explicit decisions and capacity never hides existing links.
+- Published implementation `8f7dbfb0dce69e8e5e4fefa19b5bd941cb12eb79` has tree
+  `9620e3182053c9baad50f6dd5f4bdff7373d89b9`, identical to locally tested
+  `3b6f75a54299d2632218b13a0b61a1d74200079f`. Fetch and empty tree diff
+  verified publication. Both original feature and fresh develop ancestry remain.
+- Local checks: `make generate-backend`, `make test`, `make it`, `make lint`
+  (**0 issues**), locked-pnpm `validate` (**61 unit tests**, lint, TypeScript,
+  formatting), production UI bundle, and mounted Identity, Booru and Following
+  desktop/mobile workflows pass. Final hardening was rechecked with focused
+  identity/SQLite tests and lint; UI event/label changes reran validation,
+  production bundling and the mounted identity suite. No generated-code edits.
+- Identity coverage includes transactional rollback after a later target fails,
+  native deletion/rename, category/source/service isolation, label priority,
+  stale decisions, scan receipt bounds/symlinks, cached feed provenance under
+  broken settings, repeated scan/cancel, cache capacity/recovery and native
+  job-queue cancellation. Mounted checks cover linking/batch/create/reject/
+  restore/unlink, source aliases, native profiles, refresh/back, conflict
+  recovery, scan retry and unmount cleanup at 1440px and 390px (`/stash/`).
+- First expanded-head CI passed Identity and Following browser workflows; its
+  generation job found two fixable test-script lint declarations, now corrected.
+  Earlier backend test failure was an old Copyright fixture lacking migration
+  100, now migrated and checked locally. The inherited late-autocomplete browser
+  failure did not reproduce in the full current desktop/mobile suite.
+- Hardened publication `05d3ae8efbc13558daf6b81601b30f73c1d610f7` has tree
+  `b63ecc177ca981c230416dec281c3e31a6c6fb3e`, matching locally verified
+  `29da2a1438b4849df3e2405277e3edb310572263`. CI generation/UI validation,
+  lint and all three mounted browser workflows passed on that revision.
+- Codex Review of `8f7dbfb` completed with four viable P2 findings. Addressed
+  them in local `c1c957d` (see Git history for the full commit): native scan
+  cancellation now returns cleanly; timeout recovery uses a fresh parent-bounded
+  read context; feed scans use configured/default source metadata and preserve
+  custom-source names; Artist/Character queries evaluate terms with correlated
+  EXISTS across all aliases/connections. Also match qualified Character names.
+  Regression tests exercise actual native job cancellation, forced write timeout,
+  unavailable custom-source provenance, negative/AND/OR searches for both types,
+  and Character disambiguation. Focused API/SQLite regressions pass; full Go
+  gates subsequently passed on the published revision below. UI source is unchanged.
+- All CI checks passed on `4083d0014e1107c952251f8d65eb0c04e6a97a9e`:
+  generation (including UI validation/bundle), Go tests/integration, lint,
+  Identity/Booru/Following mounted workflows, all seven platform builds and
+  release packaging. The four assessed review threads are resolved with fixes
+  and regression evidence. A fresh review of the combined head is still required.
+- Refreshed develop to `a312a80063418ca68bc70da4821d37aa194140cf` on
+  2026-10-21 and merged it into the feature. Preserve newer Pawchive post search,
+  source blacklists/toggle and large media page handling. Only this progress
+  document needed conflict resolution; all source files merged without conflicts.
+  Revalidate the combined tree; authoritative latest results remain on #171.
+- Synthetic captures are committed under `docs/screenshots/provider-identities-*`.
+  They were visually inspected. Live provider/production acceptance remains
+  unverified. Check current-head CI and Codex Review on #171 before merging.
+- See [Provider identities](provider-identities.md) for the contract and limits.
 
 ## Following merge preparation — 2026-10-20
 

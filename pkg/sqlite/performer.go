@@ -653,9 +653,7 @@ func (qb *PerformerStore) makeQuery(ctx context.Context, performerFilter *models
 	distinctIDs(&query, performerTable)
 
 	if q := findFilter.Q; q != nil && *q != "" {
-		query.join(performersAliasesTable, "", "performer_aliases.performer_id = performers.id")
-		searchColumns := []string{"performers.name", "performer_aliases.alias"}
-		query.parseQueryString(searchColumns, *q)
+		query.parseIdentityQueryString("character", *q)
 	}
 
 	filter := filterBuilderFromHandler(ctx, &performerFilterHandler{

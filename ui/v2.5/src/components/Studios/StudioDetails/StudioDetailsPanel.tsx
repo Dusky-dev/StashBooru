@@ -1,3 +1,4 @@
+import { IdentitySources } from "src/components/Identities/identity";
 import React from "react";
 import { TagLink } from "src/components/Shared/TagLink";
 import * as GQL from "src/core/generated-graphql";
@@ -89,6 +90,7 @@ export const StudioDetailsPanel: React.FC<IStudioDetailsPanel> = PatchComponent(
           fullWidth={fullWidth}
         />
         <CustomFields values={studio.custom_fields} />
+        <IdentitySources kind="artist" entityID={studio.id} />
       </div>
     );
   }

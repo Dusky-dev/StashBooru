@@ -3,8 +3,10 @@ package api
 import (
 	"context"
 	"errors"
+	"github.com/stashapp/stash/pkg/models"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/stashapp/stash/pkg/booru"
 )
@@ -56,6 +58,21 @@ func (rs booruBrowserRoutes) Creators(w http.ResponseWriter, r *http.Request) {
 	if _, ok = rs.tagSource(r); !ok {
 		writeBooruError(w, 409, "source", "Source changed during artist search. Reload sources.")
 		return
+	}
+	if rs.repository.ProviderIdentity != nil {
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+		_ = rs.repository.WithTxn(ctx, func(ctx context.Context) error {
+			observations := []models.IdentityObservation{}
+			for _, creator := range result.Creators {
+				observations = append(observations, identityObservation(source, "artist", "creator:"+creator.Service+":"+creator.ID, creator.Name, "", 2))
+				if len(observations) == 50 {
+					break
+				}
+			}
+			_, err := rs.repository.ProviderIdentity.Observe(ctx, observations)
+			return err
+		})
 	}
 	writeVisualSimilarityJSON(w, result)
 }

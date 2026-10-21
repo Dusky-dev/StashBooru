@@ -568,9 +568,7 @@ func (qb *StudioStore) makeQuery(ctx context.Context, studioFilter *models.Studi
 	distinctIDs(&query, studioTable)
 
 	if q := findFilter.Q; q != nil && *q != "" {
-		query.join(studioAliasesTable, "", "studio_aliases.studio_id = studios.id")
-		searchColumns := []string{"studios.name", "studio_aliases.alias"}
-		query.parseQueryString(searchColumns, *q)
+		query.parseIdentityQueryString("artist", *q)
 	}
 
 	filter := filterBuilderFromHandler(ctx, &studioFilterHandler{

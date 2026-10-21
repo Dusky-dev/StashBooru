@@ -142,6 +142,7 @@ func (rs booruBrowserRoutes) Search(w http.ResponseWriter, r *http.Request) {
 			result = source.FilterBlacklisted(result)
 		}
 		result.CategoryStatus = rs.categorizeBooruPosts(r.Context(), source, result.Posts)
+		rs.captureIdentityPosts(r.Context(), source, result.Posts)
 		for i := range result.Posts {
 			result.Posts[i] = publicBooruPost(source, result.Posts[i])
 		}

@@ -1,3 +1,4 @@
+import { IdentityLink } from "../Identities/identity";
 import {
   type ReactNode,
   type KeyboardEvent,
@@ -378,9 +379,9 @@ function PostInspection({
                     <Dropdown.Toggle
                       variant="link"
                       className={`booru-tag tag-${category}`}
-                      aria-label={`Tag ${tag.label ?? tag.name}`}
+                      aria-label={`Tag ${tag.canonicalName ?? tag.label ?? tag.name}`}
                     >
-                      {tag.label ?? tag.name}
+                      {tag.canonicalName ?? tag.label ?? tag.name}
                     </Dropdown.Toggle>
                     <Dropdown.Menu role="menu">
                       <Dropdown.Item
@@ -399,6 +400,13 @@ function PostInspection({
                       >
                         Replace search
                       </Dropdown.Item>
+                      <IdentityLink
+                        source={source}
+                        kind={tag.category}
+                        target={tag.name}
+                        label={tag.label}
+                        identityID={tag.identityID}
+                      />
                     </Dropdown.Menu>
                   </Dropdown>
                 ))}

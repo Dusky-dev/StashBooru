@@ -18,9 +18,11 @@ import (
 const responseLimit = 8 << 20
 
 type Tag struct {
-	Name     string `json:"name"`
-	Category string `json:"category"`
-	Label    string `json:"label,omitempty"`
+	CanonicalName string `json:"canonicalName,omitempty"`
+	IdentityID    string `json:"identityID,omitempty"`
+	Name          string `json:"name"`
+	Category      string `json:"category"`
+	Label         string `json:"label,omitempty"`
 }
 
 type Post struct {

@@ -331,6 +331,15 @@ export const MainNavbar: React.FC = () => {
           <span className="ml-1 d-none d-sm-inline">Following</span>
         </NavLink>
         <NavLink
+          to="/identities"
+          className="nav-utility"
+          title="Identities"
+          onClick={handleDismiss}
+        >
+          <Icon icon={faTag} />
+          <span className="ml-1 d-none d-sm-inline">Identities</span>
+        </NavLink>
+        <NavLink
           className="nav-utility"
           exact
           to="/booru"

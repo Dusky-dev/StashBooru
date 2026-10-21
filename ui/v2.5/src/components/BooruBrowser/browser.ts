@@ -27,7 +27,13 @@ export interface BooruPost {
   md5?: string;
   rating?: string;
   format?: string;
-  tags: { name: string; category: string; label?: string }[];
+  tags: {
+    name: string;
+    category: string;
+    label?: string;
+    identityID?: string;
+    canonicalName?: string;
+  }[];
   attachments?: BooruPost[];
   remoteID?: string;
   title?: string;

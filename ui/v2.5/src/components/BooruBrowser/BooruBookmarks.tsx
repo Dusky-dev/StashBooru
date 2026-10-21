@@ -123,7 +123,7 @@ export function CoreTagActions({
               key={item.name}
               icon={item.icon}
               label={`${item.label} for post ${post.remoteID ?? post.id}`}
-              title={`${item.label}: ${tags.map((tag) => tag.label ?? tag.name).join(", ")}`}
+              title={`${item.label}: ${tags.map((tag) => tag.canonicalName ?? tag.label ?? tag.name).join(", ")}`}
               onClick={() =>
                 tags.length === 1
                   ? choose(tags[0].name)
@@ -149,7 +149,7 @@ export function CoreTagActions({
                   variant="link"
                   onClick={() => choose(tag.name)}
                 >
-                  {tag.label ?? tag.name}
+                  {tag.canonicalName ?? tag.label ?? tag.name}
                 </Button>
               ))}
           </Modal.Body>
