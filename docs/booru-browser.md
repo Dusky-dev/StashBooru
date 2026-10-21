@@ -59,12 +59,19 @@ separate choices. Directory errors have a retry action. Post-text search is
 available on **both Pawchive and Kemono**. For Pawchive, StashBooru
 requests `/api/v1/posts?q=...` with native 50-record offset pagination
 instead of scanning only 250 recent posts. The provider can return older
-matches from across its archive. Some older Pawchive API versions ignored
-`q=`; if the returned posts show no textual evidence of the search,
-StashBooru probes the same unfiltered page and refuses to display
-identical unrelated results. The source site might still provide newer
-search behavior before its API is upgraded. For a provider-side mismatch,
-follow Pawchive's own Posts search or use **Find an artist**.
+matches from across its archive. Pawchive has recently returned
+HTTP 429 (rate limited) to API clients. To avoid adding pressure,
+StashBooru no longer performs a second unfiltered request on each
+search page, coalesces identical in-flight requests, and caches
+successful public keyword-search pages for 90 seconds. Failed requests
+are never cached or automatically retried. When Pawchive omits
+`Retry-After`, the server pauses requests to that host for 60 seconds.
+If the API is rate-limited, the browser links to the corresponding
+search on Pawchive's website. Some older Pawchive API versions ignored
+`q=`; without another API probe, StashBooru cannot verify all returned
+matches. If any result lacks a visible title/body match, a notice warns that
+the provider may instead have matched creator metadata or returned an
+unfiltered feed. Check the website if results look unrelated.
 Provider indexing, availability, rate limits and its maximum offset apply.
 
 With the rating control at its default, the same query is sent unchanged

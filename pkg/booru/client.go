@@ -88,6 +88,9 @@ type Client struct {
 	http                *http.Client
 	global              chan struct{}
 	hosts               sync.Map
+	pawchiveSearchMu    sync.Mutex
+	pawchiveSearchCache map[string]pawchiveSearchCacheEntry
+	pawchiveSearchBusy  map[string]chan struct{}
 	interval            time.Duration
 	media               chan struct{}
 	autocompleteMu      sync.Mutex
@@ -316,6 +319,11 @@ func (c *Client) fetchProviderBody(ctx context.Context, source Source, req *http
 		case http.StatusTooManyRequests:
 			failure.Code, failure.Message = "rate-limited", "Provider rate limit reached. Wait before retrying."
 			failure.RetryAfter = retryDelay(response.Header.Get("Retry-After"))
+			if failure.RetryAfter == 0 && source.Engine == "pawchive" {
+				// Pawchive may omit Retry-After. A zero-second pause lets
+				// repeated UI retries hammer its API indefinitely.
+				failure.RetryAfter = 60
+			}
 			gate.retryUntil = time.Now().Add(time.Duration(failure.RetryAfter) * time.Second)
 		}
 		return nil, failure

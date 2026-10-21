@@ -36,6 +36,13 @@ func stableAssetID(prefix, identity string) string {
 }
 
 func (c *Client) extendedRequest(ctx context.Context, source Source, endpoint string, params url.Values) ([]byte, error) {
+	if source.Engine == "pawchive" && endpoint == "/api/v1/posts" && params.Has("q") {
+		return c.pawchiveCachedSearch(ctx, source, params)
+	}
+	return c.extendedRequestUncached(ctx, source, endpoint, params)
+}
+
+func (c *Client) extendedRequestUncached(ctx context.Context, source Source, endpoint string, params url.Values) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(source.URL, "/")+endpoint+"?"+params.Encode(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("invalid provider request")
@@ -151,17 +158,21 @@ func (c *Client) searchExtended(ctx context.Context, s Source, query string, pag
 		if err != nil || len(rows) > block {
 			return result, extendedParseError()
 		}
-		// Some Pawchive releases accepted q but returned an unfiltered
-		// recent feed. When any title/body doesn't visibly match,
-		// compare identities against the unfiltered page before using
-		// the results. We must not silently show unrelated posts.
-		if s.Engine == "pawchive" && endpoint == "/api/v1/posts" && params.Has("q") && len(rows) > 0 {
-			ignored, err := c.pawchiveQueryIgnored(ctx, s, params, query, rows)
-			if err != nil {
-				return result, err
+		// Avoid another provider request to compare every q result with an
+		// unfiltered page. Pawchive can rate limit those extra reads.
+		// Some deployments may ignore q, while others index creator data
+		// not visible in a post's title/body; disclose that ambiguity.
+		if s.Engine == "pawchive" && params.Has("q") && len(rows) > 0 {
+			allVisibleMatches := true
+			needle := strings.ToLower(strings.TrimSpace(query))
+			for _, raw := range rows {
+				if !strings.Contains(strings.ToLower(text(raw["title"])+" "+text(raw["content"])), needle) {
+					allVisibleMatches = false
+					break
+				}
 			}
-			if ignored {
-				return result, &Error{Code: "unsupported-query", Message: "Pawchive's API returned unfiltered posts for this query. Search on Pawchive's website instead; no incorrect matches were displayed."}
+			if !allVisibleMatches {
+				result.SearchNotice = "Some Pawchive results lack visible title/text matches. They may match creator metadata, or this API version may ignore search filters. Verify the results on Pawchive."
 			}
 		}
 		for i, raw := range rows {
@@ -187,45 +198,6 @@ func (c *Client) searchExtended(ctx context.Context, s Source, query string, pag
 	}
 	result.HasMore = result.HasMore && page < MaxPage
 	return result, nil
-}
-
-// Older Pawchive releases ignored q=. Probe an unfiltered page whenever
-// the returned records are not ALL obvious title/body matches: even a random
-// recent post can coincidentally include the query. The provider may index
-// other fields, so a nonmatching title alone is not enough to reject a
-// response. Identical ordered identities prove the filter was ignored.
-func (c *Client) pawchiveQueryIgnored(ctx context.Context, source Source, params url.Values, query string, rows []object) (bool, error) {
-	needle := strings.ToLower(strings.TrimSpace(query))
-	allTextMatches := true
-	for _, row := range rows {
-		if !strings.Contains(strings.ToLower(text(row["title"])+" "+text(row["content"])), needle) {
-			allTextMatches = false
-			break
-		}
-	}
-	if allTextMatches {
-		return false, nil
-	}
-	unfiltered := url.Values{"o": {params.Get("o")}}
-	data, err := c.extendedRequest(ctx, source, "/api/v1/posts", unfiltered)
-	if err != nil {
-		return false, err
-	}
-	recent, err := extendedRows(source.Engine, data)
-	if err != nil || len(recent) > 50 {
-		return false, extendedParseError()
-	}
-	if len(recent) != len(rows) {
-		return false, nil
-	}
-	for i := range rows {
-		if text(rows[i]["id"]) != text(recent[i]["id"]) ||
-			text(rows[i]["user"]) != text(recent[i]["user"]) ||
-			text(rows[i]["service"]) != text(recent[i]["service"]) {
-			return false, nil
-		}
-	}
-	return true, nil
 }
 
 func extendedParseError() error {
