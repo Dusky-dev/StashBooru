@@ -248,7 +248,7 @@ Downloaded history. No remote follow or automated download is created.
 | --- | --- | --- |
 | Paheal / Shimmie | Native tags through the anonymous Danbooru XML endpoint (`/api/danbooru/find_posts`) | Category information may be unavailable; no live completion endpoint. Originals on the hash-sharded `r34i.paheal-cdn.net` CDN are supported, including for older saved source settings. The inspector uses original resolution if there is no separate provider sample and the original fits the 24 MiB proxy limit; card thumbnails remain small. The legacy `/api/danbooru/find_posts/index.xml` URL can return HTML rather than XML. |
 | Pixiv | OAuth **access token** in source API key; text search, `user:123` for artist works, `id:123` for a work | Static illustration/manga pages selectable in the inspector. Ugoira frame ZIPs are explicitly unavailable. No login/token refresh is implemented; replace expired tokens in Settings. |
-| Pawchive | Provider `q=` post search and offset paging, `*` recent browsing or artist directory; anonymous API. Search pages are cached briefly; older API versions may ignore `q=`, so check ambiguous results on the website. | Optional API key is the `session` cookie value, sent only to `file.pawchive.pw`. Preview-only/deferred/unavailable originals cannot be downloaded. |
+| Pawchive | Post-text search using provider-wide `q=` and offset paging, `*` for recent posts, or artist-name directory; anonymous API. Older API releases may ignore `q=` and are detected before unrelated results are shown. | Optional API key is the `session` cookie value, sent only to `file.pawchive.pw`. Preview-only/deferred/unavailable originals cannot be downloaded. |
 | Kemono | Artist-name directory search, `*` for recent posts, or text of at least three bytes; anonymous API | Supported image/video attachments and ZIP/CBZ previews; documents and unsupported archives are omitted. |
 
 Paheal may return old `rule34.paheal.net/_images/` links in its XML
@@ -428,7 +428,12 @@ using this server.
   blocked posts do not appear in the grid, preview navigation or page tags.
   Provider page numbers, `hasMore` and totals are left unchanged: a page can
   have fewer visible posts, or none, without being the last page. Source
-  settings and the blacklist are shared by all users of the server.
+  settings and the blacklist are shared by all users of the server. The
+  **Hide blacklisted posts** icon beside the AI-generated filter is enabled by
+  default. Click it to temporarily show blacklisted posts in searches or account
+  favorites for the selected source, and click again to hide them. This state
+  is stored in the browser search URL (`blacklist=show`) and can be bookmarked
+  without changing the saved tag list.
 - **Enable this source** controls availability in searches. Disabled definitions
   remain editable. Custom sources can be removed; presets can be reset, removing
   their overrides and saved credentials. IDs cannot be renamed in the editor.

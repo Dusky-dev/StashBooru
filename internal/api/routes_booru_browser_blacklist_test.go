@@ -38,10 +38,11 @@ func TestBooruSearchPerSourceBlacklist(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		source     string
+		mode       string
 		wantHidden int
-	}{{"danbooru", 1}, {"gelbooru", 0}} {
+	}{{"danbooru", "", 1}, {"danbooru", "&blacklist=show", 0}, {"gelbooru", "", 0}} {
 		w := httptest.NewRecorder()
-		rs.Search(w, httptest.NewRequest("GET", "/?source="+tc.source+"&page=2&limit=2", nil))
+		rs.Search(w, httptest.NewRequest("GET", "/?source="+tc.source+"&page=2&limit=2"+tc.mode, nil))
 		if w.Code != 200 {
 			t.Fatalf("%s: %d %s", tc.source, w.Code, w.Body.String())
 		}
@@ -54,6 +55,16 @@ func TestBooruSearchPerSourceBlacklist(t *testing.T) {
 		}
 		if tc.wantHidden > 0 && (got.Posts[0].ID != "2" || strings.Contains(w.Body.String(), "Hidden_Tag")) {
 			t.Fatalf("blacklisted post leaked in response: %s", w.Body.String())
+		}
+		if tc.mode != "" && (got.Posts[0].ID != "1" || !strings.Contains(w.Body.String(), "Hidden_Tag")) {
+			t.Fatalf("blacklist bypass did not reveal posts: %s", w.Body.String())
+		}
+	}
+	for _, bad := range []string{"&blacklist=", "&blacklist=off", "&blacklist=show&blacklist=show"} {
+		w := httptest.NewRecorder()
+		rs.Search(w, httptest.NewRequest("GET", "/?source=danbooru&page=2&limit=2"+bad, nil))
+		if w.Code != 400 {
+			t.Fatalf("accepted invalid blacklist mode %q: %d", bad, w.Code)
 		}
 	}
 }

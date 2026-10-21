@@ -583,7 +583,13 @@ function SourceResults({
   showIgnored: boolean;
   filters: Pick<
     BrowserSearch,
-    "sort" | "rating" | "media" | "pageSize" | "favorites" | "hideAI"
+    | "sort"
+    | "rating"
+    | "media"
+    | "pageSize"
+    | "favorites"
+    | "hideAI"
+    | "showBlacklisted"
   >;
   thumbnails: boolean;
   favorites: boolean;
@@ -620,7 +626,8 @@ function SourceResults({
     filters.media,
     filters.pageSize,
     favorites,
-    filters.hideAI
+    filters.hideAI,
+    filters.showBlacklisted
   );
   const [review, setReview] = useState<ReviewState[]>([]);
   const onReview = useCallback((value: ReviewState[]) => setReview(value), []);
@@ -660,6 +667,7 @@ function SourceResults({
       limit: String(filters.pageSize ?? 24),
       ...(filters.sort ? { sort: filters.sort } : {}),
       ...(filters.rating ? { rating: filters.rating } : {}),
+      ...(filters.showBlacklisted ? { blacklist: "show" } : {}),
     });
     void fetch(
       `booru-browser/${favorites ? "account-favorites" : "search"}?${params}`,
@@ -689,6 +697,7 @@ function SourceResults({
     filters.sort,
     filters.rating,
     filters.pageSize,
+    filters.showBlacklisted,
     suspended,
   ]);
   const post = result?.posts.find((item) => item.id === inspect);
@@ -1093,7 +1102,9 @@ export default function BooruBrowser() {
             active.rating,
             active.media,
             active.pageSize,
-            active.favorites
+            active.favorites,
+            active.hideAI,
+            active.showBlacklisted
           )
       );
     });
@@ -1364,6 +1375,21 @@ export default function BooruBrowser() {
                     search: browserSearchURL({
                       ...active,
                       media: (value || undefined) as BrowserSearch["media"],
+                      inspect: undefined,
+                    }),
+                  })
+                }
+              />
+              <BooruIconButton
+                icon={faBan}
+                label="Hide blacklisted posts"
+                crossedOut={!active.showBlacklisted}
+                aria-pressed={!active.showBlacklisted}
+                onClick={() =>
+                  history.push({
+                    search: browserSearchURL({
+                      ...active,
+                      showBlacklisted: !active.showBlacklisted,
                       inspect: undefined,
                     }),
                   })
@@ -1711,7 +1737,7 @@ export default function BooruBrowser() {
               return (
                 source && (
                   <SourceResults
-                    key={`${id}:${active.favorites}:${active.query}:${active.pages[id]}:${loadAttempt}:${active.sort}:${active.rating}:${active.pageSize}`}
+                    key={`${id}:${active.favorites}:${active.query}:${active.pages[id]}:${loadAttempt}:${active.sort}:${active.rating}:${active.pageSize}:${active.showBlacklisted}`}
                     source={source}
                     suspended={showSettings}
                     favorites={!!active.favorites}
@@ -1782,7 +1808,13 @@ function PageTags({
   activePages: Record<string, number>;
   filters: Pick<
     BrowserSearch,
-    "sort" | "rating" | "media" | "pageSize" | "favorites" | "hideAI"
+    | "sort"
+    | "rating"
+    | "media"
+    | "pageSize"
+    | "favorites"
+    | "hideAI"
+    | "showBlacklisted"
   >;
   onTag: (name: string, mode?: "add" | "replace") => void;
 }) {
@@ -1800,7 +1832,8 @@ function PageTags({
         filters.media,
         filters.pageSize,
         filters.favorites,
-        filters.hideAI
+        filters.hideAI,
+        filters.showBlacklisted
       )
       ? loaded.posts
       : [];
