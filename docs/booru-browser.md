@@ -281,8 +281,11 @@ one card: choose **Media file** in inspection to preview/download a particular
 attachment. Moving to another post resets the selector to its primary file while
 keeping keyboard navigation active. Keyboard Up downloads the selected attachment. Ignore applies
 to the post; alternate files do not inherit first-file MD5 evidence. Up to 200
-additional attachments per post and 256 media snapshots per result are accepted;
-reduce page size if galleries exceed the result bound. Downloads remain one
+additional attachments per archive post are accepted, and pages containing
+more than 256 total media files are no longer rejected. The preview inspector
+renders large galleries incrementally. A bounded 16,384-key server snapshot
+cache retains media access tokens for an entire maximum-sized provider page;
+older tokens expire or are evicted first. Downloads remain one
 explicitly chosen file at a time. No text/ZIP import or bulk gallery download is
 added. Installed CSV completion remains available on these new engines.
 
