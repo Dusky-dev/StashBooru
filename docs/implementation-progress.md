@@ -1,5 +1,20 @@
 # StashBooru implementation progress
 
+## Booru blacklist toolbar toggle — 2026-10-21
+
+- Based on `develop` at `cfba345f70770cd9ea8b7e74140deb5872c98d1b`. Add a blacklist toggle beside the AI-generated
+  filter in the booru browser toolbar. Blacklists stay active by default.
+  Explicit `blacklist=show` on search and account-favorites API calls reveals
+  blocked posts without modifying per-source server settings.
+- The on/off state travels in the shareable browser search URL and joins result
+  signatures, fetch dependencies and source result component keys, avoiding stale
+  card/tag/page state on changes or reload. Input validation rejects malformed
+  blacklist filter values.
+- Add backend tests for both search/favorites filtering modes, invalid query
+  flags and a mounted browser fixture for the toggle, reload and favorites.
+  No database migrations or global configuration changes.
+- Validation status: PR CI must verify UI/browser and backend tests.
+
 ## Booru blacklist input format — 2026-10-21
 
 - Baseline `develop` at `38dcf44039f13b358e4a110decd053fcd478169e`. Follow-up to merged PR #176.
