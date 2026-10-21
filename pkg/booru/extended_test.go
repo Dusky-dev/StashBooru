@@ -105,7 +105,7 @@ func TestPawchiveRecentAndCreatorModesUnaffected(t *testing.T) {
 	}
 	if len(paths) != 2 || paths[0] != "/api/v1/posts" ||
 		paths[1] != "/api/v1/patreon/user/42" ||
-		!strings.Contains(s.Public().QueryHelp, "post text") {
+		!strings.Contains(s.Public().QueryHelp, "Pawchive posts") {
 		t.Fatalf("recent browsing, creator search or help regressed: %v", paths)
 	}
 	for _, query := range []string{"creator:patreon:42 extra", "creator:patreon", "creator:patreon:../../etc"} {
