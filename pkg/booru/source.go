@@ -24,15 +24,16 @@ var sourceID = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,63}$`)
 // Source is server-owned configuration. Credentials must never be serialized
 // into the public Sources response, browser URLs, or transport errors.
 type Source struct {
-	ID         string   `json:"id"`
-	Name       string   `json:"name"`
-	Engine     string   `json:"engine"`
-	URL        string   `json:"url"`
-	MediaHosts []string `json:"mediaHosts,omitempty"`
-	Login      string   `json:"login,omitempty"`
-	APIKey     string   `json:"apiKey,omitempty"`
-	UserID     string   `json:"userID,omitempty"`
-	Disabled   bool     `json:"disabled,omitempty"`
+	ID            string   `json:"id"`
+	Name          string   `json:"name"`
+	Engine        string   `json:"engine"`
+	URL           string   `json:"url"`
+	MediaHosts    []string `json:"mediaHosts,omitempty"`
+	BlacklistTags []string `json:"blacklistTags,omitempty"`
+	Login         string   `json:"login,omitempty"`
+	APIKey        string   `json:"apiKey,omitempty"`
+	UserID        string   `json:"userID,omitempty"`
+	Disabled      bool     `json:"disabled,omitempty"`
 }
 
 type PublicSource struct {
@@ -110,6 +111,9 @@ func (s Source) Validate() error {
 	}
 	if !slices.Contains([]string{"danbooru", "gelbooru", "moebooru", "e621", "philomena", "shimmie", "pixiv", "pawchive", "kemono"}, s.Engine) {
 		return fmt.Errorf("unsupported API engine")
+	}
+	if err := validateBlacklistTags(s.BlacklistTags); err != nil {
+		return err
 	}
 	if len(s.URL) > 2048 || len(s.MediaHosts) > 64 {
 		return fmt.Errorf("source URL is limited to 2048 bytes and at most 64 image hosts")
@@ -202,7 +206,7 @@ func (s Source) Public() PublicSource {
 		help = "Pixiv tag/title search; user:123 for an artist, id:123 for one work. Account restrictions apply."
 		auth = "Pixiv OAuth access token required in API key. Expired tokens must be replaced; this browser does not perform account login."
 	case "pawchive":
-		help = "Find an artist by name in the sidebar, or use * for recent posts. Text post search is unsupported because the API ignores it. Page size counts posts; inspection exposes every supported attachment."
+		help = "Search Pawchive posts using native q= search or * for recent posts; Find an artist browses a creator. Pawchive may rate limit API access and some deployments may ignore q filters. StashBooru caches repeated searches briefly and links to the site when an API request fails."
 		auth = "Public API; site access restrictions apply. Optional file-host session cookie value in API key."
 	case "kemono":
 		help = "Find an artist by name in the sidebar. Use * for recent posts or at least three characters to search post text. Page size counts posts; inspection exposes every supported attachment."

@@ -591,7 +591,13 @@ function SourceResults({
   showIgnored: boolean;
   filters: Pick<
     BrowserSearch,
-    "sort" | "rating" | "media" | "pageSize" | "favorites" | "hideAI"
+    | "sort"
+    | "rating"
+    | "media"
+    | "pageSize"
+    | "favorites"
+    | "hideAI"
+    | "showBlacklisted"
   >;
   thumbnails: boolean;
   favorites: boolean;
@@ -628,11 +634,21 @@ function SourceResults({
     filters.media,
     filters.pageSize,
     favorites,
-    filters.hideAI
+    filters.hideAI,
+    filters.showBlacklisted
   );
   const [review, setReview] = useState<ReviewState[]>([]);
   const onReview = useCallback((value: ReviewState[]) => setReview(value), []);
   const [error, setError] = useState("");
+  const pawchiveSearchLink =
+    source.engine === "pawchive" &&
+    !favorites &&
+    query.trim() &&
+    !query.startsWith("creator:")
+      ? remoteURL(
+          `${source.url.replace(/\/$/, "")}/posts?q=${encodeURIComponent(query)}`
+        )
+      : undefined;
   const [loading, setLoading] = useState(true);
   // Results are not ready for scroll restoration until the provider finishes.
   // The initial empty posts list is only a loading placeholder.
@@ -659,6 +675,7 @@ function SourceResults({
       limit: String(filters.pageSize ?? 24),
       ...(filters.sort ? { sort: filters.sort } : {}),
       ...(filters.rating ? { rating: filters.rating } : {}),
+      ...(filters.showBlacklisted ? { blacklist: "show" } : {}),
     });
     void fetch(
       `booru-browser/${favorites ? "account-favorites" : "search"}?${params}`,
@@ -688,6 +705,7 @@ function SourceResults({
     filters.sort,
     filters.rating,
     filters.pageSize,
+    filters.showBlacklisted,
     suspended,
   ]);
   const post = result?.posts.find((item) => item.id === inspect);
@@ -731,10 +749,21 @@ function SourceResults({
           >
             {message("retry", "Retry source")}
           </Button>
+          {pawchiveSearchLink && (
+            <ExternalLink
+              className="btn btn-link btn-sm"
+              href={pawchiveSearchLink}
+            >
+              Open search on Pawchive
+            </ExternalLink>
+          )}
         </Alert>
       )}
       {result && (
         <>
+          {result.searchNotice && (
+            <Alert variant="info">{result.searchNotice}</Alert>
+          )}
           {source.id === "rule34" && result.categoryStatus === "loading" && (
             <Alert variant="info">
               Rule34 tag categories are being installed automatically from a
@@ -744,8 +773,20 @@ function SourceResults({
           )}
           {result.posts.length === 0 && (
             <Alert variant="info">
-              {message("empty", "No posts returned for this page and query.")}
+              {result.blacklistedCount
+                ? "All posts on this page were hidden by this booru’s tag blacklist."
+                : message(
+                    "empty",
+                    "No posts returned for this page and query."
+                  )}
             </Alert>
+          )}
+          {!!result.blacklistedCount && (
+            <p className="small text-muted">
+              Hidden {result.blacklistedCount} post(s) on this page by{" "}
+              {source.name}’s tag blacklist. Provider totals and pagination
+              still include these posts.
+            </p>
           )}
           {(filters.media || filters.hideAI) && (
             <p className="small text-muted">
@@ -1069,7 +1110,9 @@ export default function BooruBrowser() {
             active.rating,
             active.media,
             active.pageSize,
-            active.favorites
+            active.favorites,
+            active.hideAI,
+            active.showBlacklisted
           )
       );
     });
@@ -1228,9 +1271,11 @@ export default function BooruBrowser() {
               order={sourceOrder}
               onOrder={setSourceOrder}
               onSelect={(source) => {
+                // Creator identities are source-specific; ordinary text
+                // searches should survive switching to Pawchive, now that
+                // its API supports server-side post search.
                 const nextQuery =
-                  selected[0] !== source.id &&
-                  (query.startsWith("creator:") || source.engine === "pawchive")
+                  selected[0] !== source.id && query.startsWith("creator:")
                     ? ""
                     : query.trim();
                 setSelected([source.id]);
@@ -1338,6 +1383,21 @@ export default function BooruBrowser() {
                     search: browserSearchURL({
                       ...active,
                       media: (value || undefined) as BrowserSearch["media"],
+                      inspect: undefined,
+                    }),
+                  })
+                }
+              />
+              <BooruIconButton
+                icon={faBan}
+                label="Hide blacklisted posts"
+                crossedOut={!active.showBlacklisted}
+                aria-pressed={!active.showBlacklisted}
+                onClick={() =>
+                  history.push({
+                    search: browserSearchURL({
+                      ...active,
+                      showBlacklisted: !active.showBlacklisted,
                       inspect: undefined,
                     }),
                   })
@@ -1685,7 +1745,7 @@ export default function BooruBrowser() {
               return (
                 source && (
                   <SourceResults
-                    key={`${id}:${active.favorites}:${active.query}:${active.pages[id]}:${loadAttempt}:${active.sort}:${active.rating}:${active.pageSize}`}
+                    key={`${id}:${active.favorites}:${active.query}:${active.pages[id]}:${loadAttempt}:${active.sort}:${active.rating}:${active.pageSize}:${active.showBlacklisted}`}
                     source={source}
                     suspended={showSettings}
                     favorites={!!active.favorites}
@@ -1756,7 +1816,13 @@ function PageTags({
   activePages: Record<string, number>;
   filters: Pick<
     BrowserSearch,
-    "sort" | "rating" | "media" | "pageSize" | "favorites" | "hideAI"
+    | "sort"
+    | "rating"
+    | "media"
+    | "pageSize"
+    | "favorites"
+    | "hideAI"
+    | "showBlacklisted"
   >;
   onTag: (name: string, mode?: "add" | "replace") => void;
 }) {
@@ -1774,7 +1840,8 @@ function PageTags({
         filters.media,
         filters.pageSize,
         filters.favorites,
-        filters.hideAI
+        filters.hideAI,
+        filters.showBlacklisted
       )
       ? loaded.posts
       : [];

@@ -19,9 +19,17 @@ type booruMediaSnapshot struct {
 	Created          time.Time
 }
 
+// The maximum API page has 50 posts; archive posts can have up to 200
+// attachments each. Keep enough media keys to access an entire page, not
+// only the first few hundred media files. Oldest keys expire first.
+const booruSnapshotCapacity = 16384
+const booruSnapshotTTL = 30 * time.Minute
+
 var booruSnapshots = struct {
 	sync.Mutex
 	entries map[string]booruMediaSnapshot
+	order   []string
+	start   int
 }{entries: map[string]booruMediaSnapshot{}}
 
 func rememberBooruPost(source booru.Source, post booru.Post) string {
@@ -50,20 +58,23 @@ func rememberBooruPost(source booru.Source, post booru.Post) string {
 	booruSnapshots.Lock()
 	defer booruSnapshots.Unlock()
 	now := time.Now()
-	oldest, keyOld := now, ""
-	for key, item := range booruSnapshots.entries {
-		if now.Sub(item.Created) > 30*time.Minute {
-			delete(booruSnapshots.entries, key)
-			continue
+	// FIFO eviction avoids scanning thousands of media keys for every
+	// attachment on a large Pawchive or Kemono page.
+	for booruSnapshots.start < len(booruSnapshots.order) {
+		first := booruSnapshots.order[booruSnapshots.start]
+		item, ok := booruSnapshots.entries[first]
+		if ok && now.Sub(item.Created) <= booruSnapshotTTL && len(booruSnapshots.entries) < booruSnapshotCapacity {
+			break
 		}
-		if item.Created.Before(oldest) {
-			oldest, keyOld = item.Created, key
-		}
+		delete(booruSnapshots.entries, first)
+		booruSnapshots.start++
 	}
-	if len(booruSnapshots.entries) >= 4096 {
-		delete(booruSnapshots.entries, keyOld)
+	if booruSnapshots.start > 4096 && booruSnapshots.start*2 >= len(booruSnapshots.order) {
+		booruSnapshots.order = append([]string(nil), booruSnapshots.order[booruSnapshots.start:]...)
+		booruSnapshots.start = 0
 	}
 	booruSnapshots.entries[token] = booruMediaSnapshot{source.ID, source.Instance(), post, now}
+	booruSnapshots.order = append(booruSnapshots.order, token)
 	return token
 }
 
@@ -71,7 +82,7 @@ func (rs booruBrowserRoutes) mediaSnapshot(key string) (booru.Source, booru.Post
 	booruSnapshots.Lock()
 	item, ok := booruSnapshots.entries[key]
 	booruSnapshots.Unlock()
-	if !ok || time.Since(item.Created) > 30*time.Minute {
+	if !ok || time.Since(item.Created) > booruSnapshotTTL {
 		return booru.Source{}, booru.Post{}, false
 	}
 	sources, err := rs.sources()

@@ -36,6 +36,13 @@ func stableAssetID(prefix, identity string) string {
 }
 
 func (c *Client) extendedRequest(ctx context.Context, source Source, endpoint string, params url.Values) ([]byte, error) {
+	if source.Engine == "pawchive" && endpoint == "/api/v1/posts" && params.Has("q") {
+		return c.pawchiveCachedSearch(ctx, source, params)
+	}
+	return c.extendedRequestUncached(ctx, source, endpoint, params)
+}
+
+func (c *Client) extendedRequestUncached(ctx context.Context, source Source, endpoint string, params url.Values) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(source.URL, "/")+endpoint+"?"+params.Encode(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("invalid provider request")
@@ -124,12 +131,12 @@ func (c *Client) searchExtended(ctx context.Context, s Source, query string, pag
 				endpoint += "/posts"
 			}
 		} else if query != "*" && strings.TrimSpace(query) != "" {
-			if s.Engine == "pawchive" {
-				return result, &Error{Code: "unsupported-query", Message: "Pawchive's API does not filter text searches. Use * for recent posts or creator:service:id to browse a creator."}
-			}
-			if len(query) < 3 {
+			if s.Engine != "pawchive" && len(query) < 3 {
 				return result, &Error{Code: "invalid-query", Message: "Archive text searches need at least three bytes; use * for recent posts."}
 			}
+			// Pawchive's own /posts?q= search spans the provider archive.
+			// Fetch the matching API page directly instead of scanning the
+			// last 250 unfiltered posts (which excluded older matches).
 			params.Set("q", query)
 		}
 	}
@@ -150,6 +157,23 @@ func (c *Client) searchExtended(ctx context.Context, s Source, query string, pag
 		rows, err := extendedRows(s.Engine, data)
 		if err != nil || len(rows) > block {
 			return result, extendedParseError()
+		}
+		// Avoid another provider request to compare every q result with an
+		// unfiltered page. Pawchive can rate limit those extra reads.
+		// Some deployments may ignore q, while others index creator data
+		// not visible in a post's title/body; disclose that ambiguity.
+		if s.Engine == "pawchive" && params.Has("q") && len(rows) > 0 {
+			allVisibleMatches := true
+			needle := strings.ToLower(strings.TrimSpace(query))
+			for _, raw := range rows {
+				if !strings.Contains(strings.ToLower(text(raw["title"])+" "+text(raw["content"])), needle) {
+					allVisibleMatches = false
+					break
+				}
+			}
+			if !allVisibleMatches {
+				result.SearchNotice = "Some Pawchive results lack visible title/text matches. They may match creator metadata, or this API version may ignore search filters. Verify the results on Pawchive."
+			}
 		}
 		for i, raw := range rows {
 			at := offset + i
@@ -175,6 +199,7 @@ func (c *Client) searchExtended(ctx context.Context, s Source, query string, pag
 	result.HasMore = result.HasMore && page < MaxPage
 	return result, nil
 }
+
 func extendedParseError() error {
 	return &Error{Code: "invalid-response", Message: "Provider returned unsupported data or exceeded its bounds. Check API access and source settings."}
 }

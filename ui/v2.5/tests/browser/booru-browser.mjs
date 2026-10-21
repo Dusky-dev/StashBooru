@@ -109,6 +109,17 @@ function result(source, query, page) {
       ...response.posts[0],
       id: String(id + index),
     }));
+  if (query === "blacklist-toggle")
+    response.posts = [
+      {
+        ...response.posts[0],
+        tags: [
+          ...response.posts[0].tags,
+          { name: "hidden_tag", category: "general" },
+        ],
+      },
+      { ...response.posts[0], id: String(id + 1) },
+    ];
   if (query === "gallery")
     response.posts = Array.from({ length: 12 }, (_, index) => ({
       ...response.posts[0],
@@ -305,6 +316,7 @@ try {
     let savedSources = sources.map((source) => ({
       ...source,
       mediaHosts: [],
+      blacklistTags: [],
       login: "",
       userID: source.id === "gelbooru" ? "42" : "",
       disabled: false,
@@ -426,6 +438,8 @@ try {
       if (url.pathname.endsWith("/account-favorites")) {
         const value = result(url.searchParams.get("source"), "favorite", 1);
         value.posts = [{ ...value.posts[0], id: "777" }];
+        if (url.searchParams.get("blacklist") === "show")
+          value.posts.unshift({ ...value.posts[0], id: "776" });
         value.total = value.posts.length;
         value.hasMore = false;
         await route.fulfill({ json: value });
@@ -787,6 +801,7 @@ try {
         query,
         page: number,
         limit: Number(url.searchParams.get("limit")),
+        blacklist: url.searchParams.get("blacklist"),
       });
       if (query === "slow") {
         delayed.push({ route, source, query, number });
@@ -804,7 +819,15 @@ try {
         });
         return;
       }
-      await route.fulfill({ json: result(source, query, number) });
+      const value = result(source, query, number);
+      if (
+        query === "blacklist-toggle" &&
+        url.searchParams.get("blacklist") !== "show"
+      ) {
+        value.posts = value.posts.slice(1);
+        value.blacklistedCount = 1;
+      }
+      await route.fulfill({ json: value });
     });
     await page.route("https://cdn.example.org/**", (route) =>
       route.request().url().endsWith("missing.jpg")
@@ -881,10 +904,18 @@ try {
     await editor.getByLabel("Username", { exact: true }).fill("fixture-user");
     await editor.getByLabel("API key", { exact: true }).fill("fixture-secret");
     await editor
+      .getByLabel("Tag blacklist for this booru", { exact: true })
+      .fill("Unwanted_Tag another_tag third_tag");
+    await editor
       .getByRole("button", { name: "Save source", exact: true })
       .click();
     await editor.waitFor({ state: "hidden" });
     assert.equal(writes.at(-1).source.apiKey, "fixture-secret");
+    assert.deepEqual(writes.at(-1).source.blacklistTags, [
+      "Unwanted_Tag",
+      "another_tag",
+      "third_tag",
+    ]);
     await page
       .getByRole("button", { name: "Edit Danbooru", exact: true })
       .click();
@@ -893,10 +924,25 @@ try {
       "",
       "saved key returned to input"
     );
+    assert.equal(
+      await editor
+        .getByLabel("Tag blacklist for this booru", { exact: true })
+        .inputValue(),
+      "Unwanted_Tag another_tag third_tag",
+      "saved blacklist did not populate editor"
+    );
+    await editor
+      .getByLabel("Tag blacklist for this booru", { exact: true })
+      .fill("Unwanted_Tag\nanother_tag third_tag");
     await editor
       .getByRole("button", { name: "Save source", exact: true })
       .click();
     await editor.waitFor({ state: "hidden" });
+    assert.deepEqual(writes.at(-1).source.blacklistTags, [
+      "Unwanted_Tag",
+      "another_tag",
+      "third_tag",
+    ]);
     assert.equal(writes.at(-1).source.apiKey, "");
     assert.equal(writes.at(-1).clearAPIKey, false);
     await page
@@ -1591,6 +1637,48 @@ try {
         image.naturalWidth > 0
       );
     });
+    // Blacklist toggle changes server requests and survives reload.
+    await page.goto(`${baseURL}/booru?source=danbooru&q=blacklist-toggle`);
+    const blacklistToggle = page.getByRole("button", {
+      name: "Hide blacklisted posts",
+      exact: true,
+    });
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 102", exact: true })
+      .waitFor();
+    assert.equal(await blacklistToggle.getAttribute("aria-pressed"), "true");
+    assert.equal(
+      await blacklistToggle.locator('svg[data-icon="slash"]').count(),
+      1
+    );
+    assert.equal(await dan.locator(".booru-post").count(), 1);
+    await blacklistToggle.click();
+    await page.waitForURL(
+      (url) => url.searchParams.get("blacklist") === "show"
+    );
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 101", exact: true })
+      .waitFor();
+    assert.equal(await blacklistToggle.getAttribute("aria-pressed"), "false");
+    assert.equal(await dan.locator(".booru-post").count(), 2);
+    assert.equal(requests.at(-1).blacklist, "show");
+    await page.reload();
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 101", exact: true })
+      .waitFor();
+    assert.equal(await blacklistToggle.getAttribute("aria-pressed"), "false");
+    await blacklistToggle.click();
+    await page.waitForURL((url) => !url.searchParams.has("blacklist"));
+    await dan
+      .getByText("Hidden 1 post(s) on this page", { exact: false })
+      .waitFor();
+    assert.equal(await dan.locator(".booru-post").count(), 1);
+    assert.equal(requests.at(-1).blacklist, null);
+    await page.goto(`${baseURL}/booru?source=danbooru&q=bad&blacklist=invalid`);
+    await page
+      .getByRole("alert")
+      .filter({ hasText: "Invalid blacklist filter" })
+      .waitFor();
     // Sidebar filters, thumbnail hiding, chips and direct card actions remain
     // integrated with native paging, downloads and saved converter preferences.
     await page.goto(`${baseURL}/booru?source=danbooru&q=gallery`);
@@ -1889,6 +1977,20 @@ try {
       .getByRole("button", { name: "Inspect Danbooru post 777", exact: true })
       .waitFor();
     assert.ok(page.url().includes("favorites=1"));
+    await blacklistToggle.click();
+    await page.waitForURL(
+      (url) => url.searchParams.get("blacklist") === "show"
+    );
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 776", exact: true })
+      .waitFor();
+    assert.equal(await dan.locator(".booru-post").count(), 2);
+    await blacklistToggle.click();
+    await page.waitForURL((url) => !url.searchParams.has("blacklist"));
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 777", exact: true })
+      .waitFor();
+    assert.equal(await dan.locator(".booru-post").count(), 1);
     await input.fill("unfinished favorite draft");
     await page
       .getByRole("button", { name: "Saved search filters", exact: true })
@@ -2757,8 +2859,8 @@ try {
       if (name === "Pawchive")
         assert.equal(
           new URL(page.url()).searchParams.get("q"),
-          "",
-          "Pawchive must start on recent posts instead of an unsupported text query"
+          "artist_a",
+          "Pawchive must preserve ordinary post search text when switching sources"
         );
       await page.getByLabel("Artist name", { exact: true }).fill("Artist Name");
       await page.getByRole("button", { name: /Artist Name fanbox/ }).click();

@@ -2,14 +2,174 @@
 
 Updated: 2026-10-21
 
-Integration baseline: develop
-`52724d798d52ed4f1a4443466f8394942bf33ffa`, integrated into B06a as
-`baa8574b6f4e6f35ee51942eff30335c86b9fd75`.
-The owner authorized resolving and merging #163, then retargeting, verifying
-and merging #164 on 2026-10-20. This branch includes B06b's on-demand feed/UI
-and preserves the newer Rule34/browser fixes. #164 remains stacked until #163
-merges; then target develop and verify that the tested base is unchanged.
-See [Following scope/API](booru-follows.md).
+## Large archive media-page fix — 2026-10-21
+
+- Remove the browser API's unconditional HTTP 502 rejection when more than
+  256 media files occur across a provider search page. A Pawchive/Kemono post
+  may contain many attachments and the inspector already displays files
+  incrementally; this was blocking valid post searches and downloads.
+- Preserve bounded provider-side parsing (maximum 50 posts per request and
+  up to 200 attachments per archive post or 200 Pixiv pages), existing media
+  host/proxy validation and per-file byte limits.
+- Increase server-owned media snapshot capacity from 4,096 to 16,384 to
+  retain keys for the largest supported provider page. Replace repeated
+  full-map sweeps with a bounded oldest-first FIFO queue, evicting expired
+  and overflow keys and compacting queue metadata periodically.
+- Add route regression fixture for 375 assets in one page, ensuring
+  every post and attachment has a media key, plus a 4,300-key retention
+  regression. Verify in CI; no change to provider API rate limits.
+
+
+## Pawchive 429 rate limit — reduce request pressure — 2026-10-21
+
+- Baseline: `develop` at `5f8f98ea7d14d6c430b72e92a01521cd37ff87fa`;
+  branch `fix/pawchive-rate-limit-request-efficiency-20261021`.
+- Owner reported `Provider rate limit reached. Wait before retrying.` on
+  Pawchive post search after merged PR #177.
+- Code audit: for every Pawchive keyword result page, StashBooru
+  could issue an additional `/api/v1/posts?o=...` request to check
+  whether the API ignored `q=`. This could double request volume;
+  on queries matching artist metadata (not post titles), it often did.
+- Remove the active probe. A single Pawchive `q=` request per required
+  50-post provider page is the normal path. Since some older Pawchive
+  APIs may ignore `q=`, flag pages with any result lacking a visible
+  title/body match instead of claiming that their filtering was verified.
+- Brief in-memory cache of successful public Pawchive keyword pages,
+  coalescing concurrent duplicate reads, with 90s TTL, 32-entry limit
+  and 1 MiB/entry cap. Do not cache errors or user-specific creator data.
+- For a Pawchive 429 without `Retry-After`, honor a 60-second host
+  cooldown (not a bypass/retry). The API response passes `retryAfter`
+  to the browser. Link the same search on Pawchive's own site from the
+  error card so users can continue when API access is blocked.
+- Regression tests cover single outbound request per query block,
+  ambiguous-index notice, cache hit, concurrent coalescing, distinct
+  offset pages, 429 with no retry header, failure non-caching and
+  no caching of unfiltered browsing.
+- An upstream 429 on the first request is controlled by Pawchive and
+  cannot be removed by this patch; respect any provider Retry-After.
+  Live provider acceptance remains user-side. CI pending.
+
+
+
+
+## Booru blacklist toolbar toggle — 2026-10-21
+
+- Based on `develop` at `cfba345f70770cd9ea8b7e74140deb5872c98d1b`. Add a blacklist toggle beside the AI-generated
+  filter in the booru browser toolbar. Blacklists stay active by default.
+  Explicit `blacklist=show` on search and account-favorites API calls reveals
+  blocked posts without modifying per-source server settings.
+- The on/off state travels in the shareable browser search URL and joins result
+  signatures, fetch dependencies and source result component keys, avoiding stale
+  card/tag/page state on changes or reload. Input validation rejects malformed
+  blacklist filter values.
+- Add backend tests for both search/favorites filtering modes, invalid query
+  flags and a mounted browser fixture for the toggle, reload and favorites.
+  No database migrations or global configuration changes.
+- Validation status: PR CI must verify UI/browser and backend tests.
+
+## Booru blacklist input format — 2026-10-21
+
+- Baseline `develop` at `38dcf44039f13b358e4a110decd053fcd478169e`. Follow-up to merged PR #176.
+- The source-settings blacklist editor now accepts whitespace-separated
+  booru tags (`tag1 tag2 tag3`) instead of one tag per line. Newlines are also
+  accepted. Existing stored tags containing spaces are displayed with underscores
+  so editing and saving preserves their matching behavior.
+- Browser acceptance fixture now covers space-separated entry, reload and
+  mixed newline/space entry. Documentation reflects the booru-style format.
+- No backend filtering, storage schema or per-source matching changes.
+  Validate UI formatting and mounted browser checks in PR CI.
+
+
+## Pawchive full post search correction — 2026-10-21
+
+- Baseline: `develop` at `38dcf44039f13b358e4a110decd053fcd478169e`;
+  branch `fix/pawchive-full-post-search-20261021`.
+- Owner confirmed that Pawchive's own Posts search (`https://pawchive.pw/posts?q=meili`)
+  returns historical posts across the archive, whereas the first implementation
+  of StashBooru PR #175 only inspected 250 recent posts and incorrectly showed
+  no matching posts.
+- Remove `searchPawchiveRecentPosts` entirely. Normal keyword queries now
+  use `/api/v1/posts?q=...` with offset-aligned provider page slices and
+  ordinary `HasMore`, like the website's search. Blank/`*` recent browsing
+  and direct creator browsing are unaffected.
+- Guard compatibility with older Pawchive API versions which silently ignored
+  `q`: when no result titles/content contain the query, compare the returned
+  identities to the equivalent unfiltered offset page; if identical, return
+  a clear unsupported-query error instead of claiming unrelated recent
+  posts are hits. Results indexing other provider fields remain permitted
+  if their identities differ from the unfiltered feed.
+- Add regression tests for a `meili` search spanning 122 provider results
+  (including pages past the old 250-post scan), exact offset pagination,
+  ignored-query detection, provider-indexed non-title matches and
+  `*`/creator browsing. Update source help and user documentation.
+- CI and Codex review still to be checked on the new PR. Live Pawchive API
+  behavior (site vs API compatibility) should be verified by user after merge.
+
+
+## Booru browser: per-source tag blacklist — 2026-10-21
+
+- Baseline `develop` at `fee5744b72124fe65bebe8e55ab4650a541001f9`,
+  subsequently merged with `develop` at `e7b68a5ba102133360cbd2b26d2a01213ea589ca`.
+  The focused PR adds `blacklistTags` per source in server configuration and
+  the settings editor, with exact-tag filtering (case-insensitive,
+  spaces/underscores equivalent) for normal searches and account favorites.
+- Posts whose own or attachment tags are blocked are omitted before
+  category lookup, preview media-key projection and browser display.
+  The provider's pagination and totals remain unchanged. A page-local
+  `blacklistedCount` explains hidden results.
+- Settings validation rejects duplicate, malformed and oversized tag lists.
+  Regression test sources cover validation, attachment matching, cross-source
+  isolation, settings round-trips, provider pagination and favorites.
+- CI: source tests, lint and desktop/mobile fixture acceptance should be
+  verified on this merged branch; production provider acceptance remains open.
+  Codex's missing-fixture-blacklist finding was addressed and resolved.
+
+
+## Pawchive server-side post searching — 2026-10-21
+
+- Branch `feat/pawchive-server-post-search-20261021`, based on `develop`
+  at `fee5744b72124fe65bebe8e55ab4650a541001f9`.
+- The Pawchive post adapter formerly rejected text searches. An initial
+  implementation forwarded `q=` to `/api/v1/posts`, based on an upstream
+  frontend comment. Codex review identified the upstream README explicitly
+  states global `q=` is ignored; the first integration run confirmed the
+  request returned unrelated real posts. That approach was removed.
+- Keyword mode now scans at most **250 recent posts** in five provider
+  requests (`o=0..200`), comparing case-insensitive text in titles and
+  content. It does NOT send `q=` to the unreliable API or suggest results
+  cover the entire archive. Pages and `HasMore` are computed over real
+  matches inside that bounded window. A `searchNotice` field and browser
+  banner explain the scope. An empty result is not a guarantee the archive
+  contains no older matches. Cancellations/errors stop the scan.
+- Preserve the existing `*`/blank recent-post mode, `creator:service:id`
+  browsing and artist directory chooser, fixed 50-record provider block
+  pagination, record/media parsing and bounded request handling.
+  Pawchive queries do not inherit Kemono's arbitrary three-byte minimum.
+- Source-selection UI no longer clears ordinary text solely because
+  Pawchive was chosen; it still clears creator-specific expressions
+  when switching sources. Source help and user docs have been updated.
+- Regression tests cover mixed matching/unrelated provider rows,
+  case-insensitive title/content matches, single-character terms,
+  recent-post mode and creator mode, post identity/media parsing,
+  malformed creator expressions, correct filtered paging across 250
+  recent records and refusal to scan past the cap. An obsolete API
+  integration assertion and mounted browser expectation were updated.
+- Provider evidence: `dragonjay-lyj/pawchive` frontend source
+  calls `/api/v1/posts?q=`, but its README specifically notes the global
+  q filter is ignored on the upstream API. CI integration confirmed a
+  real `q=landscape` request returned unrelated posts. The new bounded
+  scan avoids depending on this unsupported filtering behavior.
+  Live UI acceptance after merge remains necessary.
+- No merge/deployment is implied; verify CI and reviews first.
+
+
+
+
+Current work: B03a shared provider identities, [PR #171](https://github.com/Dusky-dev/StashBooru/pull/171),
+branch `feat/provider-identities-20261020`, against develop
+`a312a80063418ca68bc70da4821d37aa194140cf`. The owner-authorized #163/#164
+Following merges are complete; this identity PR has not been merged or deployed.
+Current-head verification and review status are recorded on #171.
 
 P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not
@@ -29,7 +189,7 @@ silently promoted to verified production features by this documentation update.
 - Migration 100 preserves native records, relationships, general tags and follows.
   New metadata observations never create authoritative native entities or
   relationships. Name normalization is suggestion evidence only.
-- First usable slice in progress: linking from post identifiers, creating/linking
+- First usable slice: linking from post identifiers, creating/linking
   native records, suggestions and bulk review, Sources & aliases on native records,
   plus bounded scanning of saved download receipts and cached feed metadata.
   Remote artist-profile crawling and automatic catalogue reassignment/merges are
@@ -76,10 +236,20 @@ silently promoted to verified production features by this documentation update.
   Regression tests exercise actual native job cancellation, forced write timeout,
   unavailable custom-source provenance, negative/AND/OR searches for both types,
   and Character disambiguation. Focused API/SQLite regressions pass; full Go
-  gates are rerunning after these backend changes. UI source is unchanged.
+  gates subsequently passed on the published revision below. UI source is unchanged.
+- All CI checks passed on `4083d0014e1107c952251f8d65eb0c04e6a97a9e`:
+  generation (including UI validation/bundle), Go tests/integration, lint,
+  Identity/Booru/Following mounted workflows, all seven platform builds and
+  release packaging. The four assessed review threads are resolved with fixes
+  and regression evidence. A fresh review of the combined head is still required.
+- Refreshed develop to `a312a80063418ca68bc70da4821d37aa194140cf` on
+  2026-10-21 and merged it into the feature. Preserve newer Pawchive post search,
+  source blacklists/toggle and large media page handling. Only this progress
+  document needed conflict resolution; all source files merged without conflicts.
+  Revalidate the combined tree; authoritative latest results remain on #171.
 - Synthetic captures are committed under `docs/screenshots/provider-identities-*`.
   They were visually inspected. Live provider/production acceptance remains
-  unverified. Final-head CI and Codex Review are in progress; #171 is not merged.
+  unverified. Check current-head CI and Codex Review on #171 before merging.
 - See [Provider identities](provider-identities.md) for the contract and limits.
 
 ## Following merge preparation — 2026-10-20

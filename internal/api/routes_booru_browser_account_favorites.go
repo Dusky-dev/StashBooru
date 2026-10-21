@@ -10,6 +10,11 @@ import (
 
 func (rs booruBrowserRoutes) AccountFavorites(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
+	blacklistMode := r.URL.Query()["blacklist"]
+	if len(blacklistMode) != 0 && (len(blacklistMode) != 1 || blacklistMode[0] != "show") {
+		writeBooruError(w, 400, "favorites", "Invalid blacklist filter.")
+		return
+	}
 	source, ok := rs.tagSource(r)
 	if !ok {
 		writeBooruError(w, 409, "source", "Source changed. Reload sources.")
@@ -65,6 +70,9 @@ func (rs booruBrowserRoutes) AccountFavorites(w http.ResponseWriter, r *http.Req
 	if len(result.Posts) > limit {
 		writeBooruError(w, 502, "favorites", "Provider exceeded the favorites page limit.")
 		return
+	}
+	if len(blacklistMode) == 0 {
+		result = source.FilterBlacklisted(result)
 	}
 	rs.categorizeBooruPosts(r.Context(), source, result.Posts)
 	for i := range result.Posts {

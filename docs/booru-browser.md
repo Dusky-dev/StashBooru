@@ -40,8 +40,13 @@ Blank submission opens the default listing; Pixiv uses daily rankings. Each site
 has an icon, with a local initial fallback if its favicon is unavailable. Changing
 sites opens that site's listing for the current query. Archive creator expressions
 are cleared when changing sites. Up/down icons reorder the source menu without
-changing the selected site; order is saved in this browser. Pawchive opens recent
-posts when selected because its API cannot filter post-text queries. Legacy multi-source links and saved filters use their first source.
+changing the selected site; order is saved in this browser. Pawchive accepts
+ordinary text queries across its provider archive through the same `q=`
+search used by its Posts page (for example, `/posts?q=meili`).
+Switching to Pawchive preserves an ordinary typed query, but clears
+creator-specific expressions from another source. Use `*` or a blank
+search for recent posts.
+Legacy multi-source links and saved filters use their first source.
 A fresh browser without saved state does not search automatically. Refresh and
 bare `/booru` visits restore the submitted page and unfinished search draft.
 Previous/Next, cancellation and retry apply to the selected site. Inspect a
@@ -50,8 +55,24 @@ thumbnail to open the larger preview; **Open remote post** opens the source site
 On Pawchive and Kemono, **Find an artist** searches the provider's artist directory
 by name. Select the matching artist/service to browse their posts; no numeric
 creator expression needs to be typed. Matching names on different services remain
-separate choices. Directory errors have a retry action. Post-text search remains
-available on Kemono; Pawchive's posts API ignores text queries, so those are rejected.
+separate choices. Directory errors have a retry action. Post-text search is
+available on **both Pawchive and Kemono**. For Pawchive, StashBooru
+requests `/api/v1/posts?q=...` with native 50-record offset pagination
+instead of scanning only 250 recent posts. The provider can return older
+matches from across its archive. Pawchive has recently returned
+HTTP 429 (rate limited) to API clients. To avoid adding pressure,
+StashBooru no longer performs a second unfiltered request on each
+search page, coalesces identical in-flight requests, and caches
+successful public keyword-search pages for 90 seconds. Failed requests
+are never cached or automatically retried. When Pawchive omits
+`Retry-After`, the server pauses requests to that host for 60 seconds.
+If the API is rate-limited, the browser links to the corresponding
+search on Pawchive's website. Some older Pawchive API versions ignored
+`q=`; without another API probe, StashBooru cannot verify all returned
+matches. If any result lacks a visible title/body match, a notice warns that
+the provider may instead have matched creator metadata or returned an
+unfiltered feed. Check the website if results look unrelated.
+Provider indexing, availability, rate limits and its maximum offset apply.
 
 With the rating control at its default, the same query is sent unchanged
 to the selected source. Other rating values append the selected engine's native filter
@@ -227,7 +248,7 @@ Downloaded history. No remote follow or automated download is created.
 | --- | --- | --- |
 | Paheal / Shimmie | Native tags through the anonymous Danbooru XML endpoint (`/api/danbooru/find_posts`) | Category information may be unavailable; no live completion endpoint. Originals on the hash-sharded `r34i.paheal-cdn.net` CDN are supported, including for older saved source settings. The inspector uses original resolution if there is no separate provider sample and the original fits the 24 MiB proxy limit; card thumbnails remain small. The legacy `/api/danbooru/find_posts/index.xml` URL can return HTML rather than XML. |
 | Pixiv | OAuth **access token** in source API key; text search, `user:123` for artist works, `id:123` for a work | Static illustration/manga pages selectable in the inspector. Ugoira frame ZIPs are explicitly unavailable. No login/token refresh is implemented; replace expired tokens in Settings. |
-| Pawchive | Artist-name directory search, or `*` for recent posts; anonymous API. Text post search is unsupported because the API ignores it | Optional API key is the `session` cookie value, sent only to `file.pawchive.pw`. Preview-only/deferred/unavailable originals cannot be downloaded. |
+| Pawchive | Post-text search using provider-wide `q=` and offset paging, `*` for recent posts, or artist-name directory; anonymous API. Older API releases may ignore `q=` and are detected before unrelated results are shown. | Optional API key is the `session` cookie value, sent only to `file.pawchive.pw`. Preview-only/deferred/unavailable originals cannot be downloaded. |
 | Kemono | Artist-name directory search, `*` for recent posts, or text of at least three bytes; anonymous API | Supported image/video attachments and ZIP/CBZ previews; documents and unsupported archives are omitted. |
 
 Paheal may return old `rule34.paheal.net/_images/` links in its XML
@@ -260,8 +281,11 @@ one card: choose **Media file** in inspection to preview/download a particular
 attachment. Moving to another post resets the selector to its primary file while
 keeping keyboard navigation active. Keyboard Up downloads the selected attachment. Ignore applies
 to the post; alternate files do not inherit first-file MD5 evidence. Up to 200
-additional attachments per post and 256 media snapshots per result are accepted;
-reduce page size if galleries exceed the result bound. Downloads remain one
+additional attachments per archive post are accepted, and pages containing
+more than 256 total media files are no longer rejected. The preview inspector
+renders large galleries incrementally. A bounded 16,384-key server snapshot
+cache retains media access tokens for an entire maximum-sized provider page;
+older tokens expire or are evicted first. Downloads remain one
 explicitly chosen file at a time. No text/ZIP import or bulk gallery download is
 added. Installed CSV completion remains available on these new engines.
 
@@ -397,6 +421,22 @@ using this server.
   the key and account fields. Saved keys never return to the browser. When the URL
   or engine changes, re-enter or explicitly remove the existing key so it cannot
   silently move to another host.
+- **Tag blacklist for this booru** accepts space-separated tags such as
+  `tag1 tag2 tag3` (up to 256 entries, each at most 256 UTF-8 bytes).
+  Use underscores for multiword tags (`long_hair`). Saved legacy tag names
+  containing spaces display with underscores. Matches ignore case and treat
+  spaces and underscores as equivalent. Matching posts, including posts with matching
+  tags on their attachments, are omitted from searches and account favorites
+  for that source only. The server filters before issuing preview keys, so the
+  blocked posts do not appear in the grid, preview navigation or page tags.
+  Provider page numbers, `hasMore` and totals are left unchanged: a page can
+  have fewer visible posts, or none, without being the last page. Source
+  settings and the blacklist are shared by all users of the server. The
+  **Hide blacklisted posts** icon beside the AI-generated filter is enabled by
+  default. Click it to temporarily show blacklisted posts in searches or account
+  favorites for the selected source, and click again to hide them. This state
+  is stored in the browser search URL (`blacklist=show`) and can be bookmarked
+  without changing the saved tag list.
 - **Enable this source** controls availability in searches. Disabled definitions
   remain editable. Custom sources can be removed; presets can be reset, removing
   their overrides and saved credentials. IDs cannot be renamed in the editor.
@@ -435,7 +475,8 @@ Example (replace placeholders with your own values):
     "engine": "gelbooru",
     "url": "https://gelbooru.com",
     "apiKey": "YOUR_API_KEY",
-    "userID": "YOUR_USER_ID"
+    "userID": "YOUR_USER_ID",
+    "blacklistTags": ["unwanted_tag", "another tag"]
   },
   { "id": "rule34", "disabled": true },
   {
