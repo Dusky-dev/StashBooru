@@ -132,14 +132,10 @@ func (rs booruBrowserRoutes) Search(w http.ResponseWriter, r *http.Request) {
 			writeVisualSimilarityJSON(w, failure)
 			return
 		}
-		assets := len(result.Posts)
-		for _, post := range result.Posts {
-			assets += len(post.Attachments)
-		}
-		if assets > 256 {
-			writeBooruError(w, 502, "media", "Provider page contains more than 256 media files. Reduce posts per page.")
-			return
-		}
+		// A single archive post may contain hundreds of supported media
+		// attachments. Rejecting the whole search page at 256 items hides
+		// otherwise valid results. Provider post/page parsing remains bounded,
+		// and the inspector renders attachments incrementally.
 		// Exclude blacklisted posts before categorizing or granting preview media keys.
 		// An explicit browser toggle can temporarily reveal saved blacklist entries.
 		if len(blacklistMode) == 0 {

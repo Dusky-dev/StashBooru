@@ -1,5 +1,24 @@
 # StashBooru implementation progress
 
+
+## Large archive media-page fix — 2026-10-21
+
+- Remove the browser API's unconditional HTTP 502 rejection when more than
+  256 media files occur across a provider search page. A Pawchive/Kemono post
+  may contain many attachments and the inspector already displays files
+  incrementally; this was blocking valid post searches and downloads.
+- Preserve bounded provider-side parsing (maximum 50 posts per request and
+  up to 200 attachments per archive post or 200 Pixiv pages), existing media
+  host/proxy validation and per-file byte limits.
+- Increase server-owned media snapshot capacity from 4,096 to 16,384 to
+  retain keys for the largest supported provider page. Replace repeated
+  full-map sweeps with a bounded oldest-first FIFO queue, evicting expired
+  and overflow keys and compacting queue metadata periodically.
+- Add route regression fixture for 375 assets in one page, ensuring
+  every post and attachment has a media key, plus a 4,300-key retention
+  regression. Verify in CI; no change to provider API rate limits.
+
+
 ## Pawchive 429 rate limit — reduce request pressure — 2026-10-21
 
 - Baseline: `develop` at `5f8f98ea7d14d6c430b72e92a01521cd37ff87fa`;
