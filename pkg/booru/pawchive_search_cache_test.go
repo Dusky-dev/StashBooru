@@ -31,7 +31,7 @@ func TestPawchiveIdenticalSearchIsCached(t *testing.T) {
 		t.Fatalf("repeating the same search hit Pawchive %d times", calls.Load())
 	}
 	// Different provider page offsets must have different cache identities.
-	if _, err := c.Search(context.Background(), s, "meili", 3, 24); err != nil {
+	if _, err := c.Search(context.Background(), s, "meili", 4, 24); err != nil {
 		t.Fatal(err)
 	}
 	if calls.Load() != 2 {
