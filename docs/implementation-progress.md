@@ -2,6 +2,51 @@
 
 Updated: 2026-10-22
 
+## Compact settings navigation (E13, navigation pass) — 2026-10-22
+
+- Merged [PR #186](https://github.com/Dusky-dev/StashBooru/pull/186) following
+  the owner's request. All CI passed; Codex Review completed on its source
+  checkpoint with no findings. Its final follow-up was ledger-only. Merge
+  `83f784ee98f3a3d9d5ae4dd94ac5a704f3a78d05` is this pass's fresh baseline.
+- Branch `fix/mobile-settings-navigation-20261022`,
+  [PR #187](https://github.com/Dusky-dev/StashBooru/pull/187). Verified source
+  checkpoint `bba09a014417e8d29c803396fe29c487d55deb66`, tree
+  `0ff84675583c4fc00456040365418aa514a370a9`. This subsequent ledger update
+  changes documentation only.
+- Replace the thirteen stacked settings links with a labeled, dark native
+  section chooser below 768 px. Reuse the same section order/localized labels
+  in the wider-screen sidebar. Keep advanced mode and troubleshooting beside
+  navigation and one existing implementation/state owner per settings panel.
+- Mounted checks reproduced every sidebar link being highlighted because the
+  router matched only the common pathname. Explicitly match the selected tab.
+  A narrow tablet sidebar also crowded the form; keep the compact/full-width
+  layout through 767 px. Only one navigation control is exposed at each width.
+- Both controls retain section URLs and unrelated query parameters, drop an old
+  section's hash on explicit section changes, and preserve Back/refresh and
+  existing moved-section bookmarks. Resizing does not remount panels or discard
+  unsaved drafts. Existing saves and automatic advanced-mode persistence stay
+  with their original owners; no combined save or new persistence is added.
+- Validation: final `make validate-ui` passed all 61 unit tests, JS/CSS lint,
+  TypeScript and formatting. Final `make ui-only` passed. GraphQL UI generation,
+  built-in preparation and `git diff --check` passed. No backend/schema changes
+  require backend generation or Go gates.
+- The actual Settings fixture passed at 1440 × 1000 and 390 × 844, including
+  keyboard selection, advanced mode, Back/refresh, moved bookmarks, anchor
+  alignment, retained URL parameters and drafts, existing independent save
+  scopes, worker/configuration errors/retries and unmount cleanup. It also
+  checks 575/576/767/768 px, the single active sidebar section, dark chooser,
+  mobile content beginning within the first 300 px, and absence of document
+  horizontal overflow and uncaught/unmounted-update errors. Desktop/mobile
+  captures were inspected; the new Settings navigation CI workflow uploads them.
+- Configuration, HTTP/GraphQL responses and writes are fixture-local. No real
+  provider/worker/GPU, populated-library or fresh-server acceptance is claimed.
+  E03 representative real-job/restart acceptance and the durable-history decision
+  remain open; current evidence does not justify another history store yet.
+- Next bounded cleanup: E04 Tasks launcher grouping by goal, keeping the queue
+  first, existing bookmarks and active review/job state. Broader settings/save
+  scope changes and separately assigned browser layout remain separate work.
+  CI/Codex Review are external gates: end the turn without polling solely for them.
+
 ## Processing job resume identity (E03 recovery pass) — 2026-10-22
 
 - Owner explicitly requested merge of PR #185. All CI passed and its viable P2

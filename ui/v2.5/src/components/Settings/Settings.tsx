@@ -1,7 +1,6 @@
 import React, { useEffect } from "react";
-import { Tab, Nav, Row, Col, Form } from "react-bootstrap";
+import { Tab, Row, Col, Form } from "react-bootstrap";
 import { Redirect, useLocation } from "react-router-dom";
-import { LinkContainer } from "react-router-bootstrap";
 import { FormattedMessage } from "react-intl";
 import { Helmet } from "react-helmet";
 import { useTitleProps } from "src/hooks/title";
@@ -23,6 +22,7 @@ import {
   settingsSearch,
   SettingsTab,
 } from "./settingsNavigation";
+import { SettingsSectionNavigation } from "./SettingsSectionNavigation";
 import Changelog from "../Changelog/Changelog";
 import { TroubleshootingModeButton } from "../TroubleshootingMode/TroubleshootingModeButton";
 import { useTroubleshootingMode } from "../TroubleshootingMode/useTroubleshootingMode";
@@ -69,124 +69,24 @@ const SettingTabs: React.FC<{ tab: SettingsTab }> = ({ tab }) => {
     <Tab.Container activeKey={tab} id="configuration-tabs" mountOnEnter>
       <Helmet {...titleProps} />
       <Row>
-        <Col id="settings-menu-container" sm={3} md={3} xl={2}>
-          <Nav variant="pills" className="flex-column">
-            <Nav.Item>
-              <LinkContainer to="/settings?tab=tasks">
-                <Nav.Link eventKey="tasks">
-                  <FormattedMessage id="config.categories.tasks" />
-                </Nav.Link>
-              </LinkContainer>
-            </Nav.Item>
-            <Nav.Item>
-              <LinkContainer to="/settings?tab=library">
-                <Nav.Link eventKey="library">
-                  <FormattedMessage id="library" />
-                </Nav.Link>
-              </LinkContainer>
-            </Nav.Item>
-            <Nav.Item>
-              <LinkContainer to="/settings?tab=processing">
-                <Nav.Link eventKey="processing">
-                  <FormattedMessage
-                    id="config.categories.processing"
-                    defaultMessage="Processing"
-                  />
-                </Nav.Link>
-              </LinkContainer>
-            </Nav.Item>
-            <Nav.Item>
-              <LinkContainer to="/settings?tab=interface">
-                <Nav.Link eventKey="interface">
-                  <FormattedMessage id="config.categories.interface" />
-                </Nav.Link>
-              </LinkContainer>
-            </Nav.Item>
-            <Nav.Item>
-              <LinkContainer to="/settings?tab=security">
-                <Nav.Link eventKey="security">
-                  <FormattedMessage id="config.categories.security" />
-                </Nav.Link>
-              </LinkContainer>
-            </Nav.Item>
-            <Nav.Item>
-              <LinkContainer to="/settings?tab=metadata-providers">
-                <Nav.Link eventKey="metadata-providers">
-                  <FormattedMessage id="config.categories.metadata_providers" />
-                </Nav.Link>
-              </LinkContainer>
-            </Nav.Item>
-            <Nav.Item>
-              <LinkContainer to="/settings?tab=services">
-                <Nav.Link eventKey="services">
-                  <FormattedMessage id="config.categories.services" />
-                </Nav.Link>
-              </LinkContainer>
-            </Nav.Item>
-            <Nav.Item>
-              <LinkContainer to="/settings?tab=system">
-                <Nav.Link eventKey="system">
-                  <FormattedMessage id="config.categories.system" />
-                </Nav.Link>
-              </LinkContainer>
-            </Nav.Item>
-            <Nav.Item>
-              <LinkContainer to="/settings?tab=plugins">
-                <Nav.Link eventKey="plugins">
-                  <FormattedMessage id="config.categories.plugins" />
-                </Nav.Link>
-              </LinkContainer>
-            </Nav.Item>
-            <Nav.Item>
-              <LinkContainer to="/settings?tab=logs">
-                <Nav.Link eventKey="logs">
-                  <FormattedMessage id="config.categories.logs" />
-                </Nav.Link>
-              </LinkContainer>
-            </Nav.Item>
-            <Nav.Item>
-              <LinkContainer to="/settings?tab=tools">
-                <Nav.Link eventKey="tools">
-                  <FormattedMessage id="config.categories.tools" />
-                </Nav.Link>
-              </LinkContainer>
-            </Nav.Item>
-            <Nav.Item>
-              <LinkContainer to="/settings?tab=changelog">
-                <Nav.Link eventKey="changelog">
-                  <FormattedMessage id="config.categories.changelog" />
-                </Nav.Link>
-              </LinkContainer>
-            </Nav.Item>
-            <Nav.Item>
-              <LinkContainer to="/settings?tab=about">
-                <Nav.Link eventKey="about">
-                  <FormattedMessage id="config.categories.about" />
-                </Nav.Link>
-              </LinkContainer>
-            </Nav.Item>
-            <Nav.Item>
-              <div className="advanced-switch">
-                <Form.Label htmlFor="advanced-settings">
-                  <FormattedMessage id="config.advanced_mode" />
-                </Form.Label>
-                <Form.Switch
-                  id="advanced-settings"
-                  checked={advancedMode}
-                  onChange={() => setAdvancedMode(!advancedMode)}
-                />
-              </div>
-            </Nav.Item>
+        <Col id="settings-menu-container" md={3} xl={2}>
+          <SettingsSectionNavigation tab={tab} />
+          <div className="settings-menu-options">
+            <div className="advanced-switch">
+              <Form.Label htmlFor="advanced-settings">
+                <FormattedMessage id="config.advanced_mode" />
+              </Form.Label>
+              <Form.Switch
+                id="advanced-settings"
+                checked={advancedMode}
+                onChange={() => setAdvancedMode(!advancedMode)}
+              />
+            </div>
             {!troubleshootingModeActive && <TroubleshootingModeButton />}
-            <hr className="d-sm-none" />
-          </Nav>
+            <hr className="d-md-none" />
+          </div>
         </Col>
-        <Col
-          id="settings-container"
-          sm={{ offset: 3 }}
-          md={{ offset: 3 }}
-          xl={{ offset: 2 }}
-        >
+        <Col id="settings-container" md={{ offset: 3 }} xl={{ offset: 2 }}>
           <Tab.Content className="mx-auto">
             <Tab.Pane eventKey="library">
               <SettingsLibraryPanel />

@@ -187,6 +187,21 @@ reproduction steps. Track observed defects separately from design preferences.
 Performance checks need representative catalog sizes; screenshots alone do not
 establish performance or accessibility.
 
+## Mobile settings navigation follow-up — 2026-10-22
+
+E13 now uses a labeled native section chooser below 768 px, with the existing
+sidebar at wider sizes. The same section list powers both controls; only the
+current sidebar section is highlighted. This also avoids the crowded sidebar
+layout at narrow tablet widths. Section URLs, moved-section bookmarks, advanced
+mode and the existing panel save/state ownership remain in place.
+
+The mounted Settings fixture checks desktop/mobile navigation, keyboard use,
+Back, refresh, unrelated URL parameters, section anchors, draft retention and the
+575/576/767/768 px boundaries. Its configuration, HTTP responses and writes are
+local fixtures; it is not a fresh-server or production-library acceptance claim.
+Tasks launcher grouping (E04) and the remaining E03 real-job/restart acceptance
+remain open. See the dated verification in the [progress ledger](implementation-progress.md).
+
 ## Progress measures
 
 For each pass, record before/after routes visited, dialogs opened and manual

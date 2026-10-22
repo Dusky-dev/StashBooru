@@ -1,6 +1,12 @@
-@include media-breakpoint-up(sm) {
+@include media-breakpoint-up(md) {
   #settings-menu-container {
     position: fixed;
+  }
+}
+@include media-breakpoint-down(sm) {
+  #settings-menu-container .troubleshooting-mode-button {
+    padding-left: 0.5rem;
+    position: static;
   }
 }
 
