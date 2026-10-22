@@ -87,6 +87,15 @@ cannot be blindly resubmitted. Close is disabled during a submitted write; closi
 an idle dialog does not save a connection or create a native entity. Provider
 queries and media assignments are unaffected by these connection controls.
 
+### Contextual connection examples
+
+Automated fixtures using the real browser preview; no live provider content.
+The advanced reconciliation page remains available for bulk work.
+
+| Desktop | Mobile |
+| --- | --- |
+| ![Connect in the current preview](screenshots/contextual-source-connections-1440.png) | ![Connect on mobile](screenshots/contextual-source-connections-390.png) |
+
 ## Scan limits and recovery
 
 The job reads cached Following metadata (including historical/ignored entries)

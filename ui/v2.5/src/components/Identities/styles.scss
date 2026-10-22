@@ -62,8 +62,9 @@
   max-width: 1500px;
 }
 
-.identity-dialog {
+.modal.identity-dialog {
   z-index: 1060;
+
   fieldset {
     min-width: 0;
   }
@@ -82,6 +83,6 @@
   }
 }
 
-.identity-dialog-backdrop {
+.modal-backdrop.identity-dialog-backdrop {
   z-index: 1055;
 }

@@ -6,7 +6,8 @@ Updated: 2026-10-22
 
 - Baseline: `develop` at `015336533de2f4823818866da5205b8c766b5921`,
   after owner merge of audit PR #182. Branch
-  `fix/contextual-source-connections-20261022`.
+  `fix/contextual-source-connections-20261022`,
+  [PR #183](https://github.com/Dusky-dev/StashBooru/pull/183).
 - Connect Artist/Character/Copyright opens a dialog over the existing provider
   preview. Native profile Sources & aliases manages and adds exact source names
   in a dialog, with an explicit decision to connect to the current profile.
@@ -30,7 +31,9 @@ Updated: 2026-10-22
 - The full mounted booru suite passed both viewports, including nested connection
   dialog cancellation, first-open keys and focus return to the same preview URL,
   plus existing downloads, settings, search, selection, WebM/GIF and cleanup checks.
-  Final production bundling is in progress. These are isolated fixtures, not live
+  Final overlay stacking, viewport geometry, Escape and keyboard return were also
+  checked with the scoped backdrop styles on both viewports. Production bundling
+  passed. These are isolated fixtures, not live
   provider, production-library or physical-device acceptance. No backend schema,
   identity rules, native media activation or file recovery behavior changed.
 - Browser layout and later audit passes remain separate work. Pending CI/review
