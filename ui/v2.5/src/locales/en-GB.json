@@ -719,7 +719,7 @@
     "tools": {
       "graphql_playground": "GraphQL playground",
       "heading": "Tools",
-      "scene_duplicate_checker": "Scene duplicate checker",
+      "scene_duplicate_checker": "Video duplicate checker",
       "scene_filename_parser": {
         "add_field": "Add Field",
         "capitalize_title": "Capitalize title",
@@ -731,11 +731,21 @@
         "ignored_words": "Ignored words",
         "matches_with": "Matches with {i}",
         "select_parser_recipe": "Select Parser Recipe",
-        "title": "Scene filename parser",
+        "title": "Video filename parser",
         "whitespace_chars": "Whitespace characters",
         "whitespace_chars_desc": "These characters will be replaced with whitespace in the title"
       },
-      "scene_tools": "Scene Tools"
+      "scene_tools": "Video tools",
+      "sections": {
+        "health": "Metadata Health",
+        "health_help": "Check library metadata for conflicts and broken associations without changing it.",
+        "similarity": "Visual Similarity Triage",
+        "similarity_help": "Review related Images and explicitly add missing metadata from a preferred copy.",
+        "aliases": "Alias Collision Inspector",
+        "aliases_help": "Check which native profiles or Tags match a name; ambiguous matches stay separate.",
+        "developer": "Developer tools",
+        "developer_help": "Open the GraphQL playground to inspect or run API operations."
+      }
     },
     "ui": {
       "abbreviate_counters": {

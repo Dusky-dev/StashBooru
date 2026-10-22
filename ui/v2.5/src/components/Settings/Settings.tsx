@@ -114,7 +114,7 @@ const SettingTabs: React.FC<{ tab: SettingsTab }> = ({ tab }) => {
             <Tab.Pane eventKey="services" unmountOnExit>
               <SettingsServicesPanel />
             </Tab.Pane>
-            <Tab.Pane eventKey="tools" unmountOnExit>
+            <Tab.Pane eventKey="tools">
               <SettingsToolsPanel />
             </Tab.Pane>
             <Tab.Pane eventKey="metadata-providers" unmountOnExit>

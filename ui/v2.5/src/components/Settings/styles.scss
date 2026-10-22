@@ -225,7 +225,7 @@
   }
 }
 
-.task-section {
+.settings-disclosure {
   margin-top: 1rem;
   scroll-margin-top: 4.5rem;
 
@@ -233,11 +233,11 @@
     padding: 0.5rem 0;
   }
 
-  .task-section-title {
+  .settings-disclosure-title {
     font-size: 1.25rem;
   }
 
-  .task-section-help {
+  .settings-disclosure-help {
     color: $text-muted;
     display: block;
     font-weight: normal;
@@ -245,7 +245,7 @@
     margin-top: 0.25rem;
   }
 
-  .task-section-content {
+  .settings-disclosure-content {
     padding: 1rem 0;
   }
 

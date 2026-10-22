@@ -33,6 +33,15 @@ review results; jobs continue normally. Existing task bookmarks open their group
 automatically. The queue scrolls with the page so it does not cover a bookmarked
 action. Save scopes and confirmation steps remain with each tool.
 
+Tools groups **Metadata Health**, **Visual Similarity Triage** and **Alias
+Collision Inspector** into expandable reviews. **Developer tools** contains the
+GraphQL playground; **Video tools** keeps the filename parser and duplicate
+checker. Opening a group does not start a scan or copy metadata. Inputs, results
+and selections remain when a group is closed or another Settings section is
+visited and you return. Leaving Settings or refreshing starts a new review;
+these temporary results are not durable history. Metadata copy still requires
+explicit selection and confirmation.
+
 Processing defaults apply to new jobs. Conversion/tagging defaults and model paths
 are saved on the server. Upscaling job defaults are saved in the current browser;
 their Save button does not change server paths. Old System bookmarks for moved
