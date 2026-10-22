@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - '.github/workflows/job-feedback.yml'
+      - 'internal/api/processing_job_identity*'
+      - 'internal/api/routes_media_conversion*'
+      - 'internal/api/routes_image_upscale_restore.go'
+      - 'ui/v2.5/src/components/Shared/useProcessingJob.ts'
       - 'ui/v2.5/src/hooks/JobQueue.tsx'
       - 'ui/v2.5/src/hooks/jobQueueState.ts'
       - 'ui/v2.5/src/components/Shared/JobFeedback.tsx'
@@ -12,6 +16,8 @@ on:
       - 'ui/v2.5/src/components/Shared/ConversionReview.tsx'
       - 'ui/v2.5/src/components/Settings/Tasks/JobTable.tsx'
       - 'ui/v2.5/src/components/Settings/Tasks/SettingsTasksPanel.tsx'
+      - 'ui/v2.5/tests/browser/processing-job-resume.mjs'
+      - 'ui/v2.5/tests/browser/fixtures/processing-job-resume*'
       - 'ui/v2.5/tests/browser/job-feedback.mjs'
       - 'ui/v2.5/tests/browser/jobs-stacks.mjs'
       - 'ui/v2.5/tests/browser/conversion-review.mjs'
@@ -53,6 +59,7 @@ jobs:
           PLAYWRIGHT_MODULE: ${{ runner.temp }}/job-feedback-tools/node_modules/playwright/index.mjs
           STASH_BROWSER_SCREENSHOTS: ${{ runner.temp }}/job-feedback-screenshots
         run: |
+          node tests/browser/processing-job-resume.mjs
           node tests/browser/job-feedback.mjs
           node tests/browser/conversion-review.mjs
           node tests/browser/jobs-stacks.mjs

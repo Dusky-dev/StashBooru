@@ -2,6 +2,58 @@
 
 Updated: 2026-10-22
 
+## Processing job resume identity (E03 recovery pass) — 2026-10-22
+
+- Owner explicitly requested merge of PR #185. All CI passed and its viable P2
+  finding was fixed/resolved; merge commit
+  `96973ea0d291b84ae73700a8da8eb414c27a3eba` is this pass's baseline. Its latest
+  follow-up review was still Running at merge; the direct owner instruction
+  governed that merge, without changing the default review gate for later PRs.
+- Branch `fix/processing-job-resume-20261022`,
+  [PR #186](https://github.com/Dusky-dev/StashBooru/pull/186).
+  Verified source checkpoint `5c1a00d0c3c0e895eaf0dd66aeac3e18f6a6f1aa`, tree
+  `a9b3bf1eb62295ba80901a34139e9a7591d2ea01`. This subsequent ledger update is
+  documentation only.
+- Converter and upscaling-restore status/cancellation now require the remembered
+  numeric job ID to match the existing per-job batch identity. Shared registry
+  checks happen before cancellation reaches the native queue. Wrong, missing or
+  expired identities cannot expose or cancel a replacement job with a reused ID.
+- Job submissions return ID and batch. Positive-ID status requests without a
+  matching batch return no live job plus jobUnavailable while retaining saved
+  history/configuration; invalid cancellation returns HTTP 409. Numeric-only
+  custom API clients must retain the batch and update their requests; ordinary
+  history/config reads and native new-copy upscaling handoff remain available.
+- A shared browser helper remembers the pair under its exact API address,
+  including a server prefix. Ignore old unscoped numeric-only references. Resume
+  after refresh/reopen only when identity matches; otherwise clear live status
+  and explain that saved records/available original recovery remain accessible.
+  Storage failure keeps the accepted job in memory and never resubmits it.
+- No durable job-history store, schema, native IDs/relationships, worker protocol,
+  automatic retry, media activation or original-file recovery contract changes.
+- Validation: focused TestProcessingJob registry checks passed under the Makefile
+  SQLite include flags/tags. Full `make test`, `make it` and `make lint` passed
+  (final lint: 0 issues). Initial parallel unit/lint compilation exceeded available
+  memory; sequential low-memory reruns passed. Lint's local variable-name finding
+  was corrected. Backend generation passed; no generated files are committed.
+- `make validate-ui` passed 61 unit tests, JS/CSS lint, TypeScript and formatting.
+  `make ui-only`, documentation target checks and `git diff --check` passed.
+- Native processing-job-resume fixtures passed at 1440 × 1000 and 390 × 844 for
+  both converter and upscaling restore: legacy pointers, refresh/reopen, distinct
+  server prefixes, reused numeric IDs, retained history, cancellation identity
+  and blocked browser storage without duplicate submission. The existing native
+  converter workflow, including asynchronous configure/restore/recover failures,
+  passed both viewports after updating its batch-qualified responses. Captures
+  were inspected; CI uploads them with the job-feedback screenshots.
+- Native registry tests reject stale/expired/wrong-feature references, protect
+  independent result snapshots and cancel a bounded actual native queue task only
+  with a matching identity. Browser HTTP responses simulate restart/ID reuse;
+  this is not an end-to-end production server restart, GPU inference or actual
+  media-file recovery acceptance.
+- Remaining E03 work: representative reconnect/restart acceptance for other job
+  producers and remaining context handoffs, then assess whether durable server
+  job history is needed. External CI/Codex Review is a turn-end checkpoint; do not
+  wait or repeatedly poll solely for it.
+
 ## Predictable metadata review (E02) — 2026-10-22
 
 - Baseline: `develop` at `d6e8c9c49efc332ef510dfdf264dc0392b15ea22`,

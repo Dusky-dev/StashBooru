@@ -1,3 +1,4 @@
+import { useProcessingJob, sameProcessingJob } from "./useProcessingJob";
 import {
   JobErrorDetails,
   JobStatusBadge,
@@ -78,6 +79,7 @@ interface Stats {
 }
 interface Job {
   jobID: number;
+  batch: string;
   status: string;
   total: number;
   error?: string;
@@ -102,6 +104,7 @@ interface State {
   history: Conversion[];
   historyTotal: number;
   job?: Job;
+  jobUnavailable?: boolean;
   trials: ConversionTrial[];
   trialStats: TrialStats;
   trialTotal: number;
@@ -189,9 +192,14 @@ export const MediaConversionDialog: React.FC<{
   const [tab, setTab] = useState("convert");
   const [comparing, setComparing] = useState(false);
   const [savings, setSavings] = useState<SavingsThresholds>();
-  const [jobID, setJobID] = useState<number>(
-    () => Number(localStorage.getItem("media-converter-job")) || 0
-  );
+  const {
+    job: liveJob,
+    remember: rememberJob,
+    unavailable: jobUnavailable,
+    notice: jobNotice,
+  } = useProcessingJob(endpoint);
+  const jobID = liveJob?.jobID ?? 0;
+  const jobBatch = liveJob?.batch ?? "";
   const [cacheGiB, setCacheGiB] = useState<number>();
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -266,16 +274,24 @@ export const MediaConversionDialog: React.FC<{
   const refresh = useCallback(
     async (signal?: AbortSignal) => {
       const result = await fetch(
-        `${endpoint}?jobID=${jobID}&offset=${historyOffset}&trialOffset=${trialOffset}`,
+        `${endpoint}?jobID=${jobID}&batch=${jobBatch}&offset=${historyOffset}&trialOffset=${trialOffset}`,
         { signal }
       ).then(response<State>);
+      if (signal?.aborted) return;
+      if (
+        result.jobUnavailable ||
+        (result.job && (!liveJob || !sameProcessingJob(liveJob, result.job)))
+      ) {
+        result.job = undefined;
+        if (liveJob) jobUnavailable();
+      }
       setState(result);
       setSavings((existing) => existing ?? result.config.savings);
       setCacheGiB(
         (existing) => existing ?? result.config.cacheLimitBytes / GiB
       );
     },
-    [jobID, historyOffset, trialOffset]
+    [jobID, jobBatch, liveJob, jobUnavailable, historyOffset, trialOffset]
   );
 
   useEffect(() => {
@@ -375,21 +391,22 @@ export const MediaConversionDialog: React.FC<{
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      }).then(response<{ jobID?: number }>);
+      }).then(response<{ jobID?: number; batch?: string }>);
       if (result.jobID) {
-        localStorage.setItem("media-converter-job", String(result.jobID));
-        setJobID(result.jobID);
+        const identity = rememberJob(result);
         setHistoryOffset(0);
         setState((old) =>
           old
             ? {
                 ...old,
-                job: {
-                  jobID: result.jobID!,
-                  status: "queued",
-                  total: 0,
-                  items: [],
-                },
+                job: identity
+                  ? {
+                      ...identity,
+                      status: "queued",
+                      total: 0,
+                      items: [],
+                    }
+                  : undefined,
               }
             : old
         );
@@ -448,6 +465,7 @@ export const MediaConversionDialog: React.FC<{
         <Modal.Title>Media converter</Modal.Title>
       </Modal.Header>
       <Modal.Body>
+        {jobNotice && <Alert variant="info">{jobNotice}</Alert>}
         {error && (
           <Alert variant="danger">
             <JobErrorDetails error={error} />
@@ -457,7 +475,7 @@ export const MediaConversionDialog: React.FC<{
           <ProcessingJobFeedback
             job={state.job}
             cancelling={submitting}
-            onCancel={() => void action({ action: "cancel", jobID })}
+            onCancel={() => void action({ action: "cancel", jobID, jobBatch })}
             onNavigate={onHide}
           />
         )}

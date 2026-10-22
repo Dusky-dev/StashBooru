@@ -263,3 +263,8 @@ and copies all returned errors even when only 50 rows are displayed. Queue links
 open in a new tab; upscaling acknowledges submission and links to its live queue.
 See [job feedback and recovery](job-feedback.md) for the distinct lifetimes of
 queue notices, processing details, saved receipts and original-file records.
+
+Live converter/upscaling-restore job references include the batch identity and are
+scoped to the server API address. Refresh can resume the same retained job; a
+reused numeric ID after restart cannot display or cancel unrelated work. Expired
+live references leave saved history and available original recovery accessible.

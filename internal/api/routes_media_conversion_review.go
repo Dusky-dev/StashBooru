@@ -287,5 +287,5 @@ func startConversionReview(w http.ResponseWriter, r *http.Request, request conve
 			delete(conversionJobs.jobs, id)
 		}
 	})
-	writeVisualSimilarityJSON(w, map[string]int{"jobID": id})
+	writeVisualSimilarityJSON(w, map[string]interface{}{"jobID": id, "batch": state.Batch})
 }

@@ -32,6 +32,36 @@ Upscaling reports a **submitted** job and links to the queue. This acknowledgeme
 is not a live completion result. New-copy and replacement behavior, worker choices,
 model defaults and original-file recovery keep their existing contracts.
 
+## Resuming live processing work
+
+The converter and upscaling restore remember a **job ID plus its batch identity**,
+scoped to the exact API address, including a server path prefix. Refreshing or
+reopening can resume that same live job while the server retains it. A numeric
+ID reused after a restart cannot attach the dialog to a different batch.
+
+If the saved reference expires or no longer matches, the dialog clears that live
+reference and explains why status is unavailable. Saved conversion/replacement
+history and available originals remain accessible. A new job can then be started
+explicitly. No work is automatically retried. Old unscoped numeric-only browser
+references are ignored. When browser storage is blocked, a newly accepted job
+continues in memory; the UI reports that refresh recovery is unavailable.
+
+The API requires the matching pair when reading live details or cancelling:
+
+```text
+GET image/converter?jobID=7&batch=<batch>
+POST image/converter {"action":"cancel","jobID":7,"jobBatch":"<batch>"}
+```
+
+The same rule applies to `image/upscale-restore`. Job-creating responses include
+`jobID` and `batch`. A status request without a valid matching batch returns no
+live job and sets `jobUnavailable` when a positive job ID was requested, while
+still returning saved history/settings. Cancellation without a current matching
+batch returns HTTP 409 before entering the native queue manager. Numeric-only
+custom clients must retain the returned batch and update their requests. Batch
+identity is a consistency check, not a replacement for existing authentication.
+New-copy upscaling still hands its native queue ID to the existing queue view.
+
 ## What is retained
 
 A queue notice, a saved result and an original available for recovery have
@@ -43,7 +73,7 @@ server job audit log.
 | Native live queue | Refetched from the server; subscription updates reconcile with query snapshots. | Process memory only. Completed jobs leave the server queue; IDs can be reused after restart. |
 | Native failed-job notices | Captured application-wide and retained in this browser tab's session storage, scoped to the server URL, until dismissed. Storage failure is reported. | Already captured notices can remain in the same open tab. Work completed while disconnected is not reconstructed. Closing the tab ends this notice history. |
 | Completed/cancelled queue notices | Depart about ten seconds after the removal event. | No durable history is created. |
-| Converter and upscaling-restore job details | Process-memory results can be polled while retained. Remembered browser job IDs are pointers to those details. | Lost on server restart. A cleanup check runs 24 hours after submission and removes terminal entries; a still-active job at that check is left in memory. This is not a rolling 24-hour history guarantee. |
+| Converter and upscaling-restore job details | Process-memory results can be polled while retained. Remembered browser references contain both the ID and batch and are scoped to the API address. | Lost on server restart. A cleanup check runs 24 hours after submission and removes terminal entries; a still-active job at that check is left in memory. This is not a rolling 24-hour history guarantee. |
 | Conversion results, trials and original-file records | Existing conversion History/review tabs read their separate on-disk records. | Records survive restart. Recoverable original bytes depend on cache limits and state; trial bytes also have their own cache/expiry rules. A completed job does not guarantee indefinite recovery. |
 | Upscaling replacement records/originals | Separate upscaling replacement history and restore cache. | On-disk records survive restart; configured cache limits can evict originals. New-copy upscales retain their normal native media rather than creating a replacement original. |
 | Remote download live details | The browser can remember a job/token in the same tab for up to an hour. | Process-memory job/token expires one hour after submission or on restart. Saved files and separately written download receipts have their own lifetime. |
@@ -70,12 +100,20 @@ existing structured targets. Record/trial states such as prepared, committed and
 restoring retain their precise existing meanings.
 
 Remaining E03 work includes reconnect/restart acceptance with representative jobs,
-context links for other producers, explicit handling of remembered custom job IDs
-across server restarts, and a decision about whether durable server job history
-is needed. That decision should follow the retention inventory, rather than adding
+context links for other producers and a decision about whether durable server
+job history is needed. The current resume guards cover reused numeric IDs; they
+do not turn process-memory job details into durable history. That decision should follow the retention inventory, rather than adding
 another overlapping browser history store.
 
 The Job feedback CI suite mounts the real queue and converter plus shared feedback
 at desktop 1440 × 1000 and mobile 390 × 844. Its browser-local HTTP/GraphQL fixtures
 perform no real conversion, GPU inference or library writes. Those checks do not
 establish production restart, codec or recovery acceptance.
+
+The processing-job-resume fixture mounts both native processing dialogs and checks
+same-job refresh/reopen, legacy numeric references, distinct server prefixes,
+simulated restart with a reused ID, retained history, cancellation identity and
+blocked browser storage at both viewports. The native registry tests reject stale,
+expired and wrong-feature references before cancellation and verify that a matching
+reference still cancels an actual bounded native queue task. These checks simulate
+identity loss; they do not claim an end-to-end production server restart.

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/stashapp/stash/internal/manager"
@@ -14,10 +13,7 @@ import (
 	"github.com/stashapp/stash/pkg/models"
 )
 
-var upscalingRestoreJobs = struct {
-	sync.Mutex
-	jobs map[int]*conversionJob
-}{jobs: make(map[int]*conversionJob)}
+var upscalingRestoreJobs = processingJobRegistry{jobs: make(map[int]*conversionJob)}
 
 func upscalingRestoreStore() mediaconvert.Store {
 	return manager.GetInstance().MediaUpscalingStore()
@@ -47,19 +43,9 @@ func handleImageUpscaleRestoreGet(w http.ResponseWriter, r *http.Request) {
 	}
 	latestStats := mediaconvert.Summarize(latestRecords)
 
-	var activeJob *conversionJob
 	id, _ := strconv.Atoi(r.URL.Query().Get("jobID"))
 	jobStatus := manager.GetInstance().JobManager.GetJob(id)
-	upscalingRestoreJobs.Lock()
-	if state := upscalingRestoreJobs.jobs[id]; state != nil {
-		if jobStatus != nil && jobStatus.Status == job.StatusCancelled && state.Status == "queued" {
-			state.Status = "cancelled"
-		}
-		jobCopy := *state
-		jobCopy.Items = append([]conversionItem{}, state.Items...)
-		activeJob = &jobCopy
-	}
-	upscalingRestoreJobs.Unlock()
+	activeJob := upscalingRestoreJobs.snapshot(id, r.URL.Query().Get("batch"), jobStatus)
 
 	batchRecords := []*mediaconvert.Record{}
 	if activeJob != nil {
@@ -97,13 +83,14 @@ func handleImageUpscaleRestoreGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeVisualSimilarityJSON(w, map[string]interface{}{
-		"config":       config,
-		"history":      history,
-		"historyTotal": historyTotal,
-		"stats":        stats,
-		"job":          activeJob,
-		"batchStats":   batchStats,
-		"latestStats":  latestStats,
+		"config":         config,
+		"history":        history,
+		"historyTotal":   historyTotal,
+		"stats":          stats,
+		"job":            activeJob,
+		"jobUnavailable": id > 0 && activeJob == nil,
+		"batchStats":     batchStats,
+		"latestStats":    latestStats,
 	})
 }
 
@@ -117,12 +104,10 @@ func handleImageUpscaleRestorePost(w http.ResponseWriter, r *http.Request) {
 	}
 	mgr := manager.GetInstance()
 	if request.Action == "cancel" {
-		mgr.JobManager.CancelJob(request.JobID)
-		upscalingRestoreJobs.Lock()
-		if state := upscalingRestoreJobs.jobs[request.JobID]; state != nil && state.Status == "queued" {
-			state.Status = "cancelled"
+		if !upscalingRestoreJobs.cancel(request.JobID, request.JobBatch, mgr.JobManager.CancelJob) {
+			http.Error(w, "This live job is no longer available. Refresh job status; saved records are unchanged.", http.StatusConflict)
+			return
 		}
-		upscalingRestoreJobs.Unlock()
 		writeVisualSimilarityJSON(w, map[string]bool{"cancelled": true})
 		return
 	}
@@ -302,5 +287,5 @@ func handleImageUpscaleRestorePost(w http.ResponseWriter, r *http.Request) {
 			delete(upscalingRestoreJobs.jobs, jobID)
 		}
 	})
-	writeVisualSimilarityJSON(w, map[string]int{"jobID": jobID})
+	writeVisualSimilarityJSON(w, map[string]interface{}{"jobID": jobID, "batch": state.Batch})
 }
