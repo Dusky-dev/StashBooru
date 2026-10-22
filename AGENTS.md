@@ -11,9 +11,14 @@ and explicit decisions take precedence over this file.
   Standing authorization for this and future PRs was given on 2026-10-01.
   Do not ask again for ordinary work, branch pushes, or PR creation within an
   assigned task. PR descriptions must disclose AI assistance accurately.
-- Merging PRs, pushing directly to `develop`, deleting remote branches,
-  destructive data changes, and production deployment require separate user
-  authorization. Permission to create PRs does not authorize these actions.
+- The owner authorizes automatic merging of assigned task PRs after applicable
+  CI passes and Codex Review finishes, with viable findings addressed. An explicit
+  review quota-exhaustion response permits proceeding without that review; a
+  running or delayed review does not. Report each merge to the owner. When only
+  review/CI remains pending, record the checkpoint and end the turn rather than
+  repeatedly polling or waiting.
+- Direct pushes to `develop`, remote branch deletion, destructive data changes
+  and production deployment still require separate authorization.
 - `docs/CONTRIBUTING.md` and `docs/AI_POLICY.md` contain inherited upstream
   policy. The owner's explicit authorization above governs agent work in this
   fork; it does not authorize contributions to `stashapp/stash` or other repos.

@@ -90,7 +90,11 @@ export const StudioDetailsPanel: React.FC<IStudioDetailsPanel> = PatchComponent(
           fullWidth={fullWidth}
         />
         <CustomFields values={studio.custom_fields} />
-        <IdentitySources kind="artist" entityID={studio.id} />
+        <IdentitySources
+          kind="artist"
+          entityID={studio.id}
+          entityName={studio.name}
+        />
       </div>
     );
   }

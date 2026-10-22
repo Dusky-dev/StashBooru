@@ -2,6 +2,40 @@
 
 Updated: 2026-10-22
 
+## Contextual source connections (E01) — 2026-10-22
+
+- Baseline: `develop` at `015336533de2f4823818866da5205b8c766b5921`,
+  after owner merge of audit PR #182. Branch
+  `fix/contextual-source-connections-20261022`.
+- Connect Artist/Character/Copyright opens a dialog over the existing provider
+  preview. Native profile Sources & aliases manages and adds exact source names
+  in a dialog, with an explicit decision to connect to the current profile.
+- Extract the existing resolution controls into one shared component for
+  dialogs and advanced bulk reconciliation. Keep the original typed identity API,
+  native IDs, source targets, optimistic versions and media assignments.
+- Conflict/error replies retain the draft and require an explicit version reload
+  before retry; reload never reapplies the mutation. Close is blocked during a
+  write. Idle cancellation creates no native entity or connection. Observing a
+  name can retain local unresolved metadata, as the existing browse flow does.
+- Automatic merge authority now follows the owner's instruction: applicable CI
+  must pass, Codex Review must finish (or explicitly exhaust quota), viable
+  findings must be addressed, and merges must be reported. Pending external
+  review/CI is a checkpoint to end the turn, not a reason to poll repeatedly.
+- Validation on this dated baseline: all 61 UI unit tests passed; JavaScript/CSS
+  lint, TypeScript and formatting passed. The mounted identities suite passed at
+  desktop 1440 × 1000 and mobile 390 × 844 (including a `/stash` source prefix),
+  explicit Artist connection/rejection/restore, Character create/disambiguation,
+  Copyright linking, stale-write draft retention and explicit reload, profile
+  addition, submitted-write blocking, native scan cancellation and cleanup.
+- The full mounted booru suite passed both viewports, including nested connection
+  dialog cancellation, first-open keys and focus return to the same preview URL,
+  plus existing downloads, settings, search, selection, WebM/GIF and cleanup checks.
+  Final production bundling is in progress. These are isolated fixtures, not live
+  provider, production-library or physical-device acceptance. No backend schema,
+  identity rules, native media activation or file recovery behavior changed.
+- Browser layout and later audit passes remain separate work. Pending CI/review
+  will be recorded on the PR; do not wait/poll solely for those external gates.
+
 ## Whole-project experience audit — 2026-10-22
 
 - Baseline: fresh `develop` at `b36daf9f0d548df25facc73fc98857764c4b61ae`,
