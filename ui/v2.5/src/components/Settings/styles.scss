@@ -220,20 +220,37 @@
 }
 
 #tasks-panel {
-  @media (min-width: 576px) and (min-height: 600px) {
-    .tasks-panel-queue {
-      background-color: #202b33;
-      margin-top: -1rem;
-      padding-bottom: 0.25rem;
-      padding-top: 1rem;
-      position: sticky;
-      top: 3rem;
-      z-index: 2;
-    }
-  }
-
   h1 {
     font-size: 2rem;
+  }
+}
+
+.task-section {
+  margin-top: 1rem;
+  scroll-margin-top: 4.5rem;
+
+  > summary {
+    padding: 0.5rem 0;
+  }
+
+  .task-section-title {
+    font-size: 1.25rem;
+  }
+
+  .task-section-help {
+    color: $text-muted;
+    display: block;
+    font-weight: normal;
+    margin-left: 1.25rem;
+    margin-top: 0.25rem;
+  }
+
+  .task-section-content {
+    padding: 1rem 0;
+  }
+
+  [id] {
+    scroll-margin-top: 4.5rem;
   }
 }
 

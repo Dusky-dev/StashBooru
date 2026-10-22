@@ -26,6 +26,13 @@ larger screens the section list stays beside the controls. Both use the same
 section URLs; Back, refresh and existing section bookmarks keep their destination.
 Advanced mode and troubleshooting remain available beside the navigation.
 
+Tasks starts with the job queue, followed by **Update library**, **Review profiles
+& associations**, **Inspect media**, **Backup & maintenance** and **Plugin tasks**.
+Open the group for the work you need. Closing it keeps its current draft and
+review results; jobs continue normally. Existing task bookmarks open their group
+automatically. The queue scrolls with the page so it does not cover a bookmarked
+action. Save scopes and confirmation steps remain with each tool.
+
 Processing defaults apply to new jobs. Conversion/tagging defaults and model paths
 are saved on the server. Upscaling job defaults are saved in the current browser;
 their Save button does not change server paths. Old System bookmarks for moved

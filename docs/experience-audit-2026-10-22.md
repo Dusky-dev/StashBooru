@@ -202,6 +202,19 @@ local fixtures; it is not a fresh-server or production-library acceptance claim.
 Tasks launcher grouping (E04) and the remaining E03 real-job/restart acceptance
 remain open. See the dated verification in the [progress ledger](implementation-progress.md).
 
+## Tasks grouping follow-up — 2026-10-23
+
+E04's first pass keeps the native queue first and groups existing task launchers
+by goal in native expandable sections. Existing components remain mounted when
+closed, retaining drafts and review results. Bookmarks reveal the containing
+section, including advanced sections after advanced mode is enabled. The queue
+now scrolls in normal page flow to keep bookmark targets visible.
+
+No task engine, API, confirmation, save scope or result store changes. Tools
+organization, contextual profile cleanup links, and real-job/restart acceptance
+remain separate follow-ups. See the dated [progress ledger](implementation-progress.md)
+for verification and fixture boundaries.
+
 ## Progress measures
 
 For each pass, record before/after routes visited, dialogs opened and manual

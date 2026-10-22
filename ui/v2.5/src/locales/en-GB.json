@@ -702,7 +702,19 @@
         "scanning_paths": "Scanning the following paths"
       },
       "scan_for_content_desc": "Scan for new content and add it to the database.",
-      "set_name_date_details_from_metadata_if_present": "Set name, date, details from embedded file metadata"
+      "set_name_date_details_from_metadata_if_present": "Set name, date, details from embedded file metadata",
+      "sections": {
+        "library": "Update library",
+        "library_help": "Scan folders, generate previews and hashes, or match metadata from paths.",
+        "profiles": "Review profiles & associations",
+        "profiles_help": "Preview duplicate Character merges and changes to inherited associations before applying them.",
+        "media": "Inspect media",
+        "media_help": "Inspect animation frames and review Video overlap or containment.",
+        "maintenance": "Backup & maintenance",
+        "maintenance_help": "Back up the database, import or export metadata, clean generated files and run migrations.",
+        "plugins": "Plugin tasks",
+        "plugins_help": "Tasks from enabled plugins appear here when available."
+      }
     },
     "tools": {
       "graphql_playground": "GraphQL playground",
