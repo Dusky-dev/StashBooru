@@ -1,3 +1,8 @@
+import {
+  JobErrorDetails,
+  JobStatusBadge,
+  ProcessingJobFeedback,
+} from "./JobFeedback";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
@@ -5,7 +10,6 @@ import {
   Col,
   Form,
   Modal,
-  ProgressBar,
   Row,
   Spinner,
   Tab,
@@ -444,8 +448,19 @@ export const MediaConversionDialog: React.FC<{
         <Modal.Title>Media converter</Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        {error && <Alert variant="danger">{error}</Alert>}
-        {state?.job?.error && <Alert variant="danger">{state.job.error}</Alert>}
+        {error && (
+          <Alert variant="danger">
+            <JobErrorDetails error={error} />
+          </Alert>
+        )}
+        {state?.job && (
+          <ProcessingJobFeedback
+            job={state.job}
+            cancelling={submitting}
+            onCancel={() => void action({ action: "cancel", jobID })}
+            onNavigate={onHide}
+          />
+        )}
         <Tabs
           id="media-converter-tabs"
           activeKey={tab}
@@ -846,61 +861,7 @@ export const MediaConversionDialog: React.FC<{
               />
             )}
             {state?.job && (
-              <div role="status" className="mb-3">
-                <strong>
-                  Job #{state.job.jobID}: {state.job.status}
-                </strong>{" "}
-                — {state.job.items.length}/{state.job.total} processed
-                {state.job.backend && ` · ${state.job.backend} worker`}
-                {state.job.notice && (
-                  <p className="text-muted">{state.job.notice}</p>
-                )}
-                {running && (
-                  <>
-                    <ProgressBar
-                      animated
-                      now={
-                        state.job.total
-                          ? (100 * state.job.items.length) / state.job.total
-                          : 0
-                      }
-                    />
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="mt-2"
-                      onClick={() => void action({ action: "cancel", jobID })}
-                    >
-                      Cancel remaining work
-                    </Button>
-                  </>
-                )}
-                {state.job.items.some((i) => i.error) && (
-                  <div
-                    className="bg-dark border rounded p-2 mt-2"
-                    role="log"
-                    aria-label="Conversion errors"
-                    style={{
-                      maxHeight: "12rem",
-                      overflowY: "auto",
-                      fontFamily: "monospace",
-                      whiteSpace: "pre-wrap",
-                      overflowWrap: "anywhere",
-                    }}
-                  >
-                    {state.job.items
-                      .filter((i) => i.error)
-                      .slice(0, 50)
-                      .map((i, index) => (
-                        <div
-                          className="text-danger"
-                          key={`${i.target.kind}-${i.target.id}-${index}`}
-                        >
-                          {i.target.kind} #{i.target.id}: {i.error}
-                        </div>
-                      ))}
-                  </div>
-                )}
+              <div>
                 <p className="mt-2">
                   Applied in this batch: {state.batchStats.converted}; skipped{" "}
                   {state.job.items.filter((i) => i.status === "skipped").length}
@@ -920,43 +881,6 @@ export const MediaConversionDialog: React.FC<{
             )}
           </Tab>
           <Tab eventKey="review" title="Estimate / trial review / apply">
-            {state?.job && (
-              <p role="status">
-                {state.job.action ?? "Conversion"}: {state.job.status} ·{" "}
-                {state.job.items.length}/{state.job.total} processed
-                {state.job.error && ` · ${state.job.error}`}
-              </p>
-            )}
-            {running && (
-              <Button
-                size="sm"
-                variant="secondary"
-                className="mb-3"
-                onClick={() => void action({ action: "cancel", jobID })}
-              >
-                Cancel remaining work
-              </Button>
-            )}
-            {state?.job?.items
-              .filter((i) => i.error)
-              .slice(0, 50)
-              .map((item, index) => (
-                <Alert
-                  variant="warning"
-                  key={`${item.trialID ?? item.target.kind}-${item.target.id}-${index}`}
-                >
-                  {item.target.id
-                    ? `${item.target.kind} #${item.target.id}`
-                    : `Trial ${item.trialID}`}
-                  : {item.error}
-                </Alert>
-              ))}
-            {(state?.job?.items.filter((i) => i.error).length ?? 0) > 50 && (
-              <p>
-                Showing the first 50 item errors. Full results remain in the
-                converter job response.
-              </p>
-            )}
             <ConversionReview
               trials={state?.trials ?? []}
               stats={state?.trialStats}
@@ -1174,7 +1098,18 @@ export const MediaConversionDialog: React.FC<{
       </Modal.Body>
       <Modal.Footer>
         <span className="mr-auto text-muted">
-          {state?.job && `Job #${state.job.jobID}: ${state.job.status}. `}
+          {state?.job && (
+            <>
+              Job #{state.job.jobID}:{" "}
+              <JobStatusBadge
+                status={state.job.status}
+                hasErrors={
+                  !!state.job.error ||
+                  state.job.items.some((item) => item.error)
+                }
+              />{" "}
+            </>
+          )}
           Jobs continue when this window is closed.
         </span>
         <Button variant="secondary" onClick={onHide}>

@@ -114,12 +114,46 @@ try {
   ]) {
     const context = await browser.newContext({ viewport });
     const page = await context.newPage();
+    await page.addInitScript(() => {
+      window.copiedConversionError = "";
+      navigator.clipboard.writeText = async (text) => {
+        window.copiedConversionError = text;
+      };
+    });
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
     const requests = [];
     let trials = [],
       job,
       nextJob = 1;
+    let failMaintenance = false,
+      pendingFailure;
+    const restoreRecord = {
+      id: "a".repeat(32),
+      status: "complete",
+      cached: true,
+      createdAt: "2026-10-22T12:00:00Z",
+      backend: "local",
+      before: {
+        image: {
+          id: 1,
+          basename: "original.png",
+          path: "/fixture/original.png",
+          size: 1000,
+          fingerprints: [],
+        },
+      },
+      after: {
+        image: {
+          id: 1,
+          basename: "converted.webp",
+          path: "/fixture/converted.webp",
+          size: 600,
+          fingerprints: [],
+        },
+      },
+      result: { encoder: "webp", seconds: 1 },
+    };
     const policy = { minimumSavedBytes: 100, minimumSavedPercent: 10 };
     await page.route("**/image/converter**", async (route) => {
       const request = route.request(),
@@ -216,6 +250,17 @@ try {
           }
           if (body.action === "discard-trials")
             trials = trials.filter((t) => !body.trialIDs.includes(t.id));
+          if (
+            failMaintenance &&
+            ["configure", "restore", "recover"].includes(body.action)
+          ) {
+            job.status = "running";
+            pendingFailure = {
+              ...job,
+              status: "failed",
+              error: `${body.action} failed asynchronously\nComplete worker detail`,
+            };
+          }
           payload = { jobID: job.jobID, batch: "fixture" };
         }
       } else if (url.searchParams.has("capabilities"))
@@ -229,14 +274,18 @@ try {
           ],
           outputFormats: formats,
         };
-      else
+      else {
+        if (pendingFailure) {
+          job = pendingFailure;
+          pendingFailure = undefined;
+        }
         payload = {
           config,
           stats: emptyStats,
           batchStats: emptyStats,
           latestStats: emptyStats,
-          history: [],
-          historyTotal: 0,
+          history: failMaintenance ? [restoreRecord] : [],
+          historyTotal: failMaintenance ? 1 : 0,
           job,
           trials,
           trialTotal: trials.length,
@@ -256,6 +305,7 @@ try {
               .reduce((n, t) => n + t.result.size, 0),
           },
         };
+      }
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -405,20 +455,27 @@ try {
       .click();
     await videoRow.waitFor({ state: "hidden" });
     await dialog
+      .locator(".modal-footer")
+      .getByText("Completed", { exact: true })
+      .waitFor();
+    await dialog
       .getByRole("button", { name: "Close", exact: true })
       .last()
       .click();
     await dialog.waitFor({ state: "hidden" });
     await page.locator("#converter-global-saved-bytes").fill("200");
     await page.locator("#converter-global-saved-percent").fill("20");
+    await page
+      .getByText("Saved trial storage and expiry", { exact: true })
+      .click();
     await page.locator("#converter-trial-cache").fill("1.5");
     await page.locator("#converter-trial-expiry").fill("12");
     await page
-      .getByRole("button", { name: "Save format defaults", exact: true })
+      .getByRole("button", { name: "Save conversion defaults", exact: true })
       .click();
     await page.waitForFunction(() =>
       [...document.querySelectorAll("button")].some(
-        (b) => b.textContent === "Save format defaults" && !b.disabled
+        (b) => b.textContent === "Save conversion defaults" && !b.disabled
       )
     );
     const saved = requests.find((r) => r.action === "save-defaults");
@@ -438,10 +495,84 @@ try {
       })
       .click();
     await dialog.locator('[data-trial-id="' + "1".repeat(32) + '"]').waitFor();
+    // Maintenance jobs return an accepted ID first and fail only on a later poll.
+    // Keep the launching tab selected: the error must remain visible and copyable.
+    failMaintenance = true;
+    const statistics = dialog.getByRole("tab", {
+      name: "Statistics & restore",
+      exact: true,
+    });
+    await statistics.click();
+    for (const [action, button] of [
+      ["configure", "Save limit and trim cache"],
+      ["restore", "Restore"],
+      ["recover", "Recover interrupted operations"],
+    ]) {
+      await dialog.getByRole("button", { name: button, exact: true }).click();
+      const feedback = dialog.getByRole("region", {
+        name: "Conversion job feedback",
+        exact: true,
+      });
+      const failure = `${action} failed asynchronously\nComplete worker detail`;
+      await feedback.getByText(failure, { exact: true }).waitFor();
+      assert.equal(await statistics.getAttribute("aria-selected"), "true");
+      await feedback
+        .getByRole("button", { name: "Copy error", exact: true })
+        .click();
+      assert.equal(
+        await page.evaluate(() => window.copiedConversionError),
+        failure
+      );
+      assert.equal(
+        await feedback.count(),
+        1,
+        "One feedback panel across all tabs"
+      );
+      if (action === "restore")
+        assert.equal(
+          requests.find((r) => r.action === action).recordID,
+          restoreRecord.id
+        );
+    }
+    for (const name of [
+      "Convert",
+      "Estimate / trial review / apply",
+      "Statistics & restore",
+    ]) {
+      await dialog.getByRole("tab", { name, exact: true }).click();
+      await dialog
+        .getByRole("region", { name: "Conversion job feedback", exact: true })
+        .getByText("recover failed asynchronously\nComplete worker detail", {
+          exact: true,
+        })
+        .waitFor();
+    }
+    const toastClose = page.locator(".toast-container .close");
+    if (await toastClose.isVisible()) await toastClose.click();
+    await page.evaluate(async () => {
+      await Promise.all(
+        document
+          .getAnimations()
+          .filter(
+            (animation) => animation.effect?.getTiming().iterations !== Infinity
+          )
+          .map((animation) => animation.finished.catch(() => {}))
+      );
+    });
+    assert.equal(
+      await dialog
+        .locator(".tab-pane.active")
+        .evaluate((element) => getComputedStyle(element).opacity),
+      "1"
+    );
+    if (shots)
+      await page.screenshot({
+        path: path.join(shots, `statistics-error-${viewport.width}.png`),
+      });
     assert.deepEqual(errors, [], "mounted component errors");
     await context.close();
     console.log(
-      `Conversion review desktop/mobile workflow passed at ${viewport.width}px`
+      `Conversion workflow and asynchronous configure/restore/recover errors passed at ${viewport.width}px`
     );
   }
 } finally {

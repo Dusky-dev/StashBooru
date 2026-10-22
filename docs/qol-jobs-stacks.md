@@ -5,6 +5,12 @@ It starts from merged P12/P13 `develop` at
 `a061a22cbbd3c8fee30dd14e1b5c13e45326d984` (PR #138). Branch:
 `feat/qol-jobs-stacks-20261004`; [PR #139](https://github.com/Dusky-dev/StashBooru/pull/139).
 
+## Current job-feedback consolidation
+
+See [job feedback and recovery](job-feedback.md) for the current E03 presentation,
+item/error links and retention inventory. The dated verification below describes
+the original implementation; current work does not change its retention rules.
+
 ## Failed jobs
 
 Settings → Tasks retains failed jobs until **Dismiss** or **Dismiss all failures**.

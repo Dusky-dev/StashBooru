@@ -254,3 +254,12 @@ Development snapshots (`latest_develop`) are available from GitHub separately.
 Download the matching platform release and follow your existing installation
 procedure. The check does not install updates. A network/rate-limit failure is
 shown as a failed check, not as proof that the installation is up to date.
+
+### Job feedback and retained results
+
+Tasks' native queue and processing feedback use readable status labels. Converter
+feedback distinguishes Completed with errors, provides typed links to failed media
+and copies all returned errors even when only 50 rows are displayed. Queue links
+open in a new tab; upscaling acknowledges submission and links to its live queue.
+See [job feedback and recovery](job-feedback.md) for the distinct lifetimes of
+queue notices, processing details, saved receipts and original-file records.
