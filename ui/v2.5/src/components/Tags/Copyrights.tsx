@@ -89,7 +89,11 @@ const CopyrightDetailsPanel: React.FC<{
             fullWidth={fullWidth}
           />
         ) : null}
-        <IdentitySources kind="copyright" entityID={copyright.id} />
+        <IdentitySources
+          kind="copyright"
+          entityID={copyright.id}
+          entityName={copyright.name}
+        />
       </div>
       {hasMain || hasSub ? (
         <Tabs

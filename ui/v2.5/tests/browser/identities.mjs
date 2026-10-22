@@ -75,6 +75,9 @@ try {
     let rejected = false,
       failNext = false,
       mutations = [];
+    let holdObserve = false,
+      releaseObserve,
+      observed;
     let scan = {
       status: "idle",
       jobID: 0,
@@ -88,6 +91,12 @@ try {
         contentType: "application/json",
         body: JSON.stringify(data),
       });
+    await page.route("**/booru-browser/sources", (route) =>
+      reply(route, [
+        { id: "gelbooru", name: "Gelbooru", instance: "gel" },
+        { id: "pawchive", name: "Pawchive", instance: "paw" },
+      ])
+    );
     await page.route("**/identities/*", async (route) => {
       const url = new URL(route.request().url());
       const endpoint = url.pathname.split("/").pop();
@@ -104,12 +113,18 @@ try {
         );
         return reply(route, { items, next: "" });
       }
+      const canonical =
+        q.get("kind") === "copyright"
+          ? "Series A"
+          : q.get("kind") === "character"
+            ? "Character A"
+            : "Waligner";
       if (endpoint === "candidates")
         return reply(route, {
           items:
             rejected && !q.has("rejected")
               ? []
-              : [{ id: 7, name: "Waligner", disambiguation: "", rejected }],
+              : [{ id: 7, name: canonical, disambiguation: "", rejected }],
           truncated: false,
         });
       if (endpoint === "scan") {
@@ -128,6 +143,7 @@ try {
         mutations.push(data);
         if (failNext) {
           failNext = false;
+          rows[1].version++;
           return reply(
             route,
             {
@@ -135,6 +151,19 @@ try {
             },
             409
           );
+        }
+        if (data.action === "observe") {
+          if (holdObserve)
+            await new Promise((resolve) => {
+              releaseObserve = resolve;
+              observed();
+            });
+          holdObserve = false;
+          const row = rows.find(
+            (row) => row.target === data.target && row.kind === data.kind
+          );
+          assert.ok(row, "fixture observes an existing source name");
+          return reply(route, row);
         }
         if (data.action === "reject") rejected = true;
         if (data.action === "restore") rejected = false;
@@ -144,14 +173,26 @@ try {
           row.version++;
           if (data.action === "link" || data.action === "create") {
             row.entityID = data.action === "create" ? 8 : 7;
-            row.entityName = data.action === "create" ? data.name : "Waligner";
+            row.entityName =
+              data.action === "create"
+                ? data.name
+                : data.kind === "copyright"
+                  ? "Series A"
+                  : data.kind === "character"
+                    ? "Character A"
+                    : "Waligner";
           }
           if (data.action === "unlink") {
             row.entityID = 0;
             row.entityName = "";
           }
         }
-        return reply(route, rows);
+        return reply(
+          route,
+          rows.filter((row) =>
+            data.changes.some((change) => change.id === row.id)
+          )
+        );
       }
       return reply(route, { error: "Unexpected fixture endpoint" }, 500);
     });
@@ -190,12 +231,85 @@ try {
       .click();
     await page.getByText("Sources & aliases", { exact: true }).click();
     await page.getByText("creator:patreon:49481727", { exact: true }).waitFor();
-    await page.getByRole("link", { name: "Manage connections" }).click();
-    await page
-      .getByRole("button", { name: "Review Artist", exact: true })
-      .first()
+    const profileURL = page.url();
+    await page.getByRole("button", { name: "Manage connections" }).click();
+    const connections = page.getByRole("dialog");
+    await connections
+      .getByText("creator:patreon:49481727", { exact: true })
       .waitFor();
+    assert.equal(
+      page.url(),
+      profileURL,
+      "Managing connections keeps the native profile"
+    );
+    const beforeCancel = mutations.length;
+    await connections
+      .getByRole("button", { name: "Close", exact: true })
+      .last()
+      .click();
+    assert.equal(mutations.length, beforeCancel, "Closing makes no decisions");
+    rows[2].entityID = 0;
+    rows[2].entityName = "";
+    await page.getByRole("button", { name: "Manage connections" }).click();
+    await connections
+      .getByRole("button", { name: "Add source name", exact: true })
+      .click();
+    await connections
+      .getByLabel("Site", { exact: true })
+      .selectOption("pawchive");
+    await connections
+      .getByLabel("Exact provider tag or creator expression")
+      .fill("creator:patreon:49481727");
+    holdObserve = true;
+    const heldObservation = new Promise((resolve) => {
+      observed = resolve;
+    });
+    await connections
+      .getByRole("button", { name: "Review connection", exact: true })
+      .click();
+    await heldObservation;
+    assert.equal(
+      await connections
+        .getByRole("button", { name: "Close", exact: true })
+        .last()
+        .isDisabled(),
+      true
+    );
+    assert.equal(
+      await connections
+        .getByRole("button", { name: "Cancel adding source name", exact: true })
+        .isDisabled(),
+      true
+    );
+    await page.keyboard.press("Escape");
+    assert.equal(
+      await connections.count(),
+      1,
+      "A submitted write cannot be closed mid-flight"
+    );
+    releaseObserve();
+    await connections
+      .getByRole("button", { name: "Connect to Waligner", exact: true })
+      .waitFor();
+    assert.equal(
+      rows[2].entityID,
+      0,
+      "Observation does not connect automatically"
+    );
+    await connections
+      .getByRole("button", { name: "Connect to Waligner", exact: true })
+      .click();
+    await connections
+      .getByText("Connected to Waligner.", { exact: true })
+      .waitFor();
+    assert.equal(rows[2].entityID, 7);
+    assert.equal(page.url(), profileURL);
+    await connections
+      .getByRole("button", { name: "Close", exact: true })
+      .last()
+      .click();
     await page.getByRole("link", { name: "Browse fixture" }).click();
+    const browseURL = page.url();
     await page.getByRole("button", { name: "Provider tag" }).click();
     await page
       .getByRole("menuitem", { name: "Connect Artist", exact: true })
@@ -206,12 +320,18 @@ try {
         exact: true,
       })
       .waitFor();
-    await page.getByRole("button", { name: "Remove connection" }).click();
-    await page.getByText("Decision saved.", { exact: true }).waitFor();
-    assert.equal(rows[1].entityID, 0);
+    assert.equal(
+      page.url(),
+      browseURL,
+      "Preview connection does not navigate away"
+    );
     await page
-      .getByRole("button", { name: "Review Artist", exact: true })
+      .getByRole("dialog")
+      .getByRole("button", { name: "Remove connection" })
       .click();
+    await page.getByText("Connection removed.", { exact: true }).waitFor();
+    assert.equal(rows[1].entityID, 0);
+    await page.getByRole("link", { name: "Advanced reconciliation" }).click();
     await page
       .getByRole("button", { name: "Different Artist", exact: true })
       .click();
@@ -226,15 +346,35 @@ try {
     await page
       .getByRole("button", { name: "Review Artist", exact: true })
       .click();
+    await page.getByText("Create a new Artist", { exact: true }).click();
+    await page
+      .getByLabel("Display name", { exact: true })
+      .fill("Draft kept on conflict");
     failNext = true;
     await page
       .getByRole("button", { name: "Connect to Waligner", exact: true })
       .click();
     await page.getByRole("alert").filter({ hasText: "changed" }).waitFor();
+    assert.equal(
+      await page.getByLabel("Display name", { exact: true }).inputValue(),
+      "Draft kept on conflict"
+    );
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Connect to Waligner", exact: true })
+        .isDisabled(),
+      true
+    );
     await page
-      .getByRole("button", { name: "Review Artist", exact: true })
+      .getByRole("button", { name: "Reload latest connections", exact: true })
       .click();
-    await page.getByText("Create a new Artist", { exact: true }).click();
+    await page
+      .getByText("Latest connections loaded.", { exact: false })
+      .waitFor();
+    assert.equal(
+      await page.getByLabel("Display name", { exact: true }).inputValue(),
+      "Draft kept on conflict"
+    );
     await page
       .getByLabel("Display name", { exact: true })
       .fill("Curated display");
@@ -298,6 +438,75 @@ try {
       .getByRole("button", { name: "Review Artist", exact: true })
       .first()
       .waitFor();
+    for (const [kind, label, id, target] of [
+      ["character", "Character", "4", "character_a"],
+      ["copyright", "Copyright", "5", "series_a"],
+    ]) {
+      rows.push({
+        ...rows[0],
+        id,
+        kind,
+        target,
+        label: target,
+        instance: "gel",
+        sourceID: "gelbooru",
+        sourceName: "Gelbooru",
+        version: 1,
+        entityID: 0,
+        entityName: "",
+      });
+      await page.goto(
+        `${origin}${prefix}/booru?kind=${kind}&identity=${id}&page=3&observe=1`
+      );
+      const retainedURL = page.url();
+      await page
+        .getByRole("button", { name: "Provider tag", exact: true })
+        .click();
+      await page
+        .getByRole("menuitem", { name: `Connect ${label}`, exact: true })
+        .click();
+      const dialog = page.getByRole("dialog");
+      if (kind === "character") {
+        await dialog
+          .getByText("Create a new Character", { exact: true })
+          .click();
+        await dialog
+          .getByLabel("Display name", { exact: true })
+          .fill("Character A");
+        await dialog.getByLabel("Disambiguation (optional)").fill("Series A");
+        await dialog
+          .getByRole("button", { name: "Create and connect 1", exact: true })
+          .click();
+        assert.equal(mutations.at(-1).disambiguation, "Series A");
+      } else {
+        await dialog
+          .getByRole("button", { name: "Connect to Series A", exact: true })
+          .click();
+      }
+      await dialog
+        .getByText(
+          `Connected to ${kind === "character" ? "Character A" : "Series A"}.`,
+          { exact: true }
+        )
+        .waitFor();
+      assert.equal(
+        new URL(
+          await dialog
+            .getByRole("link", { name: "Advanced reconciliation", exact: true })
+            .getAttribute("href"),
+          page.url()
+        ).searchParams.get("identity"),
+        id,
+        "Advanced reconciliation retains an observed identity after the decision"
+      );
+      assert.equal(page.url(), retainedURL);
+      assert.equal(mutations.at(-1).kind, kind);
+      assert.equal(mutations.at(-1).changes[0].id, id);
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "detached" });
+      await page.reload();
+      assert.equal(page.url(), retainedURL);
+    }
     assert.deepEqual(errors, []);
     await page.close();
     console.log(

@@ -252,7 +252,11 @@ export const PerformerDetailsPanel: React.FC<IPerformerDetails> =
           {(fullWidth || !collapsed) && (
             <>
               <CustomFields values={performer.custom_fields} />
-              <IdentitySources kind="character" entityID={performer.id} />
+              <IdentitySources
+                kind="character"
+                entityID={performer.id}
+                entityName={performer.name}
+              />
             </>
           )}
         </PerformerDetailGroup>

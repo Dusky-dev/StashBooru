@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, Badge, Button, Form } from "react-bootstrap";
 import { Link, useHistory, useLocation } from "react-router-dom";
 import {
-  type IdentityCandidate,
   type IdentityKind,
   type IdentityPage,
   type ProviderIdentity,
@@ -10,7 +9,8 @@ import {
   identityName,
   identityPaths,
   identityRequest,
-} from "./identity";
+} from "./identityApi";
+import { IdentityResolution } from "./IdentityResolution";
 import "./styles.scss";
 
 interface ScanState {
@@ -33,14 +33,6 @@ export default function Identities() {
   const [notice, setNotice] = useState("");
   const [epoch, setEpoch] = useState(0);
   const [selected, setSelected] = useState<string[]>([]);
-  const [query, setQuery] = useState("");
-  const [name, setName] = useState("");
-  const [disambiguation, setDisambiguation] = useState("");
-  const [candidates, setCandidates] = useState<IdentityCandidate[]>([]);
-  const [truncated, setTruncated] = useState(false);
-  const [candidateError, setCandidateError] = useState("");
-  const [candidateLoading, setCandidateLoading] = useState(false);
-  const [rejected, setRejected] = useState(false);
   const [busy, setBusy] = useState(false);
   const [scan, setScan] = useState<ScanState>();
   const pending = useRef<AbortController>();
@@ -48,7 +40,6 @@ export default function Identities() {
   const autoSelected = useRef("");
   const chosen = page?.items.filter((row) => selected.includes(row.id)) ?? [];
   const anchor = chosen[0];
-  const anchorID = anchor?.id;
   const search = location.search;
   const scanning = scan?.status === "queued" || scan?.status === "running";
 
@@ -71,15 +62,6 @@ export default function Identities() {
         if (row && autoSelected.current !== search) {
           autoSelected.current = search;
           setSelected([row.id]);
-          const readable = identityName(row.label, row.kind);
-          setQuery(
-            row.form === "account" && row.label === row.target
-              ? ""
-              : readable.slice(0, 80)
-          );
-          setName(
-            row.form === "account" && row.label === row.target ? "" : readable
-          );
         }
       })
       .catch((e: unknown) => {
@@ -87,41 +69,6 @@ export default function Identities() {
       });
     return () => controller.abort();
   }, [search, epoch]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    setCandidates([]);
-    setCandidateError("");
-    if (!anchorID) {
-      setCandidateLoading(false);
-      return () => controller.abort();
-    }
-    setCandidateLoading(true);
-    const timer = setTimeout(() => {
-      const p = new URLSearchParams({ kind, identity: anchorID, q: query });
-      if (rejected) p.set("rejected", "1");
-      void identityRequest<{ items: IdentityCandidate[]; truncated: boolean }>(
-        `identities/candidates?${p}`,
-        controller.signal
-      )
-        .then((data) => {
-          if (!controller.signal.aborted) {
-            setCandidates(data.items);
-            setTruncated(data.truncated);
-          }
-        })
-        .catch((e: unknown) => {
-          if (!controller.signal.aborted) setCandidateError(String(e));
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) setCandidateLoading(false);
-        });
-    }, 250);
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [anchorID, kind, query, rejected]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -154,13 +101,9 @@ export default function Identities() {
     history.push(`/identities?${p}`);
   }
   function review(row: ProviderIdentity, scroll = true) {
+    setNotice("");
+    setError("");
     setSelected([row.id]);
-    setRejected(false);
-    setDisambiguation("");
-    const readable = identityName(row.label, kind);
-    const unknownAccount = row.form === "account" && row.label === row.target;
-    setQuery(unknownAccount ? "" : readable.slice(0, 80));
-    setName(unknownAccount ? "" : readable);
     if (scroll)
       requestAnimationFrame(() =>
         resolution.current?.scrollIntoView({
@@ -168,36 +111,6 @@ export default function Identities() {
           block: "start",
         })
       );
-  }
-  async function mutate(action: string, entityID = 0) {
-    const controller = new AbortController();
-    pending.current?.abort();
-    pending.current = controller;
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      await identityRequest("identities/update", controller.signal, {
-        action,
-        kind,
-        name,
-        disambiguation,
-        changes: chosen.map((row) => ({
-          id: row.id,
-          version: row.version,
-          entityID,
-        })),
-      });
-      if (!controller.signal.aborted) setNotice("Decision saved.");
-    } catch (e) {
-      if (!controller.signal.aborted) setError(String(e));
-    } finally {
-      if (!controller.signal.aborted) {
-        setBusy(false);
-        setSelected([]);
-        setEpoch((v) => v + 1);
-      }
-    }
   }
   async function scanAction(action: string) {
     const controller = new AbortController();
@@ -439,7 +352,7 @@ export default function Identities() {
         </section>
         <aside
           ref={resolution}
-          className="identity-resolution"
+          className="identity-resolution-panel"
           aria-label="Connect identifiers"
         >
           {!anchor ? (
@@ -449,11 +362,6 @@ export default function Identities() {
             </p>
           ) : (
             <>
-              <h4>
-                Connect {chosen.length} {identityLabels[kind]} identifier
-                {chosen.length === 1 ? "" : "s"}
-              </h4>
-              <p>{chosen.map((row) => row.sourceName).join(", ")}</p>
               <div className="identity-toolbar mb-3">
                 <Button
                   variant="secondary"
@@ -481,134 +389,19 @@ export default function Identities() {
                 >
                   Select matching labels on this page
                 </Button>
-                {chosen.some((row) => row.entityID) && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    disabled={busy}
-                    onClick={() => void mutate("unlink")}
-                  >
-                    Remove connection
-                  </Button>
-                )}
               </div>
-              <Form.Group>
-                <Form.Label htmlFor="identity-candidate-query">
-                  Find an existing {identityLabels[kind]}
-                </Form.Label>
-                <Form.Control
-                  id="identity-candidate-query"
-                  value={query}
-                  maxLength={80}
-                  onChange={(event) => setQuery(event.currentTarget.value)}
-                  placeholder="Search native names and aliases"
-                />
-              </Form.Group>
-              <Form.Check
-                type="switch"
-                id="identity-rejected"
-                label="Show rejected matches"
-                checked={rejected}
-                onChange={(event) => setRejected(event.currentTarget.checked)}
+              <IdentityResolution
+                key={chosen.map((row) => row.id).join(":")}
+                selected={chosen}
+                kind={kind}
+                onBusyChange={setBusy}
+                onSaved={() => {
+                  setBusy(false);
+                  setNotice("Decision saved.");
+                  setSelected([]);
+                  setEpoch((value) => value + 1);
+                }}
               />
-              {candidateLoading && <p>Loading matches…</p>}
-              {candidateError && (
-                <Alert variant="danger">{candidateError}</Alert>
-              )}
-              {!candidateLoading &&
-                !candidateError &&
-                candidates.length === 0 && (
-                  <p>
-                    No matching records. Try a different name, or create one
-                    below.
-                  </p>
-                )}
-              {truncated && (
-                <p>First 50 matches. Refine the name to find more.</p>
-              )}
-              {candidates.map((candidate) => (
-                <div className="identity-candidate my-2" key={candidate.id}>
-                  <Link to={`${identityPaths[kind]}/${candidate.id}`}>
-                    {candidate.name}
-                    {candidate.disambiguation
-                      ? ` (${candidate.disambiguation})`
-                      : ""}
-                  </Link>
-                  <div className="identity-toolbar mt-2">
-                    {candidate.rejected ? (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        disabled={busy || chosen.length !== 1}
-                        onClick={() => void mutate("restore", candidate.id)}
-                      >
-                        Allow suggestion again
-                      </Button>
-                    ) : (
-                      <>
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          disabled={busy}
-                          onClick={() => void mutate("link", candidate.id)}
-                        >
-                          Connect to {candidate.name}
-                        </Button>
-                        {chosen.length === 1 && (
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            disabled={busy}
-                            onClick={() => void mutate("reject", candidate.id)}
-                          >
-                            Different {identityLabels[kind]}
-                          </Button>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-              <details className="mt-3">
-                <summary>Create a new {identityLabels[kind]}</summary>
-                <Form
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    void mutate("create");
-                  }}
-                >
-                  <Form.Group>
-                    <Form.Label htmlFor="identity-name">
-                      Display name
-                    </Form.Label>
-                    <Form.Control
-                      id="identity-name"
-                      required
-                      maxLength={80}
-                      value={name}
-                      onChange={(event) => setName(event.currentTarget.value)}
-                    />
-                  </Form.Group>
-                  {kind === "character" && (
-                    <Form.Group>
-                      <Form.Label htmlFor="identity-disambiguation">
-                        Disambiguation (optional)
-                      </Form.Label>
-                      <Form.Control
-                        id="identity-disambiguation"
-                        maxLength={80}
-                        value={disambiguation}
-                        onChange={(event) =>
-                          setDisambiguation(event.currentTarget.value)
-                        }
-                      />
-                    </Form.Group>
-                  )}
-                  <Button type="submit" disabled={busy || !name.trim()}>
-                    Create and connect {chosen.length}
-                  </Button>
-                </Form>
-              </details>
             </>
           )}
         </aside>

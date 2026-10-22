@@ -361,6 +361,37 @@ try {
           ...source,
           credentialsConfigured: source.apiKeyConfigured,
         }));
+    const identityWrites = [];
+    await page.route("**/identities/**", async (route) => {
+      const endpoint = new URL(route.request().url()).pathname.split("/").pop();
+      if (endpoint === "candidates")
+        return route.fulfill({
+          json: {
+            items: [
+              { id: 7, name: "Artist A", disambiguation: "", rejected: false },
+            ],
+            truncated: false,
+          },
+        });
+      const data = route.request().postDataJSON();
+      identityWrites.push(data);
+      return route.fulfill({
+        json: {
+          id: "1",
+          kind: "artist",
+          instance: "fixture-danbooru",
+          sourceID: "danbooru",
+          sourceName: "Danbooru",
+          target: "artist_a",
+          label: "artist_a",
+          form: "tag",
+          version: 1,
+          entityID: 0,
+          entityName: "",
+          context: "",
+        },
+      });
+    });
     await page.route("**/booru-browser/**", async (route) => {
       const url = new URL(route.request().url());
       if (url.pathname.endsWith("/archive")) {
@@ -2339,6 +2370,46 @@ try {
     const preview = page.getByRole("dialog");
     await page.waitForFunction(() =>
       document.activeElement?.classList.contains("modal-content")
+    );
+    const previewURL = page.url();
+    await preview
+      .getByRole("button", { name: "Tag artist_a", exact: true })
+      .click();
+    await preview
+      .getByRole("menuitem", { name: "Connect Artist", exact: true })
+      .click();
+    const connectDialog = page.getByRole("dialog", {
+      name: "Connect Artist",
+      exact: true,
+    });
+    await connectDialog
+      .getByRole("button", { name: "Connect to Artist A", exact: true })
+      .waitFor();
+    assert.equal(page.url(), previewURL, "Connecting retains the preview URL");
+    await connectDialog.getByLabel("Find an existing Artist").focus();
+    await page.keyboard.press("ArrowRight");
+    assert.equal(
+      await page.locator(".booru-browser-inspection .modal-title").innerText(),
+      "Danbooru #101"
+    );
+    if (process.env.STASH_BROWSER_SCREENSHOTS) {
+      fs.mkdirSync(process.env.STASH_BROWSER_SCREENSHOTS, { recursive: true });
+      await page.screenshot({
+        path: path.join(
+          process.env.STASH_BROWSER_SCREENSHOTS,
+          `contextual-connection-${viewport.width}.png`
+        ),
+      });
+    }
+    await page.keyboard.press("Escape");
+    await connectDialog.waitFor({ state: "detached" });
+    await page.waitForFunction(() =>
+      document.activeElement?.classList.contains("modal-content")
+    );
+    assert.equal(
+      identityWrites.filter((write) => write.action !== "observe").length,
+      0,
+      "Cancel creates no entity or connection"
     );
     await page.keyboard.press("ArrowRight");
     await preview.getByText("Danbooru #102", { exact: true }).waitFor();

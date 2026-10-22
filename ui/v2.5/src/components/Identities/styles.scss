@@ -1,5 +1,5 @@
-.identity-page {
-  max-width: 1500px;
+.identity-page,
+.identity-dialog .modal-content {
   overflow-wrap: anywhere;
 
   .form-control {
@@ -56,4 +56,33 @@
 
 .identity-sources code {
   overflow-wrap: anywhere;
+}
+
+.identity-page {
+  max-width: 1500px;
+}
+
+.modal.identity-dialog {
+  z-index: 1060;
+
+  fieldset {
+    min-width: 0;
+  }
+
+  .btn {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .identity-targets {
+    padding-left: 1.25rem;
+
+    li + li {
+      margin-top: 0.75rem;
+    }
+  }
+}
+
+.modal-backdrop.identity-dialog-backdrop {
+  z-index: 1055;
 }

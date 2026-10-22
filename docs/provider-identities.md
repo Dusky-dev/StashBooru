@@ -52,9 +52,11 @@ Following changes are later work.
 
 1. Browse provider posts, or choose **Identities → Scan saved metadata**. Artist
    directory searches also collect readable Pawchive/Kemono creator names.
-2. In a preview tag menu, choose **Connect Artist/Character/Copyright**. General
-   tags retain their search actions. Alternatively, review unresolved entries on
-   the Identities page. Raw targets are retained under **Sources & aliases**.
+2. In a preview tag menu, choose **Connect Artist/Character/Copyright**. A dialog
+   opens over the current preview, keeping its search, page and position.
+   Closing it returns keyboard focus to the preview. General tags retain their
+   search actions. **Advanced reconciliation** opens the existing Identities
+   page for bulk work. Raw targets remain under **Sources & aliases**.
 3. Choose an existing native record, or expand **Create a new…**. Character
    creation supports native disambiguation. A matching name never links itself.
 4. Select several rows, or **Select matching labels on this page**, to connect
@@ -62,7 +64,13 @@ Following changes are later work.
    before connecting. **Different…** remembers a rejected match for one identifier.
    **Show rejected matches** lets you allow it again. **Later / deselect** leaves
    identifiers unresolved. **Remove connection** reverses a binding.
-5. Native profiles expose **Sources & aliases → Manage connections**. Native
+5. Native profiles expose **Sources & aliases → Manage connections** in a dialog,
+   without leaving the profile. **Add source name** takes an enabled site and
+   its exact tag or creator expression, then shows a separate **Connect to…**
+   decision for this profile. Merely reviewing a name creates no binding or native
+   record. Closing cancels the decision; a local unresolved observation may remain.
+   Manage a listed name to remove its connection. Moving a name from another
+   profile shows its current connection before the explicit decision. Native
    catalogue text searches recognize connected source names and IDs. A fresh
    browser search displays the current canonical name while source searches use
    the exact original tag/account selector. Artist/Character text searches evaluate
@@ -71,8 +79,22 @@ Following changes are later work.
    Character suggestions also recognize native `Name (Disambiguation)` names.
 
 Filters and keyset pages are represented in the URL. Mobile Review scrolls the
-connection panel into view. Stale decisions fail atomically, retain an error,
-and reload current versions before another review.
+bulk connection panel into view. Dialogs and bulk review share the same resolver.
+Stale decisions fail atomically and retain the draft and selection. **Reload
+latest connections** refreshes versions without saving again; review the current
+binding before retrying. A lost/error reply also requires a reload, so Create
+cannot be blindly resubmitted. Close is disabled during a submitted write; closing
+an idle dialog does not save a connection or create a native entity. Provider
+queries and media assignments are unaffected by these connection controls.
+
+### Contextual connection examples
+
+Automated fixtures using the real browser preview; no live provider content.
+The advanced reconciliation page remains available for bulk work.
+
+| Desktop | Mobile |
+| --- | --- |
+| ![Connect in the current preview](screenshots/contextual-source-connections-1440.png) | ![Connect on mobile](screenshots/contextual-source-connections-390.png) |
 
 ## Scan limits and recovery
 
