@@ -84,6 +84,7 @@ try {
       })
     );
     await page.goto(url);
+    await page.locator("#tasks-profiles > summary").click();
     const section = page.locator("#character-dedup-task");
     await section
       .getByRole("button", { name: "Preview Character merges" })

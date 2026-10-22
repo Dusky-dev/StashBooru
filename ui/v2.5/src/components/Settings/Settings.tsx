@@ -32,6 +32,7 @@ const SettingTabs: React.FC<{ tab: SettingsTab }> = ({ tab }) => {
   const { hash } = useLocation();
   const { isActive: troubleshootingModeActive } = useTroubleshootingMode();
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Advanced mode can mount an anchor inside closed details without resizing the pane.
   useEffect(() => {
     if (!hash || loading) return;
     const pane = document.getElementById(`configuration-tabs-tabpane-${tab}`);
@@ -41,8 +42,15 @@ const SettingTabs: React.FC<{ tab: SettingsTab }> = ({ tab }) => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         const target = document.getElementById(hash.slice(1));
-        if (target && pane.contains(target))
+        if (target && pane.contains(target)) {
+          // Bookmarks can point into a collapsed task or nested settings group.
+          let ancestor: HTMLElement | null = target;
+          while (ancestor && pane.contains(ancestor)) {
+            if (ancestor instanceof HTMLDetailsElement) ancestor.open = true;
+            ancestor = ancestor.parentElement;
+          }
           target.scrollIntoView({ block: "start" });
+        }
       });
     };
     // Async worker/configuration responses can change section heights. Keep a
@@ -61,7 +69,7 @@ const SettingTabs: React.FC<{ tab: SettingsTab }> = ({ tab }) => {
       stop();
       for (const event of events) window.removeEventListener(event, stop);
     };
-  }, [hash, tab, loading]);
+  }, [hash, tab, loading, advancedMode]);
 
   const titleProps = useTitleProps({ id: "settings" });
 

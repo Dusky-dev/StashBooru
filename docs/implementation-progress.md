@@ -1,6 +1,50 @@
 # StashBooru implementation progress
 
-Updated: 2026-10-22
+Updated: 2026-10-23
+
+## Tasks grouped by goal (E04, first pass) — 2026-10-23
+
+- Merged PR #187 after all CI passed and its only Codex Review finding was
+  verified as already addressed by the ledger commit, then resolved. Fresh
+  baseline: `develop` at `3b2c76311fe150f69b597326bc62d72099976300`.
+- Branch [`fix/tasks-navigation-20261023`](https://github.com/Dusky-dev/StashBooru/tree/fix/tasks-navigation-20261023).
+  Verified source checkpoint `148da94cfff9db50c834e437f81255195da0f106`, tree
+  `9c0a8c82b66be11cc99fa24fd454bf0d261bfefa`. This ledger follow-up is
+  documentation only; it is included before opening the PR for review.
+- Keep the native queue first. Group the existing launchers into Update library,
+  Review profiles & associations, Inspect media, Backup & maintenance and Plugin
+  tasks. Native expandable sections start closed and retain their mounted task
+  components, in-flight responses, drafts and review results when closed.
+- Keep each tool's implementation, defaults, explicit preview/apply/confirmation
+  and queue ownership. The plugin section explains when no tasks are available.
+  No backend, schema, job engine, recovery, metadata or save-scope changes.
+- Existing target IDs remain valid. The native Settings anchor handler reveals
+  all enclosing native details before positioning a bookmark; advanced mode
+  reruns alignment when it mounts an advanced target inside a closed group.
+  Preserve unrelated URL parameters, Back and refresh. The queue scrolls in
+  normal flow to keep lower bookmarked actions visible rather than covering them.
+- Validation: `make validate-ui` passed all 61 unit tests, JS/CSS lint, TypeScript
+  and formatting; `make ui-only` passed. UI GraphQL generation and built-in
+  preparation passed; no generated files are committed. Final formatting and
+  `git diff --check` passed. No Go gates apply to these UI/documentation changes.
+- Mounted native Settings, Tasks and Character merge suites all passed at
+  1440 × 1000 and 390 × 844. Checks cover initial closed groups/queue placement,
+  Enter/Space, response completion while closed, retained review/draft state,
+  Back, failed animation submission retention without resubmission, backup
+  dialog cancellation, plugin empty guidance, old task/queue/advanced bookmarks,
+  refresh, anchor visibility and no horizontal overflow or uncaught/unmounted
+  update errors. Existing settings save scopes, errors/retries and Character
+  preview/pagination/apply/error recovery also passed. Captures were inspected;
+  Settings navigation CI runs all three suites and uploads its captures.
+- HTTP/GraphQL responses and writes are isolated fixtures. These checks do not
+  establish populated-library, enabled-plugin execution, real conversion/GPU,
+  real database backup or production restart acceptance. Existing native queue
+  behavior is reused; no new durable job history is claimed.
+- Remaining E04 work: organize Tools and link cleanup actions from relevant
+  profile/review contexts, each as a bounded pass. Next: Tools organization.
+  E03 representative real-job/restart acceptance and the history-store decision
+  remain open. Browser layout remains separately assigned. CI/Codex Review is a
+  turn-end checkpoint; do not wait or poll solely for those external gates.
 
 ## Compact settings navigation (E13, navigation pass) — 2026-10-22
 
