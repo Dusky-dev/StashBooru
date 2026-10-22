@@ -13,8 +13,9 @@ A conversion that finishes with returned item errors shows **Completed with
 errors**; inspect its failed items before deciding what to do next. An unfamiliar
 backend state keeps its original name rather than being presented as success.
 
-Converter **Convert** and **Estimate / trial review / apply** tabs use the same
-feedback. Failed native targets link directly to the existing Image or Video;
+Converter **Convert**, **Estimate / trial review / apply** and **Statistics &
+restore** tabs share one feedback panel above the tabs. An asynchronous configure,
+restore or recovery error stays visible and copyable without changing tabs. Failed native targets link directly to the existing Image or Video;
 equal numeric IDs retain their media type. Following such a link closes the
 converter. A trial without an actual media target does not get a fabricated
 library link. **View job queue (new tab)** opens Tasks while preserving the current

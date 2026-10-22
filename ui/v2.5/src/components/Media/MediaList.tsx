@@ -1,3 +1,4 @@
+import { metadataReviewOperation } from "../Tagging/MetadataReviewDialog";
 import { VisualStackDialog } from "../VisualStacks/VisualStackDialog";
 import { StackProposalsDialog } from "../VisualStacks/StackProposalsDialog";
 import { StackMember } from "../VisualStacks/media";
@@ -230,6 +231,7 @@ export const FilteredMediaList = PatchComponent("FilteredMediaList", () => {
           onClick: onInvertSelection,
           isDisplayed: () => items.length > 0,
         },
+        metadataReviewOperation(selection, showModal, () => refreshed()),
         {
           text: "Convert selected media…",
           onClick: () =>

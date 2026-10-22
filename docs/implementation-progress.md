@@ -2,6 +2,56 @@
 
 Updated: 2026-10-22
 
+## Predictable metadata review (E02) — 2026-10-22
+
+- Baseline: `develop` at `d6e8c9c49efc332ef510dfdf264dc0392b15ea22`,
+  after owner merge of PR #183. Branch
+  `fix/metadata-review-entrypoints-20261022`,
+  [PR #184](https://github.com/Dusky-dev/StashBooru/pull/184).
+- Verified implementation commit:
+  `17199c725581764c24dd8f59df79dedae6c69831` (tree
+  `5abb0a9a7c54313f9a49a5db103641a107aa0fe0`). This ledger update changes
+  documentation only after that verified implementation.
+- Add the same Review metadata action to Image/Video details and selections in
+  All, Images and Videos. Reuse existing native dialogs and review/apply plans,
+  one item at a time. Display the typed native item ID, selection progress, Skip
+  and a setup link opening existing Processing settings in a new tab.
+- Snapshot typed identities/order on opening. A list prop reorder cannot redirect
+  the active review or a write, including equal Image/Video numeric IDs. Apply
+  advances only after success; a failed save stays on the identifiable current
+  item. Skip writes nothing. Close ends review and retains the list selection,
+  filters and URL. Dismissal is blocked during an apply. Previously applied items
+  remain applied when the review ends.
+- Local filename metadata remains the only source loaded on opening. Provider
+  lookup, inference and library suggestions remain explicit. Rename the provider
+  button to Look up by MD5, clarify native Auto Tag as paths/filenames, and make
+  detailed source-merging help expandable. Preserve the Generate review shortcut
+  and existing advanced batch-job defaults; label the Video action Batch tagging
+  job to distinguish it from per-item review.
+- The image dialog now owns its native styling class. Remove the obsolete
+  English-title-based DOM class adapter from the built-in extra script. The main
+  composed unifiedMedia checksum remains unchanged.
+- Validation: `make validate-ui` passed all 61 unit tests, JS/CSS lint, TypeScript
+  and formatting. Final source also passed targeted Biome checks. `make ui-only`
+  passed on the final UI source. Built-in preparation and generated unifiedMedia
+  and bundle-extra JavaScript syntax checks passed; `git diff --check` passed.
+- The new mounted metadata-review suite passed at 1440 × 1000 and 390 × 844:
+  native action visibility, mixed typed identities, in-progress input reorder,
+  explicit plans, failed/successful apply, Skip, Close, selection/URL retention,
+  legacy Generate shortcut, Image/Video-only selections, provider error retention
+  and repeated single-item opens. No uncaught page errors, React unmounted/update
+  errors or horizontal overflow were observed. Steady-state desktop/mobile
+  screenshots were inspected; CI uploads them as metadata-review-screenshots.
+- Fixture HTTP metadata and writes are intercepted. These checks are not live
+  provider, populated-library, physical-device or GPU/model acceptance. No backend
+  schema, tagging engine, native relationship/identity, file activation or original
+  recovery behavior changes. Browser layout remains with its separately assigned
+  owner.
+- At publication, CI and Codex Review remain external gates. End the turn rather
+  than waiting/polling solely for those gates. Next bounded objective: audit pass
+  E03, inventory native job retention and unify completion/error/recovery feedback
+  before considering additional persistence.
+
 ## Contextual source connections (E01) — 2026-10-22
 
 - Baseline: `develop` at `015336533de2f4823818866da5205b8c766b5921`,
@@ -44,6 +94,29 @@ Updated: 2026-10-22
   will be recorded on the PR; do not wait/poll solely for those external gates.
 
 ## Job feedback and retention inventory (E03, first pass) — 2026-10-22
+
+### Review follow-up
+
+- Owner explicitly authorized merging PR #184 despite its stalled review. All
+  applicable CI was green; merge commit
+  `67a054567fd4c796be82303fd9928ccec9ef5dc6` is now included in this branch.
+  This exception is specific to #184 and does not change the normal review gate.
+- Assessed Codex Review's P2 finding on #185 as valid: asynchronous configure,
+  restore and recovery failures were hidden on Statistics & restore. Render one
+  shared conversion feedback panel above all tabs, preserving full error copying,
+  typed target links and cancellation. Remove the two tab-specific duplicates.
+- Regression checks launch each of configure, restore and recovery from Statistics
+  & restore, return only an accepted job ID initially, then fail via a later poll.
+  At desktop 1440 × 1000 and mobile 390 × 844, verify the launching tab remains
+  selected, the full multiline error is visible and copied, the actual restore
+  record ID is submitted, and one feedback panel remains available across all tabs.
+- On the integrated source, `make validate-ui` passed 61 unit tests, JS/CSS lint,
+  TypeScript and formatting; `make ui-only` and `git diff --check` passed. The
+  extended mounted converter workflow passed both viewports. These are intercepted
+  browser fixtures, not live original-file restoration or production acceptance.
+  New CI is required after publication; end the turn if only external gates remain.
+
+### Original implementation checkpoint
 
 - Baseline: `develop` at `d6e8c9c49efc332ef510dfdf264dc0392b15ea22`.
   Branch `fix/job-feedback-20261022`,

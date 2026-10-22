@@ -231,11 +231,9 @@ export const GenerateDialog: React.FC<IGenerateDialog> = ({
             <SettingSection>
               <h4>Image metadata</h4>
               <p className="text-muted">
-                Review the selected images with the current Image Metadata
-                workflow. Each image opens the same Local, Danbooru, Camie,
-                EVA02 and Library review used from an individual image. Applying
-                one image advances to the next selected image; closing exits the
-                review without auto-applying anything else.
+                Review metadata is also available directly from the selection's
+                actions. It reviews one selected image at a time; each change
+                needs your approval.
               </p>
               <Button
                 variant="primary"

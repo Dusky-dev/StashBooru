@@ -453,6 +453,14 @@ export const MediaConversionDialog: React.FC<{
             <JobErrorDetails error={error} />
           </Alert>
         )}
+        {state?.job && (
+          <ProcessingJobFeedback
+            job={state.job}
+            cancelling={submitting}
+            onCancel={() => void action({ action: "cancel", jobID })}
+            onNavigate={onHide}
+          />
+        )}
         <Tabs
           id="media-converter-tabs"
           activeKey={tab}
@@ -854,12 +862,6 @@ export const MediaConversionDialog: React.FC<{
             )}
             {state?.job && (
               <div>
-                <ProcessingJobFeedback
-                  job={state.job}
-                  cancelling={submitting}
-                  onCancel={() => void action({ action: "cancel", jobID })}
-                  onNavigate={onHide}
-                />
                 <p className="mt-2">
                   Applied in this batch: {state.batchStats.converted}; skipped{" "}
                   {state.job.items.filter((i) => i.status === "skipped").length}
@@ -879,14 +881,6 @@ export const MediaConversionDialog: React.FC<{
             )}
           </Tab>
           <Tab eventKey="review" title="Estimate / trial review / apply">
-            {state?.job && (
-              <ProcessingJobFeedback
-                job={state.job}
-                cancelling={submitting}
-                onCancel={() => void action({ action: "cancel", jobID })}
-                onNavigate={onHide}
-              />
-            )}
             <ConversionReview
               trials={state?.trials ?? []}
               stats={state?.trialStats}
