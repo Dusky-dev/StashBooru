@@ -451,3 +451,18 @@ without downloading; `copy(JSON.stringify(stashPreviewDebug.stop()))` is the
 clipboard alternative. Re-executing the script releases the previous recorder.
 This is a passive DOM/media trace, not a decoded-frame video or GPU profiler;
 the capture should establish which switching/restart path to reproduce next.
+
+### Reviewed metadata entry points (2026-10-22)
+
+From the repository root, after the usual locked UI install, GraphQL generation
+and built-in preparation, run `node ui/v2.5/tests/browser/metadata-review.mjs`.
+Use `PLAYWRIGHT_MODULE` for an isolated Playwright module, `CHROMIUM_EXECUTABLE`
+for a local browser binary and `STASH_BROWSER_SCREENSHOTS` for optional captures.
+The Metadata review CI job supplies these tools and uploads the captures.
+
+The fixture mounts native list operations, Image/Video dialogs and the retained
+Generate shortcut. At 1440 × 1000 and 390 × 844 it checks typed mixed selections,
+a prop reorder during review, explicit plans, failed and successful saves, Skip,
+Close, retained selection/URL, provider errors and repeated single-item opens.
+HTTP metadata and writes are intercepted; this is not a populated-library,
+production-provider, physical-device or model-inference acceptance test.

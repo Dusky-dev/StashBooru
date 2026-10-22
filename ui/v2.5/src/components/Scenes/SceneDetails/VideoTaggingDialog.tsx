@@ -608,15 +608,16 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
             </div>
           ) : null}
 
-          <div className="mb-3 text-muted">
+          <details className="mb-3 text-muted">
+            <summary>How sources are combined</summary>
             Sources are merged in priority order: Local → Booru → Frames.
-            Opening this dialog loads Local metadata only. Danbooru lookup and
-            representative-frame analysis are explicit. Frame analysis uses the
-            configured Camie/frame threshold and per-category limit, samples the
-            Video through ffmpeg, and starts its suggestions unselected for
+            Opening this dialog loads Local metadata only. Provider MD5 lookup
+            and representative-frame analysis are explicit. Frame analysis uses
+            the configured Camie/frame threshold and per-category limit, samples
+            the Video through ffmpeg, and starts its suggestions unselected for
             review. Frame predictions cannot override authoritative Local
             Character, Artist, or Copyright identity.
-          </div>
+          </details>
 
           <Form.Check
             className="mb-3"

@@ -62,11 +62,26 @@ projection; it does not insert calculated parents as permanent direct links.
 Restarting the server requires a new review. Exact-set/null and some maintenance
 filters keep direct-link semantics; see the [full contract](p06-effective-associations.md).
 
-## Image Tagging
+<a id="image-tagging"></a>
 
-Open **Image Tagging** from an Image's operations. Opening the dialog loads local
-filename metadata only. Fetching online metadata, running inference and asking
-for library suggestions are separate explicit actions.
+## Review metadata
+
+Choose **Review metadata…** from an Image or Video's operations, or select items
+in **All**, **Images** or **Videos** and choose the same action from the operations
+menu. The dialog identifies the current native Image or Video and its position
+in the selection. A snapshot preserves the review order across list refreshes.
+
+Each item requires a reviewed change plan. Apply continues through the selection;
+**Skip item** writes nothing. **Close** ends the review and retains the list
+selection, filters and page. A failed save keeps the current item open with its ID
+and error. Closing does not undo items already applied. **Tagging setup (new tab)**
+opens the existing Processing settings while keeping the review open.
+
+Only local filename metadata loads on opening. Provider lookup, inference and
+library suggestions are separate explicit actions. Missing provider/model
+resources do not prevent local review.
+
+### Image sources
 
 | Source | What it supplies | Requirement |
 | --- | --- | --- |
@@ -77,7 +92,7 @@ for library suggestions are separate explicit actions.
 | Library | Suggestions drawn from visually similar indexed local Images. | Existing visual index and local catalogue metadata. Suggestions need review. |
 
 The displayed merge priority is **Local → Booru → Camie → EVA02 → Library**.
-The current button says **Fetch from Danbooru**, but the lookup code supports
+**Look up by MD5** supports
 Danbooru, Gelbooru, Yande.re, Konachan and Safebooru in that priority order. The
 returned provider badge/post link identifies the actual source. This action looks
 up metadata for an existing local file; it is not a remote-post search or downloader.
@@ -95,7 +110,9 @@ option is separate from add-only association changes. Calculated Tags are shown
 with origins and remain inherited rather than being written as direct Tags.
 Applying metadata preserves the media's native ID and file bytes.
 
-Bulk Image model tagging is available through the Images **Generate** workflow
+The existing **Generate → Review Image Metadata…** shortcut opens the same
+per-item Image review. Bulk Image model tagging is also available through the
+Images **Generate** workflow
 and runs as a job. It is not a batch version of every optional single-Image source;
 inspect the chosen action and selected scope before starting it.
 
@@ -135,9 +152,11 @@ Remote paths belong to the worker machine. The defaults are Camie threshold
 them deliberately for new analyses. These controls do not tune pHash distance.
 Camie weights are not bundled or downloaded silently. See [worker setup](../scripts/visual_embedding_server.md).
 
-## Video Tagging and native Auto Tag
+<a id="video-tagging-and-native-auto-tag"></a>
 
-**Video Tagging** loads Local metadata on opening. Booru lookup and frame analysis
+## Video sources and native Auto Tag
+
+**Review video metadata** loads Local metadata on opening. Booru lookup and frame analysis
 are explicit actions, with **Local → Booru → Frames** priority. Frame analysis
 samples timestamps and aggregates model results with frame support; it does not
 prove that a Character appears throughout a Video. Single and batch review show
@@ -146,12 +165,20 @@ or filtered Videos. The same source-priority and ambiguity rules protect identit
 assignments.
 
 Native **Auto Tag** is a separate path/name matching task, without model inference.
-In **Settings → Tasks → Advanced mode → Auto Tag**, Copyrights can be enabled for
+In **Settings → Tasks → Advanced mode → Auto Tag (paths and filenames)**, Copyrights can be enabled for
 all or selected native Copyrights. **Selective Auto Tag** restricts paths. Copyright
 matching applies to Images/Videos; Galleries have no native Copyright relationship.
 Existing saved options leave Copyright matching off until enabled. Character
 canonical identities, disambiguation and aliases use strict matching; alias
 collisions are not resolved by selecting the first candidate.
+
+The separate filename layout in Processing supplies local predictions for
+reviewed tagging. Native Auto Tag matches existing names against file/folder
+paths; it does not look up a provider.
+
+Videos' **Batch tagging job…** remains the existing advanced job workflow,
+separate from per-item **Review metadata…**. Inspect its own apply options before
+starting the batch job.
 
 ## Profile artwork and cleanup
 

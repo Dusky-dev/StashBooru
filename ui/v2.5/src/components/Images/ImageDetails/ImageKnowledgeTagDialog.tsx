@@ -763,7 +763,8 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
             </div>
           ) : null}
 
-          <div className="mb-3 text-muted">
+          <details className="mb-3 text-muted">
+            <summary>How sources are combined</summary>
             Sources are merged in priority order: Local → Booru → Camie → EVA02
             → Library. Opening this dialog loads Local metadata only; every
             network, model, or similarity source is explicit. Camie and EVA02
@@ -773,7 +774,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
             predicted by multiple sources, the earlier source keeps its value
             and score while later sources are shown as additional provenance.
             Multiple selected Artists can be attached to the same image.
-          </div>
+          </details>
 
           <Form.Check
             className="mb-3"

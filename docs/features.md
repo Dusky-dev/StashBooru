@@ -86,13 +86,17 @@ link to a native Copyright or Artist. The hierarchy's Main/Sub tabs, branch path
 and descendant filters keep these identities separate. Artist context links do
 not imply authorship.
 
-Image Tagging reviews **Local → Booru → Camie → EVA02 → Library** sources. Video
-Tagging reviews **Local → Booru → Frames**. Only Local loads on opening; network
+**Review metadata…** is available on Image/Video details and selected items in
+All, Images and Videos. Mixed selections retain typed native IDs and are reviewed
+one item at a time, with Skip and selection progress. Images review
+**Local → Booru → Camie → EVA02 → Library** sources; Videos review
+**Local → Booru → Frames**. Only Local loads on opening; network
 lookups, inference and library suggestions are explicit. Select predictions and
 resolve ambiguous targets before applying the change plan. Filename identity
 metadata takes precedence in populated categories. Camie and EVA02 have independent
 thresholds; these do not tune Find similar distance. Bulk Image model tagging is
-in Generate; native Auto Tag matches names/paths without a model.
+in Generate; native **Auto Tag (paths and filenames)** matches names/paths without
+a model. Videos' separate **Batch tagging job…** retains its advanced job options.
 
 See [metadata and tagging](metadata-and-tagging.md) for filename tokens, provider
 lookup behavior, model setup, direct/calculated relationships and ambiguity rules.
