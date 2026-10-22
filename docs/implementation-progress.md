@@ -1,6 +1,31 @@
 # StashBooru implementation progress
 
-Updated: 2026-10-21
+Updated: 2026-10-22
+
+## Whole-project experience audit — 2026-10-22
+
+- Baseline: fresh `develop` at `b36daf9f0d548df25facc73fc98857764c4b61ae`,
+  including merged PR #171. Branch `docs/experience-audit-20261022`.
+- Owner asked to evaluate inherited and added behavior before more expansion.
+  [Experience audit](experience-audit-2026-10-22.md) maps daily workflows,
+  prioritizes confirmed fragmentation separately from risks/validation gaps,
+  and defines bounded consolidation passes and cross-feature acceptance.
+- First proposed implementation: contextual source-name connection using the
+  existing identity backend, preserving native IDs and reviewed decisions.
+  Browser layout implementation remains with the separately assigned agent.
+- Correct README, documentation index, feature/browser guides and roadmap claims
+  that Following or source-name bindings are still unmerged/planned. Historical
+  dated entries below remain checkpoints, not current deployment claims.
+- This PR changes documentation only. Validation and runtime-inspection boundaries
+  are recorded in the audit; no production media, accounts or model inference
+  are involved. A full-app isolated empty-library probe visited 18 routes at
+  desktop 1440 × 1000 and mobile 390 × 844: no uncaught page errors or horizontal
+  overflow after closing the initial release notes. Native server build passed;
+  reused production UI assets match the baseline's tracked UI source. This is
+  rendering inspection, not populated-library/provider/playback/GPU acceptance.
+- Documentation review, audit local-link target checks and `git diff --check`
+  passed on the dated baseline above. Next: implement the first bounded
+  consolidation pass; no broad runtime refactor is included here.
 
 ## Large archive media-page fix — 2026-10-21
 
@@ -165,11 +190,12 @@ Updated: 2026-10-21
 
 
 
-Current work: B03a shared provider identities, [PR #171](https://github.com/Dusky-dev/StashBooru/pull/171),
+Historical B03a checkpoint: shared provider identities, [PR #171](https://github.com/Dusky-dev/StashBooru/pull/171),
 branch `feat/provider-identities-20261020`, against develop
 `a312a80063418ca68bc70da4821d37aa194140cf`. The owner-authorized #163/#164
-Following merges are complete; this identity PR has not been merged or deployed.
-Current-head verification and review status are recorded on #171.
+Following merges were complete at this checkpoint. PR #171 has since merged into
+the 2026-10-22 baseline above; deployment is not established by merge status.
+Verification and review history are recorded on #171.
 
 P01–P13 retain the delivered scopes in the table below. P11 real model/GPU
 acceptance and P12/P13 production activation remain open gates; they are not

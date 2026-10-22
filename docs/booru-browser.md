@@ -8,7 +8,11 @@ server path. Native scan registers media; Artist/Character/
 Copyright/tag metadata import remains separate reviewed work.
 [B02 review state](booru-review-state.md) adds durable ignored/manual-download
 marks and bounded current-file MD5 matches. Metadata entity review, batch downloads,
-pHash comparison and follows remain later [roadmap packages](booru-browser-roadmap.md).
+pHash comparison remain later [roadmap packages](booru-browser-roadmap.md).
+[Following](booru-follows.md) supports explicit on-demand checks for
+Danbooru-compatible sources. [Source-name connections](provider-identities.md)
+link reviewed provider identifiers to native Artists, Characters and Copyrights;
+they do not automatically apply post metadata to media.
 
 ## Rule34.xxx API access
 
