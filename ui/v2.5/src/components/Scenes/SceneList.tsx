@@ -1,3 +1,4 @@
+import { metadataReviewOperation } from "../Tagging/MetadataReviewDialog";
 import { VisualStackDialog } from "../VisualStacks/VisualStackDialog";
 import { StackProposalsDialog } from "../VisualStacks/StackProposalsDialog";
 import React, { useCallback, useEffect, useMemo } from "react";
@@ -668,8 +669,19 @@ export const FilteredSceneList = PatchComponent(
           ),
         isDisplayed: () => hasSelection,
       },
+      metadataReviewOperation(
+        Array.from(selectedIds).map((id) => ({
+          kind: GQL.MediaKind.Video,
+          id,
+        })),
+        showModal,
+        () => {
+          closeModal();
+          void result.refetch();
+        }
+      ),
       {
-        text: "Batch Video Tagging…",
+        text: "Batch tagging job…",
         onClick: () =>
           showModal(
             <BatchVideoTaggingDialog

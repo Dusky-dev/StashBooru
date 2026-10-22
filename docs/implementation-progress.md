@@ -2,6 +2,56 @@
 
 Updated: 2026-10-22
 
+## Predictable metadata review (E02) — 2026-10-22
+
+- Baseline: `develop` at `d6e8c9c49efc332ef510dfdf264dc0392b15ea22`,
+  after owner merge of PR #183. Branch
+  `fix/metadata-review-entrypoints-20261022`,
+  [PR #184](https://github.com/Dusky-dev/StashBooru/pull/184).
+- Verified implementation commit:
+  `17199c725581764c24dd8f59df79dedae6c69831` (tree
+  `5abb0a9a7c54313f9a49a5db103641a107aa0fe0`). This ledger update changes
+  documentation only after that verified implementation.
+- Add the same Review metadata action to Image/Video details and selections in
+  All, Images and Videos. Reuse existing native dialogs and review/apply plans,
+  one item at a time. Display the typed native item ID, selection progress, Skip
+  and a setup link opening existing Processing settings in a new tab.
+- Snapshot typed identities/order on opening. A list prop reorder cannot redirect
+  the active review or a write, including equal Image/Video numeric IDs. Apply
+  advances only after success; a failed save stays on the identifiable current
+  item. Skip writes nothing. Close ends review and retains the list selection,
+  filters and URL. Dismissal is blocked during an apply. Previously applied items
+  remain applied when the review ends.
+- Local filename metadata remains the only source loaded on opening. Provider
+  lookup, inference and library suggestions remain explicit. Rename the provider
+  button to Look up by MD5, clarify native Auto Tag as paths/filenames, and make
+  detailed source-merging help expandable. Preserve the Generate review shortcut
+  and existing advanced batch-job defaults; label the Video action Batch tagging
+  job to distinguish it from per-item review.
+- The image dialog now owns its native styling class. Remove the obsolete
+  English-title-based DOM class adapter from the built-in extra script. The main
+  composed unifiedMedia checksum remains unchanged.
+- Validation: `make validate-ui` passed all 61 unit tests, JS/CSS lint, TypeScript
+  and formatting. Final source also passed targeted Biome checks. `make ui-only`
+  passed on the final UI source. Built-in preparation and generated unifiedMedia
+  and bundle-extra JavaScript syntax checks passed; `git diff --check` passed.
+- The new mounted metadata-review suite passed at 1440 × 1000 and 390 × 844:
+  native action visibility, mixed typed identities, in-progress input reorder,
+  explicit plans, failed/successful apply, Skip, Close, selection/URL retention,
+  legacy Generate shortcut, Image/Video-only selections, provider error retention
+  and repeated single-item opens. No uncaught page errors, React unmounted/update
+  errors or horizontal overflow were observed. Steady-state desktop/mobile
+  screenshots were inspected; CI uploads them as metadata-review-screenshots.
+- Fixture HTTP metadata and writes are intercepted. These checks are not live
+  provider, populated-library, physical-device or GPU/model acceptance. No backend
+  schema, tagging engine, native relationship/identity, file activation or original
+  recovery behavior changes. Browser layout remains with its separately assigned
+  owner.
+- At publication, CI and Codex Review remain external gates. End the turn rather
+  than waiting/polling solely for those gates. Next bounded objective: audit pass
+  E03, inventory native job retention and unify completion/error/recovery feedback
+  before considering additional persistence.
+
 ## Contextual source connections (E01) — 2026-10-22
 
 - Baseline: `develop` at `015336533de2f4823818866da5205b8c766b5921`,

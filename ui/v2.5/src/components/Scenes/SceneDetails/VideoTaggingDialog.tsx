@@ -1,3 +1,7 @@
+import {
+  MetadataReviewInfo,
+  type MetadataReviewContext,
+} from "src/components/Tagging/MetadataReviewInfo";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge, Button, Form, Modal, Spinner } from "react-bootstrap";
 import { faExternalLinkAlt, faSearch } from "@fortawesome/free-solid-svg-icons";
@@ -95,6 +99,7 @@ interface IProps {
   sceneId: string;
   onHide: () => void;
   onApplied: () => Promise<unknown>;
+  reviewContext?: MetadataReviewContext;
 }
 
 const CATEGORY_ORDER = ["character", "artist", "copyright", "general", "meta"];
@@ -207,6 +212,7 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
   sceneId,
   onHide,
   onApplied,
+  reviewContext,
 }) => {
   const Toast = useToast();
   const history = useHistory();
@@ -353,6 +359,7 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
     async (tags: TagPrediction[]) => {
       setApplying(true);
       setError(undefined);
+      let complete = false;
       try {
         const response = await fetch(`scene/${sceneId}/knowledge-tags`, {
           method: "POST",
@@ -378,13 +385,14 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
           `Applied ${appliedCount} metadata item${appliedCount === 1 ? "" : "s"}; created ${createdCount} new entr${createdCount === 1 ? "y" : "ies"}.`
         );
         await onApplied();
-        onHide();
+        complete = true;
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : String(cause));
         Toast.error(cause);
       } finally {
         setApplying(false);
       }
+      if (complete) onHide();
     },
     [Toast, onApplied, onHide, replaceArtists, sceneId]
   );
@@ -500,14 +508,22 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
     <>
       <Modal
         show={!pendingCharacterResolution && !changePlan}
-        onHide={onHide}
+        onHide={() => {
+          if (!applying) onHide();
+        }}
         size="lg"
         centered
       >
-        <Modal.Header closeButton>
-          <Modal.Title>Video metadata</Modal.Title>
+        <Modal.Header closeButton={!applying}>
+          <Modal.Title>Review video metadata</Modal.Title>
         </Modal.Header>
         <Modal.Body>
+          <MetadataReviewInfo
+            kind="Video"
+            id={sceneId}
+            context={reviewContext}
+            busy={busy || applying}
+          />
           <div className="d-flex flex-wrap align-items-end mb-3">
             <Form.Group className="mr-3 mb-2">
               <Form.Label>Frame threshold</Form.Label>
@@ -540,7 +556,7 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
               disabled={busy || applying}
               onClick={() => void loadBooruMetadata()}
             >
-              {loadingBooru ? "Fetching…" : "Fetch from Danbooru"}
+              {loadingBooru ? "Fetching…" : "Look up by MD5"}
             </Button>
             <Button
               className="mb-2"
@@ -592,15 +608,16 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
             </div>
           ) : null}
 
-          <div className="mb-3 text-muted">
-            Sources are merged in priority order: Local → Danbooru → Frames.
-            Opening this dialog loads Local metadata only. Danbooru lookup and
-            representative-frame analysis are explicit. Frame analysis uses the
-            configured Camie/frame threshold and per-category limit, samples the
-            Video through ffmpeg, and starts its suggestions unselected for
+          <details className="mb-3 text-muted">
+            <summary>How sources are combined</summary>
+            Sources are merged in priority order: Local → Booru → Frames.
+            Opening this dialog loads Local metadata only. Provider MD5 lookup
+            and representative-frame analysis are explicit. Frame analysis uses
+            the configured Camie/frame threshold and per-category limit, samples
+            the Video through ffmpeg, and starts its suggestions unselected for
             review. Frame predictions cannot override authoritative Local
             Character, Artist, or Copyright identity.
-          </div>
+          </details>
 
           <Form.Check
             className="mb-3"

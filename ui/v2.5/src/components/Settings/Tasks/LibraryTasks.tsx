@@ -427,12 +427,16 @@ export const LibraryTasks: React.FC = () => {
         </Setting>
       </SettingSection>
 
-      <SettingSection advanced>
+      <SettingSection advanced id="path-metadata-matching">
+        <p className="text-muted">
+          Match existing library metadata from file and folder names. This task
+          does not run a model or look up a provider.
+        </p>
         <SettingGroup
           settingProps={{
             heading: (
               <>
-                <FormattedMessage id="actions.auto_tag" />
+                <FormattedMessage id="actions.auto_tag" /> (paths and filenames)
                 <ManualLink tab="AutoTagging">
                   <Icon icon={faQuestionCircle} />
                 </ManualLink>
