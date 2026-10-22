@@ -456,7 +456,7 @@ try {
         entityName: "",
       });
       await page.goto(
-        `${origin}${prefix}/booru?kind=${kind}&identity=${id}&page=3`
+        `${origin}${prefix}/booru?kind=${kind}&identity=${id}&page=3&observe=1`
       );
       const retainedURL = page.url();
       await page
@@ -489,6 +489,16 @@ try {
           { exact: true }
         )
         .waitFor();
+      assert.equal(
+        new URL(
+          await dialog
+            .getByRole("link", { name: "Advanced reconciliation", exact: true })
+            .getAttribute("href"),
+          page.url()
+        ).searchParams.get("identity"),
+        id,
+        "Advanced reconciliation retains an observed identity after the decision"
+      );
       assert.equal(page.url(), retainedURL);
       assert.equal(mutations.at(-1).kind, kind);
       assert.equal(mutations.at(-1).changes[0].id, id);

@@ -32,6 +32,7 @@ export function IdentityConnectionsDialog({
   onSaved?: () => void;
 }) {
   const [current, setCurrent] = useState<ProviderIdentity>();
+  const [resolvedID, setResolvedID] = useState(target?.identityID);
   const [items, setItems] = useState<ProviderIdentity[]>([]);
   const [next, setNext] = useState("");
   const [after, setAfter] = useState("");
@@ -87,7 +88,10 @@ export function IdentityConnectionsDialog({
           throw new Error(
             "This source name is no longer available. Reload the provider post and retry."
           );
-        if (!controller.signal.aborted) setCurrent(row);
+        if (!controller.signal.aborted) {
+          setCurrent(row);
+          setResolvedID(row.id);
+        }
       } else if (entityID) {
         const params = new URLSearchParams({ kind, entity: String(entityID) });
         if (after) params.set("after", after);
@@ -360,7 +364,7 @@ export function IdentityConnectionsDialog({
           className={`btn btn-link${busy ? " disabled" : ""}`}
           aria-disabled={busy}
           tabIndex={busy ? -1 : 0}
-          to={`/identities?kind=${kind}${entity ? `&entity=${entity.id}` : identityID ? `&identity=${identityID}` : ""}`}
+          to={`/identities?kind=${kind}${entity ? `&entity=${entity.id}` : resolvedID ? `&identity=${resolvedID}` : ""}`}
         >
           Advanced reconciliation
         </Link>

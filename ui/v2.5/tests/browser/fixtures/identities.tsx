@@ -36,7 +36,9 @@ function ProviderTag() {
           }}
           kind={kind}
           target={target}
-          identityID={params.get("identity") ?? "2"}
+          identityID={
+            params.has("observe") ? undefined : (params.get("identity") ?? "2")
+          }
         />
       </Dropdown.Menu>
     </Dropdown>

@@ -36,6 +36,10 @@ Updated: 2026-10-22
   passed. These are isolated fixtures, not live
   provider, production-library or physical-device acceptance. No backend schema,
   identity rules, native media activation or file recovery behavior changed.
+- Codex Review's viable P2 finding is addressed: Advanced reconciliation retains
+  an identity resolved by observation, including after a connection decision clears
+  the dialog's current row. Desktop/mobile Character and Copyright regressions
+  cover missing initial IDs and the resulting focused link.
 - Browser layout and later audit passes remain separate work. Pending CI/review
   will be recorded on the PR; do not wait/poll solely for those external gates.
 
