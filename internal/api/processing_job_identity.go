@@ -23,9 +23,9 @@ func (r *processingJobRegistry) snapshot(id int, batch string, queueJob *job.Job
 	if queueJob != nil && queueJob.Status == job.StatusCancelled && state.Status == "queued" {
 		state.Status = "cancelled"
 	}
-	copy := *state
-	copy.Items = append([]conversionItem{}, state.Items...)
-	return &copy
+	jobCopy := *state
+	jobCopy.Items = append([]conversionItem{}, state.Items...)
+	return &jobCopy
 }
 
 func (r *processingJobRegistry) cancel(id int, batch string, cancel func(int)) bool {
