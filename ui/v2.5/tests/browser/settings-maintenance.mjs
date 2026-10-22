@@ -40,8 +40,17 @@ const browser = await engines.chromium.launch({
 const shots = process.env.STASH_BROWSER_SCREENSHOTS;
 if (shots) fs.mkdirSync(shots, { recursive: true });
 const active = (page) => page.locator(".tab-pane.active");
-const uiLink = (page, tab) =>
-  page.locator(`#settings-menu-container a[href='/settings?tab=${tab}']`);
+async function chooseSection(page, tab) {
+  const chooser = page.getByRole("combobox", {
+    name: "Settings section",
+    exact: true,
+  });
+  if (await chooser.isVisible()) await chooser.selectOption(tab);
+  else
+    await page
+      .locator(`#settings-menu-container a[href*="tab=${tab}"]`)
+      .click();
+}
 const formats = [
   {
     id: "webp",
@@ -226,7 +235,7 @@ try {
       });
     });
     await page.goto(
-      `${baseURL}/settings?tab=${baseline ? "system" : "library"}`
+      `${baseURL}/settings?tab=${baseline ? "system" : "library"}&return=images%2F42`
     );
     if (baseline) {
       await page.locator("#inference-worker input[type=url]:enabled").waitFor();
@@ -241,7 +250,69 @@ try {
       0,
       "unvisited processing settings must not contact workers"
     );
-    await uiLink(page, "processing").click();
+    const chooser = page.locator("#settings-section");
+    assert.equal(
+      await page
+        .getByRole("combobox", { name: "Settings section", exact: true })
+        .count(),
+      name === "mobile" ? 1 : 0
+    );
+    const desktopLinks = page.locator(
+      "#settings-menu-container .nav-link:visible"
+    );
+    assert.equal(await desktopLinks.count(), name === "mobile" ? 0 : 13);
+    assert.equal(await chooser.isVisible(), name === "mobile");
+    assert.equal(await chooser.inputValue(), "library");
+    assert.equal(
+      await page.locator("#settings-menu-container .nav-link.active").count(),
+      1
+    );
+    assert.equal(
+      await page
+        .locator("#settings-menu-container .nav-link.active")
+        .textContent(),
+      "Library"
+    );
+    assert.deepEqual(
+      await chooser
+        .locator("option")
+        .evaluateAll((options) => options.map((option) => option.value)),
+      [
+        "tasks",
+        "library",
+        "processing",
+        "interface",
+        "security",
+        "metadata-providers",
+        "services",
+        "system",
+        "plugins",
+        "logs",
+        "tools",
+        "changelog",
+        "about",
+      ]
+    );
+    if (name === "mobile") {
+      // Native select supports keyboard navigation without exposing hidden links.
+      await chooser.focus();
+      await chooser.press("Home");
+      await chooser.press("Enter");
+      await page.waitForURL(/tab=tasks/);
+      assert.equal(await chooser.inputValue(), "tasks");
+      await page.goBack();
+      await page.waitForURL(/tab=library/);
+      assert.equal(await chooser.inputValue(), "library");
+    }
+    await page.locator("#advanced-settings").focus();
+    await page.locator("#advanced-settings").press("Space");
+    await page.waitForFunction(() =>
+      window.settingsFixture.changes.some(
+        (change) => change.ui?.advancedMode === true
+      )
+    );
+    await chooseSection(page, "processing");
+    assert.equal(new URL(page.url()).searchParams.get("return"), "images/42");
     await page
       .getByRole("button", { name: "Save tagging defaults", exact: true })
       .waitFor();
@@ -262,6 +333,25 @@ try {
         getComputedStyle(document.querySelector(".tab-pane.active")).opacity ===
         "1"
     );
+    assert.equal(await page.locator("#advanced-settings").isChecked(), true);
+    if (name === "mobile") {
+      await page.evaluate(() => window.scrollTo(0, 0));
+      const contentTop = await page
+        .locator("#settings-container")
+        .evaluate((element) => element.getBoundingClientRect().top);
+      assert.notEqual(
+        await chooser.evaluate(
+          (element) => getComputedStyle(element).backgroundColor
+        ),
+        "rgb(255, 255, 255)"
+      );
+      assert.ok(
+        contentTop >= 0 && contentTop < 300,
+        `Settings content starts at ${contentTop}px`
+      );
+      if (shots)
+        await page.screenshot({ path: `${shots}/compact-settings-mobile.png` });
+    }
     await page.locator("#inference-worker").scrollIntoViewIfNeeded();
     if (shots)
       await page.screenshot({
@@ -354,9 +444,48 @@ try {
     await page
       .getByLabel("EVA02 tagging threshold", { exact: true })
       .fill("0.7");
-    await uiLink(page, "system").click();
+    await chooseSection(page, "system");
     assert.equal(await active(page).locator("#inference-worker").count(), 0);
-    await uiLink(page, "processing").click();
+    await page.goBack();
+    await page.waitForURL(/tab=processing/);
+    assert.equal(await chooser.inputValue(), "processing");
+    assert.equal(
+      await page
+        .getByLabel("EVA02 tagging threshold", { exact: true })
+        .inputValue(),
+      "0.7"
+    );
+    // Breakpoint changes swap navigation controls without remounting the panel.
+    for (const width of [575, 576, 767, 768]) {
+      await page.setViewportSize({ width, height: viewport.height });
+      assert.equal(await chooser.isVisible(), width < 768);
+      assert.equal(await desktopLinks.count(), width < 768 ? 0 : 13);
+      assert.equal(
+        await page.locator("#settings-menu-container .nav-link.active").count(),
+        1
+      );
+      assert.equal(
+        await page
+          .locator("#settings-menu-container .nav-link.active")
+          .textContent(),
+        "Processing"
+      );
+      assert.equal(
+        await page
+          .getByLabel("EVA02 tagging threshold", { exact: true })
+          .inputValue(),
+        "0.7"
+      );
+      assert.equal(await page.locator("#advanced-settings").isChecked(), true);
+      assert.equal(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth > innerWidth + 1
+        ),
+        false
+      );
+    }
+    await page.setViewportSize(viewport);
+    await chooseSection(page, "processing");
     assert.equal(
       await page
         .getByLabel("EVA02 tagging threshold", { exact: true })
@@ -367,7 +496,7 @@ try {
       .getByRole("button", { name: "Generate visual embeddings", exact: true })
       .click();
     await page.waitForURL(/tab=tasks/);
-    await uiLink(page, "processing").click();
+    await chooseSection(page, "processing");
     assert.equal(
       await page
         .getByRole("button", {
@@ -385,6 +514,10 @@ try {
     await page.waitForURL(/tab=processing.*#media-upscaling$/);
     await page.locator("#upscaling-default-scale").waitFor();
     assert.equal(new URL(page.url()).searchParams.get("return"), "images/42");
+    assert.equal(await chooser.inputValue(), "processing");
+    await page.reload();
+    await page.locator("#upscaling-default-scale").waitFor();
+    assert.equal(await chooser.inputValue(), "processing");
     await page.waitForFunction(() => {
       const y = document
         .querySelector("#media-upscaling h1")
@@ -398,6 +531,12 @@ try {
       await page.getByLabel("Scale", { exact: true }).inputValue(),
       "4"
     );
+    await chooseSection(page, "library");
+    assert.equal(new URL(page.url()).hash, "");
+    assert.equal(new URL(page.url()).searchParams.get("return"), "images/42");
+    await page.goBack();
+    await page.waitForURL(/tab=processing.*#media-upscaling$/);
+    assert.equal(await chooser.inputValue(), "processing");
     await page.goto(
       `${baseURL}/settings?tab=system#association-inheritance-settings`
     );
@@ -434,7 +573,7 @@ try {
     );
     assert.equal(overflow, false, `${name} page must fit the viewport`);
     // The mounted About panel separates version tracks and can retry a failed check.
-    await uiLink(page, "about").click();
+    await chooseSection(page, "about");
     await page
       .getByRole("heading", { name: "StashBooru 1.0.0", exact: true })
       .waitFor();
@@ -497,7 +636,7 @@ try {
     await page
       .getByText("You are running the latest stable StashBooru release.")
       .waitFor();
-    await uiLink(page, "processing").click();
+    await chooseSection(page, "processing");
     // Late status responses after leaving Settings must not update an unmounted view.
     holdNextStatus = true;
     const started = new Promise((resolve) => {

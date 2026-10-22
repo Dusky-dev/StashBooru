@@ -21,6 +21,11 @@ from later metadata selection and additional provider adapters.
 | **Settings → Tools** | Metadata Health, Alias Collision Inspector and EVA02 Visual Similarity Triage, including explicit add-only metadata copying. |
 | **Settings → System** | Application paths, FFmpeg, transcodes and other server settings. |
 
+On phones, use **Settings section** above the controls to change sections. On
+larger screens the section list stays beside the controls. Both use the same
+section URLs; Back, refresh and existing section bookmarks keep their destination.
+Advanced mode and troubleshooting remain available beside the navigation.
+
 Processing defaults apply to new jobs. Conversion/tagging defaults and model paths
 are saved on the server. Upscaling job defaults are saved in the current browser;
 their Save button does not change server paths. Old System bookmarks for moved
