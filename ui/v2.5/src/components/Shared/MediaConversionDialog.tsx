@@ -1,4 +1,8 @@
-import { JobErrorDetails, ProcessingJobFeedback } from "./JobFeedback";
+import {
+  JobErrorDetails,
+  JobStatusBadge,
+  ProcessingJobFeedback,
+} from "./JobFeedback";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
@@ -1100,7 +1104,18 @@ export const MediaConversionDialog: React.FC<{
       </Modal.Body>
       <Modal.Footer>
         <span className="mr-auto text-muted">
-          {state?.job && `Job #${state.job.jobID}: ${state.job.status}. `}
+          {state?.job && (
+            <>
+              Job #{state.job.jobID}:{" "}
+              <JobStatusBadge
+                status={state.job.status}
+                hasErrors={
+                  !!state.job.error ||
+                  state.job.items.some((item) => item.error)
+                }
+              />{" "}
+            </>
+          )}
           Jobs continue when this window is closed.
         </span>
         <Button variant="secondary" onClick={onHide}>

@@ -405,20 +405,27 @@ try {
       .click();
     await videoRow.waitFor({ state: "hidden" });
     await dialog
+      .locator(".modal-footer")
+      .getByText("Completed", { exact: true })
+      .waitFor();
+    await dialog
       .getByRole("button", { name: "Close", exact: true })
       .last()
       .click();
     await dialog.waitFor({ state: "hidden" });
     await page.locator("#converter-global-saved-bytes").fill("200");
     await page.locator("#converter-global-saved-percent").fill("20");
+    await page
+      .getByText("Saved trial storage and expiry", { exact: true })
+      .click();
     await page.locator("#converter-trial-cache").fill("1.5");
     await page.locator("#converter-trial-expiry").fill("12");
     await page
-      .getByRole("button", { name: "Save format defaults", exact: true })
+      .getByRole("button", { name: "Save conversion defaults", exact: true })
       .click();
     await page.waitForFunction(() =>
       [...document.querySelectorAll("button")].some(
-        (b) => b.textContent === "Save format defaults" && !b.disabled
+        (b) => b.textContent === "Save conversion defaults" && !b.disabled
       )
     );
     const saved = requests.find((r) => r.action === "save-defaults");

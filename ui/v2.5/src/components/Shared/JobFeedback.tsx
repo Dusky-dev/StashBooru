@@ -48,7 +48,10 @@ export function JobErrorDetails({
   error?: string | null;
   children?: ReactNode;
 }) {
-  const [message, setMessage] = useState("");
+  const [feedback, setFeedback] = useState<{
+    error: typeof error;
+    message: string;
+  }>();
   const mounted = useRef(false);
   useEffect(() => {
     mounted.current = true;
@@ -56,13 +59,12 @@ export function JobErrorDetails({
       mounted.current = false;
     };
   }, []);
-  useEffect(() => setMessage(""), [error]);
   async function copy() {
     try {
       await copyText(error ?? "");
-      if (mounted.current) setMessage("Error copied.");
+      if (mounted.current) setFeedback({ error, message: "Error copied." });
     } catch (cause) {
-      if (mounted.current) setMessage(String(cause));
+      if (mounted.current) setFeedback({ error, message: String(cause) });
     }
   }
   return (
@@ -81,7 +83,9 @@ export function JobErrorDetails({
       >
         Copy error
       </Button>
-      <div role="status">{message}</div>
+      <div role="status">
+        {feedback?.error === error ? feedback?.message : ""}
+      </div>
     </div>
   );
 }

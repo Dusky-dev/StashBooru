@@ -236,55 +236,57 @@ export const JobTable: React.FC = () => {
   const failed = entries.some(({ job }) => job.status === GQL.JobStatus.Failed);
 
   return (
-    <Card className="job-table">
-      <div className="job-actions">
-        {failed && (
-          <>
-            <small>
-              Failed jobs stay here until dismissed in this browser tab.
-            </small>
-            <Button size="sm" variant="secondary" onClick={() => dismiss()}>
-              Dismiss all failures
-            </Button>
-          </>
-        )}
-        <Button size="sm" variant="link" onClick={refresh}>
-          Refresh jobs
-        </Button>
-      </div>
+    <>
       <p className="small text-muted px-2">
         Live queue: completed and cancelled jobs leave after about ten seconds.
         Failed-job notices survive refresh in this tab; closing the tab ends
         them. Jobs completed while disconnected are not recovered as history.
       </p>
-      {error && (
-        <Alert variant="warning">
-          Job updates are unavailable. Server work may continue; Refresh jobs
-          retries.
-          <JobErrorDetails error={error} />
-        </Alert>
-      )}
-      {storageWarning && (
-        <Alert variant="warning">
-          Browser storage is unavailable. Failed jobs will be kept until you
-          leave or refresh this application.
-        </Alert>
-      )}
-      <ul>
-        {!entries.length ? (
-          <li className="empty-queue-message fade-in">
-            {intl.formatMessage({ id: "config.tasks.empty_queue" })}
-          </li>
-        ) : undefined}
-        {entries.map(({ job, expiresAt }) => (
-          <Task
-            job={job}
-            expiresAt={expiresAt}
-            key={jobKey(job)}
-            onDismiss={() => dismiss(jobKey(job))}
-          />
-        ))}
-      </ul>
-    </Card>
+      <Card className="job-table">
+        <div className="job-actions">
+          {failed && (
+            <>
+              <small>
+                Failed jobs stay here until dismissed in this browser tab.
+              </small>
+              <Button size="sm" variant="secondary" onClick={() => dismiss()}>
+                Dismiss all failures
+              </Button>
+            </>
+          )}
+          <Button size="sm" variant="link" onClick={refresh}>
+            Refresh jobs
+          </Button>
+        </div>
+        {error && (
+          <Alert variant="warning">
+            Job updates are unavailable. Server work may continue; Refresh jobs
+            retries.
+            <JobErrorDetails error={error} />
+          </Alert>
+        )}
+        {storageWarning && (
+          <Alert variant="warning">
+            Browser storage is unavailable. Failed jobs will be kept until you
+            leave or refresh this application.
+          </Alert>
+        )}
+        <ul>
+          {!entries.length ? (
+            <li className="empty-queue-message fade-in">
+              {intl.formatMessage({ id: "config.tasks.empty_queue" })}
+            </li>
+          ) : undefined}
+          {entries.map(({ job, expiresAt }) => (
+            <Task
+              job={job}
+              expiresAt={expiresAt}
+              key={jobKey(job)}
+              onDismiss={() => dismiss(jobKey(job))}
+            />
+          ))}
+        </ul>
+      </Card>
+    </>
   );
 };

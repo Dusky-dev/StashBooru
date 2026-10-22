@@ -762,7 +762,13 @@ export const MediaUpscalingDialog: React.FC<{
             {restoreState?.job && (
               <>
                 Restore job #{restoreState.job.jobID}:{" "}
-                <JobStatusBadge status={restoreState.job.status} />{" "}
+                <JobStatusBadge
+                  status={restoreState.job.status}
+                  hasErrors={
+                    !!restoreState.job.error ||
+                    restoreState.job.items.some((item) => item.error)
+                  }
+                />{" "}
               </>
             )}
             Jobs continue when this window is closed.
