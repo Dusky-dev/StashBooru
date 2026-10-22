@@ -43,6 +43,56 @@ Updated: 2026-10-22
 - Browser layout and later audit passes remain separate work. Pending CI/review
   will be recorded on the PR; do not wait/poll solely for those external gates.
 
+## Job feedback and retention inventory (E03, first pass) — 2026-10-22
+
+- Baseline: `develop` at `d6e8c9c49efc332ef510dfdf264dc0392b15ea22`.
+  Branch `fix/job-feedback-20261022`,
+  [PR #185](https://github.com/Dusky-dev/StashBooru/pull/185). This pass is
+  independent of metadata-review PR #184: all its CI checks passed, but Codex
+  Review still reported Running with no posted findings during this session.
+  PR #184 was not merged; delayed review is not the quota-exhaustion exception.
+- Verified implementation commit:
+  `d21dc6430afa1418965b2b38309689bee7a1a1ea` (tree
+  `0acd084e92cc8e4ad9ba27b6b689c033d9d9b31e`). This ledger update changes
+  documentation only after the verified implementation.
+- Reuse shared readable status/error actions in the native queue and conversion
+  feedback, including processing footers. Completed conversion responses with
+  item errors show Completed with errors. Preserve unknown state names rather
+  than implying success. Queue retention guidance sits outside the scroll area.
+- Conversion tabs share progress, cancellation, full multiline error copying and
+  typed links to failed native Images/Videos. Display at most 50 error rows but
+  copy all returned errors. Trials without actual native targets receive no
+  fabricated media link. Leaving through a target closes the processing dialog;
+  View job queue opens its existing Tasks anchor in a new tab.
+- Upscaling acknowledges a submitted request and links to the queue; it does not
+  imply that acceptance is completion. Restore footers use the same status labels.
+  Pending cancellation disables resubmission. Native stop requests acknowledge
+  submission and wait for server events; failed requests remain retryable.
+- [Job feedback guide](job-feedback.md) inventories process-memory queue/results,
+  tab-scoped failed notices, on-disk conversion/trial/original records, separate
+  upscaling restoration, download receipts and identity observations. No new
+  persistence, schema, worker protocol, native target parsing, automatic retry,
+  media activation or original-file recovery behavior is introduced.
+- Validation: `make validate-ui` passed all 61 unit tests, JS/CSS lint, TypeScript
+  and formatting. Final footer/layout adjustments also passed lint, TypeScript
+  and formatting. Final `make ui-only` passed. Documentation local-link targets
+  and `git diff --check` passed; dependencies remain locked and unchanged.
+- Mounted job-feedback, jobs-stacks and conversion-review browser suites all
+  passed at 1440 × 1000 and 390 × 844. Coverage includes partial completion,
+  multiline/full hidden-row error copying, typed Image/Video links and Back,
+  queue links, unknown states, pending cancellation, native expiry/dismissal,
+  failed-notice refresh retention, clipboard rejection/fallback/focus, trial
+  review/apply/discard and saved settings. The older converter test now expands
+  its collapsed trial-storage settings and uses the current save-button label.
+  Desktop/mobile captures were inspected; CI uploads job-feedback-screenshots.
+- Browser-local HTTP/GraphQL fixtures do not perform production library writes,
+  actual conversion/GPU inference, server-restart or file-recovery acceptance.
+  No complete E03 or production-ready durable job history claim is made.
+- Next E03 slice: validate representative reconnect/restart flows, address custom
+  job-ID resume semantics and remaining producer handoffs, then decide whether
+  durable server job history is warranted. External CI/Codex Review is a turn-end
+  checkpoint; do not wait or repeatedly poll solely for it.
+
 ## Whole-project experience audit — 2026-10-22
 
 - Baseline: fresh `develop` at `b36daf9f0d548df25facc73fc98857764c4b61ae`,
