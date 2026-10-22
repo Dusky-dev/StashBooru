@@ -11,7 +11,9 @@ the latest stable release.
 | --- | --- |
 | [Feature guide](features.md) | Navigation, mixed browsing, similarity, stacks, processing, diagnostics, animation, local HTTPS and backups. |
 | [Metadata and tagging](metadata-and-tagging.md) | Native Copyrights, multiple Artists, Character variants, linked disambiguation, inheritance, filenames, booru lookups and reviewed model predictions. |
-| [Booru browser](booru-browser.md) | Multi-source search, five engine families, thumbnails/tags, independent paging and server-side source/credential configuration. |
+| [Source names and aliases](provider-identities.md) | Connect provider identifiers to native Artists, Characters and Copyrights, retain exact source targets and review saved metadata. |
+| [Following](booru-follows.md) | Saved follows and an explicit on-demand feed for Danbooru-compatible sources; other feed adapters remain planned. |
+| [Booru browser](booru-browser.md) | Source search, engine-compatible custom instances, thumbnails/tags, paging and server-side source/credential configuration. |
 | [Booru downloads and autocomplete](booru-downloads-autocomplete.md) | Preview recovery, native Stash downloads with folder/default-converter settings, browser persistence, live completion/CSV fallback and uploaded/server-path databases. |
 | [Booru review state](booru-review-state.md) | Durable ignored/manual-download marks, bulk undo, provider-page filtering and current-file MD5 evidence. |
 | [Media converter](media-converter.md) | Formats, quality/effort/decode speed, animation timing, worker setup, replacement, restore/unrestore and recovery. |
@@ -50,9 +52,11 @@ The [remote browser](booru-browser.md) reads provider content;
 [B02 review state](booru-review-state.md) persists local ignored/manual-download
 marks and checks current indexed files. [Downloads and autocomplete](booru-downloads-autocomplete.md)
 add native Stash downloads, card/folder actions and live completion with optional
-per-source CSV databases. Disfavored-tag comparison, follows and
-Artist × Copyright selection remain planned in the [roadmap](booru-browser-roadmap.md). Existing MD5 metadata
-lookup and local entity favorites remain separate workflows.
+per-source CSV databases. [Following](booru-follows.md) and
+[reviewed source-name connections](provider-identities.md) are implemented.
+Disfavored-tag comparison, additional feed adapters and Artist × Copyright
+selection remain planned in the [roadmap](booru-browser-roadmap.md). Existing MD5
+metadata lookup and local entity favorites remain separate workflows.
 
 ## Implementation references
 
@@ -61,6 +65,7 @@ lookup and local entity favorites remain separate workflows.
 | [Effective associations](p06-effective-associations.md) | Direct/effective relationship contract, provenance, native searches and reviewed inheritance activation. |
 | [Global All page](p07-global-media.md) | Native query/list/player architecture and browser fixture instructions. |
 | [Progress ledger](implementation-progress.md) | Dated baselines, PRs, checks, limitations and next work package. |
+| [Experience audit](experience-audit-2026-10-22.md) | Whole-project consolidation priorities, evidence, delivery boundaries and cross-feature acceptance matrix. |
 | [October maintenance](maintenance-2026-10-05.md) | Settings scopes, retained compatibility fields and release decisions. |
 | [September maintenance](maintenance-2026-09-24.md) | Earlier processing, provenance, HTTPS and gallery-editor review. |
 | [Development](DEVELOPMENT.md) / [architecture](ARCHITECTURE.md) | Underlying Stash development and build conventions. |

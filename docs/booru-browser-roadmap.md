@@ -1,18 +1,20 @@
 # Booru content browser: delivery plan
 
-Status: **B01–B02 plus explicit single-post native downloads and autocomplete fixes
-and the integrated live-completion/sidebar/card workflow are implemented on the
-current task branch; validation is recorded in the progress
-ledger. B03 metadata review, B04 batch/restart automation and B05 remain planned.
-B06a definitions/API and B06b's first on-demand Following feed/UI are implemented
-on their feature branches. Feed synchronization initially supports Danbooru;
-additional engine and account/profile adapters remain planned.**
-Baseline: `develop` `471f304f3456f01b47badbfb9ab578f05e51335c`, reviewed 2026-10-18 UTC.
+Status reviewed 2026-10-22 against `develop`
+`b36daf9f0d548df25facc73fc98857764c4b61ae`: **B01–B02, explicit single-post
+native downloads, live/CSV autocomplete, B06a follow definitions and B06b's
+on-demand Following feed are merged. Feed synchronization initially supports
+Danbooru-compatible sources. B03a reviewed source-name connections are merged
+in PR #171; they are a foundation for, rather than completion of, B03's metadata
+import and Artist × Copyright selection. B04 batch/restart automation, B05 and
+additional feed/account adapters remain planned.** See the
+[experience audit](experience-audit-2026-10-22.md) for consolidation priorities
+before further feature expansion.
 This is the next roadmap after the delivered P01–P13 scopes. The owner broadened
 B01 on 2026-10-17 to an engine-based browser inspired by Grabber. B01 searches
 several remote sources; B02 adds durable review marks and verified current-file
-matches. Single-post downloads are available; follows and reviewed batches remain
-later packages. See
+matches. Single-post downloads and the first explicit on-demand feed are available;
+reviewed batches remain later work. See
 [browser operation and source configuration](booru-browser.md).
 
 The owner requested a content browser, ignored/already-downloaded marks, pHash
@@ -30,7 +32,7 @@ Implement one package at a time, complete its acceptance checks and update the
 | Image matching | `pkg/sqlite/phash_similarity.go`, `image_embedding_similarity.go` | Separate current-file pHash evidence, embedding evidence and historical source fingerprints. |
 | Still-image comparison | `ui/v2.5/src/hooks/Lightbox/ReferenceComparison.tsx`, `imageDifference.ts` | Extend the shared viewer with a metadata panel; keep current still/animation/preview limitations. |
 | Durable grouping | `docs/p08-visual-stacks.md` | Catalogue stacks are explicit user edits. Remote review groups must not silently create stacks. |
-| Artist/Copyright favorites | Native Studio/Copyright records and their favorite controls | Local favorites exist; provider follows, feed checkpoints and provider-tag mappings do not. |
+| Artist/Copyright favorites and source names | Native Studio/Copyright favorites, `docs/booru-follows.md`, `docs/provider-identities.md` | Local favorites, provider follows/checkpoints and reviewed source-name bindings exist. Reuse them; broader metadata selection and additional feed adapters remain work. |
 | Jobs and file ownership | Native manager Jobs, scan/import, conversion staging/recovery | StashBooru owns activation/database writes. Inference workers do not become download managers. |
 | Diagnostics/triage | `internal/api/metadata_health.go`, `similarity_clusters.go`, Settings Tools | Existing EVA02 triage is distinct from the requested pHash review groups. |
 
@@ -39,7 +41,7 @@ Implement one package at a time, complete its acceptance checks and update the
 | Package | Usable outcome | Dependency |
 | --- | --- | --- |
 | B00 — documentation and scope | Current feature guides and this staged contract. | Current branch; documentation only. |
-| B01 — read-only browser | Search selected sources through five API families, page each independently, inspect tags/previews and open remote posts. Ten presets, editable credentials/custom instances and a compact sidebar/grid. | B00. Broadened by owner direction; see [B01 guide](booru-browser.md) for scope and limits. |
+| B01 — read-only browser | Search a selected source, inspect tags/previews and open remote posts. Engine-based presets, editable credentials/custom instances and a compact sidebar/grid. | B00. Broadened by owner direction; see [B01 guide](booru-browser.md) for current engines, scope and limits. |
 | B02 — persistent review marks | Ignore, undo, show ignored, manually mark already downloaded, and display verified local matches separately. See [B02 guide](booru-review-state.md). | B01 and its stable source/post identity. |
 | B03 — metadata and selection review | Import supported metadata and select Artist × Copyright intersections before downloading. | B01–B02; reuse native metadata review. |
 | B04 — reviewed downloads | Download the reviewed bounded selection into the library, with cancellation, retries and verified local links. | B03; native scan/import and recoverable staging. |
