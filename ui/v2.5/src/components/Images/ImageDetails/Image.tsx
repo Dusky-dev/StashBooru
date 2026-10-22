@@ -219,7 +219,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
             className="bg-secondary text-white"
             onClick={() => setIsKnowledgeTagDialogOpen(true)}
           >
-            Image tagging…
+            Review metadata…
           </Dropdown.Item>
           <Dropdown.Item
             key="upscale-image"

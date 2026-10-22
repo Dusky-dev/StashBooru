@@ -501,7 +501,7 @@ const ScenePage: React.FC<IProps> = PatchComponent("ScenePage", (props) => {
           className="bg-secondary text-white"
           onClick={() => setIsVideoTaggingOpen(true)}
         >
-          Video Tagging…
+          Review metadata…
         </Dropdown.Item>
         <Dropdown.Item
           className="bg-secondary text-white"

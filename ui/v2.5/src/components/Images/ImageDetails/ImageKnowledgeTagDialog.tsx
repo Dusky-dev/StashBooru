@@ -1,3 +1,7 @@
+import {
+  MetadataReviewInfo,
+  type MetadataReviewContext,
+} from "src/components/Tagging/MetadataReviewInfo";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge, Button, Form, Modal, Spinner } from "react-bootstrap";
 import { faExternalLinkAlt, faSearch } from "@fortawesome/free-solid-svg-icons";
@@ -101,6 +105,7 @@ interface IProps {
   imageId: string;
   onHide: () => void;
   onApplied: () => Promise<unknown>;
+  reviewContext?: MetadataReviewContext;
 }
 
 const CATEGORY_ORDER = ["character", "artist", "copyright", "general", "meta"];
@@ -252,6 +257,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   imageId,
   onHide,
   onApplied,
+  reviewContext,
 }) => {
   const Toast = useToast();
   const history = useHistory();
@@ -453,6 +459,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
     async (tags: TagPrediction[]) => {
       setApplying(true);
       setError(undefined);
+      let complete = false;
       try {
         const response = await fetch(
           `image/${imageId}/knowledge-tags?apply=true`,
@@ -481,7 +488,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
           `Applied ${appliedCount} metadata item${appliedCount === 1 ? "" : "s"}; created ${createdCount} new entr${createdCount === 1 ? "y" : "ies"}.`
         );
         await onApplied();
-        onHide();
+        complete = true;
       } catch (cause) {
         const message = cause instanceof Error ? cause.message : String(cause);
         setError(message);
@@ -489,6 +496,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
       } finally {
         setApplying(false);
       }
+      if (complete) onHide();
     },
     [Toast, imageId, onApplied, onHide, replaceArtist]
   );
@@ -609,14 +617,23 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
     <>
       <Modal
         show={!pendingCharacterResolution && !changePlan}
-        onHide={onHide}
+        onHide={() => {
+          if (!applying) onHide();
+        }}
         size="lg"
         centered
+        dialogClassName="image-tagging-dialog"
       >
-        <Modal.Header closeButton>
-          <Modal.Title>Image tagging</Modal.Title>
+        <Modal.Header closeButton={!applying}>
+          <Modal.Title>Review image metadata</Modal.Title>
         </Modal.Header>
         <Modal.Body>
+          <MetadataReviewInfo
+            kind="Image"
+            id={imageId}
+            context={reviewContext}
+            busy={busy || applying}
+          />
           <div className="d-flex flex-wrap align-items-end mb-3">
             <Form.Group className="mr-3 mb-2">
               <Form.Label>Camie threshold</Form.Label>
@@ -663,7 +680,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
               disabled={busy || applying}
               onClick={() => void loadBooruMetadata()}
             >
-              {loadingSource === "booru" ? "Fetching…" : "Fetch from Danbooru"}
+              {loadingSource === "booru" ? "Fetching…" : "Look up by MD5"}
             </Button>
             <Button
               className="mr-2 mb-2"
@@ -747,13 +764,13 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
           ) : null}
 
           <div className="mb-3 text-muted">
-            Sources are merged in priority order: Local → Danbooru → Camie →
-            EVA02 → Library. Opening this dialog loads Local metadata only;
-            every network, model, or similarity source is explicit. Camie and
-            EVA02 use independent configured thresholds. Library suggestions
-            require consensus from visually similar indexed images and start
-            unselected because they are review-only. When the same metadata item
-            is predicted by multiple sources, the earlier source keeps its value
+            Sources are merged in priority order: Local → Booru → Camie → EVA02
+            → Library. Opening this dialog loads Local metadata only; every
+            network, model, or similarity source is explicit. Camie and EVA02
+            use independent configured thresholds. Library suggestions require
+            consensus from visually similar indexed images and start unselected
+            because they are review-only. When the same metadata item is
+            predicted by multiple sources, the earlier source keeps its value
             and score while later sources are shown as additional provenance.
             Multiple selected Artists can be attached to the same image.
           </div>
@@ -921,7 +938,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
 
       <TaggingChangePlanModal
         show={!!changePlan}
-        title="Review Image Tagging changes"
+        title="Review Image Metadata changes"
         plan={changePlan}
         busy={applying}
         onBack={() => {

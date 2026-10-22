@@ -1,3 +1,4 @@
+import { metadataReviewOperation } from "../Tagging/MetadataReviewDialog";
 import { VisualStackDialog } from "../VisualStacks/VisualStackDialog";
 import { StackProposalsDialog } from "../VisualStacks/StackProposalsDialog";
 import React, {
@@ -763,6 +764,17 @@ export const FilteredImageList = PatchComponent(
         onClick: viewRandom,
         isDisplayed: () => imageIDs === undefined && totalCount > 0,
       },
+      metadataReviewOperation(
+        Array.from(selectedIds).map((id) => ({
+          kind: GQL.MediaKind.Image,
+          id,
+        })),
+        showModal,
+        () => {
+          closeModal();
+          void result.refetch();
+        }
+      ),
       {
         text: `${intl.formatMessage({ id: "actions.generate" })}…`,
         onClick: () => {
