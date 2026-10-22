@@ -35,7 +35,7 @@ export const SettingsTasksPanel: React.FC = () => {
 
   return (
     <div id="tasks-panel">
-      <div className="tasks-panel-queue">
+      <div className="tasks-panel-queue" id="job-queue">
         <h1>{intl.formatMessage({ id: "config.tasks.job_queue" })}</h1>
         <JobTable />
       </div>

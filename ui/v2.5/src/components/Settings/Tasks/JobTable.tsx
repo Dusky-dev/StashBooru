@@ -16,7 +16,10 @@ import { mutateStopJob } from "src/core/StashService";
 import * as GQL from "src/core/generated-graphql";
 import { useJobNotices } from "src/hooks/JobQueue";
 import { JobNotice, jobKey } from "src/hooks/jobQueueState";
-import { copyText } from "src/utils/clipboard";
+import {
+  JobErrorDetails,
+  JobStatusBadge,
+} from "src/components/Shared/JobFeedback";
 
 interface IJob {
   job: JobNotice;
@@ -52,8 +55,11 @@ const Task: React.FC<IJob> = ({ job, expiresAt, onDismiss }) => {
 
   async function stopJob() {
     setStopping(true);
+    setActionMessage("Requesting stop…");
     try {
       await mutateStopJob(job.id);
+      if (mounted.current)
+        setActionMessage("Stop requested; waiting for a job update.");
     } catch (e) {
       if (mounted.current) {
         setActionMessage(String(e));
@@ -177,25 +183,8 @@ const Task: React.FC<IJob> = ({ job, expiresAt, onDismiss }) => {
     if (job.status === GQL.JobStatus.Failed) {
       return (
         <>
-          <div className="job-error">
-            {job.error || "No error details supplied."}
-          </div>
+          <JobErrorDetails error={job.error} />
           <div className="job-actions">
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={!job.error}
-              onClick={async () => {
-                try {
-                  await copyText(job.error!);
-                  if (mounted.current) setActionMessage("Error copied.");
-                } catch (e) {
-                  if (mounted.current) setActionMessage(String(e));
-                }
-              }}
-            >
-              Copy error
-            </Button>
             <Button size="sm" variant="secondary" onClick={onDismiss}>
               Dismiss
             </Button>
@@ -208,7 +197,11 @@ const Task: React.FC<IJob> = ({ job, expiresAt, onDismiss }) => {
   return (
     <li className={`job ${className}`} data-job-key={jobKey(job)}>
       <div>
-        {job.status !== GQL.JobStatus.Failed && (
+        {[
+          GQL.JobStatus.Ready,
+          GQL.JobStatus.Running,
+          GQL.JobStatus.Stopping,
+        ].includes(job.status as GQL.JobStatus) && (
           <Button
             className="minimal stop"
             size="sm"
@@ -223,7 +216,8 @@ const Task: React.FC<IJob> = ({ job, expiresAt, onDismiss }) => {
           <div className="job-description">
             <div>
               {getStatusIcon()}
-              <span>{job.description}</span>
+              <span>{job.description}</span>{" "}
+              <JobStatusBadge status={job.status} />
             </div>
             {maybeRenderETA()}
           </div>
@@ -258,7 +252,18 @@ export const JobTable: React.FC = () => {
           Refresh jobs
         </Button>
       </div>
-      {error && <Alert variant="warning">{error}</Alert>}
+      <p className="small text-muted px-2">
+        Live queue: completed and cancelled jobs leave after about ten seconds.
+        Failed-job notices survive refresh in this tab; closing the tab ends
+        them. Jobs completed while disconnected are not recovered as history.
+      </p>
+      {error && (
+        <Alert variant="warning">
+          Job updates are unavailable. Server work may continue; Refresh jobs
+          retries.
+          <JobErrorDetails error={error} />
+        </Alert>
+      )}
       {storageWarning && (
         <Alert variant="warning">
           Browser storage is unavailable. Failed jobs will be kept until you

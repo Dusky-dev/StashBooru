@@ -1,3 +1,4 @@
+import { JobQueueLink, JobStatusBadge, JobErrorDetails } from "./JobFeedback";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
@@ -312,12 +313,15 @@ export const MediaUpscalingDialog: React.FC<{
               </p>
               {error && <Alert variant="danger">{error}</Alert>}
               {jobID && (
-                <Alert variant="success">
+                <Alert variant="info">
                   {queuedMode === "copy"
-                    ? `Non-destructive upscaling job #${jobID} queued. The original${
+                    ? `Non-destructive upscaling job #${jobID} submitted. The original${
                         oneImage ? " stays" : "s stay"
                       } untouched.`
-                    : `Replacement upscaling job #${jobID} queued in the dedicated upscaling restore cache.`}
+                    : `Replacement upscaling job #${jobID} submitted. Originals use the dedicated upscaling restore cache.`}
+                  <div>
+                    <JobQueueLink />
+                  </div>
                 </Alert>
               )}
               {loading ? (
@@ -546,7 +550,9 @@ export const MediaUpscalingDialog: React.FC<{
             <Tab eventKey="statistics" title="Statistics & restore">
               {restoreError && <Alert variant="danger">{restoreError}</Alert>}
               {restoreState?.job?.error && (
-                <Alert variant="danger">{restoreState.job.error}</Alert>
+                <Alert variant="danger">
+                  <JobErrorDetails error={restoreState.job.error} />
+                </Alert>
               )}
               <p className="text-muted">
                 This tab is independent from Media converter history. It
@@ -753,8 +759,12 @@ export const MediaUpscalingDialog: React.FC<{
         </Modal.Body>
         <Modal.Footer>
           <span className="mr-auto text-muted">
-            {restoreState?.job &&
-              `Restore job #${restoreState.job.jobID}: ${restoreState.job.status}. `}
+            {restoreState?.job && (
+              <>
+                Restore job #{restoreState.job.jobID}:{" "}
+                <JobStatusBadge status={restoreState.job.status} />{" "}
+              </>
+            )}
             Jobs continue when this window is closed.
           </span>
           <Button variant="secondary" onClick={onHide}>
