@@ -206,6 +206,7 @@ try {
           job = {
             jobID: nextJob++,
             action: body.action,
+            batch: nextJob.toString(16).padStart(32, "0"),
             status: "complete",
             total: 2,
             items: [],
@@ -261,7 +262,7 @@ try {
               error: `${body.action} failed asynchronously\nComplete worker detail`,
             };
           }
-          payload = { jobID: job.jobID, batch: "fixture" };
+          payload = { jobID: job.jobID, batch: job.batch };
         }
       } else if (url.searchParams.has("capabilities"))
         payload = { formats, backend: "local", notice: "" };
@@ -286,7 +287,15 @@ try {
           latestStats: emptyStats,
           history: failMaintenance ? [restoreRecord] : [],
           historyTotal: failMaintenance ? 1 : 0,
-          job,
+          job:
+            Number(url.searchParams.get("jobID")) === job?.jobID &&
+            url.searchParams.get("batch") === job?.batch
+              ? job
+              : undefined,
+          jobUnavailable:
+            Number(url.searchParams.get("jobID")) > 0 &&
+            (Number(url.searchParams.get("jobID")) !== job?.jobID ||
+              url.searchParams.get("batch") !== job?.batch),
           trials,
           trialTotal: trials.length,
           trialStats: {

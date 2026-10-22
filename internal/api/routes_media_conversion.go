@@ -79,6 +79,7 @@ type conversionRequest struct {
 	Options                  mediaconvert.Options                     `json:"options"`
 	RecordID                 string                                   `json:"recordID"`
 	JobID                    int                                      `json:"jobID"`
+	JobBatch                 string                                   `json:"jobBatch"`
 	CacheLimitBytes          int64                                    `json:"cacheLimitBytes"`
 	FormatDefaults           map[string]string                        `json:"formatDefaults"`
 	UseQuality               bool                                     `json:"useQuality"`
@@ -111,10 +112,7 @@ type conversionJob struct {
 	Reservation *mediaconvert.DiskReservation `json:"reservation,omitempty"`
 }
 
-var conversionJobs = struct {
-	sync.Mutex
-	jobs map[int]*conversionJob
-}{jobs: make(map[int]*conversionJob)}
+var conversionJobs = processingJobRegistry{jobs: make(map[int]*conversionJob)}
 var conversionMutations sync.Mutex
 var conversionSettings sync.Mutex
 
@@ -216,19 +214,9 @@ func handleMediaConversionGet(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	latestStats := mediaconvert.Summarize(latestRecords)
-	var activeJob *conversionJob
 	id, _ := strconv.Atoi(r.URL.Query().Get("jobID"))
 	jobStatus := manager.GetInstance().JobManager.GetJob(id)
-	conversionJobs.Lock()
-	if state := conversionJobs.jobs[id]; state != nil {
-		if jobStatus != nil && jobStatus.Status == job.StatusCancelled && state.Status == "queued" {
-			state.Status = "cancelled"
-		}
-		jobCopy := *state
-		jobCopy.Items = append([]conversionItem{}, state.Items...)
-		activeJob = &jobCopy
-	}
-	conversionJobs.Unlock()
+	activeJob := conversionJobs.snapshot(id, r.URL.Query().Get("batch"), jobStatus)
 	batchRecords := []*mediaconvert.Record{}
 	if activeJob != nil {
 		for _, record := range history {
@@ -276,7 +264,7 @@ func handleMediaConversionGet(w http.ResponseWriter, r *http.Request) {
 	trialOffset, _ := strconv.Atoi(r.URL.Query().Get("trialOffset"))
 	trialOffset = max(0, min(trialOffset, trialTotal))
 	trials = trials[trialOffset:min(trialOffset+50, trialTotal)]
-	writeVisualSimilarityJSON(w, map[string]interface{}{"config": config, "history": history, "historyTotal": historyTotal, "stats": stats, "job": activeJob, "batchStats": batchStats, "latestStats": latestStats, "trials": trials, "trialStats": trialStats, "trialTotal": trialTotal})
+	writeVisualSimilarityJSON(w, map[string]interface{}{"config": config, "history": history, "historyTotal": historyTotal, "stats": stats, "job": activeJob, "jobUnavailable": id > 0 && activeJob == nil, "batchStats": batchStats, "latestStats": latestStats, "trials": trials, "trialStats": trialStats, "trialTotal": trialTotal})
 }
 
 func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
@@ -303,12 +291,10 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if request.Action == "cancel" {
-		mgr.JobManager.CancelJob(request.JobID)
-		conversionJobs.Lock()
-		if j := conversionJobs.jobs[request.JobID]; j != nil && j.Status == "queued" {
-			j.Status = "cancelled"
+		if !conversionJobs.cancel(request.JobID, request.JobBatch, mgr.JobManager.CancelJob) {
+			http.Error(w, "This live job is no longer available. Refresh job status; saved records are unchanged.", http.StatusConflict)
+			return
 		}
-		conversionJobs.Unlock()
 		writeVisualSimilarityJSON(w, map[string]bool{"cancelled": true})
 		return
 	}
@@ -549,7 +535,7 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 			delete(conversionJobs.jobs, jobID)
 		}
 	})
-	writeVisualSimilarityJSON(w, map[string]int{"jobID": jobID})
+	writeVisualSimilarityJSON(w, map[string]interface{}{"jobID": jobID, "batch": state.Batch})
 }
 
 func resolveConversionOptions(ctx context.Context, s mediaconvert.Store, config mediaconvert.Config, id models.FileID, target conversionTarget, request conversionRequest, capabilities mediaconvert.Capabilities) (mediaconvert.Options, mediaconvert.Format, error) {

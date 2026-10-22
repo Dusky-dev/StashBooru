@@ -1,3 +1,4 @@
+import { useProcessingJob, sameProcessingJob } from "./useProcessingJob";
 import { JobQueueLink, JobStatusBadge, JobErrorDetails } from "./JobFeedback";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -62,6 +63,7 @@ interface RestoreStats {
 
 interface RestoreJob {
   jobID: number;
+  batch: string;
   status: string;
   total: number;
   error?: string;
@@ -76,6 +78,7 @@ interface RestoreState {
   history: RestoreRecord[];
   historyTotal: number;
   job?: RestoreJob;
+  jobUnavailable?: boolean;
 }
 
 const upscaleEndpoint = "image/upscale";
@@ -129,9 +132,14 @@ export const MediaUpscalingDialog: React.FC<{
   const [replaceOriginal, setReplaceOriginal] = useState(false);
   const [confirmReplace, setConfirmReplace] = useState(false);
   const [jobID, setJobID] = useState<number>();
-  const [restoreJobID, setRestoreJobID] = useState<number>(
-    () => Number(localStorage.getItem("media-upscaling-restore-job")) || 0
-  );
+  const {
+    job: liveRestoreJob,
+    remember: rememberRestoreJob,
+    unavailable: restoreJobUnavailable,
+    notice: restoreJobNotice,
+  } = useProcessingJob(upscaleRestoreEndpoint);
+  const restoreJobID = liveRestoreJob?.jobID ?? 0;
+  const restoreJobBatch = liveRestoreJob?.batch ?? "";
   const [queuedMode, setQueuedMode] = useState<QueuedMode>();
   const [error, setError] = useState("");
   const [restoreError, setRestoreError] = useState("");
@@ -162,13 +170,28 @@ export const MediaUpscalingDialog: React.FC<{
   const refreshRestore = useCallback(
     async (signal?: AbortSignal) => {
       const value = await fetch(
-        `${upscaleRestoreEndpoint}?jobID=${restoreJobID}&offset=${historyOffset}`,
+        `${upscaleRestoreEndpoint}?jobID=${restoreJobID}&batch=${restoreJobBatch}&offset=${historyOffset}`,
         { signal }
       ).then(conversionResponse<RestoreState>);
+      if (signal?.aborted) return;
+      if (
+        value.jobUnavailable ||
+        (value.job &&
+          (!liveRestoreJob || !sameProcessingJob(liveRestoreJob, value.job)))
+      ) {
+        value.job = undefined;
+        if (liveRestoreJob) restoreJobUnavailable();
+      }
       setRestoreState(value);
       setCacheGiB((current) => current ?? value.config.cacheLimitBytes / GiB);
     },
-    [historyOffset, restoreJobID]
+    [
+      historyOffset,
+      restoreJobID,
+      restoreJobBatch,
+      liveRestoreJob,
+      restoreJobUnavailable,
+    ]
   );
 
   useEffect(() => {
@@ -235,15 +258,11 @@ export const MediaUpscalingDialog: React.FC<{
             replace ? { action: "replace", ...commonRequest } : commonRequest
           ),
         }
-      ).then(conversionResponse<{ jobID: number }>);
+      ).then(conversionResponse<{ jobID: number; batch?: string }>);
       setQueuedMode(replace ? "replace" : "copy");
       setJobID(result.jobID);
       if (replace) {
-        localStorage.setItem(
-          "media-upscaling-restore-job",
-          String(result.jobID)
-        );
-        setRestoreJobID(result.jobID);
+        rememberRestoreJob(result);
         setHistoryOffset(0);
       }
     } catch (e) {
@@ -261,9 +280,8 @@ export const MediaUpscalingDialog: React.FC<{
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      }).then(conversionResponse<{ jobID: number }>);
-      localStorage.setItem("media-upscaling-restore-job", String(result.jobID));
-      setRestoreJobID(result.jobID);
+      }).then(conversionResponse<{ jobID: number; batch?: string }>);
+      rememberRestoreJob(result);
       setHistoryOffset(0);
     } catch (e) {
       setRestoreError(e instanceof Error ? e.message : String(e));
@@ -549,6 +567,9 @@ export const MediaUpscalingDialog: React.FC<{
 
             <Tab eventKey="statistics" title="Statistics & restore">
               {restoreError && <Alert variant="danger">{restoreError}</Alert>}
+              {restoreJobNotice && (
+                <Alert variant="info">{restoreJobNotice}</Alert>
+              )}
               {restoreState?.job?.error && (
                 <Alert variant="danger">
                   <JobErrorDetails error={restoreState.job.error} />
