@@ -299,6 +299,12 @@ def jxl_encoder_args(source: Path, output: Path, o: dict) -> list[str]:
     return args
 
 
+def high_bit_depth_pix_fmt(pixel_format: str) -> bool:
+    # FFmpeg uses the *total* bits per pixel for packed RGB formats:
+    # rgb48be = 16 bits/channel and rgba64be = 16 bits/channel.
+    return any(bit in pixel_format for bit in ("10", "12", "16", "48", "64"))
+
+
 def jxl_retry_input(source: Path, directory: Path, before: dict, cancelled=None) -> Path:
     """Losslessly normalize frames when cjxl cannot decode an otherwise valid input.
 
@@ -308,7 +314,7 @@ def jxl_retry_input(source: Path, directory: Path, before: dict, cancelled=None)
     """
     if cancelled and cancelled():
         raise RuntimeError("conversion cancelled")
-    high_depth = any(bit in before["pixelFormat"] for bit in ("10", "12", "16"))
+    high_depth = high_bit_depth_pix_fmt(before["pixelFormat"])
     if before["frames"] > 1:
         if high_depth:
             raise ValueError("cannot safely normalize high-bit-depth animation for JPEG XL retry; source kept")
@@ -336,7 +342,7 @@ def jxl_retry_input(source: Path, directory: Path, before: dict, cancelled=None)
         raise RuntimeError("JPEG XL retry normalization changed image dimensions or frame count; source kept")
     if before["alpha"] and not checked["alpha"]:
         raise RuntimeError("JPEG XL retry normalization discarded transparency; source kept")
-    if high_depth and not any(bit in checked["pixelFormat"] for bit in ("10", "12", "16")):
+    if high_depth and not high_bit_depth_pix_fmt(checked["pixelFormat"]):
         raise RuntimeError("JPEG XL retry normalization reduced pixel bit depth; source kept")
     return normalized
 
@@ -977,7 +983,7 @@ def convert(source: Path, output: Path, raw: dict, cancelled=None) -> dict:
             if before["alpha"] and not checked_upscale["alpha"]:
                 raise RuntimeError("upscaler discarded transparency; source kept")
             decoded, before = enlarged, checked_upscale
-        high_depth = any(bit in before["pixelFormat"] for bit in ("10", "12", "16"))
+        high_depth = high_bit_depth_pix_fmt(before["pixelFormat"])
         if high_depth and encoder.startswith("h264_"):
             if o["hardware"] == "auto" and cap["cpu"]:
                 encoder = cap["cpu"][0]
