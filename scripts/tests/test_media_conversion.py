@@ -177,6 +177,82 @@ class EncodeTests(unittest.TestCase):
                 result, _ = self.convert("still.png", fmt)
                 self.assertEqual((result["width"], result["height"], result["frames"]), (128, 128, 1))
 
+    def test_jxl_retry_normalizes_still_pixels_without_losing_alpha_or_depth(self):
+        from PIL import Image
+
+        sources = [
+            (self.root / "retry-alpha.png", Image.new("RGBA", (32, 32), (12, 34, 56, 78))),
+            (self.root / "retry-16bit.png", Image.new("I;16", (32, 32), 32768)),
+        ]
+        for source, image in sources:
+            with self.subTest(source=source.name):
+                image.save(source)
+                before = converter.probe(source)
+                retry_dir = self.root / ("retry-" + source.stem)
+                retry_dir.mkdir()
+                normalized = converter.jxl_retry_input(source, retry_dir, before)
+                after = converter.probe(normalized)
+                self.assertEqual((after["width"], after["height"], after["frames"]), (32, 32, 1))
+                if before["alpha"]:
+                    self.assertTrue(after["alpha"])
+                if "16" in before["pixelFormat"]:
+                    self.assertTrue(any(bit in after["pixelFormat"] for bit in ("10", "12", "16")))
+
+    def test_jxl_retry_normalizes_animated_frames_and_timing(self):
+        source = self.root / "animation.gif"
+        before = converter.probe(source)
+        directory = self.root / "retry-animated"
+        directory.mkdir()
+        normalized = converter.jxl_retry_input(source, directory, before)
+        after = converter.probe(normalized)
+        self.assertEqual(after["frames"], before["frames"])
+        self.assertEqual(after["plays"], before["plays"])
+        self.assertEqual(len(after["durations"]), len(before["durations"]))
+        self.assertAlmostEqual(after["duration"], before["duration"], delta=0.01)
+
+    @unittest.skipUnless(shutil.which("cjxl") and shutil.which("djxl"), "libjxl tools required")
+    def test_jxl_retries_only_pixel_decode_failure_for_still_and_animation(self):
+        actual_run = converter.run
+        for source, fmt in (("still.png", "jxl"), ("animation.gif", "ajxl")):
+            with self.subTest(source=source):
+                attempts = []
+
+                def inject_failure(args, *positional, **keywords):
+                    if len(args) >= 3 and args[0] == "cjxl" and args[2].endswith(".jxl"):
+                        attempts.append(args[1])
+                        if len(attempts) == 1:
+                            Path(args[2]).write_bytes(b"partial failed encode")
+                            raise RuntimeError("JPEG XL encoder v0.11.2\nGetting pixel data failed.")
+                    return actual_run(args, *positional, **keywords)
+
+                with patch.object(converter, "run", side_effect=inject_failure):
+                    result, output = self.convert(source, fmt, quality=100)
+                self.assertEqual(len(attempts), 2)
+                self.assertIn("jxl-retry", attempts[1])
+                self.assertEqual(result["frames"], 1 if fmt == "jxl" else 3)
+                output.unlink()
+
+    @unittest.skipUnless(shutil.which("cjxl") and shutil.which("djxl"), "libjxl tools required")
+    def test_jxl_does_not_retry_unrelated_errors_or_keep_partial_output(self):
+        original = (self.root / "still.png").read_bytes()
+        output = self.root / "failed.jxl"
+        actual_run = converter.run
+        attempts = []
+
+        def inject_failure(args, *positional, **keywords):
+            if len(args) >= 3 and args[0] == "cjxl" and args[2].endswith(".jxl"):
+                attempts.append(args[1])
+                Path(args[2]).write_bytes(b"partial failed encode")
+                raise RuntimeError("cjxl could not allocate memory")
+            return actual_run(args, *positional, **keywords)
+
+        with patch.object(converter, "run", side_effect=inject_failure):
+            with self.assertRaisesRegex(RuntimeError, "could not allocate memory"):
+                converter.convert(self.root / "still.png", output, {"format": "jxl"})
+        self.assertEqual(len(attempts), 1)
+        self.assertFalse(output.exists())
+        self.assertEqual((self.root / "still.png").read_bytes(), original)
+
     def test_gpu_upscale_uses_cpu_image_encoder(self):
         from PIL import Image
 
