@@ -2,6 +2,58 @@
 
 Updated: 2026-10-23
 
+## Real first-library acceptance (E11) — 2026-10-23
+
+- Merged [PR #198](https://github.com/Dusky-dev/StashBooru/pull/198) at
+  `0f02385255d6cea497306bd377a5547e4bc67149` after all 12 CI checks passed
+  and Codex Review completed without findings at head
+  `6510efa757f3cfe6b305a75f59d61671489974e1`. This is the fresh develop
+  baseline; no other PRs were open at publication. The eventual #196 review is
+  still outstanding from its specific owner-authorized merge override.
+- Branch [`fix/first-library-20261023`](https://github.com/Dusky-dev/StashBooru/tree/fix/first-library-20261023).
+  Verified source checkpoint `8c911db15749a66ca7c1a15b068a81558ee040ad`, tree
+  `16c61bbd359be4fcf1cd2478347971c65c45db99`. Local and connector-created source
+  trees match; the following ledger-only checkpoint records the result.
+- Walked the actual application with fresh configuration, SQLite and media
+  folders, rather than extending the existing configuration-response fixtures.
+  Added a reproducible suite that owns its loopback server and temporary paths,
+  strips inherited STASH configuration overrides and disables the extra HTTPS
+  listener. It does not accept an existing instance or mock API/scan/save results.
+  Each run draws a neutral geometric PNG and encodes a two-second H.264 MP4.
+- Both independent desktop (1440 × 1000) and mobile (390 × 844) libraries passed:
+  setup paths → Confirm → Welcome/Finish → Library; note acknowledgement after
+  reload; Tasks → Update library → real Scan; one Image and one Video in All,
+  with decoded thumbnails; Image viewer → native detail/Edit → saved title;
+  refresh and process restart retaining the same native Image ID/title and note
+  acknowledgement. Mobile uses the existing Settings selector and navbar menu.
+  Editor width and page-error assertions passed; All/editor captures inspected.
+- No confirmed gap in this bounded flow justified changing application behavior
+  or adding a wizard. Documented the actual path, test invocation and acceptance
+  limits in [first-library acceptance](first-library-acceptance.md); updated E11
+  in the experience audit. An early exploratory shutdown showed release notes
+  again; fresh full runs awaiting the save and checking reload/restart passed on
+  both sizes, so no speculative acknowledgement change was made.
+- Build CI now downloads its existing Linux artifact for this real-server PR
+  check, avoiding a second compile, and uploads screenshots/server logs. This
+  adds no production state, dependency version update or release dependency.
+  Local production UI/backend builds and backend/UI generation passed at the
+  baseline; this sandbox needed Go's `-buildvcs=false` because of worktree VCS
+  detection. The Makefile still supplied SQLite flags/includes. No application,
+  backend/schema, generated-source or booru-layout change was made.
+- Validation: `make validate-ui` passed 61 unit tests, JS/CSS lint, TypeScript and
+  formatting. New browser suite passed both complete real-server runs; separate
+  Biome check, Node syntax, workflow YAML/artifact/dependency assertions and
+  `git diff --check` passed. No additional backend test gate was needed for
+  test/documentation/CI-only source edits. CI's downloaded binary execution still
+  needs its first remote run; local execution used the same source baseline.
+- Limits: synthetic tiny media and automated browser acceptance are not owner
+  usability testing, upgrades, full playback/codec coverage, physical devices,
+  non-root hosting, provider/model inference, relationship edits or recovery.
+- Next: E07/E12, check local selection, viewer return/Back/refresh and native
+  relationships with an isolated library; fix reproduced problems in a bounded
+  pass. Representative owner data and real-model E08 acceptance remain open.
+  End once only CI/Codex remains; use the ordinary review/CI gate next turn.
+
 ## StashBooru first-use introduction (E14, second pass) — 2026-10-23
 
 - Merged [PR #196](https://github.com/Dusky-dev/StashBooru/pull/196) at
