@@ -11,8 +11,8 @@ Updated: 2026-10-23
   baseline; no other PRs were open at publication. The eventual #196 review is
   still outstanding from its specific owner-authorized merge override.
 - Branch [`fix/first-library-20261023`](https://github.com/Dusky-dev/StashBooru/tree/fix/first-library-20261023).
-  Verified source checkpoint `8c911db15749a66ca7c1a15b068a81558ee040ad`, tree
-  `16c61bbd359be4fcf1cd2478347971c65c45db99`. Local and connector-created source
+  Verified source checkpoint `e9f5b0a50c5b053c21740acdcda4aa733d31e8e9`, tree
+  `c842b3603a763e2e5ba6013c5b6d480f1e416c18`. Local and connector-created source
   trees match; the following ledger-only checkpoint records the result.
 - Walked the actual application with fresh configuration, SQLite and media
   folders, rather than extending the existing configuration-response fixtures.
@@ -46,6 +46,14 @@ Updated: 2026-10-23
   `git diff --check` passed. No additional backend test gate was needed for
   test/documentation/CI-only source edits. CI's downloaded binary execution still
   needs its first remote run; local execution used the same source baseline.
+- PR #199 follow-up: Codex completed without findings on initial final head
+  `0dfcb0fd7cf7a3ba455aa938d251017fc85ae209`; all 12 ordinary checks passed.
+  The additional first-library job was cancelled at its ten-minute limit during
+  Ubuntu FFmpeg dependency downloads, before browser installation or execution.
+  Logs show no application/test failure. Use `--no-install-recommends` and allow
+  thirty minutes for cold dependency installation; YAML/install/budget assertions
+  and diff whitespace pass. Do not treat the cancelled run as a pass. New CI and
+  review must complete on the updated head before merging; no idle polling.
 - Limits: synthetic tiny media and automated browser acceptance are not owner
   usability testing, upgrades, full playback/codec coverage, physical devices,
   non-root hosting, provider/model inference, relationship edits or recovery.
