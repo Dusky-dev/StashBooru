@@ -2,6 +2,53 @@
 
 Updated: 2026-10-23
 
+## Tools organization (E04, second pass) — 2026-10-23
+
+- Merged [PR #188](https://github.com/Dusky-dev/StashBooru/pull/188) after all
+  CI passed and Codex Review completed without findings. Fresh baseline:
+  `develop` at `187d518b500d752240c63f01614ee208e6673633`.
+- Branch [`fix/tools-navigation-20261023`](https://github.com/Dusky-dev/StashBooru/tree/fix/tools-navigation-20261023).
+  Verified source checkpoint `23bd9bf52475e18f3f668d4df0ced80869dca096`, tree
+  `8bc8e4674cc4b2cd5bfb2425126704fe2c4bcfea`. This ledger-only follow-up is
+  included before the PR is opened for review.
+- Put Metadata Health, Visual Similarity Triage, Alias Collision Inspector and
+  Developer tools in native expandable sections. GraphQL remains in Developer
+  tools; the two native Video utility routes and new-tab playground link remain.
+  Update the three English Video utility labels using their existing locale IDs.
+- Extract Tasks' existing disclosure into SettingsDisclosure and share its
+  presentation with Tools. Preserve the two existing SettingsToolsSection plugin
+  extension points. Most Tools body changes are indentation under the sections;
+  the existing request, matching, ranking and copy functions retain their behavior.
+- Collapsing retains pending responses, drafts, selections, errors and results.
+  Keep Tools mounted across Settings tab changes so Back retains the current
+  review. Leaving Settings or refreshing still ends that temporary React state;
+  no persistent store, engine, API or automatic work is introduced. Dark native
+  input styling now applies to the touched alias and threshold controls.
+- Validation: final `make validate-ui` passed all 61 unit tests, JS/CSS lint,
+  TypeScript and formatting; `make ui-only` passed. UI GraphQL generation and
+  built-in preparation passed, with no generated files committed.
+  `git diff --check` passed. No backend/schema changes require Go gates.
+- Native Tools suite passed at 1440 × 1000 and 390 × 844: no automatic scans on
+  entry/open, keyboard disclosure, failed/read-only metadata checks and explicit
+  retry, pending responses while collapsed, ambiguous exact-name results and
+  drafts, Settings tab/Back retention, similarity filters and selected targets,
+  rejected/accepted metadata-copy confirmations with exact request identities,
+  typed Image links, Video utility/playground routes, bookmarks, refresh and
+  horizontal layout. Desktop/mobile captures were inspected.
+- Existing Tasks, Settings maintenance and Character merge suites passed both
+  viewports after sharing the disclosure. Their coverage retains preview/apply,
+  pending responses, errors, drafts, section navigation, save scopes, backup
+  cancellation and native Character merge error recovery. Settings navigation
+  CI now runs all four suites and uploads captures.
+- Configuration, HTTP responses, media thumbnails and metadata-copy writes are
+  fixtures. No live provider/model/GPU, real catalogue writes, real plugin
+  extension execution, large-library performance or production restart acceptance
+  is claimed. Existing panel teardown outside Settings is unchanged.
+- Next bounded E04 follow-up: contextual cleanup links from relevant native
+  profiles/review pages, using the task anchors already delivered. E03 real-job
+  restart acceptance/history-store decision and browser layout remain separate.
+  End the turn when only external CI/Codex Review remains; do not wait or poll.
+
 ## Tasks grouped by goal (E04, first pass) — 2026-10-23
 
 - Merged PR #187 after all CI passed and its only Codex Review finding was

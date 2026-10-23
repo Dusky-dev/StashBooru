@@ -9,6 +9,7 @@ import { VideoOverlapTask } from "./VideoOverlapTask";
 import { DataManagementTasks } from "./DataManagementTasks";
 import { PluginTasks } from "./PluginTasks";
 import { JobTable } from "./JobTable";
+import { SettingsDisclosure } from "../SettingsDisclosure";
 
 const sections = defineMessages({
   library: {
@@ -57,25 +58,6 @@ const sections = defineMessages({
   },
 });
 
-// Native details keeps the original task components mounted while collapsed.
-const TaskSection: React.FC<{
-  id: string;
-  title: string;
-  description: string;
-}> = ({ id, title, description, children }) => (
-  <details className="settings-details task-section" id={id}>
-    <summary aria-labelledby={`${id}-title`} aria-describedby={`${id}-help`}>
-      <span className="task-section-title" id={`${id}-title`}>
-        {title}
-      </span>
-      <span className="task-section-help" id={`${id}-help`}>
-        {description}
-      </span>
-    </summary>
-    <div className="task-section-content">{children}</div>
-  </details>
-);
-
 export const SettingsTasksPanel: React.FC = () => {
   const intl = useIntl();
   const [isBackupRunning, setIsBackupRunning] = useState<boolean>(false);
@@ -107,14 +89,14 @@ export const SettingsTasksPanel: React.FC = () => {
       </div>
 
       <div className="tasks-panel-tasks">
-        <TaskSection
+        <SettingsDisclosure
           id="tasks-library"
           title={intl.formatMessage(sections.library)}
           description={intl.formatMessage(sections.library_help)}
         >
           <LibraryTasks />
-        </TaskSection>
-        <TaskSection
+        </SettingsDisclosure>
+        <SettingsDisclosure
           id="tasks-profiles"
           title={intl.formatMessage(sections.profiles)}
           description={intl.formatMessage(sections.profiles_help)}
@@ -122,8 +104,8 @@ export const SettingsTasksPanel: React.FC = () => {
           <CharacterDedupTask />
           <hr />
           <AssociationInheritanceTask />
-        </TaskSection>
-        <TaskSection
+        </SettingsDisclosure>
+        <SettingsDisclosure
           id="tasks-media"
           title={intl.formatMessage(sections.media)}
           description={intl.formatMessage(sections.media_help)}
@@ -131,8 +113,8 @@ export const SettingsTasksPanel: React.FC = () => {
           <AnimationInspectionTask />
           <hr />
           <VideoOverlapTask />
-        </TaskSection>
-        <TaskSection
+        </SettingsDisclosure>
+        <SettingsDisclosure
           id="tasks-maintenance"
           title={intl.formatMessage(sections.maintenance)}
           description={intl.formatMessage(sections.maintenance_help)}
@@ -141,14 +123,14 @@ export const SettingsTasksPanel: React.FC = () => {
             setIsBackupRunning={setIsBackupRunning}
             setIsAnonymiseRunning={setIsAnonymiseRunning}
           />
-        </TaskSection>
-        <TaskSection
+        </SettingsDisclosure>
+        <SettingsDisclosure
           id="tasks-plugins"
           title={intl.formatMessage(sections.plugins)}
           description={intl.formatMessage(sections.plugins_help)}
         >
           <PluginTasks />
-        </TaskSection>
+        </SettingsDisclosure>
       </div>
     </div>
   );

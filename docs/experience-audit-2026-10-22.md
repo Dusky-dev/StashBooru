@@ -215,6 +215,20 @@ organization, contextual profile cleanup links, and real-job/restart acceptance
 remain separate follow-ups. See the dated [progress ledger](implementation-progress.md)
 for verification and fixture boundaries.
 
+## Tools organization follow-up — 2026-10-23
+
+E04 now groups the existing library diagnostics and similarity review in native
+expandable sections, with GraphQL under Developer tools and the native Video
+utility routes retained. Tasks and Tools share the same disclosure component.
+Tools stays mounted while visiting other Settings sections so returning retains
+its current inputs and results; leaving Settings still ends that temporary view.
+No API, scan, copy confirmation or metadata mutation contract changes.
+
+Contextual cleanup links from relevant profile/review pages remain the next
+bounded E04 follow-up. The [progress ledger](implementation-progress.md) records
+exact checks and fixture limitations; this does not close the broader real-data
+or production-restart acceptance gaps.
+
 ## Progress measures
 
 For each pass, record before/after routes visited, dialogs opened and manual

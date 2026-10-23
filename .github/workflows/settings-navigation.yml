@@ -9,6 +9,7 @@ on:
       - 'ui/v2.5/src/locales/en-GB.json'
       - 'ui/v2.5/tests/browser/settings-maintenance.mjs'
       - 'ui/v2.5/tests/browser/tasks-navigation.mjs'
+      - 'ui/v2.5/tests/browser/tools-navigation.mjs'
       - 'ui/v2.5/tests/browser/character-dedup.mjs'
       - 'ui/v2.5/tests/browser/fixtures/settings-maintenance*'
       - 'ui/v2.5/pnpm-lock.yaml'
@@ -48,6 +49,7 @@ jobs:
         run: |
           node tests/browser/settings-maintenance.mjs
           node tests/browser/tasks-navigation.mjs
+          node tests/browser/tools-navigation.mjs
           node tests/browser/character-dedup.mjs
       - uses: actions/upload-artifact@v7
         if: always()

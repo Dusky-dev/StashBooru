@@ -1,13 +1,53 @@
 import React, { useState } from "react";
 import { Alert, Badge, Button, Card, Form, Table } from "react-bootstrap";
-import { FormattedMessage } from "react-intl";
+import { defineMessages, FormattedMessage, useIntl } from "react-intl";
 import { Link } from "react-router-dom";
 import { Setting } from "./Inputs";
 import { SettingSection } from "./SettingSection";
+import { SettingsDisclosure } from "./SettingsDisclosure";
 import { PatchContainerComponent } from "src/patch";
 import { ExternalLink } from "../Shared/ExternalLink";
 
 const SettingsToolsSection = PatchContainerComponent("SettingsToolsSection");
+
+const sections = defineMessages({
+  health: {
+    id: "config.tools.sections.health",
+    defaultMessage: "Metadata Health",
+  },
+  health_help: {
+    id: "config.tools.sections.health_help",
+    defaultMessage:
+      "Check library metadata for conflicts and broken associations without changing it.",
+  },
+  similarity: {
+    id: "config.tools.sections.similarity",
+    defaultMessage: "Visual Similarity Triage",
+  },
+  similarity_help: {
+    id: "config.tools.sections.similarity_help",
+    defaultMessage:
+      "Review related Images and explicitly add missing metadata from a preferred copy.",
+  },
+  aliases: {
+    id: "config.tools.sections.aliases",
+    defaultMessage: "Alias Collision Inspector",
+  },
+  aliases_help: {
+    id: "config.tools.sections.aliases_help",
+    defaultMessage:
+      "Check which native profiles or Tags match a name; ambiguous matches stay separate.",
+  },
+  developer: {
+    id: "config.tools.sections.developer",
+    defaultMessage: "Developer tools",
+  },
+  developer_help: {
+    id: "config.tools.sections.developer_help",
+    defaultMessage:
+      "Open the GraphQL playground to inspect or run API operations.",
+  },
+});
 
 interface AliasCollisionReference {
   entityID: number;
@@ -135,6 +175,7 @@ function sumCopiedMetadata(results: SimilarityMetadataCopyResult[]) {
 }
 
 export const SettingsToolsPanel: React.FC = () => {
+  const intl = useIntl();
   const [collisions, setCollisions] = useState<AliasCollisionResponse>();
   const [collisionError, setCollisionError] = useState<string>();
   const [collisionLoading, setCollisionLoading] = useState(false);
@@ -322,478 +363,517 @@ export const SettingsToolsPanel: React.FC = () => {
     <>
       <SettingSection headingID="config.tools.heading">
         <SettingsToolsSection>
-          <Setting
-            heading={
-              <ExternalLink href="/playground">
-                <Button>
-                  <FormattedMessage id="config.tools.graphql_playground" />
-                </Button>
-              </ExternalLink>
-            }
-          />
-          <Setting
-            heading="Metadata Health"
-            subHeading="Read-only diagnostics for duplicate and same-name identities, legacy Copyright Tags, legacy/native Artist drift, orphaned Character/Tag/legacy Artist relationships, and alias-ambiguous legacy Tag migration."
+          <SettingsDisclosure
+            id="tools-health"
+            title={intl.formatMessage(sections.health)}
+            description={intl.formatMessage(sections.health_help)}
           >
-            <Button
-              variant="secondary"
-              disabled={healthLoading}
-              onClick={() => void scanMetadataHealth()}
+            <Setting
+              heading="Metadata Health"
+              subHeading="Read-only diagnostics for duplicate and same-name identities, legacy Copyright Tags, legacy/native Artist drift, orphaned Character/Tag/legacy Artist relationships, and alias-ambiguous legacy Tag migration."
             >
-              {healthLoading ? "Scanning…" : "Scan metadata"}
-            </Button>
-          </Setting>
-          {healthError ? (
-            <Alert className="mx-3" variant="danger">
-              {healthError}
-            </Alert>
-          ) : null}
-          {health ? (
-            <div className="px-3 pb-3">
-              <div className="mb-3 d-flex flex-wrap align-items-center">
-                <strong className="mr-3">
-                  {health.findings.length} finding
-                  {health.findings.length === 1 ? "" : "s"}
-                </strong>
-                {Object.entries(health.counts)
-                  .sort(([left], [right]) => left.localeCompare(right))
-                  .map(([code, count]) => (
-                    <Badge className="mr-2 mb-1" key={code} variant="secondary">
-                      {code}: {count}
-                    </Badge>
-                  ))}
-              </div>
-              {health.findings.length === 0 ? (
-                <Alert variant="success">No metadata health findings.</Alert>
-              ) : (
-                <Table responsive size="sm">
-                  <thead>
-                    <tr>
-                      <th>Diagnostic</th>
-                      <th>Context</th>
-                      <th>Details</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {health.findings.map((finding, index) => (
-                      <tr
-                        key={`${finding.code}-${finding.kind}-${finding.mediaID ?? finding.value ?? index}`}
-                      >
-                        <td>
-                          <Badge variant="secondary">{finding.code}</Badge>
-                        </td>
-                        <td>{findingContext(finding) || "—"}</td>
-                        <td>{finding.detail || "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              )}
-              <div className="text-muted">
-                This inspector only reports potential metadata problems and
-                ambiguity. It never changes metadata; any repair must remain an
-                explicit user action.
-              </div>
-            </div>
-          ) : null}
-          <Setting
-            heading="Visual Similarity Triage"
-            subHeading="Review EVA02 similarity clusters and the suggested preferred copy. Metadata copy is explicit and add-only; this tool never deletes or merges Images automatically."
-          >
-            <div className="d-flex align-items-center flex-wrap">
-              <Form.Control
-                className="mr-2"
-                style={{ width: "7rem" }}
-                type="number"
-                min="0.01"
-                max="1"
-                step="0.01"
-                value={threshold}
-                disabled={clusterLoading}
-                aria-label="Similarity threshold"
-                onChange={(event) => setThreshold(event.currentTarget.value)}
-              />
-              <Form.Check
-                className="mr-3"
-                id="similarity-clusters-include-singletons"
-                type="checkbox"
-                label="Show singletons"
-                checked={includeSingletons}
-                disabled={clusterLoading}
-                onChange={() => setIncludeSingletons(!includeSingletons)}
-              />
               <Button
                 variant="secondary"
-                disabled={clusterLoading}
-                onClick={() => void loadSimilarityClusters()}
+                disabled={healthLoading}
+                onClick={() => void scanMetadataHealth()}
               >
-                {clusterLoading ? "Clustering…" : "Find clusters"}
+                {healthLoading ? "Scanning…" : "Scan metadata"}
               </Button>
-            </div>
-          </Setting>
-          {clusterError ? (
-            <Alert className="mx-3" variant="danger">
-              {clusterError}
-            </Alert>
-          ) : null}
-          {clusters ? (
-            <div className="px-3 pb-3">
-              <div className="mb-3 text-muted">
-                {clusters.indexedImages} indexed Images ·{" "}
-                {clusters.clusters.length} cluster
-                {clusters.clusters.length === 1 ? "" : "s"} · threshold{" "}
-                {clusters.threshold.toFixed(3)} · {clusters.neighbors} neighbors
-              </div>
-              {clusters.clusters.length === 0 ? (
-                <Alert variant="info">
-                  No clusters matched this threshold.
-                </Alert>
-              ) : (
-                clusters.clusters.map((cluster, clusterIndex) => {
-                  const targets = selectedTargets[cluster.preferredID] ?? [];
-                  const report = copyReports[cluster.preferredID];
-                  const copyError = copyErrors[cluster.preferredID];
-                  const failed =
-                    report?.results.filter((result) => result.error) ?? [];
-                  const copied = report
-                    ? sumCopiedMetadata(report.results)
-                    : undefined;
-                  const nonPreferredIDs = cluster.members
-                    .filter((member) => !member.preferred)
-                    .map((member) => member.id);
-
-                  return (
-                    <div
-                      className="mb-4"
-                      key={`${cluster.preferredID}-${cluster.ids.join("-")}`}
-                    >
-                      <div className="mb-2 d-flex align-items-center flex-wrap">
-                        <strong className="mr-2">
-                          Cluster {clusterIndex + 1}
-                        </strong>
-                        <Badge className="mr-2" variant="success">
-                          Preferred Image #{cluster.preferredID}
-                        </Badge>
-                        {nonPreferredIDs.length > 0 ? (
-                          <>
-                            <Button
-                              className="mr-2"
-                              size="sm"
-                              variant="outline-secondary"
-                              disabled={copyingCluster === cluster.preferredID}
-                              onClick={() =>
-                                setClusterTargets(
-                                  cluster.preferredID,
-                                  nonPreferredIDs
-                                )
-                              }
-                            >
-                              Select other Images
-                            </Button>
-                            <Button
-                              className="mr-2"
-                              size="sm"
-                              variant="outline-secondary"
-                              disabled={
-                                targets.length === 0 ||
-                                copyingCluster === cluster.preferredID
-                              }
-                              onClick={() =>
-                                setClusterTargets(cluster.preferredID, [])
-                              }
-                            >
-                              Clear
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="primary"
-                              disabled={
-                                targets.length === 0 ||
-                                copyingCluster !== undefined
-                              }
-                              onClick={() => void copyClusterMetadata(cluster)}
-                            >
-                              {copyingCluster === cluster.preferredID
-                                ? "Copying…"
-                                : `Add metadata to ${targets.length} selected`}
-                            </Button>
-                          </>
-                        ) : null}
-                      </div>
-                      <div className="mb-2 text-muted">
-                        Copy action only adds missing Character, Artist,
-                        Copyright, and Tag relationships from the preferred
-                        Image. Existing target metadata is preserved; legacy
-                        StudioID, files, titles, and Images are never changed or
-                        removed.
-                      </div>
-                      {copyError ? (
-                        <Alert variant="danger">{copyError}</Alert>
-                      ) : null}
-                      {report && copied ? (
-                        <Alert
-                          variant={failed.length > 0 ? "warning" : "success"}
-                        >
-                          Added {copied.characters} Character, {copied.artists}{" "}
-                          Artist, {copied.copyrights} Copyright, and{" "}
-                          {copied.tags} Tag relationships across{" "}
-                          {report.results.length} target Image
-                          {report.results.length === 1 ? "" : "s"}.
-                          {failed.length > 0 ? (
-                            <div className="mt-2">
-                              {failed.map((result) => (
-                                <div key={result.imageID}>
-                                  Image #{result.imageID}: {result.error}
-                                </div>
-                              ))}
-                            </div>
-                          ) : null}
-                        </Alert>
-                      ) : null}
-                      <div className="row">
-                        {cluster.members.map((member) => (
-                          <div
-                            className="col-6 col-md-4 col-lg-3 col-xl-2 mb-3"
-                            key={member.id}
-                          >
-                            <Card
-                              className={
-                                member.preferred
-                                  ? "border-success h-100"
-                                  : "h-100"
-                              }
-                            >
-                              <Link to={`/images/${member.id}`}>
-                                <Card.Img
-                                  variant="top"
-                                  src={`image/${member.id}/thumbnail`}
-                                  alt={`Image ${member.id}`}
-                                />
-                              </Link>
-                              <Card.Body className="p-2">
-                                <div className="d-flex justify-content-between align-items-center">
-                                  <Link to={`/images/${member.id}`}>
-                                    Image #{member.id}
-                                  </Link>
-                                  {member.preferred ? (
-                                    <Badge variant="success">Preferred</Badge>
-                                  ) : null}
-                                </div>
-                                <small className="text-muted">
-                                  {member.width && member.height
-                                    ? `${member.width}×${member.height}`
-                                    : "unknown resolution"}
-                                  {" · "}
-                                  {formatBytes(member.fileSize)}
-                                </small>
-                                {!member.preferred ? (
-                                  <Form.Check
-                                    className="mt-2"
-                                    id={`similarity-copy-${cluster.preferredID}-${member.id}`}
-                                    type="checkbox"
-                                    label="Add preferred metadata"
-                                    checked={targets.includes(member.id)}
-                                    disabled={
-                                      copyingCluster === cluster.preferredID
-                                    }
-                                    onChange={() =>
-                                      toggleClusterTarget(
-                                        cluster.preferredID,
-                                        member.id
-                                      )
-                                    }
-                                  />
-                                ) : null}
-                              </Card.Body>
-                            </Card>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-              <div className="text-muted">
-                Preferred-copy ranking uses resolution, then file size, then ID
-                as a deterministic tie-breaker. No file deletion, Image merge,
-                relationship replacement, or automatic metadata copy is
-                performed here.
-              </div>
-            </div>
-          ) : null}
-          <Setting
-            heading="Alias Collision Inspector"
-            subHeading="Read-only inspection of canonical-name and alias ambiguity for Characters, Artists, Copyrights, and Tags. Exact lookup shows every matching entity and how the value matched; it never chooses one automatically."
-          >
-            <div className="d-flex flex-wrap align-items-center">
-              <Form.Control
-                className="mr-2 mb-2"
-                style={{ maxWidth: "24rem" }}
-                value={inspectValue}
-                disabled={inspectLoading}
-                placeholder="Canonical name or alias"
-                aria-label="Canonical name or alias to inspect"
-                onChange={(event) => setInspectValue(event.currentTarget.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    void inspectExactAliasValue();
-                  }
-                }}
-              />
-              <Button
-                className="mr-2 mb-2"
-                variant="primary"
-                disabled={inspectLoading || !inspectValue.trim()}
-                onClick={() => void inspectExactAliasValue()}
-              >
-                {inspectLoading ? "Resolving…" : "Inspect value"}
-              </Button>
-              <Button
-                className="mb-2"
-                variant="secondary"
-                disabled={collisionLoading}
-                onClick={() => void inspectAliasCollisions()}
-              >
-                {collisionLoading ? "Inspecting…" : "Scan all collisions"}
-              </Button>
-            </div>
-          </Setting>
-          {inspectError ? (
-            <Alert className="mx-3" variant="danger">
-              {inspectError}
-            </Alert>
-          ) : null}
-          {inspectResult ? (
-            <div className="px-3 pb-3">
-              <Alert
-                variant={
-                  inspectResult.ambiguous
-                    ? "warning"
-                    : inspectResult.matches.length === 0
-                      ? "secondary"
-                      : "success"
-                }
-              >
-                <strong>{inspectResult.input}</strong> normalizes to{" "}
-                <code>{inspectResult.normalized}</code> and matches{" "}
-                {inspectResult.matches.length} native entit
-                {inspectResult.matches.length === 1 ? "y" : "ies"}.
-                {inspectResult.ambiguous
-                  ? " This value is ambiguous; no entity is selected automatically."
-                  : ""}
+            </Setting>
+            {healthError ? (
+              <Alert className="mx-3" variant="danger">
+                {healthError}
               </Alert>
-              {inspectResult.matches.length > 0 ? (
-                <Table responsive size="sm">
-                  <thead>
-                    <tr>
-                      <th>Kind</th>
-                      <th>Entity</th>
-                      <th>Matched as</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {inspectResult.matches.map((match) => (
-                      <tr key={`${match.kind}-${match.entityID}`}>
-                        <td>{match.kind}</td>
-                        <td>
-                          {match.name} #{match.entityID}
-                        </td>
-                        <td>
-                          {match.matchKinds.map((matchKind) => (
-                            <Badge
-                              className="mr-1"
-                              key={matchKind}
-                              variant={
-                                matchKind === "canonical" ? "primary" : "info"
-                              }
-                            >
-                              {matchKind}
-                            </Badge>
-                          ))}
-                        </td>
-                      </tr>
+            ) : null}
+            {health ? (
+              <div className="px-3 pb-3">
+                <div className="mb-3 d-flex flex-wrap align-items-center">
+                  <strong className="mr-3">
+                    {health.findings.length} finding
+                    {health.findings.length === 1 ? "" : "s"}
+                  </strong>
+                  {Object.entries(health.counts)
+                    .sort(([left], [right]) => left.localeCompare(right))
+                    .map(([code, count]) => (
+                      <Badge
+                        className="mr-2 mb-1"
+                        key={code}
+                        variant="secondary"
+                      >
+                        {code}: {count}
+                      </Badge>
                     ))}
-                  </tbody>
-                </Table>
-              ) : null}
-            </div>
-          ) : null}
-          {collisionError ? (
-            <Alert className="mx-3" variant="danger">
-              {collisionError}
-            </Alert>
-          ) : null}
-          {collisions ? (
-            <div className="px-3 pb-3">
-              <div className="mb-3 d-flex flex-wrap align-items-center">
-                <strong className="mr-3">
-                  {collisions.collisions.length} collision
-                  {collisions.collisions.length === 1 ? "" : "s"}
-                </strong>
-                {Object.entries(collisions.counts)
-                  .sort(([left], [right]) => left.localeCompare(right))
-                  .map(([kind, count]) => (
-                    <Badge className="mr-2 mb-1" key={kind} variant="secondary">
-                      {kind}: {count}
-                    </Badge>
-                  ))}
+                </div>
+                {health.findings.length === 0 ? (
+                  <Alert variant="success">No metadata health findings.</Alert>
+                ) : (
+                  <Table responsive size="sm">
+                    <thead>
+                      <tr>
+                        <th>Diagnostic</th>
+                        <th>Context</th>
+                        <th>Details</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {health.findings.map((finding, index) => (
+                        <tr
+                          key={`${finding.code}-${finding.kind}-${finding.mediaID ?? finding.value ?? index}`}
+                        >
+                          <td>
+                            <Badge variant="secondary">{finding.code}</Badge>
+                          </td>
+                          <td>{findingContext(finding) || "—"}</td>
+                          <td>{finding.detail || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                )}
+                <div className="text-muted">
+                  This inspector only reports potential metadata problems and
+                  ambiguity. It never changes metadata; any repair must remain
+                  an explicit user action.
+                </div>
               </div>
-              {collisions.collisions.length === 0 ? (
-                <Alert variant="success">No alias collisions found.</Alert>
-              ) : (
-                <Table responsive size="sm">
-                  <thead>
-                    <tr>
-                      <th>Kind</th>
-                      <th>Normalized value</th>
-                      <th>Matching entities</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {collisions.collisions.map((collision) => (
-                      <tr key={`${collision.kind}-${collision.value}`}>
-                        <td>{collision.kind}</td>
-                        <td>
-                          <code>{collision.value}</code>
-                        </td>
-                        <td>
-                          {collision.references.map((reference) => (
+            ) : null}
+          </SettingsDisclosure>
+          <SettingsDisclosure
+            id="tools-similarity"
+            title={intl.formatMessage(sections.similarity)}
+            description={intl.formatMessage(sections.similarity_help)}
+          >
+            <Setting
+              heading="Visual Similarity Triage"
+              subHeading="Review EVA02 similarity clusters and the suggested preferred copy. Metadata copy is explicit and add-only; this tool never deletes or merges Images automatically."
+            >
+              <div className="d-flex align-items-center flex-wrap">
+                <Form.Control
+                  className="text-input mr-2"
+                  style={{ width: "7rem" }}
+                  type="number"
+                  min="0.01"
+                  max="1"
+                  step="0.01"
+                  value={threshold}
+                  disabled={clusterLoading}
+                  aria-label="Similarity threshold"
+                  onChange={(event) => setThreshold(event.currentTarget.value)}
+                />
+                <Form.Check
+                  className="mr-3"
+                  id="similarity-clusters-include-singletons"
+                  type="checkbox"
+                  label="Show singletons"
+                  checked={includeSingletons}
+                  disabled={clusterLoading}
+                  onChange={() => setIncludeSingletons(!includeSingletons)}
+                />
+                <Button
+                  variant="secondary"
+                  disabled={clusterLoading}
+                  onClick={() => void loadSimilarityClusters()}
+                >
+                  {clusterLoading ? "Clustering…" : "Find clusters"}
+                </Button>
+              </div>
+            </Setting>
+            {clusterError ? (
+              <Alert className="mx-3" variant="danger">
+                {clusterError}
+              </Alert>
+            ) : null}
+            {clusters ? (
+              <div className="px-3 pb-3">
+                <div className="mb-3 text-muted">
+                  {clusters.indexedImages} indexed Images ·{" "}
+                  {clusters.clusters.length} cluster
+                  {clusters.clusters.length === 1 ? "" : "s"} · threshold{" "}
+                  {clusters.threshold.toFixed(3)} · {clusters.neighbors}{" "}
+                  neighbors
+                </div>
+                {clusters.clusters.length === 0 ? (
+                  <Alert variant="info">
+                    No clusters matched this threshold.
+                  </Alert>
+                ) : (
+                  clusters.clusters.map((cluster, clusterIndex) => {
+                    const targets = selectedTargets[cluster.preferredID] ?? [];
+                    const report = copyReports[cluster.preferredID];
+                    const copyError = copyErrors[cluster.preferredID];
+                    const failed =
+                      report?.results.filter((result) => result.error) ?? [];
+                    const copied = report
+                      ? sumCopiedMetadata(report.results)
+                      : undefined;
+                    const nonPreferredIDs = cluster.members
+                      .filter((member) => !member.preferred)
+                      .map((member) => member.id);
+
+                    return (
+                      <div
+                        className="mb-4"
+                        key={`${cluster.preferredID}-${cluster.ids.join("-")}`}
+                      >
+                        <div className="mb-2 d-flex align-items-center flex-wrap">
+                          <strong className="mr-2">
+                            Cluster {clusterIndex + 1}
+                          </strong>
+                          <Badge className="mr-2" variant="success">
+                            Preferred Image #{cluster.preferredID}
+                          </Badge>
+                          {nonPreferredIDs.length > 0 ? (
+                            <>
+                              <Button
+                                className="mr-2"
+                                size="sm"
+                                variant="outline-secondary"
+                                disabled={
+                                  copyingCluster === cluster.preferredID
+                                }
+                                onClick={() =>
+                                  setClusterTargets(
+                                    cluster.preferredID,
+                                    nonPreferredIDs
+                                  )
+                                }
+                              >
+                                Select other Images
+                              </Button>
+                              <Button
+                                className="mr-2"
+                                size="sm"
+                                variant="outline-secondary"
+                                disabled={
+                                  targets.length === 0 ||
+                                  copyingCluster === cluster.preferredID
+                                }
+                                onClick={() =>
+                                  setClusterTargets(cluster.preferredID, [])
+                                }
+                              >
+                                Clear
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="primary"
+                                disabled={
+                                  targets.length === 0 ||
+                                  copyingCluster !== undefined
+                                }
+                                onClick={() =>
+                                  void copyClusterMetadata(cluster)
+                                }
+                              >
+                                {copyingCluster === cluster.preferredID
+                                  ? "Copying…"
+                                  : `Add metadata to ${targets.length} selected`}
+                              </Button>
+                            </>
+                          ) : null}
+                        </div>
+                        <div className="mb-2 text-muted">
+                          Copy action only adds missing Character, Artist,
+                          Copyright, and Tag relationships from the preferred
+                          Image. Existing target metadata is preserved; legacy
+                          StudioID, files, titles, and Images are never changed
+                          or removed.
+                        </div>
+                        {copyError ? (
+                          <Alert variant="danger">{copyError}</Alert>
+                        ) : null}
+                        {report && copied ? (
+                          <Alert
+                            variant={failed.length > 0 ? "warning" : "success"}
+                          >
+                            Added {copied.characters} Character,{" "}
+                            {copied.artists} Artist, {copied.copyrights}{" "}
+                            Copyright, and {copied.tags} Tag relationships
+                            across {report.results.length} target Image
+                            {report.results.length === 1 ? "" : "s"}.
+                            {failed.length > 0 ? (
+                              <div className="mt-2">
+                                {failed.map((result) => (
+                                  <div key={result.imageID}>
+                                    Image #{result.imageID}: {result.error}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
+                          </Alert>
+                        ) : null}
+                        <div className="row">
+                          {cluster.members.map((member) => (
                             <div
-                              className="mb-1"
-                              key={`${collision.kind}-${collision.value}-${reference.entityID}`}
+                              className="col-6 col-md-4 col-lg-3 col-xl-2 mb-3"
+                              key={member.id}
                             >
-                              <strong>
-                                {reference.name} #{reference.entityID}
-                              </strong>{" "}
-                              {reference.matchKinds.map((matchKind) => (
-                                <Badge
-                                  className="mr-1"
-                                  key={matchKind}
-                                  variant={
-                                    matchKind === "canonical"
-                                      ? "primary"
-                                      : "info"
-                                  }
-                                >
-                                  {matchKind}
-                                </Badge>
-                              ))}
+                              <Card
+                                className={
+                                  member.preferred
+                                    ? "border-success h-100"
+                                    : "h-100"
+                                }
+                              >
+                                <Link to={`/images/${member.id}`}>
+                                  <Card.Img
+                                    variant="top"
+                                    src={`image/${member.id}/thumbnail`}
+                                    alt={`Image ${member.id}`}
+                                  />
+                                </Link>
+                                <Card.Body className="p-2">
+                                  <div className="d-flex justify-content-between align-items-center">
+                                    <Link to={`/images/${member.id}`}>
+                                      Image #{member.id}
+                                    </Link>
+                                    {member.preferred ? (
+                                      <Badge variant="success">Preferred</Badge>
+                                    ) : null}
+                                  </div>
+                                  <small className="text-muted">
+                                    {member.width && member.height
+                                      ? `${member.width}×${member.height}`
+                                      : "unknown resolution"}
+                                    {" · "}
+                                    {formatBytes(member.fileSize)}
+                                  </small>
+                                  {!member.preferred ? (
+                                    <Form.Check
+                                      className="mt-2"
+                                      id={`similarity-copy-${cluster.preferredID}-${member.id}`}
+                                      type="checkbox"
+                                      label="Add preferred metadata"
+                                      checked={targets.includes(member.id)}
+                                      disabled={
+                                        copyingCluster === cluster.preferredID
+                                      }
+                                      onChange={() =>
+                                        toggleClusterTarget(
+                                          cluster.preferredID,
+                                          member.id
+                                        )
+                                      }
+                                    />
+                                  ) : null}
+                                </Card.Body>
+                              </Card>
                             </div>
                           ))}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              )}
-              <div className="text-muted">
-                This inspector reports ambiguity and provenance only. It never
-                rewrites or removes aliases, and exact lookup never silently
-                resolves an ambiguous value.
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                <div className="text-muted">
+                  Preferred-copy ranking uses resolution, then file size, then
+                  ID as a deterministic tie-breaker. No file deletion, Image
+                  merge, relationship replacement, or automatic metadata copy is
+                  performed here.
+                </div>
               </div>
-            </div>
-          ) : null}
+            ) : null}
+          </SettingsDisclosure>
+          <SettingsDisclosure
+            id="tools-aliases"
+            title={intl.formatMessage(sections.aliases)}
+            description={intl.formatMessage(sections.aliases_help)}
+          >
+            <Setting
+              heading="Alias Collision Inspector"
+              subHeading="Read-only inspection of canonical-name and alias ambiguity for Characters, Artists, Copyrights, and Tags. Exact lookup shows every matching entity and how the value matched; it never chooses one automatically."
+            >
+              <div className="d-flex flex-wrap align-items-center">
+                <Form.Control
+                  className="text-input mr-2 mb-2"
+                  style={{ maxWidth: "24rem" }}
+                  value={inspectValue}
+                  disabled={inspectLoading}
+                  placeholder="Canonical name or alias"
+                  aria-label="Canonical name or alias to inspect"
+                  onChange={(event) =>
+                    setInspectValue(event.currentTarget.value)
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void inspectExactAliasValue();
+                    }
+                  }}
+                />
+                <Button
+                  className="mr-2 mb-2"
+                  variant="primary"
+                  disabled={inspectLoading || !inspectValue.trim()}
+                  onClick={() => void inspectExactAliasValue()}
+                >
+                  {inspectLoading ? "Resolving…" : "Inspect value"}
+                </Button>
+                <Button
+                  className="mb-2"
+                  variant="secondary"
+                  disabled={collisionLoading}
+                  onClick={() => void inspectAliasCollisions()}
+                >
+                  {collisionLoading ? "Inspecting…" : "Scan all collisions"}
+                </Button>
+              </div>
+            </Setting>
+            {inspectError ? (
+              <Alert className="mx-3" variant="danger">
+                {inspectError}
+              </Alert>
+            ) : null}
+            {inspectResult ? (
+              <div className="px-3 pb-3">
+                <Alert
+                  variant={
+                    inspectResult.ambiguous
+                      ? "warning"
+                      : inspectResult.matches.length === 0
+                        ? "secondary"
+                        : "success"
+                  }
+                >
+                  <strong>{inspectResult.input}</strong> normalizes to{" "}
+                  <code>{inspectResult.normalized}</code> and matches{" "}
+                  {inspectResult.matches.length} native entit
+                  {inspectResult.matches.length === 1 ? "y" : "ies"}.
+                  {inspectResult.ambiguous
+                    ? " This value is ambiguous; no entity is selected automatically."
+                    : ""}
+                </Alert>
+                {inspectResult.matches.length > 0 ? (
+                  <Table responsive size="sm">
+                    <thead>
+                      <tr>
+                        <th>Kind</th>
+                        <th>Entity</th>
+                        <th>Matched as</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {inspectResult.matches.map((match) => (
+                        <tr key={`${match.kind}-${match.entityID}`}>
+                          <td>{match.kind}</td>
+                          <td>
+                            {match.name} #{match.entityID}
+                          </td>
+                          <td>
+                            {match.matchKinds.map((matchKind) => (
+                              <Badge
+                                className="mr-1"
+                                key={matchKind}
+                                variant={
+                                  matchKind === "canonical" ? "primary" : "info"
+                                }
+                              >
+                                {matchKind}
+                              </Badge>
+                            ))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                ) : null}
+              </div>
+            ) : null}
+            {collisionError ? (
+              <Alert className="mx-3" variant="danger">
+                {collisionError}
+              </Alert>
+            ) : null}
+            {collisions ? (
+              <div className="px-3 pb-3">
+                <div className="mb-3 d-flex flex-wrap align-items-center">
+                  <strong className="mr-3">
+                    {collisions.collisions.length} collision
+                    {collisions.collisions.length === 1 ? "" : "s"}
+                  </strong>
+                  {Object.entries(collisions.counts)
+                    .sort(([left], [right]) => left.localeCompare(right))
+                    .map(([kind, count]) => (
+                      <Badge
+                        className="mr-2 mb-1"
+                        key={kind}
+                        variant="secondary"
+                      >
+                        {kind}: {count}
+                      </Badge>
+                    ))}
+                </div>
+                {collisions.collisions.length === 0 ? (
+                  <Alert variant="success">No alias collisions found.</Alert>
+                ) : (
+                  <Table responsive size="sm">
+                    <thead>
+                      <tr>
+                        <th>Kind</th>
+                        <th>Normalized value</th>
+                        <th>Matching entities</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {collisions.collisions.map((collision) => (
+                        <tr key={`${collision.kind}-${collision.value}`}>
+                          <td>{collision.kind}</td>
+                          <td>
+                            <code>{collision.value}</code>
+                          </td>
+                          <td>
+                            {collision.references.map((reference) => (
+                              <div
+                                className="mb-1"
+                                key={`${collision.kind}-${collision.value}-${reference.entityID}`}
+                              >
+                                <strong>
+                                  {reference.name} #{reference.entityID}
+                                </strong>{" "}
+                                {reference.matchKinds.map((matchKind) => (
+                                  <Badge
+                                    className="mr-1"
+                                    key={matchKind}
+                                    variant={
+                                      matchKind === "canonical"
+                                        ? "primary"
+                                        : "info"
+                                    }
+                                  >
+                                    {matchKind}
+                                  </Badge>
+                                ))}
+                              </div>
+                            ))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                )}
+                <div className="text-muted">
+                  This inspector reports ambiguity and provenance only. It never
+                  rewrites or removes aliases, and exact lookup never silently
+                  resolves an ambiguous value.
+                </div>
+              </div>
+            ) : null}
+          </SettingsDisclosure>
+          <SettingsDisclosure
+            id="tools-developer"
+            title={intl.formatMessage(sections.developer)}
+            description={intl.formatMessage(sections.developer_help)}
+          >
+            <Setting
+              heading={
+                <ExternalLink href="/playground">
+                  <Button>
+                    <FormattedMessage id="config.tools.graphql_playground" />
+                  </Button>
+                </ExternalLink>
+              }
+            />
+          </SettingsDisclosure>
         </SettingsToolsSection>
       </SettingSection>
       <SettingSection headingID="config.tools.scene_tools">
