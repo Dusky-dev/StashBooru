@@ -2,6 +2,50 @@
 
 Updated: 2026-10-23
 
+## Upscaler settings save feedback (E05, bounded pass) — 2026-10-23
+
+- Merged [PR #190](https://github.com/Dusky-dev/StashBooru/pull/190) after all
+  13 CI checks passed and Codex Review completed without findings. Fresh develop
+  baseline: `54b4322cdc5b64e1f6f0df6a8499780be43fadd4`.
+- Branch [`fix/processing-settings-feedback-20261023`](https://github.com/Dusky-dev/StashBooru/tree/fix/processing-settings-feedback-20261023).
+  Verified source checkpoint `df075dc5a03102b40b67270685fbd06d45ff7256`, tree
+  `b27077ddeae010a70cdcdbbd50f8ed360df82b4b`. Connector-created and local source
+  trees match. This ledger-only follow-up is included before opening review.
+- Reassessed E05 against existing Processing controls: scope labels, separate
+  Save actions and exact-section navigation already exist. Fixed the upscaler
+  save path instead of adding another settings transaction or ownership layer.
+- Saving local executable/model paths consumes the normalized server response,
+  retains the expanded form and shows inline server-save feedback. Editing a
+  path clears that feedback. Follow-up readiness checks do not fetch saved paths
+  or overwrite newer drafts; readiness displays checking until the response.
+- Keep readiness errors distinct from rejected saves. A successful save remains
+  confirmed if readiness fails; a rejected save retains the editable draft.
+  Explicit Reload worker setup replaces path drafts and disables path editing
+  while loading, with explanatory text beside the actions. Browser job defaults
+  retain their independent storage/save action. Correct stale System guidance
+  in the upscaling dialog to Processing; its existing exact-section link stays.
+- Validation: `make validate-ui` passed all 61 unit tests, JS/CSS lint, TypeScript
+  and formatting. The final feedback-contrast adjustment subsequently passed
+  focused JS lint, repository formatting, `make ui-only`, mounted Settings checks
+  and `git diff --check`. UI GraphQL generation/built-in preparation and generated
+  built-in syntax check passed. No backend/schema changes require Go gates.
+- Mounted Settings maintenance suite passed at 1440 × 1000 and 390 × 844:
+  existing navigation, Back/refresh/bookmarks, independent scopes and errors;
+  plus normalized save responses, no config re-fetch after save, expanded form
+  retention, slow readiness responses with newer edits, checking labels, failed
+  readiness after successful save, rejected-save draft retention, and explicit
+  reload recovery. Existing processing-job-resume suite also passed. Final
+  desktop/mobile save-feedback captures were inspected; the existing Settings
+  navigation CI uploads them with its screenshots artifact.
+- Fixture HTTP/configuration and browser storage only: no real model paths were
+  changed, no physical GPU/worker inference or production-library acceptance is
+  claimed. No processing/recovery contract or API changes; broader E05 consistency
+  and E03 real-job/restart/history decisions remain open.
+- Next: inspect converter defaults recovery after initial settings-read failures
+  as a separate E05 pass, preserving drafts and independent saves. Browser layout
+  remains separately assigned. CI/Codex Review is a turn-end checkpoint; do not
+  wait or poll solely for external gates.
+
 ## Contextual library review (E04, profile entry points) — 2026-10-23
 
 - Started against PR #189's reviewed head while its CI completed, as requested.
