@@ -104,6 +104,9 @@ function PostInspection({
   onIgnore,
   reviewBusy,
   onTag,
+  onBlacklistTag,
+  blacklistBusy,
+  blacklistError,
 }: {
   post: BooruPost;
   source: BooruSource;
@@ -115,6 +118,9 @@ function PostInspection({
   onIgnore: () => void;
   reviewBusy: boolean;
   onTag: (name: string, mode: "add" | "replace") => void;
+  onBlacklistTag: (name: string) => void;
+  blacklistBusy: boolean;
+  blacklistError: string;
 }) {
   const groups = [...new Set(post.tags.map((tag) => tag.category))].sort(
     (a, b) => {
@@ -358,6 +364,8 @@ function PostInspection({
             </div>
           )}
         </div>
+        {blacklistError && <Alert variant="danger" role="alert">{blacklistError}</Alert>}
+        {blacklistBusy && <span role="status">Updating tag blacklist…</span>}
         {groups.length === 0 && (
           <p>{message("no_tags", "The provider supplied no tags.")}</p>
         )}
@@ -399,6 +407,13 @@ function PostInspection({
                         }}
                       >
                         Replace search
+                      </Dropdown.Item>
+                      <Dropdown.Item
+                        role="menuitem"
+                        disabled={blacklistBusy}
+                        onClick={() => onBlacklistTag(tag.name)}
+                      >
+                        Add to blacklist
                       </Dropdown.Item>
                       <IdentityLink
                         source={source}
@@ -657,6 +672,33 @@ function SourceResults({
     [onResult, source.id, signature, visiblePosts, loading]
   );
   const [retry, setRetry] = useState(0);
+  const [blacklistBusy, setBlacklistBusy] = useState(false);
+  const [blacklistError, setBlacklistError] = useState("");
+  const [blacklistNotice, setBlacklistNotice] = useState("");
+  async function blacklistTag(tag: string) {
+    if (blacklistBusy) return;
+    setBlacklistBusy(true);
+    setBlacklistError("");
+    try {
+      await fetch("booru-browser/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "blacklist-add",
+          source: { id: source.id },
+          instance: source.instance,
+          tag,
+        }),
+      }).then(readBooruResponse);
+      setBlacklistNotice(`${tag} is blacklisted on ${source.name}.`);
+      onClose();
+      setRetry((value) => value + 1);
+    } catch (cause: unknown) {
+      setBlacklistError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setBlacklistBusy(false);
+    }
+  }
   const controller = useRef<AbortController>();
   // biome-ignore lint/correctness/useExhaustiveDependencies: Retry intentionally repeats the same read after a source failure.
   useEffect(() => {
@@ -759,6 +801,11 @@ function SourceResults({
           )}
         </Alert>
       )}
+      {blacklistNotice && (
+        <Alert variant="success" role="status" dismissible onClose={() => setBlacklistNotice("")}>
+          {blacklistNotice}
+        </Alert>
+      )}
       {result && (
         <>
           {result.searchNotice && (
@@ -808,6 +855,9 @@ function SourceResults({
                   post={post}
                   source={source}
                   onTag={onTag}
+                  onBlacklistTag={(name) => void blacklistTag(name)}
+                  blacklistBusy={blacklistBusy}
+                  blacklistError={blacklistError}
                   onHide={onClose}
                   review={review.find((state) => state.id === post.id)}
                   reviewBusy={busy}
