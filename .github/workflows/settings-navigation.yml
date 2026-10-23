@@ -12,6 +12,13 @@ on:
       - 'ui/v2.5/src/components/Tags/Copyrights.tsx'
       - 'ui/v2.5/src/components/TroubleshootingMode/**'
       - 'ui/v2.5/src/locales/en-GB.json'
+      - 'ui/v2.5/src/App.tsx'
+      - 'ui/v2.5/src/components/Setup/Welcome.tsx'
+      - 'ui/v2.5/src/components/Dialogs/ReleaseNotesDialog.tsx'
+      - 'ui/v2.5/src/components/Changelog/**'
+      - 'ui/v2.5/src/docs/en/ReleaseNotes/**'
+      - 'ui/v2.5/tests/browser/first-use-notes.mjs'
+      - 'ui/v2.5/tests/browser/fixtures/first-use-notes*'
       - 'ui/v2.5/src/components/Studios/StudioDetails/StudioEditPanel.tsx'
       - 'ui/v2.5/builtin-source/bundle-extra.js'
       - 'ui/v2.5/tests/browser/settings-maintenance.mjs'
@@ -60,6 +67,7 @@ jobs:
           node tests/browser/tools-navigation.mjs
           node tests/browser/profile-library-review.mjs
           node tests/browser/character-dedup.mjs
+          node tests/browser/first-use-notes.mjs
       - uses: actions/upload-artifact@v7
         if: always()
         with:

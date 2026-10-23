@@ -7,6 +7,19 @@ releases can lag behind it. The [booru browser roadmap](booru-browser-roadmap.md
 separates delivered browsing, review, download, identity and first-feed slices
 from later metadata selection and additional provider adapters.
 
+## First use and release notes
+
+Welcome and the release-note dialog start with a short StashBooru introduction:
+library setup, All, source connections, optional processing and backups. Finish
+still opens Library settings and records the latest note as seen. Existing users
+see the new dated introduction when it is newer than their saved acknowledgement;
+closing the note keeps the existing server-owned `lastNoteSeen` behavior.
+
+Revisit the introduction in **Settings → Changelog**, above the preserved upstream
+version history. The shared introduction is English, like the existing release
+notes; other UI translations and custom locale overrides retain their behavior.
+Fork issues link to the StashBooru repository; upstream help/support links remain.
+
 ## Where things live
 
 | Location | Use it for |

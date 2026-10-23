@@ -8,14 +8,15 @@ import { useConfigurationContext } from "src/hooks/Config";
 import { Icon } from "../Shared/Icon";
 import { LoadingIndicator } from "../Shared/LoadingIndicator";
 import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
-import { releaseNotes } from "src/docs/en/ReleaseNotes";
+import { releaseNotes, stashBooruIntroduction } from "src/docs/en/ReleaseNotes";
+import { MarkdownPage } from "../Shared/MarkdownPage";
 import { ExternalLink } from "../Shared/ExternalLink";
 
 const DiscordLink = (
   <ExternalLink href="https://discord.gg/2TsNFKt">Discord</ExternalLink>
 );
 const GithubLink = (
-  <ExternalLink href="https://github.com/stashapp/stash/issues">
+  <ExternalLink href="https://github.com/Dusky-dev/StashBooru/issues">
     <FormattedMessage id="setup.github_repository" />
   </ExternalLink>
 );
@@ -62,6 +63,10 @@ const SuccessStep: React.FC<{
 
   return (
     <>
+      <section>
+        <h2>{stashBooruIntroduction.version}</h2>
+        <MarkdownPage page={stashBooruIntroduction.content} />
+      </section>
       <section>
         <h2>
           <FormattedMessage id="setup.success.your_system_has_been_created" />

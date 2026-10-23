@@ -1,3 +1,4 @@
+import stashBooruGettingStarted from "./stashbooru-20261023.md";
 import v0170 from "./v0170.md";
 import v0200 from "./v0200.md";
 import v0240 from "./v0240.md";
@@ -13,7 +14,14 @@ export interface IReleaseNotes {
   content: string;
 }
 
+export const stashBooruIntroduction: IReleaseNotes = {
+  date: 20261023,
+  version: "StashBooru: getting started",
+  content: stashBooruGettingStarted,
+};
+
 export const releaseNotes: IReleaseNotes[] = [
+  stashBooruIntroduction,
   {
     date: 20251026,
     version: "v0.29.0",
@@ -50,3 +58,9 @@ export const releaseNotes: IReleaseNotes[] = [
     content: v0170,
   },
 ];
+
+export function unseenReleaseNotes(lastNoteSeen?: number | null) {
+  return releaseNotes.filter(
+    (note) => !lastNoteSeen || note.date > lastNoteSeen
+  );
+}

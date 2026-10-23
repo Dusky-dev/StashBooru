@@ -30,3 +30,16 @@ time for another fork, which must use the same StashBooru stable tag convention.
 The default is `Dusky-dev/StashBooru`. The update checker rejects prereleases,
 drafts and upstream tag names, compares numeric stable versions, and retains
 Stash's platform asset selection with a release-page fallback.
+
+## In-app introduction and acknowledgement
+
+The release-note catalogue includes a dated StashBooru getting-started entry
+before the retained upstream notes. Its date is an acknowledgement marker, not a
+new application version or Git release tag. Existing users see entries newer than
+the server's `ui.lastNoteSeen`; explicit Close records the newest shown date.
+Welcome displays the same introduction before Finish records the latest date and
+opens Library settings. Settings → Changelog keeps the introduction available
+after acknowledgement alongside the original upstream version history.
+
+Keep dated entries newest first and retain older dates/content. No separate
+onboarding flag or acknowledgement store is introduced.
