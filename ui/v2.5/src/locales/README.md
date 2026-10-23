@@ -26,3 +26,14 @@ git reset --hard weblate_codeberg/develop
 git push origin codeberg_weblate
 ```
 7. Create a pull request to merge the Weblate translations into the main repository.
+
+# StashBooru display names
+
+`booru-terminology.json` supplies the basic English Artist/Character/Video and
+Collection names. Fork-specific nested English labels (for example Video covers
+and Artist hierarchy/view headings) live in `en-GB.json`; `en-US.json` remains a
+sparse spelling override and falls back to those messages. Preserve message IDs
+and native Studio/Performer/Scene API fields. Non-English messages and user custom
+locales keep their existing precedence; changing English does not translate every
+language. Avoid changing label text used as a DOM selector: native Artist hierarchy
+fields now remain in their native editor instead of the built-in Advanced mover.

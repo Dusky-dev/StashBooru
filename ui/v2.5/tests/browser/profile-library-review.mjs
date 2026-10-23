@@ -14,7 +14,7 @@ const server = await createServer({
       configureServer(vite) {
         vite.middlewares.use((req, _res, next) => {
           if (
-            /^\/(?:stash\/)?(?:settings|performers\/7|studios\/7|copyrights\/7)$/.test(
+            /^\/(?:stash\/)?(?:settings|performers\/7|studios\/7(?:\/edit)?|copyrights\/7)$/.test(
               req.url?.split("?")[0] ?? ""
             )
           )
@@ -227,6 +227,87 @@ try {
         `${layout} ${kind}: native profile links, encoded name, explicit inspection, URL prefix, task anchors and origin retention passed`
       );
     }
+    const context = await browser.newContext({ viewport });
+    await context.route("**/graphql", async (route) => {
+      const request = route.request();
+      const headers = {
+        "Access-Control-Allow-Origin": request.headers().origin ?? origin,
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Headers": "content-type",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+      };
+      if (request.method() === "OPTIONS") {
+        await route.fulfill({ status: 204, headers });
+        return;
+      }
+      const { operationName } = request.postDataJSON();
+      assert.ok(
+        ["FindStudiosForSelect", "FindTagsForSelect"].includes(operationName),
+        `Unexpected editor operation: ${operationName}`
+      );
+      await route.fulfill({
+        headers,
+        json: {
+          data:
+            operationName === "FindStudiosForSelect"
+              ? { findStudios: { count: 0, studios: [] } }
+              : { findTags: { count: 0, tags: [] } },
+        },
+      });
+    });
+    const page = await context.newPage();
+    currentPage = page;
+    const errors = [];
+    page.on("pageerror", (error) => {
+      errors.push(error.message);
+      console.error(error.stack);
+    });
+    await page.goto(`${origin}${prefix}/studios/7/edit`);
+    const parent = page.locator('[data-field="parent_id"]');
+    const children = page.locator('[data-field="child_ids"]');
+    await parent.getByText("Parent Artist", { exact: true }).waitFor();
+    await children.getByText("Child Artists", { exact: true }).waitFor();
+    await page.addScriptTag({ url: `${origin}/builtin/bundle-extra.js` });
+    await page.locator("#bundle-extra").waitFor();
+    for (const field of [parent, children]) {
+      assert.equal(await field.isVisible(), true);
+      assert.equal(
+        await field.evaluate((node) => node.closest("#bundle-extra") === null),
+        true
+      );
+    }
+    await parent.getByText("Parent profile", { exact: true }).waitFor();
+    await children.getByText("Child profile", { exact: true }).waitFor();
+    if (shots) {
+      await parent.scrollIntoViewIfNeeded();
+      await page.screenshot({
+        path: path.join(shots, `artist-hierarchy-${layout}.png`),
+      });
+    }
+    await page.locator("#name").fill("Edited Artist");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.waitForFunction(() =>
+      window.settingsFixture.changes.some((change) => change.artistInput)
+    );
+    const saved = await page.evaluate(
+      () =>
+        window.settingsFixture.changes.find((change) => change.artistInput)
+          .artistInput
+    );
+    assert.equal(saved.name, "Edited Artist");
+    assert.equal(saved.parent_id, "2");
+    assert.deepEqual(saved.child_ids, ["3"]);
+    assert.equal(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth + 1
+      ),
+      true
+    );
+    assert.deepEqual(errors, []);
+    await context.close();
+    console.log(
+      `${layout}: native Artist hierarchy stays visible with built-ins loaded; save retains parent/child IDs`
+    );
   }
 } catch (error) {
   if (currentPage && !currentPage.isClosed()) {

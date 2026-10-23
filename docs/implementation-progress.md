@@ -109,6 +109,57 @@ Updated: 2026-10-23
   real-data acceptance remains open. End when only external CI/Codex remains;
   inspect findings on the next check rather than waiting/polling.
 
+## Native English terminology (E14, bounded pass) — 2026-10-23
+
+- Fresh develop baseline: `dfc599bec2a8be4bd54de1da587244ae08ac67cb` (merged #195).
+  [PR #196](https://github.com/Dusky-dev/StashBooru/pull/196), head
+  `1d052e64d891d80dbd0f3e457110bf994941246f`, has all 13 CI checks green but
+  Codex Review still reports running, without findings or a quota-exhaustion
+  response. Left it unmerged under the standing gate and continued this independent
+  pass. Its mask-restoration implementation/checkpoint remains on its own branch.
+- Branch [`fix/native-terminology-20261023`](https://github.com/Dusky-dev/StashBooru/tree/fix/native-terminology-20261023).
+  Verified source checkpoint `048f086385b54ba70f760b9e87cb3af5939ee773`, tree
+  `a960beec25c0066a4dfe95203f7b07adb52797bd`. Connector-created/local source
+  trees match; this ledger-only checkpoint is included before opening review.
+- Reassessed the audit against current messages: Tools already says Video tools.
+  Correct 22 remaining English display messages in a bounded group: Artist
+  parent/child hierarchy and counts, Video cover/sprite/preview/transcode labels,
+  and Video/Artist/Character view headings. Preserve message IDs, ICU placeholders,
+  hierarchy semantics, native Studio/Performer/Scene IDs, URLs and API fields.
+- Use the existing en-GB fallback catalogue rather than introducing another
+  translation merge layer. All changed keys are absent from the sparse en-US
+  spelling catalogue, so it inherits the corrected values. Non-English message
+  files and custom-locale override precedence stay unchanged; this is not a
+  claim that every locale or inherited label is now translated to fork vocabulary.
+- Remove only parent_id/child_ids from the built-in Advanced DOM mover. Those
+  fields already belong to the native Artist editor and now stay visibly there,
+  independent of English label matching. Other advanced fields keep their current
+  behavior. No new editor, hierarchy store or relationship mutation is added.
+- Validation: `make validate-ui` passed all 61 unit tests, JS/CSS lint, TypeScript
+  and formatting; `make ui-only`, GraphQL generation, built-in preparation and
+  generated bundle-extra/unifiedMedia syntax passed. The unified composer checksum
+  is unchanged because its source parts were not edited. JSON inspection verified
+  the same message keys/placeholders and en-US fallback for all 22 changes.
+  `git diff --check` passed; no backend/schema changes require Go gates.
+- Mounted profile-library-review suite passed 1440 × 1000 at root and 390 × 844
+  under /stash: existing six native profile/review contexts and new real native
+  Artist edit cases, with the composed Advanced script loaded. Parent/child fields
+  stay visible outside Advanced; editing the name and saving retains parent_id 2
+  and child_ids [3]. Page width and no uncaught errors passed. Desktop/mobile
+  captures were inspected. Existing Tasks navigation suite also passed both sizes,
+  including drafts, pending responses, errors, Back, refresh and bookmarks.
+- The editor fixture needed dropdown-create defaults and isolated select-query
+  responses; its route/base-prefix handling now supports the edit path. Browser
+  changes passed focused Biome checks after the full application validation. The
+  Settings CI workflow already runs these suites and now also watches the touched
+  built-in/native-editor paths. Fixtures capture form submissions; no production
+  catalogue write, backend hierarchy acceptance or full All-sidebar test is claimed.
+- Next: E14 fork-aware first-use release notes, retaining upstream history and
+  existing acknowledgement/version behavior. Remaining terminology/localization,
+  E07/E11/E12 real-library acceptance and real-model E08 checks remain separate.
+  Inspect #196's completed review before merging it. End when only external
+  CI/Codex remains; do not wait/poll solely for review.
+
 ## Upscaling output guidance (E08, first pass) — 2026-10-23
 
 - Merged [PR #192](https://github.com/Dusky-dev/StashBooru/pull/192) at
