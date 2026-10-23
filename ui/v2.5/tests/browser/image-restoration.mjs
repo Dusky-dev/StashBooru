@@ -6,8 +6,6 @@ import { createServer } from "vite";
 // Native mounted components/styles. HTTP processing is mocked; no models or user catalogue.
 const engines = await import(process.env.PLAYWRIGHT_MODULE ?? "playwright");
 const root = path.resolve(import.meta.dirname, "../..");
-const source = fs.readFileSync(process.env.STASH_RESTORATION_FIXTURE_SOURCE);
-const output = fs.readFileSync(process.env.STASH_RESTORATION_FIXTURE_OUTPUT);
 const server = await createServer({
   root,
   server: { host: "127.0.0.1", port: 0 },
@@ -19,6 +17,29 @@ const browser = await engines.chromium.launch({
   executablePath: process.env.CHROMIUM_EXECUTABLE,
   args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
 });
+// Deterministic geometric PNGs for UI checks; supplied files remain optional.
+const fixturePage = await browser.newPage();
+const fixtures = await fixturePage.evaluate(() => {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 192;
+  const context = canvas.getContext("2d");
+  context.fillStyle = "#234b60";
+  context.fillRect(0, 0, 256, 192);
+  context.fillStyle = "#e4be67";
+  context.fillRect(50, 35, 100, 80);
+  const source = canvas.toDataURL("image/png").split(",")[1];
+  context.fillStyle = "#77bfa3";
+  context.fillRect(65, 45, 35, 30);
+  return { source, output: canvas.toDataURL("image/png").split(",")[1] };
+});
+await fixturePage.close();
+const source = process.env.STASH_RESTORATION_FIXTURE_SOURCE
+  ? fs.readFileSync(process.env.STASH_RESTORATION_FIXTURE_SOURCE)
+  : Buffer.from(fixtures.source, "base64");
+const output = process.env.STASH_RESTORATION_FIXTURE_OUTPUT
+  ? fs.readFileSync(process.env.STASH_RESTORATION_FIXTURE_OUTPUT)
+  : Buffer.from(fixtures.output, "base64");
 const shots = process.env.STASH_BROWSER_SCREENSHOTS;
 if (shots) fs.mkdirSync(shots, { recursive: true });
 
@@ -102,6 +123,36 @@ try {
       });
     });
     await page.goto(`${baseURL}/tests/browser/fixtures/image-restoration.html`);
+    const dialog = page.getByRole("dialog");
+    await dialog
+      .getByText("Save creates a new PNG Image beside the source", {
+        exact: false,
+      })
+      .waitFor();
+    await dialog
+      .getByText("Closing discards unsaved work.", { exact: true })
+      .waitFor();
+    assert.equal(
+      requests.length,
+      0,
+      "Opening does not prepare or save automatically"
+    );
+    if (shots) {
+      await page.evaluate(async () => {
+        await Promise.all(
+          document
+            .getAnimations()
+            .filter(
+              (animation) =>
+                animation.effect?.getTiming().iterations !== Infinity
+            )
+            .map((animation) => animation.finished.catch(() => {}))
+        );
+      });
+      await page.screenshot({
+        path: path.join(shots, `restoration-start-${name}.png`),
+      });
+    }
     await page.getByRole("combobox", { name: "Run on" }).selectOption("remote");
     await page
       .getByRole("button", { name: "Prepare source", exact: true })
@@ -114,6 +165,26 @@ try {
         Array.from(document.querySelectorAll("button")).some(
           (b) => b.textContent === "Brush" && !b.disabled
         )
+    );
+    const advanced = dialog.locator("details");
+    const summary = advanced.locator("summary");
+    assert.equal(await advanced.getAttribute("open"), null);
+    assert.equal(
+      await page
+        .getByRole("combobox", { name: "Hardware", exact: true })
+        .isVisible(),
+      false
+    );
+    await page
+      .getByRole("textbox", { name: "Prompt", exact: true })
+      .fill("Repair the geometric shape");
+    await summary.focus();
+    await page.keyboard.press("Enter");
+    assert.equal(
+      await page
+        .getByRole("spinbutton", { name: "Seed", exact: true })
+        .inputValue(),
+      "42"
     );
     assert.equal(requests.at(-1).backend, "remote");
     assert.equal(
@@ -157,6 +228,14 @@ try {
     await page
       .getByRole("combobox", { name: "Hardware", exact: true })
       .selectOption("gpu");
+    await summary.click();
+    assert.match(await summary.innerText(), /GPU only/);
+    assert.equal(
+      await page
+        .getByRole("combobox", { name: "Hardware", exact: true })
+        .isVisible(),
+      false
+    );
     if (shots) {
       await canvas.scrollIntoViewIfNeeded();
       await page.screenshot({ path: path.join(shots, `p11-mask-${name}.png`) });
@@ -165,13 +244,13 @@ try {
       .getByRole("button", { name: "Generate preview", exact: true })
       .click();
     const save = page.getByRole("button", {
-      name: "Save generated derivative",
+      name: "Save as new Image",
       exact: true,
     });
     await save.waitFor({ state: "visible" });
     await page.waitForFunction(() =>
       [...document.querySelectorAll("button")].some(
-        (b) => b.textContent === "Save generated derivative" && !b.disabled
+        (b) => b.textContent === "Save as new Image" && !b.disabled
       )
     );
     assert.equal(requests.find((r) => r.action === "generate").feather, 2);
@@ -184,6 +263,19 @@ try {
     await page
       .getByRole("combobox", { name: "Comparison", exact: true })
       .selectOption("both");
+    assert.equal(requests.filter((r) => r.action === "save").length, 0);
+    await summary.click();
+    assert.equal(
+      await save.isEnabled(),
+      true,
+      "Disclosure changes do not invalidate the preview"
+    );
+    assert.equal(
+      await page
+        .getByRole("combobox", { name: "Hardware", exact: true })
+        .inputValue(),
+      "gpu"
+    );
     await page
       .getByRole("spinbutton", { name: "Seed", exact: true })
       .fill("99");
@@ -202,22 +294,49 @@ try {
         .inputValue(),
       "0.75"
     );
+    await summary.click();
+    assert.match(
+      await summary.innerText(),
+      /GPU only.*starting-pixel reference/
+    );
+    await dialog
+      .getByText("Mask or settings changed.", { exact: false })
+      .waitFor();
     await page
       .getByRole("button", { name: "Generate preview", exact: true })
       .click();
     await page.waitForFunction(() =>
       [...document.querySelectorAll("button")].some(
-        (b) => b.textContent === "Save generated derivative" && !b.disabled
+        (b) => b.textContent === "Save as new Image" && !b.disabled
       )
     );
     await page
       .getByRole("checkbox", {
-        name: "Add derivative to the source's visual stack",
+        name: "Add new Image to the source's visual stack",
       })
       .check();
     assert.ok(
       requests.filter((r) => r.action === "generate").at(-1).reference.length >
         100
+    );
+    const generated = requests.filter((r) => r.action === "generate").at(-1);
+    assert.equal(generated.options.seed, 99);
+    assert.equal(generated.options.strength, 0.75);
+    assert.equal(generated.options.prompt, "Repair the geometric shape");
+    assert.equal(generated.options.hardware, "gpu");
+    assert.equal(await advanced.getAttribute("open"), null);
+    assert.equal(await save.isEnabled(), true);
+    assert.equal(
+      await dialog.evaluate(
+        (node) => node.getBoundingClientRect().width <= innerWidth
+      ),
+      true
+    );
+    assert.equal(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth + 1
+      ),
+      true
     );
     await save.scrollIntoViewIfNeeded();
     if (shots)
@@ -226,6 +345,14 @@ try {
       });
     await save.click();
     await page.getByRole("link", { name: "Open Image", exact: true }).waitFor();
+    assert.equal(requests.at(-1).action, "save");
+    assert.equal(requests.at(-1).sessionID, "1".padStart(32, "0"));
+    assert.equal(
+      await dialog
+        .getByText("Closing discards unsaved work.", { exact: true })
+        .count(),
+      0
+    );
     assert.equal(requests.at(-1).stack, true);
     assert.equal(
       await page
@@ -272,6 +399,14 @@ try {
       )
     );
     await paint();
+    assert.equal(await advanced.getAttribute("open"), null);
+    await summary.click();
+    assert.equal(
+      await page
+        .getByRole("spinbutton", { name: "Seed", exact: true })
+        .inputValue(),
+      "42"
+    );
     await page
       .getByRole("combobox", { name: "Hardware", exact: true })
       .selectOption("gpu");

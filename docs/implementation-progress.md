@@ -2,6 +2,59 @@
 
 Updated: 2026-10-23
 
+## Mask-restoration output guidance (E08, third pass) — 2026-10-23
+
+- Merged [PR #195](https://github.com/Dusky-dev/StashBooru/pull/195) at
+  `dfc599bec2a8be4bd54de1da587244ae08ac67cb` after all 12 CI checks passed and
+  Codex Review completed without findings at its final head. This fresh develop
+  baseline includes the converter and upscaler guidance passes. No other PRs
+  were open when checked; unrelated local screenshots were preserved.
+- Branch [`fix/restoration-guidance-20261023`](https://github.com/Dusky-dev/StashBooru/tree/fix/restoration-guidance-20261023).
+  Verified source checkpoint `5e4278a91750b69bf13ebc989333c417e359a191`, tree
+  `92bf01c43c9a529dfe3d9bace5de08ede160a697`. Connector-created/local source
+  trees match; this ledger-only checkpoint is included before opening review.
+- State the result before preparation: Save creates a new PNG beside the source,
+  copies library metadata and keeps the original unchanged. Generated pixels do
+  not recover hidden original detail. Label Prepare source, Paint and describe,
+  then Review and save within the existing dialog. The same explicit save action
+  now says Save as new Image; optional stacking and the typed native result link
+  remain. Repeat the destination/original policy at review and explain that
+  closing discards unsaved work; remove that footer note after a successful save.
+- Keep mask tools and prompt visible. Group hardware, seed, steps, guidance,
+  strength, negative prompt, reference and format details under a native
+  Generation options disclosure. Its closed summary shows explicit CPU/GPU and
+  active reference state. Children remain mounted; disclosure changes preserve
+  settings and a valid preview. Existing field changes still dirty the preview
+  and require regeneration before saving. Backend selection/model warnings stay
+  visible. Requests, source IDs, PNG verification, normalization, metadata and
+  provenance copying, stacking, cleanup and derivative-only save are unchanged.
+  No replacement mode, new restore cache or booru-browser layout changes.
+- Validation: `make validate-ui` passed all 61 unit tests, JS/CSS lint, TypeScript
+  and formatting. `make ui-only`, generated built-in syntax and `git diff --check`
+  passed. GraphQL generation/built-in preparation passed; generated files are not
+  committed. Python restoration contract suite passed all nine tests. Workflow
+  YAML parsed with its existing contract job and new mounted browser job. No
+  backend/schema source changes require Go gates.
+- Extended mounted image-restoration suite passed at 1440 × 1000 and 390 × 844:
+  initial output/close guidance, no implicit preparation/save, collapsed options,
+  keyboard disclosure, retained GPU/seed/prompt/reference across closing the
+  disclosure and regeneration, preview invalidation, explicit session-bound save
+  and optional stacking, typed result link, mask/undo/feather/zoom/comparison,
+  missing-model feedback, reopening defaults, cancellation and late-response
+  cleanup. Page/modal width checks passed. Start, mask and review captures were
+  inspected on desktop/mobile. No extra dialog or route was added to the flow.
+- The existing browser suite now creates deterministic geometric PNG fixtures
+  using browser canvas when file overrides are absent. Image restoration CI is
+  wired to the touched UI/test paths and runs the suite with screenshot artifacts.
+  Browser HTTP processing is mocked; Python tests use real Pillow/transport with
+  declared inference stubs. These are not real diffusion output, saved-file or
+  catalogue acceptance, physical GPU/VRAM tests or owner production validation.
+- Next: E14, inspect native visible Artist/Video labels and localization, then fix
+  a bounded set of confirmed terminology mismatches. Broader E07/E11/E12 isolated
+  library/owner acceptance and real-model E08 checks remain open; shared history
+  requires a separate design. End when only external CI/Codex remains, inspect
+  findings next turn, and do not wait/poll solely for review.
+
 ## Converter estimate, trial and apply guidance (E08, second pass) — 2026-10-23
 
 - Merged [PR #194](https://github.com/Dusky-dev/StashBooru/pull/194) at
