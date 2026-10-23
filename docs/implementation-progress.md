@@ -2,6 +2,58 @@
 
 Updated: 2026-10-23
 
+## Honor custom UI command-line paths (E12 follow-up) — 2026-10-23
+
+- Merged [PR #202](https://github.com/Dusky-dev/StashBooru/pull/202) at
+  `69df69d75a27bf460d09c43d77dc077b4bc187af` after all 14 applicable checks
+  passed and Codex Review completed without findings at
+  `ddf52fa882f62bcc5edc2283be9c8e25f72cb730`. This is the fresh develop baseline
+  for branch [`fix/custom-ui-flag-20261023`](https://github.com/Dusky-dev/StashBooru/tree/fix/custom-ui-flag-20261023).
+  Verified source `86ac3a98b4e62bcda45e2388672bc1e5237ee96f`, tree
+  `c889153b4905ccfad7e8a372c9da26369bb7a14c`, matches the tested local tree.
+- Reproduced the previously observed --ui-location failure against the packaged
+  Linux server: a custom directory containing a distinctive index and CSS was
+  ignored and the embedded frontend was served. Focused configuration regressions
+  also failed for the long flag, -u and an explicitly empty override before the
+  correction. The loader stored ui-location while GetUILocation reads ui_location.
+- Map only this changed command-line flag to the canonical UILocation key. Keep
+  unchanged flags out of overrides, preserve other flags, saved/legacy paths and
+  existing STASH_UI-over-command-line precedence. Overrides do not rewrite the
+  saved configuration. No general flag normalization or precedence change.
+- Added configuration cases for both forms, spaced paths, unused flags retaining
+  canonical/legacy settings, explicit empty canonical override, embedded default,
+  environment precedence, ordinary port flags and unchanged saved values. The
+  configuration package passes, including these regressions.
+- Added scripts/tests/custom_ui_flags.py with six independent, unconfigured
+  loopback server instances and generated HTML/CSS: long flag, short flag,
+  relative path (including spaces), environment, environment over flag and
+  embedded fallback. Verify the root index, SPA route and exact static asset
+  origin. Strip inherited STASH overrides, disable the extra HTTPS listener,
+  terminate each process and remove temporary configurations in finally. No
+  existing server, library, provider, model or media is used.
+- All six real-server cases passed against the newly built fixed backend. Reused
+  the unchanged production UI from merged #202, with exact UI-source equality
+  confirmed; no additional frontend rebuild or UI gates were needed. CI reuses
+  its Linux artifact for these cases in the existing first-library job and
+  uploads server logs with first-library-artifacts. Documented invocation,
+  configuration precedence and test scope in DEVELOPMENT.md.
+- Validation: backend generation, make test, make it and make lint passed
+  (zero lint issues). Makefile SQLite include paths/tags were retained. The local
+  make stash build passed with -buildvcs=false and the local-test version label;
+  all six HTTP serving cases then passed. Focused configuration tests, Go
+  formatting, Python syntax, workflow YAML/extracted-shell/artifact assertions
+  and git diff --check passed. No dependency lock, schema, database, frontend,
+  media relationship, file lifecycle or booru-layout change.
+- Limits: HTTP assertions use tiny static fixtures, not browser rendering of an
+  arbitrary third-party frontend, authentication/proxy compatibility or physical
+  device/production-library acceptance. CI and completed Codex Review remain
+  required on the new published head; end rather than wait or repeatedly poll.
+  The eventual #196 review was checked once and still reports running with no
+  findings; its earlier owner-specific merge override remains separate.
+- Next: E12 Gallery/Collection → member → Back acceptance in an isolated library,
+  checking native membership, ordering/filter scope and return context. Broader
+  owner-library, upgrade/recovery and real-model E08 acceptance remain open.
+
 ## Refresh Copyright/default memberships (E07/E12, third pass) — 2026-10-23
 
 - Merged [PR #199](https://github.com/Dusky-dev/StashBooru/pull/199) at
