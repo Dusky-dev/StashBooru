@@ -17,6 +17,7 @@ import * as GQL from "./generated-graphql";
 import { createClient } from "./createClient";
 import { Client } from "graphql-ws";
 import { useEffect, useState } from "react";
+import { evictEffectiveMediaAssociations } from "./mediaCache";
 
 const { client, wsClient, cache: clientCache } = createClient();
 
@@ -46,13 +47,14 @@ export function useWSState(ws: Client) {
   return { state };
 }
 
-// Evicts cached results for the given queries.
-// Will also call a cache GC afterwards.
+// Evicts cached query results and calculated detail memberships when media
+// lists are affected. Native relationships remain cached. Runs cache GC last.
 export function evictQueries(
   cache: ApolloCache<unknown>,
   queries: DocumentNode[]
 ) {
   const fields: Modifiers = {};
+  let affectsMedia = false;
   for (const query of queries) {
     const { selections } = getQueryDefinition(query).selectionSet;
     for (const field of selections) {
@@ -62,11 +64,13 @@ export function evictQueries(
       // The mixed query shares all native media and association predicates.
       if (keyName === "findImages" || keyName === "findScenes") {
         fields.findMedia = (_value, { DELETE }) => DELETE;
+        affectsMedia = true;
       }
     }
   }
 
   cache.modify({ fields });
+  if (affectsMedia) evictEffectiveMediaAssociations(cache);
 
   // evictQueries is usually called at the end of
   // an update function - so call a GC here
