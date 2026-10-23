@@ -2,6 +2,61 @@
 
 Updated: 2026-10-23
 
+## Refresh Copyright/default memberships (E07/E12, third pass) — 2026-10-23
+
+- Merged [PR #199](https://github.com/Dusky-dev/StashBooru/pull/199) at
+  `eb8301c6ad3f3df612b9394753ad9cbb4994a25b` after all 12 checks, including
+  first-library browser acceptance, passed and Codex Review completed cleanly
+  at `6651f5ba3c4bdd3eeefafd712784bccaa70f9b37`. The official-mirror/headless
+  dependency correction completed remotely; the previous cancellations are
+  superseded by this actual acceptance pass.
+- Merged [PR #201](https://github.com/Dusky-dev/StashBooru/pull/201) at
+  `27261a64e59c3d5d13de2b74444270b7a8ac856c` after all 11 applicable checks
+  passed and Codex completed without findings at
+  `db5217993dbac2f6c2c59804cec4434a9b5719a0`. This is the fresh develop
+  baseline for branch [`fix/copyright-associations-20261023`](https://github.com/Dusky-dev/StashBooru/tree/fix/copyright-associations-20261023).
+  Verified source `d7c192ad9a81ebeccd9306a76a23dcbce7e5cd2e`, tree
+  `1317844e029fcb8e5048ec00bf87c288379adbef`, matches the tested local tree.
+- Reproduced two remaining actual-server gaps after #201: Copyright forms
+  bypassed the shared mutation boundary, so Back retained an old inherited Tag
+  after reparenting; saving the Copyright inheritance switch invalidated only
+  configuration, so Back still showed inherited memberships after disabling it.
+  The native form/save and Library switch changed the server correctly; the
+  cached detail snapshots were stale. No mock responses were involved.
+- Added Copyright create/update/delete/Character-assignment hooks at the existing
+  StashService boundary and connected the Copyright forms. Expire affected
+  Copyright/Character query roots, media lists and calculated media associations.
+  Inheritance-default saves expire Image/Video lists/calculated associations;
+  unrelated default saves keep configuration-only invalidation. Retain direct
+  fields, native IDs and relationships. No new store, global network-only policy,
+  backend/schema, file lifecycle or booru-browser layout change.
+- Optional real-server `copyright-associations.mjs` passed all four cases:
+  desktop 1440 × 1000 and mobile 390 × 844, each Image and Video. Toggle Copyright
+  inheritance off/on through Library and Back; edit the child Copyright's parent
+  through its native form and Back; verify old inherited Tag/parent removal,
+  new Tag/parent and provenance, refresh consistency, unchanged direct
+  Artist/Character/Copyright/Tag IDs and no page errors. Inspect final desktop
+  and mobile captures. The suite requires explicit isolated URL/fixture IDs and
+  restores original parent lists and shared inheritance defaults in finally.
+  Mobile automation clicks the visible Bootstrap switch track with normal
+  hit-target checks, avoiding a forced click on its transparent native input.
+- Validation: UI GraphQL generation passed; make validate-ui passed all 69 tests,
+  JS/CSS lint, TypeScript and formatting; make ui-only passed and composed the
+  built-ins. Focused Biome, new browser-script/built-in Node syntax and diff
+  whitespace checks passed. Runtime used the packaged Linux binary with the
+  current production UI through STASH_UI. Backend code is unchanged, so no new
+  local Go gate is needed. Fresh CI and completed Codex Review remain required
+  on the published head; end the turn instead of idle polling.
+- Limits: tiny synthetic PNG/H.264 media, Chromium keyboard/mouse automation
+  and an optional seeded-server suite do not establish owner-library, physical
+  touch-device, deletion/primary-ordering, full playback/codec, external/model,
+  upgrade or recovery acceptance. The browser suite is not an ordinary CI job;
+  existing cache unit cases remain in UI CI. See P06 for invocation and scope.
+- Next: fix the separately observed --ui-location configuration-key mismatch,
+  with actual custom-UI loading acceptance. Broader representative-library E12
+  and real-model E08 checks remain open. The eventual #196 review obligation
+  remains recorded below; no new review override has been inferred.
+
 ## Real first-library acceptance (E11) — 2026-10-23
 
 - Merged [PR #198](https://github.com/Dusky-dev/StashBooru/pull/198) at
