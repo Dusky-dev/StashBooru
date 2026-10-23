@@ -2,6 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, Badge, Button, Form } from "react-bootstrap";
 import { Link, useHistory, useLocation } from "react-router-dom";
 import type { BooruSource } from "../BooruBrowser/browser";
+import {
+  type IdentityPage,
+  type ProviderIdentity,
+  identityRequest,
+} from "../Identities/identityApi";
+import { canFollowIdentity, sourceForIdentity } from "./followContext";
 import "./styles.scss";
 
 interface Follow {
@@ -180,8 +186,12 @@ export default function Following() {
   const history = useHistory();
   const location = useLocation();
   const params = new URLSearchParams(location.search);
+  const fromIdentity = params.get("fromIdentity") ?? "";
+  const [identity, setIdentity] = useState<ProviderIdentity>();
+  const [identityError, setIdentityError] = useState("");
   const [epoch, setEpoch] = useState(0);
   const [sources, setSources] = useState<BooruSource[]>([]);
+  const [sourcesLoaded, setSourcesLoaded] = useState(false);
   const [follows, setFollows] = useState<Follow[]>([]);
   const [page, setPage] = useState<FeedPage>();
   const [listError, setListError] = useState("");
@@ -209,6 +219,39 @@ export default function Following() {
     };
   }, []);
 
+  useEffect(() => {
+    setIdentity(undefined);
+    setIdentityError("");
+    if (!fromIdentity) return;
+    if (!/^[1-9]\d*$/.test(fromIdentity)) {
+      setIdentityError("This provider connection link is invalid.");
+      return;
+    }
+    const controller = new AbortController();
+    void identityRequest<IdentityPage>(
+      `identities/list?identity=${encodeURIComponent(fromIdentity)}`,
+      controller.signal
+    )
+      .then((value) => {
+        if (controller.signal.aborted) return;
+        const connection = value.items.find((row) => row.id === fromIdentity);
+        if (!connection)
+          throw new Error("This provider connection no longer exists.");
+        if (!canFollowIdentity(connection))
+          throw new Error(
+            "Feed checks currently support Danbooru tag connections. Account providers and other engines are not supported yet."
+          );
+        setIdentity(connection);
+        setName(connection.entityName || connection.label || connection.target);
+        setKind(connection.kind);
+        setTarget(connection.target);
+      })
+      .catch((error: Error) => {
+        if (!controller.signal.aborted) setIdentityError(error.message);
+      });
+    return () => controller.abort();
+  }, [fromIdentity]);
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: epoch explicitly reloads definitions and source settings after mutations.
   useEffect(() => {
     const controller = new AbortController();
@@ -235,6 +278,9 @@ export default function Following() {
       })
       .catch((error: Error) => {
         if (!controller.signal.aborted) setSourceError(error.message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setSourcesLoaded(true);
       });
     return () => controller.abort();
   }, [epoch]);
@@ -324,6 +370,40 @@ export default function Following() {
     setSourceID(sources.find((s) => s.engine === "danbooru")?.id ?? "");
   }
 
+  const selectedSource = fromIdentity
+    ? identity?.id === fromIdentity
+      ? sourceForIdentity(sources, identity)
+      : undefined
+    : sources.find((source) => source.id === sourceID);
+  const contextBlocked = !!fromIdentity && (!identity || !selectedSource);
+  const selectedSourceID = selectedSource?.id;
+  const identityID = identity?.id;
+  useEffect(() => {
+    if (!fromIdentity || !identityID || !selectedSourceID) return;
+    document
+      .getElementById("following-manager")
+      ?.scrollIntoView({ block: "start" });
+    document.getElementById("following-name")?.focus({ preventScroll: true });
+  }, [fromIdentity, identityID, selectedSourceID]);
+
+  function clearContext() {
+    resetForm();
+    if (!fromIdentity) return;
+    const current = history.location;
+    const next = new URLSearchParams(current.search);
+    next.delete("fromIdentity");
+    history.replace({ ...current, search: next.toString() });
+  }
+
+  const duplicate =
+    !editing &&
+    selectedSource &&
+    follows.find(
+      (follow) =>
+        follow.instance === selectedSource.instance &&
+        follow.kind === kind &&
+        follow.target === target
+    );
   const currentEdit = follows.find((follow) => follow.id === editing?.id);
   const editChanged = !!editing && currentEdit?.version !== editing.version;
   const locked = !!busy;
@@ -390,17 +470,65 @@ export default function Following() {
                   }
                 : {
                     action: "create",
-                    source: sourceID,
-                    instance: sources.find((s) => s.id === sourceID)?.instance,
+                    source: selectedSource?.id,
+                    instance: selectedSource?.instance,
                     name,
                     kind,
                     target,
                   };
+              if (
+                locked ||
+                contextBlocked ||
+                duplicate ||
+                (!editing && selectedSource?.engine !== "danbooru")
+              )
+                return;
               if (await mutate("Saving follow…", "following/follows", input))
-                resetForm();
+                clearContext();
             }}
           >
             <h3>{editing ? "Edit follow" : "Add follow"}</h3>
+            {fromIdentity && (
+              <Alert variant={contextBlocked ? "warning" : "info"}>
+                {identityError ||
+                  (identity
+                    ? selectedSource
+                      ? "Review this saved provider connection, then press Follow. Checking posts is a separate action."
+                      : !sourcesLoaded
+                        ? "Loading source settings…"
+                        : "The matching source is disabled, changed or unavailable. Enable it in Source settings; no substitute was selected."
+                    : "Loading provider connection…")}
+                <div className="mt-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={locked}
+                    onClick={clearContext}
+                  >
+                    Start a blank follow
+                  </Button>
+                </div>
+              </Alert>
+            )}
+            {!fromIdentity &&
+              !editing &&
+              sourcesLoaded &&
+              !sourceError &&
+              !sources.some((source) => source.engine === "danbooru") && (
+                <Alert variant="warning">
+                  Enable a Danbooru-compatible source in Source settings to
+                  check posts. Account providers and other engines are not
+                  supported yet.
+                </Alert>
+              )}
+            {duplicate && (
+              <Alert variant="info">
+                This exact target already has a saved follow.{" "}
+                <a href={`#saved-follow-${duplicate.id}`}>
+                  Manage saved follow
+                </a>
+              </Alert>
+            )}
             {editChanged && (
               <Alert variant="warning">
                 This follow changed elsewhere. Reload its current definition
@@ -411,10 +539,14 @@ export default function Following() {
               <Form.Label>Source</Form.Label>
               <Form.Control
                 as="select"
-                value={sourceID}
-                disabled={locked || !!editing}
+                className="input-control"
+                value={fromIdentity ? (selectedSource?.id ?? "") : sourceID}
+                disabled={locked || !!editing || !!fromIdentity}
                 onChange={(e) => setSourceID(e.target.value)}
               >
+                {!selectedSource && !editing && (
+                  <option value="">No supported source selected</option>
+                )}
                 {editing && !sources.some((s) => s.id === sourceID) && (
                   <option value={sourceID}>{editing.sourceURL}</option>
                 )}
@@ -426,13 +558,18 @@ export default function Following() {
                     </option>
                   ))}
               </Form.Control>
+              <Form.Text muted>
+                Feed checks use enabled Danbooru-compatible sources. Follows are
+                local to this library, separate from website favorites.
+              </Form.Text>
             </Form.Group>
             <Form.Group controlId="following-name">
               <Form.Label>Follow name</Form.Label>
               <Form.Control
                 required
+                className="text-input"
                 value={name}
-                disabled={locked}
+                disabled={locked || contextBlocked}
                 onChange={(e) => setName(e.target.value)}
               />
             </Form.Group>
@@ -440,8 +577,9 @@ export default function Following() {
               <Form.Label>Target type</Form.Label>
               <Form.Control
                 as="select"
+                className="input-control"
                 value={kind}
-                disabled={locked}
+                disabled={locked || contextBlocked}
                 onChange={(e) => setKind(e.target.value)}
               >
                 {[
@@ -460,8 +598,9 @@ export default function Following() {
               <Form.Label>Exact provider tag or query</Form.Label>
               <Form.Control
                 required
+                className="text-input"
                 value={target}
-                disabled={locked}
+                disabled={locked || contextBlocked}
                 onChange={(e) => setTarget(e.target.value)}
               />
               <Form.Text muted>
@@ -480,7 +619,10 @@ export default function Following() {
                   locked ||
                   editChanged ||
                   !!sourceError ||
-                  !sources.some((s) => s.id === sourceID)
+                  contextBlocked ||
+                  !!duplicate ||
+                  !selectedSource ||
+                  (!editing && selectedSource.engine !== "danbooru")
                 }
               >
                 {editing ? "Save changes" : "Follow"}
@@ -513,6 +655,7 @@ export default function Following() {
             <section
               className="card card-body mb-2"
               key={follow.id}
+              id={`saved-follow-${follow.id}`}
               aria-label={`Follow ${follow.name}`}
             >
               <h4>
@@ -561,7 +704,10 @@ export default function Following() {
                   disabled={
                     locked || follow.status !== "available" || !!listError
                   }
-                  onClick={() => editFollow(follow)}
+                  onClick={() => {
+                    if (fromIdentity) clearContext();
+                    editFollow(follow);
+                  }}
                 >
                   Edit
                 </Button>

@@ -63,6 +63,27 @@ enter the exact provider tag or query. Source credentials/custom instances use
 the existing Source settings page. Existing definitions for other engines remain
 visible, with checks disabled until their feed adapter is supported.
 
+From a native Artist, Character or Copyright profile, open **Sources & aliases**
+and choose **Follow** beside a saved Danbooru tag connection. Following opens in a
+new tab with the exact provider tag, category and a readable name filled in. The
+original profile stays open. Review the draft and press **Follow** to save it;
+opening the draft does not contact the provider, check posts or download anything.
+The follow belongs to this StashBooru library, separately from website favorites.
+
+The draft uses the connection's provider instance, not its old source-settings ID
+or the native profile's display name. A renamed source for that same instance can
+be used; a reused ID pointing at another site cannot. If the matching source is
+unavailable, enable it in Source settings or explicitly **Start a blank follow**.
+Unsupported providers/account connections show their feed limit in the profile
+instead of offering a misleading Follow action. Profiles without connections need
+a provider connection first; names are not guessed across sites.
+
+An exact target that is already followed links to **Manage saved follow**,
+including inactive definitions. Edit or refollow it there instead of creating a
+duplicate. Reloading saved feed retains the current draft. Refresh reconstructs
+the explicitly linked provider connection; successful saving removes that draft
+context from the URL. Other feed filters remain in the URL.
+
 Use **Check new posts** on a follow. Its first successful check saves up to **50
 recent matching posts**, establishing a new-upload baseline; it does not crawl
 the entire historical catalogue. Every later check fetches one page of newer IDs.

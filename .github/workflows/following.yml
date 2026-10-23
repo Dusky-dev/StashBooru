@@ -12,7 +12,10 @@ on:
       - 'pkg/sqlite/following.go'
       - 'pkg/sqlite/migrations/*following*'
       - 'ui/v2.5/src/components/Following/**'
+      - 'ui/v2.5/src/components/Identities/identity.tsx'
+      - 'ui/v2.5/src/components/Identities/identityApi.ts'
       - 'ui/v2.5/tests/browser/following.mjs'
+      - 'ui/v2.5/tests/browser/following-context.mjs'
       - 'ui/v2.5/tests/browser/fixtures/following*'
       - 'ui/v2.5/pnpm-lock.yaml'
 
@@ -48,7 +51,9 @@ jobs:
         env:
           PLAYWRIGHT_MODULE: ${{ runner.temp }}/following-tools/node_modules/playwright/index.mjs
           STASH_BROWSER_SCREENSHOTS: ${{ runner.temp }}/following-screenshots
-        run: node tests/browser/following.mjs
+        run: |
+          node tests/browser/following.mjs
+          node tests/browser/following-context.mjs
       - uses: actions/upload-artifact@v7
         if: always()
         with:
