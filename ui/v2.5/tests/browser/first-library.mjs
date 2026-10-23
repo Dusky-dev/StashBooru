@@ -118,9 +118,10 @@ async function check(viewport, label) {
   const directory = join(root, label);
   const media = join(directory, "media");
   await mkdir(media, { recursive: true });
-  const page = await browser.newPage({ viewport });
+  let page = await browser.newPage({ viewport });
   const errors = [];
-  page.on("pageerror", (error) => errors.push(String(error)));
+  const recordError = (error) => errors.push(String(error));
+  page.on("pageerror", recordError);
   // Draw a neutral, deterministic PNG; ffmpeg encodes a real, tiny H.264 Video.
   const png = await page.evaluate(() => {
     const canvas = document.createElement("canvas");
@@ -272,8 +273,19 @@ async function check(viewport, label) {
       ),
       "Page overflows viewport"
     );
+    assert.deepEqual(
+      errors,
+      [],
+      "Page errors before deliberate server shutdown"
+    );
+    // Unmount the client before stopping its server. A live Apollo client can
+    // otherwise report expected in-flight fetch failures during this test step.
+    // Use a fresh page after restart so persisted state cannot come from cache.
+    await page.close();
     await stopServer();
     url = await startServer(directory, `${label}-restart`);
+    page = await browser.newPage({ viewport });
+    page.on("pageerror", recordError);
     await page.goto(`${url}/images/${imageID}`, { waitUntil: "networkidle" });
     assert.equal(
       await page.getByRole("dialog").count(),

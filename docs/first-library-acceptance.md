@@ -56,7 +56,10 @@ checks Finish's Library destination and persisted note acknowledgement, starts a
 real scan from Tasks, checks one typed Image and one typed Video with decoded
 thumbnails in All, opens the native Image editor through its viewer, saves a
 title, reloads, restarts the server and checks the same native ID and title.
-It also checks for page errors and editor page overflow.
+It also checks for page errors and editor page overflow. The client is closed
+before the deliberate server shutdown; restart uses a fresh page/context so
+Apollo cannot report shutdown fetch failures or supply the saved title from its
+old cache. Page errors are asserted before shutdown and after restart.
 
 Successful temporary instances are removed; a failed instance is retained at the
 printed path for diagnosis. Requested output contains screenshots and server
