@@ -1,3 +1,4 @@
+import { ProfileLibraryReview } from "src/components/Shared/ProfileLibraryReview";
 import { IdentitySources } from "src/components/Identities/identity";
 import React, { useEffect, useMemo, useState } from "react";
 import { FormattedMessage } from "react-intl";
@@ -71,7 +72,7 @@ function aliasesFromText(value: string) {
     .filter(Boolean);
 }
 
-const CopyrightDetailsPanel: React.FC<{
+export const CopyrightDetailsPanel: React.FC<{
   copyright: GQL.CopyrightDataFragment;
   fullWidth?: boolean;
 }> = ({ copyright, fullWidth }) => {
@@ -94,6 +95,7 @@ const CopyrightDetailsPanel: React.FC<{
           entityID={copyright.id}
           entityName={copyright.name}
         />
+        <ProfileLibraryReview kind="copyright" name={copyright.name} />
       </div>
       {hasMain || hasSub ? (
         <Tabs

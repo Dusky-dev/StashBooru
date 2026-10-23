@@ -42,6 +42,13 @@ visited and you return. Leaving Settings or refreshing starts a new review;
 these temporary results are not durable history. Metadata copy still requires
 explicit selection and confirmation.
 
+Expanded Character, Artist and Copyright profiles include **Library review**.
+**Inspect this name** prefills the name collision inspector; press **Inspect
+value** to check matches explicitly. Association review and the Character merge
+review are labeled **whole library**. These links open the existing tools in a
+new tab, keeping the profile page in place. Opening a link does not run a scan,
+merge profiles, apply defaults or change metadata.
+
 Processing defaults apply to new jobs. Conversion/tagging defaults and model paths
 are saved on the server. Upscaling job defaults are saved in the current browser;
 their Save button does not change server paths. Old System bookmarks for moved

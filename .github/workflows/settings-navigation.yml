@@ -5,11 +5,17 @@ on:
     paths:
       - '.github/workflows/settings-navigation.yml'
       - 'ui/v2.5/src/components/Settings/**'
+      - 'ui/v2.5/src/components/Shared/ProfileLibraryReview.tsx'
+      - 'ui/v2.5/src/components/Shared/styles.scss'
+      - 'ui/v2.5/src/components/Performers/PerformerDetails/PerformerDetailsPanel.tsx'
+      - 'ui/v2.5/src/components/Studios/StudioDetails/StudioDetailsPanel.tsx'
+      - 'ui/v2.5/src/components/Tags/Copyrights.tsx'
       - 'ui/v2.5/src/components/TroubleshootingMode/**'
       - 'ui/v2.5/src/locales/en-GB.json'
       - 'ui/v2.5/tests/browser/settings-maintenance.mjs'
       - 'ui/v2.5/tests/browser/tasks-navigation.mjs'
       - 'ui/v2.5/tests/browser/tools-navigation.mjs'
+      - 'ui/v2.5/tests/browser/profile-library-review.mjs'
       - 'ui/v2.5/tests/browser/character-dedup.mjs'
       - 'ui/v2.5/tests/browser/fixtures/settings-maintenance*'
       - 'ui/v2.5/pnpm-lock.yaml'
@@ -50,6 +56,7 @@ jobs:
           node tests/browser/settings-maintenance.mjs
           node tests/browser/tasks-navigation.mjs
           node tests/browser/tools-navigation.mjs
+          node tests/browser/profile-library-review.mjs
           node tests/browser/character-dedup.mjs
       - uses: actions/upload-artifact@v7
         if: always()

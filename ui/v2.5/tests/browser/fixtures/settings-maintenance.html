@@ -1,5 +1,8 @@
 <!doctype html>
 <html lang="en">
-  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><base href="/" /><title>Settings maintenance fixture</title></head>
+  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><base href="/" /><script>
+    const profilePrefix = location.pathname.match(/^(.*?)(?:\/settings|\/performers\/\d+|\/studios\/\d+|\/copyrights\/\d+)$/)?.[1] ?? "";
+    document.querySelector("base").href = profilePrefix + "/";
+  </script><title>Settings maintenance fixture</title></head>
   <body><div id="root"></div><script type="module" src="/tests/browser/fixtures/settings-maintenance.tsx"></script></body>
 </html>

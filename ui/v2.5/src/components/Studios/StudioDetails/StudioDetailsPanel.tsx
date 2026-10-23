@@ -1,3 +1,4 @@
+import { ProfileLibraryReview } from "src/components/Shared/ProfileLibraryReview";
 import { IdentitySources } from "src/components/Identities/identity";
 import React from "react";
 import { TagLink } from "src/components/Shared/TagLink";
@@ -95,6 +96,7 @@ export const StudioDetailsPanel: React.FC<IStudioDetailsPanel> = PatchComponent(
           entityID={studio.id}
           entityName={studio.name}
         />
+        <ProfileLibraryReview kind="artist" name={studio.name} />
       </div>
     );
   }
