@@ -54,6 +54,67 @@ Updated: 2026-10-23
   PRs keep the ordinary completed-review/quota gate; the #196 override was specific.
   End when only external CI/Codex remains, without waiting or repeated polling.
 
+## Shared media selection fixes (E07/E12, first pass) — 2026-10-23
+
+- Independent branch [`fix/media-interactions-20261023`](https://github.com/Dusky-dev/StashBooru/tree/fix/media-interactions-20261023)
+  starts at develop `0f02385255d6cea497306bd377a5547e4bc67149` while PR #199
+  completes checks; it does not depend on that PR's setup suite or CI edits.
+  Verified source checkpoint `2120f762da42baee5a76c83908891fcc26e9aef2`, tree
+  `50339a1102c369984ac2f21b8487abbded7f6be2`. Connector/local source trees match;
+  this separate ledger-only checkpoint records the result. This section is below
+  the previous first-use entry to avoid overlapping #199's new ledger section.
+- Reproduced the shared selector's off-page anchor bug on actual indexed media:
+  select one item on page 1, then Shift-click the second item on page 2. It selected
+  only two items overall, omitting the first visible item on page 2. The missing
+  anchor became `-1` in Array.slice. Use a small pure range helper: absent anchors
+  begin at the first visible item, stale targets add nothing, and both endpoints
+  are included in either direction. Keep existing deduplication, off-page items,
+  typed keys, anchor retention and ordinary selection actions.
+- Reproduced starting selection with a Video being blocked by the invisible
+  built-in preview wrapper, which inherited full-card dimensions. Bound the
+  existing button at the bottom right, pass pointer events through its wrapper,
+  and size/show its icon within the hover/focus affordance. This also avoids
+  covering the top-right Artist link. No native Image-preview or booru layout
+  change, player lifecycle rewrite, selection store, API or relationship change.
+- Added five unit cases and a read-only mounted suite against a seeded isolated
+  server. Both 1440 × 1000 and 390 × 844 passed All/native Images page ranges,
+  retained off-page items, independent equal numeric Image/Video IDs, card clicks
+  during selection, filter URL persistence and selection clearing on reload,
+  Image Back/Escape/reopening, starting selection with a Video in All and native
+  Videos, compact preview bounds, native Video preview opening and Escape cleanup.
+  Browser page-error assertions passed; captures inspected. Narrow viewport tests
+  use Chromium keyboard/mouse input, not a physical touch device.
+- Actual-library check used four geometric PNGs and two short H.264 Videos.
+  A separate one-off title-only mixed edit checked Cancel preserving selection
+  and metadata, both native bulk writers on Apply, and fresh reads after reload
+  preserving two ordered Artists plus Character, Copyright and general Tag IDs
+  on both image:1 and scene:1. This does not establish every relationship mode.
+  Existing all-media browser suite passed delayed/empty/Video-only/error queries,
+  mixed selection, Wall navigation/Back, Video previews/carousels and legacy routes.
+  Its injected response cases remain distinct from unmocked indexing/save checks.
+- Validation: `make validate-ui` passed all 66 tests, JS/CSS lint, TypeScript and
+  formatting. Production `make ui-only`, UI generation/built-in preparation,
+  generated built-in syntax, focused Biome and `git diff --check` passed. The
+  composed JavaScript checksum is unchanged; only built-in CSS changed. Runtime
+  acceptance passed again using #199's downloaded Linux CI binary with this
+  production UI through STASH_UI; no backend/schema source changed. Browser suite
+  is optional with documented seeded-server requirements; unit cases run in CI.
+- #199 follow-up: initial 12 ordinary checks and Codex passed, but the added
+  first-library job exhausted ten minutes while downloading Ubuntu FFmpeg
+  packages before running any browser test. Pushed narrower dependency install
+  (`--no-install-recommends`) and a thirty-minute cold setup budget at
+  `befaa1d8640e01895ef412ea4e182141970d919b`, tree
+  `6b587af73a45e2dfa12f01d3b5cb096c3db6385d`. YAML/install/budget assertions
+  passed. Its fresh CI/Codex is pending; the cancelled run is not a pass or a
+  reason to bypass the merge gate. That fix stays on #199, separate from this PR.
+- Next: remaining native hierarchy/inheritance editing and related-list return
+  acceptance, then owner data/real-model E08 checks. Separately investigate the
+  observed ignored --ui-location flag: command-line loading stores the hyphenated
+  name while GetUILocation reads ui_location; STASH_UI worked for these checks.
+  Do not fold that backend/configuration correction into this selection pass.
+  No owner production/upgrade/recovery/physical GPU acceptance is claimed. End
+  once only external CI/Codex remains; inspect viable findings before merging.
+
 ## Mask-restoration output guidance (E08, third pass) — 2026-10-23
 
 - Merged [PR #195](https://github.com/Dusky-dev/StashBooru/pull/195) at
