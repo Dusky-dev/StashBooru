@@ -331,8 +331,19 @@ Estimate and apply verification details remain available in disclosures. No new
 backend mode, cache or apply bypass is introduced. Desktop/mobile fixture checks
 cover draft retention, failed worker checks, savings validation, typed trial
 requests and explicit selection/apply alongside the existing comparisons and
-maintenance errors. Mask-restoration guidance remains a later E08 pass, with its
-own contract.
+maintenance errors.
+
+E08's mask-restoration pass labels prepare, paint/describe and review/save in the
+existing dialog. It states the new adjacent PNG/native Image result and unchanged
+source before preparation and beside Save as new Image. Prompt/mask controls stay
+visible; a native generation-options disclosure retains hardware, seed, reference
+and other inference choices. Its summary shows explicit CPU/GPU and active
+reference state; toggling it does not invalidate the preview. Editing generation
+settings still blocks saving until a new preview. Existing comparison, optional
+stacking, cancellation and unsaved-session cleanup remain in place. Closing now
+explains the loss of unsaved work. It introduces no replacement mode or shared
+restore cache. All three E08 tool presentations now have bounded passes; broader
+real-file/model acceptance and any shared history design remain separate.
 
 ## Progress measures
 

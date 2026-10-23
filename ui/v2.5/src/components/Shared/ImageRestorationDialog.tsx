@@ -373,14 +373,16 @@ export function ImageRestorationDialog({
       </Modal.Header>
       <Modal.Body>
         <Alert variant="info">
-          Generate plausible new pixels for damaged, blurred or redacted areas
-          in non-explicit still images. This does not recover hidden original
-          detail. The original is preserved.
+          Generate plausible pixels in masked areas of non-explicit still
+          Images. This does not recover hidden original detail. Save creates a
+          new PNG Image beside the source, copying its library metadata. The
+          original stays unchanged.
         </Alert>
         {(error || session?.error) && (
           <Alert variant="danger">{error || session?.error}</Alert>
         )}
         {session?.notice && <Alert variant="warning">{session.notice}</Alert>}
+        <h5>1. Prepare source</h5>
         <div className="restoration-controls">
           <Form.Label>
             Run on
@@ -423,6 +425,7 @@ export function ImageRestorationDialog({
         {(loaded || session?.status === "ready" || preview) &&
           session?.status !== "saved" && (
             <>
+              <h5>2. Paint and describe</h5>
               <div className="restoration-controls">
                 {[
                   ["brush", "Brush"],
@@ -542,67 +545,6 @@ export function ImageRestorationDialog({
                 </div>
               </div>
               <fieldset disabled={!editable} onChange={() => setDirty(true)}>
-                <div className="restoration-controls mt-3">
-                  <Form.Label>
-                    Hardware
-                    <Form.Control
-                      as="select"
-                      className="input-control"
-                      value={hardware}
-                      onChange={(e) => setHardware(e.target.value)}
-                    >
-                      <option value="auto">Prefer GPU</option>
-                      <option value="gpu">GPU only</option>
-                      <option value="cpu">CPU only</option>
-                    </Form.Control>
-                  </Form.Label>
-                  <Form.Label>
-                    Seed
-                    <Form.Control
-                      className="text-input"
-                      type="number"
-                      min={0}
-                      max={2147483647}
-                      value={seed}
-                      onChange={(e) => setSeed(Number(e.target.value))}
-                    />
-                  </Form.Label>
-                  <Form.Label>
-                    Steps
-                    <Form.Control
-                      className="text-input"
-                      type="number"
-                      min={5}
-                      max={50}
-                      value={steps}
-                      onChange={(e) => setSteps(Number(e.target.value))}
-                    />
-                  </Form.Label>
-                  <Form.Label>
-                    Guidance
-                    <Form.Control
-                      className="text-input"
-                      type="number"
-                      min={1}
-                      max={15}
-                      step={0.5}
-                      value={guidance}
-                      onChange={(e) => setGuidance(Number(e.target.value))}
-                    />
-                  </Form.Label>
-                  <Form.Label>
-                    Strength
-                    <Form.Control
-                      className="text-input"
-                      type="number"
-                      min={0.05}
-                      max={1}
-                      step={0.05}
-                      value={strength}
-                      onChange={(e) => setStrength(Number(e.target.value))}
-                    />
-                  </Form.Label>
-                </div>
                 <Form.Label className="d-block">
                   Prompt
                   <Form.Control
@@ -613,41 +555,110 @@ export function ImageRestorationDialog({
                     onChange={(e) => setPrompt(e.target.value)}
                   />
                 </Form.Label>
-                <Form.Label className="d-block">
-                  Negative prompt
-                  <Form.Control
-                    className="text-input"
-                    value={negativePrompt}
-                    maxLength={2000}
-                    onChange={(e) => setNegativePrompt(e.target.value)}
-                  />
-                </Form.Label>
-                <Form.Label className="d-block">
-                  Optional starting-pixel reference (PNG, JPEG or WebP)
-                  <Form.Control
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      void referenceFile(e.target.files?.[0])
-                    }
-                  />
-                </Form.Label>
-                {referenceName && (
+                <details className="settings-details mb-3">
+                  <summary>
+                    Generation options
+                    {hardware !== "auto" &&
+                      ` · ${hardware === "cpu" ? "CPU only" : "GPU only"}`}
+                    {reference && " · starting-pixel reference"}
+                  </summary>
+                  <div className="restoration-controls mt-3">
+                    <Form.Label>
+                      Hardware
+                      <Form.Control
+                        as="select"
+                        className="input-control"
+                        value={hardware}
+                        onChange={(e) => setHardware(e.target.value)}
+                      >
+                        <option value="auto">Prefer GPU</option>
+                        <option value="gpu">GPU only</option>
+                        <option value="cpu">CPU only</option>
+                      </Form.Control>
+                    </Form.Label>
+                    <Form.Label>
+                      Seed
+                      <Form.Control
+                        className="text-input"
+                        type="number"
+                        min={0}
+                        max={2147483647}
+                        value={seed}
+                        onChange={(e) => setSeed(Number(e.target.value))}
+                      />
+                    </Form.Label>
+                    <Form.Label>
+                      Steps
+                      <Form.Control
+                        className="text-input"
+                        type="number"
+                        min={5}
+                        max={50}
+                        value={steps}
+                        onChange={(e) => setSteps(Number(e.target.value))}
+                      />
+                    </Form.Label>
+                    <Form.Label>
+                      Guidance
+                      <Form.Control
+                        className="text-input"
+                        type="number"
+                        min={1}
+                        max={15}
+                        step={0.5}
+                        value={guidance}
+                        onChange={(e) => setGuidance(Number(e.target.value))}
+                      />
+                    </Form.Label>
+                    <Form.Label>
+                      Strength
+                      <Form.Control
+                        className="text-input"
+                        type="number"
+                        min={0.05}
+                        max={1}
+                        step={0.05}
+                        value={strength}
+                        onChange={(e) => setStrength(Number(e.target.value))}
+                      />
+                    </Form.Label>
+                  </div>
+                  <Form.Label className="d-block">
+                    Negative prompt
+                    <Form.Control
+                      className="text-input"
+                      value={negativePrompt}
+                      maxLength={2000}
+                      onChange={(e) => setNegativePrompt(e.target.value)}
+                    />
+                  </Form.Label>
+                  <Form.Label className="d-block">
+                    Optional starting-pixel reference (PNG, JPEG or WebP)
+                    <Form.Control
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        void referenceFile(e.target.files?.[0])
+                      }
+                    />
+                  </Form.Label>
+                  {referenceName && (
+                    <p>
+                      {referenceName}{" "}
+                      <Button size="sm" onClick={() => void referenceFile()}>
+                        Remove reference
+                      </Button>
+                    </p>
+                  )}
                   <p>
-                    {referenceName}{" "}
-                    <Button size="sm" onClick={() => void referenceFile()}>
-                      Remove reference
-                    </Button>
+                    The reference is fitted to the mask's context crop as
+                    initial pixels, not an identity/style adapter. Use strength
+                    below 1. Inference uses a 512×512 crop; generated pixels are
+                    resized back inside the mask. Orientation is baked into the
+                    new PNG; the source ICC profile is retained. Other embedded
+                    metadata is not copied.
                   </p>
-                )}
-                <p>
-                  The reference is fitted to the mask's context crop as initial
-                  pixels, not an identity/style adapter. Use strength below 1.
-                  Inference uses a 512×512 crop; generated pixels are resized
-                  back inside the mask. Orientation is baked into the new PNG;
-                  the source ICC profile is retained. Other embedded metadata is
-                  not copied.
-                </p>
+                </details>
               </fieldset>
               <Button
                 disabled={
@@ -661,6 +672,12 @@ export function ImageRestorationDialog({
           )}
         {preview && (
           <div className="mt-3">
+            <h5>3. Review and save</h5>
+            <p>
+              Compare the preview with the original before saving. Save keeps
+              these reviewed PNG bytes as a new Image beside the source; the
+              original remains available.
+            </p>
             {dirty && (
               <Alert variant="warning">
                 Mask or settings changed. Generate another preview before
@@ -731,7 +748,7 @@ export function ImageRestorationDialog({
               id="restoration-stack"
               className="mt-3"
               type="checkbox"
-              label="Add derivative to the source's visual stack"
+              label="Add new Image to the source's visual stack"
               checked={stack}
               onChange={(e) => setStack(e.target.checked)}
               disabled={busy}
@@ -741,13 +758,13 @@ export function ImageRestorationDialog({
               disabled={busy || dirty}
               onClick={() => void act("save")}
             >
-              Save generated derivative
+              Save as new Image
             </Button>
           </div>
         )}
         {session?.status === "saved" && (
           <Alert variant="success">
-            Saved a new generated derivative.{" "}
+            Saved a new generated Image beside the source.{" "}
             <Link to={`/images/${session.derivedImageID}`} onClick={onHide}>
               Open Image
             </Link>
@@ -755,6 +772,9 @@ export function ImageRestorationDialog({
         )}
       </Modal.Body>
       <Modal.Footer>
+        {session?.status !== "saved" && (
+          <span className="mr-auto">Closing discards unsaved work.</span>
+        )}
         <Button variant="secondary" onClick={onHide}>
           Close
         </Button>

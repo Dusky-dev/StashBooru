@@ -11,6 +11,19 @@ and compare a preview, then save the reviewed result as a new Image. The UI labe
 it as generated restoration: plausible generated pixels do not recover hidden
 information. This package covers non-explicit still imagery only.
 
+The dialog leads with **Prepare source**, **Paint and describe**, then **Review
+and save**. Mask tools and the prompt stay visible. Expand **Generation options**
+for hardware, seed, steps, guidance, strength, negative prompt and the optional
+starting-pixel reference. The summary shows explicit CPU/GPU choices and an
+active reference. Closing this disclosure retains values and the preview; editing
+an option still requires another preview before saving.
+
+**Save as new Image** saves the exact reviewed PNG beside its source and creates
+a separate native Image with copied library metadata. The original stays
+unchanged; this is a new generated Image rather than a replacement using the
+converter/upscaler restore cache. You can optionally add it to the source's visual
+stack. Closing the dialog discards unsaved work; saved Images remain available.
+
 The editor supplies brush, erase, box, clear, bounded undo, finite feathering and
 Fit/2×/4× zoom with scroll panning. The pink overlay shows the exact effective
 mask, including feather support, in source coordinates. Editing the mask, reference
@@ -175,3 +188,17 @@ Animation/Video restoration and automatic mask detection are outside this packag
 ![Reviewed generated derivative on desktop](images/p11-review-desktop.png)
 
 ![Reviewed generated derivative on mobile](images/p11-review-mobile.png)
+
+## UI guidance verification — 2026-10-23
+
+The existing mounted restoration suite now checks the output-first guidance,
+initially collapsed generation controls, keyboard disclosure, retained hardware,
+seed, reference and prompt, explicit save routing, preview invalidation and
+reopening. It retains mask/undo/feather/zoom, comparison, missing-model,
+cancellation and late-response cleanup checks at desktop/mobile sizes. The
+Image restoration CI workflow runs it and publishes captures.
+
+The suite supplies deterministic geometric PNGs through browser canvas when no
+fixture file environment variables are provided. Its HTTP processing is mocked:
+this verifies the native UI, not diffusion output, actual new files, catalogue
+metadata propagation, physical GPU use or production acceptance.

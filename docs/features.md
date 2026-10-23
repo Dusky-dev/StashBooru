@@ -185,6 +185,12 @@ samples; verified trials retain outputs for comparison; **Review trials & apply*
 activates only the eligible trials you select. Its settings link opens a new tab
 so the current draft stays available.
 
+Mask restoration shows prepare, paint and review/save stages. Keep the prompt
+and mask tools visible; expand **Generation options** for inference controls and
+an optional starting-pixel reference. **Save as new Image** creates a PNG beside
+the source and copies library metadata. Closing discards unsaved work. It keeps
+the original and does not use conversion/upscaling replacement caches.
+
 Both enabled conversion savings minimums must pass. A saved trial is temporary and
 is revalidated before apply; changed sources/settings need a new trial. Trial space
 and original-file restore space are different. Restore caches can evict old
