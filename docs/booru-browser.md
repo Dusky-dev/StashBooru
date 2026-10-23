@@ -176,6 +176,12 @@ overwritten.
 The inspector groups and colors tags by category. Click a tag for **Add to search**
 or **Replace search**; these update and submit the query and close the preview.
 With immediate search disabled, they only update the draft and close the preview.
+The same menu offers **Add to blacklist**, which appends the tag to the blacklist
+of the booru that supplied the preview, saves it immediately, and refreshes
+the current result page. This does not change another booru's blacklist, source
+credentials, search expression or other settings. Repeated tags are ignored
+(case-insensitively, with spaces and underscores treated as equivalent).
+A failed save leaves the preview open and shows the error.
 Metadata uses the native resolution label, dimensions, file-size units and uppercase
 format. The MD5 and local-match evidence share the bottom row. Download actions
 retain the converter switch, without repeating the settings explanatory text.
