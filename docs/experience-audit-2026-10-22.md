@@ -71,7 +71,12 @@ message IDs, relationship fields and API names stay unchanged. The built-in
 Advanced mover no longer relocates native Artist hierarchy fields by matching
 English labels. Mounted native-editor checks verify visibility with that script
 loaded and parent/child IDs retained on save. Remaining inherited terminology
-and fork-aware first-use release notes are separate E14 work.
+remains separate E14 work. A second pass now shares a short dated StashBooru
+introduction between Welcome, first-unseen release notes and Changelog. Existing
+lastNoteSeen filtering and explicit Close/Finish acknowledgement remain; upstream
+history stays available. Welcome's English next-step text matches its Library
+settings destination, and fork issues use the fork repository. The introduction
+is English; this does not claim complete localization or first-scan acceptance.
 
 ## Prioritized findings
 

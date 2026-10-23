@@ -39,7 +39,7 @@ import {
 import { ManualProvider } from "./components/Help/context";
 import { InteractiveProvider } from "./hooks/Interactive/context";
 import { ReleaseNotesDialog } from "./components/Dialogs/ReleaseNotesDialog";
-import { releaseNotes } from "./docs/en/ReleaseNotes";
+import { unseenReleaseNotes } from "./docs/en/ReleaseNotes";
 import { getPlatformURL } from "./core/createClient";
 import { lazyComponent } from "./utils/lazyComponent";
 import { isPlatformUniquelyRenderedByApple } from "./utils/apple";
@@ -315,9 +315,7 @@ export const App: React.FC = () => {
     }
 
     const lastNoteSeen = config.data?.configuration.ui.lastNoteSeen;
-    const notes = releaseNotes.filter((n) => {
-      return !lastNoteSeen || n.date > lastNoteSeen;
-    });
+    const notes = unseenReleaseNotes(lastNoteSeen);
 
     if (notes.length === 0) return;
 

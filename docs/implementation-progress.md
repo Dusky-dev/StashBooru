@@ -2,6 +2,58 @@
 
 Updated: 2026-10-23
 
+## StashBooru first-use introduction (E14, second pass) — 2026-10-23
+
+- Merged [PR #196](https://github.com/Dusky-dev/StashBooru/pull/196) at
+  `a496de8aad83b97dff7bad08932b1534348d6eff` after all 13 CI checks passed.
+  Codex still reported running with no findings; the owner explicitly requested
+  merging both pending PRs after being told that status, overriding the wait for
+  this PR. This was not a completed review or quota-exhaustion result. Inspect any
+  eventual #196 findings on a later check. Merged [PR #197](https://github.com/Dusky-dev/StashBooru/pull/197)
+  at `28017d7736974e869cf5977cbf04e73aec074369` after all 12 checks passed and
+  Codex completed without findings. The latter is this fresh develop baseline.
+- Branch [`fix/first-use-notes-20261023`](https://github.com/Dusky-dev/StashBooru/tree/fix/first-use-notes-20261023).
+  Verified source checkpoint `b43f37a9265f49e8e2ece3b1bcda46f53281fc13`, tree
+  `f4a2944c34d21ce6dca319de9e1c8e7f939ab462`. Connector-created/local source
+  trees match; this ledger-only checkpoint is included before opening review.
+- Share one dated English StashBooru introduction in Welcome, release notes and
+  Changelog. It explains library/All entry points, native metadata/source aliases,
+  current Following limits, optional Processing and separate backups, with a
+  feature-guide link. Put it before retained upstream notes; keep it accessible
+  in Settings → Changelog after acknowledgement. Its date is a note marker, not
+  an application version/tag. No new onboarding flag, store, wizard or route.
+- Reuse the exact existing unseen-note date predicate in a shared selector used
+  by App. Keep App's setup/status/configuration gates and explicit Close save.
+  Welcome already marks the newest note on Finish; now it displays that same
+  introduction first. Finish still opens Library settings, retains FFmpeg choices
+  and uses existing server UI settings. Correct three English setup messages to
+  match that destination, preserving IDs/placeholders. Point fork issues to the
+  fork repository; upstream help/support links and history stay available.
+- Validation: `make validate-ui` passed all 61 unit tests, JS/CSS lint, TypeScript
+  and formatting. `make ui-only`, GraphQL generation/built-in preparation, generated
+  built-in syntax and `git diff --check` passed. Workflow YAML and the three changed
+  English messages/ICU placeholders were inspected. No backend/schema/dependency
+  changes require Go gates.
+- New mounted suite passed desktop/root at 1440 × 1000 and mobile under /stash at
+  390 × 844. Check fresh/old acknowledgements, fork-first ordering, retained old
+  notes, exact guide link, Escape without acknowledgement, explicit Close saving
+  the latest date while retaining other UI preferences, refresh without another
+  write, reopening Changelog/upstream history without changing the date, real
+  Welcome content/fork issue link and Finish's prefixed Library destination. The
+  installed-codec fixture performs no FFmpeg download. Captures were inspected;
+  Settings navigation CI now runs this suite and uploads its screenshots.
+- Fixtures use the production date selector and real Welcome, release-note dialog
+  and Changelog with isolated configuration responses/local persistence. They do
+  not mount the entire App bootstrap, contact a production server, perform actual
+  setup/scan/codec installation, or establish full first-user acceptance. English
+  introduction text follows existing English release-note behavior; complete
+  terminology/localization remains separate.
+- Next: E11 first-library setup → first scan → first metadata edit in an isolated
+  instance. Fix reproduced gaps before adding another wizard or broad UI layer.
+  E07/E12 cross-feature acceptance and real-model E08 checks remain open. Future
+  PRs keep the ordinary completed-review/quota gate; the #196 override was specific.
+  End when only external CI/Codex remains, without waiting or repeated polling.
+
 ## Mask-restoration output guidance (E08, third pass) — 2026-10-23
 
 - Merged [PR #195](https://github.com/Dusky-dev/StashBooru/pull/195) at
