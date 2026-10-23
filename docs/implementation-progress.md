@@ -2,6 +2,52 @@
 
 Updated: 2026-10-23
 
+## Contextual library review (E04, profile entry points) — 2026-10-23
+
+- Started against PR #189's reviewed head while its CI completed, as requested.
+  All 13 checks subsequently passed; merged #189 with no Codex findings at
+  `5256fe4e750967c81b4095de43cfca744ef4a9ee`. Fast-forwarded the isolated branch
+  onto that fresh develop baseline before committing this pass.
+- Branch [`fix/contextual-library-review-20261023`](https://github.com/Dusky-dev/StashBooru/tree/fix/contextual-library-review-20261023).
+  Verified source checkpoint `e3b971c75cc7b41718e2850bc706a3c68751ed57`, tree
+  `f75d58284e46c18831794a53abe442f9bbf09ab0`. This ledger-only follow-up is
+  published before opening the PR for review.
+- Add a small Library review disclosure beside the existing profile details for
+  native Characters, Artists and Copyrights. Inspect this name opens the existing
+  alias collision inspector with a draft; inherited-association review links to
+  the existing task for all three types. Only Characters get duplicate review.
+  Both cleanup actions explicitly say whole library. All links open new tabs.
+- Supply the profile name through an encoded alias query parameter; initialize
+  the inspector draft only on first mount, retaining user edits on ordinary
+  Settings rerenders. Lookup, ambiguity decisions, preview/apply and merges stay
+  explicit. No profile ID is reinterpreted, no profile-scoped merge is promised,
+  and no new task engine, schema, API or persistent store is introduced.
+- New review sections occupy their own flex row beneath Sources & aliases. The
+  first screenshots exposed adjacent desktop sections; the final layout fixes
+  that and a mounted geometry check protects the row boundary.
+- Validation: `make validate-ui` passed all 61 unit tests, JS/CSS lint, TypeScript
+  and formatting. After the final row-layout adjustment, CSS lint, formatting,
+  the mounted profile suite, `make ui-only` and `git diff --check` passed on the
+  final source. UI GraphQL generation/built-in preparation passed; generated
+  files are not committed. No backend/schema change requires Go gates.
+- Six native detail-panel cases passed: Character/Artist/Copyright at
+  1440 × 1000 with root URLs and 390 × 844 under /stash. Check keyboard opening,
+  type-specific link counts, UTF-8/reserved-character name round trips, first
+  explicit lookup with ambiguous results, prefixed REST URLs, native task
+  anchors, no automatic preview or POST, original tab URL/fixture-field retention,
+  separate profile rows and no horizontal overflow or uncaught page errors.
+- Existing Tools, Tasks, Settings maintenance and Character merge suites passed
+  both viewports with the extended native-profile fixture. Settings navigation
+  CI now runs all five suites. Desktop/mobile captures were inspected.
+- These are native detail panels against partial fixture configuration and
+  intercepted reads; the retained field is fixture-local, not acceptance of a
+  complete native profile edit form. No real library mutation, provider/model,
+  GPU, catalogue-scale or production restart acceptance is claimed.
+- Next: reassess E05 save-scope feedback and exact settings links against current
+  code before adding behavior. Broader review-result handoffs and E03 real-job
+  restart/history-store decisions remain open; browser layout is separately
+  assigned. CI/Codex Review is a turn-end checkpoint, not a reason to wait/poll.
+
 ## Tools organization (E04, second pass) — 2026-10-23
 
 - Merged [PR #188](https://github.com/Dusky-dev/StashBooru/pull/188) after all
