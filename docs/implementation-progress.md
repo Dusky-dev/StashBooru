@@ -2,6 +2,90 @@
 
 Updated: 2026-10-23
 
+## Real first-library acceptance (E11) — 2026-10-23
+
+- Merged [PR #198](https://github.com/Dusky-dev/StashBooru/pull/198) at
+  `0f02385255d6cea497306bd377a5547e4bc67149` after all 12 CI checks passed
+  and Codex Review completed without findings at head
+  `6510efa757f3cfe6b305a75f59d61671489974e1`. This is the fresh develop
+  baseline; no other PRs were open at publication. The eventual #196 review is
+  still outstanding from its specific owner-authorized merge override.
+- Branch [`fix/first-library-20261023`](https://github.com/Dusky-dev/StashBooru/tree/fix/first-library-20261023).
+  Verified source checkpoint `bbeae88ccb0d1d17329ca6f7e29f2029670f0460`, tree
+  `7fb99d9f1790419f40a316979aaeffaf7152230e`. Local and connector-created source
+  trees match; the following ledger-only checkpoint records the result.
+- Walked the actual application with fresh configuration, SQLite and media
+  folders, rather than extending the existing configuration-response fixtures.
+  Added a reproducible suite that owns its loopback server and temporary paths,
+  strips inherited STASH configuration overrides and disables the extra HTTPS
+  listener. It does not accept an existing instance or mock API/scan/save results.
+  Each run draws a neutral geometric PNG and encodes a two-second H.264 MP4.
+- Both independent desktop (1440 × 1000) and mobile (390 × 844) libraries passed:
+  setup paths → Confirm → Welcome/Finish → Library; note acknowledgement after
+  reload; Tasks → Update library → real Scan; one Image and one Video in All,
+  with decoded thumbnails; Image viewer → native detail/Edit → saved title;
+  refresh and process restart retaining the same native Image ID/title and note
+  acknowledgement. Mobile uses the existing Settings selector and navbar menu.
+  Editor width and page-error assertions passed; All/editor captures inspected.
+- No confirmed gap in this bounded flow justified changing application behavior
+  or adding a wizard. Documented the actual path, test invocation and acceptance
+  limits in [first-library acceptance](first-library-acceptance.md); updated E11
+  in the experience audit. An early exploratory shutdown showed release notes
+  again; fresh full runs awaiting the save and checking reload/restart passed on
+  both sizes, so no speculative acknowledgement change was made.
+- Build CI now downloads its existing Linux artifact for this real-server PR
+  check, avoiding a second compile, and uploads screenshots/server logs. This
+  adds no production state, dependency version update or release dependency.
+  Local production UI/backend builds and backend/UI generation passed at the
+  baseline; this sandbox needed Go's `-buildvcs=false` because of worktree VCS
+  detection. The Makefile still supplied SQLite flags/includes. No application,
+  backend/schema, generated-source or booru-layout change was made.
+- Validation: `make validate-ui` passed 61 unit tests, JS/CSS lint, TypeScript and
+  formatting. New browser suite passed both complete real-server runs; separate
+  Biome check, Node syntax, workflow YAML/artifact/dependency assertions and
+  `git diff --check` passed. No additional backend test gate was needed for
+  test/documentation/CI-only source edits. CI's downloaded binary execution still
+  needs its first remote run; local execution used the same source baseline.
+- PR #199 follow-up: Codex completed without findings on initial final head
+  `0dfcb0fd7cf7a3ba455aa938d251017fc85ae209`; all 12 ordinary checks passed.
+  The additional first-library job was cancelled at its ten-minute limit during
+  Ubuntu FFmpeg dependency downloads, before browser installation or execution.
+  Logs show no application/test failure. Use `--no-install-recommends` and allow
+  thirty minutes for cold dependency installation; YAML/install/budget assertions
+  and diff whitespace pass. Do not treat the cancelled run as a pass. New CI and
+  review must complete on the updated head before merging; no idle polling.
+- Next CI run reached the application and exposed a restart-test race: the
+  live page retained Apollo clients when the harness intentionally stopped its
+  server, recording expected shutdown fetch failures as page errors. Assert the
+  error list while the server is still live, close the page before shutdown, then
+  use a fresh browser page/context after restart and assert errors again. Do not
+  filter or ignore fetch errors during the live flow. A fresh client also proves
+  the saved ID/title and acknowledgement come from the server rather than cache.
+  Both complete desktop/mobile runs passed locally with the packaged Linux CI
+  binary. Focused Biome, Node syntax and diff whitespace passed; application code
+  is unchanged. The new head still needs remote CI and completed Codex Review.
+- Merged PR #200 at `efd5c0d93a352bd6e48bf957822dd08d64d2f28f` after all 11
+  applicable CI checks and completed clean Codex Review at its final head. Its
+  selection fixes and native-library acceptance continuation remain separate.
+- PR #199 recheck at `a867c414ff921a54ac0c6fe9f11cfd9c477cdeb7`: Codex
+  completed cleanly and all 11 ordinary checks passed. The first-library job
+  again exhausted its full thirty-minute budget before any browser execution:
+  Azure's Ubuntu mirror took about 23 minutes for FFmpeg, then timed out during
+  Playwright's system dependencies. Switch this job's existing Ubuntu mirror
+  lists to the official archive/security endpoints and install only the
+  headless Chromium shell used by the suite, retaining required dependencies,
+  Playwright 1.57.0 and all assertions. YAML, extracted-shell syntax, mirror/
+  artifact/install assertions, Playwright CLI option validation and diff checks
+  passed. Actual hosted download speed and the complete new CI run remain
+  unverified; do not merge until the browser check and review complete.
+- Limits: synthetic tiny media and automated browser acceptance are not owner
+  usability testing, upgrades, full playback/codec coverage, physical devices,
+  non-root hosting, provider/model inference, relationship edits or recovery.
+- Next: E07/E12, check local selection, viewer return/Back/refresh and native
+  relationships with an isolated library; fix reproduced problems in a bounded
+  pass. Representative owner data and real-model E08 acceptance remain open.
+  End once only CI/Codex remains; use the ordinary review/CI gate next turn.
+
 ## StashBooru first-use introduction (E14, second pass) — 2026-10-23
 
 - Merged [PR #196](https://github.com/Dusky-dev/StashBooru/pull/196) at
