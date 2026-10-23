@@ -14,6 +14,12 @@ import {
 import cx from "classnames";
 
 import * as GQL from "src/core/generated-graphql";
+import {
+  useCopyrightCreate,
+  useCopyrightUpdate,
+  useCopyrightDestroy,
+  useCopyrightPerformersUpdate,
+} from "src/core/StashService";
 import { useCopyrightFilterHook } from "src/core/copyrights";
 import {
   Copyright,
@@ -158,10 +164,10 @@ const CopyrightEditPanel: React.FC<{
 }) => {
   const history = useHistory();
   const Toast = useToast();
-  const [createCopyright] = GQL.useCopyrightCreateMutation();
-  const [updateCopyright] = GQL.useCopyrightUpdateMutation();
-  const [destroyCopyright] = GQL.useCopyrightDestroyMutation();
-  const [updatePerformers] = GQL.useCopyrightPerformersUpdateMutation();
+  const [createCopyright] = useCopyrightCreate();
+  const [updateCopyright] = useCopyrightUpdate();
+  const [destroyCopyright] = useCopyrightDestroy();
+  const [updatePerformers] = useCopyrightPerformersUpdate();
   const [values, setValues] = useState<CopyrightFormValues>(emptyValues);
   const [performers, setPerformers] = useState<Performer[]>([]);
   const [imageValue, setImageValue] = useState<string | null>();
@@ -513,8 +519,8 @@ const CopyrightDetail: React.FC = () => {
   const [image, setImage] = useState<string | null>();
   const [encodingImage, setEncodingImage] = useState(false);
   const [autoTagRunning, setAutoTagRunning] = useState(false);
-  const [updateCopyright] = GQL.useCopyrightUpdateMutation();
-  const [destroyCopyright] = GQL.useCopyrightDestroyMutation();
+  const [updateCopyright] = useCopyrightUpdate();
+  const [destroyCopyright] = useCopyrightDestroy();
   const { data, loading, refetch } = GQL.useFindCopyrightQuery({
     variables: { id },
   });

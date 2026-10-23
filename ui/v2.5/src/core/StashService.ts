@@ -2740,6 +2740,36 @@ export const mutateSetPluginsEnabled = (enabledMap: BoolMap) =>
     },
   });
 
+// Copyright forms have their own mutations rather than the Tag/Artist writers.
+// Reparenting or changing their Characters can affect cached media memberships.
+function updateCopyrightAssociations(
+  cache: ApolloCache<unknown>,
+  result: FetchResult
+) {
+  if (!result.data) return;
+  evictQueries(cache, [
+    GQL.FindCopyrightDocument,
+    GQL.FindCopyrightsDocument,
+    GQL.FindPerformersDocument,
+    GQL.FindImagesDocument,
+    GQL.FindScenesDocument,
+  ]);
+}
+
+export const useCopyrightCreate = () =>
+  GQL.useCopyrightCreateMutation({ update: updateCopyrightAssociations });
+
+export const useCopyrightUpdate = () =>
+  GQL.useCopyrightUpdateMutation({ update: updateCopyrightAssociations });
+
+export const useCopyrightDestroy = () =>
+  GQL.useCopyrightDestroyMutation({ update: updateCopyrightAssociations });
+
+export const useCopyrightPerformersUpdate = () =>
+  GQL.useCopyrightPerformersUpdateMutation({
+    update: updateCopyrightAssociations,
+  });
+
 function updateConfiguration(cache: ApolloCache<unknown>, result: FetchResult) {
   if (!result.data) return;
 
@@ -2771,7 +2801,14 @@ export const useGenerateAPIKey = () =>
 
 export const useConfigureDefaults = () =>
   GQL.useConfigureDefaultsMutation({
-    update: updateConfiguration,
+    update(cache, result, { variables }) {
+      if (!result.data?.configureDefaults) return;
+      const queries = [GQL.ConfigurationDocument];
+      if (variables?.input.associationInheritance) {
+        queries.push(GQL.FindImagesDocument, GQL.FindScenesDocument);
+      }
+      evictQueries(cache, queries);
+    },
   });
 
 function updateUIConfig(
