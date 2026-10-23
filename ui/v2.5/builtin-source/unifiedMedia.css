@@ -54,11 +54,14 @@
 }
 
 .unified-media-scene-image-wrap .unified-media-video-preview-button {
+  bottom: 0.45rem;
+  height: auto;
   opacity: 0;
+  pointer-events: none;
   position: absolute;
   right: 0.45rem;
-  top: 0.45rem;
   transition: opacity 0.15s ease-in-out;
+  width: auto;
   z-index: 8;
 }
 
@@ -74,6 +77,13 @@
   min-height: 2rem;
   min-width: 2rem;
   padding: 0.3rem 0.45rem;
+  pointer-events: auto;
+}
+
+.unified-media-video-preview-button .fa-icon {
+  height: 1em;
+  opacity: 1;
+  width: 1em;
 }
 
 /* Animated images get an explicit GIF badge, so a moving image is not mistaken

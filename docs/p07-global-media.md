@@ -45,6 +45,10 @@ Shared criteria, sort, page size, Grid/Wall mode and zoom are preserved in the
 URL/native filter state. Saved All filters store shared criteria. Selection carries
 across pages. Eight in-memory history snapshots retain selection and scroll for
 back navigation during the browser session; reloading clears those snapshots.
+Shift-selection is local to the visible page. If its previous anchor is no
+longer visible after paging or filtering, the range begins at the first visible
+item and includes the clicked item. Existing selections on other pages remain.
+A stale clicked item that is no longer in the results adds nothing.
 
 The page renders at most 500 native cards/wall items at once. Image previews and
 Video queues follow native behavior using the current page's respective kinds.
@@ -105,6 +109,57 @@ STASH_BROWSER_URL=http://127.0.0.1:9999 node ui/v2.5/tests/browser/all-media.mjs
 `CHROMIUM_EXECUTABLE` a browser executable. This suite injects delayed/error
 responses only inside its own browser; it does not modify library records.
 Unit regressions also cover missing/failed preview sources and invalid dimensions.
+
+### Cross-page selection acceptance (E07/E12, 2026-10-23)
+
+The shared selector previously passed a missing anchor's `-1` index to
+`Array.slice`. Selecting one item on page 1, then Shift-clicking the second item
+on page 2, skipped page 2's first item. The selector now falls back to the start
+of the visible page, as it already did when no anchor existed. Ordinary ranges,
+reverse selection, deduplication and typed IDs retain their existing behavior.
+Five unit cases cover the range boundaries and missing/typed identities.
+
+The Video preview wrapper also inherited the generic full-card `.preview-button`
+size. Its invisible hit area sat above the selection checkbox, preventing a
+Video from starting selection. Scope the built-in Video wrapper to its compact
+button at the bottom right, clear of the Artist link. Pass pointer events through
+the wrapper and keep the icon visible inside the existing hover/focus affordance.
+Image preview styling is unchanged.
+
+Run the read-only mounted regression against an isolated, scanned fixture with
+four PNG Images (`image-0` through `image-3`) and two short MP4 Videos (`video-0`
+and `video-1`), so Images sort first by title. At least one Image and Video must
+share a numeric ID, as they naturally do in a fresh database. The suite does not
+seed or change media records; it changes only browser filters/selections.
+
+```sh
+STASH_BROWSER_URL=http://127.0.0.1:9999 \
+STASH_BROWSER_SCREENSHOTS=/absolute/path/to/output \
+node ui/v2.5/tests/browser/selection-ranges.mjs
+```
+
+It uses the same Playwright/Chromium environment overrides as the suite above.
+At desktop 1440 × 1000 and mobile 390 × 844 it checks All and native Images:
+selection across page boundaries, both visible range endpoints, retained
+selections when returning to page 1, URL retention and transient-selection reset
+on reload, and Image viewer Back/Escape/reopening. It also checks equal numeric
+Image/Video IDs independently and card clicks selecting rather than opening a
+viewer once selection is active. Starting selection with a Video is checked in
+both All and native Videos; the compact preview still opens the native player and
+Escape removes it. Mobile keyboard checks use Chromium's keyboard input with a
+narrow viewport, not a physical touch device. Unit cases run in the ordinary UI CI
+gate; this optional suite requires the isolated seeded server.
+
+Local real-server acceptance used four generated geometric PNGs and two short
+H.264 Videos. A separate one-off native bulk-edit check seeded two Artists, one
+Character, one Copyright and one general Tag on both `image:1` and `scene:1`.
+Cancelling a title draft preserved the two selections and all metadata. Applying
+a title dispatched both native writers; a fresh GraphQL read after reload
+retained both ordered Artist IDs and every Character/Copyright/Tag ID on both
+items. This establishes the tested title-only preservation case; relationship
+replacement/removal, hierarchy/inheritance editing and production data still need
+separate acceptance. No relationship/backend behavior changed in this pass.
+
 
 ## Character editing, relation cards and Video previews
 
