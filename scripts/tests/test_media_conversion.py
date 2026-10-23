@@ -233,6 +233,28 @@ class EncodeTests(unittest.TestCase):
                 output.unlink()
 
     @unittest.skipUnless(shutil.which("cjxl") and shutil.which("djxl"), "libjxl tools required")
+    def test_jxl_retry_failure_keeps_stash_source_and_removes_output(self):
+        source = self.root / "still.png"
+        original = source.read_bytes()
+        output = self.root / "retry-failed.jxl"
+        actual_run = converter.run
+        attempts = []
+
+        def fail_both_attempts(args, *positional, **keywords):
+            if len(args) >= 3 and args[0] == "cjxl" and args[2].endswith(".jxl"):
+                attempts.append(args[1])
+                Path(args[2]).write_bytes(b"partial failed encode")
+                raise RuntimeError("JPEG XL encoder v0.11.2\\nGetting pixel data failed.")
+            return actual_run(args, *positional, **keywords)
+
+        with patch.object(converter, "run", side_effect=fail_both_attempts):
+            with self.assertRaisesRegex(RuntimeError, "PNG/APNG retry failed"):
+                converter.convert(source, output, {"format": "jxl"})
+        self.assertEqual(len(attempts), 2)
+        self.assertFalse(output.exists())
+        self.assertEqual(source.read_bytes(), original)
+
+    @unittest.skipUnless(shutil.which("cjxl") and shutil.which("djxl"), "libjxl tools required")
     def test_jxl_does_not_retry_unrelated_errors_or_keep_partial_output(self):
         original = (self.root / "still.png").read_bytes()
         output = self.root / "failed.jxl"
