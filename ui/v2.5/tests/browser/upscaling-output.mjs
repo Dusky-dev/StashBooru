@@ -290,8 +290,11 @@ try {
         await modal().getByLabel("Scale", { exact: true }).inputValue(),
         "4"
       );
-      await modal().locator("#upscaler-create-copy").focus();
-      await modal().locator("#upscaler-create-copy").press("Space");
+      await modal().locator("#upscaler-create-copy").check();
+      assert.equal(
+        await modal().locator("#upscaler-create-copy").isChecked(),
+        true
+      );
       await create().click();
       await modal()
         .getByText(/Non-destructive upscaling job #17 submitted/)
