@@ -523,7 +523,7 @@ export const MediaUpscalingDialog: React.FC<{
                   )}
                   {!selectedUpscaler?.available && (
                     <Alert variant="secondary">
-                      Configure the local executable/model paths in System →
+                      Configure the local executable/model paths in Processing →
                       Image upscaling, or configure the equivalent
                       STASH_WAIFU2X_* / STASH_SEEDVR2_* environment variables on
                       a remote worker.

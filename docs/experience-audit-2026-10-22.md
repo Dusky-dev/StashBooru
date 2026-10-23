@@ -242,6 +242,23 @@ or merges. The [progress ledger](implementation-progress.md) records the exact
 source/checks and limitations. The next pass should reassess E05's save-scope
 feedback and settings links against the current code before adding behavior.
 
+## Processing save feedback follow-up — 2026-10-23
+
+E05's existing labels and independent Save actions already describe the different
+owners. This bounded pass fixes the upscaler setup's disruptive save/reload path:
+the form stays open, the normalized save response becomes the saved value, and
+readiness checks do not reload paths or overwrite newer edits. Inline server-save
+feedback clears when a path is edited. Readiness failures and rejected saves have
+separate outcomes; only explicit Reload replaces a local path draft. Browser job
+defaults keep their independent save action. The upscaling dialog now names the
+correct Processing section in its setup guidance.
+
+Desktop/mobile fixture checks cover slow readiness responses, edits while checking,
+normalized responses, failed checks after successful saves, rejected saves and
+explicit reload. See the [progress ledger](implementation-progress.md) for exact
+checks and limitations. Broader E05 consistency and real-worker acceptance remain
+open; this does not add a combined settings transaction or close the whole audit.
+
 ## Progress measures
 
 For each pass, record before/after routes visited, dialogs opened and manual

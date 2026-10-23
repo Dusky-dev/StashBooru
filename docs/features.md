@@ -191,6 +191,13 @@ tool still requires the corresponding worker capability and installed codec/mode
 GPU-only processing must have GPU support; local model paths do not configure a
 remote machine. No large model download starts silently.
 
+In **Settings → Processing → Image upscaling**, job defaults are saved in this
+browser; local executable/model paths are saved on the server. Saving paths keeps
+the setup open and confirms the save separately from worker readiness. A failed
+readiness check does not undo the save. **Reload worker setup** explicitly replaces
+unsaved paths with the saved server configuration; it does not save browser job
+defaults.
+
 See [converter setup and restore](media-converter.md),
 [conversion trials](p09-conversion-review.md), and
 [restoration setup](p11-image-restoration.md) for operational detail.

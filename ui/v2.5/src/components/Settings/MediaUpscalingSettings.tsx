@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Button, Card, Col, Form, Row, Spinner } from "react-bootstrap";
 
 import { useToast } from "src/hooks/Toast";
@@ -52,19 +52,31 @@ export const MediaUpscalingSettings: React.FC = () => {
     useState<LocalUpscalerConfig>(emptyLocalConfig);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [attempt, setAttempt] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const [configLoading, setConfigLoading] = useState(false);
+  const [localSaved, setLocalSaved] = useState(false);
+  const [localStatusError, setLocalStatusError] = useState("");
   const [error, setError] = useState("");
   const [localError, setLocalError] = useState("");
   const [configLoaded, setConfigLoaded] = useState(false);
   const mounted = useRef(true);
 
-  useEffect(() => {
+  const refreshController = useRef<AbortController>();
+  const refreshAttempt = useRef(0);
+
+  // Readiness checks never reload the editable server configuration.
+  const refresh = useCallback(async (includeConfig = false) => {
+    refreshController.current?.abort();
     const controller = new AbortController();
-    mounted.current = true;
-    setLoading(true);
-    setError("");
-    setLocalError("");
-    void Promise.allSettled([
+    refreshController.current = controller;
+    const attempt = refreshAttempt.current++;
+    setRefreshing(true);
+    setLocalStatusError("");
+    if (includeConfig) {
+      setConfigLoading(true);
+      setLocalSaved(false);
+    }
+    const [selected, local, config] = await Promise.allSettled([
       fetch(`${conversionEndpoint}?capabilities=1&refresh=${attempt}`, {
         signal: controller.signal,
       }).then(conversionResponse<Capabilities>),
@@ -72,43 +84,46 @@ export const MediaUpscalingSettings: React.FC = () => {
         `${conversionEndpoint}?capabilities=1&backend=local&refresh=${attempt}`,
         { signal: controller.signal }
       ).then(conversionResponse<Capabilities>),
-      fetch(upscalerConfigEndpoint, { signal: controller.signal }).then(
-        conversionResponse<LocalUpscalerConfig>
-      ),
-    ])
-      .then(([selected, local, config]) => {
-        if (controller.signal.aborted) return;
-        if (selected.status === "fulfilled") setCapabilities(selected.value);
-        else {
-          setCapabilities(undefined);
-          setError(String(selected.reason));
-        }
-        const localErrors: string[] = [];
-        if (local.status === "fulfilled") setLocalCapabilities(local.value);
-        else {
-          setLocalCapabilities(undefined);
-          localErrors.push(String(local.reason));
-        }
-        if (config.status === "fulfilled") {
-          setLocalConfig({ ...emptyLocalConfig, ...config.value });
-          setConfigLoaded(true);
-        } else {
-          setConfigLoaded(false);
-          localErrors.push(String(config.reason));
-        }
-        setLocalError(localErrors.join("\n"));
-      })
-      .catch((e: Error) => {
-        if (!controller.signal.aborted) setError(e.message);
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
+      includeConfig
+        ? fetch(upscalerConfigEndpoint, { signal: controller.signal }).then(
+            conversionResponse<LocalUpscalerConfig>
+          )
+        : Promise.resolve(undefined),
+    ]);
+    if (controller.signal.aborted || !mounted.current) return;
+    setCapabilities(
+      selected.status === "fulfilled" ? selected.value : undefined
+    );
+    setError(selected.status === "rejected" ? String(selected.reason) : "");
+    setLocalCapabilities(
+      local.status === "fulfilled" ? local.value : undefined
+    );
+    setLocalStatusError(
+      local.status === "rejected" ? String(local.reason) : ""
+    );
+    if (includeConfig) {
+      if (config.status === "fulfilled" && config.value) {
+        setLocalConfig({ ...emptyLocalConfig, ...config.value });
+        setConfigLoaded(true);
+        setLocalError("");
+      } else if (config.status === "rejected") {
+        setConfigLoaded(false);
+        setLocalError(String(config.reason));
+      }
+    }
+    setConfigLoading(false);
+    setRefreshing(false);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    mounted.current = true;
+    void refresh(true);
     return () => {
       mounted.current = false;
-      controller.abort();
+      refreshController.current?.abort();
     };
-  }, [attempt]);
+  }, [refresh]);
 
   const upscalers = capabilities?.upscalers ?? [];
   const localUpscalers = localCapabilities?.upscalers ?? [];
@@ -125,6 +140,7 @@ export const MediaUpscalingSettings: React.FC = () => {
     key: K,
     value: LocalUpscalerConfig[K]
   ) {
+    setLocalSaved(false);
     setLocalConfig((current) => ({ ...current, [key]: value }));
   }
 
@@ -140,16 +156,19 @@ export const MediaUpscalingSettings: React.FC = () => {
 
   async function saveLocalSetup() {
     setSaving(true);
+    setLocalSaved(false);
     setLocalError("");
     try {
-      await fetch(upscalerConfigEndpoint, {
+      const saved = await fetch(upscalerConfigEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(localConfig),
       }).then(conversionResponse<LocalUpscalerConfig>);
       if (!mounted.current) return;
+      setLocalConfig({ ...emptyLocalConfig, ...saved });
+      setLocalSaved(true);
       Toast.success("Saved local upscaler setup.");
-      setAttempt((value) => value + 1);
+      void refresh();
     } catch (e) {
       if (mounted.current)
         setLocalError(e instanceof Error ? e.message : String(e));
@@ -316,11 +335,22 @@ export const MediaUpscalingSettings: React.FC = () => {
           <Card className="p-3">
             <details className="settings-details">
               <summary>
-                Local model setup{localError ? " — check setup" : ""}
+                Local model setup
+                {localError || localStatusError ? " — check setup" : ""}
               </summary>
               <div className="pt-3">
                 {localError && <Alert variant="danger">{localError}</Alert>}
-                <fieldset disabled={saving || !configLoaded}>
+                {localSaved && (
+                  <p role="status" className="font-weight-bold">
+                    Local model setup saved on this server.
+                  </p>
+                )}
+                {localStatusError && (
+                  <Alert variant="warning">
+                    Could not check local worker readiness: {localStatusError}
+                  </Alert>
+                )}
+                <fieldset disabled={saving || configLoading || !configLoaded}>
                   <p className="text-muted">
                     These are filesystem paths on this StashBooru server. They
                     are saved server-side and are never sent in an upscaling
@@ -383,11 +413,19 @@ export const MediaUpscalingSettings: React.FC = () => {
                     </Form.Group>
                   </Row>
                   <Alert
-                    variant={localWaifu2x?.available ? "success" : "secondary"}
+                    variant={
+                      !refreshing && localWaifu2x?.available
+                        ? "success"
+                        : "secondary"
+                    }
                   >
                     Local waifu2x:{" "}
-                    {localWaifu2x?.available ? "ready" : "not ready"}.{" "}
-                    {localWaifu2x?.notice}
+                    {refreshing
+                      ? "checking"
+                      : localWaifu2x?.available
+                        ? "ready"
+                        : "not ready"}
+                    . {!refreshing && localWaifu2x?.notice}
                   </Alert>
 
                   <h5>SeedVR2</h5>
@@ -507,23 +545,38 @@ export const MediaUpscalingSettings: React.FC = () => {
                     </Form.Text>
                   </Form.Group>
                   <Alert
-                    variant={localSeedVR2?.available ? "success" : "secondary"}
+                    variant={
+                      !refreshing && localSeedVR2?.available
+                        ? "success"
+                        : "secondary"
+                    }
                   >
                     Local SeedVR2:{" "}
-                    {localSeedVR2?.available ? "ready" : "not ready"}.{" "}
-                    {localSeedVR2?.notice}
+                    {refreshing
+                      ? "checking"
+                      : localSeedVR2?.available
+                        ? "ready"
+                        : "not ready"}
+                    . {!refreshing && localSeedVR2?.notice}
                   </Alert>
                 </fieldset>
+                <p className="small text-muted">
+                  Reload replaces unsaved local paths with the saved server
+                  setup. Saving paths checks worker readiness without changing
+                  your browser job defaults.
+                </p>
                 <div className="settings-actions">
                   <Button
                     variant="secondary"
-                    disabled={saving}
-                    onClick={() => setAttempt((value) => value + 1)}
+                    disabled={saving || refreshing}
+                    onClick={() => void refresh(true)}
                   >
-                    Reload worker setup
+                    {refreshing
+                      ? "Checking worker setup…"
+                      : "Reload worker setup"}
                   </Button>
                   <Button
-                    disabled={saving || !configLoaded}
+                    disabled={saving || configLoading || !configLoaded}
                     onClick={() => void saveLocalSetup()}
                   >
                     {saving ? "Saving…" : "Save local model setup"}
