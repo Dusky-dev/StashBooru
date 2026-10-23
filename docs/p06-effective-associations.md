@@ -177,9 +177,53 @@ Image/Video return without refresh, removal of the old inherited Tag/Artist,
 arrival of the new Tag/Artist and provenance, reload consistency and unchanged
 direct Artist/Character/Copyright/Tag IDs. Captures and page errors were checked.
 This narrow-viewport run is not a physical touch-device test or production-library
-acceptance. Copyright-specific edit callbacks, inheritance-default changes and
-external/model writers still need their own browser acceptance; the unit cases
+acceptance. The Copyright/default follow-up below covers their separate callbacks;
+external/model writers still need their own browser acceptance. The unit cases
 run in ordinary UI CI, while this browser suite requires its seeded server.
+
+## Copyright edits and inheritance defaults (E07/E12, 2026-10-23)
+
+Copyright forms use separate mutations from native Artist/Tag edits. Reparenting
+a Copyright could leave the previous parent's inherited Tags on an Image or
+Video after Back, alongside newly fetched memberships. Changing the Copyright
+inheritance switch also left cached memberships visible after Back even though
+the saved setting and fresh server reads had changed.
+
+Copyright create/update/delete and Character-assignment callbacks now use the
+shared media-list invalidation boundary. This expires calculated associations
+and affected Copyright/Character query roots; it preserves direct media fields.
+Saving inheritance defaults invalidates Image/Video lists and calculated media
+associations. Other default-setting saves retain configuration-only invalidation.
+There is no new store, global network-only policy or backend/schema change.
+
+The optional `copyright-associations.mjs` suite uses an explicitly identified,
+isolated fixture. Its Image and Video must directly select the child Copyright;
+two possible parent Copyrights each own a distinct general Tag. Neither Tag may
+be directly selected on the media, and the new parent's Tag must not already
+arrive through another relationship. Keep other direct Artist/Character/Tag
+relationships populated to check preservation.
+
+```sh
+STASH_BROWSER_URL=http://127.0.0.1:9999 \
+STASH_BROWSER_COPYRIGHT_ID=1 \
+STASH_BROWSER_OLD_PARENT_ID=2 \
+STASH_BROWSER_NEW_PARENT_ID=3 \
+STASH_BROWSER_IMAGE_ID=1 \
+STASH_BROWSER_VIDEO_ID=1 \
+STASH_BROWSER_SCREENSHOTS=/absolute/path/to/output \
+node ui/v2.5/tests/browser/copyright-associations.mjs
+```
+
+Use the Playwright/browser environment options documented above. The suite
+temporarily enables Copyright inheritance, toggles it off/on through Library
+settings and returns with Back, then reparents through the native Copyright
+form and returns again. It checks old/new inherited Tags, provenance, reload,
+unchanged direct IDs and page errors on desktop/mobile for Images and Videos.
+It restores the original parent list and inheritance defaults in `finally`.
+Use only an isolated test library: these are actual shared setting/profile
+writes, with no response mocks. The suite does not seed a catalogue, run in
+ordinary UI CI, or establish deletion, primary ordering, production-library,
+physical-device or external/model acceptance.
 
 ## Verification
 
