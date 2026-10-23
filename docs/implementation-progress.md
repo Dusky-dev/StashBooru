@@ -11,8 +11,8 @@ Updated: 2026-10-23
   baseline; no other PRs were open at publication. The eventual #196 review is
   still outstanding from its specific owner-authorized merge override.
 - Branch [`fix/first-library-20261023`](https://github.com/Dusky-dev/StashBooru/tree/fix/first-library-20261023).
-  Verified source checkpoint `e9f5b0a50c5b053c21740acdcda4aa733d31e8e9`, tree
-  `c842b3603a763e2e5ba6013c5b6d480f1e416c18`. Local and connector-created source
+  Verified source checkpoint `bbeae88ccb0d1d17329ca6f7e29f2029670f0460`, tree
+  `7fb99d9f1790419f40a316979aaeffaf7152230e`. Local and connector-created source
   trees match; the following ledger-only checkpoint records the result.
 - Walked the actual application with fresh configuration, SQLite and media
   folders, rather than extending the existing configuration-response fixtures.
@@ -54,6 +54,19 @@ Updated: 2026-10-23
   thirty minutes for cold dependency installation; YAML/install/budget assertions
   and diff whitespace pass. Do not treat the cancelled run as a pass. New CI and
   review must complete on the updated head before merging; no idle polling.
+- Next CI run reached the application and exposed a restart-test race: the
+  live page retained Apollo clients when the harness intentionally stopped its
+  server, recording expected shutdown fetch failures as page errors. Assert the
+  error list while the server is still live, close the page before shutdown, then
+  use a fresh browser page/context after restart and assert errors again. Do not
+  filter or ignore fetch errors during the live flow. A fresh client also proves
+  the saved ID/title and acknowledgement come from the server rather than cache.
+  Both complete desktop/mobile runs passed locally with the packaged Linux CI
+  binary. Focused Biome, Node syntax and diff whitespace passed; application code
+  is unchanged. The new head still needs remote CI and completed Codex Review.
+- Merged PR #200 at `efd5c0d93a352bd6e48bf957822dd08d64d2f28f` after all 11
+  applicable CI checks and completed clean Codex Review at its final head. Its
+  selection fixes and native-library acceptance continuation remain separate.
 - Limits: synthetic tiny media and automated browser acceptance are not owner
   usability testing, upgrades, full playback/codec coverage, physical devices,
   non-root hosting, provider/model inference, relationship edits or recovery.
