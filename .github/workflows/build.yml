@@ -252,6 +252,43 @@ jobs:
         overwrite: true
         path: ${{ matrix.artifact-paths }}
 
+  # Exercise the actual built app without rebuilding it or using API fixtures.
+  first-library:
+    if: github.event_name == 'pull_request'
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v6
+    - uses: actions/setup-node@v6
+      with:
+        node-version: '20'
+    - uses: actions/download-artifact@v8
+      with:
+        name: build-linux
+        path: ${{ runner.temp }}/first-library-binary
+    - name: Install isolated browser and media tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg
+        npm install --prefix "$RUNNER_TEMP/first-library-tools" playwright@1.57.0
+        node "$RUNNER_TEMP/first-library-tools/node_modules/playwright/cli.js" install --with-deps chromium
+        chmod +x "$RUNNER_TEMP/first-library-binary/stash-linux"
+    - name: Fresh desktop and mobile libraries
+      working-directory: ui/v2.5
+      env:
+        STASH_BROWSER_BINARY: ${{ runner.temp }}/first-library-binary/stash-linux
+        PLAYWRIGHT_MODULE: ${{ runner.temp }}/first-library-tools/node_modules/playwright/index.mjs
+        STASH_BROWSER_SCREENSHOTS: ${{ runner.temp }}/first-library-artifacts
+      run: node tests/browser/first-library.mjs
+    - uses: actions/upload-artifact@v7
+      if: always()
+      with:
+        name: first-library-artifacts
+        path: ${{ runner.temp }}/first-library-artifacts
+        if-no-files-found: ignore
+        retention-days: 7
+
   # Job 4: Release
   # Waits for both test and build to pass, then collects all platform artifacts
   # into dist/ for checksums, GitHub releases, and multi-arch Docker push.
