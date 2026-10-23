@@ -94,6 +94,10 @@ try {
     });
     const requests = [];
     let failLocal = false;
+    let failReadiness = false;
+    let holdNextLocalCheck = false;
+    let releaseLocalCheck;
+    let localCheckStarted;
     let holdStatus;
     let holdNextStatus = false;
     let statusStarted;
@@ -200,14 +204,25 @@ try {
           await route.fulfill({ status: 503, body: "Local setup unavailable" });
           return;
         }
-        if (body) local = body;
+        if (body)
+          local = { ...body, waifu2xExecutable: body.waifu2xExecutable.trim() };
         data = local;
       } else if (url.pathname.endsWith("/converter")) {
-        if (url.searchParams.has("capabilities"))
-          data = capability(
-            url.searchParams.get("backend") === "local" ? "local" : "remote"
-          );
-        else if (url.searchParams.has("config"))
+        if (url.searchParams.has("capabilities")) {
+          const isLocal = url.searchParams.get("backend") === "local";
+          if (isLocal && holdNextLocalCheck) {
+            holdNextLocalCheck = false;
+            await new Promise((resolve) => {
+              releaseLocalCheck = resolve;
+              localCheckStarted?.();
+            });
+          }
+          if (isLocal && failReadiness) {
+            await route.fulfill({ status: 503, body: "Readiness unavailable" });
+            return;
+          }
+          data = capability(isLocal ? "local" : "remote");
+        } else if (url.searchParams.has("config"))
           data = {
             config,
             inputFormats: [
@@ -412,7 +427,16 @@ try {
     await page.locator("#media-upscaling summary").click();
     await page
       .getByLabel("Executable path", { exact: true })
-      .fill("/custom/waifu2x");
+      .fill(" /custom/waifu2x ");
+    const localReads = () =>
+      requests.filter(
+        (r) => r.path.endsWith("/upscaler-config") && r.method === "GET"
+      ).length;
+    const readsBeforeSave = localReads();
+    holdNextLocalCheck = true;
+    const checkStarted = new Promise((resolve) => {
+      localCheckStarted = resolve;
+    });
     await page.getByLabel("Scale", { exact: true }).selectOption("2");
     await page
       .getByRole("button", { name: "Save local model setup", exact: true })
@@ -420,7 +444,77 @@ try {
     await page
       .getByText("Saved local upscaler setup.", { exact: true })
       .waitFor();
+    await checkStarted;
+    await page.getByText(/Local waifu2x: checking/).waitFor();
+    await page.locator("#upscaling-waifu2x-executable:enabled").waitFor();
     assert.equal(local.waifu2xExecutable, "/custom/waifu2x");
+    const executable = page.getByLabel("Executable path", { exact: true });
+    assert.equal(await executable.inputValue(), "/custom/waifu2x");
+    assert.equal(
+      await page.locator("#media-upscaling details[open]").count(),
+      1,
+      "saving must keep local setup expanded"
+    );
+    const savedNotice = page.getByText(
+      "Local model setup saved on this server."
+    );
+    await savedNotice.waitFor();
+    if (shots) {
+      await page
+        .locator(".toast-container.hidden")
+        .waitFor({ state: "attached" });
+      await page
+        .locator("#media-upscaling summary")
+        .evaluate((element) => element.scrollIntoView({ block: "start" }));
+      await page.screenshot({
+        path: `${shots}/upscaler-save-feedback-${name}.png`,
+      });
+    }
+    await executable.fill("/new/unsaved-draft");
+    assert.equal(await savedNotice.count(), 0, "editing clears saved feedback");
+    releaseLocalCheck();
+    const reloadSetup = page.getByRole("button", {
+      name: "Reload worker setup",
+      exact: true,
+    });
+    await reloadSetup.waitFor();
+    assert.equal(await executable.inputValue(), "/new/unsaved-draft");
+    assert.equal(localReads(), readsBeforeSave, "save must not reload paths");
+    assert.equal(
+      await page.getByLabel("Scale", { exact: true }).inputValue(),
+      "2"
+    );
+
+    // A failed readiness check does not turn a successful save into a failed save.
+    failReadiness = true;
+    await page
+      .getByRole("button", { name: "Save local model setup", exact: true })
+      .click();
+    await page.getByText(/Could not check local worker readiness:/).waitFor();
+    await savedNotice.waitFor();
+    assert.equal(local.waifu2xExecutable, "/new/unsaved-draft");
+    assert.equal(localReads(), readsBeforeSave);
+    failReadiness = false;
+
+    // A rejected save retains its draft; only explicit reload replaces it.
+    failLocal = true;
+    await executable.fill("/rejected/draft");
+    await page
+      .getByRole("button", { name: "Save local model setup", exact: true })
+      .click();
+    await page.getByText("Local setup unavailable", { exact: true }).waitFor();
+    assert.equal(await executable.inputValue(), "/rejected/draft");
+    assert.equal(await savedNotice.count(), 0);
+    failLocal = false;
+    await reloadSetup.click();
+    await page.locator("#upscaling-waifu2x-executable:enabled").waitFor();
+    assert.equal(await executable.inputValue(), "/new/unsaved-draft");
+    assert.equal(localReads(), readsBeforeSave + 1);
+    assert.equal(await savedNotice.count(), 0);
+    assert.equal(
+      await page.locator("#media-upscaling details[open]").count(),
+      1
+    );
     assert.equal(
       JSON.parse(
         await page.evaluate(() =>
