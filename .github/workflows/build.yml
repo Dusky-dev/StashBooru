@@ -289,6 +289,11 @@ jobs:
         PLAYWRIGHT_MODULE: ${{ runner.temp }}/first-library-tools/node_modules/playwright/index.mjs
         STASH_BROWSER_SCREENSHOTS: ${{ runner.temp }}/first-library-artifacts
       run: node tests/browser/first-library.mjs
+    - name: Custom UI command-line flags
+      run: |
+        python3 scripts/tests/custom_ui_flags.py \
+          --binary "$RUNNER_TEMP/first-library-binary/stash-linux" \
+          --output "$RUNNER_TEMP/first-library-artifacts/custom-ui-flags"
     - uses: actions/upload-artifact@v7
       if: always()
       with:

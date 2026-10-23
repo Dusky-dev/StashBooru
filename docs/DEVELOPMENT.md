@@ -104,6 +104,41 @@ To start fresh with new configuration:
 3. Run `make server-start` to restart the server
 4. Follow the "On first launch" steps above
 
+## Serve a custom production UI
+
+To test a built UI with the server, select its build directory:
+
+```sh
+./stash --ui-location /absolute/path/to/ui/v2.5/build
+./stash -u "/absolute/path/with spaces/build"
+```
+
+Relative paths resolve from the server process's working directory. The folder
+must contain `index.html` and the build's assets. This selects static production
+files; use `make ui-start` for the development server.
+
+The same location can be set with `STASH_UI` or `ui_location` in `config.yml`.
+The legacy `custom_ui_location` configuration key remains a fallback when the
+effective `ui_location` is empty. Existing precedence is preserved: `STASH_UI`
+overrides the command-line path, and changed command-line flags override the
+configuration file. Leaving the flag unused preserves the configured location;
+with no location configured, the server serves its embedded UI. Command-line
+and environment overrides are not written into the saved configuration.
+
+The real-server check uses its own temporary configurations, generated HTML/CSS
+and loopback processes. It checks both flags, relative/spaced paths, environment
+precedence, embedded fallback, SPA routes and static assets without an existing
+library or remote service:
+
+```sh
+python3 scripts/tests/custom_ui_flags.py --binary ./stash --output /tmp/custom-ui-check
+```
+
+The Build workflow runs this check against its packaged Linux artifact and
+includes server logs in `first-library-artifacts`. These tiny static fixtures
+verify directory selection and serving, not compatibility of an arbitrary
+custom frontend with the API, authentication or full browser interaction.
+
 ## Building a release
 
 Simply run `make` or `make release`, or equivalently:

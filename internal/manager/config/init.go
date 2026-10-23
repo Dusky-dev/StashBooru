@@ -128,7 +128,11 @@ func (i *Config) loadFromCommandLine() {
 			return "", nil
 		}
 
-		return f.Name, posflag.FlagVal(pflag.CommandLine, f)
+		key := f.Name
+		if key == "ui-location" {
+			key = UILocation
+		}
+		return key, posflag.FlagVal(pflag.CommandLine, f)
 	}), nil); err != nil {
 		logger.Errorf("failed to load flags: %v", err)
 	}
