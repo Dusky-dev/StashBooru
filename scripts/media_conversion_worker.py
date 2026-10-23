@@ -299,6 +299,48 @@ def jxl_encoder_args(source: Path, output: Path, o: dict) -> list[str]:
     return args
 
 
+def jxl_retry_input(source: Path, directory: Path, before: dict, cancelled=None) -> Path:
+    """Losslessly normalize frames when cjxl cannot decode an otherwise valid input.
+
+    cjxl 0.11.x can reject readable PNG/APNG/GIF pixels. The retry preserves
+    animation frames/timing and image bit depth or fails rather than degrading
+    them silently. It is only invoked after cjxl reports a pixel decode error.
+    """
+    if cancelled and cancelled():
+        raise RuntimeError("conversion cancelled")
+    high_depth = any(bit in before["pixelFormat"] for bit in ("10", "12", "16"))
+    if before["frames"] > 1:
+        if high_depth:
+            raise ValueError("cannot safely normalize high-bit-depth animation for JPEG XL retry; source kept")
+        durations = before.get("durations")
+        if not durations or len(durations) != before["frames"]:
+            raise ValueError("cannot safely normalize animation without complete frame timing; source kept")
+        from PIL import Image
+        apng = directory / "jxl-retry-animation.png"
+        with Image.open(source) as image:
+            if image.width * image.height * 4 > MAX_DECODED_WEBP_FRAME_BYTES:
+                raise ValueError("animated image frame exceeds the 512 MiB decoded-frame budget")
+            animation_to_apng(image, apng, directory / "jxl-retry-frame.png",
+                              durations, before["plays"], cancelled)
+        return jxl_timing_input(apng, directory / "jxl-retry-timed.png", durations)
+
+    normalized = directory / "jxl-retry.png"
+    pix_fmt = ("rgba64be" if before["alpha"] else "rgb48be") if high_depth else (
+        "rgba" if before["alpha"] else "rgb24")
+    run(ffmpeg_prefix() + ["-n"] + input_args(source) + [
+        "-map", "0:v:0", "-frames:v", "1", "-an", "-pix_fmt", pix_fmt,
+        "-c:v", "png", str(normalized)], cancelled)
+    checked = probe(normalized, cancelled)
+    if (checked["width"], checked["height"], checked["frames"]) != (
+            before["width"], before["height"], 1):
+        raise RuntimeError("JPEG XL retry normalization changed image dimensions or frame count; source kept")
+    if before["alpha"] and not checked["alpha"]:
+        raise RuntimeError("JPEG XL retry normalization discarded transparency; source kept")
+    if high_depth and not any(bit in checked["pixelFormat"] for bit in ("10", "12", "16")):
+        raise RuntimeError("JPEG XL retry normalization reduced pixel bit depth; source kept")
+    return normalized
+
+
 def write_png_chunk(stream, name: bytes, data: bytes) -> None:
     stream.write(struct.pack(">I", len(data)))
     stream.write(name)
@@ -1033,7 +1075,23 @@ def convert(source: Path, output: Path, raw: dict, cancelled=None) -> dict:
                 animated_webp_encode(decoded, source, output, directory / "webp-output-frame.webp",
                                       o, before["durations"], before["plays"], cancelled)
             else:
-                run(args, cancelled)
+                try:
+                    run(args, cancelled)
+                except RuntimeError as error:
+                    # libjxl can reject readable pixels in some PNG/APNG/GIF
+                    # files. Retry just this decode failure with a normalized
+                    # lossless input; all normal output checks still apply.
+                    if (encoder != "cjxl" or "Getting pixel data failed" not in str(error)
+                            or (cancelled and cancelled())):
+                        raise
+                    output.unlink(missing_ok=True)
+                    try:
+                        retry_source = jxl_retry_input(intermediate, directory, before, cancelled)
+                        run(jxl_encoder_args(retry_source, output, o), cancelled)
+                    except Exception as retry_error:
+                        raise RuntimeError(
+                            f"cjxl could not read input pixels; lossless PNG/APNG retry failed: {retry_error}"
+                        ) from retry_error
             if fmt == "webp" and before.get("durations") and not direct_webp_animation:
                 webp_final_duration(output, before["durations"][-1])
             # A successful process exit alone does not prove that animation survived.
