@@ -17,6 +17,7 @@ on:
       - 'ui/v2.5/src/components/Settings/Tasks/JobTable.tsx'
       - 'ui/v2.5/src/components/Settings/Tasks/SettingsTasksPanel.tsx'
       - 'ui/v2.5/tests/browser/processing-job-resume.mjs'
+      - 'ui/v2.5/tests/browser/upscaling-output.mjs'
       - 'ui/v2.5/tests/browser/fixtures/processing-job-resume*'
       - 'ui/v2.5/tests/browser/job-feedback.mjs'
       - 'ui/v2.5/tests/browser/jobs-stacks.mjs'
@@ -60,6 +61,7 @@ jobs:
           STASH_BROWSER_SCREENSHOTS: ${{ runner.temp }}/job-feedback-screenshots
         run: |
           node tests/browser/processing-job-resume.mjs
+          node tests/browser/upscaling-output.mjs
           node tests/browser/job-feedback.mjs
           node tests/browser/conversion-review.mjs
           node tests/browser/jobs-stacks.mjs

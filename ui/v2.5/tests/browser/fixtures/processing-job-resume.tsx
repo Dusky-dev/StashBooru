@@ -19,7 +19,11 @@ function Fixture() {
       {show &&
         (upscale ? (
           <MediaUpscalingDialog
-            selectedIds={["1"]}
+            selectedIds={
+              new URLSearchParams(location.search).has("many")
+                ? ["1", "2"]
+                : ["1"]
+            }
             onHide={() => setShow(false)}
           />
         ) : (

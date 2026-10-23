@@ -231,6 +231,16 @@ separate from converter history; older legacy upscale records can remain in
 converter history. New-copy mode does not consume an original-file restore entry.
 Compression-only savings thresholds do not apply to intentional upscaling.
 
+In the upscaling dialog, choose **Save behavior** first. New upscaled files are
+saved beside their source files and become separate Images with inherited
+metadata/relations. Replacement keeps the same Image entry and requires a second
+confirmation; its cached original may later be evicted. The model, scale and
+output format remain visible. Open **Worker and processing options** for processor
+selection, diagnostics, setup links and manual readiness checks. Opening setup in
+a new tab retains the current job draft. An incompatible CPU/model choice explains
+why submission is blocked and points to Processor. A readiness check keeps the
+controls and disclosure mounted; a failed check blocks submission until a successful retry.
+
 waifu2x supports Vulkan GPU or CPU with configured fallback; SeedVR2 requires its
 own working GPU environment. Configure defaults/local model paths under
 **Settings → Processing → Upscaling**; remote models must be installed on that

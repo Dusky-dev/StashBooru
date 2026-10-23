@@ -296,6 +296,28 @@ verification and limitations are in the [progress ledger](implementation-progres
 This does not add a reload action over an already editable converter draft or
 change save, worker capability, conversion or recovery contracts.
 
+## Upscaling output guidance follow-up — 2026-10-23
+
+E08's first pass starts the Upscale dialog with the existing new-copy versus
+replacement choice and the corresponding original-file policy. New-copy guidance
+now states that output files are saved beside the sources; replacement explains
+the same Image entry, its separate restore cache and eviction risk. The second
+replacement confirmation is retained.
+
+Model, scale and format stay visible. Processor choice, worker diagnostics and
+setup links move into a native disclosure whose children stay mounted during
+readiness checks. Explicit CPU/GPU choices are visible in the closed summary,
+and an incompatible CPU/model choice explains the blocked action. Setup opens in
+a new tab to preserve the current draft. During checks, submission is disabled; a failed recheck clears stale capabilities until
+a successful manual retry. No new processing mode, API, recovery store or backend
+behavior is added.
+
+Desktop/mobile fixture coverage checks the form order, hidden/retained advanced
+controls, setup-link context, slow/failed readiness checks and one/multiple Image
+copy and confirmed-replacement request routing. See the exact verification in the
+[progress ledger](implementation-progress.md). Converter trial/apply presentation
+and mask-restoration guidance remain later E08 passes, with their own contracts.
+
 ## Progress measures
 
 For each pass, record before/after routes visited, dialogs opened and manual
