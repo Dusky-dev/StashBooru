@@ -195,8 +195,17 @@ class EncodeTests(unittest.TestCase):
                 self.assertEqual((after["width"], after["height"], after["frames"]), (32, 32, 1))
                 if before["alpha"]:
                     self.assertTrue(after["alpha"])
-                if "16" in before["pixelFormat"]:
-                    self.assertTrue(any(bit in after["pixelFormat"] for bit in ("10", "12", "16")))
+                if converter.high_bit_depth_pix_fmt(before["pixelFormat"]):
+                    self.assertTrue(converter.high_bit_depth_pix_fmt(after["pixelFormat"]))
+
+    def test_jxl_packed_rgb_depth_detection(self):
+        for pixel_format in ("gray16be", "rgb48be", "rgba64be", "gbrp16le",
+                             "yuv420p10le"):
+            with self.subTest(pixel_format=pixel_format):
+                self.assertTrue(converter.high_bit_depth_pix_fmt(pixel_format))
+        for pixel_format in ("rgb24", "rgba", "yuv420p", "pal8"):
+            with self.subTest(pixel_format=pixel_format):
+                self.assertFalse(converter.high_bit_depth_pix_fmt(pixel_format))
 
     def test_jxl_retry_normalizes_animated_frames_and_timing(self):
         source = self.root / "animation.gif"
