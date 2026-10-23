@@ -2,6 +2,60 @@
 
 Updated: 2026-10-23
 
+## Upscaling output guidance (E08, first pass) — 2026-10-23
+
+- Merged [PR #192](https://github.com/Dusky-dev/StashBooru/pull/192) at
+  `ae16406a2c9a36fa6f7f0a53d703569b60ed793a` after its 12 CI checks passed and
+  the owner confirmed Codex Review completed. The connector still showed no
+  review summary or findings for #192; owner confirmation supplied that gate.
+  Merged [PR #193](https://github.com/Dusky-dev/StashBooru/pull/193) at
+  `f2c35ef75d3721b67990ae2e37d98f129ab359e8` after all 13 CI checks passed and
+  its Codex summary reported completed/no findings. Fresh develop baseline is
+  that #193 merge, containing both passes.
+- Branch [`fix/processing-output-guidance-20261023`](https://github.com/Dusky-dev/StashBooru/tree/fix/processing-output-guidance-20261023).
+  Verified source checkpoint `fa8e907420caddd020fab16ce57c24ebc974a331`, tree
+  `f9457a18f9aa4c0f7da2090a85ec2647106d0952`. Connector-created/local source
+  trees match; this ledger-only checkpoint is included before opening review.
+- Start Upscale with the existing new-copy versus replacement choice, before
+  model/scale/format. Explain that copy outputs are files beside each source and
+  separate Images with inherited metadata/relations; replacement keeps the same
+  Image entry and its original in the separate upscaling restore cache, subject
+  to eviction. Keep the recommended copy default and second replacement confirm.
+- Keep model, scale and format visible; put processor, diagnostics, setup link
+  and recheck under native Worker and processing options. Children stay mounted
+  across checks, retaining choices and disclosure state. Explicit CPU/GPU choices
+  appear in its closed summary; a CPU/GPU-model mismatch explains the blocked
+  action. The existing strict CPU-capability guard is retained.
+- Disable submission during readiness checks. Failed checks clear stale worker
+  capabilities until a successful retry. Setup opens its exact Processing section
+  in a new tab, preserving the current dialog draft and caller selection.
+  Copy/replacement APIs, encoding defaults, typed targets, confirmation, staging,
+  original-file recovery, queue/history state and backend processing stay intact.
+- Validation: `make validate-ui` passed all 61 unit tests, JS/CSS lint, TypeScript
+  and formatting. `make ui-only`, generated built-in syntax and `git diff --check`
+  passed. Final browser-test interaction adjustment passed focused Biome checks
+  and the full mounted output suite. UI GraphQL generation/built-in preparation
+  passed; generated files are not committed. No backend/schema changes require
+  Go gates.
+- Four output-suite cases passed: 1440 × 1000 and 390 × 844, each with one and
+  two selected Images. Check output-first DOM order, initial copy/closed advanced
+  state, keyboard disclosure/radio use, exact settings link and retained draft,
+  CPU-model incompatibility and recovery, slow/failed/retried readiness checks,
+  mounted choices/open state, replacement cancel with no POST, explicit copy and
+  confirmed-replacement endpoints/payloads, immutable submitted controls, safe
+  default on reopen, unavailable-worker guidance and modal width. Existing
+  processing-job-resume suite also passed. Desktop/mobile captures were inspected;
+  Job feedback CI now runs the output suite and uploads them with its artifact.
+- A cold browser run during concurrent compilation hit its navigation timeout.
+  The final isolated run passed; radio selection after cancelling confirmation
+  now waits for the native checked state instead of racing focus restoration.
+  These are intercepted HTTP/configuration and fixture-dialog checks, not actual
+  file output, metadata propagation, physical model/GPU or production acceptance.
+- Next: E08 converter estimate/trial/apply presentation, preserving staging,
+  reviewed apply, original retention and cache contracts. Mask-restoration
+  guidance and broader real-data acceptance remain separate. Browser layout is
+  still assigned elsewhere. End when only external CI/Codex Review remains.
+
 ## Converter defaults load recovery (E05, bounded pass) — 2026-10-23
 
 - Merged [PR #191](https://github.com/Dusky-dev/StashBooru/pull/191) after all
