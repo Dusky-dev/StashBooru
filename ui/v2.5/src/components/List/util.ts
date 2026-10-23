@@ -11,6 +11,7 @@ import { usePrevious } from "src/hooks/state";
 import * as GQL from "src/core/generated-graphql";
 import { DisplayMode } from "src/models/list-filter/types";
 import { Criterion } from "src/models/list-filter/criteria/criterion";
+import { selectionRange } from "./selectionRange";
 
 const LIST_DISPLAY_STORAGE_PREFIX = "stashbooru.listView.displayMode.v3";
 const LIST_ZOOM_STORAGE_PREFIX = "stashbooru.listView.zoomIndex.v2";
@@ -558,39 +559,14 @@ export function useListSelect<T extends IHasID = IHasID>(
     });
   }
 
-  function selectRange(startIndex: number, endIndex: number) {
-    let start = startIndex;
-    let end = endIndex;
-    if (start > end) {
-      const tmp = start;
-      start = end;
-      end = tmp;
-    }
-
-    const subset = items.slice(start, end + 1);
+  function multiSelect(id: string) {
+    const subset = selectionRange(items, lastClickedId, id);
 
     // prevent duplicates
     const toAdd = subset.filter((item) => !selectedIds.has(item.id));
 
     const newSelected = itemsSelected.concat(toAdd);
     setItemsSelected(newSelected);
-  }
-
-  function multiSelect(id: string) {
-    let startIndex = 0;
-    let thisIndex = -1;
-
-    if (lastClickedId) {
-      startIndex = items.findIndex((item) => {
-        return item.id === lastClickedId;
-      });
-    }
-
-    thisIndex = items.findIndex((item) => {
-      return item.id === id;
-    });
-
-    selectRange(startIndex, thisIndex);
   }
 
   function onSelectChange(id: string, selected: boolean, shiftKey: boolean) {
