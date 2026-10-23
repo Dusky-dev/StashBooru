@@ -138,6 +138,65 @@ Updated: 2026-10-23
   PRs keep the ordinary completed-review/quota gate; the #196 override was specific.
   End when only external CI/Codex remains, without waiting or repeated polling.
 
+## Refresh inherited metadata after profile edits (E07/E12, second pass) — 2026-10-23
+
+- Merged [PR #200](https://github.com/Dusky-dev/StashBooru/pull/200) at
+  `efd5c0d93a352bd6e48bf957822dd08d64d2f28f` after all 11 applicable checks
+  passed and Codex Review completed without findings on its final head
+  `a34f0bd64e92f875e5993b61c59829174cebf2f1`. This is the fresh develop baseline.
+  Separate branch [`fix/library-acceptance-20261023`](https://github.com/Dusky-dev/StashBooru/tree/fix/library-acceptance-20261023)
+  has verified source checkpoint `fe083299dad8a155412f6f1175a656f509ff5e5f`, tree
+  `dcbf0a74167adcbeda2097857e0a0e69a284f143`. Local/connector trees match;
+  the following ledger-only checkpoint records verification.
+- Reproduced a real native workflow gap: an Image directly selected a child
+  Artist and a second Artist. Its old parent supplied an inherited red Tag.
+  Reparenting through the native Artist form changed the server to the new
+  parent's blue Tag, but browser Back retained red until reload. Evicting list
+  roots left complete effective_associations on normalized Image/Scene objects,
+  allowing detail reads to reuse their obsolete calculated membership snapshot.
+- Reuse the existing shared mutation invalidation boundary: invalidating native
+  Image/Video lists now also expires only the effective_associations field on
+  cached Images and Scenes. Preserve typed object identity, direct relationships
+  and other fields; the next detail read fetches memberships/provenance from the
+  server. No new store, global network-only fetch policy, relationship rewriting,
+  database/schema change or booru layout change. Existing native Artist, Character
+  and Tag mutation helpers already use this boundary. Specialized callbacks
+  outside it are not claimed covered without their own acceptance.
+- Three real Apollo InMemoryCache unit cases verify equal numeric Image/Video
+  IDs, incomplete cached reads after invalidation, unchanged direct fields and
+  unrelated records, empty caches and repeat calls. Optional mounted suite uses
+  explicit URL and Artist/old-parent/new-parent/Image/Video IDs for an isolated
+  fixture, edits the native form, and restores the original parent in finally.
+  No catalogue or mutation responses are mocked.
+- All four browser runs passed: desktop 1440 × 1000 and mobile 390 × 844, each
+  with native Image and Video detail pages. Verify old inherited Tag before edit,
+  new Tag/Artist and provenance after Back without reload, disappearance of old
+  inherited memberships, reload consistency, no page errors, and fresh GraphQL
+  direct Artist/Character/Copyright/Tag IDs unchanged. Two directly selected
+  Artists, a Character, Copyright and explicit Tag remain in the fixture. Captures
+  inspected. Synthetic PNG/H.264 files and narrow Chromium keyboard/mouse runs
+  are not owner data, playback/codec or physical touch-device acceptance.
+- Validation: make validate-ui passed all 69 tests, JS/CSS lint, TypeScript and
+  formatting. Production make ui-only, UI GraphQL generation/built-in preparation,
+  generated built-in syntax, focused Biome, browser-script Node syntax and git
+  diff --check passed. Used the packaged Linux CI binary with this production UI
+  through STASH_UI; no backend source changed, so no additional Go gate needed.
+  Documented reproduction, fix, optional test fixture/invocation and limits in P06.
+- PR #199 remains separate and unmerged. Its next CI run reached the app but the
+  test kept Apollo alive across deliberate server shutdown, then treated expected
+  in-flight fetch failures as page errors. Pushed a close-before-shutdown/fresh-
+  page-after-restart correction, with error assertions before and after rather
+  than filtering errors, at `a867c414ff921a54ac0c6fe9f11cfd9c477cdeb7`, tree
+  `2f353dc58c08c668147a65beddd42747d9f59cd6`. Both full local desktop/mobile
+  setup/scan/save/restart runs passed against the packaged binary; Biome, syntax
+  and whitespace passed. Codex completed cleanly on that head; fresh CI remains
+  pending. Do not bypass its gate. The earlier #196 override review still reports
+  running with no findings; inspect any eventual feedback when it arrives.
+- Next: browser acceptance for Copyright-specific edit callbacks and inheritance
+  defaults, plus the separate observed --ui-location configuration-key mismatch.
+  Broader owner-library, upgrade/recovery and real-model E08 checks remain open.
+  End once only external CI/Codex remains; assess viable findings before merge.
+
 ## Shared media selection fixes (E07/E12, first pass) — 2026-10-23
 
 - Independent branch [`fix/media-interactions-20261023`](https://github.com/Dusky-dev/StashBooru/tree/fix/media-interactions-20261023)

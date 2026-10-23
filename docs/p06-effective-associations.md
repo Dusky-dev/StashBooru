@@ -135,6 +135,52 @@ tests use local existing targets and filename metadata; external model/booru
 availability is outside this acceptance scope. Browser interaction has not
 been manually exercised in this follow-up.
 
+## Browser return after profile edits (E07/E12, 2026-10-23)
+
+Reparenting an Artist changed the server's effective memberships, but returning
+with browser Back could retain the previous parent's Tags and provenance until
+reload. Native Image/Scene objects survived list-query eviction with their old
+`effective_associations` field still complete in Apollo's cache.
+
+When the shared mutation helpers invalidate an Image or Video list, they now also
+expire calculated associations on cached Images and Scenes. The next detail read
+fetches current memberships. Native IDs, direct relationships and other fields
+remain intact; no inherited ID is copied into a direct relationship. List filter,
+selection and history behavior are unchanged. This uses the existing invalidation
+boundary used by Artist, Character and Tag mutation helpers, rather than adding a
+separate store or setting a global network-only policy.
+
+Three real Apollo-cache unit cases cover equal numeric Image/Video IDs, incomplete
+reads after expiration, retained native fields/unrelated records and repeated or
+empty invalidations. The optional real-server browser suite needs an isolated
+fixture with one Image and one Video directly selecting the same Artist, plus two
+possible parent Artists each owning a distinct general Tag. Those Tags must not
+be directly selected on the media. It edits the child's parent through the native
+Artist form and restores the original parent in `finally`.
+
+```sh
+STASH_BROWSER_URL=http://127.0.0.1:9999 \
+STASH_BROWSER_ARTIST_ID=1 \
+STASH_BROWSER_OLD_PARENT_ID=3 \
+STASH_BROWSER_NEW_PARENT_ID=4 \
+STASH_BROWSER_IMAGE_ID=1 \
+STASH_BROWSER_VIDEO_ID=1 \
+STASH_BROWSER_SCREENSHOTS=/absolute/path/to/output \
+node ui/v2.5/tests/browser/profile-associations.mjs
+```
+
+`PLAYWRIGHT_MODULE` and `CHROMIUM_EXECUTABLE` select the installed Playwright
+module and browser as in [media browser checks](p07-global-media.md). All IDs and
+the URL are required explicitly; the suite does not seed media or mock responses.
+At 1440 × 1000 and 390 × 844, actual SQLite/profile writes and native forms passed
+Image/Video return without refresh, removal of the old inherited Tag/Artist,
+arrival of the new Tag/Artist and provenance, reload consistency and unchanged
+direct Artist/Character/Copyright/Tag IDs. Captures and page errors were checked.
+This narrow-viewport run is not a physical touch-device test or production-library
+acceptance. Copyright-specific edit callbacks, inheritance-default changes and
+external/model writers still need their own browser acceptance; the unit cases
+run in ordinary UI CI, while this browser suite requires its seeded server.
+
 ## Verification
 
 CI validation is recorded in `docs/implementation-progress.md`. It includes
