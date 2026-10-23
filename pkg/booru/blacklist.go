@@ -30,6 +30,27 @@ func validateBlacklistTags(tags []string) error {
 	return nil
 }
 
+// AddBlacklistTag appends one tag without disturbing the source's existing
+// settings. A repeat (including different case or spaces vs underscores) is
+// harmless. The caller persists the updated source only when changed.
+func (s *Source) AddBlacklistTag(tag string) (bool, error) {
+	if err := validateBlacklistTags([]string{tag}); err != nil {
+		return false, err
+	}
+	key := blacklistKey(tag)
+	for _, current := range s.BlacklistTags {
+		if blacklistKey(current) == key {
+			return false, nil
+		}
+	}
+	next := append(append([]string{}, s.BlacklistTags...), strings.ReplaceAll(tag, " ", "_"))
+	if err := validateBlacklistTags(next); err != nil {
+		return false, err
+	}
+	s.BlacklistTags = next
+	return true, nil
+}
+
 // FilterBlacklisted omits posts with blacklisted tags, including their attachments.
 // Provider pagination and totals stay unchanged even when all posts are hidden.
 func (s Source) FilterBlacklisted(result Result) Result {
