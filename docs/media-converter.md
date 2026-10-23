@@ -122,6 +122,15 @@ for H.264/HEVC, but **AV1 encoding runs on its CPU**. JXL has no GPU option here
 Explicit GPU requests fail when unavailable; the **Prefer GPU, otherwise CPU**
 mode permits CPU fallback.
 
+If libjxl's `cjxl` reports **Getting pixel data failed** for an otherwise
+readable source (seen with some PNG, APNG and GIF inputs), conversion retries
+once through a losslessly normalized PNG or APNG. The retry preserves still-image
+alpha and bit depth, and preserves animation frame count, timing and loops.
+If normalization cannot preserve these properties, conversion fails safely and
+the StashBooru original remains unchanged. Other encoder errors are not retried.
+The same behavior applies to local and remote workers after updating their
+`media_conversion_worker.py` scripts.
+
 The converter fully decodes outputs and checks dimensions, frame count, duration,
 individual animation delays and loop counts when available, and audio stream
 count. It refuses to silently flatten animation or discard audio/transparency.
