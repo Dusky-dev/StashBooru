@@ -65,6 +65,11 @@ Successful temporary instances are removed; a failed instance is retained at the
 printed path for diagnosis. Requested output contains screenshots and server
 logs. The main Build workflow reuses its Linux binary artifact for this check on
 PRs and uploads `first-library-artifacts`; it does not compile a second binary.
+The Ubuntu job uses the official archive/security mirrors instead of the hosted
+runner's slow Azure mirror, and installs only Chromium's headless shell plus its
+required system dependencies. It retains the pinned Playwright version and the
+same desktop/mobile assertions; dependency setup must finish before acceptance
+can run.
 
 ## Scope and remaining acceptance
 

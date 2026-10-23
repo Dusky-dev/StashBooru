@@ -269,10 +269,18 @@ jobs:
         path: ${{ runner.temp }}/first-library-binary
     - name: Install isolated browser and media tools
       run: |
+        # Hosted Ubuntu runners use mirror lists. Avoid the Azure mirror that
+        # exhausted this job's budget before the browser checks could start.
+        if [ -f /etc/apt/apt-mirrors.txt ]; then
+          printf '%s\n' 'https://archive.ubuntu.com/ubuntu/' | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
+        fi
+        if [ -f /etc/apt/apt-security-mirrors.txt ]; then
+          printf '%s\n' 'https://security.ubuntu.com/ubuntu/' | sudo tee /etc/apt/apt-security-mirrors.txt > /dev/null
+        fi
         sudo apt-get update
         sudo apt-get install -y --no-install-recommends ffmpeg
         npm install --prefix "$RUNNER_TEMP/first-library-tools" playwright@1.57.0
-        node "$RUNNER_TEMP/first-library-tools/node_modules/playwright/cli.js" install --with-deps chromium
+        node "$RUNNER_TEMP/first-library-tools/node_modules/playwright/cli.js" install --with-deps --only-shell chromium
         chmod +x "$RUNNER_TEMP/first-library-binary/stash-linux"
     - name: Fresh desktop and mobile libraries
       working-directory: ui/v2.5

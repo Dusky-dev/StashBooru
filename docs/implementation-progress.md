@@ -67,6 +67,17 @@ Updated: 2026-10-23
 - Merged PR #200 at `efd5c0d93a352bd6e48bf957822dd08d64d2f28f` after all 11
   applicable CI checks and completed clean Codex Review at its final head. Its
   selection fixes and native-library acceptance continuation remain separate.
+- PR #199 recheck at `a867c414ff921a54ac0c6fe9f11cfd9c477cdeb7`: Codex
+  completed cleanly and all 11 ordinary checks passed. The first-library job
+  again exhausted its full thirty-minute budget before any browser execution:
+  Azure's Ubuntu mirror took about 23 minutes for FFmpeg, then timed out during
+  Playwright's system dependencies. Switch this job's existing Ubuntu mirror
+  lists to the official archive/security endpoints and install only the
+  headless Chromium shell used by the suite, retaining required dependencies,
+  Playwright 1.57.0 and all assertions. YAML, extracted-shell syntax, mirror/
+  artifact/install assertions, Playwright CLI option validation and diff checks
+  passed. Actual hosted download speed and the complete new CI run remain
+  unverified; do not merge until the browser check and review complete.
 - Limits: synthetic tiny media and automated browser acceptance are not owner
   usability testing, upgrades, full playback/codec coverage, physical devices,
   non-root hosting, provider/model inference, relationship edits or recovery.
