@@ -159,7 +159,10 @@ export const MediaUpscalingDialog: React.FC<{
         if (!controller.signal.aborted) setCapabilities(value);
       })
       .catch((e: Error) => {
-        if (!controller.signal.aborted) setError(e.message);
+        if (!controller.signal.aborted) {
+          setCapabilities(undefined);
+          setError(e.message);
+        }
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
@@ -218,7 +221,10 @@ export const MediaUpscalingDialog: React.FC<{
     options.format === "auto"
       ? undefined
       : imageFormats.find((format) => format.id === options.format);
+  const cpuUnsupported =
+    options.hardware === "cpu" && selectedUpscaler?.cpu === false;
   const ready =
+    !loading &&
     selectedIds.length > 0 &&
     !!selectedUpscaler?.available &&
     (options.hardware !== "cpu" || selectedUpscaler.cpu) &&
@@ -291,6 +297,7 @@ export const MediaUpscalingDialog: React.FC<{
   }
 
   function start() {
+    if (!ready || submitting || jobID) return;
     if (replaceOriginal) {
       setConfirmReplace(true);
       return;
@@ -326,8 +333,8 @@ export const MediaUpscalingDialog: React.FC<{
             <Tab eventKey="upscale" title="Upscale">
               <p>
                 Upscale {selectedIds.length} selected image
-                {oneImage ? "" : "s"}. By default StashBooru creates a new Image
-                and leaves the original Image and original file untouched.
+                {oneImage ? "" : "s"}. Choose how to save the result before
+                selecting the model, scale and format.
               </p>
               {error && <Alert variant="danger">{error}</Alert>}
               {jobID && (
@@ -342,73 +349,142 @@ export const MediaUpscalingDialog: React.FC<{
                   </div>
                 </Alert>
               )}
-              {loading ? (
-                <p>
-                  <Spinner animation="border" size="sm" /> Checking worker…
+              <Form.Group className="mt-3" controlId="upscaler-save-behavior">
+                <Form.Label>Save behavior</Form.Label>
+                <Form.Check
+                  type="radio"
+                  id="upscaler-create-copy"
+                  name="upscaler-save-behavior"
+                  label="Create a new upscaled Image (recommended)"
+                  checked={!replaceOriginal}
+                  disabled={submitting || !!jobID}
+                  onChange={() => setReplaceOriginal(false)}
+                />
+                <Form.Text className="text-muted d-block mb-2">
+                  Keeps the original Image and file untouched. New files are
+                  saved beside their source files, and each new Image inherits
+                  the source metadata and relations.
+                </Form.Text>
+                <Form.Check
+                  type="radio"
+                  id="upscaler-replace-original"
+                  name="upscaler-save-behavior"
+                  label={
+                    oneImage
+                      ? "Replace current image"
+                      : "Replace selected images"
+                  }
+                  checked={replaceOriginal}
+                  disabled={submitting || !!jobID}
+                  onChange={() => setReplaceOriginal(true)}
+                />
+                <Form.Text className="text-muted d-block">
+                  Keeps the same Image entry, replaces its active file and
+                  stores the original in the separate upscaling restore cache.
+                  You will be asked to confirm before it starts.
+                </Form.Text>
+              </Form.Group>
+
+              {replaceOriginal && (
+                <Alert variant="warning" className="mt-3">
+                  Replacement changes the active library file. The original is
+                  kept only in the upscaling restore cache and may later be
+                  evicted according to its independent cache limit.
+                </Alert>
+              )}
+              {loading && (
+                <p role="status">
+                  <Spinner animation="border" size="sm" aria-hidden="true" />{" "}
+                  Checking worker…
                 </p>
-              ) : (
-                <>
-                  <Row>
-                    <Form.Group
-                      as={Col}
-                      xs={12}
-                      md={6}
-                      controlId="upscaler-model"
-                    >
-                      <Form.Label>Upscaler</Form.Label>
-                      <Form.Control
-                        as="select"
-                        className="input-control"
-                        value={options.upscaler}
-                        disabled={submitting || !!jobID}
-                        onChange={(event) =>
-                          setOptions({
-                            ...options,
-                            upscaler: event.target.value,
-                          })
-                        }
+              )}
+              <Row>
+                <Form.Group as={Col} xs={12} md={4} controlId="upscaler-model">
+                  <Form.Label>Upscaler</Form.Label>
+                  <Form.Control
+                    as="select"
+                    className="input-control"
+                    value={options.upscaler}
+                    disabled={loading || submitting || !!jobID}
+                    onChange={(event) =>
+                      setOptions({
+                        ...options,
+                        upscaler: event.target.value,
+                      })
+                    }
+                  >
+                    {upscalers.length === 0 && (
+                      <option value={options.upscaler}>
+                        No upscalers detected
+                      </option>
+                    )}
+                    {upscalers.map((upscaler) => (
+                      <option
+                        key={upscaler.id}
+                        value={upscaler.id}
+                        disabled={!upscaler.available}
                       >
-                        {upscalers.length === 0 && (
-                          <option value={options.upscaler}>
-                            No upscalers detected
-                          </option>
-                        )}
-                        {upscalers.map((upscaler) => (
-                          <option
-                            key={upscaler.id}
-                            value={upscaler.id}
-                            disabled={!upscaler.available}
-                          >
-                            {upscaler.label}
-                            {!upscaler.available ? " — not installed" : ""}
-                          </option>
-                        ))}
-                      </Form.Control>
-                    </Form.Group>
-                    <Form.Group
-                      as={Col}
-                      xs={12}
-                      md={6}
-                      controlId="upscaler-scale"
-                    >
-                      <Form.Label>Scale</Form.Label>
-                      <Form.Control
-                        as="select"
-                        className="input-control"
-                        value={options.scale}
-                        disabled={submitting || !!jobID}
-                        onChange={(event) =>
-                          setOptions({
-                            ...options,
-                            scale: Number(event.target.value) === 4 ? 4 : 2,
-                          })
-                        }
-                      >
-                        <option value={2}>2×</option>
-                        <option value={4}>4×</option>
-                      </Form.Control>
-                    </Form.Group>
-                  </Row>
+                        {upscaler.label}
+                        {!upscaler.available ? " — not installed" : ""}
+                      </option>
+                    ))}
+                  </Form.Control>
+                </Form.Group>
+                <Form.Group as={Col} xs={12} md={4} controlId="upscaler-scale">
+                  <Form.Label>Scale</Form.Label>
+                  <Form.Control
+                    as="select"
+                    className="input-control"
+                    value={options.scale}
+                    disabled={loading || submitting || !!jobID}
+                    onChange={(event) =>
+                      setOptions({
+                        ...options,
+                        scale: Number(event.target.value) === 4 ? 4 : 2,
+                      })
+                    }
+                  >
+                    <option value={2}>2×</option>
+                    <option value={4}>4×</option>
+                  </Form.Control>
+                </Form.Group>
+                <Form.Group as={Col} xs={12} md={4} controlId="upscaler-format">
+                  <Form.Label>Output format</Form.Label>
+                  <Form.Control
+                    as="select"
+                    className="input-control"
+                    value={options.format}
+                    disabled={loading || submitting || !!jobID}
+                    onChange={(event) =>
+                      setOptions({ ...options, format: event.target.value })
+                    }
+                  >
+                    <option value="auto">Use conversion format default</option>
+                    {imageFormats.map((format) => (
+                      <option key={format.id} value={format.id}>
+                        {format.label}
+                      </option>
+                    ))}
+                  </Form.Control>
+                </Form.Group>
+              </Row>
+              {!loading && cpuUnsupported && (
+                <Alert variant="warning">
+                  This model requires a GPU. Change Processor in Worker and
+                  processing options, or choose a CPU-compatible model.
+                </Alert>
+              )}
+              <details className="settings-details mb-3">
+                <summary>
+                  Worker and processing options
+                  {options.hardware !== "auto"
+                    ? ` · ${options.hardware.toUpperCase()} only`
+                    : ""}
+                  {!loading && (!selectedUpscaler?.available || cpuUnsupported)
+                    ? " — setup needed"
+                    : ""}
+                </summary>
+                <div className="pt-3">
                   <Row>
                     <Form.Group
                       as={Col}
@@ -421,7 +497,7 @@ export const MediaUpscalingDialog: React.FC<{
                         as="select"
                         className="input-control"
                         value={options.hardware}
-                        disabled={submitting || !!jobID}
+                        disabled={loading || submitting || !!jobID}
                         onChange={(event) =>
                           setOptions({
                             ...options,
@@ -440,88 +516,15 @@ export const MediaUpscalingDialog: React.FC<{
                         </option>
                       </Form.Control>
                     </Form.Group>
-                    <Form.Group
-                      as={Col}
-                      xs={12}
-                      md={6}
-                      controlId="upscaler-format"
-                    >
-                      <Form.Label>Output format</Form.Label>
-                      <Form.Control
-                        as="select"
-                        className="input-control"
-                        value={options.format}
-                        disabled={submitting || !!jobID}
-                        onChange={(event) =>
-                          setOptions({ ...options, format: event.target.value })
-                        }
-                      >
-                        <option value="auto">
-                          Use conversion format default
-                        </option>
-                        {imageFormats.map((format) => (
-                          <option key={format.id} value={format.id}>
-                            {format.label}
-                          </option>
-                        ))}
-                      </Form.Control>
-                    </Form.Group>
                   </Row>
-
-                  <Form.Group
-                    className="mt-3"
-                    controlId="upscaler-save-behavior"
-                  >
-                    <Form.Label>Save behavior</Form.Label>
-                    <Form.Check
-                      type="radio"
-                      id="upscaler-create-copy"
-                      name="upscaler-save-behavior"
-                      label="Create a new upscaled Image (recommended)"
-                      checked={!replaceOriginal}
-                      disabled={submitting || !!jobID}
-                      onChange={() => setReplaceOriginal(false)}
-                    />
-                    <Form.Text className="text-muted d-block mb-2">
-                      Keeps the original Image and file untouched. The new Image
-                      inherits the source metadata and relations.
-                    </Form.Text>
-                    <Form.Check
-                      type="radio"
-                      id="upscaler-replace-original"
-                      name="upscaler-save-behavior"
-                      label={
-                        oneImage
-                          ? "Replace current image"
-                          : "Replace selected images"
-                      }
-                      checked={replaceOriginal}
-                      disabled={submitting || !!jobID}
-                      onChange={() => setReplaceOriginal(true)}
-                    />
-                    <Form.Text className="text-muted d-block">
-                      Replaces the active file and stores the original in the
-                      dedicated upscaling restore cache. You will be asked to
-                      confirm again before it starts.
-                    </Form.Text>
-                  </Form.Group>
-
-                  {replaceOriginal && (
-                    <Alert variant="warning" className="mt-3">
-                      Replacement changes the active library file. The original
-                      is kept only in the upscaling restore cache and may later
-                      be evicted according to its independent cache limit.
-                    </Alert>
-                  )}
-
                   <p className="text-muted">
                     Worker: {capabilities?.backend ?? "unknown"}.{" "}
-                    {selectedUpscaler?.notice}
+                    {!loading && selectedUpscaler?.notice}
                   </p>
-                  {capabilities?.notice && (
+                  {!loading && capabilities?.notice && (
                     <Alert variant="info">{capabilities.notice}</Alert>
                   )}
-                  {!selectedUpscaler?.available && (
+                  {!loading && !selectedUpscaler?.available && (
                     <Alert variant="secondary">
                       Configure the local executable/model paths in Processing →
                       Image upscaling, or configure the equivalent
@@ -532,37 +535,38 @@ export const MediaUpscalingDialog: React.FC<{
                   <p>
                     <Link
                       to="/settings?tab=processing#media-upscaling"
-                      onClick={onHide}
+                      target="_blank"
+                      rel="noopener noreferrer"
                     >
                       Edit upscaler defaults and model paths in Processing
-                      settings
+                      settings (new tab)
                     </Link>
                   </p>
                   <Button
                     size="sm"
                     variant="secondary"
                     className="mr-2"
-                    disabled={submitting || !!jobID}
+                    disabled={loading || submitting || !!jobID}
                     onClick={() => setAttempt((value) => value + 1)}
                   >
                     Recheck worker
                   </Button>
-                  <Button
-                    disabled={submitting || !!jobID || !ready}
-                    onClick={start}
-                  >
-                    {submitting
-                      ? "Queuing…"
-                      : replaceOriginal
-                        ? oneImage
-                          ? "Upscale and replace image…"
-                          : `Upscale and replace ${selectedIds.length} images…`
-                        : oneImage
-                          ? "Create upscaled image"
-                          : `Create ${selectedIds.length} upscaled images`}
-                  </Button>
-                </>
-              )}
+                </div>
+              </details>
+              <Button
+                disabled={submitting || !!jobID || !ready}
+                onClick={start}
+              >
+                {submitting
+                  ? "Queuing…"
+                  : replaceOriginal
+                    ? oneImage
+                      ? "Upscale and replace image…"
+                      : `Upscale and replace ${selectedIds.length} images…`
+                    : oneImage
+                      ? "Create upscaled image"
+                      : `Create ${selectedIds.length} upscaled images`}
+              </Button>
             </Tab>
 
             <Tab eventKey="statistics" title="Statistics & restore">

@@ -191,6 +191,12 @@ tool still requires the corresponding worker capability and installed codec/mode
 GPU-only processing must have GPU support; local model paths do not configure a
 remote machine. No large model download starts silently.
 
+The **Upscale images** dialog starts with the choice to create new Images or
+replace active files. New files are saved beside their sources. Replacement
+requires confirmation and uses its separate restore cache. Model, scale and
+format stay visible; **Worker and processing options** reveals processor/setup
+controls. Setup opens in a new tab to retain the current job draft.
+
 In **Settings → Processing → Image upscaling**, job defaults are saved in this
 browser; local executable/model paths are saved on the server. Saving paths keeps
 the setup open and confirms the save separately from worker readiness. A failed
