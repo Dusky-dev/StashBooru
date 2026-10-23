@@ -1,3 +1,4 @@
+import { ProfileLibraryReview } from "src/components/Shared/ProfileLibraryReview";
 import { IdentitySources } from "src/components/Identities/identity";
 import React, { PropsWithChildren } from "react";
 import { useIntl } from "react-intl";
@@ -257,6 +258,7 @@ export const PerformerDetailsPanel: React.FC<IPerformerDetails> =
                 entityID={performer.id}
                 entityName={performer.name}
               />
+              <ProfileLibraryReview kind="character" name={performer.name} />
             </>
           )}
         </PerformerDetailGroup>

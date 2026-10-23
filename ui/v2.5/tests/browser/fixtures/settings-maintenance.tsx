@@ -6,7 +6,11 @@ import {
   InMemoryCache,
   Observable,
 } from "@apollo/client";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter, Route, Switch } from "react-router-dom";
+import { useState } from "react";
+import { PerformerDetailsPanel } from "../../../src/components/Performers/PerformerDetails/PerformerDetailsPanel";
+import { StudioDetailsPanel } from "../../../src/components/Studios/StudioDetails/StudioDetailsPanel";
+import { CopyrightDetailsPanel } from "../../../src/components/Tags/Copyrights";
 import { IntlProvider } from "react-intl";
 import { Settings } from "../../../src/components/Settings/Settings";
 import { ConfigurationProvider } from "../../../src/hooks/Config";
@@ -124,15 +128,82 @@ const client = new ApolloClient({
   ),
 });
 
+function ProfileFixture({
+  kind,
+}: {
+  kind: "character" | "artist" | "copyright";
+}) {
+  const [draft, setDraft] = useState("Retained fixture note");
+  const name = "Name & alias/タグ #7?";
+  const common = { id: "7", name, tags: [], stash_ids: [], custom_fields: {} };
+  return (
+    <>
+      <h1>{name}</h1>
+      <label htmlFor="profile-fixture-note">Fixture draft</label>
+      <input
+        id="profile-fixture-note"
+        className="text-input form-control"
+        value={draft}
+        onChange={(event) => setDraft(event.currentTarget.value)}
+      />
+      {kind === "character" && (
+        <PerformerDetailsPanel
+          performer={
+            {
+              ...common,
+              copyrights: [],
+            } as unknown as GQL.PerformerDataFragment
+          }
+          fullWidth
+        />
+      )}
+      {kind === "artist" && (
+        <StudioDetailsPanel
+          studio={{ ...common, urls: [] } as unknown as GQL.StudioDataFragment}
+          fullWidth
+        />
+      )}
+      {kind === "copyright" && (
+        <CopyrightDetailsPanel
+          copyright={
+            {
+              ...common,
+              parents: [],
+              ordered_children: [],
+              breadcrumb: [],
+            } as unknown as GQL.CopyrightDataFragment
+          }
+          fullWidth
+        />
+      )}
+    </>
+  );
+}
+
 ReactDOM.render(
   <ApolloProvider client={client}>
-    <BrowserRouter>
+    <BrowserRouter
+      basename={new URL(document.baseURI).pathname.replace(/\/$/, "")}
+    >
       <IntlProvider locale="en-GB" messages={flatten(messages)}>
         <ConfigurationProvider configuration={config}>
           <ToastProvider>
             <JobQueueProvider>
               <main className="container-fluid pt-4">
-                <Settings />
+                <Switch>
+                  <Route path="/performers/7">
+                    <ProfileFixture kind="character" />
+                  </Route>
+                  <Route path="/studios/7">
+                    <ProfileFixture kind="artist" />
+                  </Route>
+                  <Route path="/copyrights/7">
+                    <ProfileFixture kind="copyright" />
+                  </Route>
+                  <Route>
+                    <Settings />
+                  </Route>
+                </Switch>
               </main>
             </JobQueueProvider>
           </ToastProvider>

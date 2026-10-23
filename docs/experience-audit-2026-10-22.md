@@ -229,6 +229,19 @@ bounded E04 follow-up. The [progress ledger](implementation-progress.md) records
 exact checks and fixture limitations; this does not close the broader real-data
 or production-restart acceptance gaps.
 
+## Contextual library review follow-up — 2026-10-23
+
+E04 links the existing collision inspector and inherited-association review from
+native Character, Artist and Copyright details. Character details also links the
+existing duplicate review. Library-wide scope is explicit, and each link opens
+in a new tab to retain the profile. A supplied profile name fills the inspector's
+draft only; lookup, ambiguity handling and all changes remain explicit.
+
+These links reuse the current tools rather than creating profile-specific scans
+or merges. The [progress ledger](implementation-progress.md) records the exact
+source/checks and limitations. The next pass should reassess E05's save-scope
+feedback and settings links against the current code before adding behavior.
+
 ## Progress measures
 
 For each pass, record before/after routes visited, dialogs opened and manual

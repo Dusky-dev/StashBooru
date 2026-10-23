@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Alert, Badge, Button, Card, Form, Table } from "react-bootstrap";
 import { defineMessages, FormattedMessage, useIntl } from "react-intl";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Setting } from "./Inputs";
 import { SettingSection } from "./SettingSection";
 import { SettingsDisclosure } from "./SettingsDisclosure";
@@ -179,7 +179,11 @@ export const SettingsToolsPanel: React.FC = () => {
   const [collisions, setCollisions] = useState<AliasCollisionResponse>();
   const [collisionError, setCollisionError] = useState<string>();
   const [collisionLoading, setCollisionLoading] = useState(false);
-  const [inspectValue, setInspectValue] = useState("");
+  const { search } = useLocation();
+  // A profile supplies a draft only; inspection remains an explicit action.
+  const [inspectValue, setInspectValue] = useState(
+    () => new URLSearchParams(search).get("alias") ?? ""
+  );
   const [inspectResult, setInspectResult] = useState<AliasInspectResponse>();
   const [inspectError, setInspectError] = useState<string>();
   const [inspectLoading, setInspectLoading] = useState(false);

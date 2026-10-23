@@ -1284,3 +1284,14 @@ input[type="range"].double-range-slider-max {
   position: absolute;
   z-index: 12;
 }
+
+.profile-library-review {
+  flex-basis: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+
+  > summary {
+    cursor: pointer;
+    font-weight: 600;
+  }
+}
