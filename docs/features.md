@@ -90,6 +90,18 @@ selected other members. It does not merge/delete Images; a connected cluster is
 not proof that every pair is a duplicate. The planned browser's pHash grouping
 and red disfavored-tag comparison are [separate work](booru-browser-roadmap.md#b05--phash-groups-compare-and-tag-warnings).
 
+## Names in the interface
+
+The English interface uses **Artists**, **Characters** and **Videos**. Artist
+hierarchy fields use **Parent Artist** and **Child Artists**; they stay in the
+native profile editor rather than the built-in Advanced group. Video asset and
+view labels follow the same vocabulary.
+
+This pass updates the English fallback catalogue, which also supplies missing
+US English messages. Other language translations and custom locale overrides
+retain their existing behavior. Native Studio/Performer/Scene IDs, URLs, message
+IDs and API fields remain compatible; these display names do not rename data.
+
 ## Stacks and metadata
 
 Stacks group ordered Image/Video variants while each member keeps its own file,

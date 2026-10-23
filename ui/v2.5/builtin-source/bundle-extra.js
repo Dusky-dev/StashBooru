@@ -18,11 +18,7 @@
  ["piercings", "Piercings"],
  ["career_start", "Career Start"],
  ["career_end", "Career End"],
- ["stash_ids", "Stash IDs"],
-
- // Studio fields
- ["parent_id", "Parent Studio"],
- ["child_ids", "Subsidiary Studios"]
+ ["stash_ids", "Stash IDs"]
     ];
 
     function findField(fieldName, expectedLabel) {

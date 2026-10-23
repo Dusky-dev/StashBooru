@@ -617,10 +617,10 @@
         "image_thumbnails": "Image thumbnails",
         "image_thumbnails_desc": "Image thumbnails and clips",
         "markers": "Marker previews",
-        "previews": "Scene previews",
-        "previews_desc": "Scene previews and thumbnails",
-        "sprites": "Scene sprites",
-        "transcodes": "Scene transcodes"
+        "previews": "Video previews",
+        "previews_desc": "Video previews and thumbnails",
+        "sprites": "Video sprites",
+        "transcodes": "Video transcodes"
       },
       "data_management": "Data management",
       "defaults_set": "Defaults have been set and will be used when clicking the {action} button on the Tasks page.",
@@ -932,7 +932,7 @@
         }
       },
       "scene_player": {
-        "heading": "Scene Player",
+        "heading": "Video Player",
         "options": {
           "always_start_from_beginning": "Always start video from beginning",
           "auto_start_video": "Auto-start video",
@@ -957,7 +957,7 @@
         }
       },
       "scene_view": {
-        "heading": "Scene View",
+        "heading": "Video View",
         "options": {
           "preview_volume": {
             "description": "Volume of the preview when hovering over a scene. Set to 0 to mute.",
@@ -966,7 +966,7 @@
         }
       },
       "scene_wall": {
-        "heading": "Scene / Marker Wall",
+        "heading": "Video / Marker Wall",
         "options": {
           "display_title": "Display title and tags",
           "toggle_sound": "Enable sound on preview hover"
@@ -989,19 +989,19 @@
         "heading": "Slideshow delay (seconds)"
       },
       "studio_panel": {
-        "heading": "Studio View",
+        "heading": "Artist View",
         "options": {
           "show_child_studio_content": {
-            "description": "In the studio view, display content from the sub-studios as well.",
-            "heading": "Display sub-studios content"
+            "description": "In the Artist view, display content from child Artists as well.",
+            "heading": "Display content from child Artists"
           }
         }
       },
       "performer_list": {
-        "heading": "Performer List",
+        "heading": "Character List",
         "options": {
           "show_links_on_grid_card": {
-            "heading": "Display links on performer grid cards"
+            "heading": "Display links on Character grid cards"
           }
         }
       },
@@ -1159,7 +1159,7 @@
     },
     "scene_gen": {
       "clip_previews": "Image clip previews",
-      "covers": "Scene covers",
+      "covers": "Video covers",
       "force_transcodes": "Force Transcode generation",
       "force_transcodes_tooltip": "By default, transcodes are only generated when the video file is not supported in the browser. When enabled, transcodes will be generated even when the video file appears to be supported in the browser.",
       "image_phash": "Image perceptual hashes",
@@ -1178,7 +1178,7 @@
       "override_preview_generation_options_desc": "Override preview generation options for this operation. Defaults are set in System -> Preview Generation.",
       "overwrite": "Overwrite existing files",
       "phash": "Video perceptual hashes",
-      "phash_tooltip": "For deduplication and scene identification",
+      "phash_tooltip": "For deduplication and video identification",
       "preview_exclude_end_time_desc": "Exclude the last x seconds from scene previews. This can be a value in seconds, or a percentage (eg 2%) of the total scene duration.",
       "preview_exclude_end_time_head": "Exclude end time",
       "preview_exclude_start_time_desc": "Exclude the first x seconds from scene previews. This can be a value in seconds, or a percentage (eg 2%) of the total scene duration.",
@@ -1191,12 +1191,12 @@
       "preview_seg_count_head": "Number of segments in preview",
       "preview_seg_duration_desc": "Duration of each preview segment, in seconds.",
       "preview_seg_duration_head": "Preview segment duration",
-      "sprites": "Scene scrubber sprites",
+      "sprites": "Video scrubber sprites",
       "sprites_tooltip": "The set of images displayed below the video player for easy navigation.",
       "transcodes": "Transcodes",
       "transcodes_tooltip": "MP4 transcodes will be pre-generated for all content; useful for slow CPUs but requires much more disk space",
       "video_previews": "Previews",
-      "video_previews_tooltip": "Video previews which play when hovering over a scene"
+      "video_previews_tooltip": "Video previews which play when hovering over a video"
     },
     "scenes_found": "{count} scenes found",
     "studios_found": "{count} studios found",
@@ -1473,8 +1473,8 @@
   },
   "parent_folder": "Parent Folder",
   "parent_of": "Parent of {children}",
-  "parent_studio": "Parent Studio",
-  "parent_studios": "Parent Studios",
+  "parent_studio": "Parent Artist",
+  "parent_studios": "Parent Artists",
   "parent_tag_count": "Parent Tag Count",
   "parent_tags": "Parent Tags",
   "part_of": "Part of {parent}",
@@ -1710,8 +1710,8 @@
   },
   "status": "Status: {statusText}",
   "studio": "Studio",
-  "studio_and_parent": "Studio & Parent",
-  "studio_count": "Studio Count",
+  "studio_and_parent": "Artist & Parent",
+  "studio_count": "Artist Count",
   "studio_depth": "Levels (empty for all)",
   "studio_tagger": {
     "add_new_studios": "Add New Studios",
@@ -1758,8 +1758,8 @@
   "sub_tag_count": "Sub-Tag Count",
   "sub_tag_of": "Sub-tag of {parent}",
   "sub_tags": "Sub-Tags",
-  "subsidiary_studio_count": "Subsidiary Studio Count",
-  "subsidiary_studios": "Subsidiary Studios",
+  "subsidiary_studio_count": "Child Artist Count",
+  "subsidiary_studios": "Child Artists",
   "synopsis": "Synopsis",
   "tag": "Tag",
   "tag_count": "Tag Count",

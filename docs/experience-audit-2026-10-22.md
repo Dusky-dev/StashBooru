@@ -62,6 +62,17 @@ and stacks distinct where their actual behavior differs, and explain that
 difference at the action that creates them rather than adding another umbrella
 entity.
 
+E14's first pass corrects a bounded set of confirmed English labels: Parent/Child
+Artists and related hierarchy counts, generated Video covers/sprites/previews,
+and Video/Artist/Character view headings. The current Tools heading was already
+Video tools when reassessed. The English fallback serves both English variants;
+non-English translations and custom override precedence are preserved. Native
+message IDs, relationship fields and API names stay unchanged. The built-in
+Advanced mover no longer relocates native Artist hierarchy fields by matching
+English labels. Mounted native-editor checks verify visibility with that script
+loaded and parent/child IDs retained on save. Remaining inherited terminology
+and fork-aware first-use release notes are separate E14 work.
+
 ## Prioritized findings
 
 Priorities below concern consolidation value, not security severity. Origins
@@ -82,7 +93,7 @@ describe the current surface, rather than assigning blame to upstream or a PR.
 | E11 / validate | Setup collects paths and the home page shows configurable recommendations; source/model setup and first-use discovery are separate flows. See [Setup](../ui/v2.5/src/components/Setup/Setup.tsx) and [FrontPage](../ui/v2.5/src/components/FrontPage/FrontPage.tsx). | Inherited foundation + new requirements / validation needed | Walk a fresh user through first scan, first useful result and first metadata edit. Add empty-state links only where the next step is missing; do not introduce another setup wizard before observing the gap. |
 | E12 / validate | Search, relationship editing, Galleries/Collections, playback, mobile density, plugins and advanced settings have substantial inherited behavior. The new-feature tests alone cannot establish their usability or compatibility. | Whole project / validation needed | Use the cross-feature acceptance matrix below with an isolated library, then owner testing with representative data. Fix reproduced regressions before speculative layout changes. |
 | E13 / next | The inherited settings navigation stacks above the content on mobile; Processing starts roughly 540 px down at 390 × 844. See [Settings layout](../ui/v2.5/src/components/Settings/Settings.tsx). | Inherited layout + expanded sections / runtime confirmed | Use a compact mobile section chooser or Jump to settings content, retaining URL tabs, anchors and keyboard navigation. |
-| E14 / next | Visible terminology mixes Artists with Subsidiary Studios, and Videos with Scene covers / Scene Tools. First-use release notes lead with upstream v0.29.0. See [release-note selection](../ui/v2.5/src/App.tsx) and [inherited notes](../ui/v2.5/src/docs/en/ReleaseNotes/index.ts). | Inherited UI + fork vocabulary / runtime confirmed | Audit visible labels and localization consistently; provide concise fork-aware first-use guidance while retaining upstream history. Preserve internal Studio/Scene identifiers and compatibility APIs. |
+| E14 / partial | Visible terminology mixes Artists with Subsidiary Studios, and Videos with Scene covers / Scene Tools. First-use release notes lead with upstream v0.29.0. See [release-note selection](../ui/v2.5/src/App.tsx) and [inherited notes](../ui/v2.5/src/docs/en/ReleaseNotes/index.ts). | Inherited UI + fork vocabulary / runtime confirmed | Audit visible labels and localization consistently; provide concise fork-aware first-use guidance while retaining upstream history. Preserve internal Studio/Scene identifiers and compatibility APIs. |
 
 ### Consolidation boundaries
 

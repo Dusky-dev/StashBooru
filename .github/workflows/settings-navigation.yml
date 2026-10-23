@@ -12,6 +12,8 @@ on:
       - 'ui/v2.5/src/components/Tags/Copyrights.tsx'
       - 'ui/v2.5/src/components/TroubleshootingMode/**'
       - 'ui/v2.5/src/locales/en-GB.json'
+      - 'ui/v2.5/src/components/Studios/StudioDetails/StudioEditPanel.tsx'
+      - 'ui/v2.5/builtin-source/bundle-extra.js'
       - 'ui/v2.5/tests/browser/settings-maintenance.mjs'
       - 'ui/v2.5/tests/browser/tasks-navigation.mjs'
       - 'ui/v2.5/tests/browser/tools-navigation.mjs'

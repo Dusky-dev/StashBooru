@@ -9,6 +9,7 @@ import {
 import { BrowserRouter, Route, Switch } from "react-router-dom";
 import { useState } from "react";
 import { PerformerDetailsPanel } from "../../../src/components/Performers/PerformerDetails/PerformerDetailsPanel";
+import { StudioEditPanel } from "../../../src/components/Studios/StudioDetails/StudioEditPanel";
 import { StudioDetailsPanel } from "../../../src/components/Studios/StudioDetails/StudioDetailsPanel";
 import { CopyrightDetailsPanel } from "../../../src/components/Tags/Copyrights";
 import { IntlProvider } from "react-intl";
@@ -37,7 +38,12 @@ const config = {
     imageExclude: [],
     customPerformerImageLocation: "",
   },
-  interface: { disableCustomizations: false, menuItems: [], imageLightbox: {} },
+  interface: {
+    disableCustomizations: false,
+    disableDropdownCreate: { studio: false, tag: false },
+    menuItems: [],
+    imageLightbox: {},
+  },
   defaults: {
     scan: {},
     generate: {},
@@ -128,6 +134,31 @@ const client = new ApolloClient({
   ),
 });
 
+const editorArtist = {
+  id: "7",
+  name: "Fixture Artist",
+  parent_studio: { id: "2", name: "Parent profile" },
+  child_studios: [{ id: "3", name: "Child profile" }],
+  tags: [],
+  custom_fields: {},
+} as unknown as GQL.StudioDataFragment;
+const ignoreEditorAction = () => {};
+
+function ArtistEditorFixture() {
+  return (
+    <StudioEditPanel
+      studio={editorArtist}
+      onSubmit={async (input) => {
+        changes.push({ artistInput: input });
+      }}
+      onCancel={ignoreEditorAction}
+      onDelete={ignoreEditorAction}
+      setImage={ignoreEditorAction}
+      setEncodingImage={ignoreEditorAction}
+    />
+  );
+}
+
 function ProfileFixture({
   kind,
 }: {
@@ -193,6 +224,9 @@ ReactDOM.render(
                 <Switch>
                   <Route path="/performers/7">
                     <ProfileFixture kind="character" />
+                  </Route>
+                  <Route path="/studios/7/edit">
+                    <ArtistEditorFixture />
                   </Route>
                   <Route path="/studios/7">
                     <ProfileFixture kind="artist" />
