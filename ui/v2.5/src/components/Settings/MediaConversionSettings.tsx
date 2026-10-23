@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Button, Card, Form, Spinner, Table } from "react-bootstrap";
 import { useToast } from "src/hooks/Toast";
 import { Link } from "react-router-dom";
@@ -31,6 +31,9 @@ interface Rule {
 export const MediaConversionSettings: React.FC = () => {
   const Toast = useToast();
   const [settings, setSettings] = useState<ConversionSettings>();
+  const loadController = useRef<AbortController>();
+  const [loadingSettings, setLoadingSettings] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [workerFormats, setWorkerFormats] = useState<ConversionFormat[]>([]);
   const [loadingWorkerFormats, setLoadingWorkerFormats] = useState(false);
   const [workerCapabilityError, setWorkerCapabilityError] = useState("");
@@ -45,12 +48,16 @@ export const MediaConversionSettings: React.FC = () => {
   const [trialCacheGiB, setTrialCacheGiB] = useState(10);
   const [trialTTLHours, setTrialTTLHours] = useState(24);
 
-  useEffect(() => {
+  const loadSettings = useCallback(() => {
+    loadController.current?.abort();
     const controller = new AbortController();
+    loadController.current = controller;
+    setLoadingSettings(true);
     void fetch(`${conversionEndpoint}?config=1`, { signal: controller.signal })
       .then(conversionResponse<ConversionSettings>)
       .then((value) => {
         if (controller.signal.aborted) return;
+        setLoadError("");
         setSettings(value);
         setBackend(value.config.backend);
         setSavings(value.config.savings);
@@ -97,10 +104,17 @@ export const MediaConversionSettings: React.FC = () => {
         );
       })
       .catch((e: Error) => {
-        if (!controller.signal.aborted) setError(e.message);
+        if (!controller.signal.aborted) setLoadError(e.message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoadingSettings(false);
       });
-    return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    loadSettings();
+    return () => loadController.current?.abort();
+  }, [loadSettings]);
 
   useEffect(() => {
     if (!settings) return;
@@ -223,6 +237,30 @@ export const MediaConversionSettings: React.FC = () => {
         files. Original-file restore history is available in the converter.
       </div>
       <Card className="p-3">
+        {!settings && (
+          <div className="mb-3">
+            {loadError && (
+              <Alert variant="danger">
+                Could not load saved conversion defaults: {loadError}
+                <div className="mt-2">
+                  <Button
+                    variant="secondary"
+                    disabled={loadingSettings}
+                    onClick={loadSettings}
+                  >
+                    Retry loading defaults
+                  </Button>
+                </div>
+              </Alert>
+            )}
+            {loadingSettings && (
+              <div role="status">
+                <Spinner animation="border" size="sm" aria-hidden="true" />{" "}
+                Loading conversion defaults…
+              </div>
+            )}
+          </div>
+        )}
         <h2 className="h5">Compression savings</h2>
         <SavingsThresholdFields
           value={savings}
@@ -300,7 +338,6 @@ export const MediaConversionSettings: React.FC = () => {
             option to apply it during conversion.
           </Alert>
         )}
-        {!settings && !error && <Spinner animation="border" role="status" />}
         {settings && (
           <>
             <h2 className="h5">Format rules</h2>

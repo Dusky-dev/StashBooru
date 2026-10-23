@@ -259,6 +259,22 @@ explicit reload. See the [progress ledger](implementation-progress.md) for exact
 checks and limitations. Broader E05 consistency and real-worker acceptance remain
 open; this does not add a combined settings transaction or close the whole audit.
 
+## Converter defaults recovery follow-up — 2026-10-23
+
+E05's converter panel previously stayed disabled after its first settings read
+failed, with no retry. The load error now appears at the start of the card with
+**Retry loading defaults**. A pending retry has a labeled loading status and
+cannot be submitted again. Repeated failure remains retryable; success restores
+the saved controls and removes the retry action. Save errors remain separate.
+
+Retry only reads converter defaults. It keeps the page and other Processing
+drafts, and aborts its read when Settings unmounts. The existing browser fixture
+checks these paths on desktop/mobile, including keyboard retry, delayed reads,
+repeated failure, non-default saved values and tab/Back draft retention. Exact
+verification and limitations are in the [progress ledger](implementation-progress.md).
+This does not add a reload action over an already editable converter draft or
+change save, worker capability, conversion or recovery contracts.
+
 ## Progress measures
 
 For each pass, record before/after routes visited, dialogs opened and manual

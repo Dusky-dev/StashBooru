@@ -94,6 +94,10 @@ try {
     });
     const requests = [];
     let failLocal = false;
+    let failConverterConfig = true;
+    let holdNextConverterConfig = false;
+    let releaseConverterConfig;
+    let converterConfigStarted;
     let failReadiness = false;
     let holdNextLocalCheck = false;
     let releaseLocalCheck;
@@ -119,8 +123,8 @@ try {
       seedVR2BlocksToSwap: 0,
     };
     const config = {
-      backend: "auto",
-      savings: { minimumSavedBytes: 0, minimumSavedPercent: 0 },
+      backend: "local",
+      savings: { minimumSavedBytes: 4096, minimumSavedPercent: 0 },
       trialCacheLimitBytes: 10 * 1024 ** 3,
       trialTTLHours: 24,
       formatDefaults: { image: "webp", video: "mp4" },
@@ -222,7 +226,21 @@ try {
             return;
           }
           data = capability(isLocal ? "local" : "remote");
-        } else if (url.searchParams.has("config"))
+        } else if (url.searchParams.has("config")) {
+          if (holdNextConverterConfig) {
+            holdNextConverterConfig = false;
+            await new Promise((resolve) => {
+              releaseConverterConfig = resolve;
+              converterConfigStarted?.();
+            });
+          }
+          if (failConverterConfig) {
+            await route.fulfill({
+              status: 503,
+              body: "Saved defaults unavailable",
+            });
+            return;
+          }
           data = {
             config,
             inputFormats: [
@@ -231,7 +249,7 @@ try {
             ],
             outputFormats: formats,
           };
-        else if (body?.action === "save-defaults") {
+        } else if (body?.action === "save-defaults") {
           Object.assign(config, body);
           data = config;
         }
@@ -372,6 +390,106 @@ try {
       await page.screenshot({
         path: `${shots}/processing-settings-${name}.png`,
       });
+
+    // Recover an initial defaults read without refreshing Settings or its drafts.
+    const converter = page.locator("#media-converter");
+    const retryDefaults = converter.getByRole("button", {
+      name: "Retry loading defaults",
+      exact: true,
+    });
+    const converterReads = () =>
+      requests.filter(
+        (r) => r.path.endsWith("/converter") && r.search === "?config=1"
+      ).length;
+    await retryDefaults.waitFor();
+    assert.equal(
+      await converter.getByLabel("Run on", { exact: true }).isDisabled(),
+      true
+    );
+    assert.equal(
+      await converter
+        .getByRole("button", { name: "Save conversion defaults", exact: true })
+        .count(),
+      0
+    );
+    if (shots) {
+      await converter
+        .locator("h1")
+        .evaluate((element) => element.scrollIntoView({ block: "start" }));
+      await page.screenshot({
+        path: `${shots}/converter-load-error-${name}.png`,
+      });
+    }
+    const failedRetry = page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/converter?config=1") &&
+        response.status() === 503
+    );
+    await retryDefaults.focus();
+    await retryDefaults.press("Enter");
+    await failedRetry;
+    await converter
+      .locator("button:enabled")
+      .filter({ hasText: "Retry loading defaults" })
+      .waitFor();
+    assert.equal(converterReads(), 2, "a failed retry must stay retryable");
+    const urlBeforeRetry = page.url();
+    const writesBeforeRetry = requests.filter(
+      (r) => r.method === "POST"
+    ).length;
+    failConverterConfig = false;
+    holdNextConverterConfig = true;
+    const configRetryStarted = new Promise((resolve) => {
+      converterConfigStarted = resolve;
+    });
+    await retryDefaults.click();
+    await configRetryStarted;
+    assert.equal(await retryDefaults.isDisabled(), true);
+    await converter
+      .getByRole("status")
+      .getByText("Loading conversion defaults…")
+      .waitFor();
+    await page
+      .getByLabel("EVA02 tagging threshold", { exact: true })
+      .fill("0.55");
+    await page.getByLabel("Scale", { exact: true }).selectOption("2");
+    releaseConverterConfig();
+    await converter.locator("#converter-default-backend:enabled").waitFor();
+    assert.equal(
+      await converter.getByLabel("Run on", { exact: true }).inputValue(),
+      "local"
+    );
+    assert.equal(
+      await converter
+        .getByLabel("Minimum saved bytes", { exact: true })
+        .inputValue(),
+      "4096"
+    );
+    assert.equal(
+      await retryDefaults.count(),
+      0,
+      "retry must disappear after successful load"
+    );
+    assert.equal(converterReads(), 3);
+    assert.equal(page.url(), urlBeforeRetry);
+    assert.equal(
+      requests.filter((r) => r.method === "POST").length,
+      writesBeforeRetry,
+      "retry must only read defaults"
+    );
+    assert.equal(
+      await page
+        .getByLabel("EVA02 tagging threshold", { exact: true })
+        .inputValue(),
+      "0.55"
+    );
+    assert.equal(
+      await page.getByLabel("Scale", { exact: true }).inputValue(),
+      "2"
+    );
+    await converter
+      .getByLabel("Minimum saved bytes", { exact: true })
+      .fill("8192");
 
     // A status refresh must not discard an unsaved tagging draft.
     await page
@@ -548,6 +666,17 @@ try {
         .getByLabel("EVA02 tagging threshold", { exact: true })
         .inputValue(),
       "0.7"
+    );
+    assert.equal(
+      await converter
+        .getByLabel("Minimum saved bytes", { exact: true })
+        .inputValue(),
+      "8192"
+    );
+    assert.equal(
+      converterReads(),
+      3,
+      "navigation must retain the loaded defaults draft"
     );
     // Breakpoint changes swap navigation controls without remounting the panel.
     for (const width of [575, 576, 767, 768]) {
@@ -731,7 +860,17 @@ try {
       .getByText("You are running the latest stable StashBooru release.")
       .waitFor();
     await chooseSection(page, "processing");
-    // Late status responses after leaving Settings must not update an unmounted view.
+    // Late retry/status responses after leaving Settings must not update an unmounted view.
+    failConverterConfig = true;
+    await page.reload();
+    await retryDefaults.waitFor();
+    failConverterConfig = false;
+    holdNextConverterConfig = true;
+    const lateRetryStarted = new Promise((resolve) => {
+      converterConfigStarted = resolve;
+    });
+    await retryDefaults.click();
+    await lateRetryStarted;
     holdNextStatus = true;
     const started = new Promise((resolve) => {
       statusStarted = resolve;
@@ -740,8 +879,13 @@ try {
       .getByRole("button", { name: "Refresh status", exact: true })
       .click();
     await started;
+    const retryAborted = page.waitForEvent("requestfailed", {
+      predicate: (request) => request.url().endsWith("/converter?config=1"),
+    });
     await page.evaluate(() => window.settingsFixture.dispose());
+    releaseConverterConfig();
     holdStatus();
+    await retryAborted;
     await page.waitForTimeout(100);
     await page.close();
     assert.deepEqual(errors, [], errors.join("\n"));

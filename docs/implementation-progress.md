@@ -2,6 +2,47 @@
 
 Updated: 2026-10-23
 
+## Converter defaults load recovery (E05, bounded pass) — 2026-10-23
+
+- Merged [PR #191](https://github.com/Dusky-dev/StashBooru/pull/191) after all
+  13 CI checks passed and Codex Review completed without findings. Fresh develop
+  baseline: `4e1aff212cdefb50603eba2d207b2fdd3b9a6235`.
+- Branch [`fix/converter-settings-recovery-20261023`](https://github.com/Dusky-dev/StashBooru/tree/fix/converter-settings-recovery-20261023).
+  Verified source checkpoint `b1443b67adb4aba36e67fa6bf95186b1b5b04e8b`, tree
+  `8ca4d90d8b330594d4a9077dc2be0abd29f5c0bb`. Connector-created and local source
+  trees match. This ledger-only checkpoint is included before opening review.
+- Initial converter defaults read failures now show a contextual error and Retry
+  loading defaults at the start of the card. Retry has a labeled loading status,
+  disables repeat submission while pending and stays available after repeated
+  failure. Conversion controls remain disabled until saved defaults load.
+- Retry reuses the existing settings GET and decoder, with a shared abortable
+  loader for first mount and retry. Successful load removes the error/action and
+  restores the server's saved values. Read errors are distinct from save errors;
+  no reload action is exposed over an already editable converter draft.
+- Keep the page and other Processing drafts intact. Retry performs no POST or
+  job submission, and Settings unmount aborts a pending read. Existing converter
+  save transactions, codec capability discovery, browser-owned upscaling defaults,
+  conversion/original recovery contracts and exact-section URLs are unchanged.
+- Validation: `make validate-ui` passed all 61 unit tests, JS/CSS lint, TypeScript
+  and formatting; `make ui-only`, generated built-in syntax and `git diff --check`
+  passed. UI GraphQL generation/built-in preparation passed; generated files are
+  not committed. No backend/schema changes require Go gates.
+- Mounted Settings suite passed at 1440 × 1000 and 390 × 844, including keyboard
+  retry, repeated failed reads, disabled pending retry, delayed successful reads,
+  hydration of non-default saved values, GET-only retry, unchanged page URL,
+  other-section draft retention, converter draft retention across tabs/Back and
+  pending-read cancellation on unmount. Existing settings/navigation/save-scope,
+  upscaler save and error cases remain covered. Desktop/mobile error captures
+  were inspected and are emitted into the existing Settings navigation CI artifact.
+- An initial cold fixture run during concurrent local compilation timed out before
+  mounting; subsequent desktop/mobile runs passed. These are intercepted HTTP,
+  partial configuration and browser-storage fixtures, not production first-load,
+  real-server restart, physical codec/GPU or representative-library acceptance.
+- Next: reassess E06 Following entry points and source capability guidance from
+  existing native/source contexts. Keep browser layout with its assigned agent.
+  Broader E05 consistency and E03 real-job/restart/history decisions remain open.
+  CI/Codex Review is a turn-end checkpoint; do not wait/poll solely for those gates.
+
 ## Upscaler settings save feedback (E05, bounded pass) — 2026-10-23
 
 - Merged [PR #190](https://github.com/Dusky-dev/StashBooru/pull/190) after all

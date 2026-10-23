@@ -198,6 +198,11 @@ readiness check does not undo the save. **Reload worker setup** explicitly repla
 unsaved paths with the saved server configuration; it does not save browser job
 defaults.
 
+If the converter's saved defaults cannot load, use **Retry loading defaults** in
+its error message. The retry reads converter settings without refreshing the page
+or resetting other Processing drafts. Conversion controls remain disabled until
+the saved defaults load; the other sections keep their own Save actions.
+
 See [converter setup and restore](media-converter.md),
 [conversion trials](p09-conversion-review.md), and
 [restoration setup](p11-image-restoration.md) for operational detail.
