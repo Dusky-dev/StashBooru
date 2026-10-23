@@ -87,6 +87,55 @@ Updated: 2026-10-23
   remains separately assigned. CI/Codex Review is a turn-end checkpoint; do not
   wait or poll solely for external gates.
 
+## Contextual Following setup (E06, first pass) — 2026-10-23
+
+- Fresh develop baseline: `4e1aff212cdefb50603eba2d207b2fdd3b9a6235` (merged #191).
+  [PR #192](https://github.com/Dusky-dev/StashBooru/pull/192), head
+  `8b9a30a12fa24415ab6153fcbec4fa3e0c687534`, has all 12 CI checks green but no
+  Codex Review result or explicit quota response. It remains open under the
+  standing review gate; this pass proceeds independently instead of waiting.
+- Branch [`fix/following-context-20261023`](https://github.com/Dusky-dev/StashBooru/tree/fix/following-context-20261023).
+  Verified source checkpoint `635d6830e6ac009971a9f10eb66c026d560f2087`, tree
+  `2744c86a507daa370effb9bff995bc09613ccf8c`. Local/connector source trees match;
+  this ledger-only checkpoint is included before opening review.
+- Native Artist, Character and Copyright Sources & aliases now offers Follow
+  beside saved Danbooru tag connections. Unsupported provider/account connections
+  state that feed checks are unavailable. No canonical name or account ID is
+  guessed into a tag, and opening the profile still only reads its connections.
+- The link opens the existing Following form in a new tab using a stored identity
+  ID. It reads that one connection, prefills exact target/category and a readable
+  name, and selects a current enabled source for the same provider instance.
+  Renamed source settings work; a reused ID for a different instance cannot
+  silently retarget a follow. No new form implementation, API or adapter is added.
+- Save remains explicit. Context/source errors block it and offer an explicit
+  blank start; exact duplicate definitions link to their saved follow, including
+  inactive records. Successful saving clears the context URL. Reload saved feed
+  retains edits, while refresh reconstructs the explicitly linked connection.
+  Existing edit/version/cursor, check/download and remote favorite contracts stay.
+- Reuse native dark input/select classes for focused and disabled fields; focus
+  and scroll the prefilled manager without losing the original profile tab.
+- Validation: `make validate-ui` passed all 61 unit tests, JS/CSS lint, TypeScript
+  and formatting. Final native input-class changes passed focused Biome checks,
+  `make ui-only`, generated built-in syntax, mounted context checks and
+  `git diff --check`. UI GraphQL generation/built-in preparation passed; generated
+  files are not committed. No backend/schema changes require Go gates.
+- New mounted suite passed at 1440 × 1000/root and 390 × 844/under /stash for all
+  three categories: raw target/name/type, original-tab fixture input retention,
+  source ID reuse and rename, explicit creates/no automatic sync, duplicates,
+  refresh, source reload with drafts, dark fields, no horizontal overflow,
+  missing/unsupported/invalid/failed identities, no available source, and abort
+  on leaving. Existing Following and identities suites passed both viewports.
+  Following CI runs the new suite and uploads draft/profile-link captures;
+  final desktop/mobile captures were inspected.
+- These are real IdentitySources/Following components with fixture configuration
+  and intercepted APIs. The retained profile input is fixture-local, not a full
+  native edit-form acceptance claim. No live provider/account/GPU/production
+  acceptance, additional engines or account follows are claimed. Text merge with
+  pending #192 was checked clean; it is not runtime acceptance of a combined tree.
+- Next: reassess E08 processing dialogs' output/destination/original-file guidance.
+  Broader E06 action reuse and additional adapters remain separate; browser layout
+  stays with its assigned agent. End when only external CI/review remains.
+
 ## Contextual library review (E04, profile entry points) — 2026-10-23
 
 - Started against PR #189's reviewed head while its CI completed, as requested.

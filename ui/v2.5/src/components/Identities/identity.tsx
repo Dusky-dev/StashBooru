@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Button, Dropdown } from "react-bootstrap";
+import { Link } from "react-router-dom";
+import { canFollowIdentity } from "../Following/followContext";
 import type { BooruSource } from "../BooruBrowser/browser";
 import { IdentityConnectionsDialog } from "./IdentityConnectionsDialog";
 import {
@@ -119,7 +121,22 @@ export function IdentitySources({
             <ul>
               {page?.items.map((item) => (
                 <li key={item.id}>
-                  {item.sourceName}: <code>{item.target}</code>
+                  {item.sourceName}: <code>{item.target}</code>{" "}
+                  {canFollowIdentity(item) ? (
+                    <Link
+                      className="btn btn-secondary btn-sm"
+                      to={`/following?fromIdentity=${encodeURIComponent(item.id)}#following-manager`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Follow ${item.target} on ${item.sourceName}`}
+                    >
+                      Follow
+                    </Link>
+                  ) : (
+                    <small className="text-muted">
+                      Feed checks are not supported for this source yet.
+                    </small>
+                  )}
                 </li>
               ))}
             </ul>

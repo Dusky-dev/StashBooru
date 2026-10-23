@@ -242,6 +242,27 @@ or merges. The [progress ledger](implementation-progress.md) records the exact
 source/checks and limitations. The next pass should reassess E05's save-scope
 feedback and settings links against the current code before adding behavior.
 
+## Contextual Following setup follow-up — 2026-10-23
+
+E06's first pass links Follow from saved Danbooru tag connections in native
+Artist, Character and Copyright Sources & aliases. It opens the existing
+Following form in a new tab, prefilled from a single stored provider identity;
+no native-name guess, second form implementation or automatic follow/check is
+added. Unsupported source/account rows state that feed checks are unavailable.
+
+The form validates the current source by provider instance, allowing a renamed
+settings entry while rejecting a reused source ID for a different site. Missing,
+unsupported or failed connections leave saving blocked with an explicit blank
+start. Exact existing follows link back to their saved definition. The form uses
+native dark input/select styles, including focused and disabled controls.
+
+Mounted desktop/mobile checks cover all three categories, original profile-tab
+fixture state, exact raw targets, renamed/reused source IDs, duplicates, refresh,
+source reload with drafts, missing/unsupported inputs and cancelled reads.
+See the [progress ledger](implementation-progress.md) for source/checks and limits.
+This does not add more feed adapters, remote account follows or browser layout
+changes; broader Following action reuse remains a separate follow-up.
+
 ## Processing save feedback follow-up — 2026-10-23
 
 E05's existing labels and independent Save actions already describe the different

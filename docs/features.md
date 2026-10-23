@@ -13,7 +13,7 @@ from later metadata selection and additional provider adapters.
 | --- | --- |
 | **All** | Browse Images and Videos together, with shared filters and typed selections. Individual Images and Videos pages remain available. |
 | **Booru** (navbar globe) | Browse sources, preserve page/draft state, use live/CSV autocomplete and sidebar filters, inspect previews/tags, keep review marks and download a post into Stash with a default/custom folder and optional converter defaults. |
-| **Following** | Manage saved follows and explicitly check new posts from supported Danbooru-compatible sources. Other feed adapters remain planned. |
+| **Following** | Follow a saved Danbooru tag connection from a profile’s **Sources & aliases**, or manage saved follows and explicitly check new posts. Other feed adapters remain planned. |
 | **Identities** / profile **Sources & aliases** | Review connections between exact provider identifiers and existing native Artists, Characters and Copyrights. |
 | **Settings → Library** | Media folders, scan rules and automatic ancestor/profile associations. Inheritance switches save automatically. |
 | **Settings → Processing** | Shared worker connection, similarity/tagging defaults, conversion rules and upscaling setup. Use each section's Save button. |
