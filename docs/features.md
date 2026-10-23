@@ -179,6 +179,12 @@ relationship. Existing saved task options keep Copyrights off until enabled.
 | Image upscaling | Enlarges Images with an installed waifu2x or SeedVR2 model. | New-copy mode keeps the source and creates a new Image with its metadata. Explicit replacement uses a separate upscaling restore cache. |
 | Mask restoration | Generates new pixels in selected regions of a non-explicit still Image, with mask/preview review. | Saves a new derivative and preserves the source. Generated content is not recovery of hidden original pixels. |
 
+The converter starts with output format and savings minimums. Expand **Encoding
+and worker options** for temporary codec/processor overrides. Estimates measure
+samples; verified trials retain outputs for comparison; **Review trials & apply**
+activates only the eligible trials you select. Its settings link opens a new tab
+so the current draft stays available.
+
 Both enabled conversion savings minimums must pass. A saved trial is temporary and
 is revalidated before apply; changed sources/settings need a new trial. Trial space
 and original-file restore space are different. Restore caches can evict old

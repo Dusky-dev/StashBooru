@@ -2,6 +2,60 @@
 
 Updated: 2026-10-23
 
+## Converter estimate, trial and apply guidance (E08, second pass) — 2026-10-23
+
+- Merged [PR #194](https://github.com/Dusky-dev/StashBooru/pull/194) at
+  `ce1ee76cb77e58982f3803733b1c5668dad58ffe` after all 12 CI checks passed and
+  Codex Review completed without findings at its final head. This is the fresh
+  develop baseline for this pass; no other PRs were open when checked.
+- Branch [`fix/converter-flow-20261023`](https://github.com/Dusky-dev/StashBooru/tree/fix/converter-flow-20261023).
+  Verified source checkpoint `a2c7393a188cd850d56d2ccf81d782cffcb28a94`, tree
+  `29197683462b71313b6bd2b6fb9a4af12078d885`. Connector-created/local source
+  trees match; this ledger-only checkpoint is included before opening review.
+- Explain the result first: estimates measure and delete samples; trials retain
+  temporary outputs for comparison; explicit Apply replaces active files beside
+  their sources, keeping native entries/metadata and originals in the converter
+  restore cache until eviction. Keep the original-backup warning visible both
+  before launching a trial and beside the existing reviewed-apply controls.
+- Output format, resolved per-input plans and savings limits stay visible before
+  actions. Batch plans now wrap as readable text rather than low-contrast
+  read-only fields. Group processor, worker checks and encoding overrides under
+  a native disclosure, initially closed, with explicit CPU/GPU/custom overrides
+  in its summary. Children retain state across tabs and rechecks. Capability
+  failures, fallback notices and GPU/decode conflicts remain outside it.
+- Open Processing defaults at the exact converter section in a new tab, retaining
+  the caller and current draft. Keep review available without another estimate
+  or trial. Put estimate sampling and apply validation details in disclosures.
+  No change to requests, codec/default resolution, savings gates, typed targets,
+  explicit trial selection, comparison, staging, caches, file activation or
+  restore/unrestore/recovery contracts. No booru-browser layout work.
+- Validation: `make validate-ui` passed all 61 unit tests, JS/CSS lint, TypeScript
+  and formatting; `make ui-only`, generated built-in syntax and `git diff --check`
+  passed on the final application source. GraphQL generation/built-in preparation
+  passed; generated files are not committed. Final browser screenshot-wait change
+  passed focused Biome checks and the full converter suite. No backend/schema
+  changes require Go gates.
+- Extended the existing conversion-review browser suite at 1440 × 1000 and
+  390 × 844: initially hidden controls, keyboard disclosure, visible wrapping
+  plans, limits before actions, CPU/custom overrides retained across tabs and
+  failed/successful worker rechecks, visible collapsed errors, disabled invalid
+  savings, exact new-tab settings destination with unchanged caller/draft,
+  no implicit job, estimate with no applyable output, mixed typed trial payloads,
+  eligible-only selection, comparisons and explicit apply. Existing asynchronous
+  maintenance-error checks passed. Processing-job-resume also passed all four
+  converter/upscaler desktop/mobile cases including refresh, prefix isolation,
+  reused IDs, history, cancellation identity and blocked storage.
+- Desktop/mobile captures were inspected; the existing Job feedback CI workflow
+  already runs this suite and uploads its screenshots. A new failure fixture was
+  corrected to return the endpoint's plain-text error body. Review captures wait
+  for tab transitions before recording. Settings destination is a stub; these are
+  intercepted HTTP/component tests, not full Settings acceptance, actual file
+  encoding/activation, physical worker/GPU or production-library validation.
+- Next: E08 mask-restoration guidance, preserving its derivative-only contract
+  and distinguishing generated pixels from original-file recovery. Broader
+  real-data acceptance remains open. End when only external CI/Codex remains;
+  inspect findings on the next check rather than waiting/polling.
+
 ## Upscaling output guidance (E08, first pass) — 2026-10-23
 
 - Merged [PR #192](https://github.com/Dusky-dev/StashBooru/pull/192) at

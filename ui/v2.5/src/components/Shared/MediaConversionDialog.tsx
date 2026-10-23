@@ -493,11 +493,19 @@ export const MediaConversionDialog: React.FC<{
                 : kind === "scene"
                   ? "videos"
                   : "images"}
-              . Tags, source URLs, characters, artists and original fingerprints
-              stay attached to the same entries.
+              . Estimate savings or create trials, then compare and select saved
+              trials in Review trials &amp; apply. Neither action changes your
+              active files.
             </p>
+            <Alert variant="info">
+              Applying selected trials replaces the active files beside their
+              sources, keeping the same library entries, metadata and original
+              fingerprints. Originals go into the converter restore cache in
+              Statistics &amp; restore. Cache eviction can remove them; keep
+              separate backups.
+            </Alert>
             <Row>
-              <Form.Group as={Col} xs={12} md={8} controlId="converter-format">
+              <Form.Group as={Col} xs={12} controlId="converter-format">
                 <Form.Label>Output format</Form.Label>
                 <Form.Control
                   className="input-control"
@@ -544,55 +552,11 @@ export const MediaConversionDialog: React.FC<{
                 <Form.Text>
                   <Link
                     to="/settings?tab=processing#media-converter"
-                    onClick={onHide}
+                    target="_blank"
+                    rel="noopener noreferrer"
                   >
                     Edit format defaults in Processing settings
                   </Link>
-                </Form.Text>
-              </Form.Group>
-              <Form.Group
-                as={Col}
-                xs={12}
-                md={4}
-                controlId="converter-hardware"
-              >
-                <Form.Label>Processor</Form.Label>
-                <Form.Control
-                  className="input-control"
-                  as="select"
-                  value={options.hardware}
-                  disabled={busy}
-                  onChange={(e) =>
-                    setOptions({ ...options, hardware: e.target.value })
-                  }
-                >
-                  <option value="auto">Prefer GPU, otherwise CPU</option>
-                  <option value="cpu">CPU</option>
-                  <option
-                    value="gpu"
-                    disabled={
-                      !chosenFormats.length ||
-                      chosenFormats.some((f) => !f.gpu.length) ||
-                      chosenFormats.some(
-                        (f) =>
-                          decodingSpeedFor(f) > 0 &&
-                          decodingSpeedLevels(f) === 1
-                      )
-                    }
-                  >
-                    GPU
-                  </option>
-                </Form.Control>
-                <Form.Text className="text-muted">
-                  {chosenFormats
-                    .map(
-                      (f) => `${f.label}: ${encodersFor(f)[0] ?? "unavailable"}`
-                    )
-                    .join(" · ")}
-                  {chosenFormats.some((f) => decodingSpeedFor(f) > 0) &&
-                    options.hardware === "auto" &&
-                    chosenFormats.some((f) => decodingSpeedLevels(f) === 1) &&
-                    " · AV1 decode-speed mode uses the CPU libaom encoder"}
                 </Form.Text>
               </Form.Group>
             </Row>
@@ -602,14 +566,6 @@ export const MediaConversionDialog: React.FC<{
                 Auto or CPU to convert with this setting.
               </Alert>
             )}
-            <p className="text-muted">
-              Worker:{" "}
-              {resolvedBackend === "remote"
-                ? "remote tagging worker"
-                : resolvedBackend === "local"
-                  ? "this StashBooru server"
-                  : "checking availability…"}
-            </p>
             {loadingCapabilities && (
               <p>
                 <Spinner animation="border" size="sm" /> Probing codec and
@@ -620,15 +576,6 @@ export const MediaConversionDialog: React.FC<{
               <Alert variant="warning">{capabilityError}</Alert>
             )}
             {workerNotice && <Alert variant="info">{workerNotice}</Alert>}
-            <Button
-              size="sm"
-              variant="secondary"
-              className="mb-3"
-              disabled={busy || loadingCapabilities}
-              onClick={() => setCapabilityAttempt((v) => v + 1)}
-            >
-              Recheck worker
-            </Button>
             {options.format === "auto" && (
               <div className="mb-3">
                 {loadingPreview ? <span>Reading input formats…</span> : null}
@@ -636,240 +583,243 @@ export const MediaConversionDialog: React.FC<{
                   <Alert variant="warning">{previewError}</Alert>
                 )}
                 {!loadingPreview &&
-                  (plans.length > 1
-                    ? plans.map((plan, index) => (
-                        <Form.Control
-                          key={`${plan.input}-${plan.output}-${index}`}
-                          className={`input-control mb-1${plan.error ? " text-warning" : ""}`}
-                          readOnly
-                          value={planText(plan)}
-                          aria-label={`Conversion plan for ${plan.input}`}
-                        />
-                      ))
-                    : plans.map((plan, index) => (
-                        <div
-                          key={`${plan.input}-${plan.output}-${index}`}
-                          className={plan.error ? "text-warning" : ""}
-                        >
-                          {planText(plan)}
-                        </div>
-                      )))}
+                  plans.map((plan, index) => (
+                    <div
+                      key={`${plan.input}-${plan.output}-${index}`}
+                      className={`mb-1${plan.error ? " text-warning" : ""}`}
+                    >
+                      {planText(plan)}
+                    </div>
+                  ))}
               </div>
             )}
-            <Form.Check
-              id="converter-saved-encoding"
-              label="Use saved quality, effort and safety defaults for each input format"
-              checked={useEncodingDefaults}
-              disabled={busy}
-              onChange={(e) => setUseEncodingDefaults(e.target.checked)}
-            />
-            <Form.Check
-              id="converter-saved-decoding-speed"
-              label="Use saved decode-speed defaults for each input format"
-              checked={useDecodingSpeedDefaults}
-              disabled={busy}
-              onChange={(e) => setUseDecodingSpeedDefaults(e.target.checked)}
-            />
-            <Form.Text className="text-muted d-block mb-2">
-              Uncheck saved defaults to set one-off values without changing the
-              per-format defaults.
-            </Form.Text>
-            {!useEncodingDefaults && (
+            <details className="settings-details mb-3">
+              <summary>
+                Encoding and worker options
+                {options.hardware !== "auto" &&
+                  ` · ${options.hardware === "cpu" ? "CPU only" : "GPU only"}`}
+                {(!useEncodingDefaults || !useDecodingSpeedDefaults) &&
+                  " · custom overrides"}
+              </summary>
               <Row>
-                {(["quality", "effort"] as const)
-                  .filter((key) => supports(key))
-                  .map((key) => (
-                    <Form.Group
-                      as={Col}
-                      key={key}
-                      controlId={`converter-${key}`}
+                <Form.Group
+                  as={Col}
+                  xs={12}
+                  md={4}
+                  controlId="converter-hardware"
+                >
+                  <Form.Label>Processor</Form.Label>
+                  <Form.Control
+                    className="input-control"
+                    as="select"
+                    value={options.hardware}
+                    disabled={busy}
+                    onChange={(e) =>
+                      setOptions({ ...options, hardware: e.target.value })
+                    }
+                  >
+                    <option value="auto">Prefer GPU, otherwise CPU</option>
+                    <option value="cpu">CPU</option>
+                    <option
+                      value="gpu"
+                      disabled={
+                        !chosenFormats.length ||
+                        chosenFormats.some((f) => !f.gpu.length) ||
+                        chosenFormats.some(
+                          (f) =>
+                            decodingSpeedFor(f) > 0 &&
+                            decodingSpeedLevels(f) === 1
+                        )
+                      }
                     >
-                      <Form.Label>
-                        {key === "quality"
-                          ? "Quality (higher = better)"
-                          : "Effort (higher = slower)"}
-                      </Form.Label>
-                      <Form.Control
-                        className="text-input"
-                        type="number"
-                        min={key === "effort" ? 1 : 0}
-                        max={key === "effort" ? 9 : 100}
-                        step={1}
-                        value={options[key]}
-                        disabled={busy}
-                        onChange={(e) =>
-                          setOptions({
-                            ...options,
-                            [key]: Number(e.target.value),
-                          })
-                        }
-                      />
-                    </Form.Group>
-                  ))}
+                      GPU
+                    </option>
+                  </Form.Control>
+                  <Form.Text className="text-muted">
+                    {chosenFormats
+                      .map(
+                        (f) =>
+                          `${f.label}: ${encodersFor(f)[0] ?? "unavailable"}`
+                      )
+                      .join(" · ")}
+                    {chosenFormats.some((f) => decodingSpeedFor(f) > 0) &&
+                      options.hardware === "auto" &&
+                      chosenFormats.some((f) => decodingSpeedLevels(f) === 1) &&
+                      " · AV1 decode-speed mode uses the CPU libaom encoder"}
+                  </Form.Text>
+                </Form.Group>
               </Row>
-            )}
-            {!useDecodingSpeedDefaults &&
-              supports("decodingSpeed") &&
-              (() => {
-                const levels = Math.max(
-                  ...chosenFormats.map(decodingSpeedLevels)
-                );
-                return levels === 1 ? (
-                  <Row>
-                    <Form.Group as={Col} controlId="converter-decoding-speed">
-                      <Form.Check
-                        type="checkbox"
-                        label="AV1 low-complexity decode (CPU)"
-                        checked={options.decodingSpeed > 0}
-                        disabled={busy || options.hardware === "gpu"}
-                        onChange={(e) =>
-                          setOptions({
-                            ...options,
-                            decodingSpeed: e.target.checked ? 1 : 0,
-                          })
-                        }
-                      />
-                    </Form.Group>
-                  </Row>
-                ) : (
-                  <Row>
-                    <Form.Group as={Col} controlId="converter-decoding-speed">
-                      <Form.Label>Decode speed tier (0–{levels})</Form.Label>
-                      <Form.Control
-                        className="text-input"
-                        type="number"
-                        min={0}
-                        max={levels}
-                        step={1}
-                        value={options.decodingSpeed}
-                        disabled={busy}
-                        onChange={(e) =>
-                          setOptions({
-                            ...options,
-                            decodingSpeed: Number(e.target.value),
-                          })
-                        }
-                      />
-                    </Form.Group>
-                  </Row>
-                );
-              })()}
-            {supports("quality") && (
               <p className="text-muted">
-                Quality ranges from 0 to 100. JPEG XL quality 100 is lossless.
-                Equal values across codecs do not imply equal quality. Higher
-                effort trades encoding time for compression.
+                Worker:{" "}
+                {resolvedBackend === "remote"
+                  ? "remote tagging worker"
+                  : resolvedBackend === "local"
+                    ? "this StashBooru server"
+                    : "checking availability…"}
               </p>
-            )}
-            {supports("decodingSpeed") && (
-              <p className="text-muted">
-                Decode-speed controls depend on the selected codec. JPEG XL
-                supports tiers 0–4. AV1 can enable low-complexity decoding on a
-                compatible libaom CPU encoder. This changes how the output is
-                encoded; browser playback speed still depends on the browser
-                decoder and hardware.
-              </p>
-            )}
-            <Form.Check
-              id="converter-larger"
-              label="Saved keep-larger preference (compression savings policy takes precedence)"
-              checked={options.allowLarger}
-              disabled
-              onChange={(e) =>
-                setOptions({ ...options, allowLarger: e.target.checked })
-              }
-            />
-            {supports("lossless") && (
+              <Button
+                size="sm"
+                variant="secondary"
+                className="mb-3"
+                disabled={busy || loadingCapabilities}
+                onClick={() => setCapabilityAttempt((v) => v + 1)}
+              >
+                Recheck worker
+              </Button>
               <Form.Check
-                id="converter-lossless"
-                label="Lossless WebP"
-                checked={options.lossless}
-                disabled={busy || useEncodingDefaults}
+                id="converter-saved-encoding"
+                label="Use saved quality, effort and safety defaults for each input format"
+                checked={useEncodingDefaults}
+                disabled={busy}
+                onChange={(e) => setUseEncodingDefaults(e.target.checked)}
+              />
+              <Form.Check
+                id="converter-saved-decoding-speed"
+                label="Use saved decode-speed defaults for each input format"
+                checked={useDecodingSpeedDefaults}
+                disabled={busy}
+                onChange={(e) => setUseDecodingSpeedDefaults(e.target.checked)}
+              />
+              <Form.Text className="text-muted d-block mb-2">
+                Uncheck saved defaults to set one-off values without changing
+                the per-format defaults.
+              </Form.Text>
+              {!useEncodingDefaults && (
+                <Row>
+                  {(["quality", "effort"] as const)
+                    .filter((key) => supports(key))
+                    .map((key) => (
+                      <Form.Group
+                        as={Col}
+                        key={key}
+                        controlId={`converter-${key}`}
+                      >
+                        <Form.Label>
+                          {key === "quality"
+                            ? "Quality (higher = better)"
+                            : "Effort (higher = slower)"}
+                        </Form.Label>
+                        <Form.Control
+                          className="text-input"
+                          type="number"
+                          min={key === "effort" ? 1 : 0}
+                          max={key === "effort" ? 9 : 100}
+                          step={1}
+                          value={options[key]}
+                          disabled={busy}
+                          onChange={(e) =>
+                            setOptions({
+                              ...options,
+                              [key]: Number(e.target.value),
+                            })
+                          }
+                        />
+                      </Form.Group>
+                    ))}
+                </Row>
+              )}
+              {!useDecodingSpeedDefaults &&
+                supports("decodingSpeed") &&
+                (() => {
+                  const levels = Math.max(
+                    ...chosenFormats.map(decodingSpeedLevels)
+                  );
+                  return levels === 1 ? (
+                    <Row>
+                      <Form.Group as={Col} controlId="converter-decoding-speed">
+                        <Form.Check
+                          type="checkbox"
+                          label="AV1 low-complexity decode (CPU)"
+                          checked={options.decodingSpeed > 0}
+                          disabled={busy || options.hardware === "gpu"}
+                          onChange={(e) =>
+                            setOptions({
+                              ...options,
+                              decodingSpeed: e.target.checked ? 1 : 0,
+                            })
+                          }
+                        />
+                      </Form.Group>
+                    </Row>
+                  ) : (
+                    <Row>
+                      <Form.Group as={Col} controlId="converter-decoding-speed">
+                        <Form.Label>Decode speed tier (0–{levels})</Form.Label>
+                        <Form.Control
+                          className="text-input"
+                          type="number"
+                          min={0}
+                          max={levels}
+                          step={1}
+                          value={options.decodingSpeed}
+                          disabled={busy}
+                          onChange={(e) =>
+                            setOptions({
+                              ...options,
+                              decodingSpeed: Number(e.target.value),
+                            })
+                          }
+                        />
+                      </Form.Group>
+                    </Row>
+                  );
+                })()}
+              {supports("quality") && (
+                <p className="text-muted">
+                  Quality ranges from 0 to 100. JPEG XL quality 100 is lossless.
+                  Equal values across codecs do not imply equal quality. Higher
+                  effort trades encoding time for compression.
+                </p>
+              )}
+              {supports("decodingSpeed") && (
+                <p className="text-muted">
+                  Decode-speed controls depend on the selected codec. JPEG XL
+                  supports tiers 0–4. AV1 can enable low-complexity decoding on
+                  a compatible libaom CPU encoder. This changes how the output
+                  is encoded; browser playback speed still depends on the
+                  browser decoder and hardware.
+                </p>
+              )}
+              <Form.Check
+                id="converter-larger"
+                label="Saved keep-larger preference (compression savings policy takes precedence)"
+                checked={options.allowLarger}
+                disabled
                 onChange={(e) =>
-                  setOptions({ ...options, lossless: e.target.checked })
+                  setOptions({ ...options, allowLarger: e.target.checked })
                 }
               />
-            )}
-            <Form.Check
-              id="converter-audio"
-              label="Allow discarding audio"
-              checked={options.dropAudio}
-              disabled={busy || useEncodingDefaults}
-              onChange={(e) =>
-                setOptions({ ...options, dropAudio: e.target.checked })
-              }
-            />
-            <Form.Check
-              id="converter-alpha"
-              label="Allow losing transparency for formats without alpha"
-              checked={options.allowAlphaLoss}
-              disabled={busy || useEncodingDefaults}
-              onChange={(e) =>
-                setOptions({ ...options, allowAlphaLoss: e.target.checked })
-              }
-            />
-            <Button
-              className="my-3"
-              disabled={
-                busy ||
-                !savings ||
-                !validSavings(savings) ||
-                !canEncode ||
-                !selectedCount ||
-                loadingCapabilities ||
-                (options.format === "auto" &&
-                  (loadingPreview || !!previewError)) ||
-                !Number.isFinite(options.quality) ||
-                options.quality < 0 ||
-                options.quality > 100 ||
-                !Number.isInteger(options.effort) ||
-                options.effort < 1 ||
-                options.effort > 9
-              }
-              onClick={() => {
-                setTab("review");
-                void action({
-                  ...reviewRequest,
-                  action: "trial",
-                });
-              }}
-            >
-              Verified trial for{" "}
-              {selectedCount === 1 ? "file" : `${selectedCount} files`}
-            </Button>
-            <Button
-              variant="secondary"
-              className="my-3 ml-2"
-              disabled={
-                busy ||
-                !canEncode ||
-                !selectedCount ||
-                loadingCapabilities ||
-                (options.format === "auto" &&
-                  (loadingPreview || !!previewError)) ||
-                !savings ||
-                !validSavings(savings) ||
-                !Number.isFinite(options.quality) ||
-                options.quality < 0 ||
-                options.quality > 100 ||
-                !Number.isInteger(options.effort) ||
-                options.effort < 1 ||
-                options.effort > 9
-              }
-              onClick={() => {
-                setTab("review");
-                void action({ ...reviewRequest, action: "estimate" });
-              }}
-            >
-              Estimate savings
-            </Button>
-            <Button
-              variant="secondary"
-              className="my-3 ml-2"
-              onClick={() => setTab("review")}
-            >
-              Review trials &amp; apply
-            </Button>
+              {supports("lossless") && (
+                <Form.Check
+                  id="converter-lossless"
+                  label="Lossless WebP"
+                  checked={options.lossless}
+                  disabled={busy || useEncodingDefaults}
+                  onChange={(e) =>
+                    setOptions({ ...options, lossless: e.target.checked })
+                  }
+                />
+              )}
+              <Form.Check
+                id="converter-audio"
+                label="Allow discarding audio"
+                checked={options.dropAudio}
+                disabled={busy || useEncodingDefaults}
+                onChange={(e) =>
+                  setOptions({ ...options, dropAudio: e.target.checked })
+                }
+              />
+              <Form.Check
+                id="converter-alpha"
+                label="Allow losing transparency for formats without alpha"
+                checked={options.allowAlphaLoss}
+                disabled={busy || useEncodingDefaults}
+                onChange={(e) =>
+                  setOptions({ ...options, allowAlphaLoss: e.target.checked })
+                }
+              />
+            </details>
+            <h5>Savings minimums for this batch</h5>
             {savings && (
               <SavingsThresholdFields
                 value={savings}
@@ -878,6 +828,75 @@ export const MediaConversionDialog: React.FC<{
                 prefix="converter-job"
               />
             )}
+            <p>
+              <strong>Verified trial</strong> saves outputs for comparison and
+              later apply. <strong>Estimate savings</strong> measures a sample
+              and deletes its outputs; it is optional and cannot be applied.
+            </p>
+            <div className="d-flex flex-wrap">
+              <Button
+                className="my-3"
+                disabled={
+                  busy ||
+                  !savings ||
+                  !validSavings(savings) ||
+                  !canEncode ||
+                  !selectedCount ||
+                  loadingCapabilities ||
+                  (options.format === "auto" &&
+                    (loadingPreview || !!previewError)) ||
+                  !Number.isFinite(options.quality) ||
+                  options.quality < 0 ||
+                  options.quality > 100 ||
+                  !Number.isInteger(options.effort) ||
+                  options.effort < 1 ||
+                  options.effort > 9
+                }
+                onClick={() => {
+                  setTab("review");
+                  void action({
+                    ...reviewRequest,
+                    action: "trial",
+                  });
+                }}
+              >
+                Verified trial for{" "}
+                {selectedCount === 1 ? "file" : `${selectedCount} files`}
+              </Button>
+              <Button
+                variant="secondary"
+                className="my-3 ml-2"
+                disabled={
+                  busy ||
+                  !canEncode ||
+                  !selectedCount ||
+                  loadingCapabilities ||
+                  (options.format === "auto" &&
+                    (loadingPreview || !!previewError)) ||
+                  !savings ||
+                  !validSavings(savings) ||
+                  !Number.isFinite(options.quality) ||
+                  options.quality < 0 ||
+                  options.quality > 100 ||
+                  !Number.isInteger(options.effort) ||
+                  options.effort < 1 ||
+                  options.effort > 9
+                }
+                onClick={() => {
+                  setTab("review");
+                  void action({ ...reviewRequest, action: "estimate" });
+                }}
+              >
+                Estimate savings
+              </Button>
+              <Button
+                variant="secondary"
+                className="my-3 ml-2"
+                onClick={() => setTab("review")}
+              >
+                Review trials &amp; apply
+              </Button>
+            </div>
             {state?.job && (
               <div>
                 <p className="mt-2">

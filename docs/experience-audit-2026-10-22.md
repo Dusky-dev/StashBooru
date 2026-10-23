@@ -76,7 +76,7 @@ describe the current surface, rather than assigning blame to upstream or a PR.
 | E05 / next | Processing correctly groups defaults now, but save scopes differ: conversion/tagging defaults are server-owned, upscaling job defaults are browser-owned, and upscaler model paths are server-owned. See [Processing](../ui/v2.5/src/components/Settings/SettingsProcessingPanel.tsx), [upscaling settings](../ui/v2.5/src/components/Settings/MediaUpscalingSettings.tsx), and [feature guide](features.md#where-things-live). | New / confirmed | Use consistent scope and save feedback beside controls. Add contextual links to exact settings sections; retain separate Save actions unless a combined transaction is actually supported. |
 | E06 / next | Following asks for source, category and exact provider expression; its first feed adapter supports Danbooru-compatible sources. Browse / Download then opens the browser. Local profile favorites, remote account favorites and follows are different operations. See [Following](../ui/v2.5/src/components/Following/Following.tsx) and [follow contract](booru-follows.md). | New / confirmed | Offer Follow from an existing supported source/profile context with the exact target prefilled. Present source capability limits before setup. Reuse browser preview/download actions where practical, without promising Twitter or other adapters already exist. |
 | E07 / next | All, Images, Videos and related media lists share native infrastructure, while remote browsing and Following have distinct lists/actions. Existing viewer regressions required caller ownership and queue restoration fixes. See [MediaList](../ui/v2.5/src/components/Media/MediaList.tsx) and [viewer acceptance notes](p07-global-media.md). | Inherited + new / confirmed history; current inconsistency needs validation | Adopt common interaction rules for selection, Back, refresh, Escape and preview focus. Keep local structured filters separate from provider-native query grammar. Do not force one query parser or identical capability menus everywhere. |
-| E08 / next | Conversion, upscaling and restoration intentionally have different output and recovery contracts. Their controls can expose technical cache/worker concepts before the user understands the result. See [processing comparison](features.md#conversion-upscaling-and-restoration), [conversion store](../pkg/mediaconvert/store.go) and [upscaling settings](../ui/v2.5/src/components/Settings/MediaUpscalingSettings.tsx). | New / confirmed contracts; presentation needs validation | Start with output choice, destination and original-file policy; reveal advanced codec/model controls as needed. Share a History & restore presentation only after mapping each tool's valid operations. Preserve staging, validation, restore caches and backups. |
+| E08 / partial | Conversion, upscaling and restoration intentionally have different output and recovery contracts. Their controls can expose technical cache/worker concepts before the user understands the result. See [processing comparison](features.md#conversion-upscaling-and-restoration), [conversion store](../pkg/mediaconvert/store.go) and [upscaling settings](../ui/v2.5/src/components/Settings/MediaUpscalingSettings.tsx). | New / confirmed contracts; presentation needs validation | Start with output choice, destination and original-file policy; reveal advanced codec/model controls as needed. Share a History & restore presentation only after mapping each tool's valid operations. Preserve staging, validation, restore caches and backups. |
 | E09 / later | Native React is supplemented by composed built-ins; some use supported PluginApi patches, while others move DOM nodes with selectors and MutationObserver. See [loader](../ui/v2.5/src/index.tsx), [file-info adaptation](../ui/v2.5/builtin-source/universal-file-info.js) and [extra presentation changes](../ui/v2.5/builtin-source/bundle-extra.js). | Earlier fork + new / architectural risk | Move a touched DOM adaptation into its owned native component when fixing that workflow. Keep supported plugin extension points. Do not rewrite the whole built-in bundle or mistake native All for the retired synthetic implementation. |
 | E10 / now, docs | README and docs index still call follows planned. The browser roadmap still describes feature-branch delivery and says provider mappings do not exist, despite merged Following and identities. | Documentation / confirmed | Correct current status and link operation guides. Keep dated implementation history as history rather than asking users to interpret the long progress ledger. |
 | E11 / validate | Setup collects paths and the home page shows configurable recommendations; source/model setup and first-use discovery are separate flows. See [Setup](../ui/v2.5/src/components/Setup/Setup.tsx) and [FrontPage](../ui/v2.5/src/components/FrontPage/FrontPage.tsx). | Inherited foundation + new requirements / validation needed | Walk a fresh user through first scan, first useful result and first metadata edit. Add empty-state links only where the next step is missing; do not introduce another setup wizard before observing the gap. |
@@ -315,8 +315,24 @@ behavior is added.
 Desktop/mobile fixture coverage checks the form order, hidden/retained advanced
 controls, setup-link context, slow/failed readiness checks and one/multiple Image
 copy and confirmed-replacement request routing. See the exact verification in the
-[progress ledger](implementation-progress.md). Converter trial/apply presentation
-and mask-restoration guidance remain later E08 passes, with their own contracts.
+[progress ledger](implementation-progress.md).
+
+E08's converter pass keeps output format and savings minimums before the launch
+actions. A native disclosure groups encoding and worker controls, retaining their
+mounted state and displaying explicit processor choices/custom overrides in its
+summary. Resolved per-input plans, worker failures and fallback notices stay
+visible; batch plans use wrapping text instead of low-contrast read-only fields.
+The settings link opens a separate tab without dismissing the draft.
+The initial dialog and review explain that estimates delete sample outputs,
+trials retain temporary outputs, and explicit Apply replaces active files beside
+the sources while retaining the same library entries and metadata. Original-file
+recovery still depends on the converter restore cache and its eviction policy.
+Estimate and apply verification details remain available in disclosures. No new
+backend mode, cache or apply bypass is introduced. Desktop/mobile fixture checks
+cover draft retention, failed worker checks, savings validation, typed trial
+requests and explicit selection/apply alongside the existing comparisons and
+maintenance errors. Mask-restoration guidance remains a later E08 pass, with its
+own contract.
 
 ## Progress measures
 

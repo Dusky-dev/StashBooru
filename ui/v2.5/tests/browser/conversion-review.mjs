@@ -62,7 +62,7 @@ const emptyStats = {
   skipped: 0,
   failed: 0,
 };
-function makeTrial(id, kind, status, before, after, policy) {
+function makeTrial(id, kind, status, before, after, policy, options) {
   return {
     id: id.repeat(32),
     target: { kind, id: 1 },
@@ -86,6 +86,7 @@ function makeTrial(id, kind, status, before, after, policy) {
       lossless: false,
       dropAudio: false,
       allowAlphaLoss: false,
+      ...options,
     },
     format: formats[kind === "image" ? 0 : 1],
     savings: policy,
@@ -128,6 +129,7 @@ try {
       nextJob = 1;
     let failMaintenance = false,
       pendingFailure;
+    let failCapabilities = false;
     const restoreRecord = {
       id: "a".repeat(32),
       status: "complete",
@@ -158,6 +160,14 @@ try {
     await page.route("**/image/converter**", async (route) => {
       const request = route.request(),
         url = new URL(request.url());
+      if (url.searchParams.has("capabilities") && failCapabilities) {
+        await route.fulfill({
+          status: 503,
+          contentType: "text/plain",
+          body: "Fixture worker unavailable",
+        });
+        return;
+      }
       if (url.searchParams.has("trialID")) {
         const png = await page.evaluate((changed) => {
           const canvas = document.createElement("canvas");
@@ -230,8 +240,24 @@ try {
             };
           if (body.action === "trial") {
             trials = [
-              makeTrial("1", "image", "verified", 1000, 600, body.savings),
-              makeTrial("2", "scene", "skipped", 1000, 1100, body.savings),
+              makeTrial(
+                "1",
+                "image",
+                "verified",
+                1000,
+                600,
+                body.savings,
+                body.options
+              ),
+              makeTrial(
+                "2",
+                "scene",
+                "skipped",
+                1000,
+                1100,
+                body.savings,
+                body.options
+              ),
             ];
             job.items = trials.map((t) => ({
               target: t.target,
@@ -340,6 +366,145 @@ try {
         });
       throw error;
     }
+    const advanced = dialog.locator("details").filter({
+      has: page.locator("#converter-hardware"),
+    });
+    const summary = advanced.locator("summary");
+    const trialButton = dialog.getByRole("button", {
+      name: "Verified trial for 2 files",
+      exact: true,
+    });
+    await page.waitForFunction(() =>
+      [...document.querySelectorAll(".modal.show button")].some(
+        (b) => b.textContent === "Verified trial for 2 files" && !b.disabled
+      )
+    );
+    await dialog.getByText("1 file: PNG → WebP", { exact: false }).waitFor();
+    await dialog.getByText("1 file: MP4 → AV1 MP4", { exact: false }).waitFor();
+    assert.equal(await advanced.getAttribute("open"), null);
+    assert.equal(
+      await dialog.locator("#converter-hardware").isVisible(),
+      false
+    );
+    assert.equal(
+      await dialog.locator("#converter-saved-encoding").isChecked(),
+      true
+    );
+    assert.equal(
+      await dialog
+        .locator("#converter-job-saved-percent")
+        .evaluate((field) =>
+          Boolean(
+            field.compareDocumentPosition(
+              [...document.querySelectorAll("button")].find(
+                (button) => button.textContent === "Verified trial for 2 files"
+              )
+            ) & Node.DOCUMENT_POSITION_FOLLOWING
+          )
+        ),
+      true,
+      "Savings limits precede the actions they govern"
+    );
+    await dialog
+      .getByText("Cache eviction can remove them;", { exact: false })
+      .waitFor();
+    if (shots) {
+      await dialog.locator(".tab-pane.active").evaluate(async () => {
+        await Promise.all(
+          document
+            .getAnimations()
+            .filter(
+              (animation) =>
+                animation.effect?.getTiming().iterations !== Infinity
+            )
+            .map((animation) => animation.finished.catch(() => {}))
+        );
+      });
+      await page.screenshot({
+        path: path.join(shots, `converter-options-${viewport.width}.png`),
+      });
+    }
+    await summary.focus();
+    await page.keyboard.press("Enter");
+    await dialog.locator("#converter-hardware").selectOption("cpu");
+    await dialog.locator("#converter-saved-encoding").uncheck();
+    await dialog.locator("#converter-quality").fill("87");
+    await dialog.locator("#converter-effort").fill("6");
+    // Failed worker checks remain actionable without exposing the advanced form.
+    failCapabilities = true;
+    await dialog
+      .getByRole("button", { name: "Recheck worker", exact: true })
+      .click();
+    await dialog
+      .getByText("Fixture worker unavailable", { exact: true })
+      .waitFor();
+    await summary.click();
+    assert.equal(
+      await dialog.locator("#converter-hardware").isVisible(),
+      false
+    );
+    assert.equal(await trialButton.isDisabled(), true);
+    await dialog
+      .getByText("Fixture worker unavailable", { exact: true })
+      .waitFor();
+    assert.match(await summary.innerText(), /CPU only.*custom overrides/);
+    failCapabilities = false;
+    await summary.click();
+    await dialog
+      .getByRole("button", { name: "Recheck worker", exact: true })
+      .click();
+    await page.waitForFunction(() =>
+      [...document.querySelectorAll(".modal.show button")].some(
+        (b) => b.textContent === "Verified trial for 2 files" && !b.disabled
+      )
+    );
+    assert.equal(await dialog.locator("#converter-quality").inputValue(), "87");
+    assert.equal(await dialog.locator("#converter-effort").inputValue(), "6");
+    assert.equal(
+      await dialog.locator("#converter-hardware").inputValue(),
+      "cpu"
+    );
+    // A separate settings tab must preserve the dialog, its draft and caller URL.
+    const callerURL = page.url();
+    const settingsLink = dialog.getByRole("link", {
+      name: "Edit format defaults in Processing settings",
+      exact: true,
+    });
+    assert.equal(
+      await settingsLink.getAttribute("href"),
+      "/settings?tab=processing#media-converter"
+    );
+    assert.equal(await settingsLink.getAttribute("target"), "_blank");
+    await context.route("**/settings?tab=processing", (route) =>
+      route.fulfill({
+        contentType: "text/html",
+        body: "<title>Settings destination fixture</title>",
+      })
+    );
+    const [settingsPage] = await Promise.all([
+      context.waitForEvent("page"),
+      settingsLink.click(),
+    ]);
+    await settingsPage.waitForURL("**/settings?tab=processing#media-converter");
+    await settingsPage.close();
+    assert.equal(page.url(), callerURL);
+    assert.equal(await dialog.isVisible(), true);
+    assert.equal(await dialog.locator("#converter-quality").inputValue(), "87");
+    assert.equal(
+      requests.some((r) =>
+        ["trial", "estimate", "apply-trials", "start"].includes(r.action)
+      ),
+      false
+    );
+    await summary.click();
+    await dialog.locator("#converter-job-saved-percent").fill("101");
+    assert.equal(await trialButton.isDisabled(), true);
+    assert.equal(
+      await dialog
+        .getByRole("button", { name: "Estimate savings", exact: true })
+        .isDisabled(),
+      true
+    );
     await dialog
       .locator("#converter-job-saved-bytes")
       .fill(String(policy.minimumSavedBytes));
@@ -359,7 +524,21 @@ try {
       0,
       "estimate must not appear as retained trials"
     );
+    assert.equal(
+      await dialog
+        .getByRole("button", { name: "Apply 0 selected trials", exact: true })
+        .isDisabled(),
+      true
+    );
+    assert.equal(
+      requests.some((r) => r.action === "apply-trials"),
+      false
+    );
     await dialog.getByRole("tab", { name: "Convert", exact: true }).click();
+    assert.equal(await advanced.getAttribute("open"), null);
+    await summary.click();
+    assert.equal(await dialog.locator("#converter-quality").inputValue(), "87");
+    await summary.click();
     await dialog
       .getByRole("button", { name: "Verified trial for 2 files", exact: true })
       .click();
@@ -378,6 +557,16 @@ try {
       requests.find((r) => r.action === "trial").savings,
       policy
     );
+    const trialRequest = requests.find((r) => r.action === "trial");
+    assert.equal(trialRequest.options.hardware, "cpu");
+    assert.equal(trialRequest.options.quality, 87);
+    assert.equal(trialRequest.options.effort, 6);
+    assert.equal(trialRequest.useEncodingDefaults, false);
+    assert.equal(trialRequest.useDecodingSpeedDefaults, true);
+    assert.deepEqual(trialRequest.targets, [
+      { kind: "image", id: 1 },
+      { kind: "scene", id: 1 },
+    ]);
     assert.equal(
       requests.some((r) => r.action === "start"),
       false
@@ -401,6 +590,16 @@ try {
         .filter((n) => getComputedStyle(n).display !== "none")
         .every((n) => getComputedStyle(n).opacity === "1")
     );
+    await dialog.locator(".tab-pane.active").evaluate(async () => {
+      await Promise.all(
+        document
+          .getAnimations()
+          .filter(
+            (animation) => animation.effect?.getTiming().iterations !== Infinity
+          )
+          .map((animation) => animation.finished.catch(() => {}))
+      );
+    });
     if (shots)
       await page.screenshot({
         path: path.join(shots, `review-${viewport.width}.png`),

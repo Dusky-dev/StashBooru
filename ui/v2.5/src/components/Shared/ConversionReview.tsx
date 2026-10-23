@@ -203,11 +203,17 @@ export const ConversionReview: React.FC<{
     <>
       <h5>Estimate</h5>
       <p>
-        Up to 24 complete sample conversions cover input format, animation
-        status (including uninspected files) and size bands, using size
-        quantiles within each band. Samples are deleted after measurement. No
-        files are activated.
+        Estimates measure a sample and delete its outputs. They do not change
+        active files or create saved trials to apply.
       </p>
+      <details className="settings-details mb-3">
+        <summary>How estimates work</summary>
+        <p>
+          Up to 24 complete sample conversions cover input format, animation
+          status (including uninspected files) and size bands, using size
+          quantiles within each band.
+        </p>
+      </details>
       {estimate && (
         <>
           <Alert variant={estimate.covered ? "info" : "warning"}>
@@ -263,11 +269,24 @@ export const ConversionReview: React.FC<{
       )}
       <h5>Verified trials</h5>
       <p>
-        Trials retain the measured output without changing active fingerprints,
-        metadata or restore caches. Apply rechecks source identity/content,
-        options, savings minimums, converter version and output checksum.
-        Changes require a new trial.
+        Compare outputs, then select the trials you want to apply. Creating a
+        trial keeps your active files unchanged. Saved trials expire and use a
+        separate temporary cache.
       </p>
+      <Alert variant="info">
+        Apply replaces active files beside their sources, keeping the same
+        library entries and metadata. Originals are retained in the converter
+        restore cache under Statistics &amp; restore until evicted. Keep
+        separate backups. Only the selected eligible trials are applied.
+      </Alert>
+      <details className="settings-details mb-3">
+        <summary>What Apply checks</summary>
+        <p>
+          Apply rechecks source identity/content, options, savings minimums,
+          converter version and output checksum. Changes require a new trial.
+          The verified output is reused without encoding again.
+        </p>
+      </details>
       {stats && (
         <p>
           {stats.verified} eligible · {stats.skipped} skipped · {stats.failed}{" "}
