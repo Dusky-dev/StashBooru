@@ -70,11 +70,10 @@ export const GalleryPage: React.FC<IProps> = ({ gallery, add }) => {
   const [activeTabKey, setActiveTabKey] = useState("gallery-details-panel");
 
   const setMainTabKey = (newTabKey: string | null) => {
-    if (newTabKey === "add") {
-      history.replace(`/galleries/${gallery.id}/add`);
-    } else {
-      history.replace(`/galleries/${gallery.id}`);
-    }
+    history.replace({
+      ...history.location,
+      pathname: `/galleries/${gallery.id}${newTabKey === "add" ? "/add" : ""}`,
+    });
   };
 
   const path = useMemo(() => galleryPath(gallery), [gallery]);
