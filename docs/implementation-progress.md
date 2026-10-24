@@ -2,6 +2,65 @@
 
 Updated: 2026-10-24
 
+## Artist Save & New validation and hierarchy retries (E12) — 2026-10-24
+
+- Merged [PR #214](https://github.com/Dusky-dev/StashBooru/pull/214) at
+  `efb500ace8d4702f90f46d93bf26b4db698fc930` after all 13 checks passed
+  and Codex Review completed without findings on
+  `b04538efcfab41b6474b234c5bbcef0a81c66852`; no submitted/inline findings.
+  Fresh develop matches this baseline. Work is on
+  [`fix/artist-save-new-20261024`](https://github.com/Dusky-dev/StashBooru/tree/fix/artist-save-new-20261024).
+- PR #215 is a separate pending Character pass. Its final head remains
+  `b0c549be5d83e0cdbca2ef8c39c86910b5f9d863`; latest checks have builds,
+  tests, generation, lint and release passed, first-library still running, and
+  Codex Review running without inline findings. A delayed review is not a waiver.
+  This branch does not depend on those Character changes.
+- Reproduced Artist Save & New sending StudioCreate for a blank name rather than
+  displaying the form's field error. The existing server rejects the request;
+  this was a validation/feedback gap, not invalid records being persisted.
+  Validate with the existing Formik schema and respect custom-field errors before
+  submission. Save and Save & New now share their existing input formatting, and
+  Formik's normal submission receives the save promise. No new schema or editor.
+- Verified source `5abd8e50f08fb3557418210d0bdc7e370fe56990`, tree
+  `eb18bf60bbeda1ff450b9f190fd074276666c55f`, exactly matches the tested
+  local source and was saved remotely before this ledger/audit follow-up.
+- New artist-save-new.mjs passed at 1440 × 1000 and 390 × 844 using private
+  servers, fresh databases, a generated square artwork file and native Artist/Tag
+  records. Initial and post-reset blank-name checks issue zero create requests.
+  An actual duplicate-name create is rejected with the draft retained; correcting
+  its name and Save & New preserves aliases, URLs, details, a scalar custom field
+  named full, Tag and parent/child IDs. The reset next form's normal Save creates
+  a separate Artist with no prior relationships, metadata or artwork.
+- Existing-Artist editing chooses a real descendant as its new parent. The server
+  rejects the ancestor cycle, retaining the changed name for correction and
+  preserving the complete saved hierarchy/metadata snapshot. Selecting the valid
+  parent and retry changes only the name. Cancel discards a later name edit;
+  refresh, list Back and server restart retain all five Artist records, exact
+  parent/child/Tag/custom-field IDs and saved artwork response bytes. Every request
+  and response is real: no interception, altered IDs or mocked responses.
+- Both viewport runs own their paths/processes and reject existing-library/server URLs;
+  successful fixtures are removed. No uncaught page errors or final profile
+  document horizontal overflow. Desktop/mobile captures inspected. No human
+  manual tests, real-media playback or physical-device acceptance is claimed.
+- Validation: make validate-ui passed (69 tests, JS/CSS lint, TypeScript and
+  formatting), make ui-only production build passed, focused browser Biome, JS
+  syntax, CI YAML/suite-placement validation and git diff --check passed. Reused
+  the unchanged #213 local backend with the new production UI via STASH_BROWSER_UI.
+  No local backend build/tests are claimed; production Go/API/schema is unchanged.
+- CI adds the suite to first-library before the historical checkout with its
+  pinned browser/current Linux artifact and artists captures/logs. Feature guide
+  and audit next-step text describe the bounded result. Read-only merge-tree with
+  pending #215's exact head is clean; this is not combined runtime acceptance.
+- Limits: tiny profiles, one Tag, a four-level hierarchy and square artwork, not
+  representative catalogs, bulk editing, remote scraping, media processing or
+  performance. Existing hierarchy validation/transactions and successful form
+  resets are verified, not redesigned. Prefilled q-query reset semantics remain
+  unchanged and outside this fixture. Other audit and #205/#196 eventual-review
+  obligations remain open.
+- Next: applicable CI and completed Codex Review on the final head; assess/fix
+  viable findings and end when only external gates remain. Continue native Tag
+  Save & New and rejected-save/retry acceptance as a separate bounded pass.
+
 ## Image editor reachability and save/retry acceptance (E12) — 2026-10-24
 
 - Merged [PR #213](https://github.com/Dusky-dev/StashBooru/pull/213) at

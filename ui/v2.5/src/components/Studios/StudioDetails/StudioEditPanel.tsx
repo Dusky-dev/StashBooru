@@ -91,19 +91,19 @@ export const StudioEditPanel: React.FC<IStudioEditPanel> = ({
 
   const [customFieldsError, setCustomFieldsError] = useState<string>();
 
-  function submit(values: InputValues) {
+  function submit(values: InputValues, andNew?: boolean) {
     const input = {
       ...schema.cast(values),
       custom_fields: formatCustomFieldInput(isNew, values.custom_fields),
     };
-    onSave(input);
+    return onSave(input, andNew);
   }
 
   const formik = useFormik<InputValues>({
     initialValues,
     enableReinitialize: true,
     validate: yupFormikValidate(schema),
-    onSubmit: submit,
+    onSubmit: (values) => submit(values),
   });
 
   const { resetTagsState, tagsControl } = useTagsEdit(studio.tags, (ids) =>
@@ -203,11 +203,9 @@ export const StudioEditPanel: React.FC<IStudioEditPanel> = ({
   }
 
   async function onSaveAndNewClick() {
-    const input = {
-      ...schema.cast(formik.values),
-      custom_fields: formatCustomFieldInput(isNew, formik.values.custom_fields),
-    };
-    onSave(input, true);
+    const errors = await formik.validateForm();
+    if (!isEqual(errors, {}) || customFieldsError !== undefined) return;
+    await submit(formik.values, true);
   }
 
   function onImageLoad(imageData: string | null) {

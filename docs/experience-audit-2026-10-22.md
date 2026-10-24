@@ -20,7 +20,7 @@ native data model and safety contracts.
 | Area | Delivered so far | Remaining acceptance/scope |
 | --- | --- | --- |
 | Connections, metadata, jobs and settings (E01–E06) | Contextual source connections and metadata review; shared job feedback/retention guidance; grouped Tasks/Tools and profile entry points; processing save feedback; contextual Following setup. | Live-provider and broader Following adapter workflows, representative bulk/partial-failure and restart/recovery acceptance. Contextual setup does not add unsupported source adapters. |
-| Everyday library use (E07, E11, E12) | Real setup → scan → first edit/restart checks; native selection/viewer fixes; refreshed inherited metadata; Gallery/Collection context; chapter retry, Collection hierarchy/order/unlink, and Video numbering/repeat-save and Image custom-field save/retry acceptance; reachable mobile Image editor controls; backup rejection/retry and saved/downloaded same-schema restore with both blob-storage modes; a pinned 99→100 upgrade/old-app restore and local plugin task/UI-extension acceptance. | Other editor/Save & New and representative-library acceptance; other historical upgrades, broader plugin/package/runtime compatibility, processing recovery, physical-device/accessibility and performance checks. |
+| Everyday library use (E07, E11, E12) | Real setup → scan → first edit/restart checks; native selection/viewer fixes; refreshed inherited metadata; Gallery/Collection context; chapter retry, Collection hierarchy/order/unlink, and Video numbering/repeat-save and Image custom-field save/retry acceptance; reachable mobile Image editor controls; Artist creation/save and hierarchy-retry acceptance; backup rejection/retry and saved/downloaded same-schema restore with both blob-storage modes; a pinned 99→100 upgrade/old-app restore and local plugin task/UI-extension acceptance. | Other editor/Save & New and representative-library acceptance; other historical upgrades, broader plugin/package/runtime compatibility, processing recovery, physical-device/accessibility and performance checks. |
 | Processing and recovery (E08) | Clearer conversion, upscaling and mask-restoration output/original-file guidance. Existing validation, activation and recovery contracts remain. | Real model/GPU/worker combinations and representative processing/restore/restart workflows. Synthetic UI checks do not close these gates. |
 | Documentation, mobile settings and terminology (E10, E13, E14) | Current feature guides, compact mobile settings navigation, bounded native English label fixes and fork-aware first-use guidance. | Wider terminology/localization and owner usability testing. |
 | Native UI ownership (E09) | Touched workflows reuse native components and supported extension points. | Remaining DOM adaptations are addressed when their workflow is fixed; a wholesale rewrite is deferred. |
@@ -42,10 +42,14 @@ original feature roadmap:
 5. **Owner usability and scale:** a representative existing library, physical
    mobile/accessibility checks, performance and remaining terminology/localization.
 
-The next bounded library pass covers native Character Save & New and save/retry.
-The new Image suite validates existing repeat saves and fixes narrow-layout
-control reachability; it does not change the Image form or combine its separate
-association writes into a transaction.
+Native Character Save & New and save/retry are covered separately in
+[PR #215](https://github.com/Dusky-dev/StashBooru/pull/215), whose external gates
+and merge remain tracked in the ledger. The Artist pass validates Save & New
+before a request and covers duplicate-name and hierarchy-cycle rejection/retry,
+clean next creation, Cancel, Back and restart. The next bounded editor pass covers
+Tag Save & New and rejected-save retry. The Image suite validates existing repeat
+saves and fixes narrow-layout control reachability; it does not change the Image
+form or combine its separate association writes into a transaction.
 
 The findings below are the original audit snapshot, followed by dated delivery
 notes. [Implementation progress](implementation-progress.md) records exact PRs,
