@@ -27,9 +27,13 @@ export const GalleryChapterForm: React.FC<IGalleryChapterForm> = ({
 }) => {
   const intl = useIntl();
 
-  const [galleryChapterCreate] = useGalleryChapterCreate();
-  const [galleryChapterUpdate] = useGalleryChapterUpdate();
-  const [galleryChapterDestroy] = useGalleryChapterDestroy();
+  const [galleryChapterCreate, { loading: isCreating }] =
+    useGalleryChapterCreate();
+  const [galleryChapterUpdate, { loading: isUpdating }] =
+    useGalleryChapterUpdate();
+  const [galleryChapterDestroy, { loading: isDeleting }] =
+    useGalleryChapterDestroy();
+  const isMutating = isCreating || isUpdating || isDeleting;
   const Toast = useToast();
 
   const isNew = chapter === undefined;
@@ -57,7 +61,11 @@ export const GalleryChapterForm: React.FC<IGalleryChapterForm> = ({
     onSubmit: (values) => onSave(schema.cast(values)),
   });
 
+  const isRunning = isMutating || formik.isSubmitting;
+
   async function onSave(input: InputValues) {
+    if (isMutating) return;
+
     try {
       if (isNew) {
         await galleryChapterCreate({
@@ -75,22 +83,20 @@ export const GalleryChapterForm: React.FC<IGalleryChapterForm> = ({
           },
         });
       }
+      onClose();
     } catch (e) {
       Toast.error(e);
-    } finally {
-      onClose();
     }
   }
 
   async function onDelete() {
-    if (isNew) return;
+    if (isNew || isMutating) return;
 
     try {
       await galleryChapterDestroy({ variables: { id: chapter.id } });
+      onClose();
     } catch (e) {
       Toast.error(e);
-    } finally {
-      onClose();
     }
   }
 
@@ -106,39 +112,45 @@ export const GalleryChapterForm: React.FC<IGalleryChapterForm> = ({
   const { renderInputField } = formikUtils(intl, formik, splitProps);
 
   return (
-    <Form noValidate onSubmit={formik.handleSubmit}>
-      <div className="form-container px-3">
-        {renderInputField("title")}
-        {renderInputField("image_index", "number")}
-      </div>
-      <div className="buttons-container px-3">
-        <div className="d-flex">
-          <Button
-            variant="primary"
-            disabled={(!isNew && !formik.dirty) || !isEqual(formik.errors, {})}
-            onClick={() => formik.submitForm()}
-          >
-            <FormattedMessage id="actions.save" />
-          </Button>
-          <Button
-            variant="secondary"
-            type="button"
-            onClick={onClose}
-            className="ml-2"
-          >
-            <FormattedMessage id="actions.cancel" />
-          </Button>
-          {!isNew && (
-            <Button
-              variant="danger"
-              className="ml-auto"
-              onClick={() => onDelete()}
-            >
-              <FormattedMessage id="actions.delete" />
-            </Button>
-          )}
+    <Form noValidate onSubmit={formik.handleSubmit} aria-busy={isRunning}>
+      <fieldset disabled={isRunning}>
+        <div className="form-container px-3">
+          {renderInputField("title")}
+          {renderInputField("image_index", "number")}
         </div>
-      </div>
+        <div className="buttons-container px-3">
+          <div className="d-flex">
+            <Button
+              variant="primary"
+              disabled={
+                isRunning ||
+                (!isNew && !formik.dirty) ||
+                !isEqual(formik.errors, {})
+              }
+              onClick={() => formik.submitForm()}
+            >
+              <FormattedMessage id="actions.save" />
+            </Button>
+            <Button
+              variant="secondary"
+              type="button"
+              onClick={onClose}
+              className="ml-2"
+            >
+              <FormattedMessage id="actions.cancel" />
+            </Button>
+            {!isNew && (
+              <Button
+                variant="danger"
+                className="ml-auto"
+                onClick={() => onDelete()}
+              >
+                <FormattedMessage id="actions.delete" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </fieldset>
     </Form>
   );
 };
