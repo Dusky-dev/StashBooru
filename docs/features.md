@@ -181,6 +181,25 @@ legacy Copyright Tags, Artist-link drift, orphaned links and ambiguous migration
 candidates. **Alias Collision Inspector** shows conflicting canonical/alias
 matches. Both diagnose without automatically repairing or merging records.
 
+### Character creation and saves
+
+On **Create Character**, the Save menu's **Save & New** validates the form before
+sending a request, using the same metadata formatting as Save. A missing name
+shows the native field error. A rejected create retains the selected Copyright
+or Artist context with the rest of the draft for retry. After a successful
+**Save & New**, the new-Character form resets for the next entry. Ordinary Save
+opens the saved profile. Existing-Character saves and Cancel keep their native
+behavior; separate variant/Copyright writes remain separate transactions.
+
+The isolated `character-save-new.mjs` browser suite uses owned servers and local
+portrait/metadata fixtures. It checks validation, rejected create and update,
+retained-draft retries, clean subsequent creation, Cancel, Back, refresh/restart
+and native context/Tag/custom-field identity at desktop/mobile sizes. Run it with
+`STASH_BROWSER_BINARY`, optional `STASH_BROWSER_UI`, `PLAYWRIGHT_MODULE`,
+`CHROMIUM_EXECUTABLE` and `STASH_BROWSER_SCREENSHOTS`, as for the other native
+browser suites. Broader bulk editing, scraping and association-write rollback
+remain separate acceptance work.
+
 ### Character cleanup and Copyright auto-tagging
 
 In **Settings → Tasks → Merge duplicate Characters**, preview matching full names,
