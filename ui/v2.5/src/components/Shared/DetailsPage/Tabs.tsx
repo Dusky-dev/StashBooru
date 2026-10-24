@@ -87,7 +87,12 @@ export function useTabKey(props: {
   useEffect(() => {
     rememberMediaTab(activeTabKey);
     if (tabKey !== activeTabKey) {
-      history.replace(`${baseURL}/${activeTabKey}`);
+      // This resolves the current tab, rather than switching media types.
+      // Keep list options, including any query normalization by child lists.
+      history.replace({
+        ...history.location,
+        pathname: `${baseURL}/${activeTabKey}`,
+      });
     }
   }, [activeTabKey, baseURL, history, tabKey]);
 
