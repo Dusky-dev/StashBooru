@@ -134,8 +134,6 @@
 }
 
 .image-tabs {
-  max-height: calc(100vh - 4rem);
-
   overflow-wrap: break-word;
   word-wrap: break-word;
 }
@@ -145,6 +143,7 @@ $imageTabWidth: 450px;
 @media (min-width: 1200px) {
   .image-tabs {
     flex: 0 0 $imageTabWidth;
+    max-height: calc(100vh - 4rem);
     max-width: $imageTabWidth;
     overflow: auto;
   }

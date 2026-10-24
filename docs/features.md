@@ -71,8 +71,10 @@ sections redirect to the new location.
 
 Open an Image's detail page and use **Edit → Save** to update its metadata.
 You can save again in the same editor. **Custom fields** expands the native
-field editor; its values are saved alongside the Image's metadata, while Artist
-and Copyright assignments use their existing separate writes. A rejected Image
+field editor; on narrow screens the panel grows with the form so its lower
+controls stay reachable above the bottom navigation. Its values are saved
+alongside the Image's metadata, while Artist and Copyright assignments use
+their existing separate writes. A rejected Image
 update leaves its draft available for correction and retry. Separate association
 writes are not a combined transaction.
 

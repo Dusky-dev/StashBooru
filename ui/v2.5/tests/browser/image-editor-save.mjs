@@ -199,11 +199,8 @@ async function check(viewport, label) {
   }
   async function expandCustomFields() {
     const toggle = editor().locator(".custom-fields-input .collapse-button");
-    // Center lower controls explicitly so the fixed mobile navbar does not
-    // intercept Playwright's minimal automatic scroll. Keep a real click.
-    await toggle.evaluate((element) =>
-      element.scrollIntoView({ block: "center" })
-    );
+    // A real click must reach the lower form; never bypass the fixed navbar
+    // with force, DOM events or keyboard activation.
     await toggle.click();
   }
   async function saveTitle(value, rejected = false, holdAssociations = false) {
@@ -341,6 +338,22 @@ async function check(viewport, label) {
   );
   assert.deepEqual(await snapshot(), expected("Retry draft"));
   await saveTitle("Final save");
+  for (const width of [575, 576, 1199, 1200]) {
+    await page.setViewportSize({ width, height: 844 });
+    const maxHeight = await page
+      .locator(".image-tabs")
+      .evaluate((element) => getComputedStyle(element).maxHeight);
+    assert.equal(
+      maxHeight,
+      width < 1200 ? "none" : "788px",
+      "Only the desktop scrolling panel may limit height"
+    );
+  }
+  await page.setViewportSize(viewport);
+  await expandCustomFields();
+  await editor()
+    .getByPlaceholder("note", { exact: true })
+    .scrollIntoViewIfNeeded();
   await page.screenshot({
     path: join(artifacts, label + "-saved.png"),
     fullPage: true,
