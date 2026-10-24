@@ -2,6 +2,63 @@
 
 Updated: 2026-10-24
 
+## Migration backup destination and upgrade coverage (E12) — 2026-10-24
+
+- Merged [PR #211](https://github.com/Dusky-dev/StashBooru/pull/211) at
+  `1254abd1cde2a3061079386313eac424b1c3f27c` after all 14 checks passed and
+  Codex Review completed without findings on
+  `a4c51ef9d3cd9ce36c55d5b77b458eef480749f7`; no submitted/inline findings.
+  This is the baseline for
+  [`fix/database-upgrade-20261024`](https://github.com/Dusky-dev/StashBooru/tree/fix/database-upgrade-20261024).
+- Migration Execute already preserves explicit backup paths, but PreExecute
+  always checked the configured default directory. Reproduced three focused
+  baseline failures: usable absolute/relative paths were rejected because the
+  unrelated default was blocked; an invalid selected parent passed preflight
+  when the default was valid. Match preflight to the explicitly selected parent.
+  Bare filenames and blank input keep their existing default-directory behavior.
+  The warning names the actual invalid directory.
+- No migration SQL, schema version, backup format, Execute/automatic rollback,
+  file lifecycle, dependency or production UI changes. Preflight still uses the
+  existing directory-creation helper; it does not claim to prove write access or
+  reserve disk space. Existing backup/SQL errors remain authoritative.
+- Source `5e800ae97a86eba646418d7c4f4f98abd995f63a`, tree `5aa5fa0348d731d37af728e09a8d9cff2ebaf00d`, is saved remotely and exactly matches
+  local source before this documentation follow-up. The chat resumed in a reset
+  workspace during earlier local generation/build work. Restored and checkpointed
+  the implementation/tests; no incomplete historical build or native migration
+  run is counted as a pass.
+- Restored focused TestMigrateBackupDirectory passed all six cases locally,
+  including relative/absolute override, invalid selected parent, blocked defaults
+  for filename/blank and creation of a configured destination. Go formatting,
+  focused browser-file Biome, JS syntax, workflow YAML/step checks and diff checks
+  passed. Full backend/integration gates and historical browser acceptance are
+  CI gates, not completed local results at this checkpoint.
+- New database-upgrade.mjs owns private configurations, database roots and
+  processes. It requires an actual schema-99 application built from fork commit
+  `aa1a2b42bf9bfb6b07608350bfbda688e54e91b9`; no current-database version
+  label is edited. CI checks out that pinned source separately, generates its
+  backend, and builds an API-only historical fixture with a placeholder UI.
+  The current Linux artifact supplies the actual migration page. Generator/build
+  logs and upgrade captures stay in the first-library artifact.
+- The suite is designed to check desktop/mobile 99→100 migration, real rejected
+  preflight with the typed path retained, a usable custom path while the default
+  remains blocked, native redirect/refresh, SQLite integrity/foreign keys and new
+  identity-table presence. It compares exact queried Artist/Character/Copyright
+  names and aliases; Artist URLs/custom fields; Video metadata/custom fields/
+  native relationships, Collection number and file IDs; and Artist image bytes.
+  It checks that the named backup remains schema 99, opens a copied backup in
+  the historical app, and restarts the upgraded original in the current app.
+  No API response is mocked; the suite cannot target an existing library.
+- These historical browser checks are pending CI, so the audit's remaining
+  cross-version acceptance is not closed. Limits also include one pinned upgrade
+  path, database-stored blobs and metadata-only Videos, not every earlier release,
+  filesystem-blob recovery, large owner libraries, actual media/codec/processing
+  recovery, interrupted SQL migration/automatic rollback, plugins, physical
+  devices, model/GPU operation or performance. No human manual testing claimed.
+- Next: applicable CI and completed Codex Review; fix viable failures/findings
+  before merging. End when only external gates remain. Continue plugin
+  compatibility as a separate bounded pass after this upgrade check is eligible.
+  #205/#196 eventual-review obligations remain recorded separately.
+
 ## Backup retry and isolated restore acceptance (E12) — 2026-10-24
 
 - Merged [PR #210](https://github.com/Dusky-dev/StashBooru/pull/210) at
