@@ -202,6 +202,12 @@ async function check(viewport, label) {
     // A real click must reach the lower form; never bypass the fixed navbar
     // with force, DOM events or keyboard activation.
     await toggle.click();
+    await page.waitForFunction(
+      () =>
+        !document.querySelector(
+          "#image-edit-details .custom-fields-input .collapsing"
+        )
+    );
   }
   async function saveTitle(value, rejected = false, holdAssociations = false) {
     let release;
@@ -352,8 +358,8 @@ async function check(viewport, label) {
   await page.setViewportSize(viewport);
   await expandCustomFields();
   await editor()
-    .getByPlaceholder("note", { exact: true })
-    .scrollIntoViewIfNeeded();
+    .locator(".custom-fields-new .custom-fields-field input")
+    .click();
   await page.screenshot({
     path: join(artifacts, label + "-saved.png"),
     fullPage: true,
