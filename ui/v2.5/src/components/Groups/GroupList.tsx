@@ -339,7 +339,7 @@ export const FilteredGroupList = PatchComponent(
           ? () => o.isDisplayed!(result, filter, selectedIds)
           : undefined,
         onClick: () => {
-          o.onClick(result, filter, selectedIds);
+          o.onClick(result, filter, selectedIds, onSelectNone);
         },
       }));
 

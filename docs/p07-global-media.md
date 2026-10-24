@@ -621,3 +621,47 @@ this check, with screenshots/server logs in the existing artifact.
 These are synthetic Chromium/SQLite acceptance checks, not physical-device,
 owner-library, chapter playback or ordered Collection/hierarchy acceptance.
 Those remain separate E12 checks.
+
+## Collection hierarchy and membership acceptance
+
+In a Collection's **Sub-Groups** tab, **Add Sub-Groups** links existing
+Collections with optional relationship descriptions. Fields and actions lock
+while saving. A rejected hierarchy change leaves the dialog draft available
+for correction/retry; the backend rejects cycles, including an edit that became
+cyclic after the dialog opened. Membership changes refresh Collection details
+and counts immediately.
+
+Choose **Sub-Group Order** and use a card's drag handle to reorder children.
+Descriptions remain attached to the same relationship. **Remove from Group**
+unlinks the selection from this parent. Successful removal clears the completed
+selection; a rejected request keeps it available for retry. The child Collection,
+its native metadata and its membership in other parents remain intact.
+
+The real-server suite
+[`collection-editing.mjs`](../ui/v2.5/tests/browser/collection-editing.mjs) owns
+fresh configuration/database/media folders and a loopback server for each of
+desktop 1440 × 1000 and mobile 390 × 844. It checks Add with a concurrent
+hierarchy edit causing a real cycle rejection, retained draft/description and
+valid retry; disabled pending inputs; child order/descriptions and counts;
+mouse drag reordering; Back/reload; rejected unlink retaining selection; valid
+unlink clearing selection; and exact queried child metadata/other-parent
+relationships after removal. Server responses are not fabricated: rejected
+unlink changes only the outgoing parent ID to an invalid fixture value.
+
+```sh
+STASH_BROWSER_BINARY=/absolute/path/to/stash-linux \
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
+STASH_BROWSER_SCREENSHOTS=/absolute/path/to/output \
+node ui/v2.5/tests/browser/collection-editing.mjs
+```
+
+The optional `STASH_BROWSER_UI` and `CHROMIUM_EXECUTABLE` overrides work as in
+the chapter suite above. Both suites share the isolated server launcher; they
+never accept an existing library or server URL. Build CI reuses its Linux
+artifact/browser tools and uploads Collection captures/logs alongside the
+existing first-library artifacts. No API response is mocked.
+
+These checks use a tiny synthetic hierarchy and Chromium mouse input at both
+viewport sizes. They do not establish physical touch drag behavior, large
+hierarchy performance, Collection Video-number editing/playback, owner-library
+usability or recovery/upgrade/plugin compatibility.

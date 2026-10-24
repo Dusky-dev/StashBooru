@@ -80,7 +80,8 @@ export const GroupSubGroupsPanel: React.FC<IGroupSubGroupsPanel> =
       async function removeSubGroups(
         _result: GQL.FindGroupsQueryResult,
         _filter: ListFilterModel,
-        selectedIds: Set<string>
+        selectedIds: Set<string>,
+        clearSelection?: () => void
       ) {
         try {
           await mutateRemoveSubGroups(
@@ -88,6 +89,7 @@ export const GroupSubGroupsPanel: React.FC<IGroupSubGroupsPanel> =
             Array.from(selectedIds.values())
           );
 
+          clearSelection?.();
           Toast.success(
             intl.formatMessage(
               { id: "toast.removed_entity" },
