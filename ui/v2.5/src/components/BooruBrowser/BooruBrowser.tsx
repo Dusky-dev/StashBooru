@@ -231,8 +231,17 @@ function PostInspection({
         event.stopPropagation();
         if (event.key === "ArrowLeft") onPrevious?.();
         if (event.key === "ArrowRight") onNext?.();
-        if (!event.repeat && event.key === "ArrowUp")
-          downloads.current.get(assets[activeIndex.current]?.id)?.click();
+        if (!event.repeat && event.key === "ArrowUp") {
+          // Explicit focus wins over a scroll event from focusing an attachment.
+          // Otherwise use the entry nearest the top of the media viewport.
+          const focusedAsset = target.closest<HTMLElement>(
+            ".booru-inspection-asset"
+          );
+          const index = focusedAsset
+            ? Number(focusedAsset.dataset.assetIndex)
+            : activeIndex.current;
+          downloads.current.get(assets[index]?.id)?.click();
+        }
         if (!event.repeat && event.key === "ArrowDown") ignore.current?.click();
       }}
     >

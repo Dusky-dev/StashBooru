@@ -176,6 +176,10 @@ overwritten.
 The inspector groups and colors tags by category. Click a tag for **Add to search**
 or **Replace search**; these update and submit the query and close the preview.
 With immediate search disabled, they only update the draft and close the preview.
+When an attachment has keyboard focus, **Up** downloads that attachment even
+if focusing it scrolls the preview while part of the previous file remains
+visible. With focus elsewhere in the preview, Up uses the file nearest its top.
+
 The same menu offers **Add to blacklist**, which appends the tag to the blacklist
 of the booru that supplied the preview, saves it immediately, and refreshes
 the current result page. This does not change another booru's blacklist, source

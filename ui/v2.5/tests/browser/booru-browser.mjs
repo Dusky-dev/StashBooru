@@ -2228,6 +2228,14 @@ try {
         new URL(request.url()).pathname.endsWith("/booru-browser/download")
     );
     await mediaSections.nth(1).focus();
+    // Focus can scroll the media body while part of the primary remains above
+    // the attachment. Its explicit keyboard target must win over scroll tracking.
+    await attachmentPreview.locator(".modal-body").dispatchEvent("scroll");
+    assert.ok(
+      await mediaSections
+        .nth(1)
+        .evaluate((element) => element === document.activeElement)
+    );
     await page.keyboard.press("ArrowUp");
     assert.equal((await attachmentRequest).postDataJSON().key, "e".repeat(48));
     await mediaSections.nth(1).focus();
