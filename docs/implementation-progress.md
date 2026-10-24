@@ -2,6 +2,73 @@
 
 Updated: 2026-10-24
 
+## Backup retry and isolated restore acceptance (E12) — 2026-10-24
+
+- Merged [PR #210](https://github.com/Dusky-dev/StashBooru/pull/210) at
+  `5d29227ced1405e03989e677c73e59058fe232cb` after all 13 checks passed and
+  Codex Review completed without findings on
+  `140f828bb2e9a5c32ce8c634f47938df7bf07e12`. No submitted/inline findings.
+  This is the baseline for
+  [`fix/recovery-workflow-20261024`](https://github.com/Dusky-dev/StashBooru/tree/fix/recovery-workflow-20261024).
+- Baseline acceptance reproduced the backup dialog disappearing as soon as a
+  request starts: the parent replaced Tasks with a loading indicator, discarding
+  both backup choices and other mounted task state. Keep backup running state
+  with DataManagementTasks, use the native modal's running controls and a disabled
+  fieldset, guard duplicate requests and close only after successful backup.
+  The existing anonymisation loading behavior remains outside this pass.
+- A regular file at the configured backup-directory path produces a real server
+  failure even when running as root. Rejected backups retain the chosen
+  destination/blob values for retry. Mobile captures showed that an open dialog
+  can obscure the previous global toast; put this backup error inside a native
+  wrapping Alert instead. Clear it on retry or explicit Cancel. Reopening after
+  successful retry has no stale error.
+- Source `0f1c6069210c228b54cbc0c2694819ee20b7b948`, tree `5fe00c0bc64c61e0ac09263f99d88414c752d9c4`, exactly matches the tested local source
+  and was saved remotely before this ledger follow-up.
+- New database-backups.mjs passed all four desktop/mobile × database/filesystem
+  blob-storage cases against actual private servers. It checks pending choices,
+  locked Cancel/action controls, a disabled duplicate activation, actual rejected
+  writes with a visible inline cause, retained choices, valid retry and preservation
+  of another Tasks section's unsaved inheritance draft/open disclosure.
+  No API response is fabricated and no existing library/server URL is accepted.
+- Each case saves a directory backup and downloads another via the native
+  dialog, retaining the Settings route. Stop the source instance, then restore
+  each output into a distinct newly configured instance. SQLite integrity and
+  foreign-key checks pass. Fresh GraphQL reads preserve the exact queried
+  Artist ID/name/URLs/custom fields and metadata-only Video ID/title/details/
+  custom fields/native Artist, Character, Copyright, Tag, Collection/number
+  and file IDs. Artist image responses have identical bytes.
+- Database-stored blobs survive in SQLite. Filesystem ZIPs pass archive integrity
+  and contain only the database plus blobs; filesystem SQLite-only restoration
+  deliberately supplies a separately copied blob directory. New media directories
+  remain empty, while the source fixture's PNG bytes stay unchanged. This
+  demonstrates the existing database/blob-versus-media distinction without
+  adding a restore wizard, format, manifest, compatibility detector or file
+  lifecycle change. Fresh-origin first-use notes are closed through the native
+  dialog before inspecting the restored Artist page.
+- Final 69 UI unit tests, JS/CSS lint, TypeScript/formatting, UI GraphQL generation,
+  production make ui-only/built-in composition, focused Biome, JavaScript syntax,
+  workflow YAML/step validation and git diff --check passed. Existing
+  tasks-navigation.mjs also passed desktop/mobile: grouping, pending results/
+  drafts, errors, Back, bookmarks, refresh and layout. Final backup and restored
+  profile captures were inspected; no uncaught page errors or horizontal document
+  overflow in the asserted views. No human manual testing is claimed.
+- Runtime is the #210 Linux artifact (run 40099437771, artifact 12563025316)
+  with this production UI through STASH_UI. Backend/schema match the merge
+  baseline exactly. No backend/schema/dependency changes require new local
+  Go gates. CI adds the owned backup suite to first-library using the existing
+  artifact/browser tools and its backups artifact subdirectory. The feature
+  guide documents the current behavior, invocation and fixture boundaries;
+  the audit's progress row distinguishes this same-schema acceptance.
+- Limits: configured data roots are created as native setup does. This does not
+  verify automatic reconstruction of missing roots, cross-version upgrades,
+  representative owner-library recovery, actual media/codec/processing restore,
+  physical devices, plugin compatibility, real model/GPU operation or performance.
+  Other native editor repeat-save/Save & New acceptance remains separate.
+- Next: applicable CI and completed Codex Review on the final head; end when
+  only external gates remain. Continue isolated cross-version upgrade/plugin
+  acceptance as bounded passes. #205/#196 eventual review obligations remain
+  recorded separately.
+
 ## Collection Video numbers and repeat-save values (E12) — 2026-10-24
 
 - Continued the owner's “continue” request with Collection Video-number editing.

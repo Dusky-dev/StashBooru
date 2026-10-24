@@ -60,16 +60,7 @@ const sections = defineMessages({
 
 export const SettingsTasksPanel: React.FC = () => {
   const intl = useIntl();
-  const [isBackupRunning, setIsBackupRunning] = useState<boolean>(false);
   const [isAnonymiseRunning, setIsAnonymiseRunning] = useState<boolean>(false);
-
-  if (isBackupRunning) {
-    return (
-      <LoadingIndicator
-        message={intl.formatMessage({ id: "config.tasks.backing_up_database" })}
-      />
-    );
-  }
 
   if (isAnonymiseRunning) {
     return (
@@ -119,10 +110,7 @@ export const SettingsTasksPanel: React.FC = () => {
           title={intl.formatMessage(sections.maintenance)}
           description={intl.formatMessage(sections.maintenance_help)}
         >
-          <DataManagementTasks
-            setIsBackupRunning={setIsBackupRunning}
-            setIsAnonymiseRunning={setIsAnonymiseRunning}
-          />
+          <DataManagementTasks setIsAnonymiseRunning={setIsAnonymiseRunning} />
         </SettingsDisclosure>
         <SettingsDisclosure
           id="tasks-plugins"
