@@ -665,3 +665,49 @@ These checks use a tiny synthetic hierarchy and Chromium mouse input at both
 viewport sizes. They do not establish physical touch drag behavior, large
 hierarchy performance, Collection Video-number editing/playback, owner-library
 usability or recovery/upgrade/plugin compatibility.
+
+## Collection Video numbering acceptance
+
+In a Video's **Edit → Collections** rows, the number belongs to that specific
+Collection relationship. Clearing it removes the number while keeping membership.
+Zero is an assigned number and is shown as **#0** on both the Video card in its
+Collection and the Collection card on the Video. Signed whole numbers retain the
+existing contract. Fractional entries stay invalid under the native whole-number
+validation rather than silently changing to another value. Complete HTML numeric
+inputs such as `1e2` are interpreted as 100 instead of a partial integer prefix.
+
+Repeated Video saves keep plain custom-field values in the form; the existing
+create/update envelope is applied only at the request boundary. A rejected save
+keeps the draft available for retry, including the number for each Collection.
+Editing one number preserves the other Collection's number and the Video's
+queried native metadata and custom fields.
+
+[`collection-video-numbers.mjs`](../ui/v2.5/tests/browser/collection-video-numbers.mjs)
+uses the isolated launcher above, fresh configuration/databases and metadata-only
+Videos at 1440 × 1000 and 390 × 844. It checks fractional validation/no mutation,
+whole-value parsing, zero captions in both views, clearing a number, signed values,
+real server rejection/retry, repeated saves, reload and Collection sort order
+after Back. Another Collection retains its independent number. Seeded
+Artist/Character/Copyright/Tag/Gallery fields, title/code/details/URLs/file IDs
+and custom fields are compared after each successful edit. The fixture includes
+a legitimate custom field named `full` to distinguish user values from transport
+formatting.
+
+```sh
+STASH_BROWSER_BINARY=/absolute/path/to/stash-linux \
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
+STASH_BROWSER_SCREENSHOTS=/absolute/path/to/output \
+node ui/v2.5/tests/browser/collection-video-numbers.mjs
+```
+
+Optional production-UI and Chromium overrides work as in the preceding suites.
+Build CI reuses the Linux artifact and browser tools, writing captures/logs under
+the existing artifact's video-numbers directory. No response is mocked: rejection
+changes only the outgoing Video ID to an invalid fixture value and the actual
+server rejects it. Successful temporary instances are cleaned up.
+
+These are synthetic native-editor/order checks. They do not establish Video
+codec/playback support, Save & New interaction, physical touch behavior,
+owner-library usability, large-library performance or recovery/upgrade/plugin
+compatibility. Other entity editors' repeated-save contracts remain separate
+acceptance work.

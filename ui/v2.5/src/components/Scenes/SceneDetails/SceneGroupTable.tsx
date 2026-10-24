@@ -101,7 +101,7 @@ export const SceneGroupTable: React.FC<IProps> = (props) => {
                     i,
                     e.currentTarget.value === ""
                       ? null
-                      : Number.parseInt(e.currentTarget.value, 10)
+                      : e.currentTarget.valueAsNumber
                   );
                 }}
               />

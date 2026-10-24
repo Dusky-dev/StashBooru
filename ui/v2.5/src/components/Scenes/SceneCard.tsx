@@ -145,7 +145,7 @@ interface ISceneCardProps {
 const Description: React.FC<{
   sceneNumber?: number;
 }> = ({ sceneNumber }) => {
-  if (!sceneNumber) return null;
+  if (sceneNumber === undefined) return null;
 
   return (
     <>
