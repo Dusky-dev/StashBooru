@@ -222,11 +222,7 @@ export const SceneEditPanel: React.FC<IProps> = ({
   const [customFieldsError, setCustomFieldsError] = useState<string>();
 
   function submit(values: InputValues) {
-    const input = {
-      ...schema.cast(values),
-      custom_fields: formatCustomFieldInput(isNew, values.custom_fields),
-    };
-    void onSave(input);
+    void onSave(schema.cast(values));
   }
 
   const formik = useFormik<InputValues>({
@@ -346,6 +342,10 @@ export const SceneEditPanel: React.FC<IProps> = ({
       await onSubmit(
         {
           ...sceneInput,
+          // Keep transport envelopes out of Formik's values after reset/retry.
+          custom_fields: {
+            ...formatCustomFieldInput(isNew, input.custom_fields),
+          },
           // Keep the legacy single-Studio field synchronized with the primary
           // Artist so existing plugins and queries continue to work.
           studio_id: artistIDs[0] ?? null,
@@ -385,11 +385,7 @@ export const SceneEditPanel: React.FC<IProps> = ({
   }
 
   async function onSaveAndNewClick() {
-    const input = {
-      ...schema.cast(formik.values),
-      custom_fields: formatCustomFieldInput(isNew, formik.values.custom_fields),
-    };
-    void onSave(input, true);
+    void onSave(schema.cast(formik.values), true);
   }
 
   const encodingImage = ImageUtils.usePasteImage(onImageLoad);

@@ -17,7 +17,7 @@ const Description: React.FC<{
   sceneNumber?: number;
   description?: string;
 }> = ({ sceneNumber, description }) => {
-  if (!sceneNumber && !description) return null;
+  if (sceneNumber === undefined && !description) return null;
 
   return (
     <>
@@ -119,7 +119,7 @@ export const GroupCard: React.FC<IProps> = PatchComponent(
 
     function maybeRenderPopoverButtonGroup() {
       if (
-        sceneNumber ||
+        sceneNumber !== undefined ||
         groupDescription ||
         group.scenes.length > 0 ||
         group.tags.length > 0 ||
