@@ -191,6 +191,67 @@ Updated: 2026-10-24
   acceptance remains open. #205/#196 eventual-review obligations remain recorded
   separately.
 
+## Character Save & New validation and draft retries (E12) — 2026-10-24
+
+- Fresh baseline: develop `d2a150797b72e17f51700e702d65f108cc335823`
+  (merged PR #213). The owner explicitly deferred merging PR #214; it remains
+  separate, and this branch does not include its Image editor changes. Work is on
+  [`fix/character-save-new-20261024`](https://github.com/Dusky-dev/StashBooru/tree/fix/character-save-new-20261024).
+- Reproduced native Save & New with an empty name sending PerformerCreate and
+  showing the backend performer-name-must-not-be-blank toast, instead of native
+  form validation. The server rejected the record; this was a validation/feedback
+  gap, not evidence of invalid rows being created.
+- Save & New now validates with the existing Formik schema and respects custom
+  field/context-target errors before submitting. Save and Save & New share the
+  existing input formatting; ordinary Formik submission returns the save promise.
+  No new validation schema, API or parallel editor is introduced.
+- The real rejected-create retry then exposed the selected Copyright context
+  resetting to Custom. PerformerCreate recreated its draft object whenever the
+  mutation hook rerendered its parent, retriggering context initialization.
+  Memoize that object from the existing URL query so loading/error rerenders keep
+  its identity. Query changes still produce a new draft. Successful Save & New
+  keeps its existing explicit form/context/Tag/image reset.
+- Verified source `c472765d4baf59847af8d51b6f6466f7b06479c1`, tree
+  `8b582540f11210a30147180c5120c97a7a7e143e`, exactly matches the tested
+  local source and was saved remotely before this ledger follow-up.
+- New character-save-new.mjs passed at 1440 × 1000 and 390 × 844 against owned
+  servers, fresh databases and generated portrait fixtures. Desktop chooses a
+  native Copyright context; mobile chooses an Artist context. It checks initial
+  and post-reset blank-name validation with zero create requests, actual rejected
+  create with retained name/details/custom field/context, successful retry,
+  persisted aliases/Tag/context/custom-field IDs, a scalar user field named full,
+  and a clean next form/ordinary Save creating a distinct second Character without
+  previous metadata or artwork. The harness opens the actual image popover and
+  accepts the native profile's canonical media-tab URL.
+- Existing-Character update rejection leaves the changed name in the editor and
+  the saved records unchanged. Retry commits only the name change; Cancel discards
+  a later edit. Refresh, exact list Back and restart preserve both native records
+  and the saved portrait response bytes. No API response is mocked; rejection
+  changes only outgoing fixture IDs. Successful fixtures are removed. No uncaught
+  page errors or final profile document horizontal overflow; desktop/mobile
+  captures inspected. These are automated checks, not human manual tests.
+- Validation: make validate-ui passed (69 tests, JS/CSS lint, TypeScript and
+  formatting), make ui-only production build passed, focused final browser-file
+  Biome, JS syntax, CI YAML/suite-placement checks and git diff --check passed.
+  Initial harness formatting was corrected before the final gate. Reused the
+  exact #213 locally built backend with the newly built UI via STASH_BROWSER_UI;
+  production Go/API/schema is unchanged. No new local backend test/build is claimed.
+- CI adds the owned suite to first-library before historical checkout, using its
+  pinned browser/current Linux artifact and characters captures/logs. Feature
+  documentation describes validation, retained create context and Save & New.
+  The ledger entry is beside the prior E12 checkpoint to avoid overlapping #214's
+  separate prepend; the pending PR's merge remains deferred as requested.
+- Limits: tiny local profiles/portrait with one context/Tag, not representative
+  catalogs, remote scraping, bulk editing, variants/association-write failure
+  rollback or migration/file processing. Existing variant/Copyright writes remain
+  separate transactions. Prefilled q-query reset semantics are unchanged and not
+  part of this fixture. The broader audit and #205/#196 eventual review obligations
+  remain open.
+- Next: applicable CI and completed Codex Review on the final head; assess/fix
+  viable findings and end when only external gates remain. Merge #214 later per
+  the owner's instruction. Continue native Artist Save & New and failed-save/retry
+  acceptance, keeping that pass separately reviewable.
+
 ## Migration backup destination and upgrade coverage (E12) — 2026-10-24
 
 - Merged [PR #211](https://github.com/Dusky-dev/StashBooru/pull/211) at

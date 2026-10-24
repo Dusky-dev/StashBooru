@@ -289,6 +289,13 @@ jobs:
         PLAYWRIGHT_MODULE: ${{ runner.temp }}/first-library-tools/node_modules/playwright/index.mjs
         STASH_BROWSER_SCREENSHOTS: ${{ runner.temp }}/first-library-artifacts
       run: node tests/browser/first-library.mjs
+    - name: Native Character Save and New and retry
+      working-directory: ui/v2.5
+      env:
+        STASH_BROWSER_BINARY: ${{ runner.temp }}/first-library-binary/stash-linux
+        PLAYWRIGHT_MODULE: ${{ runner.temp }}/first-library-tools/node_modules/playwright/index.mjs
+        STASH_BROWSER_SCREENSHOTS: ${{ runner.temp }}/first-library-artifacts/characters
+      run: node tests/browser/character-save-new.mjs
     - name: Gallery chapter failures and retries
       working-directory: ui/v2.5
       env:
