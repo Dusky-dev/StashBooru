@@ -176,10 +176,6 @@ overwritten.
 The inspector groups and colors tags by category. Click a tag for **Add to search**
 or **Replace search**; these update and submit the query and close the preview.
 With immediate search disabled, they only update the draft and close the preview.
-When an attachment has keyboard focus, **Up** downloads that attachment even
-if focusing it scrolls the preview while part of the previous file remains
-visible. With focus elsewhere in the preview, Up uses the file nearest its top.
-
 The same menu offers **Add to blacklist**, which appends the tag to the blacklist
 of the booru that supplied the preview, saves it immediately, and refreshes
 the current result page. This does not change another booru's blacklist, source
@@ -379,8 +375,10 @@ three at a time; previews stay lazy and animated/video playback remains
 on-demand. The stream stops at the supported media files the provider already
 returned; it does not crawl additional posts or invent unavailable attachments.
 
-**Up arrow** downloads the media file currently in view or focused; the other
-existing post-navigation/ignore shortcuts are unchanged. Switching posts
+**Up arrow** downloads the focused attachment even if focusing it scrolls
+while part of the previous file remains visible. With focus elsewhere in the
+preview, Up uses the file nearest its top. The other existing post-navigation/
+ignore shortcuts are unchanged. Switching posts
 resets to the first media file and releases preview playback. The media list
 uses the modal's scroll area on desktop and mobile, with metadata/tags below
 the list. Missing or unsupported previews keep their individual fallback and

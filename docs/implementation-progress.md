@@ -2,6 +2,76 @@
 
 Updated: 2026-10-24
 
+## Booru preview blacklist validation takeover — 2026-10-24
+
+- The owner returned booru-browser maintenance to this stream after the other
+  agent completed independent work. Merged [PR #207](https://github.com/Dusky-dev/StashBooru/pull/207)
+  at `4e430fb2b1e1daf0f5b5f5999749a0f3c3ac999a`: all 13 checks passed and
+  Codex Review completed without findings on `eb4407cd915846315b36dd6d9859de3df4ee6981`.
+- Continued the existing [PR #205](https://github.com/Dusky-dev/StashBooru/pull/205)
+  and its `feat/booru-preview-tag-blacklist` branch rather than creating a second
+  implementation. Integrated the fresh develop baseline above. Published source
+  checkpoint `e17ec96def90c3d3f6d91c7ab64b1fdb79285fb9`, tree
+  `e65e60632e2761b4bb4679bf3dc68bec0170470c`, exactly matches the local tree.
+- Investigated all three failed gates on the original #205 head. Backend lint
+  found three ignored JSON encoding errors in tests; check them explicitly,
+  including reporting and returning safely from the concurrent append test.
+  UI generation/validation found formatting violations; apply the repository
+  formatter. The booru browser suite expected an exact confirmation text inside
+  a dismissible Alert, whose text also includes its Close control. Reproduced
+  the timeout locally; an isolated diagnostic confirmed that the notice and
+  refreshed results were present at desktop/mobile. Match the status region's
+  content instead of asserting that its Close button has no text.
+- Extend the existing mounted booru suite with a rejected blacklist save,
+  retained preview/query and unchanged saved blacklist, then successful retry,
+  exact source/instance/tag payload, confirmation, originating-source filtering
+  and other-source isolation. This suite mocks provider/settings HTTP responses;
+  backend handler tests separately exercise actual persisted configuration,
+  credentials, deduplication, invalid/stale source input and concurrent appends.
+- The first complete mounted run also reproduced an attachment keyboard bug:
+  focusing Media 2 can scroll the preview while Media 1 still crosses its top,
+  causing the scroll tracker to replace the explicit focused target. Up now
+  resolves a focused media entry first, then falls back to the visible entry.
+  The suite dispatches the competing scroll event and checks the exact attachment
+  download key. Existing native input/video/dropdown key handling remains.
+  Source checkpoint `f8e57ca0020a4d774fa2562aaa92038ab4ecd02e`, tree
+  `cd57bdbc1e4b93b561b242ecd6a39b61fbbda8b6`, matches the tested local code;
+  subsequent changes only organize the guide and record these results.
+- Source review: the additive handler holds the existing settings lock, reads
+  current configuration, checks the source instance and preserves current
+  credentials/other sources. Ordinary settings saves retain revision conflicts;
+  blacklist limits and atomic private-file persistence remain in force.
+- Codex on the original head explicitly reported review quota exhaustion and
+  supplied no inline findings or submitted review. This is the documented quota
+  exception, not a completed clean review. Applicable CI still gates merge.
+- Validation: all 69 UI unit tests, final JS/CSS lint, TypeScript, formatting,
+  production make ui-only/built-in composition, JavaScript syntax and diff checks
+  passed. The complete mounted booru suite passed at 1440 × 1000 and 390 × 844,
+  including blacklist save rejection/retry and focused-attachment keyboard
+  download. Existing selection, preview focus/navigation/playback cleanup,
+  downloads/converter defaults/destination, settings/credentials, autocomplete,
+  filters/favorites, Back/reload, provider failure/races and overflow checks passed.
+- Backend generation and the focused API settings/blacklist/preview tests passed
+  locally. An initial direct test command used an incorrect manual SQLite include
+  version and did not compile; rerunning with the Makefile's module-resolved
+  version passed. On source f8e57ca, CI generate, all three mounted-browser jobs,
+  backend lint and Test Backend (make it, including integration tests) passed.
+  Their build workflow is run 40051099551, lint is 40051099532. The duplicate
+  local full-Go run had not completed when these CI gates passed; it is not used
+  as pass evidence. Do not claim local make test, make it or make lint completed.
+  Platform builds were still running at this checkpoint. Final docs/ledger head
+  still requires applicable CI.
+- Request a fresh Codex Review on the final head: #207 completed after #205's
+  earlier quota response, so the old exhaustion is not used to bypass a newly
+  available review. End when only external gates remain; do not idle-poll.
+- Limits: synthetic Chromium desktop/mobile and isolated backend fixtures do
+  not establish live-provider reliability or owner-library usability. This pass
+  changes no native library data model, file lifecycle or source adapter.
+- Next: finish #205 checks and merge only when eligible; resume E12 Gallery
+  chapters/Collection hierarchy and ordered editing, then isolated recovery,
+  upgrade and plugin compatibility. Live-provider/model/GPU and representative
+  owner-library acceptance remain open.
+
 ## Gallery action layout and selection (E07/E12) — 2026-10-24
 
 - Merged [PR #206](https://github.com/Dusky-dev/StashBooru/pull/206) at
