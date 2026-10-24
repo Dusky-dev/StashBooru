@@ -28,7 +28,8 @@ func (s *Manager) RunPluginTask(
 			return fmt.Errorf("error running plugin task: %w", err)
 		}
 
-		done := make(chan bool)
+		// Buffer completion so cancellation cannot leave the waiter blocked.
+		done := make(chan error, 1)
 		go func() {
 			defer close(done)
 			task.Wait()
@@ -39,16 +40,19 @@ func (s *Manager) RunPluginTask(
 			} else {
 				if output.Error != nil {
 					logger.Errorf("Plugin returned error: %s", *output.Error)
+					done <- fmt.Errorf("plugin returned error: %s", *output.Error)
+					return
 				} else if output.Output != nil {
 					logger.Debugf("Plugin returned: %v", output.Output)
 				}
 			}
+			done <- nil
 		}()
 
 		for {
 			select {
-			case <-done:
-				return nil
+			case err := <-done:
+				return err
 			case p := <-pluginProgress:
 				progress.SetPercent(p)
 			case <-jobCtx.Done():
