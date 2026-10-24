@@ -235,7 +235,7 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
 
   const [customFieldsError, setCustomFieldsError] = useState<string>();
 
-  function submit(values: InputValues) {
+  function submit(values: InputValues, andNew?: boolean) {
     const input: GQL.PerformerCreateInput = {
       ...schema.cast(values),
       custom_fields: formatCustomFieldInput(
@@ -254,14 +254,14 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
           contextType === "artist" ? (contextArtist?.id ?? null) : null,
       };
     }
-    onSave(input);
+    return onSave(input, andNew);
   }
 
   const formik = useFormik<InputValues>({
     initialValues,
     enableReinitialize: true,
     validate: yupFormikValidate(schema),
-    onSubmit: submit,
+    onSubmit: (values) => submit(values),
   });
 
   const { tags, updateTagsStateFromScraper, resetTagsState, tagsControl } =
@@ -489,26 +489,15 @@ export const PerformerEditPanel: React.FC<IPerformerDetails> = ({
   }
 
   async function onSaveAndNewClick() {
-    const { values } = formik;
-    const input: GQL.PerformerCreateInput = {
-      ...schema.cast(values),
-      custom_fields: formatCustomFieldInput(
-        isNew,
-        values.custom_fields
-      ) as GQL.PerformerCreateInput["custom_fields"],
-    };
-    if (contextType !== "custom") {
-      input.disambiguation = "";
+    const errors = await formik.validateForm();
+    if (
+      !isEqual(errors, {}) ||
+      customFieldsError !== undefined ||
+      missingContextTarget
+    ) {
+      return;
     }
-    if (contextDirty) {
-      input.disambiguation_context = {
-        copyright_id:
-          contextType === "copyright" ? (contextCopyright?.id ?? null) : null,
-        artist_id:
-          contextType === "artist" ? (contextArtist?.id ?? null) : null,
-      };
-    }
-    onSave(input, true);
+    await submit(formik.values, true);
   }
 
   // set up hotkeys
