@@ -1,6 +1,66 @@
 # StashBooru implementation progress
 
-Updated: 2026-10-24
+Updated: 2026-10-25
+
+## Tag Save & New validation and hierarchy retries (E12) — 2026-10-25
+
+- Continued the interrupted Tag pass from remotely saved, tested source
+  `2200e952c12889b1931ba3acbd7593bcf9ca5d0f`, tree
+  `9dd536a24cc173423f933499afffd2813cfdda26`, on
+  [`fix/tag-save-new-20261024`](https://github.com/Dusky-dev/StashBooru/tree/fix/tag-save-new-20261024).
+  Baseline was develop `ac17c49490401ff8af6e4f810899960023a34d68`,
+  after PR #216 merged with all 13 checks passed and clean completed Codex Review
+  on `6457f1e27d8fca7655aa592c378991ef8e0bfde8`.
+- PR #215 was found already merged at
+  `fb812b71a8f528e91a75169c901bc042b3337bf3`; all 12 checks passed.
+  Its review summary still says running on
+  `b0c549be5d83e0cdbca2ef8c39c86910b5f9d863`, with no submitted/inline
+  findings. This continuation did not perform that merge or treat the delayed
+  review as a general waiver. Assess any eventual #215 findings alongside the
+  existing #205/#196 eventual-review obligations.
+- Reproduced Tag Save & New sending TagCreate for a blank name rather than
+  showing the native field error. The server rejected it; no invalid record was
+  persisted. Validate through the existing Formik schema and respect custom-field
+  errors before submitting. Save and Save & New share existing input formatting;
+  normal Formik submission receives the save promise. No new schema or editor.
+- On 2026-10-24 the final tag-save-new.mjs passed at 1440 × 1000 and 390 × 844
+  against owned fresh servers/databases and local artwork. Initial/post-reset
+  blank-name checks send zero create requests. Real duplicate-name rejection
+  retains the draft; correcting the name preserves sort name, aliases,
+  description, two native parents, a child and a scalar custom field named full.
+  Save & New resets metadata, relationships and artwork for a distinct next Tag.
+- Existing-Tag editing chooses a real descendant as another parent. The rejected
+  cycle retains the edited name and leaves all saved Tag records unchanged.
+  Removing that choice and retry changes only the name. Cancel, exact list Back,
+  refresh and restart preserve all six Tag records and saved artwork bytes.
+  A separate native Copyright with the same name as a Tag and a metadata-only
+  Video retain their queried IDs/fields and explicit Tag links throughout.
+- No requests/responses are intercepted or mocked. The fixture closes native
+  multi-select menus with Escape before clicking the next control, rather than
+  allowing a still-open mobile menu to intercept it. No production dropdown
+  change is involved. Successful fixtures were removed; no uncaught page errors
+  or final profile document horizontal overflow. Desktop/mobile captures were
+  inspected in that run. No human manual testing is claimed.
+- Completed local validation on that saved source: make validate-ui (69 tests,
+  JS/CSS lint, TypeScript and formatting), make ui-only production build, final
+  browser-file Biome/JS syntax, workflow YAML/suite-placement checks and
+  git diff --check passed. Final harness menu-close refinement had focused checks
+  and the full desktop/mobile run. Used the unchanged #213 local backend with
+  the new production UI; no new local backend test/build is claimed.
+- The transient workspace reset on continuation. Restored the exact published
+  tested tree; previous local logs/captures are no longer present. No production
+  change or repeat build/test is needed for this documentation follow-up. CI
+  adds the suite to first-library before historical checkout and uploads fresh
+  tags logs/captures. Feature guide and audit next step reflect the bounded pass.
+- Fresh develop is #215's merge above. Read-only merge-tree with it is clean;
+  combined runtime acceptance remains CI's gate. Limits: small local profiles,
+  multi-parent hierarchy, artwork and one metadata-only Video/native Copyright,
+  not representative catalogs, bulk editing, scraping, playback or processing.
+  Native Copyright editing uses its own form and is not changed by this fix.
+  Prefilled q-query reset behavior is unchanged and outside this fixture.
+- Next: applicable CI and completed Codex Review on the final head, addressing
+  viable findings before merge; end when only external gates remain. Continue
+  native Copyright create/edit rejection and retry acceptance separately.
 
 ## Artist Save & New validation and hierarchy retries (E12) — 2026-10-24
 

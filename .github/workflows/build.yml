@@ -345,6 +345,13 @@ jobs:
         PLAYWRIGHT_MODULE: ${{ runner.temp }}/first-library-tools/node_modules/playwright/index.mjs
         STASH_BROWSER_SCREENSHOTS: ${{ runner.temp }}/first-library-artifacts/artists
       run: node tests/browser/artist-save-new.mjs
+    - name: Native Tag Save and New and hierarchy retry
+      working-directory: ui/v2.5
+      env:
+        STASH_BROWSER_BINARY: ${{ runner.temp }}/first-library-binary/stash-linux
+        PLAYWRIGHT_MODULE: ${{ runner.temp }}/first-library-tools/node_modules/playwright/index.mjs
+        STASH_BROWSER_SCREENSHOTS: ${{ runner.temp }}/first-library-artifacts/tags
+      run: node tests/browser/tag-save-new.mjs
     - name: Native plugin task failures and compatibility
       working-directory: ui/v2.5
       env:

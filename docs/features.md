@@ -191,6 +191,25 @@ inputs/switches, card selection/counters and page-size controls match the rest o
 Inspection supports keyboard navigation/download/ignore and explicit bounded video/GIF
 playback. Follows, metadata entity review and bounded batch import remain later packages.
 
+### Tag creation and saves
+
+On **Add Tag**, **Save & New** validates the form before sending a request and
+uses Save's existing metadata formatting. A missing name shows the native field
+error. A duplicate name is rejected by the server while retaining the draft;
+correct the name and retry. Success resets metadata, parent/child selections and
+artwork for the next Tag. Ordinary Save opens the saved Tag. Multiple parents and
+existing hierarchy-cycle validation retain their native behavior.
+
+The isolated `tag-save-new.mjs` suite checks validation, duplicate create/retry,
+clean next creation, multiple parents, real hierarchy-cycle rejection/correction,
+Cancel, Back and refresh/restart at desktop/mobile sizes. It also verifies that a
+same-name native Copyright and a metadata-only Video keep their own IDs and
+explicit Tag links. All server/database/artwork fixtures are owned by the suite;
+responses are never intercepted or mocked. Run it with `STASH_BROWSER_BINARY`,
+optional `STASH_BROWSER_UI`, `PLAYWRIGHT_MODULE`, `CHROMIUM_EXECUTABLE` and
+`STASH_BROWSER_SCREENSHOTS`. Native Copyright editing and broader bulk/real-library
+acceptance remain separate work.
+
 ### Artist creation and saves
 
 On **Add Artist**, **Save & New** validates the form before sending a request,
@@ -219,7 +238,8 @@ separate from ordinary Tags.
 
 Metadata and Character links are saved in separate requests. If a selected
 Character was deleted elsewhere, the metadata may already have saved when the
-link request fails. Remove that stale Character selection and retry: the form
+link request fails. An error message explains that partial save. Remove the stale
+Character selection and retry: the form
 updates the same Copyright ID and retains the other draft values. These requests
 are not a combined transaction. Keep the form open to correct the failed save;
 refreshing discards its unsaved draft.
