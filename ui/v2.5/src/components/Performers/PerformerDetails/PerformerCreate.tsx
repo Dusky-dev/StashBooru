@@ -18,9 +18,10 @@ const PerformerCreate: React.FC = PatchComponent("PerformerCreate", () => {
 
   const location = useLocation();
   const query = useMemo(() => new URLSearchParams(location.search), [location]);
-  const performer = {
-    name: query.get("q") ?? undefined,
-  };
+  const performer = useMemo(
+    () => ({ name: query.get("q") ?? undefined }),
+    [query]
+  );
 
   const [createPerformer] = usePerformerCreate();
 
