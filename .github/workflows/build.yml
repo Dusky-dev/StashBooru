@@ -317,6 +317,36 @@ jobs:
         PLAYWRIGHT_MODULE: ${{ runner.temp }}/first-library-tools/node_modules/playwright/index.mjs
         STASH_BROWSER_SCREENSHOTS: ${{ runner.temp }}/first-library-artifacts/backups
       run: node tests/browser/database-backups.mjs
+    - uses: actions/checkout@v6
+      with:
+        ref: aa1a2b42bf9bfb6b07608350bfbda688e54e91b9
+        path: upgrade-source
+        persist-credentials: false
+    - uses: actions/setup-go@v6
+      with:
+        go-version-file: upgrade-source/go.mod
+        cache-dependency-path: upgrade-source/go.sum
+    - name: Build historical schema-99 API fixture
+      working-directory: upgrade-source
+      env:
+        STASH_OUTPUT: ${{ runner.temp }}/first-library-binary/stash-schema99
+        STASH_VERSION: upgrade-from-aa1a2b4
+        GO_BUILD_FLAGS: -buildvcs=false
+      run: |
+        # The historical app only creates/reads old databases through its API.
+        # The current Linux artifact supplies the upgrade interface.
+        mkdir -p ui/v2.5/build "$RUNNER_TEMP/first-library-artifacts"
+        printf '%s\n' '<!doctype html><title>API-only historical upgrade fixture</title>' > ui/v2.5/build/index.html
+        make generate-backend > "$RUNNER_TEMP/first-library-artifacts/upgrade-old-generate.log" 2>&1
+        make build > "$RUNNER_TEMP/first-library-artifacts/upgrade-old-build.log" 2>&1
+    - name: Historical database upgrade and original-schema backup
+      working-directory: ui/v2.5
+      env:
+        STASH_BROWSER_BINARY: ${{ runner.temp }}/first-library-binary/stash-linux
+        STASH_UPGRADE_FROM_BINARY: ${{ runner.temp }}/first-library-binary/stash-schema99
+        PLAYWRIGHT_MODULE: ${{ runner.temp }}/first-library-tools/node_modules/playwright/index.mjs
+        STASH_BROWSER_SCREENSHOTS: ${{ runner.temp }}/first-library-artifacts/upgrade
+      run: node tests/browser/database-upgrade.mjs
     - name: Custom UI command-line flags
       run: |
         python3 scripts/tests/custom_ui_flags.py \

@@ -358,6 +358,44 @@ P01's additional product-manifest/restore-preflight work was deferred by the own
 the warning is not a guarantee of automated compatibility detection. Restore
 caches are bounded and can evict originals.
 
+### Database upgrade backup paths
+
+The migration page accepts a filename in the configured backup folder or a path
+to another destination. An absolute path, or a relative path containing a parent
+directory, validates its own parent. An unavailable default backup folder no
+longer blocks a usable explicit path. A bare filename continues to use the
+configured backup folder. Failed preflight keeps the page and typed path so you
+can correct it and retry.
+
+An empty value keeps the existing temporary rollback-backup behavior: the backup
+is deleted after successful migration. A named backup retains the earlier schema
+for its matching earlier application. Migration backups are SQLite-only;
+filesystem blobs, configuration, media and processing caches need separate
+preservation. StashBooru backups still require a compatible StashBooru version.
+
+The isolated upgrade suite uses a real schema-99 application from fork commit
+`aa1a2b42bf9bfb6b07608350bfbda688e54e91b9`. CI generates/builds that backend
+with an API-only placeholder UI; the current Linux artifact supplies the upgrade
+interface. It never changes a current database's version label to simulate an
+older database.
+
+```sh
+STASH_BROWSER_BINARY=/absolute/path/to/current-stash-linux \
+STASH_UPGRADE_FROM_BINARY=/absolute/path/to/stash-schema99 \
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
+node ui/v2.5/tests/browser/database-upgrade.mjs
+```
+
+Use the Python 3, Playwright and optional browser/UI/output settings described for
+the backup suite above. It owns all paths/processes and cannot target an existing
+library. It checks schema 99 → 100 at desktop/mobile sizes: rejected backup
+preflight and retained path, custom-path retry despite an unavailable default,
+upgrade, integrity/foreign keys, an original-schema backup reopened by the
+historical app, native aliases/relationships/custom fields and database blob
+bytes, refresh and restart. This is one pinned upgrade path, not acceptance of
+all older versions, filesystem-blob upgrade recovery, interrupted SQL migration,
+large owner libraries, plugins, codecs or processing recovery.
+
 ## Versions and updates
 
 Settings → About shows **StashBooru 1.0.0** separately from the upstream Stash
