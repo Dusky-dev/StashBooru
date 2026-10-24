@@ -2,6 +2,74 @@
 
 Updated: 2026-10-24
 
+## Collection Video numbers and repeat-save values (E12) — 2026-10-24
+
+- Continued the owner's “continue” request with Collection Video-number editing.
+  #209 initially had clean completed Codex Review with platform builds pending.
+  After all 12 checks passed, merged
+  [PR #209](https://github.com/Dusky-dev/StashBooru/pull/209) at
+  `1f9d40705d41d534194b3dae75b7d6c4e41aaaf3`, reviewed head
+  `1f804b0fad9cd497fe76794b2ef10ff7e740d88b`, with no submitted/inline findings.
+  Fast-forwarded this worktree to that merge without changing the tested base
+  tree. Future PRs retain the ordinary CI/completed-review gates.
+- Branch [`fix/collection-video-numbers-20261024`](https://github.com/Dusky-dev/StashBooru/tree/fix/collection-video-numbers-20261024)
+  has verified source `f07fe168f8bbf532c33cf11c15d2f2c2a3084cf9`, tree
+  `a92e5937a4c7a73a3561d4f58e0f1a80a28c4807`, matching tested local source and saved
+  remotely before this docs follow-up.
+- Baseline native-editor acceptance reproduced 1.5 becoming 1. Replace partial
+  parseInt parsing with the number input's complete valueAsNumber. The existing
+  Yup whole-number validator now receives fractional values and blocks Save;
+  complete HTML numeric input 1e2 represents 100 rather than 1. Keep the existing
+  signed integer, zero and nullable/blank contracts without new range restrictions.
+- A separate actual-server baseline saved zero and found no #0 caption in either
+  the Video's Collection card or its Collection's Video card. Treat only undefined
+  as unnumbered in those native card renderers. Clearing the number remains
+  unnumbered and does not unlink the Collection.
+- Repeated native saves also exposed an existing form-state defect: resetting
+  Formik with the API's custom_fields full envelope caused later saves to wrap it
+  again and receive a SQL unsupported-map-value error. Keep plain custom-field
+  maps in form values; apply the existing create/update formatter at onSave's
+  request boundary for both submission entry points. No backend/custom-field
+  storage contract or shared formatter changes. A seeded user field named full
+  remains a normal string, distinguishing it from the API envelope.
+- collection-video-numbers.mjs passed at 1440 × 1000 and 390 × 844 with private
+  configuration/databases and metadata-only Videos. It checks fraction retention/
+  no SceneUpdate, whole numeric parsing, zero captions in both views, blank/null
+  membership retention, signed values, real rejected save retaining the draft and
+  valid retry, reload and Collection ordering after Back. An independent second
+  Collection keeps its number. Exact queried title/code/details/URLs/file IDs,
+  Artist/Character/Copyright/Tag/Gallery fields and custom fields stay unchanged,
+  and Collection ID sets are preserved after each successful save.
+- Rejection changes only the outgoing Video ID to an invalid fixture ID; the
+  actual server supplies the error, which is checked for that ID. Every response
+  is real. This suite owns fresh loopback processes/directories and cannot use an
+  existing library. Successful fixtures are removed. Zero desktop/mobile captures
+  were inspected; a transient native success toast can overlap the capture.
+- Both existing Collection hierarchy runs also passed against the final UI:
+  concurrent cycle rejection/retry, pending fields, native mouse reorder and
+  descriptions/counts, Back/reload, rejected unlink selection, valid removal and
+  preservation of other-parent metadata. No uncaught page errors or document
+  horizontal overflow occurred in either suite's final assertions.
+- Validation: UI GraphQL generation; final 69 UI unit tests; JS/CSS lint;
+  TypeScript/formatting; production make ui-only/built-in composition; final
+  focused Biome; browser/built-in syntax; workflow YAML/step validation; and
+  git diff --check passed. Runtime backend/schema were verified identical between
+  the reused #205 Linux artifact and this baseline; validation used this production
+  UI through STASH_UI. No backend/schema changes require new local Go gates.
+- Build CI reuses its existing Linux artifact and pinned browser tools for this
+  numbering suite, with captures/logs under the existing artifact's video-numbers
+  directory. P07 documents the behavior, commands, fixture and limits; the audit's
+  current progress row includes numbering/repeat-save acceptance.
+- Limits: metadata-only synthetic Videos and Chromium, not real codec/playback
+  or file activation acceptance, physical touch devices, representative owner
+  libraries, large-library performance, Save & New interaction, or other entity
+  editors' repeated-save behavior. Native relationships/file lifecycle and
+  dependency locks are unchanged.
+- Next: applicable CI and completed Codex Review on the final head; end when only
+  external gates remain. Continue isolated recovery/upgrade/plugin acceptance;
+  other native editor repeat-save flows and owner-library/real-model/GPU checks
+  remain open. #205/#196 eventual review obligations stay recorded separately.
+
 ## Collection membership and hierarchy acceptance (E12) — 2026-10-24
 
 - Merged [PR #205](https://github.com/Dusky-dev/StashBooru/pull/205) at
