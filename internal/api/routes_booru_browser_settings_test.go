@@ -176,3 +176,110 @@ func TestBooruSettingsFailedSaveKeepsConfiguration(t *testing.T) {
 		t.Fatal("temporary credential file leaked")
 	}
 }
+
+func TestBooruPreviewAddsTagOnlyToOriginSourceBlacklist(t *testing.T) {
+	rs := booruBrowserRoutes{configPath: t.TempDir()}
+	danbooru := booru.Defaults()[0]
+	danbooru.Login, danbooru.APIKey = "account", "fixture-secret"
+	danbooru.BlacklistTags = []string{"old_tag"}
+	gelbooru := booru.Defaults()[2]
+	initial := booruSettingsUpdate{Revision: settingsRead(t, rs).Revision, Action: "save", Source: danbooru}
+	payload, err := json.Marshal(initial)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if w := settingsWrite(rs, string(payload)); w.Code != 200 {
+		t.Fatalf("fixture save failed: %s", w.Body.String())
+	}
+	add := func(source, instance, tag string) *httptest.ResponseRecorder {
+		t.Helper()
+		body, err := json.Marshal(booruSettingsUpdate{
+			Action: "blacklist-add", Source: booru.Source{ID: source}, Instance: instance, Tag: tag,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return settingsWrite(rs, string(body))
+	}
+	for _, tag := range []string{"New Tag", "new_tag", "NEW_TAG"} {
+		if w := add(danbooru.ID, danbooru.Instance(), tag); w.Code != 200 || strings.Contains(w.Body.String(), "fixture-secret") {
+			t.Fatalf("blacklist update failed or leaked credentials: %d %s", w.Code, w.Body.String())
+		}
+	}
+	data, _ := os.ReadFile(filepath.Join(rs.configPath, "booru-browser.json"))
+	active, err := booru.Configure(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, source := range active {
+		if source.ID == danbooru.ID {
+			if source.APIKey != "fixture-secret" || source.Login != "account" {
+				t.Fatal("blacklist action replaced credentials")
+			}
+			if len(source.BlacklistTags) != 2 || source.BlacklistTags[0] != "old_tag" || source.BlacklistTags[1] != "New_Tag" {
+				t.Fatalf("blacklist did not deduplicate and append: %#v", source.BlacklistTags)
+			}
+			posts := booru.Result{Posts: []booru.Post{{Tags: []booru.Tag{{Name: "NEW TAG"}}}}}
+			if source.FilterBlacklisted(posts).BlacklistedCount != 1 {
+				t.Fatal("new blacklist tag does not hide matching posts")
+			}
+		}
+		if source.ID == gelbooru.ID && len(source.BlacklistTags) != 0 {
+			t.Fatal("blacklist leaked to another source")
+		}
+	}
+	for _, bad := range []struct {
+		source, instance, tag string
+		status                int
+	}{
+		{"missing", danbooru.Instance(), "tag", 409},
+		{danbooru.ID, gelbooru.Instance(), "tag", 409},
+		{danbooru.ID, "", "tag", 409},
+		{danbooru.ID, danbooru.Instance(), "bad\ntag", 400},
+		{danbooru.ID, danbooru.Instance(), " tag ", 400},
+		{danbooru.ID, danbooru.Instance(), strings.Repeat("x", 257), 400},
+	} {
+		if w := add(bad.source, bad.instance, bad.tag); w.Code != bad.status {
+			t.Fatalf("accepted invalid action %#v: %d %s", bad, w.Code, w.Body.String())
+		}
+	}
+	final, _ := os.ReadFile(filepath.Join(rs.configPath, "booru-browser.json"))
+	if string(final) != string(data) {
+		t.Fatal("rejected or duplicate update changed configuration")
+	}
+}
+
+func TestBooruPreviewBlacklistAddsAreSerialized(t *testing.T) {
+	rs := booruBrowserRoutes{configPath: t.TempDir()}
+	source := booru.Defaults()[0]
+	var wg sync.WaitGroup
+	results := make(chan int, 8)
+	for i := range 8 {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			payload, err := json.Marshal(booruSettingsUpdate{
+				Action: "blacklist-add", Source: booru.Source{ID: source.ID},
+				Instance: source.Instance(), Tag: fmt.Sprintf("tag_%d", i),
+			})
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			results <- settingsWrite(rs, string(payload)).Code
+		}(i)
+	}
+	wg.Wait()
+	close(results)
+	for code := range results {
+		if code != 200 {
+			t.Fatalf("concurrent append failed: HTTP %d", code)
+		}
+	}
+	settings := settingsRead(t, rs)
+	for _, item := range settings.Sources {
+		if item.ID == source.ID && len(item.BlacklistTags) != 8 {
+			t.Fatalf("concurrent additions lost tags: %#v", item.BlacklistTags)
+		}
+	}
+}

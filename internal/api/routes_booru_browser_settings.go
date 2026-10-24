@@ -44,6 +44,8 @@ type booruSettingsUpdate struct {
 	Revision    string       `json:"revision"`
 	Action      string       `json:"action"`
 	Source      booru.Source `json:"source"`
+	Instance    string       `json:"instance,omitempty"`
+	Tag         string       `json:"tag,omitempty"`
 	ClearAPIKey bool         `json:"clearAPIKey"`
 }
 
@@ -148,13 +150,39 @@ func (rs booruBrowserRoutes) UpdateSettings(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	view := booruSettingsView(data, configured)
-	if update.Revision != view.Revision {
+	if update.Action != "blacklist-add" && update.Revision != view.Revision {
 		writeBooruError(w, 409, "conflict", "Source settings changed. Reload saved sources before saving again.")
 		return
 	}
 	source := update.Source
 	existing := slices.IndexFunc(view.Sources, func(s booruSourceSetting) bool { return s.ID == source.ID })
 	switch update.Action {
+	case "blacklist-add":
+		// This additive action runs under the settings lock against the
+		// *current* source definition. The browser never needs credentials
+		// or a configuration revision and cannot overwrite another edit.
+		active, err := booru.Configure(data)
+		if err != nil {
+			writeBooruError(w, 500, "configuration", "Cannot load source configuration.")
+			return
+		}
+		index := slices.IndexFunc(active, func(s booru.Source) bool { return s.ID == source.ID })
+		if index < 0 || update.Instance == "" || active[index].Instance() != update.Instance {
+			writeBooruError(w, 409, "conflict", "Booru source changed or is unavailable. Refresh results before blacklisting.")
+			return
+		}
+		source = active[index]
+		added, err := source.AddBlacklistTag(update.Tag)
+		if err != nil {
+			writeBooruError(w, 400, "blacklist", err.Error())
+			return
+		}
+		if !added {
+			writeVisualSimilarityJSON(w, view)
+			return
+		}
+		configured = slices.DeleteFunc(configured, func(s booru.Source) bool { return s.ID == source.ID })
+		configured = append(configured, source)
 	case "save":
 		if source.APIKey == "" && !update.ClearAPIKey {
 			for _, old := range configured {

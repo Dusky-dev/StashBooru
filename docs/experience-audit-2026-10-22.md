@@ -7,7 +7,9 @@ The project has useful capabilities, but everyday tasks expose too many of their
 implementation boundaries. The next work should reduce context switches and make
 existing behavior predictable before extending the feature list. This is a
 whole-project assessment, not a proposal to rebuild Stash or discard its safety
-contracts. Booru UI implementation remains with the agent already assigned to it.
+contracts. The booru agent’s independent pass is complete. The owner returned booru-browser
+maintenance to this stream on 2026-10-24; it follows the same bounded-fix and
+acceptance process.
 
 ## Current progress — 2026-10-24
 

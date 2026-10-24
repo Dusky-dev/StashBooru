@@ -310,6 +310,7 @@ try {
     const lateCompletions = [];
     let denied = true;
     let sourcesDenied = false;
+    let blacklistFailure = false;
     const delayed = [];
     let holdBlankReload = false;
     let heldBlankReload;
@@ -778,6 +779,41 @@ try {
         }
         const payload = route.request().postDataJSON();
         writes.push(payload);
+        if (payload.action === "blacklist-add") {
+          if (blacklistFailure) {
+            blacklistFailure = false;
+            await route.fulfill({
+              status: 500,
+              json: { error: "Cannot save blacklist fixture." },
+            });
+            return;
+          }
+          const old = savedSources.find(
+            (source) => source.id === payload.source?.id
+          );
+          if (!old || old.instance !== payload.instance) {
+            await route.fulfill({
+              status: 409,
+              json: { error: "Booru source changed." },
+            });
+            return;
+          }
+          const normalized = (value) =>
+            value.replace(/_/g, " ").trim().toLowerCase();
+          if (
+            !(old.blacklistTags ?? []).some(
+              (tag) => normalized(tag) === normalized(payload.tag)
+            )
+          ) {
+            old.blacklistTags = [
+              ...(old.blacklistTags ?? []),
+              payload.tag.replace(/ /g, "_"),
+            ];
+            revision++;
+          }
+          await route.fulfill({ json: settingsView() });
+          return;
+        }
         if (conflict || payload.revision !== String(revision)) {
           conflict = false;
           await route.fulfill({
@@ -857,6 +893,20 @@ try {
       ) {
         value.posts = value.posts.slice(1);
         value.blacklistedCount = 1;
+      }
+      const blocked =
+        savedSources.find((item) => item.id === source)?.blacklistTags ?? [];
+      if (url.searchParams.get("blacklist") !== "show" && blocked.length) {
+        const canonical = (value) => value.toLowerCase().replace(/ /g, "_");
+        const countBefore = value.posts.length;
+        value.posts = value.posts.filter(
+          (post) =>
+            !post.tags.some((tag) =>
+              blocked.some((name) => canonical(name) === canonical(tag.name))
+            )
+        );
+        value.blacklistedCount =
+          (value.blacklistedCount ?? 0) + countBefore - value.posts.length;
       }
       await route.fulfill({ json: value });
     });
@@ -2178,6 +2228,14 @@ try {
         new URL(request.url()).pathname.endsWith("/booru-browser/download")
     );
     await mediaSections.nth(1).focus();
+    // Focus can scroll the media body while part of the primary remains above
+    // the attachment. Its explicit keyboard target must win over scroll tracking.
+    await attachmentPreview.locator(".modal-body").dispatchEvent("scroll");
+    assert.ok(
+      await mediaSections
+        .nth(1)
+        .evaluate((element) => element === document.activeElement)
+    );
     await page.keyboard.press("ArrowUp");
     assert.equal((await attachmentRequest).postDataJSON().key, "e".repeat(48));
     await mediaSections.nth(1).focus();
@@ -2954,6 +3012,71 @@ try {
     }
     await page.goto(`${baseURL}/booru?source=danbooru&q=gallery`);
     await dan.locator(".booru-post").first().waitFor();
+    const beforeBlacklistWrites = writes.length;
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 101", exact: true })
+      .click();
+    const blacklistPreview = page.getByRole("dialog");
+    await blacklistPreview
+      .getByRole("button", { name: "Tag artist_a", exact: true })
+      .click();
+    blacklistFailure = true;
+    await blacklistPreview
+      .getByRole("menuitem", { name: "Add to blacklist", exact: true })
+      .click();
+    await blacklistPreview
+      .getByRole("alert")
+      .filter({ hasText: "Cannot save blacklist fixture." })
+      .waitFor();
+    assert.ok(await blacklistPreview.isVisible());
+    assert.ok(
+      !savedSources
+        .find((item) => item.id === "danbooru")
+        .blacklistTags.includes("artist_a")
+    );
+    assert.equal(new URL(page.url()).searchParams.get("q"), "gallery");
+    await blacklistPreview
+      .getByRole("button", { name: "Tag artist_a", exact: true })
+      .click();
+    await blacklistPreview
+      .getByRole("menuitem", { name: "Add to blacklist", exact: true })
+      .click();
+    await blacklistPreview.waitFor({ state: "hidden" });
+    await dan
+      .getByRole("status")
+      .filter({ hasText: "artist_a is blacklisted on Danbooru." })
+      .waitFor();
+    assert.equal(writes.length, beforeBlacklistWrites + 2);
+    assert.deepEqual(
+      {
+        action: writes.at(-1).action,
+        source: writes.at(-1).source,
+        instance: writes.at(-1).instance,
+        tag: writes.at(-1).tag,
+      },
+      {
+        action: "blacklist-add",
+        source: { id: "danbooru" },
+        instance: "fixture-danbooru",
+        tag: "artist_a",
+      }
+    );
+    assert.ok(
+      savedSources
+        .find((item) => item.id === "danbooru")
+        .blacklistTags.includes("artist_a")
+    );
+    assert.ok(
+      !savedSources
+        .find((item) => item.id === "gelbooru")
+        .blacklistTags.includes("artist_a")
+    );
+    await dan
+      .getByText(
+        "All posts on this page were hidden by this booru’s tag blacklist."
+      )
+      .waitFor();
+    assert.equal(new URL(page.url()).searchParams.get("q"), "gallery");
     sourcesDenied = true;
     await page.goto(`${baseURL}/booru`);
     await page
