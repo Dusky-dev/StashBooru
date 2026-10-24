@@ -201,6 +201,20 @@ toolbar and compares its native ID/title/relationships with the original read.
 Other Gallery members must remain unchanged. The temporary membership is also
 removed in `finally` if a check fails.
 
+Gallery Add uses the same native Gallery image-view configuration as Images,
+including its inline list layout and view preferences. It no longer mounts the
+general Images sidebar over Gallery details. Successful Add/Remove membership
+actions clear their completed selection; rejected actions retain it for retry.
+Other Image operations and ordinary cross-page selection retain their behavior.
+The list operation contract offers an optional selection-clear callback, which
+these two Gallery actions invoke after a successful server mutation.
+
+The suite also checks the Add layout, cleared selection after success and retained
+selection after failure. Failure coverage changes only the outbound mutation's
+Gallery ID to an invalid test value; the actual server rejects it and its real
+error response reaches the normal client error/toast path. It verifies unchanged
+membership before retrying the original request. No response data is mocked.
+
 These are actual library writes: use an isolated fixture, without concurrent
 edits. The suite does not seed a catalogue, mock API responses or run in ordinary
 UI CI. Tiny synthetic media and narrow-viewport mouse/keyboard checks do not

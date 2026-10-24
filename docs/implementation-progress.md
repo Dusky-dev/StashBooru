@@ -2,6 +2,68 @@
 
 Updated: 2026-10-24
 
+## Gallery action layout and selection (E07/E12) — 2026-10-24
+
+- Merged [PR #206](https://github.com/Dusky-dev/StashBooru/pull/206) at
+  `f0ba1ed853a0100e7a4bb466c3adf43b30d5f6e6` after all 12 applicable checks
+  passed and Codex Review completed without findings at
+  `196ac162c66a60f0556eb327cba407059c37e5a4`. This is the fresh develop
+  baseline for branch [`fix/gallery-actions-20261024`](https://github.com/Dusky-dev/StashBooru/tree/fix/gallery-actions-20261024).
+  Verified source `0065e47bfd863e87446ab415684d081f59e60a74`, tree
+  `60cc5fcf8ad7362d3c693d32086c32bbb5bbb7eb`, matches the tested local tree.
+  The source branch is saved remotely before this ledger follow-up.
+- Reproduced Gallery Add mounting the general Images sidebar over the Gallery
+  layout at desktop and mobile. A separate baseline action check reproduced a
+  successful Add leaving one invisible completed Image selected after refetch.
+  The preceding Gallery walkthrough also exposed the same removal behavior.
+- Give Gallery Add the existing GalleryImages view, matching the native Images
+  tab's inline layout and view preferences. Reuse its normal filter controls;
+  no new CSS, route, widget or preference store. Offer an optional selection-clear
+  callback in the existing list operation contract and pass it from native Image
+  lists. Only Gallery Add/Remove invoke it after their awaited mutation succeeds.
+  Existing three-argument operations remain valid; rejected actions keep their
+  selection, and the native off-page selection behavior is unchanged.
+- Extended the existing optional library-membership suite: assert no general
+  sidebar in Gallery Add, no stale selection after successful Add/Remove, and
+  selected targets retained for retry after actual server rejection. The failure
+  check changes only the outgoing Gallery ID to an invalid fixture value. The
+  real error response reaches the native catch/toast path; membership is checked
+  unchanged before the normal valid request is retried. No response is mocked.
+- All four actual-server Gallery/Collection cases passed at 1440 × 1000 desktop
+  and 390 × 844 mobile. Preserve #206's query/scope, ordered Collection paging,
+  Image/Video Back, refresh and empty-search/tab-reset checks. Fresh reads confirm
+  exact other Gallery members and unchanged native Image ID/title/direct Artist,
+  Character, Copyright, Tag and other Gallery IDs after add/remove. The temporary
+  membership is removed in finally. Final Add layout and mobile unselected-list
+  screenshots were inspected; error toasts in failure captures are intentional.
+- Existing selection-ranges.mjs also passed both viewports: All/native cross-page
+  ranges, retained off-page selections, typed Image/Video IDs, reload, first Video
+  checkbox selection and preview Back/Escape. Browser checks now await populated
+  card lists/default-tab resolution explicitly rather than relying only on
+  network-idle timing while lazy chunks initialize.
+- Validation: UI GraphQL generation; all 69 unit tests; JS/CSS lint; TypeScript;
+  final pnpm format-check; focused Biome; production make ui-only with built-in
+  composition; browser/built-in JavaScript syntax; and git diff --check passed.
+  The initial make validate-ui run reached formatting, which caught a new browser
+  wait statement; it was formatted and the format gate then passed. App source
+  was unchanged after unit/lint/type checks. No backend/schema changes require
+  additional local Go gates. Runtime used the #206 Linux artifact and this UI
+  through STASH_UI with a newly generated isolated PNG/H.264 fixture.
+- Added a current-progress summary to the experience audit, separating merged
+  consolidation passes from remaining live-provider/model, representative-library,
+  recovery/upgrade/plugin, accessibility/performance and localization acceptance.
+  The dated initial finding rows remain historical rather than completion claims.
+- Limits: automated Chromium/synthetic-library checks, not owner usability,
+  physical touch devices, all display modes, broad playback/model, chapter/
+  sub-Collection reordering or deletion/recovery acceptance. These suites require
+  the documented isolated seed and are not ordinary CI browser jobs. Native data
+  writers, file lifecycle and the separately assigned booru browser are unchanged.
+- Next: E12 Gallery chapters and Collection hierarchy/ordered editing, followed
+  by isolated recovery/upgrade/plugin workflows. Real-model/GPU E08 and owner
+  representative-library acceptance remain open. Await applicable CI and completed
+  Codex Review on this head; end instead of idle polling. The earlier #196 review
+  obligation remains recorded below without extending its owner-specific override.
+
 ## Gallery/Collection list context (E12) — 2026-10-24
 
 - Merged [PR #203](https://github.com/Dusky-dev/StashBooru/pull/203) at
