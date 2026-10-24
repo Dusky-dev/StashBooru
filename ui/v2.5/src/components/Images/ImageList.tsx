@@ -709,7 +709,7 @@ export const FilteredImageList = PatchComponent(
           ? () => o.isDisplayed!(result, filter, selectedIds)
           : undefined,
         onClick: () => {
-          o.onClick(result, filter, selectedIds);
+          o.onClick(result, filter, selectedIds, onSelectNone);
         },
       }));
 

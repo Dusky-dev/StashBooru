@@ -1,6 +1,129 @@
 # StashBooru implementation progress
 
-Updated: 2026-10-23
+Updated: 2026-10-24
+
+## Gallery action layout and selection (E07/E12) — 2026-10-24
+
+- Merged [PR #206](https://github.com/Dusky-dev/StashBooru/pull/206) at
+  `f0ba1ed853a0100e7a4bb466c3adf43b30d5f6e6` after all 12 applicable checks
+  passed and Codex Review completed without findings at
+  `196ac162c66a60f0556eb327cba407059c37e5a4`. This is the fresh develop
+  baseline for branch [`fix/gallery-actions-20261024`](https://github.com/Dusky-dev/StashBooru/tree/fix/gallery-actions-20261024).
+  Verified source `0065e47bfd863e87446ab415684d081f59e60a74`, tree
+  `60cc5fcf8ad7362d3c693d32086c32bbb5bbb7eb`, matches the tested local tree.
+  The source branch is saved remotely before this ledger follow-up.
+- Reproduced Gallery Add mounting the general Images sidebar over the Gallery
+  layout at desktop and mobile. A separate baseline action check reproduced a
+  successful Add leaving one invisible completed Image selected after refetch.
+  The preceding Gallery walkthrough also exposed the same removal behavior.
+- Give Gallery Add the existing GalleryImages view, matching the native Images
+  tab's inline layout and view preferences. Reuse its normal filter controls;
+  no new CSS, route, widget or preference store. Offer an optional selection-clear
+  callback in the existing list operation contract and pass it from native Image
+  lists. Only Gallery Add/Remove invoke it after their awaited mutation succeeds.
+  Existing three-argument operations remain valid; rejected actions keep their
+  selection, and the native off-page selection behavior is unchanged.
+- Extended the existing optional library-membership suite: assert no general
+  sidebar in Gallery Add, no stale selection after successful Add/Remove, and
+  selected targets retained for retry after actual server rejection. The failure
+  check changes only the outgoing Gallery ID to an invalid fixture value. The
+  real error response reaches the native catch/toast path; membership is checked
+  unchanged before the normal valid request is retried. No response is mocked.
+- All four actual-server Gallery/Collection cases passed at 1440 × 1000 desktop
+  and 390 × 844 mobile. Preserve #206's query/scope, ordered Collection paging,
+  Image/Video Back, refresh and empty-search/tab-reset checks. Fresh reads confirm
+  exact other Gallery members and unchanged native Image ID/title/direct Artist,
+  Character, Copyright, Tag and other Gallery IDs after add/remove. The temporary
+  membership is removed in finally. Final Add layout and mobile unselected-list
+  screenshots were inspected; error toasts in failure captures are intentional.
+- Existing selection-ranges.mjs also passed both viewports: All/native cross-page
+  ranges, retained off-page selections, typed Image/Video IDs, reload, first Video
+  checkbox selection and preview Back/Escape. Browser checks now await populated
+  card lists/default-tab resolution explicitly rather than relying only on
+  network-idle timing while lazy chunks initialize.
+- Validation: UI GraphQL generation; all 69 unit tests; JS/CSS lint; TypeScript;
+  final pnpm format-check; focused Biome; production make ui-only with built-in
+  composition; browser/built-in JavaScript syntax; and git diff --check passed.
+  The initial make validate-ui run reached formatting, which caught a new browser
+  wait statement; it was formatted and the format gate then passed. App source
+  was unchanged after unit/lint/type checks. No backend/schema changes require
+  additional local Go gates. Runtime used the #206 Linux artifact and this UI
+  through STASH_UI with a newly generated isolated PNG/H.264 fixture.
+- Added a current-progress summary to the experience audit, separating merged
+  consolidation passes from remaining live-provider/model, representative-library,
+  recovery/upgrade/plugin, accessibility/performance and localization acceptance.
+  The dated initial finding rows remain historical rather than completion claims.
+- Limits: automated Chromium/synthetic-library checks, not owner usability,
+  physical touch devices, all display modes, broad playback/model, chapter/
+  sub-Collection reordering or deletion/recovery acceptance. These suites require
+  the documented isolated seed and are not ordinary CI browser jobs. Native data
+  writers, file lifecycle and the separately assigned booru browser are unchanged.
+- Next: E12 Gallery chapters and Collection hierarchy/ordered editing, followed
+  by isolated recovery/upgrade/plugin workflows. Real-model/GPU E08 and owner
+  representative-library acceptance remain open. Await applicable CI and completed
+  Codex Review on this head; end instead of idle polling. The earlier #196 review
+  obligation remains recorded below without extending its owner-specific override.
+
+## Gallery/Collection list context (E12) — 2026-10-24
+
+- Merged [PR #203](https://github.com/Dusky-dev/StashBooru/pull/203) at
+  `e101ec99ee13b833d57554c0a54aaabe0b68f0ac` after all 12 checks passed and
+  Codex Review completed cleanly at `4d61fc8013a95a6ad295de8283f56d5586ad32e6`.
+  The following Gallery/Collection implementation passed local checks on October
+  23, but its unpublished worktree was lost when the workspace rolled back.
+  Recovered the scoped changes on fresh develop
+  `45e7553b5a816423e930110547c4515ec21b237a`, which includes the separately
+  managed converter PR #204; this pass does not modify that converter work or
+  the other agent's open booru-preview work.
+- Branch [`fix/library-membership-20261024`](https://github.com/Dusky-dev/StashBooru/tree/fix/library-membership-20261024)
+  has verified source `56c3a2c324d22d03401213a2464fe8da394e4999`, tree
+  `b7e2eed526c9ade8a56572048b7bd46a5a3bb59a`, matching the newly tested local
+  source. Saved this source branch remotely before the ledger follow-up.
+- Actual-server baseline checks reproduced two navigation failures at desktop
+  and mobile: Gallery Images → Add replaced title/descending/page-size/page
+  options with defaults, and Collection default-tab resolution dropped direction,
+  page size and page. A bare-path history.replace discarded the current query.
+- Gallery Images/Add now change only the pathname while retaining the current
+  location. The shared default-tab resolver does the same when canonicalizing
+  the existing tab. Explicit switches between different media types keep their
+  previous filter reset. Read history.location at replacement time so child list
+  query normalization is retained. No new store, route, preference or filter
+  grammar; native Gallery include/exclude and Collection membership remain in
+  their existing list hooks.
+- Recreated a fresh isolated fixture after recovery: four generated PNG Images,
+  two short H.264 Videos, one metadata-only outside Video, a Gallery with two
+  members and two candidates, and a Collection with distinct member scene numbers.
+  Outside Images have direct Artist/Character/Copyright/Tag relationships for
+  preservation checks. No production library or provider/model is involved.
+- All four recovered browser cases passed: desktop 1440 × 1000 and mobile
+  390 × 844, each Gallery and Collection. Check tab query/scope retention, native
+  Image viewer → detail → Back, Video → Back, refresh, Collection descending scene
+  order/page, empty search through the default-tab redirect, and reset on an
+  explicit Character tab switch. Gallery add/remove uses the actual native
+  buttons, checks exact other-member preservation, removal from candidate/member
+  lists and unchanged native Image ID/title/direct relationships. The temporary
+  membership is removed in finally. No GraphQL responses are mocked.
+- New optional library-membership.mjs requires explicit isolated URL and Gallery/
+  Collection IDs. It checks visible cards, excluding inactive native tab panes,
+  and awaits removal from the rendered list after mutation/refetch. Final desktop
+  Gallery and mobile Collection ordering captures were inspected. P07 documents
+  fixture requirements, invocation, writes and limits. It is not an ordinary CI
+  browser job and does not seed a catalogue itself.
+- Fresh recovery validation passed UI GraphQL generation; locked pnpm validate
+  (all 69 tests, JS/CSS lint, TypeScript and formatting); production pnpm build
+  with built-in composition; focused Biome; browser/built-in Node syntax; and
+  git diff --check. Runtime used the PR #203 Linux artifact with the current
+  production UI through STASH_UI. Backend/schema code is unchanged, so no new
+  local Go gate is required. New CI and completed Codex Review remain required
+  on the published head; end rather than idle polling.
+- Limits: no production-library, physical touch-device, all display modes,
+  chapter/sub-Collection reordering, broad playback/codec, file deletion or
+  upgrade/recovery acceptance. Native data writers and viewer/player lifecycle
+  behavior are unchanged. Broader E12 and real-model E08 acceptance remain open.
+- Next: inspect Gallery Add's sidebar layout and selection retained after
+  successful membership actions. Keep intentional native off-page selection;
+  assess only the action/scope transitions before changing behavior. The old
+  owner-specific #196 review override remains recorded below.
 
 ## Honor custom UI command-line paths (E12 follow-up) — 2026-10-23
 

@@ -184,15 +184,21 @@ func TestBooruPreviewAddsTagOnlyToOriginSourceBlacklist(t *testing.T) {
 	danbooru.BlacklistTags = []string{"old_tag"}
 	gelbooru := booru.Defaults()[2]
 	initial := booruSettingsUpdate{Revision: settingsRead(t, rs).Revision, Action: "save", Source: danbooru}
-	payload, _ := json.Marshal(initial)
+	payload, err := json.Marshal(initial)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if w := settingsWrite(rs, string(payload)); w.Code != 200 {
 		t.Fatalf("fixture save failed: %s", w.Body.String())
 	}
 	add := func(source, instance, tag string) *httptest.ResponseRecorder {
 		t.Helper()
-		body, _ := json.Marshal(booruSettingsUpdate{
+		body, err := json.Marshal(booruSettingsUpdate{
 			Action: "blacklist-add", Source: booru.Source{ID: source}, Instance: instance, Tag: tag,
 		})
+		if err != nil {
+			t.Fatal(err)
+		}
 		return settingsWrite(rs, string(body))
 	}
 	for _, tag := range []string{"New Tag", "new_tag", "NEW_TAG"} {
@@ -252,10 +258,14 @@ func TestBooruPreviewBlacklistAddsAreSerialized(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			payload, _ := json.Marshal(booruSettingsUpdate{
+			payload, err := json.Marshal(booruSettingsUpdate{
 				Action: "blacklist-add", Source: booru.Source{ID: source.ID},
 				Instance: source.Instance(), Tag: fmt.Sprintf("tag_%d", i),
 			})
+			if err != nil {
+				t.Error(err)
+				return
+			}
 			results <- settingsWrite(rs, string(payload)).Code
 		}(i)
 	}

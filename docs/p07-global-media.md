@@ -161,6 +161,66 @@ replacement/removal, hierarchy/inheritance editing and production data still nee
 separate acceptance. No relationship/backend behavior changed in this pass.
 
 
+### Gallery and Collection list context (E12, 2026-10-24)
+
+Switching a Gallery between **Images** and **Add** previously dropped its list
+query, replacing the chosen sort, direction, page size and page with defaults.
+Both tabs use native Image filters; changing between their membership scopes now
+preserves those URL options. Their native include/exclude Gallery constraints
+still determine which Images are candidates or members.
+
+The shared details-page redirect that resolves a default media tab now preserves
+the current location's query, hash and state while changing its pathname. For
+example, `/groups/1?sortby=group_scene_number&sortdir=desc&perPage=1&p=2` resolves
+to `/groups/1/scenes` with the same options. The previous redirect could drop
+search terms and restore a different page/order. Explicit switches between
+different media tabs retain their existing filter-reset behavior.
+
+The optional real-server suite requires an explicitly identified isolated
+Gallery and Collection. Seed at least two Gallery member Images, two outside
+Images, two Collection member Videos with distinct scene numbers, and one
+outside Video. The member Videos can use short synthetic H.264 files; a metadata-
+only outside Video is enough to check exclusion. Other direct Artist, Character,
+Copyright and Tag relationships make preservation checks more useful.
+
+```sh
+STASH_BROWSER_URL=http://127.0.0.1:9999 \
+STASH_BROWSER_GALLERY_ID=1 \
+STASH_BROWSER_COLLECTION_ID=1 \
+STASH_BROWSER_SCREENSHOTS=/absolute/path/to/output \
+node ui/v2.5/tests/browser/library-membership.mjs
+```
+
+Use the Playwright/browser environment options documented above. The suite checks
+desktop/mobile Gallery tab scope and query retention, native Image viewer →
+detail → Back, Collection order/page and Video → Back, refresh, an empty search
+through default-tab resolution, and the existing reset on an explicit Character
+tab switch. It adds one previously outside Image through the native Gallery
+button, verifies that it leaves Add candidates, removes it through the member
+toolbar and compares its native ID/title/relationships with the original read.
+Other Gallery members must remain unchanged. The temporary membership is also
+removed in `finally` if a check fails.
+
+Gallery Add uses the same native Gallery image-view configuration as Images,
+including its inline list layout and view preferences. It no longer mounts the
+general Images sidebar over Gallery details. Successful Add/Remove membership
+actions clear their completed selection; rejected actions retain it for retry.
+Other Image operations and ordinary cross-page selection retain their behavior.
+The list operation contract offers an optional selection-clear callback, which
+these two Gallery actions invoke after a successful server mutation.
+
+The suite also checks the Add layout, cleared selection after success and retained
+selection after failure. Failure coverage changes only the outbound mutation's
+Gallery ID to an invalid test value; the actual server rejects it and its real
+error response reaches the normal client error/toast path. It verifies unchanged
+membership before retrying the original request. No response data is mocked.
+
+These are actual library writes: use an isolated fixture, without concurrent
+edits. The suite does not seed a catalogue, mock API responses or run in ordinary
+UI CI. Tiny synthetic media and narrow-viewport mouse/keyboard checks do not
+establish production-library, physical touch-device, all display modes, chapter/
+sub-Collection reordering, playback or file-deletion acceptance.
+
 ## Character editing, relation cards and Video previews
 
 The existing Character/Artist/Tag All enhancement now deactivates its inline

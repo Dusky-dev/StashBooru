@@ -7,7 +7,27 @@ The project has useful capabilities, but everyday tasks expose too many of their
 implementation boundaries. The next work should reduce context switches and make
 existing behavior predictable before extending the feature list. This is a
 whole-project assessment, not a proposal to rebuild Stash or discard its safety
-contracts. Booru UI implementation remains with the agent already assigned to it.
+contracts. The booru agent’s independent pass is complete. The owner returned booru-browser
+maintenance to this stream on 2026-10-24; it follows the same bounded-fix and
+acceptance process.
+
+## Current progress — 2026-10-24
+
+The first consolidation passes are merged. Work is now concentrated on actual
+workflow acceptance and the defects it exposes, while retaining the existing
+native data model and safety contracts.
+
+| Area | Delivered so far | Remaining acceptance/scope |
+| --- | --- | --- |
+| Connections, metadata, jobs and settings (E01–E06) | Contextual source connections and metadata review; shared job feedback/retention guidance; grouped Tasks/Tools and profile entry points; processing save feedback; contextual Following setup. | Live-provider and broader Following adapter workflows, representative bulk/partial-failure and restart/recovery acceptance. Contextual setup does not add unsupported source adapters. |
+| Everyday library use (E07, E11, E12) | Real setup → scan → first edit/restart checks; native selection/viewer fixes; refreshed inherited metadata after profile/default edits; Gallery/Collection sort, paging, Back and refresh checks. | Populated-library, broader Gallery/Collection editing, plugins, backup/upgrade/recovery, physical-device/accessibility and performance acceptance. |
+| Processing and recovery (E08) | Clearer conversion, upscaling and mask-restoration output/original-file guidance. Existing validation, activation and recovery contracts remain. | Real model/GPU/worker combinations and representative processing/restore/restart workflows. Synthetic UI checks do not close these gates. |
+| Documentation, mobile settings and terminology (E10, E13, E14) | Current feature guides, compact mobile settings navigation, bounded native English label fixes and fork-aware first-use guidance. | Wider terminology/localization and owner usability testing. |
+| Native UI ownership (E09) | Touched workflows reuse native components and supported extension points. | Remaining DOM adaptations are addressed when their workflow is fixed; a wholesale rewrite is deferred. |
+
+The findings below are the original audit snapshot, followed by dated delivery
+notes. [Implementation progress](implementation-progress.md) records exact PRs,
+checks and outstanding gates; the feature guides describe current user flows.
 
 ## Scope and evidence
 

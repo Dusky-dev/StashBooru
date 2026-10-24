@@ -364,7 +364,11 @@ function PostInspection({
             </div>
           )}
         </div>
-        {blacklistError && <Alert variant="danger" role="alert">{blacklistError}</Alert>}
+        {blacklistError && (
+          <Alert variant="danger" role="alert">
+            {blacklistError}
+          </Alert>
+        )}
         {blacklistBusy && <span role="status">Updating tag blacklist…</span>}
         {groups.length === 0 && (
           <p>{message("no_tags", "The provider supplied no tags.")}</p>
@@ -802,7 +806,12 @@ function SourceResults({
         </Alert>
       )}
       {blacklistNotice && (
-        <Alert variant="success" role="status" dismissible onClose={() => setBlacklistNotice("")}>
+        <Alert
+          variant="success"
+          role="status"
+          dismissible
+          onClose={() => setBlacklistNotice("")}
+        >
           {blacklistNotice}
         </Alert>
       )}

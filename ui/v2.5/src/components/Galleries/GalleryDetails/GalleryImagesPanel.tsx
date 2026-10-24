@@ -104,13 +104,15 @@ export const GalleryImagesPanel: React.FC<IGalleryDetailsProps> =
       async function removeImages(
         _result: GQL.FindImagesQueryResult,
         _filter: ListFilterModel,
-        selectedIds: Set<string>
+        selectedIds: Set<string>,
+        clearSelection?: () => void
       ) {
         try {
           await mutateRemoveGalleryImages({
             gallery_id: gallery.id!,
             image_ids: Array.from(selectedIds.values()),
           });
+          clearSelection?.();
 
           Toast.success(
             intl.formatMessage(

@@ -60,7 +60,8 @@ export interface IItemListOperation<T extends QueryResult> {
   onClick: (
     result: T,
     filter: ListFilterModel,
-    selectedIds: Set<string>
+    selectedIds: Set<string>,
+    clearSelection?: () => void
   ) => Promise<void>;
   isDisplayed?: (
     result: T,
