@@ -3898,3 +3898,57 @@ publication statuses. P12 #136 subsequently merged into develop; #137 merged int
 P12's branch, and owner-merged #138 landed the same P13 tree on develop. No merge
 or deployment was performed by the agent. The current checkpoint above supersedes
 these historical CI snapshots.
+
+## Gallery chapter retry and pending actions (E12) — 2026-10-24
+
+- Continued the owner's “merge and continue” request on fresh develop
+  `4e430fb2b1e1daf0f5b5f5999749a0f3c3ac999a` in
+  [`fix/library-editing-20261024`](https://github.com/Dusky-dev/StashBooru/tree/fix/library-editing-20261024).
+  At the initial check, #205 had all 15 CI checks passing but Codex Review was
+  still running on `5eeace8a7aad12b14fa16b5f249b4672b9e64b6b`, without findings.
+  Its older quota response does not override the fresh running review; no merge
+  was performed at that checkpoint.
+- An actual-server baseline check reproduced a rejected chapter create closing
+  the editor and discarding its draft. The server rejected Image 3 in a Gallery
+  containing only two Images. Source inspection found the same unconditional
+  finally-close path in create/update and delete.
+- Close the native chapter editor only after successful mutation. Rejected
+  create/update/delete retain the current title and Image number and the existing
+  error toast, allowing correction/retry. Reuse Apollo mutation loading and
+  Formik submission state to disable the native fieldset and actions while
+  pending, expose aria-busy and guard overlapping mutation handlers. No new
+  editor, route, CSS, store or persistence/API contract.
+- Verified source `1f1d4f7b2e72b0f2909d4a3509f99d2c96fb2d80`, tree `5d2eed08cbe75fd0f97d995b99dd198abcb63f73`,
+  exactly matches the tested local tree. The implementation branch was saved
+  remotely before this ledger-only follow-up.
+- Added gallery-chapters.mjs, which owns its configuration, database, generated
+  PNGs and loopback server independently at 1440 × 1000 and 390 × 844. Both runs
+  passed rejected create/update, exact retained drafts, disabled pending fields/
+  Save/Cancel/Delete, successful retry, saved chapter identity/title/index after
+  refresh, rejected delete retaining an unsaved draft, valid delete and its
+  persistence after refresh. Exact native Image records/Gallery membership,
+  Gallery title and two-image count remain unchanged.
+- Requests are held briefly for pending-control assertions. Create/update use
+  a naturally out-of-range index; delete changes only the outgoing chapter ID
+  to an invalid fixture value. The real server supplies every response and
+  persists successful writes. No response is mocked. Baseline and final desktop/
+  mobile screenshots were inspected. The native dark layout remains usable
+  without document/form horizontal overflow in these viewports.
+- Validation: UI GraphQL generation, all 69 UI unit tests, JS/CSS lint,
+  TypeScript, formatting, production make ui-only/built-in composition passed.
+  After refining the test's request synchronization, focused Biome check and the
+  full format gate passed, as did browser/built-in JavaScript syntax, workflow
+  YAML/step validation and git diff --check. No backend/schema changes require
+  local Go generation/test gates.
+- Add the real-server chapter check to the existing first-library CI job,
+  reusing its Linux artifact and pinned browser tools rather than another
+  compile/install job. Its captures and logs use the existing artifact's chapters
+  directory. P07 describes the current retry/pending flow and runnable acceptance.
+- Limits: synthetic Chromium/SQLite fixtures, not owner-library, physical-device,
+  chapter playback or Collection editing acceptance. Baseline runtime reused
+  #205's packaged Linux artifact; its chapter code matches fresh develop. Final
+  validation served this production UI through STASH_UI. Successful temporary
+  libraries were removed; no owner media/configuration was used.
+- Next: applicable CI and completed Codex Review on the final head; end when only
+  external gates remain. Continue Collection hierarchy/ordered editing as its own
+  bounded acceptance pass, followed by recovery/upgrade/plugin workflows.

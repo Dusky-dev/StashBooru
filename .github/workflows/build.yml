@@ -289,6 +289,13 @@ jobs:
         PLAYWRIGHT_MODULE: ${{ runner.temp }}/first-library-tools/node_modules/playwright/index.mjs
         STASH_BROWSER_SCREENSHOTS: ${{ runner.temp }}/first-library-artifacts
       run: node tests/browser/first-library.mjs
+    - name: Gallery chapter failures and retries
+      working-directory: ui/v2.5
+      env:
+        STASH_BROWSER_BINARY: ${{ runner.temp }}/first-library-binary/stash-linux
+        PLAYWRIGHT_MODULE: ${{ runner.temp }}/first-library-tools/node_modules/playwright/index.mjs
+        STASH_BROWSER_SCREENSHOTS: ${{ runner.temp }}/first-library-artifacts/chapters
+      run: node tests/browser/gallery-chapters.mjs
     - name: Custom UI command-line flags
       run: |
         python3 scripts/tests/custom_ui_flags.py \

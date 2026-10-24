@@ -581,3 +581,43 @@ a prop reorder during review, explicit plans, failed and successful saves, Skip,
 Close, retained selection/URL, provider errors and repeated single-item opens.
 HTTP metadata and writes are intercepted; this is not a populated-library,
 production-provider, physical-device or model-inference acceptance test.
+
+## Gallery chapter failure and retry acceptance
+
+In **Galleries → a Gallery → Chapters**, use **Create Chapter** or **Edit** to
+set its title and starting Image number. Save and Delete close the editor only
+after success. A rejected request keeps the current draft available for correction
+or retry and shows the existing error toast. While a request is pending, fields,
+Save, Cancel and Delete are disabled to prevent overlapping actions or losing
+the in-flight draft. Chapter changes do not change Image membership or metadata.
+
+The real-server suite
+[`gallery-chapters.mjs`](../ui/v2.5/tests/browser/gallery-chapters.mjs) owns fresh
+configuration/database/media folders and a loopback server for each of desktop
+1440 × 1000 and mobile 390 × 844. It generates two neutral PNGs, scans them,
+creates a Gallery, then checks rejected create/update, retained drafts, successful
+retry, saved native chapter ID/title/index after reload and rejected/valid delete.
+Create/update rejection uses an out-of-range Image number. Delete rejection
+changes only the outgoing chapter ID to an invalid fixture value; the actual
+server supplies the error response. No GraphQL response is mocked. Requests are
+held briefly to check the pending controls before reaching the server.
+
+```sh
+STASH_BROWSER_BINARY=/absolute/path/to/stash-linux \
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
+STASH_BROWSER_SCREENSHOTS=/absolute/path/to/output \
+node ui/v2.5/tests/browser/gallery-chapters.mjs
+```
+
+Use the locked build/tooling described in [first-library acceptance](first-library-acceptance.md).
+Optional `STASH_BROWSER_UI` serves a separate production UI build for local
+validation; otherwise the binary's embedded UI is used. `CHROMIUM_EXECUTABLE`
+selects a separately installed Chromium. The suite never accepts an existing
+server or library. Successful temporary libraries are removed when an artifact
+output path is supplied; failures retain their printed isolated path for diagnosis.
+The Build workflow reuses its Linux artifact and first-library browser tools for
+this check, with screenshots/server logs in the existing artifact.
+
+These are synthetic Chromium/SQLite acceptance checks, not physical-device,
+owner-library, chapter playback or ordered Collection/hierarchy acceptance.
+Those remain separate E12 checks.
