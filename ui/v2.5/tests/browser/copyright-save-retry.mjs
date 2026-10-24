@@ -169,10 +169,12 @@ async function check(viewport, label) {
     if (pattern) assert.match(JSON.stringify(payload.errors), pattern);
     else
       assert.equal(payload.errors, undefined, JSON.stringify(payload.errors));
-    await actions().locator(".save").waitFor({ state: "visible" });
-    await page.waitForFunction(
-      () => !document.querySelector(".details-edit .save:disabled")
-    );
+    if (pattern) {
+      await actions().locator(".save").waitFor({ state: "visible" });
+      await page.waitForFunction(
+        () => !document.querySelector(".details-edit .save:disabled")
+      );
+    }
     return payload;
   }
   async function profile(id) {
@@ -235,6 +237,11 @@ async function check(viewport, label) {
       () => actions().locator(".save").click(),
       /foreign key/i
     );
+    await page
+      .getByText(
+        /Copyright details were saved, but Character links could not be saved/
+      )
+      .waitFor();
     assert.equal(await name().inputValue(), "First Copyright");
     assert.equal(
       await control("Details").inputValue(),
@@ -258,9 +265,9 @@ async function check(viewport, label) {
     );
     assert.equal(success.data.copyrightPerformersUpdate.id, first.id);
     await profile(first.id);
-    const saved = await all();
+    let saved = await all();
     assert.equal(saved.length, original.length + 1);
-    const stored = saved.find((c) => c.id === first.id);
+    let stored = saved.find((c) => c.id === first.id);
     assert.equal(stored.sort_name, "First sort value");
     assert.equal(stored.description, "Keep Copyright description");
     assert.deepEqual(stored.aliases, [
@@ -290,6 +297,66 @@ async function check(viewport, label) {
     ).findCopyright.image_path;
     const imageBytes = await (await page.request.get(imageURL)).body();
     assert.ok(imageBytes.length);
+    assert.deepEqual(
+      await page.evaluate(
+        (src) =>
+          new Promise((resolve, reject) => {
+            const image = new Image();
+            image.onload = () =>
+              resolve([image.naturalWidth, image.naturalHeight]);
+            image.onerror = reject;
+            image.src = src;
+          }),
+        imageURL
+      ),
+      [144, 81]
+    );
+    const removedEdit = await character("Removed Edit Character");
+    await actions().getByRole("button", { name: "Edit", exact: true }).click();
+    await name().fill("Retry Copyright");
+    await select("Characters", "Removed Edit Character");
+    await call(
+      page,
+      url,
+      "mutation($input:PerformerDestroyInput!){performerDestroy(input:$input)}",
+      { input: { id: removedEdit.id } }
+    );
+    await action(
+      "CopyrightPerformersUpdate",
+      () => actions().locator(".save").click(),
+      /foreign key/i
+    );
+    await page
+      .getByText(
+        /Copyright details were saved, but Character links could not be saved/
+      )
+      .waitFor();
+    assert.equal(await name().inputValue(), "Retry Copyright");
+    assert.equal(
+      await control("Details").inputValue(),
+      "Keep Copyright description"
+    );
+    assert.equal(
+      await page
+        .locator(
+          "#copyright-edit-tabs-tabpane-characters .react-select__multi-value"
+        )
+        .count(),
+      2
+    );
+    const editedPartial = await all();
+    assert.deepEqual(
+      editedPartial.map((c) =>
+        c.id === first.id ? { ...c, name: stored.name } : c
+      ),
+      saved
+    );
+    await remove("Characters", "Removed Edit Character");
+    await actions().locator(".save").click();
+    await profile(first.id);
+    saved = await all();
+    assert.deepEqual(saved, editedPartial);
+    stored = saved.find((c) => c.id === first.id);
     await actions().getByRole("button", { name: "Edit", exact: true }).click();
     await name().fill("Updated Copyright");
     await select("Main Copyrights", descendant.name);
@@ -317,9 +384,10 @@ async function check(viewport, label) {
     await page.reload();
     await profile(first.id);
     await page.goto(url + "/copyrights");
+    await page.waitForURL((u) => u.searchParams.get("sortby") === "hierarchy");
     const listURL = page.url();
     await page
-      .locator(`a.booru-entity-card-name[href="/copyrights/${first.id}"]`)
+      .locator(`.card-section-title-row a[href="/copyrights/${first.id}"]`)
       .click();
     await profile(first.id);
     await page.goBack();

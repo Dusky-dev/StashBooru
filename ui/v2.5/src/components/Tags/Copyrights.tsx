@@ -51,6 +51,7 @@ import { View } from "src/components/List/views";
 import { useConfigurationContext } from "src/hooks/Config";
 import { useToast } from "src/hooks/Toast";
 import ImageUtils from "src/utils/image";
+import { errorToString } from "src/utils";
 
 interface CopyrightFormValues {
   name: string;
@@ -251,6 +252,10 @@ const CopyrightEditPanel: React.FC<{
           copyrightID: saved.id,
           performerIDs: performers.map((item) => item.id),
         },
+      }).catch((error) => {
+        throw new Error(
+          `Copyright details were saved, but Character links could not be saved. Correct the selection and retry. ${errorToString(error)}`
+        );
       });
 
       Toast.success(`Saved Copyright “${saved.name}”.`);

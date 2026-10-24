@@ -55,6 +55,14 @@ The findings below are the original audit snapshot, followed by dated delivery
 notes. [Implementation progress](implementation-progress.md) records exact PRs,
 checks and outstanding gates; the feature guides describe current user flows.
 
+The Copyright pass covers its separate native create/edit form: rejected
+duplicate names and hierarchy cycles retain the draft. If Character-link saving
+fails after metadata creation, correction retries the same native Copyright ID.
+Its owned desktop/mobile fixture also covers existing-record partial-link retry,
+Cancel, Back, refresh, restart and unchanged saved artwork. The two native writes
+remain separate transactions. Next: native Image/Video bulk-save and
+partial-failure acceptance; the broader workstreams above remain open.
+
 ## Scope and evidence
 
 This audit traces current routes, components, state ownership, backend contracts,

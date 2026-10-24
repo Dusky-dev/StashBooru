@@ -209,6 +209,31 @@ or mocked. Run it at desktop/mobile sizes using `STASH_BROWSER_BINARY`, optional
 `STASH_BROWSER_SCREENSHOTS`. Broader bulk editing, scraping and representative
 libraries remain separate acceptance work.
 
+### Copyright creation and saves
+
+Copyrights use their own **New Copyright** and **Edit** forms. A blank or
+whitespace-only name disables Save. Duplicate names and hierarchy cycles are
+rejected by the server; the form keeps the draft for correction and retry.
+Main/Sub-Copyrights, aliases and landscape artwork remain native Copyright data,
+separate from ordinary Tags.
+
+Metadata and Character links are saved in separate requests. If a selected
+Character was deleted elsewhere, the metadata may already have saved when the
+link request fails. Remove that stale Character selection and retry: the form
+updates the same Copyright ID and retains the other draft values. These requests
+are not a combined transaction. Keep the form open to correct the failed save;
+refreshing discards its unsaved draft.
+
+The isolated `copyright-save-retry.mjs` suite uses real duplicate-name,
+deleted-Character and hierarchy-cycle failures. It checks creation and editing,
+same-ID retry, metadata/relationship/artwork preservation, Cancel, list Back,
+refresh and restart on desktop/mobile. It owns its server, database and landscape
+artwork; it neither intercepts responses nor accepts an existing-library URL.
+Use `STASH_BROWSER_BINARY`, optional `STASH_BROWSER_UI`, `PLAYWRIGHT_MODULE`,
+`CHROMIUM_EXECUTABLE` and `STASH_BROWSER_SCREENSHOTS` as for the other native
+browser suites. Network-response loss, bulk editing and representative libraries
+remain separate acceptance work.
+
 ### Profile artwork and metadata diagnostics
 
 **Set image → From gallery…** offers a context-filtered, paged Image picker and
