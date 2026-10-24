@@ -2,6 +2,67 @@
 
 Updated: 2026-10-24
 
+## Image editor reachability and save/retry acceptance (E12) — 2026-10-24
+
+- Merged [PR #213](https://github.com/Dusky-dev/StashBooru/pull/213) at
+  `d2a150797b72e17f51700e702d65f108cc335823` after all 12 checks passed
+  and Codex Review completed without findings on
+  `4ba04e6a3b2cb71257b065ca409221257e7ad6a1`; no submitted/inline findings.
+  Fresh develop matches this baseline. Work continues on
+  [`fix/image-editor-save-20261024`](https://github.com/Dusky-dev/StashBooru/tree/fix/image-editor-save-20261024).
+- Existing native Image repeated-save behavior passed on desktop/mobile,
+  including delayed association writes. The suspected Video custom-field
+  transport/reset defect was not reproduced here. Image form/API submission
+  code remains unchanged in the final diff.
+- Expanding coverage to actual custom-field edits exposed a mobile defect:
+  `.image-tabs` had a viewport max-height below the desktop breakpoint, despite
+  its children using document scrolling. Overflow extended beyond the panel's
+  layout height and body bottom padding, leaving Custom Fields under the fixed
+  bottom navbar at 390 × 844. A normal click failed, including after centering
+  the target. No forced click or synthetic DOM activation was used.
+- Move the existing max-height into the existing >=1200 px scrolling-panel rule.
+  Narrow layouts now grow with their content; the desktop width, height and
+  internal scrolling contract remain. No schema, backend, dependency, metadata
+  transaction, file lifecycle or production form logic changes.
+- Verified source `49186a2fb45da35eba27ed4c5387895bdd0de3db`, tree
+  `7e76af41ed12703ca5647eb31de754ef6537726d`, exactly matches the saved
+  local source before this ledger follow-up.
+- New image-editor-save.mjs passed against real private servers at 1440 × 1000
+  and 390 × 844. Each instance scans its own generated PNG and assigns one
+  native Artist, Character, Copyright, Tag and Gallery. Checks include repeated
+  saves in the same editor, delayed real association requests, a custom-field
+  edit and scalar user key named full, real failed update, retained title/custom
+  draft and successful retry, another save, refresh, list Back and server restart.
+  Exact queried metadata/relationship/file IDs and PNG bytes are preserved except
+  the explicitly edited title/note. No response is mocked; rejection changes only
+  an outgoing fixture Image ID. Existing libraries/server URLs are not accepted.
+- Normal clicks reach the Custom Fields disclosure and its lower new-field input.
+  The suite waits for the native collapse transition before capture. Computed
+  max-height is checked across 575/576/1199/1200 px; full edit flows run at the
+  two primary viewports. Successful fixtures are removed and failures retained.
+  No uncaught page errors or final list document horizontal overflow. Desktop/
+  mobile captures were inspected; the intentional rejected-update toast may
+  remain in captures and is not a failed final save.
+- Validation: final make validate-ui passed (69 tests, JS/CSS lint, TypeScript
+  and formatting), make ui-only production build passed, focused browser-file
+  Biome, JavaScript syntax, CI YAML/suite-placement validation and git diff --check
+  passed. The final harness ran against that production UI via STASH_BROWSER_UI
+  with the exact #213 locally built backend; production Go/API is unchanged.
+  No new local backend test/generation/build or human manual testing is claimed.
+- CI adds the suite to first-library before the historical checkout, reusing its
+  pinned browser and current Linux artifact, with image-editor captures/logs.
+  Feature guide and current audit status document the bounded result.
+- Limits: one small PNG and one relationship per category, not representative
+  catalogs, multiple-file activation, bulk saves, remote scraping or failed
+  association-write rollback. Separate Artist/Copyright writes remain separate
+  transactions. Other editors/Save & New, real processing/providers and broader
+  owner-library acceptance remain open. The audit now groups remaining work into
+  five workstreams; these are not five PRs or a percentage-complete claim.
+- Next: applicable CI and completed Codex Review on the final head, addressing
+  viable findings before merge; end when only external gates remain. Continue
+  native Character editor Save & New and failed-save/retry acceptance.
+  #205/#196 eventual-review obligations remain separately recorded.
+
 ## Plugin task errors and native extension acceptance (E12) — 2026-10-24
 
 - Merged [PR #212](https://github.com/Dusky-dev/StashBooru/pull/212) at

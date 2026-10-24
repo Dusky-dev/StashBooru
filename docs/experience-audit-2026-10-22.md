@@ -20,10 +20,32 @@ native data model and safety contracts.
 | Area | Delivered so far | Remaining acceptance/scope |
 | --- | --- | --- |
 | Connections, metadata, jobs and settings (E01–E06) | Contextual source connections and metadata review; shared job feedback/retention guidance; grouped Tasks/Tools and profile entry points; processing save feedback; contextual Following setup. | Live-provider and broader Following adapter workflows, representative bulk/partial-failure and restart/recovery acceptance. Contextual setup does not add unsupported source adapters. |
-| Everyday library use (E07, E11, E12) | Real setup → scan → first edit/restart checks; native selection/viewer fixes; refreshed inherited metadata; Gallery/Collection context; chapter retry, Collection hierarchy/order/unlink, and Video numbering/repeat-save acceptance; backup rejection/retry and saved/downloaded same-schema restore with both blob-storage modes; a pinned 99→100 upgrade/old-app restore and local plugin task/UI-extension acceptance. | Other editor/Save & New and representative-library acceptance; other historical upgrades, broader plugin/package/runtime compatibility, processing recovery, physical-device/accessibility and performance checks. |
+| Everyday library use (E07, E11, E12) | Real setup → scan → first edit/restart checks; native selection/viewer fixes; refreshed inherited metadata; Gallery/Collection context; chapter retry, Collection hierarchy/order/unlink, and Video numbering/repeat-save and Image custom-field save/retry acceptance; reachable mobile Image editor controls; backup rejection/retry and saved/downloaded same-schema restore with both blob-storage modes; a pinned 99→100 upgrade/old-app restore and local plugin task/UI-extension acceptance. | Other editor/Save & New and representative-library acceptance; other historical upgrades, broader plugin/package/runtime compatibility, processing recovery, physical-device/accessibility and performance checks. |
 | Processing and recovery (E08) | Clearer conversion, upscaling and mask-restoration output/original-file guidance. Existing validation, activation and recovery contracts remain. | Real model/GPU/worker combinations and representative processing/restore/restart workflows. Synthetic UI checks do not close these gates. |
 | Documentation, mobile settings and terminology (E10, E13, E14) | Current feature guides, compact mobile settings navigation, bounded native English label fixes and fork-aware first-use guidance. | Wider terminology/localization and owner usability testing. |
 | Native UI ownership (E09) | Touched workflows reuse native components and supported extension points. | Remaining DOM adaptations are addressed when their workflow is fixed; a wholesale rewrite is deferred. |
+
+Remaining work falls into five broad workstreams, each with multiple acceptance
+cases and possible fixes. These are not five remaining PRs or a percentage of the
+original feature roadmap:
+
+1. **Native library journeys:** other editors and Save & New, bulk/partial-failure
+   paths, and representative search, playback, similarity and relationship use.
+2. **Providers and Following:** real supported-account preview/download/receipt
+   journeys, credentials and partial failures. Additional adapters remain feature
+   work; contextual setup does not implement them.
+3. **Processing and recovery:** real-file conversion/restoration, cancellation and
+   restart, plus representative models, physical GPU and remote-worker operation.
+4. **Upgrade and extension compatibility:** historical versions beyond the pinned
+   99→100 path, other blob/restore combinations and broader plugin packages,
+   runtimes and rejected settings/enable operations.
+5. **Owner usability and scale:** a representative existing library, physical
+   mobile/accessibility checks, performance and remaining terminology/localization.
+
+The next bounded library pass covers native Character Save & New and save/retry.
+The new Image suite validates existing repeat saves and fixes narrow-layout
+control reachability; it does not change the Image form or combine its separate
+association writes into a transaction.
 
 The findings below are the original audit snapshot, followed by dated delivery
 notes. [Implementation progress](implementation-progress.md) records exact PRs,
