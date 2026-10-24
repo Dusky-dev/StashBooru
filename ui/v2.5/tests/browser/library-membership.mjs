@@ -43,7 +43,57 @@ async function mutation(page, operation, click) {
   assert.equal((await response.json()).errors, undefined);
   await page.waitForLoadState("networkidle");
 }
+
+async function rejectedMutation(page, operation, click) {
+  // Send an invalid Gallery ID to the actual server. Preserve its real error
+  // response so the native catch/toast/retry path is exercised without mocks.
+  const before = await memberIDs(page);
+  let rejected = false;
+  const handler = async (route) => {
+    const request = route.request();
+    if (request.method() === "POST") {
+      const body = request.postDataJSON();
+      if (body?.operationName === operation) {
+        rejected = true;
+        body.variables.gallery_id = "invalid-gallery-fixture";
+        await route.continue({ postData: JSON.stringify(body) });
+        return;
+      }
+    }
+    await route.continue();
+  };
+  await page.route("**/graphql", handler);
+  try {
+    const [response] = await Promise.all([
+      page.waitForResponse(
+        (r) =>
+          r.request().method() === "POST" &&
+          r.request().postDataJSON()?.operationName === operation
+      ),
+      click(),
+    ]);
+    assert.ok(
+      (await response.json()).errors?.length,
+      "Server must reject the invalid Gallery ID"
+    );
+    assert.equal(rejected, true);
+    await page.waitForLoadState("networkidle");
+    assert.equal(
+      await page.locator(".selected-count:visible").innerText(),
+      "1",
+      "Failed action lost the retry selection"
+    );
+    assert.deepEqual(
+      await memberIDs(page),
+      before,
+      "Rejected action changed membership"
+    );
+  } finally {
+    await page.unroute("**/graphql", handler);
+  }
+}
 async function ids(page, kind) {
+  await page.locator(`.${kind}-card:visible`).first().waitFor();
   return page
     .locator(`.${kind}-card:visible a.${kind}-card-link`)
     .evaluateAll((links) => [
@@ -102,6 +152,14 @@ try {
             search,
             "Gallery Add discarded list options"
           );
+          assert.equal(
+            await page
+              .locator(".gallery-container .sidebar-pane:visible")
+              .count(),
+            0,
+            "Gallery Add mounted the general Images sidebar"
+          );
+          await capture(page, `gallery-add-layout-${name}`);
           const outside = await ids(page, "image");
           assert.equal(outside.length, 1);
           assert.ok(
@@ -136,6 +194,13 @@ try {
             has: page.locator(`a.image-card-link[href="/images/${candidate}"]`),
           });
           await card.locator("input.card-check").check();
+          await rejectedMutation(page, "AddGalleryImages", () =>
+            page.getByTitle("Add to Gallery", { exact: true }).click()
+          );
+          assert.equal(
+            await card.locator("input.card-check").isChecked(),
+            true
+          );
           await mutation(page, "AddGalleryImages", () =>
             page.getByTitle("Add to Gallery", { exact: true }).click()
           );
@@ -145,6 +210,9 @@ try {
             ).findImage.galleries.some((g) => g.id === galleryID)
           );
           await card.waitFor({ state: "hidden", timeout: 10000 });
+          await page
+            .locator(".selected-count:visible")
+            .waitFor({ state: "hidden", timeout: 10000 });
           assert.deepEqual(
             (await memberIDs(page)).sort(),
             [...members, candidate].sort(),
@@ -153,10 +221,20 @@ try {
           await page.getByRole("tab", { name: "Images", exact: true }).click();
           await page.waitForLoadState("networkidle");
           await card.locator("input.card-check").check();
+          await rejectedMutation(page, "RemoveGalleryImages", () =>
+            page.getByTitle("Remove from Gallery", { exact: true }).click()
+          );
+          assert.equal(
+            await card.locator("input.card-check").isChecked(),
+            true
+          );
           await mutation(page, "RemoveGalleryImages", () =>
             page.getByTitle("Remove from Gallery", { exact: true }).click()
           );
           await card.waitFor({ state: "hidden", timeout: 10000 });
+          await page
+            .locator(".selected-count:visible")
+            .waitFor({ state: "hidden", timeout: 10000 });
           assert.deepEqual(
             (await memberIDs(page)).sort(),
             [...members].sort(),
@@ -188,6 +266,9 @@ try {
           await page.goto(
             `${origin}/groups/${groupID}?sortby=group_scene_number&sortdir=desc&perPage=1&p=2`,
             { waitUntil: "networkidle" }
+          );
+          await page.waitForURL(
+            (url) => url.pathname === `/groups/${groupID}/scenes`
           );
           const location = new URL(page.url());
           assert.equal(location.pathname, `/groups/${groupID}/scenes`);

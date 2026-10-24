@@ -11,6 +11,7 @@ import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { galleryTitle } from "src/core/galleries";
 import { IItemListOperation } from "src/components/List/FilteredListToolbar";
 import { PatchComponent } from "src/patch";
+import { View } from "src/components/List/views";
 
 interface IGalleryAddProps {
   active: boolean;
@@ -65,7 +66,8 @@ export const GalleryAddPanel: React.FC<IGalleryAddProps> = PatchComponent(
     async function addImages(
       _result: GQL.FindImagesQueryResult,
       _filter: ListFilterModel,
-      selectedIds: Set<string>
+      selectedIds: Set<string>,
+      clearSelection?: () => void
     ) {
       try {
         await mutateAddGalleryImages({
@@ -73,6 +75,7 @@ export const GalleryAddPanel: React.FC<IGalleryAddProps> = PatchComponent(
           image_ids: Array.from(selectedIds.values()),
         });
         const imageCount = selectedIds.size;
+        clearSelection?.();
         Toast.success(
           intl.formatMessage(
             { id: "toast.added_entity" },
@@ -107,6 +110,7 @@ export const GalleryAddPanel: React.FC<IGalleryAddProps> = PatchComponent(
         filterHook={filterHook}
         extraOperations={otherOperations}
         alterQuery={active}
+        view={View.GalleryImages}
       />
     );
   }
