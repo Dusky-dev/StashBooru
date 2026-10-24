@@ -61,6 +61,8 @@ export const AddSubGroupsDialog: React.FC<IListOperationProps> = (
   );
 
   const onSave = async () => {
+    if (isUpdating) return;
+
     setIsUpdating(true);
     try {
       // add the sub groups
@@ -111,6 +113,7 @@ export const AddSubGroupsDialog: React.FC<IListOperationProps> = (
       <Form>
         <RelatedGroupTable
           value={entries}
+          disabled={isUpdating}
           onUpdate={(input) => setEntries(input)}
           excludeIDs={excludeIDs}
           filterHook={filterHook}

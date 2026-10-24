@@ -1,9 +1,6 @@
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
-import { once } from "node:events";
+import { startIsolatedServer } from "./helpers/isolated-server.mjs";
 import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
-import { createWriteStream } from "node:fs";
-import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -23,17 +20,11 @@ const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_EXECUTABLE,
   args: ["--no-sandbox", "--disable-dev-shm-usage"],
 });
-let server;
-let output;
+let instance;
 let successful = false;
 async function stop() {
-  if (server && server.exitCode === null && server.signalCode === null) {
-    const exited = once(server, "exit");
-    server.kill("SIGTERM");
-    await exited;
-  }
-  output?.end();
-  server = undefined;
+  await instance?.stop();
+  instance = undefined;
 }
 async function call(page, url, query, variables = {}) {
   const response = await page.request.post(url + "/graphql", {
@@ -44,54 +35,14 @@ async function call(page, url, query, variables = {}) {
   return payload.data;
 }
 async function start(directory, label) {
-  const listener = createServer();
-  listener.listen(0, "127.0.0.1");
-  await once(listener, "listening");
-  const port = listener.address().port;
-  await new Promise((done) => listener.close(done));
-  const url = "http://127.0.0.1:" + port;
-  const env = Object.fromEntries(
-    Object.entries(process.env).filter(([key]) => !key.startsWith("STASH_"))
-  );
-  env.STASH_LOCAL_HTTPS_ENABLED = "false";
-  if (ui) env.STASH_UI = resolve(ui);
-  output = createWriteStream(join(artifacts, label + "-server.log"));
-  server = spawn(
+  instance = await startIsolatedServer({
     binary,
-    [
-      "--config",
-      join(directory, "config.yml"),
-      "--host",
-      "127.0.0.1",
-      "--port",
-      String(port),
-      "--nobrowser",
-    ],
-    { cwd: directory, env }
-  );
-  server.stdout.pipe(output, { end: false });
-  server.stderr.pipe(output, { end: false });
-  let spawnError;
-  server.on("error", (error) => {
-    spawnError = error;
+    directory,
+    artifacts,
+    label,
+    ui,
   });
-  for (let attempt = 0; attempt < 120; attempt++) {
-    if (spawnError) throw spawnError;
-    assert.equal(server.exitCode, null, "Isolated server exited");
-    try {
-      const response = await fetch(url + "/graphql", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: "{ systemStatus { status } }" }),
-        signal: AbortSignal.timeout(1000),
-      });
-      if ((await response.json()).data?.systemStatus) return url;
-    } catch {
-      /* The new process has not bound its port yet. */
-    }
-    await new Promise((done) => setTimeout(done, 250));
-  }
-  throw new Error("Isolated server did not become ready");
+  return instance.url;
 }
 async function check(viewport, label) {
   const directory = join(root, label);

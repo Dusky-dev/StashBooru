@@ -1389,6 +1389,7 @@ const groupMutationImpactedTypeFields = {
 
 const groupMutationImpactedQueries = [
   GQL.FindGroupsDocument, // various filters
+  GQL.FindGroupDocument, // parent hierarchy counts and memberships
 ];
 
 export const useGroupCreate = () =>
