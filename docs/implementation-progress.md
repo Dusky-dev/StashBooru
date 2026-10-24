@@ -2,6 +2,75 @@
 
 Updated: 2026-10-24
 
+## Plugin task errors and native extension acceptance (E12) — 2026-10-24
+
+- Merged [PR #212](https://github.com/Dusky-dev/StashBooru/pull/212) at
+  `a941787fc6a2bdc5d3a1d4bfb9b159fa5bc649ba` after all 12 checks passed
+  and clean Codex Review completed on
+  `c76772d2e1f7b29afd9007e1e5415ca1f84f63f3`; no submitted/inline findings.
+  This is the baseline for
+  [`fix/plugin-workflows-20261024`](https://github.com/Dusky-dev/StashBooru/tree/fix/plugin-workflows-20261024).
+- Read the actual first-library job log (run 40116263289, job 120940300502).
+  Both historical 99→100 desktop/mobile upgrade runs passed, including rejected
+  preflight/draft retention, explicit-path retry, original-schema backup opened
+  by the historical app, aliases/metadata/blob bytes, refresh and restart.
+  This closes that one pinned path's pending CI gate, not all earlier-version or
+  filesystem-blob/automatic-rollback acceptance.
+- An actual-server baseline plugin returned Error: Fixture plugin failure but
+  its native job was FINISHED with error null. Task completion logged returned
+  errors and discarded them. Carry the result through a buffered error channel
+  and return it to the existing job manager. A completed waiter can deliver
+  after its caller has cancelled without blocking on the new result send.
+  Existing progress, Stop handling, successful/no-result paths and APIs remain.
+- The rebuilt server reports FAILED with plugin returned error: Fixture plugin
+  failure for the same owned probe. No schema, dependency, backup/file lifecycle,
+  production UI, plugin protocol or synchronous-operation contract changes.
+- Source `5813c2423c66cec67936dc7bb04af4d98e21152a`, tree `944651fb32624539951d829385fd749d78fbcd1a`,
+  exactly matches tested local source and is saved remotely before this
+  documentation follow-up.
+- New plugin-compatibility.mjs passed at 1440 × 1000 and 390 × 844 against real
+  private servers. It installs only local JS/UI fixtures with a declared UI
+  dependency, CSS and an official PluginApi React/Bootstrap route. Dependency
+  execution order and single route mounting, native Video navigation/Back,
+  native modal setting edits/Confirm, saved values after refresh, plugin-cache
+  reload and UI reload are checked. The harness follows the native setting
+  editor and treats the nullable empty jobQueue as empty; neither requires an
+  application change.
+- Both explicit plugin errors and thrown JS exceptions become Failed jobs with
+  full details. Success creates a fixture Tag receipt using the saved setting
+  through the plugin's real GraphQL API. Cancellation waits until a VM is Running
+  with reported progress, then uses native Stop; a subsequent task succeeds.
+  Failed notices survive removal from the live queue, expiry of transient
+  completed/cancelled notices, refresh and dismissal of only one failure.
+  Their detail text and native status are checked.
+- Disabling UI customizations skips the fixture UI while server-side tasks stay
+  available. Native disable/Reload UI removes the plugin route/tasks; native
+  enable/Reload UI restores them. Settings, enabled state, route dependency
+  order and exact queried native Video ID/title/details/custom fields/Tag/file/
+  Collection IDs survive a server restart. No API response is mocked, no
+  existing library/server URL is accepted, and successful fixtures are removed.
+- Validation: focused go test ./pkg/job -count=1, full make it (including unit and
+  integration tests), make lint (zero issues), local make build, Go formatting,
+  focused browser-file Biome, JavaScript syntax, workflow YAML/step validation
+  and git diff --check passed. Desktop/mobile queue and route captures were
+  inspected. No uncaught page errors; final route views had no document
+  horizontal overflow. No human manual testing is claimed.
+- Reused #212's exact generated API/production UI artifact 12569320108 and Linux
+  baseline artifact 12570340488 from run 40116263289; API/schema/production UI
+  source match this baseline. Only the backend fix was rebuilt locally. Do not
+  claim a new local UI build, UI unit run or backend generation. CI adds the owned
+  suite to first-library with captures/logs under its plugins artifact directory.
+- Limits: two tiny local UI/Goja fixtures and metadata-only Videos, not arbitrary
+  community plugins or patch points, package install/update/removal, hooks,
+  external Python/raw/RPC runtimes or services, real media/processing,
+  physical devices, model/GPU operation or performance. Native plugin-setting
+  save/enable rejection flows and broader compatibility remain separate.
+- Next: applicable CI and completed Codex Review on the final head; fix viable
+  findings before merge and end when only external gates remain. Continue native
+  Image editor repeated-save/retry acceptance; broader plugin/owner-library
+  acceptance remains open. #205/#196 eventual-review obligations remain recorded
+  separately.
+
 ## Migration backup destination and upgrade coverage (E12) — 2026-10-24
 
 - Merged [PR #211](https://github.com/Dusky-dev/StashBooru/pull/211) at

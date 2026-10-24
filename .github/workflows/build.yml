@@ -317,6 +317,13 @@ jobs:
         PLAYWRIGHT_MODULE: ${{ runner.temp }}/first-library-tools/node_modules/playwright/index.mjs
         STASH_BROWSER_SCREENSHOTS: ${{ runner.temp }}/first-library-artifacts/backups
       run: node tests/browser/database-backups.mjs
+    - name: Native plugin task failures and compatibility
+      working-directory: ui/v2.5
+      env:
+        STASH_BROWSER_BINARY: ${{ runner.temp }}/first-library-binary/stash-linux
+        PLAYWRIGHT_MODULE: ${{ runner.temp }}/first-library-tools/node_modules/playwright/index.mjs
+        STASH_BROWSER_SCREENSHOTS: ${{ runner.temp }}/first-library-artifacts/plugins
+      run: node tests/browser/plugin-compatibility.mjs
     - uses: actions/checkout@v6
       with:
         ref: aa1a2b42bf9bfb6b07608350bfbda688e54e91b9

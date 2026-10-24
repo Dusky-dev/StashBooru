@@ -301,6 +301,42 @@ when using that listener in a container. Custom `cert_path` and `key_path` must 
 supplied together. Set `enabled: false` to disable the secondary listener. This
 does not change the separately configured processing worker's HTTP/TLS setup.
 
+## Plugins and task failures
+
+Settings → Plugins manages local plugin settings and enabled state. Settings →
+Tasks → Plugin tasks shows tasks from enabled plugins. The queued confirmation
+means a task was accepted; check the job queue for its final result. A plugin's
+reported error or script exception now produces a **Failed** job with its error
+details, rather than being labelled Completed. Existing successful, no-result
+and cancellation behavior is retained.
+
+Failed-job notices stay in the current browser tab until dismissed and survive
+refresh there; they are not permanent server history. The existing Copy error
+and Dismiss controls remain the way to inspect and clear them. Enabling or
+disabling a UI plugin offers Reload UI to apply its scripts/styles. Troubleshooting
+mode's Disable customizations skips UI customizations; it does not disable the
+plugin's server-side tasks.
+
+The isolated suite installs only its own local JS/UI fixtures in disposable
+libraries. It exercises dependency order, plugin CSS/React routes, native Video
+navigation/Back, settings persistence, plugin-cache reload, reported and thrown
+task failures, success, running-task cancellation/retry, retained failure details,
+UI customization bypass, disable/re-enable and server restart. Native Video
+metadata stays unchanged; a successful fixture task creates its own Tag receipt.
+
+```sh
+STASH_BROWSER_BINARY=/absolute/path/to/stash-linux \
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
+node ui/v2.5/tests/browser/plugin-compatibility.mjs
+```
+
+Use Node 20 and Playwright 1.57 Chromium. Optional `CHROMIUM_EXECUTABLE`,
+`STASH_BROWSER_UI` and `STASH_BROWSER_SCREENSHOTS` select the browser, a production
+UI build and output directory. This suite owns all paths/processes and cannot
+use an existing library. It does not install third-party packages or establish
+compatibility with arbitrary community plugins, external runtimes/services,
+real media/processing workflows or physical devices.
+
 ## Experimental storage and backups
 
 Image delta storage and Gallery block sharing currently run as optional offline
