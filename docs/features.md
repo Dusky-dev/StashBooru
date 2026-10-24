@@ -191,6 +191,24 @@ inputs/switches, card selection/counters and page-size controls match the rest o
 Inspection supports keyboard navigation/download/ignore and explicit bounded video/GIF
 playback. Follows, metadata entity review and bounded batch import remain later packages.
 
+### Artist creation and saves
+
+On **Add Artist**, **Save & New** validates the form before sending a request,
+using Save's existing metadata formatting. A missing name shows the native field
+error. If a name is already used, the server rejects it and retains the draft;
+correct the name and retry. Success resets the form, including parent/child
+Artists, Tags and artwork, for a distinct next entry. Ordinary Save opens the
+saved Artist. Existing parent/child hierarchy validation still rejects cycles.
+
+The isolated `artist-save-new.mjs` suite checks blank-name validation, duplicate
+create/draft retry, clean next creation, an actual rejected descendant-parent
+cycle and correction, Cancel, Back, refresh/restart and saved metadata/artwork.
+It owns its database, server and local artwork; responses are never intercepted
+or mocked. Run it at desktop/mobile sizes using `STASH_BROWSER_BINARY`, optional
+`STASH_BROWSER_UI`, `PLAYWRIGHT_MODULE`, `CHROMIUM_EXECUTABLE` and
+`STASH_BROWSER_SCREENSHOTS`. Broader bulk editing, scraping and representative
+libraries remain separate acceptance work.
+
 ### Profile artwork and metadata diagnostics
 
 **Set image → From gallery…** offers a context-filtered, paged Image picker and
