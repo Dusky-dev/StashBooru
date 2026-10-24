@@ -2,6 +2,74 @@
 
 Updated: 2026-10-24
 
+## Collection membership and hierarchy acceptance (E12) — 2026-10-24
+
+- Merged [PR #205](https://github.com/Dusky-dev/StashBooru/pull/205) at
+  `1cc4c4d12ef106222229e30419d46e6cd22d7ec4` after all 15 CI checks passed.
+  Codex still reported running on `5eeace8a7aad12b14fa16b5f249b4672b9e64b6b`
+  with no submitted/inline findings. The owner explicitly said “merge both and
+  continue” after the previous report had identified that pending review. Treat
+  this as a #205-specific merge override, not completed review or a general waiver.
+  Assess viable eventual #205 findings; the separately recorded #196 obligation
+  also remains.
+- Merged [PR #208](https://github.com/Dusky-dev/StashBooru/pull/208) at
+  `359eec6df3725fcf842d7b7efa822b5b34bc1287` after all 12 CI checks passed and
+  clean Codex Review completed on `27b9a835f82ae6673facbf857c2f2c3de2f1f2f7`.
+  This is the baseline for
+  [`fix/collection-editing-20261024`](https://github.com/Dusky-dev/StashBooru/tree/fix/collection-editing-20261024).
+- Actual-server baseline walkthroughs reproduced three Collection editing defects:
+  Add fields remained editable while saving; adding a third child left the
+  parent's tab counter at two; and successful unlink left one invisible child
+  selected. A separate baseline removal run reached the normal drag/order and
+  unlink path before timing out on the stale selected count.
+- Reuse the Add dialog's existing running state to disable RelatedGroupTable
+  fields and guard duplicate saves. Reuse native cache eviction to invalidate
+  FindGroup detail queries as well as lists after Group mutation hooks, refreshing
+  parent hierarchy counts/memberships. Pass the existing optional selection-clear
+  callback through Group list operations; only the child-removal action uses it
+  after its awaited mutation succeeds. Failed removal retains selection. Existing
+  three-argument operations and native selection ownership remain.
+- Source `b66313f2ab47c365f9d1ce456ea14e2c7db43bd6`, tree
+  `b1b8c4a3b1a109a3788e0d3ad94713c16c72c8f2`, exactly matches tested local
+  source and is saved remotely before this documentation follow-up.
+- New collection-editing.mjs passed at 1440 × 1000 and 390 × 844. It owns fresh
+  configuration/database/media directories and loopback servers, and seeds native
+  Collections plus an Artist/Tag. A concurrent API edit makes a selected child an
+  ancestor after Add opens: the backend rejects the real cycle, the UI retains
+  the relationship description, and retry succeeds once the conflict is removed.
+  Pending description/select controls and Cancel are disabled.
+- Native mouse drag reorders children and preserves relationship descriptions.
+  The narrow test scrolls the destination into view while the HTML5 drag remains
+  active. Exact child order and parent count are checked before/after refresh and
+  detail navigation/Back. Rejected unlink changes only the outgoing parent ID;
+  the real error retains selection and all relationships. Successful unlink clears
+  selection and preserves the child's exact queried ID/name/synopsis/URLs/Artist/
+  Tags/hierarchy fields and the other parent's queried relationships. Add can be
+  reopened immediately afterward. Both runs had no uncaught page errors or
+  document horizontal overflow; final screenshots were inspected.
+- Reused a small isolated-server launcher between this suite and gallery-chapters.
+  Both chapter runs passed again: create/update/delete rejection and draft retry,
+  pending controls, refresh and native Image membership preservation. Neither suite
+  accepts an existing library/server URL or mocks API response data. Build CI adds
+  the Collection run using its existing Linux artifact and pinned browser tools,
+  with logs/captures in the existing artifact's collections directory.
+- Validation: UI GraphQL generation; final 69 UI unit tests; JS/CSS lint;
+  TypeScript/formatting; production make ui-only/built-in composition; final
+  focused Biome and full format gate; browser/helper/built-in syntax; workflow
+  YAML/step validation; and git diff --check passed. No backend/schema, native
+  relationship writer, dependency-lock or file-lifecycle changes require new
+  local Go gates. Runtime used the #205 Linux artifact with the new production
+  UI; its Collection code matches this baseline.
+- Limits: tiny synthetic hierarchies and Chromium mouse input at both viewport
+  sizes, not physical touch dragging, representative owner libraries, large-tree
+  performance, Collection Video-number editing/playback or recovery/upgrade/plugin
+  compatibility. The audit's current-status row now reflects chapter and
+  Collection hierarchy acceptance without closing those broader gates.
+- Next: applicable CI and completed Codex Review on the final head; end rather
+  than idle-polling. Continue Collection Video numbering/editing as a bounded
+  acceptance pass, then recovery/upgrade/plugin workflows and owner-library/
+  real-model/GPU acceptance.
+
 ## Booru preview blacklist validation takeover — 2026-10-24
 
 - The owner returned booru-browser maintenance to this stream after the other
