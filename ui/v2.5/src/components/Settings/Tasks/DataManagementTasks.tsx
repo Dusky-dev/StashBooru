@@ -174,12 +174,11 @@ const BackupCompatibilityNotice: React.FC = () => (
 );
 
 const BackupDialog: React.FC<{
-  onClose: (
-    confirmed?: boolean,
-    download?: boolean,
-    includeBlobs?: boolean
-  ) => void;
-}> = ({ onClose }) => {
+  onClose: () => void;
+  onBackup: (download: boolean, includeBlobs: boolean) => void;
+  isRunning: boolean;
+  error: string;
+}> = ({ onClose, onBackup, isRunning, error }) => {
   const intl = useIntl();
   const { configuration } = useConfigurationContext();
 
@@ -233,16 +232,31 @@ const BackupDialog: React.FC<{
     <ModalComponent
       show
       icon={faBoxArchive}
+      isRunning={isRunning}
       accept={{
         text: intl.formatMessage({ id: acceptID }),
-        onClick: () => onClose(true, download, includeBlobs),
+        onClick: () => onBackup(download, includeBlobs),
       }}
       cancel={{
         onClick: () => onClose(),
         variant: "secondary",
       }}
     >
-      <div className="dialog-container">
+      <fieldset
+        disabled={isRunning}
+        aria-busy={isRunning}
+        className="dialog-container"
+      >
+        {isRunning && (
+          <p role="status">
+            <FormattedMessage id="config.tasks.backing_up_database" />
+          </p>
+        )}
+        {error && (
+          <Alert variant="danger" className="text-break">
+            {error}
+          </Alert>
+        )}
         <BackupCompatibilityNotice />
         <Form.Group>
           <h5>
@@ -288,22 +302,22 @@ const BackupDialog: React.FC<{
 
         <p>{msg}</p>
         {warning}
-      </div>
+      </fieldset>
     </ModalComponent>
   );
 };
 
 interface IDataManagementTasks {
-  setIsBackupRunning: (v: boolean) => void;
   setIsAnonymiseRunning: (v: boolean) => void;
 }
 
 export const DataManagementTasks: React.FC<IDataManagementTasks> = ({
-  setIsBackupRunning,
   setIsAnonymiseRunning,
 }) => {
   const intl = useIntl();
   const Toast = useToast();
+  const [isBackupRunning, setIsBackupRunning] = useState(false);
+  const [backupError, setBackupError] = useState("");
   const [dialogOpen, setDialogOpenState] = useState({
     importAlert: false,
     import: false,
@@ -486,6 +500,8 @@ export const DataManagementTasks: React.FC<IDataManagementTasks> = ({
   }
 
   async function onBackup(download?: boolean, includeBlobs?: boolean) {
+    if (isBackupRunning) return;
+    setBackupError("");
     try {
       setIsBackupRunning(true);
       const ret = await mutateBackupDatabase({
@@ -498,8 +514,9 @@ export const DataManagementTasks: React.FC<IDataManagementTasks> = ({
         const link = ret.data.backupDatabase;
         downloadFile(link);
       }
+      setDialogOpen({ backup: false });
     } catch (e) {
-      Toast.error(e);
+      setBackupError(e instanceof Error ? e.message : String(e));
     } finally {
       setIsBackupRunning(false);
     }
@@ -583,11 +600,11 @@ export const DataManagementTasks: React.FC<IDataManagementTasks> = ({
       )}
       {dialogOpen.backup && (
         <BackupDialog
-          onClose={(confirmed, download, includeBlobs) => {
-            if (confirmed) {
-              onBackup(download, includeBlobs);
-            }
-
+          isRunning={isBackupRunning}
+          error={backupError}
+          onBackup={onBackup}
+          onClose={() => {
+            setBackupError("");
             setDialogOpen({ backup: false });
           }}
         />

@@ -322,6 +322,38 @@ The warning accompanies the backup section and saved/downloaded database backup
 dialog. The current backup action documents whether blobs are included; it
 does not include media files, generated assets, original-file restore caches or
 offline packed-storage payloads. Keep the appropriate data directories separately.
+
+The backup dialog stays open while the server writes the backup. Its destination,
+blob choice and action buttons are locked until the request finishes. A rejected
+backup shows its error inside the dialog and keeps the choices for retry;
+only a successful request closes it. Other Tasks sections remain mounted.
+
+Database blob storage is included in a SQLite backup automatically. With
+filesystem blob storage, including blobs produces a ZIP containing the database
+and its `blobs/` assets. A SQLite-only backup of filesystem storage needs those
+blobs preserved separately. Restore into a stopped instance with the appropriate
+configuration and separately backed-up data directories; there is no new restore
+wizard or compatibility detector in this change.
+
+The isolated acceptance suite creates its own servers and temporary databases:
+
+```sh
+STASH_BROWSER_BINARY=/absolute/path/to/stash-linux \
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
+node ui/v2.5/tests/browser/database-backups.mjs
+```
+
+It requires Python 3's standard library and Playwright 1.57 Chromium. Optional
+`CHROMIUM_EXECUTABLE`, `STASH_BROWSER_UI` and `STASH_BROWSER_SCREENSHOTS` select
+the browser, a production UI build and output directory. It cannot target an
+existing library. Desktop/mobile runs cover database and filesystem blob storage,
+a real unavailable-directory failure, pending controls and retry, other Tasks
+draft retention, directory saves, browser downloads, SQLite integrity/foreign-key
+checks and restoration into new
+instances. Metadata-only Video relationships and an Artist image are synthetic;
+this does not establish cross-version upgrades, owner-library recovery, file
+conversion recovery, live plugins, codecs or physical-device behavior.
+
 P01's additional product-manifest/restore-preflight work was deferred by the owner;
 the warning is not a guarantee of automated compatibility detection. Restore
 caches are bounded and can evict originals.
