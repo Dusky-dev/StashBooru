@@ -1,6 +1,6 @@
 import { ProfileLibraryReview } from "src/components/Shared/ProfileLibraryReview";
 import { IdentitySources } from "src/components/Identities/identity";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FormattedMessage } from "react-intl";
 import { Helmet } from "react-helmet";
 import { Col, Form, Row, Spinner, Tab, Tabs } from "react-bootstrap";
@@ -51,6 +51,7 @@ import { View } from "src/components/List/views";
 import { useConfigurationContext } from "src/hooks/Config";
 import { useToast } from "src/hooks/Toast";
 import ImageUtils from "src/utils/image";
+import { errorToString } from "src/utils";
 
 interface CopyrightFormValues {
   name: string;
@@ -168,32 +169,29 @@ const CopyrightEditPanel: React.FC<{
   const [updateCopyright] = useCopyrightUpdate();
   const [destroyCopyright] = useCopyrightDestroy();
   const [updatePerformers] = useCopyrightPerformersUpdate();
-  const [values, setValues] = useState<CopyrightFormValues>(emptyValues);
-  const [performers, setPerformers] = useState<Performer[]>([]);
+  // Each keyed editor owns its draft. Mutation/refetch cache writes for the same
+  // Copyright or its initial parent must not replace a rejected save's values.
+  const [values, setValues] = useState<CopyrightFormValues>(() =>
+    copyright
+      ? {
+          name: copyright.name,
+          sort_name: copyright.sort_name,
+          description: copyright.description,
+          aliases: copyright.aliases.join("\n"),
+          parents: copyright.parents,
+          children: copyright.ordered_children,
+        }
+      : { ...emptyValues, parents: initialParents }
+  );
+  const [performers, setPerformers] = useState<Performer[]>(
+    () => copyright?.performers ?? []
+  );
+  // Metadata and Character links are separate native mutations. Once creation
+  // succeeds, a link failure must retry an update of that ID, not create again.
+  const savedID = useRef(copyright?.id);
   const [imageValue, setImageValue] = useState<string | null>();
   const [imageTouched, setImageTouched] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (!copyright) {
-      setValues({ ...emptyValues, parents: initialParents });
-      setPerformers([]);
-      setImageValue(undefined);
-      setImageTouched(false);
-      return;
-    }
-    setValues({
-      name: copyright.name,
-      sort_name: copyright.sort_name,
-      description: copyright.description,
-      aliases: copyright.aliases.join("\n"),
-      parents: copyright.parents,
-      children: copyright.ordered_children,
-    });
-    setPerformers(copyright.performers);
-    setImageValue(undefined);
-    setImageTouched(false);
-  }, [copyright, initialParents]);
 
   const encodingImage = ImageUtils.usePasteImage((data) => {
     setImageValue(data);
@@ -217,7 +215,7 @@ const CopyrightEditPanel: React.FC<{
 
   async function save() {
     const name = values.name.trim();
-    if (!name) return;
+    if (saving || !name) return;
 
     setSaving(true);
     try {
@@ -232,27 +230,32 @@ const CopyrightEditPanel: React.FC<{
       };
 
       let saved: GQL.CopyrightDataFragment | undefined;
-      if (create) {
+      if (!savedID.current) {
         const result = await createCopyright({
           variables: { input },
           refetchQueries: ["FindCopyrights"],
           awaitRefetchQueries: true,
         });
         saved = result.data?.copyrightCreate;
-      } else if (copyright) {
+      } else {
         const result = await updateCopyright({
-          variables: { input: { id: copyright.id, ...input } },
+          variables: { input: { id: savedID.current, ...input } },
         });
         saved = result.data?.copyrightUpdate;
       }
 
       if (!saved) return;
+      savedID.current = saved.id;
 
       await updatePerformers({
         variables: {
           copyrightID: saved.id,
           performerIDs: performers.map((item) => item.id),
         },
+      }).catch((error) => {
+        throw new Error(
+          `Copyright details were saved, but Character links could not be saved. Correct the selection and retry. ${errorToString(error)}`
+        );
       });
 
       Toast.success(`Saved Copyright “${saved.name}”.`);
@@ -627,6 +630,7 @@ const CopyrightDetail: React.FC = () => {
               <AliasList aliases={copyright.aliases} />
               {editing ? (
                 <CopyrightEditPanel
+                  key={copyright.id}
                   copyright={copyright}
                   onSaved={finishEdit}
                   onCancel={() => {
@@ -708,6 +712,7 @@ const CopyrightCreate: React.FC = () => {
           ) : null}
         </div>
         <CopyrightEditPanel
+          key={`new:${parentID ?? ""}`}
           create
           initialParents={initialParents}
           onSaved={(created) => history.replace(`/copyrights/${created.id}`)}

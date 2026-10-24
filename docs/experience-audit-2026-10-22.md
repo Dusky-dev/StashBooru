@@ -47,14 +47,27 @@ Native Character Save & New and save/retry are covered by merged
 follow-up remains in the ledger. Artist and Tag passes validate Save & New before
 a request and cover duplicate-name/hierarchy-cycle rejection and retry, clean next
 creation, Cancel, Back and restart. The Tag fixture preserves multiple parents and
-separate native Copyright/Video records. The next bounded editor pass covers
-native Copyright create/edit rejection and retry. The Image suite validates
+separate native Copyright/Video records. The native Copyright save/retry pass is
+described below. The Image suite validates
 existing repeat saves and fixes narrow-layout control reachability; it does not
 change the Image form or combine its separate association writes into a transaction.
 
 The findings below are the original audit snapshot, followed by dated delivery
 notes. [Implementation progress](implementation-progress.md) records exact PRs,
 checks and outstanding gates; the feature guides describe current user flows.
+
+The Copyright pass covers its separate native create/edit form: rejected
+duplicate names and hierarchy cycles retain the draft. If Character-link saving
+fails after metadata creation, correction retries the same native Copyright ID.
+Its owned desktop/mobile fixture also covers existing-record partial-link retry,
+Cancel, Back, refresh, restart and unchanged saved artwork. The two native writes
+remain separate transactions. Its saved-profile captures exposed a separate
+Characters-tab failure: the profile sends a Copyright criterion unsupported by
+PerformerFilterType, and the server returns HTTP 400/unknown field. Fix that
+native branch-list path next; Image/Video bulk-save and partial-failure acceptance
+remain afterward. Some captured error toasts are clipped at the viewport edge;
+their positioning and animation need a separate narrow/wide review.
+The broader workstreams above remain open.
 
 ## Scope and evidence
 
