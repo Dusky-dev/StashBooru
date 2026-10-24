@@ -67,6 +67,26 @@ are saved on the server. Upscaling job defaults are saved in the current browser
 their Save button does not change server paths. Old System bookmarks for moved
 sections redirect to the new location.
 
+## Image editing
+
+Open an Image's detail page and use **Edit → Save** to update its metadata.
+You can save again in the same editor. **Custom fields** expands the native
+field editor; its values are saved alongside the Image's metadata, while Artist
+and Copyright assignments use their existing separate writes. A rejected Image
+update leaves its draft available for correction and retry. Separate association
+writes are not a combined transaction.
+
+The isolated `image-editor-save.mjs` browser suite scans its own generated PNG
+and checks repeated saves, a custom-field edit, a failed update and retained-draft
+retry, Back, refresh and server restart at desktop/mobile sizes. It verifies
+native relationship/file IDs and unchanged PNG bytes, including a user custom
+field named `full`. Its delayed association requests and rejected fixture ID use
+real server responses. It accepts no existing library/server URL. Run it using
+`STASH_BROWSER_BINARY`, optional `STASH_BROWSER_UI`, `PLAYWRIGHT_MODULE`,
+`CHROMIUM_EXECUTABLE` and `STASH_BROWSER_SCREENSHOTS`, as for the other native
+browser suites. This covers the existing Image editor; it does not establish
+all editors, bulk saves, provider scrapes or association-write rollback.
+
 ## Browse a mixed library
 
 The navbar's **All** page uses native Image/Video filters, ordering, selections,
