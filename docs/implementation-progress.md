@@ -2,6 +2,79 @@
 
 Updated: 2026-10-25
 
+## Copyright draft retention and partial-link retries (E12) — 2026-10-25
+
+- Started from fresh develop `fb812b71a8f528e91a75169c901bc042b3337bf3`
+  on [`fix/copyright-save-retry-20261025`](https://github.com/Dusky-dev/StashBooru/tree/fix/copyright-save-retry-20261025).
+  PR #217 was initially waiting on first-library CI. Subsequently all 12 checks
+  passed, including the actual Tag desktop/mobile suite and historical upgrade.
+  Codex Review completed without findings on
+  `b992ba1c6895a9cb6fd2096be50c72fcd5806174`; no submitted reviews, inline
+  comments or review threads. Merged #217 at
+  `e20b59a8f8370a822028a47b32efeb6afbf1a383` and integrated it cleanly.
+  #215's summary still said running without findings; assess eventual viable
+  findings, alongside the existing #205/#196 review-follow-up obligations.
+- Copyright has its own native form, not TagEditPanel and not Save & New.
+  Reproduced a selected Character being deleted in another tab: metadata creation
+  succeeds, the separate Character-link request fails a real foreign key, and a
+  refetched initial parent resets the draft to blank with Save disabled. No
+  rollback of the already-created Copyright occurs. This was an actual server
+  failure and form reset, not a mocked response or a duplicate record observed.
+- Seed each keyed editor's local draft once, rather than replacing it on cache
+  writes for the same Copyright or initial parent. Remember the native ID after
+  metadata creation, so correcting a failed Character selection retries an update
+  of that record. Keep the native inputs, hierarchy validation, image handling
+  and separate transactions. The error explicitly explains that details saved
+  while Character links failed, and that the selection can be corrected/retried.
+  No new API/schema, dependencies, generic identity layer or rollback contract.
+- Tested source `b429eb8dbac4bef0e13147a0baa83098634b8b7e`, tree
+  `6156e513f59ae16953d6bc3a4b71b8eb9a768ebb`, was saved remotely.
+  After the clean #217 integration and documentation clarification, source
+  `f0892b69485b6d526a5c8ee7149d6af10b09ac0c`, tree
+  `d69604b390aeddead25018601ca3bff2d5a9f236`, exactly matches the local
+  integrated source. Copyright production code and final harness are unchanged;
+  combined-branch verification remains CI's gate, not a claimed repeat local build.
+- Final copyright-save-retry.mjs passed at 1440 × 1000 and 390 × 844 with
+  private databases, owned loopback processes and generated 144 × 81 PNG artwork.
+  Blank/whitespace-only names disable Save. Real duplicate-name create rejection
+  preserves the draft and all saved Copyrights. A deleted selected Character
+  causes a real partial-create failure; remove it and retry the same ID, preserving
+  aliases, sort name, description, two parents, a child, valid Character and image.
+- Existing-record metadata save followed by another deleted-Character link
+  failure also retains both selections and the draft; correcting it retries the
+  same record. Choosing a real descendant as a parent rejects the cycle and
+  leaves every saved Copyright unchanged. Removing that choice saves only the
+  intended name edit. Cancel, canonical list Back, refresh and server restart
+  preserve all five Copyright records and saved artwork response bytes. A
+  separately queried ordinary Tag with the same name as a Copyright and a native
+  Character retain their IDs/fields. No requests/responses are intercepted.
+- Validation: make validate-ui passed all 69 UI tests, JS/CSS lint, TypeScript
+  and formatting; make ui-only production bundle passed. Final browser-file
+  Biome format/lint, JS syntax, workflow YAML/suite placement and git diff --check
+  passed. Used #217's Linux CI backend with the freshly built Copyright UI via
+  STASH_BROWSER_UI; production Go/API/schema are unchanged, so no new local
+  backend build/tests are claimed. Desktop/mobile captures inspected. Successful
+  fixtures were removed, no uncaught page errors or final document horizontal
+  overflow; no human manual testing is claimed.
+- Feature guide documents the partial-save recovery; CI adds the owned suite
+  before Image/historical checkout and uploads copyrights logs/captures. Harness
+  corrections follow actual native controls: close multi-selects with Escape,
+  use the list card title link, and capture Back's URL after Hierarchy sorting
+  canonicalizes it. No production list/navigation change was needed for these.
+- Important boundary found in the saved-profile captures: Characters displays
+  HTTP 400/Error loading items. A second owned server confirms the profile's
+  copyrights criterion is rejected as unknown by PerformerFilterType. The save
+  fixture verifies native links through GraphQL, not successful Character-list
+  loading. Some captured error toasts are clipped at a viewport edge; the cause
+  and positioning/animation require separate inspection. Neither is claimed
+  fixed here. Network-response loss, refreshing an unsaved/partial draft, bulk
+  saves, real-media playback and representative-library acceptance remain open.
+- Next: applicable CI and completed Codex Review before merge, addressing viable
+  findings and ending when only external gates remain. Then fix native Copyright
+  branch Character listing; review toast visibility separately, followed by
+  Image/Video bulk-save/partial-failure acceptance. The five broad workstreams in
+  the experience audit remain open; this is not completion of P01–P13.
+
 ## Tag Save & New validation and hierarchy retries (E12) — 2026-10-25
 
 - Continued the interrupted Tag pass from remotely saved, tested source
