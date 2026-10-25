@@ -3,10 +3,35 @@ package api
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"io"
 	"strings"
 	"testing"
 )
+
+// This tiny unencrypted 7z fixture is t0.7z from bodgit/sevenzip
+// (BSD-3-Clause). It contains non-media test files and exercises real header
+// parsing instead of accepting arbitrary magic bytes.
+func TestBooruSevenZipRealArchiveIndex(t *testing.T) {
+	const fixture = "N3q8ryccAASgR6WICAAAAAAAAABmAAAAAAAAAN2R8/FiYXIKZm9vCgEEBgACCQQEAAcLAgABAQABAQAMBAQACAoB6bOiBKhlMn4AAAUCGQUAAAAAABERAGIAYQByAAAAZgBvAG8AAAAZAgAAFBIBAACFM3PyY9YBAFgCcvJj1gEVCgEAIICkgSCApIEAAA=="
+	data, err := base64.StdEncoding.DecodeString(fixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	listing, reader, err := indexBooruSevenZipWithLimit(data, 256<<20)
+	if err != nil || reader == nil || len(reader.File) == 0 || len(listing.Files) != 0 {
+		t.Fatalf("valid 7z fixture could not be indexed safely: %+v %v", listing, err)
+	}
+	rc, err := reader.File[0].Open()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = io.ReadAll(io.LimitReader(rc, 1024))
+	closeErr := rc.Close()
+	if err != nil || closeErr != nil {
+		t.Fatalf("valid 7z entry could not be decoded: %v %v", err, closeErr)
+	}
+}
 
 func TestBooruSevenZipEntryNamesDenyTraversalAndUnsafeFiles(t *testing.T) {
 	for _, name := range []string{"chapter/001.png", "images/002.WEBP", "video/clip.mp4"} {
