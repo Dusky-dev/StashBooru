@@ -645,7 +645,6 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                   borderRadius: "4px",
                 }}
               />
-              <p className="small text-muted mt-2 mb-0">Image #{imageId}</p>
             </aside>
             <div className="flex-grow-1 w-100" style={{ minWidth: 0 }}>
               <MetadataReviewInfo
