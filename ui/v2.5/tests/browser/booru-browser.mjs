@@ -1396,9 +1396,9 @@ try {
     );
     await listingPagination.waitFor();
     assert.equal(
-      await dan.locator(".booru-pagination").evaluate((node) =>
-        getComputedStyle(node).position
-      ),
+      await dan
+        .locator(".booru-pagination")
+        .evaluate((node) => getComputedStyle(node).position),
       "sticky",
       "Booru pagination should use native floating footer positioning"
     );
@@ -1430,7 +1430,9 @@ try {
     const chooserBox = await page.locator("#select_page_popover").boundingBox();
     const footerBox = await listingPagination.boundingBox();
     assert.ok(
-      chooserBox && footerBox && chooserBox.y + chooserBox.height <= footerBox.y + 12,
+      chooserBox &&
+        footerBox &&
+        chooserBox.y + chooserBox.height <= footerBox.y + 12,
       "Floating footer's page selector opens above pagination"
     );
     await jumpPage.fill("50");
