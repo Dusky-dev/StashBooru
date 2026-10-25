@@ -1696,10 +1696,34 @@ try {
       page.getByLabel("Show ignored posts", { exact: true }),
       false
     );
-    assert.equal(
-      requests.length,
-      searchesBeforeFilter,
-      "changing review filters refetched provider searches"
+    // Filled pages apply the ignored-post filter on the server, so changing
+    // this switch must refetch once per state change (not reuse stale results).
+    const filterRequests = requests.slice(searchesBeforeFilter);
+    assert.deepEqual(
+      filterRequests.map(({ source, query, page, fill, ignored }) => ({
+        source,
+        query,
+        page,
+        fill,
+        ignored,
+      })),
+      [
+        {
+          source: "danbooru",
+          query: "broken",
+          page: 1,
+          fill: "1",
+          ignored: null,
+        },
+        {
+          source: "danbooru",
+          query: "broken",
+          page: 1,
+          fill: "1",
+          ignored: "hide",
+        },
+      ],
+      "review visibility switches must request matching filled pages"
     );
     await page.goto(`${baseURL}/booru?source=disabled&q=cat`);
     await page
