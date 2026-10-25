@@ -2,6 +2,19 @@
 
 Updated: 2026-10-25
 
+## Disable ordinary Tag hover popups — 2026-10-25
+
+- Baseline `develop` at `c03bfec9fe4437037dfa9f0088ed540b05eed23e`, after merging PRs #221 and #222.
+- The shared TagPopover component becomes a pass-through: ordinary Tag links,
+  search options and selection labels no longer render a hover trigger/card,
+  fetch Tag card details, or attach popup DOM. Artist, Character and Copyright
+  previews remain independent and unchanged.
+- Remove the obsolete "Show Tag card on hover" switch from Interface settings,
+  while retaining the stored legacy preference for backwards compatibility.
+  Clean unused Tag popover styling and cover markup behavior with a focused
+  React render regression test.
+- GitHub CI and browser/device verification are pending.
+
 ## Complete downloadable remote worker bundle — 2026-10-25
 
 - Baseline `develop` at `1702e5f78a065d7417c5c2b060e44b8be3d640e1`,

@@ -170,8 +170,9 @@ not imply authorship.
 All, Images and Videos. Mixed selections retain typed native IDs and are reviewed
 one item at a time, with Skip and selection progress. The Image review dialog
 shows a larger, full-height image preview beside independently scrollable controls
-on desktop, with a stacked layout on narrow screens. Tag hover cards retain their
-details and media counts without displaying Tag artwork. Images review
+on desktop, with a stacked layout on narrow screens. Ordinary Tag links
+and selectors no longer open hover cards; clicking a Tag still navigates
+normally, and Artist, Character and Copyright previews are unaffected. Images review
 **Local → Booru → Camie → EVA02 → Library** sources; Videos review
 **Local → Booru → Frames**. Only Local loads on opening; network
 lookups, inference and library suggestions are explicit. Select predictions and
