@@ -189,7 +189,9 @@ try {
       .filter({ hasText: "Bulk tagging uses individual review" });
     await advisory.getByRole("button", { name: "OK", exact: true }).waitFor();
     assert.equal(
-      await advisory.getByRole("button", { name: "Cancel", exact: true }).count(),
+      await advisory
+        .getByRole("button", { name: "Cancel", exact: true })
+        .count(),
       1
     );
     await advisory.getByRole("button", { name: "Cancel", exact: true }).click();
