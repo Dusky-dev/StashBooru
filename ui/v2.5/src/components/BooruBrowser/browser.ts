@@ -124,8 +124,8 @@ export function readBrowserSearch(search: string): BrowserSearch {
   }
   if (params.has("limit")) {
     const limit = params.get("limit") ?? "";
-    if (!/^\d+$/.test(limit) || Number(limit) < 1 || Number(limit) > 50)
-      result.error = "Page size must be from 1 to 50.";
+    if (!/^\d+$/.test(limit) || Number(limit) < 1 || Number(limit) > 250)
+      result.error = "Page size must be from 1 to 250.";
     else result.pageSize = Number(limit);
   }
   if (params.get("ai") === "hide") result.hideAI = true;

@@ -165,17 +165,27 @@ export function BooruReview({
     request.current = controller;
     setBusy(true);
     setError("");
-    void fetch("booru-browser/review/read", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: controller.signal,
-      body: JSON.stringify({
-        source: source.id,
-        instance: source.instance,
-        posts: posts.map((post) => ({ id: post.id, md5: post.md5 ?? "" })),
-      }),
-    })
-      .then(readBooruResponse<ReviewState[]>)
+    // The review API accepts at most 50 posts per read.
+    const chunks = [];
+    for (let i = 0; i < posts.length; i += 50) {
+      chunks.push(posts.slice(i, i + 50));
+    }
+    void Promise.all(
+      chunks.map(async (batch) => {
+        const response = await fetch("booru-browser/review/read", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            source: source.id,
+            instance: source.instance,
+            posts: batch.map((post) => ({ id: post.id, md5: post.md5 ?? "" })),
+          }),
+        });
+        return readBooruResponse<ReviewState[]>(response);
+      })
+    )
+      .then((values) => values.flat())
       .then((value) => {
         if (!controller.signal.aborted) {
           setStates(value);
@@ -236,19 +246,24 @@ export function BooruReview({
     setNotice("");
     const previous = states;
     try {
-      const response = await fetch("booru-browser/review/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
-          source: source.id,
-          instance: source.instance,
-          changes,
-        }),
-      });
-      const value = await readBooruResponse<ReviewState[]>(response);
+      const value: ReviewState[] = [];
+      // Writes also have a 50-post cap. A later failed batch cannot roll back
+      // earlier ones; notify the user and refresh authoritative review states.
+      for (let i = 0; i < changes.length; i += 50) {
+        const response = await fetch("booru-browser/review/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            source: source.id,
+            instance: source.instance,
+            changes: changes.slice(i, i + 50),
+          }),
+        });
+        value.push(...(await readBooruResponse<ReviewState[]>(response)));
+        changed.current = true;
+      }
       if (controller.signal.aborted || !mounted.current) return;
-      changed.current = true;
       const next = previous.map((state) => ({
         ...state,
         ...value.find((item) => item.id === state.id),
@@ -281,7 +296,14 @@ export function BooruReview({
       );
     } catch (cause: unknown) {
       if (!controller.signal.aborted && mounted.current)
-        setError(cause instanceof Error ? cause.message : String(cause));
+        setError(
+          changed.current
+            ? "Some review changes were saved before a later batch failed. Refresh to reconcile remaining posts. " +
+                (cause instanceof Error ? cause.message : String(cause))
+            : cause instanceof Error
+              ? cause.message
+              : String(cause)
+        );
     } finally {
       saving.current = false;
       if (!controller.signal.aborted && mounted.current) {

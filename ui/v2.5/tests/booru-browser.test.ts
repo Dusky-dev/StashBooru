@@ -24,11 +24,11 @@ test("Browser filters round-trip with native expressions and independent paging"
 });
 
 test("Page size rejects unsafe provider requests and survives refresh", () => {
-  for (const limit of ["0", "51", "-1", "1.5", "1e2", "NaN", ""])
+  for (const limit of ["0", "251", "-1", "1.5", "1e2", "NaN", ""])
     assert.ok(readBrowserSearch(`?limit=${limit}`).error);
   assert.equal(
-    readBrowserSearch("?source=danbooru&limit=50&p.danbooru=2").pageSize,
-    50
+    readBrowserSearch("?source=danbooru&limit=250&p.danbooru=2").pageSize,
+    250
   );
 });
 

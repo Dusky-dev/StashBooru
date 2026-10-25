@@ -2,6 +2,21 @@
 
 Updated: 2026-10-25
 
+## Fill hidden Booru posts and expand page sizes — 2026-10-25
+
+- Offer 60, 120 and 250 posts per displayed page, while making bounded
+  provider requests of at most 50 posts for compatibility.
+- Compose logical pages from a filtered stream (blacklist, saved Ignore,
+  selected media and explicit AI-generated tag filters) on the server.
+  Numbered pages have disjoint post IDs and retain the provider's order;
+  a final page can be partial when no more eligible posts exist.
+- Preserve legacy, non-filled search and favorites API behavior; opt in with
+  `fill=1`. A capped scan budget protects providers; fail clearly on expensive
+  filtered deep jumps rather than returning duplicated or misleading results.
+- Batch review reads and writes at 50 posts; refresh after partial failures.
+- Cover offset continuity, 250-post aggregation, exhaustion, validation and
+  selected page-size UI behavior in regression tests. CI pending.
+
 ## Native Booru pagination with unknown totals — 2026-10-25
 
 - Replace Booru source Previous/Next listing buttons with the shared

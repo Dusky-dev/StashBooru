@@ -130,6 +130,20 @@ selected other members. It does not merge/delete Images; a connected cluster is
 not proof that every pair is a duplicate. The planned browser's pHash grouping
 and red disfavored-tag comparison are [separate work](booru-browser-roadmap.md#b05--phash-groups-compare-and-tag-warnings).
 
+## Booru filled pages and page size
+
+Booru Browser supports 60, 120 and 250 posts per page, as well as smaller
+counts. Hidden posts (blacklisted tags, saved Ignore marks, filtered media
+types or explicit AI-generated tags) are replaced by posts from following
+provider pages until the display count is filled or results run out.
+Numbered pages are sliced from the filtered stream so borrowed posts do
+not reappear on the following page. Account favorites are supported too.
+
+Remote providers still receive batches of at most 50 posts. A very deep page
+jump with heavy filtering may exhaust the bounded scan budget; narrow the
+query or choose a smaller page. Review actions above 50 posts are batched,
+and partially completed saves may require refreshing review status.
+
 ## Image filename display
 
 Under **Settings → Interface → Image titles**, enable **Hide image filenames**

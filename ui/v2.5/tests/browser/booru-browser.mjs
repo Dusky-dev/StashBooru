@@ -869,6 +869,10 @@ try {
         page: number,
         limit: Number(url.searchParams.get("limit")),
         blacklist: url.searchParams.get("blacklist"),
+        fill: url.searchParams.get("fill"),
+        ignored: url.searchParams.get("ignored"),
+        media: url.searchParams.get("media"),
+        ai: url.searchParams.get("ai"),
       });
       if (query === "slow") {
         delayed.push({ route, source, query, number });
@@ -1694,10 +1698,34 @@ try {
       page.getByLabel("Show ignored posts", { exact: true }),
       false
     );
-    assert.equal(
-      requests.length,
-      searchesBeforeFilter,
-      "changing review filters refetched provider searches"
+    // Filled pages apply the ignored-post filter on the server, so changing
+    // this switch must refetch once per state change (not reuse stale results).
+    const filterRequests = requests.slice(searchesBeforeFilter);
+    assert.deepEqual(
+      filterRequests.map(({ source, query, page, fill, ignored }) => ({
+        source,
+        query,
+        page,
+        fill,
+        ignored,
+      })),
+      [
+        {
+          source: "danbooru",
+          query: "broken",
+          page: 1,
+          fill: "1",
+          ignored: null,
+        },
+        {
+          source: "danbooru",
+          query: "broken",
+          page: 1,
+          fill: "1",
+          ignored: "hide",
+        },
+      ],
+      "review visibility switches must request matching filled pages"
     );
     await page.goto(`${baseURL}/booru?source=disabled&q=cat`);
     await page
@@ -1836,7 +1864,20 @@ try {
       !(await hideAIGenerated.getAttribute("class")).includes("active")
     );
     const requestsBeforeAI = requests.length;
+    const waitForFilteredPage = (media, ai) =>
+      page.waitForResponse((response) => {
+        const url = new URL(response.url());
+        return (
+          url.pathname.endsWith("/booru-browser/search") &&
+          url.searchParams.get("source") === "danbooru" &&
+          url.searchParams.get("fill") === "1" &&
+          url.searchParams.get("media") === media &&
+          url.searchParams.get("ai") === ai
+        );
+      });
+    let filteredResponse = waitForFilteredPage(null, "hide");
     await hideAIGenerated.click();
+    await filteredResponse;
     await page.waitForURL((url) => url.searchParams.get("ai") === "hide");
     assert.equal(await hideAIGenerated.getAttribute("aria-pressed"), "true");
     assert.equal(
@@ -1847,19 +1888,20 @@ try {
       !(await hideAIGenerated.getAttribute("class")).includes("active")
     );
     await dan
-      .getByText("Showing 9 of 12 posts on this loaded page.", {
+      .getByText("Showing 9 posts after the selected filters.", {
         exact: false,
       })
       .waitFor();
     assert.equal(await dan.locator(".booru-post").count(), 9);
-    assert.equal(
-      requests.length,
-      requestsBeforeAI,
-      "AI toggle refetched provider"
+    assert.ok(
+      requests.length > requestsBeforeAI,
+      "AI filtering requests a filled page from the server"
     );
+    assert.equal(requests.at(-1).fill, "1");
+    assert.equal(requests.at(-1).ai, "hide");
     await page.reload();
     await dan
-      .getByText("Showing 9 of 12 posts on this loaded page.", {
+      .getByText("Showing 9 posts after the selected filters.", {
         exact: false,
       })
       .waitFor();
@@ -1868,7 +1910,9 @@ try {
       await hideAIGenerated.locator('svg[data-icon="slash"]').count(),
       1
     );
+    filteredResponse = waitForFilteredPage(null, null);
     await hideAIGenerated.click();
+    await filteredResponse;
     await page.waitForURL((url) => !url.searchParams.has("ai"));
     await dan.locator(".booru-post").nth(11).waitFor();
     assert.equal(await hideAIGenerated.getAttribute("aria-pressed"), "false");
@@ -1877,29 +1921,38 @@ try {
       0
     );
     const searchesBeforeMedia = requests.length;
+    filteredResponse = waitForFilteredPage("videos", null);
     await pickFilter("Media on this page", "videos");
+    await filteredResponse;
     await dan
-      .getByText("Showing 4 of 12 posts on this loaded page.", { exact: false })
+      .getByText("Showing 4 posts after the selected filters.", {
+        exact: false,
+      })
       .waitFor();
     assert.equal(await dan.locator(".booru-post").count(), 4);
+    filteredResponse = waitForFilteredPage("videos", "hide");
     await hideAIGenerated.click();
+    await filteredResponse;
     await dan
-      .getByText("Showing 3 of 12 posts on this loaded page.", {
+      .getByText("Showing 3 posts after the selected filters.", {
         exact: false,
       })
       .waitFor();
     assert.equal(await dan.locator(".booru-post").count(), 3);
+    filteredResponse = waitForFilteredPage("videos", null);
     await hideAIGenerated.click();
+    await filteredResponse;
     await dan
-      .getByText("Showing 4 of 12 posts on this loaded page.", {
+      .getByText("Showing 4 posts after the selected filters.", {
         exact: false,
       })
       .waitFor();
-    assert.equal(
-      requests.length,
-      searchesBeforeMedia,
-      "loaded-page media filter refetched provider"
+    assert.ok(
+      requests.length > searchesBeforeMedia,
+      "Media filtering requests filled results from the server"
     );
+    assert.equal(requests.at(-1).media, "videos");
+    assert.equal(requests.at(-1).ai, null);
     assert.equal(
       await page
         .getByRole("button", { name: "Media on this page", exact: true })
@@ -1907,13 +1960,19 @@ try {
         .then((c) => c.includes("active")),
       false
     );
+    filteredResponse = waitForFilteredPage("images", null);
     await pickFilter("Media on this page", "images");
+    await filteredResponse;
     await dan
-      .getByText("Showing 8 of 12 posts on this loaded page.", { exact: false })
+      .getByText("Showing 8 posts after the selected filters.", {
+        exact: false,
+      })
       .waitFor();
     assert.equal(await dan.locator(".booru-post").count(), 8);
-    assert.equal(requests.length, searchesBeforeMedia);
+    assert.equal(requests.at(-1).media, "images");
+    filteredResponse = waitForFilteredPage("videos", null);
     await pickFilter("Media on this page", "videos");
+    await filteredResponse;
     await setChecked(
       page.getByLabel("Show thumbnails", { exact: true }),
       false
@@ -1921,14 +1980,18 @@ try {
     assert.equal(await dan.locator(".booru-post img").count(), 0);
     await page.reload();
     await dan
-      .getByText("Showing 4 of 12 posts on this loaded page.", { exact: false })
+      .getByText("Showing 4 posts after the selected filters.", {
+        exact: false,
+      })
       .waitFor();
     assert.equal(
       await page.getByLabel("Show thumbnails", { exact: true }).isChecked(),
       false
     );
     await setChecked(page.getByLabel("Show thumbnails", { exact: true }), true);
+    filteredResponse = waitForFilteredPage(null, null);
     await pickFilter("Media on this page", "");
+    await filteredResponse;
     await dan
       .getByRole("button", { name: "Download danbooru post 102", exact: true })
       .click();
@@ -2452,6 +2515,23 @@ try {
       await page.locator(".page-size-selector select").inputValue(),
       "40"
     );
+    const pageSize = page.locator(".page-size-selector select");
+    for (const size of ["60", "120", "250"]) {
+      assert.equal(
+        await pageSize.locator(`option[value="${size}"]`).count(),
+        1
+      );
+    }
+    await pageSize.selectOption("250");
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 112", exact: true })
+      .waitFor();
+    assert.equal(requests.at(-1).limit, 250);
+    assert.equal(new URL(page.url()).searchParams.get("limit"), "250");
+    await pageSize.selectOption("40");
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 112", exact: true })
+      .waitFor();
     assert.equal(
       motionRequests.length,
       0,

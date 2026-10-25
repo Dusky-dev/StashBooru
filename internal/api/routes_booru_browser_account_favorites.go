@@ -30,7 +30,8 @@ func (rs booruBrowserRoutes) AccountFavorites(w http.ResponseWriter, r *http.Req
 			limit, err = strconv.Atoi(raw)
 		}
 	}
-	if err != nil || booru.ValidateQuery("", page, limit) != nil || r.URL.Query().Get("sort") != "" || r.URL.Query().Get("rating") != "" || r.URL.Query().Get("q") != "" {
+	fill, filters, valid := booruPageRequestFilters(r.URL.Query())
+	if !valid || err != nil || limit < 1 || (fill && limit > booruDisplayMaxLimit) || (!fill && limit > booru.MaxLimit) || booru.ValidateQuery("", page, min(limit, booru.MaxLimit)) != nil || r.URL.Query().Get("sort") != "" || r.URL.Query().Get("rating") != "" || r.URL.Query().Get("q") != "" {
 		writeBooruError(w, 400, "favorites", "Account favorites use provider order, All ratings and an empty search. Invalid page or filters.")
 		return
 	}
@@ -41,7 +42,28 @@ func (rs booruBrowserRoutes) AccountFavorites(w http.ResponseWriter, r *http.Req
 		writeBooruError(w, 400, "favorites", "Account favorites are unavailable.")
 		return
 	}
-	result, err := client.AccountFavorites(r.Context(), source, page, limit)
+	var result booru.Result
+	if fill {
+		filters.hideBlocked = len(blacklistMode) == 0
+		if filters.hideIgnored {
+			var marked bool
+			marked, err = rs.booruHasIgnored(r.Context(), source)
+			if !marked {
+				filters.hideIgnored = false
+			} else {
+				filters.excludeIgnored = func(ctx context.Context, posts []booru.Post) ([]booru.Post, error) {
+					return rs.booruUnignored(ctx, source, posts)
+				}
+			}
+		}
+		if err == nil {
+			result, err = fillBooruPage(r.Context(), source, page, limit, filters, func(ctx context.Context, providerPage, providerLimit int) (booru.Result, error) {
+				return client.AccountFavorites(ctx, source, providerPage, providerLimit)
+			})
+		}
+	} else {
+		result, err = client.AccountFavorites(r.Context(), source, page, limit)
+	}
 	if err != nil {
 		var failure *booru.Error
 		if !errors.As(err, &failure) {
@@ -49,7 +71,7 @@ func (rs booruBrowserRoutes) AccountFavorites(w http.ResponseWriter, r *http.Req
 			return
 		}
 		status := http.StatusBadGateway
-		if failure.Code == "unsupported-query" || failure.Code == "invalid-query" {
+		if failure.Code == "unsupported-query" || failure.Code == "invalid-query" || failure.Code == "invalid-page" || failure.Code == "page-too-deep" {
 			status = http.StatusBadRequest
 		}
 		if failure.Code == "rate-limited" {
@@ -71,7 +93,7 @@ func (rs booruBrowserRoutes) AccountFavorites(w http.ResponseWriter, r *http.Req
 		writeBooruError(w, 502, "favorites", "Provider exceeded the favorites page limit.")
 		return
 	}
-	if len(blacklistMode) == 0 {
+	if !fill && len(blacklistMode) == 0 {
 		result = source.FilterBlacklisted(result)
 	}
 	rs.categorizeBooruPosts(r.Context(), source, result.Posts)

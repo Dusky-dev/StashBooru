@@ -668,7 +668,22 @@ function SourceResults({
     filters.showBlacklisted
   );
   const [review, setReview] = useState<ReviewState[]>([]);
+  const [retry, setRetry] = useState(0);
   const onReview = useCallback((value: ReviewState[]) => setReview(value), []);
+  const priorIgnored = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const ignored = new Set(
+      review.filter((item) => item.ignoredAt).map((item) => item.id)
+    );
+    if (
+      !showIgnored &&
+      [...ignored].some((id) => !priorIgnored.current.has(id))
+    ) {
+      // Saved Ignore actions free a displayed slot. Refill once per new mark.
+      setRetry((current) => current + 1);
+    }
+    priorIgnored.current = ignored;
+  }, [review, showIgnored]);
   const [error, setError] = useState("");
   const pawchiveSearchLink =
     source.engine === "pawchive" &&
@@ -686,7 +701,6 @@ function SourceResults({
     () => onResult(source.id, signature, visiblePosts, !loading),
     [onResult, source.id, signature, visiblePosts, loading]
   );
-  const [retry, setRetry] = useState(0);
   const [blacklistBusy, setBlacklistBusy] = useState(false);
   const [blacklistError, setBlacklistError] = useState("");
   const [blacklistNotice, setBlacklistNotice] = useState("");
@@ -715,12 +729,12 @@ function SourceResults({
     }
   }
   const controller = useRef<AbortController>();
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Retry intentionally repeats the same read after a source failure.
   useEffect(() => {
     if (suspended) return;
     const request = new AbortController();
     controller.current = request;
-    setResult(undefined);
+    // Keep review controls mounted during a refill, preserving the Undo action.
+    if (retry === 0) setResult(undefined);
     setError("");
     setLoading(true);
 
@@ -730,6 +744,10 @@ function SourceResults({
       q: query,
       page: String(page),
       limit: String(filters.pageSize ?? 24),
+      fill: "1",
+      ...(filters.media ? { media: filters.media } : {}),
+      ...(filters.hideAI ? { ai: "hide" } : {}),
+      ...(!showIgnored ? { ignored: "hide" } : {}),
       ...(filters.sort ? { sort: filters.sort } : {}),
       ...(filters.rating ? { rating: filters.rating } : {}),
       ...(filters.showBlacklisted ? { blacklist: "show" } : {}),
@@ -762,6 +780,9 @@ function SourceResults({
     filters.sort,
     filters.rating,
     filters.pageSize,
+    filters.media,
+    filters.hideAI,
+    showIgnored,
     filters.showBlacklisted,
     suspended,
   ]);
@@ -857,9 +878,9 @@ function SourceResults({
           )}
           {(filters.media || filters.hideAI) && (
             <p className="small text-muted">
-              Showing {visiblePosts.length} of {result.posts.length} posts on
-              this loaded page. Provider totals and pagination include all
-              posts; AI-generated detection uses explicit tags only.
+              Showing {visiblePosts.length} posts after the selected filters.
+              Hidden posts are replaced from subsequent provider pages when
+              available; AI-generated detection uses explicit tags only.
             </p>
           )}
           <BooruReview
@@ -1663,7 +1684,7 @@ export default function BooruBrowser() {
             />
             <PageSizeSelector
               pageSize={active.pageSize ?? 24}
-              maxPageSize={50}
+              maxPageSize={250}
               setPageSize={(value) =>
                 history.push({
                   search: browserSearchURL({
