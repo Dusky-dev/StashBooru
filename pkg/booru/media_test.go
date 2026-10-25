@@ -11,7 +11,7 @@ import (
 )
 
 func TestSevenZipRemoteMediaRequiresArchiveOptIn(t *testing.T) {
-	body := "7z\\xbc\\xaf\\x27\\x1c" + strings.Repeat("x", 40)
+	body := "7z\xbc\xaf\x27\x1c" + strings.Repeat("x", 40)
 	source := testSource("pawchive")
 	c := testClient(func(*http.Request) (*http.Response, error) {
 		return response(http.StatusOK, body), nil
