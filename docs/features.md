@@ -29,7 +29,7 @@ Fork issues link to the StashBooru repository; upstream help/support links remai
 | **Following** | Follow a saved Danbooru tag connection from a profile’s **Sources & aliases**, or manage saved follows and explicitly check new posts. Other feed adapters remain planned. |
 | **Identities** / profile **Sources & aliases** | Review connections between exact provider identifiers and existing native Artists, Characters and Copyrights. |
 | **Settings → Library** | Media folders, scan rules and automatic ancestor/profile associations. Inheritance switches save automatically. |
-| **Settings → Processing** | Shared worker connection, similarity/tagging defaults, conversion rules and upscaling setup. Use each section's Save button. |
+| **Settings → Processing** | Shared worker connection, links to the complete version-matched worker ZIP, similarity/tagging defaults, conversion rules and upscaling setup. Use each section's Save button. |
 | **Settings → Tasks** | Jobs, generated files/hashes, animation inspection, Character merging, association review, Video overlap indexing and database management. |
 | **Settings → Tools** | Metadata Health, Alias Collision Inspector and EVA02 Visual Similarity Triage, including explicit add-only metadata copying. |
 | **Settings → System** | Application paths, FFmpeg, transcodes and other server settings. |

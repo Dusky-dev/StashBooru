@@ -67,8 +67,10 @@ jobs:
     - name: Install UI dependencies
       run: make pre-ui
 
-    - name: Validate release guards
-      run: python3 -m unittest discover -s scripts/tests -p test_release_stashbooru.py
+    - name: Validate release guards and remote worker bundle
+      run: |
+        python3 -m unittest discover -s scripts/tests -p test_release_stashbooru.py
+        python3 -m unittest discover -s scripts/tests -p test_remote_worker_bundle.py
 
     - name: Generate
       run: make generate
@@ -436,6 +438,9 @@ jobs:
       run: |
         cd artifacts/generated/ui/v2.5/build && zip -r ../../../../../dist/stash-ui.zip .
 
+    - name: Bundle complete remote worker
+      run: python3 scripts/package_remote_worker.py --output dist/stash-remote-worker.zip
+
     - name: Generate checksums
       run: |
         git describe --tags --match 'v[0-9]*' --exclude latest_develop | tee CHECKSUMS_SHA1
@@ -507,6 +512,7 @@ jobs:
           dist/stash-linux-arm32v6
           dist/stash-freebsd
           dist/stash-ui.zip
+          dist/stash-remote-worker.zip
           CHECKSUMS_SHA1
 
     # A deliberate release branch push publishes the exact tested build, without
@@ -535,6 +541,7 @@ jobs:
           dist/stash-linux-arm32v6
           dist/stash-freebsd
           dist/stash-ui.zip
+          dist/stash-remote-worker.zip
           CHECKSUMS_SHA1
         gzip: false
 
