@@ -146,11 +146,6 @@ const GeneralTagName: React.FC<{ entity: BooruEntity }> = ({ entity }) => (
     >
       {entity.name}
     </Link>
-    {entity.image_path ? (
-      <span className="booru-tag-preview" aria-hidden="true">
-        <img src={entity.image_path} alt="" loading="lazy" />
-      </span>
-    ) : null}
   </span>
 );
 

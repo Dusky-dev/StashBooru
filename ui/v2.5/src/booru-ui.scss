@@ -279,8 +279,7 @@ div.nav-link[data-rb-event-key="/scenes/markers"] {
   white-space: nowrap;
 }
 
-/* General tags remain a text list. Their image preview is attached to the
- * text hover/focus target instead of living behind a separate icon button. */
+/* General tags stay text-only links, even when they have image metadata. */
 .booru-general-tags {
   display: flex;
   flex-wrap: wrap;
@@ -292,7 +291,6 @@ div.nav-link[data-rb-event-key="/scenes/markers"] {
 .booru-general-tag-name-wrap {
   max-width: 100%;
   min-width: 0;
-  position: relative;
 }
 
 .booru-tag-name {
@@ -302,38 +300,6 @@ div.nav-link[data-rb-event-key="/scenes/markers"] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.booru-tag-preview {
-  align-items: center;
-  background: #171d22;
-  border: 1px solid rgb(255 255 255 / 18%);
-  border-radius: 0.25rem;
-  box-shadow: 0 0.4rem 1rem rgb(0 0 0 / 45%);
-  display: none;
-  justify-content: center;
-  max-height: 240px;
-  max-width: min(180px, calc(100vw - 2rem));
-  min-height: 80px;
-  overflow: hidden;
-  padding: 0.35rem;
-  position: absolute;
-  right: 0;
-  top: calc(100% + 0.25rem);
-  width: 180px;
-  z-index: 1080;
-}
-
-.booru-general-tag-name-wrap:hover .booru-tag-preview,
-.booru-general-tag-name-wrap:focus-within .booru-tag-preview {
-  display: flex;
-}
-
-.booru-tag-preview img {
-  display: block;
-  max-height: 230px;
-  max-width: 100%;
-  object-fit: contain;
 }
 
 /* Image Tagging uses Bootstrap's large modal. Marked at runtime so only this
