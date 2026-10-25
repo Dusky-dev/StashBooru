@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import React from "react";
-import { renderToStaticMarkup } from "react-dom/server";
+import { createRequire } from "node:module";
+
+type Renderer = typeof import("react-dom/server");
+const require = createRequire(import.meta.url);
+const serverRenderer: Renderer = require("react-dom/server");
+const { renderToStaticMarkup } = serverRenderer;
 
 import { TagPopover } from "../src/components/Tags/TagPopover.tsx";
 

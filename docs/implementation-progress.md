@@ -9,11 +9,14 @@ Updated: 2026-10-25
   search options and selection labels no longer render a hover trigger/card,
   fetch Tag card details, or attach popup DOM. Artist, Character and Copyright
   previews remain independent and unchanged.
-- Remove the obsolete "Show Tag card on hover" switch from Interface settings,
-  while retaining the stored legacy preference for backwards compatibility.
-  Clean unused Tag popover styling and cover markup behavior with a focused
-  React render regression test.
-- GitHub CI and browser/device verification are pending.
+- Codex Review identified that Character hover previews share the existing
+  `showTagCardOnHover` preference and use the Tag popup CSS. Preserve that
+  preference behind a clearly named **Show Character card on hover** switch;
+  retain the shared styles for Character and tagger preview cards.
+- Regression test renders the Tag wrapper with no extra popup markup, using a
+  CommonJS-compatible server renderer to avoid Node ESM directory-resolution
+  failures during UI validation.
+- CI and browser/device verification remain pending.
 
 ## Complete downloadable remote worker bundle — 2026-10-25
 
