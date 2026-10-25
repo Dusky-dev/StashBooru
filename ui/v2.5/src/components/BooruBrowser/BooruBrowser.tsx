@@ -732,7 +732,9 @@ function SourceResults({
     if (suspended) return;
     const request = new AbortController();
     controller.current = request;
-    setResult(undefined);
+    // Keep the review widget mounted during same-page refills so Undo and
+    // current selection are not destroyed by an Ignore action.
+    if (retry === 0) setResult(undefined);
     setError("");
     setLoading(true);
 

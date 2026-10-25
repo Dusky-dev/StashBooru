@@ -13,10 +13,10 @@ const booruDisplayMaxLimit = 250
 const booruFillRequestBudget = 32
 
 type booruPageFilters struct {
-	media       string
-	hideAI      bool
-	hideBlocked bool
-	hideIgnored bool
+	media          string
+	hideAI         bool
+	hideBlocked    bool
+	hideIgnored    bool
 	excludeIgnored func(context.Context, []booru.Post) ([]booru.Post, error)
 }
 
@@ -107,6 +107,27 @@ func fillBooruPage(ctx context.Context, source booru.Source, page, limit int, fi
 		upstreamPage++
 	}
 	return booru.Result{}, &booru.Error{Code: "page-too-deep", Message: fmt.Sprintf("Page %d requires scanning more than %d provider pages. Choose a smaller page or narrow the filters.", page, booruFillRequestBudget)}
+}
+
+// Avoid rescanning from provider page 1 when a source has no Ignore marks.
+func (rs booruBrowserRoutes) booruHasIgnored(ctx context.Context, source booru.Source) (bool, error) {
+	if rs.repository.BooruReview == nil {
+		return false, nil
+	}
+	checker, ok := rs.repository.BooruReview.(interface {
+		HasIgnored(context.Context, string) (bool, error)
+	})
+	if !ok {
+		// Unknown implementations retain exact filtered-offset semantics.
+		return true, nil
+	}
+	var exists bool
+	err := rs.repository.WithReadTxn(ctx, func(tx context.Context) error {
+		var queryErr error
+		exists, queryErr = checker.HasIgnored(tx, source.Instance())
+		return queryErr
+	})
+	return exists, err
 }
 
 // Filter saved ignored review records before counting visible page slots.

@@ -116,11 +116,19 @@ func (rs booruBrowserRoutes) Search(w http.ResponseWriter, r *http.Request) {
 		if fill {
 			filters.hideBlocked = len(blacklistMode) == 0
 			if filters.hideIgnored {
-				filters.excludeIgnored = func(ctx context.Context, posts []booru.Post) ([]booru.Post, error) {
-					return rs.booruUnignored(ctx, source, posts)
+				var marked bool
+				marked, err = rs.booruHasIgnored(r.Context(), source)
+				if !marked {
+					filters.hideIgnored = false
+				} else {
+					filters.excludeIgnored = func(ctx context.Context, posts []booru.Post) ([]booru.Post, error) {
+						return rs.booruUnignored(ctx, source, posts)
+					}
 				}
 			}
-			result, err = fillBooruPage(r.Context(), source, page, limit, filters, fetch)
+			if err == nil {
+				result, err = fillBooruPage(r.Context(), source, page, limit, filters, fetch)
+			}
 		} else {
 			result, err = fetch(r.Context(), page, limit)
 		}

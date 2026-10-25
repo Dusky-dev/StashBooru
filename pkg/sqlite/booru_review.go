@@ -29,6 +29,20 @@ func (s *BooruReviewStore) Read(ctx context.Context, instance string, ids []stri
 	return ret, nil
 }
 
+// HasIgnored allows unfiltered deep jumps to avoid scanning earlier provider
+// pages when this source has no saved Ignore marks.
+func (s *BooruReviewStore) HasIgnored(ctx context.Context, instance string) (bool, error) {
+	var found int
+	err := dbWrapper.Get(ctx, &found, "SELECT 1 FROM booru_review WHERE instance=? AND ignored_at<>'' LIMIT 1", instance)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return found == 1, nil
+}
+
 // Update is called inside the repository write transaction. Retain cleared rows
 // as versioned tombstones: clearing and re-marking must not permit an ABA edit.
 func (s *BooruReviewStore) Update(ctx context.Context, provider models.BooruReviewProvider, changes []models.BooruReviewChange) ([]models.BooruReviewState, error) {
