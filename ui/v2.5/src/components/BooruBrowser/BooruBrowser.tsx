@@ -46,6 +46,7 @@ import {
   type BookmarkAction,
 } from "./BooruBookmarks";
 import { PageSizeSelector } from "../List/ListFilter";
+import { Pagination } from "../List/Pagination";
 import { BooruIconButton, BooruIconMenu } from "./BooruControls";
 import { motionPreviewURL } from "./browser";
 import { ExternalLink } from "../Shared/ExternalLink";
@@ -54,6 +55,7 @@ import {
   type BooruResult,
   type BooruSource,
   type BrowserSearch,
+  MAX_BOORU_PAGE,
   postMediaKind,
   isAIGeneratedPost,
   browserResultSignature,
@@ -964,28 +966,28 @@ function SourceResults({
             )}
           </BooruReview>
           <div className="d-flex flex-wrap mt-3 booru-pagination">
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => onPage(page - 1)}
-            >
-              {message("previous", "Previous")}
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={!result.hasMore || page >= 750}
-              onClick={() => onPage(page + 1)}
-            >
-              {message("next", "Next")}
-            </Button>
+            <Pagination
+              currentPage={page}
+              unknownTotal
+              hasMore={result.hasMore}
+              maxPage={MAX_BOORU_PAGE}
+              onChangePage={(target) => {
+                if (
+                  Number.isInteger(target) &&
+                  target >= 1 &&
+                  target <= MAX_BOORU_PAGE &&
+                  target !== page
+                ) {
+                  onPage(target);
+                }
+              }}
+            />
           </div>
-          {page === 750 && (
+          {page === MAX_BOORU_PAGE && (
             <Alert variant="info" className="mt-2">
               {message(
                 "page_limit",
-                "Numbered browsing ends at page 750. Narrow the query to continue."
+                `Numbered browsing ends at page ${MAX_BOORU_PAGE}. Narrow the query to continue.`
               )}
             </Alert>
           )}
