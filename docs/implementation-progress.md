@@ -2,6 +2,26 @@
 
 Updated: 2026-10-25
 
+## Larger Image review preview and image-free Tag hover — 2026-10-25
+
+- Baseline develop `1702e5f78a065d7417c5c2b060e44b8be3d640e1` on `ui/review-image-fill-tag-hover-20261025`.
+- Expand Review image metadata to an extra-large two-pane layout: Image preview
+  fills the available left pane height on desktop; tag controls scroll independently,
+  with a vertically stacked, scrollable narrow-screen layout.
+- Use the still-image `/image/{id}/image` endpoint for the larger preview, not
+  `/preview` (which serves WebM animations); fall back to the thumbnail if the
+  original image fails to load. Preserve Image ID on review advance.
+- Tag hover popovers still show the Tag's details and count links, but skip
+  rendering or loading the Tag card image; ordinary Tag cards remain unchanged.
+- Extend the existing metadata browser fixture with desktop/mobile preview-size,
+  contain-fit, Image ID and responsive-overflow assertions. CI and manual runtime
+  verification remain pending.
+- Follow-up to Codex Review on PR #221: switched the image source to the
+  still-image endpoint after confirming that /preview returns a generated WebM.
+  Corrected the fixture and a noUselessFragments lint finding; browser suite's
+  offscreen toast dismissal now uses the native button's click action directly.
+  Fresh CI validation on the follow-up commit is pending.
+
 ## Booru entity metadata Image/Video counts — 2026-10-25
 
 - Baseline fresh `develop` `7a492ab8d32092d6b8105bedd1e4028156dc4bac`.

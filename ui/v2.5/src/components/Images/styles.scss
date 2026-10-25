@@ -230,3 +230,63 @@ $imageTabWidth: 450px;
 .col-form-label {
   padding-right: 2px;
 }
+
+.image-tagging-dialog {
+  .modal-body {
+    height: min(74vh, 760px);
+    overflow: hidden;
+  }
+
+  .image-tagging-review-layout {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    height: 100%;
+    min-height: 0;
+  }
+
+  .image-tagging-review-preview {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+
+    img {
+      display: block;
+      height: 100%;
+      object-fit: contain;
+      width: 100%;
+    }
+  }
+
+  .image-tagging-review-details {
+    min-height: 0;
+    min-width: 0;
+    overflow-y: auto;
+  }
+
+  @include media-breakpoint-down(sm) {
+    .modal-body {
+      height: min(78vh, 700px);
+      overflow-y: auto;
+    }
+
+    .image-tagging-review-layout {
+      display: flex;
+      flex-direction: column;
+      height: auto;
+    }
+
+    .image-tagging-review-preview {
+      flex: none;
+      height: min(38vh, 320px);
+      width: 100%;
+    }
+
+    .image-tagging-review-details {
+      overflow: visible;
+    }
+  }
+}
