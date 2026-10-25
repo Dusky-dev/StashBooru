@@ -2,6 +2,22 @@
 
 Updated: 2026-10-25
 
+## Disable ordinary Tag hover popups — 2026-10-25
+
+- Baseline `develop` at `c03bfec9fe4437037dfa9f0088ed540b05eed23e`, after merging PRs #221 and #222.
+- The shared TagPopover component becomes a pass-through: ordinary Tag links,
+  search options and selection labels no longer render a hover trigger/card,
+  fetch Tag card details, or attach popup DOM. Artist, Character and Copyright
+  previews remain independent and unchanged.
+- Codex Review identified that Character hover previews share the existing
+  `showTagCardOnHover` preference and use the Tag popup CSS. Preserve that
+  preference behind a clearly named **Show Character card on hover** switch;
+  retain the shared styles for Character and tagger preview cards.
+- Regression test renders the Tag wrapper with no extra popup markup, using a
+  CommonJS-compatible server renderer to avoid Node ESM directory-resolution
+  failures during UI validation.
+- CI and browser/device verification remain pending.
+
 ## Complete downloadable remote worker bundle — 2026-10-25
 
 - Baseline `develop` at `1702e5f78a065d7417c5c2b060e44b8be3d640e1`,

@@ -494,11 +494,11 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
         </SettingSection>
         <SettingSection headingID="config.ui.tag_panel.heading">
           <BooleanSetting
-            id="show-tag-card-on-hover"
-            headingID="config.ui.show_tag_card_on_hover.heading"
-            subHeadingID="config.ui.show_tag_card_on_hover.description"
+            id="show-character-card-on-hover"
+            heading="Show Character card on hover"
+            subHeading="Controls Character hover previews. Ordinary Tag popups are always disabled."
             checked={ui.showTagCardOnHover ?? true}
-            onChange={(v) => saveUI({ showTagCardOnHover: v })}
+            onChange={(enabled) => saveUI({ showTagCardOnHover: enabled })}
           />
           <BooleanSetting
             id="show-child-tagged-content"
