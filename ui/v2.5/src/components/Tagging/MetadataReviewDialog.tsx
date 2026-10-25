@@ -32,6 +32,8 @@ export function MetadataReviewDialog({
   onApplied?: () => Promise<unknown>;
 }) {
   const Toast = useToast();
+  const toastRef = useRef(Toast);
+  toastRef.current = Toast;
   const [selection] = useState(() => [
     ...new Map(
       items.map((item) => [`${item.kind}:${item.id}`, { ...item }])
@@ -72,7 +74,7 @@ export function MetadataReviewDialog({
         if (!controller.signal.aborted) setBulkConfig(config);
       } catch (error) {
         if (!controller.signal.aborted) {
-          Toast.error(error);
+          toastRef.current.error(error);
           // Do not enable unconfirmed bulk writes if settings cannot be read.
           setManualReview(true);
         }
@@ -81,7 +83,7 @@ export function MetadataReviewDialog({
       }
     })();
     return () => controller.abort();
-  }, [Toast, bulkIDs]);
+  }, [bulkIDs]);
 
   async function startBulkTagging() {
     if (!bulkIDs || !bulkConfig || starting) return;
@@ -96,7 +98,9 @@ export function MetadataReviewDialog({
       const response = await fetch("image/visual-similarity/camie/tag", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bulkTaggingRequest(bulkIDs, bulkConfig, categories)),
+        body: JSON.stringify(
+          bulkTaggingRequest(bulkIDs, bulkConfig, categories)
+        ),
       });
       if (!response.ok) {
         throw new Error((await response.text()) || response.statusText);
@@ -157,8 +161,11 @@ export function MetadataReviewDialog({
         </Modal.Header>
         <Modal.Body>
           <Alert variant="warning">
-            <strong>You're about to tag {bulkIDs.length.toLocaleString()} selected Images.</strong>
-            {" "}One approval starts a background job that applies Camie and
+            <strong>
+              You are about to tag {bulkIDs.length.toLocaleString()} selected
+              Images.
+            </strong>{" "}
+            One approval starts a background job that applies Camie and
             configured filename predictions to every selected Image, with no
             per-image review. This can create metadata and cannot be undone
             with one action. Cancelling a running job does not reverse work
@@ -167,10 +174,12 @@ export function MetadataReviewDialog({
           <p className="small text-muted">
             Booru lookup, EVA02 and library suggestions are not part of this
             bulk job. Existing metadata is preserved; existing Artist links
-            will not be replaced. Threshold: {bulkConfig.threshold}; per-category
-            limit: {bulkConfig.limit}.
+            will not be replaced. Threshold: {bulkConfig.threshold};
+            per-category limit: {bulkConfig.limit}.
           </p>
-          <p className="mb-2"><strong>Apply these categories:</strong></p>
+          <p className="mb-2">
+            <strong>Apply these categories:</strong>
+          </p>
           {categoryOptions.map(({ key, label }) => (
             <Form.Check
               key={key}
@@ -187,10 +196,18 @@ export function MetadataReviewDialog({
               }
             />
           ))}
-          {bulkError && <Alert className="mt-3" variant="danger">{bulkError}</Alert>}
+          {bulkError && (
+            <Alert className="mt-3" variant="danger">
+              {bulkError}
+            </Alert>
+          )}
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" disabled={starting} onClick={() => setManualReview(true)}>
+          <Button
+            variant="secondary"
+            disabled={starting}
+            onClick={() => setManualReview(true)}
+          >
             Review individually
           </Button>
           <Button variant="secondary" disabled={starting} onClick={onHide}>
@@ -201,7 +218,9 @@ export function MetadataReviewDialog({
             disabled={starting || !Object.values(categories).some(Boolean)}
             onClick={() => void startBulkTagging()}
           >
-            {starting ? "Starting…" : `Confirm and tag ${bulkIDs.length.toLocaleString()} Images`}
+            {starting
+              ? "Starting…"
+              : `Confirm and tag ${bulkIDs.length.toLocaleString()} Images`}
           </Button>
         </Modal.Footer>
       </Modal>

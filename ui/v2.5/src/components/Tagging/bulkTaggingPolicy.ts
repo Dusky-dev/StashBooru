@@ -31,7 +31,10 @@ export function bulkSelectedImageIDs(
   selection: readonly BulkReviewItem[],
   imageKind: string
 ): number[] | undefined {
-  if (selection.length < 2 || selection.some((item) => item.kind !== imageKind)) {
+  if (
+    selection.length < 2 ||
+    selection.some((item) => item.kind !== imageKind)
+  ) {
     return undefined;
   }
 
