@@ -667,24 +667,21 @@ function SourceResults({
   );
   const [review, setReview] = useState<ReviewState[]>([]);
   const [retry, setRetry] = useState(0);
-  const onReview = useCallback(
-    (value: ReviewState[]) => {
-      setReview((previous) => {
-        if (
-          !showIgnored &&
-          value.some(
-            (item) =>
-              item.ignoredAt &&
-              !previous.some((old) => old.id === item.id && old.ignoredAt)
-          )
-        ) {
-          setRetry((current) => current + 1);
-        }
-        return value;
-      });
-    },
-    [showIgnored]
-  );
+  const onReview = useCallback((value: ReviewState[]) => setReview(value), []);
+  const priorIgnored = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const ignored = new Set(
+      review.filter((item) => item.ignoredAt).map((item) => item.id)
+    );
+    if (
+      !showIgnored &&
+      [...ignored].some((id) => !priorIgnored.current.has(id))
+    ) {
+      // Saved Ignore actions free a displayed slot. Refill once per new mark.
+      setRetry((current) => current + 1);
+    }
+    priorIgnored.current = ignored;
+  }, [review, showIgnored]);
   const [error, setError] = useState("");
   const pawchiveSearchLink =
     source.engine === "pawchive" &&

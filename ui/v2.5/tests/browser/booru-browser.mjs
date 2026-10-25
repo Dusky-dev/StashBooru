@@ -869,6 +869,8 @@ try {
         page: number,
         limit: Number(url.searchParams.get("limit")),
         blacklist: url.searchParams.get("blacklist"),
+        fill: url.searchParams.get("fill"),
+        ignored: url.searchParams.get("ignored"),
       });
       if (query === "slow") {
         delayed.push({ route, source, query, number });
@@ -2417,6 +2419,20 @@ try {
       await page.locator(".page-size-selector select").inputValue(),
       "40"
     );
+    const pageSize = page.locator(".page-size-selector select");
+    for (const size of ["60", "120", "250"]) {
+      assert.equal(await pageSize.locator(`option[value="${size}"]`).count(), 1);
+    }
+    await pageSize.selectOption("250");
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 112", exact: true })
+      .waitFor();
+    assert.equal(requests.at(-1).limit, 250);
+    assert.equal(new URL(page.url()).searchParams.get("limit"), "250");
+    await pageSize.selectOption("40");
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 112", exact: true })
+      .waitFor();
     assert.equal(
       motionRequests.length,
       0,
