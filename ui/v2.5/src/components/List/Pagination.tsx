@@ -230,7 +230,13 @@ export const Pagination: React.FC<IPaginationProps> = PatchComponent(
           <FormattedNumber value={page} />
         </Button>
       ));
-    }, [totalPages, currentPage, onChangePage, pagePopupPlacement, unknownTotal]);
+    }, [
+      totalPages,
+      currentPage,
+      onChangePage,
+      pagePopupPlacement,
+      unknownTotal,
+    ]);
 
     if (!unknownTotal && totalPages <= 1) return <div />;
 

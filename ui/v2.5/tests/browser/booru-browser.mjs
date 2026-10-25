@@ -1389,7 +1389,10 @@ try {
 
     const listingPagination = dan.locator(".booru-pagination .pagination");
     await listingPagination.waitFor();
-    assert.equal(await listingPagination.locator(".page-count").innerText(), "Page 1");
+    assert.equal(
+      await listingPagination.locator(".page-count").innerText(),
+      "Page 1"
+    );
     assert.equal(await listingPagination.getByTitle("Last page").count(), 0);
     await listingPagination.getByTitle("Next page").click();
     await dan
@@ -1416,7 +1419,10 @@ try {
       .getByRole("button", { name: "Inspect Danbooru post 5001", exact: true })
       .waitFor();
     assert.ok(page.url().includes("p.danbooru=50"));
-    assert.equal(await listingPagination.locator(".page-count").innerText(), "Page 50");
+    assert.equal(
+      await listingPagination.locator(".page-count").innerText(),
+      "Page 50"
+    );
     assert.equal(
       await listingPagination.getByTitle("Next page").isDisabled(),
       true,
