@@ -728,6 +728,9 @@ function SourceResults({
       q: query,
       page: String(page),
       limit: String(filters.pageSize ?? 24),
+      fill: "1",
+      ...(filters.media ? { media: filters.media } : {}),
+      ...(filters.hideAI ? { ai: "hide" } : {}),
       ...(filters.sort ? { sort: filters.sort } : {}),
       ...(filters.rating ? { rating: filters.rating } : {}),
       ...(filters.showBlacklisted ? { blacklist: "show" } : {}),
@@ -760,6 +763,8 @@ function SourceResults({
     filters.sort,
     filters.rating,
     filters.pageSize,
+    filters.media,
+    filters.hideAI,
     filters.showBlacklisted,
     suspended,
   ]);
@@ -855,9 +860,9 @@ function SourceResults({
           )}
           {(filters.media || filters.hideAI) && (
             <p className="small text-muted">
-              Showing {visiblePosts.length} of {result.posts.length} posts on
-              this loaded page. Provider totals and pagination include all
-              posts; AI-generated detection uses explicit tags only.
+              Showing {visiblePosts.length} posts after the selected filters.
+              Hidden posts are replaced from subsequent provider pages when
+              available; AI-generated detection uses explicit tags only.
             </p>
           )}
           <BooruReview
@@ -1661,7 +1666,7 @@ export default function BooruBrowser() {
             />
             <PageSizeSelector
               pageSize={active.pageSize ?? 24}
-              maxPageSize={50}
+              maxPageSize={250}
               setPageSize={(value) =>
                 history.push({
                   search: browserSearchURL({
