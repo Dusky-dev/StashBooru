@@ -23,22 +23,22 @@ const (
 var camieConfigMu sync.Mutex
 
 type camieConfig struct {
-	Threshold           float64 `json:"threshold"`
-	Eva02Threshold      float64 `json:"eva02Threshold"`
-	Limit               int     `json:"limit"`
-	FilenameEnabled     bool    `json:"filenameEnabled"`
-	FilenameLayout      string  `json:"filenameLayout"`
-	BulkTaggingEnabled  bool    `json:"bulkTaggingEnabled"`
+	Threshold          float64 `json:"threshold"`
+	Eva02Threshold     float64 `json:"eva02Threshold"`
+	Limit              int     `json:"limit"`
+	FilenameEnabled    bool    `json:"filenameEnabled"`
+	FilenameLayout     string  `json:"filenameLayout"`
+	BulkTaggingEnabled bool    `json:"bulkTaggingEnabled"`
 }
 
 func defaultCamieConfig() camieConfig {
 	return camieConfig{
-		Threshold:           camietagger.DefaultThreshold,
-		Eva02Threshold:      defaultEva02Threshold,
-		Limit:               camietagger.DefaultLimit,
-		FilenameEnabled:     true,
-		FilenameLayout:      defaultCamieFilenameLayout,
-		BulkTaggingEnabled:  false,
+		Threshold:          camietagger.DefaultThreshold,
+		Eva02Threshold:     defaultEva02Threshold,
+		Limit:              camietagger.DefaultLimit,
+		FilenameEnabled:    true,
+		FilenameLayout:     defaultCamieFilenameLayout,
+		BulkTaggingEnabled: false,
 	}
 }
 
