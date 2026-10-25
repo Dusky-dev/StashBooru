@@ -620,7 +620,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         onHide={() => {
           if (!applying) onHide();
         }}
-        size="lg"
+        size="xl"
         centered
         dialogClassName="image-tagging-dialog"
       >
@@ -628,25 +628,23 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
           <Modal.Title>Review image metadata</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <div className="d-flex flex-column flex-md-row align-items-start">
+          <div className="image-tagging-review-layout">
             <aside
-              className="mb-3 mb-md-0 mr-md-3 flex-shrink-0"
-              style={{ width: "min(100%, 210px)" }}
+              className="image-tagging-review-preview"
               aria-label="Image receiving metadata"
             >
               <img
-                src={`image/${imageId}/thumbnail`}
+                src={`image/${imageId}/preview`}
                 alt={`Image #${imageId} receiving metadata`}
-                style={{
-                  display: "block",
-                  width: "100%",
-                  maxHeight: "40vh",
-                  objectFit: "contain",
-                  borderRadius: "4px",
+                onError={(event) => {
+                  const fallback = `image/${imageId}/thumbnail`;
+                  if (!event.currentTarget.src.endsWith(fallback)) {
+                    event.currentTarget.src = fallback;
+                  }
                 }}
               />
             </aside>
-            <div className="flex-grow-1 w-100" style={{ minWidth: 0 }}>
+            <div className="image-tagging-review-details">
               <MetadataReviewInfo
                 kind="Image"
                 id={imageId}
@@ -849,7 +847,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                     </span>
                   </div>
 
-                  <div style={{ maxHeight: "55vh", overflowY: "auto" }}>
+                  <div className="image-tagging-review-predictions">
                     {grouped.map(([category, items]) => (
                       <div className="mb-4" key={category}>
                         <h5>{categoryLabel(category)}</h5>

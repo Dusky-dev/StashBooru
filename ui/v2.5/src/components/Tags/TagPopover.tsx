@@ -28,7 +28,7 @@ export const TagPopoverCard: React.FC<ITagPopoverCardProps> = ({ id }) => {
 
   return (
     <div className="tag-popover-card">
-      <TagCard tag={tag} zoomIndex={0} />
+      <TagCard tag={tag} zoomIndex={0} hideImage />
     </div>
   );
 };

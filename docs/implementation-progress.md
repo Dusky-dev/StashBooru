@@ -2,6 +2,20 @@
 
 Updated: 2026-10-25
 
+## Larger Image review preview and image-free Tag hover — 2026-10-25
+
+- Baseline develop `1702e5f78a065d7417c5c2b060e44b8be3d640e1` on `ui/review-image-fill-tag-hover-20261025`.
+- Expand Review image metadata to an extra-large two-pane layout: Image preview
+  fills the available left pane height on desktop; tag controls scroll independently,
+  with a vertically stacked, scrollable narrow-screen layout.
+- Prefer the Image preview endpoint at the larger display size and fall back
+  to the thumbnail if the preview cannot load. Preserve Image ID on review advance.
+- Tag hover popovers still show the Tag's details and count links, but skip
+  rendering or loading the Tag card image; ordinary Tag cards remain unchanged.
+- Extend the existing metadata browser fixture with desktop/mobile preview-size,
+  contain-fit, Image ID and responsive-overflow assertions. CI and manual runtime
+  verification remain pending.
+
 ## Booru entity metadata Image/Video counts — 2026-10-25
 
 - Baseline fresh `develop` `7a492ab8d32092d6b8105bedd1e4028156dc4bac`.

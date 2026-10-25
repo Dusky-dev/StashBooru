@@ -17,6 +17,7 @@ interface IProps {
   tag: GQL.TagDataFragment | GQL.TagListDataFragment;
   cardWidth?: number;
   zoomIndex: number;
+  hideImage?: boolean;
   selecting?: boolean;
   selected?: boolean;
   onSelectedChanged?: (selected: boolean, shiftKey: boolean) => void;
@@ -231,8 +232,15 @@ const TagCardTitle: React.FC<IProps> = PatchComponent(
 );
 
 export const TagCard: React.FC<IProps> = PatchComponent("TagCard", (props) => {
-  const { tag, cardWidth, zoomIndex, selecting, selected, onSelectedChanged } =
-    props;
+  const {
+    tag,
+    cardWidth,
+    zoomIndex,
+    hideImage,
+    selecting,
+    selected,
+    onSelectedChanged,
+  } = props;
 
   return (
     <GridCard
@@ -241,9 +249,11 @@ export const TagCard: React.FC<IProps> = PatchComponent("TagCard", (props) => {
       width={cardWidth}
       title={<TagCardTitle {...props} />}
       linkClassName="tag-card-header"
-      image={<TagCardImage {...props} />}
+      thumbnailSectionClassName={hideImage ? "d-none" : undefined}
+      image={hideImage ? <></> : <TagCardImage {...props} />}
       details={<TagCardDetails {...props} />}
-      overlays={<TagCardOverlays {...props} />}
+      overlays={hideImage ? undefined : <TagCardOverlays {...props} />}
+      titleAction={hideImage ? <TagCardOverlays {...props} /> : undefined}
       popovers={<TagCardPopovers {...props} />}
       selected={selected}
       selecting={selecting}
