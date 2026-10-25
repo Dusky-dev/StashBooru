@@ -76,6 +76,8 @@ export interface BrowserSearch {
   error?: string;
 }
 
+export const MAX_BOORU_PAGE = 750;
+
 const validSource = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 
 export function readBrowserSearch(search: string): BrowserSearch {
@@ -101,9 +103,9 @@ export function readBrowserSearch(search: string): BrowserSearch {
       !/^\d+$/.test(raw) ||
       !Number.isInteger(page) ||
       page < 1 ||
-      page > 750
+      page > MAX_BOORU_PAGE
     ) {
-      result.error = "Invalid page in search URL. Pages must be from 1 to 750.";
+      result.error = `Invalid page in search URL. Pages must be from 1 to ${MAX_BOORU_PAGE}.`;
     }
     result.pages[source] = page;
   }

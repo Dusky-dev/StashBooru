@@ -17,6 +17,20 @@ Updated: 2026-10-25
 - Cover offset continuity, 250-post aggregation, exhaustion, validation and
   selected page-size UI behavior in regression tests. CI pending.
 
+## Native Booru pagination with unknown totals — 2026-10-25
+
+- Replace Booru source Previous/Next listing buttons with the shared
+  `Pagination` UI and its `.pagination.btn-group` classes.
+- Add an opt-in unknown-total mode: show **Page N** instead of fictitious
+  **Page N of 750**, retain first/previous/next and direct page jumps.
+  Omit Last when the provider has no known last page, disable Next based on
+  provider `hasMore`, and cap arbitrary page input at the existing 750 limit.
+  Normal library pagination remains unchanged.
+- Extend mounted desktop/mobile Booru Browser tests to verify native markup,
+  page-two navigation, direct jump to page 50 without a definitive total,
+  unavailable Next/Last behavior, first-page return and URL/source isolation.
+- CI and code review pending.
+
 ## Optional hidden Image filename headings — 2026-10-25
 
 - Add a default-off **Hide image filenames** toggle to Settings → Interface →
