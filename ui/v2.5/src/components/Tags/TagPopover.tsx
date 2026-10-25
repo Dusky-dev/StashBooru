@@ -12,6 +12,5 @@ interface ITagPopoverProps {
 // Preserve this component's public props so existing callers and UI extensions
 // retain their link/selection markup without an extra DOM wrapper or data fetch.
 // Artist, Character and Copyright previews use separate components.
-export const TagPopover: React.FC<ITagPopoverProps> = ({ children }) => (
-  <>{children}</>
-);
+export const TagPopover: React.FC<ITagPopoverProps> = ({ children }) =>
+  React.createElement(React.Fragment, null, children);
