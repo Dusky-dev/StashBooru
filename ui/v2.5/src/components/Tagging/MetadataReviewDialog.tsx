@@ -129,12 +129,13 @@ export function MetadataReviewDialog({
       Toast.success(
         `Started bulk tagging for ${bulkIDs.length} Images (job #${result.jobID}).`
       );
-      onHide();
     } catch (error) {
       setBulkError(error instanceof Error ? error.message : String(error));
-    } finally {
       setStarting(false);
+      return;
     }
+    // Closing unmounts this dialog; never reset its state after onHide().
+    onHide();
   }
 
   function advance() {

@@ -337,16 +337,26 @@ try {
     const artists = bulk.locator("#bulk-tagging-applyArtist");
     const copyright = bulk.locator("#bulk-tagging-applyCopyright");
     const tags = bulk.locator("#bulk-tagging-applyTags");
-    const confirm = bulk.getByRole("button", { name: /Confirm and tag 2 Images/ });
+    const confirm = bulk.getByRole("button", {
+      name: /Confirm and tag 2 Images/,
+    });
     await camie.uncheck();
     await eva02.uncheck();
-    assert.equal(await confirm.isDisabled(), true, "No inference source selected");
+    assert.equal(
+      await confirm.isDisabled(),
+      true,
+      "No inference source selected"
+    );
     await eva02.check();
     await characters.uncheck();
     await artists.uncheck();
     await copyright.uncheck();
     await tags.uncheck();
-    assert.equal(await confirm.isDisabled(), true, "No metadata category selected");
+    assert.equal(
+      await confirm.isDisabled(),
+      true,
+      "No metadata category selected"
+    );
     await tags.check();
     assert.equal(await confirm.isEnabled(), true);
     assert.equal(await camie.isChecked(), false);
