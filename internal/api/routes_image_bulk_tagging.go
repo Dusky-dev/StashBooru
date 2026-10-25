@@ -97,7 +97,7 @@ func (rs imageRoutes) BulkTagImages(w http.ResponseWriter, r *http.Request) {
 				return fmt.Errorf("checking Camie tagging worker: %w", statusErr)
 			}
 			if !status.Installed {
-				return fmt.Errorf("Camie v2 model is not installed on the selected worker")
+				return fmt.Errorf("camie v2 model is not installed on the selected worker")
 			}
 		}
 		if request.UseEva02 {
@@ -172,7 +172,7 @@ func inferBulkImageTags(
 	if request.UseCamie {
 		camieTags, err = camieClient.Tag(ctx, path, request.Threshold, request.Limit)
 		if err != nil {
-			return nil, fmt.Errorf("Camie inference: %w", err)
+			return nil, fmt.Errorf("camie inference: %w", err)
 		}
 	}
 	if request.UseEva02 {
