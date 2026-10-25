@@ -134,6 +134,8 @@ fragment SceneEffectiveAssociations on Scene {
       image_count
       breadcrumb {
         ...SlimCopyrightData
+        scene_count
+        image_count
       }
     }
     provenance {

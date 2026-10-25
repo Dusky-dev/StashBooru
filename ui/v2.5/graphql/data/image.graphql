@@ -65,14 +65,20 @@ fragment ImageData on Image {
     }
     artists {
       ...SlimStudioData
+      scene_count
+      image_count
     }
     performers {
       ...PerformerData
     }
     copyrights {
       ...SlimCopyrightData
+      scene_count
+      image_count
       breadcrumb {
         ...SlimCopyrightData
+        scene_count
+        image_count
       }
     }
     provenance {

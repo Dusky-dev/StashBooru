@@ -1,10 +1,9 @@
-import { faImage, faPlayCircle } from "@fortawesome/free-solid-svg-icons";
 import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
 import * as GQL from "src/core/generated-graphql";
 import { CopyrightGrid } from "src/components/Copyrights/CopyrightGrid";
 import { PerformerCard } from "../Performers/PerformerCard";
-import { Icon } from "./Icon";
+import { BooruEntityStats } from "./BooruEntityStats";
 
 interface BooruEntity {
   id: string;
@@ -39,17 +38,6 @@ function countLabel(singular: string, plural: string, count: number) {
   return count === 1 ? singular : plural;
 }
 
-const EntityStats: React.FC<{ entity: BooruEntity }> = ({ entity }) => (
-  <div className="booru-entity-card-stats">
-    <span title="Videos">
-      <Icon icon={faPlayCircle} /> {entity.scene_count ?? 0}
-    </span>
-    <span title="Images">
-      <Icon icon={faImage} /> {entity.image_count ?? 0}
-    </span>
-  </div>
-);
-
 const EntityCard: React.FC<{
   entity: BooruEntity;
   kind: CardKind;
@@ -71,7 +59,7 @@ const EntityCard: React.FC<{
     <Link className="booru-entity-card-name" to={route} title={entity.name}>
       {entity.name}
     </Link>
-    <EntityStats entity={entity} />
+    <BooruEntityStats entity={entity} />
   </article>
 );
 
