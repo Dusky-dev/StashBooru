@@ -139,6 +139,17 @@ to remove the automatically generated filename headings from Image grid cards
 Explicitly entered Image titles remain visible, and filenames remain available
 in file information, while browser tab titles and image alt text are preserved.
 
+## Booru page navigation
+
+Booru Browser uses Stash’s standard pagination control (first/previous,
+page chooser, next) instead of separate Previous/Next buttons. The current
+page is displayed as **Page 1**, **Page 50**, etc., without inventing a
+definitive last page for sources that only report whether more posts exist.
+Click the page number to enter a page directly or choose one from the menu;
+the existing safety limit is 750 pages. Next is disabled when the provider
+reports no more results. Page changes preserve the current source and search
+filters and clear an open post inspection.
+
 ## Names in the interface
 
 The English interface uses **Artists**, **Characters** and **Videos**. Artist

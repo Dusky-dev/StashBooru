@@ -6,7 +6,16 @@ import "../../../src/index.scss";
 import "../../../src/booru-ui.scss";
 
 ReactDOM.render(
-  <IntlProvider locale="en" messages={{}}>
+  <IntlProvider
+    locale="en"
+    messages={{
+      "pagination.first": "First page",
+      "pagination.previous": "Previous page",
+      "pagination.next": "Next page",
+      "pagination.last": "Last page",
+      "pagination.page_number": "Page {page}",
+    }}
+  >
     <BrowserRouter>
       <main className="container-fluid py-3">
         <Route path="/booru" component={BooruBrowser} />

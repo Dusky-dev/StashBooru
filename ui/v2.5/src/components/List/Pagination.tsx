@@ -21,11 +21,13 @@ const PageCount: React.FC<{
   currentPage: number;
   onChangePage: (page: number) => void;
   pagePopupPlacement?: Placement;
+  unknownTotal?: boolean;
 }> = ({
   totalPages,
   currentPage,
   onChangePage,
   pagePopupPlacement = "bottom",
+  unknownTotal = false,
 }) => {
   const intl = useIntl();
   const currentPageCtrl = useRef(null);
@@ -56,7 +58,7 @@ const PageCount: React.FC<{
 
   function onCustomChangePage() {
     const newPage = Number.parseInt(pageInput.current?.value ?? "0", 10);
-    if (newPage) {
+    if (Number.isInteger(newPage) && newPage >= 1 && newPage <= totalPages) {
       onChangePage(newPage);
     }
     setShowSelectPage(false);
@@ -74,13 +76,21 @@ const PageCount: React.FC<{
             pageFocus();
           }}
         >
-          <FormattedMessage
-            id="pagination.current_total"
-            values={{
-              current: intl.formatNumber(currentPage),
-              total: intl.formatNumber(totalPages),
-            }}
-          />
+          {unknownTotal ? (
+            <FormattedMessage
+              id="pagination.page_number"
+              defaultMessage="Page {page}"
+              values={{ page: intl.formatNumber(currentPage) }}
+            />
+          ) : (
+            <FormattedMessage
+              id="pagination.current_total"
+              values={{
+                current: intl.formatNumber(currentPage),
+                total: intl.formatNumber(totalPages),
+              }}
+            />
+          )}
         </Button>
         <Dropdown>
           <Dropdown.Toggle variant="secondary" className="page-count-dropdown">
@@ -140,14 +150,30 @@ const PageCount: React.FC<{
   );
 };
 
-interface IPaginationProps {
-  itemsPerPage: number;
+interface IPaginationCommonProps {
   currentPage: number;
-  totalItems: number;
   metadataByline?: React.ReactNode;
   onChangePage: (page: number) => void;
   pagePopupPlacement?: Placement;
 }
+
+type IPaginationProps = IPaginationCommonProps &
+  (
+    | {
+        itemsPerPage: number;
+        totalItems: number;
+        unknownTotal?: false;
+        hasMore?: never;
+        maxPage?: never;
+      }
+    | {
+        unknownTotal: true;
+        hasMore: boolean;
+        maxPage: number;
+        itemsPerPage?: never;
+        totalItems?: never;
+      }
+  );
 
 interface IPaginationIndexProps {
   loading?: boolean;
@@ -167,21 +193,28 @@ export const Pagination: React.FC<IPaginationProps> = PatchComponent(
     totalItems,
     onChangePage,
     pagePopupPlacement,
+    unknownTotal,
+    hasMore,
+    maxPage,
   }) => {
     const intl = useIntl();
     const totalPages = useMemo(
-      () => Math.ceil(totalItems / itemsPerPage),
-      [totalItems, itemsPerPage]
+      () =>
+        unknownTotal
+          ? (maxPage ?? 1)
+          : Math.ceil((totalItems ?? 0) / (itemsPerPage ?? 1)),
+      [totalItems, itemsPerPage, unknownTotal, maxPage]
     );
 
     const pageButtons = useMemo(() => {
-      if (totalPages >= minPagesForCompact)
+      if (unknownTotal || totalPages >= minPagesForCompact)
         return (
           <PageCount
             totalPages={totalPages}
             currentPage={currentPage}
             onChangePage={onChangePage}
             pagePopupPlacement={pagePopupPlacement}
+            unknownTotal={unknownTotal}
           />
         );
 
@@ -197,9 +230,9 @@ export const Pagination: React.FC<IPaginationProps> = PatchComponent(
           <FormattedNumber value={page} />
         </Button>
       ));
-    }, [totalPages, currentPage, onChangePage, pagePopupPlacement]);
+    }, [totalPages, currentPage, onChangePage, pagePopupPlacement, unknownTotal]);
 
-    if (totalPages <= 1) return <div />;
+    if (!unknownTotal && totalPages <= 1) return <div />;
 
     return (
       <ButtonGroup className="pagination">
@@ -222,20 +255,22 @@ export const Pagination: React.FC<IPaginationProps> = PatchComponent(
         {pageButtons}
         <Button
           variant="secondary"
-          disabled={currentPage === totalPages}
+          disabled={currentPage >= totalPages || (unknownTotal && !hasMore)}
           onClick={() => onChangePage(currentPage + 1)}
           title={intl.formatMessage({ id: "pagination.next" })}
         >
           &gt;
         </Button>
-        <Button
-          variant="secondary"
-          disabled={currentPage === totalPages}
-          onClick={() => onChangePage(totalPages)}
-          title={intl.formatMessage({ id: "pagination.last" })}
-        >
-          <span>»</span>
-        </Button>
+        {!unknownTotal && (
+          <Button
+            variant="secondary"
+            disabled={currentPage === totalPages}
+            onClick={() => onChangePage(totalPages)}
+            title={intl.formatMessage({ id: "pagination.last" })}
+          >
+            <span>»</span>
+          </Button>
+        )}
       </ButtonGroup>
     );
   }

@@ -1387,7 +1387,11 @@ try {
       "draft query"
     );
 
-    await dan.getByRole("button", { name: "Next", exact: true }).click();
+    const listingPagination = dan.locator(".booru-pagination .pagination");
+    await listingPagination.waitFor();
+    assert.equal(await listingPagination.locator(".page-count").innerText(), "Page 1");
+    assert.equal(await listingPagination.getByTitle("Last page").count(), 0);
+    await listingPagination.getByTitle("Next page").click();
     await dan
       .getByRole("button", { name: "Inspect Danbooru post 201", exact: true })
       .waitFor();
@@ -1398,6 +1402,28 @@ try {
       "paging fetched an unselected source"
     );
     await page.goBack();
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 101", exact: true })
+      .waitFor();
+
+    // Providers may supply only hasMore, not a reliable total. Use the native
+    // pagination layout while retaining a jump-to-page control and no fake last.
+    await listingPagination.locator(".page-count").click();
+    const jumpPage = page.locator("#select_page_popover input[type=number]");
+    await jumpPage.fill("50");
+    await jumpPage.press("Enter");
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 5001", exact: true })
+      .waitFor();
+    assert.ok(page.url().includes("p.danbooru=50"));
+    assert.equal(await listingPagination.locator(".page-count").innerText(), "Page 50");
+    assert.equal(
+      await listingPagination.getByTitle("Next page").isDisabled(),
+      true,
+      "Provider hasMore=false disables Next without preventing page jumps"
+    );
+    assert.equal(await listingPagination.getByTitle("Last page").count(), 0);
+    await listingPagination.getByTitle("First page").click();
     await dan
       .getByRole("button", { name: "Inspect Danbooru post 101", exact: true })
       .waitFor();
@@ -1526,7 +1552,10 @@ try {
       0
     );
     assert.equal(
-      await dan.getByRole("button", { name: "Next", exact: true }).isEnabled(),
+      await dan
+        .locator(".booru-pagination .pagination")
+        .getByTitle("Next page")
+        .isEnabled(),
       true,
       "local filtering changed provider paging"
     );
