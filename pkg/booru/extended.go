@@ -228,6 +228,7 @@ func extendedParseError() error {
 func safeProviderPart(value string) bool {
 	return value != "" && len(value) <= 256 && value != "." && value != ".." && !strings.ContainsAny(value, "/\\\r\n\x00 ")
 }
+
 // Some Pawchive API failures are JSON objects sent with HTTP 200. Never
 // interpret these as empty searches, and do not expose arbitrary remote text.
 func pawchiveProviderError(data []byte) bool {
