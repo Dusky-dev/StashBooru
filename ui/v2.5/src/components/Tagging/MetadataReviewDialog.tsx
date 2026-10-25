@@ -129,12 +129,13 @@ export function MetadataReviewDialog({
       Toast.success(
         `Started bulk tagging for ${bulkIDs.length} Images (job #${result.jobID}).`
       );
-      onHide();
     } catch (error) {
       setBulkError(error instanceof Error ? error.message : String(error));
-    } finally {
       setStarting(false);
+      return;
     }
+    // Closing unmounts this dialog; never reset its state after onHide().
+    onHide();
   }
 
   function advance() {
@@ -257,12 +258,13 @@ export function MetadataReviewDialog({
             label="Camie v2 (Characters, Artists, Copyrights and Tags)"
             checked={sources.useCamie}
             disabled={starting}
-            onChange={(event) =>
+            onChange={(event) => {
+              const checked = event.currentTarget.checked;
               setSources((current) => ({
                 ...current,
-                useCamie: event.currentTarget.checked,
-              }))
-            }
+                useCamie: checked,
+              }));
+            }}
           />
           <Form.Check
             className="mb-3"
@@ -271,12 +273,13 @@ export function MetadataReviewDialog({
             label="EVA02 (general, rating and Character predictions)"
             checked={sources.useEva02}
             disabled={starting}
-            onChange={(event) =>
+            onChange={(event) => {
+              const checked = event.currentTarget.checked;
               setSources((current) => ({
                 ...current,
-                useEva02: event.currentTarget.checked,
-              }))
-            }
+                useEva02: checked,
+              }));
+            }}
           />
           <p className="mb-2">
             <strong>Apply these categories:</strong>
@@ -289,12 +292,13 @@ export function MetadataReviewDialog({
               label={label}
               checked={categories[key]}
               disabled={starting}
-              onChange={(event) =>
+              onChange={(event) => {
+                const checked = event.currentTarget.checked;
                 setCategories((current) => ({
                   ...current,
-                  [key]: event.currentTarget.checked,
-                }))
-              }
+                  [key]: checked,
+                }));
+              }}
             />
           ))}
           {bulkError && (
