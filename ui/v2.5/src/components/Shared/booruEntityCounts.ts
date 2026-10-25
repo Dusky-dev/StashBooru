@@ -4,9 +4,7 @@ export interface BooruMediaCountSource {
 }
 
 function validCount(value: number | null | undefined): number | null {
-  return typeof value === "number" &&
-    Number.isSafeInteger(value) &&
-    value >= 0
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0
     ? value
     : null;
 }
