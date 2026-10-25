@@ -42,6 +42,7 @@ interface CamieConfig {
   limit: number;
   filenameEnabled: boolean;
   filenameLayout: string;
+  bulkTaggingEnabled: boolean;
 }
 
 interface VisualSimilarityJobResponse {
@@ -69,6 +70,7 @@ export const VisualSimilaritySettings: React.FC = () => {
     limit: 50,
     filenameEnabled: true,
     filenameLayout: "[%artist%](%copyright%).%character%_%md5%.%ext%",
+    bulkTaggingEnabled: false,
   });
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -403,6 +405,26 @@ export const VisualSimilaritySettings: React.FC = () => {
                   identities take priority over inferred identities.
                 </Form.Text>
               </Form.Group>
+              <Form.Check
+                className="mb-2"
+                type="checkbox"
+                id="tagging-bulk-enabled"
+                checked={camieConfig.bulkTaggingEnabled ?? false}
+                onChange={(event) =>
+                  setCamieConfig({
+                    ...camieConfig,
+                    bulkTaggingEnabled: event.currentTarget.checked,
+                  })
+                }
+                label="Enable bulk auto-tagging for multiple selected Images"
+              />
+              <Form.Text className="text-muted d-block mb-3">
+                When enabled, Review metadata on two or more selected Images
+                shows one confirmation warning, then runs Camie and optional
+                filename predictions as a background job without per-image
+                approval. Booru, EVA02 and library suggestions are not included.
+                One Image or mixed Image/Video selections still use manual review.
+              </Form.Text>
               <p className="small">
                 <Link to="/settings?tab=library#association-inheritance-settings">
                   {intl.formatMessage({

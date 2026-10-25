@@ -116,6 +116,26 @@ Images **Generate** workflow
 and runs as a job. It is not a batch version of every optional single-Image source;
 inspect the chosen action and selected scope before starting it.
 
+### Bulk Image tagging (opt-in)
+
+In **Settings → Processing → Similarity and tagging → Tagging defaults**, enable
+**Bulk auto-tagging for multiple selected Images** and save. It is disabled by
+default, including for existing installations. When reviewing **two or more
+selected Images** from Images or an Image-only selection in All, one warning
+dialog shows the exact selection count, the Camie thresholds and which metadata
+categories will be applied. **Confirm and tag** starts a cancellable background
+job for just those selected IDs, without per-image review. **Review individually**
+uses the usual approval flow instead; Cancel makes no changes.
+
+Bulk auto-tagging uses **Camie predictions plus enabled filename metadata only**,
+not Booru lookup, EVA02 or library suggestions. Category choices can exclude
+identity predictions; the default includes all categories but never replaces
+existing Artist links. Review the warning before starting a large batch:
+metadata changes already written are not rolled back if the job is cancelled.
+The job reports failed items in logs. A single Image or a mixed Image/Video
+selection always uses the normal manual-review workflow. Camie must be installed
+on the selected inference worker for the bulk job to run.
+
 ### Filename layout and MD5 provenance
 
 Configure filename metadata in **Settings → Processing → Similarity and tagging**.

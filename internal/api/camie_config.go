@@ -28,6 +28,7 @@ type camieConfig struct {
 	Limit           int     `json:"limit"`
 	FilenameEnabled bool    `json:"filenameEnabled"`
 	FilenameLayout  string  `json:"filenameLayout"`
+	BulkTaggingEnabled bool `json:"bulkTaggingEnabled"`
 }
 
 func defaultCamieConfig() camieConfig {
@@ -37,6 +38,7 @@ func defaultCamieConfig() camieConfig {
 		Limit:           camietagger.DefaultLimit,
 		FilenameEnabled: true,
 		FilenameLayout:  defaultCamieFilenameLayout,
+		BulkTaggingEnabled: false,
 	}
 }
 
