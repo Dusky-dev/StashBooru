@@ -2,6 +2,23 @@
 
 Updated: 2026-10-25
 
+## Bulk metadata review checkbox crash (#224) — 2026-10-25
+
+- Baseline `develop` at `7bfb0a70a27fce6124ea03975bc59afc372069d4`, new focused issue #224 branch.
+- Fix React checkbox handlers in `MetadataReviewDialog` for both inference
+  models (Camie, EVA02) and all four metadata categories. Read
+  `event.currentTarget.checked` synchronously before passing the boolean
+  into functional state setters. React clears `currentTarget` after the
+  handler, so accessing it later crashes repeated toggles.
+- Extend the mounted metadata-review browser fixture on desktop/mobile:
+  enable bulk confirmation for a two-Image selection, uncheck/recheck multiple
+  model/category options, enforce the no-source/no-category safeguards,
+  submit one explicit confirmation, and verify the exact job payload,
+  no console errors and no URL changes.
+- No bulk tagging defaults or backend semantics changed. Browser fixture
+  uses synthetic HTTP; real-worker/model execution remains unverified.
+  CI/Codex Review will validate the PR.
+
 ## Disable ordinary Tag hover popups — 2026-10-25
 
 - Baseline `develop` at `c03bfec9fe4437037dfa9f0088ed540b05eed23e`, after merging PRs #221 and #222.

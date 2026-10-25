@@ -28,6 +28,8 @@ try {
       writes = [],
       optionalReads = [];
     let failApply = true;
+    let bulkEnabled = false;
+    const bulkRequests = [];
     page.on("pageerror", (error) => errors.push(error.message));
     page.on("console", (message) => {
       if (
@@ -44,8 +46,13 @@ try {
           ? route.fulfill({ status, body: json.error })
           : route.fulfill({ status, json });
       const tag = { name: "fixture_tag", category: "general", score: 1 };
+      if (url.pathname === "/image/visual-similarity/bulk-tag") {
+        bulkRequests.push(route.request().postDataJSON());
+        return reply({ jobID: 424 });
+      }
       if (url.pathname === "/image/visual-similarity/camie/config")
         return reply({
+          bulkTaggingEnabled: bulkEnabled,
           threshold: 0.492,
           eva02Threshold: 0.35,
           limit: 50,
@@ -316,6 +323,50 @@ try {
       );
       await close();
     }
+    // Issue #224: consecutive model/category toggles must never read a cleared
+    // synthetic-event currentTarget from React's queued state updater.
+    bulkEnabled = true;
+    await page.getByLabel("View", { exact: true }).selectOption("Images");
+    await open();
+    const bulk = page
+      .getByRole("dialog")
+      .filter({ hasText: "Confirm bulk Image tagging" });
+    const camie = bulk.locator("#bulk-tagging-use-camie");
+    const eva02 = bulk.locator("#bulk-tagging-use-eva02");
+    const characters = bulk.locator("#bulk-tagging-applyCharacters");
+    const artists = bulk.locator("#bulk-tagging-applyArtist");
+    const copyright = bulk.locator("#bulk-tagging-applyCopyright");
+    const tags = bulk.locator("#bulk-tagging-applyTags");
+    const confirm = bulk.getByRole("button", { name: /Confirm and tag 2 Images/ });
+    await camie.uncheck();
+    await eva02.uncheck();
+    assert.equal(await confirm.isDisabled(), true, "No inference source selected");
+    await eva02.check();
+    await characters.uncheck();
+    await artists.uncheck();
+    await copyright.uncheck();
+    await tags.uncheck();
+    assert.equal(await confirm.isDisabled(), true, "No metadata category selected");
+    await tags.check();
+    assert.equal(await confirm.isEnabled(), true);
+    assert.equal(await camie.isChecked(), false);
+    assert.equal(await eva02.isChecked(), true);
+    assert.equal(await characters.isChecked(), false);
+    assert.equal(await artists.isChecked(), false);
+    assert.equal(await copyright.isChecked(), false);
+    assert.equal(await tags.isChecked(), true);
+    await confirm.click();
+    await page.getByRole("dialog").waitFor({ state: "detached" });
+    assert.equal(bulkRequests.length, 1);
+    assert.deepEqual(bulkRequests[0].imageIDs, [1, 2]);
+    assert.equal(bulkRequests[0].confirmed, true);
+    assert.equal(bulkRequests[0].all, false);
+    assert.equal(bulkRequests[0].useCamie, false);
+    assert.equal(bulkRequests[0].useEva02, true);
+    assert.equal(bulkRequests[0].applyTags, true);
+    assert.equal(bulkRequests[0].applyCharacters, false);
+    assert.equal(bulkRequests[0].applyArtist, false);
+    assert.equal(bulkRequests[0].applyCopyright, false);
     assert.equal(page.url(), retainedURL);
     assert.deepEqual(errors, []);
     assert.ok(
