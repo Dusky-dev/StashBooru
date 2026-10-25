@@ -1425,12 +1425,14 @@ try {
     // Providers may supply only hasMore, not a reliable total. Use the native
     // pagination layout while retaining a jump-to-page control and no fake last.
     await listingPagination.locator(".page-count").click();
-    assert.equal(
-      await page.locator("#select_page_popover").getAttribute("data-popper-placement"),
-      "top",
+    const jumpPage = page.locator("#select_page_popover input[type=number]");
+    await jumpPage.waitFor();
+    const chooserBox = await page.locator("#select_page_popover").boundingBox();
+    const footerBox = await listingPagination.boundingBox();
+    assert.ok(
+      chooserBox && footerBox && chooserBox.y + chooserBox.height <= footerBox.y + 12,
       "Floating footer's page selector opens above pagination"
     );
-    const jumpPage = page.locator("#select_page_popover input[type=number]");
     await jumpPage.fill("50");
     await jumpPage.press("Enter");
     await dan
