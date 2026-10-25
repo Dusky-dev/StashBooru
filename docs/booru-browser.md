@@ -261,7 +261,7 @@ Downloaded history. No remote follow or automated download is created.
 | Paheal / Shimmie | Native tags through the anonymous Danbooru XML endpoint (`/api/danbooru/find_posts`) | Category information may be unavailable; no live completion endpoint. Originals on the hash-sharded `r34i.paheal-cdn.net` CDN are supported, including for older saved source settings. The inspector uses original resolution if there is no separate provider sample and the original fits the 24 MiB proxy limit; card thumbnails remain small. The legacy `/api/danbooru/find_posts/index.xml` URL can return HTML rather than XML. |
 | Pixiv | OAuth **access token** in source API key; text search, `user:123` for artist works, `id:123` for a work | Static illustration/manga pages selectable in the inspector. Ugoira frame ZIPs are explicitly unavailable. No login/token refresh is implemented; replace expired tokens in Settings. |
 | Pawchive | Post-text search using provider-wide `q=` and offset paging, `*` for recent posts, or artist-name directory; anonymous API. Older API releases may ignore `q=` and are detected before unrelated results are shown. | Optional API key is the `session` cookie value, sent only to `file.pawchive.pw`. Preview-only/deferred/unavailable originals cannot be downloaded. |
-| Kemono | Artist-name directory search, `*` for recent posts, or text of at least three bytes; anonymous API | Supported image/video attachments and ZIP/CBZ previews; documents and unsupported archives are omitted. |
+| Kemono | Artist-name directory search, `*` for recent posts, or text of at least three bytes; anonymous API | Supported image/video attachments and bounded ZIP/CBZ/7z previews; documents and unsupported archives are omitted. |
 
 Paheal may return old `rule34.paheal.net/_images/` links in its XML
 even though its originals are served from `r34i.paheal-cdn.net`.
@@ -349,17 +349,17 @@ deduplication yet. Totals are unknown except for provider-reported Philomena
 and Shimmie counts; these are not verified snapshot totals. Numbered browsing ends at page
 750; narrow the query to continue.
 
-### Archive-contained media (ZIP/CBZ)
+### Archive-contained media (ZIP/CBZ/7z)
 
-Pawchive/Kemono ZIP and CBZ attachments are included in the post inspector.
+Pawchive/Kemono ZIP, CBZ, and 7z attachments are included in the post inspector.
 The server downloads the archive only when its media section is viewed, validates
-its ZIP structure and source URL, then exposes supported image and video entries
+its archive structure and source URL, then exposes supported image and video entries
 as a lazy-scrolling gallery. Entries are streamed to the browser only after
 media signature validation and are never extracted to the server filesystem.
 
 **Limits:** 256 MiB per archive by default (configurable 16–512 MiB in Downloads and autocomplete), 512 entries examined, 128 eligible
-media entries per archive, 256 MiB decompressed per entry by default (same configurable limit), limited compression
-ratio and at most four cached archives for five minutes. Unsafe paths, symlinks,
+media entries per archive, 256 MiB decompressed per entry by default (same configurable limit), bounded ZIP compression
+ratio and total selectable 7z decoded bytes of up to four times the configured limit, and at most four cached archives for five minutes. The 7z reader is pure Go (no external executable) and limits encoded headers to 2 MiB; encrypted, split-volume, invalid, or unsupported-codec archives fail without extracting to disk. Unsafe paths, symlinks,
 unsupported formats and nested archives are not opened; the inspector reports
 skipped entries. If an archive is too large, corrupt or password-protected,
 open the remote post instead. RAR and 7z are not supported yet; archive contents
