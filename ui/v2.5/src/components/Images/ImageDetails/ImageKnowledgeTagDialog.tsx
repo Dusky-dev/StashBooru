@@ -634,7 +634,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
               aria-label="Image receiving metadata"
             >
               <img
-                src={`image/${imageId}/preview`}
+                src={`image/${imageId}/image`}
                 alt={`Image #${imageId} receiving metadata`}
                 onError={(event) => {
                   const fallback = `image/${imageId}/thumbnail`;

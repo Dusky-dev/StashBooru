@@ -52,7 +52,7 @@ try {
           filenameEnabled: true,
           filenameLayout: "%artist%",
         });
-      if (endpoint === "thumbnail" || endpoint === "preview") {
+      if (endpoint === "thumbnail" || endpoint === "image") {
         return route.fulfill({
           status: 200,
           contentType: "image/svg+xml",
@@ -138,7 +138,7 @@ try {
       await main()
         .getByRole("img", { name: "Image #1 receiving metadata" })
         .getAttribute("src"),
-      "image/1/preview"
+      "image/1/image"
     );
     const previewDimensions = await main().evaluate((element) => {
       const preview = element.querySelector(
@@ -201,7 +201,7 @@ try {
       await main()
         .getByRole("img", { name: "Image #2 receiving metadata" })
         .getAttribute("src"),
-      "image/2/preview"
+      "image/2/image"
     );
     assert.deepEqual(writes, ["image:1"], "Skip writes nothing");
     await close();
@@ -255,7 +255,10 @@ try {
       } else {
         assert.equal(await page.locator(".image-tagging-dialog").count(), 1);
         const toastClose = page.locator(".toast-container .close");
-        if (await toastClose.isVisible()) await toastClose.click();
+        if (await toastClose.isVisible()) {
+          // Toast controls can be clipped outside the viewport by layout/animations.
+          await toastClose.evaluate((element) => element.click());
+        }
         await page.evaluate(async () => {
           await Promise.all(
             document
