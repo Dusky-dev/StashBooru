@@ -2,6 +2,18 @@
 
 Updated: 2026-10-25
 
+## Optional hidden Image filename headings — 2026-10-25
+
+- Add a default-off **Hide image filenames** toggle to Settings → Interface →
+  Image titles, backed by the existing persisted `ConfigResult.ui` Map via
+  `saveUI` (no schema/database migration required).
+- Use one shared predicate for Image card titles and the Image detail header:
+  hide only filename fallbacks when the media has no explicit title. Preserve
+  user-entered titles, browser document title, file info and thumbnail links.
+  Keep the GridCard title action and thumbnail even when the title is hidden.
+- Add focused predicate coverage for default, hidden/visible fallback, custom
+  titles and missing files. CI and Codex Review pending.
+
 ## Remove booru general Tag image popups — 2026-10-25
 
 - Follow-up to the ordinary Tag popup removal: `.booru-tag-section-general`

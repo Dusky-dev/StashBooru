@@ -20,6 +20,7 @@ interface ICardProps {
   url: string;
   pretitleIcon?: JSX.Element;
   title: JSX.Element | string;
+  hideTitle?: boolean;
   titleAction?: JSX.Element;
   image: JSX.Element;
   details?: JSX.Element;
@@ -286,12 +287,14 @@ export const GridCard: React.FC<ICardProps> = PatchComponent(
         {maybeRenderInteractiveHeatmap()}
         <div className="card-section">
           <div className="card-section-title-row">
-            <CardNavLink url={props.url} onClick={handleImageClick}>
-              <h5 className="card-section-title flex-aligned">
-                {props.pretitleIcon}
-                <TruncatedText text={props.title} lineCount={2} />
-              </h5>
-            </CardNavLink>
+            {!props.hideTitle && (
+              <CardNavLink url={props.url} onClick={handleImageClick}>
+                <h5 className="card-section-title flex-aligned">
+                  {props.pretitleIcon}
+                  <TruncatedText text={props.title} lineCount={2} />
+                </h5>
+              </CardNavLink>
+            )}
             {props.titleAction && (
               <div className="card-title-action">{props.titleAction}</div>
             )}

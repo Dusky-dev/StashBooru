@@ -48,6 +48,8 @@ export interface IUIConfig {
   showChildStudioContent?: boolean;
   showLinksOnPerformerCard?: boolean;
   showTagCardOnHover?: boolean;
+  // Hide only generated filename headings; custom Image titles remain visible.
+  hideImageFilenames?: boolean;
 
   showStudioText?: boolean;
 
