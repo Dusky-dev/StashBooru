@@ -206,7 +206,7 @@ func (s Source) Public() PublicSource {
 		help = "Pixiv tag/title search; user:123 for an artist, id:123 for one work. Account restrictions apply."
 		auth = "Pixiv OAuth access token required in API key. Expired tokens must be replaced; this browser does not perform account login."
 	case "pawchive":
-		help = "Search Pawchive posts using native q= search or * for recent posts; Find an artist browses a creator. Pawchive may rate limit API access and some deployments may ignore q filters. StashBooru caches repeated searches briefly and links to the site when an API request fails."
+		help = "Search Pawchive posts with at least three characters using native q= search, or * for recent posts; Find an artist browses a creator. Pawchive may rate limit API access and some deployments may ignore q filters. StashBooru caches repeated searches briefly and links to the site when an API request fails."
 		auth = "Public API; site access restrictions apply. Optional file-host session cookie value in API key."
 	case "kemono":
 		help = "Find an artist by name in the sidebar. Use * for recent posts or at least three characters to search post text. Page size counts posts; inspection exposes every supported attachment."
