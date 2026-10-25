@@ -666,7 +666,25 @@ function SourceResults({
     filters.showBlacklisted
   );
   const [review, setReview] = useState<ReviewState[]>([]);
-  const onReview = useCallback((value: ReviewState[]) => setReview(value), []);
+  const [retry, setRetry] = useState(0);
+  const onReview = useCallback(
+    (value: ReviewState[]) => {
+      setReview((previous) => {
+        if (
+          !showIgnored &&
+          value.some(
+            (item) =>
+              item.ignoredAt &&
+              !previous.some((old) => old.id === item.id && old.ignoredAt)
+          )
+        ) {
+          setRetry((current) => current + 1);
+        }
+        return value;
+      });
+    },
+    [showIgnored]
+  );
   const [error, setError] = useState("");
   const pawchiveSearchLink =
     source.engine === "pawchive" &&
@@ -684,7 +702,6 @@ function SourceResults({
     () => onResult(source.id, signature, visiblePosts, !loading),
     [onResult, source.id, signature, visiblePosts, loading]
   );
-  const [retry, setRetry] = useState(0);
   const [blacklistBusy, setBlacklistBusy] = useState(false);
   const [blacklistError, setBlacklistError] = useState("");
   const [blacklistNotice, setBlacklistNotice] = useState("");
@@ -731,6 +748,7 @@ function SourceResults({
       fill: "1",
       ...(filters.media ? { media: filters.media } : {}),
       ...(filters.hideAI ? { ai: "hide" } : {}),
+      ...(!showIgnored ? { ignored: "hide" } : {}),
       ...(filters.sort ? { sort: filters.sort } : {}),
       ...(filters.rating ? { rating: filters.rating } : {}),
       ...(filters.showBlacklisted ? { blacklist: "show" } : {}),
@@ -765,6 +783,7 @@ function SourceResults({
     filters.pageSize,
     filters.media,
     filters.hideAI,
+    showIgnored,
     filters.showBlacklisted,
     suspended,
   ]);

@@ -45,6 +45,11 @@ func (rs booruBrowserRoutes) AccountFavorites(w http.ResponseWriter, r *http.Req
 	var result booru.Result
 	if fill {
 		filters.hideBlocked = len(blacklistMode) == 0
+		if filters.hideIgnored {
+			filters.excludeIgnored = func(ctx context.Context, posts []booru.Post) ([]booru.Post, error) {
+				return rs.booruUnignored(ctx, source, posts)
+			}
+		}
 		result, err = fillBooruPage(r.Context(), source, page, limit, filters, func(ctx context.Context, providerPage, providerLimit int) (booru.Result, error) {
 			return client.AccountFavorites(ctx, source, providerPage, providerLimit)
 		})
