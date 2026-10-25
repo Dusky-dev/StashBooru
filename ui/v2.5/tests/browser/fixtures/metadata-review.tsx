@@ -10,6 +10,7 @@ import { metadataReviewOperation } from "../../../src/components/Tagging/Metadat
 import { ImageKnowledgeTagDialog } from "../../../src/components/Images/ImageDetails/ImageKnowledgeTagDialog";
 import { VideoTaggingDialog } from "../../../src/components/Scenes/SceneDetails/VideoTaggingDialog";
 import { BatchImageMetadataDialog } from "../../../src/components/Images/ImageDetails/BatchImageMetadataDialog";
+import { BooruTagSidebar } from "../../../src/components/Shared/BooruTagSidebar";
 import "../../../src/index.scss";
 
 const original = [
@@ -109,6 +110,22 @@ function Fixture() {
       >
         Generate shortcut
       </Button>
+      <BooruTagSidebar
+        tags={[
+          {
+            id: "7",
+            name: "Fixture General Tag",
+            image_path: "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'/%3E",
+          },
+        ]}
+        artists={[
+          {
+            id: "9",
+            name: "Fixture Artist",
+            image_path: "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'/%3E",
+          },
+        ]}
+      />
       {modal && cloneElement(modal, { items: selection })}
     </main>
   );

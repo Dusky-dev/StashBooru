@@ -2,6 +2,18 @@
 
 Updated: 2026-10-25
 
+## Remove booru general Tag image popups — 2026-10-25
+
+- Follow-up to the ordinary Tag popup removal: `.booru-tag-section-general`
+  uses its own `GeneralTagName` image markup and hover/focus CSS, separate
+  from `TagPopover`. Remove that markup and the unused preview rules.
+- Keep text links and tag wrapping intact. Do not change Artist/Character/
+  Copyright cards or their images.
+- Extend the desktop/mobile mounted metadata browser fixture with a general
+  Tag carrying `image_path` and an Artist image. Assert no general image or
+  preview DOM on initial display, hover or keyboard focus; Artist image stays.
+- CI/browser regression and Codex Review pending.
+
 ## Bulk metadata review checkbox crash (#224) — 2026-10-25
 
 - Baseline `develop` at `7bfb0a70a27fce6124ea03975bc59afc372069d4`, new focused issue #224 branch.

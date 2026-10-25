@@ -108,6 +108,23 @@ try {
       `${origin}/tests/browser/fixtures/metadata-review.html?q=keep&page=2`
     );
     const retainedURL = page.url();
+    // General booru Tags must not render the legacy image popup, including
+    // when image_path is populated. Other entity image cards remain intact.
+    const generalTags = page.locator(".booru-tag-section-general");
+    const generalLink = generalTags.getByRole("link", {
+      name: "Fixture General Tag",
+    });
+    assert.equal(await generalLink.getAttribute("href"), "/tags/7");
+    assert.equal(await generalTags.locator("img, .booru-tag-preview").count(), 0);
+    await generalLink.hover();
+    assert.equal(await generalTags.locator("img, .booru-tag-preview").count(), 0);
+    await generalLink.focus();
+    assert.equal(await generalTags.locator("img, .booru-tag-preview").count(), 0);
+    assert.equal(
+      await page.locator(".booru-tag-section-artist .booru-entity-card-image").count(),
+      1,
+      "Artist card images remain available"
+    );
     const more = () => page.locator("#more-menu");
     const main = () =>
       page
