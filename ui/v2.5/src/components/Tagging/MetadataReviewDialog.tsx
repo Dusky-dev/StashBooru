@@ -245,8 +245,8 @@ export function MetadataReviewDialog({
           <p className="small text-muted">
             Booru lookup and library suggestions are not part of this bulk job.
             Existing Artist links will not be replaced. Camie threshold:{" "}
-            {bulkConfig.threshold}; EVA02 threshold:{" "}
-            {bulkConfig.eva02Threshold}; per-category limit: {bulkConfig.limit}.
+            {bulkConfig.threshold}. EVA02 threshold:{" "}
+            {bulkConfig.eva02Threshold}. Per-category limit: {bulkConfig.limit}.
           </p>
           <p className="mb-2">
             <strong>Inference sources:</strong>
