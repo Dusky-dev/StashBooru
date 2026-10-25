@@ -33,6 +33,7 @@ import NavUtils from "src/utils/navigation";
 import { useScrollToTopOnMount } from "src/hooks/scrollToTop";
 import { useRatingKeybinds } from "src/hooks/keybinds";
 import { useConfigurationContext } from "src/hooks/Config";
+import { imageHeadingVisible } from "src/utils/imageHeadingVisible";
 import TextUtils from "src/utils/text";
 import { RatingSystem } from "src/components/Shared/Rating/RatingSystem";
 import { TruncatedText } from "src/components/Shared/TruncatedText";
@@ -323,6 +324,10 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
     [image]
   );
   const title = imageTitle(image);
+  const showImageHeading = imageHeadingVisible(
+    image,
+    configuration?.ui?.hideImageFilenames
+  );
   const ImageView =
     image.visual_files.length > 0 && isVideo(image.visual_files[0])
       ? "video"
@@ -394,11 +399,13 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
       )}
       <div className="image-tabs order-xl-first order-last">
         <div>
-          <div className="image-header-container">
-            <h3 className="image-header">
-              <TruncatedText lineCount={2} text={title} />
-            </h3>
-          </div>
+          {showImageHeading && (
+            <div className="image-header-container">
+              <h3 className="image-header">
+                <TruncatedText lineCount={2} text={title} />
+              </h3>
+            </div>
+          )}
 
           <div className="image-subheader">
             <span className="date" data-value={image.date}>

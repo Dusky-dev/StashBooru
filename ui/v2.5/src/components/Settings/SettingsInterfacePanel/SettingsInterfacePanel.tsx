@@ -528,6 +528,16 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
           />
         </SettingSection>
 
+        <SettingSection id="image-filename-display" heading="Image titles">
+          <BooleanSetting
+            id="hide-image-filenames"
+            heading="Hide image filenames"
+            subHeading="Hide filenames used as titles on Image cards and details pages. Custom titles and file information remain visible."
+            checked={ui.hideImageFilenames ?? false}
+            onChange={(v) => saveUI({ hideImageFilenames: v })}
+          />
+        </SettingSection>
+
         <SettingSection headingID="config.ui.image_wall.heading">
           <NumberSetting
             headingID="config.ui.image_wall.margin"

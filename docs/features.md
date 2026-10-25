@@ -130,6 +130,15 @@ selected other members. It does not merge/delete Images; a connected cluster is
 not proof that every pair is a duplicate. The planned browser's pHash grouping
 and red disfavored-tag comparison are [separate work](booru-browser-roadmap.md#b05--phash-groups-compare-and-tag-warnings).
 
+## Image filename display
+
+Under **Settings → Interface → Image titles**, enable **Hide image filenames**
+to remove the automatically generated filename headings from Image grid cards
+(`card-section-title flex-aligned`) and Image detail pages
+(`image-header`). The switch is off by default and stored with UI preferences.
+Explicitly entered Image titles remain visible, and filenames remain available
+in file information, while browser tab titles and image alt text are preserved.
+
 ## Names in the interface
 
 The English interface uses **Artists**, **Characters** and **Videos**. Artist

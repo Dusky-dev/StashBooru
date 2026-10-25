@@ -26,6 +26,8 @@ import { StudioOverlay } from "../Shared/GridCard/StudioOverlay";
 import { OCounterButton } from "../Shared/CountButton";
 import NavUtils from "src/utils/navigation";
 import { useIntl } from "react-intl";
+import { useConfigurationContextOptional } from "src/hooks/Config";
+import { imageHeadingVisible } from "src/utils/imageHeadingVisible";
 
 interface IImageCardProps {
   stackSelectedIds?: Set<string>;
@@ -208,7 +210,7 @@ const ImageCardImage = PatchComponent(
             autoPlay={video}
             playsInline={video}
             className="image-card-preview-image"
-            alt={props.image.title ?? ""}
+            alt={props.image.title || `Image #${props.image.id}`}
             src={source}
           />
           <AnimationBadge label={animationBadge(props.image)} />
@@ -230,6 +232,10 @@ export const ImageCard: React.FC<IImageCardProps> = PatchComponent(
   "ImageCard",
   (props: IImageCardProps) => {
     const intl = useIntl();
+    const config = useConfigurationContextOptional();
+    const hideImageFilenames =
+      config?.configuration.ui?.hideImageFilenames ?? false;
+    const hideTitle = !imageHeadingVisible(props.image, hideImageFilenames);
     const findSimilarLabel = intl.formatMessage({
       id: "actions.find_similar",
       defaultMessage: "Find similar",
@@ -253,6 +259,7 @@ export const ImageCard: React.FC<IImageCardProps> = PatchComponent(
         url={`/images/${props.image.id}`}
         width={props.cardWidth}
         title={imageTitle(props.image)}
+        hideTitle={hideTitle}
         titleAction={findSimilarAction}
         linkClassName="image-card-link"
         image={<ImageCardImage {...props} />}
