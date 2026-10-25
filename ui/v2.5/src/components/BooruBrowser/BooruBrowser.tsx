@@ -729,7 +729,6 @@ function SourceResults({
     }
   }
   const controller = useRef<AbortController>();
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Retry intentionally repeats the same read after a source failure.
   useEffect(() => {
     if (suspended) return;
     const request = new AbortController();
