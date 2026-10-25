@@ -995,15 +995,15 @@ function SourceResults({
                 maxPage={MAX_BOORU_PAGE}
                 pagePopupPlacement="top"
                 onChangePage={(target) => {
-                if (
-                  Number.isInteger(target) &&
-                  target >= 1 &&
-                  target <= MAX_BOORU_PAGE &&
-                  target !== page
-                ) {
-                  onPage(target);
-                }
-              }}
+                  if (
+                    Number.isInteger(target) &&
+                    target >= 1 &&
+                    target <= MAX_BOORU_PAGE &&
+                    target !== page
+                  ) {
+                    onPage(target);
+                  }
+                }}
               />
             </div>
           </div>
