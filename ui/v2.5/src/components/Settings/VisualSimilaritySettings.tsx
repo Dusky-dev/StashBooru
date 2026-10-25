@@ -420,11 +420,12 @@ export const VisualSimilaritySettings: React.FC = () => {
               />
               <Form.Text className="text-muted d-block mb-3">
                 When enabled, Review metadata on two or more selected Images
-                shows one confirmation warning, then runs the chosen Camie and/or
-                EVA02 models plus configured filename predictions as a background
-                job without per-image approval. Booru and library suggestions are
-                not included. If disabled, selecting multiple Images instead
-                offers per-image review with a dismissible warning.
+                shows one confirmation warning, then runs the chosen Camie
+                and/or EVA02 models plus configured filename predictions as a
+                background job without per-image approval. Booru and library
+                suggestions are not included. If disabled, selecting multiple
+                Images instead offers per-image review with a dismissible
+                warning.
               </Form.Text>
               <p className="small">
                 <Link to="/settings?tab=library#association-inheritance-settings">

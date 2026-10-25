@@ -17,28 +17,40 @@ test("bulk tagging is only offered for two or more selected Images", () => {
   );
   assert.equal(
     bulkSelectedImageIDs(
-      [{ kind: "IMAGE", id: "1" }, { kind: "VIDEO", id: "2" }],
+      [
+        { kind: "IMAGE", id: "1" },
+        { kind: "VIDEO", id: "2" },
+      ],
       "IMAGE"
     ),
     undefined
   );
   assert.deepEqual(
     bulkSelectedImageIDs(
-      [{ kind: "IMAGE", id: "1" }, { kind: "IMAGE", id: "1200" }],
+      [
+        { kind: "IMAGE", id: "1" },
+        { kind: "IMAGE", id: "1200" },
+      ],
       "IMAGE"
     ),
     [1, 1200]
   );
   assert.equal(
     bulkSelectedImageIDs(
-      [{ kind: "IMAGE", id: "123oops" }, { kind: "IMAGE", id: "2" }],
+      [
+        { kind: "IMAGE", id: "123oops" },
+        { kind: "IMAGE", id: "2" },
+      ],
       "IMAGE"
     ),
     undefined
   );
   assert.equal(
     bulkSelectedImageIDs(
-      [{ kind: "IMAGE", id: "9007199254740992" }, { kind: "IMAGE", id: "2" }],
+      [
+        { kind: "IMAGE", id: "9007199254740992" },
+        { kind: "IMAGE", id: "2" },
+      ],
       "IMAGE"
     ),
     undefined

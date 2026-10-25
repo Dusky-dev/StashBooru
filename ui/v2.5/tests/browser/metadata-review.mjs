@@ -184,6 +184,28 @@ try {
     await page
       .getByRole("button", { name: "Generate shortcut", exact: true })
       .click();
+    const advisory = page
+      .getByRole("dialog")
+      .filter({ hasText: "Bulk tagging uses individual review" });
+    await advisory.getByRole("button", { name: "OK", exact: true }).waitFor();
+    assert.equal(
+      await advisory.getByRole("button", { name: "Cancel", exact: true }).count(),
+      1
+    );
+    await advisory.getByRole("button", { name: "Cancel", exact: true }).click();
+    await page.getByRole("dialog").waitFor({ state: "detached" });
+    await page
+      .getByRole("button", { name: "Generate shortcut", exact: true })
+      .click();
+    await advisory.getByRole("button", { name: "Don't show again" }).click();
+    assert.equal(
+      await page.evaluate(() =>
+        localStorage.getItem(
+          "stashbooru:manual-bulk-tagging-warning-dismissed:v1"
+        )
+      ),
+      "1"
+    );
     await main().getByText("Image #1", { exact: true }).waitFor();
     await main()
       .getByRole("button", { name: "Skip item", exact: true })

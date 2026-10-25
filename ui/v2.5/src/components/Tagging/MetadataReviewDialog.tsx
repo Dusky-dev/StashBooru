@@ -165,8 +165,8 @@ export function MetadataReviewDialog({
     return (
       <Modal show centered onHide={onHide}>
         <Modal.Body className="text-center">
-          <Spinner animation="border" size="sm" role="status" /> Checking tagging
-          settings…
+          <Spinner animation="border" size="sm" role="status" /> Checking
+          tagging settings…
         </Modal.Body>
       </Modal>
     );
@@ -239,14 +239,14 @@ export function MetadataReviewDialog({
             One approval starts a background job that applies the selected
             inference models and configured filename predictions to every
             selected Image, with no per-image review. This can create metadata
-            and cannot be undone with one action. Cancelling a running job
-            does not reverse work already applied.
+            and cannot be undone with one action. Cancelling a running job does
+            not reverse work already applied.
           </Alert>
           <p className="small text-muted">
             Booru lookup and library suggestions are not part of this bulk job.
             Existing Artist links will not be replaced. Camie threshold:{" "}
-            {bulkConfig.threshold}. EVA02 threshold:{" "}
-            {bulkConfig.eva02Threshold}. Per-category limit: {bulkConfig.limit}.
+            {bulkConfig.threshold}. EVA02 threshold: {bulkConfig.eva02Threshold}
+            . Per-category limit: {bulkConfig.limit}.
           </p>
           <p className="mb-2">
             <strong>Inference sources:</strong>

@@ -707,7 +707,9 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                   disabled={busy || applying}
                   onClick={() => void loadModelPredictions("camie")}
                 >
-                  {loadingSource === "camie" ? "Analyzing…" : "Analyze with Camie"}
+                  {loadingSource === "camie"
+                    ? "Analyzing…"
+                    : "Analyze with Camie"}
                 </Button>
                 <Button
                   className="mr-2 mb-2"
@@ -715,7 +717,9 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                   disabled={busy || applying}
                   onClick={() => void loadModelPredictions("eva02")}
                 >
-                  {loadingSource === "eva02" ? "Analyzing…" : "Analyze with EVA02"}
+                  {loadingSource === "eva02"
+                    ? "Analyzing…"
+                    : "Analyze with EVA02"}
                 </Button>
                 <Button
                   className="mb-2"
@@ -784,15 +788,16 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
 
               <details className="mb-3 text-muted">
                 <summary>How sources are combined</summary>
-                Sources are merged in priority order: Local → Booru → Camie → EVA02
-                → Library. Opening this dialog loads Local metadata only; every
-                network, model, or similarity source is explicit. Camie and EVA02
-                use independent configured thresholds. Library suggestions require
-                consensus from visually similar indexed images and start unselected
-                because they are review-only. When the same metadata item is
-                predicted by multiple sources, the earlier source keeps its value
-                and score while later sources are shown as additional provenance.
-                Multiple selected Artists can be attached to the same image.
+                Sources are merged in priority order: Local → Booru → Camie →
+                EVA02 → Library. Opening this dialog loads Local metadata only;
+                every network, model, or similarity source is explicit. Camie
+                and EVA02 use independent configured thresholds. Library
+                suggestions require consensus from visually similar indexed
+                images and start unselected because they are review-only. When
+                the same metadata item is predicted by multiple sources, the
+                earlier source keeps its value and score while later sources are
+                shown as additional provenance. Multiple selected Artists can be
+                attached to the same image.
               </details>
 
               <Form.Check
@@ -800,7 +805,9 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                 type="checkbox"
                 id="image-tagging-replace-artists"
                 checked={replaceArtist}
-                onChange={(event) => setReplaceArtist(event.currentTarget.checked)}
+                onChange={(event) =>
+                  setReplaceArtist(event.currentTarget.checked)
+                }
                 label="Replace existing Artists instead of adding the selected Artists"
               />
 
@@ -812,8 +819,8 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                 </div>
               ) : predictions.length === 0 && !error ? (
                 <div className="text-muted">
-                  No Local metadata was found. Fetch Danbooru, run Camie/EVA02, or
-                  request Library suggestions explicitly to add predictions.
+                  No Local metadata was found. Fetch Danbooru, run Camie/EVA02,
+                  or request Library suggestions explicitly to add predictions.
                 </div>
               ) : (
                 <>
@@ -928,7 +935,9 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                                 </Button>
                               ) : null}
                               <Badge
-                                className={prediction.targetPath ? "" : "ml-auto"}
+                                className={
+                                  prediction.targetPath ? "" : "ml-auto"
+                                }
                                 variant="secondary"
                               >
                                 {(prediction.score * 100).toFixed(1)}%
