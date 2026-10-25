@@ -52,6 +52,13 @@ try {
           filenameEnabled: true,
           filenameLayout: "%artist%",
         });
+      if (endpoint === "thumbnail") {
+        return route.fulfill({
+          status: 200,
+          contentType: "image/svg+xml",
+          body: '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="90"><rect width="160" height="90" fill="#777"/></svg>',
+        });
+      }
       if (endpoint === "local-metadata") {
         reads.push(`${kind}:${id}`);
         return reply({ backend: "local", model: "local", tags: [tag] });
@@ -127,6 +134,12 @@ try {
     await page.locator("label[for=fixture-selected]").click();
     await open();
     await main().getByText("Image #1", { exact: true }).waitFor();
+    assert.equal(
+      await main()
+        .getByRole("img", { name: "Image #1 receiving metadata" })
+        .getAttribute("src"),
+      "image/1/thumbnail"
+    );
     await main()
       .getByRole("button", { name: "Apply selected metadata", exact: true })
       .click({ trial: true });
@@ -171,6 +184,30 @@ try {
     await page
       .getByRole("button", { name: "Generate shortcut", exact: true })
       .click();
+    const advisory = page
+      .getByRole("dialog")
+      .filter({ hasText: "Bulk tagging uses individual review" });
+    await advisory.getByRole("button", { name: "OK", exact: true }).waitFor();
+    assert.equal(
+      await advisory
+        .getByRole("button", { name: "Cancel", exact: true })
+        .count(),
+      1
+    );
+    await advisory.getByRole("button", { name: "Cancel", exact: true }).click();
+    await page.getByRole("dialog").waitFor({ state: "detached" });
+    await page
+      .getByRole("button", { name: "Generate shortcut", exact: true })
+      .click();
+    await advisory.getByRole("button", { name: "Don't show again" }).click();
+    assert.equal(
+      await page.evaluate(() =>
+        localStorage.getItem(
+          "stashbooru:manual-bulk-tagging-warning-dismissed:v1"
+        )
+      ),
+      "1"
+    );
     await main().getByText("Image #1", { exact: true }).waitFor();
     await main()
       .getByRole("button", { name: "Skip item", exact: true })
