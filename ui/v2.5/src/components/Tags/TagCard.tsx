@@ -250,7 +250,9 @@ export const TagCard: React.FC<IProps> = PatchComponent("TagCard", (props) => {
       title={<TagCardTitle {...props} />}
       linkClassName="tag-card-header"
       thumbnailSectionClassName={hideImage ? "d-none" : undefined}
-      image={hideImage ? <span aria-hidden="true" /> : <TagCardImage {...props} />}
+      image={
+        hideImage ? <span aria-hidden="true" /> : <TagCardImage {...props} />
+      }
       details={<TagCardDetails {...props} />}
       overlays={hideImage ? undefined : <TagCardOverlays {...props} />}
       titleAction={hideImage ? <TagCardOverlays {...props} /> : undefined}
