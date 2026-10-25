@@ -2421,7 +2421,10 @@ try {
     );
     const pageSize = page.locator(".page-size-selector select");
     for (const size of ["60", "120", "250"]) {
-      assert.equal(await pageSize.locator(`option[value="${size}"]`).count(), 1);
+      assert.equal(
+        await pageSize.locator(`option[value="${size}"]`).count(),
+        1
+      );
     }
     await pageSize.selectOption("250");
     await dan
