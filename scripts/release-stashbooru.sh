@@ -18,7 +18,7 @@ else
   status=$?
   [[ "$status" == 2 ]] || { echo "Could not verify release tag absence" >&2; exit "$status"; }
 fi
-assets=(Stash.app.zip stash-macos stash-win.exe stash-linux stash-linux-arm64v8 stash-linux-arm32v7 stash-linux-arm32v6 stash-freebsd stash-ui.zip)
+assets=(Stash.app.zip stash-macos stash-win.exe stash-linux stash-linux-arm64v8 stash-linux-arm32v7 stash-linux-arm32v6 stash-freebsd stash-ui.zip stash-remote-worker.zip)
 for asset in "${assets[@]}"; do
   [[ -s "dist/$asset" ]] || { echo "Missing asset: $asset" >&2; exit 1; }
 done

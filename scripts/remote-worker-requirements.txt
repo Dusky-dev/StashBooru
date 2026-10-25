@@ -1,0 +1,4 @@
+# CPU-capable core dependencies. For CUDA replace onnxruntime with onnxruntime-gpu.
+numpy
+Pillow
+onnxruntime

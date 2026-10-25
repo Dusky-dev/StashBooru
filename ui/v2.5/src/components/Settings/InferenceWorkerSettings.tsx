@@ -3,6 +3,7 @@ import { Alert, Button, Card, Form } from "react-bootstrap";
 
 import { useToast } from "src/hooks/Toast";
 import { Setting } from "./Inputs";
+import { ExternalLink } from "src/components/Shared/ExternalLink";
 
 interface InferenceWorkerConfig {
   url: string;
@@ -104,6 +105,27 @@ export const InferenceWorkerSettings: React.FC = () => {
         Share one remote worker across similarity, tagging, conversion,
         upscaling, restoration and Video indexing. Each operation checks its
         required capabilities. Leave the URL empty for supported local work.
+      </div>
+      <div className="mb-3">
+        <ExternalLink href="https://github.com/Dusky-dev/StashBooru/releases/download/latest_develop/stash-remote-worker.zip">
+          Download remote worker ZIP (development)
+        </ExternalLink>
+        {" · "}
+        <ExternalLink href="https://github.com/Dusky-dev/StashBooru/releases">
+          Version-matched stable releases
+        </ExternalLink>
+        {" · "}
+        <ExternalLink href="https://github.com/Dusky-dev/StashBooru/blob/develop/scripts/visual_embedding_server.md">
+          Setup and capability guide
+        </ExternalLink>
+        <p className="small text-muted mb-0 mt-2">
+          Extract the complete ZIP on the worker PC, install its Python
+          requirements, and start visual_embedding_server.py. Run the included
+          remote_worker_check.py to verify available services. All processing
+          modules are included; optional models, GPU runtimes and codecs must be
+          installed separately. Match your server version. Development downloads
+          update after a successful release build.
+        </p>
       </div>
       <Card>
         <Setting

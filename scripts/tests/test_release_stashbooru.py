@@ -7,7 +7,7 @@ import tempfile
 import unittest
 
 SCRIPT = Path(__file__).resolve().parents[1] / "release-stashbooru.sh"
-ASSETS = ["Stash.app.zip", "stash-macos", "stash-win.exe", "stash-linux", "stash-linux-arm64v8", "stash-linux-arm32v7", "stash-linux-arm32v6", "stash-freebsd", "stash-ui.zip"]
+ASSETS = ["Stash.app.zip", "stash-macos", "stash-win.exe", "stash-linux", "stash-linux-arm64v8", "stash-linux-arm32v7", "stash-linux-arm32v6", "stash-freebsd", "stash-ui.zip", "stash-remote-worker.zip"]
 
 
 class ReleaseGuards(unittest.TestCase):

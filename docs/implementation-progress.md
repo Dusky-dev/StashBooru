@@ -2,6 +2,20 @@
 
 Updated: 2026-10-25
 
+## Complete downloadable remote worker bundle — 2026-10-25
+
+- Baseline `develop` at `1702e5f78a065d7417c5c2b060e44b8be3d640e1`,
+  separate PR for the remote worker bundle and UI, without changing PR #221.
+- Worker Settings links to development ZIP, stable releases and setup/diagnostics.
+  Existing server-stored tokens are never exposed in a download URL.
+- Bundle includes the complete Python service, processing modules and a read-only
+  capability checker, requirements, README and SHA-256 manifest. Development
+  and stable releases will publish exactly this same ZIP.
+- Optional codecs, GPU runtimes, weights and model installations remain external;
+  a reachable worker does not imply every capability is usable.
+- Python packaging, endpoint/auth and release asset contract tests run in CI.
+  No physical worker/GPU execution has been claimed.
+
 ## Larger Image review preview and image-free Tag hover — 2026-10-25
 
 - Baseline develop `1702e5f78a065d7417c5c2b060e44b8be3d640e1` on `ui/review-image-fill-tag-hover-20261025`.

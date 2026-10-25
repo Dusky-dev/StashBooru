@@ -6,22 +6,31 @@ and optional mask restoration. StashBooru owns the job queue, catalogue, metadat
 application, index and file activation. The remote service processes bounded
 inputs and returns results; it does not modify the database.
 
-Use the server and companion modules from the same StashBooru version. Keep
+Download the complete `stash-remote-worker.zip` from the
+[StashBooru releases](https://github.com/Dusky-dev/StashBooru/releases).
+The [development worker ZIP](https://github.com/Dusky-dev/StashBooru/releases/download/latest_develop/stash-remote-worker.zip)
+is published with successful development builds. Choose the archive matching
+your StashBooru version. Extract all contents together: the server,
 `visual_embedding_worker.py`, `camie_tagger_worker.py`,
 `media_conversion_worker.py`, `media_upscale_worker.py`,
-`video_overlap_worker.py` and `image_restoration_worker.py` beside the server.
-Some modules are imported on startup even when their optional model is unused;
-copying only the old embeddings server is insufficient.
+`video_overlap_worker.py`, `image_restoration_worker.py`, and
+`remote_worker_check.py`. The archive contains a startup README,
+`requirements.txt` and a SHA-256 integrity manifest. Some modules are
+imported on startup even if their optional model is unused; copying only
+the old embeddings server is insufficient.
 
 ## GPU machine setup
 
-From a StashBooru checkout:
+From the extracted bundle directory (CPU runtime):
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install numpy pillow onnxruntime-gpu
+pip install -r requirements.txt
 ```
+
+For NVIDIA CUDA, replace `onnxruntime` with `onnxruntime-gpu` in the same
+environment; see the bundled README. Do not install both runtimes together.
 
 `ffmpeg` is optional but recommended as a fallback decoder for formats Pillow cannot open.
 
@@ -31,7 +40,7 @@ Place the same DeepGHS EVA02 embedding model used by StashBooru somewhere on the
 export STASH_EMBEDDING_MODEL_PATH=/path/to/model.onnx
 export STASH_EMBEDDING_ONNX_PROVIDERS=CUDAExecutionProvider,CPUExecutionProvider
 export STASH_EMBEDDING_SERVER_TOKEN='replace-with-a-long-random-token'
-python3 scripts/visual_embedding_server.py --host 0.0.0.0 --port 8000
+python3 visual_embedding_server.py --host 0.0.0.0 --port 8000
 ```
 
 The expected EVA02 model is the pinned embedding-enabled DeepGHS file used by `visual_embedding_worker.py`, not the ordinary tagger-only ONNX file.
@@ -39,7 +48,7 @@ The expected EVA02 model is the pinned embedding-enabled DeepGHS file used by `v
 If EVA02 is not installed yet, the server can use the existing pinned downloader once at startup:
 
 ```bash
-python3 scripts/visual_embedding_server.py --download-model --host 0.0.0.0 --port 8000
+python3 visual_embedding_server.py --download-model --host 0.0.0.0 --port 8000
 ```
 
 The HTTP API itself does not expose model download or any Stash database operations.
@@ -75,9 +84,13 @@ http://192.168.1.50:8000
 ```
 
 Enter the same bearer token if one was configured, then click **Save worker**.
-Check EVA02/Camie readiness under **Similarity and tagging**; each reports its
-own model status. Conversion, upscaling, overlap and restoration probe their own
-capabilities. A reachable embeddings worker does not prove that another codec or
+Check all worker API families without submitting media using the bundled
+`python3 remote_worker_check.py --url http://192.168.1.50:8000` command
+(the bearer token is read from `STASH_EMBEDDING_SERVER_TOKEN`). It checks EVA02,
+Camie, conversion/upscaling, Video overlap and restoration endpoint reachability.
+Then check EVA02/Camie readiness under **Similarity and tagging**; each reports
+its own model status. Conversion, upscaling, overlap and restoration probe their
+own capabilities. A reachable embeddings worker does not prove that another codec or
 model is installed. The URL/token are shared; tool-specific Run on and hardware
 choices still apply. Local model path settings do not configure the remote host.
 
