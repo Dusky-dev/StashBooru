@@ -2,6 +2,23 @@
 
 Updated: 2026-10-25
 
+## Bulk Image review thumbnails, advisory and EVA02 source — 2026-10-25
+
+- Follow-up to PR #219 on `feat/bulk-image-tag-confirmation-20261025`: add
+  an authenticated thumbnail at left of Image metadata review, tied to each
+  selected Image ID across sequential review.
+- With bulk auto-tagging disabled, multi-Image review shows a warning with
+  **Don't show again**, **OK**, and **Cancel**. The per-browser dismissal
+  suppresses only the warning; it never enables auto-apply.
+- Automatic bulk mode now offers Camie, EVA02, or both (default both); backend
+  uses the existing EVA02 inference client, source conversion and category
+  rules, and preserves filename → Camie → EVA02 source priority. Only explicit
+  selected Image IDs and one confirmed request may queue the new bulk job.
+- Separate user guidance describes the two workflows, model installation
+  prerequisites and non-rollback of already-applied changes.
+- Pending CI and Codex Review; local full build/browser execution not yet
+  verified in the connected GitHub-only workflow.
+
 ## Optional bulk Image tagging and single confirmation — 2026-10-25
 
 - Baseline fresh develop `7a492ab8d32092d6b8105bedd1e4028156dc4bac`, branch

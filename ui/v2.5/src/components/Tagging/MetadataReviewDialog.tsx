@@ -8,8 +8,12 @@ import {
   bulkSelectedImageIDs,
   bulkTaggingRequest,
   defaultBulkTaggingCategories,
+  defaultBulkTaggingSources,
+  manualBulkWarningDismissed,
+  MANUAL_BULK_WARNING_KEY,
   type BulkTaggingCategories,
   type BulkTaggingConfig,
+  type BulkTaggingSources,
 } from "./bulkTaggingPolicy";
 
 export interface MetadataReviewItem {
@@ -46,6 +50,18 @@ export function MetadataReviewDialog({
   const [bulkChecking, setBulkChecking] = useState(Boolean(bulkIDs));
   const [bulkConfig, setBulkConfig] = useState<BulkTaggingConfig>();
   const [manualReview, setManualReview] = useState(false);
+  const [skipManualWarning, setSkipManualWarning] = useState(() => {
+    try {
+      return manualBulkWarningDismissed(
+        typeof window === "undefined" ? undefined : window.localStorage
+      );
+    } catch {
+      return false;
+    }
+  });
+  const [sources, setSources] = useState<BulkTaggingSources>({
+    ...defaultBulkTaggingSources,
+  });
   const [categories, setCategories] = useState<BulkTaggingCategories>({
     ...defaultBulkTaggingCategories,
   });
@@ -91,15 +107,19 @@ export function MetadataReviewDialog({
       setBulkError("Choose at least one metadata category.");
       return;
     }
+    if (!Object.values(sources).some(Boolean)) {
+      setBulkError("Choose Camie, EVA02 or both.");
+      return;
+    }
 
     setStarting(true);
     setBulkError(undefined);
     try {
-      const response = await fetch("image/visual-similarity/camie/tag", {
+      const response = await fetch("image/visual-similarity/bulk-tag", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
-          bulkTaggingRequest(bulkIDs, bulkConfig, categories)
+          bulkTaggingRequest(bulkIDs, bulkConfig, categories, sources)
         ),
       });
       if (!response.ok) {
@@ -131,6 +151,16 @@ export function MetadataReviewDialog({
     else onHide();
   }
 
+  function dismissManualWarning() {
+    try {
+      window.localStorage.setItem(MANUAL_BULK_WARNING_KEY, "1");
+      setSkipManualWarning(true);
+    } catch {
+      // The current review can still proceed when browser storage is blocked.
+    }
+    setManualReview(true);
+  }
+
   if (bulkChecking) {
     return (
       <Modal show centered onHide={onHide}>
@@ -138,6 +168,47 @@ export function MetadataReviewDialog({
           <Spinner animation="border" size="sm" role="status" /> Checking tagging
           settings…
         </Modal.Body>
+      </Modal>
+    );
+  }
+
+  // With auto-apply disabled, explain the distinction once. The user can
+  // suppress this advisory per browser without ever enabling auto writes.
+  if (
+    bulkIDs &&
+    bulkConfig &&
+    !bulkConfig.bulkTaggingEnabled &&
+    !manualReview &&
+    !skipManualWarning
+  ) {
+    return (
+      <Modal show centered onHide={onHide}>
+        <Modal.Header>
+          <Modal.Title>Bulk tagging uses individual review</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Alert variant="warning">
+            You selected {bulkIDs.length.toLocaleString()} Images, but automatic
+            bulk tagging is disabled in Settings → Processing → Similarity and
+            tagging. Continuing opens each Image for separate tag approval;
+            nothing will be auto-applied.
+          </Alert>
+          <p className="small text-muted mb-0">
+            To process the entire selection with one approval, enable bulk
+            auto-tagging in the tagging settings.
+          </p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={dismissManualWarning}>
+            Don't show again
+          </Button>
+          <Button variant="secondary" onClick={onHide}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={() => setManualReview(true)}>
+            OK
+          </Button>
+        </Modal.Footer>
       </Modal>
     );
   }
@@ -165,18 +236,48 @@ export function MetadataReviewDialog({
               You are about to tag {bulkIDs.length.toLocaleString()} selected
               Images.
             </strong>{" "}
-            One approval starts a background job that applies Camie and
-            configured filename predictions to every selected Image, with no
-            per-image review. This can create metadata and cannot be undone
-            with one action. Cancelling a running job does not reverse work
-            already applied.
+            One approval starts a background job that applies the selected
+            inference models and configured filename predictions to every
+            selected Image, with no per-image review. This can create metadata
+            and cannot be undone with one action. Cancelling a running job
+            does not reverse work already applied.
           </Alert>
           <p className="small text-muted">
-            Booru lookup, EVA02 and library suggestions are not part of this
-            bulk job. Existing metadata is preserved; existing Artist links
-            will not be replaced. Threshold: {bulkConfig.threshold};
-            per-category limit: {bulkConfig.limit}.
+            Booru lookup and library suggestions are not part of this bulk job.
+            Existing Artist links will not be replaced. Camie threshold:{" "}
+            {bulkConfig.threshold}; EVA02 threshold:{" "}
+            {bulkConfig.eva02Threshold}; per-category limit: {bulkConfig.limit}.
           </p>
+          <p className="mb-2">
+            <strong>Inference sources:</strong>
+          </p>
+          <Form.Check
+            type="checkbox"
+            id="bulk-tagging-use-camie"
+            label="Camie v2 (Characters, Artists, Copyrights and Tags)"
+            checked={sources.useCamie}
+            disabled={starting}
+            onChange={(event) =>
+              setSources((current) => ({
+                ...current,
+                useCamie: event.currentTarget.checked,
+              }))
+            }
+          />
+          <Form.Check
+            className="mb-3"
+            type="checkbox"
+            id="bulk-tagging-use-eva02"
+            label="EVA02 (general, rating and Character predictions)"
+            checked={sources.useEva02}
+            disabled={starting}
+            onChange={(event) =>
+              setSources((current) => ({
+                ...current,
+                useEva02: event.currentTarget.checked,
+              }))
+            }
+          />
           <p className="mb-2">
             <strong>Apply these categories:</strong>
           </p>
@@ -215,7 +316,11 @@ export function MetadataReviewDialog({
           </Button>
           <Button
             variant="warning"
-            disabled={starting || !Object.values(categories).some(Boolean)}
+            disabled={
+              starting ||
+              !Object.values(categories).some(Boolean) ||
+              !Object.values(sources).some(Boolean)
+            }
             onClick={() => void startBulkTagging()}
           >
             {starting

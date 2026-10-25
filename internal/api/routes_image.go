@@ -63,6 +63,7 @@ func (rs imageRoutes) Routes() chi.Router {
 		r.Get("/camie/config", rs.CamieConfig)
 		r.Post("/camie/config", rs.CamieConfigUpdate)
 		r.Post("/camie/tag", rs.CamieTagImagesV2)
+		r.Post("/bulk-tag", rs.BulkTagImages)
 	})
 
 	r.Get("/metadata-health", rs.MetadataHealthComplete)

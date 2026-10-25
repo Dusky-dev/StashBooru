@@ -628,300 +628,322 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
           <Modal.Title>Review image metadata</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <MetadataReviewInfo
-            kind="Image"
-            id={imageId}
-            context={reviewContext}
-            busy={busy || applying}
-          />
-          <div className="d-flex flex-wrap align-items-end mb-3">
-            <Form.Group className="mr-3 mb-2">
-              <Form.Label>Camie threshold</Form.Label>
-              <Form.Control
-                type="number"
-                min="0.001"
-                max="0.999"
-                step="0.01"
-                value={camieThreshold}
-                onChange={(event) =>
-                  setCamieThreshold(event.currentTarget.value)
-                }
-                style={{ width: "8rem" }}
+          <div className="d-flex flex-column flex-md-row align-items-start">
+            <aside
+              className="mb-3 mb-md-0 mr-md-3 flex-shrink-0"
+              style={{ width: "min(100%, 210px)" }}
+              aria-label="Image receiving metadata"
+            >
+              <img
+                src={`image/${imageId}/thumbnail`}
+                alt={`Image #${imageId} receiving metadata`}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  maxHeight: "40vh",
+                  objectFit: "contain",
+                  borderRadius: "4px",
+                }}
               />
-            </Form.Group>
-            <Form.Group className="mr-3 mb-2">
-              <Form.Label>EVA02 threshold</Form.Label>
-              <Form.Control
-                type="number"
-                min="0.001"
-                max="0.999"
-                step="0.01"
-                value={eva02Threshold}
-                onChange={(event) =>
-                  setEva02Threshold(event.currentTarget.value)
-                }
-                style={{ width: "8rem" }}
+              <p className="small text-muted mt-2 mb-0">Image #{imageId}</p>
+            </aside>
+            <div className="flex-grow-1 w-100" style={{ minWidth: 0 }}>
+              <MetadataReviewInfo
+                kind="Image"
+                id={imageId}
+                context={reviewContext}
+                busy={busy || applying}
               />
-            </Form.Group>
-            <Form.Group className="mr-3 mb-2">
-              <Form.Label>Per-category limit</Form.Label>
-              <Form.Control
-                type="number"
-                min="1"
-                max="200"
-                value={limit}
-                onChange={(event) => setLimit(event.currentTarget.value)}
-                style={{ width: "8rem" }}
-              />
-            </Form.Group>
-            <Button
-              className="mr-2 mb-2"
-              variant="secondary"
-              disabled={busy || applying}
-              onClick={() => void loadBooruMetadata()}
-            >
-              {loadingSource === "booru" ? "Fetching…" : "Look up by MD5"}
-            </Button>
-            <Button
-              className="mr-2 mb-2"
-              variant="secondary"
-              disabled={busy || applying}
-              onClick={() => void loadModelPredictions("camie")}
-            >
-              {loadingSource === "camie" ? "Analyzing…" : "Analyze with Camie"}
-            </Button>
-            <Button
-              className="mr-2 mb-2"
-              variant="secondary"
-              disabled={busy || applying}
-              onClick={() => void loadModelPredictions("eva02")}
-            >
-              {loadingSource === "eva02" ? "Analyzing…" : "Analyze with EVA02"}
-            </Button>
-            <Button
-              className="mb-2"
-              variant="secondary"
-              disabled={busy || applying}
-              onClick={() => void loadLibrarySimilarity()}
-            >
-              {loadingSource === "library"
-                ? "Comparing…"
-                : "Suggest from library"}
-            </Button>
-          </div>
+              <div className="d-flex flex-wrap align-items-end mb-3">
+                <Form.Group className="mr-3 mb-2">
+                  <Form.Label>Camie threshold</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min="0.001"
+                    max="0.999"
+                    step="0.01"
+                    value={camieThreshold}
+                    onChange={(event) =>
+                      setCamieThreshold(event.currentTarget.value)
+                    }
+                    style={{ width: "8rem" }}
+                  />
+                </Form.Group>
+                <Form.Group className="mr-3 mb-2">
+                  <Form.Label>EVA02 threshold</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min="0.001"
+                    max="0.999"
+                    step="0.01"
+                    value={eva02Threshold}
+                    onChange={(event) =>
+                      setEva02Threshold(event.currentTarget.value)
+                    }
+                    style={{ width: "8rem" }}
+                  />
+                </Form.Group>
+                <Form.Group className="mr-3 mb-2">
+                  <Form.Label>Per-category limit</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min="1"
+                    max="200"
+                    value={limit}
+                    onChange={(event) => setLimit(event.currentTarget.value)}
+                    style={{ width: "8rem" }}
+                  />
+                </Form.Group>
+                <Button
+                  className="mr-2 mb-2"
+                  variant="secondary"
+                  disabled={busy || applying}
+                  onClick={() => void loadBooruMetadata()}
+                >
+                  {loadingSource === "booru" ? "Fetching…" : "Look up by MD5"}
+                </Button>
+                <Button
+                  className="mr-2 mb-2"
+                  variant="secondary"
+                  disabled={busy || applying}
+                  onClick={() => void loadModelPredictions("camie")}
+                >
+                  {loadingSource === "camie" ? "Analyzing…" : "Analyze with Camie"}
+                </Button>
+                <Button
+                  className="mr-2 mb-2"
+                  variant="secondary"
+                  disabled={busy || applying}
+                  onClick={() => void loadModelPredictions("eva02")}
+                >
+                  {loadingSource === "eva02" ? "Analyzing…" : "Analyze with EVA02"}
+                </Button>
+                <Button
+                  className="mb-2"
+                  variant="secondary"
+                  disabled={busy || applying}
+                  onClick={() => void loadLibrarySimilarity()}
+                >
+                  {loadingSource === "library"
+                    ? "Comparing…"
+                    : "Suggest from library"}
+                </Button>
+              </div>
 
-          <div className="d-flex flex-wrap align-items-center mb-3">
-            <Badge className="mr-2 mb-1" variant="success">
-              Local loaded
-            </Badge>
-            {booruMetadata ? (
-              <Badge className="mr-2 mb-1" variant="info">
-                {booruMetadata.source}
-              </Badge>
-            ) : null}
-            {camieBackend ? (
-              <Badge className="mr-2 mb-1" variant="warning">
-                Camie {camieBackend}
-              </Badge>
-            ) : null}
-            {eva02Backend ? (
-              <Badge className="mr-2 mb-1" variant="danger">
-                EVA02 {eva02Backend}
-              </Badge>
-            ) : null}
-            {libraryMetadata ? (
-              <Badge
-                className="mb-1"
-                variant="secondary"
-                title={`Consensus requires ${libraryMetadata.minVotes} matching neighbors`}
-              >
-                Library {libraryMetadata.neighbors} neighbors
-              </Badge>
-            ) : null}
-          </div>
-
-          {booruMetadata ? (
-            <div className="alert alert-info py-2">
-              <div className="d-flex flex-wrap align-items-center">
-                <strong>{booruMetadata.source}</strong>
-                <Badge className="ml-2" variant="secondary">
-                  MD5 from {booruMetadata.md5Source}
+              <div className="d-flex flex-wrap align-items-center mb-3">
+                <Badge className="mr-2 mb-1" variant="success">
+                  Local loaded
                 </Badge>
-                <code className="ml-2">{booruMetadata.md5}</code>
-                {booruMetadata.postURL ? (
-                  <a
-                    className="ml-auto"
-                    href={booruMetadata.postURL}
-                    target="_blank"
-                    rel="noreferrer"
+                {booruMetadata ? (
+                  <Badge className="mr-2 mb-1" variant="info">
+                    {booruMetadata.source}
+                  </Badge>
+                ) : null}
+                {camieBackend ? (
+                  <Badge className="mr-2 mb-1" variant="warning">
+                    Camie {camieBackend}
+                  </Badge>
+                ) : null}
+                {eva02Backend ? (
+                  <Badge className="mr-2 mb-1" variant="danger">
+                    EVA02 {eva02Backend}
+                  </Badge>
+                ) : null}
+                {libraryMetadata ? (
+                  <Badge
+                    className="mb-1"
+                    variant="secondary"
+                    title={`Consensus requires ${libraryMetadata.minVotes} matching neighbors`}
                   >
-                    Post {booruMetadata.postID || "match"}{" "}
-                    <Icon icon={faExternalLinkAlt} />
-                  </a>
+                    Library {libraryMetadata.neighbors} neighbors
+                  </Badge>
                 ) : null}
               </div>
-            </div>
-          ) : null}
 
-          <details className="mb-3 text-muted">
-            <summary>How sources are combined</summary>
-            Sources are merged in priority order: Local → Booru → Camie → EVA02
-            → Library. Opening this dialog loads Local metadata only; every
-            network, model, or similarity source is explicit. Camie and EVA02
-            use independent configured thresholds. Library suggestions require
-            consensus from visually similar indexed images and start unselected
-            because they are review-only. When the same metadata item is
-            predicted by multiple sources, the earlier source keeps its value
-            and score while later sources are shown as additional provenance.
-            Multiple selected Artists can be attached to the same image.
-          </details>
-
-          <Form.Check
-            className="mb-3"
-            type="checkbox"
-            id="image-tagging-replace-artists"
-            checked={replaceArtist}
-            onChange={(event) => setReplaceArtist(event.currentTarget.checked)}
-            label="Replace existing Artists instead of adding the selected Artists"
-          />
-
-          {error ? <div className="alert alert-danger">{error}</div> : null}
-
-          {busy ? (
-            <div className="text-center py-5">
-              <Spinner animation="border" role="status" />
-            </div>
-          ) : predictions.length === 0 && !error ? (
-            <div className="text-muted">
-              No Local metadata was found. Fetch Danbooru, run Camie/EVA02, or
-              request Library suggestions explicitly to add predictions.
-            </div>
-          ) : (
-            <>
-              <div className="d-flex mb-3">
-                <Button
-                  className="mr-2"
-                  size="sm"
-                  variant="outline-secondary"
-                  disabled={visibleSelectedCount === predictions.length}
-                  onClick={() =>
-                    setSelected(new Set(predictions.map(predictionKey)))
-                  }
-                >
-                  Select all
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline-secondary"
-                  disabled={visibleSelectedCount === 0}
-                  onClick={() => setSelected(new Set())}
-                >
-                  Unselect all
-                </Button>
-                <span className="ml-auto text-muted align-self-center">
-                  {visibleSelectedCount} / {predictions.length} selected
-                </span>
-              </div>
-
-              <div style={{ maxHeight: "55vh", overflowY: "auto" }}>
-                {grouped.map(([category, items]) => (
-                  <div className="mb-4" key={category}>
-                    <h5>{categoryLabel(category)}</h5>
-                    {items.map((prediction, index) => {
-                      const key = predictionKey(prediction);
-                      const possibleMatch =
-                        possibleBareCharacterMatch(prediction);
-                      const candidates =
-                        ambiguousCharacterCandidates(prediction);
-                      return (
-                        <div
-                          className="d-flex align-items-center py-1 border-bottom"
-                          key={key}
-                        >
-                          <Form.Check
-                            type="checkbox"
-                            id={`metadata-${category}-${index}`}
-                            checked={selected.has(key)}
-                            onChange={() => togglePrediction(prediction)}
-                            label={prediction.name}
-                          />
-                          {prediction.provenance.map((source) => (
-                            <Badge
-                              className="ml-2"
-                              key={sourceKey(source)}
-                              title={source.detail}
-                              variant={sourceBadgeVariant(source.kind)}
-                            >
-                              {source.label}
-                            </Badge>
-                          ))}
-                          {prediction.targetExists ? (
-                            <Badge
-                              className="ml-2"
-                              variant="primary"
-                              title="This metadata entity already exists in Stash"
-                            >
-                              exists
-                            </Badge>
-                          ) : null}
-                          {possibleMatch ? (
-                            <Badge
-                              className="ml-2"
-                              variant="secondary"
-                              title={`Possible existing Character: ${possibleMatch.bareName}`}
-                            >
-                              possible match
-                            </Badge>
-                          ) : null}
-                          {candidates.length > 1 ? (
-                            <Badge
-                              className="ml-2"
-                              variant="warning"
-                              title={`${candidates.length} existing Characters share this name`}
-                            >
-                              choose Character
-                            </Badge>
-                          ) : null}
-                          {prediction.rawName &&
-                          prediction.rawName !== prediction.name ? (
-                            <span className="ml-2 small text-muted">
-                              alias: {prediction.rawName}
-                            </span>
-                          ) : null}
-                          {prediction.targetPath ? (
-                            <Button
-                              className="ml-auto mr-2 py-0 px-2"
-                              size="sm"
-                              variant="outline-secondary"
-                              title={
-                                prediction.targetExists
-                                  ? "Open metadata page"
-                                  : possibleMatch
-                                    ? `Open possible existing Character “${possibleMatch.bareName}”`
-                                    : "Search for this metadata"
-                              }
-                              onClick={() => {
-                                onHide();
-                                history.push(prediction.targetPath!);
-                              }}
-                            >
-                              <Icon icon={faSearch} />
-                            </Button>
-                          ) : null}
-                          <Badge
-                            className={prediction.targetPath ? "" : "ml-auto"}
-                            variant="secondary"
-                          >
-                            {(prediction.score * 100).toFixed(1)}%
-                          </Badge>
-                        </div>
-                      );
-                    })}
+              {booruMetadata ? (
+                <div className="alert alert-info py-2">
+                  <div className="d-flex flex-wrap align-items-center">
+                    <strong>{booruMetadata.source}</strong>
+                    <Badge className="ml-2" variant="secondary">
+                      MD5 from {booruMetadata.md5Source}
+                    </Badge>
+                    <code className="ml-2">{booruMetadata.md5}</code>
+                    {booruMetadata.postURL ? (
+                      <a
+                        className="ml-auto"
+                        href={booruMetadata.postURL}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Post {booruMetadata.postID || "match"}{" "}
+                        <Icon icon={faExternalLinkAlt} />
+                      </a>
+                    ) : null}
                   </div>
-                ))}
-              </div>
-            </>
-          )}
+                </div>
+              ) : null}
+
+              <details className="mb-3 text-muted">
+                <summary>How sources are combined</summary>
+                Sources are merged in priority order: Local → Booru → Camie → EVA02
+                → Library. Opening this dialog loads Local metadata only; every
+                network, model, or similarity source is explicit. Camie and EVA02
+                use independent configured thresholds. Library suggestions require
+                consensus from visually similar indexed images and start unselected
+                because they are review-only. When the same metadata item is
+                predicted by multiple sources, the earlier source keeps its value
+                and score while later sources are shown as additional provenance.
+                Multiple selected Artists can be attached to the same image.
+              </details>
+
+              <Form.Check
+                className="mb-3"
+                type="checkbox"
+                id="image-tagging-replace-artists"
+                checked={replaceArtist}
+                onChange={(event) => setReplaceArtist(event.currentTarget.checked)}
+                label="Replace existing Artists instead of adding the selected Artists"
+              />
+
+              {error ? <div className="alert alert-danger">{error}</div> : null}
+
+              {busy ? (
+                <div className="text-center py-5">
+                  <Spinner animation="border" role="status" />
+                </div>
+              ) : predictions.length === 0 && !error ? (
+                <div className="text-muted">
+                  No Local metadata was found. Fetch Danbooru, run Camie/EVA02, or
+                  request Library suggestions explicitly to add predictions.
+                </div>
+              ) : (
+                <>
+                  <div className="d-flex mb-3">
+                    <Button
+                      className="mr-2"
+                      size="sm"
+                      variant="outline-secondary"
+                      disabled={visibleSelectedCount === predictions.length}
+                      onClick={() =>
+                        setSelected(new Set(predictions.map(predictionKey)))
+                      }
+                    >
+                      Select all
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline-secondary"
+                      disabled={visibleSelectedCount === 0}
+                      onClick={() => setSelected(new Set())}
+                    >
+                      Unselect all
+                    </Button>
+                    <span className="ml-auto text-muted align-self-center">
+                      {visibleSelectedCount} / {predictions.length} selected
+                    </span>
+                  </div>
+
+                  <div style={{ maxHeight: "55vh", overflowY: "auto" }}>
+                    {grouped.map(([category, items]) => (
+                      <div className="mb-4" key={category}>
+                        <h5>{categoryLabel(category)}</h5>
+                        {items.map((prediction, index) => {
+                          const key = predictionKey(prediction);
+                          const possibleMatch =
+                            possibleBareCharacterMatch(prediction);
+                          const candidates =
+                            ambiguousCharacterCandidates(prediction);
+                          return (
+                            <div
+                              className="d-flex align-items-center py-1 border-bottom"
+                              key={key}
+                            >
+                              <Form.Check
+                                type="checkbox"
+                                id={`metadata-${category}-${index}`}
+                                checked={selected.has(key)}
+                                onChange={() => togglePrediction(prediction)}
+                                label={prediction.name}
+                              />
+                              {prediction.provenance.map((source) => (
+                                <Badge
+                                  className="ml-2"
+                                  key={sourceKey(source)}
+                                  title={source.detail}
+                                  variant={sourceBadgeVariant(source.kind)}
+                                >
+                                  {source.label}
+                                </Badge>
+                              ))}
+                              {prediction.targetExists ? (
+                                <Badge
+                                  className="ml-2"
+                                  variant="primary"
+                                  title="This metadata entity already exists in Stash"
+                                >
+                                  exists
+                                </Badge>
+                              ) : null}
+                              {possibleMatch ? (
+                                <Badge
+                                  className="ml-2"
+                                  variant="secondary"
+                                  title={`Possible existing Character: ${possibleMatch.bareName}`}
+                                >
+                                  possible match
+                                </Badge>
+                              ) : null}
+                              {candidates.length > 1 ? (
+                                <Badge
+                                  className="ml-2"
+                                  variant="warning"
+                                  title={`${candidates.length} existing Characters share this name`}
+                                >
+                                  choose Character
+                                </Badge>
+                              ) : null}
+                              {prediction.rawName &&
+                              prediction.rawName !== prediction.name ? (
+                                <span className="ml-2 small text-muted">
+                                  alias: {prediction.rawName}
+                                </span>
+                              ) : null}
+                              {prediction.targetPath ? (
+                                <Button
+                                  className="ml-auto mr-2 py-0 px-2"
+                                  size="sm"
+                                  variant="outline-secondary"
+                                  title={
+                                    prediction.targetExists
+                                      ? "Open metadata page"
+                                      : possibleMatch
+                                        ? `Open possible existing Character “${possibleMatch.bareName}”`
+                                        : "Search for this metadata"
+                                  }
+                                  onClick={() => {
+                                    onHide();
+                                    history.push(prediction.targetPath!);
+                                  }}
+                                >
+                                  <Icon icon={faSearch} />
+                                </Button>
+                              ) : null}
+                              <Badge
+                                className={prediction.targetPath ? "" : "ml-auto"}
+                                variant="secondary"
+                              >
+                                {(prediction.score * 100).toFixed(1)}%
+                              </Badge>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" disabled={applying} onClick={onHide}>
