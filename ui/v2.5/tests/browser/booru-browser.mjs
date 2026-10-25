@@ -1925,7 +1925,9 @@ try {
     await pickFilter("Media on this page", "videos");
     await filteredResponse;
     await dan
-      .getByText("Showing 4 posts after the selected filters.", { exact: false })
+      .getByText("Showing 4 posts after the selected filters.", {
+        exact: false,
+      })
       .waitFor();
     assert.equal(await dan.locator(".booru-post").count(), 4);
     filteredResponse = waitForFilteredPage("videos", "hide");
@@ -1962,7 +1964,9 @@ try {
     await pickFilter("Media on this page", "images");
     await filteredResponse;
     await dan
-      .getByText("Showing 8 posts after the selected filters.", { exact: false })
+      .getByText("Showing 8 posts after the selected filters.", {
+        exact: false,
+      })
       .waitFor();
     assert.equal(await dan.locator(".booru-post").count(), 8);
     assert.equal(requests.at(-1).media, "images");
@@ -1976,7 +1980,9 @@ try {
     assert.equal(await dan.locator(".booru-post img").count(), 0);
     await page.reload();
     await dan
-      .getByText("Showing 4 posts after the selected filters.", { exact: false })
+      .getByText("Showing 4 posts after the selected filters.", {
+        exact: false,
+      })
       .waitFor();
     assert.equal(
       await page.getByLabel("Show thumbnails", { exact: true }).isChecked(),
