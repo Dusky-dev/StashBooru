@@ -1,6 +1,21 @@
 # StashBooru implementation progress
 
-Updated: 2026-10-25
+Updated: 2026-10-26
+
+## Safe 7z previews and individual downloads — 2026-10-26
+
+- Recognize 7z attachments alongside ZIP/CBZ for Pawchive and Kemono
+  in post cards and inspection; no external unarchiving executable needed.
+- Add pure-Go 7z parsing with signature/encoded-header bounds, existing
+  configurable archive and member size caps, 512-entry/128-media caps,
+  restricted file types and paths, and a total selectable decoded-byte cap.
+- Reuse the authenticated archive route, media fingerprints, bounded lazy
+  inspector, vetted per-entry downloads, conversion workflow and existing
+  decompression semaphore for 7z.
+- Reject encrypted/split/malformed archives and unsupported member media;
+  never extract archive contents to server paths. Add path, format,
+  rejection and content-signature tests. CI and live archive tests pending.
+- Baseline develop: 055658539dc38a887d0d46093440c5c29b203950.
 
 ## Fill hidden Booru posts and expand page sizes — 2026-10-25
 
