@@ -122,9 +122,9 @@ export const InferenceWorkerSettings: React.FC = () => {
           Extract the complete ZIP on the worker PC, install its Python
           requirements, and start visual_embedding_server.py. Run the included
           remote_worker_check.py to verify available services. All processing
-          modules are included; optional models, GPU runtimes and codecs must
-          be installed separately. Match your server version. Development
-          downloads update after a successful release build.
+          modules are included; optional models, GPU runtimes and codecs must be
+          installed separately. Match your server version. Development downloads
+          update after a successful release build.
         </p>
       </div>
       <Card>
