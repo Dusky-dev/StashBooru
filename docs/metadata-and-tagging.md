@@ -116,6 +116,40 @@ Images **Generate** workflow
 and runs as a job. It is not a batch version of every optional single-Image source;
 inspect the chosen action and selected scope before starting it.
 
+### Bulk Image tagging (opt-in)
+
+In **Settings → Processing → Similarity and tagging → Tagging defaults**, enable
+**Bulk auto-tagging for multiple selected Images** and save. It is disabled by
+default, including for existing installations. Each multi-Image selection has two
+distinct workflows:
+
+- **Bulk disabled**: before starting two or more selected Images, a warning
+  explains that tagging will still require one approval **per Image**. **OK**
+  continues to the thumbnail-assisted review, **Cancel** aborts, and **Don't
+  show again** proceeds to review and suppresses only this advisory for the
+  current browser. It never enables automatic tagging.
+- **Bulk enabled**: the same Image-only selection displays **one** warning
+  with its exact count and what will be applied. Choose Camie, EVA02, or both
+  (both checked initially), and the Character, Artist, Copyright and Tag
+  categories. **Confirm and tag** queues a cancellable job for those explicit
+  Image IDs, with no per-image review. **Review individually** retains the
+  standard thumbnail-assisted review, and **Cancel** starts no job.
+
+A single Image or mixed Image/Video selection always uses normal per-item
+review. The selected Image's thumbnail appears at the left of its metadata
+review so users can verify which media receives each proposed tag set.
+
+Bulk automatic tagging supports local filename metadata and optionally Camie
+v2 and EVA02, using each model's configured threshold and the per-category
+limit. Filename identities remain authoritative over conflicting inferred
+identities, and duplicate predictions preserve the earlier source's choice.
+Only general/rating/Character predictions supported by EVA02's tagging model
+are applied. Booru lookup and similar-library suggestions remain manual-only.
+The chosen worker(s) must have the selected model(s) installed. Existing Artist
+links are not replaced; categories can be disabled before confirming. Cancelled
+jobs cannot roll back previously applied Images. Failed Image IDs are recorded
+in logs.
+
 ### Filename layout and MD5 provenance
 
 Configure filename metadata in **Settings → Processing → Similarity and tagging**.

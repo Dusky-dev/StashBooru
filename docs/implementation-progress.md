@@ -19,6 +19,42 @@ Updated: 2026-10-25
 - Added focused Node tests for count behavior and both GraphQL field contracts;
   full UI GraphQL generation/build, browser verification and CI are pending.
 
+## Bulk Image review thumbnails, advisory and EVA02 source — 2026-10-25
+
+- Follow-up to PR #219 on `feat/bulk-image-tag-confirmation-20261025`: add
+  an authenticated thumbnail at left of Image metadata review, tied to each
+  selected Image ID across sequential review.
+- With bulk auto-tagging disabled, multi-Image review shows a warning with
+  **Don't show again**, **OK**, and **Cancel**. The per-browser dismissal
+  suppresses only the warning; it never enables auto-apply.
+- Automatic bulk mode now offers Camie, EVA02, or both (default both); backend
+  uses the existing EVA02 inference client, source conversion and category
+  rules, and preserves filename → Camie → EVA02 source priority. Only explicit
+  selected Image IDs and one confirmed request may queue the new bulk job.
+- Separate user guidance describes the two workflows, model installation
+  prerequisites and non-rollback of already-applied changes.
+- Pending CI and Codex Review; local full build/browser execution not yet
+  verified in the connected GitHub-only workflow.
+
+## Optional bulk Image tagging and single confirmation — 2026-10-25
+
+- Baseline fresh develop `7a492ab8d32092d6b8105bedd1e4028156dc4bac`, branch
+  `feat/bulk-image-tag-confirmation-20261025`. The existing Camie multi-image
+  job endpoint remained available after its Generate UI action was removed.
+- Add server-persisted, default-off **Bulk auto-tagging for multiple selected Images**
+  in Settings → Processing → Similarity and tagging → Tagging defaults.
+- Reuse the shared Review metadata entry point for Image-only multi-selections
+  from Images, All and Generate. When enabled, display one clear warning about
+  the number selected, irreversible partial writes, job scope and Camie-only
+  source coverage. One explicit Confirm queues the existing cancellable job;
+  Cancel writes nothing, and Review individually remains available.
+- Preserve the native review flow for single Images, mixed Image/Video lists,
+  disabled bulk mode and unreadable settings. Bulk jobs are scoped to explicit
+  selected IDs, never the whole library, and do not replace Artists by default.
+- Add focused configuration and scope/payload unit tests and the usage contract
+  to metadata-and-tagging docs. GitHub CI and review to validate the published PR;
+  no local app/bundler/toolchain is available in this GitHub-only environment.
+
 ## Copyright draft retention and partial-link retries (E12) — 2026-10-25
 
 - Started from fresh develop `fb812b71a8f528e91a75169c901bc042b3337bf3`
