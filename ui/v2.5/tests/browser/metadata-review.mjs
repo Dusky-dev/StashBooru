@@ -52,7 +52,7 @@ try {
           filenameEnabled: true,
           filenameLayout: "%artist%",
         });
-      if (endpoint === "thumbnail") {
+      if (endpoint === "thumbnail" || endpoint === "image") {
         return route.fulfill({
           status: 200,
           contentType: "image/svg+xml",
@@ -138,7 +138,29 @@ try {
       await main()
         .getByRole("img", { name: "Image #1 receiving metadata" })
         .getAttribute("src"),
-      "image/1/thumbnail"
+      "image/1/image"
+    );
+    const previewDimensions = await main().evaluate((element) => {
+      const preview = element.querySelector(
+        ".image-tagging-review-preview img"
+      );
+      const body = element.querySelector(".modal-body");
+      if (!preview || !body) return null;
+      return {
+        width: preview.getBoundingClientRect().width,
+        height: preview.getBoundingClientRect().height,
+        bodyHeight: body.getBoundingClientRect().height,
+        objectFit: getComputedStyle(preview).objectFit,
+      };
+    });
+    assert.ok(previewDimensions, "Image preview is mounted");
+    assert.equal(previewDimensions.objectFit, "contain");
+    assert.ok(
+      viewport.width >= 768
+        ? previewDimensions.width > 210 &&
+            previewDimensions.height >= previewDimensions.bodyHeight - 40
+        : previewDimensions.width > 250 && previewDimensions.height > 200,
+      "Preview fills the available review pane without overflowing"
     );
     await main()
       .getByRole("button", { name: "Apply selected metadata", exact: true })
@@ -175,6 +197,12 @@ try {
       .getByRole("button", { name: "Skip item", exact: true })
       .click();
     await main().getByText("Image #2", { exact: true }).waitFor();
+    assert.equal(
+      await main()
+        .getByRole("img", { name: "Image #2 receiving metadata" })
+        .getAttribute("src"),
+      "image/2/image"
+    );
     assert.deepEqual(writes, ["image:1"], "Skip writes nothing");
     await close();
     assert.equal(page.url(), retainedURL);
@@ -227,7 +255,10 @@ try {
       } else {
         assert.equal(await page.locator(".image-tagging-dialog").count(), 1);
         const toastClose = page.locator(".toast-container .close");
-        if (await toastClose.isVisible()) await toastClose.click();
+        if (await toastClose.isVisible()) {
+          // Toast controls can be clipped outside the viewport by layout/animations.
+          await toastClose.evaluate((element) => element.click());
+        }
         await page.evaluate(async () => {
           await Promise.all(
             document
