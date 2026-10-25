@@ -43,7 +43,7 @@ func TestBooruSevenZipRejectsWrongMagicOrHeaderBounds(t *testing.T) {
 }
 
 func TestBooruSevenZipMediaReadNeverServesForgedContent(t *testing.T) {
-	selected := booruArchiveFile{Index: 0, Name: "image.png", Bytes: 14, Format: "png"}
+	selected := booruArchiveFile{Index: 0, Name: "image.png", Bytes: 13, Format: "png"}
 	_, _, err := readBooruArchiveStreamWithLimit(context.Background(), func() (io.ReadCloser, error) {
 		return io.NopCloser(strings.NewReader("<html>malware")), nil
 	}, selected, 128)
