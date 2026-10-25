@@ -115,13 +115,24 @@ try {
       name: "Fixture General Tag",
     });
     assert.equal(await generalLink.getAttribute("href"), "/tags/7");
-    assert.equal(await generalTags.locator("img, .booru-tag-preview").count(), 0);
-    await generalLink.hover();
-    assert.equal(await generalTags.locator("img, .booru-tag-preview").count(), 0);
-    await generalLink.focus();
-    assert.equal(await generalTags.locator("img, .booru-tag-preview").count(), 0);
     assert.equal(
-      await page.locator(".booru-tag-section-artist .booru-entity-card-image").count(),
+      await generalTags.locator("img, .booru-tag-preview").count(),
+      0
+    );
+    await generalLink.hover();
+    assert.equal(
+      await generalTags.locator("img, .booru-tag-preview").count(),
+      0
+    );
+    await generalLink.focus();
+    assert.equal(
+      await generalTags.locator("img, .booru-tag-preview").count(),
+      0
+    );
+    assert.equal(
+      await page
+        .locator(".booru-tag-section-artist .booru-entity-card-image")
+        .count(),
       1,
       "Artist card images remain available"
     );

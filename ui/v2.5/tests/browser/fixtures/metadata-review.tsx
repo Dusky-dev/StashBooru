@@ -115,14 +115,16 @@ function Fixture() {
           {
             id: "7",
             name: "Fixture General Tag",
-            image_path: "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'/%3E",
+            image_path:
+              "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'/%3E",
           },
         ]}
         artists={[
           {
             id: "9",
             name: "Fixture Artist",
-            image_path: "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'/%3E",
+            image_path:
+              "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'/%3E",
           },
         ]}
       />
