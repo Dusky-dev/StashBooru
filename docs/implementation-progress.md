@@ -2,6 +2,23 @@
 
 Updated: 2026-10-25
 
+## Booru entity metadata Image/Video counts — 2026-10-25
+
+- Baseline fresh `develop` `7a492ab8d32092d6b8105bedd1e4028156dc4bac`.
+  Isolated branch `fix/booru-entity-media-counts-20261025` independent of the
+  open bulk-tagging PR #219.
+- Root cause: Image detail `effective_associations` requested slim Artists and
+  Copyrights without `scene_count`/`image_count`, despite sidebar cards
+  rendering these numbers. Video detail requested the direct counts but did
+  not fetch hierarchy ancestor counts; `CopyrightGrid` omitted stats entirely.
+- Explicitly project media totals for Artists, Copyrights and their breadcrumb
+  ancestors on both Image and Video detail fragments, and reuse one shared
+  stats display on standard and Copyright hierarchy cards.
+- Unknown/missing count fields no longer masquerade as zero; actual zero stays
+  visible. Existing native Character card and provider navigation are unchanged.
+- Added focused Node tests for count behavior and both GraphQL field contracts;
+  full UI GraphQL generation/build, browser verification and CI are pending.
+
 ## Copyright draft retention and partial-link retries (E12) — 2026-10-25
 
 - Started from fresh develop `fb812b71a8f528e91a75169c901bc042b3337bf3`

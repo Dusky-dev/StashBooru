@@ -98,6 +98,11 @@ and Tagger displays appear where supported; view/zoom and media-tab preferences
 are remembered per view. Primary file format is available for sorting Images and
 Videos and in bulk-edit filters. File properties appear in Details.
 
+On Image and Video detail pages, the Booru metadata entity cards display
+Video and Image totals for their associated Artists and Copyrights, including
+Copyright ancestors in the hierarchy. A genuine zero remains visible; a missing
+count is not presented as zero.
+
 Character cards use portrait artwork, Artists square artwork and Copyrights
 landscape artwork. Character Copyrights and Variants appear together. Native
 Video previews own the active player, stop on dismissal and advance through

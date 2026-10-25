@@ -1,10 +1,13 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { BooruEntityStats } from "../Shared/BooruEntityStats";
 
 export interface CopyrightGridItem {
   id: string;
   name: string;
   image_path?: string | null;
+  scene_count?: number | null;
+  image_count?: number | null;
 }
 
 interface CopyrightGridProps {
@@ -57,6 +60,7 @@ export const CopyrightGrid: React.FC<CopyrightGridProps> = ({
           >
             {copyright.name}
           </Link>
+          <BooruEntityStats entity={copyright} />
         </article>
       ))}
     </div>
