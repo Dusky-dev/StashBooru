@@ -306,7 +306,13 @@ generate-ui:
 
 .PHONY: generate-backend
 generate-backend: touch-ui
-	go generate ./cmd/stash
+	go mod tidy
+	@echo "=== sevenzip tidy go.mod diff ==="
+	git diff -- go.mod
+	@echo "=== sevenzip tidy go.sum diff stat ==="
+	git diff --stat -- go.sum
+	@echo "=== diagnostic ends before generate ==="
+	@exit 1
 
 .PHONY: generate-login-locale
 generate-login-locale:
