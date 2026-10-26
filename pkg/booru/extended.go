@@ -131,8 +131,8 @@ func (c *Client) searchExtended(ctx context.Context, s Source, query string, pag
 				endpoint += "/posts"
 			}
 		} else if query != "*" && strings.TrimSpace(query) != "" {
-			if s.Engine != "pawchive" && len(query) < 3 {
-				return result, &Error{Code: "invalid-query", Message: "Archive text searches need at least three bytes; use * for recent posts."}
+			if len([]rune(strings.TrimSpace(query))) < 3 {
+				return result, &Error{Code: "invalid-query", Message: "Archive text searches need at least three characters; use * for recent posts."}
 			}
 			// Pawchive's own /posts?q= search spans the provider archive.
 			// Fetch the matching API page directly instead of scanning the
@@ -144,6 +144,7 @@ func (c *Client) searchExtended(ctx context.Context, s Source, query string, pag
 	// blocks, rather than dropping records or pretending the API honors limit.
 	start := (page - 1) * limit
 	end := start + limit
+	skipped := 0
 	for offset := (start / block) * block; offset < end; offset += block {
 		key := "o"
 		if s.Engine == "pixiv" {
@@ -155,7 +156,13 @@ func (c *Client) searchExtended(ctx context.Context, s Source, query string, pag
 			return result, err
 		}
 		rows, err := extendedRows(s.Engine, data)
-		if err != nil || len(rows) > block {
+		if err != nil {
+			if s.Engine == "pawchive" && pawchiveProviderError(data) {
+				return result, &Error{Code: "provider-error", Message: "Pawchive rejected the search. Try a different keyword or browse recent posts."}
+			}
+			return result, extendedParseError()
+		}
+		if len(rows) > block {
 			return result, extendedParseError()
 		}
 		// Avoid another provider request to compare every q result with an
@@ -187,6 +194,12 @@ func (c *Client) searchExtended(ctx context.Context, s Source, query string, pag
 				post, err = parseArchivePost(s, raw)
 			}
 			if err != nil {
+				if s.Engine == "pawchive" {
+					// An isolated corrupt upstream post must not hide every
+					// other valid result. Do not shift provider offsets.
+					skipped++
+					continue
+				}
 				return result, extendedParseError()
 			}
 			result.Posts = append(result.Posts, post)
@@ -195,6 +208,15 @@ func (c *Client) searchExtended(ctx context.Context, s Source, query string, pag
 		if len(rows) < block {
 			break
 		}
+	}
+	if skipped > 0 {
+		if len(result.Posts) == 0 {
+			return result, &Error{Code: "invalid-response", Message: "Pawchive returned only malformed posts on this page. Try a different search or open the source website."}
+		}
+		if result.SearchNotice != "" {
+			result.SearchNotice += " "
+		}
+		result.SearchNotice += fmt.Sprintf("Pawchive omitted %d malformed post(s) from this page.", skipped)
 	}
 	result.HasMore = result.HasMore && page < MaxPage
 	return result, nil
@@ -206,13 +228,24 @@ func extendedParseError() error {
 func safeProviderPart(value string) bool {
 	return value != "" && len(value) <= 256 && value != "." && value != ".." && !strings.ContainsAny(value, "/\\\r\n\x00 ")
 }
+
+// Some Pawchive API failures are JSON objects sent with HTTP 200. Never
+// interpret these as empty searches, and do not expose arbitrary remote text.
+func pawchiveProviderError(data []byte) bool {
+	var envelope object
+	return json.Unmarshal(data, &envelope) == nil && providerEnvelopeError(envelope)
+}
+func providerEnvelopeError(envelope object) bool {
+	raw := envelope["error"]
+	return len(raw) > 0 && string(raw) != "null" && string(raw) != "false" && string(raw) != "\"\""
+}
 func extendedRows(engine string, data []byte) ([]object, error) {
 	var rows []object
 	if json.Unmarshal(data, &rows) == nil && rows != nil {
 		return rows, nil
 	}
 	var envelope object
-	if json.Unmarshal(data, &envelope) != nil || envelope["error"] != nil {
+	if json.Unmarshal(data, &envelope) != nil || providerEnvelopeError(envelope) {
 		return nil, fmt.Errorf("invalid envelope")
 	}
 	key := "posts"

@@ -76,7 +76,7 @@ search on Pawchive's website. Some older Pawchive API versions ignored
 matches. If any result lacks a visible title/body match, a notice warns that
 the provider may instead have matched creator metadata or returned an
 unfiltered feed. Check the website if results look unrelated.
-Provider indexing, availability, rate limits and its maximum offset apply.
+Pawchive text searches require at least three characters. An isolated malformed post in an otherwise valid API page is omitted with a notice rather than failing the entire search; if all returned posts are malformed, the browser reports an error. Provider indexing, availability, rate limits and its maximum offset apply.
 
 With the rating control at its default, the same query is sent unchanged
 to the selected source. Other rating values append the selected engine's native filter
@@ -362,7 +362,7 @@ media entries per archive, 256 MiB decompressed per entry by default (same confi
 ratio and total selectable 7z decoded bytes of up to four times the configured limit, and at most four cached archives for five minutes. The 7z reader is pure Go (no external executable) and limits encoded headers to 2 MiB; encrypted, split-volume, invalid, or unsupported-codec archives fail without extracting to disk. Unsafe paths, symlinks,
 unsupported formats and nested archives are not opened; the inspector reports
 skipped entries. If an archive is too large, corrupt or password-protected,
-open the remote post instead. RAR and 7z are not supported yet; archive contents
+open the remote post instead. RAR is not supported; archive contents
 can be saved individually using **Download to Stash** or **Download to…**. Each extracted media file has its own download job, native scan and optional converter settings.
 
 ### Posts with multiple media files
