@@ -14,7 +14,9 @@ func TestSevenZipRemoteMediaRequiresArchiveOptIn(t *testing.T) {
 	body := "7z\xbc\xaf\x27\x1c" + strings.Repeat("x", 40)
 	source := testSource("pawchive")
 	c := testClient(func(*http.Request) (*http.Response, error) {
-		return response(http.StatusOK, body), nil
+		res := response(http.StatusOK, body)
+		res.ContentLength = int64(len(body))
+		return res, nil
 	})
 	var output bytes.Buffer
 	_, err := c.FetchMedia(context.Background(), source, MediaRequest{
