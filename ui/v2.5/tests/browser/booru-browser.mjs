@@ -1391,8 +1391,17 @@ try {
       "draft query"
     );
 
-    const listingPagination = dan.locator(".booru-pagination .pagination");
+    const listingPagination = dan.locator(
+      ".booru-pagination.pagination-footer-container > .pagination-footer > .pagination"
+    );
     await listingPagination.waitFor();
+    assert.equal(
+      await dan
+        .locator(".booru-pagination")
+        .evaluate((node) => getComputedStyle(node).position),
+      "sticky",
+      "Booru pagination should use native floating footer positioning"
+    );
     assert.equal(
       await listingPagination.locator(".page-count").innerText(),
       "Page 1"
@@ -1417,6 +1426,15 @@ try {
     // pagination layout while retaining a jump-to-page control and no fake last.
     await listingPagination.locator(".page-count").click();
     const jumpPage = page.locator("#select_page_popover input[type=number]");
+    await jumpPage.waitFor();
+    const chooserBox = await page.locator("#select_page_popover").boundingBox();
+    const footerBox = await listingPagination.boundingBox();
+    assert.ok(
+      chooserBox &&
+        footerBox &&
+        chooserBox.y + chooserBox.height <= footerBox.y + 12,
+      "Floating footer's page selector opens above pagination"
+    );
     await jumpPage.fill("50");
     await jumpPage.press("Enter");
     await dan

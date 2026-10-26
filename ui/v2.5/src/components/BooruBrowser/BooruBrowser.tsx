@@ -986,23 +986,26 @@ function SourceResults({
               </article>
             )}
           </BooruReview>
-          <div className="d-flex flex-wrap mt-3 booru-pagination">
-            <Pagination
-              currentPage={page}
-              unknownTotal
-              hasMore={result.hasMore}
-              maxPage={MAX_BOORU_PAGE}
-              onChangePage={(target) => {
-                if (
-                  Number.isInteger(target) &&
-                  target >= 1 &&
-                  target <= MAX_BOORU_PAGE &&
-                  target !== page
-                ) {
-                  onPage(target);
-                }
-              }}
-            />
+          <div className="pagination-footer-container booru-pagination">
+            <div className="pagination-footer">
+              <Pagination
+                currentPage={page}
+                unknownTotal
+                hasMore={result.hasMore}
+                maxPage={MAX_BOORU_PAGE}
+                pagePopupPlacement="top"
+                onChangePage={(target) => {
+                  if (
+                    Number.isInteger(target) &&
+                    target >= 1 &&
+                    target <= MAX_BOORU_PAGE &&
+                    target !== page
+                  ) {
+                    onPage(target);
+                  }
+                }}
+              />
+            </div>
           </div>
           {page === MAX_BOORU_PAGE && (
             <Alert variant="info" className="mt-2">
