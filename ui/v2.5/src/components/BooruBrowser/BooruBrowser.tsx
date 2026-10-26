@@ -297,7 +297,9 @@ function PostInspection({
                     {asset.format && ` · ${asset.format.toUpperCase()}`}
                   </h6>
                 )}
-                {["zip", "cbz", "7z"].includes(asset.format?.toLowerCase() ?? "") ? (
+                {["zip", "cbz", "7z"].includes(
+                  asset.format?.toLowerCase() ?? ""
+                ) ? (
                   <BooruArchive
                     post={asset}
                     scrollBody={scrollBody}
