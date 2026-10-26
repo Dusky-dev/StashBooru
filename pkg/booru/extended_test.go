@@ -12,6 +12,66 @@ import (
 	"testing"
 )
 
+func TestPawchiveRejectsShortSearchWithoutAPICall(t *testing.T) {
+	s := testSource("pawchive")
+	c := testClient(func(r *http.Request) (*http.Response, error) {
+		t.Fatalf("invalid short query reached Pawchive: %s", r.URL)
+		return response(http.StatusOK, "[]"), nil
+	})
+	for _, query := range []string{"a", "ab", " ab "} {
+		_, err := c.Search(context.Background(), s, query, 1, 24)
+		var failure *Error
+		if !errors.As(err, &failure) || failure.Code != "invalid-query" ||
+			!strings.Contains(failure.Message, "three characters") {
+			t.Fatalf("short Pawchive query %q was not rejected clearly: %v", query, err)
+		}
+	}
+}
+
+func TestPawchiveSearchSkipsMalformedPostsWithoutDroppingPage(t *testing.T) {
+	s := testSource("pawchive")
+	c := testClient(func(r *http.Request) (*http.Response, error) {
+		return response(http.StatusOK, `[
+			{"id":"301","user":"42","service":"patreon","title":"Meili part one"},
+			{"id":"302","user":null,"service":"patreon","title":"Broken archive entry"},
+			{"id":"303","user":"42","service":"patreon","title":"Meili part two"}
+		]`), nil
+	})
+	got, err := c.Search(context.Background(), s, "meili", 1, 24)
+	if err != nil || len(got.Posts) != 2 || got.Posts[0].RemoteID != "301" ||
+		got.Posts[1].RemoteID != "303" || got.HasMore ||
+		!strings.Contains(got.SearchNotice, "omitted 1 malformed post") {
+		t.Fatalf("an isolated malformed Pawchive post broke the search: %+v %v", got, err)
+	}
+}
+
+func TestPawchiveSearchWithOnlyMalformedPostsFailsClearly(t *testing.T) {
+	s := testSource("pawchive")
+	c := testClient(func(*http.Request) (*http.Response, error) {
+		return response(http.StatusOK, `[{"id":"301","service":"patreon","user":null}]`), nil
+	})
+	_, err := c.Search(context.Background(), s, "meili", 1, 24)
+	var failure *Error
+	if !errors.As(err, &failure) || failure.Code != "invalid-response" ||
+		!strings.Contains(failure.Message, "only malformed posts") {
+		t.Fatalf("all-malformed Pawchive page was not flagged: %v", err)
+	}
+}
+
+func TestPawchiveProviderErrorEnvelopeExplainsRejection(t *testing.T) {
+	s := testSource("pawchive")
+	c := testClient(func(*http.Request) (*http.Response, error) {
+		return response(http.StatusOK, `{"error":"unsupported q","message":"provider-only details"}`), nil
+	})
+	_, err := c.Search(context.Background(), s, "meili", 1, 24)
+	var failure *Error
+	if !errors.As(err, &failure) || failure.Code != "provider-error" ||
+		!strings.Contains(failure.Message, "Pawchive rejected the search") ||
+		strings.Contains(failure.Message, "provider-only") {
+		t.Fatalf("provider error returned the wrong feedback: %v", err)
+	}
+}
+
 func TestPawchiveFullArchiveKeywordSearch(t *testing.T) {
 	s := testSource("pawchive")
 	offsets := []int{}

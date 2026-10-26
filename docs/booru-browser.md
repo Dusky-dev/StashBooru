@@ -76,7 +76,7 @@ search on Pawchive's website. Some older Pawchive API versions ignored
 matches. If any result lacks a visible title/body match, a notice warns that
 the provider may instead have matched creator metadata or returned an
 unfiltered feed. Check the website if results look unrelated.
-Provider indexing, availability, rate limits and its maximum offset apply.
+Pawchive text searches require at least three characters. An isolated malformed post in an otherwise valid API page is omitted with a notice rather than failing the entire search; if all returned posts are malformed, the browser reports an error. Provider indexing, availability, rate limits and its maximum offset apply.
 
 With the rating control at its default, the same query is sent unchanged
 to the selected source. Other rating values append the selected engine's native filter

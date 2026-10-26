@@ -1,6 +1,20 @@
 # StashBooru implementation progress
 
-Updated: 2026-10-25
+Updated: 2026-10-26
+
+## Pawchive search response resilience — 2026-10-26
+
+- Enforce Pawchive's documented three-character search minimum before making
+  a network request; keep recent and creator browsing intact.
+- Preserve valid posts when an isolated Pawchive list record has an invalid
+  identity or attachment structure. Keep upstream offsets stable, show an
+  omission notice, and fail clearly if no valid posts remain.
+- Distinguish JSON provider-error envelopes from malformed data without
+  reflecting untrusted remote error strings. Preserve size/page safeguards.
+- Added focused regression tests for short queries, partial malformed pages,
+  all-invalid pages, and JSON API error envelopes. Live Pawchive API testing
+  was unavailable from this environment; CI validation pending.
+- Baseline develop: 055658539dc38a887d0d46093440c5c29b203950.
 
 ## Fill hidden Booru posts and expand page sizes — 2026-10-25
 
