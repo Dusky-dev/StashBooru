@@ -266,7 +266,7 @@ func mediaExtension(raw string) string {
 }
 func supportedArchiveFile(ext string) bool {
 	switch ext {
-	case "jpg", "jpeg", "png", "webp", "gif", "apng", "avif", "jxl", "bmp", "tiff", "mp4", "webm", "zip", "cbz":
+	case "jpg", "jpeg", "png", "webp", "gif", "apng", "avif", "jxl", "bmp", "tiff", "mp4", "webm", "zip", "cbz", "7z":
 		return true
 	}
 	return false
@@ -403,7 +403,7 @@ func parseArchivePost(s Source, raw object) (Post, error) {
 		}
 		asset.PreviewURL = s.postMediaURL(preview)
 		asset.SampleURL = asset.PreviewURL
-		if ext == "zip" || ext == "cbz" {
+		if ext == "zip" || ext == "cbz" || ext == "7z" {
 			// Archive thumbnails are not image bytes. The inspector obtains
 			// entries from the bounded, authenticated archive route instead.
 			asset.PreviewURL, asset.SampleURL = "", ""

@@ -297,7 +297,9 @@ function PostInspection({
                     {asset.format && ` · ${asset.format.toUpperCase()}`}
                   </h6>
                 )}
-                {["zip", "cbz"].includes(asset.format?.toLowerCase() ?? "") ? (
+                {["zip", "cbz", "7z"].includes(
+                  asset.format?.toLowerCase() ?? ""
+                ) ? (
                   <BooruArchive
                     post={asset}
                     scrollBody={scrollBody}
@@ -344,7 +346,7 @@ function PostInspection({
                     </span>
                   )}
                 </div>
-                {!["zip", "cbz"].includes(
+                {!["zip", "cbz", "7z"].includes(
                   asset.format?.toLowerCase() ?? ""
                 ) && (
                   <BooruDownload
@@ -972,7 +974,7 @@ function SourceResults({
                 </div>
                 <CoreTagActions post={item} onTag={onTag} />
                 <div className="booru-card-actions">
-                  {!["zip", "cbz"].includes(
+                  {!["zip", "cbz", "7z"].includes(
                     item.format?.toLowerCase() ?? ""
                   ) && (
                     <BooruDownload

@@ -82,7 +82,8 @@ export function BooruArchive({
   return (
     <div className="booru-archive-media" aria-label="Archive media">
       <p className="small text-muted">
-        ZIP/CBZ archive · Preview and save individual extracted media files
+        {post.format?.toUpperCase() ?? "Archive"} archive · Preview and save
+        individual extracted media files
       </p>
       {!listing && !error && <p role="status">Reading archive contents…</p>}
       {error && <Alert variant="warning">{error}</Alert>}

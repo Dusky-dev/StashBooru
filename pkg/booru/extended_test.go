@@ -175,8 +175,8 @@ func TestPawchiveRecentAndCreatorModesUnaffected(t *testing.T) {
 	}
 }
 
-func TestArchiveSourceKeepsZIPAndCBZ(t *testing.T) {
-	for _, extension := range []string{"zip", "cbz"} {
+func TestArchiveSourceKeepsZIPCBZAnd7z(t *testing.T) {
+	for _, extension := range []string{"zip", "cbz", "7z"} {
 		t.Run(extension, func(t *testing.T) {
 			var raw object
 			body := fmt.Sprintf(`{"id":"123","service":"patreon","user":"42","file":{"path":"/album.%s","name":"album.%s"},"attachments":[{"path":"/page.png"}]}`, extension, extension)
@@ -187,7 +187,7 @@ func TestArchiveSourceKeepsZIPAndCBZ(t *testing.T) {
 			if err != nil || post.Format != extension || post.OriginalURL == "" ||
 				post.PreviewURL != "" || post.SampleURL != "" || len(post.Attachments) != 1 ||
 				post.Attachments[0].Format != "png" {
-				t.Fatalf("ZIP/CBZ attachment unavailable: %+v %v", post, err)
+				t.Fatalf("archive attachment unavailable: %+v %v", post, err)
 			}
 		})
 	}

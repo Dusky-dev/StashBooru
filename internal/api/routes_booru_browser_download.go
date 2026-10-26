@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -276,7 +277,7 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 	}
 	if input.ArchiveFile != nil {
 		if *input.ArchiveFile < 0 || *input.ArchiveFile >= booruArchiveMaxFiles ||
-			(strings.ToLower(post.Format) != "zip" && strings.ToLower(post.Format) != "cbz") {
+			!supportedBooruArchiveFormat(post.Format) {
 			writeBooruError(w, 400, "archive", "Invalid archive file selection.")
 			return
 		}
@@ -331,13 +332,15 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 			state.FinishedAt = time.Now()
 		}()
 		var archiveBytes []byte
+		var archiveFormat string
 		var selected booruArchiveFile
 		if input.ArchiveFile != nil {
+			archiveFormat = strings.ToLower(post.Format)
 			data, err := rs.loadBooruArchive(r.WithContext(ctx), input.Key)
 			if err != nil {
 				return fmt.Errorf("archive could not be fetched: %w", err)
 			}
-			listing, _, err := indexBooruArchiveWithLimit(data, maxFileBytes)
+			listing, _, err := openBooruArchiveEntriesWithLimit(data, archiveFormat, maxFileBytes)
 			if err != nil {
 				return err
 			}
@@ -398,13 +401,15 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 		}
 		var info booru.MediaInfo
 		if input.ArchiveFile != nil {
-			_, reader, archiveErr := indexBooruArchiveWithLimit(archiveBytes, maxFileBytes)
+			_, open, archiveErr := openBooruArchiveEntriesWithLimit(archiveBytes, archiveFormat, maxFileBytes)
 			if archiveErr != nil {
 				_ = f.Close()
 				return archiveErr
 			}
 			var decoded []byte
-			decoded, info.ContentType, err = readBooruArchiveEntryWithLimit(ctx, reader.File[selected.Index], selected, maxFileBytes)
+			decoded, info.ContentType, err = readBooruArchiveStreamWithLimit(ctx, func() (io.ReadCloser, error) {
+				return open(selected.Index)
+			}, selected, maxFileBytes)
 			if err == nil {
 				_, err = f.Write(decoded)
 				if err == nil {

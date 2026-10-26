@@ -20,7 +20,7 @@ type MediaRequest struct {
 	ExpectedBytes int64
 	ExpectedMD5   string
 	ImagesOnly    bool
-	AllowZIP      bool // Only for bounded, server-owned archive inspection.
+	AllowZIP      bool // Only for bounded, server-owned ZIP/CBZ/7z inspection.
 }
 
 type MediaInfo struct {
@@ -99,12 +99,20 @@ func (c *Client) FetchMedia(ctx context.Context, source Source, input MediaReque
 	if input.AllowZIP && len(prefix) >= 4 && string(prefix[:4]) == "PK\x03\x04" {
 		ret.ContentType = "application/zip"
 	}
+	if input.AllowZIP && len(prefix) >= 6 && string(prefix[:6]) == "7z\xbc\xaf\x27\x1c" {
+		ret.ContentType = "application/x-7z-compressed"
+	}
 	switch ret.ContentType {
 	case "application/zip":
 		if !input.AllowZIP {
 			return ret, fmt.Errorf("unsupported media type")
 		}
 		ret.Extension = "zip"
+	case "application/x-7z-compressed":
+		if !input.AllowZIP {
+			return ret, fmt.Errorf("unsupported media type")
+		}
+		ret.Extension = "7z"
 	case "image/jpeg":
 		ret.Extension = "jpg"
 	case "image/png":

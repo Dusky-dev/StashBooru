@@ -10,6 +10,30 @@ import (
 	"testing"
 )
 
+func TestSevenZipRemoteMediaRequiresArchiveOptIn(t *testing.T) {
+	body := "7z\xbc\xaf\x27\x1c" + strings.Repeat("x", 40)
+	source := testSource("pawchive")
+	c := testClient(func(*http.Request) (*http.Response, error) {
+		res := response(http.StatusOK, body)
+		res.ContentLength = int64(len(body))
+		return res, nil
+	})
+	var output bytes.Buffer
+	_, err := c.FetchMedia(context.Background(), source, MediaRequest{
+		URL: "https://cdn.example.org/file.7z", Limit: 1024,
+	}, &output)
+	if err == nil || output.Len() != 0 {
+		t.Fatalf("7z accepted as regular media: %v", err)
+	}
+	info, err := c.FetchMedia(context.Background(), source, MediaRequest{
+		URL: "https://cdn.example.org/file.7z", Limit: 1024, AllowZIP: true,
+	}, &output)
+	if err != nil || info.Extension != "7z" || info.ContentType != "application/x-7z-compressed" ||
+		output.String() != body {
+		t.Fatalf("7z archive opt-in failed: %+v %v", info, err)
+	}
+}
+
 func TestMediaBoundaryAndChecksums(t *testing.T) {
 	data := "\xff\xd8\xff" + strings.Repeat("x", 700)
 	checksum := fmt.Sprintf("%x", md5.Sum([]byte(data))) //nolint:gosec // Test checksum.
