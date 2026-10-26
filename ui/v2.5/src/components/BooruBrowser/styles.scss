@@ -222,8 +222,10 @@
     display: none;
   }
 
+  // Match native Images pagination: sticky, centered and floating
+  // above content with the same shared footer wrapper/shadow.
   .booru-pagination {
-    gap: 0.5rem;
+    width: 100%;
   }
 
   .booru-page-tags {

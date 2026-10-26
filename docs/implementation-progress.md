@@ -17,6 +17,18 @@ Updated: 2026-10-26
   rejection and content-signature tests. CI and live archive tests pending.
 - Baseline develop: 055658539dc38a887d0d46093440c5c29b203950.
 
+## Follow-up to #228: native floating Booru pagination — 2026-10-26
+
+- Place the Booru Browser's shared pagination in the same sticky
+  `pagination-footer-container` / `pagination-footer` wrapper used by
+  native Image lists instead of a plain static row after results.
+- Open the page-number popover upward so controls remain usable at the
+  bottom edge. Keep unknown-total paging, direct jumps and provider
+  `hasMore` behavior from merged PR #228.
+- Update browser fixture assertions for sticky footer positioning and
+  upward page selector. Browser/CI verification pending.
+- Baseline develop: 055658539dc38a887d0d46093440c5c29b203950.
+
 ## Pawchive search response resilience — 2026-10-26
 
 - Enforce Pawchive's documented three-character search minimum before making
