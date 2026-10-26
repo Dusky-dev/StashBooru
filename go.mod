@@ -4,6 +4,8 @@ go 1.25.13
 
 require (
 	github.com/99designs/gqlgen v0.17.73
+	github.com/WithoutPants/sortorder v0.0.0-20230616003020-921c9ef69552
+	github.com/Yamashou/gqlgenc v0.32.1
 	github.com/anacrolix/dms v1.2.2
 	github.com/antchfx/htmlquery v1.3.5
 	github.com/asg017/sqlite-vec-go-bindings v0.1.6
@@ -56,9 +58,7 @@ require (
 	github.com/vektah/dataloaden v0.3.0
 	github.com/vektah/gqlparser/v2 v2.5.27
 	github.com/vektra/mockery/v2 v2.10.0
-	github.com/WithoutPants/sortorder v0.0.0-20230616003020-921c9ef69552
 	github.com/xWTF/chardet v0.0.0-20230208095535-c780f2ac244e
-	github.com/Yamashou/gqlgenc v0.32.1
 	github.com/zencoder/go-dash/v3 v3.0.2
 	golang.org/x/crypto v0.55.0
 	golang.org/x/image v0.45.0
@@ -66,7 +66,7 @@ require (
 	golang.org/x/sys v0.47.0
 	golang.org/x/term v0.45.0
 	golang.org/x/text v0.41.0
-	golang.org/x/time v0.10.0
+	golang.org/x/time v0.14.0
 	gopkg.in/guregu/null.v4 v4.0.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v2 v2.4.0
