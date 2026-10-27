@@ -168,6 +168,15 @@ AND alias IN (SELECT alias FROM studio_aliases WHERE studio_id=?)`, sourceID, de
 		return err
 	}
 	if source.Name != dest.Name {
+		conflict, err := mergeConflictCount(ctx,
+			"SELECT COUNT(*) FROM studio_aliases WHERE alias=? AND studio_id!=?",
+			source.Name, destinationID)
+		if err != nil {
+			return err
+		}
+		if conflict {
+			return fmt.Errorf("Artist name is used as another Artist's alias; resolve it before merging")
+		}
 		if err := mergeExec(ctx, `INSERT OR IGNORE INTO studio_aliases(studio_id,alias)
 VALUES (?,?)`, destinationID, source.Name); err != nil {
 			return err
@@ -280,7 +289,7 @@ SELECT ?,role FROM copyright_structural_roles WHERE copyright_id=?`, destination
 	}
 	if err := mergeExec(ctx, `UPDATE copyright_structural_roles SET role=(SELECT role FROM copyright_structural_roles WHERE copyright_id=?)
 WHERE copyright_id=? AND role='' AND EXISTS (SELECT 1 FROM copyright_structural_roles WHERE copyright_id=? AND role!='')`,
-		sourceID,destinationID,sourceID); err != nil {
+		sourceID, destinationID, sourceID); err != nil {
 		return err
 	}
 	if err := mergeExec(ctx, `INSERT OR IGNORE INTO copyright_aliases(copyright_id,alias)
