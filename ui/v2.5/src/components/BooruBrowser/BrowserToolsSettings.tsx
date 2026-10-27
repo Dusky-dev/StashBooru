@@ -18,6 +18,10 @@ export function BrowserToolsSettings() {
     [directory, setDirectory] = useState("");
   const [filenameTemplate, setFilenameTemplate] = useState("");
   const [importTags, setImportTags] = useState(false);
+  const [autoTagImages, setAutoTagImages] = useState(false);
+  const [autoTagSources, setAutoTagSources] = useState<string[]>([]);
+  const [autoTagCamie, setAutoTagCamie] = useState(true);
+  const [autoTagEva02, setAutoTagEva02] = useState(false);
   const [maxFileSizeMiB, setMaxFileSizeMiB] = useState(256);
   const [picker, setPicker] = useState(false),
     [loaded, setLoaded] = useState(false),
@@ -49,6 +53,10 @@ export function BrowserToolsSettings() {
           defaultDirectory: string;
           filenameTemplate?: string;
           importTags?: boolean;
+          autoTagImages?: boolean;
+          autoTagSources?: string[];
+          autoTagCamie?: boolean;
+          autoTagEva02?: boolean;
           maxFileSizeMiB: number;
         }>
       ),
@@ -63,6 +71,10 @@ export function BrowserToolsSettings() {
           setDirectory(settings.defaultDirectory);
           setFilenameTemplate(settings.filenameTemplate ?? "");
           setImportTags(settings.importTags ?? false);
+          setAutoTagImages(settings.autoTagImages ?? false);
+          setAutoTagSources(settings.autoTagSources ?? []);
+          setAutoTagCamie(settings.autoTagCamie ?? true);
+          setAutoTagEva02(settings.autoTagEva02 ?? false);
           setMaxFileSizeMiB(settings.maxFileSizeMiB ?? 256);
           setLoaded(true);
           setError("");
@@ -121,6 +133,10 @@ export function BrowserToolsSettings() {
         defaultDirectory: directory,
         filenameTemplate,
         importTags,
+        autoTagImages,
+        autoTagSources,
+        autoTagCamie,
+        autoTagEva02,
         maxFileSizeMiB,
       }),
     }).then(readBooruResponse);
@@ -261,6 +277,70 @@ export function BrowserToolsSettings() {
         your computer. Refresh search results after enabling to capture the
         complete provider tag list.
       </p>
+      <Form.Check
+        type="switch"
+        className="mt-3"
+        id="booru-auto-tag-images"
+        label="Automatically tag downloaded Images (Metadata Image Review)"
+        checked={autoTagImages}
+        disabled={busy || !loaded}
+        onChange={(event) => setAutoTagImages(event.currentTarget.checked)}
+      />
+      {autoTagImages && (
+        <div className="mt-2">
+          <p className="text-muted">
+            After importing an Image into Stash, run Image Tagging automatically
+            using the existing model thresholds and filename rules. Predictions
+            are applied without opening the review dialog. Artists and other
+            existing metadata are preserved. Video and computer downloads are
+            excluded. Model errors do not undo the download.
+          </p>
+          <Form.Check
+            id="booru-auto-tag-camie"
+            label="Camie v2 (Characters, Artists, Copyrights and Tags)"
+            checked={autoTagCamie}
+            disabled={busy || !loaded}
+            onChange={(event) => setAutoTagCamie(event.currentTarget.checked)}
+          />
+          <Form.Check
+            id="booru-auto-tag-eva"
+            label="EVA02 (general, rating and Character tags)"
+            checked={autoTagEva02}
+            disabled={busy || !loaded}
+            onChange={(event) => setAutoTagEva02(event.currentTarget.checked)}
+          />
+          <Form.Group className="mt-3" controlId="booru-auto-tag-whitelist">
+            <Form.Label>Allowed booru sources</Form.Label>
+            <Form.Text muted className="d-block mb-2">
+              Only checked boorus trigger automatic Image Tagging. None are
+              selected by default. Changing a source website requires selecting
+              it again.
+            </Form.Text>
+            {sources
+              .filter(
+                (item, index, list) =>
+                  list.findIndex((other) => other.instance === item.instance) ===
+                  index
+              )
+              .map((item) => (
+                <Form.Check
+                  key={item.instance}
+                  id={`booru-auto-tag-source-${item.id}`}
+                  label={item.name}
+                  checked={autoTagSources.includes(item.instance)}
+                  disabled={busy || !loaded}
+                  onChange={(event) =>
+                    setAutoTagSources((current) =>
+                      event.currentTarget.checked
+                        ? [...current, item.instance]
+                        : current.filter((instance) => instance !== item.instance)
+                    )
+                  }
+                />
+              ))}
+          </Form.Group>
+        </div>
+      )}
       <p className="text-muted">
         Files are saved into this server's Stash library and imported by its
         native scanner. Conversion uses the saved format, quality, effort,
@@ -273,7 +353,9 @@ export function BrowserToolsSettings() {
           !loaded ||
           !Number.isInteger(maxFileSizeMiB) ||
           maxFileSizeMiB < 16 ||
-          maxFileSizeMiB > 512
+          maxFileSizeMiB > 512 ||
+          (autoTagImages &&
+            (autoTagSources.length === 0 || (!autoTagCamie && !autoTagEva02)))
         }
         onClick={() => void action(save)}
       >
