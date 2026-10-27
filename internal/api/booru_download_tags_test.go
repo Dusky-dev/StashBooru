@@ -71,6 +71,46 @@ func TestBooruDownloadTagsReuseExistingAndRetrySafely(t *testing.T) {
 	}
 }
 
+func TestBooruImportKeepsNativeBooruCategories(t *testing.T) {
+	// Some APIs include a flat tag list and categorized fields. The
+	// categorized version must replace the earlier unknown/general type.
+	tags := []booru.Tag{
+		{Name: "Saber", Category: "unknown"},
+		{Name: "artist_name", Category: "unknown"},
+		{Name: "fate_(series)", Category: "general"},
+		{Name: "blue_eyes", Category: "general"},
+		{Name: "source_request", Category: "meta"},
+		{Name: "mystery", Category: "unknown"},
+		{Name: "saber", Category: "character"},
+		{Name: "ARTIST_NAME", Category: "artist"},
+		{Name: "fate_(series)", Category: "copyright"},
+	}
+	ordinary, typed := splitBooruImportTags(tags)
+	if len(typed) != 3 || typed[0].Category != "character" || typed[1].Category != "artist" || typed[2].Category != "copyright" {
+		t.Fatalf("native Stash metadata categories were lost: %+v", typed)
+	}
+	if typed[0].Source != "booru:download" || typed[0].Score != 1 || typed[0].RawName != "Saber" {
+		t.Fatalf("native resolver did not receive verified booru provenance: %+v", typed[0])
+	}
+	if len(ordinary) != 3 || ordinary[0].Name != "blue_eyes" || ordinary[1].Name != "source_request" || ordinary[2].Name != "mystery" {
+		t.Fatalf("untyped/general/meta tags should remain ordinary tags: %+v", ordinary)
+	}
+}
+
+func TestBooruDownloadTagsLateCategoryPromotionAcrossLimit(t *testing.T) {
+	tags := []booru.Tag{{Name: "character_name", Category: "unknown"}}
+	for i := range booruMaxDownloadTags + 20 {
+		tags = append(tags, booru.Tag{Name: fmt.Sprintf("ordinary_%d", i), Category: "general"})
+	}
+	// Categories arriving after the snapshot limit can still classify
+	// an earlier retained name without expanding the snapshot.
+	tags = append(tags, booru.Tag{Name: "CHARACTER_NAME", Category: "character"})
+	bounded := boundedBooruDownloadTags(tags)
+	if len(bounded) != booruMaxDownloadTags || bounded[0].Category != "character" {
+		t.Fatalf("late typed metadata must win without exceeding bounds: %d %+v", len(bounded), bounded[0])
+	}
+}
+
 func TestBooruDownloadTagSettingAndMediaSnapshot(t *testing.T) {
 	rs := booruBrowserRoutes{configPath: t.TempDir()}
 	preferences, err := rs.downloadSettings()
