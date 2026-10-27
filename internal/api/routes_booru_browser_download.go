@@ -52,11 +52,15 @@ func normalizeBooruFileSizeMiB(value int) (int, error) {
 	return value, nil
 }
 
-// Source allowlisting uses provider instances, not IDs: changing a source's
-// engine or URL cannot silently inherit permission to auto-create metadata.
+// Require both source ID and instance: an alias of the same site is not
+// automatically authorized, and changing an ID, engine, or URL revokes opt-in.
+func booruAutoTagSourceKey(source booru.Source) string {
+	return source.ID + ":" + source.Instance()
+}
+
 func (settings booruDownloadSettings) autoTagsSource(source booru.Source) bool {
 	return settings.AutoTagImages && (settings.AutoTagCamie || settings.AutoTagEva02) &&
-		slices.Contains(settings.AutoTagSources, source.Instance())
+		slices.Contains(settings.AutoTagSources, booruAutoTagSourceKey(source))
 }
 
 func (settings booruDownloadSettings) validateAutoTagSources(sources []booru.Source) error {
@@ -67,7 +71,7 @@ func (settings booruDownloadSettings) validateAutoTagSources(sources []booru.Sou
 	for _, instance := range settings.AutoTagSources {
 		valid := false
 		for _, source := range sources {
-			if source.Instance() == instance {
+			if booruAutoTagSourceKey(source) == instance {
 				valid = true
 				break
 			}
