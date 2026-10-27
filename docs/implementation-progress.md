@@ -1,5 +1,17 @@
 # StashBooru implementation progress
 
+## Visual embedding cancellation and per-tag thumbnail visibility — 2026-10-28
+
+- A cancelled visual embedding worker readiness check is no longer reported
+  as a failed job; explicit cancellation and normal failure status stay distinct.
+- Worker readiness is checked before enumerating a large image library.
+- Add a persisted per-tag `hide_thumbnail` flag, off by default, to suppress
+  tag card images, detail header and background previews without deleting the
+  stored image. Editing and JSON export/import retain it.
+- Baseline develop: 144849617dc263b69aaaf4efae843c99b70eb3d1.
+- CI, UI and physical local/remote inference verification pending.
+
+
 Updated: 2026-10-26
 
 ## Safe 7z previews and individual downloads — 2026-10-26

@@ -72,6 +72,7 @@ export const TagEditPanel: React.FC<ITagEditPanel> = ({
     parent_ids: yup.array(yup.string().required()).defined(),
     child_ids: yup.array(yup.string().required()).defined(),
     ignore_auto_tag: yup.boolean().defined(),
+    hide_thumbnail: yup.boolean().defined(),
     stash_ids: yup.mixed<GQL.StashIdInput[]>().defined(),
     image: yup.string().nullable().optional(),
     custom_fields: yup.object().required().defined(),
@@ -85,6 +86,7 @@ export const TagEditPanel: React.FC<ITagEditPanel> = ({
     parent_ids: (tag?.parents ?? []).map((t) => t.id),
     child_ids: (tag?.children ?? []).map((t) => t.id),
     ignore_auto_tag: tag?.ignore_auto_tag ?? false,
+    hide_thumbnail: tag?.hide_thumbnail ?? false,
     stash_ids: getStashIDs(tag?.stash_ids),
     custom_fields: cloneDeep(tag?.custom_fields ?? {}),
   };
@@ -309,6 +311,16 @@ export const TagEditPanel: React.FC<ITagEditPanel> = ({
 
           <hr />
           {renderInputField("ignore_auto_tag", "checkbox")}
+          <Form.Check
+            id="tag-hide-thumbnail"
+            type="checkbox"
+            className="mt-2"
+            label="Hide thumbnail in tag cards and details"
+            checked={formik.values.hide_thumbnail}
+            onChange={(event) =>
+              formik.setFieldValue("hide_thumbnail", event.currentTarget.checked)
+            }
+          />
         </Form>
 
         <DetailsEditNavbar
