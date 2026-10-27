@@ -8,11 +8,13 @@ import hashlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import io
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 from zipfile import ZipFile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -48,6 +50,12 @@ class BundleTests(unittest.TestCase):
                     compile(source, module, "exec")
                 self.assertIn(b"onnxruntime", bundle.read(package.BUNDLE_ROOT + "/requirements.txt"))
                 self.assertIn(b"remote_worker_check.py", bundle.read(package.BUNDLE_ROOT + "/README.md"))
+                self.assertIn("remote_worker_server.py", names)
+                self.assertIn("visual_embedding_server.py", names)
+                self.assertIn(
+                    b"remote_worker_server.py",
+                    bundle.read(package.BUNDLE_ROOT + "/visual_embedding_server.py"),
+                )
 
     def test_all_local_worker_imports_and_api_families_are_bundled(self):
         included = set(package.MODULES)
@@ -63,12 +71,20 @@ class BundleTests(unittest.TestCase):
                     root = node.module.split(".")[0] + ".py"
                     if root.endswith("_worker.py"):
                         self.assertIn(root, included, f"{module} requires {root}")
-        server = (package.SCRIPTS / "visual_embedding_server.py").read_text()
+        server = (package.SCRIPTS / "remote_worker_server.py").read_text()
         for _, endpoint, _ in checker.CHECKS:
             self.assertIn(endpoint, server)
         for endpoint in ("/v1/embed", "/v1/tag", "/v1/camie/tag",
                          "/v1/convert", "/v1/video-overlap/sample", "/v1/restoration"):
             self.assertIn(endpoint, server)
+
+    def test_old_entry_point_and_class_names_remain_available(self):
+        compat = (package.SCRIPTS / "visual_embedding_server.py").read_text()
+        server = (package.SCRIPTS / "remote_worker_server.py").read_text()
+        self.assertIn("sys.modules[__name__] = _worker", compat)
+        self.assertIn("VisualEmbeddingHTTPServer = RemoteWorkerHTTPServer", server)
+        self.assertIn("STASH_REMOTE_WORKER_", server)
+        self.assertIn("STASH_EMBEDDING_SERVER_", server)
 
 
 class CapabilityCheckTests(unittest.TestCase):
@@ -123,6 +139,21 @@ class CapabilityCheckTests(unittest.TestCase):
         with redirect_stdout(io.StringIO()):
             self.assertEqual(checker.check(base, "wrong"), 1)
             self.assertEqual(checker.check("not-a-url", "test-secret"), 2)
+
+    def test_checker_prefers_renamed_token_and_accepts_legacy_token(self):
+        def token_with_env(variables):
+            with patch.dict(os.environ, variables, clear=True):
+                with patch.object(sys, "argv", ["remote_worker_check.py", "--url", "http://127.0.0.1:8000"]):
+                    with patch.object(checker, "check", return_value=0) as call:
+                        self.assertEqual(checker.main(), 0)
+                        return call.call_args.args[1]
+
+        self.assertEqual(token_with_env({"STASH_EMBEDDING_SERVER_TOKEN": "legacy"}), "legacy")
+        self.assertEqual(token_with_env({"STASH_REMOTE_WORKER_TOKEN": "new"}), "new")
+        self.assertEqual(token_with_env({
+            "STASH_REMOTE_WORKER_TOKEN": "new",
+            "STASH_EMBEDDING_SERVER_TOKEN": "legacy",
+        }), "new")
 
 
 if __name__ == "__main__":
