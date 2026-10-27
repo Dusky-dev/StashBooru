@@ -19,7 +19,7 @@ func (r *booruCategoryTransport) RoundTrip(req *http.Request) (*http.Response, e
 	return &http.Response{
 		StatusCode: http.StatusOK,
 		Header:     make(http.Header),
-		Body: io.NopCloser(strings.NewReader(`{"tag":[{"name":"saber","type":4},{"name":"artist_a","type":1},{"name":"fate_stay_night","type":3},{"name":"blue_eyes","type":0}]}`)),
+		Body:       io.NopCloser(strings.NewReader(`{"tag":[{"name":"saber","type":4},{"name":"artist_a","type":1},{"name":"fate_stay_night","type":3},{"name":"blue_eyes","type":0}]}`)),
 	}, nil
 }
 
