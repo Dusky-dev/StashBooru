@@ -80,10 +80,10 @@ class VideoOverlapCodecs(unittest.TestCase):
     def test_remote_auth_sampling_busy_and_upload_cleanup(self):
         fake = types.SimpleNamespace(_log=lambda _: None, ort=types.SimpleNamespace(get_available_providers=lambda: ["CPUExecutionProvider"]))
         with patch.dict(sys.modules, {"visual_embedding_worker": fake, "camie_tagger_worker": None}):
-            sys.modules.pop("visual_embedding_server", None)
-            server_module = importlib.import_module("visual_embedding_server")
-        with patch.object(server_module, "SERVER_TOKEN", "fixture-token"), patch.dict(os.environ, {"STASH_EMBEDDING_SERVER_TEMP_DIR": str(self.root)}):
-            server = server_module.VisualEmbeddingHTTPServer(("127.0.0.1", 0), 16 * 1024 * 1024)
+            sys.modules.pop("remote_worker_server", None)
+            server_module = importlib.import_module("remote_worker_server")
+        with patch.object(server_module, "SERVER_TOKEN", "fixture-token"), patch.dict(os.environ, {"STASH_REMOTE_WORKER_TEMP_DIR": str(self.root)}):
+            server = server_module.RemoteWorkerHTTPServer(("127.0.0.1", 0), 16 * 1024 * 1024)
             thread = threading.Thread(target=server.serve_forever, daemon=True)
             thread.start()
             def request(path, body=None, auth=True):
@@ -109,4 +109,4 @@ class VideoOverlapCodecs(unittest.TestCase):
                     self.assertEqual(503, request("/v1/video-overlap/sample", self.source.read_bytes())[0])
             finally:
                 server.shutdown();server.server_close();thread.join(timeout=5)
-                sys.modules.pop("visual_embedding_server", None)
+                sys.modules.pop("remote_worker_server", None)
