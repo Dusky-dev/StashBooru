@@ -22,7 +22,7 @@ the latest stable release.
 | [Video overlap](p10-video-overlap.md) | Timestamped indexing, duplicate/contained/partial/compilation evidence and segment playback. |
 | [Mask restoration](p11-image-restoration.md) | Still-image mask editor, explicit model setup, preview, generated derivatives and limits. |
 | [Character cleanup](character-dedup.md) | Conservative same-Copyright matching, conflict handling, preview and cancellable apply. |
-| [Worker setup](../scripts/visual_embedding_server.md) | Remote inference, conversion, upscaling, overlap sampling and restoration capabilities. |
+| [Worker setup](../scripts/remote_worker_server.md) | Remote inference, conversion, upscaling, overlap sampling and restoration capabilities. |
 | [Jobs and stack shortcuts](qol-jobs-stacks.md) | Failed-job retention, Copy error, representative comparison and draft reordering. |
 | [Versions and releases](releases.md) | Independent fork versions, update checks and release maintenance. |
 
