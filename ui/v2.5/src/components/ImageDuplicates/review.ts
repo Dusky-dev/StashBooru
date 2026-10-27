@@ -21,7 +21,9 @@ export function keptImageIDs(
   selected?: number[]
 ): number[] {
   const members = new Set(group.members.map((member) => member.id));
-  const kept = (selected ?? [group.preferredID]).filter((id) => members.has(id));
+  const kept = (selected ?? [group.preferredID]).filter((id) =>
+    members.has(id)
+  );
   return kept.length ? [...new Set(kept)] : [group.members[0].id];
 }
 
@@ -33,7 +35,9 @@ export function duplicateReviewPlan(
   const kept = new Set(keep);
   return {
     keep,
-    remove: group.members.map((member) => member.id).filter((id) => !kept.has(id)),
+    remove: group.members
+      .map((member) => member.id)
+      .filter((id) => !kept.has(id)),
   };
 }
 

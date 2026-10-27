@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { Alert, Badge, Button, Card, Form, Modal, Spinner } from "react-bootstrap";
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Form,
+  Modal,
+  Spinner,
+} from "react-bootstrap";
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet";
 
@@ -68,9 +76,9 @@ export default function ImageDuplicates() {
     setHidden([]);
     setSelections({});
     void Promise.allSettled([
-      fetch("image/visual-similarity/status", { signal: controller.signal }).then(
-        jsonResponse<SimilarityStatus>
-      ),
+      fetch("image/visual-similarity/status", {
+        signal: controller.signal,
+      }).then(jsonResponse<SimilarityStatus>),
       fetch(
         "image/visual-similarity/clusters?threshold=" +
           appliedThreshold +
@@ -79,7 +87,9 @@ export default function ImageDuplicates() {
       ).then(jsonResponse<ClusterResponse>),
     ]).then(([statusResponse, clustersResponse]) => {
       if (controller.signal.aborted) return;
-      setStatus(statusResponse.status === "fulfilled" ? statusResponse.value : undefined);
+      setStatus(
+        statusResponse.status === "fulfilled" ? statusResponse.value : undefined
+      );
       if (clustersResponse.status === "fulfilled") {
         setResult(clustersResponse.value);
       } else {
@@ -131,7 +141,12 @@ export default function ImageDuplicates() {
   };
 
   const confirmReview = async () => {
-    if (!reviewGroup || busy || selectedPlan.keep.length === 0 || selectedPlan.remove.length === 0) {
+    if (
+      !reviewGroup ||
+      busy ||
+      selectedPlan.keep.length === 0 ||
+      selectedPlan.remove.length === 0
+    ) {
       return;
     }
     setBusy(true);
@@ -161,12 +176,15 @@ export default function ImageDuplicates() {
       }
       const deleted = await destroyImages();
       if (!deleted.data?.imagesDestroy) {
-        throw new Error("Stash did not confirm the selected images were deleted.");
+        throw new Error(
+          "Stash did not confirm the selected images were deleted."
+        );
       }
       dismissGroup(reviewGroup);
       setReviewGroup(undefined);
       Toast.success(
-        selectedPlan.remove.length + " duplicate image(s) removed from the library."
+        selectedPlan.remove.length +
+          " duplicate image(s) removed from the library."
       );
     } catch (cause) {
       Toast.error(cause);
@@ -224,7 +242,8 @@ export default function ImageDuplicates() {
             <Button
               disabled={loading || busy}
               onClick={() => {
-                if (appliedThreshold !== threshold) setAppliedThreshold(threshold);
+                if (appliedThreshold !== threshold)
+                  setAppliedThreshold(threshold);
                 else setReloadToken((value) => value + 1);
               }}
             >
@@ -251,8 +270,9 @@ export default function ImageDuplicates() {
       <Alert variant="info" className="mt-3">
         Similarity uses the existing EVA02 visual index. Groups are suggestions,
         not proof of identical content. Review carefully before deleting.
-        Missing results? <Link to="/settings?tab=system">Generate visual embeddings</Link>{" "}
-        under Visual Similarity settings.
+        Missing results?{" "}
+        <Link to="/settings?tab=system">Generate visual embeddings</Link> under
+        Visual Similarity settings.
       </Alert>
 
       {loading && (
@@ -303,7 +323,10 @@ export default function ImageDuplicates() {
                     size="sm"
                     variant="outline-secondary"
                     onClick={() =>
-                      setSelections((old) => ({ ...old, [key]: [group.preferredID] }))
+                      setSelections((old) => ({
+                        ...old,
+                        [key]: [group.preferredID],
+                      }))
                     }
                   >
                     Keep suggested
@@ -338,7 +361,9 @@ export default function ImageDuplicates() {
                       <div
                         className={
                           "duplicate-review-image" +
-                          (kept ? " duplicate-review-kept" : " duplicate-review-removed")
+                          (kept
+                            ? " duplicate-review-kept"
+                            : " duplicate-review-removed")
                         }
                         key={member.id}
                       >
@@ -410,7 +435,10 @@ export default function ImageDuplicates() {
 
       {!loading && visibleGroups.length > shown && (
         <div className="text-center mb-4">
-          <Button variant="secondary" onClick={() => setShown((n) => n + pageSize)}>
+          <Button
+            variant="secondary"
+            onClick={() => setShown((n) => n + pageSize)}
+          >
             Show more groups ({visibleGroups.length - shown} remaining)
           </Button>
         </div>
@@ -459,9 +487,10 @@ export default function ImageDuplicates() {
         </Modal.Header>
         <Modal.Body>
           <p>
-            <strong>Keep {selectedPlan.keep.length}</strong> image(s), and remove{" "}
-            <strong>{selectedPlan.remove.length}</strong> selected image(s) from
-            Stash. This action cannot be undone from the review page.
+            <strong>Keep {selectedPlan.keep.length}</strong> image(s), and
+            remove <strong>{selectedPlan.remove.length}</strong> selected
+            image(s) from Stash. This action cannot be undone from the review
+            page.
           </p>
           <p className="text-muted">
             Kept: {selectedPlan.keep.join(", ")}
@@ -494,7 +523,11 @@ export default function ImageDuplicates() {
           </Alert>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" disabled={busy} onClick={() => setReviewGroup(undefined)}>
+          <Button
+            variant="secondary"
+            disabled={busy}
+            onClick={() => setReviewGroup(undefined)}
+          >
             Cancel
           </Button>
           <Button
