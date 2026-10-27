@@ -129,12 +129,22 @@ func booruImportFile(ctx context.Context, path string, source booru.Source, post
 	}
 	result.Kind, result.ID, result.Path = target.Kind, strconv.Itoa(target.ID), path
 	err = mgr.Repository.WithTxn(ctx, func(ctx context.Context) error {
+		var tagUpdate *models.UpdateIDs
+		if post.ImportTags {
+			ids, err := ensureBooruImportTagIDs(ctx, mgr.Repository.Tag, post.Tags)
+			if err != nil {
+				return err
+			}
+			if len(ids) > 0 {
+				tagUpdate = &models.UpdateIDs{IDs: ids, Mode: models.RelationshipUpdateModeAdd}
+			}
+		}
 		urls := &models.UpdateStrings{Values: []string{post.PostURL}, Mode: models.RelationshipUpdateModeAdd}
 		if target.Kind == "image" {
-			_, err := mgr.Repository.Image.UpdatePartial(ctx, target.ID, models.ImagePartial{URLs: urls})
+			_, err := mgr.Repository.Image.UpdatePartial(ctx, target.ID, models.ImagePartial{URLs: urls, TagIDs: tagUpdate})
 			return err
 		}
-		_, err := mgr.Repository.Scene.UpdatePartial(ctx, target.ID, models.ScenePartial{URLs: urls})
+		_, err := mgr.Repository.Scene.UpdatePartial(ctx, target.ID, models.ScenePartial{URLs: urls, TagIDs: tagUpdate})
 		return err
 	})
 	if err != nil || !convert {

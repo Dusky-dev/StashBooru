@@ -43,6 +43,7 @@ type Post struct {
 	Rating            string `json:"rating,omitempty"`
 	Format            string `json:"format,omitempty"`
 	Tags              []Tag  `json:"tags"`
+	ImportTags        bool   `json:"-"` // Opt-in Stash import metadata, never from a browser request.
 	Attachments       []Post `json:"attachments,omitempty"`
 	RemoteID          string `json:"remoteID,omitempty"`
 	Title             string `json:"title,omitempty"`

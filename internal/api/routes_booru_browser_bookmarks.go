@@ -316,9 +316,11 @@ func (rs booruBrowserRoutes) Favorites(w http.ResponseWriter, r *http.Request) {
 		writeBooruError(w, 400, "favorites", "Favorite page exceeds 256 media files. Reduce posts per page.")
 		return
 	}
+	preferences, preferencesErr := rs.downloadSettings()
+	captureTags := preferencesErr == nil && preferences.ImportTags
 	items := []booru.Post{}
 	for _, post := range posts[start:end] {
-		items = append(items, publicBooruPost(source, post))
+		items = append(items, publicBooruPost(source, post, captureTags))
 	}
 	writeVisualSimilarityJSON(w, booru.Result{SourceID: source.ID, Page: page, Limit: limit, Posts: items, Total: &total, HasMore: end < len(posts), FetchedAt: time.Now().UTC()})
 }
