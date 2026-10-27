@@ -284,6 +284,53 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
             />
           </div>
 
+          <div className="setting-group">
+            <div className="setting">
+              <div>
+                <h3>O-counter icon</h3>
+                <div className="sub-heading">
+                  Show a heart by default, restore the original icon, or
+                  personalize the icon with an emoji or symbol.
+                </div>
+              </div>
+              <div>
+                <Form.Control
+                  as="select"
+                  id="o-counter-icon"
+                  aria-label="O-counter icon"
+                  value={ui.oCounterIcon ?? "heart"}
+                  onChange={(event) =>
+                    saveUI({
+                      oCounterIcon: event.currentTarget.value as
+                        | "heart"
+                        | "classic"
+                        | "thumbs-up"
+                        | "custom",
+                    })
+                  }
+                >
+                  <option value="heart">Heart (default)</option>
+                  <option value="classic">Original (drops / thumbs-up in SFW mode)</option>
+                  <option value="thumbs-up">Thumbs-up</option>
+                  <option value="custom">Custom symbol</option>
+                </Form.Control>
+                {(ui.oCounterIcon ?? "heart") === "custom" && (
+                  <Form.Control
+                    className="mt-2"
+                    id="o-counter-custom-icon"
+                    aria-label="Custom O-counter symbol"
+                    maxLength={12}
+                    value={ui.oCounterCustomIcon ?? ""}
+                    onChange={(event) =>
+                      saveUI({ oCounterCustomIcon: event.currentTarget.value })
+                    }
+                    placeholder="e.g. 💖"
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+
           <BooleanSetting
             id="abbreviate-counters"
             headingID="config.ui.abbreviate_counters.heading"
