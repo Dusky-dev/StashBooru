@@ -1295,7 +1295,7 @@ export const LightboxComponent: React.FC<IProps> = ({
           {allowNavigation && !stackViewer.stack && (
             <Button
               variant="link"
-              onClick={handleLeft}
+              onClick={() => handleLeft()}
               className={`${CLASSNAME_NAVBUTTON} d-none d-lg-block`}
             >
               <Icon icon={faChevronLeft} />
@@ -1337,7 +1337,7 @@ export const LightboxComponent: React.FC<IProps> = ({
           {allowNavigation && !stackViewer.stack && (
             <Button
               variant="link"
-              onClick={handleRight}
+              onClick={() => handleRight()}
               className={`${CLASSNAME_NAVBUTTON} d-none d-lg-block`}
             >
               <Icon icon={faChevronRight} />

@@ -6,6 +6,7 @@ interface ITagPopoverProps {
   hide?: boolean;
   placement?: Placement;
   target?: React.RefObject<HTMLElement>;
+  children?: React.ReactNode;
 }
 
 // Ordinary Tag links and selection chips no longer open hover previews.
