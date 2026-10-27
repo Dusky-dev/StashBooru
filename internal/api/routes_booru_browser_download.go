@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -26,6 +27,10 @@ type booruDownloadSettings struct {
 	JPEGToJXL        bool     `json:"jpegToJXL,omitempty"` // Legacy preference, migrated to converter defaults.
 	Convert          bool     `json:"convert"`
 	ImportTags       bool     `json:"importTags"`
+	AutoTagImages    bool     `json:"autoTagImages"`
+	AutoTagSources   []string `json:"autoTagSources,omitempty"`
+	AutoTagCamie     bool     `json:"autoTagCamie"`
+	AutoTagEva02     bool     `json:"autoTagEva02"`
 	DefaultDirectory string   `json:"defaultDirectory"`
 	FilenameTemplate string   `json:"filenameTemplate,omitempty"`
 	MaxFileSizeMiB   int      `json:"maxFileSizeMiB"`
@@ -47,10 +52,50 @@ func normalizeBooruFileSizeMiB(value int) (int, error) {
 	return value, nil
 }
 
+// Require both source ID and instance: an alias of the same site is not
+// automatically authorized, and changing an ID, engine, or URL revokes opt-in.
+func booruAutoTagSourceKey(source booru.Source) string {
+	return source.ID + ":" + source.Instance()
+}
+
+func (settings booruDownloadSettings) autoTagsSource(source booru.Source) bool {
+	return settings.AutoTagImages && (settings.AutoTagCamie || settings.AutoTagEva02) &&
+		slices.Contains(settings.AutoTagSources, booruAutoTagSourceKey(source))
+}
+
+func (settings booruDownloadSettings) validateAutoTagSources(sources []booru.Source) error {
+	if len(settings.AutoTagSources) > 64 {
+		return fmt.Errorf("select at most 64 auto-tagging sources")
+	}
+	seen := map[string]bool{}
+	for _, instance := range settings.AutoTagSources {
+		valid := false
+		for _, source := range sources {
+			if booruAutoTagSourceKey(source) == instance {
+				valid = true
+				break
+			}
+		}
+		if !valid || seen[instance] {
+			return fmt.Errorf("auto-tagging source is unavailable, changed or duplicated; refresh sources")
+		}
+		seen[instance] = true
+	}
+	if settings.AutoTagImages {
+		if len(settings.AutoTagSources) == 0 {
+			return fmt.Errorf("select at least one booru source for automatic image tagging")
+		}
+		if !settings.AutoTagCamie && !settings.AutoTagEva02 {
+			return fmt.Errorf("enable Camie or EVA02 for automatic image tagging")
+		}
+	}
+	return nil
+}
+
 var booruDownloadSettingsMu sync.Mutex
 
 func (rs booruBrowserRoutes) downloadSettings() (booruDownloadSettings, error) {
-	value := booruDownloadSettings{MaxFileSizeMiB: booruDefaultFileSizeMiB}
+	value := booruDownloadSettings{MaxFileSizeMiB: booruDefaultFileSizeMiB, AutoTagCamie: true}
 	data, err := os.ReadFile(filepath.Join(rs.configPath, "booru-downloads.json"))
 	if errors.Is(err, os.ErrNotExist) {
 		if rs.libraryRoots != nil {
@@ -103,6 +148,15 @@ func (rs booruBrowserRoutes) UpdateDownloadSettings(w http.ResponseWriter, r *ht
 		return
 	}
 	value.MaxFileSizeMiB = limit
+	sources, err := rs.sources()
+	if err != nil {
+		writeBooruError(w, 500, "settings", "Cannot read booru sources.")
+		return
+	}
+	if err := value.validateAutoTagSources(sources); err != nil {
+		writeBooruError(w, 400, "auto-tag", err.Error())
+		return
+	}
 	if value.DefaultDirectory != "" {
 		dir, err := rs.destination(value.DefaultDirectory)
 		if err != nil {
@@ -272,6 +326,7 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	post.ImportTags = preferences.ImportTags && !input.Computer
+	shouldAutoTag := !input.Computer && preferences.autoTagsSource(source)
 	maxFileBytes := int64(preferences.MaxFileSizeMiB) << 20
 	if post.OriginalURL == "" || post.Bytes > maxFileBytes {
 		writeBooruError(w, 400, "download", fmt.Sprintf("Original unavailable or larger than the %d MiB download limit.", preferences.MaxFileSizeMiB))
@@ -374,6 +429,10 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 					return fmt.Errorf("existing download needs native scan retry: %w", err)
 				}
 				imported.Converted = imported.Converted || receipt.Library.Converted
+				if shouldAutoTag && !receipt.AutoTagged && imported.Kind == "image" {
+					set("auto-tagging")
+					receipt.AutoTagged = rs.autoTagDownloadedImage(ctx, preferences, &imported)
+				}
 				receipt.Library = &imported
 				receipt.Convert = input.Convert
 				if imported.Path != "" {
@@ -472,6 +531,10 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 			state.Converted = imported.Converted
 			state.Filename = filepath.Base(imported.Path)
 			booruDownloads.Unlock()
+			if importErr == nil && shouldAutoTag && imported.Kind == "image" {
+				set("auto-tagging")
+				receipt.AutoTagged = rs.autoTagDownloadedImage(ctx, preferences, &imported)
+			}
 			receipt.Library = &imported
 			if imported.Path != "" {
 				receipt.OutputMD5, _ = mediaconvert.MD5(imported.Path)

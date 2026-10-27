@@ -30,6 +30,7 @@ type booruBrowserRoutes struct {
 	downloads    *manager.DownloadStore
 	libraryRoots func() []string
 	importFile   func(context.Context, string, booru.Source, booru.Post, bool, *job.Progress) (booruLibraryResult, error)
+	autoTagImage func(context.Context, int, bool, bool) error
 }
 
 func (rs booruBrowserRoutes) sources() ([]booru.Source, error) {
