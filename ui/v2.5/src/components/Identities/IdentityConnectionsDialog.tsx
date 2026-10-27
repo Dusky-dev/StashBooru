@@ -193,7 +193,13 @@ export function IdentityConnectionsDialog({
       show
       size="lg"
       scrollable
-      keyboard={!busy}
+      keyboard={false}
+      onKeyDownCapture={(event) => {
+        if (event.key !== "Escape") return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (!busy) onHide();
+      }}
       backdrop={busy ? "static" : true}
       backdropClassName="identity-dialog-backdrop"
       className="identity-dialog"

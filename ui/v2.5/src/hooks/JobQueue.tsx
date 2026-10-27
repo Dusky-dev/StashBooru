@@ -30,7 +30,7 @@ const Context = createContext<QueueContext | null>(null);
 
 // Stay subscribed outside Settings so failures are also captured while browsing.
 // sessionStorage retains them across refreshes in this tab, scoped to the server.
-export const JobQueueProvider: React.FC = ({ children }) => {
+export const JobQueueProvider: React.FC<React.PropsWithChildren<unknown>> = ({ children }) => {
   const client = useApolloClient();
   const storageKey = `stashbooru.failedJobs:${getPlatformURL().href}`;
   const [storageWarning, setStorageWarning] = useState(false);

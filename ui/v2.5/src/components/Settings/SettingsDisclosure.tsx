@@ -5,6 +5,7 @@ export const SettingsDisclosure: React.FC<{
   id: string;
   title: string;
   description: string;
+  children?: React.ReactNode;
 }> = ({ id, title, description, children }) => (
   <details className="settings-details settings-disclosure" id={id}>
     <summary aria-labelledby={`${id}-title`} aria-describedby={`${id}-help`}>
