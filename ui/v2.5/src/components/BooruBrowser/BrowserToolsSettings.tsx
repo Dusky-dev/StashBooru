@@ -72,7 +72,11 @@ export function BrowserToolsSettings() {
           setFilenameTemplate(settings.filenameTemplate ?? "");
           setImportTags(settings.importTags ?? false);
           setAutoTagImages(settings.autoTagImages ?? false);
-          setAutoTagSources(settings.autoTagSources ?? []);
+          setAutoTagSources(
+            (settings.autoTagSources ?? []).filter((instance) =>
+              list.some((item) => item.instance === instance)
+            )
+          );
           setAutoTagCamie(settings.autoTagCamie ?? true);
           setAutoTagEva02(settings.autoTagEva02 ?? false);
           setMaxFileSizeMiB(settings.maxFileSizeMiB ?? 256);
