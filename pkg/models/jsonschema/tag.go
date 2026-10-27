@@ -19,6 +19,7 @@ type Tag struct {
 	Image         string                 `json:"image,omitempty"`
 	Parents       []string               `json:"parents,omitempty"`
 	IgnoreAutoTag bool                   `json:"ignore_auto_tag,omitempty"`
+	HideThumbnail bool                   `json:"hide_thumbnail,omitempty"`
 	StashIDs      []models.StashID       `json:"stash_ids,omitempty"`
 	CreatedAt     json.JSONTime          `json:"created_at,omitempty"`
 	UpdatedAt     json.JSONTime          `json:"updated_at,omitempty"`
