@@ -60,7 +60,7 @@ def main() -> int:
     parser.add_argument("--url", required=True, help="Worker origin, e.g. http://gpu-pc:8000")
     parser.add_argument("--timeout", type=float, default=10)
     args = parser.parse_args()
-    return check(args.url, os.environ.get("STASH_EMBEDDING_SERVER_TOKEN", ""), args.timeout)
+    return check(args.url, os.environ.get("STASH_REMOTE_WORKER_TOKEN", os.environ.get("STASH_EMBEDDING_SERVER_TOKEN", "")), args.timeout)
 
 
 if __name__ == "__main__":
