@@ -24,15 +24,15 @@ func mergeConflictCount(ctx context.Context, query string, args ...interface{}) 
 	return count > 0, nil
 }
 
-func (s *StudioStore) Merge(ctx context.Context, sourceID, destinationID int) error {
+func (qb *StudioStore) Merge(ctx context.Context, sourceID, destinationID int) error {
 	if sourceID <= 0 || destinationID <= 0 || sourceID == destinationID {
 		return fmt.Errorf("choose two distinct Artists")
 	}
-	source, err := s.Find(ctx, sourceID)
+	source, err := qb.Find(ctx, sourceID)
 	if err != nil {
 		return err
 	}
-	dest, err := s.Find(ctx, destinationID)
+	dest, err := qb.Find(ctx, destinationID)
 	if err != nil {
 		return err
 	}
@@ -40,15 +40,15 @@ func (s *StudioStore) Merge(ctx context.Context, sourceID, destinationID int) er
 		return fmt.Errorf("source or destination Artist was not found")
 	}
 	if source.Details != "" && dest.Details != "" && source.Details != dest.Details {
-		return fmt.Errorf("Artist descriptions conflict; edit one profile before merging")
+		return fmt.Errorf("artist descriptions conflict; edit one profile before merging")
 	}
 	if source.Rating != nil && dest.Rating != nil && *source.Rating != *dest.Rating {
-		return fmt.Errorf("Artist ratings conflict; edit one profile before merging")
+		return fmt.Errorf("artist ratings conflict; edit one profile before merging")
 	}
 	if source.ParentID != nil && *source.ParentID != destinationID &&
 		dest.ParentID != nil && *dest.ParentID != sourceID &&
 		*source.ParentID != *dest.ParentID {
-		return fmt.Errorf("Artist parent relationships conflict; resolve them before merging")
+		return fmt.Errorf("artist parent relationships conflict; resolve them before merging")
 	}
 	conflict, err := mergeConflictCount(ctx, `SELECT COUNT(*) FROM studio_custom_fields src
 JOIN studio_custom_fields dst ON dst.studio_id=? AND dst.field=src.field
@@ -57,21 +57,21 @@ WHERE src.studio_id=? AND src.value!=dst.value`, destinationID, sourceID)
 		return err
 	}
 	if conflict {
-		return fmt.Errorf("Artist custom fields conflict; resolve them before merging")
+		return fmt.Errorf("artist custom fields conflict; resolve them before merging")
 	}
-	sourceImage, err := s.GetImage(ctx, sourceID)
+	sourceImage, err := qb.GetImage(ctx, sourceID)
 	if err != nil {
 		return err
 	}
-	destImage, err := s.GetImage(ctx, destinationID)
+	destImage, err := qb.GetImage(ctx, destinationID)
 	if err != nil {
 		return err
 	}
 	if len(sourceImage) > 0 && len(destImage) > 0 && !bytes.Equal(sourceImage, destImage) {
-		return fmt.Errorf("Artist portraits conflict; resolve them before merging")
+		return fmt.Errorf("artist portraits conflict; resolve them before merging")
 	}
 	if len(sourceImage) > 0 && len(destImage) == 0 {
-		if err := s.UpdateImage(ctx, destinationID, sourceImage); err != nil {
+		if err := qb.UpdateImage(ctx, destinationID, sourceImage); err != nil {
 			return err
 		}
 	}
@@ -175,7 +175,7 @@ AND alias IN (SELECT alias FROM studio_aliases WHERE studio_id=?)`, sourceID, de
 			return err
 		}
 		if conflict {
-			return fmt.Errorf("Artist name is used as another Artist's alias; resolve it before merging")
+			return fmt.Errorf("artist name is used as another Artist's alias; resolve it before merging")
 		}
 		if err := mergeExec(ctx, `INSERT OR IGNORE INTO studio_aliases(studio_id,alias)
 VALUES (?,?)`, destinationID, source.Name); err != nil {
@@ -185,7 +185,7 @@ VALUES (?,?)`, destinationID, source.Name); err != nil {
 	if err := mergeExec(ctx, "UPDATE provider_identities SET studio_id=? WHERE studio_id=?", destinationID, sourceID); err != nil {
 		return err
 	}
-	return s.Destroy(ctx, sourceID)
+	return qb.Destroy(ctx, sourceID)
 }
 
 func (s *CopyrightStore) Merge(ctx context.Context, sourceID, destinationID int) error {
@@ -204,10 +204,10 @@ func (s *CopyrightStore) Merge(ctx context.Context, sourceID, destinationID int)
 		return fmt.Errorf("source or destination Copyright was not found")
 	}
 	if src.Description != "" && dst.Description != "" && src.Description != dst.Description {
-		return fmt.Errorf("Copyright descriptions conflict; edit one before merging")
+		return fmt.Errorf("copyright descriptions conflict; edit one before merging")
 	}
 	if src.SortName != "" && dst.SortName != "" && src.SortName != dst.SortName {
-		return fmt.Errorf("Copyright sort names conflict; edit one before merging")
+		return fmt.Errorf("copyright sort names conflict; edit one before merging")
 	}
 	srcImage, err := s.GetImage(ctx, sourceID)
 	if err != nil {
@@ -218,7 +218,7 @@ func (s *CopyrightStore) Merge(ctx context.Context, sourceID, destinationID int)
 		return err
 	}
 	if len(srcImage) > 0 && len(dstImage) > 0 && !bytes.Equal(srcImage, dstImage) {
-		return fmt.Errorf("Copyright portraits conflict; edit one before merging")
+		return fmt.Errorf("copyright portraits conflict; edit one before merging")
 	}
 	if len(srcImage) > 0 && len(dstImage) == 0 {
 		if err := s.UpdateImage(ctx, destinationID, srcImage); err != nil {
@@ -232,7 +232,7 @@ WHERE a.copyright_id=? AND a.role!='' AND b.role!='' AND a.role!=b.role`, destin
 		return err
 	}
 	if conflict {
-		return fmt.Errorf("Copyright structural roles conflict")
+		return fmt.Errorf("copyright structural roles conflict")
 	}
 	if err := mergeExec(ctx, `UPDATE copyrights SET
 description=CASE WHEN description='' THEN ? ELSE description END,
@@ -322,7 +322,7 @@ WHERE instr(reachable.path,printf('/%d/',edge.child_id))>0)`); err != nil {
 		return err
 	}
 	if cyclic != 0 {
-		return fmt.Errorf("Copyright merge would create a hierarchy cycle")
+		return fmt.Errorf("copyright merge would create a hierarchy cycle")
 	}
 	return nil
 }
