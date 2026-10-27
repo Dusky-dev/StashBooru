@@ -66,7 +66,7 @@ func runBooruAutomaticImageTagging(ctx context.Context, imageID int, useCamie, u
 			return statusErr
 		}
 		if !status.Installed {
-			return fmt.Errorf("Camie model is not installed on the selected worker")
+			return fmt.Errorf("camie model is not installed on the selected worker")
 		}
 	}
 	if useEva02 {
