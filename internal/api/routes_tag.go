@@ -34,6 +34,7 @@ func (rs tagRoutes) Routes() chi.Router {
 	// share the already-mounted metadata router.
 	r.Get("/copyright/{copyrightId}/image", rs.CopyrightImage)
 	r.Post("/copyright/{copyrightId}/auto-tag", rs.CopyrightAutoTag)
+	r.Post("/copyright/merge", rs.CopyrightMerge)
 
 	r.Route("/{tagId}", func(r chi.Router) {
 		r.Use(rs.TagCtx)
