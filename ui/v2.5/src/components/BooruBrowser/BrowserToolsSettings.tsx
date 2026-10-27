@@ -17,6 +17,7 @@ export function BrowserToolsSettings() {
   const [convert, setConvert] = useState(false),
     [directory, setDirectory] = useState("");
   const [filenameTemplate, setFilenameTemplate] = useState("");
+  const [importTags, setImportTags] = useState(false);
   const [maxFileSizeMiB, setMaxFileSizeMiB] = useState(256);
   const [picker, setPicker] = useState(false),
     [loaded, setLoaded] = useState(false),
@@ -47,6 +48,7 @@ export function BrowserToolsSettings() {
           convert: boolean;
           defaultDirectory: string;
           filenameTemplate?: string;
+          importTags?: boolean;
           maxFileSizeMiB: number;
         }>
       ),
@@ -60,6 +62,7 @@ export function BrowserToolsSettings() {
           setConvert(settings.convert);
           setDirectory(settings.defaultDirectory);
           setFilenameTemplate(settings.filenameTemplate ?? "");
+          setImportTags(settings.importTags ?? false);
           setMaxFileSizeMiB(settings.maxFileSizeMiB ?? 256);
           setLoaded(true);
           setError("");
@@ -117,6 +120,7 @@ export function BrowserToolsSettings() {
         convert,
         defaultDirectory: directory,
         filenameTemplate,
+        importTags,
         maxFileSizeMiB,
       }),
     }).then(readBooruResponse);
@@ -241,6 +245,22 @@ export function BrowserToolsSettings() {
         disabled={busy || !loaded}
         onChange={(event) => setConvert(event.currentTarget.checked)}
       />
+      <Form.Check
+        type="switch"
+        className="mt-3"
+        id="booru-import-tags"
+        label="Import post tags into Stash on download"
+        checked={importTags}
+        disabled={busy || !loaded}
+        onChange={(event) => setImportTags(event.currentTarget.checked)}
+      />
+      <p className="text-muted">
+        When enabled, downloads to the Stash library create or reuse matching
+        Stash tags and add them to the imported image or video without removing
+        existing tags. Applies to new downloads and retries, not downloads to
+        your computer. Refresh search results after enabling to capture the
+        complete provider tag list.
+      </p>
       <p className="text-muted">
         Files are saved into this server's Stash library and imported by its
         native scanner. Conversion uses the saved format, quality, effort,

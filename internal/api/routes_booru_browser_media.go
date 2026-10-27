@@ -16,6 +16,7 @@ import (
 type booruMediaSnapshot struct {
 	Source, Instance string
 	Post             booru.Post
+	DownloadTags     []booru.Tag
 	Created          time.Time
 }
 
@@ -32,7 +33,13 @@ var booruSnapshots = struct {
 	start   int
 }{entries: map[string]booruMediaSnapshot{}}
 
-func rememberBooruPost(source booru.Source, post booru.Post) string {
+func rememberBooruPost(source booru.Source, post booru.Post, captureTags ...bool) string {
+	var downloadTags []booru.Tag
+	if len(captureTags) > 0 && captureTags[0] {
+		// A bounded server-side copy of the provider-validated search tags.
+		// Never accept user-supplied tags from the download request.
+		downloadTags = boundedBooruDownloadTags(post.Tags)
+	}
 	// Keep a bounded taxonomy projection for filenames and saved favorites.
 	core := []booru.Tag{}
 	for _, tag := range post.Tags {
@@ -73,7 +80,7 @@ func rememberBooruPost(source booru.Source, post booru.Post) string {
 		booruSnapshots.order = append([]string(nil), booruSnapshots.order[booruSnapshots.start:]...)
 		booruSnapshots.start = 0
 	}
-	booruSnapshots.entries[token] = booruMediaSnapshot{source.ID, source.Instance(), post, now}
+	booruSnapshots.entries[token] = booruMediaSnapshot{Source: source.ID, Instance: source.Instance(), Post: post, DownloadTags: downloadTags, Created: now}
 	booruSnapshots.order = append(booruSnapshots.order, token)
 	return token
 }
@@ -91,7 +98,11 @@ func (rs booruBrowserRoutes) mediaSnapshot(key string) (booru.Source, booru.Post
 	}
 	for _, source := range sources {
 		if source.ID == item.Source && source.Instance() == item.Instance {
-			return source, item.Post, true
+			post := item.Post
+			if len(item.DownloadTags) > 0 {
+				post.Tags = item.DownloadTags
+			}
+			return source, post, true
 		}
 	}
 	return booru.Source{}, booru.Post{}, false
@@ -139,7 +150,7 @@ func (rs booruBrowserRoutes) Media(w http.ResponseWriter, r *http.Request) {
 }
 
 // Public responses contain opaque keys and public image fallbacks, never originals.
-func publicBooruPost(source booru.Source, post booru.Post) booru.Post {
+func publicBooruPost(source booru.Source, post booru.Post, captureTags ...bool) booru.Post {
 	post.PreviewURL = source.ApprovedMediaURL(post.PreviewURL)
 	post.SampleURL = source.ApprovedMediaURL(post.SampleURL)
 	post.OriginalURL = source.ApprovedMediaURL(post.OriginalURL)
@@ -150,9 +161,9 @@ func publicBooruPost(source booru.Source, post booru.Post) booru.Post {
 		if len(asset.Tags) == 0 {
 			asset.Tags = post.Tags
 		}
-		post.Attachments[i] = publicBooruPost(source, asset)
+		post.Attachments[i] = publicBooruPost(source, asset, captureTags...)
 	}
-	post.MediaKey = rememberBooruPost(source, post)
+	post.MediaKey = rememberBooruPost(source, post, captureTags...)
 	if u, err := url.Parse(post.PreviewURL); err == nil && u.Scheme == "https" && u.RawQuery == "" {
 		post.DirectPreviewURL = u.String()
 	}

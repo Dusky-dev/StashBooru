@@ -25,6 +25,7 @@ import (
 type booruDownloadSettings struct {
 	JPEGToJXL        bool     `json:"jpegToJXL,omitempty"` // Legacy preference, migrated to converter defaults.
 	Convert          bool     `json:"convert"`
+	ImportTags       bool     `json:"importTags"`
 	DefaultDirectory string   `json:"defaultDirectory"`
 	FilenameTemplate string   `json:"filenameTemplate,omitempty"`
 	MaxFileSizeMiB   int      `json:"maxFileSizeMiB"`
@@ -270,6 +271,7 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 		writeBooruError(w, 500, "settings", "Cannot read download settings.")
 		return
 	}
+	post.ImportTags = preferences.ImportTags && !input.Computer
 	maxFileBytes := int64(preferences.MaxFileSizeMiB) << 20
 	if post.OriginalURL == "" || post.Bytes > maxFileBytes {
 		writeBooruError(w, 400, "download", fmt.Sprintf("Original unavailable or larger than the %d MiB download limit.", preferences.MaxFileSizeMiB))
