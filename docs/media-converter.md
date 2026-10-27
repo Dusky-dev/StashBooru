@@ -243,8 +243,8 @@ worker.
 
 Remote conversion reuses the **Processing worker URL and bearer
 token**. Update the remote checkout to the same branch/version and restart
-`scripts/visual_embedding_server.py` with its matching companion modules;
-see the complete list in [worker setup](../scripts/visual_embedding_server.md).
+`scripts/remote_worker_server.py` with its matching companion modules;
+see the complete list in [worker setup](../scripts/remote_worker_server.md).
 Install FFmpeg, libjxl tools and Pillow on that machine. Existing model settings
 are unchanged and conversion does not download models.
 
@@ -268,16 +268,16 @@ controls and disclosure mounted; a failed check blocks submission until a succes
 waifu2x supports Vulkan GPU or CPU with configured fallback; SeedVR2 requires its
 own working GPU environment. Configure defaults/local model paths under
 **Settings → Processing → Upscaling**; remote models must be installed on that
-worker. See [remote worker setup](../scripts/visual_embedding_server.md). Model
+worker. See [remote worker setup](../scripts/remote_worker_server.md). Model
 inference is not exercised by codec-only CI tests.
 
 For large videos, increase the worker's upload limit explicitly, for example:
 
 ```sh
-python scripts/visual_embedding_server.py --host 0.0.0.0 --port 8000 --max-upload-mb 8192
+python scripts/remote_worker_server.py --host 0.0.0.0 --port 8000 --max-upload-mb 8192
 ```
 
-The existing default is 512 MiB. `STASH_EMBEDDING_SERVER_TEMP_DIR` selects its
+The existing default is 512 MiB. `STASH_REMOTE_WORKER_TEMP_DIR` selects its
 temporary storage volume. Leave enough free space on both machines for input,
 intermediate APNG frames, output and the local restore copy. The worker accepts
 one conversion at a time and returns a clear busy error to other requests.
