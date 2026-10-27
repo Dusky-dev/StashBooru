@@ -256,11 +256,11 @@ export function BrowserToolsSettings() {
       />
       <p className="text-muted">
         When enabled, downloads to the Stash library create or reuse native
-        Characters, Artists, Copyrights and general Tags based on confirmed booru
-        categories. Existing metadata is preserved. Unresolved tag categories
-        remain general Tags. Applies to new downloads and retries, not downloads
-        to your computer. Refresh search results after enabling to capture the
-        complete provider tag list and category lookups.
+        Characters, Artists, Copyrights and general Tags based on confirmed
+        booru categories. Existing metadata is preserved. Unresolved tag
+        categories remain general Tags. Applies to new downloads and retries,
+        not downloads to your computer. Refresh search results after enabling to
+        capture the complete provider tag list and category lookups.
       </p>
       <p className="text-muted">
         Files are saved into this server's Stash library and imported by its
