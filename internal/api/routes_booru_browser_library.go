@@ -129,23 +129,57 @@ func booruImportFile(ctx context.Context, path string, source booru.Source, post
 	}
 	result.Kind, result.ID, result.Path = target.Kind, strconv.Itoa(target.ID), path
 	err = mgr.Repository.WithTxn(ctx, func(ctx context.Context) error {
-		var tagUpdate *models.UpdateIDs
+		resolved := taggingResolvedEntities{}
 		if post.ImportTags {
-			ids, err := ensureBooruImportTagIDs(ctx, mgr.Repository.Tag, post.Tags)
+			var err error
+			resolved, err = ensureBooruImportMetadata(ctx, mgr.Repository, post.Tags)
 			if err != nil {
 				return err
 			}
-			if len(ids) > 0 {
-				tagUpdate = &models.UpdateIDs{IDs: ids, Mode: models.RelationshipUpdateModeAdd}
+		}
+		addIDs := func(ids []int) *models.UpdateIDs {
+			if len(ids) == 0 {
+				return nil
 			}
+			return &models.UpdateIDs{IDs: ids, Mode: models.RelationshipUpdateModeAdd}
 		}
 		urls := &models.UpdateStrings{Values: []string{post.PostURL}, Mode: models.RelationshipUpdateModeAdd}
 		if target.Kind == "image" {
-			_, err := mgr.Repository.Image.UpdatePartial(ctx, target.ID, models.ImagePartial{URLs: urls, TagIDs: tagUpdate})
-			return err
+			_, err := mgr.Repository.Image.UpdatePartial(ctx, target.ID, models.ImagePartial{
+				URLs: urls, TagIDs: addIDs(resolved.TagIDs), PerformerIDs: addIDs(resolved.CharacterIDs),
+			})
+			if err != nil {
+				return err
+			}
+			if len(resolved.ArtistIDs) > 0 {
+				if err := mgr.Repository.ImageArtist.AddImageArtists(ctx, target.ID, resolved.ArtistIDs); err != nil {
+					return err
+				}
+			}
+			if len(resolved.CopyrightIDs) > 0 {
+				if err := mgr.Repository.Copyright.AddImageCopyrights(ctx, target.ID, resolved.CopyrightIDs); err != nil {
+					return err
+				}
+			}
+		} else {
+			_, err := mgr.Repository.Scene.UpdatePartial(ctx, target.ID, models.ScenePartial{
+				URLs: urls, TagIDs: addIDs(resolved.TagIDs), PerformerIDs: addIDs(resolved.CharacterIDs),
+			})
+			if err != nil {
+				return err
+			}
+			if len(resolved.ArtistIDs) > 0 {
+				if err := mgr.Repository.SceneArtist.AddSceneArtists(ctx, target.ID, resolved.ArtistIDs); err != nil {
+					return err
+				}
+			}
+			if len(resolved.CopyrightIDs) > 0 {
+				if err := mgr.Repository.Copyright.AddSceneCopyrights(ctx, target.ID, resolved.CopyrightIDs); err != nil {
+					return err
+			}
+			}
 		}
-		_, err := mgr.Repository.Scene.UpdatePartial(ctx, target.ID, models.ScenePartial{URLs: urls, TagIDs: tagUpdate})
-		return err
+		return linkResolvedTaggingCharacterCopyrights(ctx, mgr.Repository, resolved)
 	})
 	if err != nil || !convert {
 		return result, err
