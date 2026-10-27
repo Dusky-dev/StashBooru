@@ -318,7 +318,10 @@ export const TagEditPanel: React.FC<ITagEditPanel> = ({
             label="Hide thumbnail in tag cards and details"
             checked={formik.values.hide_thumbnail}
             onChange={(event) =>
-              formik.setFieldValue("hide_thumbnail", event.currentTarget.checked)
+              formik.setFieldValue(
+                "hide_thumbnail",
+                event.currentTarget.checked
+              )
             }
           />
         </Form>

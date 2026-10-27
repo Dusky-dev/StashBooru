@@ -252,7 +252,11 @@ export const TagCard: React.FC<IProps> = PatchComponent("TagCard", (props) => {
       linkClassName="tag-card-header"
       thumbnailSectionClassName={hideThumbnail ? "d-none" : undefined}
       image={
-        hideThumbnail ? <span aria-hidden="true" /> : <TagCardImage {...props} />
+        hideThumbnail ? (
+          <span aria-hidden="true" />
+        ) : (
+          <TagCardImage {...props} />
+        )
       }
       details={<TagCardDetails {...props} />}
       overlays={hideThumbnail ? undefined : <TagCardOverlays {...props} />}
