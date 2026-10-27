@@ -48,6 +48,8 @@ export interface IUIConfig {
   showChildStudioContent?: boolean;
   showLinksOnPerformerCard?: boolean;
   showTagCardOnHover?: boolean;
+  // Hides images on general Tag cards and details, but not Copyrights.
+  hideGeneralTagThumbnails?: boolean;
   // Hide only generated filename headings; custom Image titles remain visible.
   hideImageFilenames?: boolean;
 

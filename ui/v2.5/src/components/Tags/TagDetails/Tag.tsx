@@ -48,6 +48,7 @@ import { goBackOrReplace } from "src/utils/history";
 import { PatchComponent } from "src/patch";
 import { runEntityAutoTag } from "src/utils/entityAutoTag";
 import { isCopyrightTag } from "../copyrightFilter";
+import { shouldHideTagThumbnail } from "../tagThumbnailVisibility";
 
 interface IProps {
   tag: GQL.TagDataFragment;
@@ -310,6 +311,11 @@ const TagPage: React.FC<IProps> = PatchComponent(
     const uiConfig = configuration?.ui;
     const abbreviateCounter = uiConfig?.abbreviateCounters ?? false;
     const enableBackgroundImage = uiConfig?.enableTagBackgroundImage ?? false;
+    const hideThumbnail = shouldHideTagThumbnail(
+      tag.hide_thumbnail,
+      uiConfig?.hideGeneralTagThumbnails ?? false,
+      copyright
+    );
     const showAllDetails = uiConfig?.showAllDetails ?? true;
     const compactExpandedDetails = uiConfig?.compactExpandedDetails ?? false;
 
@@ -522,10 +528,10 @@ const TagPage: React.FC<IProps> = PatchComponent(
         <div className={headerClassName}>
           <BackgroundImage
             imagePath={tag.image_path ?? undefined}
-            show={enableBackgroundImage && !tag.hide_thumbnail && !isEditing}
+            show={enableBackgroundImage && !hideThumbnail && !isEditing}
           />
           <div className="detail-container">
-            {(!tag.hide_thumbnail || isEditing) && (
+            {(!hideThumbnail || isEditing) && (
               <HeaderImage encodingImage={encodingImage}>
                 {tagImage && (
                   <DetailImage className="logo" alt={tag.name} src={tagImage} />

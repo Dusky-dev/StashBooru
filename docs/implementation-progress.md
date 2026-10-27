@@ -1,5 +1,17 @@
 # StashBooru implementation progress
 
+## Hide thumbnails globally for general Tags — 2026-10-28
+
+- Add an opt-in **Hide general tag thumbnails** switch under Settings →
+  Interface → Tag panel, default off. Persist it in the existing UI config Map.
+- When enabled, hide general Tag card, detail header and background images;
+  leave Copyrights, Characters and Artists unchanged, and preserve per-tag
+  hide-thumbnail overrides plus the image editing controls.
+- Add focused visibility-policy tests for both global and per-tag choices.
+- Baseline develop: add96183daa9e5b24392ceabd54232ff8e6962d7; new branch `feat/hide-general-tag-thumbnails`.
+- UI validation, mounted browser checks, CI and review pending.
+
+
 ## Visual embedding cancellation and per-tag thumbnail visibility — 2026-10-28
 
 - A cancelled visual embedding worker readiness check is no longer reported
