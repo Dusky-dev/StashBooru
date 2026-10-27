@@ -22,7 +22,7 @@ func TestBooruAutoTagSettingsDefaultOffAndWhitelist(t *testing.T) {
 	settings := booruDownloadSettings{
 		MaxFileSizeMiB: 256, AutoTagImages: true,
 		AutoTagCamie: true, AutoTagEva02: true,
-		AutoTagSources: []string{danbooru.Instance()},
+		AutoTagSources: []string{booruAutoTagSourceKey(danbooru)},
 	}
 	write := func(value booruDownloadSettings, want int) {
 		t.Helper()
@@ -47,15 +47,20 @@ func TestBooruAutoTagSettingsDefaultOffAndWhitelist(t *testing.T) {
 	if loaded.autoTagsSource(changed) {
 		t.Fatal("changed site inherited previously allowed auto-tagging")
 	}
+	alias := danbooru
+	alias.ID = "another-name"
+	if loaded.autoTagsSource(alias) {
+		t.Fatal("same-site alias inherited another source's auto-tagging permission")
+	}
 	settings.AutoTagSources = nil
 	write(settings, 400)
-	settings.AutoTagSources = []string{danbooru.Instance()}
+	settings.AutoTagSources = []string{booruAutoTagSourceKey(danbooru)}
 	settings.AutoTagCamie, settings.AutoTagEva02 = false, false
 	write(settings, 400)
 	settings.AutoTagCamie = true
 	settings.AutoTagSources = []string{"untrusted"}
 	write(settings, 400)
-	settings.AutoTagSources = []string{danbooru.Instance(), danbooru.Instance()}
+	settings.AutoTagSources = []string{booruAutoTagSourceKey(danbooru), booruAutoTagSourceKey(danbooru)}
 	write(settings, 400)
 	settings.AutoTagImages = false
 	settings.AutoTagSources = nil
