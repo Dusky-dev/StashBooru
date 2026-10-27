@@ -51,6 +51,7 @@ import { PatchComponent } from "src/patch";
 import { OCounterButton } from "src/components/Shared/CountButton";
 import { OrganizedButton } from "src/components/Scenes/SceneDetails/OrganizedButton";
 import { runEntityAutoTag } from "src/utils/entityAutoTag";
+import { NativeMetadataMergeButton } from "src/components/Shared/NativeMetadataMergeButton";
 
 interface IProps {
   studio: GQL.StudioDataFragment;
@@ -552,6 +553,13 @@ const StudioPage: React.FC<IProps> = PatchComponent(
                     onAutoTag={onAutoTag}
                     autoTagDisabled={studio.ignore_auto_tag || autoTagRunning}
                     onDelete={onDelete}
+                    customButtons={
+                      <NativeMetadataMergeButton
+                        kind="artist"
+                        source={{ id: studio.id, name: studio.name ?? "" }}
+                        onMerged={(id) => history.replace(`/studios/${id}`)}
+                      />
+                    }
                   />
                 )}
               </div>
