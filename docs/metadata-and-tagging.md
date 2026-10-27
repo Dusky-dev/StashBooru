@@ -184,7 +184,7 @@ Camie requires both `camie-tagger-v2.onnx` and
 Remote paths belong to the worker machine. The defaults are Camie threshold
 `0.492`, EVA02 threshold `0.35` and a per-category result limit of `50`; change
 them deliberately for new analyses. These controls do not tune pHash distance.
-Camie weights are not bundled or downloaded silently. See [worker setup](../scripts/visual_embedding_server.md).
+Camie weights are not bundled or downloaded silently. See [worker setup](../scripts/remote_worker_server.md).
 
 <a id="video-tagging-and-native-auto-tag"></a>
 
