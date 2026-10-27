@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Badge, Button, Card, Form, Modal, Spinner } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet";
@@ -59,6 +59,7 @@ export default function ImageDuplicates() {
   const [copyMetadata, setCopyMetadata] = useState(true);
   const [busy, setBusy] = useState(false);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reloadToken explicitly refreshes the server-derived similarity groups.
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
@@ -97,12 +98,6 @@ export default function ImageDuplicates() {
   const totalCandidates = visibleGroups.reduce(
     (total, group) => total + group.members.length,
     0
-  );
-
-  const selectionFor = useCallback(
-    (group: SimilarImageGroup) =>
-      keptImageIDs(group, selections[duplicateGroupKey(group)]),
-    [selections]
   );
 
   const selectKeep = (group: SimilarImageGroup, imageID: number) => {
