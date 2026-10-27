@@ -1,5 +1,6 @@
 import { ApolloProvider } from "@apollo/client";
-import ReactDOM from "react-dom";
+import { flushSync } from "react-dom";
+import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { App } from "./App";
 import { getClient } from "./core/StashService";
@@ -50,21 +51,25 @@ async function bootstrap() {
   // here. Register the former plugins before React mounts any patchable UI.
   await loadBuiltinEnhancements();
 
-  ReactDOM.render(
-    <>
-      <link
-        rel="stylesheet"
-        type="text/css"
-        href={getPlatformURL("css").toString()}
-      />
-      <BrowserRouter basename={baseURL}>
-        <ApolloProvider client={getClient()}>
-          <App />
-        </ApolloProvider>
-      </BrowserRouter>
-    </>,
-    document.getElementById("root")
-  );
+  const root = createRoot(document.getElementById("root")!);
+
+  // Render synchronously so custom plugin JavaScript loads after the root.
+  flushSync(() => {
+    root.render(
+      <>
+        <link
+          rel="stylesheet"
+          type="text/css"
+          href={getPlatformURL("css").toString()}
+        />
+        <BrowserRouter basename={baseURL}>
+          <ApolloProvider client={getClient()}>
+            <App />
+          </ApolloProvider>
+        </BrowserRouter>
+      </>
+    );
+  });
 
   const script = document.createElement("script");
   script.src = getPlatformURL("javascript").toString();

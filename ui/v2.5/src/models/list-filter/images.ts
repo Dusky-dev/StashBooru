@@ -30,7 +30,6 @@ import { ImageFormatCriterionOption } from "./criteria/format";
 const defaultSortBy = "path";
 
 const sortByOptions = [
-  "filesize",
   "file_count",
   "format",
   "date",
@@ -41,6 +40,10 @@ const sortByOptions = [
 ]
   .map(ListFilterOptions.createSortBy)
   .concat([
+    {
+      messageID: "files_size",
+      value: "filesize",
+    },
     {
       messageID: "o_count",
       value: "o_counter",

@@ -25,6 +25,7 @@ interface ISortNameLinkProps {
   link: string;
   className?: string;
   sortName?: string;
+  children?: React.ReactNode;
 }
 
 const SortNameLinkComponent: React.FC<ISortNameLinkProps> = ({
@@ -48,6 +49,7 @@ const SortNameLinkComponent: React.FC<ISortNameLinkProps> = ({
 interface ICommonLinkProps {
   link: string;
   className?: string;
+  children?: React.ReactNode;
 }
 
 const CommonLinkComponent: React.FC<ICommonLinkProps> = ({

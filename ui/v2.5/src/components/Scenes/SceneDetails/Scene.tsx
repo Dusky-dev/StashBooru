@@ -45,7 +45,7 @@ import {
   faChevronRight,
   faChevronLeft,
 } from "@fortawesome/free-solid-svg-icons";
-import { objectPath, objectTitle } from "src/core/files";
+import { isPlayable, objectPath, objectTitle } from "src/core/files";
 import { RatingSystem } from "src/components/Shared/Rating/RatingSystem";
 import TextUtils from "src/utils/text";
 import {
@@ -960,19 +960,20 @@ const SceneLoader: React.FC<RouteComponentProps<ISceneParams>> = ({
     history.replace(sceneLink);
   }
 
-  async function queueNext(autoPlay: boolean) {
+  // Skip fileless scenes when automatically advancing a playlist.
+  async function queueNext(autoPlay: boolean, skipUnplayable = false) {
     if (currentQueueIndex === -1) return;
 
-    if (currentQueueIndex < queueScenes.length - 1) {
-      loadScene(queueScenes[currentQueueIndex + 1].id, autoPlay);
-    } else if (
-      currentQueueIndex === queueScenes.length - 1 &&
-      queueHasMoreScenes
-    ) {
+    const canLoad = (s: QueuedScene) => !skipUnplayable || isPlayable(s);
+    const next = queueScenes.slice(currentQueueIndex + 1).find(canLoad);
+    if (next) {
+      loadScene(next.id, autoPlay);
+    } else if (queueHasMoreScenes) {
       const loadedScenes = await onQueueMoreScenes();
-      if (loadedScenes && loadedScenes.length > 0) {
+      const target = loadedScenes?.find(canLoad);
+      if (target) {
         const newPage = (sceneQueue.query?.currentPage ?? 0) + 1;
-        loadScene(loadedScenes[0].id, autoPlay, newPage);
+        loadScene(target.id, autoPlay, newPage);
       }
     }
   }
@@ -1014,7 +1015,7 @@ const SceneLoader: React.FC<RouteComponentProps<ISceneParams>> = ({
 
   function onComplete() {
     if (continuePlaylist) {
-      queueNext(true);
+      queueNext(true, true);
     }
   }
 
@@ -1074,18 +1075,26 @@ const SceneLoader: React.FC<RouteComponentProps<ISceneParams>> = ({
       <div
         className={`scene-player-container visual-stack-detail-viewer ${collapsed ? "expanded" : ""}`}
       >
-        <ScenePlayer
-          key={scene.id}
-          scene={scene}
-          hideScrubberOverride={hideScrubber}
-          autoplay={autoplay}
-          permitLoop={!continuePlaylist}
-          initialTimestamp={initialTimestamp}
-          sendSetTimestamp={getSetTimestamp}
-          onComplete={onComplete}
-          onNext={() => queueNext(true)}
-          onPrevious={() => queuePrevious(true)}
-        />
+        {isPlayable(scene) ? (
+          <ScenePlayer
+            key={scene.id}
+            scene={scene}
+            hideScrubberOverride={hideScrubber}
+            autoplay={autoplay}
+            permitLoop={!continuePlaylist}
+            initialTimestamp={initialTimestamp}
+            sendSetTimestamp={getSetTimestamp}
+            onComplete={onComplete}
+            onNext={() => queueNext(true)}
+            onPrevious={() => queuePrevious(true)}
+          />
+        ) : (
+          <div className="VideoPlayer">
+            <div className="video-wrapper scene-player-no-file">
+              <FormattedMessage id="scene_has_no_file" />
+            </div>
+          </div>
+        )}
         <DetailStackFilmstrip kind={GQL.MediaKind.Video} id={scene.id} />
       </div>
     </div>

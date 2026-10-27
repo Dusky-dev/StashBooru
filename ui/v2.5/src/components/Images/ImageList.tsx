@@ -145,7 +145,7 @@ const ImageWall: React.FC<IImageWallProps> = ({
   });
 
   const showLightboxOnClick = useCallback(
-    (_event, { index }) => {
+    (_event: React.MouseEvent, { index }: { index: number }) => {
       handleImageOpen(index);
     },
     [handleImageOpen]
@@ -313,7 +313,7 @@ const ImageList: React.FC<IImageListImages> = PatchComponent(
     );
 
     const handleImageOpen = useCallback(
-      (index) => {
+      (index: number) => {
         setSlideshowRunning(true);
         showLightbox({ initialIndex: index, slideshowEnabled: true });
       },
