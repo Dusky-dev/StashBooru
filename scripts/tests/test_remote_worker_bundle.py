@@ -87,6 +87,41 @@ class BundleTests(unittest.TestCase):
         self.assertIn("STASH_EMBEDDING_SERVER_", server)
 
 
+    def test_environment_name_precedence(self):
+        # Compile only the configuration helpers so the test does not require
+        # optional ONNX model/runtime imports or GPU hardware.
+        def load_helper(filename, name):
+            source = (package.SCRIPTS / filename).read_text()
+            node = next(n for n in ast.parse(source).body
+                        if isinstance(n, ast.FunctionDef) and n.name == name)
+            scope = {"os": os}
+            exec(compile(ast.Module(body=[node], type_ignores=[]), filename, "exec"), scope)
+            return scope[name]
+
+        setting = load_helper("remote_worker_server.py", "_worker_setting")
+        providers = load_helper("visual_embedding_worker.py", "_providers")
+
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(setting("PORT", "8000"), "8000")
+            self.assertIsNone(providers())
+
+            os.environ["STASH_EMBEDDING_SERVER_PORT"] = "9000"
+            os.environ["STASH_EMBEDDING_ONNX_PROVIDERS"] = "CPUExecutionProvider"
+            self.assertEqual(setting("PORT", "8000"), "9000")
+            self.assertEqual(providers(), ["CPUExecutionProvider"])
+
+            os.environ["STASH_REMOTE_WORKER_PORT"] = "8001"
+            os.environ["STASH_REMOTE_WORKER_ONNX_PROVIDERS"] = (
+                "CUDAExecutionProvider,CPUExecutionProvider"
+            )
+            self.assertEqual(setting("PORT", "8000"), "8001")
+            self.assertEqual(providers(), ["CUDAExecutionProvider", "CPUExecutionProvider"])
+
+            os.environ["STASH_REMOTE_WORKER_PORT"] = ""
+            self.assertEqual(setting("PORT", "8000"), "")
+
+
+
 class CapabilityCheckTests(unittest.TestCase):
     def test_checks_all_families_with_bearer_auth_and_allows_missing_optional_camie(self):
         requests = []
