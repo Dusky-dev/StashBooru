@@ -201,7 +201,6 @@ func (rs booruBrowserRoutes) categorizeBooruPosts(ctx context.Context, source bo
 		}
 	}
 
-
 	// Other Gelbooru-family APIs expose the same category data through a
 	// bulk tag DAPI, despite returning flat/unknown post tags. Do this only
 	// for opt-in native imports so ordinary browsing remains fast.
