@@ -2,8 +2,8 @@ package api
 
 import (
 	"context"
-	"net/http/httptest"
 	"fmt"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
