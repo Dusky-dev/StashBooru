@@ -37,7 +37,7 @@ export const CountButton: React.FC<ICountButtonProps> = ({
         onClick={() => onIncrement?.()}
         title={title}
       >
-        <OCounterGlyph />
+        {icon}
       </Button>
       <Button
         className="minimal count-value"
