@@ -644,9 +644,9 @@ class EncodeTests(unittest.TestCase):
         # ML dependencies are irrelevant to the converter HTTP contract.
         stub = types.SimpleNamespace(_log=lambda message: None)
         with patch.dict(sys.modules, {"visual_embedding_worker": stub, "camie_tagger_worker": stub}):
-            server_module = importlib.import_module("visual_embedding_server")
+            server_module = importlib.import_module("remote_worker_server")
         with patch.object(server_module, "SERVER_TOKEN", "test-secret"):
-            server = server_module.VisualEmbeddingHTTPServer(("127.0.0.1", 0), 1024 * 1024)
+            server = server_module.RemoteWorkerHTTPServer(("127.0.0.1", 0), 1024 * 1024)
             thread = threading.Thread(target=server.serve_forever, daemon=True)
             thread.start()
             self.addCleanup(server.server_close)
