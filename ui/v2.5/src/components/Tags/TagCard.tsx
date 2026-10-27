@@ -12,6 +12,9 @@ import { Icon } from "../Shared/Icon";
 import { faHeart } from "@fortawesome/free-solid-svg-icons";
 import cx from "classnames";
 import { useTagUpdate } from "src/core/StashService";
+import { useConfigurationContext } from "src/hooks/Config";
+import { isCopyrightTag } from "./copyrightFilter";
+import { shouldHideTagThumbnail } from "./tagThumbnailVisibility";
 
 interface IProps {
   tag: GQL.TagDataFragment | GQL.TagListDataFragment;
@@ -241,7 +244,14 @@ export const TagCard: React.FC<IProps> = PatchComponent("TagCard", (props) => {
     selected,
     onSelectedChanged,
   } = props;
-  const hideThumbnail = hideImage || tag.hide_thumbnail;
+  const { configuration } = useConfigurationContext();
+  const hideThumbnail =
+    hideImage ||
+    shouldHideTagThumbnail(
+      tag.hide_thumbnail,
+      configuration.ui?.hideGeneralTagThumbnails ?? false,
+      isCopyrightTag(tag)
+    );
 
   return (
     <GridCard

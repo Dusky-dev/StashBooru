@@ -550,6 +550,13 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
             onChange={(enabled) => saveUI({ showTagCardOnHover: enabled })}
           />
           <BooleanSetting
+            id="hide-general-tag-thumbnails"
+            heading="Hide general tag thumbnails"
+            subHeading="Hide thumbnails on general Tag cards and details pages. Character, Artist and Copyright images are unaffected. Individual Tag thumbnail settings still apply."
+            checked={ui.hideGeneralTagThumbnails ?? false}
+            onChange={(v) => saveUI({ hideGeneralTagThumbnails: v })}
+          />
+          <BooleanSetting
             id="show-child-tagged-content"
             headingID="config.ui.tag_panel.options.show_child_tagged_content.heading"
             subHeadingID="config.ui.tag_panel.options.show_child_tagged_content.description"
