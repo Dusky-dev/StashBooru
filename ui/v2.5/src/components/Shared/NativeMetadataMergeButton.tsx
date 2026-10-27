@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import { Button, Modal } from "react-bootstrap";
-import { Copyright, CopyrightSelect } from "src/components/Copyrights/CopyrightSelect";
+import {
+  Copyright,
+  CopyrightSelect,
+} from "src/components/Copyrights/CopyrightSelect";
 import { Studio, StudioSelect } from "src/components/Studios/StudioSelect";
 
 interface Props {
@@ -16,7 +19,10 @@ export const NativeMetadataMergeButton: React.FC<Props> = ({
   onMerged,
 }) => {
   const [show, setShow] = useState(false);
-  const [destination, setDestination] = useState<{ id: string; name: string }>();
+  const [destination, setDestination] = useState<{
+    id: string;
+    name: string;
+  }>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -73,20 +79,23 @@ export const NativeMetadataMergeButton: React.FC<Props> = ({
             transferred. Conflicting profile fields prevent the merge rather
             than being overwritten.
           </p>
-          <label className="d-block" htmlFor="native-metadata-merge-destination">
+          <label
+            className="d-block"
+            htmlFor="native-metadata-merge-destination"
+          >
             Destination {label}
           </label>
           <div id="native-metadata-merge-destination">
             {kind === "artist" ? (
               <StudioSelect
-                values={(destination ? [destination as Studio] : [])}
+                values={destination ? [destination as Studio] : []}
                 onSelect={(items) => setDestination(items[0])}
                 excludeIds={[source.id]}
                 creatable={false}
               />
             ) : (
               <CopyrightSelect
-                values={(destination ? [destination as Copyright] : [])}
+                values={destination ? [destination as Copyright] : []}
                 onSelect={(items) => setDestination(items[0])}
                 excludeIds={[source.id]}
                 creatable={false}
@@ -102,7 +111,11 @@ export const NativeMetadataMergeButton: React.FC<Props> = ({
           {error && <div className="alert alert-danger">{error}</div>}
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" disabled={busy} onClick={() => setShow(false)}>
+          <Button
+            variant="secondary"
+            disabled={busy}
+            onClick={() => setShow(false)}
+          >
             Cancel
           </Button>
           <Button
