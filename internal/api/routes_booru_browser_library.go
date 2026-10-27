@@ -176,7 +176,7 @@ func booruImportFile(ctx context.Context, path string, source booru.Source, post
 			if len(resolved.CopyrightIDs) > 0 {
 				if err := mgr.Repository.Copyright.AddSceneCopyrights(ctx, target.ID, resolved.CopyrightIDs); err != nil {
 					return err
-			}
+				}
 			}
 		}
 		return linkResolvedTaggingCharacterCopyrights(ctx, mgr.Repository, resolved)
