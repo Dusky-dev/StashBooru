@@ -87,6 +87,7 @@ with sqlite3.connect(pathlib.Path(sys.argv[1]).as_uri() + '?mode=ro', uri=True) 
     assert db.execute('PRAGMA foreign_key_check').fetchall() == []
     assert db.execute('SELECT version, dirty FROM schema_migrations').fetchall() == [(int(sys.argv[2]), 0)]
     assert bool(db.execute("SELECT name FROM sqlite_master WHERE name='provider_identities'").fetchall()) == (sys.argv[3] == 'true')
+    assert any(col[1] == 'hide_thumbnail' for col in db.execute('PRAGMA table_info(tags)')) == (int(sys.argv[2]) >= 101)
 `,
     file,
     String(version),
@@ -219,7 +220,7 @@ async function check(viewport, label) {
   assert.deepEqual(await status(page, url), {
     status: "NEEDS_MIGRATION",
     databaseSchema: 99,
-    appSchema: 100,
+    appSchema: 101,
   });
   await page.goto(url, { waitUntil: "networkidle" });
   await page
@@ -261,8 +262,8 @@ async function check(viewport, label) {
   }
   assert.deepEqual(await status(page, url), {
     status: "OK",
-    databaseSchema: 100,
-    appSchema: 100,
+    databaseSchema: 101,
+    appSchema: 101,
   });
   await page.waitForURL(
     (location) =>
@@ -272,7 +273,7 @@ async function check(viewport, label) {
     .getByRole("heading", { name: "Migration required", exact: true })
     .waitFor({ state: "detached" });
   assert.deepEqual(await call(page, url, snapshotQuery, ids), before);
-  schema(join(directory, "library.sqlite"), 100, true);
+  schema(join(directory, "library.sqlite"), 101, true);
   schema(selected, 99, false);
   assert.equal(
     await readFile(blocked, "utf8"),
@@ -320,8 +321,8 @@ async function check(viewport, label) {
   track();
   assert.deepEqual(await status(page, url), {
     status: "OK",
-    databaseSchema: 100,
-    appSchema: 100,
+    databaseSchema: 101,
+    appSchema: 101,
   });
   assert.deepEqual(await call(page, url, snapshotQuery, ids), before);
   await page.close();
@@ -329,7 +330,7 @@ async function check(viewport, label) {
   assert.deepEqual(errors, []);
   console.log(
     label +
-      ": actual 99→100 upgrade, failed backup/draft, custom-path retry, old-schema backup/old-app restore, metadata/aliases/blob bytes, refresh and restart passed."
+      ": actual 99→101 upgrade, failed backup/draft, custom-path retry, old-schema backup/old-app restore, metadata/aliases/blob bytes, refresh and restart passed."
   );
 }
 try {
