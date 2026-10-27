@@ -97,8 +97,10 @@ func (rs booruBrowserRoutes) AccountFavorites(w http.ResponseWriter, r *http.Req
 		result = source.FilterBlacklisted(result)
 	}
 	rs.categorizeBooruPosts(r.Context(), source, result.Posts)
+	preferences, preferencesErr := rs.downloadSettings()
+	captureTags := preferencesErr == nil && preferences.ImportTags
 	for i := range result.Posts {
-		result.Posts[i] = publicBooruPost(source, result.Posts[i])
+		result.Posts[i] = publicBooruPost(source, result.Posts[i], captureTags)
 	}
 	writeVisualSimilarityJSON(w, result)
 }
