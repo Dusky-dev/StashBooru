@@ -25,3 +25,9 @@ func TestStashBooruSchemaIncludesProviderIdentityMigration(t *testing.T) {
 		t.Fatalf("schema version %d does not include provider identity migration 100", appSchemaVersion)
 	}
 }
+
+func TestStashBooruSchemaIncludesTagThumbnailMigration(t *testing.T) {
+	if appSchemaVersion < 101 {
+		t.Fatalf("schema version %d does not include tag thumbnail migration 101", appSchemaVersion)
+	}
+}

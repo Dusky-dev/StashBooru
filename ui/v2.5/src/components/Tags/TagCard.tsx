@@ -241,6 +241,7 @@ export const TagCard: React.FC<IProps> = PatchComponent("TagCard", (props) => {
     selected,
     onSelectedChanged,
   } = props;
+  const hideThumbnail = hideImage || tag.hide_thumbnail;
 
   return (
     <GridCard
@@ -249,13 +250,17 @@ export const TagCard: React.FC<IProps> = PatchComponent("TagCard", (props) => {
       width={cardWidth}
       title={<TagCardTitle {...props} />}
       linkClassName="tag-card-header"
-      thumbnailSectionClassName={hideImage ? "d-none" : undefined}
+      thumbnailSectionClassName={hideThumbnail ? "d-none" : undefined}
       image={
-        hideImage ? <span aria-hidden="true" /> : <TagCardImage {...props} />
+        hideThumbnail ? (
+          <span aria-hidden="true" />
+        ) : (
+          <TagCardImage {...props} />
+        )
       }
       details={<TagCardDetails {...props} />}
-      overlays={hideImage ? undefined : <TagCardOverlays {...props} />}
-      titleAction={hideImage ? <TagCardOverlays {...props} /> : undefined}
+      overlays={hideThumbnail ? undefined : <TagCardOverlays {...props} />}
+      titleAction={hideThumbnail ? <TagCardOverlays {...props} /> : undefined}
       popovers={<TagCardPopovers {...props} />}
       selected={selected}
       selecting={selecting}

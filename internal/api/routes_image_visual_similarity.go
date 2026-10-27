@@ -176,6 +176,25 @@ func (rs imageRoutes) VisualSimilarityIndexImages(w http.ResponseWriter, r *http
 	mgr := manager.GetInstance()
 	jobID := mgr.JobManager.Add(r.Context(), "Generating image visual embeddings...", job.MakeJobExec(
 		func(ctx context.Context, progress *job.Progress) error {
+			// Check worker readiness before the potentially long library scan.
+			// An unavailable worker should fail promptly.
+			client, backend, _, err := newVisualSimilarityEmbedder()
+			if err != nil {
+				return fmt.Errorf("initializing %s visual embedding worker: %w", backend, err)
+			}
+			defer client.Close()
+
+			status, err := client.Status(ctx)
+			if err != nil {
+				return fmt.Errorf("checking %s visual similarity worker: %w", backend, err)
+			}
+			if !status.Installed {
+				if backend == "remote" {
+					return fmt.Errorf("remote visual similarity worker does not have the embedding model installed")
+				}
+				return fmt.Errorf("visual similarity model is not installed; download it from Settings > System > Visual Similarity first")
+			}
+
 			var sources []visualEmbeddingImageSource
 			if err := txn.WithReadTxn(ctx, mgr.Repository.TxnManager, func(ctx context.Context) error {
 				images, err := mgr.Repository.Image.All(ctx)
@@ -203,23 +222,6 @@ func (rs imageRoutes) VisualSimilarityIndexImages(w http.ResponseWriter, r *http
 			progress.SetTotal(len(sources))
 			if len(sources) == 0 {
 				return nil
-			}
-
-			client, backend, _, err := newVisualSimilarityEmbedder()
-			if err != nil {
-				return fmt.Errorf("initializing %s visual embedding worker: %w", backend, err)
-			}
-			defer client.Close()
-
-			status, err := client.Status(ctx)
-			if err != nil {
-				return fmt.Errorf("checking %s visual similarity worker: %w", backend, err)
-			}
-			if !status.Installed {
-				if backend == "remote" {
-					return fmt.Errorf("remote visual similarity worker does not have the embedding model installed")
-				}
-				return fmt.Errorf("visual similarity model is not installed; download it from Settings > System > Visual Similarity first")
 			}
 
 			failures := 0

@@ -522,14 +522,16 @@ const TagPage: React.FC<IProps> = PatchComponent(
         <div className={headerClassName}>
           <BackgroundImage
             imagePath={tag.image_path ?? undefined}
-            show={enableBackgroundImage && !isEditing}
+            show={enableBackgroundImage && !tag.hide_thumbnail && !isEditing}
           />
           <div className="detail-container">
-            <HeaderImage encodingImage={encodingImage}>
-              {tagImage && (
-                <DetailImage className="logo" alt={tag.name} src={tagImage} />
-              )}
-            </HeaderImage>
+            {(!tag.hide_thumbnail || isEditing) && (
+              <HeaderImage encodingImage={encodingImage}>
+                {tagImage && (
+                  <DetailImage className="logo" alt={tag.name} src={tagImage} />
+                )}
+              </HeaderImage>
+            )}
             <div className="row">
               <div className="tag-head col">
                 <DetailTitle name={tag.name} classNamePrefix="tag">
