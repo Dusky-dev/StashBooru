@@ -281,7 +281,11 @@ try {
         .isDisabled(),
       true
     );
-    assert.equal(await connections.count(), 1, "Write dialog exists before Escape");
+    assert.equal(
+      await connections.count(),
+      1,
+      "Write dialog exists before Escape"
+    );
     await page.keyboard.press("Escape");
     assert.equal(
       await connections.count(),
