@@ -24,7 +24,7 @@ CREATE TABLE performers (id INTEGER PRIMARY KEY);
 CREATE TABLE studios (id INTEGER PRIMARY KEY);
 CREATE TABLE tags (id INTEGER PRIMARY KEY);`)
 	require.NoError(t, err)
-	for _, path := range []string{"migrations/88_copyrights.up.sql", "migrations/90_copyright_media.up.sql", "migrations/94_copyright_taxonomy.up.sql", "migrations/100_provider_identities.up.sql"} {
+	for _, path := range []string{"migrations/88_copyrights.up.sql", "migrations/90_copyright_media.up.sql", "migrations/92_copyright_tags.up.sql", "migrations/94_copyright_taxonomy.up.sql", "migrations/100_provider_identities.up.sql"} {
 		schema, err := os.ReadFile(path)
 		require.NoError(t, err)
 		_, err = db.Exec(string(schema))

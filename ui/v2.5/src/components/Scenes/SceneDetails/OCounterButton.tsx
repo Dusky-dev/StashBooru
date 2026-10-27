@@ -1,10 +1,10 @@
-import { faBan, faMinus, faThumbsUp } from "@fortawesome/free-solid-svg-icons";
+import { faBan, faMinus } from "@fortawesome/free-solid-svg-icons";
 import React, { useState } from "react";
 import { Button, ButtonGroup, Dropdown, DropdownButton } from "react-bootstrap";
 import { useIntl } from "react-intl";
 import { Icon } from "src/components/Shared/Icon";
 import { LoadingIndicator } from "src/components/Shared/LoadingIndicator";
-import { SweatDrops } from "src/components/Shared/SweatDrops";
+import { OCounterGlyph } from "src/components/Shared/OCounterGlyph";
 import { useConfigurationContext } from "src/hooks/Config";
 
 export interface IOCounterButtonProps {
@@ -21,7 +21,6 @@ export const OCounterButton: React.FC<IOCounterButtonProps> = (
   const { configuration } = useConfigurationContext();
   const { sfwContentMode } = configuration.interface;
 
-  const icon = !sfwContentMode ? <SweatDrops /> : <Icon icon={faThumbsUp} />;
   const messageID = !sfwContentMode ? "o_count" : "o_count_sfw";
 
   const [loading, setLoading] = useState(false);
@@ -53,7 +52,7 @@ export const OCounterButton: React.FC<IOCounterButtonProps> = (
       variant="secondary"
       title={intl.formatMessage({ id: messageID })}
     >
-      {icon}
+      <OCounterGlyph />
       <span className="ml-2">{props.value}</span>
     </Button>
   );

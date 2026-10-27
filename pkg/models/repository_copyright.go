@@ -14,6 +14,7 @@ type CopyrightReaderWriter interface {
 	Create(ctx context.Context, input CopyrightCreateInput) (*Copyright, error)
 	Update(ctx context.Context, input CopyrightUpdateInput) (*Copyright, error)
 	Destroy(ctx context.Context, id int) error
+	Merge(ctx context.Context, sourceID, destinationID int) error
 
 	GetImage(ctx context.Context, id int) ([]byte, error)
 	HasImage(ctx context.Context, id int) (bool, error)

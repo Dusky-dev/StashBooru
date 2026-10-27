@@ -30,6 +30,8 @@ type studioRoutes struct {
 func (rs studioRoutes) Routes() chi.Router {
 	r := chi.NewRouter()
 
+	r.Post("/merge", rs.Merge)
+
 	r.Route("/{studioId}", func(r chi.Router) {
 		r.Use(rs.StudioCtx)
 		r.Get("/image", rs.Image)

@@ -574,3 +574,9 @@ func (_m *StudioReaderWriter) UpdatePartial(ctx context.Context, updatedStudio m
 
 	return r0, r1
 }
+
+// Merge provides a mock function with given fields: ctx, sourceID, destinationID
+func (_m *StudioReaderWriter) Merge(ctx context.Context, sourceID, destinationID int) error {
+	ret := _m.Called(ctx, sourceID, destinationID)
+	return ret.Error(0)
+}
