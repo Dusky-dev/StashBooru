@@ -74,7 +74,7 @@ export function BrowserToolsSettings() {
           setAutoTagImages(settings.autoTagImages ?? false);
           setAutoTagSources(
             (settings.autoTagSources ?? []).filter((instance) =>
-              list.some((item) => item.instance === instance)
+              list.some((item) => `${item.id}:${item.instance}` === instance)
             )
           );
           setAutoTagCamie(settings.autoTagCamie ?? true);
@@ -320,29 +320,26 @@ export function BrowserToolsSettings() {
               selected by default. Changing a source website requires selecting
               it again.
             </Form.Text>
-            {sources
-              .filter(
-                (item, index, list) =>
-                  list.findIndex((other) => other.instance === item.instance) ===
-                  index
-              )
-              .map((item) => (
+            {sources.map((item) => {
+              const key = `${item.id}:${item.instance}`;
+              return (
                 <Form.Check
-                  key={item.instance}
+                  key={key}
                   id={`booru-auto-tag-source-${item.id}`}
                   label={item.name}
-                  checked={autoTagSources.includes(item.instance)}
+                  checked={autoTagSources.includes(key)}
                   disabled={busy || !loaded}
                   onChange={(event) => {
                     const checked = event.currentTarget.checked;
                     setAutoTagSources((current) =>
                       checked
-                        ? [...current, item.instance]
-                        : current.filter((instance) => instance !== item.instance)
+                        ? [...current, key]
+                        : current.filter((instance) => instance !== key)
                     );
                   }}
                 />
-              ))}
+              );
+            })}
           </Form.Group>
         </div>
       )}
