@@ -310,7 +310,9 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
                   }
                 >
                   <option value="heart">Heart (default)</option>
-                  <option value="classic">Original (drops / thumbs-up in SFW mode)</option>
+                  <option value="classic">
+                    Original (drops / thumbs-up in SFW mode)
+                  </option>
                   <option value="thumbs-up">Thumbs-up</option>
                   <option value="custom">Custom symbol</option>
                 </Form.Control>
