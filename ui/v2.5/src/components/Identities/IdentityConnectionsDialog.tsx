@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import { Alert, Button, Form, Modal } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import type { BooruSource } from "../BooruBrowser/browser";
@@ -39,6 +45,8 @@ export function IdentityConnectionsDialog({
   const [epoch, setEpoch] = useState(0);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(busy);
+  busyRef.current = busy;
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [adding, setAdding] = useState(false);
@@ -176,7 +184,7 @@ export function IdentityConnectionsDialog({
   }
   // Some global listeners handle Escape before the modal's React handlers.
   // Guard both key phases while a write is in flight, including React 18 roots.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!busy) return;
     const blockEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
@@ -216,14 +224,14 @@ export function IdentityConnectionsDialog({
         if (event.key !== "Escape") return;
         event.preventDefault();
         event.stopPropagation();
-        if (!busy) onHide();
+        if (!busyRef.current) onHide();
       }}
       backdrop={busy ? "static" : true}
       backdropClassName="identity-dialog-backdrop"
       className="identity-dialog"
       aria-labelledby="identity-dialog-title"
       onHide={() => {
-        if (!busy) onHide();
+        if (!busyRef.current) onHide();
       }}
     >
       <Modal.Header closeButton={!busy}>
