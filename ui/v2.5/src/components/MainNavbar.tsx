@@ -342,6 +342,16 @@ export const MainNavbar: React.FC = () => {
         <NavLink
           className="nav-utility"
           exact
+          to="/image-duplicates"
+          onClick={handleDismiss}
+          title="Review similar images"
+        >
+          <Icon icon={faImages} />
+          <span className="ml-1 d-none d-sm-inline">Duplicates</span>
+        </NavLink>
+        <NavLink
+          className="nav-utility"
+          exact
           to="/booru"
           onClick={handleDismiss}
           title={intl.formatMessage({

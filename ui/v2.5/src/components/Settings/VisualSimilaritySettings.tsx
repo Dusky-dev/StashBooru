@@ -197,6 +197,10 @@ export const VisualSimilaritySettings: React.FC = () => {
   return (
     <div className="setting-section" id="visual-similarity">
       <h1>Similarity and tagging</h1>
+      <p>
+        <Link to="/image-duplicates">Review similar images</Link> — compare
+        visual similarity groups side by side and choose which images to keep.
+      </p>
       <div className="sub-heading">
         Find similar defaults to <strong>Same image / variants (pHash)</strong>.
         Switch to <strong>Related content (EVA02)</strong> for similar subjects
