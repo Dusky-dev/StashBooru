@@ -267,7 +267,7 @@ async function check(viewport, label) {
     if (!rejected) {
       await page.waitForFunction(
         (expectedValue) =>
-          document.querySelector('#image-edit-details input[name="title"]')
+          document.querySelector("#image-edit-details input[name=title]")
             ?.value === expectedValue,
         value,
         { timeout: 5000 }
