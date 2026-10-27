@@ -363,7 +363,10 @@ def _status_payload() -> dict[str, Any]:
 
 
 def _providers() -> list[str] | None:
-    requested = os.environ.get("STASH_EMBEDDING_ONNX_PROVIDERS", "").strip()
+    requested = os.environ.get(
+        "STASH_REMOTE_WORKER_ONNX_PROVIDERS",
+        os.environ.get("STASH_EMBEDDING_ONNX_PROVIDERS", ""),
+    ).strip()
     if not requested:
         return None
     return [item.strip() for item in requested.split(",") if item.strip()]

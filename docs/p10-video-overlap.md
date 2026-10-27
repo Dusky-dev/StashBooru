@@ -138,7 +138,7 @@ process groups and remote disconnects stop decoder children/clean uploads. File
 and pipe protocols plus a video-format allowlist reject network playlists.
 
 Remote hosts need both `scripts/video_overlap_worker.py` and the updated
-`scripts/visual_embedding_server.py`, followed by a server restart. No new model
+`scripts/remote_worker_server.py`, followed by a server restart. No new model
 is needed. The authenticated endpoints are GET `/v1/video-overlap/capabilities`
 and POST `/v1/video-overlap/sample` with a bounded octet upload and
 `X-Stash-Video-Options`. They share the existing processing lock/upload cap; busy

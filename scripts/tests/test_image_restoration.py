@@ -166,11 +166,11 @@ class RestorationTests(unittest.TestCase):
     def test_authenticated_remote_prepare_and_upload_cleanup(self):
         stub = types.SimpleNamespace(_log=lambda message: None)
         with patch.dict(sys.modules, {"visual_embedding_worker": stub, "camie_tagger_worker": stub}):
-            server_module = importlib.import_module("visual_embedding_server")
+            server_module = importlib.import_module("remote_worker_server")
         upload_dir = self.root / "uploads"
         upload_dir.mkdir()
         with patch.object(server_module, "SERVER_TOKEN", "fixture-token"), patch.dict(os.environ, {"STASH_EMBEDDING_SERVER_TEMP_DIR": str(upload_dir)}):
-            server = server_module.VisualEmbeddingHTTPServer(("127.0.0.1", 0), 1024 * 1024)
+            server = server_module.RemoteWorkerHTTPServer(("127.0.0.1", 0), 1024 * 1024)
             thread = threading.Thread(target=server.serve_forever, daemon=True)
             thread.start()
             try:

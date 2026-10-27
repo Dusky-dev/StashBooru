@@ -13,6 +13,7 @@ from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 SCRIPTS = Path(__file__).resolve().parent
 MODULES = (
+    "remote_worker_server.py",
     "visual_embedding_server.py",
     "visual_embedding_worker.py",
     "camie_tagger_worker.py",
