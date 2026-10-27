@@ -88,6 +88,7 @@ type StudioReader interface {
 
 // StudioWriter provides all methods to modify studios.
 type StudioWriter interface {
+	Merge(ctx context.Context, sourceID, destinationID int) error
 	StudioCreator
 	StudioUpdater
 	StudioDestroyer
