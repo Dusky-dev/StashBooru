@@ -333,13 +333,14 @@ export function BrowserToolsSettings() {
                   label={item.name}
                   checked={autoTagSources.includes(item.instance)}
                   disabled={busy || !loaded}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    const checked = event.currentTarget.checked;
                     setAutoTagSources((current) =>
-                      event.currentTarget.checked
+                      checked
                         ? [...current, item.instance]
                         : current.filter((instance) => instance !== item.instance)
-                    )
-                  }
+                    );
+                  }}
                 />
               ))}
           </Form.Group>
