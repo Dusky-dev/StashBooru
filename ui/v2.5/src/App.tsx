@@ -78,6 +78,9 @@ const Copyrights = lazyComponent(
   () => import("./components/Copyrights/CopyrightsRouter")
 );
 const Images = lazyComponent(() => import("./components/Images/Images"));
+const ImageDuplicates = lazyComponent(
+  () => import("./components/ImageDuplicates/ImageDuplicates")
+);
 const Media = lazyComponent(() => import("./components/Media/Media"));
 const BooruBrowser = lazyComponent(
   () => import("./components/BooruBrowser/BooruBrowser")
@@ -271,6 +274,7 @@ export const App: React.FC = () => {
           <Switch>
             <Route exact path="/" component={FrontPage} />
             <Route path="/scenes" component={Scenes} />
+            <Route exact path="/image-duplicates" component={ImageDuplicates} />
             <Route path="/images" component={Images} />
             <Route exact path="/following" component={Following} />
             <Route exact path="/identities" component={Identities} />
