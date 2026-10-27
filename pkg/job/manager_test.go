@@ -343,3 +343,41 @@ func TestSubscribe(t *testing.T) {
 
 	cancel()
 }
+
+func TestCancelledWorkerErrorIsNotFailure(t *testing.T) {
+	m := NewManager()
+	defer m.Stop()
+	started := make(chan struct{})
+	id := m.Add(context.Background(), "checking worker", MakeJobExec(
+		func(ctx context.Context, _ *Progress) error {
+			close(started)
+			<-ctx.Done()
+			return ctx.Err()
+		},
+	))
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		t.Fatal("worker check did not start")
+	}
+	m.CancelJob(id)
+	deadline := time.After(time.Second)
+	for {
+		j := m.GetJob(id)
+		if j == nil {
+			t.Fatal("cancelled job disappeared")
+		}
+		switch j.Status {
+		case StatusCancelled:
+			assert.Nil(t, j.Error)
+			return
+		case StatusFailed:
+			t.Fatalf("cancelled worker check reported as failure: %v", j.Error)
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("timed out waiting for cancellation: %s", j.Status)
+		case <-time.After(time.Millisecond):
+		}
+	}
+}

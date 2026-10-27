@@ -207,8 +207,17 @@ func (m *Manager) executeJob(ctx context.Context, j *Job, done chan struct{}) {
 
 	progress := m.newProgress(j)
 	if err := j.exec.Execute(ctx, progress); err != nil {
-		logger.Errorf("task failed due to error: %v", err)
-		j.error(err)
+		// When cancelling during a worker readiness check or an inference
+		// request, context.Canceled is an expected termination, not failure.
+		if ctx.Err() != nil {
+			return
+		}
+		m.mutex.Lock()
+		defer m.mutex.Unlock()
+		if j.Status != StatusStopping {
+			logger.Errorf("task failed due to error: %v", err)
+			j.error(err)
+		}
 	}
 }
 
