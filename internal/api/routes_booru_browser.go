@@ -201,6 +201,26 @@ func (rs booruBrowserRoutes) categorizeBooruPosts(ctx context.Context, source bo
 		}
 	}
 
+
+	// Other Gelbooru-family APIs expose the same category data through a
+	// bulk tag DAPI, despite returning flat/unknown post tags. Do this only
+	// for opt-in native imports so ordinary browsing remains fast.
+	if source.Engine == "gelbooru" && !source.IsRule34() {
+		if prefs, err := rs.downloadSettings(); err == nil && prefs.ImportTags {
+			if categorizer, ok := rs.client.(interface {
+				CategorizeGelbooruTagsPrioritized(context.Context, booru.Source, []booru.Post, func(string) bool)
+			}); ok {
+				categorizer.CategorizeGelbooruTagsPrioritized(ctx, source, posts, func(name string) bool {
+					if dbErr != nil || db.index == nil {
+						return true
+					}
+					category := db.index.Category(name)
+					return category == "" || category == "unknown"
+				})
+			}
+		}
+	}
+
 	// Confirmed live categories and provider types win. User-installed
 	// CSV fills in only unresolved names, even when live API is blocked.
 	if dbErr == nil && db.index != nil {
