@@ -57,6 +57,10 @@ export interface IUIConfig {
 
   abbreviateCounters?: boolean;
 
+  // O-counter appearance: heart by default, with legacy and custom options.
+  oCounterIcon?: "heart" | "classic" | "thumbs-up" | "custom";
+  oCounterCustomIcon?: string;
+
   ratingSystemOptions?: RatingSystemOptions;
 
   // if true a background image will be display on header
