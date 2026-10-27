@@ -1,4 +1,5 @@
 import { ProfileLibraryReview } from "src/components/Shared/ProfileLibraryReview";
+import { NativeMetadataMergeButton } from "src/components/Shared/NativeMetadataMergeButton";
 import { IdentitySources } from "src/components/Identities/identity";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FormattedMessage } from "react-intl";
@@ -658,6 +659,13 @@ const CopyrightDetail: React.FC = () => {
                     autoTagDisabled={autoTagRunning}
                     onDelete={destroy}
                     classNames="mb-2"
+                    customButtons={
+                      <NativeMetadataMergeButton
+                        kind="copyright"
+                        source={{ id: copyright.id, name: copyright.name }}
+                        onMerged={(id) => history.replace(`/copyrights/${id}`)}
+                      />
+                    }
                   />
                 </>
               )}
