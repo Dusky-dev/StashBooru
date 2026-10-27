@@ -261,6 +261,18 @@ async function check(viewport, label) {
     if (rejected)
       assert.match(payload.errors[0].message, /invalid-image-fixture/);
     await editor().waitFor();
+    // The mutation response can arrive before React has reconciled the edit
+    // form. Assert the saved title once the UI settles, without accepting a
+    // stale value indefinitely.
+    if (!rejected) {
+      await page.waitForFunction(
+        (expectedValue) =>
+          document.querySelector('#image-edit-details input[name="title"]')
+            ?.value === expectedValue,
+        value,
+        { timeout: 5000 }
+      );
+    }
     assert.equal(await title().inputValue(), value);
     if (!rejected) {
       await page.waitForFunction(
