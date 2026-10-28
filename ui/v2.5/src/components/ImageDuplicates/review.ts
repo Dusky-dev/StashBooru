@@ -42,7 +42,7 @@ export function duplicateComparisonPair(
   const selectedID =
     clickedID !== referenceID && ids.includes(clickedID)
       ? clickedID
-      : ids.find((id) => id !== referenceID) ?? referenceID;
+      : (ids.find((id) => id !== referenceID) ?? referenceID);
   return { referenceID, selectedID };
 }
 
