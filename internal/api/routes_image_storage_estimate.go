@@ -20,34 +20,32 @@ import (
 
 const estimateMaxMembers = 16
 
-var (
-	storageEstimateMutex sync.Mutex
-	storageEstimateBusy bool
-	storageEstimateJobID int
-	storageEstimateResult json.RawMessage
-)
+var storageEstimateMutex sync.Mutex
+var storageEstimateBusy bool
+var storageEstimateJobID int
+var storageEstimateResult json.RawMessage
 
 type storageEstimateRequest struct {
-	StackID int `json:"stackID"`
+	StackID  int    `json:"stackID"`
 	Fidelity string `json:"fidelity"`
 }
 
 type storageEstimateStatus struct {
-	Available bool `json:"available"`
-	Busy bool `json:"busy"`
-	JobID int `json:"jobID,omitempty"`
-	Result json.RawMessage `json:"result,omitempty"`
+	Available bool            `json:"available"`
+	Busy      bool            `json:"busy"`
+	JobID     int             `json:"jobID,omitempty"`
+	Result    json.RawMessage `json:"result,omitempty"`
 }
 
 type estimateSourceMember struct {
-	ID string `json:"id"`
+	ID   string `json:"id"`
 	Path string `json:"path"`
 }
 
 type estimateSourceGroup struct {
-	ID string `json:"id"`
-	Representative string `json:"representative"`
-	Members []estimateSourceMember `json:"members"`
+	ID             string                 `json:"id"`
+	Representative string                 `json:"representative"`
+	Members        []estimateSourceMember `json:"members"`
 }
 
 func validateStorageEstimateRequest(req storageEstimateRequest) error {
@@ -161,9 +159,9 @@ func estimatePython(ctx context.Context, group estimateSourceGroup, fidelity str
 		return nil, fmt.Errorf("storage estimate failed: %w: %s", err, strings.TrimSpace(string(data)))
 	}
 	var report struct {
-		ReadOnly bool `json:"readOnly"`
+		ReadOnly        bool `json:"readOnly"`
 		SourcesRetained bool `json:"sourcesRetained"`
-		GroupsFailed int `json:"groupsFailed"`
+		GroupsFailed    int  `json:"groupsFailed"`
 	}
 	if err := json.Unmarshal(data, &report); err != nil {
 		return nil, fmt.Errorf("invalid estimate response: %w", err)
