@@ -122,7 +122,7 @@ def _source_files(root: Path):
             yield source, relative
 
 
-def _store_file(source: Path, store: Path) -> tuple[int, str]:
+def _store_file(source: Path, store: Path) -> tuple[int, str, int, int]:
     """Copy through an fsynced temporary file; publish immutable blobs without overwrite."""
     before = _regular(source)
     bucket = store / "objects" / "tmp"
@@ -152,8 +152,9 @@ def _store_file(source: Path, store: Path) -> tuple[int, str]:
                     if getattr(after, field) != getattr(before, field):
                         raise BackupError(f"source changed during backup: {source}")
                 now = _regular(source)
-                if now.st_ino != before.st_ino or now.st_mtime_ns != before.st_mtime_ns or now.st_size != before.st_size:
-                    raise BackupError(f"source path changed during backup: {source}")
+                for field in ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns"):
+                    if getattr(now, field) != getattr(before, field):
+                        raise BackupError(f"source path changed during backup: {source}")
             target.flush()
             os.fsync(target.fileno())
         digest = checksum.hexdigest()
@@ -173,7 +174,7 @@ def _store_file(source: Path, store: Path) -> tuple[int, str]:
                 if actual_size != size or actual_digest != digest:
                     raise BackupError(f"concurrent backup object corrupted: {object_path}")
             _fsync_directory(bucket)
-        return size, digest
+        return size, digest, before.st_mtime_ns, stat.S_IMODE(before.st_mode)
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
@@ -211,8 +212,9 @@ def backup(store: Path, roots: dict[str, Path]) -> dict:
     entries = []
     for label, root in sorted(roots.items()):
         for source, relative in _source_files(root):
-            size, digest = _store_file(source, store)
-            entries.append({"root": label, "path": relative, "size": size, "sha256": digest})
+            size, digest, mtime_ns, mode = _store_file(source, store)
+            entries.append({"root": label, "path": relative, "size": size,
+                            "sha256": digest, "mtime_ns": mtime_ns, "mode": mode})
     payload = {
         "format": "stashbooru-media-backup",
         "version": VERSION,
@@ -255,6 +257,10 @@ def _load_manifest(store: Path, identifier: str) -> dict:
         seen.add((label, relative))
         if type(entry.get("size")) is not int or entry["size"] < 0:
             raise BackupError("invalid snapshot size")
+        if type(entry.get("mtime_ns")) is not int or not 0 <= entry["mtime_ns"] <= 2**63 - 1:
+            raise BackupError("invalid snapshot timestamp")
+        if type(entry.get("mode")) is not int or not 0 <= entry["mode"] <= 0o777:
+            raise BackupError("invalid snapshot permissions")
         _object_path(store, entry.get("sha256"))
     return value
 
@@ -329,6 +335,8 @@ def restore(store: Path, identifier: str, output: Path, member: str | None) -> d
                 os.fsync(target.fileno())
             if digest.hexdigest() != entry["sha256"] or length != entry["size"]:
                 raise BackupError("backup object changed during restore")
+            os.chmod(temporary, entry["mode"])
+            os.utime(temporary, ns=(entry["mtime_ns"], entry["mtime_ns"]))
             os.link(temporary, destination)  # atomic, never replace a current file
             _fsync_directory(destination.parent)
             count += 1
