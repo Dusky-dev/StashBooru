@@ -267,18 +267,20 @@ def _load_manifest(store: Path, identifier: str) -> dict:
 
 def verify(store: Path, identifier: str) -> dict:
     manifest = _load_manifest(store, identifier)
-    seen = set()
+    checked = {}
     total = 0
     for entry in manifest["entries"]:
         digest = entry["sha256"]
-        if digest not in seen:
+        if digest not in checked:
             length, actual = _read_hash(_object_path(store, digest))
-            if length != entry["size"] or actual != digest:
+            if actual != digest:
                 raise BackupError(f"backup object failed verification: {digest}")
-            seen.add(digest)
+            checked[digest] = length
+        if checked[digest] != entry["size"]:
+            raise BackupError(f"snapshot member size disagrees with backup object: {digest}")
         total += entry["size"]
     return {"snapshot": identifier, "verified": True, "files": len(manifest["entries"]),
-            "objects": len(seen), "logicalBytes": total}
+            "objects": len(checked), "logicalBytes": total}
 
 
 def _restore_destination(output: Path, label: str, relative: str) -> Path:
