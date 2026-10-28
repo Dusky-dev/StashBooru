@@ -2,6 +2,7 @@
 
 import json
 import os
+import stat
 from pathlib import Path
 import subprocess
 import sys
@@ -127,6 +128,25 @@ class MediaLibraryBackupTests(unittest.TestCase):
             with self.assertRaisesRegex(backup.BackupError, "regular"):
                 self.snapshot()
         self.assertEqual(list((self.store / "snapshots").glob("*.json")), [])
+
+    def test_file_timestamps_and_permissions_survive_recovery(self):
+        source = self.media / "same.png"
+        os.chmod(source, 0o640)
+        os.utime(source, ns=(1_000_000_000_000_000_000, 1_000_000_000_000_000_000))
+        original = source.stat()
+        identifier = self.snapshot()
+        output = self.home / "recovered"
+        backup.restore(self.store, identifier, output, "media:same.png")
+        restored = (output / "media/same.png").stat()
+        self.assertEqual(restored.st_mtime_ns, original.st_mtime_ns)
+        if os.name != "nt":
+            self.assertEqual(stat.S_IMODE(restored.st_mode), stat.S_IMODE(original.st_mode))
+
+    def test_restore_rejects_output_inside_source(self):
+        identifier = self.snapshot()
+        with self.assertRaisesRegex(backup.BackupError, "overlaps"):
+            backup.restore(self.store, identifier, self.media / "restored", None)
+        self.assertFalse((self.media / "restored" / "media").exists())
 
     def test_cli_json_roundtrip_and_missing_member(self):
         script = Path(backup.__file__)
