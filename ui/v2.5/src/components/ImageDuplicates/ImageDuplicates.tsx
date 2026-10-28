@@ -277,10 +277,9 @@ export default function ImageDuplicates() {
 
       <Alert variant="info" className="mt-3">
         Similarity uses fast approximate candidate search over existing EVA02
-        embeddings, then verifies cosine similarity. Some borderline matches
-        may be missed. Groups are suggestions, not proof of identical content.
-        Review carefully before deleting.
-        Missing results?{" "}
+        embeddings, then verifies cosine similarity. Some borderline matches may
+        be missed. Groups are suggestions, not proof of identical content.
+        Review carefully before deleting. Missing results?{" "}
         <Link to="/settings?tab=system">Generate visual embeddings</Link> under
         Visual Similarity settings.
       </Alert>

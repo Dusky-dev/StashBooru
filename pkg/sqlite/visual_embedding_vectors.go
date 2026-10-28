@@ -37,13 +37,13 @@ ORDER BY v.rowid`
 			return nil, err
 		}
 		if len(row.Embedding) != 4*VisualEmbeddingDimensions {
-			return nil, fmt.Errorf("Image %d embedding has %d bytes, expected %d", row.ID, len(row.Embedding), 4*VisualEmbeddingDimensions)
+			return nil, fmt.Errorf("image %d embedding has %d bytes, expected %d", row.ID, len(row.Embedding), 4*VisualEmbeddingDimensions)
 		}
 		values := make([]float32, VisualEmbeddingDimensions)
 		for i := range values {
 			values[i] = math.Float32frombits(binary.LittleEndian.Uint32(row.Embedding[4*i:]))
 			if math.IsNaN(float64(values[i])) || math.IsInf(float64(values[i]), 0) {
-				return nil, fmt.Errorf("Image %d embedding contains a non-finite value", row.ID)
+				return nil, fmt.Errorf("image %d embedding contains a non-finite value", row.ID)
 			}
 		}
 		vectors = append(vectors, ImageEmbeddingVector{ID: row.ID, Values: values})
