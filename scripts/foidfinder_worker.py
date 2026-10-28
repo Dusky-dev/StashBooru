@@ -6,6 +6,7 @@ nor the runtime are fetched on startup, status or tagging.
 """
 from __future__ import annotations
 
+import atexit
 import json
 import os
 from pathlib import Path
@@ -16,7 +17,6 @@ import threading
 from typing import Any
 
 from model_asset_download import fetch_model_file
-import visual_embedding_worker as visual
 
 MODEL_ID = "alpindale/PixAI-v1.0-INT8"
 BACKEND_SHA = "6d84cb240180f774b330ce6977401183fb543234"
@@ -29,7 +29,19 @@ _revision = BACKEND_SHA[:12]
 
 
 def _root() -> Path:
-    return Path(os.environ.get("STASH_PIXAI_CACHE_DIR", str(visual._default_cache_dir() / "pixai"))).expanduser()
+    custom = os.environ.get("STASH_PIXAI_CACHE_DIR")
+    if custom:
+        return Path(custom).expanduser()
+    cache = os.environ.get("STASH_EMBEDDING_CACHE_DIR")
+    if cache:
+        return Path(cache).expanduser() / "pixai"
+    cache = os.environ.get("STASH_CACHE")
+    if cache:
+        return Path(cache).expanduser() / "visual-embeddings" / "pixai"
+    xdg = os.environ.get("XDG_CACHE_HOME")
+    if xdg:
+        return Path(xdg).expanduser() / "stashbooru" / "visual-embeddings" / "pixai"
+    return Path.home() / ".cache" / "stashbooru" / "visual-embeddings" / "pixai"
 
 
 def _model_dir() -> Path:
@@ -77,6 +89,7 @@ def _install_runtime() -> None:
     source = f"foidfinder[{extra}] @ git+https://github.com/AlpinDale/foidfinder.git@{BACKEND_SHA}"
     try:
         subprocess.run(installer + [source], check=True)
+        (_runtime() / ".stashbooru-managed").write_text(BACKEND_SHA)
     except Exception:
         shutil.rmtree(_runtime(), ignore_errors=True)
         raise
@@ -113,8 +126,14 @@ def _stop() -> None:
 def delete() -> dict[str, Any]:
     with _guard:
         _stop()
-        shutil.rmtree(_root(), ignore_errors=False) if _root().exists() else None
+        for file in (_model_dir() / "model.safetensors", _model_dir() / "config.json"):
+            file.unlink(missing_ok=True)
+        if (_runtime() / ".stashbooru-managed").is_file():
+            shutil.rmtree(_runtime())
     return status()
+
+
+atexit.register(_stop)
 
 
 def tag(path: str, threshold: float = DEFAULT_THRESHOLD, limit: int = DEFAULT_LIMIT) -> list[dict[str, Any]]:
@@ -195,8 +214,11 @@ def main() -> int:
     if "--model-process" in sys.argv:
         return _run_model_process()
     for raw in sys.stdin:
+        request: dict[str, Any] | None = None
         try:
             request = json.loads(raw)
+            if not isinstance(request, dict):
+                raise ValueError("request must be an object")
             result = _handle(request)
             result["id"] = request.get("id")
         except Exception as error:
