@@ -271,7 +271,7 @@ export const MediaBackupTask: React.FC = () => {
           />
           <Button
             variant="secondary"
-            disabled={disabled || !acknowledged || !output.trim().startsWith("/")}
+            disabled={disabled || !acknowledged || !output.trim()}
             onClick={() => void act("restore", selectedSnapshot)}
           >
             Reconstruct snapshot files
