@@ -192,7 +192,9 @@ func (rs imageRoutes) StorageEstimateStatus(w http.ResponseWriter, r *http.Reque
 	info, err := os.Stat(path)
 	writeVisualSimilarityJSON(w, storageEstimateStatus{
 		Available: err == nil && info.Mode().IsRegular(),
-		Busy: busy, JobID: identifier, Result: result,
+		Busy:      busy,
+		JobID:     identifier,
+		Result:    result,
 	})
 }
 
