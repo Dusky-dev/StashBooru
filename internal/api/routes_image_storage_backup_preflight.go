@@ -87,6 +87,22 @@ func validateStorageBackupPreflightReport(data []byte, group estimateSourceGroup
 	if len(data) == 0 || len(data) > 128*1024 {
 		return nil, fmt.Errorf("unexpected backup preflight report length")
 	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return nil, fmt.Errorf("invalid backup preflight JSON: %w", err)
+	}
+	// Require explicit true/false fields; omitting a safety flag must never
+	// silently default to false and appear to authorize future operations.
+	for _, key := range []string{"experimental", "readOnly", "verified", "mediaBackupVerified", "sourcesRetained"} {
+		if string(fields[key]) != "true" {
+			return nil, fmt.Errorf("backup preflight did not explicitly confirm %s", key)
+		}
+	}
+	for _, key := range []string{"nativePackingEnabled", "nativeServingVerified", "databaseBackupVerified", "originalEvictionEnabled"} {
+		if string(fields[key]) != "false" {
+			return nil, fmt.Errorf("backup preflight must explicitly disable %s", key)
+		}
+	}
 	var report storageBackupPreflightReport
 	if err := json.Unmarshal(data, &report); err != nil {
 		return nil, fmt.Errorf("invalid backup preflight response: %w", err)
