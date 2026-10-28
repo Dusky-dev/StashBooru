@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import tempfile
 import sys
 import threading
 from typing import Any
@@ -163,6 +164,66 @@ def tag(path: str, threshold: float = DEFAULT_THRESHOLD, limit: int = DEFAULT_LI
         return result["tags"]
 
 
+# Both JPEG XL codestreams and container files are supported by libjxl/FFmpeg.
+_JXL_CODESTREAM_SIGNATURE = bytes.fromhex("ff0a")
+_JXL_CONTAINER_SIGNATURE = bytes.fromhex("0000000c4a584c200d0a870a")
+_MAX_DECODED_JXL_BYTES = 256 * 1024 * 1024
+
+
+def _decode_pixai_image(path: Path, decode):
+    """Decode standard images directly; transcode JPEG XL to a temporary PNG.
+
+    foidfinder's Pillow decoder does not register JPEG XL. The source file is
+    never changed, and the first frame is used for animated JPEG XL inputs.
+    """
+    source = path.read_bytes()
+    if not source.startswith((_JXL_CODESTREAM_SIGNATURE, _JXL_CONTAINER_SIGNATURE)):
+        return decode(source)
+
+    commands = []
+    if shutil.which("ffmpeg"):
+        commands.append(("ffmpeg", [
+            "ffmpeg", "-hide_banner", "-loglevel", "error", "-nostdin", "-y",
+            "-i", str(path), "-map", "0:v:0", "-frames:v", "1",
+            "-c:v", "png",
+        ]))
+    if shutil.which("djxl"):
+        commands.append(("djxl", ["djxl", str(path)]))
+    if not commands:
+        raise RuntimeError(
+            "JPEG XL tagging needs ffmpeg with a JPEG XL decoder or djxl (libjxl tools) on the worker"
+        )
+
+    failures = []
+    with tempfile.TemporaryDirectory(prefix="stashbooru-pixai-jxl-") as temp_dir:
+        output = Path(temp_dir) / "frame.png"
+        for name, command in commands:
+            # FFmpeg writes frame.png. djxl can produce frame-0.png for animations.
+            args = command + [str(output)]
+            try:
+                result = subprocess.run(
+                    args, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+                    timeout=120, check=False,
+                )
+            except (OSError, subprocess.TimeoutExpired) as error:
+                failures.append(f"{name}: {error}")
+                continue
+
+            candidates = [output] if output.is_file() else sorted(Path(temp_dir).glob("frame-*.png"))
+            if result.returncode == 0 and candidates:
+                decoded_path = candidates[0]
+                if decoded_path.stat().st_size > _MAX_DECODED_JXL_BYTES:
+                    raise ValueError("Decoded JPEG XL image exceeds the 256 MiB PNG limit")
+                return decode(decoded_path.read_bytes())
+
+            reason = result.stderr.decode("utf-8", errors="replace").strip()[-500:]
+            failures.append(f"{name}: {reason or f'exited with status {result.returncode}'}")
+            for generated in Path(temp_dir).glob("*.png"):
+                generated.unlink(missing_ok=True)
+
+    raise RuntimeError("Unable to decode JPEG XL for PixAI: " + "; ".join(failures))
+
+
 def _run_model_process() -> int:
     from foidfinder.backends import load
     from foidfinder.image import decode
@@ -174,8 +235,7 @@ def _run_model_process() -> int:
     for raw in sys.stdin:
         try:
             command = json.loads(raw)
-            with open(command["path"], "rb") as source:
-                image = decode(source.read())
+            image = _decode_pixai_image(Path(command["path"]), decode)
             try:
                 predictions = tags.result(backend.predict(image))
             finally:

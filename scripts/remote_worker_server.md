@@ -222,3 +222,25 @@ The foidfinder backend is installed into an isolated virtual environment from
 a pinned GitHub commit (Apache-2.0), and requires a CUDA compiler on NVIDIA.
 No download starts during a status request. The default installer only trusts
 specific Hugging Face repositories and verifies transfer hashes.
+
+
+### PixAI JPEG XL input support
+
+PixAI also accepts JPEG XL (`.jxl`) images, including both bare codestreams and
+container files. The worker detects JPEG XL from the file signature and
+transcodes a temporary first frame to PNG before passing it to foidfinder's
+Pillow decoder. Non-JPEG-XL inputs retain their existing direct decode path.
+The original media is never modified.
+
+The worker uses FFmpeg with JPEG XL decoding support first, then falls back to
+the libjxl `djxl` executable if present. Install at least one on the **worker
+machine** (not just the StashBooru host):
+
+- Arch / CachyOS: `sudo pacman -S --needed ffmpeg libjxl`
+- Debian / Ubuntu: `sudo apt install ffmpeg libjxl-tools`
+
+If neither executable is available or the installed FFmpeg lacks JPEG XL
+decoding support, PixAI reports a decoder-specific error instead of the
+generic "Unsupported image format". The conversion runs in a disposable
+temporary directory, has a timeout and a 256 MiB PNG output limit, and still
+uses foidfinder's 64 MP image-size check.
