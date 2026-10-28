@@ -495,7 +495,7 @@ export const VisualSimilaritySettings: React.FC = () => {
               )}
               <Button variant="secondary" disabled={loading || submitting}
                 onClick={() => void refresh()}>
-                Refresh status
+                Refresh Camie status
               </Button>
             </div>
             <details className="settings-details mt-3">
@@ -557,7 +557,7 @@ export const VisualSimilaritySettings: React.FC = () => {
               )}
               <Button variant="secondary" disabled={loading || submitting}
                 onClick={() => void refresh()}>
-                Refresh status
+                Refresh PixAI status
               </Button>
             </div>
             <p className="small text-muted mt-2">
