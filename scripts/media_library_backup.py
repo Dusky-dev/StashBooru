@@ -302,6 +302,10 @@ def restore(store: Path, identifier: str, output: Path, member: str | None) -> d
     _safe_directory(output)
     if _under(output.resolve(), store.resolve()) or _under(store.resolve(), output.resolve()):
         raise BackupError("restore output and backup store must be separate")
+    for root in manifest["roots"].values():
+        original = Path(root).resolve()
+        if _under(output.resolve(), original) or _under(original, output.resolve()):
+            raise BackupError("restore output overlaps an original media root")
     selection = manifest["entries"]
     if member is not None:
         selection = [e for e in selection if f"{e['root']}:{e['path']}" == member]
