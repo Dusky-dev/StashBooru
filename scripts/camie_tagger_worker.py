@@ -299,6 +299,8 @@ def tag(path_value: str, threshold: float = DEFAULT_THRESHOLD, limit: int = DEFA
 def install_model() -> dict[str, Any]:
     """Explicit on-demand install; existing files are retained."""
     global _metadata, _idx_to_tag, _tag_to_category, _tag_count
+    if os.environ.get("STASH_CAMIE_MODEL_PATH") or os.environ.get("STASH_CAMIE_METADATA_PATH"):
+        raise RuntimeError("automatic Camie installation is disabled for custom model paths")
     with _model_install_lock:
         if not _model_path().is_file():
             fetch_model_file(MODEL_ID, MODEL_FILENAME, _model_path())
@@ -311,11 +313,15 @@ def install_model() -> dict[str, Any]:
 
 
 def delete_model() -> dict[str, Any]:
-    global _session, _metadata, _idx_to_tag, _tag_to_category, _tag_count
-    if _session is not None:
-        raise RuntimeError("Camie is loaded; restart the worker before deleting it")
-    for path in (_model_path(), _metadata_path()):
-        path.unlink(missing_ok=True)
+    global _session, _input_name, _target_size, _metadata, _idx_to_tag, _tag_to_category, _tag_count
+    if os.environ.get("STASH_CAMIE_MODEL_PATH") or os.environ.get("STASH_CAMIE_METADATA_PATH"):
+        raise RuntimeError("automatic Camie deletion is disabled for custom model paths")
+    with _model_install_lock:
+        _session = None
+        _input_name = None
+        _target_size = None
+        for path in (_model_path(), _metadata_path()):
+            path.unlink(missing_ok=True)
     _metadata = _idx_to_tag = _tag_to_category = None
     _tag_count = 0
     return _status_payload()
