@@ -31,8 +31,11 @@ script displays an unavailable warning; it never attempts a backup.
 
 Backup, verification and recovery use cancellable native jobs. The task shows
 the job ID and requires the user to inspect its completion/error in the queue.
-Restore requires explicit acknowledgement. If the server is missing the Python
-script, or a destination overlaps a media root, the operation fails closed.
+Restore requires explicit acknowledgement. Its parent directory must already
+exist. The server independently checks the *currently configured* media roots
+and the backup store, even if old snapshots were made using different roots.
+If the Python script is missing or a destination overlaps protected paths,
+the operation fails closed.
 The server disallows running two media backup operations concurrently.
 
 This is **not** an automatically scheduled backup and does not create a
