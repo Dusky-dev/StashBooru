@@ -529,8 +529,8 @@ export const VisualSimilaritySettings: React.FC = () => {
         </Setting>
         <Setting
           className="flex-column align-items-stretch"
-          heading="PixAI v1 / foidfinder (optional)"
-          subHeading="Higher-resolution anime Character, Copyright and general tagging. Downloads the quantized model and installs an isolated CUDA/MLX runtime only when requested."
+          heading="PixAI Tagger v1 (optional)"
+          subHeading="Higher-resolution anime Character, Copyright and general tagging. Installs the model and an optimized inference runtime only when requested."
         >
           <div className="mt-3 w-100">
             {workerStatus(pixaiStatus)}
@@ -543,7 +543,7 @@ export const VisualSimilaritySettings: React.FC = () => {
               {!pixaiStatus?.installed && (
                 <Button variant="secondary" disabled={loading || submitting || !pixaiStatus?.workerOK}
                   onClick={() => void startJob("pixai/install")}>
-                  Install PixAI / foidfinder (~600 MB model)
+                  Install PixAI Tagger v1 (~600 MB model)
                 </Button>
               )}
               {pixaiStatus?.installed && (
@@ -561,7 +561,7 @@ export const VisualSimilaritySettings: React.FC = () => {
               </Button>
             </div>
             <p className="small text-muted mt-2">
-              NVIDIA installations need the CUDA Toolkit 12.8+ (nvcc) or precompiled foidfinder kernels.
+              NVIDIA installations need the CUDA Toolkit 12.8+ (nvcc) or precompiled inference kernels.
               The installer runs on the selected worker. Model and runtime are Apache-2.0.
             </p>
             <details className="settings-details mt-3">
