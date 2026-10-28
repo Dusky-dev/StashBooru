@@ -113,9 +113,9 @@ export const MediaBackupTask: React.FC = () => {
       <h2 id="media-backup-heading">Original media backup</h2>
       <p>
         Back up the original files from your configured StashBooru media
-        directories, independently of the database and filesystem blobs.
-        Backups reuse unchanged file content, but each run rechecks sources.
-        No original files are deleted or replaced.
+        directories, independently of the database and filesystem blobs. Backups
+        reuse unchanged file content, but each run rechecks sources. No original
+        files are deleted or replaced.
       </p>
       <Alert variant="warning">
         <strong>Experimental backup workflow.</strong> Save backups on a
@@ -154,8 +154,8 @@ export const MediaBackupTask: React.FC = () => {
           }}
         />
         <Form.Text className="text-muted">
-          Create this directory on the server first. It must not be inside
-          your library directories, or contain them.
+          Create this directory on the server first. It must not be inside your
+          library directories, or contain them.
         </Form.Text>
       </Form.Group>
       <Button
@@ -213,9 +213,7 @@ export const MediaBackupTask: React.FC = () => {
                 <tr key={snapshot.snapshot}>
                   <td className="text-break">{snapshot.snapshot}</td>
                   <td>{snapshot.files.toLocaleString()}</td>
-                  <td>
-                    {(snapshot.logicalBytes / 1024 ** 3).toFixed(2)} GiB
-                  </td>
+                  <td>{(snapshot.logicalBytes / 1024 ** 3).toFixed(2)} GiB</td>
                   <td>
                     <Button
                       size="sm"
@@ -249,9 +247,9 @@ export const MediaBackupTask: React.FC = () => {
         <div className="mt-3">
           <Alert variant="warning">
             Recovery writes original files to a <strong>separate</strong>
-            directory, never over the live library or existing files. Check
-            that there is enough space. Restore the corresponding database and
-            other app data separately if needed.
+            directory, never over the live library or existing files. Check that
+            there is enough space. Restore the corresponding database and other
+            app data separately if needed.
           </Alert>
           <h3>Restore {selectedSnapshot}</h3>
           <Form.Group>
