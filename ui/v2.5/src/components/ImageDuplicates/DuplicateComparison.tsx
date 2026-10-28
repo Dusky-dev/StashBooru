@@ -256,7 +256,7 @@ export function DuplicateComparison({
         </div>
         <div className="duplicate-compare-details">
           {[referenceMember, selectedMember].map((member, index) => (
-            <div key={index} className="duplicate-compare-metrics">
+            <div key={index === 0 ? "reference" : "candidate"} className="duplicate-compare-metrics">
               <strong>{index === 0 ? "Reference" : "Candidate"}</strong>
               {member && (
                 <>
