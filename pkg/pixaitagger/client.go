@@ -23,15 +23,15 @@ const (
 )
 
 type Status struct {
-	Installed      bool   `json:"installed"`
-	Loaded         bool   `json:"loaded"`
-	ModelExists    bool   `json:"modelExists"`
-	RuntimeExists  bool   `json:"runtimeExists"`
-	ModelPath      string `json:"modelPath"`
-	MetadataPath   string `json:"metadataPath"`
-	Model          string `json:"model"`
-	TagCount       int    `json:"tagCount"`
-	Error          string `json:"error,omitempty"`
+	Installed     bool   `json:"installed"`
+	Loaded        bool   `json:"loaded"`
+	ModelExists   bool   `json:"modelExists"`
+	RuntimeExists bool   `json:"runtimeExists"`
+	ModelPath     string `json:"modelPath"`
+	MetadataPath  string `json:"metadataPath"`
+	Model         string `json:"model"`
+	TagCount      int    `json:"tagCount"`
+	Error         string `json:"error,omitempty"`
 }
 
 type TargetCandidate struct {
