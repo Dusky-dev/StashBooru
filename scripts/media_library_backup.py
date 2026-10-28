@@ -297,15 +297,16 @@ def _restore_destination(output: Path, label: str, relative: str) -> Path:
 
 def restore(store: Path, identifier: str, output: Path, member: str | None) -> dict:
     manifest = _load_manifest(store, identifier)
-    if not output.exists():
-        output.mkdir(parents=True, mode=0o700)
-    _safe_directory(output)
-    if _under(output.resolve(), store.resolve()) or _under(store.resolve(), output.resolve()):
+    resolved_output = output.resolve()
+    if _under(resolved_output, store.resolve()) or _under(store.resolve(), resolved_output):
         raise BackupError("restore output and backup store must be separate")
     for root in manifest["roots"].values():
         original = Path(root).resolve()
-        if _under(output.resolve(), original) or _under(original, output.resolve()):
+        if _under(resolved_output, original) or _under(original, resolved_output):
             raise BackupError("restore output overlaps an original media root")
+    if not output.exists():
+        output.mkdir(parents=True, mode=0o700)
+    _safe_directory(output)
     selection = manifest["entries"]
     if member is not None:
         selection = [e for e in selection if f"{e['root']}:{e['path']}" == member]
