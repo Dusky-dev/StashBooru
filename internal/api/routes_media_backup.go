@@ -22,8 +22,21 @@ const mediaBackupConfigName = "media-library-backup.json"
 var (
 	mediaBackupLock sync.Mutex
 	mediaBackupBusy bool
+	mediaBackupJobID int
 	mediaBackupSnapshotID = regexp.MustCompile(`^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}$`)
 )
+
+// mediaBackupRunningLocked also releases the lock for jobs cancelled before execution.
+func mediaBackupRunningLocked() bool {
+	if mediaBackupBusy && mediaBackupJobID != 0 {
+		j := manager.GetInstance().JobManager.GetJob(mediaBackupJobID)
+		if j == nil || j.Status == job.StatusFinished || j.Status == job.StatusCancelled || j.Status == job.StatusFailed {
+			mediaBackupBusy = false
+			mediaBackupJobID = 0
+		}
+	}
+	return mediaBackupBusy
+}
 
 type mediaBackupConfig struct {
 	Destination string `json:"destination"`
@@ -225,7 +238,7 @@ func (rs imageRoutes) MediaBackupStatus(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	mediaBackupLock.Lock()
-	busy := mediaBackupBusy
+	busy := mediaBackupRunningLocked()
 	mediaBackupLock.Unlock()
 	roots := configuredBackupRoots()
 	status := mediaBackupStatus{Destination: cfg.Destination, Roots: roots, Busy: busy, Snapshots: []mediaBackupSnapshot{}}
@@ -246,7 +259,7 @@ func (rs imageRoutes) MediaBackupAction(w http.ResponseWriter, r *http.Request) 
 	}
 	mediaBackupLock.Lock()
 	defer mediaBackupLock.Unlock()
-	if mediaBackupBusy {
+	if mediaBackupRunningLocked() {
 		http.Error(w, "media backup is already running", http.StatusConflict)
 		return
 	}
@@ -314,6 +327,7 @@ func (rs imageRoutes) MediaBackupAction(w http.ResponseWriter, r *http.Request) 
 		defer func() {
 			mediaBackupLock.Lock()
 			mediaBackupBusy = false
+			mediaBackupJobID = 0
 			mediaBackupLock.Unlock()
 		}()
 		progress.SetTotal(1)
@@ -323,5 +337,6 @@ func (rs imageRoutes) MediaBackupAction(w http.ResponseWriter, r *http.Request) 
 		progress.SetProcessed(1)
 		return nil
 	}))
+	mediaBackupJobID = jobID
 	writeVisualSimilarityJSON(w, visualSimilarityJobResponse{JobID: jobID})
 }
