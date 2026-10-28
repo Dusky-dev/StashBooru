@@ -241,7 +241,7 @@ func recentMediaBackupSnapshots(store string) []mediaBackupSnapshot {
 		}
 		var value struct {
 			Snapshot string `json:"snapshot"`
-			Entries []struct {
+			Entries  []struct {
 				Size int64 `json:"size"`
 			} `json:"entries"`
 		}
