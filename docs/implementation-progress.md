@@ -1,5 +1,13 @@
 # StashBooru implementation progress
 
+## Duplicate review comparison workspace PR #255 — 2026-10-29
+
+- Branch `feature/duplicate-review-comparison-workspace`; last reviewed `develop` baseline `5ed5e87777bbd73bc3942b4daab5469a07e3c4ab` (branch was 12 commits behind at review, GitHub reports it mergeable).
+- Retains existing `/image-duplicates` removal confirmation; adds focused ReferenceComparison side-by-side/wipe/blink/difference, zoom/pan, reference/candidate choice, filmstrip, and Keep markers. No native media or database changes.
+- Original PR head `b091f3df66c5c59993b77948dd5140e529818395`: Go lint passed, UI tests (91) and UI lint/type checks passed; Build `generate` failed solely on four Biome formatting differences.
+- Repaired the exact CI-reported Biome diffs in `DuplicateComparison.tsx`, `ImageDuplicates.tsx`, `review.ts`, and `tests/image-duplicates.test.ts` through commits `095c172`, `dc501c7`, `cc24705`, `b8887cf`. New head `b8887cf8cc777b5406c0fbbe11af896e401c4b8d` awaiting rerun checks.
+- Codex review returned explicit quota exhaustion (no actionable findings). Real mounted-browser comparison, image codec playback and manual visual tests remain unverified. Only merge after final applicable CI passes.
+
 ## Read-only P12/P13 image storage candidate comparison — 2026-10-28
 
 - New `feat/readonly-image-storage-estimator-20261028` from `develop`.
