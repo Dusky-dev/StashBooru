@@ -92,8 +92,8 @@ test("comparison never starts with the same image on both sides", () => {
 });
 
 test("comparison tolerates missing preferred ID without crashing", () => {
-  assert.deepEqual(
-    duplicateComparisonPair({ ...group, preferredID: 777 }, 2),
-    { referenceID: 9, selectedID: 2 }
-  );
+  assert.deepEqual(duplicateComparisonPair({ ...group, preferredID: 777 }, 2), {
+    referenceID: 9,
+    selectedID: 2,
+  });
 });
