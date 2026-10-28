@@ -28,6 +28,8 @@ interface StorageEstimateReport {
   sourceBytes: number;
   potentialSavedBytes: number;
   hypotheticalBytesAfterFullActivation: number;
+  physicalBytesBeforeEvictionWithAllCandidatePacks: number;
+  groupsChecked: number;
   groupsFailed: number;
   results: GroupEstimate[];
 }
@@ -45,7 +47,7 @@ const formatSize = (size: number) => {
 
 export const ImageStorageEstimateTask: React.FC = () => {
   const [status, setStatus] = useState<EstimationStatus>();
-  const [stackID, setStackID] = useState("");
+  const [stackIDsText, setStackIDsText] = useState("");
   const [fidelity, setFidelity] = useState("byte-exact");
   const [acknowledged, setAcknowledged] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -80,7 +82,7 @@ export const ImageStorageEstimateTask: React.FC = () => {
       const response = await fetch("image/storage-estimate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stackID: Number(stackID), fidelity }),
+        body: JSON.stringify({ stackIDs: parsedIDs, fidelity }),
       });
       if (!response.ok) throw new Error(await response.text());
       const result = (await response.json()) as { jobID: number };
@@ -95,11 +97,17 @@ export const ImageStorageEstimateTask: React.FC = () => {
     }
   }
 
-  const validID =
-    /^[1-9]\d*$/.test(stackID) && Number.isSafeInteger(Number(stackID));
+  const tokens = stackIDsText.trim().split(/[\s,;]+/);
+  const parsedIDs = tokens.map(Number);
+  const validIDs =
+    stackIDsText.trim().length > 0 &&
+    tokens.length <= 8 &&
+    tokens.every((token) => /^[1-9]\d*$/.test(token)) &&
+    parsedIDs.every((id) => Number.isSafeInteger(id)) &&
+    new Set(parsedIDs).size === parsedIDs.length;
   const disabled = busy || !!status?.busy || !status?.available;
   const result = status?.result;
-  const group = result?.results?.[0];
+  const groups = result?.results ?? [];
 
   return (
     <section
@@ -110,10 +118,10 @@ export const ImageStorageEstimateTask: React.FC = () => {
         Experimental image storage estimate
       </h2>
       <p>
-        Compare P12 delta storage against P13 shared image blocks for one
-        existing image-only Visual Stack (2–16 images). This performs a
-        read-only estimate using the current primary files and does not create
-        packs, modify the catalogue or remove originals.
+        Compare P12 delta storage against P13 shared image blocks for up to
+        eight existing image-only Visual Stacks (2–16 images each). This
+        performs read-only estimates using current primary files without
+        creating packs, modifying the catalogue or removing originals.
       </p>
       <Alert variant="warning">
         <strong>No real disk savings yet.</strong> Estimated compression only
@@ -137,20 +145,19 @@ export const ImageStorageEstimateTask: React.FC = () => {
       )}
       <Form.Group>
         <Form.Label htmlFor="image-storage-estimate-id">
-          Visual Stack ID
+          Visual Stack IDs
         </Form.Label>
         <Form.Control
           id="image-storage-estimate-id"
-          type="number"
-          min={1}
-          value={stackID}
-          onChange={(event) => setStackID(event.currentTarget.value)}
-          placeholder="17"
+          type="text"
+          value={stackIDsText}
+          onChange={(event) => setStackIDsText(event.currentTarget.value)}
+          placeholder="17, 21, 32"
           disabled={disabled}
         />
         <Form.Text className="text-muted">
-          Enter the numeric ID of an existing image-only Visual Stack. This
-          first version estimates one stack at a time.
+          Enter up to eight distinct numeric IDs separated by commas or spaces.
+          Every selected stack must contain 2–16 image files.
         </Form.Text>
       </Form.Group>
       <Form.Group>
@@ -181,7 +188,7 @@ export const ImageStorageEstimateTask: React.FC = () => {
       />
       <Button
         variant="secondary"
-        disabled={disabled || !validID || !acknowledged}
+        disabled={disabled || !validIDs || !acknowledged}
         onClick={() => void start()}
       >
         Estimate savings (read-only)
@@ -200,49 +207,85 @@ export const ImageStorageEstimateTask: React.FC = () => {
       </Button>
       {status?.busy && (
         <p className="small mt-2" role="status">
-          Estimating selected Visual Stack in the task queue…
+          Estimating selected Visual Stacks in the task queue…
         </p>
       )}
-      {group && result?.readOnly && result.sourcesRetained && (
+      {result?.readOnly && result.sourcesRetained && groups.length > 0 && (
         <div className="mt-3">
-          <h3>Most recent Visual Stack estimate: {group.group}</h3>
+          <h3>Most recent storage estimate: {groups.length} stacks</h3>
           <p>
-            {group.members} images · {group.fidelity} · Original files:{" "}
-            {formatSize(group.sourceBytes)} · Hypothetical savings:{" "}
-            {formatSize(group.potentialSavedBytes)} · Best method:{" "}
-            {group.recommendedMethod}.
+            Original files: {formatSize(result.sourceBytes)} · Hypothetical
+            savings: {formatSize(result.potentialSavedBytes)} · Potential
+            footprint after full activation:{" "}
+            {formatSize(result.hypotheticalBytesAfterFullActivation)}.
           </p>
+          <Alert variant="info">
+            Originals were retained. Storing the candidate packs alongside them
+            would instead require about{" "}
+            {formatSize(
+              result.physicalBytesBeforeEvictionWithAllCandidatePacks
+            )}
+            .
+          </Alert>
           <Table responsive size="sm">
             <thead>
               <tr>
-                <th>Method</th>
-                <th>Candidate bytes</th>
+                <th>Visual Stack</th>
+                <th>Images</th>
+                <th>Originals</th>
+                <th>Best method</th>
                 <th>Potential saved</th>
-                <th>Meets limits?</th>
               </tr>
             </thead>
             <tbody>
-              {group.methods.map((method) => (
-                <tr key={method.method}>
-                  <td>
-                    {method.method} ({method.layout})
-                  </td>
-                  <td>{formatSize(method.packedBytes)}</td>
-                  <td>{formatSize(method.potentialSavedBytes)}</td>
-                  <td>{method.eligible ? "Yes" : "No"}</td>
+              {groups.map((group) => (
+                <tr key={group.group}>
+                  <td>{group.group}</td>
+                  <td>{group.members}</td>
+                  <td>{formatSize(group.sourceBytes)}</td>
+                  <td>{group.recommendedMethod}</td>
+                  <td>{formatSize(group.potentialSavedBytes)}</td>
                 </tr>
               ))}
             </tbody>
           </Table>
-          {group.methodErrors?.map((failure) => (
-            <Alert key={failure.method} variant="warning">
-              {failure.method}: {failure.error}
-            </Alert>
+          {groups.map((group) => (
+            <div key={group.group} className="mt-3">
+              <h4>
+                {group.group} · {group.fidelity}
+              </h4>
+              <Table responsive size="sm">
+                <thead>
+                  <tr>
+                    <th>Method</th>
+                    <th>Candidate size</th>
+                    <th>Potential saved</th>
+                    <th>Eligible?</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {group.methods?.map((method) => (
+                    <tr key={method.method}>
+                      <td>
+                        {method.method} ({method.layout})
+                      </td>
+                      <td>{formatSize(method.packedBytes)}</td>
+                      <td>{formatSize(method.potentialSavedBytes)}</td>
+                      <td>{method.eligible ? "Yes" : "No"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+              {group.methodErrors?.map((failure) => (
+                <Alert key={failure.method} variant="warning">
+                  {failure.method}: {failure.error}
+                </Alert>
+              ))}
+            </div>
           ))}
           <p className="small text-muted">
-            Potential figures exclude future caching and storage activation
-            overhead. Source files remain unchanged; this task creates no
-            compressed archives.
+            Figures exclude live storage integration and caching overhead. No
+            source files were modified and no storage packs were created.
           </p>
         </div>
       )}

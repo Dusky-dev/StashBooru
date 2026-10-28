@@ -45,3 +45,30 @@ func TestStorageEstimateRejectsNonRegularSources(t *testing.T) {
 		}
 	}
 }
+
+func TestStorageEstimateMultiStackValidation(t *testing.T) {
+	for _, selection := range []storageEstimateRequest{
+		{StackIDs: []int{1, 1}, Fidelity: "byte-exact"},
+		{StackIDs: []int{-1, 2}, Fidelity: "byte-exact"},
+		{StackID: 1, StackIDs: []int{2}, Fidelity: "byte-exact"},
+		{StackIDs: []int{1, 2, 3, 4, 5, 6, 7, 8, 9}, Fidelity: "byte-exact"},
+		{StackIDs: []int{1, 2}, Fidelity: "unknown"},
+	} {
+		if err := validateStorageEstimateRequest(selection); err == nil {
+			t.Fatalf("unsafe multi-stack estimate accepted: %+v", selection)
+		}
+	}
+	for _, selection := range []storageEstimateRequest{
+		{StackID: 1, Fidelity: "byte-exact"},
+		{StackIDs: []int{1, 3, 5}, Fidelity: "byte-exact"},
+		{StackIDs: []int{1, 2, 3, 4, 5, 6, 7, 8}, Fidelity: "pixel-exact"},
+	} {
+		if err := validateStorageEstimateRequest(selection); err != nil {
+			t.Fatalf("valid multi-stack selection rejected: %+v: %v", selection, err)
+		}
+	}
+	ids, err := storageEstimateSelectedIDs(storageEstimateRequest{StackIDs: []int{21, 9}, Fidelity: "byte-exact"})
+	if err != nil || len(ids) != 2 || ids[0] != 21 || ids[1] != 9 {
+		t.Fatalf("unexpected selected stack order: %v, %v", ids, err)
+	}
+}

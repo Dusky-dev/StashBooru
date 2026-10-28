@@ -19,6 +19,7 @@ import (
 )
 
 const estimateMaxMembers = 16
+const estimateMaxGroups = 8
 
 var storageEstimateMutex sync.Mutex
 var storageEstimateBusy bool
@@ -26,7 +27,8 @@ var storageEstimateJobID int
 var storageEstimateResult json.RawMessage
 
 type storageEstimateRequest struct {
-	StackID  int    `json:"stackID"`
+	StackID  int    `json:"stackID,omitempty"`
+	StackIDs []int  `json:"stackIDs,omitempty"`
 	Fidelity string `json:"fidelity"`
 }
 
@@ -48,9 +50,33 @@ type estimateSourceGroup struct {
 	Members        []estimateSourceMember `json:"members"`
 }
 
+func storageEstimateSelectedIDs(req storageEstimateRequest) ([]int, error) {
+	if len(req.StackIDs) != 0 && req.StackID != 0 {
+		return nil, fmt.Errorf("provide stackID or stackIDs, not both")
+	}
+	ids := req.StackIDs
+	if len(ids) == 0 {
+		ids = []int{req.StackID}
+	}
+	if len(ids) > estimateMaxGroups {
+		return nil, fmt.Errorf("select no more than %d Visual Stacks", estimateMaxGroups)
+	}
+	seen := make(map[int]bool, len(ids))
+	for _, id := range ids {
+		if id < 1 {
+			return nil, fmt.Errorf("all selected Visual Stack IDs must be positive")
+		}
+		if seen[id] {
+			return nil, fmt.Errorf("duplicate Visual Stack ID: %d", id)
+		}
+		seen[id] = true
+	}
+	return ids, nil
+}
+
 func validateStorageEstimateRequest(req storageEstimateRequest) error {
-	if req.StackID < 1 {
-		return fmt.Errorf("select a positive Visual Stack ID")
+	if _, err := storageEstimateSelectedIDs(req); err != nil {
+		return err
 	}
 	if req.Fidelity != "byte-exact" && req.Fidelity != "pixel-exact" {
 		return fmt.Errorf("unsupported storage fidelity")
@@ -129,7 +155,7 @@ func estimateStackSources(ctx context.Context, id int) (estimateSourceGroup, err
 	return result, err
 }
 
-func estimatePython(ctx context.Context, group estimateSourceGroup, fidelity string) (json.RawMessage, error) {
+func estimatePython(ctx context.Context, groups []estimateSourceGroup, fidelity string) (json.RawMessage, error) {
 	// Temporary specifications contain private local media paths. They are
 	// mode 0600 and deleted immediately after the estimator exits.
 	input, err := os.CreateTemp("", "stash-storage-estimate-*.json")
@@ -141,7 +167,7 @@ func estimatePython(ctx context.Context, group estimateSourceGroup, fidelity str
 		input.Close()
 		return nil, err
 	}
-	if err := json.NewEncoder(input).Encode(map[string]any{"stacks": []estimateSourceGroup{group}}); err != nil {
+	if err := json.NewEncoder(input).Encode(map[string]any{"stacks": groups}); err != nil {
 		input.Close()
 		return nil, err
 	}
@@ -230,19 +256,31 @@ func (rs imageRoutes) StorageEstimateStart(w http.ResponseWriter, r *http.Reques
 				storageEstimateBusy = false
 				storageEstimateMutex.Unlock()
 			}()
-			progress.SetTotal(1)
-			group, err := estimateStackSources(ctx, req.StackID)
+			ids, err := storageEstimateSelectedIDs(req)
 			if err != nil {
 				return err
 			}
-			report, err := estimatePython(ctx, group, req.Fidelity)
+			progress.SetTotal(len(ids) + 1)
+			groups := make([]estimateSourceGroup, 0, len(ids))
+			for i, id := range ids {
+				if job.IsCancelled(ctx) {
+					return nil
+				}
+				group, err := estimateStackSources(ctx, id)
+				if err != nil {
+					return fmt.Errorf("stack %d: %w", id, err)
+				}
+				groups = append(groups, group)
+				progress.SetProcessed(i + 1)
+			}
+			report, err := estimatePython(ctx, groups, req.Fidelity)
 			if err != nil {
 				return err
 			}
 			storageEstimateMutex.Lock()
 			storageEstimateResult = report
 			storageEstimateMutex.Unlock()
-			progress.SetProcessed(1)
+			progress.SetProcessed(len(ids) + 1)
 			return nil
 		},
 	))

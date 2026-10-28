@@ -1,5 +1,14 @@
 # StashBooru implementation progress
 
+## Batch Visual Stack savings estimates — 2026-10-28
+
+- Target `develop` baseline at review: `5ed5e87777bbd73bc3942b4daab5469a07e3c4ab` (merged #254); feature branch `feat/batch-visual-stack-storage-estimate-20261028`; PR #256.
+- Implemented bounded `stackIDs` for 1–8 distinct positive Visual Stack IDs (each 2–16 images), maintaining legacy `stackID` compatibility. Duplicate, mixed-source and oversized selections are rejected. Source paths come only from the native catalogue.
+- Per-stack P12/P13 candidate estimates and aggregate hypothetical savings appear in Settings → Tasks. No originals, native metadata or media paths are modified; no pack is published.
+- Verified at head `b7c36da722e89939337215b4489b604b2bc0bf87`: GitHub Actions Build (generate, Go test, first-library integration, release and all platform builds), Lint, Settings navigation and dedicated Read-only image storage estimates all **passed**. No actual owner-media calibration was performed.
+- Codex review has not completed for #256; review requirement must be satisfied or explicit quota-exhaustion response documented before merge.
+- Next after merge: non-destructive native prototype packing with independently verified byte-exact reconstruction, rollback, backup prerequisite and interrupted-operation recovery tests. Storage optimization stays disabled; never evict or replace originals.
+
 ## Native read-only Visual Stack storage estimate task — 2026-10-28
 
 - Branch `feat/native-image-storage-estimate-20261028` stacked on
