@@ -357,6 +357,11 @@ test-gallery-block:
 test-media-library-backup:
 	python3 -m unittest discover -s scripts/tests -p test_media_library_backup.py -v
 
+# Non-destructive hypothetical P12/P13 image storage savings comparisons.
+.PHONY: test-image-storage-estimate
+test-image-storage-estimate:
+	python3 -m unittest discover -s scripts/tests -p test_image_storage_estimate.py -v
+
 # runs all tests - including integration tests
 .PHONY: it
 it:

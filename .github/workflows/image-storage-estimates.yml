@@ -1,0 +1,29 @@
+name: Read-only image storage estimates
+
+on:
+  pull_request:
+    paths:
+      - scripts/image_storage_estimate.py
+      - scripts/tests/test_image_storage_estimate.py
+      - scripts/image_delta_storage.py
+      - scripts/gallery_block_storage.py
+      - .github/workflows/image-storage-estimates.yml
+      - docs/image-storage-estimates.md
+  push:
+    branches: [develop]
+    paths:
+      - scripts/image_storage_estimate.py
+      - scripts/tests/test_image_storage_estimate.py
+      - .github/workflows/image-storage-estimates.yml
+
+jobs:
+  estimate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Python image dependencies
+        run: sudo apt-get update && sudo apt-get install -y python3-pil python3-numpy
+      - name: Compile read-only estimation script
+        run: python3 -m py_compile scripts/image_storage_estimate.py scripts/tests/test_image_storage_estimate.py
+      - name: Verify estimates, immutable sources, bounds and reports
+        run: python3 -m unittest discover -s scripts/tests -p test_image_storage_estimate.py -v

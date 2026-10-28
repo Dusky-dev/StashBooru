@@ -1,5 +1,19 @@
 # StashBooru implementation progress
 
+## Read-only P12/P13 image storage candidate comparison — 2026-10-28
+
+- New `feat/readonly-image-storage-estimator-20261028` from `develop`.
+- Combine existing offline P12 (base/delta) and P13 (shared blocks/tiles)
+  into one per-stack read-only estimate at a selected fidelity.
+- Compare complete archive byte totals, net savings versus separate originals,
+  and actual physical footprint when original files are retained.
+- Never write packs, activate metadata, overwrite originals, or delete data.
+  Optional JSON report uses create-only semantics; group errors are explicit.
+- Dedicated tests and CI for real algorithm planning with synthetic edited PNGs,
+  untouched original checks, threshold validation and no-overwrite reporting.
+- **Still offline**; native library selection/Settings estimate and live storage
+  activation are later steps. CI and physical library calibration pending.
+
 ## Native original-media backup task — 2026-10-28
 
 - Based on the passing #250 offline snapshot branch at
