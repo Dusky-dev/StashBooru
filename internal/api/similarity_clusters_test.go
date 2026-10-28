@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http/httptest"
 	"reflect"
 	"testing"
 
@@ -136,5 +137,38 @@ func TestFastSimilarityClusterCancellation(t *testing.T) {
 	}, 20, 0.9)
 	if err == nil {
 		t.Fatal("expected cancellation error")
+	}
+}
+
+func TestSimilarityClusterMethodOptions(t *testing.T) {
+	tests := []struct {
+		query        string
+		method       string
+		distance     int
+		expectError  bool
+	}{
+		{"", "phash", 5, false},
+		{"?method=phash&distance=0", "phash", 0, false},
+		{"?method=phash&distance=8", "phash", 8, false},
+		{"?method=embedding&threshold=0.94", "embedding", 5, false},
+		{"?method=bogus", "", 0, true},
+		{"?distance=-1", "", 0, true},
+		{"?distance=9", "", 0, true},
+		{"?distance=banana", "", 0, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.query, func(t *testing.T) {
+			r := httptest.NewRequest("GET", "/image/visual-similarity/clusters"+tt.query, nil)
+			method, distance, err := similarityClusterMethodOptions(r)
+			if tt.expectError {
+				if err == nil {
+					t.Fatal("expected invalid request error")
+				}
+				return
+			}
+			if err != nil || method != tt.method || distance != tt.distance {
+				t.Fatalf("got %q, %d, %v; want %q, %d", method, distance, err, tt.method, tt.distance)
+			}
+		})
 	}
 }

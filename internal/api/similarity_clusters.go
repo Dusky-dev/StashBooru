@@ -40,9 +40,12 @@ type similarityClusterReview struct {
 }
 
 type similarityClusterResponse struct {
+	Method          string                    `json:"method"`
+	Distance        int                       `json:"distance"`
 	Threshold       float64                   `json:"threshold"`
 	Neighbors       int                       `json:"neighbors"`
 	IndexedImages   int                       `json:"indexedImages"`
+	TotalImages     int                       `json:"totalImages"`
 	Clusters        []similarityClusterReview `json:"clusters"`
 	SingletonsShown bool                      `json:"singletonsShown"`
 }
@@ -198,7 +201,33 @@ func similarityClusterOptions(r *http.Request) (float64, int, bool, error) {
 	return threshold, neighbors, includeSingletons, nil
 }
 
+// A missing method selects pHash, which is more appropriate for finding
+// duplicate files than the semantically related imagery returned by EVA02.
+func similarityClusterMethodOptions(r *http.Request) (string, int, error) {
+	method := strings.TrimSpace(r.URL.Query().Get("method"))
+	if method == "" {
+		method = "phash"
+	}
+	if method != "phash" && method != "embedding" {
+		return "", 0, fmt.Errorf("similarity method must be phash or embedding")
+	}
+	distance := 5
+	if raw := strings.TrimSpace(r.URL.Query().Get("distance")); raw != "" {
+		value, err := strconv.Atoi(raw)
+		if err != nil || value < 0 || value > 8 {
+			return "", 0, fmt.Errorf("pHash distance must be between 0 and 8")
+		}
+		distance = value
+	}
+	return method, distance, nil
+}
+
 func (rs imageRoutes) ImageSimilarityClusters(w http.ResponseWriter, r *http.Request) {
+	method, distance, err := similarityClusterMethodOptions(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	threshold, neighbors, includeSingletons, err := similarityClusterOptions(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -206,36 +235,70 @@ func (rs imageRoutes) ImageSimilarityClusters(w http.ResponseWriter, r *http.Req
 	}
 
 	repository := manager.GetInstance().Repository
-	// Read vectors in one consistent snapshot and release the database while
-	// the in-memory approximate search runs.
-	var vectors []sqlite.ImageEmbeddingVector
-	if err := repository.WithReadTxn(r.Context(), func(ctx context.Context) error {
-		var readErr error
-		vectors, readErr = sqlite.VisualEmbeddings.ImageEmbeddingVectors(ctx)
-		return readErr
-	}); err != nil {
-		http.Error(w, fmt.Sprintf("loading similarity vectors: %v", err), http.StatusConflict)
-		return
+	var clusterIDs [][]int
+	var indexedImages int
+	if method == "phash" {
+		// Uses only primary-file pHashes and the existing BK-tree. No EVA02
+		// worker, model or 1024-dimensional embedding is needed.
+		if err := repository.WithReadTxn(r.Context(), func(ctx context.Context) error {
+			var readErr error
+			clusterIDs, indexedImages, readErr = sqlite.ImagePHashClusters(ctx, distance)
+			return readErr
+		}); err != nil {
+			http.Error(w, fmt.Sprintf("building pHash duplicate groups: %v", err), http.StatusConflict)
+			return
+		}
+	} else {
+		// Snapshot live vectors and release the database during the CPU-bound
+		// approximate candidate search.
+		var vectors []sqlite.ImageEmbeddingVector
+		if err := repository.WithReadTxn(r.Context(), func(ctx context.Context) error {
+			var readErr error
+			vectors, readErr = sqlite.VisualEmbeddings.ImageEmbeddingVectors(ctx)
+			return readErr
+		}); err != nil {
+			http.Error(w, fmt.Sprintf("loading similarity vectors: %v", err), http.StatusConflict)
+			return
+		}
+		if len(vectors) == 0 {
+			http.Error(w, "visual similarity index has no Images", http.StatusConflict)
+			return
+		}
+		edges, err := collectSimilarityClusterEdges(r.Context(), vectors, neighbors, threshold)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("finding similarity candidates: %v", err), http.StatusConflict)
+			return
+		}
+		assetIDs := make([]int, len(vectors))
+		for i, vector := range vectors {
+			assetIDs[i] = vector.ID
+		}
+		indexedImages = len(assetIDs)
+		clusterIDs = buildSimilarityClusters(assetIDs, edges, threshold)
 	}
-	if len(vectors) == 0 {
-		http.Error(w, "visual similarity index has no Images", http.StatusConflict)
-		return
-	}
-	edges, err := collectSimilarityClusterEdges(r.Context(), vectors, neighbors, threshold)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("finding similarity candidates: %v", err), http.StatusConflict)
-		return
-	}
-	assetIDs := make([]int, len(vectors))
-	for i, vector := range vectors {
-		assetIDs[i] = vector.ID
-	}
-	clusterIDs := buildSimilarityClusters(assetIDs, edges, threshold)
 
-	var response similarityClusterResponse
+	response := similarityClusterResponse{
+		Method: method,
+		IndexedImages: indexedImages,
+		SingletonsShown: includeSingletons,
+	}
+	if method == "phash" {
+		response.Distance = distance
+	} else {
+		response.Threshold = threshold
+		response.Neighbors = neighbors
+	}
 	if err := repository.WithReadTxn(r.Context(), func(ctx context.Context) error {
-		clusters := make([]similarityClusterReview, 0, len(clusterIDs))
+		var countErr error
+		response.TotalImages, countErr = repository.Image.Count(ctx)
+		if countErr != nil {
+			return countErr
+		}
+		clusters := make([]similarityClusterReview, 0)
 		for _, ids := range clusterIDs {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			if len(ids) == 1 && !includeSingletons {
 				continue
 			}
@@ -254,23 +317,17 @@ func (rs imageRoutes) ImageSimilarityClusters(w http.ResponseWriter, r *http.Req
 			}
 			preferredID := preferredSimilarityClusterMember(members)
 			aliveIDs := make([]int, len(members))
-			for index := range members {
-				members[index].Preferred = members[index].ID == preferredID
-				aliveIDs[index] = members[index].ID
+			for i := range members {
+				members[i].Preferred = members[i].ID == preferredID
+				aliveIDs[i] = members[i].ID
 			}
 			clusters = append(clusters, similarityClusterReview{
-				IDs:         aliveIDs,
-				Members:     members,
+				IDs: aliveIDs,
+				Members: members,
 				PreferredID: preferredID,
 			})
 		}
-		response = similarityClusterResponse{
-			Threshold:       threshold,
-			Neighbors:       neighbors,
-			IndexedImages:   len(assetIDs),
-			Clusters:        clusters,
-			SingletonsShown: includeSingletons,
-		}
+		response.Clusters = clusters
 		return nil
 	}); err != nil {
 		http.Error(w, fmt.Sprintf("building similarity clusters: %v", err), http.StatusConflict)
