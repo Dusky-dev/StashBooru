@@ -95,7 +95,7 @@ type response struct {
 	Loaded        bool    `json:"loaded,omitempty"`
 	TagCount      int     `json:"tag_count,omitempty"`
 	Threshold     float64 `json:"threshold,omitempty"`
-	Tags           []Tag   `json:"tags,omitempty"`
+	Tags          []Tag   `json:"tags,omitempty"`
 }
 
 func DefaultWorkerPath() string {
