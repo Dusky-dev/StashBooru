@@ -74,7 +74,7 @@ class BundleTests(unittest.TestCase):
         server = (package.SCRIPTS / "remote_worker_server.py").read_text()
         for _, endpoint, _ in checker.CHECKS:
             self.assertIn(endpoint, server)
-        for endpoint in ("/v1/embed", "/v1/tag", "/v1/camie/tag",
+        for endpoint in ("/v1/embed", "/v1/tag", "/v1/camie/tag", "/v1/pixai/tag",
                          "/v1/convert", "/v1/video-overlap/sample", "/v1/restoration"):
             self.assertIn(endpoint, server)
 
@@ -133,7 +133,7 @@ class CapabilityCheckTests(unittest.TestCase):
                     self.send_response(401)
                     self.end_headers()
                     return
-                if self.path == "/v1/camie/status":
+                if self.path in ("/v1/camie/status", "/v1/pixai/status"):
                     self.send_response(503)
                     self.end_headers()
                     return
@@ -166,6 +166,7 @@ class CapabilityCheckTests(unittest.TestCase):
         with redirect_stdout(output):
             self.assertEqual(checker.check(base, "test-secret"), 0)
         self.assertIn("OPTIONAL Camie", output.getvalue())
+        self.assertIn("OPTIONAL PixAI", output.getvalue())
         self.assertIn("optional backend unavailable", output.getvalue())
         self.assertEqual([path for path, _ in requests], [ep for _, ep, _ in checker.CHECKS])
         self.assertTrue(all(token == "Bearer test-secret" for _, token in requests))
