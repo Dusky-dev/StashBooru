@@ -132,6 +132,42 @@ func validateBackupDestination(destination string, roots []string) (string, erro
 	return absolute, nil
 }
 
+// validateBackupRestoreOutput guards current media roots even when a snapshot
+// was made before the library paths were changed. Parent must already exist.
+func validateBackupRestoreOutput(output, store string, roots []string) (string, error) {
+	if !filepath.IsAbs(output) {
+		return "", fmt.Errorf("restore output must be an absolute path")
+	}
+	clean := filepath.Clean(output)
+	parent, err := filepath.EvalSymlinks(filepath.Dir(clean))
+	if err != nil {
+		return "", fmt.Errorf("restore output parent must exist: %w", err)
+	}
+	resolved := filepath.Join(parent, filepath.Base(clean))
+	if info, err := os.Lstat(clean); err == nil {
+		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+			return "", fmt.Errorf("restore output must be a regular directory or a new directory")
+		}
+		resolved, err = filepath.EvalSymlinks(clean)
+		if err != nil {
+			return "", err
+		}
+	} else if !os.IsNotExist(err) {
+		return "", err
+	}
+	locations := append(append([]string{}, roots...), store)
+	for _, location := range locations {
+		root, err := filepath.EvalSymlinks(location)
+		if err != nil {
+			return "", fmt.Errorf("cannot resolve protected location: %w", err)
+		}
+		if mediaBackupContains(root, resolved) || mediaBackupContains(resolved, root) {
+			return "", fmt.Errorf("restore output overlaps media files or the backup store")
+		}
+	}
+	return clean, nil
+}
+
 func saveMediaBackupConfig(cfg mediaBackupConfig) error {
 	configFile := mediaBackupConfigFile()
 	dir := filepath.Dir(configFile)
@@ -306,11 +342,12 @@ func (rs imageRoutes) MediaBackupAction(w http.ResponseWriter, r *http.Request) 
 	case "verify":
 		args = append(args, "--snapshot", req.Snapshot)
 	case "restore":
-		if !filepath.IsAbs(req.Output) || strings.TrimSpace(req.Output) == "" {
-			http.Error(w, "restore output must be a separate absolute directory", http.StatusBadRequest)
+		output, err := validateBackupRestoreOutput(req.Output, store, roots)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		args = append(args, "--snapshot", req.Snapshot, "--output", req.Output)
+		args = append(args, "--snapshot", req.Snapshot, "--output", output)
 		if req.Member != "" {
 			args = append(args, "--member", req.Member)
 		}
