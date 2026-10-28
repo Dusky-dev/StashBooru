@@ -1,5 +1,24 @@
 # StashBooru implementation progress
 
+## Original-media backup foundation — 2026-10-28
+
+- Baseline `develop`: `3dc1ade27ea5970c14797308f0973732f2067aaf`;
+  branch `feat/media-backup-safe-snapshots-20261028`.
+- Add an opt-in, **offline** Python-standard-library media snapshot CLI with
+  SHA-256-addressed immutable content, repeated-snapshot reuse, a manifest and
+  explicit full or single-item recovery to a separate path.
+- Guard accidental source/store nesting, reject symlinks/nonregular files and
+  unsafe manifest paths, reject sources changing during copy, publish blobs
+  and manifests without overwrite, and verify stored bytes before recovery.
+- Dedicated nine-case safety and CLI tests, Makefile target, and scoped CI
+  workflow. Actual test results/CI and review pending PR publication.
+- **Not yet integrated into application Settings or scheduled jobs.** There
+  is no native backup destination setting, restore UI, database/config/cache
+  coordination, consistent online snapshot, or source eviction. Do not
+  activate P12/P13 packed-media storage against live files on this basis.
+- Next: native Settings → Tasks → Media backup UX and integrated backup
+  destination after reviewing and validating this first recovery foundation.
+
 ## pHash-first Image duplicate review — 2026-10-28
 
 - Stacked on PR #246 (`f8e93c3c9883d45bd4a460931fd93ebd3aeef290`);
