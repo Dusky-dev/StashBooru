@@ -66,3 +66,32 @@ func TestMediaBackupDestinationSymlinkAlias(t *testing.T) {
 		t.Fatal("symlink alias bypassed overlap validation")
 	}
 }
+
+func TestMediaBackupRestoreOutputRejectsCurrentRoots(t *testing.T) {
+	base := t.TempDir()
+	root := filepath.Join(base, "current-library")
+	store := filepath.Join(base, "backup")
+	recovery := filepath.Join(base, "recovery")
+	for _, dir := range []string{root, store, recovery} {
+		if err := os.MkdirAll(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := validateBackupRestoreOutput(filepath.Join(recovery, "new"), store, []string{root}); err != nil {
+		t.Fatalf("separate recovery rejected: %v", err)
+	}
+	for _, output := range []string{root, filepath.Join(root, "recovered"), store, base} {
+		if _, err := validateBackupRestoreOutput(output, store, []string{root}); err == nil {
+			t.Errorf("allowed restore to protected path: %s", output)
+		}
+	}
+	if _, err := validateBackupRestoreOutput(filepath.Join(recovery, "nonexistent", "subdir"), store, []string{root}); err == nil {
+		t.Fatal("allowed missing output parent")
+	}
+	alias := filepath.Join(base, "library-alias")
+	if err := os.Symlink(root, alias); err == nil {
+		if _, err := validateBackupRestoreOutput(filepath.Join(alias, "recovered"), store, []string{root}); err == nil {
+			t.Fatal("symlink alias bypassed recovery protection")
+		}
+	}
+}
