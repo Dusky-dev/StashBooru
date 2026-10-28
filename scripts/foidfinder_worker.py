@@ -199,7 +199,7 @@ def _decode_pixai_image(path: Path, decode):
         output = Path(temp_dir) / "frame.png"
         for name, command in commands:
             # FFmpeg writes frame.png. djxl can produce frame-0.png for animations.
-            args = command + ([str(output)] if name == "djxl" else [str(output)])
+            args = command + [str(output)]
             try:
                 result = subprocess.run(
                     args, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
