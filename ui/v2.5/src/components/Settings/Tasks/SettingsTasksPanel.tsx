@@ -7,6 +7,7 @@ import { AnimationInspectionTask } from "./AnimationInspectionTask";
 import { AssociationInheritanceTask } from "./AssociationInheritanceTask";
 import { VideoOverlapTask } from "./VideoOverlapTask";
 import { ImageStorageEstimateTask } from "./ImageStorageEstimateTask";
+import { ImageStorageBackupPreflightTask } from "./ImageStorageBackupPreflightTask";
 import { DataManagementTasks } from "./DataManagementTasks";
 import { MediaBackupTask } from "./MediaBackupTask";
 import { PluginTasks } from "./PluginTasks";
@@ -108,6 +109,8 @@ export const SettingsTasksPanel: React.FC = () => {
           <VideoOverlapTask />
           <hr />
           <ImageStorageEstimateTask />
+          <hr />
+          <ImageStorageBackupPreflightTask />
         </SettingsDisclosure>
         <SettingsDisclosure
           id="tasks-maintenance"
