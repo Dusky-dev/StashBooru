@@ -33,7 +33,13 @@ import {
   TaggingChangePlanModal,
 } from "src/components/Tagging/TaggingChangePlanModal";
 
-type MetadataSourceKind = "local" | "booru" | "pixai" | "camie" | "eva02" | "library";
+type MetadataSourceKind =
+  | "local"
+  | "booru"
+  | "pixai"
+  | "camie"
+  | "eva02"
+  | "library";
 
 interface TagSourceResponse {
   backend: "local" | "remote";
@@ -371,7 +377,11 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   const loadModelPredictions = useCallback(
     async (source: "camie" | "pixai" | "eva02") => {
       const sourceThreshold =
-        source === "camie" ? camieThreshold : source === "pixai" ? pixaiThreshold : eva02Threshold;
+        source === "camie"
+          ? camieThreshold
+          : source === "pixai"
+            ? pixaiThreshold
+            : eva02Threshold;
       let options: ReturnType<typeof parseInferenceOptions>;
       try {
         options = parseInferenceOptions(sourceThreshold, limit);
@@ -383,7 +393,12 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
       setLoadingSource(source);
       setError(undefined);
       try {
-        const endpoint = source === "camie" ? "camie-tags" : source === "pixai" ? "pixai-tags" : "eva02-tags";
+        const endpoint =
+          source === "camie"
+            ? "camie-tags"
+            : source === "pixai"
+              ? "pixai-tags"
+              : "eva02-tags";
         const response = await fetch(
           `image/${imageId}/${endpoint}?threshold=${encodeURIComponent(options.parsedThreshold)}&limit=${encodeURIComponent(options.parsedLimit)}`,
           { method: "POST" }
@@ -406,7 +421,14 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         setLoadingSource(undefined);
       }
     },
-    [addSelected, camieThreshold, pixaiThreshold, eva02Threshold, imageId, limit]
+    [
+      addSelected,
+      camieThreshold,
+      pixaiThreshold,
+      eva02Threshold,
+      imageId,
+      limit,
+    ]
   );
 
   useEffect(() => {
@@ -697,7 +719,9 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                     max="0.999"
                     step="0.01"
                     value={pixaiThreshold}
-                    onChange={(event) => setPixaiThreshold(event.currentTarget.value)}
+                    onChange={(event) =>
+                      setPixaiThreshold(event.currentTarget.value)
+                    }
                     style={{ width: "8rem" }}
                   />
                 </Form.Group>
@@ -836,16 +860,16 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
 
               <details className="mb-3 text-muted">
                 <summary>How sources are combined</summary>
-                Sources are merged in priority order: Local → Booru → PixAI → Camie →
-                EVA02 → Library. Opening this dialog loads Local metadata only;
-                every network, model, or similarity source is explicit. PixAI,
-                Camie and EVA02 have independent thresholds. Library
-                suggestions require consensus from visually similar indexed
-                images and start unselected because they are review-only. When
-                the same metadata item is predicted by multiple sources, the
-                earlier source keeps its value and score while later sources are
-                shown as additional provenance. Multiple selected Artists can be
-                attached to the same image.
+                Sources are merged in priority order: Local → Booru → PixAI →
+                Camie → EVA02 → Library. Opening this dialog loads Local
+                metadata only; every network, model, or similarity source is
+                explicit. PixAI, Camie and EVA02 have independent thresholds.
+                Library suggestions require consensus from visually similar
+                indexed images and start unselected because they are
+                review-only. When the same metadata item is predicted by
+                multiple sources, the earlier source keeps its value and score
+                while later sources are shown as additional provenance. Multiple
+                selected Artists can be attached to the same image.
               </details>
 
               <Form.Check
@@ -867,8 +891,9 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                 </div>
               ) : predictions.length === 0 && !error ? (
                 <div className="text-muted">
-                  No Local metadata was found. Fetch Danbooru, run PixAI/Camie/EVA02,
-                  or request Library suggestions explicitly to add predictions.
+                  No Local metadata was found. Fetch Danbooru, run
+                  PixAI/Camie/EVA02, or request Library suggestions explicitly
+                  to add predictions.
                 </div>
               ) : (
                 <>
