@@ -268,8 +268,10 @@ export default function ImageDuplicates() {
       </Card>
 
       <Alert variant="info" className="mt-3">
-        Similarity uses the existing EVA02 visual index. Groups are suggestions,
-        not proof of identical content. Review carefully before deleting.
+        Similarity uses fast approximate candidate search over existing EVA02
+        embeddings, then verifies cosine similarity. Some borderline matches
+        may be missed. Groups are suggestions, not proof of identical content.
+        Review carefully before deleting.
         Missing results?{" "}
         <Link to="/settings?tab=system">Generate visual embeddings</Link> under
         Visual Similarity settings.
@@ -278,7 +280,7 @@ export default function ImageDuplicates() {
       {loading && (
         <div className="duplicate-review-loading" role="status">
           <Spinner animation="border" className="mr-3" />
-          Comparing indexed images and building groups…
+          Scanning indexed images and comparing likely matches…
         </div>
       )}
       {!loading && error && (

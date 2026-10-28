@@ -1,8 +1,11 @@
 package api
 
 import (
+	"context"
 	"reflect"
 	"testing"
+
+	"github.com/stashapp/stash/pkg/sqlite"
 )
 
 func TestBuildSimilarityClusters(t *testing.T) {
@@ -97,5 +100,41 @@ func TestSimilarityClusterScoreClampsCosineDistance(t *testing.T) {
 		if got := similarityClusterScore(test.distance); got != test.want {
 			t.Fatalf("similarityClusterScore(%v) = %v, want %v", test.distance, got, test.want)
 		}
+	}
+}
+
+func TestFastSimilarityClusterCandidates(t *testing.T) {
+	first := make([]float32, sqlite.VisualEmbeddingDimensions)
+	first[0] = 1
+	third := make([]float32, sqlite.VisualEmbeddingDimensions)
+	third[1] = 1
+	vectors := []sqlite.ImageEmbeddingVector{
+		{ID: 4, Values: first},
+		{ID: 7, Values: append([]float32(nil), first...)},
+		{ID: 20, Values: third},
+	}
+	edges, err := collectSimilarityClusterEdges(context.Background(), vectors, 20, 0.94)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(edges) != 1 || edges[0].LeftID != 4 || edges[0].RightID != 7 {
+		t.Fatalf("unexpected high-similarity edges: %+v", edges)
+	}
+	groups := buildSimilarityClusters([]int{4, 7, 20}, edges, 0.94)
+	if !reflect.DeepEqual(groups, [][]int{{4, 7}, {20}}) {
+		t.Fatalf("unexpected groups: %v", groups)
+	}
+}
+
+func TestFastSimilarityClusterCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	values := make([]float32, sqlite.VisualEmbeddingDimensions)
+	values[0] = 1
+	_, err := collectSimilarityClusterEdges(ctx, []sqlite.ImageEmbeddingVector{
+		{ID: 1, Values: values}, {ID: 2, Values: values},
+	}, 20, 0.9)
+	if err == nil {
+		t.Fatal("expected cancellation error")
 	}
 }

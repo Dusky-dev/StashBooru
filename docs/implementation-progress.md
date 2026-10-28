@@ -1,5 +1,20 @@
 # StashBooru implementation progress
 
+## Faster, stale-safe duplicate review — 2026-10-28
+
+- Baseline `develop` ee6e6f7a9011c1f4da9477d3ce00ffc215101072;
+  branch `fix/fast-image-duplicate-clusters`.
+- Replace per-Image vec0 KNN scans with a single bulk read of live embeddings,
+  approximate multi-projection candidate hashing and exact full-vector scoring.
+  Explain that borderline matches can be missed by approximate discovery.
+- Exclude orphan vectors even if migration 102 has not run yet; skip Images
+  deleted after the snapshot without failing the whole duplicate search.
+- Release the SQLite read transaction during CPU-bound similarity discovery.
+  Preserve per-Image top-neighbor limit and cluster preferences.
+- Add regression coverage for stale vectors, candidate matching and cancellation.
+- CI, real-library timings, mounted-browser verification, Codex review pending.
+
+
 ## Automatic orphaned EVA02 embedding cleanup — 2026-10-28
 
 - Baseline `develop`: `6b5c9b0d05e7d4a858268d90df0123557d256ff3`; branch `fix/visual-embedding-orphan-auto-cleanup`.

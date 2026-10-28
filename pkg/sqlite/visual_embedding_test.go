@@ -134,6 +134,8 @@ func TestImageEmbeddingIDsUsesVec0RowIDs(t *testing.T) {
 	db.SetMaxOpenConns(1)
 	t.Cleanup(func() { require.NoError(t, db.Close()) })
 
+	_, err = db.Exec("CREATE TABLE images (id INTEGER PRIMARY KEY)")
+	require.NoError(t, err)
 	_, err = db.Exec("CREATE VIRTUAL TABLE image_embedding_vectors USING vec0(embedding FLOAT[1024] DISTANCE_METRIC=cosine)")
 	require.NoError(t, err)
 	ctx := context.WithValue(context.Background(), dbKey, db)
@@ -151,9 +153,26 @@ func TestImageEmbeddingIDsUsesVec0RowIDs(t *testing.T) {
 		require.NoError(t, err)
 	}
 
+	_, err = db.Exec("INSERT INTO images(id) VALUES (2), (17), (91)")
+	require.NoError(t, err)
 	ids, err = VisualEmbeddings.ImageEmbeddingIDs(ctx)
 	require.NoError(t, err)
 	require.Equal(t, []int{2, 17, 91}, ids, "vec0 rowids are the indexed image IDs in stable order")
+	vectors, err := VisualEmbeddings.ImageEmbeddingVectors(ctx)
+	require.NoError(t, err)
+	require.Len(t, vectors, 3)
+	require.Equal(t, 2, vectors[0].ID)
+	require.InDelta(t, 1, vectors[0].Values[0], 1e-6)
+	require.Len(t, vectors[0].Values, VisualEmbeddingDimensions)
+	// A left-behind vec0 row is filtered even before schema-102 cleanup.
+	_, err = db.Exec("INSERT INTO image_embedding_vectors(rowid, embedding) VALUES (?, ?)", 48079, serialized)
+	require.NoError(t, err)
+	ids, err = VisualEmbeddings.ImageEmbeddingIDs(ctx)
+	require.NoError(t, err)
+	require.Equal(t, []int{2, 17, 91}, ids)
+	vectors, err = VisualEmbeddings.ImageEmbeddingVectors(ctx)
+	require.NoError(t, err)
+	require.Len(t, vectors, 3)
 
 	_, err = db.Exec("DELETE FROM image_embedding_vectors WHERE rowid = ?", 17)
 	require.NoError(t, err)
