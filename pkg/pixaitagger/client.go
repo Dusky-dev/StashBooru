@@ -26,7 +26,7 @@ type Status struct {
 	Installed      bool   `json:"installed"`
 	Loaded         bool   `json:"loaded"`
 	ModelExists    bool   `json:"modelExists"`
-	RuntimeExists bool   `json:"runtimeExists"`
+	RuntimeExists  bool   `json:"runtimeExists"`
 	ModelPath      string `json:"modelPath"`
 	MetadataPath   string `json:"metadataPath"`
 	Model          string `json:"model"`
@@ -90,7 +90,7 @@ type response struct {
 	ModelPath      string  `json:"model_path,omitempty"`
 	MetadataPath   string  `json:"metadata_path,omitempty"`
 	ModelExists    bool    `json:"model_exists,omitempty"`
-	RuntimeExists bool    `json:"runtime_exists,omitempty"`
+	RuntimeExists  bool    `json:"runtime_exists,omitempty"`
 	Installed      bool    `json:"installed,omitempty"`
 	Loaded         bool    `json:"loaded,omitempty"`
 	TagCount       int     `json:"tag_count,omitempty"`
