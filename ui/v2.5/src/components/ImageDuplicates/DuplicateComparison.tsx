@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Button, Form, Modal, Spinner } from "react-bootstrap";
 import { Link } from "react-router-dom";
 
@@ -50,7 +50,7 @@ export function DuplicateComparison({
   const [mode, setMode] = useState<ComparisonMode>("both");
   const [zoom, setZoom] = useState(1);
   const [resetPosition, setResetPosition] = useState(false);
-  const ids = group.members.map((member) => member.id);
+  const ids = useMemo(() => group.members.map((member) => member.id), [group]);
   const referenceMember = group.members.find((member) => member.id === referenceID);
   const selectedMember = group.members.find((member) => member.id === selectedID);
   const selectedIndex = ids.indexOf(selectedID);
