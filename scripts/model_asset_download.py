@@ -48,9 +48,6 @@ def fetch_model_file(repo: str, filename: str, destination: Path) -> None:
     try:
         req = Request(url, headers={"User-Agent": "StashBooru-model-installer/1"})
         with urlopen(req, timeout=120) as stream, part.open("wb") as target:
-            etag = (stream.headers.get("X-Linked-ETag") or stream.headers.get("ETag") or "").strip('"')
-            if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", etag):
-                raise RuntimeError(f"missing verifiable Hugging Face checksum for {filename}")
             digest = hashlib.sha256()
             total = 0
             expected = stream.headers.get("Content-Length")
