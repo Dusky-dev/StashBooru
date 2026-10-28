@@ -1,0 +1,25 @@
+name: Media library backup safety
+
+on:
+  pull_request:
+    paths:
+      - scripts/media_library_backup.py
+      - scripts/tests/test_media_library_backup.py
+      - .github/workflows/media-library-backup.yml
+      - docs/media-library-backup.md
+  push:
+    branches: [develop]
+    paths:
+      - scripts/media_library_backup.py
+      - scripts/tests/test_media_library_backup.py
+      - .github/workflows/media-library-backup.yml
+
+jobs:
+  recovery:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Compile offline backup script
+        run: python3 -m py_compile scripts/media_library_backup.py scripts/tests/test_media_library_backup.py
+      - name: Verify snapshot, corruption, symlink, restore and incremental behavior
+        run: python3 -m unittest discover -s scripts/tests -p test_media_library_backup.py -v
