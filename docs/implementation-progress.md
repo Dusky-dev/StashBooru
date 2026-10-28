@@ -1,5 +1,22 @@
 # StashBooru implementation progress
 
+## Native read-only Visual Stack storage estimate task — 2026-10-28
+
+- Branch `feat/native-image-storage-estimate-20261028` stacked on
+  P12/P13 read-only candidate estimator PR #252.
+- Add an authenticated native job endpoint for selecting one real Visual
+  Stack by numeric ID, resolving primary image paths from the database,
+  and running the pre-existing Python P12/P13 estimator without producing
+  packed files or touching media/source metadata.
+- Reject nonexistent IDs, mixed/video stacks, groups outside 2–16 members
+  and missing/nonregular/symlink image sources. No browser-supplied paths
+  or free-form commands reach the worker.
+- Settings → Tasks → Inspect media adds a read-only estimate button,
+  opt-in acknowledgement, fidelity choice, comparison results and normal
+  job-queue status. No experimental storage activation/eviction permitted.
+- Unit tests for ID/fidelity validation and nonregular image sources.
+  Full build, formatting, review and production library tests pending.
+
 ## Read-only P12/P13 image storage candidate comparison — 2026-10-28
 
 - New `feat/readonly-image-storage-estimator-20261028` from `develop`.
