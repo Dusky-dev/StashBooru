@@ -87,7 +87,7 @@ resources do not prevent local review.
 | --- | --- | --- |
 | Local | Parsed filename identities and provenance. | Enable filename metadata and configure its layout. No model required. |
 | Booru | Metadata for a matching post MD5, with source/post link and categorized tags where supplied/resolved. | Network access to a supported provider. No model required. |
-| PixAI | High-resolution Character, Copyright, general/style predictions using foidfinder; optional model and isolated runtime installed on demand. |
+| PixAI | High-resolution Character, Copyright, general/style predictions using an optimized inference runtime; optional model and isolated runtime installed on demand. |
 | Camie | Character, Artist, Copyright, general/meta predictions. | Explicitly installed Camie v2 ONNX model and metadata on the selected worker. |
 | EVA02 | Additional tag predictions from the installed EVA02 tagging data. | Compatible model/tag data on the selected worker; independent threshold. |
 | Library | Suggestions drawn from visually similar indexed local Images. | Existing visual index and local catalogue metadata. Suggestions need review. |
