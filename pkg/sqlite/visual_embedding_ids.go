@@ -9,7 +9,7 @@ import "context"
 // sqlite-vec stores Image IDs in the vec0 table's rowid, not an image_id column.
 func (s *VisualEmbeddingStore) ImageEmbeddingIDs(ctx context.Context) ([]int, error) {
 	var ids []int
-	if err := dbWrapper.Select(ctx, &ids, "SELECT rowid FROM image_embedding_vectors ORDER BY rowid"); err != nil {
+	if err := dbWrapper.Select(ctx, &ids, "SELECT v.rowid FROM image_embedding_vectors AS v JOIN images AS i ON i.id = v.rowid ORDER BY v.rowid"); err != nil {
 		return nil, err
 	}
 	return ids, nil

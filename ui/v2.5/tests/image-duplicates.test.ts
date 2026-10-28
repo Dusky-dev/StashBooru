@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  defaultDuplicateMethod,
+  duplicateClusterURL,
   duplicateGroupKey,
   duplicateReviewPlan,
   keptImageIDs,
@@ -45,4 +47,23 @@ test("review selection never deletes every image, even with bad persisted state"
 test("sizes are readable and invalid values cannot produce NaN labels", () => {
   assert.equal(readableFileSize(2 * 1024 * 1024), "2.00 MiB");
   assert.equal(readableFileSize(Number.NaN), "Unknown size");
+});
+
+test("pHash is the default duplicate mode and uses Hamming distance", () => {
+  assert.equal(defaultDuplicateMethod, "phash");
+  assert.equal(
+    duplicateClusterURL(defaultDuplicateMethod, "5", "0.94"),
+    "image/visual-similarity/clusters?method=phash&distance=5"
+  );
+  assert.equal(
+    duplicateClusterURL("phash", "0", "0.88"),
+    "image/visual-similarity/clusters?method=phash&distance=0"
+  );
+});
+
+test("related-content mode uses EVA02 without pHash distance", () => {
+  assert.equal(
+    duplicateClusterURL("embedding", "5", "0.95"),
+    "image/visual-similarity/clusters?method=embedding&threshold=0.95&neighbors=20"
+  );
 });

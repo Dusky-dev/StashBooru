@@ -1,5 +1,37 @@
 # StashBooru implementation progress
 
+## pHash-first Image duplicate review — 2026-10-28
+
+- Stacked on PR #246 (`f8e93c3c9883d45bd4a460931fd93ebd3aeef290`);
+  branch `feature/duplicate-review-phash-default`.
+- `/image-duplicates` defaults to pHash distance 5, with adjustable 0/2/5/8
+  Hamming-bit thresholds. Users can switch to EVA02 related-content matching,
+  which keeps its existing cosine thresholds and approximate candidate search.
+- Reuse SQLite's pHash BK-tree and union-find to group Images by their current
+  primary-file hashes. Exclude source_phash, secondary-file hashes and deleted
+  Image records. No EVA02 worker is needed in pHash mode.
+- Response counts reflect the selected index. UI requests only clusters,
+  removing the worker-status call from duplicate review.
+- Preserve manual keep/remove, metadata copy, and deletion safeguards.
+- Added pHash clustering/database, method parsing and UI request regression
+  tests. CI, Codex review, and real-library timing pending.
+
+
+## Faster, stale-safe duplicate review — 2026-10-28
+
+- Baseline `develop` ee6e6f7a9011c1f4da9477d3ce00ffc215101072;
+  branch `fix/fast-image-duplicate-clusters`.
+- Replace per-Image vec0 KNN scans with a single bulk read of live embeddings,
+  approximate multi-projection candidate hashing and exact full-vector scoring.
+  Explain that borderline matches can be missed by approximate discovery.
+- Exclude orphan vectors even if migration 102 has not run yet; skip Images
+  deleted after the snapshot without failing the whole duplicate search.
+- Release the SQLite read transaction during CPU-bound similarity discovery.
+  Preserve per-Image top-neighbor limit and cluster preferences.
+- Add regression coverage for stale vectors, candidate matching and cancellation.
+- CI, real-library timings, mounted-browser verification, Codex review pending.
+
+
 ## Automatic orphaned EVA02 embedding cleanup — 2026-10-28
 
 - Baseline `develop`: `6b5c9b0d05e7d4a858268d90df0123557d256ff3`; branch `fix/visual-embedding-orphan-auto-cleanup`.

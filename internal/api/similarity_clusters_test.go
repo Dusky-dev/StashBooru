@@ -1,8 +1,12 @@
 package api
 
 import (
+	"context"
+	"net/http/httptest"
 	"reflect"
 	"testing"
+
+	"github.com/stashapp/stash/pkg/sqlite"
 )
 
 func TestBuildSimilarityClusters(t *testing.T) {
@@ -97,5 +101,74 @@ func TestSimilarityClusterScoreClampsCosineDistance(t *testing.T) {
 		if got := similarityClusterScore(test.distance); got != test.want {
 			t.Fatalf("similarityClusterScore(%v) = %v, want %v", test.distance, got, test.want)
 		}
+	}
+}
+
+func TestFastSimilarityClusterCandidates(t *testing.T) {
+	first := make([]float32, sqlite.VisualEmbeddingDimensions)
+	first[0] = 1
+	third := make([]float32, sqlite.VisualEmbeddingDimensions)
+	third[1] = 1
+	vectors := []sqlite.ImageEmbeddingVector{
+		{ID: 4, Values: first},
+		{ID: 7, Values: append([]float32(nil), first...)},
+		{ID: 20, Values: third},
+	}
+	edges, err := collectSimilarityClusterEdges(context.Background(), vectors, 20, 0.94)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(edges) != 1 || edges[0].LeftID != 4 || edges[0].RightID != 7 {
+		t.Fatalf("unexpected high-similarity edges: %+v", edges)
+	}
+	groups := buildSimilarityClusters([]int{4, 7, 20}, edges, 0.94)
+	if !reflect.DeepEqual(groups, [][]int{{4, 7}, {20}}) {
+		t.Fatalf("unexpected groups: %v", groups)
+	}
+}
+
+func TestFastSimilarityClusterCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	values := make([]float32, sqlite.VisualEmbeddingDimensions)
+	values[0] = 1
+	_, err := collectSimilarityClusterEdges(ctx, []sqlite.ImageEmbeddingVector{
+		{ID: 1, Values: values}, {ID: 2, Values: values},
+	}, 20, 0.9)
+	if err == nil {
+		t.Fatal("expected cancellation error")
+	}
+}
+
+func TestSimilarityClusterMethodOptions(t *testing.T) {
+	tests := []struct {
+		query       string
+		method      string
+		distance    int
+		expectError bool
+	}{
+		{"", "phash", 5, false},
+		{"?method=phash&distance=0", "phash", 0, false},
+		{"?method=phash&distance=8", "phash", 8, false},
+		{"?method=embedding&threshold=0.94", "embedding", 5, false},
+		{"?method=bogus", "", 0, true},
+		{"?distance=-1", "", 0, true},
+		{"?distance=9", "", 0, true},
+		{"?distance=banana", "", 0, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.query, func(t *testing.T) {
+			r := httptest.NewRequest("GET", "/image/visual-similarity/clusters"+tt.query, nil)
+			method, distance, err := similarityClusterMethodOptions(r)
+			if tt.expectError {
+				if err == nil {
+					t.Fatal("expected invalid request error")
+				}
+				return
+			}
+			if err != nil || method != tt.method || distance != tt.distance {
+				t.Fatalf("got %q, %d, %v; want %q, %d", method, distance, err, tt.method, tt.distance)
+			}
+		})
 	}
 }
