@@ -50,7 +50,7 @@ and the same bearer token. Configure each tool's worker choice separately.
 
 - EVA02 embeddings and tagging (model required separately)
 - Camie Tagger v2 (optional ONNX model and metadata, installed on demand)
-- PixAI v1 / foidfinder (optional quantized model and isolated CUDA/MLX runtime, installed on demand)
+- PixAI Tagger v1 (optional quantized model and isolated CUDA/MLX runtime, installed on demand)
 - Conversion (FFmpeg, libjxl and other installed codecs; availability is probed)
 - Waifu2x / SeedVR2 upscaling (external executables and weights required separately)
 - Video overlap sampling (FFmpeg required)
@@ -71,7 +71,7 @@ version/protocol mismatches; development builds use the `latest_develop` asset.
 ## Optional tagger installation
 
 In StashBooru Settings → Processing → Similarity and tagging, choose **Install Camie**
-or **Install PixAI / foidfinder**. Neither is downloaded at worker startup.
+or **Install PixAI Tagger v1**. Neither is downloaded at worker startup.
 Downloads execute on the machine selected for inference. A remote worker must
 have `STASH_REMOTE_WORKER_TOKEN` configured for installation or deletion.
 
