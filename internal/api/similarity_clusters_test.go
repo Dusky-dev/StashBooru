@@ -142,10 +142,10 @@ func TestFastSimilarityClusterCancellation(t *testing.T) {
 
 func TestSimilarityClusterMethodOptions(t *testing.T) {
 	tests := []struct {
-		query        string
-		method       string
-		distance     int
-		expectError  bool
+		query       string
+		method      string
+		distance    int
+		expectError bool
 	}{
 		{"", "phash", 5, false},
 		{"?method=phash&distance=0", "phash", 0, false},

@@ -232,7 +232,8 @@ export default function ImageDuplicates() {
                 value={search.method}
                 disabled={loading || busy}
                 onChange={(event) => {
-                  const method = event.currentTarget.value as DuplicateMatchMethod;
+                  const method = event.currentTarget
+                    .value as DuplicateMatchMethod;
                   const next = { ...search, method };
                   setSearch(next);
                   setAppliedSearch(next);
@@ -251,7 +252,10 @@ export default function ImageDuplicates() {
                   value={search.distance}
                   disabled={loading || busy}
                   onChange={(event) =>
-                    setSearch({ ...search, distance: event.currentTarget.value })
+                    setSearch({
+                      ...search,
+                      distance: event.currentTarget.value,
+                    })
                   }
                 >
                   <option value="0">Exact pHash (0 bits)</option>
@@ -268,7 +272,10 @@ export default function ImageDuplicates() {
                   value={search.threshold}
                   disabled={loading || busy}
                   onChange={(event) =>
-                    setSearch({ ...search, threshold: event.currentTarget.value })
+                    setSearch({
+                      ...search,
+                      threshold: event.currentTarget.value,
+                    })
                   }
                 >
                   <option value="0.97">Very close (97%)</option>
@@ -301,7 +308,9 @@ export default function ImageDuplicates() {
                 ? result.indexedImages.toLocaleString() +
                   " / " +
                   result.totalImages.toLocaleString() +
-                  (result.method === "phash" ? " images hashed" : " images indexed")
+                  (result.method === "phash"
+                    ? " images hashed"
+                    : " images indexed")
                 : loading
                   ? "Checking image index…"
                   : "Image index unavailable"}

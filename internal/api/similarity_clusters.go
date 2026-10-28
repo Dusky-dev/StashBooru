@@ -278,8 +278,8 @@ func (rs imageRoutes) ImageSimilarityClusters(w http.ResponseWriter, r *http.Req
 	}
 
 	response := similarityClusterResponse{
-		Method: method,
-		IndexedImages: indexedImages,
+		Method:          method,
+		IndexedImages:   indexedImages,
 		SingletonsShown: includeSingletons,
 	}
 	if method == "phash" {
