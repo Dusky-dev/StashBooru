@@ -40,6 +40,8 @@ func (rs imageRoutes) Routes() chi.Router {
 	}
 
 	r := chi.NewRouter()
+	r.Get("/media-backup", rs.MediaBackupStatus)
+	r.Post("/media-backup", rs.MediaBackupAction)
 	r.Get("/converter", handleMediaConversionGet)
 	r.Post("/converter", handleMediaConversionPost)
 	r.Get("/restoration", handleImageRestorationGet)
