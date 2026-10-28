@@ -51,8 +51,12 @@ export function DuplicateComparison({
   const [zoom, setZoom] = useState(1);
   const [resetPosition, setResetPosition] = useState(false);
   const ids = useMemo(() => group.members.map((member) => member.id), [group]);
-  const referenceMember = group.members.find((member) => member.id === referenceID);
-  const selectedMember = group.members.find((member) => member.id === selectedID);
+  const referenceMember = group.members.find(
+    (member) => member.id === referenceID
+  );
+  const selectedMember = group.members.find(
+    (member) => member.id === selectedID
+  );
   const selectedIndex = ids.indexOf(selectedID);
 
   const referenceQuery = GQL.useFindImageQuery({
@@ -101,7 +105,13 @@ export function DuplicateComparison({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (
+        event.defaultPrevented ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey
+      )
+        return;
       const target = event.target;
       if (
         target instanceof HTMLElement &&
@@ -141,11 +151,14 @@ export function DuplicateComparison({
             <Form.Control
               as="select"
               value={referenceID}
-              onChange={(event) => changeReference(Number(event.currentTarget.value))}
+              onChange={(event) =>
+                changeReference(Number(event.currentTarget.value))
+              }
             >
               {group.members.map((member) => (
                 <option key={member.id} value={member.id}>
-                  Image #{member.id}{member.preferred ? " (suggested)" : ""}
+                  Image #{member.id}
+                  {member.preferred ? " (suggested)" : ""}
                 </option>
               ))}
             </Form.Control>
@@ -155,11 +168,18 @@ export function DuplicateComparison({
             <Form.Control
               as="select"
               value={selectedID}
-              onChange={(event) => changeSelected(Number(event.currentTarget.value))}
+              onChange={(event) =>
+                changeSelected(Number(event.currentTarget.value))
+              }
             >
               {group.members.map((member) => (
-                <option key={member.id} value={member.id} disabled={member.id === referenceID}>
-                  Image #{member.id}{member.preferred ? " (suggested)" : ""}
+                <option
+                  key={member.id}
+                  value={member.id}
+                  disabled={member.id === referenceID}
+                >
+                  Image #{member.id}
+                  {member.preferred ? " (suggested)" : ""}
                 </option>
               ))}
             </Form.Control>
@@ -169,7 +189,9 @@ export function DuplicateComparison({
             <Form.Control
               as="select"
               value={mode}
-              onChange={(event) => setMode(event.currentTarget.value as ComparisonMode)}
+              onChange={(event) =>
+                setMode(event.currentTarget.value as ComparisonMode)
+              }
             >
               <option value="both">Side by side</option>
               <option value="slider">Wipe slider</option>
@@ -242,8 +264,8 @@ export function DuplicateComparison({
             ← Previous
           </Button>
           <span>
-            {selectedIndex + 1} of {group.members.length} · Scroll to zoom and drag to pan.
-            Arrow keys switch candidates.
+            {selectedIndex + 1} of {group.members.length} · Scroll to zoom and
+            drag to pan. Arrow keys switch candidates.
           </span>
           <Button
             size="sm"
@@ -256,18 +278,32 @@ export function DuplicateComparison({
         </div>
         <div className="duplicate-compare-details">
           {[referenceMember, selectedMember].map((member, index) => (
-            <div key={index === 0 ? "reference" : "candidate"} className="duplicate-compare-metrics">
+            <div
+              key={index === 0 ? "reference" : "candidate"}
+              className="duplicate-compare-metrics"
+            >
               <strong>{index === 0 ? "Reference" : "Candidate"}</strong>
               {member && (
                 <>
-                  <Link to={"/images/" + member.id} target="_blank" rel="noopener noreferrer">
+                  <Link
+                    to={"/images/" + member.id}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Image #{member.id}
                   </Link>
-                  <span>{member.width} × {member.height} · {readableFileSize(member.fileSize)}</span>
+                  <span>
+                    {member.width} × {member.height} ·{" "}
+                    {readableFileSize(member.fileSize)}
+                  </span>
                   <Form.Check
                     type="checkbox"
                     id={"compare-keep-" + index}
-                    label={keptIDs.includes(member.id) ? "Keep" : "Marked for removal"}
+                    label={
+                      keptIDs.includes(member.id)
+                        ? "Keep"
+                        : "Marked for removal"
+                    }
                     checked={keptIDs.includes(member.id)}
                     onChange={() => onToggleKeep(member.id)}
                   />
@@ -276,7 +312,10 @@ export function DuplicateComparison({
             </div>
           ))}
         </div>
-        <div className="duplicate-compare-filmstrip" aria-label="Images in duplicate group">
+        <div
+          className="duplicate-compare-filmstrip"
+          aria-label="Images in duplicate group"
+        >
           {group.members.map((member) => (
             <button
               type="button"
@@ -291,15 +330,26 @@ export function DuplicateComparison({
               aria-label={"Compare image " + member.id}
               aria-pressed={member.id === selectedID}
             >
-              <img src={"image/" + member.id + "/thumbnail"} alt="" loading="lazy" />
-              <span>#{member.id}{keptIDs.includes(member.id) ? " · Keep" : ""}</span>
+              <img
+                src={"image/" + member.id + "/thumbnail"}
+                alt=""
+                loading="lazy"
+              />
+              <span>
+                #{member.id}
+                {keptIDs.includes(member.id) ? " · Keep" : ""}
+              </span>
             </button>
           ))}
         </div>
       </Modal.Body>
       <Modal.Footer>
-        <span className="text-muted mr-auto">No files are changed by comparing or choosing what to keep.</span>
-        <Button variant="secondary" onClick={onClose}>Back to duplicate groups</Button>
+        <span className="text-muted mr-auto">
+          No files are changed by comparing or choosing what to keep.
+        </span>
+        <Button variant="secondary" onClick={onClose}>
+          Back to duplicate groups
+        </Button>
       </Modal.Footer>
     </Modal>
   );
