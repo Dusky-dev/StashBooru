@@ -42,6 +42,14 @@ export const MediaBackupTask: React.FC = () => {
     const response = await fetch("image/media-backup", { signal });
     const value = await readResponse<MediaBackupStatus>(response);
     if (signal?.aborted) return;
+    if (
+      !value ||
+      typeof value.destination !== "string" ||
+      !Array.isArray(value.roots) ||
+      !Array.isArray(value.snapshots)
+    ) {
+      throw new Error("Media backup API unavailable or incompatible.");
+    }
     setStatus(value);
     setDestination((previous) =>
       previous === "" ? value.destination : previous
