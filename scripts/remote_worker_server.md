@@ -72,7 +72,7 @@ Model-specific settings such as `STASH_EMBEDDING_MODEL_PATH` remain unchanged.
 
 ## Optional Camie Tagger v2
 
-Camie is deliberately **not bundled and never downloaded automatically by StashBooru**. To enable it, keep `camie_tagger_worker.py` beside `remote_worker_server.py` and `visual_embedding_worker.py`, then manually supply both files from `Camais03/camie-tagger-v2`:
+Camie is **not bundled or downloaded on startup**. It can now be installed explicitly from Settings → Processing. To enable it, keep `camie_tagger_worker.py` beside `remote_worker_server.py` and `visual_embedding_worker.py`, then manually supply both files from `Camais03/camie-tagger-v2`:
 
 ```text
 camie-tagger-v2.onnx
@@ -205,3 +205,20 @@ dimensions and frame count before encoding. Animated/video SeedVR2 processing is
 not enabled in this path. CLI adapters and validation are tested without weights;
 validate real GPU inference on the worker before applying a large batch. SeedVR2
 upscaling is separate from P11 mask-based inpainting.
+
+## Optional installers (Camie and PixAI)
+
+A one-click Install/Delete action in Settings → Processing runs on the selected
+inference host. For remote workers, provide a bearer token; privileged install
+endpoints are disabled without `STASH_REMOTE_WORKER_TOKEN`.
+
+- `POST /v1/camie/download` and `POST /v1/camie/delete`
+- `GET /v1/pixai/status`, `POST /v1/pixai/download`, `POST /v1/pixai/delete`
+- `POST /v1/pixai/tag?threshold=0.35&limit=50` accepts image bytes.
+
+Camie weights and metadata come from `Camais03/camie-tagger-v2` (GPL-3.0).
+PixAI INT8 weights come from `alpindale/PixAI-v1.0-INT8` (Apache-2.0).
+The foidfinder backend is installed into an isolated virtual environment from
+a pinned GitHub commit (Apache-2.0), and requires a CUDA compiler on NVIDIA.
+No download starts during a status request. The default installer only trusts
+specific Hugging Face repositories and verifies transfer hashes.
