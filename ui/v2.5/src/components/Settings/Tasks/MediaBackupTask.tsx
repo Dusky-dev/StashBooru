@@ -160,7 +160,7 @@ export const MediaBackupTask: React.FC = () => {
       <Button
         variant="primary"
         className="ml-2"
-        disabled={disabled || !savedDestination || status?.roots.length === 0}
+        disabled={disabled || !savedDestination || status?.roots?.length === 0}
         onClick={() => void act("backup")}
       >
         Back up media files
@@ -185,10 +185,10 @@ export const MediaBackupTask: React.FC = () => {
         </p>
       )}
       <p className="small text-muted mt-3">
-        Configured roots: {status?.roots.length ?? 0}
+        Configured roots: {status?.roots?.length ?? 0}
         {status?.busy ? " · Backup operation running" : ""}
       </p>
-      {!!status?.snapshots.length && (
+      {!!status?.snapshots?.length && (
         <>
           <h3>Saved media snapshots</h3>
           <Table responsive size="sm">
