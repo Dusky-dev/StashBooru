@@ -57,6 +57,12 @@ type Tagger interface {
 	Close() error
 }
 
+// ModelManager provides explicit, user-initiated model installation operations.
+type ModelManager interface {
+	Download(ctx context.Context) (Status, error)
+	Delete(ctx context.Context) (Status, error)
+}
+
 type Client struct {
 	mu         sync.Mutex
 	workerPath string
@@ -108,6 +114,28 @@ func New(workerPath string) *Client {
 
 func (c *Client) Status(ctx context.Context) (Status, error) {
 	res, err := c.call(ctx, request{Op: "status"})
+	if err != nil {
+		return Status{}, err
+	}
+	if err := validateResponse(res); err != nil {
+		return Status{}, err
+	}
+	return statusFromResponse(res), nil
+}
+
+func (c *Client) Download(ctx context.Context) (Status, error) {
+	res, err := c.call(ctx, request{Op: "download"})
+	if err != nil {
+		return Status{}, err
+	}
+	if err := validateResponse(res); err != nil {
+		return Status{}, err
+	}
+	return statusFromResponse(res), nil
+}
+
+func (c *Client) Delete(ctx context.Context) (Status, error) {
+	res, err := c.call(ctx, request{Op: "delete"})
 	if err != nil {
 		return Status{}, err
 	}

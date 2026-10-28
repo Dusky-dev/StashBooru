@@ -9,6 +9,7 @@ supply the ONNX model and metadata JSON themselves.
 from __future__ import annotations
 
 import json
+import threading
 import os
 from pathlib import Path
 import sys
@@ -19,6 +20,7 @@ import onnxruntime as ort
 from PIL import Image
 
 import visual_embedding_worker as visual
+from model_asset_download import fetch_model_file
 
 MODEL_ID = "Camais03/camie-tagger-v2"
 MODEL_FILENAME = "camie-tagger-v2.onnx"
@@ -27,6 +29,7 @@ DEFAULT_THRESHOLD = 0.492
 DEFAULT_LIMIT = 50
 MAX_LIMIT = 200
 
+_model_install_lock = threading.Lock()
 _session: ort.InferenceSession | None = None
 _input_name: str | None = None
 _target_size: int | None = None
@@ -293,6 +296,37 @@ def tag(path_value: str, threshold: float = DEFAULT_THRESHOLD, limit: int = DEFA
     return predictions
 
 
+def install_model() -> dict[str, Any]:
+    """Explicit on-demand install; existing files are retained."""
+    global _metadata, _idx_to_tag, _tag_to_category, _tag_count
+    if os.environ.get("STASH_CAMIE_MODEL_PATH") or os.environ.get("STASH_CAMIE_METADATA_PATH"):
+        raise RuntimeError("automatic Camie installation is disabled for custom model paths")
+    with _model_install_lock:
+        if not _model_path().is_file():
+            fetch_model_file(MODEL_ID, MODEL_FILENAME, _model_path())
+        if not _metadata_path().is_file():
+            fetch_model_file(MODEL_ID, METADATA_FILENAME, _metadata_path())
+        _metadata = _idx_to_tag = _tag_to_category = None
+        _tag_count = 0
+        _load_metadata()
+    return _status_payload()
+
+
+def delete_model() -> dict[str, Any]:
+    global _session, _input_name, _target_size, _metadata, _idx_to_tag, _tag_to_category, _tag_count
+    if os.environ.get("STASH_CAMIE_MODEL_PATH") or os.environ.get("STASH_CAMIE_METADATA_PATH"):
+        raise RuntimeError("automatic Camie deletion is disabled for custom model paths")
+    with _model_install_lock:
+        _session = None
+        _input_name = None
+        _target_size = None
+        for path in (_model_path(), _metadata_path()):
+            path.unlink(missing_ok=True)
+    _metadata = _idx_to_tag = _tag_to_category = None
+    _tag_count = 0
+    return _status_payload()
+
+
 def _response(request_id: Any, **payload: Any) -> None:
     message = {"id": request_id, **payload}
     sys.stdout.write(json.dumps(message, separators=(",", ":"), allow_nan=False) + "\n")
@@ -305,6 +339,14 @@ def _handle(request: dict[str, Any]) -> None:
 
     if operation in ("ping", "status"):
         _response(request_id, ok=True, **_status_payload())
+        return
+
+    if operation == "download":
+        _response(request_id, ok=True, **install_model())
+        return
+
+    if operation == "delete":
+        _response(request_id, ok=True, **delete_model())
         return
 
     if operation == "tag":

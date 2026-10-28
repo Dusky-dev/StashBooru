@@ -17,6 +17,8 @@ MODULES = (
     "visual_embedding_server.py",
     "visual_embedding_worker.py",
     "camie_tagger_worker.py",
+    "foidfinder_worker.py",
+    "model_asset_download.py",
     "media_conversion_worker.py",
     "media_upscale_worker.py",
     "video_overlap_worker.py",

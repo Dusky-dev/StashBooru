@@ -36,6 +36,18 @@ interface CamieStatus {
   tagCount: number;
 }
 
+interface PixaiStatus {
+  installed: boolean;
+  loaded: boolean;
+  workerOK: boolean;
+  workerError?: string;
+  backend: "local" | "remote";
+  model: string;
+  modelPath?: string;
+  runtimeExists: boolean;
+  modelExists: boolean;
+}
+
 interface CamieConfig {
   threshold: number;
   eva02Threshold: number;
@@ -64,6 +76,8 @@ export const VisualSimilaritySettings: React.FC = () => {
   const [statusError, setStatusError] = useState<string>();
   const [camieStatus, setCamieStatus] = useState<CamieStatus>();
   const [camieStatusError, setCamieStatusError] = useState<string>();
+  const [pixaiStatus, setPixaiStatus] = useState<PixaiStatus>();
+  const [pixaiStatusError, setPixaiStatusError] = useState<string>();
   const [camieConfig, setCamieConfig] = useState<CamieConfig>({
     threshold: 0.492,
     eva02Threshold: 0.35,
@@ -89,9 +103,10 @@ export const VisualSimilaritySettings: React.FC = () => {
       fetch(`image/visual-similarity/${path}`, {
         signal: controller.signal,
       }).then(readResponse<T>);
-    const [embedding, camie, config] = await Promise.allSettled([
+    const [embedding, camie, pixai, config] = await Promise.allSettled([
       get<VisualSimilarityStatus>("status"),
       get<CamieStatus>("camie/status"),
+      get<PixaiStatus>("pixai/status"),
       includeConfig
         ? get<CamieConfig>("camie/config")
         : Promise.resolve(undefined),
@@ -104,6 +119,10 @@ export const VisualSimilaritySettings: React.FC = () => {
     setCamieStatus(camie.status === "fulfilled" ? camie.value : undefined);
     setCamieStatusError(
       camie.status === "rejected" ? String(camie.reason) : undefined
+    );
+    setPixaiStatus(pixai.status === "fulfilled" ? pixai.value : undefined);
+    setPixaiStatusError(
+      pixai.status === "rejected" ? String(pixai.reason) : undefined
     );
     if (includeConfig) {
       if (config.status === "fulfilled" && config.value) {
@@ -146,7 +165,7 @@ export const VisualSimilaritySettings: React.FC = () => {
   }, [Toast, camieConfig]);
 
   const startJob = useCallback(
-    async (endpoint: "download" | "index") => {
+    async (endpoint: string) => {
       setSubmitting(true);
       try {
         const response = await fetch(`image/visual-similarity/${endpoint}`, {
@@ -176,7 +195,9 @@ export const VisualSimilaritySettings: React.FC = () => {
     camieConfig.limit >= 1 &&
     camieConfig.limit <= 200;
 
-  function workerStatus(value?: VisualSimilarityStatus | CamieStatus) {
+  function workerStatus(
+    value?: VisualSimilarityStatus | CamieStatus | PixaiStatus
+  ) {
     if (loading) return <Badge variant="secondary">Checking…</Badge>;
     if (!value) return <Badge variant="secondary">Status unavailable</Badge>;
     return (
@@ -449,7 +470,7 @@ export const VisualSimilaritySettings: React.FC = () => {
         <Setting
           className="flex-column align-items-stretch"
           heading="Camie Tagger v2 (optional)"
-          subHeading="Adds Character, Copyright, Artist and general Tag predictions. Supply its model and metadata on the selected worker; Camie is never downloaded automatically."
+          subHeading="Adds Character, Copyright, Artist and general Tag predictions. The model is downloaded only when you select Install; files are stored on the selected worker."
         >
           <div className="mt-3 w-100">
             {workerStatus(camieStatus)}
@@ -458,6 +479,40 @@ export const VisualSimilaritySettings: React.FC = () => {
                 {camieStatusError || camieStatus?.workerError}
               </Alert>
             )}
+            <div className="settings-actions mt-3">
+              {!camieStatus?.installed && (
+                <Button
+                  variant="secondary"
+                  disabled={loading || submitting || !camieStatus?.workerOK}
+                  onClick={() => void startJob("camie/install")}
+                >
+                  Install Camie model (~800 MB)
+                </Button>
+              )}
+              {camieStatus?.installed && (
+                <Button
+                  variant="outline-danger"
+                  disabled={loading || submitting}
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        "Remove Camie model files from the selected worker?"
+                      )
+                    )
+                      void startJob("camie/delete");
+                  }}
+                >
+                  Delete Camie model
+                </Button>
+              )}
+              <Button
+                variant="secondary"
+                disabled={loading || submitting}
+                onClick={() => void refresh()}
+              >
+                Refresh Camie status
+              </Button>
+            </div>
             <details className="settings-details mt-3">
               <summary>Camie model setup</summary>
               <div className="pt-2 text-break">
@@ -473,17 +528,87 @@ export const VisualSimilaritySettings: React.FC = () => {
                   </p>
                 )}
                 <p className="mb-0">
-                  Install <code>camie-tagger-v2.onnx</code> and{" "}
+                  The installer fetches <code>camie-tagger-v2.onnx</code> and{" "}
                   <code>camie-tagger-v2-metadata.json</code>
                   {camieStatus?.backend === "remote"
                     ? " on the remote worker"
                     : " on this server"}
-                  , then refresh status.
+                  ; no download occurs until requested.
                   {camieStatus?.tagCount
                     ? ` ${camieStatus.tagCount.toLocaleString()} model tags detected.`
                     : ""}
                 </p>
               </div>
+            </details>
+          </div>
+        </Setting>
+        <Setting
+          className="flex-column align-items-stretch"
+          heading="PixAI Tagger v1 (optional)"
+          subHeading="Higher-resolution anime Character, Copyright and general tagging. Installs the model and an optimized inference runtime only when requested."
+        >
+          <div className="mt-3 w-100">
+            {workerStatus(pixaiStatus)}
+            {(pixaiStatusError || pixaiStatus?.workerError) && (
+              <Alert variant="warning" className="mt-2">
+                {pixaiStatusError || pixaiStatus?.workerError}
+              </Alert>
+            )}
+            <div className="settings-actions mt-3">
+              {!pixaiStatus?.installed && (
+                <Button
+                  variant="secondary"
+                  disabled={loading || submitting || !pixaiStatus?.workerOK}
+                  onClick={() => void startJob("pixai/install")}
+                >
+                  Install PixAI Tagger v1 (~600 MB model)
+                </Button>
+              )}
+              {pixaiStatus?.installed && (
+                <Button
+                  variant="outline-danger"
+                  disabled={loading || submitting}
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        "Remove PixAI model and isolated inference runtime from the selected worker?"
+                      )
+                    )
+                      void startJob("pixai/delete");
+                  }}
+                >
+                  Delete PixAI model and runtime
+                </Button>
+              )}
+              <Button
+                variant="secondary"
+                disabled={loading || submitting}
+                onClick={() => void refresh()}
+              >
+                Refresh PixAI status
+              </Button>
+            </div>
+            <p className="small text-muted mt-2">
+              NVIDIA installations need the CUDA Toolkit 12.8+ (nvcc) or
+              precompiled inference kernels. The installer runs on the selected
+              worker. Model and runtime are Apache-2.0.
+            </p>
+            <details className="settings-details mt-3">
+              <summary>PixAI model details</summary>
+              <p className="text-break mt-2">
+                <strong>Model:</strong>{" "}
+                <code>{pixaiStatus?.model || "alpindale/PixAI-v1.0-INT8"}</code>
+              </p>
+              {pixaiStatus?.modelPath && (
+                <p className="text-break">
+                  <code>{pixaiStatus.modelPath}</code>
+                </p>
+              )}
+              <p>
+                Model weights:{" "}
+                {pixaiStatus?.modelExists ? "installed" : "missing"}; inference
+                runtime: {pixaiStatus?.runtimeExists ? "installed" : "missing"}.
+              </p>
             </details>
           </div>
         </Setting>

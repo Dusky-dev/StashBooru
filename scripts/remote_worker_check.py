@@ -11,6 +11,7 @@ from urllib.request import Request, urlopen
 CHECKS = (
     ("EVA02 embedding / tagging", "/v1/status", False),
     ("Camie tagging (optional model)", "/v1/camie/status", True),
+    ("PixAI / foidfinder tagging (optional model)", "/v1/pixai/status", True),
     ("Media conversion / upscaling", "/v1/convert/capabilities", False),
     ("Video overlap sampling", "/v1/video-overlap/capabilities", False),
     ("Image restoration (optional model)", "/v1/restoration/capabilities", False),

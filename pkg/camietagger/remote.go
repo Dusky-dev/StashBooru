@@ -76,6 +76,28 @@ func (c *RemoteClient) Status(ctx context.Context) (Status, error) {
 	return statusFromResponse(res), nil
 }
 
+func (c *RemoteClient) Download(ctx context.Context) (Status, error) {
+	res, err := c.do(ctx, http.MethodPost, "/v1/camie/download", nil, -1)
+	if err != nil {
+		return Status{}, err
+	}
+	if err := validateResponse(res); err != nil {
+		return Status{}, err
+	}
+	return statusFromResponse(res), nil
+}
+
+func (c *RemoteClient) Delete(ctx context.Context) (Status, error) {
+	res, err := c.do(ctx, http.MethodPost, "/v1/camie/delete", nil, -1)
+	if err != nil {
+		return Status{}, err
+	}
+	if err := validateResponse(res); err != nil {
+		return Status{}, err
+	}
+	return statusFromResponse(res), nil
+}
+
 func (c *RemoteClient) Tag(ctx context.Context, path string, threshold float64, limit int) ([]Tag, error) {
 	if strings.TrimSpace(path) == "" {
 		return nil, fmt.Errorf("camie tagger image path is empty")
