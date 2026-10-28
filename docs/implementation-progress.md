@@ -1,5 +1,14 @@
 # StashBooru implementation progress
 
+## Native catalogue-derived media backup preflight — 2026-10-29
+
+- Stacked on #258 branch head `a836943f0431d105fed0f08fdc2611961d7fa780`, originally based on develop `fe20b8a481a8f3b2411300fc51d22d4adb438ae3`. Feature branch: `feat/native-storage-backup-preflight-20261029`.
+- Add authenticated `GET/POST image/storage-backup-preflight` and Settings → Tasks → Inspect media UI. Browser submits only one Visual Stack ID and existing snapshot ID; the server resolves all primary image paths from the catalogue and reads the persisted media-backup destination. No client filesystem paths are accepted.
+- Run #258's read-only verifier in a cancellable native job with a transient mode-0600 JSON spec. Reject invalid requests, missing scripts, malformed/mismatched reports, absent SHA-256 entries and any output claiming native packing/serving or original eviction is enabled. Show results from the job queue after a refresh.
+- Added Go validation tests for request bounds and report safety contract. Full Go/UI/CI, Codex review and real owner-library checks pending.
+- Strictly non-destructive: never write pack files, change image/media paths, modify the database or backup store, or enable optimization. A verified media snapshot is NOT a verified database/configuration backup, native serving, rollback or ongoing safety certificate. Repeat verification immediately before future pack publication.
+- Next: independent native candidate-pack stage **only** after #257 and #258 merge and satisfy CI; keep original media and existing recovery access unaffected.
+
 ## Verified selected-image backup preflight — 2026-10-29
 
 - Baseline `develop`: `fe20b8a481a8f3b2411300fc51d22d4adb438ae3`; branch `feat/verified-image-backup-preflight-20261029`. Follow-up to #250/#251 backup functionality, #256 read-only batch estimates and the independent #257 pack proof.
