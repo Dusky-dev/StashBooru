@@ -1,5 +1,13 @@
 # StashBooru implementation progress
 
+## Verified selected-image backup preflight — 2026-10-29
+
+- Baseline `develop`: `fe20b8a481a8f3b2411300fc51d22d4adb438ae3`; branch `feat/verified-image-backup-preflight-20261029`. Follow-up to #250/#251 backup functionality, #256 read-only batch estimates and the independent #257 pack proof.
+- Add read-only offline `image_storage_backup_preflight.py`, requiring a complete verified SHA-256 media snapshot AND current per-image SHA-256/size matching for 2–16 selected Visual Stack image sources. Reject stale/missing/duplicated selections, symlinked/outside-root paths and corrupt unselected backup objects.
+- Add nine synthetic regression checks and a dedicated CI workflow; checks and live-library verification pending. The script does not install Python models or write backup/archive data.
+- A matching **media** snapshot is not a verified database/config backup, persistent authorization, native serving, or runtime rollback. It does NOT allow pack activation, original replacement or eviction; all must remain disabled.
+- Next: native catalogue-derived source and output selection with re-verification immediately before a non-destructive pack, then end-to-end reconstruction and rollback. The Reconstruct Library action must not be hidden by the experimental setting.
+
 ## Batch Visual Stack savings estimates — 2026-10-28
 
 - Target `develop` baseline at review: `5ed5e87777bbd73bc3942b4daab5469a07e3c4ab` (merged #254); feature branch `feat/batch-visual-stack-storage-estimate-20261028`; PR #256.
