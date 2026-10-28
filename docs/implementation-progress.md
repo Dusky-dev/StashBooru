@@ -2,11 +2,37 @@
 
 ## Duplicate review comparison workspace PR #255 — 2026-10-29
 
-- Branch `feature/duplicate-review-comparison-workspace`; last reviewed `develop` baseline `5ed5e87777bbd73bc3942b4daab5469a07e3c4ab` (branch was 12 commits behind at review, GitHub reports it mergeable).
+- Branch `feature/duplicate-review-comparison-workspace`; last reviewed `develop` baseline `5ed5e87777bbd73bc3942b4daab5469a07e3c4ab` (the old branch had diverged from develop; reconciled here).
 - Retains existing `/image-duplicates` removal confirmation; adds focused ReferenceComparison side-by-side/wipe/blink/difference, zoom/pan, reference/candidate choice, filmstrip, and Keep markers. No native media or database changes.
 - Original PR head `b091f3df66c5c59993b77948dd5140e529818395`: Go lint passed, UI tests (91) and UI lint/type checks passed; Build `generate` failed solely on four Biome formatting differences.
-- Repaired the exact CI-reported Biome diffs in `DuplicateComparison.tsx`, `ImageDuplicates.tsx`, `review.ts`, and `tests/image-duplicates.test.ts` through commits `095c172`, `dc501c7`, `cc24705`, `b8887cf`. New head `b8887cf8cc777b5406c0fbbe11af896e401c4b8d` awaiting rerun checks.
+- Repaired the exact CI-reported Biome diffs in `DuplicateComparison.tsx`, `ImageDuplicates.tsx`, `review.ts`, and `tests/image-duplicates.test.ts` through commits `095c172`, `dc501c7`, `cc24705`, `b8887cf`. Formatting checkpoint `b8887cf8cc777b5406c0fbbe11af896e401c4b8d`; subsequent CI is required after merging `develop` into this feature branch.
 - Codex review returned explicit quota exhaustion (no actionable findings). Real mounted-browser comparison, image codec playback and manual visual tests remain unverified. Only merge after final applicable CI passes.
+
+## Batch Visual Stack savings estimates — 2026-10-28
+
+- Target `develop` baseline at review: `5ed5e87777bbd73bc3942b4daab5469a07e3c4ab` (merged #254); feature branch `feat/batch-visual-stack-storage-estimate-20261028`; PR #256.
+- Implemented bounded `stackIDs` for 1–8 distinct positive Visual Stack IDs (each 2–16 images), maintaining legacy `stackID` compatibility. Duplicate, mixed-source and oversized selections are rejected. Source paths come only from the native catalogue.
+- Per-stack P12/P13 candidate estimates and aggregate hypothetical savings appear in Settings → Tasks. No originals, native metadata or media paths are modified; no pack is published.
+- Verified at head `b7c36da722e89939337215b4489b604b2bc0bf87`: GitHub Actions Build (generate, Go test, first-library integration, release and all platform builds), Lint, Settings navigation and dedicated Read-only image storage estimates all **passed**. No actual owner-media calibration was performed.
+- Codex review has not completed for #256; review requirement must be satisfied or explicit quota-exhaustion response documented before merge.
+- Next after merge: non-destructive native prototype packing with independently verified byte-exact reconstruction, rollback, backup prerequisite and interrupted-operation recovery tests. Storage optimization stays disabled; never evict or replace originals.
+
+## Native read-only Visual Stack storage estimate task — 2026-10-28
+
+- Branch `feat/native-image-storage-estimate-20261028` stacked on
+  P12/P13 read-only candidate estimator PR #252.
+- Add an authenticated native job endpoint for selecting one real Visual
+  Stack by numeric ID, resolving primary image paths from the database,
+  and running the pre-existing Python P12/P13 estimator without producing
+  packed files or touching media/source metadata.
+- Reject nonexistent IDs, mixed/video stacks, groups outside 2–16 members
+  and missing/nonregular/symlink image sources. No browser-supplied paths
+  or free-form commands reach the worker.
+- Settings → Tasks → Inspect media adds a read-only estimate button,
+  opt-in acknowledgement, fidelity choice, comparison results and normal
+  job-queue status. No experimental storage activation/eviction permitted.
+- Unit tests for ID/fidelity validation and nonregular image sources.
+  Full build, formatting, review and production library tests pending.
 
 ## Read-only P12/P13 image storage candidate comparison — 2026-10-28
 
