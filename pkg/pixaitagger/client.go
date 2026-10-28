@@ -26,7 +26,7 @@ type Status struct {
 	Installed      bool   `json:"installed"`
 	Loaded         bool   `json:"loaded"`
 	ModelExists    bool   `json:"modelExists"`
-	RuntimeExists bool   `json:"metadataExists"`
+	RuntimeExists bool   `json:"runtimeExists"`
 	ModelPath      string `json:"modelPath"`
 	MetadataPath   string `json:"metadataPath"`
 	Model          string `json:"model"`
@@ -99,7 +99,7 @@ type response struct {
 }
 
 func DefaultWorkerPath() string {
-	if configured := strings.TrimSpace(os.Getenv("STASH_CAMIE_TAGGER_WORKER")); configured != "" {
+	if configured := strings.TrimSpace(os.Getenv("STASH_PIXAI_TAGGER_WORKER")); configured != "" {
 		return configured
 	}
 	return filepath.FromSlash("scripts/foidfinder_worker.py")
