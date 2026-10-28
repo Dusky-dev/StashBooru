@@ -13,6 +13,7 @@ import { Helmet } from "react-helmet";
 
 import { useImagesDestroy } from "src/core/StashService";
 import { useToast } from "src/hooks/Toast";
+import { DuplicateComparison } from "./DuplicateComparison";
 import {
   defaultDuplicateMethod,
   duplicateClusterURL,
@@ -63,7 +64,10 @@ export default function ImageDuplicates() {
   const [shown, setShown] = useState(pageSize);
   const [hidden, setHidden] = useState<string[]>([]);
   const [selections, setSelections] = useState<Record<string, number[]>>({});
-  const [previewGroup, setPreviewGroup] = useState<SimilarImageGroup>();
+  const [previewGroup, setPreviewGroup] = useState<{
+    group: SimilarImageGroup;
+    selectedID: number;
+  }>();
   const [reviewGroup, setReviewGroup] = useState<SimilarImageGroup>();
   const [deleteFiles, setDeleteFiles] = useState(false);
   const [copyMetadata, setCopyMetadata] = useState(true);
@@ -455,7 +459,7 @@ export default function ImageDuplicates() {
                         <button
                           type="button"
                           className="duplicate-review-preview"
-                          onClick={() => setPreviewGroup(group)}
+                          onClick={() => setPreviewGroup({ group, selectedID: member.id })}
                           title="Compare all full-size previews"
                           aria-label={"Compare image " + member.id}
                         >
@@ -496,7 +500,7 @@ export default function ImageDuplicates() {
                   <Button
                     size="sm"
                     variant="secondary"
-                    onClick={() => setPreviewGroup(group)}
+                    onClick={() => setPreviewGroup({ group, selectedID: group.preferredID })}
                   >
                     Compare large previews
                   </Button>
@@ -537,30 +541,19 @@ export default function ImageDuplicates() {
         </p>
       )}
 
-      <Modal
-        size="xl"
-        show={!!previewGroup}
-        onHide={() => setPreviewGroup(undefined)}
-        centered
-        dialogClassName="duplicate-review-preview-modal"
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Compare large previews</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <div className="duplicate-review-large-images">
-            {previewGroup?.members.map((member) => (
-              <div key={member.id}>
-                {previewImage(member, true)}
-                <Link to={"/images/" + member.id} target="_blank">
-                  Image #{member.id} · {member.width} × {member.height} ·{" "}
-                  {readableFileSize(member.fileSize)}
-                </Link>
-              </div>
-            ))}
-          </div>
-        </Modal.Body>
-      </Modal>
+      {previewGroup && (
+        <DuplicateComparison
+          key={duplicateGroupKey(previewGroup.group)}
+          group={previewGroup.group}
+          initialImageID={previewGroup.selectedID}
+          keptIDs={keptImageIDs(
+            previewGroup.group,
+            selections[duplicateGroupKey(previewGroup.group)]
+          )}
+          onToggleKeep={(id) => selectKeep(previewGroup.group, id)}
+          onClose={() => setPreviewGroup(undefined)}
+        />
+      )}
 
       <Modal
         show={!!reviewGroup}
