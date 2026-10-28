@@ -145,7 +145,7 @@ function predictionSource(
       return {
         kind,
         label: "PixAI",
-        detail: "foidfinder / PixAI v1 prediction",
+        detail: "PixAI Tagger v1 prediction",
         priority: SOURCE_PRIORITY.pixai,
       };
     case "camie":
