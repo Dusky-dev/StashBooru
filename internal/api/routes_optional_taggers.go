@@ -104,8 +104,12 @@ func (rs imageRoutes) PixaiPredictions(w http.ResponseWriter, r *http.Request) {
 	writeVisualSimilarityJSON(w, camieTagsResponse{Backend: backend, Model: pixaitagger.Model, Threshold: config.Threshold, Limit: config.Limit, Tags: tags})
 }
 
-func (rs imageRoutes) ModelInstall(w http.ResponseWriter, r *http.Request) { rs.modelAction(w, r, false) }
-func (rs imageRoutes) ModelDelete(w http.ResponseWriter, r *http.Request) { rs.modelAction(w, r, true) }
+func (rs imageRoutes) ModelInstall(w http.ResponseWriter, r *http.Request) {
+	rs.modelAction(w, r, false)
+}
+func (rs imageRoutes) ModelDelete(w http.ResponseWriter, r *http.Request) {
+	rs.modelAction(w, r, true)
+}
 
 func (rs imageRoutes) modelAction(w http.ResponseWriter, r *http.Request, remove bool) {
 	model := "Camie"
