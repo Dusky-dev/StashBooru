@@ -75,29 +75,37 @@ export default function ImageDuplicates() {
     setShown(pageSize);
     setHidden([]);
     setSelections({});
-    void Promise.allSettled([
-      fetch("image/visual-similarity/status", {
-        signal: controller.signal,
-      }).then(jsonResponse<SimilarityStatus>),
-      fetch(
-        "image/visual-similarity/clusters?threshold=" +
-          appliedThreshold +
-          "&neighbors=20",
-        { signal: controller.signal }
-      ).then(jsonResponse<ClusterResponse>),
-    ]).then(([statusResponse, clustersResponse]) => {
-      if (controller.signal.aborted) return;
-      setStatus(
-        statusResponse.status === "fulfilled" ? statusResponse.value : undefined
-      );
-      if (clustersResponse.status === "fulfilled") {
-        setResult(clustersResponse.value);
-      } else {
+    // Worker status may take much longer than an already indexed local
+    // similarity search. Do not make duplicate results wait for it.
+    void fetch("image/visual-similarity/status", {
+      signal: controller.signal,
+    })
+      .then(jsonResponse<SimilarityStatus>)
+      .then((value) => {
+        if (!controller.signal.aborted) setStatus(value);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setStatus(undefined);
+      });
+
+    void fetch(
+      "image/visual-similarity/clusters?threshold=" +
+        appliedThreshold +
+        "&neighbors=20",
+      { signal: controller.signal }
+    )
+      .then(jsonResponse<ClusterResponse>)
+      .then((value) => {
+        if (controller.signal.aborted) return;
+        setResult(value);
+        setLoading(false);
+      })
+      .catch((reason) => {
+        if (controller.signal.aborted) return;
         setResult(undefined);
-        setError(String(clustersResponse.reason));
-      }
-      setLoading(false);
-    });
+        setError(String(reason));
+        setLoading(false);
+      });
     return () => controller.abort();
   }, [appliedThreshold, reloadToken]);
 
