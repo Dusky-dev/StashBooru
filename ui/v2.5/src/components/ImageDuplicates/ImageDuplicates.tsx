@@ -293,8 +293,8 @@ export default function ImageDuplicates() {
               </>
             ) : (
               <>
-                The similarity index could not be read. Existing embeddings
-                may still be available; check the server logs and retry.
+                The similarity index could not be read. Existing embeddings may
+                still be available; check the server logs and retry.
               </>
             )}
           </p>
