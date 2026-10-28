@@ -19,11 +19,30 @@ import (
 
 const mediaBackupConfigName = "media-library-backup.json"
 
-var (
-	mediaBackupLock sync.Mutex
-	mediaBackupBusy bool
-	mediaBackupJobID int
-	mediaBackupSnapshotID = regexp.MustCompile(`^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}$`)
+var mediaBackupLock sync.Mutex
+var mediaBackupBusy bool
+var mediaBackupJobID int
+var mediaBackupSnapshotID = regexp.MustCompile(`^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}package api
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strings"
+	"sync"
+
+	"github.com/stashapp/stash/internal/manager"
+	"github.com/stashapp/stash/pkg/job"
+)
+
+const mediaBackupConfigName = "media-library-backup.json"
+
 )
 
 // mediaBackupRunningLocked also releases the lock for jobs cancelled before execution.
