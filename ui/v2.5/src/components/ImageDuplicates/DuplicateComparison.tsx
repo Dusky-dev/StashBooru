@@ -8,7 +8,6 @@ import {
   type ReferenceComparisonMode,
 } from "src/hooks/Lightbox/ReferenceComparison";
 import type { ILightboxImage } from "src/hooks/Lightbox/types";
-import "src/hooks/Lightbox/lightbox.scss";
 
 import {
   duplicateComparisonPair,
