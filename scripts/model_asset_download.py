@@ -46,7 +46,7 @@ def fetch_model_file(repo: str, filename: str, destination: Path) -> None:
             if len(etag) == 40:
                 # Small JSON files use Git's blob SHA-1 instead of LFS SHA-256.
                 with part.open("rb") as source:
-                    git_hash = hashlib.sha1(f"blob {total}\\0".encode(), usedforsecurity=False)
+                    git_hash = hashlib.sha1(f"blob {total}\0".encode(), usedforsecurity=False)
                     while chunk := source.read(CHUNK):
                         git_hash.update(chunk)
                 if git_hash.hexdigest() != etag:
