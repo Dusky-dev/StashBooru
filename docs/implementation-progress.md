@@ -1,5 +1,28 @@
 # StashBooru implementation progress
 
+## Native original-media backup task — 2026-10-28
+
+- Based on the passing #250 offline snapshot branch at
+  `70c199bfdb9985e5a46507999dde68fe158f7e55`;
+  follow-up branch `feat/native-media-backup-task-20261028`.
+- New `GET/POST image/media-backup` task endpoints expose configured media
+  roots, a saved destination, recent snapshots, a single active job and
+  explicit backup/verify/restore actions. Server derives roots from current
+  Stash config; browser paths cannot select arbitrary backup sources.
+- Configuration is stored in the StashBooru config directory with restricted
+  permissions. Reject nonexistent, relative, same-root, nested and
+  symlink-alias destinations. Operations run with cancellable native jobs
+  and invoke the existing safe Python snapshot engine without a shell.
+- Settings → Tasks → Backup & maintenance now shows destination, snapshot
+  list, job IDs, verification and reconstruct-to-separate-directory controls
+  with warnings and explicit restore acknowledgement. No original-file
+  replacement, storage activation, live catalog mutation or scheduler.
+- Dedicated Go path-security regression tests added. CI/PR review and
+  real-library/server-mounted validation pending.
+- Next: platform/runtime tests and real restore, then non-destructive P12/P13
+  storage estimates; do not enable original eviction until recovery and
+  native media-consumer integration are verified.
+
 ## Original-media backup foundation — 2026-10-28
 
 - Baseline `develop`: `3dc1ade27ea5970c14797308f0973732f2067aaf`;

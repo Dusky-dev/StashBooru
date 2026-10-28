@@ -226,8 +226,33 @@ jobs:
         mkdir -p .go-cache
         docker run -d --name build --mount type=bind,source="$(pwd)",target=/stash,consistency=delegated --mount type=bind,source="$(pwd)/.go-cache",target=/root/.cache/go-build,consistency=delegated --env GOTOOLCHAIN=auto --env OFFICIAL_BUILD=${{ env.official-build }} --env UPDATE_REPO=${{ github.repository }} -w /stash $COMPILER_IMAGE tail -f /dev/null
 
+    # Cross-compiled jobs independently download Go modules. The upstream Go
+    # proxy sometimes resets HTTP/2 streams under parallel matrix load.
+    # Retry only recognized download/transient-network failures; compilation
+    # errors remain failures on the first attempt.
     - name: Build (${{ matrix.platform }})
-      run: docker exec -t build /bin/bash -c "make ${{ matrix.make-target }}"
+      shell: bash
+      run: |
+        set -o pipefail
+        for attempt in 1 2 3; do
+          log_file="$(mktemp)"
+          if docker exec -t build /bin/bash -c "GODEBUG=http2client=0 make ${{ matrix.make-target }}" 2>&1 | tee "$log_file"; then
+            rm -f "$log_file"
+            exit 0
+          fi
+          if ! grep -Eqi "(proxy[.]golang[.]org|stream error: stream ID|connection reset by peer|TLS handshake timeout|unexpected EOF)" "$log_file"; then
+            echo "Build failed for a non-network reason; no retry."
+            rm -f "$log_file"
+            exit 1
+          fi
+          rm -f "$log_file"
+          if [ "$attempt" -eq 3 ]; then
+            echo "Go module download remained unavailable after 3 attempts."
+            exit 1
+          fi
+          echo "Transient Go dependency download error (attempt $attempt/3); retrying."
+          sleep "$((attempt * 10))"
+        done
 
     - name: Cleanup build container
       run: docker rm -f -v build
