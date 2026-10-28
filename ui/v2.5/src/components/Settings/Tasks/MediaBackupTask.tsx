@@ -268,6 +268,10 @@ export const MediaBackupTask: React.FC = () => {
               }}
               placeholder="/mnt/recovery/snapshot"
             />
+            <Form.Text className="text-muted">
+              The parent directory must already exist on the server. Recovery
+              cannot target any active media root or the backup store.
+            </Form.Text>
           </Form.Group>
           <Form.Check
             id="media-backup-confirm"
