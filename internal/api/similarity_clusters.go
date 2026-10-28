@@ -130,7 +130,7 @@ func similarityClusterEdgeKey(left, right int) [2]int {
 func similarityClusterMemberForImage(ctx context.Context, repository models.Repository, imageID int) (*similarityClusterMember, error) {
 	image, err := repository.Image.Find(ctx, imageID)
 	if err != nil {
-		return similarityClusterMember{}, err
+		return nil, err
 	}
 	if image == nil {
 		return nil, nil // Image was deleted after the vector snapshot.
