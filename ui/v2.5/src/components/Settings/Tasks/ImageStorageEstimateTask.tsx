@@ -95,7 +95,8 @@ export const ImageStorageEstimateTask: React.FC = () => {
     }
   }
 
-  const validID = /^[1-9]\d*$/.test(stackID) && Number.isSafeInteger(Number(stackID));
+  const validID =
+    /^[1-9]\d*$/.test(stackID) && Number.isSafeInteger(Number(stackID));
   const disabled = busy || !!status?.busy || !status?.available;
   const result = status?.result;
   const group = result?.results?.[0];
@@ -105,7 +106,9 @@ export const ImageStorageEstimateTask: React.FC = () => {
       id="image-storage-estimate-task"
       aria-labelledby="image-storage-estimate-heading"
     >
-      <h2 id="image-storage-estimate-heading">Experimental image storage estimate</h2>
+      <h2 id="image-storage-estimate-heading">
+        Experimental image storage estimate
+      </h2>
       <p>
         Compare P12 delta storage against P13 shared image blocks for one
         existing image-only Visual Stack (2–16 images). This performs a
@@ -114,10 +117,10 @@ export const ImageStorageEstimateTask: React.FC = () => {
       </p>
       <Alert variant="warning">
         <strong>No real disk savings yet.</strong> Estimated compression only
-        describes potential future storage. Until packed-file serving,
-        verified backups and library reconstruction are completed, retaining
-        originals alongside packs would increase disk usage. Byte-exact mode
-        is recommended; pixel-exact may change image container bytes.
+        describes potential future storage. Until packed-file serving, verified
+        backups and library reconstruction are completed, retaining originals
+        alongside packs would increase disk usage. Byte-exact mode is
+        recommended; pixel-exact may change image container bytes.
       </Alert>
       {error && <Alert variant="danger">{error}</Alert>}
       {message && (
@@ -128,8 +131,8 @@ export const ImageStorageEstimateTask: React.FC = () => {
       {status && !status.available && (
         <Alert variant="warning">
           The estimator script is not installed on the server. Install
-          scripts/image_storage_estimate.py alongside its P12/P13 scripts or
-          set STASH_IMAGE_STORAGE_ESTIMATE_SCRIPT.
+          scripts/image_storage_estimate.py alongside its P12/P13 scripts or set
+          STASH_IMAGE_STORAGE_ESTIMATE_SCRIPT.
         </Alert>
       )}
       <Form.Group>
@@ -221,7 +224,9 @@ export const ImageStorageEstimateTask: React.FC = () => {
             <tbody>
               {group.methods.map((method) => (
                 <tr key={method.method}>
-                  <td>{method.method} ({method.layout})</td>
+                  <td>
+                    {method.method} ({method.layout})
+                  </td>
                   <td>{formatSize(method.packedBytes)}</td>
                   <td>{formatSize(method.potentialSavedBytes)}</td>
                   <td>{method.eligible ? "Yes" : "No"}</td>
