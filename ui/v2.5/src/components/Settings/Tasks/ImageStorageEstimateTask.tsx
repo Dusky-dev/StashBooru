@@ -220,9 +220,12 @@ export const ImageStorageEstimateTask: React.FC = () => {
             {formatSize(result.hypotheticalBytesAfterFullActivation)}.
           </p>
           <Alert variant="info">
-            Originals were retained. Storing the candidate packs alongside
-            them would instead require about{" "}
-            {formatSize(result.physicalBytesBeforeEvictionWithAllCandidatePacks)}.
+            Originals were retained. Storing the candidate packs alongside them
+            would instead require about{" "}
+            {formatSize(
+              result.physicalBytesBeforeEvictionWithAllCandidatePacks
+            )}
+            .
           </Alert>
           <Table responsive size="sm">
             <thead>
@@ -248,7 +251,9 @@ export const ImageStorageEstimateTask: React.FC = () => {
           </Table>
           {groups.map((group) => (
             <div key={group.group} className="mt-3">
-              <h4>{group.group} · {group.fidelity}</h4>
+              <h4>
+                {group.group} · {group.fidelity}
+              </h4>
               <Table responsive size="sm">
                 <thead>
                   <tr>
@@ -279,8 +284,8 @@ export const ImageStorageEstimateTask: React.FC = () => {
             </div>
           ))}
           <p className="small text-muted">
-            Figures exclude live storage integration and caching overhead.
-            No source files were modified and no storage packs were created.
+            Figures exclude live storage integration and caching overhead. No
+            source files were modified and no storage packs were created.
           </p>
         </div>
       )}
