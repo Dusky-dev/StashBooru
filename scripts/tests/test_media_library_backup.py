@@ -146,7 +146,7 @@ class MediaLibraryBackupTests(unittest.TestCase):
         identifier = self.snapshot()
         with self.assertRaisesRegex(backup.BackupError, "overlaps"):
             backup.restore(self.store, identifier, self.media / "restored", None)
-        self.assertFalse((self.media / "restored" / "media").exists())
+        self.assertFalse((self.media / "restored").exists())
 
     def test_cli_json_roundtrip_and_missing_member(self):
         script = Path(backup.__file__)
