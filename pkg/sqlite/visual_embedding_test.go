@@ -1,10 +1,12 @@
 package sqlite
 
 import (
+	"context"
 	"database/sql"
 	"math"
 	"testing"
 
+	"github.com/jmoiron/sqlx"
 	sqlite_vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
 	"github.com/stretchr/testify/require"
 )
@@ -123,4 +125,38 @@ LIMIT ?`, queryVector, 1, sqliteVecKNNMaxK+1)
 	}
 	require.NoError(t, rows.Err())
 	require.Equal(t, []int{2, 3}, ids)
+}
+
+func TestImageEmbeddingIDsUsesVec0RowIDs(t *testing.T) {
+	db, err := sqlx.Open(sqlite3Driver, ":memory:")
+	require.NoError(t, err)
+	db.SetMaxOpenConns(1)
+	t.Cleanup(func() { require.NoError(t, db.Close()) })
+
+	_, err = db.Exec("CREATE VIRTUAL TABLE image_embedding_vectors USING vec0(embedding FLOAT[1024] DISTANCE_METRIC=cosine)")
+	require.NoError(t, err)
+	ctx := context.WithValue(context.Background(), dbKey, db)
+
+	ids, err := VisualEmbeddings.ImageEmbeddingIDs(ctx)
+	require.NoError(t, err)
+	require.Empty(t, ids, "an empty embedding index is valid")
+
+	vector := make([]float32, VisualEmbeddingDimensions)
+	vector[0] = 1
+	serialized, err := sqlite_vec.SerializeFloat32(vector)
+	require.NoError(t, err)
+	for _, imageID := range []int{91, 2, 17} {
+		_, err = db.Exec("INSERT INTO image_embedding_vectors(rowid, embedding) VALUES (?, ?)", imageID, serialized)
+		require.NoError(t, err)
+	}
+
+	ids, err = VisualEmbeddings.ImageEmbeddingIDs(ctx)
+	require.NoError(t, err)
+	require.Equal(t, []int{2, 17, 91}, ids, "vec0 rowids are the indexed image IDs in stable order")
+
+	_, err = db.Exec("DELETE FROM image_embedding_vectors WHERE rowid = ?", 17)
+	require.NoError(t, err)
+	ids, err = VisualEmbeddings.ImageEmbeddingIDs(ctx)
+	require.NoError(t, err)
+	require.Equal(t, []int{2, 91}, ids)
 }
