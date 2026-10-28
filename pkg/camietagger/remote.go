@@ -78,15 +78,23 @@ func (c *RemoteClient) Status(ctx context.Context) (Status, error) {
 
 func (c *RemoteClient) Download(ctx context.Context) (Status, error) {
 	res, err := c.do(ctx, http.MethodPost, "/v1/camie/download", nil, -1)
-	if err != nil { return Status{}, err }
-	if err := validateResponse(res); err != nil { return Status{}, err }
+	if err != nil {
+		return Status{}, err
+	}
+	if err := validateResponse(res); err != nil {
+		return Status{}, err
+	}
 	return statusFromResponse(res), nil
 }
 
 func (c *RemoteClient) Delete(ctx context.Context) (Status, error) {
 	res, err := c.do(ctx, http.MethodPost, "/v1/camie/delete", nil, -1)
-	if err != nil { return Status{}, err }
-	if err := validateResponse(res); err != nil { return Status{}, err }
+	if err != nil {
+		return Status{}, err
+	}
+	if err := validateResponse(res); err != nil {
+		return Status{}, err
+	}
 	return statusFromResponse(res), nil
 }
 
