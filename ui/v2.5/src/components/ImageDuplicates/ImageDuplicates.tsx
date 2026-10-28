@@ -459,7 +459,9 @@ export default function ImageDuplicates() {
                         <button
                           type="button"
                           className="duplicate-review-preview"
-                          onClick={() => setPreviewGroup({ group, selectedID: member.id })}
+                          onClick={() =>
+                            setPreviewGroup({ group, selectedID: member.id })
+                          }
                           title="Compare all full-size previews"
                           aria-label={"Compare image " + member.id}
                         >
@@ -500,7 +502,9 @@ export default function ImageDuplicates() {
                   <Button
                     size="sm"
                     variant="secondary"
-                    onClick={() => setPreviewGroup({ group, selectedID: group.preferredID })}
+                    onClick={() =>
+                      setPreviewGroup({ group, selectedID: group.preferredID })
+                    }
                   >
                     Compare large previews
                   </Button>
