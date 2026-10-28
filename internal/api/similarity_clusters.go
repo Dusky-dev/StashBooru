@@ -322,8 +322,8 @@ func (rs imageRoutes) ImageSimilarityClusters(w http.ResponseWriter, r *http.Req
 				aliveIDs[i] = members[i].ID
 			}
 			clusters = append(clusters, similarityClusterReview{
-				IDs: aliveIDs,
-				Members: members,
+				IDs:         aliveIDs,
+				Members:     members,
 				PreferredID: preferredID,
 			})
 		}
