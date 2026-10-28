@@ -127,77 +127,29 @@ func similarityClusterEdgeKey(left, right int) [2]int {
 	return [2]int{left, right}
 }
 
-func collectSimilarityClusterEdges(ctx context.Context, assetIDs []int, neighbors int, minSimilarity float64) ([]similarityClusterEdge, error) {
-	indexed := make(map[int]struct{}, len(assetIDs))
-	for _, id := range assetIDs {
-		indexed[id] = struct{}{}
-	}
-
-	byPair := make(map[[2]int]similarityClusterEdge)
-	for _, referenceID := range assetIDs {
-		matches, err := sqlite.VisualEmbeddings.FindSimilarImages(ctx, referenceID, neighbors)
-		if err != nil {
-			return nil, fmt.Errorf("finding visual neighbors for image %d: %w", referenceID, err)
-		}
-		for _, match := range matches {
-			if _, ok := indexed[match.ID]; !ok {
-				continue
-			}
-			similarity := similarityClusterScore(match.Distance)
-			if similarity < minSimilarity {
-				continue
-			}
-			key := similarityClusterEdgeKey(referenceID, match.ID)
-			if key[0] == key[1] {
-				continue
-			}
-			current, exists := byPair[key]
-			if !exists || similarity > current.Similarity {
-				byPair[key] = similarityClusterEdge{
-					LeftID:     key[0],
-					RightID:    key[1],
-					Similarity: similarity,
-				}
-			}
-		}
-	}
-
-	edges := make([]similarityClusterEdge, 0, len(byPair))
-	for _, edge := range byPair {
-		edges = append(edges, edge)
-	}
-	sort.Slice(edges, func(i, j int) bool {
-		if edges[i].LeftID != edges[j].LeftID {
-			return edges[i].LeftID < edges[j].LeftID
-		}
-		return edges[i].RightID < edges[j].RightID
-	})
-	return edges, nil
-}
-
-func similarityClusterMemberForImage(ctx context.Context, repository models.Repository, imageID int) (similarityClusterMember, error) {
+func similarityClusterMemberForImage(ctx context.Context, repository models.Repository, imageID int) (*similarityClusterMember, error) {
 	image, err := repository.Image.Find(ctx, imageID)
 	if err != nil {
 		return similarityClusterMember{}, err
 	}
 	if image == nil {
-		return similarityClusterMember{}, fmt.Errorf("image %d not found", imageID)
+		return nil, nil // Image was deleted after the vector snapshot.
 	}
 	if err := image.LoadPrimaryFile(ctx, repository.File); err != nil {
-		return similarityClusterMember{}, err
+		return nil, err
 	}
 
 	member := similarityClusterMember{ID: imageID}
 	primary := image.Files.Primary()
 	if primary == nil {
-		return member, nil
+		return &member, nil
 	}
 	member.FileSize = primary.Base().Size
 	if visual, ok := primary.(models.VisualFile); ok {
 		member.Width = visual.GetWidth()
 		member.Height = visual.GetHeight()
 	}
-	return member, nil
+	return &member, nil
 }
 
 func preferredSimilarityClusterMember(members []similarityClusterMember) int {
@@ -254,20 +206,34 @@ func (rs imageRoutes) ImageSimilarityClusters(w http.ResponseWriter, r *http.Req
 	}
 
 	repository := manager.GetInstance().Repository
+	// Read vectors in one consistent snapshot and release the database while
+	// the in-memory approximate search runs.
+	var vectors []sqlite.ImageEmbeddingVector
+	if err := repository.WithReadTxn(r.Context(), func(ctx context.Context) error {
+		var readErr error
+		vectors, readErr = sqlite.VisualEmbeddings.ImageEmbeddingVectors(ctx)
+		return readErr
+	}); err != nil {
+		http.Error(w, fmt.Sprintf("loading similarity vectors: %v", err), http.StatusConflict)
+		return
+	}
+	if len(vectors) == 0 {
+		http.Error(w, "visual similarity index has no Images", http.StatusConflict)
+		return
+	}
+	edges, err := collectSimilarityClusterEdges(r.Context(), vectors, neighbors, threshold)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("finding similarity candidates: %v", err), http.StatusConflict)
+		return
+	}
+	assetIDs := make([]int, len(vectors))
+	for i, vector := range vectors {
+		assetIDs[i] = vector.ID
+	}
+	clusterIDs := buildSimilarityClusters(assetIDs, edges, threshold)
+
 	var response similarityClusterResponse
 	if err := repository.WithReadTxn(r.Context(), func(ctx context.Context) error {
-		assetIDs, err := sqlite.VisualEmbeddings.ImageEmbeddingIDs(ctx)
-		if err != nil {
-			return err
-		}
-		if len(assetIDs) == 0 {
-			return fmt.Errorf("visual similarity index has no Images")
-		}
-		edges, err := collectSimilarityClusterEdges(ctx, assetIDs, neighbors, threshold)
-		if err != nil {
-			return err
-		}
-		clusterIDs := buildSimilarityClusters(assetIDs, edges, threshold)
 		clusters := make([]similarityClusterReview, 0, len(clusterIDs))
 		for _, ids := range clusterIDs {
 			if len(ids) == 1 && !includeSingletons {
@@ -279,14 +245,21 @@ func (rs imageRoutes) ImageSimilarityClusters(w http.ResponseWriter, r *http.Req
 				if err != nil {
 					return err
 				}
-				members = append(members, member)
+				if member != nil {
+					members = append(members, *member)
+				}
+			}
+			if len(members) == 0 || (len(members) == 1 && !includeSingletons) {
+				continue
 			}
 			preferredID := preferredSimilarityClusterMember(members)
+			aliveIDs := make([]int, len(members))
 			for index := range members {
 				members[index].Preferred = members[index].ID == preferredID
+				aliveIDs[index] = members[index].ID
 			}
 			clusters = append(clusters, similarityClusterReview{
-				IDs:         append([]int(nil), ids...),
+				IDs:         aliveIDs,
 				Members:     members,
 				PreferredID: preferredID,
 			})
