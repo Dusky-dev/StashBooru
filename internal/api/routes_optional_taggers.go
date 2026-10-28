@@ -25,16 +25,16 @@ func newPixaiTagger() (pixaitagger.Tagger, string, string, error) {
 }
 
 type pixaiStatusResponse struct {
-	Installed bool `json:"installed"`
-	Loaded bool `json:"loaded"`
-	WorkerOK bool `json:"workerOK"`
-	WorkerError string `json:"workerError,omitempty"`
-	Backend string `json:"backend"`
-	RemoteURL string `json:"remoteURL,omitempty"`
-	Model string `json:"model"`
-	ModelPath string `json:"modelPath,omitempty"`
-	RuntimeExists bool `json:"runtimeExists"`
-	ModelExists bool `json:"modelExists"`
+	Installed     bool   `json:"installed"`
+	Loaded        bool   `json:"loaded"`
+	WorkerOK      bool   `json:"workerOK"`
+	WorkerError   string `json:"workerError,omitempty"`
+	Backend       string `json:"backend"`
+	RemoteURL     string `json:"remoteURL,omitempty"`
+	Model         string `json:"model"`
+	ModelPath     string `json:"modelPath,omitempty"`
+	RuntimeExists bool   `json:"runtimeExists"`
+	ModelExists   bool   `json:"modelExists"`
 }
 
 func (rs imageRoutes) PixaiStatus(w http.ResponseWriter, r *http.Request) {
@@ -64,20 +64,24 @@ func (rs imageRoutes) PixaiStatus(w http.ResponseWriter, r *http.Request) {
 func (rs imageRoutes) PixaiPredictions(w http.ResponseWriter, r *http.Request) {
 	config, err := resolveCamieRequestOptions(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest); return
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 	path, err := imageTaggingPrimaryPath(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound); return
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
 	}
 	client, backend, _, err := newPixaiTagger()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError); return
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	defer client.Close()
 	status, err := client.Status(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway); return
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
 	}
 	if !status.Installed {
 		http.Error(w, "PixAI is not installed on the selected inference worker", http.StatusConflict)
@@ -85,7 +89,8 @@ func (rs imageRoutes) PixaiPredictions(w http.ResponseWriter, r *http.Request) {
 	}
 	predicted, err := client.Tag(r.Context(), path, config.Threshold, config.Limit)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway); return
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
 	}
 	tags := make([]camietagger.Tag, 0, len(predicted))
 	for _, item := range predicted {
@@ -93,7 +98,8 @@ func (rs imageRoutes) PixaiPredictions(w http.ResponseWriter, r *http.Request) {
 	}
 	tags, err = enrichNativeCamiePredictionTargets(r.Context(), tags)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError); return
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	writeVisualSimilarityJSON(w, camieTagsResponse{Backend: backend, Model: pixaitagger.Model, Threshold: config.Threshold, Limit: config.Limit, Tags: tags})
 }
@@ -122,7 +128,7 @@ func (rs imageRoutes) modelAction(w http.ResponseWriter, r *http.Request, remove
 				defer client.Close()
 				managed, ok := client.(pixaitagger.ModelManager)
 				if !ok {
-					return fmt.Errorf("PixAI worker does not support model installation")
+					return fmt.Errorf("pixai worker does not support model installation")
 				}
 				if remove {
 					_, err = managed.Delete(ctx)
@@ -140,7 +146,7 @@ func (rs imageRoutes) modelAction(w http.ResponseWriter, r *http.Request, remove
 				defer client.Close()
 				managed, ok := client.(camietagger.ModelManager)
 				if !ok {
-					return fmt.Errorf("Camie worker does not support model installation")
+					return fmt.Errorf("camie worker does not support model installation")
 				}
 				if remove {
 					_, err = managed.Delete(ctx)
