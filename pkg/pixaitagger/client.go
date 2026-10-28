@@ -168,15 +168,15 @@ func (c *Client) Tag(ctx context.Context, path string, threshold float64, limit 
 
 func statusFromResponse(res response) Status {
 	return Status{
-		Installed:      res.Installed,
-		Loaded:         res.Loaded,
-		ModelExists:    res.ModelExists,
-		RuntimeExists:  res.RuntimeExists,
-		ModelPath:      res.ModelPath,
-		MetadataPath:   res.MetadataPath,
-		Model:          res.Model,
-		TagCount:       res.TagCount,
-		Error:          res.Error,
+		Installed:     res.Installed,
+		Loaded:        res.Loaded,
+		ModelExists:   res.ModelExists,
+		RuntimeExists: res.RuntimeExists,
+		ModelPath:     res.ModelPath,
+		MetadataPath:  res.MetadataPath,
+		Model:         res.Model,
+		TagCount:      res.TagCount,
+		Error:         res.Error,
 	}
 }
 
