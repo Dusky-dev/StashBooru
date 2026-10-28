@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"math"
+	"os"
 	"testing"
 
 	sqlite_vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
@@ -159,4 +160,87 @@ func TestImageEmbeddingIDsUsesVec0RowIDs(t *testing.T) {
 	ids, err = VisualEmbeddings.ImageEmbeddingIDs(ctx)
 	require.NoError(t, err)
 	require.Equal(t, []int{2, 91}, ids)
+}
+
+func TestImageEmbeddingCleanupMigrationRemovesOrphansAndTracksDeletes(t *testing.T) {
+	db, err := sqlx.Open(sqlite3Driver, ":memory:")
+	require.NoError(t, err)
+	db.SetMaxOpenConns(1)
+	t.Cleanup(func() { require.NoError(t, db.Close()) })
+
+	_, err = db.Exec("CREATE TABLE images (id INTEGER PRIMARY KEY)")
+	require.NoError(t, err)
+	_, err = db.Exec("INSERT INTO images(id) VALUES (2), (5)")
+	require.NoError(t, err)
+
+	// Use the actual schema migrations to cover sqlite-vec and the cleanup
+	// trigger together, instead of testing a mocked image ID query.
+	embeddingSchema, err := os.ReadFile("migrations/87_visual_embeddings.up.sql")
+	require.NoError(t, err)
+	_, err = db.Exec(string(embeddingSchema))
+	require.NoError(t, err)
+
+	vector := make([]float32, VisualEmbeddingDimensions)
+	vector[0] = 1
+	serialized, err := sqlite_vec.SerializeFloat32(vector)
+	require.NoError(t, err)
+	for _, id := range []int{2, 9} {
+		_, err = db.Exec("INSERT INTO image_embedding_vectors(rowid, embedding) VALUES (?, ?)", id, serialized)
+		require.NoError(t, err)
+		_, err = db.Exec(`INSERT INTO visual_embedding_sources(entity_type, entity_id, model, source_key)
+VALUES ('image', ?, 'test', 'fixture')`, id)
+		require.NoError(t, err)
+	}
+	// Unmatched metadata should be removed too; unrelated scene data stays.
+	_, err = db.Exec(`INSERT INTO visual_embedding_sources(entity_type, entity_id, model, source_key)
+VALUES ('image', 10, 'test', 'fixture'), ('scene', 9, 'test', 'fixture')`)
+	require.NoError(t, err)
+
+	cleanupSchema, err := os.ReadFile("migrations/102_image_embedding_cleanup.up.sql")
+	require.NoError(t, err)
+	_, err = db.Exec(string(cleanupSchema))
+	require.NoError(t, err)
+
+	ctx := context.WithValue(context.Background(), dbKey, db)
+	ids, err := VisualEmbeddings.ImageEmbeddingIDs(ctx)
+	require.NoError(t, err)
+	require.Equal(t, []int{2}, ids)
+	var count int
+	require.NoError(t, db.Get(&count, "SELECT COUNT(*) FROM visual_embedding_sources WHERE entity_type = 'image'"))
+	require.Equal(t, 1, count)
+	require.NoError(t, db.Get(&count, "SELECT COUNT(*) FROM visual_embedding_sources WHERE entity_type = 'scene'"))
+	require.Equal(t, 1, count)
+
+	_, err = db.Exec("INSERT INTO image_embedding_vectors(rowid, embedding) VALUES (5, ?)", serialized)
+	require.NoError(t, err)
+	_, err = db.Exec(`INSERT INTO visual_embedding_sources(entity_type, entity_id, model, source_key)
+VALUES ('image', 5, 'test', 'fixture')`)
+	require.NoError(t, err)
+
+	// Real Image deletes clean both record types atomically. A rolled-back
+	// delete must also roll back its triggered vector and metadata cleanup.
+	tx, err := db.Beginx()
+	require.NoError(t, err)
+	_, err = tx.Exec("DELETE FROM images WHERE id = 2")
+	require.NoError(t, err)
+	require.NoError(t, tx.Rollback())
+	ids, err = VisualEmbeddings.ImageEmbeddingIDs(ctx)
+	require.NoError(t, err)
+	require.Equal(t, []int{2, 5}, ids)
+
+	_, err = db.Exec("DELETE FROM images WHERE id = 2")
+	require.NoError(t, err)
+	ids, err = VisualEmbeddings.ImageEmbeddingIDs(ctx)
+	require.NoError(t, err)
+	require.Equal(t, []int{5}, ids)
+	require.NoError(t, db.Get(&count, "SELECT COUNT(*) FROM visual_embedding_sources WHERE entity_type = 'image'"))
+	require.Equal(t, 1, count)
+
+	_, err = db.Exec("DELETE FROM images WHERE id = 5")
+	require.NoError(t, err)
+	ids, err = VisualEmbeddings.ImageEmbeddingIDs(ctx)
+	require.NoError(t, err)
+	require.Empty(t, ids)
+	require.NoError(t, db.Get(&count, "SELECT COUNT(*) FROM visual_embedding_sources WHERE entity_type = 'image'"))
+	require.Zero(t, count)
 }

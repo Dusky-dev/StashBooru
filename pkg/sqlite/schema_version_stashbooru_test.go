@@ -31,3 +31,9 @@ func TestStashBooruSchemaIncludesTagThumbnailMigration(t *testing.T) {
 		t.Fatalf("schema version %d does not include tag thumbnail migration 101", appSchemaVersion)
 	}
 }
+
+func TestStashBooruSchemaIncludesImageEmbeddingCleanupMigration(t *testing.T) {
+	if appSchemaVersion < 102 {
+		t.Fatalf("schema version %d does not include image embedding cleanup migration 102", appSchemaVersion)
+	}
+}

@@ -1,5 +1,20 @@
 # StashBooru implementation progress
 
+## Automatic orphaned EVA02 embedding cleanup — 2026-10-28
+
+- Baseline `develop`: `6b5c9b0d05e7d4a858268d90df0123557d256ff3`; branch `fix/visual-embedding-orphan-auto-cleanup`.
+- Add migration 102 to delete historical Image embedding vectors and matching
+  source metadata when their Image no longer exists. Preserve valid vectors
+  and unrelated Video/scene embeddings.
+- Add an `AFTER DELETE ON images` trigger for atomic cleanup across all Image
+  deletion paths (library scans, manual removal and repository deletes).
+- Add real sqlite-vec migration regression tests for historical orphans,
+  future deletions, metadata preservation and rolled-back deletion.
+- Refresh upgrade fixtures, schema expectations and desktop/mobile browser
+  migration validation for schema 102.
+- Pending CI and production-library validation; no EVA02 reindex required.
+
+
 ## Fix duplicate-image similarity index query — 2026-10-28
 
 - Baseline `develop` e3be0fb2014f03c33e17526a2da838d34f986c4a; branch `fix/duplicate-image-embedding-rowid`.
