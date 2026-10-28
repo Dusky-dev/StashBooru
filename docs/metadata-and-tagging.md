@@ -87,11 +87,12 @@ resources do not prevent local review.
 | --- | --- | --- |
 | Local | Parsed filename identities and provenance. | Enable filename metadata and configure its layout. No model required. |
 | Booru | Metadata for a matching post MD5, with source/post link and categorized tags where supplied/resolved. | Network access to a supported provider. No model required. |
+| PixAI | High-resolution Character, Copyright, general/style predictions using foidfinder; optional model and isolated runtime installed on demand. |
 | Camie | Character, Artist, Copyright, general/meta predictions. | Explicitly installed Camie v2 ONNX model and metadata on the selected worker. |
 | EVA02 | Additional tag predictions from the installed EVA02 tagging data. | Compatible model/tag data on the selected worker; independent threshold. |
 | Library | Suggestions drawn from visually similar indexed local Images. | Existing visual index and local catalogue metadata. Suggestions need review. |
 
-The displayed merge priority is **Local → Booru → Camie → EVA02 → Library**.
+The displayed merge priority is **Local → Booru → PixAI → Camie → EVA02 → Library**.
 **Look up by MD5** supports
 Danbooru, Gelbooru, Yande.re, Konachan and Safebooru in that priority order. The
 returned provider badge/post link identifies the actual source. This action looks
