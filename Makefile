@@ -352,6 +352,11 @@ test-gallery-block:
 	python3 -m unittest discover -s scripts/tests -p test_gallery_block_storage.py -v
 	python3 scripts/tests/gallery_block_fixtures.py
 
+# Non-destructive original-media snapshots and byte-verified standalone restore.
+.PHONY: test-media-library-backup
+test-media-library-backup:
+	python3 -m unittest discover -s scripts/tests -p test_media_library_backup.py -v
+
 # runs all tests - including integration tests
 .PHONY: it
 it:
