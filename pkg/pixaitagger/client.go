@@ -171,7 +171,7 @@ func statusFromResponse(res response) Status {
 		Installed:      res.Installed,
 		Loaded:         res.Loaded,
 		ModelExists:    res.ModelExists,
-		RuntimeExists: res.RuntimeExists,
+		RuntimeExists:  res.RuntimeExists,
 		ModelPath:      res.ModelPath,
 		MetadataPath:   res.MetadataPath,
 		Model:          res.Model,
