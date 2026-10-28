@@ -142,3 +142,22 @@ func TestStorageBackupPreflightRejectsMissingOrInvalidImageDigests(t *testing.T)
 		t.Fatal("accepted oversized preflight result")
 	}
 }
+
+func TestStorageBackupPreflightRequiresExplicitSafetyFlags(t *testing.T) {
+	for _, field := range []string{
+		"experimental", "readOnly", "verified", "mediaBackupVerified", "sourcesRetained",
+		"nativePackingEnabled", "nativeServingVerified",
+		"databaseBackupVerified", "originalEvictionEnabled",
+	} {
+		t.Run("missing_"+field, func(t *testing.T) {
+			report := preflightExampleReport()
+			delete(report, field)
+			assertRejectsStorageBackupPreflightReport(t, report)
+		})
+		t.Run("null_"+field, func(t *testing.T) {
+			report := preflightExampleReport()
+			report[field] = nil
+			assertRejectsStorageBackupPreflightReport(t, report)
+		})
+	}
+}
