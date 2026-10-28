@@ -83,18 +83,18 @@ type request struct {
 }
 
 type response struct {
-	ID             uint64  `json:"id"`
-	OK             bool    `json:"ok"`
-	Error          string  `json:"error,omitempty"`
-	Model          string  `json:"model,omitempty"`
-	ModelPath      string  `json:"model_path,omitempty"`
-	MetadataPath   string  `json:"metadata_path,omitempty"`
-	ModelExists    bool    `json:"model_exists,omitempty"`
-	RuntimeExists  bool    `json:"runtime_exists,omitempty"`
-	Installed      bool    `json:"installed,omitempty"`
-	Loaded         bool    `json:"loaded,omitempty"`
-	TagCount       int     `json:"tag_count,omitempty"`
-	Threshold      float64 `json:"threshold,omitempty"`
+	ID            uint64  `json:"id"`
+	OK            bool    `json:"ok"`
+	Error         string  `json:"error,omitempty"`
+	Model         string  `json:"model,omitempty"`
+	ModelPath     string  `json:"model_path,omitempty"`
+	MetadataPath  string  `json:"metadata_path,omitempty"`
+	ModelExists   bool    `json:"model_exists,omitempty"`
+	RuntimeExists bool    `json:"runtime_exists,omitempty"`
+	Installed     bool    `json:"installed,omitempty"`
+	Loaded        bool    `json:"loaded,omitempty"`
+	TagCount      int     `json:"tag_count,omitempty"`
+	Threshold     float64 `json:"threshold,omitempty"`
 	Tags           []Tag   `json:"tags,omitempty"`
 }
 
