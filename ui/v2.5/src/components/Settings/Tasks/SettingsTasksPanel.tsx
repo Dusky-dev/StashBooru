@@ -7,6 +7,7 @@ import { AnimationInspectionTask } from "./AnimationInspectionTask";
 import { AssociationInheritanceTask } from "./AssociationInheritanceTask";
 import { VideoOverlapTask } from "./VideoOverlapTask";
 import { DataManagementTasks } from "./DataManagementTasks";
+import { MediaBackupTask } from "./MediaBackupTask";
 import { PluginTasks } from "./PluginTasks";
 import { JobTable } from "./JobTable";
 import { SettingsDisclosure } from "../SettingsDisclosure";
@@ -110,6 +111,8 @@ export const SettingsTasksPanel: React.FC = () => {
           title={intl.formatMessage(sections.maintenance)}
           description={intl.formatMessage(sections.maintenance_help)}
         >
+          <MediaBackupTask />
+          <hr />
           <DataManagementTasks setIsAnonymiseRunning={setIsAnonymiseRunning} />
         </SettingsDisclosure>
         <SettingsDisclosure

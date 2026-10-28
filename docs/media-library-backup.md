@@ -10,6 +10,39 @@ file-level snapshot/verify/restore tool using only Python 3's standard library.
 It is a safety building block, not a live StashBooru Settings button, automatic
 backup scheduler, full application backup, or source-eviction authorization.
 
+## Native Settings → Tasks integration
+
+The follow-up native task appears in **Settings → Tasks → Backup & maintenance**
+under **Original media backup**. The server must have Python 3 and the
+`scripts/media_library_backup.py` file installed alongside the app, or use
+`STASH_MEDIA_BACKUP_SCRIPT` to point to that exact local script. A missing
+script displays an unavailable warning; it never attempts a backup.
+
+1. Create a directory for snapshots on the **server**, preferably on a
+   different physical drive from the media library.
+2. Enter its absolute path and choose **Save backup destination**. This saves
+   a private `media-library-backup.json` config in the StashBooru config
+   directory. No files are copied just by saving the path.
+3. Choose **Back up media files**, then monitor the normal Tasks job queue.
+   The server uses current configured media roots, not arbitrary browser paths.
+4. Refresh the snapshot list and choose **Verify** to fully hash every
+   backup blob, or **Restore to directory…** to reconstruct snapshot files
+   to a fresh, separate server directory without touching active source files.
+
+Backup, verification and recovery use cancellable native jobs. The task shows
+the job ID and requires the user to inspect its completion/error in the queue.
+Restore requires explicit acknowledgement. Its parent directory must already
+exist. The server independently checks the *currently configured* media roots
+and the backup store, even if old snapshots were made using different roots.
+If the Python script is missing or a destination overlaps protected paths,
+the operation fails closed.
+The server disallows running two media backup operations concurrently.
+
+This is **not** an automatically scheduled backup and does not create a
+`Reconstruct Library` operation for future delta-optimized media. Restore
+copies original media into a separate directory; the user must coordinate
+database/configuration recovery and changes to active filesystem roots.
+
 ## Create a snapshot
 
 Choose a destination **outside all backed-up roots**, preferably another
