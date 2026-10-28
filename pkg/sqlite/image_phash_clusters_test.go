@@ -23,7 +23,7 @@ INSERT INTO images_files VALUES
 (6,60,0), (7,70,1), (8,80,1), (8,81,0), (999,90,1);
 INSERT INTO files_fingerprints VALUES
 (10,'phash',0), (20,'phash',0), (30,'phash',1),
-(40,'phash',7), (50,'phash',256),
+(40,'phash',7), (50,'phash',65535),
 (60,'phash',0), (70,'source_phash',0),
 (80,'phash',NULL), (81,'phash',0), (90,'phash',0);
 `)

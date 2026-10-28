@@ -14,7 +14,10 @@ import { Helmet } from "react-helmet";
 import { useImagesDestroy } from "src/core/StashService";
 import { useToast } from "src/hooks/Toast";
 import {
+  defaultDuplicateMethod,
+  duplicateClusterURL,
   duplicateGroupKey,
+  type DuplicateMatchMethod,
   duplicateReviewPlan,
   keptImageIDs,
   readableFileSize,
@@ -25,14 +28,10 @@ import {
 import "./styles.scss";
 
 interface ClusterResponse {
-  threshold: number;
-  indexedImages: number;
-  clusters: SimilarImageGroup[];
-}
-
-interface SimilarityStatus {
+  method: DuplicateMatchMethod;
   indexedImages: number;
   totalImages: number;
+  clusters: SimilarImageGroup[];
 }
 
 interface MetadataCopyResponse {
@@ -51,11 +50,14 @@ async function jsonResponse<T>(response: Response): Promise<T> {
 
 export default function ImageDuplicates() {
   const Toast = useToast();
-  const [threshold, setThreshold] = useState("0.94");
-  const [appliedThreshold, setAppliedThreshold] = useState("0.94");
+  const [search, setSearch] = useState({
+    method: defaultDuplicateMethod as DuplicateMatchMethod,
+    distance: "5",
+    threshold: "0.94",
+  });
+  const [appliedSearch, setAppliedSearch] = useState(search);
   const [reloadToken, setReloadToken] = useState(0);
   const [result, setResult] = useState<ClusterResponse>();
-  const [status, setStatus] = useState<SimilarityStatus>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [shown, setShown] = useState(pageSize);
@@ -75,23 +77,14 @@ export default function ImageDuplicates() {
     setShown(pageSize);
     setHidden([]);
     setSelections({});
-    // Worker status may take much longer than an already indexed local
-    // similarity search. Do not make duplicate results wait for it.
-    void fetch("image/visual-similarity/status", {
-      signal: controller.signal,
-    })
-      .then(jsonResponse<SimilarityStatus>)
-      .then((value) => {
-        if (!controller.signal.aborted) setStatus(value);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setStatus(undefined);
-      });
-
+    // pHash searches use existing fingerprints and never contact EVA02.
+    // The cluster response includes index totals for the selected mode.
     void fetch(
-      "image/visual-similarity/clusters?threshold=" +
-        appliedThreshold +
-        "&neighbors=20",
+      duplicateClusterURL(
+        appliedSearch.method,
+        appliedSearch.distance,
+        appliedSearch.threshold
+      ),
       { signal: controller.signal }
     )
       .then(jsonResponse<ClusterResponse>)
@@ -107,7 +100,7 @@ export default function ImageDuplicates() {
         setLoading(false);
       });
     return () => controller.abort();
-  }, [appliedThreshold, reloadToken]);
+  }, [appliedSearch, reloadToken]);
 
   const visibleGroups = (result?.clusters ?? []).filter(
     (group) => !hidden.includes(duplicateGroupKey(group))
@@ -232,38 +225,86 @@ export default function ImageDuplicates() {
       <Card className="duplicate-review-controls">
         <Card.Body>
           <div className="duplicate-review-toolbar">
-            <Form.Group controlId="duplicate-threshold" className="mb-0">
-              <Form.Label>Similarity threshold</Form.Label>
+            <Form.Group controlId="duplicate-method" className="mb-0">
+              <Form.Label>Match using</Form.Label>
               <Form.Control
                 as="select"
-                value={threshold}
+                value={search.method}
                 disabled={loading || busy}
-                onChange={(event) => setThreshold(event.currentTarget.value)}
+                onChange={(event) => {
+                  const method = event.currentTarget.value as DuplicateMatchMethod;
+                  const next = { ...search, method };
+                  setSearch(next);
+                  setAppliedSearch(next);
+                  setResult(undefined);
+                }}
               >
-                <option value="0.97">Very close (97%)</option>
-                <option value="0.95">Close (95%)</option>
-                <option value="0.94">Balanced (94%)</option>
-                <option value="0.92">Broader (92%)</option>
-                <option value="0.88">More related images (88%)</option>
+                <option value="phash">pHash — duplicate images</option>
+                <option value="embedding">EVA02 — related content</option>
               </Form.Control>
             </Form.Group>
+            {search.method === "phash" ? (
+              <Form.Group controlId="duplicate-distance" className="mb-0">
+                <Form.Label>Maximum pHash difference</Form.Label>
+                <Form.Control
+                  as="select"
+                  value={search.distance}
+                  disabled={loading || busy}
+                  onChange={(event) =>
+                    setSearch({ ...search, distance: event.currentTarget.value })
+                  }
+                >
+                  <option value="0">Exact pHash (0 bits)</option>
+                  <option value="2">Very close (2 bits)</option>
+                  <option value="5">Balanced (5 bits)</option>
+                  <option value="8">More variants (8 bits)</option>
+                </Form.Control>
+              </Form.Group>
+            ) : (
+              <Form.Group controlId="duplicate-threshold" className="mb-0">
+                <Form.Label>EVA02 similarity threshold</Form.Label>
+                <Form.Control
+                  as="select"
+                  value={search.threshold}
+                  disabled={loading || busy}
+                  onChange={(event) =>
+                    setSearch({ ...search, threshold: event.currentTarget.value })
+                  }
+                >
+                  <option value="0.97">Very close (97%)</option>
+                  <option value="0.95">Close (95%)</option>
+                  <option value="0.94">Balanced (94%)</option>
+                  <option value="0.92">Broader (92%)</option>
+                  <option value="0.88">More related images (88%)</option>
+                </Form.Control>
+              </Form.Group>
+            )}
             <Button
               disabled={loading || busy}
               onClick={() => {
-                if (appliedThreshold !== threshold)
-                  setAppliedThreshold(threshold);
-                else setReloadToken((value) => value + 1);
+                if (
+                  appliedSearch.method !== search.method ||
+                  (search.method === "phash"
+                    ? appliedSearch.distance !== search.distance
+                    : appliedSearch.threshold !== search.threshold)
+                ) {
+                  setAppliedSearch({ ...search });
+                } else {
+                  setReloadToken((value) => value + 1);
+                }
               }}
             >
               {loading ? "Searching…" : "Find similar images"}
             </Button>
             <div className="duplicate-review-stat">
-              {status
-                ? status.indexedImages.toLocaleString() +
+              {result
+                ? result.indexedImages.toLocaleString() +
                   " / " +
-                  status.totalImages.toLocaleString() +
-                  " images indexed"
-                : "Checking visual similarity index…"}
+                  result.totalImages.toLocaleString() +
+                  (result.method === "phash" ? " images hashed" : " images indexed")
+                : loading
+                  ? "Checking image index…"
+                  : "Image index unavailable"}
               {result && (
                 <span>
                   {visibleGroups.length.toLocaleString()} groups ·{" "}
@@ -276,34 +317,46 @@ export default function ImageDuplicates() {
       </Card>
 
       <Alert variant="info" className="mt-3">
-        Similarity uses fast approximate candidate search over existing EVA02
-        embeddings, then verifies cosine similarity. Some borderline matches may
-        be missed. Groups are suggestions, not proof of identical content.
-        Review carefully before deleting. Missing results?{" "}
-        <Link to="/settings?tab=system">Generate visual embeddings</Link> under
-        Visual Similarity settings.
+        {appliedSearch.method === "phash" ? (
+          <>
+            pHash compares the current primary-file fingerprints to find exact
+            and near-duplicate images, including resized or recompressed copies.
+            No EVA02 model is required. Missing fingerprints? Generate Image
+            perceptual hashes under <Link to="/settings?tab=tasks">Tasks</Link>.
+          </>
+        ) : (
+          <>
+            EVA02 finds related subjects and compositions, not necessarily
+            duplicates. Approximate candidate search may miss borderline
+            matches. Review carefully before deleting. Missing results? Generate
+            visual embeddings in{" "}
+            <Link to="/settings?tab=system">Similarity settings</Link>.
+          </>
+        )}
       </Alert>
 
       {loading && (
         <div className="duplicate-review-loading" role="status">
           <Spinner animation="border" className="mr-3" />
-          Scanning indexed images and comparing likely matches…
+          {appliedSearch.method === "phash"
+            ? "Grouping current image perceptual hashes…"
+            : "Scanning indexed images and comparing likely matches…"}
         </div>
       )}
       {!loading && error && (
         <Alert variant="warning" role="alert">
           <strong>Duplicate search unavailable.</strong> {error}
           <p className="mt-2 mb-0">
-            {status?.indexedImages === 0 ||
-            error.includes("visual similarity index has no Images") ? (
+            {appliedSearch.method === "phash" ? (
               <>
-                No images are indexed yet. Generate image embeddings in{" "}
-                <Link to="/settings?tab=system">Similarity settings</Link>.
+                Could not read Image perceptual hashes. Check server logs and
+                retry; generate missing hashes under{" "}
+                <Link to="/settings?tab=tasks">Tasks</Link>.
               </>
             ) : (
               <>
-                The similarity index could not be read. Existing embeddings may
-                still be available; check the server logs and retry.
+                The similarity index could not be read. Existing EVA02
+                embeddings may still be available; check server logs and retry.
               </>
             )}
           </p>
@@ -311,7 +364,11 @@ export default function ImageDuplicates() {
       )}
       {!loading && result && visibleGroups.length === 0 && (
         <Alert variant="success">
-          No similar image groups to review at this threshold.
+          {appliedSearch.method === "phash"
+            ? result.indexedImages === 0
+              ? "No primary-file pHashes found. Generate Image perceptual hashes under Tasks."
+              : "No duplicate groups found at this pHash distance."
+            : "No related image groups found at this EVA02 threshold."}
           {hidden.length > 0 && (
             <Button
               variant="link"

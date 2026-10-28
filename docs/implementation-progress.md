@@ -1,5 +1,22 @@
 # StashBooru implementation progress
 
+## pHash-first Image duplicate review — 2026-10-28
+
+- Stacked on PR #246 (`f8e93c3c9883d45bd4a460931fd93ebd3aeef290`);
+  branch `feature/duplicate-review-phash-default`.
+- `/image-duplicates` defaults to pHash distance 5, with adjustable 0/2/5/8
+  Hamming-bit thresholds. Users can switch to EVA02 related-content matching,
+  which keeps its existing cosine thresholds and approximate candidate search.
+- Reuse SQLite's pHash BK-tree and union-find to group Images by their current
+  primary-file hashes. Exclude source_phash, secondary-file hashes and deleted
+  Image records. No EVA02 worker is needed in pHash mode.
+- Response counts reflect the selected index. UI requests only clusters,
+  removing the worker-status call from duplicate review.
+- Preserve manual keep/remove, metadata copy, and deletion safeguards.
+- Added pHash clustering/database, method parsing and UI request regression
+  tests. CI, Codex review, and real-library timing pending.
+
+
 ## Faster, stale-safe duplicate review — 2026-10-28
 
 - Baseline `develop` ee6e6f7a9011c1f4da9477d3ce00ffc215101072;

@@ -1,3 +1,21 @@
+export const defaultDuplicateMethod = "phash" as const;
+export type DuplicateMatchMethod = "phash" | "embedding";
+
+export function duplicateClusterURL(
+  method: DuplicateMatchMethod,
+  distance: string,
+  threshold: string
+): string {
+  const params = new URLSearchParams({ method });
+  if (method === "phash") {
+    params.set("distance", distance);
+  } else {
+    params.set("threshold", threshold);
+    params.set("neighbors", "20");
+  }
+  return "image/visual-similarity/clusters?" + params.toString();
+}
+
 export interface SimilarImageMember {
   id: number;
   width: number;
