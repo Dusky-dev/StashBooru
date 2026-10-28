@@ -256,7 +256,7 @@ func (rs imageRoutes) StorageEstimateStart(w http.ResponseWriter, r *http.Reques
 				storageEstimateBusy = false
 				storageEstimateMutex.Unlock()
 			}()
-					ids, err := storageEstimateSelectedIDs(req)
+			ids, err := storageEstimateSelectedIDs(req)
 			if err != nil {
 				return err
 			}
