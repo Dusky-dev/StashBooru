@@ -25,6 +25,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
 import visual_embedding_worker as worker
+import foidfinder_worker as pixai
 import image_restoration_worker as restoration
 import media_conversion_worker as converter
 import video_overlap_worker as video_overlap
@@ -103,6 +104,9 @@ class RemoteWorkerHandler(BaseHTTPRequestHandler):
             "available_providers": worker.ort.get_available_providers(),
         }
 
+    def _pixai_status(self) -> dict[str, Any]:
+        return {"ok": True, **pixai.status()}
+
     def do_GET(self) -> None:
         if not _authorized(self.headers.get("Authorization")):
             self._reject_unauthorized()
@@ -129,6 +133,9 @@ class RemoteWorkerHandler(BaseHTTPRequestHandler):
                 self._send_json(HTTPStatus.OK, restoration.capabilities())
             except Exception as error:
                 self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": str(error)})
+            return
+        if path == "/v1/pixai/status":
+            self._send_json(HTTPStatus.OK, self._pixai_status())
             return
         if path == "/v1/camie/status":
             status = self._camie_status()
@@ -201,6 +208,29 @@ class RemoteWorkerHandler(BaseHTTPRequestHandler):
 
         parsed = urlsplit(self.path)
         path = parsed.path.rstrip("/")
+        if path in ("/v1/camie/download", "/v1/camie/delete", "/v1/pixai/download", "/v1/pixai/delete"):
+            # Installation runs arbitrary upstream package builds on this host:
+            # never expose it through a tokenless worker.
+            if not SERVER_TOKEN:
+                self._send_json(HTTPStatus.FORBIDDEN, {"ok": False, "error": "configure STASH_REMOTE_WORKER_TOKEN before model management"})
+                return
+            if not _inference_lock.acquire(blocking=False):
+                self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"ok": False, "error": "inference worker is busy"})
+                return
+            try:
+                if path.startswith("/v1/camie/"):
+                    if camie is None:
+                        raise RuntimeError(f"Camie worker unavailable: {_camie_import_error}")
+                    result = camie.install_model() if path.endswith("/download") else camie.delete_model()
+                else:
+                    result = pixai.install() if path.endswith("/download") else pixai.delete()
+                self._send_json(HTTPStatus.OK, {"ok": True, **result})
+            except Exception as error:
+                _log(f"model management failed: {error}")
+                self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "error": str(error)})
+            finally:
+                _inference_lock.release()
+            return
         if path == "/v1/video-overlap/sample":
             self._video_overlap()
             return
@@ -210,7 +240,7 @@ class RemoteWorkerHandler(BaseHTTPRequestHandler):
         if path == "/v1/restoration":
             self._restoration()
             return
-        if path not in ("/v1/embed", "/v1/tag", "/v1/camie/tag"):
+        if path not in ("/v1/embed", "/v1/tag", "/v1/camie/tag", "/v1/pixai/tag"):
             self._send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not found"})
             return
 
@@ -252,6 +282,12 @@ class RemoteWorkerHandler(BaseHTTPRequestHandler):
                         "limit": limit,
                         "tags": tags,
                     }
+                elif path == "/v1/pixai/tag":
+                    query = parse_qs(parsed.query)
+                    threshold = float(query.get("threshold", [pixai.DEFAULT_THRESHOLD])[0])
+                    limit = int(query.get("limit", [pixai.DEFAULT_LIMIT])[0])
+                    tags = pixai.tag(str(temp_path), threshold=threshold, limit=limit)
+                    payload = {"ok": True, **pixai.status(), "tags": tags}
                 else:
                     assert camie is not None
                     query = parse_qs(parsed.query)
