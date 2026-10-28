@@ -5,7 +5,8 @@ import os
 from pathlib import Path
 import re
 import tempfile
-from urllib.request import Request, urlopen
+from urllib.error import HTTPError
+from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
 
 CHUNK = 4 * 1024 * 1024
 TRUSTED = {
@@ -13,11 +14,34 @@ TRUSTED = {
     "alpindale/PixAI-v1.0-INT8": {"model.safetensors", "config.json"},
 }
 
+class _NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def _expected_hash(url: str) -> str:
+    # The origin's X-Linked-ETag is the LFS SHA-256 even if the signed CDN
+    # destination has a different HTTP ETag.
+    req = Request(url, headers={"User-Agent": "StashBooru-model-installer/1"}, method="HEAD")
+    try:
+        reply = build_opener(_NoRedirect).open(req, timeout=30)
+    except HTTPError as error:
+        if error.code not in (301, 302, 303, 307, 308):
+            raise
+        reply = error
+    with reply:
+        etag = (reply.headers.get("X-Linked-ETag") or reply.headers.get("ETag") or "").strip('"')
+        if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", etag):
+            raise RuntimeError("Hugging Face did not provide a verifiable content hash")
+        return etag
+
+
 def fetch_model_file(repo: str, filename: str, destination: Path) -> None:
     if repo not in TRUSTED or filename not in TRUSTED[repo]:
         raise ValueError("model source is not approved")
     destination.parent.mkdir(parents=True, exist_ok=True)
     url = f"https://huggingface.co/{repo}/resolve/main/{filename}?download=true"
+    etag = _expected_hash(url)
     fd, temporary = tempfile.mkstemp(prefix=destination.name + ".", suffix=".part", dir=destination.parent)
     os.close(fd)
     part = Path(temporary)
