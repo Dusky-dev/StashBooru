@@ -1,5 +1,18 @@
 # StashBooru implementation progress
 
+## Batch Visual Stack savings estimates — 2026-10-28
+
+- Follow-up to #254 native read-only storage estimate.
+- Estimate up to 8 explicitly selected, distinct Visual Stacks, max 16 images
+  each. Preserve legacy `stackID` API requests, accept bounded `stackIDs` in
+  native task and reject duplicate, negative or oversized selections.
+- Feed all source groups into the pre-existing P12/P13 estimator in one
+  cancellable task. Show aggregate projected sizes and per-stack method
+  comparisons; originals remain untouched and no pack archives are created.
+- Add validation regression tests. UI and CI validation pending in this PR.
+- Bulk full-library discovery, persistence, lifecycle-managed packing,
+  live serving, reconstruction and original eviction are still NOT enabled.
+
 ## Native read-only Visual Stack storage estimate task — 2026-10-28
 
 - Branch `feat/native-image-storage-estimate-20261028` stacked on
