@@ -56,11 +56,12 @@ does not download them automatically.
 
 ## Native Settings task (experimental)
 
-The follow-up task in **Settings → Tasks → Inspect media → Experimental
-image storage estimate** accepts the numeric ID of an *existing* Visual Stack.
-It resolves image paths from StashBooru's catalogue on the server, never
-from user-supplied filesystem paths. The selected stack must contain 2–16
-images with regular primary files; video/mixed stacks are rejected.
+The task in **Settings → Tasks → Inspect media → Experimental image storage
+estimate** accepts **one to eight distinct Visual Stack IDs** separated by
+commas or whitespace. It resolves all image paths from StashBooru's catalogue
+on the server, never from user-supplied filesystem paths. Each selected stack
+must contain 2–16 images with regular primary files; video/mixed stacks,
+repeated IDs, and oversized selections are rejected.
 
 Choose **Byte-exact** (recommended) or explicitly select **Pixel-exact**,
 acknowledge the warning, and click **Estimate savings (read-only)**. The job
@@ -69,9 +70,11 @@ comparison of P12 and P13 candidates, expected sizes and hypothetical savings.
 The task requires the Python estimator and its P12/P13 scripts installed
 beside the server (or an explicit `STASH_IMAGE_STORAGE_ESTIMATE_SCRIPT` path).
 
-This first integration handles one Visual Stack at a time; it does **not**
-automatically scan or cluster a whole library, publish archive packs,
-delete original files, or serve reconstructed image data.
+The batch extension evaluates up to eight existing Visual Stacks at a time
+and reports per-stack recommendations plus hypothetical total savings and the
+increased footprint if candidate packs were retained alongside originals.
+It does **not** automatically scan or cluster the whole library, publish
+archive packs, delete original files, or serve reconstructed image data.
 
 ## What this does not establish
 
