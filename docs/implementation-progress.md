@@ -1,5 +1,17 @@
 # StashBooru implementation progress
 
+## Fix duplicate-image similarity index query — 2026-10-28
+
+- Baseline `develop` e3be0fb2014f03c33e17526a2da838d34f986c4a; branch `fix/duplicate-image-embedding-rowid`.
+- Correct the duplicate review's `ImageEmbeddingIDs` vec0 query to retrieve
+  indexed Image IDs from `rowid`, not a nonexistent `image_id` column.
+- Add a SQLite vec0 regression test covering empty and populated indexes,
+  deterministic ordering and deleted rows.
+- Avoid telling users to install EVA02 for unrelated database/query failures
+  when embeddings are already indexed.
+- Pending CI and physical database/browser validation; no embedding rebuild is
+  needed for this query-only change.
+
 ## Hide thumbnails globally for general Tags — 2026-10-28
 
 - Add an opt-in **Hide general tag thumbnails** switch under Settings →

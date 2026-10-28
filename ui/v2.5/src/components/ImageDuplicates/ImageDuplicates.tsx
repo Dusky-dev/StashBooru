@@ -285,8 +285,18 @@ export default function ImageDuplicates() {
         <Alert variant="warning" role="alert">
           <strong>Duplicate search unavailable.</strong> {error}
           <p className="mt-2 mb-0">
-            Install the EVA02 model and generate image embeddings in{" "}
-            <Link to="/settings?tab=system">Similarity settings</Link>.
+            {status?.indexedImages === 0 ||
+            error.includes("visual similarity index has no Images") ? (
+              <>
+                No images are indexed yet. Generate image embeddings in{" "}
+                <Link to="/settings?tab=system">Similarity settings</Link>.
+              </>
+            ) : (
+              <>
+                The similarity index could not be read. Existing embeddings may
+                still be available; check the server logs and retry.
+              </>
+            )}
           </p>
         </Alert>
       )}
