@@ -33,7 +33,7 @@ import {
   TaggingChangePlanModal,
 } from "src/components/Tagging/TaggingChangePlanModal";
 
-type MetadataSourceKind = "local" | "booru" | "camie" | "eva02" | "library";
+type MetadataSourceKind = "local" | "booru" | "pixai" | "camie" | "eva02" | "library";
 
 interface TagSourceResponse {
   backend: "local" | "remote";
@@ -112,6 +112,7 @@ const CATEGORY_ORDER = ["character", "artist", "copyright", "general", "meta"];
 const SOURCE_PRIORITY: Record<MetadataSourceKind, number> = {
   local: 0,
   booru: 10,
+  pixai: 15,
   camie: 20,
   eva02: 30,
   library: 40,
@@ -140,6 +141,13 @@ function predictionSource(
         priority: SOURCE_PRIORITY.booru,
       };
     }
+    case "pixai":
+      return {
+        kind,
+        label: "PixAI",
+        detail: "foidfinder / PixAI v1 prediction",
+        priority: SOURCE_PRIORITY.pixai,
+      };
     case "camie":
       return {
         kind,
@@ -174,6 +182,7 @@ function predictionSource(
 function mergeImageMetadataPredictions(
   localPredictions: TagPrediction[],
   booruPredictions: TagPrediction[],
+  pixaiPredictions: TagPrediction[],
   camiePredictions: TagPrediction[],
   eva02Predictions: TagPrediction[],
   libraryPredictions: TagPrediction[]
@@ -186,6 +195,10 @@ function mergeImageMetadataPredictions(
     {
       predictions: booruPredictions,
       source: (prediction) => predictionSource(prediction, "booru"),
+    },
+    {
+      predictions: pixaiPredictions,
+      source: (prediction) => predictionSource(prediction, "pixai"),
     },
     {
       predictions: camiePredictions,
@@ -232,6 +245,8 @@ function sourceBadgeVariant(source: string) {
       return "success";
     case "booru":
       return "info";
+    case "pixai":
+      return "info";
     case "camie":
       return "warning";
     case "eva02":
@@ -262,17 +277,20 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   const Toast = useToast();
   const history = useHistory();
   const [camieThreshold, setCamieThreshold] = useState("0.492");
+  const [pixaiThreshold, setPixaiThreshold] = useState("0.35");
   const [eva02Threshold, setEva02Threshold] = useState("0.35");
   const [limit, setLimit] = useState("50");
   const [localPredictions, setLocalPredictions] = useState<TagPrediction[]>([]);
   const [booruPredictions, setBooruPredictions] = useState<TagPrediction[]>([]);
   const [camiePredictions, setCamiePredictions] = useState<TagPrediction[]>([]);
+  const [pixaiPredictions, setPixaiPredictions] = useState<TagPrediction[]>([]);
   const [eva02Predictions, setEva02Predictions] = useState<TagPrediction[]>([]);
   const [libraryPredictions, setLibraryPredictions] = useState<TagPrediction[]>(
     []
   );
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [camieBackend, setCamieBackend] = useState<string>();
+  const [pixaiBackend, setPixaiBackend] = useState<string>();
   const [eva02Backend, setEva02Backend] = useState<string>();
   const [booruMetadata, setBooruMetadata] = useState<BooruMetadataResponse>();
   const [libraryMetadata, setLibraryMetadata] =
@@ -292,6 +310,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
       mergeImageMetadataPredictions(
         localPredictions,
         booruPredictions,
+        pixaiPredictions,
         camiePredictions,
         eva02Predictions,
         libraryPredictions
@@ -299,6 +318,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
     [
       booruPredictions,
       camiePredictions,
+      pixaiPredictions,
       eva02Predictions,
       libraryPredictions,
       localPredictions,
@@ -349,9 +369,9 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   }, [imageId]);
 
   const loadModelPredictions = useCallback(
-    async (source: "camie" | "eva02") => {
+    async (source: "camie" | "pixai" | "eva02") => {
       const sourceThreshold =
-        source === "camie" ? camieThreshold : eva02Threshold;
+        source === "camie" ? camieThreshold : source === "pixai" ? pixaiThreshold : eva02Threshold;
       let options: ReturnType<typeof parseInferenceOptions>;
       try {
         options = parseInferenceOptions(sourceThreshold, limit);
@@ -363,7 +383,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
       setLoadingSource(source);
       setError(undefined);
       try {
-        const endpoint = source === "camie" ? "camie-tags" : "eva02-tags";
+        const endpoint = source === "camie" ? "camie-tags" : source === "pixai" ? "pixai-tags" : "eva02-tags";
         const response = await fetch(
           `image/${imageId}/${endpoint}?threshold=${encodeURIComponent(options.parsedThreshold)}&limit=${encodeURIComponent(options.parsedLimit)}`,
           { method: "POST" }
@@ -372,6 +392,9 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         if (source === "camie") {
           setCamiePredictions(result.tags);
           setCamieBackend(result.backend);
+        } else if (source === "pixai") {
+          setPixaiPredictions(result.tags);
+          setPixaiBackend(result.backend);
         } else {
           setEva02Predictions(result.tags);
           setEva02Backend(result.backend);
@@ -383,7 +406,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         setLoadingSource(undefined);
       }
     },
-    [addSelected, camieThreshold, eva02Threshold, imageId, limit]
+    [addSelected, camieThreshold, pixaiThreshold, eva02Threshold, imageId, limit]
   );
 
   useEffect(() => {
@@ -667,6 +690,18 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                   />
                 </Form.Group>
                 <Form.Group className="mr-3 mb-2">
+                  <Form.Label>PixAI threshold</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min="0.001"
+                    max="0.999"
+                    step="0.01"
+                    value={pixaiThreshold}
+                    onChange={(event) => setPixaiThreshold(event.currentTarget.value)}
+                    style={{ width: "8rem" }}
+                  />
+                </Form.Group>
+                <Form.Group className="mr-3 mb-2">
                   <Form.Label>EVA02 threshold</Form.Label>
                   <Form.Control
                     type="number"
@@ -713,6 +748,16 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                   className="mr-2 mb-2"
                   variant="secondary"
                   disabled={busy || applying}
+                  onClick={() => void loadModelPredictions("pixai")}
+                >
+                  {loadingSource === "pixai"
+                    ? "Analyzing…"
+                    : "Analyze with PixAI"}
+                </Button>
+                <Button
+                  className="mr-2 mb-2"
+                  variant="secondary"
+                  disabled={busy || applying}
                   onClick={() => void loadModelPredictions("eva02")}
                 >
                   {loadingSource === "eva02"
@@ -743,6 +788,11 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                 {camieBackend ? (
                   <Badge className="mr-2 mb-1" variant="warning">
                     Camie {camieBackend}
+                  </Badge>
+                ) : null}
+                {pixaiBackend ? (
+                  <Badge className="mr-2 mb-1" variant="info">
+                    PixAI {pixaiBackend}
                   </Badge>
                 ) : null}
                 {eva02Backend ? (
@@ -786,10 +836,10 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
 
               <details className="mb-3 text-muted">
                 <summary>How sources are combined</summary>
-                Sources are merged in priority order: Local → Booru → Camie →
+                Sources are merged in priority order: Local → Booru → PixAI → Camie →
                 EVA02 → Library. Opening this dialog loads Local metadata only;
-                every network, model, or similarity source is explicit. Camie
-                and EVA02 use independent configured thresholds. Library
+                every network, model, or similarity source is explicit. PixAI,
+                Camie and EVA02 have independent thresholds. Library
                 suggestions require consensus from visually similar indexed
                 images and start unselected because they are review-only. When
                 the same metadata item is predicted by multiple sources, the
@@ -817,7 +867,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                 </div>
               ) : predictions.length === 0 && !error ? (
                 <div className="text-muted">
-                  No Local metadata was found. Fetch Danbooru, run Camie/EVA02,
+                  No Local metadata was found. Fetch Danbooru, run PixAI/Camie/EVA02,
                   or request Library suggestions explicitly to add predictions.
                 </div>
               ) : (
