@@ -90,15 +90,15 @@ func estimateStackSources(ctx context.Context, id int) (estimateSourceGroup, err
 			return err
 		}
 		if stack == nil {
-			return fmt.Errorf("Visual Stack %d was not found", id)
+			return fmt.Errorf("visual stack %d was not found", id)
 		}
 		if len(stack.Members) < 2 || len(stack.Members) > estimateMaxMembers {
-			return fmt.Errorf("Visual Stack must contain 2–16 images for this bounded prototype")
+			return fmt.Errorf("visual stack must contain 2–16 images for this bounded prototype")
 		}
 		result = estimateSourceGroup{
-			ID: "stack:" + strconv.Itoa(stack.ID),
+			ID:             "stack:" + strconv.Itoa(stack.ID),
 			Representative: stack.Representative,
-			Members: make([]estimateSourceMember, 0, len(stack.Members)),
+			Members:        make([]estimateSourceMember, 0, len(stack.Members)),
 		}
 		for _, item := range stack.Members {
 			if item.Media.Kind != models.MediaKindImage {
@@ -109,14 +109,14 @@ func estimateStackSources(ctx context.Context, id int) (estimateSourceGroup, err
 				return err
 			}
 			if image == nil {
-				return fmt.Errorf("Visual Stack contains a missing image")
+				return fmt.Errorf("visual stack contains a missing image")
 			}
 			if err := image.LoadPrimaryFile(ctx, mgr.Repository.File); err != nil {
 				return err
 			}
 			file := image.Files.Primary()
 			if file == nil {
-				return fmt.Errorf("Visual Stack image has no primary file")
+				return fmt.Errorf("visual stack image has no primary file")
 			}
 			path := file.Base().Path
 			if err := estimateRegularSource(path); err != nil {
