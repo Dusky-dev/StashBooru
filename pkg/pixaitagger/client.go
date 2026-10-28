@@ -26,7 +26,7 @@ type Status struct {
 	Installed      bool   `json:"installed"`
 	Loaded         bool   `json:"loaded"`
 	ModelExists    bool   `json:"modelExists"`
-	MetadataExists bool   `json:"metadataExists"`
+	RuntimeExists bool   `json:"metadataExists"`
 	ModelPath      string `json:"modelPath"`
 	MetadataPath   string `json:"metadataPath"`
 	Model          string `json:"model"`
@@ -90,7 +90,7 @@ type response struct {
 	ModelPath      string  `json:"model_path,omitempty"`
 	MetadataPath   string  `json:"metadata_path,omitempty"`
 	ModelExists    bool    `json:"model_exists,omitempty"`
-	MetadataExists bool    `json:"metadata_exists,omitempty"`
+	RuntimeExists bool    `json:"runtime_exists,omitempty"`
 	Installed      bool    `json:"installed,omitempty"`
 	Loaded         bool    `json:"loaded,omitempty"`
 	TagCount       int     `json:"tag_count,omitempty"`
@@ -171,7 +171,7 @@ func statusFromResponse(res response) Status {
 		Installed:      res.Installed,
 		Loaded:         res.Loaded,
 		ModelExists:    res.ModelExists,
-		MetadataExists: res.MetadataExists,
+		RuntimeExists: res.RuntimeExists,
 		ModelPath:      res.ModelPath,
 		MetadataPath:   res.MetadataPath,
 		Model:          res.Model,
