@@ -6,8 +6,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/jmoiron/sqlx"
 	sqlite_vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
+	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/require"
 )
 
