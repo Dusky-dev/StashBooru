@@ -109,6 +109,16 @@ class MediaLibraryBackupTests(unittest.TestCase):
         with self.assertRaisesRegex(backup.BackupError, "duplicate"):
             backup.verify(self.store, identifier)
 
+    def test_shared_blob_member_size_tampering_is_detected(self):
+        identifier = self.snapshot()
+        path = backup._snapshot_path(self.store, identifier)
+        manifest = json.loads(path.read_text())
+        self.assertEqual(manifest["entries"][0]["sha256"], manifest["entries"][1]["sha256"])
+        manifest["entries"][1]["size"] += 1
+        path.write_text(json.dumps(manifest))
+        with self.assertRaisesRegex(backup.BackupError, "size disagrees"):
+            backup.verify(self.store, identifier)
+
     def test_existing_malformed_object_is_never_replaced(self):
         digest = backup._read_hash(self.media / "same.png")[1]
         obj = backup._object_path(self.store, digest)
