@@ -1,5 +1,14 @@
 # StashBooru implementation progress
 
+## Non-destructive P12/P13 byte-exact publication proof — 2026-10-29
+
+- Baseline develop `fe20b8a481a8f3b2411300fc51d22d4adb438ae3` (merged #256); branch `feat/non-destructive-image-pack-proof-20261029`.
+- Add offline `scripts/image_storage_pack_proof.py` for one explicit image-only group, with bounded P12/P13 byte-exact candidate packing into a separate destination; snapshots of original SHA-256, size and file identity guard source mutations.
+- Verify staged persisted candidate with the format's native reader and independently compare all reconstructed member bytes with original SHA-256 before atomic no-overwrite publication. Sources and metadata remain untouched; no activation or eviction.
+- Provide an explicit offline resume of verified staged candidates after interruption; unsafe/incomplete candidates cannot publish. Add synthetic tests for both formats, reconstruction, source immutability, corrupted staging, symlinks, no overwrite, interruption recovery, and CLI use.
+- Dedicated CI workflow runs the Python suite. No owner-library measurements, native serving/backup activation, backup verification, rollback or interrupted native job simulation claimed; checks pending.
+- Next: native catalogue-derived staging destination and verified backup requirement, plus production-context recovery, prior to any opt-in storage activation. Image-layering optimization stays disabled and original-media eviction is prohibited.
+
 ## Batch Visual Stack savings estimates — 2026-10-28
 
 - Target `develop` baseline at review: `5ed5e87777bbd73bc3942b4daab5469a07e3c4ab` (merged #254); feature branch `feat/batch-visual-stack-storage-estimate-20261028`; PR #256.
