@@ -195,7 +195,9 @@ export const VisualSimilaritySettings: React.FC = () => {
     camieConfig.limit >= 1 &&
     camieConfig.limit <= 200;
 
-  function workerStatus(value?: VisualSimilarityStatus | CamieStatus | PixaiStatus) {
+  function workerStatus(
+    value?: VisualSimilarityStatus | CamieStatus | PixaiStatus
+  ) {
     if (loading) return <Badge variant="secondary">Checking…</Badge>;
     if (!value) return <Badge variant="secondary">Status unavailable</Badge>;
     return (
@@ -479,22 +481,35 @@ export const VisualSimilaritySettings: React.FC = () => {
             )}
             <div className="settings-actions mt-3">
               {!camieStatus?.installed && (
-                <Button variant="secondary" disabled={loading || submitting || !camieStatus?.workerOK}
-                  onClick={() => void startJob("camie/install")}>
+                <Button
+                  variant="secondary"
+                  disabled={loading || submitting || !camieStatus?.workerOK}
+                  onClick={() => void startJob("camie/install")}
+                >
                   Install Camie model (~800 MB)
                 </Button>
               )}
               {camieStatus?.installed && (
-                <Button variant="outline-danger" disabled={loading || submitting}
+                <Button
+                  variant="outline-danger"
+                  disabled={loading || submitting}
                   onClick={() => {
-                    if (window.confirm("Remove Camie model files from the selected worker?"))
+                    if (
+                      window.confirm(
+                        "Remove Camie model files from the selected worker?"
+                      )
+                    )
                       void startJob("camie/delete");
-                  }}>
+                  }}
+                >
                   Delete Camie model
                 </Button>
               )}
-              <Button variant="secondary" disabled={loading || submitting}
-                onClick={() => void refresh()}>
+              <Button
+                variant="secondary"
+                disabled={loading || submitting}
+                onClick={() => void refresh()}
+              >
                 Refresh Camie status
               </Button>
             </div>
@@ -541,36 +556,59 @@ export const VisualSimilaritySettings: React.FC = () => {
             )}
             <div className="settings-actions mt-3">
               {!pixaiStatus?.installed && (
-                <Button variant="secondary" disabled={loading || submitting || !pixaiStatus?.workerOK}
-                  onClick={() => void startJob("pixai/install")}>
+                <Button
+                  variant="secondary"
+                  disabled={loading || submitting || !pixaiStatus?.workerOK}
+                  onClick={() => void startJob("pixai/install")}
+                >
                   Install PixAI Tagger v1 (~600 MB model)
                 </Button>
               )}
               {pixaiStatus?.installed && (
-                <Button variant="outline-danger" disabled={loading || submitting}
+                <Button
+                  variant="outline-danger"
+                  disabled={loading || submitting}
                   onClick={() => {
-                    if (window.confirm("Remove PixAI model and isolated inference runtime from the selected worker?"))
+                    if (
+                      window.confirm(
+                        "Remove PixAI model and isolated inference runtime from the selected worker?"
+                      )
+                    )
                       void startJob("pixai/delete");
-                  }}>
+                  }}
+                >
                   Delete PixAI model and runtime
                 </Button>
               )}
-              <Button variant="secondary" disabled={loading || submitting}
-                onClick={() => void refresh()}>
+              <Button
+                variant="secondary"
+                disabled={loading || submitting}
+                onClick={() => void refresh()}
+              >
                 Refresh PixAI status
               </Button>
             </div>
             <p className="small text-muted mt-2">
-              NVIDIA installations need the CUDA Toolkit 12.8+ (nvcc) or precompiled inference kernels.
-              The installer runs on the selected worker. Model and runtime are Apache-2.0.
+              NVIDIA installations need the CUDA Toolkit 12.8+ (nvcc) or
+              precompiled inference kernels. The installer runs on the selected
+              worker. Model and runtime are Apache-2.0.
             </p>
             <details className="settings-details mt-3">
               <summary>PixAI model details</summary>
               <p className="text-break mt-2">
-                <strong>Model:</strong> <code>{pixaiStatus?.model || "alpindale/PixAI-v1.0-INT8"}</code>
+                <strong>Model:</strong>{" "}
+                <code>{pixaiStatus?.model || "alpindale/PixAI-v1.0-INT8"}</code>
               </p>
-              {pixaiStatus?.modelPath && <p className="text-break"><code>{pixaiStatus.modelPath}</code></p>}
-              <p>Model weights: {pixaiStatus?.modelExists ? "installed" : "missing"}; inference runtime: {pixaiStatus?.runtimeExists ? "installed" : "missing"}.</p>
+              {pixaiStatus?.modelPath && (
+                <p className="text-break">
+                  <code>{pixaiStatus.modelPath}</code>
+                </p>
+              )}
+              <p>
+                Model weights:{" "}
+                {pixaiStatus?.modelExists ? "installed" : "missing"}; inference
+                runtime: {pixaiStatus?.runtimeExists ? "installed" : "missing"}.
+              </p>
             </details>
           </div>
         </Setting>
