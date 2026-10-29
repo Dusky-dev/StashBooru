@@ -187,7 +187,16 @@ def create_receipt(database: Path, config: Path, store: Path, snapshot: str, out
     # Verify the existing store and its declared historical roots before writing.
     _canonical_dir(store)
     manifest = media_backup._load_manifest(store, snapshot)
-    roots = [_canonical_dir(Path(p)) for p in manifest["roots"].values()]
+    roots = []
+    for original_path in manifest["roots"].values():
+        # Original roots may be missing during recovery. Do not access or
+        # require them; still reject alias/traversal and overlap by pathname.
+        root = Path(original_path)
+        if not root.is_absolute() or root != Path(os.path.normpath(root)):
+            raise ValueError("snapshot contains a noncanonical original-media root")
+        if root.exists() and root.resolve(strict=True) != root:
+            raise ValueError("snapshot original root uses an unexpected symlink")
+        roots.append(root)
     _receipt_location(output, store, roots)
     record = _build_record(database, config, store, snapshot)
     data = json.dumps(record, sort_keys=True, separators=(",", ":"), allow_nan=False).encode() + b"\n"
