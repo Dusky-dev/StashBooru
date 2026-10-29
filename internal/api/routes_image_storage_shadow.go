@@ -123,16 +123,22 @@ func storageShadowContentType(data []byte) (string, bool) {
 // GET delivers a verified member from a saved candidate, not native media.
 // It never activates archives, mutates catalogue data or deletes originals.
 func (rs imageRoutes) StorageShadowImage(w http.ResponseWriter, r *http.Request) {
-	rs.storageShadowServe(w, r, false)
+	rs.storageShadowServe(w, r, false, false)
 }
 
 // StorageShadowThumbnail evaluates native thumbnail decoding against already
 // verified P12/P13 original bytes, but never touches generated cache paths.
 func (rs imageRoutes) StorageShadowThumbnail(w http.ResponseWriter, r *http.Request) {
-	rs.storageShadowServe(w, r, true)
+	rs.storageShadowServe(w, r, true, false)
 }
 
-func (rs imageRoutes) storageShadowServe(w http.ResponseWriter, r *http.Request, thumbnail bool) {
+// StorageShadowDownload delivers only separately authenticated, byte-exact
+// archived originals as attachments. It does not replace a native download.
+func (rs imageRoutes) StorageShadowDownload(w http.ResponseWriter, r *http.Request) {
+	rs.storageShadowServe(w, r, false, true)
+}
+
+func (rs imageRoutes) storageShadowServe(w http.ResponseWriter, r *http.Request, thumbnail, download bool) {
 	req, err := storageShadowParseRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -211,6 +217,10 @@ func (rs imageRoutes) storageShadowServe(w http.ResponseWriter, r *http.Request,
 		serveVerifiedStorageShadowBytes(w, r, preview)
 		return
 	}
+	if download {
+		serveVerifiedStorageShadowDownload(w, r, data, req.ImageID, member.Path)
+		return
+	}
 	serveVerifiedStorageShadowBytes(w, r, data)
 }
 
@@ -247,5 +257,30 @@ func serveVerifiedStorageShadowBytes(w http.ResponseWriter, r *http.Request, dat
 	if !inline {
 		w.Header().Set("Content-Disposition", "attachment")
 	}
+	http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(data))
+}
+
+// A strict extension allowlist preserves only a recognizable format suffix;
+// it never propagates an untrusted source filename or arbitrary HTTP metadata.
+func storageShadowDownloadExtension(originalPath string) string {
+	extension := strings.ToLower(filepath.Ext(originalPath))
+	switch extension {
+	case ".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".tif", ".tiff", ".avif", ".jxl":
+		return extension
+	default:
+		return ".bin"
+	}
+}
+
+// serveVerifiedStorageShadowDownload is exclusively for previously rehashed
+// P12/P13 members, independently byte-compared against the active original.
+// The original path provides a safe extension only; no content is recoded.
+func serveVerifiedStorageShadowDownload(w http.ResponseWriter, r *http.Request, data []byte, imageID int, originalPath string) {
+	extension := storageShadowDownloadExtension(originalPath)
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="image-%d%s"`, imageID, extension))
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; sandbox")
 	http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(data))
 }
