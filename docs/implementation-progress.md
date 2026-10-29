@@ -1,5 +1,14 @@
 # StashBooru implementation progress
 
+## Isolated recovery rehearsal with missing original images — 2026-10-29
+
+- Branch `feat/isolated-missing-original-rehearsal-20261029`, stacked on download parity PR #269 at `1843626196136c6a155729ac2c63e3d0e179004a`.
+- New offline `scripts/image_storage_missing_original_rehearsal.py` reads a validated immutable saved candidate receipt and rehashes the complete P12/P13 archive. It verifies the entire original-media backup snapshot and accounts for each source content digest even when the original image files no longer exist.
+- It then invokes isolated byte-exact reconstruction into a **new private sibling directory only**, without accessing any live original, changing native database/media paths, serving image bytes, or deleting files. It explicitly reports database recovery and native activation as unverified and prohibited.
+- Synthetic regression tests remove only temporary original files and prove successful P12/P13 scratch recovery, while corrupt backup/archive, output overlap, symlink receipt and repeat-output cases fail closed. Dedicated CI, docs and implementation ledger added. Current-head CI/owner-library validation pending.
+- This does not prove historical image-to-backup-path mapping, production disaster recovery, persistent interrupted-native-job state, DB/configuration backup, native media activation or live rollback. Original deletion remains disabled.
+- Next: native server-controlled rehearsal and durable transactional state, independently tested DB/config recovery and live-media rollback before allowing packed storage.
+
 ## Verified original-format packed-shadow download parity — 2026-10-29
 
 - Branch `feat/packed-shadow-download-parity-20261029` based on merged PR #268 develop commit `c4110d07c8cbbcdf9bb2995d1f5caf0317d981d7`.
