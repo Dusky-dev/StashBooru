@@ -1,5 +1,12 @@
 # StashBooru implementation progress
 
+## Isolated P12/P13 candidate reconstruction proof — 2026-10-29
+
+- Stacked on PR #260 candidate-packing branch at commit `afdb56238ebd83f84ad381597cb7b63d3ae93e80`; branch `feat/native-candidate-reconstruction-20261029`.
+- Adds `scripts/image_storage_candidate_reconstruct.py`: an **offline-only**, explicit new-directory reconstruction proof for a verified P12/P13 candidate and known SHA-256 source evidence. Before extraction, verifies native reader integrity, byte-exact fidelity and complete image identity/hashes. After extraction, re-hashes every restored file and verifies the completion receipt; post-extraction rejection removes only its isolated recovery directory.
+- Includes synthetic P12/P13, corrupt archive, incorrect digest, missing member, symlink/occupied-path and CLI-repeat regression tests, dedicated CI, and documentation. CI and production owner-media recovery are not yet verified.
+- **No native recovery UI/API, in-place rollback, database recovery, serving activation or original removal**. The generated directories contain disconnected copies, not storage savings. Next: a trusted native job for recovery receipt and server-controlled private paths; subsequently validate catalogued serving and rollback with real media.
+
 ## Native backup-gated byte-exact image candidate packing — 2026-10-29
 
 - Branch `feat/native-candidate-pack-20261029`, stacked on verified native preflight #259 head `055e879cd0f9c77e826a49a192f2ef3d64cb923a` (develop `e34230e919aa5eb07b414d93c7b7afc1b0f91d9b`).
