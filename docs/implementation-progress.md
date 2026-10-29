@@ -1,5 +1,13 @@
 # StashBooru implementation progress
 
+## Isolated native packed-thumbnail compatibility probe — 2026-10-29
+
+- Feature branch `feat/packed-shadow-native-thumbnail-20261029` stacked on side-by-side comparison PR #267 at `435b8df22ee8d9b91bead969d7d78a2e781c9328`.
+- Adds GET `image/storage-shadow-thumbnail`, sharing the existing verified shadow read path: immutable archive SHA-256, current catalogue membership, original-byte equality and bounded input. After verifying, calls the native vips/FFmpeg thumbnail backend **in-memory only** and returns JPEG with no-store/nosniff and strict CSP. Does not invoke native live thumbnail/preview routes or write generated caches.
+- Settings → Tasks comparison adds a third independent JPEG thumbnail viewer, load/failure status and raw link. Go safety tests enforce source bounds, unsupported GIF/animated WebP/AVIF/JXL, and request path rejection; full CI and owner-media/browser testing pending.
+- This does not activate packed media, replace originals, generate previews, support missing-original reconstruction through the catalogue, modify database or delete any file. Native thumbnail backend uses codec/runtime dependencies, and actual owner-browser validation is outstanding.
+- Next: isolated preview/clip and download compatibility, path-only codec support, missing-original crash-safe restore and database/configuration recovery before activating optimized storage.
+
 ## Side-by-side packed shadow browser comparison and synthetic HTTP byte parity — 2026-10-29
 
 - Feature branch `feat/packed-shadow-side-by-side-20261029` stacked on full-stack audit PR #266, head `f99bd4dcc32688e1b3801edd93a3d9450fac89fe`.
