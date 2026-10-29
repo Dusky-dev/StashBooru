@@ -70,7 +70,9 @@ export const ImageStorageRecoveryTask: React.FC = () => {
     return () => abort.abort();
   }, [refresh]);
 
-  const selected = candidate?.candidates?.find((item) => item.id === selectedID);
+  const selected = candidate?.candidates?.find(
+    (item) => item.id === selectedID
+  );
   const stackID = selected?.group.match(/^stack:([1-9]\d*)$/)?.[1];
   const ready = !!selected && !!status?.available && !!stackID;
   const busy = requesting || !!candidate?.busy || !!status?.busy;
