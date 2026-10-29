@@ -112,8 +112,8 @@ func storageCandidateDirectory(configPath, backupStore string, mediaRoots []stri
 		if existing.Mode()&os.ModeSymlink != 0 || !existing.IsDir() {
 			return "", fmt.Errorf("candidate output is a symlink or non-directory")
 		}
-		real, err := filepath.EvalSymlinks(candidate)
-		if err != nil || real != candidate {
+		resolvedCandidate, err := filepath.EvalSymlinks(candidate)
+		if err != nil || resolvedCandidate != candidate {
 			return "", fmt.Errorf("candidate output uses a symlink alias")
 		}
 	} else if !os.IsNotExist(err) {
