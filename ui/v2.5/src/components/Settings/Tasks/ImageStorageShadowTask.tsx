@@ -79,12 +79,12 @@ export const ImageStorageShadowTask: React.FC = () => {
     setMemberError("");
     setImageID("");
     setComparison(undefined);
-    if (!stackID || !candidate) {
+    if (!stackID || !selectedID) {
       setMemberLoading(false);
       return () => controller.abort();
     }
     setMemberLoading(true);
-    const params = new URLSearchParams({ candidateID: candidate.id, stackID });
+    const params = new URLSearchParams({ candidateID: selectedID, stackID });
     void fetch("image/storage-shadow-members?" + params, {
       signal: controller.signal,
     })
@@ -94,7 +94,7 @@ export const ImageStorageShadowTask: React.FC = () => {
         }
         const data = (await response.json()) as ShadowMemberList;
         if (
-          data.candidateID !== candidate.id ||
+          data.candidateID !== selectedID ||
           data.stackID !== Number(stackID) ||
           !data.readOnly ||
           !data.sourcesRetained ||
@@ -129,7 +129,7 @@ export const ImageStorageShadowTask: React.FC = () => {
         if (!controller.signal.aborted) setMemberLoading(false);
       });
     return () => controller.abort();
-  }, [candidate?.id, stackID]);
+  }, [selectedID, stackID]);
 
   const validImageID =
     /^[1-9]\d*$/.test(imageID) && Number.isSafeInteger(Number(imageID));
