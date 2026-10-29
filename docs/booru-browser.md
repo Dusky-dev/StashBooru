@@ -59,9 +59,15 @@ thumbnail to open the larger preview; **Open remote post** opens the source site
 On Pawchive and Kemono, **Find an artist** searches the provider's artist directory
 by name. Select the matching artist/service to browse their posts; no numeric
 creator expression needs to be typed. Matching names on different services remain
-separate choices. Directory errors have a retry action. Post-text search is
-available on **both Pawchive and Kemono**. For Pawchive, StashBooru
-requests `/api/v1/posts?q=...` with native 50-record offset pagination
+separate choices. Directory errors have a retry action. After selecting an artist,
+append a space and at least three characters to the main search query,
+for example `creator:patreon:42 blue sky`, to search **only that creator's posts**.
+The provider's creator-post endpoint receives `q=blue+sky` while keeping
+the creator ID and normal pagination. A bare `creator:patreon:42` still
+lists all of the creator's posts. Provider-side search results and indexing
+may vary; filters are not replaced by a local search of only the visible page.
+Post-text search is available on **both Pawchive and Kemono**. For Pawchive,
+StashBooru requests `/api/v1/posts?q=...` with native 50-record offset pagination
 instead of scanning only 250 recent posts. The provider can return older
 matches from across its archive. Pawchive has recently returned
 HTTP 429 (rate limited) to API clients. To avoid adding pressure,
