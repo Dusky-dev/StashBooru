@@ -176,9 +176,9 @@ func (rs imageRoutes) StorageBackupPreflightStatus(w http.ResponseWriter, r *htt
 	storageBackupPreflightMutex.Unlock()
 	writeVisualSimilarityJSON(w, storageBackupPreflightStatus{
 		Available: storageBackupPreflightScriptsAvailable(),
-		Busy: busy,
-		JobID: jobID,
-		Result: result,
+		Busy:      busy,
+		JobID:     jobID,
+		Result:    result,
 	})
 }
 
