@@ -45,7 +45,7 @@ class FullStackAuditTests(unittest.TestCase):
             "group": self.group["id"],
             "method": method,
             "archivePath": str(archive),
-            "members": self.members,
+            "members": [dict(item) for item in self.members],
             "sourceSHA256": report["sourceSHA256"],
             "mediaBackupSnapshot": "20261029T102030Z-012345abcdef",
         }
