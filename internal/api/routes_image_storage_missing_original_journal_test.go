@@ -71,13 +71,15 @@ func TestPrivateScratchJournalRejectsUnsafePathsAndFlags(t *testing.T) {
 	dir, original := testPrivateRecoveryJournal(t)
 	for _, mutate := range []func(*missingOriginalJournalRecord){
 		func(r *missingOriginalJournalRecord) { r.OutputPath = filepath.Join(dir, "..", "outside") },
-		func(r *missingOriginalJournalRecord) { r.OutputPath = filepath.Join(dir, "stack-18-orphan-rehearsal-aaaaaaaaaaaaaaaaaaaaaaaa") },
+		func(r *missingOriginalJournalRecord) {
+			r.OutputPath = filepath.Join(dir, "stack-18-orphan-rehearsal-aaaaaaaaaaaaaaaaaaaaaaaa")
+		},
 		func(r *missingOriginalJournalRecord) { r.CanActivate = true },
 		func(r *missingOriginalJournalRecord) { r.OriginalEvictionEnabled = true },
 		func(r *missingOriginalJournalRecord) { r.DatabaseRecoveryVerified = true },
 		func(r *missingOriginalJournalRecord) { r.CrashSafeRollbackVerified = true },
 		func(r *missingOriginalJournalRecord) { r.State = "scratch_complete" },
-		func(r *missingOriginalJournalRecord) { r.UpdatedUnix = time.Now().Add(48*time.Hour).Unix() },
+		func(r *missingOriginalJournalRecord) { r.UpdatedUnix = time.Now().Add(48 * time.Hour).Unix() },
 	} {
 		r := original
 		mutate(&r)
@@ -107,7 +109,7 @@ func TestPrivateScratchJournalRejectsSymlinkCorruptionAndOversize(t *testing.T) 
 	if err := missingOriginalWriteJournal(dir, r); err == nil {
 		t.Fatal("overwrote malformed journal")
 	}
-	if err := os.WriteFile(filename, []byte(strings.Repeat("a", missingOriginalJournalMax+1)), 0600); err != nil {
+	if err := os.WriteFile(filename, []byte(strings.Repeat("a", missingOriginalJournalMax + 1)), 0600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := missingOriginalReadJournal(dir); err == nil {
