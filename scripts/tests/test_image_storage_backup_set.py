@@ -64,6 +64,16 @@ class BackupSetTests(unittest.TestCase):
             paired.create_receipt(self.database, self.config, self.store, self.snapshot,
                                   self.store / "receipt.json")
 
+    def test_receipt_stays_verifiable_when_original_media_root_is_gone(self):
+        # A disaster-recovery receipt must not depend on live source media.
+        for source in self.media.iterdir():
+            source.unlink()
+        self.media.rmdir()
+        result = self.create()
+        self.assertTrue(result["verified"])
+        self.assertFalse(result["coherentSnapshotVerified"])
+        self.assertEqual(paired.verify_receipt(self.receipt)["mediaObjectsVerified"], 2)
+
     def test_changed_config_or_database_fails_closed(self):
         self.create()
         self.config.write_text("database: replaced.sqlite\n")
