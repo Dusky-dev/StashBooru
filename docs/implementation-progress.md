@@ -8,6 +8,14 @@
 - A matching **media** snapshot is not a verified database/config backup, persistent authorization, native serving, or runtime rollback. It does NOT allow pack activation, original replacement or eviction; all must remain disabled.
 - Next: native catalogue-derived source and output selection with re-verification immediately before a non-destructive pack, then end-to-end reconstruction and rollback. The Reconstruct Library action must not be hidden by the experimental setting.
 
+## Duplicate review comparison workspace PR #255 — 2026-10-29
+
+- Branch `feature/duplicate-review-comparison-workspace`; last reviewed `develop` baseline `5ed5e87777bbd73bc3942b4daab5469a07e3c4ab` (the old branch had diverged from develop; reconciled here).
+- Retains existing `/image-duplicates` removal confirmation; adds focused ReferenceComparison side-by-side/wipe/blink/difference, zoom/pan, reference/candidate choice, filmstrip, and Keep markers. No native media or database changes.
+- Original PR head `b091f3df66c5c59993b77948dd5140e529818395`: Go lint passed, UI tests (91) and UI lint/type checks passed; Build `generate` failed solely on four Biome formatting differences.
+- Repaired the exact CI-reported Biome diffs in `DuplicateComparison.tsx`, `ImageDuplicates.tsx`, `review.ts`, and `tests/image-duplicates.test.ts` through commits `095c172`, `dc501c7`, `cc24705`, `b8887cf`. Formatting checkpoint `b8887cf8cc777b5406c0fbbe11af896e401c4b8d`; subsequent CI is required after merging `develop` into this feature branch.
+- Codex review returned explicit quota exhaustion (no actionable findings). Real mounted-browser comparison, image codec playback and manual visual tests remain unverified. Only merge after final applicable CI passes.
+
 ## Batch Visual Stack savings estimates — 2026-10-28
 
 - Target `develop` baseline at review: `5ed5e87777bbd73bc3942b4daab5469a07e3c4ab` (merged #254); feature branch `feat/batch-visual-stack-storage-estimate-20261028`; PR #256.
