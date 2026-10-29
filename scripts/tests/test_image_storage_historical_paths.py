@@ -1,5 +1,7 @@
 """Historical SQLite image ID -> exact media backup path provenance tests."""
 from pathlib import Path
+import hashlib
+import json
 import sqlite3
 import sys
 import tempfile
@@ -116,6 +118,82 @@ class HistoricalMappingTests(unittest.TestCase):
         self.entries.append(dict(self.entries[0]))
         with self.assertRaises(ValueError):
             self.check()
+
+
+
+class HistoricalEndToEndTests(unittest.TestCase):
+    def test_real_candidate_backup_set_historical_mapping_with_deleted_originals(self):
+        from PIL import Image
+        import image_storage_backup_set as backup_set
+        import image_storage_pack_proof as packing
+        import media_library_backup as backup
+
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        root = Path(temp.name)
+        media, store, private = root / "old-images", root / "backups", root / "private"
+        media.mkdir()
+        store.mkdir()
+        private.mkdir(mode=0o700)
+        first, second = media / "first.png", media / "second.png"
+        picture = Image.new("RGB", (128, 128), (120, 135, 150))
+        picture.save(first)
+        picture.putpixel((64, 64), (2, 4, 6))
+        picture.save(second)
+        saved = [(path, path.stat().st_size) for path in (first, second)]
+        snapshot = backup.backup(store, {"images": media})["snapshot"]
+
+        database = root / "saved.sqlite"
+        conn = sqlite3.connect(database)
+        conn.executescript("""
+            CREATE TABLE folders (id INTEGER PRIMARY KEY, path TEXT, zip_file_id INTEGER);
+            CREATE TABLE files (
+                id INTEGER PRIMARY KEY, parent_folder_id INTEGER, basename TEXT,
+                size INTEGER, zip_file_id INTEGER
+            );
+            CREATE TABLE images_files (image_id INTEGER, file_id INTEGER, "primary" BOOLEAN);
+        """)
+        conn.execute("INSERT INTO folders VALUES (1, ?, NULL)", (str(media),))
+        for idx, (original, size) in enumerate(saved):
+            conn.execute("INSERT INTO files VALUES (?, 1, ?, ?, NULL)",
+                         (idx + 10, original.name, size))
+            conn.execute('INSERT INTO images_files VALUES (?, ?, 1)',
+                         (idx + 171, idx + 10))
+        conn.commit()
+        conn.close()
+        config = root / "config.yml"
+        config.write_text("database: saved.sqlite\n")
+        backup_receipt = private / "backup-set.json"
+        backup_set.create_receipt(database, config, store, snapshot, backup_receipt)
+
+        group = {"id": "stack:17", "representative": "image:171",
+                 "members": [{"id": "image:171", "path": str(first)},
+                             {"id": "image:172", "path": str(second)}]}
+        cid = "stack-17-delta-" + "a" * 24
+        archive = private / (cid + ".pack")
+        packed = packing.pack_proof(group, "delta", archive, 0, 0)
+        packed.update({
+            "archivePath": str(archive), "group": "stack:17",
+            "mediaBackupSnapshot": snapshot, "backupVerified": True,
+            "nativePackingCandidateOnly": True, "nativeServingVerified": False,
+            "databaseBackupVerified": False, "archiveActivated": False,
+        })
+        candidate_receipt = private / (cid + ".receipt.json")
+        candidate_receipt.write_text(json.dumps({
+            "version": 1, "archiveSHA256": hashlib.sha256(archive.read_bytes()).hexdigest(),
+            "report": packed,
+        }))
+        for original in (first, second):
+            original.unlink()
+        media.rmdir()
+        proof = mapping.inspect(candidate_receipt, backup_receipt)
+        self.assertTrue(proof["historicalPathMappingVerified"])
+        self.assertEqual(len(proof["members"]), 2)
+        self.assertFalse(proof["databaseMediaSnapshotCoherent"])
+        self.assertFalse(proof["currentCataloguePathsVerified"])
+        self.assertFalse(proof["canActivate"])
+        self.assertFalse(proof["originalEvictionEnabled"])
+        self.assertFalse(media.exists())
 
 
 if __name__ == "__main__":
