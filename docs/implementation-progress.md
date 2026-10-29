@@ -1,5 +1,14 @@
 # StashBooru implementation progress
 
+## Native isolated missing-original recovery rehearsal — 2026-10-29
+
+- Branch `feat/native-missing-original-rehearsal-20261029` stacked on offline missing-original proof PR #270, head `97184c4920a3593e0999ed58652bf0b6432199be`.
+- Adds authenticated GET/POST `image/storage-missing-original-rehearsal` with only saved candidate ID and explicit opt-in acknowledgement; server derives backup/archive/scratch paths from trusted configuration and immutable receipt, without `estimateStackSources` or reading missing original images.
+- The job invokes independently verified offline P12/P13 archive-first scratch recovery, confirms original content digests exist in a fully verified media backup snapshot, checks every recovered SHA-256 and completion receipt. Native validator requires exact positive and negative JSON safety flags and matching candidate, snapshot and private output path.
+- Settings → Tasks adds candidate selection and opt-in scratch rehearsal, plus tests and documentation. Current-head full CI and owner-library/manual browser validation pending.
+- This is only private scratch recovery. No original path recreation, live catalogue updates, database/configuration recovery, crash-safe rollback journal, packed serving, deletion or disk reclamation. Interrupted output may require manual cleanup.
+- Next: durable interrupted-native-job journal and independently tested backup restoration of database/config before any media serving activation.
+
 ## Isolated recovery rehearsal with missing original images — 2026-10-29
 
 - Branch `feat/isolated-missing-original-rehearsal-20261029`, stacked on download parity PR #269 at `1843626196136c6a155729ac2c63e3d0e179004a`.
