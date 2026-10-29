@@ -125,6 +125,33 @@ func (e *ThumbnailEncoder) GetThumbnail(f models.File, maxSize int) ([]byte, err
 	return e.ffmpegImageThumbnail(buf, maxSize)
 }
 
+// GetThumbnailFromVerifiedBytes runs the same vips/FFmpeg thumbnail backends
+// against already-verified static image bytes, without touching any source or
+// generated cache file. This is only used by the isolated experimental shadow
+// probe, not by any of the normal native thumbnail routes.
+//
+// Animated GIF/WebP, AVIF (which needs seekable path access), and unsupported
+// formats remain explicitly excluded, matching native thumbnail limitations.
+func (e *ThumbnailEncoder) GetThumbnailFromVerifiedBytes(data []byte, format string, maxSize int) ([]byte, error) {
+	if len(data) == 0 || len(data) > 64*1024*1024 || maxSize <= 0 || maxSize > 512 {
+		return nil, fmt.Errorf("invalid bounded thumbnail input")
+	}
+	if format == formatGif || (format == formatWebP && isWebPAnimated(data)) ||
+		format == "avif" || format == "jxl" {
+		return nil, fmt.Errorf("%w: %s", ErrNotSupportedForThumbnail, format)
+	}
+	switch format {
+	case "png", "jpg", "jpeg", "webp", "bmp", "tiff":
+	default:
+		return nil, fmt.Errorf("%w: %s", ErrNotSupportedForThumbnail, format)
+	}
+	input := bytes.NewBuffer(data)
+	if e.vips != nil && runtime.GOOS != "windows" {
+		return e.vips.ImageThumbnail(input, maxSize)
+	}
+	return e.ffmpegImageThumbnail(input, maxSize)
+}
+
 // GetPreview returns the preview clip of the provided image clip resized to
 // the provided max size. It resizes based on the largest X/Y direction.
 // It is hardcoded to 30 seconds maximum right now
