@@ -48,6 +48,8 @@ func (rs imageRoutes) Routes() chi.Router {
 	r.Post("/storage-candidate", rs.StorageCandidateStart)
 	r.Get("/storage-recovery", rs.StorageRecoveryStatus)
 	r.Post("/storage-recovery", rs.StorageRecoveryStart)
+	r.Get("/storage-missing-original-rehearsal", rs.MissingOriginalRehearsalStatus)
+	r.Post("/storage-missing-original-rehearsal", rs.MissingOriginalRehearsalStart)
 	r.Get("/storage-restore-plan", rs.StorageRestorePlanStatus)
 	r.Post("/storage-restore-plan", rs.StorageRestorePlanStart)
 	r.Get("/storage-shadow", rs.StorageShadowImage)

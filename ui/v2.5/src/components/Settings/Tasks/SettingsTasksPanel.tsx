@@ -10,6 +10,7 @@ import { ImageStorageEstimateTask } from "./ImageStorageEstimateTask";
 import { ImageStorageBackupPreflightTask } from "./ImageStorageBackupPreflightTask";
 import { ImageStorageCandidateTask } from "./ImageStorageCandidateTask";
 import { ImageStorageRecoveryTask } from "./ImageStorageRecoveryTask";
+import { ImageStorageMissingOriginalTask } from "./ImageStorageMissingOriginalTask";
 import { ImageStorageRestorePlanTask } from "./ImageStorageRestorePlanTask";
 import { ImageStorageShadowTask } from "./ImageStorageShadowTask";
 import { ImageStorageConsumerAuditTask } from "./ImageStorageConsumerAuditTask";
@@ -120,6 +121,8 @@ export const SettingsTasksPanel: React.FC = () => {
           <ImageStorageCandidateTask />
           <hr />
           <ImageStorageRecoveryTask />
+          <hr />
+          <ImageStorageMissingOriginalTask />
           <hr />
           <ImageStorageRestorePlanTask />
           <hr />
