@@ -1,0 +1,26 @@
+name: Experimental storage database/config backup readiness
+
+on:
+  pull_request:
+    paths:
+      - scripts/image_storage_db_config_audit.py
+      - scripts/tests/test_image_storage_db_config_audit.py
+      - .github/workflows/image-storage-db-config-audit.yml
+  push:
+    branches: [develop]
+    paths:
+      - scripts/image_storage_db_config_audit.py
+      - scripts/tests/test_image_storage_db_config_audit.py
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Validate backup-audit Python syntax
+        run: python -m py_compile scripts/image_storage_db_config_audit.py scripts/tests/test_image_storage_db_config_audit.py
+      - name: Run isolated SQLite, ZIP and configuration backup proof tests
+        run: python -m unittest discover -s scripts/tests -p test_image_storage_db_config_audit.py -v
