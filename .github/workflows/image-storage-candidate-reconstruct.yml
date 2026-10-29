@@ -1,0 +1,28 @@
+name: Isolated image candidate reconstruction proof
+
+on:
+  pull_request:
+    paths:
+      - scripts/image_storage_candidate_reconstruct.py
+      - scripts/tests/test_image_storage_candidate_reconstruct.py
+      - .github/workflows/image-storage-candidate-reconstruct.yml
+  push:
+    branches: [develop]
+    paths:
+      - scripts/image_storage_candidate_reconstruct.py
+      - scripts/tests/test_image_storage_candidate_reconstruct.py
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install bounded archive dependencies
+        run: python -m pip install --disable-pip-version-check numpy pillow
+      - name: Compile scripts
+        run: python -m py_compile scripts/image_storage_candidate_reconstruct.py scripts/tests/test_image_storage_candidate_reconstruct.py
+      - name: Verify isolated byte-exact restoration and refusal cases
+        run: python -m unittest discover -s scripts/tests -p test_image_storage_candidate_reconstruct.py -v
