@@ -187,12 +187,6 @@ func validateStorageConsumerAuditReport(data []byte, group estimateSourceGroup, 
 		}
 	}
 	report := storageConsumerAuditReport{
-		Verified: true, ReadOnly: true, Group: group.ID, CandidateID: id,
-		Method: candidate.Method, Snapshot: candidate.MediaBackupSnapshot,
-		MediaBackupVerified: true, ArchiveSHA256Verified: true,
-		Members: rows,
-		NativeConsumersVerified: false, NativeServingActivated: false,
-		CanActivate: false, OriginalEvictionEnabled: false,
 		Blockers: []string{
 			"Native image, thumbnail, preview and download response compatibility has not been tested",
 			"Cache presence is a filesystem observation, not a successful render or serving test",
@@ -200,6 +194,16 @@ func validateStorageConsumerAuditReport(data []byte, group estimateSourceGroup, 
 			"Automatic packed serving and original-file eviction are disabled",
 		},
 	}
+	report.Verified = true
+	report.ReadOnly = true
+	report.Group = group.ID
+	report.CandidateID = id
+	report.Method = candidate.Method
+	report.Snapshot = candidate.MediaBackupSnapshot
+	report.MediaBackupVerified = true
+	report.ArchiveSHA256Verified = true
+	report.Members = rows
+	// Explicitly disabled by zero-value booleans: no native activation is performed.
 	return json.Marshal(report)
 }
 
