@@ -34,10 +34,11 @@ type storageCandidateRequest struct {
 }
 
 type storageCandidateStatus struct {
-	Available bool            `json:"available"`
-	Busy      bool            `json:"busy"`
-	JobID     int             `json:"jobID,omitempty"`
-	Result    json.RawMessage `json:"result,omitempty"`
+	Available  bool                      `json:"available"`
+	Busy       bool                      `json:"busy"`
+	JobID      int                       `json:"jobID,omitempty"`
+	Result     json.RawMessage           `json:"result,omitempty"`
+	Candidates []storageCandidateSummary `json:"candidates,omitempty"`
 }
 
 type storageCandidateProof struct {
@@ -251,11 +252,20 @@ func (rs imageRoutes) StorageCandidateStatus(w http.ResponseWriter, r *http.Requ
 	id := storageCandidateJobID
 	report := append(json.RawMessage(nil), storageCandidateResult...)
 	storageCandidateMutex.Unlock()
+	var saved []storageCandidateSummary
+	if cfg, err := readMediaBackupConfig(); err == nil {
+		if store, err := validateBackupDestination(cfg.Destination, configuredBackupRoots()); err == nil {
+			if dir, err := storageCandidateDirectory(manager.GetInstance().Config.GetConfigPath(), store, configuredBackupRoots()); err == nil {
+				saved = storageCandidateSavedList(dir)
+			}
+		}
+	}
 	writeVisualSimilarityJSON(w, storageCandidateStatus{
 		Available: storageCandidateScriptsAvailable(),
 		Busy:      busy,
 		JobID:     id,
-		Result:    report,
+		Result:     report,
+		Candidates: saved,
 	})
 }
 
@@ -340,6 +350,9 @@ func (rs imageRoutes) StorageCandidateStart(w http.ResponseWriter, r *http.Reque
 			progress.SetProcessed(3)
 			if job.IsCancelled(ctx) {
 				return nil
+			}
+			if _, err := storageCandidateSaveReceipt(dir, report); err != nil {
+				return fmt.Errorf("candidate verified but receipt publication failed: %w", err)
 			}
 			storageCandidateMutex.Lock()
 			storageCandidateResult = report
