@@ -104,13 +104,19 @@ func TestCandidateReceiptSafetyFlagAndPathChecks(t *testing.T) {
 		t.Fatal(err)
 	}
 	fields["originalEvictionEnabled"] = true
-	bad, _ := json.Marshal(fields)
+	bad, err := json.Marshal(fields)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if _, err := storageCandidateSaveReceipt(dir, bad); err == nil {
 		t.Fatal("saved receipt enabling original deletion")
 	}
 	fields["originalEvictionEnabled"] = false
 	fields["archivePath"] = filepath.Join(dir, "outside", id+".pack")
-	bad, _ = json.Marshal(fields)
+	bad, err = json.Marshal(fields)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if _, err := storageCandidateSaveReceipt(dir, bad); err == nil {
 		t.Fatal("saved receipt with nested output path")
 	}
