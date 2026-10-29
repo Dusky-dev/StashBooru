@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Alert, Form } from "react-bootstrap";
+import { Alert, Button, Col, Form, Row } from "react-bootstrap";
 
 interface CandidateList {
   candidates?: {
@@ -10,6 +10,14 @@ interface CandidateList {
   }[];
 }
 
+interface Comparison {
+  key: string;
+  originalURL: string;
+  shadowURL: string;
+  imageID: string;
+  method: string;
+}
+
 export const ImageStorageShadowTask: React.FC = () => {
   const [candidates, setCandidates] = useState<
     NonNullable<CandidateList["candidates"]>
@@ -17,6 +25,9 @@ export const ImageStorageShadowTask: React.FC = () => {
   const [selectedID, setSelectedID] = useState("");
   const [imageID, setImageID] = useState("");
   const [error, setError] = useState("");
+  const [comparison, setComparison] = useState<Comparison>();
+  const [originalStatus, setOriginalStatus] = useState("pending");
+  const [shadowStatus, setShadowStatus] = useState("pending");
 
   const refresh = useCallback(async (signal: AbortSignal) => {
     const response = await fetch("image/storage-candidate", { signal });
@@ -35,8 +46,9 @@ export const ImageStorageShadowTask: React.FC = () => {
   useEffect(() => {
     const controller = new AbortController();
     void refresh(controller.signal).catch((reason: unknown) => {
-      if (!controller.signal.aborted)
+      if (!controller.signal.aborted) {
         setError(reason instanceof Error ? reason.message : String(reason));
+      }
     });
     return () => controller.abort();
   }, [refresh]);
@@ -51,20 +63,39 @@ export const ImageStorageShadowTask: React.FC = () => {
     params.set("imageID", imageID);
     params.set("candidateID", candidate.id);
   }
-  const url = params.size === 3 ? "image/storage-shadow?" + params : "";
+  const shadowURL = params.size === 3 ? "image/storage-shadow?" + params : "";
+
+  function showComparison() {
+    if (!shadowURL || !candidate) return;
+    setOriginalStatus("pending");
+    setShadowStatus("pending");
+    setComparison({
+      key: candidate.id + ":" + imageID,
+      imageID,
+      method: candidate.method,
+      originalURL: "image/" + imageID + "/image",
+      shadowURL,
+    });
+  }
+
+  function clearComparison() {
+    setComparison(undefined);
+    setOriginalStatus("pending");
+    setShadowStatus("pending");
+  }
 
   return (
     <section aria-labelledby="image-storage-shadow-title">
       <h2 id="image-storage-shadow-title">Compare packed shadow image</h2>
       <p>
-        Open a single P12/P13 archived image for byte-exact comparison against
-        its still-active original. The archive is rehashed and the original is
-        read again before any bytes are delivered.
+        Compare an original with the byte-exact archived reconstruction side by
+        side. The shadow endpoint verifies the saved candidate and current
+        original again before returning reconstructed bytes.
       </p>
       <Alert variant="warning">
-        Experimental, on-demand comparison only. This does not enable packed
-        thumbnails, previews, normal image serving, live activation or
-        original-file removal.
+        Experimental visual comparison only. Matching images on screen do not
+        establish full native serving compatibility. Packed thumbnails,
+        previews, live activation, and original deletion remain disabled.
       </Alert>
       {error && <Alert variant="danger">{error}</Alert>}
       <Form.Group>
@@ -76,6 +107,7 @@ export const ImageStorageShadowTask: React.FC = () => {
           onChange={(event) => {
             setSelectedID(event.currentTarget.value);
             setImageID("");
+            clearComparison();
           }}
         >
           {!selectedID && <option value="">No saved candidates</option>}
@@ -95,17 +127,78 @@ export const ImageStorageShadowTask: React.FC = () => {
           inputMode="numeric"
           value={imageID}
           placeholder="123"
-          onChange={(event) => setImageID(event.currentTarget.value)}
+          onChange={(event) => {
+            setImageID(event.currentTarget.value);
+            clearComparison();
+          }}
         />
       </Form.Group>
-      {url ? (
-        <a href={url} target="_blank" rel="noopener noreferrer">
-          Open shadow image (read-only)
-        </a>
-      ) : (
+      <Button
+        variant="secondary"
+        disabled={!shadowURL}
+        onClick={showComparison}
+      >
+        Compare original and packed reconstruction
+      </Button>
+      {!shadowURL && (
         <p className="text-muted">
-          Select a saved candidate and enter the ID of one image in its stack.
+          Select a saved candidate and enter an image ID from that stack.
         </p>
+      )}
+      {comparison && (
+        <div className="mt-3" key={comparison.key}>
+          <p>
+            Image {comparison.imageID}, {comparison.method} candidate. Both
+            previews are fetched on demand; the existing original is never
+            replaced.
+          </p>
+          <Row>
+            <Col md={6}>
+              <h3>Original image</h3>
+              <img
+                src={comparison.originalURL}
+                alt={"Original image " + comparison.imageID}
+                style={{ width: "100%", maxHeight: 420, objectFit: "contain" }}
+                onLoad={() => setOriginalStatus("loaded")}
+                onError={() => setOriginalStatus("failed or unsupported")}
+              />
+              <p role="status">Original preview: {originalStatus}</p>
+              <a
+                href={comparison.originalURL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Open original
+              </a>
+            </Col>
+            <Col md={6}>
+              <h3>Archived reconstruction</h3>
+              <img
+                src={comparison.shadowURL}
+                alt={
+                  "Byte-exact archived reconstruction of " + comparison.imageID
+                }
+                style={{ width: "100%", maxHeight: 420, objectFit: "contain" }}
+                onLoad={() => setShadowStatus("loaded")}
+                onError={() => setShadowStatus("failed or unsupported")}
+              />
+              <p role="status">Shadow preview: {shadowStatus}</p>
+              <a
+                href={comparison.shadowURL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Open or download reconstructed bytes
+              </a>
+            </Col>
+          </Row>
+          <p className="text-muted small mt-2">
+            A browser decoding failure can also mean an unsupported image format
+            (such as JXL or AVIF), not necessarily corrupt archive data. Use the
+            links above for format-specific inspection. Visual comparison is not
+            a substitute for the backend SHA-256 proof.
+          </p>
+        </div>
       )}
     </section>
   );

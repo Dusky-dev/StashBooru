@@ -190,6 +190,12 @@ func (rs imageRoutes) StorageShadowImage(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "shadow image could not be reconstructed byte-exactly", http.StatusConflict)
 		return
 	}
+	serveVerifiedStorageShadowBytes(w, r, data)
+}
+
+// Shared only by the isolated shadow endpoint and response-contract tests.
+// Never call this with unverified bytes from an archive.
+func serveVerifiedStorageShadowBytes(w http.ResponseWriter, r *http.Request, data []byte) {
 	kind, inline := storageShadowContentType(data)
 	w.Header().Set("Content-Type", kind)
 	w.Header().Set("Cache-Control", "no-store")
