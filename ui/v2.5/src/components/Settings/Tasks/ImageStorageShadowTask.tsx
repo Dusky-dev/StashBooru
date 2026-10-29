@@ -10,6 +10,16 @@ interface CandidateList {
   }[];
 }
 
+interface ShadowMemberList {
+  readOnly: boolean;
+  sourcesRetained: boolean;
+  canActivate: boolean;
+  originalEvictionEnabled: boolean;
+  candidateID: string;
+  stackID: number;
+  members: { imageID: number }[];
+}
+
 interface Comparison {
   key: string;
   originalURL: string;
@@ -27,6 +37,9 @@ export const ImageStorageShadowTask: React.FC = () => {
   >([]);
   const [selectedID, setSelectedID] = useState("");
   const [imageID, setImageID] = useState("");
+  const [members, setMembers] = useState<number[]>([]);
+  const [memberLoading, setMemberLoading] = useState(false);
+  const [memberError, setMemberError] = useState("");
   const [error, setError] = useState("");
   const [comparison, setComparison] = useState<Comparison>();
   const [originalStatus, setOriginalStatus] = useState("pending");
@@ -59,6 +72,65 @@ export const ImageStorageShadowTask: React.FC = () => {
 
   const candidate = candidates.find((item) => item.id === selectedID);
   const stackID = candidate?.group.match(/^stack:([1-9]\d*)$/)?.[1];
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setMembers([]);
+    setMemberError("");
+    setImageID("");
+    setComparison(undefined);
+    if (!stackID || !selectedID) {
+      setMemberLoading(false);
+      return () => controller.abort();
+    }
+    setMemberLoading(true);
+    const params = new URLSearchParams({ candidateID: selectedID, stackID });
+    void fetch("image/storage-shadow-members?" + params, {
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error("Saved candidate members could not be verified.");
+        }
+        const data = (await response.json()) as ShadowMemberList;
+        if (
+          data.candidateID !== selectedID ||
+          data.stackID !== Number(stackID) ||
+          !data.readOnly ||
+          !data.sourcesRetained ||
+          data.canActivate ||
+          data.originalEvictionEnabled ||
+          !Array.isArray(data.members) ||
+          data.members.length < 2 ||
+          data.members.length > 16
+        ) {
+          throw new Error("Candidate member proof was unexpected or unsafe.");
+        }
+        const ids = data.members.map((entry) => entry.imageID);
+        if (
+          ids.some((id) => !Number.isSafeInteger(id) || id <= 0) ||
+          new Set(ids).size !== ids.length
+        ) {
+          throw new Error("Candidate returned invalid image IDs.");
+        }
+        if (!controller.signal.aborted) {
+          setMembers(ids);
+          setImageID(String(ids[0]));
+        }
+      })
+      .catch((reason: unknown) => {
+        if (!controller.signal.aborted) {
+          setMemberError(
+            reason instanceof Error ? reason.message : String(reason)
+          );
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setMemberLoading(false);
+      });
+    return () => controller.abort();
+  }, [selectedID, stackID]);
+
   const validImageID =
     /^[1-9]\d*$/.test(imageID) && Number.isSafeInteger(Number(imageID));
   const params = new URLSearchParams();
@@ -97,9 +169,10 @@ export const ImageStorageShadowTask: React.FC = () => {
     <section aria-labelledby="image-storage-shadow-title">
       <h2 id="image-storage-shadow-title">Compare packed shadow image</h2>
       <p>
-        Compare an original with the byte-exact archived reconstruction side by
-        side. The shadow endpoint verifies the saved candidate and current
-        original again before returning reconstructed bytes.
+        Browse the verified image members of a saved P12/P13 candidate. Compare
+        the original and byte-exact archived reconstruction side by side. Each
+        shadow request independently rechecks the candidate and current original
+        before returning reconstructed bytes.
       </p>
       <Alert variant="warning">
         Experimental visual comparison only. Matching images on screen do not
@@ -108,6 +181,7 @@ export const ImageStorageShadowTask: React.FC = () => {
         generated previews, and original deletion remain disabled.
       </Alert>
       {error && <Alert variant="danger">{error}</Alert>}
+      {memberError && <Alert variant="warning">{memberError}</Alert>}
       <Form.Group>
         <Form.Label htmlFor="shadow-candidate">Verified candidate</Form.Label>
         <Form.Control
@@ -130,29 +204,74 @@ export const ImageStorageShadowTask: React.FC = () => {
       </Form.Group>
       <Form.Group>
         <Form.Label htmlFor="shadow-image-id">
-          Image ID in this stack
+          Image in this saved candidate
         </Form.Label>
         <Form.Control
           id="shadow-image-id"
-          inputMode="numeric"
+          as="select"
           value={imageID}
-          placeholder="123"
+          disabled={memberLoading || members.length === 0}
           onChange={(event) => {
             setImageID(event.currentTarget.value);
             clearComparison();
           }}
-        />
+        >
+          {members.length === 0 && (
+            <option value="">
+              {memberLoading
+                ? "Verifying candidate members…"
+                : "No verified members"}
+            </option>
+          )}
+          {members.map((id, index) => (
+            <option key={id} value={String(id)}>
+              Image {id} ({index + 1} of {members.length})
+            </option>
+          ))}
+        </Form.Control>
       </Form.Group>
-      <Button
-        variant="secondary"
-        disabled={!shadowURL}
-        onClick={showComparison}
-      >
-        Compare original and packed reconstruction
-      </Button>
+      <div className="d-flex flex-wrap gap-2 mt-2">
+        <Button
+          variant="secondary"
+          disabled={!shadowURL}
+          onClick={showComparison}
+        >
+          Compare original and packed reconstruction
+        </Button>
+        <Button
+          variant="outline-secondary"
+          disabled={members.indexOf(Number(imageID)) <= 0}
+          onClick={() => {
+            const index = members.indexOf(Number(imageID));
+            if (index > 0) {
+              setImageID(String(members[index - 1]));
+              clearComparison();
+            }
+          }}
+        >
+          Previous image
+        </Button>
+        <Button
+          variant="outline-secondary"
+          disabled={
+            members.length === 0 ||
+            members.indexOf(Number(imageID)) < 0 ||
+            members.indexOf(Number(imageID)) >= members.length - 1
+          }
+          onClick={() => {
+            const index = members.indexOf(Number(imageID));
+            if (index >= 0 && index < members.length - 1) {
+              setImageID(String(members[index + 1]));
+              clearComparison();
+            }
+          }}
+        >
+          Next image
+        </Button>
+      </div>
       {!shadowURL && (
         <p className="text-muted">
-          Select a saved candidate and enter an image ID from that stack.
+          Select a saved candidate to browse its verified image members.
         </p>
       )}
       {comparison && (
