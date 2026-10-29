@@ -39,14 +39,14 @@ type missingOriginalJournalRecord struct {
 }
 
 type missingOriginalJournalStatus struct {
-	CandidateID       string `json:"candidateID"`
-	OutputPath        string `json:"outputPath"`
-	State             string `json:"state"`
-	UpdatedUnix       int64  `json:"updatedUnix"`
-	RestoredFiles     int    `json:"restoredFiles"`
-	RequiresReaudit   bool   `json:"requiresReaudit"`
-	CanActivate       bool   `json:"canActivate"`
-	EvictionEnabled   bool   `json:"evictionEnabled"`
+	CandidateID     string `json:"candidateID"`
+	OutputPath      string `json:"outputPath"`
+	State           string `json:"state"`
+	UpdatedUnix     int64  `json:"updatedUnix"`
+	RestoredFiles   int    `json:"restoredFiles"`
+	RequiresReaudit bool   `json:"requiresReaudit"`
+	CanActivate     bool   `json:"canActivate"`
+	EvictionEnabled bool   `json:"evictionEnabled"`
 }
 
 func missingOriginalValidateJournal(directory string, r missingOriginalJournalRecord) error {
@@ -55,7 +55,7 @@ func missingOriginalValidateJournal(directory string, r missingOriginalJournalRe
 		!filepath.IsAbs(r.OutputPath) || filepath.Clean(r.OutputPath) != r.OutputPath ||
 		filepath.Dir(r.OutputPath) != filepath.Clean(directory) ||
 		!missingOriginalScratchName.MatchString(filepath.Base(r.OutputPath)) ||
-		r.StartedUnix <= 0 || r.UpdatedUnix < r.StartedUnix || r.UpdatedUnix > time.Now().Add(24*time.Hour).Unix() ||
+		r.StartedUnix <= 0 || r.UpdatedUnix < r.StartedUnix || r.UpdatedUnix > time.Now().Add(24 * time.Hour).Unix() ||
 		r.CanActivate || r.OriginalEvictionEnabled || r.DatabaseRecoveryVerified || r.CrashSafeRollbackVerified {
 		return fmt.Errorf("invalid or unsafe private scratch recovery journal")
 	}
@@ -106,7 +106,7 @@ func missingOriginalReadJournal(directory string) (*missingOriginalJournalRecord
 	if err != nil || !os.SameFile(info, opened) {
 		return nil, fmt.Errorf("private recovery journal changed while opening")
 	}
-	data, err := io.ReadAll(io.LimitReader(f, missingOriginalJournalMax+1))
+	data, err := io.ReadAll(io.LimitReader(f, missingOriginalJournalMax + 1))
 	if err != nil || len(data) > missingOriginalJournalMax {
 		return nil, fmt.Errorf("failed to read bounded recovery journal")
 	}
