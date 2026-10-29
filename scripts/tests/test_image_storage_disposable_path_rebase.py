@@ -104,7 +104,10 @@ class DisposablePathRebaseTests(unittest.TestCase):
         with sqlite3.connect(self.rebased / "image-paths.sqlite") as db:
             db.execute("UPDATE folders SET path=? WHERE id=1",
                        (str(self.recovered / "media" / "images"),))
-        # Even if an adversary restores logical rows, a SHA claim cannot be silently changed.
+        # Reverting every altered byte may legitimately restore the original
+        # verified state. Any further mutation must still fail independent audit.
+        with sqlite3.connect(self.rebased / "image-paths.sqlite") as db:
+            db.execute("UPDATE folders SET path='/changed-again' WHERE id=1")
         with self.assertRaises(ValueError):
             self.do_audit()
 
