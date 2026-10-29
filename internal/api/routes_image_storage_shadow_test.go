@@ -1,6 +1,7 @@
 package api
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -55,5 +56,20 @@ func TestShadowInlinePolicyPreventsExecutableImageContent(t *testing.T) {
 	kind, inline := storageShadowContentType(png)
 	if kind != "image/png" || !inline {
 		t.Fatalf("expected safe PNG inline policy, got %s/%t", kind, inline)
+	}
+}
+
+func TestStorageShadowThumbnailNeverAcceptsArbitraryInput(t *testing.T) {
+	for _, query := range []string{
+		"stackID=0&imageID=1&candidateID=not-a-candidate",
+		"stackID=1&imageID=1&candidateID=../../archive",
+		"stackID=1&imageID=1&candidateID=stack-1-delta-0123456789abcdef01234567&source=/etc/passwd",
+	} {
+		recorder := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodGet, "/image/storage-shadow-thumbnail?"+query, nil)
+		(imageRoutes{}).StorageShadowThumbnail(recorder, request)
+		if recorder.Code != http.StatusBadRequest {
+			t.Fatalf("unsafe packed thumbnail request was not rejected: %s (%d)", query, recorder.Code)
+		}
 	}
 }
