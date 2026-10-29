@@ -29,20 +29,20 @@ type storageRecoveryStatus struct {
 }
 
 type storageRecoveryProof struct {
-	Verified          bool              `json:"verified"`
-	ByteExact         bool              `json:"byteExact"`
-	Complete          bool              `json:"complete"`
-	SourcesRetained   bool              `json:"sourcesRetained"`
-	OriginalEviction  bool              `json:"originalEvictionEnabled"`
-	NativeServing     bool              `json:"nativeServingVerified"`
-	ArchiveActivated  bool              `json:"archiveActivated"`
-	DatabaseModified  bool              `json:"databaseModified"`
-	Method            string            `json:"method"`
-	Group             string            `json:"group"`
-	Snapshot          string            `json:"mediaBackupSnapshot"`
-	RestoredFiles     int               `json:"restoredFiles"`
+	Verified           bool              `json:"verified"`
+	ByteExact          bool              `json:"byteExact"`
+	Complete           bool              `json:"complete"`
+	SourcesRetained    bool              `json:"sourcesRetained"`
+	OriginalEviction   bool              `json:"originalEvictionEnabled"`
+	NativeServing      bool              `json:"nativeServingVerified"`
+	ArchiveActivated   bool              `json:"archiveActivated"`
+	DatabaseModified   bool              `json:"databaseModified"`
+	Method             string            `json:"method"`
+	Group              string            `json:"group"`
+	Snapshot           string            `json:"mediaBackupSnapshot"`
+	RestoredFiles      int               `json:"restoredFiles"`
 	RestoredSHA256    map[string]string `json:"restoredSHA256"`
-	OutputPath        string            `json:"outputPath"`
+	OutputPath         string            `json:"outputPath"`
 }
 
 var storageRecoveryMutex sync.Mutex
