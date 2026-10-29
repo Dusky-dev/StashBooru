@@ -219,8 +219,8 @@ export const ImageStorageMissingOriginalTask: React.FC = () => {
       )}
       {status?.journal && (
         <Alert variant="warning" className="mt-3" role="status">
-          Latest persisted recovery: <strong>{status.journal.state}</strong>{" "}
-          for {status.journal.candidateID}.{" "}
+          Latest persisted recovery: <strong>{status.journal.state}</strong> for{" "}
+          {status.journal.candidateID}.{" "}
           {status.journal.state === "interrupted_or_unconfirmed"
             ? "The previous job may have stopped mid-extraction. Inspect scratch output before any manual action."
             : status.journal.state === "scratch_complete"
@@ -229,7 +229,8 @@ export const ImageStorageMissingOriginalTask: React.FC = () => {
           <code className="d-block text-break">
             {status.journal.outputPath}
           </code>
-          Reaudit is always required. Live activation and original-file deletion remain disabled.
+          Reaudit is always required. Live activation and original-file deletion
+          remain disabled.
         </Alert>
       )}
       {verified && (
