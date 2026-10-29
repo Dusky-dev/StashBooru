@@ -36,7 +36,8 @@ interface PreflightStatus {
 }
 
 async function readResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) throw new Error((await response.text()) || response.statusText);
+  if (!response.ok)
+    throw new Error((await response.text()) || response.statusText);
   return (await response.json()) as T;
 }
 
@@ -54,7 +55,9 @@ export const ImageStorageBackupPreflightTask: React.FC = () => {
       fetch("image/storage-backup-preflight", { signal }).then(
         readResponse<PreflightStatus>
       ),
-      fetch("image/media-backup", { signal }).then(readResponse<MediaBackupStatus>),
+      fetch("image/media-backup", { signal }).then(
+        readResponse<MediaBackupStatus>
+      ),
     ]);
     if (signal?.aborted) return;
     if (
@@ -82,8 +85,7 @@ export const ImageStorageBackupPreflightTask: React.FC = () => {
   }, [refresh]);
 
   const validID =
-    /^[1-9]\d*$/.test(stackID) &&
-    Number.isSafeInteger(Number(stackID));
+    /^[1-9]\d*$/.test(stackID) && Number.isSafeInteger(Number(stackID));
   const disabled = busy || !!status?.busy || !!backup?.busy;
   const available = !!status?.available && !!backup?.available;
   const report = status?.result;
@@ -137,7 +139,11 @@ export const ImageStorageBackupPreflightTask: React.FC = () => {
         image optimization remains disabled.
       </Alert>
       {error && <Alert variant="danger">{error}</Alert>}
-      {message && <Alert variant="info" role="status">{message}</Alert>}
+      {message && (
+        <Alert variant="info" role="status">
+          {message}
+        </Alert>
+      )}
       {status && !status.available && (
         <Alert variant="warning">
           Install scripts/image_storage_backup_preflight.py and
@@ -204,7 +210,8 @@ export const ImageStorageBackupPreflightTask: React.FC = () => {
       </Button>
       {status?.busy && (
         <p className="small mt-2" role="status">
-          Verifying the complete media snapshot and selected images in the job queue…
+          Verifying the complete media snapshot and selected images in the job
+          queue…
         </p>
       )}
       {reportValid && (
@@ -226,7 +233,9 @@ export const ImageStorageBackupPreflightTask: React.FC = () => {
               {Object.entries(report.imageSHA256).map(([id, hash]) => (
                 <tr key={id}>
                   <td>{id}</td>
-                  <td className="text-break"><code>{hash}</code></td>
+                  <td className="text-break">
+                    <code>{hash}</code>
+                  </td>
                 </tr>
               ))}
             </tbody>
