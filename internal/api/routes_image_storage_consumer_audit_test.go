@@ -31,12 +31,17 @@ func auditFixture(t *testing.T) ([]byte, estimateSourceGroup, storageCandidatePr
 		{"id": "image:1", "bytes": 1200, "sha256": strings.Repeat("a", 64), "byteExact": true, "originalPresent": true},
 		{"id": "image:2", "bytes": 1220, "sha256": strings.Repeat("b", 64), "byteExact": true, "originalPresent": true},
 	}
-	payload := map[string]any{
-		"verified": true, "readOnly": true, "group": group.ID, "method": candidate.Method,
-		"mediaBackupSnapshot": candidate.MediaBackupSnapshot,
-		"members": members, "archiveActivated": false, "databaseModified": false,
-		"nativeServingActivated": false, "originalEvictionEnabled": false,
-	}
+	payload := make(map[string]any)
+	payload["verified"] = true
+	payload["readOnly"] = true
+	payload["group"] = group.ID
+	payload["method"] = candidate.Method
+	payload["mediaBackupSnapshot"] = candidate.MediaBackupSnapshot
+	payload["members"] = members
+	payload["archiveActivated"] = false
+	payload["databaseModified"] = false
+	payload["nativeServingActivated"] = false
+	payload["originalEvictionEnabled"] = false
 	data, err := json.Marshal(payload)
 	if err != nil {
 		t.Fatal(err)
