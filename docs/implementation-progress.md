@@ -1,5 +1,14 @@
 # StashBooru implementation progress
 
+## Side-by-side packed shadow browser comparison and synthetic HTTP byte parity — 2026-10-29
+
+- Feature branch `feat/packed-shadow-side-by-side-20261029` stacked on full-stack audit PR #266, head `f99bd4dcc32688e1b3801edd93a3d9450fac89fe`.
+- Settings → Tasks comparison now displays live original and independently SHA-verified P12/P13 shadow reconstruction side by side, with opt-in image load, separate load/error signals and raw/open-download links for unsupported browser formats.
+- Test-only Go extraction of verified-byte response handler exercises GET and Range byte parity with a synthetic regular-file response, HEAD behavior, headers (no-store, nosniff and restrictive CSP) and forced attachment for HTML/SVG/unknown bytes. No production route replacement.
+- Full Build, lint, Settings navigation and manual owner-library/browser checks pending. Synthetic HTTP responses do not establish full native consumer compatibility or native rollback.
+- Normal live routes, generated thumbnails/previews, catalogue entries and original source bytes are unchanged; no archive activation, original eviction, deletion or disk savings.
+- Next: actual thumbnail/preview/download HTTP compatibility under isolated path, additional image codec/format tests, crash-safe recovery and database/configuration backup validation before any optimization switch.
+
 ## Native P12/P13 whole-stack media cache audit — 2026-10-29
 
 - Branch `feat/packed-media-consumer-audit-20261029` based on merged #265 develop commit `02a0aed4af77a5d2c33a10df0e4af9b94c57ee67`.
