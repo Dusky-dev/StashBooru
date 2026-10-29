@@ -5,6 +5,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import image_storage_isolated_recovery as isolated
@@ -64,6 +65,20 @@ class IsolatedRecoveryTests(unittest.TestCase):
         report = isolated.rehearse(self.receipt, self.output, self.member)
         self.assertEqual(report["mediaMember"], self.member)
         self.assertTrue(isolated.audit(self.receipt, self.output)["verified"])
+
+    def test_sqlite_zip_backup_can_restore_only_private_sqlite_copy(self):
+        archive = self.database.with_suffix(".zip")
+        with zipfile.ZipFile(archive, "w") as zipped:
+            zipped.write(self.database, "stash.sqlite")
+            zipped.writestr("blobs/aa/some-blob", b"extra blob")
+        other_receipt = self.private / "zip-backup-set.json"
+        backup_set.create_receipt(archive, self.config, self.store,
+                                  self.snapshot, other_receipt)
+        result = isolated.rehearse(other_receipt, self.output, self.member)
+        self.assertTrue(result["isolatedScratchOnly"])
+        self.assertEqual(isolated.audit(other_receipt, self.output)["status"], "complete_verified")
+        self.assertFalse(result["completeMediaLibraryRecovered"])
+        self.assertFalse(result["databaseRestoreIntegrated"])
 
     def test_missing_output_and_interrupted_are_not_success(self):
         self.assertEqual(isolated.audit(self.receipt, self.output)["status"], "no_output")
