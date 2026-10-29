@@ -1,5 +1,13 @@
 # StashBooru implementation progress
 
+## Persistent candidate receipts and restart-safe isolated recovery — 2026-10-29
+
+- Stacked on PR #262 `feat/native-isolated-image-recovery-20261029`, base commit `5007a3845101343268d7bd4f37a7c0c96d9db3c8`. Feature branch `feat/persistent-image-candidate-receipts-20261029`.
+- Every successfully verified byte-exact P12/P13 candidate now saves a versioned private immutable per-archive receipt containing the verified candidate report plus the published archive SHA-256. Final receipt names are validated server-generated IDs; temporary writes are fsynced and published by same-directory no-overwrite link.
+- The native candidate status lists bounded saved receipts, including those from before restart. The native recovery route requires a selected candidate ID, reopens the private receipt, validates its archive location, size, SHA-256 and original-image evidence against the selected catalogue Visual Stack, then runs the existing isolated byte-exact reconstruction and restoration-hash checks. Client cannot supply archive or destination paths.
+- Adds safe-identifier, symlink, corrupt receipt, same-size archive tampering, no-overwrite and restart-discovery Go regression tests; updates Settings → Tasks recovery selector and documentation. CI and real owner-library recovery remain unverified at feature inception.
+- This is **not** activation, native serving, in-place rollback, database/config restoration, auto cleanup, original-media eviction or realized savings. Candidate verification must run again when selected for recovery. Next: persistent job lifecycle, crash recovery and restore-plan validation before media-serving integration.
+
 ## Native isolated candidate reconstruction job — 2026-10-29
 
 - Feature branch `feat/native-isolated-image-recovery-20261029`, stacked on offline-only reconstruction PR #261 at merge/fix head `04e3d6797cafd90f2864e719e1a497a29b3ec948`; native candidate PR #260 remains CI-gated.

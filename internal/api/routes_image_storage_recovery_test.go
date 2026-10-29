@@ -17,7 +17,7 @@ func TestNativeRecoveryRequiresExplicitAck(t *testing.T) {
 			t.Fatalf("accepted unsafe reconstruction request: %+v", request)
 		}
 	}
-	if err := validateStorageRecoveryRequest(storageRecoveryRequest{StackID: 9, Acknowledged: true}); err != nil {
+	if err := validateStorageRecoveryRequest(storageRecoveryRequest{StackID: 9, CandidateID: "stack-9-delta-0123456789abcdef01234567", Acknowledged: true}); err != nil {
 		t.Fatal(err)
 	}
 }

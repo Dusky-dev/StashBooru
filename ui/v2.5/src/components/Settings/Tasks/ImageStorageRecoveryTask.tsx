@@ -2,12 +2,13 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Alert, Button, Form } from "react-bootstrap";
 
 interface CandidateStatus {
-  result?: {
+  candidates?: {
+    id: string;
     group: string;
-    verified: boolean;
-    backupVerified: boolean;
-    archivePath: string;
-  };
+    method: string;
+    snapshot: string;
+    archiveBytes: number;
+  }[];
   busy: boolean;
 }
 interface RecoveryStatus {
@@ -33,6 +34,7 @@ async function readJSON<T>(response: Response): Promise<T> {
 
 export const ImageStorageRecoveryTask: React.FC = () => {
   const [candidate, setCandidate] = useState<CandidateStatus>();
+  const [selectedID, setSelectedID] = useState("");
   const [status, setStatus] = useState<RecoveryStatus>();
   const [acknowledged, setAcknowledged] = useState(false);
   const [requesting, setRequesting] = useState(false);
@@ -51,6 +53,11 @@ export const ImageStorageRecoveryTask: React.FC = () => {
     if (!signal?.aborted) {
       setCandidate(candidateValue);
       setStatus(recoveryValue);
+      setSelectedID((previous) =>
+        candidateValue.candidates?.some((item) => item.id === previous)
+          ? previous
+          : (candidateValue.candidates?.[0]?.id ?? "")
+      );
     }
   }, []);
 
@@ -63,13 +70,11 @@ export const ImageStorageRecoveryTask: React.FC = () => {
     return () => abort.abort();
   }, [refresh]);
 
-  const group = candidate?.result?.group;
-  const stackID = group?.match(/^stack:([1-9]\d*)$/)?.[1];
-  const ready =
-    !!candidate?.result?.verified &&
-    !!candidate.result.backupVerified &&
-    !!status?.available &&
-    !!stackID;
+  const selected = candidate?.candidates?.find(
+    (item) => item.id === selectedID
+  );
+  const stackID = selected?.group.match(/^stack:([1-9]\d*)$/)?.[1];
+  const ready = !!selected && !!status?.available && !!stackID;
   const busy = requesting || !!candidate?.busy || !!status?.busy;
 
   async function start() {
@@ -81,7 +86,11 @@ export const ImageStorageRecoveryTask: React.FC = () => {
       const response = await fetch("image/storage-recovery", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stackID: Number(stackID), acknowledged }),
+        body: JSON.stringify({
+          stackID: Number(stackID),
+          candidateID: selectedID,
+          acknowledged,
+        }),
       });
       const job = await readJSON<{ jobID: number }>(response);
       setMessage(
@@ -115,9 +124,9 @@ export const ImageStorageRecoveryTask: React.FC = () => {
         Reconstruct candidate into a separate folder
       </h2>
       <p>
-        Verify the most recently created experimental candidate and recover its
-        original file bytes into a new private directory. This does not replace
-        the existing library, restore the database or free any space.
+        Select a saved experimental candidate, including those created before a
+        server restart, and reconstruct a separate copy of its original bytes.
+        No active library files are replaced.
       </p>
       <Alert variant="warning">
         This is an isolated recovery proof, not the final Reconstruct Library
@@ -132,11 +141,32 @@ export const ImageStorageRecoveryTask: React.FC = () => {
       )}
       {!ready && (
         <p className="text-muted">
-          Create a verified candidate in this server session first. Only the
-          latest candidate can be reconstructed here.
+          No saved candidate is available. Create and verify one first.
         </p>
       )}
-      {ready && <p>Selected candidate: {group}</p>}
+      <Form.Group>
+        <Form.Label htmlFor="saved-image-candidate">Saved candidate</Form.Label>
+        <Form.Control
+          as="select"
+          id="saved-image-candidate"
+          value={selectedID}
+          disabled={busy}
+          onChange={(event) => {
+            setSelectedID(event.currentTarget.value);
+            setAcknowledged(false);
+          }}
+        >
+          {!selectedID && <option value="">Select a saved candidate</option>}
+          {candidate?.candidates?.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.group} — {item.method} — {item.snapshot}
+            </option>
+          ))}
+        </Form.Control>
+        <Form.Text className="text-muted">
+          Saved candidates are rechecked against archive SHA-256 before use.
+        </Form.Text>
+      </Form.Group>
       <Form.Check
         id="storage-recovery-opt-in"
         type="checkbox"
