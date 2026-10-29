@@ -13,6 +13,8 @@ from pathlib import Path
 import re
 import stat
 import sys
+import sqlite3
+import zipfile
 
 import image_storage_db_config_audit as database_audit
 import media_library_backup as media_backup
@@ -242,7 +244,7 @@ def main(argv=None) -> int:
         print(json.dumps(result, sort_keys=True))
         return 0
     except (ValueError, OSError, KeyError, TypeError, json.JSONDecodeError,
-            media_backup.BackupError, Exception) as exc:
+            sqlite3.DatabaseError, zipfile.BadZipFile, media_backup.BackupError) as exc:
         print("backup-set receipt refused: " + str(exc), file=sys.stderr)
         return 1
 
