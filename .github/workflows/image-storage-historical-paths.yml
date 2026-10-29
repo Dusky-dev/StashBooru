@@ -22,6 +22,8 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      - name: Install synthetic archive fixture dependencies
+        run: python -m pip install --disable-pip-version-check numpy pillow
       - name: Compile verifier
         run: python -m py_compile scripts/image_storage_historical_paths.py scripts/tests/test_image_storage_historical_paths.py
       - name: Check historical image identity, path ambiguity and safety
