@@ -2,7 +2,7 @@ import { DetailStackFilmstrip } from "src/components/VisualStacks/StackFilmstrip
 import { Tab, Nav, Dropdown } from "react-bootstrap";
 import React, { useEffect, useMemo, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useHistory, RouteComponentProps } from "react-router-dom";
+import { useHistory, useLocation, RouteComponentProps } from "react-router-dom";
 import { Helmet } from "react-helmet";
 import {
   useFindImage,
@@ -55,6 +55,7 @@ interface IImageParams {
 
 const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
   const history = useHistory();
+  const location = useLocation();
   const Toast = useToast();
   const intl = useIntl();
   const { configuration } = useConfigurationContext();
@@ -72,6 +73,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
   const [isRestorationOpen, setIsRestorationOpen] = useState(false);
   const [isKnowledgeTagDialogOpen, setIsKnowledgeTagDialogOpen] =
     useState(false);
+  const [failedShadowURL, setFailedShadowURL] = useState("");
 
   async function onSave(input: GQL.ImageUpdateInput) {
     await updateImage({ variables: { input } });
@@ -332,6 +334,32 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
     image.visual_files.length > 0 && isVideo(image.visual_files[0])
       ? "video"
       : "img";
+  // The source is replaced only by an explicitly linked experiment. The
+  // backend revalidates the candidate and the current original for each GET.
+  const shadowQuery = new URLSearchParams(location.search);
+  const shadowCandidate = shadowQuery.get("storageShadowCandidate") ?? "";
+  const shadowStackID = shadowQuery.get("storageShadowStack") ?? "";
+  const shadowPreviewRequested =
+    /^stack-[1-9][0-9]*-(delta|shared-tiles)-[0-9a-f]{24}$/.test(
+      shadowCandidate
+    ) &&
+    /^[1-9][0-9]*$/.test(shadowStackID) &&
+    Number.isSafeInteger(Number(shadowStackID)) &&
+    /^[1-9][0-9]*$/.test(image.id) &&
+    Number.isSafeInteger(Number(image.id)) &&
+    ImageView === "img";
+  const shadowParams = new URLSearchParams({
+    candidateID: shadowCandidate,
+    stackID: shadowStackID,
+    imageID: image.id,
+  });
+  const shadowPreviewURL = shadowPreviewRequested
+    ? "/image/storage-shadow?" + shadowParams
+    : "";
+  const shadowPreviewFailed =
+    shadowPreviewRequested && failedShadowURL === shadowPreviewURL;
+  const useShadowPreview = shadowPreviewRequested && !shadowPreviewFailed;
+
   const resolution = useMemo(() => {
     return file?.width && file?.height
       ? TextUtils.resolution(file.width, file.height)
@@ -481,6 +509,21 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
         {renderTabs()}
       </div>
       <div className="image-container visual-stack-detail-viewer">
+        {shadowPreviewRequested && (
+          <div className="alert alert-warning" role="status">
+            <strong>Experimental packed-image preview.</strong>{" "}
+            {shadowPreviewFailed
+              ? "The verified reconstruction failed to load. Showing the unchanged original."
+              : "Displaying verified packed bytes through an isolated read-only endpoint. No original files or native routes were changed."}{" "}
+            <button
+              type="button"
+              className="btn btn-link"
+              onClick={() => history.replace("/images/" + image.id)}
+            >
+              Return to original image
+            </button>
+          </div>
+        )}
         {image.visual_files.length > 0 && (
           <ImageView
             loop={image.visual_files[0].__typename === "VideoFile"}
@@ -494,7 +537,12 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
                 : {}
             }
             alt={title}
-            src={image.paths.image ?? ""}
+            src={
+              useShadowPreview ? shadowPreviewURL : (image.paths.image ?? "")
+            }
+            onError={() => {
+              if (useShadowPreview) setFailedShadowURL(shadowPreviewURL);
+            }}
           />
         )}
         <DetailStackFilmstrip kind={GQL.MediaKind.Image} id={image.id} />

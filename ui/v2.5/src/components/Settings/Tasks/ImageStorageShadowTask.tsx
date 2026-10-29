@@ -27,6 +27,7 @@ interface Comparison {
   downloadURL: string;
   clipPreviewURL: string;
   thumbnailURL: string;
+  detailPreviewURL: string;
   imageID: string;
   method: string;
 }
@@ -155,6 +156,13 @@ export const ImageStorageShadowTask: React.FC = () => {
       downloadURL: "image/storage-shadow-download?" + params,
       clipPreviewURL: "image/" + imageID + "/preview",
       thumbnailURL: "image/storage-shadow-thumbnail?" + params,
+      detailPreviewURL:
+        "/images/" +
+        imageID +
+        "?storageShadowCandidate=" +
+        encodeURIComponent(candidate.id) +
+        "&storageShadowStack=" +
+        encodeURIComponent(stackID ?? ""),
     });
   }
 
@@ -318,6 +326,10 @@ export const ImageStorageShadowTask: React.FC = () => {
                 rel="noopener noreferrer"
               >
                 Open reconstructed image
+              </a>
+              {" · "}
+              <a href={comparison.detailPreviewURL}>
+                Test packed preview in image details
               </a>
               {" · "}
               <a href={comparison.downloadURL}>
