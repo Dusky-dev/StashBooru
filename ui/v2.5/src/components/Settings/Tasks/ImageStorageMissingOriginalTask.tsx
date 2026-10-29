@@ -38,6 +38,17 @@ interface RecoveryJournal {
   canActivate: boolean;
   evictionEnabled: boolean;
 }
+interface ScratchAudit {
+  candidateID: string;
+  outputPath: string;
+  state: "no_output" | "incomplete" | "complete_verified";
+  complete: boolean;
+  scratchFilesVerified: number;
+  scratchBytesVerified: number;
+  readOnlyInspection: boolean;
+  canActivate: boolean;
+  originalEvictionEnabled: boolean;
+}
 interface RecoveryStatus {
   available: boolean;
   busy: boolean;
@@ -61,6 +72,8 @@ export const ImageStorageMissingOriginalTask: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [auditing, setAuditing] = useState(false);
+  const [scratchAudit, setScratchAudit] = useState<ScratchAudit>();
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
     const [saved, recovery] = await Promise.all([
@@ -115,6 +128,7 @@ export const ImageStorageMissingOriginalTask: React.FC = () => {
     setSubmitting(true);
     setError("");
     setMessage("");
+    setScratchAudit(undefined);
     try {
       const response = await fetch("image/storage-missing-original-rehearsal", {
         method: "POST",
@@ -133,6 +147,34 @@ export const ImageStorageMissingOriginalTask: React.FC = () => {
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function inspectScratch() {
+    if (!status?.journal || status.journal.candidateID !== candidateID) return;
+    setAuditing(true);
+    setError("");
+    setScratchAudit(undefined);
+    try {
+      const response = await fetch("image/storage-missing-original-audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ candidateID }),
+      });
+      const report = await readJSON<ScratchAudit>(response);
+      if (
+        report.candidateID !== candidateID ||
+        !report.readOnlyInspection ||
+        report.canActivate ||
+        report.originalEvictionEnabled
+      ) {
+        throw new Error("Unsafe or unexpected scratch audit report");
+      }
+      setScratchAudit(report);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setAuditing(false);
     }
   }
 
@@ -170,6 +212,7 @@ export const ImageStorageMissingOriginalTask: React.FC = () => {
           onChange={(event) => {
             setCandidateID(event.currentTarget.value);
             setAcknowledged(false);
+            setScratchAudit(undefined);
           }}
         >
           {!candidateID && <option value="">Select a saved candidate</option>}
@@ -200,6 +243,7 @@ export const ImageStorageMissingOriginalTask: React.FC = () => {
         disabled={submitting}
         onClick={() => {
           setError("");
+          setScratchAudit(undefined);
           void refresh().catch((reason: unknown) =>
             setError(reason instanceof Error ? reason.message : String(reason))
           );
@@ -231,6 +275,31 @@ export const ImageStorageMissingOriginalTask: React.FC = () => {
           </code>
           Reaudit is always required. Live activation and original-file deletion
           remain disabled.
+          {status.journal.candidateID === candidateID && (
+            <div className="mt-2">
+              <Button
+                variant="outline-secondary"
+                disabled={auditing || busy}
+                onClick={() => void inspectScratch()}
+              >
+                {auditing
+                  ? "Inspecting scratch…"
+                  : "Inspect private scratch (read-only)"}
+              </Button>
+            </div>
+          )}
+        </Alert>
+      )}
+      {scratchAudit && (
+        <Alert variant="warning" className="mt-3" role="status">
+          Read-only scratch audit: <strong>{scratchAudit.state}</strong>.{" "}
+          {scratchAudit.complete
+            ? `${scratchAudit.scratchFilesVerified} scratch files match saved SHA-256 evidence at inspection time.`
+            : "Missing or interrupted scratch output is not certified."}
+          <code className="d-block text-break">{scratchAudit.outputPath}</code>
+          This point-in-time result does not verify live database recovery,
+          authorize packed serving, prove crash-safe rollback or permit original
+          deletion.
         </Alert>
       )}
       {verified && (
