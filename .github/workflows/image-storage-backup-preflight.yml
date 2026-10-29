@@ -1,0 +1,27 @@
+name: Verified image backup preflight
+
+on:
+  pull_request:
+    paths:
+      - scripts/image_storage_backup_preflight.py
+      - scripts/tests/test_image_storage_backup_preflight.py
+      - scripts/media_library_backup.py
+      - scripts/image_delta_storage.py
+      - .github/workflows/image-storage-backup-preflight.yml
+      - docs/image-storage-backup-preflight.md
+  push:
+    branches: [develop]
+    paths:
+      - scripts/image_storage_backup_preflight.py
+      - scripts/tests/test_image_storage_backup_preflight.py
+      - .github/workflows/image-storage-backup-preflight.yml
+
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check Python syntax
+        run: python3 -m py_compile scripts/image_storage_backup_preflight.py scripts/tests/test_image_storage_backup_preflight.py
+      - name: Verify read-only backup coverage and fail-closed behavior
+        run: python3 -m unittest discover -s scripts/tests -p test_image_storage_backup_preflight.py -v
