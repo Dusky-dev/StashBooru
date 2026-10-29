@@ -1,0 +1,31 @@
+name: Experimental packed image shadow-byte proof
+
+on:
+  pull_request:
+    paths:
+      - scripts/image_storage_shadow_member.py
+      - scripts/tests/test_image_storage_shadow_member.py
+      - .github/workflows/image-storage-shadow.yml
+      - internal/api/routes_image_storage_shadow.go
+      - internal/api/routes_image_storage_shadow_test.go
+  push:
+    branches: [develop]
+    paths:
+      - scripts/image_storage_shadow_member.py
+      - scripts/tests/test_image_storage_shadow_member.py
+      - .github/workflows/image-storage-shadow.yml
+
+jobs:
+  shadow:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install bounded byte-exact archive dependencies
+        run: python -m pip install --disable-pip-version-check numpy pillow
+      - name: Verify shadow reader code parses
+        run: python -m py_compile scripts/image_storage_shadow_member.py scripts/tests/test_image_storage_shadow_member.py
+      - name: Prove P12 and P13 byte-exact reconstructed response with no original mutation
+        run: python -m unittest discover -s scripts/tests -p test_image_storage_shadow_member.py -v

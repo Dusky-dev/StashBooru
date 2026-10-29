@@ -11,6 +11,7 @@ import { ImageStorageBackupPreflightTask } from "./ImageStorageBackupPreflightTa
 import { ImageStorageCandidateTask } from "./ImageStorageCandidateTask";
 import { ImageStorageRecoveryTask } from "./ImageStorageRecoveryTask";
 import { ImageStorageRestorePlanTask } from "./ImageStorageRestorePlanTask";
+import { ImageStorageShadowTask } from "./ImageStorageShadowTask";
 import { DataManagementTasks } from "./DataManagementTasks";
 import { MediaBackupTask } from "./MediaBackupTask";
 import { PluginTasks } from "./PluginTasks";
@@ -120,6 +121,8 @@ export const SettingsTasksPanel: React.FC = () => {
           <ImageStorageRecoveryTask />
           <hr />
           <ImageStorageRestorePlanTask />
+          <hr />
+          <ImageStorageShadowTask />
         </SettingsDisclosure>
         <SettingsDisclosure
           id="tasks-maintenance"
