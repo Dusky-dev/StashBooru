@@ -354,7 +354,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
     imageID: image.id,
   });
   const shadowPreviewURL = shadowPreviewRequested
-    ? "image/storage-shadow?" + shadowParams
+    ? "/image/storage-shadow?" + shadowParams
     : "";
   const shadowPreviewFailed =
     shadowPreviewRequested && failedShadowURL === shadowPreviewURL;
