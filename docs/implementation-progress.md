@@ -1,5 +1,14 @@
 # StashBooru implementation progress
 
+## Native read-only restore-readiness inspection — 2026-10-29
+
+- Branch `feat/image-restore-readiness-20261029`, based on `develop` `4b31302eb1ca71481c446d61127548a1ad904419` (after merging #262 and #263).
+- Adds authenticated GET/POST `image/storage-restore-plan` to inspect one saved P12/P13 candidate by validated server-generated ID, without browser-supplied filesystem paths. Job resolves existing native Visual Stack sources, re-verifies saved archive SHA-256, confirms candidate identity/hashes, verifies entire original-media snapshot and current original SHA-256, and rejects mismatches.
+- Adds Settings → Tasks → Inspect media readiness UI with a list of non-negotiable blockers. Output is read-only point-in-time evidence: `canActivate=false`, `canReplaceOriginals=false`, `databaseBackupVerified=false`, `nativeServingVerified=false`, `rollbackVerified=false` and `originalEvictionEnabled=false`.
+- Includes Go synthetic validation tests, documentation, existing CI workflow validation. Current feature checks, Codex Review and owner-library restoration remain pending at feature inception.
+- No archive extraction, database mutation, replacement, original eviction, serving integration or actual disk savings. A source missing from the current catalogue or disk fails closed because the current native resolver requires existing originals.
+- Next: independently prove database/config restoration, crash-safe live serving and rollback with real media; then design gated activation before any removal of original files.
+
 ## Persistent candidate receipts and restart-safe isolated recovery — 2026-10-29
 
 - Stacked on PR #262 `feat/native-isolated-image-recovery-20261029`, base commit `5007a3845101343268d7bd4f37a7c0c96d9db3c8`. Feature branch `feat/persistent-image-candidate-receipts-20261029`.
