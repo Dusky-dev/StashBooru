@@ -115,9 +115,9 @@ export const ImageStorageRecoveryTask: React.FC = () => {
         Reconstruct candidate into a separate folder
       </h2>
       <p>
-        Verify the most recently created experimental candidate and recover
-        its original file bytes into a new private directory. This does not
-        replace the existing library, restore the database or free any space.
+        Verify the most recently created experimental candidate and recover its
+        original file bytes into a new private directory. This does not replace
+        the existing library, restore the database or free any space.
       </p>
       <Alert variant="warning">
         This is an isolated recovery proof, not the final Reconstruct Library
@@ -132,8 +132,8 @@ export const ImageStorageRecoveryTask: React.FC = () => {
       )}
       {!ready && (
         <p className="text-muted">
-          Create a verified candidate in this server session first.
-          Only the latest candidate can be reconstructed here.
+          Create a verified candidate in this server session first. Only the
+          latest candidate can be reconstructed here.
         </p>
       )}
       {ready && <p>Selected candidate: {group}</p>}
