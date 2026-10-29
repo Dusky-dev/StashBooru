@@ -127,8 +127,8 @@ export const ImageStorageConsumerAuditTask: React.FC = () => {
       </h2>
       <p>
         Check every archived image against its original and inspect existing
-        generated thumbnail and preview cache files, without opening,
-        generating or replacing those caches.
+        generated thumbnail and preview cache files, without opening, generating
+        or replacing those caches.
       </p>
       <Alert variant="warning">
         A present cache does not prove the thumbnail or preview can be served.
