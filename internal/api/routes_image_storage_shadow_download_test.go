@@ -37,7 +37,7 @@ func TestShadowDownloadPreservesVerifiedByteRangesAndHEAD(t *testing.T) {
 					if recorder.Body.Len() != 0 {
 						t.Fatal("HEAD must never send source bytes")
 					}
-					continue
+					return
 				}
 				want := original
 				if rangeHeader == "bytes=0-31" {
