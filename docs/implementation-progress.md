@@ -1,5 +1,15 @@
 # StashBooru implementation progress
 
+## Native backup-gated byte-exact image candidate packing — 2026-10-29
+
+- Branch `feat/native-candidate-pack-20261029`, stacked on verified native preflight #259 head `055e879cd0f9c77e826a49a192f2ef3d64cb923a` (develop `e34230e919aa5eb07b414d93c7b7afc1b0f91d9b`).
+- Adds bounded `GET/POST image/storage-candidate` native background job and opt-in Settings → Tasks → Inspect media UI. Browser provides a numeric Visual Stack ID, valid media snapshot ID, one of P12 delta/P13 shared-tiles, and explicit acknowledgement; never accepts source/output paths.
+- Sources are resolved from the native Visual Stack catalogue. Candidate output derives from the config directory, must be outside all media and backup roots, and is mode-0700 with random no-overwrite archive naming.
+- New `scripts/image_storage_native_candidate.py` verifies the entire original-media snapshot before and immediately before publishing the candidate, reconstructs every P12/P13 member byte-exactly, checks original SHA-256 and retains every original. Native report validation rejects unexpected enabling of serving/activation/eviction.
+- Adds dedicated Python synthetic proof tests/CI, native Go request and safety validation tests, frontend opt-in and documentation. CI, review, production media and native restore/reconstruction unverified at feature inception.
+- This **does not** reduce live disk usage, activate new media, modify database paths or delete originals. It is an additional immutable archive until native serving and restore are separately proven. Last successful report lives in memory. Interrupted staging may remain for offline inspection.
+- Next: bounded native recovery and independent rollback validation with explicit opt-in, plus comprehensive codecs; leave original eviction and optimization toggle disabled.
+
 ## Native catalogue-derived media backup preflight — 2026-10-29
 
 - Stacked on #258 branch head `a836943f0431d105fed0f08fdc2611961d7fa780`, originally based on develop `fe20b8a481a8f3b2411300fc51d22d4adb438ae3`. Feature branch: `feat/native-storage-backup-preflight-20261029`.
