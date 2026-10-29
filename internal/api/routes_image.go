@@ -44,6 +44,8 @@ func (rs imageRoutes) Routes() chi.Router {
 	r.Post("/storage-estimate", rs.StorageEstimateStart)
 	r.Get("/storage-backup-preflight", rs.StorageBackupPreflightStatus)
 	r.Post("/storage-backup-preflight", rs.StorageBackupPreflightStart)
+	r.Get("/storage-candidate", rs.StorageCandidateStatus)
+	r.Post("/storage-candidate", rs.StorageCandidateStart)
 	r.Get("/media-backup", rs.MediaBackupStatus)
 	r.Post("/media-backup", rs.MediaBackupAction)
 	r.Get("/converter", handleMediaConversionGet)
