@@ -92,6 +92,34 @@ class BoundedRecoveryTests(unittest.TestCase):
             self.assertEqual((self.output / "media" / "images" / name).read_bytes(), expected)
             self.assertEqual((self.media / name).read_bytes(), expected)
 
+    def test_shared_tiles_candidate_restores_all_members(self):
+        original = self.candidate_receipt
+        archive = self.private / ("stack-17-shared-tiles-" + "b" * 24 + ".pack")
+        first = self.media / "first image.png"
+        second = self.media / "second image.png"
+        group = {"id": "stack:17", "representative": "image:201", "members": [
+            {"id": "image:201", "path": str(first)},
+            {"id": "image:202", "path": str(second)},
+        ]}
+        proof = packing.pack_proof(group, "shared-tiles", archive, 0, 0)
+        proof.update({
+            "archivePath": str(archive), "group": "stack:17",
+            "mediaBackupSnapshot": self.snapshot, "backupVerified": True,
+            "nativePackingCandidateOnly": True, "nativeServingVerified": False,
+            "databaseBackupVerified": False, "archiveActivated": False,
+        })
+        self.candidate_receipt = archive.with_suffix(".receipt.json")
+        self.candidate_receipt.write_text(json.dumps({
+            "version": 1,
+            "archiveSHA256": hashlib.sha256(archive.read_bytes()).hexdigest(),
+            "report": proof,
+        }))
+        report = self.do_rehearsal()
+        self.assertEqual(report["candidateMethod"], "shared-tiles")
+        self.assertEqual(report["restoredMediaCount"], 2)
+        self.assertTrue(self.do_audit()["verified"])
+        self.assertTrue(original.exists())
+
     def test_restore_without_any_original_files(self):
         for path in self.media.iterdir():
             path.unlink()
