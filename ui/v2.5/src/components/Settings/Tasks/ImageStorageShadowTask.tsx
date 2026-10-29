@@ -88,14 +88,14 @@ export const ImageStorageShadowTask: React.FC = () => {
     <section aria-labelledby="image-storage-shadow-title">
       <h2 id="image-storage-shadow-title">Compare packed shadow image</h2>
       <p>
-        Compare an original with the byte-exact archived reconstruction
-        side by side. The shadow endpoint verifies the saved candidate and
-        current original again before returning reconstructed bytes.
+        Compare an original with the byte-exact archived reconstruction side by
+        side. The shadow endpoint verifies the saved candidate and current
+        original again before returning reconstructed bytes.
       </p>
       <Alert variant="warning">
         Experimental visual comparison only. Matching images on screen do not
-        establish full native serving compatibility. Packed thumbnails, previews,
-        live activation, and original deletion remain disabled.
+        establish full native serving compatibility. Packed thumbnails,
+        previews, live activation, and original deletion remain disabled.
       </Alert>
       {error && <Alert variant="danger">{error}</Alert>}
       <Form.Group>
@@ -175,7 +175,9 @@ export const ImageStorageShadowTask: React.FC = () => {
               <h3>Archived reconstruction</h3>
               <img
                 src={comparison.shadowURL}
-                alt={"Byte-exact archived reconstruction of " + comparison.imageID}
+                alt={
+                  "Byte-exact archived reconstruction of " + comparison.imageID
+                }
                 style={{ width: "100%", maxHeight: 420, objectFit: "contain" }}
                 onLoad={() => setShadowStatus("loaded")}
                 onError={() => setShadowStatus("failed or unsupported")}
@@ -191,10 +193,10 @@ export const ImageStorageShadowTask: React.FC = () => {
             </Col>
           </Row>
           <p className="text-muted small mt-2">
-            A browser decoding failure can also mean an unsupported image
-            format (such as JXL or AVIF), not necessarily corrupt archive
-            data. Use the links above for format-specific inspection.
-            Visual comparison is not a substitute for the backend SHA-256 proof.
+            A browser decoding failure can also mean an unsupported image format
+            (such as JXL or AVIF), not necessarily corrupt archive data. Use the
+            links above for format-specific inspection. Visual comparison is not
+            a substitute for the backend SHA-256 proof.
           </p>
         </div>
       )}
