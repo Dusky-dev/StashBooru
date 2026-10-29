@@ -14,6 +14,7 @@ interface Comparison {
   key: string;
   originalURL: string;
   shadowURL: string;
+  thumbnailURL: string;
   imageID: string;
   method: string;
 }
@@ -28,6 +29,7 @@ export const ImageStorageShadowTask: React.FC = () => {
   const [comparison, setComparison] = useState<Comparison>();
   const [originalStatus, setOriginalStatus] = useState("pending");
   const [shadowStatus, setShadowStatus] = useState("pending");
+  const [thumbnailStatus, setThumbnailStatus] = useState("pending");
 
   const refresh = useCallback(async (signal: AbortSignal) => {
     const response = await fetch("image/storage-candidate", { signal });
@@ -69,12 +71,14 @@ export const ImageStorageShadowTask: React.FC = () => {
     if (!shadowURL || !candidate) return;
     setOriginalStatus("pending");
     setShadowStatus("pending");
+    setThumbnailStatus("pending");
     setComparison({
       key: candidate.id + ":" + imageID,
       imageID,
       method: candidate.method,
       originalURL: "image/" + imageID + "/image",
       shadowURL,
+      thumbnailURL: "image/storage-shadow-thumbnail?" + params,
     });
   }
 
@@ -82,6 +86,7 @@ export const ImageStorageShadowTask: React.FC = () => {
     setComparison(undefined);
     setOriginalStatus("pending");
     setShadowStatus("pending");
+    setThumbnailStatus("pending");
   }
 
   return (
@@ -94,8 +99,9 @@ export const ImageStorageShadowTask: React.FC = () => {
       </p>
       <Alert variant="warning">
         Experimental visual comparison only. Matching images on screen do not
-        establish full native serving compatibility. Packed thumbnails,
-        previews, live activation, and original deletion remain disabled.
+        establish full native serving compatibility. The native thumbnail probe
+        is isolated and does not write cached files. Live packed-image serving,
+        generated previews, and original deletion remain disabled.
       </Alert>
       {error && <Alert variant="danger">{error}</Alert>}
       <Form.Group>
@@ -192,6 +198,34 @@ export const ImageStorageShadowTask: React.FC = () => {
               </a>
             </Col>
           </Row>
+          <Row className="mt-3">
+            <Col md={6}>
+              <h3>Native thumbnail from archived bytes</h3>
+              <img
+                src={comparison.thumbnailURL}
+                alt={"Isolated native thumbnail for " + comparison.imageID}
+                style={{ width: "100%", maxHeight: 320, objectFit: "contain" }}
+                onLoad={() => setThumbnailStatus("loaded")}
+                onError={() =>
+                  setThumbnailStatus("unsupported format or decoding error")
+                }
+              />
+              <p role="status">Thumbnail probe: {thumbnailStatus}</p>
+              <a
+                href={comparison.thumbnailURL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Open isolated JPEG thumbnail
+              </a>
+            </Col>
+          </Row>
+          <p className="text-muted small">
+            This probe uses StashBooru's native in-memory thumbnail encoder. GIF
+            animation, animated WebP, JXL, and AVIF path-only decoding are not
+            supported in this isolated mode. The regular thumbnail and generated
+            preview routes remain unchanged.
+          </p>
           <p className="text-muted small mt-2">
             A browser decoding failure can also mean an unsupported image format
             (such as JXL or AVIF), not necessarily corrupt archive data. Use the

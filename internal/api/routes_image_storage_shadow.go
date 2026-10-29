@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"github.com/stashapp/stash/internal/manager"
+	"github.com/stashapp/stash/pkg/image"
+	"github.com/stashapp/stash/pkg/models"
 )
 
 const storageShadowMaxImageBytes = 64 * 1024 * 1024
@@ -121,6 +123,16 @@ func storageShadowContentType(data []byte) (string, bool) {
 // GET delivers a verified member from a saved candidate, not native media.
 // It never activates archives, mutates catalogue data or deletes originals.
 func (rs imageRoutes) StorageShadowImage(w http.ResponseWriter, r *http.Request) {
+	rs.storageShadowServe(w, r, false)
+}
+
+// StorageShadowThumbnail evaluates native thumbnail decoding against already
+// verified P12/P13 original bytes, but never touches generated cache paths.
+func (rs imageRoutes) StorageShadowThumbnail(w http.ResponseWriter, r *http.Request) {
+	rs.storageShadowServe(w, r, true)
+}
+
+func (rs imageRoutes) storageShadowServe(w http.ResponseWriter, r *http.Request, thumbnail bool) {
 	req, err := storageShadowParseRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -190,7 +202,38 @@ func (rs imageRoutes) StorageShadowImage(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "shadow image could not be reconstructed byte-exactly", http.StatusConflict)
 		return
 	}
+	if thumbnail {
+		preview, err := storageShadowNativeThumbnail(data, member.Path)
+		if err != nil {
+			http.Error(w, "verified source is not supported for native in-memory thumbnail encoding", http.StatusUnsupportedMediaType)
+			return
+		}
+		serveVerifiedStorageShadowBytes(w, r, preview)
+		return
+	}
 	serveVerifiedStorageShadowBytes(w, r, data)
+}
+
+// The same native thumbnail backend used for real image files is exercised
+// from memory; the real thumbnail route (which may write cache files) is
+// never invoked. Animated or non-seekable codec limitations fail closed.
+func storageShadowNativeThumbnail(data []byte, sourcePath string) ([]byte, error) {
+	format := strings.TrimPrefix(strings.ToLower(filepath.Ext(sourcePath)), ".")
+	mgr := manager.GetInstance()
+	options := image.ClipPreviewOptions{
+		InputArgs:  mgr.Config.GetTranscodeInputArgs(),
+		OutputArgs: mgr.Config.GetTranscodeOutputArgs(),
+		Preset:     mgr.Config.GetPreviewPreset().String(),
+	}
+	encoder := image.NewThumbnailEncoder(mgr.FFMpeg, mgr.FFProbe, options)
+	thumb, err := encoder.GetThumbnailFromVerifiedBytes(data, format, models.DefaultGthumbWidth)
+	if err != nil {
+		return nil, err
+	}
+	if len(thumb) == 0 || len(thumb) > 8*1024*1024 || http.DetectContentType(thumb) != "image/jpeg" {
+		return nil, fmt.Errorf("native thumbnail decoder returned an invalid or oversized JPEG")
+	}
+	return thumb, nil
 }
 
 // Shared only by the isolated shadow endpoint and response-contract tests.

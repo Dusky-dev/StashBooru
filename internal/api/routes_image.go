@@ -51,6 +51,7 @@ func (rs imageRoutes) Routes() chi.Router {
 	r.Get("/storage-restore-plan", rs.StorageRestorePlanStatus)
 	r.Post("/storage-restore-plan", rs.StorageRestorePlanStart)
 	r.Get("/storage-shadow", rs.StorageShadowImage)
+	r.Get("/storage-shadow-thumbnail", rs.StorageShadowThumbnail)
 	r.Get("/storage-consumer-audit", rs.StorageConsumerAuditStatus)
 	r.Post("/storage-consumer-audit", rs.StorageConsumerAuditStart)
 	r.Get("/media-backup", rs.MediaBackupStatus)
