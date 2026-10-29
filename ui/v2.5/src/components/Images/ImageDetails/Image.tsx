@@ -514,8 +514,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
             <strong>Experimental packed-image preview.</strong>{" "}
             {shadowPreviewFailed
               ? "The verified reconstruction failed to load. Showing the unchanged original."
-              : "Displaying verified packed bytes through an isolated read-only endpoint. No original files or native routes were changed."}
-            {" "}
+              : "Displaying verified packed bytes through an isolated read-only endpoint. No original files or native routes were changed."}{" "}
             <button
               type="button"
               className="btn btn-link"
@@ -539,9 +538,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
             }
             alt={title}
             src={
-              useShadowPreview
-                ? shadowPreviewURL
-                : (image.paths.image ?? "")
+              useShadowPreview ? shadowPreviewURL : (image.paths.image ?? "")
             }
             onError={() => {
               if (useShadowPreview) setFailedShadowURL(shadowPreviewURL);
