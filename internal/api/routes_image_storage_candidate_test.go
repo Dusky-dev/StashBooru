@@ -100,26 +100,26 @@ func TestStorageCandidateDirectoryRejectsAliasesAndOccupiedFiles(t *testing.T) {
 
 func validStorageCandidateReport() map[string]any {
 	return map[string]any{
-		"group":	"stack:7",
-		"mediaBackupSnapshot":	"20261029T102030Z-012345abcdef",
-		"method":	"delta",
-		"fidelity":	"byte-exact",
-		"sourceFiles":	2,
-		"sourceBytes":	100,
-		"archiveBytes":	4,
-		"sourceSHA256":	map[string]string{
-			"image:1":	strings.Repeat("a", 64),
-			"image:2":	strings.Repeat("b", 64),
+		"group":               "stack:7",
+		"mediaBackupSnapshot": "20261029T102030Z-012345abcdef",
+		"method":              "delta",
+		"fidelity":            "byte-exact",
+		"sourceFiles":         2,
+		"sourceBytes":         100,
+		"archiveBytes":        4,
+		"sourceSHA256": map[string]string{
+			"image:1": strings.Repeat("a", 64),
+			"image:2": strings.Repeat("b", 64),
 		},
-		"verified":	true,
-		"backupVerified":	true,
-		"sourcesRetained":	true,
-		"nativePackingCandidateOnly":	true,
-		"nativeServing":	false,
-		"nativeServingVerified":	false,
-		"databaseBackupVerified":	false,
-		"originalEvictionEnabled":	false,
-		"archiveActivated":	false,
+		"verified":                   true,
+		"backupVerified":             true,
+		"sourcesRetained":            true,
+		"nativePackingCandidateOnly": true,
+		"nativeServing":              false,
+		"nativeServingVerified":      false,
+		"databaseBackupVerified":     false,
+		"originalEvictionEnabled":    false,
+		"archiveActivated":           false,
 	}
 }
 
