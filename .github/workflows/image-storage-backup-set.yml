@@ -1,0 +1,28 @@
+name: Experimental storage backup-set receipt proof
+
+on:
+  pull_request:
+    paths:
+      - scripts/image_storage_backup_set.py
+      - scripts/tests/test_image_storage_backup_set.py
+      - scripts/image_storage_db_config_audit.py
+      - scripts/media_library_backup.py
+      - .github/workflows/image-storage-backup-set.yml
+  push:
+    branches: [develop]
+    paths:
+      - scripts/image_storage_backup_set.py
+      - scripts/tests/test_image_storage_backup_set.py
+
+jobs:
+  receipt:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Syntax-check offline backup-set verifier
+        run: python -m py_compile scripts/image_storage_backup_set.py scripts/tests/test_image_storage_backup_set.py
+      - name: Verify immutable receipt, tampering and non-activation gates
+        run: python -m unittest discover -s scripts/tests -p test_image_storage_backup_set.py -v
