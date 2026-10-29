@@ -1,0 +1,28 @@
+name: Experimental historical image path mapping
+
+on:
+  pull_request:
+    paths:
+      - scripts/image_storage_historical_paths.py
+      - scripts/tests/test_image_storage_historical_paths.py
+      - scripts/image_storage_backup_set.py
+      - scripts/image_storage_missing_original_rehearsal.py
+      - .github/workflows/image-storage-historical-paths.yml
+  push:
+    branches: [develop]
+    paths:
+      - scripts/image_storage_historical_paths.py
+      - scripts/tests/test_image_storage_historical_paths.py
+
+jobs:
+  provenance:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Compile verifier
+        run: python -m py_compile scripts/image_storage_historical_paths.py scripts/tests/test_image_storage_historical_paths.py
+      - name: Check historical image identity, path ambiguity and safety
+        run: python -m unittest discover -s scripts/tests -p test_image_storage_historical_paths.py -v
