@@ -1,5 +1,14 @@
 # StashBooru implementation progress
 
+## Native P12/P13 whole-stack media cache audit — 2026-10-29
+
+- Branch `feat/packed-media-consumer-audit-20261029` based on merged #265 develop commit `02a0aed4af77a5d2c33a10df0e4af9b94c57ee67`.
+- Added GET/POST `image/storage-consumer-audit` read-only native job and Settings → Tasks control for a saved archive and its complete 2–16-member Visual Stack. Rechecks durable archive SHA-256, current catalogue membership, complete original-media backup verification and independently reconstructs every archive member as original bytes in one read-only P12/P13 process.
+- Go reports whether generated thumbnail/preview cache files are present using `lstat` only, explicitly **not** claiming cache validity or native HTTP compatibility. No generation or mutation of cached files.
+- Adds Python whole-stack corruption/identity regression suite, Go request/flag/hash/cache tests, dedicated CI and docs. Current-feature checks and owner-library/browser validation pending.
+- All reported proofs are transient and point-in-time. Native image/thumbnail/preview/download routes remain unchanged; no packed-media activation, missing-original recovery, database/configuration rollback, original eviction, or disk space reclamation.
+- Next: true shadow compatibility against individual native route responses, plus database/config recovery and crash-safe rollback before any activation.
+
 ## Disconnected native P12/P13 shadow image serving proof — 2026-10-29
 
 - Feature branch `feat/image-packed-shadow-serving-20261029` stacked on restore readiness #264 head `460eb20fff9cb32e9bbc1e28c5357f17b988208b`.
