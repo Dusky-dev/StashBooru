@@ -221,10 +221,10 @@ export const ImageStorageShadowTask: React.FC = () => {
             </Col>
           </Row>
           <p className="text-muted small">
-            This probe uses StashBooru's native in-memory thumbnail encoder.
-            GIF animation, animated WebP, JXL, and AVIF path-only decoding are
-            not supported in this isolated mode. The regular thumbnail and
-            generated preview routes remain unchanged.
+            This probe uses StashBooru's native in-memory thumbnail encoder. GIF
+            animation, animated WebP, JXL, and AVIF path-only decoding are not
+            supported in this isolated mode. The regular thumbnail and generated
+            preview routes remain unchanged.
           </p>
           <p className="text-muted small mt-2">
             A browser decoding failure can also mean an unsupported image format
