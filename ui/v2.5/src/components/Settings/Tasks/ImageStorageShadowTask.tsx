@@ -237,8 +237,7 @@ export const ImageStorageShadowTask: React.FC = () => {
           <p className="text-muted small mt-2">
             The normal clip preview is a separately generated cache file.
             Packed-byte preview generation is not enabled here. The existing
-            native clip preview can be inspected without changing it:
-            {" "}
+            native clip preview can be inspected without changing it:{" "}
             <a
               href={comparison.clipPreviewURL}
               target="_blank"
