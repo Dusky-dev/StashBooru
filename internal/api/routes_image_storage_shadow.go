@@ -221,9 +221,9 @@ func storageShadowNativeThumbnail(data []byte, sourcePath string) ([]byte, error
 	format := strings.TrimPrefix(strings.ToLower(filepath.Ext(sourcePath)), ".")
 	mgr := manager.GetInstance()
 	options := image.ClipPreviewOptions{
-		InputArgs: mgr.Config.GetTranscodeInputArgs(),
+		InputArgs:  mgr.Config.GetTranscodeInputArgs(),
 		OutputArgs: mgr.Config.GetTranscodeOutputArgs(),
-		Preset: mgr.Config.GetPreviewPreset().String(),
+		Preset:     mgr.Config.GetPreviewPreset().String(),
 	}
 	encoder := image.NewThumbnailEncoder(mgr.FFMpeg, mgr.FFProbe, options)
 	thumb, err := encoder.GetThumbnailFromVerifiedBytes(data, format, models.DefaultGthumbWidth)
