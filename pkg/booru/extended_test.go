@@ -168,7 +168,7 @@ func TestPawchiveRecentAndCreatorModesUnaffected(t *testing.T) {
 		!strings.Contains(s.Public().QueryHelp, "Pawchive posts") {
 		t.Fatalf("recent browsing, creator search or help regressed: %v", paths)
 	}
-	for _, query := range []string{"creator:patreon:42 extra", "creator:patreon", "creator:patreon:../../etc"} {
+	for _, query := range []string{"creator:patreon:42 ab", "creator:patreon", "creator:patreon:../../etc"} {
 		if _, err := c.Search(context.Background(), s, query, 1, 24); err == nil || len(paths) != 2 {
 			t.Fatalf("bad creator query reached provider: %q, err %v", query, err)
 		}
