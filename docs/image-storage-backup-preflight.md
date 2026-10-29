@@ -61,3 +61,24 @@ before publication.
 - Source files are never modified or evicted. No storage optimization setting
   is enabled. The eventual Reconstruct Library action must remain accessible
   even when experimental optimization is disabled.
+
+## Native Settings → Tasks integration
+
+The follow-up native route uses `GET/POST image/storage-backup-preflight`
+for a **read-only background job**. Under **Settings → Tasks → Inspect media →
+Verify image storage backup coverage**, select one numeric Visual Stack ID
+and one snapshot from the existing Media backup task. Refresh after its job
+finishes to view the matching SHA-256 results.
+
+The browser supplies **only** `stackID` and `snapshot`, never media paths,
+backup-store paths, output paths, packing algorithms or file operations.
+The server uses the native Visual Stack and Image file repository to resolve
+the primary images, reads the saved Media backup destination, validates it
+against configured media roots and creates a temporary mode-0600 JSON
+specification for the existing verifier. The verifier checks the complete
+snapshot and exact current original bytes before returning a report.
+
+Reports are in-memory status only, not persistent authorization; the next
+packing milestone must redo these checks immediately before writing any
+candidate archive. Native serving, database recovery and original-file
+eviction are **not** implemented. The new route performs no media mutation.
