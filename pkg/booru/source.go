@@ -209,7 +209,7 @@ func (s Source) Public() PublicSource {
 		help = "Search Pawchive posts with at least three characters using native q= search, or * for recent posts; Find an artist browses a creator. Append keywords after creator:service:id to search that creator's posts only. Pawchive may rate limit API access and some deployments may ignore q filters. StashBooru caches repeated global searches briefly and links to the site when an API request fails."
 		auth = "Public API; site access restrictions apply. Optional file-host session cookie value in API key."
 	case "kemono":
-		help = "Find an artist by name in the sidebar. Use * for recent posts or at least three characters to search post text. Page size counts posts; inspection exposes every supported attachment."
+		help = "Find an artist by name in the sidebar. Append keywords after creator:service:id to search within their posts, or use * for recent posts. Keyword searches need at least three characters. Page size counts posts; inspection exposes every supported attachment."
 		auth = "Public API; site access restrictions apply."
 	case "shimmie":
 		auth = "Anonymous Shimmie/Danbooru XML API; category information may be unavailable."
