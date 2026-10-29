@@ -11,9 +11,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import shutil
 import sqlite3
-import stat
 import sys
 import zipfile
 
@@ -71,7 +69,8 @@ def source_media(record: dict, member: str) -> dict:
 
 
 def byte_copy(source: Path, destination: Path, expected: str, limit: int) -> int:
-    destination.parent.mkdir(mode=0o700, parents=False, exist_ok=False)
+    if not destination.parent.is_dir() or destination.parent.is_symlink():
+        raise ValueError("scratch destination parent is not a private directory")
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     copied = 0
     digest = hashlib.sha256()
@@ -196,8 +195,11 @@ def rehearse(receipt: Path, output: Path, member: str) -> dict:
         f.flush()
         os.fsync(f.fileno())
     if os.name != "nt":
-        with os.fdopen(os.open(output, os.O_RDONLY), "rb") as directory:
-            os.fsync(directory.fileno())
+        directory_fd = os.open(output, os.O_RDONLY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
     return _check_report(record, report, output, member)
 
 
