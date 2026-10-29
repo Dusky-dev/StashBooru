@@ -73,7 +73,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
   const [isRestorationOpen, setIsRestorationOpen] = useState(false);
   const [isKnowledgeTagDialogOpen, setIsKnowledgeTagDialogOpen] =
     useState(false);
-  const [shadowPreviewFailed, setShadowPreviewFailed] = useState(false);
+  const [failedShadowURL, setFailedShadowURL] = useState("");
 
   async function onSave(input: GQL.ImageUpdateInput) {
     await updateImage({ variables: { input } });
@@ -356,10 +356,9 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
   const shadowPreviewURL = shadowPreviewRequested
     ? "image/storage-shadow?" + shadowParams
     : "";
+  const shadowPreviewFailed =
+    shadowPreviewRequested && failedShadowURL === shadowPreviewURL;
   const useShadowPreview = shadowPreviewRequested && !shadowPreviewFailed;
-  useEffect(() => {
-    setShadowPreviewFailed(false);
-  }, [image.id, shadowCandidate, shadowStackID]);
 
   const resolution = useMemo(() => {
     return file?.width && file?.height
@@ -545,7 +544,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
                 : (image.paths.image ?? "")
             }
             onError={() => {
-              if (useShadowPreview) setShadowPreviewFailed(true);
+              if (useShadowPreview) setFailedShadowURL(shadowPreviewURL);
             }}
           />
         )}
