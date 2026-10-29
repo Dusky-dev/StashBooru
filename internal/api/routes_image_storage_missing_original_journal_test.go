@@ -12,6 +12,9 @@ import (
 func testPrivateRecoveryJournal(t *testing.T) (string, missingOriginalJournalRecord) {
 	t.Helper()
 	dir := t.TempDir()
+	if err := os.Chmod(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
 	id := "stack-17-delta-0123456789abcdef01234567"
 	out := filepath.Join(dir, "stack-17-orphan-rehearsal-aaaaaaaaaaaaaaaaaaaaaaaa")
 	r := missingOriginalNewJournal(id, "20261029T102030Z-012345abcdef", out)
