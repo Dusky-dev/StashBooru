@@ -1,5 +1,13 @@
 # StashBooru implementation progress
 
+## Native isolated candidate reconstruction job — 2026-10-29
+
+- Feature branch `feat/native-isolated-image-recovery-20261029`, stacked on offline-only reconstruction PR #261 at merge/fix head `04e3d6797cafd90f2864e719e1a497a29b3ec948`; native candidate PR #260 remains CI-gated.
+- Introduces authenticated `GET/POST image/storage-recovery`, strict numeric-stack/opt-in input, last in-memory verified candidate selection, server-derived archive and randomly named private output directory. No browser-supplied filesystem paths.
+- Native cancellable job checks the archive and source SHA-256 evidence against the current native Visual Stack, executes the independent P12/P13 isolated reconstruction script, and checks returned flags, identity, snapshot, hashes, output location and extraction completion receipt. This produces a separate copy; originals and database paths remain authoritative.
+- Adds dedicated Go route safety/report tests, Settings → Tasks → Inspect media recovery UI, documentation. All CI and owner-library proof pending; Codex review per repository policy.
+- Not persistent across server restarts: latest candidate/receipt only in memory. No native rollback, native serving, database/config recovery, or original eviction. Next: persistent, independently re-verifiable archive registry and crash-safe native rollback plan before any activation.
+
 ## Isolated P12/P13 candidate reconstruction proof — 2026-10-29
 
 - Stacked on PR #260 candidate-packing branch at commit `afdb56238ebd83f84ad381597cb7b63d3ae93e80`; branch `feat/native-candidate-reconstruction-20261029`.
