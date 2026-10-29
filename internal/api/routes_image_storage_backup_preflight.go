@@ -27,33 +27,33 @@ var storageBackupPreflightResult json.RawMessage
 var storageBackupSHA256 = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
 type storageBackupPreflightRequest struct {
-	StackID  int    `json:"stackID"`
-	Snapshot string `json:"snapshot"`
+	StackID	int	`json:"stackID"`
+	Snapshot	string	`json:"snapshot"`
 }
 
 type storageBackupPreflightStatus struct {
-	Available bool            `json:"available"`
-	Busy      bool            `json:"busy"`
-	JobID     int             `json:"jobID,omitempty"`
-	Result    json.RawMessage `json:"result,omitempty"`
+	Available	bool	`json:"available"`
+	Busy	bool	`json:"busy"`
+	JobID	int	`json:"jobID,omitempty"`
+	Result	json.RawMessage	`json:"result,omitempty"`
 }
 
 type storageBackupPreflightReport struct {
-	Experimental             bool              `json:"experimental"`
-	ReadOnly                 bool              `json:"readOnly"`
-	Verified                 bool              `json:"verified"`
-	MediaBackupVerified      bool              `json:"mediaBackupVerified"`
-	Snapshot                 string            `json:"snapshot"`
-	Group                    string            `json:"group"`
-	SelectedImagesCovered    int               `json:"selectedImagesCovered"`
-	SnapshotFilesVerified    int               `json:"snapshotFilesVerified"`
-	SnapshotObjectsVerified  int               `json:"snapshotObjectsVerified"`
-	ImageSHA256              map[string]string `json:"imageSHA256"`
-	SourcesRetained          bool              `json:"sourcesRetained"`
-	NativePackingEnabled     bool              `json:"nativePackingEnabled"`
-	NativeServingVerified    bool              `json:"nativeServingVerified"`
-	DatabaseBackupVerified   bool              `json:"databaseBackupVerified"`
-	OriginalEvictionEnabled  bool              `json:"originalEvictionEnabled"`
+	Experimental	bool	`json:"experimental"`
+	ReadOnly	bool	`json:"readOnly"`
+	Verified	bool	`json:"verified"`
+	MediaBackupVerified	bool	`json:"mediaBackupVerified"`
+	Snapshot	string	`json:"snapshot"`
+	Group	string	`json:"group"`
+	SelectedImagesCovered	int	`json:"selectedImagesCovered"`
+	SnapshotFilesVerified	int	`json:"snapshotFilesVerified"`
+	SnapshotObjectsVerified	int	`json:"snapshotObjectsVerified"`
+	ImageSHA256	map[string]string	`json:"imageSHA256"`
+	SourcesRetained	bool	`json:"sourcesRetained"`
+	NativePackingEnabled	bool	`json:"nativePackingEnabled"`
+	NativeServingVerified	bool	`json:"nativeServingVerified"`
+	DatabaseBackupVerified	bool	`json:"databaseBackupVerified"`
+	OriginalEvictionEnabled	bool	`json:"originalEvictionEnabled"`
 }
 
 func validateStorageBackupPreflightRequest(req storageBackupPreflightRequest) error {
