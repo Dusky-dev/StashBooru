@@ -208,12 +208,14 @@ func validateStorageConsumerAuditReport(data []byte, group estimateSourceGroup, 
 }
 
 func runStorageConsumerAudit(ctx context.Context, group estimateSourceGroup, archive string, candidate storageCandidateProof, id string, caches map[string][2]string) (json.RawMessage, error) {
-	spec, err := json.Marshal(map[string]any{
-		"group": group.ID, "members": group.Members,
-		"archivePath": archive, "method": candidate.Method,
-		"mediaBackupSnapshot": candidate.MediaBackupSnapshot,
-		"sourceSHA256": candidate.SourceSHA256,
-	})
+	specPayload := make(map[string]any)
+	specPayload["group"] = group.ID
+	specPayload["members"] = group.Members
+	specPayload["archivePath"] = archive
+	specPayload["method"] = candidate.Method
+	specPayload["mediaBackupSnapshot"] = candidate.MediaBackupSnapshot
+	specPayload["sourceSHA256"] = candidate.SourceSHA256
+	spec, err := json.Marshal(specPayload)
 	if err != nil {
 		return nil, err
 	}
