@@ -117,6 +117,11 @@ export function CreatorSearch({
               </li>
             ))}
           </ul>
+          <p className="small text-muted">
+            To search within an artist&apos;s posts, select the artist and add
+            keywords after the creator ID in the main Search box (for example,{" "}
+            <code>creator:patreon:42 blue sky</code>).
+          </p>
           <div className="d-flex justify-content-between">
             <Button
               size="sm"

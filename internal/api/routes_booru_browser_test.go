@@ -27,9 +27,9 @@ func TestBooruBrowserSourcesAndReadOnlyValidation(t *testing.T) {
 		}
 	}
 	w = httptest.NewRecorder()
-	rs.Search(w, httptest.NewRequest("GET", "/booru-browser/search?source=pawchive&q=creator:patreon:42%20extra", nil))
+	rs.Search(w, httptest.NewRequest("GET", "/booru-browser/search?source=pawchive&q=creator:patreon:42%20ab", nil))
 	if w.Code != 400 || !strings.Contains(w.Body.String(), `"code":"invalid-query"`) {
-		t.Fatalf("invalid Pawchive creator expression not rejected before network use: %d %s", w.Code, w.Body.String())
+		t.Fatalf("short Pawchive creator-scoped keyword not rejected before network use: %d %s", w.Code, w.Body.String())
 	}
 	path := filepath.Join(rs.configPath, "booru-browser.json")
 	if err := os.WriteFile(path, []byte(`[{"id":"fixture","name":"Fixture","engine":"gelbooru","url":"https://board.example.org","apiKey":"private-secret","userID":"42"}]`), 0600); err != nil {

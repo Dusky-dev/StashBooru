@@ -122,13 +122,23 @@ func (c *Client) searchExtended(ctx context.Context, s Source, query string, pag
 		}
 	} else {
 		if strings.HasPrefix(query, "creator:") {
-			parts := strings.Split(query, ":")
+			// The first token identifies the creator; remaining words are a
+			// provider-side keyword search scoped to that creator's posts.
+			fields := strings.Fields(query)
+			parts := strings.Split(fields[0], ":")
 			if len(parts) != 3 || !safeProviderPart(parts[1]) || !safeProviderPart(parts[2]) {
-				return result, &Error{Code: "invalid-query", Message: "Use creator:service:id alone to browse a creator."}
+				return result, &Error{Code: "invalid-query", Message: "Use creator:service:id followed by optional search keywords."}
 			}
 			endpoint = "/api/v1/" + url.PathEscape(parts[1]) + "/user/" + url.PathEscape(parts[2])
 			if s.Engine == "kemono" {
 				endpoint += "/posts"
+			}
+			if len(fields) > 1 {
+				keywords := strings.TrimSpace(strings.TrimPrefix(query, fields[0]))
+				if len([]rune(keywords)) < 3 {
+					return result, &Error{Code: "invalid-query", Message: "Creator post searches need at least three characters after creator:service:id."}
+				}
+				params.Set("q", keywords)
 			}
 		} else if query != "*" && strings.TrimSpace(query) != "" {
 			if len([]rune(strings.TrimSpace(query))) < 3 {
@@ -171,7 +181,7 @@ func (c *Client) searchExtended(ctx context.Context, s Source, query string, pag
 		// not visible in a post's title/body; disclose that ambiguity.
 		if s.Engine == "pawchive" && params.Has("q") && len(rows) > 0 {
 			allVisibleMatches := true
-			needle := strings.ToLower(strings.TrimSpace(query))
+			needle := strings.ToLower(strings.TrimSpace(params.Get("q")))
 			for _, raw := range rows {
 				if !strings.Contains(strings.ToLower(text(raw["title"])+" "+text(raw["content"])), needle) {
 					allVisibleMatches = false
