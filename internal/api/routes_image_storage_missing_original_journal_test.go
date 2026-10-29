@@ -109,7 +109,7 @@ func TestPrivateScratchJournalRejectsSymlinkCorruptionAndOversize(t *testing.T) 
 	if err := missingOriginalWriteJournal(dir, r); err == nil {
 		t.Fatal("overwrote malformed journal")
 	}
-	if err := os.WriteFile(filename, []byte(strings.Repeat("a", missingOriginalJournalMax + 1)), 0600); err != nil {
+	if err := os.WriteFile(filename, []byte(strings.Repeat("a", missingOriginalJournalMax+1)), 0600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := missingOriginalReadJournal(dir); err == nil {
