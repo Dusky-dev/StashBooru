@@ -55,7 +55,7 @@ func missingOriginalValidateJournal(directory string, r missingOriginalJournalRe
 		!filepath.IsAbs(r.OutputPath) || filepath.Clean(r.OutputPath) != r.OutputPath ||
 		filepath.Dir(r.OutputPath) != filepath.Clean(directory) ||
 		!missingOriginalScratchName.MatchString(filepath.Base(r.OutputPath)) ||
-		r.StartedUnix <= 0 || r.UpdatedUnix < r.StartedUnix || r.UpdatedUnix > time.Now().Add(24 * time.Hour).Unix() ||
+		r.StartedUnix <= 0 || r.UpdatedUnix < r.StartedUnix || r.UpdatedUnix > time.Now().Add(24*time.Hour).Unix() ||
 		r.CanActivate || r.OriginalEvictionEnabled || r.DatabaseRecoveryVerified || r.CrashSafeRollbackVerified {
 		return fmt.Errorf("invalid or unsafe private scratch recovery journal")
 	}
