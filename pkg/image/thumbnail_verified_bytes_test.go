@@ -1,9 +1,18 @@
 package image
 
 import (
+	"bytes"
 	"errors"
+	stdimage "image"
+	"image/color"
+	"image/jpeg"
+	"image/png"
+	"os"
+	"os/exec"
 	"strings"
 	"testing"
+
+	"github.com/stashapp/stash/pkg/ffmpeg"
 )
 
 func TestVerifiedThumbnailBytesRejectUnsafeOrUnsupportedInputs(t *testing.T) {
@@ -47,5 +56,40 @@ func TestVerifiedThumbnailExplicitlyRejectsAnimatedWebP(t *testing.T) {
 	}
 	if _, err := encoder.GetThumbnailFromVerifiedBytes(animated, "webp", 320); err == nil {
 		t.Fatal("animated WEBP should never enter the static native encoder")
+	}
+}
+
+func TestVerifiedStaticPNGNativeThumbnailUsesEncoderWithoutCacheFiles(t *testing.T) {
+	ffmpegPath, err := exec.LookPath("ffmpeg")
+	if err != nil {
+		t.Skip("native ffmpeg not installed in this environment")
+	}
+	encoder := NewThumbnailEncoder(ffmpeg.NewEncoder(ffmpegPath), nil, ClipPreviewOptions{})
+	img := stdimage.NewNRGBA(stdimage.Rect(0, 0, 180, 96))
+	for y := 0; y < 96; y++ {
+		for x := 0; x < 180; x++ {
+			img.SetNRGBA(x, y, color.NRGBA{R: uint8(x), G: uint8(y), A: 255})
+		}
+	}
+	var original bytes.Buffer
+	if err := png.Encode(&original, img); err != nil {
+		t.Fatal(err)
+	}
+	cache := t.TempDir()
+	before, err := os.ReadDir(cache)
+	if err != nil {
+		t.Fatal(err)
+	}
+	thumb, err := encoder.GetThumbnailFromVerifiedBytes(original.Bytes(), "png", 96)
+	if err != nil {
+		t.Fatalf("native static PNG decoder rejected verified in-memory data: %v", err)
+	}
+	cfg, err := jpeg.DecodeConfig(bytes.NewReader(thumb))
+	if err != nil || cfg.Width <= 0 || cfg.Height <= 0 || cfg.Width > 96 || cfg.Height > 96 {
+		t.Fatalf("native thumbnail is not a bounded JPEG: %+v (%v)", cfg, err)
+	}
+	after, err := os.ReadDir(cache)
+	if err != nil || len(before) != 0 || len(after) != 0 {
+		t.Fatalf("in-memory thumbnail generated a cache file: %v", err)
 	}
 }
