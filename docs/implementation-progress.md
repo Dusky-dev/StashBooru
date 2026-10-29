@@ -1,5 +1,14 @@
 # StashBooru implementation progress
 
+## Verified original-format packed-shadow download parity — 2026-10-29
+
+- Branch `feat/packed-shadow-download-parity-20261029` based on merged PR #268 develop commit `c4110d07c8cbbcdf9bb2995d1f5caf0317d981d7`.
+- Adds GET `image/storage-shadow-download`, reusing full immutable archive receipt SHA-256, current catalogue membership, original-image hash and independent P12/P13 byte equality before delivering only verified bytes.
+- Download responses force attachment with sanitized server-generated filename, preserve the source image bytes and accept standard HTTP GET/Range/HEAD semantics; responses are no-store/nosniff with sandboxed CSP. Go regression tests cover source equality, byte ranges, safe filenames and rejection of client-supplied paths.
+- The side-by-side comparison UI adds explicit original-format download and an optional link to the preexisting native generated clip preview; the latter may be missing and is *not* a regenerated packed-source preview. No caches are written or source files replaced.
+- Pending current-head full CI and owner-library/browser validation. No native serving route replacement, packed activation, preview regeneration, original eviction, database/config restore or disk space saving.
+- Next: controlled isolated regenerated clip-preview codec compatibility (when supported) and independently verified crash-safe recovery after source disappearance, before any optimization switch.
+
 ## Isolated native packed-thumbnail compatibility probe — 2026-10-29
 
 - Feature branch `feat/packed-shadow-native-thumbnail-20261029` stacked on side-by-side comparison PR #267 at `435b8df22ee8d9b91bead969d7d78a2e781c9328`.
