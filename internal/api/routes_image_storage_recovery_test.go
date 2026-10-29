@@ -67,16 +67,16 @@ func TestNativeRecoveryProofRequiresSourceHashesAndExplicitFalseFlags(t *testing
 		},
 	}
 	proof := storageRecoveryProof{
-		Verified:         true,
-		ByteExact:        true,
-		Complete:         true,
-		SourcesRetained:  true,
-		Method:           candidate.Method,
-		Group:            candidate.Group,
-		Snapshot:         candidate.MediaBackupSnapshot,
-		RestoredFiles:    2,
-		OutputPath:       root,
-		RestoredSHA256:   candidate.SourceSHA256,
+		Verified:        true,
+		ByteExact:       true,
+		Complete:        true,
+		SourcesRetained: true,
+		Method:          candidate.Method,
+		Group:           candidate.Group,
+		Snapshot:        candidate.MediaBackupSnapshot,
+		RestoredFiles:   2,
+		OutputPath:      root,
+		RestoredSHA256:  candidate.SourceSHA256,
 	}
 	encode := func(value storageRecoveryProof) []byte {
 		t.Helper()
