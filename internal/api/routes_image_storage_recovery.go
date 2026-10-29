@@ -17,8 +17,9 @@ import (
 )
 
 type storageRecoveryRequest struct {
-	StackID      int  `json:"stackID"`
-	Acknowledged bool `json:"acknowledged"`
+	StackID      int    `json:"stackID"`
+	CandidateID  string `json:"candidateID"`
+	Acknowledged bool   `json:"acknowledged"`
 }
 
 type storageRecoveryStatus struct {
@@ -66,7 +67,7 @@ func storageRecoveryAvailable() bool {
 }
 
 func validateStorageRecoveryRequest(request storageRecoveryRequest) error {
-	if request.StackID < 1 || !request.Acknowledged {
+	if request.StackID < 1 || !request.Acknowledged || !storageCandidateIDPattern.MatchString(request.CandidateID) {
 		return fmt.Errorf("choose a positive stack ID and acknowledge isolated reconstruction")
 	}
 	return nil
@@ -207,23 +208,6 @@ func (rs imageRoutes) StorageRecoveryStart(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "a candidate reconstruction is already queued or running", http.StatusConflict)
 		return
 	}
-	storageCandidateMutex.Lock()
-	candidateBytes := append(json.RawMessage(nil), storageCandidateResult...)
-	storageCandidateMutex.Unlock()
-	var candidate storageCandidateProof
-	var receipt struct {
-		storageCandidateProof
-		ArchivePath string `json:"archivePath"`
-	}
-	if len(candidateBytes) == 0 || json.Unmarshal(candidateBytes, &receipt) != nil {
-		http.Error(w, "no verified candidate in this server session", http.StatusConflict)
-		return
-	}
-	candidate = receipt.storageCandidateProof
-	if receipt.Group != fmt.Sprintf("stack:%d", request.StackID) {
-		http.Error(w, "candidate is not for the selected Visual Stack", http.StatusConflict)
-		return
-	}
 	storageRecoveryResult = nil
 	storageRecoveryBusy = true
 	mgr := manager.GetInstance()
@@ -255,9 +239,21 @@ func (rs imageRoutes) StorageRecoveryStart(w http.ResponseWriter, r *http.Reques
 			if err != nil {
 				return err
 			}
-			if err := validateStorageRecoveryArchive(receipt.ArchivePath, directory); err != nil {
+			candidateBytes, summary, err := storageCandidateReadReceipt(directory, request.CandidateID, true)
+			if err != nil {
 				return err
 			}
+			if summary.Group != group.ID || summary.Group != fmt.Sprintf("stack:%d", request.StackID) {
+				return fmt.Errorf("saved candidate does not match requested Visual Stack")
+			}
+			var receipt struct {
+				storageCandidateProof
+				ArchivePath string `json:"archivePath"`
+			}
+			if err := json.Unmarshal(candidateBytes, &receipt); err != nil {
+				return err
+			}
+			candidate := receipt.storageCandidateProof
 			if _, err := validateStorageCandidateProof(candidateBytes, group,
 				receipt.MediaBackupSnapshot, receipt.Method, receipt.ArchivePath); err != nil {
 				return err
