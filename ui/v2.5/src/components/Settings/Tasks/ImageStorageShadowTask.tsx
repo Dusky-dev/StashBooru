@@ -14,6 +14,8 @@ interface Comparison {
   key: string;
   originalURL: string;
   shadowURL: string;
+  downloadURL: string;
+  clipPreviewURL: string;
   thumbnailURL: string;
   imageID: string;
   method: string;
@@ -78,6 +80,8 @@ export const ImageStorageShadowTask: React.FC = () => {
       method: candidate.method,
       originalURL: "image/" + imageID + "/image",
       shadowURL,
+      downloadURL: "image/storage-shadow-download?" + params,
+      clipPreviewURL: "image/" + imageID + "/preview",
       thumbnailURL: "image/storage-shadow-thumbnail?" + params,
     });
   }
@@ -194,7 +198,11 @@ export const ImageStorageShadowTask: React.FC = () => {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Open or download reconstructed bytes
+                Open reconstructed image
+              </a>
+              {" · "}
+              <a href={comparison.downloadURL}>
+                Download verified original-format bytes
               </a>
             </Col>
           </Row>
@@ -225,6 +233,19 @@ export const ImageStorageShadowTask: React.FC = () => {
             animation, animated WebP, JXL, and AVIF path-only decoding are not
             supported in this isolated mode. The regular thumbnail and generated
             preview routes remain unchanged.
+          </p>
+          <p className="text-muted small mt-2">
+            The normal clip preview is a separately generated cache file.
+            Packed-byte preview generation is not enabled here. The existing
+            native clip preview can be inspected without changing it:
+            {" "}
+            <a
+              href={comparison.clipPreviewURL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Open existing clip preview (may be missing)
+            </a>
           </p>
           <p className="text-muted small mt-2">
             A browser decoding failure can also mean an unsupported image format
