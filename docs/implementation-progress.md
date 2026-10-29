@@ -1,5 +1,13 @@
 # StashBooru implementation progress
 
+## Disconnected native P12/P13 shadow image serving proof — 2026-10-29
+
+- Feature branch `feat/image-packed-shadow-serving-20261029` stacked on restore readiness #264 head `460eb20fff9cb32e9bbc1e28c5357f17b988208b`.
+- Adds an explicit read-only GET `image/storage-shadow` endpoint and Settings → Tasks selection for a saved candidate and one native image ID. Request uses only numeric catalogue IDs and a validated server-generated candidate ID; no arbitrary file path.
+- Verifies candidate receipt and full archive SHA-256, current Visual Stack image membership, selected original hash, byte-exact P12/P13 reconstruction and byte-for-byte equality with existing original before delivering any image bytes. One active probe, timeout, 64 MiB output bound, no caching; unsafe MIME forced download.
+- Adds Python P12/P13 source-corruption/CLI regression tests, Go input/membership/MIME safety tests, dedicated workflow and docs. CI, production owner-library and browser visual check pending.
+- Existing live image/thumbnail/preview serving routes, catalogue paths and original files are untouched. No archive activation, missing-original serving, native rollback, database/config recovery or disk savings. Next: additional consumer compatibility and crash-recovery proof before any opt-in activation.
+
 ## Native read-only restore-readiness inspection — 2026-10-29
 
 - Branch `feat/image-restore-readiness-20261029`, based on `develop` `4b31302eb1ca71481c446d61127548a1ad904419` (after merging #262 and #263).
