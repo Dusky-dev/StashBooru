@@ -1,0 +1,31 @@
+name: Isolated missing-original P12 P13 rehearsal
+
+on:
+  pull_request:
+    paths:
+      - scripts/image_storage_missing_original_rehearsal.py
+      - scripts/tests/test_image_storage_missing_original_rehearsal.py
+      - .github/workflows/image-storage-missing-original-rehearsal.yml
+      - scripts/image_storage_candidate_reconstruct.py
+      - scripts/media_library_backup.py
+  push:
+    branches: [develop]
+    paths:
+      - scripts/image_storage_missing_original_rehearsal.py
+      - scripts/tests/test_image_storage_missing_original_rehearsal.py
+      - .github/workflows/image-storage-missing-original-rehearsal.yml
+
+jobs:
+  missing-originals:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install synthetic P12/P13 test dependencies
+        run: python -m pip install --disable-pip-version-check numpy pillow
+      - name: Compile isolated recovery code and synthetic tests
+        run: python -m py_compile scripts/image_storage_missing_original_rehearsal.py scripts/tests/test_image_storage_missing_original_rehearsal.py
+      - name: Verify missing originals reconstruct byte-exactly only into scratch
+        run: python -m unittest discover -s scripts/tests -p test_image_storage_missing_original_rehearsal.py -v
