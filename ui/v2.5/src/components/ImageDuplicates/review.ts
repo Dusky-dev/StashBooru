@@ -30,6 +30,22 @@ export interface SimilarImageGroup {
   preferredID: number;
 }
 
+/** Start a pair with distinct images, keeping the server suggestion as reference. */
+export function duplicateComparisonPair(
+  group: SimilarImageGroup,
+  clickedID: number
+): { referenceID: number; selectedID: number } {
+  const ids = group.members.map((member) => member.id);
+  const referenceID = ids.includes(group.preferredID)
+    ? group.preferredID
+    : ids[0];
+  const selectedID =
+    clickedID !== referenceID && ids.includes(clickedID)
+      ? clickedID
+      : (ids.find((id) => id !== referenceID) ?? referenceID);
+  return { referenceID, selectedID };
+}
+
 export function duplicateGroupKey(group: SimilarImageGroup): string {
   return [...group.ids].sort((a, b) => a - b).join(":");
 }

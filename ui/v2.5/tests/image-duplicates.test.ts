@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   defaultDuplicateMethod,
   duplicateClusterURL,
+  duplicateComparisonPair,
   duplicateGroupKey,
   duplicateReviewPlan,
   keptImageIDs,
@@ -66,4 +67,33 @@ test("related-content mode uses EVA02 without pHash distance", () => {
     duplicateClusterURL("embedding", "5", "0.95"),
     "image/visual-similarity/clusters?method=embedding&threshold=0.95&neighbors=20"
   );
+});
+
+test("comparison opens clicked variant against the suggested original", () => {
+  assert.deepEqual(duplicateComparisonPair(group, 2), {
+    referenceID: 5,
+    selectedID: 2,
+  });
+  assert.deepEqual(duplicateComparisonPair(group, 9), {
+    referenceID: 5,
+    selectedID: 9,
+  });
+});
+
+test("comparison never starts with the same image on both sides", () => {
+  assert.deepEqual(duplicateComparisonPair(group, 5), {
+    referenceID: 5,
+    selectedID: 9,
+  });
+  assert.deepEqual(duplicateComparisonPair(group, 999), {
+    referenceID: 5,
+    selectedID: 9,
+  });
+});
+
+test("comparison tolerates missing preferred ID without crashing", () => {
+  assert.deepEqual(duplicateComparisonPair({ ...group, preferredID: 777 }, 2), {
+    referenceID: 9,
+    selectedID: 2,
+  });
 });

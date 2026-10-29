@@ -1,0 +1,29 @@
+name: Non-destructive image pack proof
+
+on:
+  pull_request:
+    paths:
+      - scripts/image_storage_pack_proof.py
+      - scripts/tests/test_image_storage_pack_proof.py
+      - scripts/image_delta_storage.py
+      - scripts/gallery_block_storage.py
+      - .github/workflows/image-storage-pack-proof.yml
+      - docs/image-storage-pack-proof.md
+  push:
+    branches: [develop]
+    paths:
+      - scripts/image_storage_pack_proof.py
+      - scripts/tests/test_image_storage_pack_proof.py
+      - .github/workflows/image-storage-pack-proof.yml
+
+jobs:
+  pack-proof:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install image dependencies
+        run: sudo apt-get update && sudo apt-get install -y python3-pil python3-numpy
+      - name: Compile prototype and tests
+        run: python3 -m py_compile scripts/image_storage_pack_proof.py scripts/tests/test_image_storage_pack_proof.py
+      - name: Verify P12/P13 immutable originals, byte-exact reconstruction and crash recovery
+        run: python3 -m unittest discover -s scripts/tests -p test_image_storage_pack_proof.py -v

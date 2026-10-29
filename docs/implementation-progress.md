@@ -9,6 +9,15 @@
 - Strictly non-destructive: never write pack files, change image/media paths, modify the database or backup store, or enable optimization. A verified media snapshot is NOT a verified database/configuration backup, native serving, rollback or ongoing safety certificate. Repeat verification immediately before future pack publication.
 - Next: independent native candidate-pack stage **only** after #257 and #258 merge and satisfy CI; keep original media and existing recovery access unaffected.
 
+## Non-destructive P12/P13 byte-exact publication proof — 2026-10-29
+
+- Baseline develop `fe20b8a481a8f3b2411300fc51d22d4adb438ae3` (merged #256); branch `feat/non-destructive-image-pack-proof-20261029`.
+- Add offline `scripts/image_storage_pack_proof.py` for one explicit image-only group, with bounded P12/P13 byte-exact candidate packing into a separate destination; snapshots of original SHA-256, size and file identity guard source mutations.
+- Verify staged persisted candidate with the format's native reader and independently compare all reconstructed member bytes with original SHA-256 before atomic no-overwrite publication. Sources and metadata remain untouched; no activation or eviction.
+- Provide an explicit offline resume of verified staged candidates after interruption; unsafe/incomplete candidates cannot publish. Add synthetic tests for both formats, reconstruction, source immutability, corrupted staging, symlinks, no overwrite, interruption recovery, and CLI use.
+- Dedicated CI workflow runs the Python suite. No owner-library measurements, native serving/backup activation, backup verification, rollback or interrupted native job simulation claimed; checks pending.
+- Next: native catalogue-derived staging destination and verified backup requirement, plus production-context recovery, prior to any opt-in storage activation. Image-layering optimization stays disabled and original-media eviction is prohibited.
+
 ## Verified selected-image backup preflight — 2026-10-29
 
 - Baseline `develop`: `fe20b8a481a8f3b2411300fc51d22d4adb438ae3`; branch `feat/verified-image-backup-preflight-20261029`. Follow-up to #250/#251 backup functionality, #256 read-only batch estimates and the independent #257 pack proof.
@@ -16,6 +25,14 @@
 - Add nine synthetic regression checks and a dedicated CI workflow; checks and live-library verification pending. The script does not install Python models or write backup/archive data.
 - A matching **media** snapshot is not a verified database/config backup, persistent authorization, native serving, or runtime rollback. It does NOT allow pack activation, original replacement or eviction; all must remain disabled.
 - Next: native catalogue-derived source and output selection with re-verification immediately before a non-destructive pack, then end-to-end reconstruction and rollback. The Reconstruct Library action must not be hidden by the experimental setting.
+
+## Duplicate review comparison workspace PR #255 — 2026-10-29
+
+- Branch `feature/duplicate-review-comparison-workspace`; last reviewed `develop` baseline `5ed5e87777bbd73bc3942b4daab5469a07e3c4ab` (the old branch had diverged from develop; reconciled here).
+- Retains existing `/image-duplicates` removal confirmation; adds focused ReferenceComparison side-by-side/wipe/blink/difference, zoom/pan, reference/candidate choice, filmstrip, and Keep markers. No native media or database changes.
+- Original PR head `b091f3df66c5c59993b77948dd5140e529818395`: Go lint passed, UI tests (91) and UI lint/type checks passed; Build `generate` failed solely on four Biome formatting differences.
+- Repaired the exact CI-reported Biome diffs in `DuplicateComparison.tsx`, `ImageDuplicates.tsx`, `review.ts`, and `tests/image-duplicates.test.ts` through commits `095c172`, `dc501c7`, `cc24705`, `b8887cf`. Formatting checkpoint `b8887cf8cc777b5406c0fbbe11af896e401c4b8d`; subsequent CI is required after merging `develop` into this feature branch.
+- Codex review returned explicit quota exhaustion (no actionable findings). Real mounted-browser comparison, image codec playback and manual visual tests remain unverified. Only merge after final applicable CI passes.
 
 ## Batch Visual Stack savings estimates — 2026-10-28
 
