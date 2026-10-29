@@ -43,6 +43,7 @@ func TestVerifiedThumbnailExplicitlyRejectsAnimatedWebP(t *testing.T) {
 		'R', 'I', 'F', 'F', 22, 0, 0, 0, 'W', 'E', 'B', 'P',
 		'V', 'P', '8', 'X', 10, 0, 0, 0,
 		0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		'A', 'N', 'I', 'M', 0, 0, 0, 0,
 	}
 	if _, err := encoder.GetThumbnailFromVerifiedBytes(animated, "webp", 320); err == nil {
 		t.Fatal("animated WEBP should never enter the static native encoder")
