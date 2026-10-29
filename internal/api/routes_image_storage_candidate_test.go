@@ -107,7 +107,7 @@ func validStorageCandidateReport() map[string]any {
 		"sourceFiles":         2,
 		"sourceBytes":         100,
 		"archiveBytes":        4,
-		"sourceSHA256":	map[string]string{
+		"sourceSHA256": map[string]string{
 			"image:1": strings.Repeat("a", 64),
 			"image:2": strings.Repeat("b", 64),
 		},
