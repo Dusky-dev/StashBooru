@@ -54,15 +54,14 @@ func TestShadowDownloadPreservesVerifiedByteRangesAndHEAD(t *testing.T) {
 }
 
 func TestShadowDownloadNamesNeverIncludeSourceDirectoriesOrUnsafeExtensions(t *testing.T) {
-	cases := map[string]string{
-		"/some/untrusted secret/Name.JXL": ".jxl",
-		"/some/private/picture.avif":      ".avif",
-		"/some/private/script.html":       ".bin",
-		"/some/private/file.unknown":      ".bin",
-		"/some/private/contains.svg":      ".bin",
-		"/some/private/photo.JpEg":        ".jpeg",
-		"/some/private/image":             ".bin",
-	}
+	cases := make(map[string]string)
+	cases["/some/untrusted secret/Name.JXL"] = ".jxl"
+	cases["/some/private/picture.avif"] = ".avif"
+	cases["/some/private/script.html"] = ".bin"
+	cases["/some/private/file.unknown"] = ".bin"
+	cases["/some/private/contains.svg"] = ".bin"
+	cases["/some/private/photo.JpEg"] = ".jpeg"
+	cases["/some/private/image"] = ".bin"
 	for name, want := range cases {
 		if got := storageShadowDownloadExtension(name); got != want {
 			t.Fatalf("source %q: extension %q != %q", name, got, want)
