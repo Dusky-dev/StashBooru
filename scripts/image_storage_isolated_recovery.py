@@ -60,7 +60,10 @@ def source_media(record: dict, member: str) -> dict:
     label, rel = member.split(":", 1)
     if not media_backup.LABEL.fullmatch(label):
         raise ValueError("invalid media root label")
-    media_backup._relpath(rel)
+    try:
+        media_backup._relpath(rel)
+    except media_backup.BackupError as exc:
+        raise ValueError("unsafe saved media member path") from exc
     manifest = media_backup._load_manifest(Path(record["media"]["store"]), record["media"]["snapshot"])
     selection = [entry for entry in manifest["entries"] if entry["root"] == label and entry["path"] == rel]
     if len(selection) != 1:
