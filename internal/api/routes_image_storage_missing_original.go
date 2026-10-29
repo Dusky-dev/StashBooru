@@ -28,10 +28,12 @@ type missingOriginalRequest struct {
 }
 
 type missingOriginalStatus struct {
-	Available bool            `json:"available"`
-	Busy      bool            `json:"busy"`
-	JobID     int             `json:"jobID,omitempty"`
-	Result    json.RawMessage `json:"result,omitempty"`
+	Available    bool                          `json:"available"`
+	Busy         bool                          `json:"busy"`
+	JobID        int                           `json:"jobID,omitempty"`
+	Result       json.RawMessage               `json:"result,omitempty"`
+	Journal      *missingOriginalJournalStatus `json:"journal,omitempty"`
+	JournalError string                        `json:"journalError,omitempty"`
 }
 
 type missingOriginalReport struct {
@@ -163,12 +165,20 @@ func (rs imageRoutes) MissingOriginalRehearsalStatus(w http.ResponseWriter, r *h
 	id := missingOriginalJobID
 	result := append(json.RawMessage(nil), missingOriginalResult...)
 	missingOriginalMutex.Unlock()
-	writeVisualSimilarityJSON(w, missingOriginalStatus{
-		Available: missingOriginalAvailable(),
-		Busy:      busy,
-		JobID:     id,
-		Result:    result,
-	})
+	status := missingOriginalStatus{Available: missingOriginalAvailable(), Busy: busy, JobID: id, Result: result}
+	if cfg, err := readMediaBackupConfig(); err == nil {
+		roots := configuredBackupRoots()
+		if store, err := validateBackupDestination(cfg.Destination, roots); err == nil {
+			if directory, err := storageCandidateDirectory(manager.GetInstance().Config.GetConfigPath(), store, roots); err == nil {
+				if record, err := missingOriginalReadJournal(directory); err != nil {
+					status.JournalError = "Private recovery journal is unreadable; no persisted success may be trusted"
+				} else {
+					status.Journal = missingOriginalJournalForDisplay(record, busy)
+				}
+			}
+		}
+	}
+	writeVisualSimilarityJSON(w, status)
 }
 
 func (rs imageRoutes) MissingOriginalRehearsalStart(w http.ResponseWriter, r *http.Request) {
@@ -246,12 +256,29 @@ func (rs imageRoutes) MissingOriginalRehearsalStart(w http.ResponseWriter, r *ht
 				return err
 			}
 			output = strings.TrimSuffix(output, ".pack")
+			journal := missingOriginalNewJournal(request.CandidateID, summary.Snapshot, output)
+			if err := missingOriginalWriteJournal(directory, journal); err != nil {
+				return fmt.Errorf("cannot durably record recovery attempt before scratch writes: %w", err)
+			}
 			result, err := runMissingOriginalRecovery(ctx, directory, store, request.CandidateID,
 				summary.Snapshot, output, candidate.SourceSHA256)
 			if err != nil {
+				missingOriginalJournalFail(&journal)
+				if journalErr := missingOriginalWriteJournal(directory, journal); journalErr != nil {
+					return fmt.Errorf("scratch recovery failed: %v; failed to journal error: %w", err, journalErr)
+				}
 				return err
 			}
 			progress.SetProcessed(2)
+			if job.IsCancelled(ctx) {
+				// Leave running in the journal: the scratch result must be
+				// independently inspected after an interrupted operation.
+				return nil
+			}
+			missingOriginalJournalFinish(&journal, result, len(candidate.SourceSHA256))
+			if err := missingOriginalWriteJournal(directory, journal); err != nil {
+				return fmt.Errorf("scratch completed but durable recovery journal failed: %w", err)
+			}
 			if job.IsCancelled(ctx) {
 				return nil
 			}

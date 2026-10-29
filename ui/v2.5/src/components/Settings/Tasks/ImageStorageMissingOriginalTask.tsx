@@ -28,10 +28,22 @@ interface RecoveryProof {
   restoredFiles: number;
   outputPath: string;
 }
+interface RecoveryJournal {
+  candidateID: string;
+  outputPath: string;
+  state: string;
+  updatedUnix: number;
+  restoredFiles: number;
+  requiresReaudit: boolean;
+  canActivate: boolean;
+  evictionEnabled: boolean;
+}
 interface RecoveryStatus {
   available: boolean;
   busy: boolean;
   result?: RecoveryProof;
+  journal?: RecoveryJournal;
+  journalError?: string;
 }
 
 async function readJSON<T>(response: Response): Promise<T> {
@@ -199,6 +211,27 @@ export const ImageStorageMissingOriginalTask: React.FC = () => {
         <p role="status" className="small mt-2">
           Reconstructing from saved archive and verifying backup objects…
         </p>
+      )}
+      {status?.journalError && (
+        <Alert variant="danger" role="alert" className="mt-3">
+          {status.journalError}. No saved recovery state is trusted.
+        </Alert>
+      )}
+      {status?.journal && (
+        <Alert variant="warning" className="mt-3" role="status">
+          Latest persisted recovery: <strong>{status.journal.state}</strong> for{" "}
+          {status.journal.candidateID}.{" "}
+          {status.journal.state === "interrupted_or_unconfirmed"
+            ? "The previous job may have stopped mid-extraction. Inspect scratch output before any manual action."
+            : status.journal.state === "scratch_complete"
+              ? "A previous run reported successful scratch reconstruction; the saved result has not been independently re-verified after restart."
+              : "This is a scratch-only job record, not live restoration."}
+          <code className="d-block text-break">
+            {status.journal.outputPath}
+          </code>
+          Reaudit is always required. Live activation and original-file deletion
+          remain disabled.
+        </Alert>
       )}
       {verified && (
         <Alert variant="info" className="mt-3">
