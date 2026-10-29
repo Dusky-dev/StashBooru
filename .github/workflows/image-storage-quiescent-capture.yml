@@ -1,0 +1,29 @@
+name: Experimental operator-quiesced backup capture
+
+on:
+  pull_request:
+    paths:
+      - scripts/image_storage_quiescent_capture.py
+      - scripts/tests/test_image_storage_quiescent_capture.py
+      - scripts/image_storage_backup_set.py
+      - scripts/image_storage_library_coverage.py
+      - scripts/media_library_backup.py
+      - .github/workflows/image-storage-quiescent-capture.yml
+  push:
+    branches: [develop]
+    paths:
+      - scripts/image_storage_quiescent_capture.py
+      - scripts/tests/test_image_storage_quiescent_capture.py
+
+jobs:
+  quiescent-capture:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Compile capture and tests
+        run: python -m py_compile scripts/image_storage_quiescent_capture.py scripts/tests/test_image_storage_quiescent_capture.py
+      - name: Verify SQLite WAL, media changes, interruption and safety flags
+        run: python -m unittest discover -s scripts/tests -p test_image_storage_quiescent_capture.py -v
