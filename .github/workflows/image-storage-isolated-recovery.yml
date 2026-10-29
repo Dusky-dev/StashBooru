@@ -1,0 +1,29 @@
+name: Experimental isolated DB config and media recovery rehearsal
+
+on:
+  pull_request:
+    paths:
+      - scripts/image_storage_isolated_recovery.py
+      - scripts/tests/test_image_storage_isolated_recovery.py
+      - scripts/image_storage_backup_set.py
+      - scripts/image_storage_db_config_audit.py
+      - scripts/media_library_backup.py
+      - .github/workflows/image-storage-isolated-recovery.yml
+  push:
+    branches: [develop]
+    paths:
+      - scripts/image_storage_isolated_recovery.py
+      - scripts/tests/test_image_storage_isolated_recovery.py
+
+jobs:
+  rehearsal:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Verify syntax
+        run: python -m py_compile scripts/image_storage_isolated_recovery.py scripts/tests/test_image_storage_isolated_recovery.py
+      - name: Check isolated restoration and interruption safety
+        run: python -m unittest discover -s scripts/tests -p test_image_storage_isolated_recovery.py -v
