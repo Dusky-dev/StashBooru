@@ -95,7 +95,8 @@ export const ImageStorageRestorePlanTask: React.FC = () => {
       });
       const job = await readJSON<{ jobID: number }>(response);
       setMessage(
-        "Read-only restore inspection queued as job #" + job.jobID +
+        "Read-only restore inspection queued as job #" +
+          job.jobID +
           ". Check the job queue and refresh the report."
       );
       await refresh();
@@ -144,7 +145,9 @@ export const ImageStorageRestorePlanTask: React.FC = () => {
         </Alert>
       )}
       <Form.Group>
-        <Form.Label htmlFor="restore-plan-candidate">Saved candidate</Form.Label>
+        <Form.Label htmlFor="restore-plan-candidate">
+          Saved candidate
+        </Form.Label>
         <Form.Control
           as="select"
           id="restore-plan-candidate"
@@ -194,8 +197,8 @@ export const ImageStorageRestorePlanTask: React.FC = () => {
             The archive is still experimental and originals remain active.
           </Alert>
           <p>
-            Original bytes: {report.sourceBytes}. Candidate bytes:
-            {" "}{report.archiveBytes}.
+            Original bytes: {report.sourceBytes}. Candidate bytes:{" "}
+            {report.archiveBytes}.
           </p>
           <strong>Remaining blockers</strong>
           <ul>
