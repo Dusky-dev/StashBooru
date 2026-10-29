@@ -40,9 +40,10 @@ func TestShadowDownloadPreservesVerifiedByteRangesAndHEAD(t *testing.T) {
 					return
 				}
 				want := original
-				if rangeHeader == "bytes=0-31" {
+				switch rangeHeader {
+				case "bytes=0-31":
 					want = original[:32]
-				} else if rangeHeader == "bytes=8-" {
+				case "bytes=8-":
 					want = original[8:]
 				}
 				if !bytes.Equal(recorder.Body.Bytes(), want) {
