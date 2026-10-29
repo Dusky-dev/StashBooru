@@ -169,10 +169,10 @@ export const ImageStorageShadowTask: React.FC = () => {
     <section aria-labelledby="image-storage-shadow-title">
       <h2 id="image-storage-shadow-title">Compare packed shadow image</h2>
       <p>
-        Browse the verified image members of a saved P12/P13 candidate.
-        Compare the original and byte-exact archived reconstruction side by side.
-        Each shadow request independently rechecks the candidate and current
-        original before returning reconstructed bytes.
+        Browse the verified image members of a saved P12/P13 candidate. Compare
+        the original and byte-exact archived reconstruction side by side. Each
+        shadow request independently rechecks the candidate and current original
+        before returning reconstructed bytes.
       </p>
       <Alert variant="warning">
         Experimental visual comparison only. Matching images on screen do not
