@@ -1,0 +1,26 @@
+name: Experimental packed-image scratch recovery audit
+
+on:
+  pull_request:
+    paths:
+      - scripts/image_storage_scratch_audit.py
+      - scripts/tests/test_image_storage_scratch_audit.py
+      - .github/workflows/image-storage-scratch-audit.yml
+  push:
+    branches: [develop]
+    paths:
+      - scripts/image_storage_scratch_audit.py
+      - scripts/tests/test_image_storage_scratch_audit.py
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Compile stdlib audit and regression suite
+        run: python -m py_compile scripts/image_storage_scratch_audit.py scripts/tests/test_image_storage_scratch_audit.py
+      - name: Verify complete, missing, interrupted and corrupted scratch handling
+        run: python -m unittest discover -s scripts/tests -p test_image_storage_scratch_audit.py -v
