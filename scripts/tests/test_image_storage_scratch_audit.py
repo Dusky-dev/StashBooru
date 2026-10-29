@@ -89,6 +89,19 @@ class ScratchAuditTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             audit.audit(self.receipt, self.output)
 
+    def test_portable_recovered_filename_with_spaces(self):
+        self.complete()
+        old = self.output / "image-171.png"
+        replacement = self.output / "0000-image with spaces.png"
+        old.rename(replacement)
+        marker = self.output / "extraction.json"
+        record = json.loads(marker.read_text())
+        record["members"][0]["name"] = replacement.name
+        marker.write_text(json.dumps(record))
+        result = audit.audit(self.receipt, self.output)
+        self.assertEqual(result["state"], "complete_verified")
+        self.assertEqual(result["scratchFilesVerified"], 2)
+
     def test_symlink_in_scratch_refused(self):
         self.complete()
         (self.output / "image-172.png").unlink()
