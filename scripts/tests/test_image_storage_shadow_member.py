@@ -25,6 +25,8 @@ class ShadowImageProofTests(unittest.TestCase):
         Image.fromarray(pixels).save(self.a)
         pixels[10:16, 4:9, 2] ^= 25
         Image.fromarray(pixels).save(self.b)
+        self.archives = root / "candidates"
+        self.archives.mkdir()
         self.group = {
             "id": "stack:51",
             "representative": "image:511",
@@ -35,7 +37,7 @@ class ShadowImageProofTests(unittest.TestCase):
         }
 
     def candidate(self, method):
-        archive = self.a.parent / (method + ".pack")
+        archive = self.archives / (method + ".pack")
         report = proof.pack_proof(self.group, method, archive, 0, 0)
         return archive, report
 
