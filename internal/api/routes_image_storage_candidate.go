@@ -261,9 +261,9 @@ func (rs imageRoutes) StorageCandidateStatus(w http.ResponseWriter, r *http.Requ
 		}
 	}
 	writeVisualSimilarityJSON(w, storageCandidateStatus{
-		Available: storageCandidateScriptsAvailable(),
-		Busy:      busy,
-		JobID:     id,
+		Available:  storageCandidateScriptsAvailable(),
+		Busy:       busy,
+		JobID:      id,
 		Result:     report,
 		Candidates: saved,
 	})
