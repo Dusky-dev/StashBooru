@@ -58,8 +58,8 @@ export const ImageStorageShadowTask: React.FC = () => {
       <h2 id="image-storage-shadow-title">Compare packed shadow image</h2>
       <p>
         Open a single P12/P13 archived image for byte-exact comparison against
-        its still-active original. The archive is rehashed and the original
-        is read again before any bytes are delivered.
+        its still-active original. The archive is rehashed and the original is
+        read again before any bytes are delivered.
       </p>
       <Alert variant="warning">
         Experimental, on-demand comparison only. This does not enable packed
@@ -87,7 +87,9 @@ export const ImageStorageShadowTask: React.FC = () => {
         </Form.Control>
       </Form.Group>
       <Form.Group>
-        <Form.Label htmlFor="shadow-image-id">Image ID in this stack</Form.Label>
+        <Form.Label htmlFor="shadow-image-id">
+          Image ID in this stack
+        </Form.Label>
         <Form.Control
           id="shadow-image-id"
           inputMode="numeric"
