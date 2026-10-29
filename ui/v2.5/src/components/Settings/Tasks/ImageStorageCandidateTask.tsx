@@ -54,12 +54,13 @@ export const ImageStorageCandidateTask: React.FC = () => {
       fetch("image/storage-candidate", { signal }).then(
         readResponse<CandidateStatus>
       ),
-      fetch("image/media-backup", { signal }).then(
-        readResponse<BackupStatus>
-      ),
+      fetch("image/media-backup", { signal }).then(readResponse<BackupStatus>),
     ]);
     if (signal?.aborted) return;
-    if (typeof pack?.available !== "boolean" || !Array.isArray(media?.snapshots))
+    if (
+      typeof pack?.available !== "boolean" ||
+      !Array.isArray(media?.snapshots)
+    )
       throw new Error("Native candidate packing API is unavailable.");
     setStatus(pack);
     setBackup(media);
@@ -95,8 +96,11 @@ export const ImageStorageCandidateTask: React.FC = () => {
         }),
       });
       const result = await readResponse<{ jobID: number }>(response);
-      setMessage("Queued experimental candidate job #" + result.jobID +
-        ". Follow the job queue, then refresh this report.");
+      setMessage(
+        "Queued experimental candidate job #" +
+          result.jobID +
+          ". Follow the job queue, then refresh this report."
+      );
       await refresh();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
@@ -247,7 +251,8 @@ export const ImageStorageCandidateTask: React.FC = () => {
           <h3>Verified candidate: {report.group}</h3>
           <p>
             {report.sourceFiles} originals ({formatSize(report.sourceBytes)})
-            plus one {report.method} archive ({formatSize(report.archiveBytes)}).
+            plus one {report.method} archive ({formatSize(report.archiveBytes)}
+            ).
           </p>
           <p className="small text-muted">
             Media snapshot: {report.mediaBackupSnapshot}. Candidate archive:
@@ -255,8 +260,8 @@ export const ImageStorageCandidateTask: React.FC = () => {
           </p>
           <Alert variant="info">
             The candidate is not activated. Offline proof readers can
-            reconstruct a separate copy, but native serving and deletion
-            remain disabled.
+            reconstruct a separate copy, but native serving and deletion remain
+            disabled.
           </Alert>
         </div>
       )}
