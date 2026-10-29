@@ -106,7 +106,7 @@ func missingOriginalReadJournal(directory string) (*missingOriginalJournalRecord
 	if err != nil || !os.SameFile(info, opened) {
 		return nil, fmt.Errorf("private recovery journal changed while opening")
 	}
-	data, err := io.ReadAll(io.LimitReader(f, missingOriginalJournalMax + 1))
+	data, err := io.ReadAll(io.LimitReader(f, missingOriginalJournalMax+1))
 	if err != nil || len(data) > missingOriginalJournalMax {
 		return nil, fmt.Errorf("failed to read bounded recovery journal")
 	}
