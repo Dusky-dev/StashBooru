@@ -79,3 +79,39 @@ preflight does **not** turn on native routing and never grants permission to
 delete originals. If any check fails, the endpoint returns an error and normal
 original-file serving remains untouched. A maximum four-minute request budget
 is enforced, with a shared slot limiting concurrent expensive shadow checks.
+
+### Explicit prepared-media canary (originals always retained)
+
+After a successful read-only preflight, Settings → Tasks → Compare packed shadow
+image offers an **Open prepared canary** link for a member of the selected
+candidate. This calls `GET /image/{numericImageId}/storage-canary` with no
+query parameters. It is a **separate explicit URL**: ordinary image, thumbnail,
+preview, download and image-detail routes are never redirected to packed
+storage by this feature.
+
+Only one privately saved `prepared` selection is read on the server. The
+selected image must belong to its current Visual Stack. The server revalidates
+the private intent and candidate receipt/archive/catalogue evidence, checks
+that the reconstruction script is a regular file, and regenerates the exact
+original bytes from the P12/P13 archive while independently comparing them
+with the retained original. The response header
+`X-Stash-Shadow-Source: packed-verified` indicates a successful canary read.
+
+If the candidate cannot be reconstructed or verified, or the shared shadow
+verification slot is busy, the canary route serves the **same retained original
+image** as the default image route and marks the response
+`X-Stash-Shadow-Source: original-fallback`. An absent/disarmed/unsafe intent,
+invalid ID, non-member, unknown query parameter or unavailable original does
+**not** authorize packed data, new sources or eviction and may fail closed
+with a 400, 404, 409 or native file-serving error. Results use
+`Cache-Control: no-store`, and the normal image route is unaffected.
+
+The canary is a point-in-time probe only. The saved `prepared` intent persists
+over an ordinary application restart but never causes automatic serving. Any
+`disarm` revokes new explicit canary requests (409). The isolated end-to-end
+test boots, verifies packed bytes, range requests and an unchanged normal
+route, changes a synthetic retained original to force source fallback, then
+restores it, restarts the disposable server and confirms disarm refusal.
+No source-file eviction, database rewrites, archive activation or successful
+coherent rollback are implied. Cross-process concurrent writers are not
+covered by the process-local selection lock.
