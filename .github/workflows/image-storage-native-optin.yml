@@ -8,6 +8,7 @@ on:
       - internal/api/routes_image_storage_native_optin_test.go
       - internal/api/routes_image_storage_shadow.go
       - ui/v2.5/src/components/Settings/Tasks/ImageStorageShadowTask.tsx
+      - ui/v2.5/src/components/Images/ImageDetails/Image.tsx
       - .github/workflows/image-storage-native-optin.yml
   push:
     branches: [develop]
