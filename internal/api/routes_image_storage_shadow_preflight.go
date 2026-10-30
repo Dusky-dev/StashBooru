@@ -55,7 +55,7 @@ func makeShadowPreflightReport(record shadowSelectionRecord, members int) (shado
 		AllOriginalBytesVerified: true,
 		MembersVerified:          members,
 		OriginalsAuthoritative:   true,
-		Blockers:                 []string{
+		Blockers: []string{
 			"Verification is point-in-time and is not a durable activation authorization",
 			"Coherent database/configuration recovery and crash-safe rollback are not proven",
 			"Automatic native packed serving and original-file eviction remain disabled",
