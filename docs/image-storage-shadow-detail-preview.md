@@ -5,11 +5,13 @@ Settings → Tasks → Compare packed shadow image now offers
 image. The link opens the normal `/images/:id` detail page with
 `storageShadowCandidate` and `storageShadowStack` query arguments.
 
-The viewer only uses the existing `/image/storage-shadow` endpoint for
-an explicitly requested preview with a structurally valid candidate ID,
-stack ID, and raster-image ID. The endpoint, not the browser, performs the
-authoritative saved candidate archive SHA-256 verification and compares the
-reconstructed bytes against the current native original. A failed shadow
+The viewer now invokes the **normal** `/image/{id}/image` endpoint with
+explicit `storageShadowCandidate` and `storageShadowStack` query arguments.
+For these requests only, the normal route delegates to the existing verified
+shadow reader. The backend, not the browser, performs the authoritative
+saved candidate archive SHA-256 verification and compares the reconstructed
+bytes against the current native original. Normal image requests without
+these query arguments remain unchanged. A failed shadow
 fetch falls back to the unchanged normal image URL. Users can click
 **Return to original image** to remove the opt-in query.
 
