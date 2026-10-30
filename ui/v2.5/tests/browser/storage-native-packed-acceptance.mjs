@@ -322,7 +322,7 @@ try {
   ]);
   for (const [name, data] of originals)
     await writeFile(join(media, name), data);
-  const url = await start();
+  let url = await start();
   await onboarding(url);
   const all = await gql(
     url,
@@ -487,6 +487,84 @@ try {
   ])
     assert.equal(verifiedAgain[flag], false, flag + " must remain false");
 
+  // Canary uses only the saved prepared state; it is never automatic.
+  // A readable original remains the fallback for an invalid candidate.
+  const canaryURL = (member) => url + "/image/" + member.id + "/storage-canary";
+  for (const member of members) {
+    const response = await fetch(canaryURL(member));
+    assert.equal(response.status, 200);
+    assert.equal(
+      response.headers.get("x-stash-shadow-source"),
+      "packed-verified"
+    );
+    assert.equal(response.headers.get("cache-control"), "no-store");
+    assert.deepEqual(
+      Buffer.from(await response.arrayBuffer()),
+      originals.get(member.name)
+    );
+  }
+  const partial = await fetch(canaryURL(members[0]), {
+    headers: { Range: "bytes=5-79" },
+  });
+  assert.equal(partial.status, 206);
+  assert.deepEqual(
+    Buffer.from(await partial.arrayBuffer()),
+    originals.get(members[0].name).subarray(5, 80)
+  );
+  const injection = await fetch(canaryURL(members[0]) + "?archive=/etc/shadow");
+  assert.equal(injection.status, 400);
+  const modifiedOriginal = Buffer.from(
+    "isolated source no longer matches pack"
+  );
+  await writeFile(join(media, members[0].name), modifiedOriginal);
+  const fallback = await fetch(canaryURL(members[0]));
+  assert.equal(fallback.status, 200);
+  assert.equal(
+    fallback.headers.get("x-stash-shadow-source"),
+    "original-fallback"
+  );
+  assert.deepEqual(Buffer.from(await fallback.arrayBuffer()), modifiedOriginal);
+  await writeFile(join(media, members[0].name), originals.get(members[0].name));
+  assert.equal(
+    (await fetch(canaryURL(members[0]))).headers.get("x-stash-shadow-source"),
+    "packed-verified"
+  );
+  // Comparison images themselves use the shared verification slot, so verify
+  // the canary API before opening these concurrent UI previews.
+  await page
+    .getByRole("button", {
+      name: "Compare original and packed reconstruction",
+    })
+    .click();
+  const canaryLink = page.getByRole("link", {
+    name: "Open prepared canary (verified archive or original fallback)",
+  });
+  assert.equal(
+    await canaryLink.getAttribute("href"),
+    "image/" + members[0].id + "/storage-canary"
+  );
+  // A normal server restart must not activate archived routing. The saved
+  // prepared selection is reloaded and freshly verified after restart.
+  const stopped = once(server, "exit");
+  server.kill("SIGTERM");
+  await stopped;
+  logs?.end();
+  url = await start();
+  const restarted = await get(url, "/image/storage-shadow-selection");
+  assert.equal(restarted.State, "prepared");
+  assert.equal(restarted.Revision, prepared.Revision);
+  assert.equal(restarted.NativeRoutingEnabled, false);
+  assert.equal(
+    (await fetch(canaryURL(members[0]))).headers.get("x-stash-shadow-source"),
+    "packed-verified"
+  );
+  // Reopen Settings on the replacement isolated process for disarm coverage.
+  await page.goto(url + "/settings?tab=library", {
+    waitUntil: "domcontentloaded",
+  });
+  await page.getByRole("tab", { name: "Tasks", exact: true }).click();
+  await page.locator("#tasks-media > summary").click();
+
   for (const key of [
     "NativeRoutingEnabled",
     "CanActivate",
@@ -510,6 +588,8 @@ try {
   assert.equal(disarmed.NativeRoutingEnabled, false);
   assert.equal(disarmed.OriginalEvictionEnabled, false);
   assert.equal(disarmed.Revision, prepared.Revision + 1);
+  const revokedCanary = await fetch(canaryURL(members[0]));
+  assert.equal(revokedCanary.status, 409);
 
   const disarmedPreflight = await fetch(
     url + "/image/storage-shadow-preflight",
