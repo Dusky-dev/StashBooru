@@ -90,6 +90,17 @@ func (rs imageRoutes) StorageShadowCanary(w http.ResponseWriter, r *http.Request
 		http.Error(w, "no safe prepared canary selection", http.StatusConflict)
 		return
 	}
+	// This endpoint is for members of the prepared Visual Stack only.
+	// A different image must not be mistaken for a failed archive fallback.
+	group, err := estimateStackSources(r.Context(), selected.StackID)
+	if err != nil {
+		http.Error(w, "prepared Visual Stack unavailable", http.StatusConflict)
+		return
+	}
+	if _, err := storageShadowMember(group, fmt.Sprintf("image:%d", imageID)); err != nil {
+		http.Error(w, "image is not an available member of the prepared candidate", http.StatusConflict)
+		return
+	}
 	fallback := func() {
 		w.Header().Set("X-Stash-Shadow-Source", "original-fallback")
 		rs.serveImage(w, r, image, false)
