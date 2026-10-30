@@ -451,6 +451,42 @@ try {
   assert.equal(prepared.CandidateID, created[0].id);
   assert.equal(prepared.EvidenceVerifiedNow, true);
   assert.equal(prepared.OriginalsAuthoritative, true);
+  // The new endpoint does not accept paths or arbitrary member IDs. It
+  // verifies every saved member against the retained original and backup.
+  const withoutAcknowledgement = await fetch(
+    url + "/image/storage-shadow-preflight",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ Acknowledged: false }),
+    }
+  );
+  assert.equal(withoutAcknowledgement.status, 400);
+  await page.locator("#shadow-intent-acknowledge").check();
+  await page
+    .getByRole("button", {
+      name: "Verify prepared candidate bytes (read-only)",
+    })
+    .click();
+  await page
+    .getByText("Verified 2 packed images byte-for-byte", { exact: false })
+    .waitFor({ timeout: 90000 });
+  const verifiedAgain = await post(url, "/image/storage-shadow-preflight", {
+    Acknowledged: true,
+  });
+  assert.equal(verifiedAgain.ReadOnly, true);
+  assert.equal(verifiedAgain.MembersVerified, 2);
+  assert.equal(verifiedAgain.MediaBackupVerified, true);
+  assert.equal(verifiedAgain.AllOriginalBytesVerified, true);
+  assert.equal(verifiedAgain.OriginalsAuthoritative, true);
+  for (const flag of [
+    "NativeRoutingEnabled",
+    "CanActivate",
+    "OriginalEvictionEnabled",
+    "TransactionalRollbackVerified",
+  ])
+    assert.equal(verifiedAgain[flag], false, flag + " must remain false");
+
   for (const key of [
     "NativeRoutingEnabled",
     "CanActivate",
@@ -474,6 +510,16 @@ try {
   assert.equal(disarmed.NativeRoutingEnabled, false);
   assert.equal(disarmed.OriginalEvictionEnabled, false);
   assert.equal(disarmed.Revision, prepared.Revision + 1);
+
+  const disarmedPreflight = await fetch(
+    url + "/image/storage-shadow-preflight",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ Acknowledged: true }),
+    }
+  );
+  assert.equal(disarmedPreflight.status, 409);
 
   const selected = members[0];
   const tamperURL =
