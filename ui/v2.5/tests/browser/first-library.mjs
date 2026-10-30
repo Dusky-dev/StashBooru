@@ -246,6 +246,35 @@ async function check(viewport, label) {
       .first()
       .getAttribute("href");
     const imageID = new URL(href, url).pathname.split("/").pop();
+    // A real built instance must leave ordinary native media byte-for-byte
+    // unchanged. Malformed/unknown opt-in requests fail closed, never
+    // returning a different archived image or replacing the original.
+    const nativeImageURL = new URL(`image/${imageID}/image`, url + "/");
+    const expectedNative = Buffer.from(png, "base64");
+    const ordinaryImageResponse = await fetch(nativeImageURL);
+    assert.equal(ordinaryImageResponse.status, 200);
+    assert.deepEqual(
+      Buffer.from(await ordinaryImageResponse.arrayBuffer()),
+      expectedNative
+    );
+    const ordinaryThumbnailResponse = await fetch(
+      new URL(`image/${imageID}/thumbnail`, url + "/")
+    );
+    assert.equal(ordinaryThumbnailResponse.status, 200);
+    assert.ok((await ordinaryThumbnailResponse.arrayBuffer()).byteLength > 0);
+    const invalidNative = await fetch(
+      `${nativeImageURL}?storageShadowCandidate=stack-51-delta-0123456789abcdef01234567`
+    );
+    assert.equal(invalidNative.status, 400);
+    const missingCandidate = await fetch(
+      `${nativeImageURL}?storageShadowCandidate=stack-51-delta-0123456789abcdef01234567&storageShadowStack=51`
+    );
+    assert.equal(missingCandidate.status, 409);
+    const stillOriginal = await fetch(nativeImageURL);
+    assert.deepEqual(
+      Buffer.from(await stillOriginal.arrayBuffer()),
+      expectedNative
+    );
     await image.locator('a[href^="/images/"]').first().click();
     await page.locator(".Lightbox-footer-center .image-link").click();
     await page.getByRole("tab", { name: "Edit", exact: true }).click();
