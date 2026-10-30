@@ -23,5 +23,7 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+      - name: Prepare minimal embedded UI fixture for API unit tests
+        run: mkdir -p ui/v2.5/build && printf 'unit-test-only' > ui/v2.5/build/index.html
       - name: Verify strict native path opt-in and shadow delegation
         run: go test ./internal/api -run '^TestStorageShadowNativeOptIn' -count=1
