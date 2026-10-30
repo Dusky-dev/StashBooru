@@ -42,11 +42,6 @@ def _safe_output(receipt: Path, recovered: Path, images: Path, all_paths: Path,
     for source in (receipt, recovered, images, all_paths):
         if backup_set._under(output, source) or backup_set._under(source, output):
             raise ValueError("checkpoint overlaps a saved input or earlier scratch output")
-        # A private parent must not be nested in previously reconstructed media.
-        if source.is_dir() and (
-                backup_set._under(output.parent, source) or
-                backup_set._under(source, output.parent)):
-            raise ValueError("checkpoint parent overlaps an earlier scratch output")
     if fresh and (output.exists() or output.is_symlink()):
         raise ValueError("checkpoint must be created at a new output path")
 
