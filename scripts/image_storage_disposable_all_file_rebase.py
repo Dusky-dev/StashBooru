@@ -9,6 +9,7 @@ Does not start StashBooru, read original media, or modify live databases.
 from __future__ import annotations
 
 import argparse
+from contextlib import closing
 import json
 import os
 from pathlib import Path
@@ -58,7 +59,7 @@ def _mapped_folders(original_db: Path, image_db: Path, manifest: dict,
         index[key] = entry
     folders = {}
     file_count, matched_entries = 0, set()
-    with _readonly(original_db) as source, _readonly(image_db) as images:
+    with closing(_readonly(original_db)) as source, closing(_readonly(image_db)) as images:
         old = source.execute("SELECT id, path, zip_file_id FROM folders ORDER BY id").fetchall()
         current = images.execute("SELECT id, path, zip_file_id FROM folders ORDER BY id").fetchall()
         if not old or len(old) != len(current):
@@ -176,7 +177,7 @@ def _safe_output(output: Path, record: dict, recovered: Path, image_output: Path
 
 
 def _check_rebased(path: Path, mapping: dict[int, str], expected_files: int):
-    with _readonly(path) as conn:
+    with closing(_readonly(path)) as conn:
         for folder_id, new_path in mapping.items():
             row = conn.execute("SELECT path FROM folders WHERE id=?", (folder_id,)).fetchall()
             if row != [(new_path,)]:
