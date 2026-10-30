@@ -1,0 +1,26 @@
+name: Temporary packed acceptance formatter
+
+on:
+  pull_request:
+    paths:
+      - ui/v2.5/tests/browser/storage-native-packed-acceptance.mjs
+      - .github/workflows/temp-format-native-e2e.yml
+
+jobs:
+  format-preview:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+      - name: Install isolated locked Biome version
+        run: npm install --prefix "$RUNNER_TEMP/storage-biome" --no-audit --no-fund @biomejs/biome@2.5.0
+      - name: Emit formatted acceptance script for patch application
+        working-directory: ui/v2.5
+        run: |
+          "$RUNNER_TEMP/storage-biome/node_modules/.bin/biome" format --write tests/browser/storage-native-packed-acceptance.mjs
+          echo FORMAT_BEGIN
+          base64 -w 0 tests/browser/storage-native-packed-acceptance.mjs
+          echo
+          echo FORMAT_END
