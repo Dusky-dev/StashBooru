@@ -19,20 +19,20 @@ type shadowPreflightRequest struct {
 }
 
 type shadowPreflightReport struct {
-	ReadOnly                     bool
-	CandidateID                  string
-	StackID                      int
-	Revision                     uint64
-	MediaBackupVerified          bool
-	ArchiveSHA256Verified        bool
-	AllOriginalBytesVerified     bool
-	MembersVerified              int
-	OriginalsAuthoritative       bool
-	NativeRoutingEnabled         bool
-	CanActivate                  bool
-	OriginalEvictionEnabled      bool
+	ReadOnly                      bool
+	CandidateID                   string
+	StackID                       int
+	Revision                      uint64
+	MediaBackupVerified           bool
+	ArchiveSHA256Verified         bool
+	AllOriginalBytesVerified      bool
+	MembersVerified               int
+	OriginalsAuthoritative        bool
+	NativeRoutingEnabled          bool
+	CanActivate                   bool
+	OriginalEvictionEnabled       bool
 	TransactionalRollbackVerified bool
-	Blockers                     []string
+	Blockers                      []string
 }
 
 func shadowPreflightStable(before, after *shadowSelectionRecord) bool {
