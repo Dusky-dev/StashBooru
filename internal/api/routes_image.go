@@ -57,6 +57,7 @@ func (rs imageRoutes) Routes() chi.Router {
 	r.Get("/storage-shadow-members", rs.StorageShadowMembers)
 	r.Get("/storage-shadow-selection", rs.StorageShadowSelectionStatus)
 	r.Post("/storage-shadow-selection", rs.StorageShadowSelectionAction)
+	r.Post("/storage-shadow-preflight", rs.StorageShadowPreflight)
 	r.Get("/storage-shadow-thumbnail", rs.StorageShadowThumbnail)
 	r.Get("/storage-shadow-download", rs.StorageShadowDownload)
 	r.Head("/storage-shadow-download", rs.StorageShadowDownload)
