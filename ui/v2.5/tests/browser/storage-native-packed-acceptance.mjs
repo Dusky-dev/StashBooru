@@ -463,9 +463,11 @@ try {
   );
   assert.equal(withoutAcknowledgement.status, 400);
   await page.locator("#shadow-intent-acknowledge").check();
-  await page.getByRole("button", {
-    name: "Verify prepared candidate bytes (read-only)",
-  }).click();
+  await page
+    .getByRole("button", {
+      name: "Verify prepared candidate bytes (read-only)",
+    })
+    .click();
   await page
     .getByText("Verified 2 packed images byte-for-byte", { exact: false })
     .waitFor({ timeout: 90000 });
