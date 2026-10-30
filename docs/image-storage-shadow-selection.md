@@ -54,3 +54,27 @@ The next milestone is a safe, staged serving selection with deterministic
 fallback, a read-only backup/rollback preflight, and crash/restart tests
 against an **isolated** application copy. Original-file reclamation remains
 blocked.
+
+### Read-only prepared-byte preflight
+
+Settings → Tasks → Inspect media → Compare packed shadow image includes an
+explicit **Verify prepared candidate bytes (read-only)** action. It calls
+`POST /image/storage-shadow-preflight` with only
+`{"Acknowledged":true}`. No request-provided image IDs, local media paths or
+archive paths are accepted. The prepared server-side candidate is the sole
+authority for selecting members.
+
+This bounded, serialized operation revalidates the saved selection and Visual
+Stack, the full packed archive SHA-256, the original-media backup snapshot,
+and all 2–16 candidate members by reconstructing each one byte-exactly while
+comparing it to the currently retained original file. It re-reads the durable
+selection and candidate evidence at the end to reject a disarmed, replaced,
+stale or changed trial.
+
+The result is **transient** and point-in-time; it is not a durable verification
+receipt, is not a coherent database/configuration restore, and does not prove
+crash-safe rollback or safe operation if originals are missing. Successful
+preflight does **not** turn on native routing and never grants permission to
+delete originals. If any check fails, the endpoint returns an error and normal
+original-file serving remains untouched. A maximum four-minute request budget
+is enforced, with a shared slot limiting concurrent expensive shadow checks.
