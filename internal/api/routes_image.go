@@ -105,6 +105,7 @@ func (rs imageRoutes) Routes() chi.Router {
 		r.Use(rs.ImageCtx)
 
 		r.Get("/image", rs.Image)
+		r.Get("/storage-canary", rs.StorageShadowCanary)
 		r.Get("/thumbnail", rs.Thumbnail)
 		r.Get("/preview", rs.Preview)
 		r.Get("/booru-metadata", rs.ImageBooruMetadata)
