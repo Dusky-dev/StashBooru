@@ -1,0 +1,32 @@
+name: Experimental durable shadow trial selection
+
+on:
+  pull_request:
+    paths:
+      - internal/api/routes_image_storage_shadow_selection.go
+      - internal/api/routes_image_storage_shadow_selection_test.go
+      - internal/api/routes_image.go
+      - internal/api/routes_image_storage_candidate_receipts.go
+      - .github/workflows/image-storage-shadow-selection.yml
+  push:
+    branches: [develop]
+    paths:
+      - internal/api/routes_image_storage_shadow_selection.go
+      - internal/api/routes_image_storage_shadow_selection_test.go
+
+jobs:
+  shadow-trial-state:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Prepare embedded UI test fixture
+        run: mkdir -p ui/v2.5/build && printf 'unit-test-only' > ui/v2.5/build/index.html
+      - name: Generate backend code needed by API unit tests
+        run: make generate-backend
+      - name: Check canonical Go formatting
+        run: test -z "$(gofmt -l internal/api/routes_image_storage_shadow_selection.go internal/api/routes_image_storage_shadow_selection_test.go)"
+      - name: Verify read-only preparation, persistence, disarm and tamper refusal
+        run: go test ./internal/api -run '^TestShadowSelection' -count=1
