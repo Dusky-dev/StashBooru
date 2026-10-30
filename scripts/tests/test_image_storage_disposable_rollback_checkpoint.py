@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 import sqlite3
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -84,6 +85,26 @@ class OfflineRollbackCheckpointTests(unittest.TestCase):
         for name, original in self.originals.items():
             self.assertEqual((self.source / name).read_bytes(), original)
         self.assertEqual(self.config.read_text(), "database: original.sqlite\n")
+
+    def test_new_python_process_revalidates_saved_checkpoint(self):
+        self.prepare()
+        command = [
+            sys.executable,
+            str(Path(checkpoint.__file__)),
+            "audit",
+            "--backup-set-receipt", str(self.receipt),
+            "--recovered-output", str(self.recovered),
+            "--image-rebase-output", str(self.image_paths),
+            "--all-file-rebase-output", str(self.all_paths),
+            "--output", str(self.output),
+        ]
+        result = subprocess.run(command, capture_output=True, text=True,
+                                timeout=60, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        report = json.loads(result.stdout)
+        self.assertEqual(report["status"], "complete_verified")
+        for name in checkpoint.FALSE_CLAIMS:
+            self.assertFalse(report[name], name)
 
     def test_deleting_live_originals_does_not_break_saved_recovery_audit(self):
         self.prepare()
