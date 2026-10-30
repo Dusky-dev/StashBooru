@@ -20,6 +20,20 @@ interface ShadowMemberList {
   members: { imageID: number }[];
 }
 
+interface ShadowSelectionStatus {
+  State: string;
+  CandidateID: string;
+  StackID: number;
+  Revision: number;
+  EvidenceVerifiedNow: boolean;
+  RequiresFreshByteCheck: boolean;
+  OriginalsAuthoritative: boolean;
+  NativeRoutingEnabled: boolean;
+  CanActivate: boolean;
+  OriginalEvictionEnabled: boolean;
+  TransactionalRollbackVerified: boolean;
+}
+
 interface Comparison {
   key: string;
   originalURL: string;
@@ -48,6 +62,11 @@ export const ImageStorageShadowTask: React.FC = () => {
   const [originalStatus, setOriginalStatus] = useState("pending");
   const [shadowStatus, setShadowStatus] = useState("pending");
   const [thumbnailStatus, setThumbnailStatus] = useState("pending");
+  const [shadowSelection, setShadowSelection] =
+    useState<ShadowSelectionStatus>();
+  const [selectionBusy, setSelectionBusy] = useState(false);
+  const [selectionError, setSelectionError] = useState("");
+  const [selectionAcknowledged, setSelectionAcknowledged] = useState(false);
 
   const refresh = useCallback(async (signal: AbortSignal) => {
     const response = await fetch("image/storage-candidate", { signal });
@@ -75,6 +94,81 @@ export const ImageStorageShadowTask: React.FC = () => {
 
   const candidate = candidates.find((item) => item.id === selectedID);
   const stackID = candidate?.group.match(/^stack:([1-9]\d*)$/)?.[1];
+
+  const loadShadowSelection = useCallback(async (signal?: AbortSignal) => {
+    const response = await fetch("image/storage-shadow-selection", { signal });
+    if (!response.ok)
+      throw new Error("Saved shadow trial state is unavailable or unsafe.");
+    const status = (await response.json()) as ShadowSelectionStatus;
+    if (
+      !status.OriginalsAuthoritative ||
+      status.NativeRoutingEnabled ||
+      status.CanActivate ||
+      status.OriginalEvictionEnabled ||
+      status.TransactionalRollbackVerified
+    ) {
+      throw new Error(
+        "Saved shadow trial state unexpectedly enables storage activation."
+      );
+    }
+    if (!signal?.aborted) setShadowSelection(status);
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadShadowSelection(controller.signal).catch((reason: unknown) => {
+      if (!controller.signal.aborted) {
+        setSelectionError(
+          reason instanceof Error ? reason.message : String(reason)
+        );
+      }
+    });
+    return () => controller.abort();
+  }, [loadShadowSelection]);
+
+  async function changeShadowSelection(action: "prepare" | "disarm") {
+    if (
+      selectionBusy ||
+      !selectionAcknowledged ||
+      (action === "prepare" && (!selectedID || !stackID || members.length < 2))
+    )
+      return;
+    setSelectionBusy(true);
+    setSelectionError("");
+    try {
+      const response = await fetch("image/storage-shadow-selection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          Action: action,
+          ...(action === "prepare"
+            ? { CandidateID: selectedID, StackID: Number(stackID) }
+            : {}),
+          Acknowledged: true,
+        }),
+      });
+      if (!response.ok)
+        throw new Error("Could not safely " + action + " shadow trial intent.");
+      const status = (await response.json()) as ShadowSelectionStatus;
+      if (
+        !status.OriginalsAuthoritative ||
+        status.NativeRoutingEnabled ||
+        status.CanActivate ||
+        status.OriginalEvictionEnabled ||
+        status.TransactionalRollbackVerified
+      ) {
+        throw new Error("Unsafe shadow trial response was refused.");
+      }
+      setShadowSelection(status);
+      setSelectionAcknowledged(false);
+    } catch (reason) {
+      setSelectionError(
+        reason instanceof Error ? reason.message : String(reason)
+      );
+    } finally {
+      setSelectionBusy(false);
+    }
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -205,6 +299,61 @@ export const ImageStorageShadowTask: React.FC = () => {
         Global packed-image serving, generated previews, and original deletion
         remain disabled.
       </Alert>
+      <div className="border rounded p-3 mb-3">
+        <h3>Saved shadow trial intent (does not activate storage)</h3>
+        <p className="text-muted small">
+          Preparing saves a reversible selection for future validation. It never
+          redirects ordinary image requests, changes originals, or reclaims disk
+          space. Disarm cancels that saved intent.
+        </p>
+        <p role="status">
+          Saved intent: {shadowSelection?.State ?? "loading"}.
+          {shadowSelection?.CandidateID &&
+            " Candidate: " + shadowSelection.CandidateID + "."}
+          {shadowSelection?.State === "prepared" &&
+            (shadowSelection.EvidenceVerifiedNow
+              ? " Candidate archive and catalogue evidence checked; byte reconstruction is still required."
+              : " Candidate evidence is stale or cannot be verified.")}
+        </p>
+        {selectionError && <Alert variant="danger">{selectionError}</Alert>}
+        <Form.Check
+          id="shadow-intent-acknowledge"
+          checked={selectionAcknowledged}
+          onChange={(event) =>
+            setSelectionAcknowledged(event.currentTarget.checked)
+          }
+          label="I understand this is a non-activating experiment and originals remain authoritative."
+        />
+        <div className="d-flex flex-wrap gap-2 mt-2">
+          <Button
+            variant="outline-secondary"
+            disabled={
+              selectionBusy ||
+              !selectionAcknowledged ||
+              !selectedID ||
+              !stackID ||
+              memberLoading ||
+              members.length < 2
+            }
+            onClick={() => void changeShadowSelection("prepare")}
+          >
+            Prepare candidate (no activation)
+          </Button>
+          <Button
+            variant="outline-secondary"
+            disabled={
+              selectionBusy ||
+              !selectionAcknowledged ||
+              !shadowSelection ||
+              shadowSelection.State === "not_prepared"
+            }
+            onClick={() => void changeShadowSelection("disarm")}
+          >
+            Disarm saved trial
+          </Button>
+        </div>
+      </div>
+
       {error && <Alert variant="danger">{error}</Alert>}
       {memberError && <Alert variant="warning">{memberError}</Alert>}
       <Form.Group>
