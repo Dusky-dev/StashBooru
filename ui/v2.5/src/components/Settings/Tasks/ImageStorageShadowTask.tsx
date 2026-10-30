@@ -543,6 +543,24 @@ export const ImageStorageShadowTask: React.FC = () => {
             previews are fetched on demand; the existing original is never
             replaced.
           </p>
+          {shadowSelection?.State === "prepared" &&
+            shadowSelection.CandidateID === selectedID &&
+            preflightReport?.CandidateID === selectedID &&
+            preflightReport.Revision === shadowSelection.Revision && (
+              <p className="small">
+                <a
+                  href={"image/" + comparison.imageID + "/storage-canary"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Open prepared canary (verified archive or original fallback)
+                </a>
+                {" — "}
+                Explicit request only. If archive proof fails, the retained
+                original is served. No default media routing or disk reclamation
+                is activated.
+              </p>
+            )}
           <Row>
             <Col md={6}>
               <h3>Original image</h3>
