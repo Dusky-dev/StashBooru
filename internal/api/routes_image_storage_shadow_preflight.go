@@ -46,16 +46,15 @@ func makeShadowPreflightReport(record shadowSelectionRecord, members int) (shado
 		return shadowPreflightReport{}, fmt.Errorf("shadow preflight requires a valid prepared selection with 2–16 members")
 	}
 	return shadowPreflightReport{
-		ReadOnly: true,
-		CandidateID: record.CandidateID,
-		StackID: record.StackID,
-		Revision: record.Revision,
-		MediaBackupVerified: true,
-		ArchiveSHA256Verified: true,
+		ReadOnly:                 true,
+		CandidateID:              record.CandidateID,
+		StackID:                  record.StackID,
+		Revision:                 record.Revision,
+		MediaBackupVerified:      true,
 		AllOriginalBytesVerified: true,
-		MembersVerified: members,
-		OriginalsAuthoritative: true,
-		Blockers: []string{
+		MembersVerified:          members,
+		OriginalsAuthoritative:   true,
+		Blockers:                 []string{
 			"Verification is point-in-time and is not a durable activation authorization",
 			"Coherent database/configuration recovery and crash-safe rollback are not proven",
 			"Automatic native packed serving and original-file eviction remain disabled",
