@@ -28,6 +28,8 @@ interface Comparison {
   clipPreviewURL: string;
   thumbnailURL: string;
   detailPreviewURL: string;
+  nativeImageURL: string;
+  nativeThumbnailURL: string;
   imageID: string;
   method: string;
 }
@@ -156,6 +158,20 @@ export const ImageStorageShadowTask: React.FC = () => {
       downloadURL: "image/storage-shadow-download?" + params,
       clipPreviewURL: "image/" + imageID + "/preview",
       thumbnailURL: "image/storage-shadow-thumbnail?" + params,
+      nativeImageURL:
+        "image/" +
+        imageID +
+        "/image?storageShadowCandidate=" +
+        encodeURIComponent(candidate.id) +
+        "&storageShadowStack=" +
+        encodeURIComponent(stackID ?? ""),
+      nativeThumbnailURL:
+        "image/" +
+        imageID +
+        "/thumbnail?storageShadowCandidate=" +
+        encodeURIComponent(candidate.id) +
+        "&storageShadowStack=" +
+        encodeURIComponent(stackID ?? ""),
       detailPreviewURL:
         "/images/" +
         imageID +
@@ -183,10 +199,11 @@ export const ImageStorageShadowTask: React.FC = () => {
         before returning reconstructed bytes.
       </p>
       <Alert variant="warning">
-        Experimental visual comparison only. Matching images on screen do not
-        establish full native serving compatibility. The native thumbnail probe
-        is isolated and does not write cached files. Live packed-image serving,
-        generated previews, and original deletion remain disabled.
+        Experimental per-request testing only. Opt-in links also exercise normal
+        image and thumbnail URLs, but other requests still use originals. The
+        native thumbnail probe is isolated and does not write cached files.
+        Global packed-image serving, generated previews, and original deletion
+        remain disabled.
       </Alert>
       {error && <Alert variant="danger">{error}</Alert>}
       {memberError && <Alert variant="warning">{memberError}</Alert>}
@@ -332,6 +349,14 @@ export const ImageStorageShadowTask: React.FC = () => {
                 Test packed preview in image details
               </a>
               {" · "}
+              <a
+                href={comparison.nativeImageURL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Test normal image route (explicit packed read)
+              </a>
+              {" · "}
               <a href={comparison.downloadURL}>
                 Download verified original-format bytes
               </a>
@@ -356,6 +381,14 @@ export const ImageStorageShadowTask: React.FC = () => {
                 rel="noopener noreferrer"
               >
                 Open isolated JPEG thumbnail
+              </a>
+              {" · "}
+              <a
+                href={comparison.nativeThumbnailURL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Test normal thumbnail route (explicit packed read)
               </a>
             </Col>
           </Row>
