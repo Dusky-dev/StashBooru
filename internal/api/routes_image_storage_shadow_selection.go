@@ -26,41 +26,41 @@ var shadowSelectionMutex sync.Mutex
 // A persisted, inspectable trial intent, NOT catalogue activation.
 // The default /image/{id} routes never consult this record.
 type shadowSelectionRecord struct {
-	Version int
-	State string
-	CandidateID string
-	StackID int
-	Snapshot string
-	Method string
-	ReceiptSHA256 string
-	ArchiveSHA256 string
-	Revision uint64
-	UpdatedUnix int64
-	OriginalsAuthoritative bool
-	NativeRoutingEnabled bool
-	CanActivate bool
-	OriginalEvictionEnabled bool
+	Version                       int
+	State                         string
+	CandidateID                   string
+	StackID                       int
+	Snapshot                      string
+	Method                        string
+	ReceiptSHA256                 string
+	ArchiveSHA256                 string
+	Revision                      uint64
+	UpdatedUnix                   int64
+	OriginalsAuthoritative        bool
+	NativeRoutingEnabled          bool
+	CanActivate                   bool
+	OriginalEvictionEnabled       bool
 	TransactionalRollbackVerified bool
 }
 
 type shadowSelectionStatus struct {
-	State string
-	CandidateID string
-	StackID int
-	Revision uint64
-	EvidenceVerifiedNow bool
-	RequiresFreshByteCheck bool
-	OriginalsAuthoritative bool
-	NativeRoutingEnabled bool
-	CanActivate bool
-	OriginalEvictionEnabled bool
+	State                         string
+	CandidateID                   string
+	StackID                       int
+	Revision                      uint64
+	EvidenceVerifiedNow           bool
+	RequiresFreshByteCheck        bool
+	OriginalsAuthoritative        bool
+	NativeRoutingEnabled          bool
+	CanActivate                   bool
+	OriginalEvictionEnabled       bool
 	TransactionalRollbackVerified bool
 }
 
 type shadowSelectionRequest struct {
-	Action string
-	CandidateID string
-	StackID int
+	Action       string
+	CandidateID  string
+	StackID      int
 	Acknowledged bool
 }
 
@@ -363,7 +363,7 @@ func (rs imageRoutes) StorageShadowSelectionAction(w http.ResponseWriter, r *htt
 		Revision: 1, UpdatedUnix: time.Now().Unix(), OriginalsAuthoritative: true,
 	}
 	if current != nil {
-		record.Revision = current.Revision+1
+		record.Revision = current.Revision + 1
 	}
 	if err := shadowSelectionWrite(dir, record); err != nil {
 		http.Error(w, "cannot publish private shadow selection", http.StatusConflict)
