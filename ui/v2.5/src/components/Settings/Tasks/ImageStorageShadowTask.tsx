@@ -34,6 +34,21 @@ interface ShadowSelectionStatus {
   TransactionalRollbackVerified: boolean;
 }
 
+interface ShadowPreflightReport {
+  ReadOnly: boolean;
+  CandidateID: string;
+  Revision: number;
+  MembersVerified: number;
+  MediaBackupVerified: boolean;
+  ArchiveSHA256Verified: boolean;
+  AllOriginalBytesVerified: boolean;
+  OriginalsAuthoritative: boolean;
+  NativeRoutingEnabled: boolean;
+  CanActivate: boolean;
+  OriginalEvictionEnabled: boolean;
+  TransactionalRollbackVerified: boolean;
+}
+
 interface Comparison {
   key: string;
   originalURL: string;
@@ -67,6 +82,8 @@ export const ImageStorageShadowTask: React.FC = () => {
   const [selectionBusy, setSelectionBusy] = useState(false);
   const [selectionError, setSelectionError] = useState("");
   const [selectionAcknowledged, setSelectionAcknowledged] = useState(false);
+  const [preflightReport, setPreflightReport] =
+    useState<ShadowPreflightReport>();
 
   const refresh = useCallback(async (signal: AbortSignal) => {
     const response = await fetch("image/storage-candidate", { signal });
@@ -135,6 +152,7 @@ export const ImageStorageShadowTask: React.FC = () => {
       return;
     setSelectionBusy(true);
     setSelectionError("");
+    setPreflightReport(undefined);
     try {
       const response = await fetch("image/storage-shadow-selection", {
         method: "POST",
@@ -160,6 +178,56 @@ export const ImageStorageShadowTask: React.FC = () => {
         throw new Error("Unsafe shadow trial response was refused.");
       }
       setShadowSelection(status);
+      setSelectionAcknowledged(false);
+    } catch (reason) {
+      setSelectionError(
+        reason instanceof Error ? reason.message : String(reason)
+      );
+    } finally {
+      setSelectionBusy(false);
+    }
+  }
+
+  async function verifyPreparedShadow() {
+    if (
+      selectionBusy ||
+      !selectionAcknowledged ||
+      !shadowSelection ||
+      shadowSelection.State !== "prepared" ||
+      !shadowSelection.EvidenceVerifiedNow
+    )
+      return;
+    setSelectionBusy(true);
+    setSelectionError("");
+    setPreflightReport(undefined);
+    try {
+      const response = await fetch("image/storage-shadow-preflight", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ Acknowledged: true }),
+      });
+      if (!response.ok)
+        throw new Error(
+          "Prepared image verification failed or evidence changed. Originals remain in use."
+        );
+      const result = (await response.json()) as ShadowPreflightReport;
+      if (
+        !result.ReadOnly ||
+        !result.MediaBackupVerified ||
+        !result.ArchiveSHA256Verified ||
+        !result.AllOriginalBytesVerified ||
+        !result.OriginalsAuthoritative ||
+        result.NativeRoutingEnabled ||
+        result.CanActivate ||
+        result.OriginalEvictionEnabled ||
+        result.TransactionalRollbackVerified ||
+        result.CandidateID !== shadowSelection.CandidateID ||
+        result.Revision !== shadowSelection.Revision ||
+        result.MembersVerified < 2 ||
+        result.MembersVerified > 16
+      )
+        throw new Error("Unsafe or inconsistent shadow preflight response.");
+      setPreflightReport(result);
       setSelectionAcknowledged(false);
     } catch (reason) {
       setSelectionError(
@@ -351,7 +419,27 @@ export const ImageStorageShadowTask: React.FC = () => {
           >
             Disarm saved trial
           </Button>
+          <Button
+            variant="outline-secondary"
+            disabled={
+              selectionBusy ||
+              !selectionAcknowledged ||
+              shadowSelection?.State !== "prepared" ||
+              !shadowSelection.EvidenceVerifiedNow
+            }
+            onClick={() => void verifyPreparedShadow()}
+          >
+            Verify prepared candidate bytes (read-only)
+          </Button>
         </div>
+        {preflightReport && (
+          <p role="status" className="mt-2">
+            Verified {preflightReport.MembersVerified} packed images
+            byte-for-byte against retained originals and backup. This
+            point-in-time result does not activate serving or authorize
+            original-file deletion.
+          </p>
+        )}
       </div>
 
       {error && <Alert variant="danger">{error}</Alert>}
