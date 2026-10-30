@@ -247,6 +247,71 @@ async function verifyNative(url, item, original, candidate, stackID) {
   );
 }
 
+
+async function verifyBrowserPreview(url, member, candidate, stackID) {
+  const prefix = "/image/" + member.id + "/image?";
+  const query = new URLSearchParams({
+    storageShadowCandidate: candidate,
+    storageShadowStack: String(stackID),
+  });
+  const expected = url + prefix + query;
+  const packedResponse = page.waitForResponse(
+    (response) => response.url() === expected,
+    { timeout: 20000 }
+  );
+  await page.goto(url + "/images/" + member.id + "?" + query, {
+    waitUntil: "domcontentloaded",
+  });
+  assert.equal((await packedResponse).status(), 200);
+  const picture = page.locator("img.image-image").first();
+  await picture.waitFor();
+  await picture.evaluate(async (img) => img.decode());
+  const rendered = await picture.evaluate((img) => ({
+    source: img.getAttribute("src"),
+    width: img.naturalWidth,
+    height: img.naturalHeight,
+    complete: img.complete,
+  }));
+  assert.equal(rendered.source, prefix + query);
+  assert.equal(rendered.width, 192);
+  assert.equal(rendered.height, 160);
+  assert.equal(rendered.complete, true);
+}
+
+async function verifyBrowserFallback(url, member, stackID) {
+  // The browser opts in with a structurally valid but unknown candidate.
+  // A 409 must trigger the image-detail viewer's original-file fallback.
+  const missing = "stack-" + stackID + "-delta-" + "0".repeat(24);
+  const query = new URLSearchParams({
+    storageShadowCandidate: missing,
+    storageShadowStack: String(stackID),
+  });
+  const failedRequest = page.waitForResponse(
+    (response) =>
+      response.url() === url + "/image/" + member.id + "/image?" + query,
+    { timeout: 20000 }
+  );
+  await page.goto(url + "/images/" + member.id + "?" + query, {
+    waitUntil: "domcontentloaded",
+  });
+  assert.equal((await failedRequest).status(), 409);
+  await page.waitForFunction(
+    () => {
+      const img = document.querySelector("img.image-image");
+      return (
+        img?.complete === true &&
+        img.naturalWidth === 192 &&
+        img.naturalHeight === 160 &&
+        !img.getAttribute("src")?.includes("storageShadowCandidate")
+      );
+    },
+    null,
+    { timeout: 15000 }
+  );
+  const path = await page.locator("img.image-image").first().getAttribute("src");
+  assert.match(path, new RegExp("/image/" + member.id + "/image"));
+}
+
 try {
   const images = await page.evaluate(makeImages);
   const originals = new Map([
@@ -323,6 +388,7 @@ try {
       /^stack-[1-9]\d*-(delta|shared-tiles)-[a-f0-9]{24}$/
     );
     created.push(candidate);
+    await verifyBrowserPreview(url, members[0], candidate.id, stackID);
     for (const member of members)
       await verifyNative(
         url,
@@ -359,6 +425,7 @@ try {
         " real-server image GET, Range, JPEG thumbnail and source verification passed"
     );
   }
+  await verifyBrowserFallback(url, members[0], stackID);
   const selected = members[0];
   const tamperURL =
     url +
