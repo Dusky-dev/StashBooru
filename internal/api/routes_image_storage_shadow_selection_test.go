@@ -11,6 +11,9 @@ import (
 
 func testShadowSelectionRecord(t *testing.T, dir string) shadowSelectionRecord {
 	t.Helper()
+	if err := os.Chmod(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
 	id, report := fixtureSavedCandidate(t, dir)
 	if _, err := storageCandidateSaveReceipt(dir, report); err != nil {
 		t.Fatal(err)
