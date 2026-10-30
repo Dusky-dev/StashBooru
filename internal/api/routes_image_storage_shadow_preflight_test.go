@@ -10,25 +10,25 @@ import (
 func TestShadowPreflightRequiresStablePreparedSelection(t *testing.T) {
 	dir := t.TempDir()
 	prepared := testShadowSelectionRecord(t, dir)
-	copy := prepared
-	if !shadowPreflightStable(&prepared, &copy) {
+	observed := prepared
+	if !shadowPreflightStable(&prepared, &observed) {
 		t.Fatal("identical prepared selection must be stable")
 	}
-	if shadowPreflightStable(nil, &copy) || shadowPreflightStable(&prepared, nil) {
+	if shadowPreflightStable(nil, &observed) || shadowPreflightStable(&prepared, nil) {
 		t.Fatal("missing state was accepted")
 	}
-	copy.State = "disarmed"
-	if shadowPreflightStable(&prepared, &copy) {
+	observed.State = "disarmed"
+	if shadowPreflightStable(&prepared, &observed) {
 		t.Fatal("disarmed selection was accepted")
 	}
-	copy = prepared
-	copy.Revision++
-	if shadowPreflightStable(&prepared, &copy) {
+	observed = prepared
+	observed.Revision++
+	if shadowPreflightStable(&prepared, &observed) {
 		t.Fatal("new selection revision was accepted")
 	}
-	copy = prepared
-	copy.ArchiveSHA256 = strings.Repeat("0", 64)
-	if shadowPreflightStable(&prepared, &copy) {
+	observed = prepared
+	observed.ArchiveSHA256 = strings.Repeat("0", 64)
+	if shadowPreflightStable(&prepared, &observed) {
 		t.Fatal("changed archive evidence was accepted")
 	}
 }
