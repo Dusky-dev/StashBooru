@@ -51,6 +51,7 @@ func makeShadowPreflightReport(record shadowSelectionRecord, members int) (shado
 		StackID:                  record.StackID,
 		Revision:                 record.Revision,
 		MediaBackupVerified:      true,
+		ArchiveSHA256Verified:    true,
 		AllOriginalBytesVerified: true,
 		MembersVerified:          members,
 		OriginalsAuthoritative:   true,
