@@ -227,6 +227,18 @@ func (rs imageRoutes) storageShadowServe(w http.ResponseWriter, r *http.Request,
 // The same native thumbnail backend used for real image files is exercised
 // from memory; the real thumbnail route (which may write cache files) is
 // never invoked. Animated or non-seekable codec limitations fail closed.
+func storageShadowThumbnailSize(preferred int) int {
+	if preferred < 1 {
+		return 320
+	}
+	if preferred > 512 {
+		return 512
+	}
+	return preferred
+}
+
+// storageShadowNativeThumbnail tests original-compatible native thumbnail
+// processing against an already byte-verified packed member in memory.
 func storageShadowNativeThumbnail(data []byte, sourcePath string) ([]byte, error) {
 	format := strings.TrimPrefix(strings.ToLower(filepath.Ext(sourcePath)), ".")
 	mgr := manager.GetInstance()
@@ -236,7 +248,10 @@ func storageShadowNativeThumbnail(data []byte, sourcePath string) ([]byte, error
 		Preset:     mgr.Config.GetPreviewPreset().String(),
 	}
 	encoder := image.NewThumbnailEncoder(mgr.FFMpeg, mgr.FFProbe, options)
-	thumb, err := encoder.GetThumbnailFromVerifiedBytes(data, format, models.DefaultGthumbWidth)
+	// The in-memory verified-byte encoder intentionally caps each output axis
+	// at 512 pixels. The normal gthumb preset may be larger, so bound this
+	// experimental request without weakening the encoder's safety limit.
+	thumb, err := encoder.GetThumbnailFromVerifiedBytes(data, format, storageShadowThumbnailSize(models.DefaultGthumbWidth))
 	if err != nil {
 		return nil, err
 	}

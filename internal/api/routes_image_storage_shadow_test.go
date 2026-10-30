@@ -73,3 +73,22 @@ func TestStorageShadowThumbnailNeverAcceptsArbitraryInput(t *testing.T) {
 		}
 	}
 }
+
+func TestStorageShadowThumbnailSizeRespectsVerifiedByteEncoderBounds(t *testing.T) {
+	for _, tc := range []struct {
+		preferred int
+		expected  int
+	}{
+		{preferred: -1, expected: 320},
+		{preferred: 0, expected: 320},
+		{preferred: 96, expected: 96},
+		{preferred: 320, expected: 320},
+		{preferred: 512, expected: 512},
+		{preferred: 640, expected: 512},
+		{preferred: 2048, expected: 512},
+	} {
+		if got := storageShadowThumbnailSize(tc.preferred); got != tc.expected {
+			t.Errorf("thumbnail bound for %d: got %d, want %d", tc.preferred, got, tc.expected)
+		}
+	}
+}
