@@ -489,9 +489,11 @@ try {
 
   // Canary uses only the saved prepared state; it is never automatic.
   // A readable original remains the fallback for an invalid candidate.
-  await page.getByRole("button", {
-    name: "Compare original and packed reconstruction",
-  }).click();
+  await page
+    .getByRole("button", {
+      name: "Compare original and packed reconstruction",
+    })
+    .click();
   const canaryLink = page.getByRole("link", {
     name: "Open prepared canary (verified archive or original fallback)",
   });
@@ -499,12 +501,14 @@ try {
     await canaryLink.getAttribute("href"),
     "image/" + members[0].id + "/storage-canary"
   );
-  const canaryURL = (member) =>
-    url + "/image/" + member.id + "/storage-canary";
+  const canaryURL = (member) => url + "/image/" + member.id + "/storage-canary";
   for (const member of members) {
     const response = await fetch(canaryURL(member));
     assert.equal(response.status, 200);
-    assert.equal(response.headers.get("x-stash-shadow-source"), "packed-verified");
+    assert.equal(
+      response.headers.get("x-stash-shadow-source"),
+      "packed-verified"
+    );
     assert.equal(response.headers.get("cache-control"), "no-store");
     assert.deepEqual(
       Buffer.from(await response.arrayBuffer()),
@@ -521,19 +525,18 @@ try {
   );
   const injection = await fetch(canaryURL(members[0]) + "?archive=/etc/shadow");
   assert.equal(injection.status, 400);
-  const modifiedOriginal = Buffer.from("isolated source no longer matches pack");
+  const modifiedOriginal = Buffer.from(
+    "isolated source no longer matches pack"
+  );
   await writeFile(join(media, members[0].name), modifiedOriginal);
   const fallback = await fetch(canaryURL(members[0]));
   assert.equal(fallback.status, 200);
-  assert.equal(fallback.headers.get("x-stash-shadow-source"), "original-fallback");
-  assert.deepEqual(
-    Buffer.from(await fallback.arrayBuffer()),
-    modifiedOriginal
+  assert.equal(
+    fallback.headers.get("x-stash-shadow-source"),
+    "original-fallback"
   );
-  await writeFile(
-    join(media, members[0].name),
-    originals.get(members[0].name)
-  );
+  assert.deepEqual(Buffer.from(await fallback.arrayBuffer()), modifiedOriginal);
+  await writeFile(join(media, members[0].name), originals.get(members[0].name));
   assert.equal(
     (await fetch(canaryURL(members[0]))).headers.get("x-stash-shadow-source"),
     "packed-verified"
