@@ -30,8 +30,9 @@ A mode-0600 temporary JSON record is fsynced, atomically renamed over the
 prior record, then the parent directory is fsynced. Revision numbers advance
 monotonically *inside one running StashBooru process*. Multiple server
 processes or external writers are NOT covered by the process-local lock.
-A damaged/symlinked/oversized record cannot be silently overwritten;
-administrator inspection is required.
+A damaged/symlinked/oversized or non-private record cannot be silently overwritten;
+administrator inspection is required. On POSIX, a record made accessible to
+group or other users fails closed. Status and action responses are non-cacheable.
 
 ### Safety boundary
 
