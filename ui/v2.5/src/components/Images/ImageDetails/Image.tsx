@@ -349,12 +349,11 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
     Number.isSafeInteger(Number(image.id)) &&
     ImageView === "img";
   const shadowParams = new URLSearchParams({
-    candidateID: shadowCandidate,
-    stackID: shadowStackID,
-    imageID: image.id,
+    storageShadowCandidate: shadowCandidate,
+    storageShadowStack: shadowStackID,
   });
   const shadowPreviewURL = shadowPreviewRequested
-    ? "/image/storage-shadow?" + shadowParams
+    ? "/image/" + image.id + "/image?" + shadowParams
     : "";
   const shadowPreviewFailed =
     shadowPreviewRequested && failedShadowURL === shadowPreviewURL;
