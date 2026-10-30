@@ -1,0 +1,29 @@
+name: Experimental disposable image path rebasing
+
+on:
+  pull_request:
+    paths:
+      - scripts/image_storage_disposable_path_rebase.py
+      - scripts/tests/test_image_storage_disposable_path_rebase.py
+      - scripts/image_storage_disposable_snapshot_restore.py
+      - scripts/image_storage_backup_set.py
+      - scripts/image_storage_historical_paths.py
+      - .github/workflows/image-storage-disposable-path-rebase.yml
+  push:
+    branches: [develop]
+    paths:
+      - scripts/image_storage_disposable_path_rebase.py
+      - scripts/tests/test_image_storage_disposable_path_rebase.py
+
+jobs:
+  scratch-paths:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Compile scratch-only path rebase
+        run: python -m py_compile scripts/image_storage_disposable_path_rebase.py scripts/tests/test_image_storage_disposable_path_rebase.py
+      - name: Verify original protection, copied SQLite mapping and safety flags
+        run: python -m unittest discover -s scripts/tests -p test_image_storage_disposable_path_rebase.py -v
