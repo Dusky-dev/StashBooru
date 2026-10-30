@@ -599,3 +599,52 @@ jobs:
         docker buildx inspect --bootstrap
         docker buildx ls
         bash ./docker/ci/x86_64/docker_push.sh latest "${{ github.event.release.tag_name }}"
+
+  # A real, fully isolated instance builds the same P12 and P13 candidates
+  # that the UI creates, then exercises the native image and thumbnail routes.
+  # Existing originals are never read, modified or used as test fixtures.
+  packed-native-acceptance:
+    if: github.event_name == 'pull_request'
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+    - uses: actions/checkout@v6
+    - uses: actions/setup-node@v6
+      with:
+        node-version: '20'
+    - uses: actions/download-artifact@v8
+      with:
+        name: build-linux
+        path: ${{ runner.temp }}/packed-native-binary
+    - name: Install isolated test dependencies
+      run: |
+        if [ -f /etc/apt/apt-mirrors.txt ]; then
+          printf '%s\\n' 'https://archive.ubuntu.com/ubuntu/' | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
+        fi
+        if [ -f /etc/apt/apt-security-mirrors.txt ]; then
+          printf '%s\\n' 'https://security.ubuntu.com/ubuntu/' | sudo tee /etc/apt-security-mirrors.txt > /dev/null
+        fi
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends ffmpeg python3-venv
+        python3 -m venv "$RUNNER_TEMP/storage-p12-venv"
+        "$RUNNER_TEMP/storage-p12-venv/bin/python" -m pip install --disable-pip-version-check numpy pillow
+        echo "$RUNNER_TEMP/storage-p12-venv/bin" >> "$GITHUB_PATH"
+        npm install --prefix "$RUNNER_TEMP/storage-native-tools" playwright@1.57.0
+        node "$RUNNER_TEMP/storage-native-tools/node_modules/playwright/cli.js" install --with-deps --only-shell chromium
+        chmod +x "$RUNNER_TEMP/packed-native-binary/stash-linux"
+    - name: Exercise real-server P12 and P13 through native image routes
+      working-directory: ui/v2.5
+      env:
+        STASH_BROWSER_BINARY: ${{ runner.temp }}/packed-native-binary/stash-linux
+        PLAYWRIGHT_MODULE: ${{ runner.temp }}/storage-native-tools/node_modules/playwright/index.mjs
+        STASH_BROWSER_SCREENSHOTS: ${{ runner.temp }}/storage-native-artifacts
+      run: node tests/browser/storage-native-packed-acceptance.mjs
+    - name: Preserve failure diagnostics
+      if: failure()
+      uses: actions/upload-artifact@v7
+      with:
+        name: storage-native-acceptance-diagnostics
+        retention-days: 3
+        if-no-files-found: ignore
+        path: ${{ runner.temp }}/storage-native-artifacts/
