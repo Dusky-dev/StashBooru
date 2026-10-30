@@ -118,6 +118,16 @@ func (rs imageRoutes) Routes() chi.Router {
 
 func (rs imageRoutes) Thumbnail(w http.ResponseWriter, r *http.Request) {
 	img := r.Context().Value(imageKey).(*models.Image)
+	numericID, _ := strconv.Atoi(chi.URLParam(r, "imageId"))
+	shadowRequest, selected, err := storageShadowNativeRequest(r, numericID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if selected {
+		rs.storageShadowServe(w, shadowRequest, true, false)
+		return
+	}
 	rs.serveThumbnail(w, r, img, nil)
 }
 
@@ -193,7 +203,16 @@ func (rs imageRoutes) Preview(w http.ResponseWriter, r *http.Request) {
 
 func (rs imageRoutes) Image(w http.ResponseWriter, r *http.Request) {
 	i := r.Context().Value(imageKey).(*models.Image)
-
+	numericID, _ := strconv.Atoi(chi.URLParam(r, "imageId"))
+	shadowRequest, selected, err := storageShadowNativeRequest(r, numericID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if selected {
+		rs.storageShadowServe(w, shadowRequest, false, false)
+		return
+	}
 	const useDefault = false
 	rs.serveImage(w, r, i, useDefault)
 }
