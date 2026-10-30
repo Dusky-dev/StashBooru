@@ -489,18 +489,6 @@ try {
 
   // Canary uses only the saved prepared state; it is never automatic.
   // A readable original remains the fallback for an invalid candidate.
-  await page
-    .getByRole("button", {
-      name: "Compare original and packed reconstruction",
-    })
-    .click();
-  const canaryLink = page.getByRole("link", {
-    name: "Open prepared canary (verified archive or original fallback)",
-  });
-  assert.equal(
-    await canaryLink.getAttribute("href"),
-    "image/" + members[0].id + "/storage-canary"
-  );
   const canaryURL = (member) => url + "/image/" + member.id + "/storage-canary";
   for (const member of members) {
     const response = await fetch(canaryURL(member));
@@ -540,6 +528,20 @@ try {
   assert.equal(
     (await fetch(canaryURL(members[0]))).headers.get("x-stash-shadow-source"),
     "packed-verified"
+  );
+  // Comparison images themselves use the shared verification slot, so verify
+  // the canary API before opening these concurrent UI previews.
+  await page
+    .getByRole("button", {
+      name: "Compare original and packed reconstruction",
+    })
+    .click();
+  const canaryLink = page.getByRole("link", {
+    name: "Open prepared canary (verified archive or original fallback)",
+  });
+  assert.equal(
+    await canaryLink.getAttribute("href"),
+    "image/" + members[0].id + "/storage-canary"
   );
   // A normal server restart must not activate archived routing. The saved
   // prepared selection is reloaded and freshly verified after restart.
