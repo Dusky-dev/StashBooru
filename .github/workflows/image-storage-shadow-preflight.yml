@@ -1,0 +1,33 @@
+name: Experimental prepared P12/P13 byte preflight
+
+on:
+  pull_request:
+    paths:
+      - internal/api/routes_image_storage_shadow_preflight.go
+      - internal/api/routes_image_storage_shadow_preflight_test.go
+      - internal/api/routes_image.go
+      - internal/api/routes_image_storage_shadow.go
+      - internal/api/routes_image_storage_shadow_selection.go
+      - .github/workflows/image-storage-shadow-preflight.yml
+  push:
+    branches: [develop]
+    paths:
+      - internal/api/routes_image_storage_shadow_preflight.go
+      - internal/api/routes_image_storage_shadow_preflight_test.go
+
+jobs:
+  prepared-byte-preflight:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Prepare test-only embedded UI
+        run: mkdir -p ui/v2.5/build && printf 'unit-test-only' > ui/v2.5/build/index.html
+      - name: Generate backend for isolated API test
+        run: make generate-backend
+      - name: Verify Go formatting
+        run: test -z "$(gofmt -l internal/api/routes_image_storage_shadow_preflight.go internal/api/routes_image_storage_shadow_preflight_test.go)"
+      - name: Exercise prepared-source safety invariants
+        run: go test ./internal/api -run '^TestShadowPreflight' -count=1
