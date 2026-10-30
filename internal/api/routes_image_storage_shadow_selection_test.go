@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -182,5 +183,38 @@ func TestShadowSelectionRejectsForgedJSONFlags(t *testing.T) {
 			t.Fatalf("forged safety flag %s was accepted", flag)
 		}
 		fields[flag] = false
+	}
+}
+
+// The persisted intent is a private control record. A chmod or external
+// replacement that widens access must not be treated as trustworthy state.
+func TestShadowSelectionRejectsLoosenedPermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permission bits are not an ACL validation on Windows")
+	}
+	dir := t.TempDir()
+	record := testShadowSelectionRecord(t, dir)
+	if err := shadowSelectionWrite(dir, record); err != nil {
+		t.Fatal(err)
+	}
+	path := shadowSelectionPath(dir)
+	if err := os.Chmod(path, 0644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := shadowSelectionRead(dir); err == nil {
+		t.Fatal("accepted public-readable shadow intent")
+	}
+	next := record
+	next.State = "disarmed"
+	next.Revision++
+	if err := shadowSelectionWrite(dir, next); err == nil {
+		t.Fatal("overwrote exposed intent instead of failing closed")
+	}
+	if err := os.Chmod(path, 0600); err != nil {
+		t.Fatal(err)
+	}
+	reloaded, err := shadowSelectionRead(dir)
+	if err != nil || reloaded == nil || *reloaded != record {
+		t.Fatalf("private record cannot be read after permissions were restored: %+v %v", reloaded, err)
 	}
 }

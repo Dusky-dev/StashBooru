@@ -101,6 +101,11 @@ func shadowSelectionRead(directory string) (*shadowSelectionRecord, error) {
 	if !before.Mode().IsRegular() || before.Size() <= 0 || before.Size() > shadowSelectionLimit {
 		return nil, fmt.Errorf("unsafe or oversized shadow selection")
 	}
+	// Intent records contain private future source-choice evidence. Never accept
+	// a record made group/world-readable after it was durably published.
+	if runtime.GOOS != "windows" && before.Mode().Perm()&0077 != 0 {
+		return nil, fmt.Errorf("shadow selection permissions are not private")
+	}
 	input, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -261,6 +266,7 @@ func shadowSelectionDirectory() (string, error) {
 }
 
 func (rs imageRoutes) StorageShadowSelectionStatus(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
 	shadowSelectionMutex.Lock()
 	defer shadowSelectionMutex.Unlock()
 	dir, err := shadowSelectionDirectory()
@@ -279,6 +285,7 @@ func (rs imageRoutes) StorageShadowSelectionStatus(w http.ResponseWriter, r *htt
 }
 
 func (rs imageRoutes) StorageShadowSelectionAction(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
 	var req shadowSelectionRequest
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 2048))
 	decoder.DisallowUnknownFields()
