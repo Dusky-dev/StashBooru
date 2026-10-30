@@ -24,7 +24,10 @@ Only explicit `prepare` and `disarm` actions can change this intent.
   so an obsolete trial can always be disabled when the record is intact.
 
 These are illustrative IDs; use an actual candidate from Settings → Tasks.
-There is no UI control for this development-stage endpoint yet.
+The Settings → Tasks → Compare packed shadow image panel now includes an
+explicit **Prepare candidate (no activation)** button and a **Disarm saved
+trial** button. Both require acknowledgement and display the saved intent,
+current evidence status, and the continuing original-source-only policy.
 
 A mode-0600 temporary JSON record is fsynced, atomically renamed over the
 prior record, then the parent directory is fsynced. Revision numbers advance

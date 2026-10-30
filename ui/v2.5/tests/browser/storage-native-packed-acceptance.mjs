@@ -428,6 +428,53 @@ try {
     );
   }
   await verifyBrowserFallback(url, members[0], stackID);
+  // Exercise persisted non-activating trial selection through the real
+  // Settings interface; normal media routes must still return originals.
+  await page.goto(url + "/settings?tab=library", {
+    waitUntil: "domcontentloaded",
+  });
+  await page.getByRole("tab", { name: "Tasks", exact: true }).click();
+  // The storage tools are inside a native <details> disclosure.  Playwright
+  // must expand it before interacting with the candidate selector; bypassing
+  // visibility here would hide a real Settings navigation regression.
+  await page.locator("#tasks-media > summary").click();
+  await page.locator("#shadow-candidate").selectOption(created[0].id);
+  await page.locator("#shadow-intent-acknowledge").check();
+  await page
+    .getByRole("button", {
+      name: "Prepare candidate (no activation)",
+    })
+    .click();
+  await page.getByText("Saved intent: prepared", { exact: false }).waitFor();
+  const prepared = await get(url, "/image/storage-shadow-selection");
+  assert.equal(prepared.State, "prepared");
+  assert.equal(prepared.CandidateID, created[0].id);
+  assert.equal(prepared.EvidenceVerifiedNow, true);
+  assert.equal(prepared.OriginalsAuthoritative, true);
+  for (const key of [
+    "NativeRoutingEnabled",
+    "CanActivate",
+    "OriginalEvictionEnabled",
+    "TransactionalRollbackVerified",
+  ])
+    assert.equal(prepared[key], false, key + " must remain disabled");
+  for (const member of members) {
+    const normal = await fetch(url + "/image/" + member.id + "/image");
+    assert.equal(normal.status, 200);
+    assert.deepEqual(
+      Buffer.from(await normal.arrayBuffer()),
+      originals.get(member.name)
+    );
+  }
+  await page.locator("#shadow-intent-acknowledge").check();
+  await page.getByRole("button", { name: "Disarm saved trial" }).click();
+  await page.getByText("Saved intent: disarmed", { exact: false }).waitFor();
+  const disarmed = await get(url, "/image/storage-shadow-selection");
+  assert.equal(disarmed.State, "disarmed");
+  assert.equal(disarmed.NativeRoutingEnabled, false);
+  assert.equal(disarmed.OriginalEvictionEnabled, false);
+  assert.equal(disarmed.Revision, prepared.Revision + 1);
+
   const selected = members[0];
   const tamperURL =
     url +
