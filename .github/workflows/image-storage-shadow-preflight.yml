@@ -28,6 +28,8 @@ jobs:
       - name: Generate backend for isolated API test
         run: make generate-backend
       - name: Verify Go formatting
-        run: test -z "$(gofmt -l internal/api/routes_image_storage_shadow_preflight.go internal/api/routes_image_storage_shadow_preflight_test.go)"
+        run: |
+          gofmt -d internal/api/routes_image_storage_shadow_preflight.go internal/api/routes_image_storage_shadow_preflight_test.go
+          test -z "$(gofmt -l internal/api/routes_image_storage_shadow_preflight.go internal/api/routes_image_storage_shadow_preflight_test.go)"
       - name: Exercise prepared-source safety invariants
         run: go test ./internal/api -run '^TestShadowPreflight' -count=1
