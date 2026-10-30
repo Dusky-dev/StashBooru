@@ -247,7 +247,6 @@ async function verifyNative(url, item, original, candidate, stackID) {
   );
 }
 
-
 async function verifyBrowserPreview(url, member, candidate, stackID) {
   const prefix = "/image/" + member.id + "/image?";
   const query = new URLSearchParams({
@@ -308,7 +307,10 @@ async function verifyBrowserFallback(url, member, stackID) {
     null,
     { timeout: 15000 }
   );
-  const path = await page.locator("img.image-image").first().getAttribute("src");
+  const path = await page
+    .locator("img.image-image")
+    .first()
+    .getAttribute("src");
   assert.match(path, new RegExp("/image/" + member.id + "/image"));
 }
 
