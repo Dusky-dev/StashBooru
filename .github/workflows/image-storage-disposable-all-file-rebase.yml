@@ -1,0 +1,28 @@
+name: Experimental disposable all-file SQLite path rebase
+
+on:
+  pull_request:
+    paths:
+      - scripts/image_storage_disposable_all_file_rebase.py
+      - scripts/tests/test_image_storage_disposable_all_file_rebase.py
+      - scripts/image_storage_disposable_path_rebase.py
+      - scripts/image_storage_disposable_snapshot_restore.py
+      - .github/workflows/image-storage-disposable-all-file-rebase.yml
+  push:
+    branches: [develop]
+    paths:
+      - scripts/image_storage_disposable_all_file_rebase.py
+      - scripts/tests/test_image_storage_disposable_all_file_rebase.py
+
+jobs:
+  scratch-all-files:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Compile isolated all-file rebase and tests
+        run: python -m py_compile scripts/image_storage_disposable_all_file_rebase.py scripts/tests/test_image_storage_disposable_all_file_rebase.py
+      - name: Verify all saved regular-file paths and no-live-source safety
+        run: python -m unittest discover -s scripts/tests -p test_image_storage_disposable_all_file_rebase.py -v
