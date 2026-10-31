@@ -16,7 +16,7 @@ const delay = (milliseconds) => new Promise((done) => setTimeout(done, milliseco
 
 function inside(path, parent) {
   const rel = relative(parent, path);
-  return rel !== "" && rel !== ".." && !rel.startsWith(".." + sep) && !resolve(rel).includes("\0");
+  return rel !== "" && rel !== ".." && !rel.startsWith(".." + sep) && !rel.includes("\0");
 }
 
 async function python(repository, script, args) {
@@ -26,7 +26,8 @@ async function python(repository, script, args) {
     { cwd: repository, timeout: 180000, maxBuffer: 1024 * 1024 }
   );
   const value = JSON.parse(stdout);
-  assert.equal(value.verified, true, script + " did not verify");
+  if (Object.hasOwn(value, "verified"))
+    assert.equal(value.verified, true, script + " did not verify");
   return value;
 }
 
@@ -96,6 +97,10 @@ async function bootRecovered({ binary, root, repository, workspace, media, backu
         "--all-file-rebase-output", allRebase, "--output", checkpoint]],
   ]) {
     const proof = await python(repository, script, [action, ...args]);
+    if (action !== "audit" && action !== "prepare") {
+      const audited = await python(repository, script, ["audit", ...args]);
+      assert.equal(audited.status, "complete_verified");
+    }
     for (const flag of ["canActivate", "originalEvictionEnabled", "transactionalRollbackVerified"])
       assert.equal(proof[flag], false, flag + " must remain disabled");
   }
