@@ -40,10 +40,11 @@ jobs:
       - name: Show exact formatted test files for review
         run: |
           set -e
+          cd ui/v2.5
           "$RUNNER_TEMP/biome-tool/node_modules/.bin/biome" format --write \
-            ui/v2.5/tests/browser/helpers/recovered-app-boot.mjs \
-            ui/v2.5/tests/browser/storage-native-packed-acceptance.mjs
-          for f in ui/v2.5/tests/browser/helpers/recovered-app-boot.mjs ui/v2.5/tests/browser/storage-native-packed-acceptance.mjs; do
+            tests/browser/helpers/recovered-app-boot.mjs \
+            tests/browser/storage-native-packed-acceptance.mjs
+          for f in tests/browser/helpers/recovered-app-boot.mjs tests/browser/storage-native-packed-acceptance.mjs; do
             echo "FORMAT-BEGIN:$f"
             base64 -w0 "$f"
             echo
