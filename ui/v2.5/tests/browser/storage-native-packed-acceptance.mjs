@@ -632,8 +632,15 @@ try {
   await stoppedForRecovery;
   logs?.end();
   await bootRecovered({
-    binary, root, repository, workspace, media, backups, snapshot,
-    members, originals,
+    binary,
+    root,
+    repository,
+    workspace,
+    media,
+    backups,
+    snapshot,
+    members,
+    originals,
   });
   passed = true;
   console.log(
