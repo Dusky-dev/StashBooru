@@ -1,0 +1,29 @@
+name: Experimental restored-app boot syntax
+
+on:
+  pull_request:
+    paths:
+      - ui/v2.5/tests/browser/helpers/recovered-app-boot.mjs
+      - ui/v2.5/tests/browser/storage-native-packed-acceptance.mjs
+      - .github/workflows/image-storage-restored-boot.yml
+  push:
+    branches: [develop]
+    paths:
+      - ui/v2.5/tests/browser/helpers/recovered-app-boot.mjs
+      - .github/workflows/image-storage-restored-boot.yml
+
+jobs:
+  syntax:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+      - name: Compile isolated restored-app boot acceptance sources
+        run: |
+          node --check ui/v2.5/tests/browser/helpers/recovered-app-boot.mjs
+          node --check ui/v2.5/tests/browser/storage-native-packed-acceptance.mjs
+      - name: Check no production activation or eviction was added
+        run: |
+          ! grep -E '(^|[[:space:]])(unlink|rmSync|rmdirSync|execSync)\(' ui/v2.5/tests/browser/helpers/recovered-app-boot.mjs
