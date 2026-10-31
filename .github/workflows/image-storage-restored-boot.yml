@@ -27,3 +27,25 @@ jobs:
       - name: Check no production activation or eviction was added
         run: |
           ! grep -E '(^|[[:space:]])(unlink|rmSync|rmdirSync|execSync)\(' ui/v2.5/tests/browser/helpers/recovered-app-boot.mjs
+
+  formatting-suggestion:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+      - name: Install repository-pinned Biome
+        run: npm install --prefix "$RUNNER_TEMP/biome-tool" --no-audit --no-fund @biomejs/biome@2.5.0
+      - name: Show exact formatted test files for review
+        run: |
+          set -e
+          "$RUNNER_TEMP/biome-tool/node_modules/.bin/biome" format --write \
+            ui/v2.5/tests/browser/helpers/recovered-app-boot.mjs \
+            ui/v2.5/tests/browser/storage-native-packed-acceptance.mjs
+          for f in ui/v2.5/tests/browser/helpers/recovered-app-boot.mjs ui/v2.5/tests/browser/storage-native-packed-acceptance.mjs; do
+            echo "FORMAT-BEGIN:$f"
+            base64 -w0 "$f"
+            echo
+            echo "FORMAT-END:$f"
+          done
