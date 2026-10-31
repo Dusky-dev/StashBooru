@@ -35,6 +35,8 @@ class CompleteFileRebaseTests(unittest.TestCase):
         })["snapshot"]
         self.database = root / "source.sqlite"
         connection = sqlite3.connect(self.database)
+        # Real StashBooru stores the persistent WAL journal mode in its DB.
+        self.assertEqual(connection.execute("PRAGMA journal_mode=WAL").fetchone(), ("wal",))
         connection.executescript("""
             CREATE TABLE images (id INTEGER PRIMARY KEY);
             CREATE TABLE folders (id INTEGER PRIMARY KEY, path TEXT, zip_file_id INTEGER);
@@ -73,6 +75,19 @@ class CompleteFileRebaseTests(unittest.TestCase):
 
     def run_audit(self):
         return all_files.audit(self.receipt, self.recovered, self.image_output, self.output)
+
+    def test_wal_source_clones_verify_from_the_sqlite_file_without_sidecars(self):
+        self.assertEqual(sqlite3.connect(self.database).execute(
+            "PRAGMA journal_mode").fetchone(), ("wal",))
+        self.assertEqual(self.run_rebase()["allSavedRegularFileFoldersRebased"], True)
+        self.assertEqual(self.run_audit()["status"], "complete_verified")
+        output_db = self.output / "all-file-paths.sqlite"
+        with sqlite3.connect(output_db) as connection:
+            self.assertEqual(connection.execute("PRAGMA journal_mode").fetchone(), ("delete",))
+            self.assertEqual(connection.execute("SELECT path FROM folders WHERE id=2").fetchone(),
+                             (str(self.recovered / "media" / "scenes"),))
+        self.assertFalse((self.output / "all-file-paths.sqlite-wal").exists())
+        self.assertFalse((self.output / "all-file-paths.sqlite-shm").exists())
 
     def test_every_saved_file_path_maps_to_disposable_media(self):
         result = self.run_rebase()
