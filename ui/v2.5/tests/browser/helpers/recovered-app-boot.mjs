@@ -7,7 +7,7 @@ import { createHash } from "node:crypto";
 import { createWriteStream } from "node:fs";
 import { copyFile, mkdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
-import { join, relative, resolve, sep } from "node:path";
+import { join, relative, sep } from "node:path";
 import { promisify } from "node:util";
 
 const exec = promisify(execFile);
