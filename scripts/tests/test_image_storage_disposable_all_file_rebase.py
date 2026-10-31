@@ -165,6 +165,10 @@ class CompleteFileRebaseTests(unittest.TestCase):
         # before running the prerequisite phases.
         with sqlite3.connect(self.database) as conn:
             conn.execute("UPDATE files SET zip_file_id=9 WHERE id=13")
+        # sqlite3's context manager commits but does NOT close. Close the
+        # WAL-backed source before verifying a saved immutable SQLite file,
+        # otherwise the uncheckpointed -wal sidecar could hide this mutation.
+        conn.close()
         replacement = self.private / "changed-set.json"
         backup_set.create_receipt(self.database, self.config, self.store, self.snapshot, replacement)
         second_restore = self.private / "second-full"
