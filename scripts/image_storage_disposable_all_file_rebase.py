@@ -215,6 +215,11 @@ def rebase(receipt: Path, recovered: Path, image_output: Path, output: Path) -> 
     clone = output / "all-file-paths.sqlite"
     isolated.byte_copy(image_output / "image-paths.sqlite", clone, image_sha, db_audit.MAX_DB)
     with sqlite3.connect(clone, timeout=10) as connection:
+        # The saved SQLite can retain WAL mode after a verified online backup.
+        # Only the disposable clone may change journal mode: immutable
+        # independent verification must read the committed main DB file.
+        if connection.execute("PRAGMA journal_mode=DELETE").fetchone() != ("delete",):
+            raise ValueError("disposable all-file SQLite clone did not leave WAL mode")
         connection.execute("BEGIN IMMEDIATE")
         for folder_id, directory in sorted(mapping.items()):
             if connection.execute("UPDATE folders SET path=? WHERE id=?",
