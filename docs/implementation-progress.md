@@ -1,5 +1,13 @@
 # StashBooru implementation progress
 
+## Disposable restored-app boot acceptance — 2026-10-31 (PR #297)
+
+- Baseline `develop` merge `bafdb41cf123d31a4f14771f1f60bba5d8e22202` (offline checkpoint PR #296); branch `feat/p12-p13-isolated-restored-boot-20261031`, PR #297. Recovery toolchain is based on independently verified backup receipt, full-media scratch restoration, image and all-file SQLite rebasing, and restart checkpoint audit.
+- Added `ui/v2.5/tests/browser/helpers/recovered-app-boot.mjs`, invoked after the real native P12/P13 test disarms the fixture trial and stops its server. It uses a fresh SQLite online-backup copy and saved fixture configuration, independently runs/audits the full recovery chain, starts the real binary with an allowlisted loopback-only scratch configuration and fresh writable SQLite clone, checks exact restored Image IDs/native bytes, and verifies backup artifacts and fixture originals stay unchanged.
+- No production library or user URLs accepted; the throwaway `stash-packed-native-e2e-*` root owns all scratch paths. Credentials, plugin settings and STASH_* overrides are not inherited. Network proxy scrubbing is not an OS sandbox; no claim of full network isolation, coherent live snapshot, transactional rollback, original eviction, automatic P12/P13 activation, or recovery of ZIP-backed blobs.
+- CI: first head `176ba6cade32ecc2afc7c95b938866a42e9516c7` passed syntax and Go lint; full Build failed during UI validation on unused `resolve` import before real-server acceptance could run. Fix pushed as `ea1be55cd3831d81aa07f7aaf80b073e369e1626`. Fresh syntax check passed; full Build and relevant live acceptance await final-head result. No owner-library testing or Codex Review completion claimed.
+- Next: verify new real-binary CI and review, fix any findings, merge only when green; after merge, separately scope coherent snapshot/cross-process rollback without altering live media or enabling file eviction.
+
 ## Native isolated missing-original recovery rehearsal — 2026-10-29
 
 - Branch `feat/native-missing-original-rehearsal-20261029` stacked on offline missing-original proof PR #270, head `97184c4920a3593e0999ed58652bf0b6432199be`.
