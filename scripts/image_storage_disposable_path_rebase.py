@@ -163,6 +163,13 @@ def rebase(receipt: Path, recovered_output: Path, output: Path) -> dict:
     isolated.byte_copy(recovered_output / "database" / "recovered.sqlite", rewritten,
                        old_hash, db_audit.MAX_DB)
     with sqlite3.connect(rewritten, timeout=5) as conn:
+        # SQLite's online backup preserves WAL journal_mode in the saved DB.
+        # A WAL write in this disposable clone would be invisible to the
+        # immutable read-only verifier, which deliberately does not use WAL.
+        # Switch only the new scratch copy to a single-file journal *before*
+        # any path mutation so the verifier sees committed base-file bytes.
+        if conn.execute("PRAGMA journal_mode=DELETE").fetchone() != ("delete",):
+            raise ValueError("disposable image SQLite clone did not leave WAL mode")
         conn.execute("BEGIN IMMEDIATE")
         for folder_id, new_path in sorted(mapping.items()):
             update = conn.execute("UPDATE folders SET path=? WHERE id=?", (new_path, folder_id))
