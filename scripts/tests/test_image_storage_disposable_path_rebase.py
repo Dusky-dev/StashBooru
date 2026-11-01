@@ -29,6 +29,8 @@ class DisposablePathRebaseTests(unittest.TestCase):
         self.snapshot = media.backup(self.store, {"images": self.media})["snapshot"]
         self.db = root / "saved.sqlite"
         conn = sqlite3.connect(self.db)
+        # Exercise real StashBooru SQLite: its journal_mode is WAL, not DELETE.
+        self.assertEqual(conn.execute("PRAGMA journal_mode=WAL").fetchone(), ("wal",))
         conn.executescript("""
             CREATE TABLE images (id INTEGER PRIMARY KEY);
             CREATE TABLE folders (id INTEGER PRIMARY KEY, path TEXT, zip_file_id INTEGER);
@@ -58,6 +60,19 @@ class DisposablePathRebaseTests(unittest.TestCase):
 
     def do_audit(self):
         return rebase.audit(self.receipt, self.recovered, self.rebased)
+
+    def test_wal_snapshot_is_rebased_into_a_self_contained_sqlite_file(self):
+        self.assertEqual(sqlite3.connect(self.db).execute(
+            "PRAGMA journal_mode").fetchone(), ("wal",))
+        self.do_rebase()
+        self.assertEqual(self.do_audit()["status"], "complete_verified")
+        clone = self.rebased / "image-paths.sqlite"
+        with sqlite3.connect(clone) as connection:
+            self.assertEqual(connection.execute("PRAGMA journal_mode").fetchone(), ("delete",))
+            self.assertEqual(connection.execute("SELECT path FROM folders WHERE id=1").fetchone(),
+                             (str(self.recovered / "media" / "images"),))
+        self.assertFalse((self.rebased / "image-paths.sqlite-wal").exists())
+        self.assertFalse((self.rebased / "image-paths.sqlite-shm").exists())
 
     def test_disposable_sqlite_points_to_verified_scratch_not_live_roots(self):
         proof = self.do_rebase()

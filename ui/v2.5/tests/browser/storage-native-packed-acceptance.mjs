@@ -13,6 +13,7 @@ import {
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
+import { bootRecovered } from "./helpers/recovered-app-boot.mjs";
 
 // The only accepted server is a freshly created fixture instance. Never
 // request or accept a user-supplied URL, media path, database or credentials.
@@ -623,6 +624,24 @@ try {
       await readFile(join(media, member.name)),
       originals.get(member.name)
     );
+
+  // End the original fixture process before taking its SQLite backup.
+  // The recovered process must use a separately rebased and writable clone.
+  const stoppedForRecovery = once(server, "exit");
+  server.kill("SIGTERM");
+  await stoppedForRecovery;
+  logs?.end();
+  await bootRecovered({
+    binary,
+    root,
+    repository,
+    workspace,
+    media,
+    backups,
+    snapshot,
+    members,
+    originals,
+  });
   passed = true;
   console.log(
     "Isolated native-route P12/P13 acceptance completed; all originals intact"
