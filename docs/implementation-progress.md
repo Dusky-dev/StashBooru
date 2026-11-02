@@ -1,5 +1,14 @@
 # StashBooru implementation progress
 
+## Booru Browser / Grabber filename parity — 2026-11-03
+
+- Baseline `develop` at `fd9d4f2825553e0d6c7cb6860be3646ea639750d`, branch `fix/booru-grabber-filenames-20261103`.
+- The Booru Browser filename renderer now joins categorized tags with `+`, renders tag underscores as spaces, and treats Windows `\` as a validated folder separator just like `/`. Untrusted tag values remain path-sanitized; existing traversal and extension checks stay in place.
+- Native Booru Browser conversion alone may retain the original filename stem when the output extension differs and the destination is free. Ordinary converter jobs keep unique `.converted-<id>` suffixes; occupied or same-extension Booru targets fall back to that suffix. Converter journal, non-overwrite publication, original fingerprint and restoration remain in use.
+- Added regression tests for Grabber-like template rendering, unsafe Windows paths, tag sanitation, Booru conversion, occupied destinations, same-extension fallback, Unicode basename size and restoration.
+- Local Go tests could not be executed in this tool-only session because the private repository is not mounted or cloneable from the shell; CI verification and Codex Review must finish before merge. No existing user media was touched.
+- Next: run CI and inspect Codex Review findings on the final PR head; merge only after required gates pass.
+
 ## Disposable restored-app boot acceptance — 2026-10-31 (PR #297)
 
 - Baseline `develop` merge `bafdb41cf123d31a4f14771f1f60bba5d8e22202` (offline checkpoint PR #296); branch `feat/p12-p13-isolated-restored-boot-20261031`, PR #297. Recovery toolchain is based on independently verified backup receipt, full-media scratch restoration, image and all-file SQLite rebasing, and restart checkpoint audit.
