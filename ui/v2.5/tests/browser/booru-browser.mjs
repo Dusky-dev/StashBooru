@@ -395,6 +395,19 @@ try {
     });
     await page.route("**/booru-browser/**", async (route) => {
       const url = new URL(route.request().url());
+      if (url.pathname.endsWith("/filename-migration")) {
+        await route.fulfill({
+          json: {
+            version: "category-separator-v1",
+            dismissed: true,
+            eligible: 0,
+            review: 0,
+            truncated: false,
+            items: [],
+          },
+        });
+        return;
+      }
       if (url.pathname.endsWith("/archive")) {
         if (url.searchParams.has("file")) {
           const png = Buffer.from(
