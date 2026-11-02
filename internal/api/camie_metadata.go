@@ -130,6 +130,11 @@ func parseCamieFilename(path string, layout string) ([]camietagger.Tag, error) {
 		if value == "" {
 			continue
 		}
+		// Old Booru downloads joined tags with comma-space. This can also
+		// occur within a real tag, so ambiguous fields cannot be inferred.
+		if strings.Contains(value, ", ") {
+			continue
+		}
 		for _, item := range splitCamieFilenameValue(category, value) {
 			predictions = append(predictions, camietagger.Tag{
 				Name:     item,

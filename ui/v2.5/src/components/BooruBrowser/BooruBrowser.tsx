@@ -68,6 +68,7 @@ import {
 import { BooruReview, ReviewEvidence, type ReviewState } from "./BooruReview";
 import { TagAutocomplete } from "./TagAutocomplete";
 import { BooruDownload } from "./BooruDownload";
+import { BooruFilenameMigration } from "./BooruFilenameMigration";
 import { BooruArchive } from "./BooruArchive";
 import { readBrowserMemory, saveBrowserMemory } from "./browser";
 import { SourceSettings } from "./SourceSettings";
@@ -1290,6 +1291,7 @@ export default function BooruBrowser() {
     active.sources.some((id) => !sources.some((source) => source.id === id));
   return (
     <div className="booru-browser">
+      <BooruFilenameMigration showSettings={showSettings} />
       <header className="booru-heading">
         <div>
           <h2>{message("title", "Booru browser")}</h2>

@@ -247,6 +247,8 @@ func Initialize() (*Server, error) {
 	r.Get("/booru-browser/media", booruRoutes.Media)
 	r.Get("/booru-browser/archive", booruRoutes.Archive)
 	r.Get("/booru-browser/download-settings", booruRoutes.DownloadSettings)
+	r.Get("/booru-browser/filename-migration", booruRoutes.FilenameMigration)
+	r.Post("/booru-browser/filename-migration", booruRoutes.UpdateFilenameMigration)
 	r.Post("/booru-browser/download-settings", booruRoutes.UpdateDownloadSettings)
 	r.Get("/booru-browser/download", booruRoutes.DownloadStatus)
 	r.Post("/booru-browser/download", booruRoutes.StartDownload)
