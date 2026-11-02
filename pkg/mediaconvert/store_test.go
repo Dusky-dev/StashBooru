@@ -140,6 +140,59 @@ func TestConvertRestorePreservesSourceIdentity(t *testing.T) {
 	}
 }
 
+func TestBooruConversionKeepsGrabberBasenameAndRestore(t *testing.T) {
+	s, repo, client, original := fixture(t, "compressed", false)
+	source := repo.f.Base().Path
+	want := strings.TrimSuffix(source, filepath.Ext(source)) + ".jxl"
+	hash := repo.f.Base().Fingerprints.GetString("md5")
+
+	r, err := s.ConvertWithSavingsMatchingBasename(context.Background(), 12, "booru-download", client,
+		Options{Format: "jxl"}, Format{Extension: "jxl"}, SavingsThresholds{})
+	if err != nil || r == nil || r.Status != "complete" {
+		t.Fatalf("booru conversion failed: %v, %+v", err, r)
+	}
+	if repo.f.Base().Path != want || r.After.File().Base().Path != want {
+		t.Fatalf("unexpected booru destination: %s", repo.f.Base().Path)
+	}
+	if repo.f.Base().Fingerprints.GetString("source_md5") != hash {
+		t.Fatal("original MD5 provenance was lost")
+	}
+	if _, err := os.Stat(want); err != nil {
+		t.Fatal("named output missing", err)
+	}
+	if err := s.Restore(context.Background(), r.ID); err != nil {
+		t.Fatal("named conversion cannot restore:", err)
+	}
+	restored, err := os.ReadFile(source)
+	if err != nil || string(restored) != original {
+		t.Fatal("restore failed to recover original media")
+	}
+}
+
+func TestBooruConversionAvoidsOccupiedOutputName(t *testing.T) {
+	s, repo, client, _ := fixture(t, "compressed", false)
+	source := repo.f.Base().Path
+	occupied := strings.TrimSuffix(source, filepath.Ext(source)) + ".jxl"
+	originalSibling := []byte("unrelated JXL file")
+	if err := os.WriteFile(occupied, originalSibling, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	r, err := s.ConvertWithSavingsMatchingBasename(context.Background(), 12, "booru-download", client,
+		Options{Format: "jxl"}, Format{Extension: "jxl"}, SavingsThresholds{})
+	if err != nil || r == nil || r.Status != "complete" {
+		t.Fatalf("collision-safe conversion failed: %v, %+v", err, r)
+	}
+	want := convertedDestinationPath(source, r.ID, "jxl")
+	if repo.f.Base().Path != want {
+		t.Fatalf("occupied output was not avoided: got %s; want %s", repo.f.Base().Path, want)
+	}
+	got, err := os.ReadFile(occupied)
+	if err != nil || string(got) != string(originalSibling) {
+		t.Fatal("conversion overwrote an existing file")
+	}
+}
+
 func TestConvertTruncatesLongUnicodeBasename(t *testing.T) {
 	s, repo, client, _ := fixture(t, "compressed", false)
 	base := repo.f.Base()
