@@ -63,25 +63,6 @@ func convertedDestinationPath(sourcePath, recordID, extension string) string {
 	return filepath.Join(filepath.Dir(sourcePath), stem+suffix)
 }
 
-// Booru imports can keep a Grabber-style basename across a format change.
-// An occupied destination, including a symlink, retains the normal unique
-// converter suffix. Never reuse or replace an existing sibling.
-func convertedDestinationPathMatchingBasename(sourcePath, recordID, extension string) string {
-	stem := strings.TrimSuffix(filepath.Base(sourcePath), filepath.Ext(sourcePath))
-	if stem == "" {
-		stem = "media"
-	}
-	suffix := "." + extension
-	stem = truncateFilenameBytes(stem, maxFilenameComponentBytes-len(suffix))
-	destination := filepath.Join(filepath.Dir(sourcePath), stem+suffix)
-	if destination != sourcePath {
-		if _, err := os.Lstat(destination); errors.Is(err, os.ErrNotExist) {
-			return destination
-		}
-	}
-	return convertedDestinationPath(sourcePath, recordID, extension)
-}
-
 func snapshot(f models.File) Snapshot {
 	clone := f.Clone()
 	clone.Base().Fingerprints = append(models.Fingerprints(nil), f.Base().Fingerprints...)
@@ -554,7 +535,7 @@ func (s Store) conversionSource(ctx context.Context, fileID models.FileID) (mode
 }
 
 func (s Store) Convert(ctx context.Context, fileID models.FileID, batch string, client Client, options Options, format Format) (*Record, error) {
-	return s.convert(ctx, fileID, batch, client, options, format, nil, false)
+	return s.convert(ctx, fileID, batch, client, options, format, nil)
 }
 
 // ConvertWithSavings enforces compression policy independently of encoder options.
@@ -563,20 +544,10 @@ func (s Store) ConvertWithSavings(ctx context.Context, fileID models.FileID, bat
 	if err := savings.Validate(); err != nil {
 		return nil, err
 	}
-	return s.convert(ctx, fileID, batch, client, options, format, &savings, false)
+	return s.convert(ctx, fileID, batch, client, options, format, &savings)
 }
 
-// ConvertWithSavingsMatchingBasename is used for filename-templated booru
-// downloads. It retains the source stem on a format change whenever the
-// destination is free, without changing the standard converter's naming.
-func (s Store) ConvertWithSavingsMatchingBasename(ctx context.Context, fileID models.FileID, batch string, client Client, options Options, format Format, savings SavingsThresholds) (*Record, error) {
-	if err := savings.Validate(); err != nil {
-		return nil, err
-	}
-	return s.convert(ctx, fileID, batch, client, options, format, &savings, true)
-}
-
-func (s Store) convert(ctx context.Context, fileID models.FileID, batch string, client Client, options Options, format Format, savings *SavingsThresholds, matchingBasename bool) (record *Record, retErr error) {
+func (s Store) convert(ctx context.Context, fileID models.FileID, batch string, client Client, options Options, format Format, savings *SavingsThresholds) (record *Record, retErr error) {
 	before, stat, err := s.conversionSource(ctx, fileID)
 	if err != nil {
 		return nil, err
@@ -634,10 +605,10 @@ func (s Store) convert(ctx context.Context, fileID models.FileID, batch string, 
 	if err != nil {
 		return r, err
 	}
-	return s.activate(ctx, r, before, staged, outputHash, stat, matchingBasename)
+	return s.activate(ctx, r, before, staged, outputHash, stat)
 }
 
-func (s Store) activate(ctx context.Context, r *Record, before models.File, staged, outputHash string, stat os.FileInfo, matchingBasename bool) (*Record, error) {
+func (s Store) activate(ctx context.Context, r *Record, before models.File, staged, outputHash string, stat os.FileInfo) (*Record, error) {
 	base := before.Base()
 	checksum := r.Before.File().Base().Fingerprints.GetString("md5")
 	result, format := r.Result, r.Result.Format
@@ -653,12 +624,8 @@ func (s Store) activate(ctx context.Context, r *Record, before models.File, stag
 		return r, fmt.Errorf("backup verification failed")
 	}
 	r.Cached = true
-	// Never overwrite a sibling or mutate an open input. Booru imports may
-	// retain the original stem, but only when the new extension is unoccupied.
+	// Always use a fresh basename. Never overwrite a sibling or mutate an open input.
 	destination := convertedDestinationPath(base.Path, r.ID, format)
-	if matchingBasename {
-		destination = convertedDestinationPathMatchingBasename(base.Path, r.ID, format)
-	}
 	after, err := convertedFile(before, staged, result, outputHash)
 	if err != nil {
 		return r, err

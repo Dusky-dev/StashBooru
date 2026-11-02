@@ -14,18 +14,11 @@ import (
 var filenameToken = regexp.MustCompile(`%([a-z_][a-z0-9_]*)%`)
 var filenameTokens = map[string]bool{"id": true, "asset_id": true, "md5": true, "ext": true, "artist": true, "copyright": true, "character": true, "filename": true, "rating": true, "website": true, "websitename": true, "width": true, "height": true, "author": true, "authorid": true, "position": true, "score": true, "date": true, "current_date": true, "name": true, "title": true, "num": true}
 
-// Normalize Grabber's Windows-style directory separators before validation.
-// Only literal separators in the template can create directories.
-func normalizeFilenameTemplate(format string) string {
-	return strings.ReplaceAll(format, "\\", "/")
-}
-
 func ValidateFilenameTemplate(format string) error {
-	format = normalizeFilenameTemplate(format)
 	if format == "" {
 		return nil
 	}
-	if len(format) > 512 || strings.HasPrefix(format, "/") || strings.ContainsAny(format, ":") || strings.IndexFunc(format, unicode.IsControl) >= 0 || !strings.HasSuffix(format, ".%ext%") || len(strings.Split(format, "/")) > 8 {
+	if len(format) > 512 || strings.HasPrefix(format, "/") || strings.ContainsAny(format, "\\:") || strings.IndexFunc(format, unicode.IsControl) >= 0 || !strings.HasSuffix(format, ".%ext%") || len(strings.Split(format, "/")) > 8 {
 		return fmt.Errorf("use a relative template up to 512 bytes and eight components, ending in .%%ext%%")
 	}
 	for _, part := range strings.Split(format, "/") {
@@ -71,7 +64,6 @@ func RenderFilename(format string, s Source, p Post, md5, extension string, num 
 	if format == "" {
 		return "", fmt.Errorf("empty template")
 	}
-	format = normalizeFilenameTemplate(format)
 	id := p.RemoteID
 	if id == "" {
 		id = p.ID
@@ -96,8 +88,7 @@ func RenderFilename(format string, s Source, p Post, md5, extension string, num 
 				if value == "" {
 					value = tag.Name
 				}
-				// Grabber's filename tokens display booru tag underscores as spaces.
-				tags = append(tags, strings.ReplaceAll(value, "_", " "))
+				tags = append(tags, value)
 			}
 		}
 		values[category] = strings.Join(tags, "+")

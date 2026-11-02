@@ -199,10 +199,7 @@ The encoder writes to a staging directory beside the source. After validation,
 the original is copied to the restore cache and verified, a fresh output filename
 is published without overwriting a sibling, the file record is switched in a
 database transaction, and the old active path is removed. The output filename
-normally includes `.converted-<id>` to prevent collisions. Booru Browser imports
-instead retain the downloaded basename when changing extensions and the target
-is unoccupied; an occupied or same-extension target uses the normal suffix.
-Failed/cancelled encoding keeps
+includes `.converted-<id>` to prevent collisions. Failed/cancelled encoding keeps
 the source. Activation is journaled and completed or rolled back after an
 interruption. Once activation begins, cancellation waits for that short critical
 section to leave recoverable state.

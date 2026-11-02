@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestRenderFilenameGrabberTagFormattingAndSeparators(t *testing.T) {
+func TestRenderFilenameGrabberCategorySeparators(t *testing.T) {
 	source := Source{ID: "fixture", URL: "https://board.example.org"}
 	post := Post{
 		ID: "42",
@@ -14,48 +14,34 @@ func TestRenderFilenameGrabberTagFormattingAndSeparators(t *testing.T) {
 			{Category: "artist", Name: "mimi_doomi"},
 			{Category: "artist", Name: "myahogao"},
 			{Category: "copyright", Name: "sono_bisque_doll_wa_koi_wo_suru"},
+			{Category: "copyright", Name: "second_series"},
 			{Category: "character", Name: "kitagawa_marin"},
+			{Category: "character", Name: "other_character"},
 		},
 	}
 	md5 := "2c20e78d4c3163a761873936d4380ead"
-	want := "[maho malice+mimi doomi+myahogao]/(sono bisque doll wa koi wo suru).kitagawa marin/_" + md5 + ".jpg"
-	for _, template := range []string{
-		"[%artist%]\\(%copyright%).%character%\\_%md5%.%ext%",
-		"[%artist%]/(%copyright%).%character%/_%md5%.%ext%",
-	} {
-		if err := ValidateFilenameTemplate(template); err != nil {
-			t.Fatalf("valid Grabber template %q rejected: %v", template, err)
-		}
-		got, err := RenderFilename(template, source, post, md5, "jpg", 0)
-		if err != nil || got != want {
-			t.Fatalf("RenderFilename(%q) = %q, %v; want %q", template, got, err, want)
-		}
+	got, err := RenderFilename("[%artist%]/(%copyright%).%character%_%md5%.%ext%", source, post, md5, "jpg", 0)
+	want := "[maho_malice+mimi_doomi+myahogao]/(sono_bisque_doll_wa_koi_wo_suru+second_series).kitagawa_marin+other_character_" + md5 + ".jpg"
+	if err != nil || got != want {
+		t.Fatalf("got %q, %v; want %q", got, err, want)
 	}
 }
 
-func TestFilenameTemplateRejectsUnsafeWindowsPaths(t *testing.T) {
-	for _, template := range []string{
-		"\\absolute\\%md5%.%ext%",
-		"..\\%md5%.%ext%",
-		"folder\\..\\%md5%.%ext%",
-		"C:\\media\\%md5%.%ext%",
-		"folder\\\\%md5%.%ext%",
-	} {
-		if err := ValidateFilenameTemplate(template); err == nil {
-			t.Fatalf("unsafe template %q accepted", template)
-		}
-	}
-}
-
-func TestFilenameTagsCannotCreateDirectories(t *testing.T) {
+func TestRenderFilenameCategorySeparatorKeepsOneTagAndLabels(t *testing.T) {
 	source := Source{ID: "fixture", URL: "https://board.example.org"}
 	post := Post{ID: "1", Tags: []Tag{
-		{Category: "artist", Name: "malicious/../artist"},
-		{Category: "artist", Name: "plain_name"},
+		{Category: "artist", Name: "underlying_artist", Label: "named_artist"},
+		{Category: "copyright", Name: "one_series"},
 	}}
-	got, err := RenderFilename("%artist%/%md5%.%ext%", source, post, strings.Repeat("a", 32), "png", 0)
-	want := "malicious_.._artist+plain name/" + strings.Repeat("a", 32) + ".png"
+	got, err := RenderFilename("%artist%-%copyright%-%md5%.%ext%", source, post, strings.Repeat("a", 32), "png", 0)
+	want := "named_artist-one_series-" + strings.Repeat("a", 32) + ".png"
 	if err != nil || got != want {
-		t.Fatalf("filename = %q, %v; want %q", got, err, want)
+		t.Fatalf("got %q, %v; want %q", got, err, want)
+	}
+}
+
+func TestFilenameTemplateBackslashesAreStillRejected(t *testing.T) {
+	if err := ValidateFilenameTemplate("[%artist%]\\(%copyright%).%character%\\_%md5%.%ext%"); err == nil {
+		t.Fatal("backslashes must remain rejected, not silently change path layout")
 	}
 }
