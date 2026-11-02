@@ -266,7 +266,7 @@ func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, na
 	if plan == nil || plan.Status != "ready" {
 		return fmt.Errorf("download is not eligible for safe filename migration")
 	}
-	if rs.repository == nil || rs.libraryRoots == nil {
+	if rs.repository.TxnManager == nil || rs.libraryRoots == nil {
 		return fmt.Errorf("native library is unavailable")
 	}
 	oldPath, newPath := receipt.Library.Path, plan.NewPath
@@ -290,7 +290,7 @@ func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, na
 	err = rs.repository.WithTxn(ctx, func(ctx context.Context) error {
 		existing, err := rs.repository.File.FindByPath(ctx, oldPath, true)
 		if err != nil || existing == nil {
-			return fmt.Errorf("cannot locate the registered native file: %w", err)
+			return fmt.Errorf("cannot locate the registered native file: %v", err)
 		}
 		folder, err := rs.repository.Folder.Find(ctx, existing.Base().ParentFolderID)
 		if err != nil || folder == nil || folder.Path != oldDir {
