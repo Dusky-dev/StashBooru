@@ -1,5 +1,14 @@
 # StashBooru implementation progress
 
+## Opt-in legacy Booru filename audit — 2026-11-03
+
+- Baseline: PR #298 head `b104e4275c10c1c221eba7571f11cf3d5ead6d00` (separator fix); implementation branch `feat/booru-legacy-filenames-audit-20261103` stacked on PR #298 until it merges.
+- Added receipt-based old-template reconstruction, per-file preview, explicit same-directory native rename for unconverted matches, retained checksums, target collision refusal and server-scoped dismissal. No files changed automatically.
+- Added read-only audit of suspect categories and prevented filename-driven Image Tagging from creating combined entities out of ambiguous legacy comma-separated values.
+- Converted/restored JXL media, changed directories and unverified receipts remain review-only; converter journal/path migration and crash-atomic full rollback are deliberately out of scope until separately validated.
+- Added synthetic planning, conflict, converted skip, audit and dismissal regression tests. No local Go/UI toolchain checks available through the GitHub-only source session; CI required. Public-PR runner security is documented separately; no workflow event trust changed.
+
+
 ## Disposable restored-app boot acceptance — 2026-10-31 (PR #297)
 
 - Baseline `develop` merge `bafdb41cf123d31a4f14771f1f60bba5d8e22202` (offline checkpoint PR #296); branch `feat/p12-p13-isolated-restored-boot-20261031`, PR #297. Recovery toolchain is based on independently verified backup receipt, full-media scratch restoration, image and all-file SQLite rebasing, and restart checkpoint audit.
