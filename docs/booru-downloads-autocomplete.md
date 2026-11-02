@@ -67,9 +67,12 @@ ID), `%asset_id%` (stable attachment identity), `%position%` (one-based file ind
 `%authorid%`, `%score%`, `%date%`, `%current_date%`, `%name%`, `%title%`, `%num%`.
 Dates use UTC `MM-DD-YYYY HH.mm` when supplied as RFC3339. Missing text/category
 metadata becomes `unknown`; dimensions/scores can be zero. Categories use supplied
-core tags, not inferred classifications. Multiple core tags join with `, `.
+core tags, not inferred classifications. Multiple core tags join with `+`, and
+underscores in tag names display as spaces, matching the Grabber-style filenames
+in this browser.
 
-Literal `/` creates subfolders inside the chosen library directory. Values cannot
+Literal `/` or Windows-style `\` in the template creates subfolders inside the
+chosen library directory on any platform. Values cannot
 introduce folders; forbidden/control characters and Windows reserved names are
 sanitized. Templates must be relative, end in `.%ext%`, and stay within eight
 components/512 bytes; rendered components are capped at 200 bytes. Parent paths,
@@ -79,8 +82,11 @@ This is a common-token compatibility subset of
 not its scripting, options or conditional grammar.
 
 `%md5%` and `%ext%` use the original bytes actually downloaded, not guessed URL
-metadata. Subsequent native conversion retains the converter's naming/activation
-rules and changes the output extension as usual. Different existing bytes get a
+metadata. Booru download conversions retain the same filename stem and change only the
+extension when the output name is free (for example, `%md5%.jpg` → `%md5%.jxl`).
+If that filename already exists or the output format equals the source format,
+the converter uses its safe `.converted-<id>` fallback rather than overwrite
+anything. Other native conversions keep their existing naming rule. Different existing bytes get a
 numeric suffix (or increment `%num%`); identical bytes at the chosen name can be
 reused. Template/destination and the original asset reference are checked before
 receipt reuse, including nested folders. The legacy computer-export endpoint
