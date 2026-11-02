@@ -193,6 +193,20 @@ func TestBooruConversionAvoidsOccupiedOutputName(t *testing.T) {
 	}
 }
 
+func TestMatchingBasenameSameExtensionAndLongUnicode(t *testing.T) {
+	dir := t.TempDir()
+	source := filepath.Join(dir, "original.png")
+	if got, want := convertedDestinationPathMatchingBasename(source, "1234567890", "png"),
+		convertedDestinationPath(source, "1234567890", "png"); got != want {
+		t.Fatalf("same-extension conversion would reuse the input name: %s", got)
+	}
+	longSource := filepath.Join(dir, strings.Repeat("界", 79)+".jpg")
+	got := convertedDestinationPathMatchingBasename(longSource, "1234567890", "jxl")
+	if len(filepath.Base(got)) > maxFilenameComponentBytes || !utf8.ValidString(filepath.Base(got)) {
+		t.Fatalf("matching basename exceeds filesystem limits: %s", got)
+	}
+}
+
 func TestConvertTruncatesLongUnicodeBasename(t *testing.T) {
 	s, repo, client, _ := fixture(t, "compressed", false)
 	base := repo.f.Base()
