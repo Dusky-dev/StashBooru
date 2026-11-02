@@ -199,7 +199,7 @@ func booruImportFile(ctx context.Context, path string, source booru.Source, post
 	if err != nil {
 		return result, err
 	}
-	record, err := store.ConvertWithSavings(ctx, fileID, "booru-"+source.Instance()+"-"+post.ID, client, options, format, config.Savings)
+	record, err := store.ConvertWithSavingsMatchingBasename(ctx, fileID, "booru-"+source.Instance()+"-"+post.ID, client, options, format, config.Savings)
 	if err != nil {
 		return result, err
 	}
