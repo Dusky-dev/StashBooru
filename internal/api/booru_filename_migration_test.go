@@ -35,14 +35,14 @@ func filenameMigrationFixture(t *testing.T) (booruDownloadReceipt, string, strin
 		t.Fatal(err)
 	}
 	receipt := booruDownloadReceipt{
-		Source: booru.PublicSource{ID: source.ID, Name: source.Name, URL: source.URL, Instance: "fixture-source"},
-		Post: post,
-		Directory: dir,
-		SavedPath: oldPath,
+		Source:      booru.PublicSource{ID: source.ID, Name: source.Name, URL: source.URL, Instance: "fixture-source"},
+		Post:        post,
+		Directory:   dir,
+		SavedPath:   oldPath,
 		OriginalMD5: hash,
-		OutputMD5: strings.Repeat("b", 32),
-		Template: format,
-		Library: &booruLibraryResult{Kind: "image", Path: oldPath},
+		OutputMD5:   strings.Repeat("b", 32),
+		Template:    format,
+		Library:     &booruLibraryResult{Kind: "image", Path: oldPath},
 	}
 	return receipt, oldPath, newPath
 }

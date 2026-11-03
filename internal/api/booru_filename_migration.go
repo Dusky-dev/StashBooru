@@ -108,9 +108,10 @@ func legacyCategoryWarning(tags []booru.Tag) []string {
 // candidates. This also avoids renaming arbitrary files merely containing a comma.
 func planBooruFilenameMigration(name string, receipt booruDownloadReceipt) *booruFilenameMigrationItem {
 	item := &booruFilenameMigrationItem{
-		Receipt: name, OldPath: receipt.SavedPath,
+		Receipt:  name,
+		OldPath:  receipt.SavedPath,
 		Warnings: legacyCategoryWarning(receipt.Post.Tags),
-		Status: "audit",
+		Status:   "audit",
 	}
 	if receipt.Library != nil && receipt.Library.Path != "" {
 		item.OldPath = receipt.Library.Path
@@ -332,7 +333,14 @@ func (rs booruBrowserRoutes) UpdateFilenameMigration(w http.ResponseWriter, r *h
 	defer booruFilenameMigrationMu.Unlock()
 	switch input.Action {
 	case "dismiss":
-		data, _ := json.Marshal(map[string]interface{}{"version": booruFilenameMigrationVersion, "dismissed": true})
+		data, err := json.Marshal(struct {
+			Version   string `json:"version"`
+			Dismissed bool   `json:"dismissed"`
+		}{Version: booruFilenameMigrationVersion, Dismissed: true})
+		if err != nil {
+			writeBooruError(w, 500, "migration", "Cannot encode migration preference.")
+			return
+		}
 		if err := writeBooruAtomic(rs.configPath, "booru-filename-migration-v1.json", data); err != nil {
 			writeBooruError(w, 500, "migration", "Cannot save migration preference.")
 			return

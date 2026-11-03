@@ -140,13 +140,13 @@ export function BooruFilenameMigration({
         </Modal.Header>
         <Modal.Body>
           <p>
-            Older downloads joined Artist, Character and Copyright lists
-            with commas. This preview uses each saved download receipt, not
-            your current tagging layout.
+            Older downloads joined Artist, Character and Copyright lists with
+            commas. This preview uses each saved download receipt, not your
+            current tagging layout.
           </p>
           <p>
-            Verified safe renames: {report?.eligible ?? 0}. Additional review:
-            {" "}{report?.review ?? 0}.
+            Verified safe renames: {report?.eligible ?? 0}. Additional review:{" "}
+            {report?.review ?? 0}.
           </p>
           <Alert variant="info">
             Converted JXL files, directory moves and ambiguous metadata are
@@ -186,7 +186,11 @@ export function BooruFilenameMigration({
           >
             Later
           </Button>
-          <Button variant="outline-secondary" disabled={busy} onClick={() => void dismiss()}>
+          <Button
+            variant="outline-secondary"
+            disabled={busy}
+            onClick={() => void dismiss()}
+          >
             Don't show again
           </Button>
           <Button
