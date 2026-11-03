@@ -75,7 +75,11 @@ export function BooruFilenameMigration({
       .then((data) => {
         if (!mounted) return;
         setReport(data);
-        if (!data.dismissed && data.items.length > 0 && !postponedThisSession()) {
+        if (
+          !data.dismissed &&
+          data.items.length > 0 &&
+          !postponedThisSession()
+        ) {
           setOpen(true);
         }
       })
@@ -150,9 +154,13 @@ export function BooruFilenameMigration({
     }
   };
 
-  const eligible = (report?.items ?? []).filter((item) => item.status === "ready");
+  const eligible = (report?.items ?? []).filter(
+    (item) => item.status === "ready"
+  );
   const eligibleNames = new Set(eligible.map((item) => item.receipt));
-  const selectedEligible = selected.filter((receipt) => eligibleNames.has(receipt));
+  const selectedEligible = selected.filter((receipt) =>
+    eligibleNames.has(receipt)
+  );
   const toggleSelected = (receipt: string) => {
     setSelected((current) =>
       current.includes(receipt)
@@ -204,7 +212,9 @@ export function BooruFilenameMigration({
                 variant="outline-secondary"
                 size="sm"
                 disabled={busy || eligible.length === 0}
-                onClick={() => setSelected(eligible.map((item) => item.receipt))}
+                onClick={() =>
+                  setSelected(eligible.map((item) => item.receipt))
+                }
               >
                 Select eligible
               </Button>
@@ -225,7 +235,9 @@ export function BooruFilenameMigration({
                   {item.status === "ready" && (
                     <Button
                       variant={
-                        selected.includes(item.receipt) ? "primary" : "outline-secondary"
+                        selected.includes(item.receipt)
+                          ? "primary"
+                          : "outline-secondary"
                       }
                       size="sm"
                       disabled={busy}
