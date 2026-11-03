@@ -81,6 +81,15 @@ func TestPlanBooruFilenameMigrationSkipsConversionAndConflicts(t *testing.T) {
 	}
 }
 
+func TestPlanBooruFilenameMigrationRequiresVerifiedOutputChecksum(t *testing.T) {
+	receipt, _, _ := filenameMigrationFixture(t)
+	receipt.OutputMD5 = ""
+	plan := planBooruFilenameMigration("fixture-source-123.json", receipt)
+	if plan == nil || plan.Status != "review" {
+		t.Fatalf("missing checksum cannot be offered as a safe rename: %+v", plan)
+	}
+}
+
 func TestConvertedBooruFilenamePreviewPreservesJXLSuffix(t *testing.T) {
 	receipt, oldPath, newOriginal := filenameMigrationFixture(t)
 	receipt.Library.Converted = true
