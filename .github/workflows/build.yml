@@ -153,7 +153,8 @@ jobs:
   # Runs in parallel with the test job.
   build:
     needs: generate
-    runs-on: [self-hosted, stashbooru]
+    # Docker compiler images require a Docker daemon. Keep the home runner socket-isolated.
+    runs-on: ubuntu-24.04
     permissions:
       actions: write
       contents: read
@@ -283,7 +284,8 @@ jobs:
   first-library:
     if: github.event_name == 'pull_request'
     needs: build
-    runs-on: [self-hosted, stashbooru]
+    # Playwright installs browser system dependencies with apt; not permitted in the hardened runner.
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
     - uses: actions/checkout@v6
@@ -606,7 +608,8 @@ jobs:
   packed-native-acceptance:
     if: github.event_name == 'pull_request'
     needs: build
-    runs-on: [self-hosted, stashbooru]
+    # This job installs OS packages at runtime, so use a disposable hosted machine.
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
     - uses: actions/checkout@v6
