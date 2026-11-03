@@ -278,7 +278,10 @@ This operation reconstructs the *old* comma-joined filename from each download
 receipt's original template, original MD5 and saved categorized tags; only an
 exact old-name match is eligible. It does **not** apply the currently configured
 filename layout, change tag names, change the tag graph or re-encode files.
-Filename migration and metadata audit are separate operations.
+Filename migration and metadata audit are separate operations. Eligible files are
+**not selected by default**: choose individual receipts, or explicitly select all
+eligible entries after reviewing the report. The dialog reveals additional
+results in increments of 150, and the server revalidates each selected receipt.
 
 - **Ready**: a registered regular file, original file path, same directory, no
   active conversion history, and no destination collision. The server rechecks
