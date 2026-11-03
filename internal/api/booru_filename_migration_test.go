@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/stashapp/stash/pkg/booru"
+	"github.com/stashapp/stash/pkg/mediaconvert"
+	"github.com/stashapp/stash/pkg/models"
 )
 
 func filenameMigrationFixture(t *testing.T) (booruDownloadReceipt, string, string) {
@@ -101,6 +103,77 @@ func TestPlanBooruFilenameMigrationFlagsSuspiciousCharacterCategory(t *testing.T
 	item := planBooruFilenameMigration("fixture-source-123.json", receipt)
 	if item == nil || item.Status != "audit" || len(item.Warnings) != 1 {
 		t.Fatalf("expected independent, read-only metadata warning: %+v", item)
+	}
+}
+
+func writeFilenameMigrationJournalFixture(t *testing.T, config, directory, originalPath string) {
+	t.Helper()
+	id := strings.Repeat("a", 32)
+	afterPath := strings.TrimSuffix(originalPath, filepath.Ext(originalPath)) + ".converted-" + id[:8] + ".jxl"
+	record := mediaconvert.Record{
+		ID: id,
+		Status: "restored",
+		Before: mediaconvert.Snapshot{
+			Image: &models.ImageFile{BaseFile: &models.BaseFile{ID: 12, Path: originalPath}},
+		},
+		After: mediaconvert.Snapshot{
+			Image: &models.ImageFile{BaseFile: &models.BaseFile{ID: 12, Path: afterPath}},
+		},
+	}
+	root := filepath.Join(config, directory)
+	if err := os.MkdirAll(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, id+".json"), data, 0600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestFilenameMigrationBlocksRestorationJournalPaths(t *testing.T) {
+	for _, directory := range []string{"media-conversions", "media-upscaling-restores"} {
+		t.Run(directory, func(t *testing.T) {
+			receipt, oldPath, _ := filenameMigrationFixture(t)
+			config := t.TempDir()
+			rs := booruBrowserRoutes{configPath: config}
+			if err := rs.saveDownloadReceipt(receipt); err != nil {
+				t.Fatal(err)
+			}
+			writeFilenameMigrationJournalFixture(t, config, directory, oldPath)
+			history, err := filenameMigrationRestorationPaths(config)
+			if err != nil || !history[filepath.Clean(oldPath)] {
+				t.Fatalf("restore journal must protect the old path: %v, %v", history, err)
+			}
+			report, err := rs.filenameMigrationReport()
+			if err != nil || report.Eligible != 0 || report.Review != 1 ||
+				len(report.Items) != 1 || report.Items[0].Status != "review" {
+				t.Fatalf("a restored file must not be renamable: %+v, %v", report, err)
+			}
+		})
+	}
+}
+
+func TestFilenameMigrationRejectsUnreadableRestorationHistory(t *testing.T) {
+	receipt, _, _ := filenameMigrationFixture(t)
+	config := t.TempDir()
+	rs := booruBrowserRoutes{configPath: config}
+	if err := rs.saveDownloadReceipt(receipt); err != nil {
+		t.Fatal(err)
+	}
+	directory := filepath.Join(config, "media-conversions")
+	if err := os.MkdirAll(directory, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(directory, strings.Repeat("b", 32)+".json"), []byte("{broken"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	report, err := rs.filenameMigrationReport()
+	if err != nil || report.Eligible != 0 || report.Review != 1 ||
+		len(report.Items) != 1 || report.Items[0].Status != "review" {
+		t.Fatalf("unreadable conversion journal must block renames: %+v, %v", report, err)
 	}
 }
 
