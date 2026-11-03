@@ -2,11 +2,11 @@
 
 ## Opt-in legacy Booru filename audit — 2026-11-03
 
-- Baseline: PR #298 head `b104e4275c10c1c221eba7571f11cf3d5ead6d00` (separator fix); implementation branch `feat/booru-legacy-filenames-audit-20261103` stacked on PR #298 until it merges.
-- Added receipt-based old-template reconstruction, per-file preview, explicit same-directory native rename for unconverted matches, retained checksums, target collision refusal and server-scoped dismissal. No files changed automatically.
+- Baseline: `develop` `17e20d573a319d72d4f35940574bb2781f728181`; PR #298 separator fix and PR #302 isolated Docker CI have merged. Current branch `feat/booru-legacy-filenames-audit-20261103` targets `develop` directly.
+- Added receipt-based old-template reconstruction, per-file preview and selection (none preselected), explicit same-directory native rename for unconverted matches, retained checksums, target collision refusal and server-scoped dismissal. Eligible receipts can be selected explicitly; visible entries are paged in groups of 150. No files changed automatically.
 - Added read-only audit of suspect categories and prevented filename-driven Image Tagging from creating combined entities out of ambiguous legacy comma-separated values.
 - Converted/restored JXL media, changed directories and unverified receipts remain review-only; converter journal/path migration and crash-atomic full rollback are deliberately out of scope until separately validated.
-- Added synthetic planning, conflict, converted skip, audit and dismissal regression tests. No local Go/UI toolchain checks available through the GitHub-only source session; CI required. Public-PR runner security is documented separately; no workflow event trust changed.
+- Synthetic planning, conflict, converted skip, audit and dismissal regression tests, plus active-JXL filename preview test, passed on PR #299 head `2202bbe77fe304c19c815faf0451f2d20e1486be` (Build, Go lint, Booru Browser, Provider identities, Following feed). Selective UI changes await fresh PR CI. No local working tree available through GitHub-only source access. No live-library mutation or native end-to-end rename verification claimed.
 
 
 ## Disposable restored-app boot acceptance — 2026-10-31 (PR #297)
