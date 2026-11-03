@@ -49,6 +49,8 @@ export function BooruFilenameMigration({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [selected, setSelected] = useState<string[]>([]);
+  const [visibleCount, setVisibleCount] = useState(150);
 
   useEffect(() => {
     let mounted = true;
@@ -70,6 +72,8 @@ export function BooruFilenameMigration({
     setError("");
     try {
       setReport(await readReport());
+      setSelected([]);
+      setVisibleCount(150);
       setOpen(true);
     } catch (cause) {
       setError(String(cause));
@@ -90,13 +94,11 @@ export function BooruFilenameMigration({
   };
 
   const apply = async () => {
-    if (!report || busy) return;
+    if (!report || busy || selectedEligible.length === 0) return;
     setBusy(true);
     setError("");
     setNotice("");
-    const ready = report.items
-      .filter((item) => item.status === "ready")
-      .map((item) => item.receipt);
+    const ready = selectedEligible;
     let succeeded = 0;
     let failures = 0;
     try {
@@ -109,6 +111,7 @@ export function BooruFilenameMigration({
         failures += Object.keys(response.failures).length;
       }
       setReport(await readReport());
+      setSelected([]);
       setNotice("Renamed " + succeeded + " file(s); no media re-encoding.");
       if (failures) setError(failures + " file(s) need manual review.");
     } catch (cause) {
@@ -121,6 +124,17 @@ export function BooruFilenameMigration({
     } finally {
       setBusy(false);
     }
+  };
+
+  const eligible = (report?.items ?? []).filter((item) => item.status === "ready");
+  const eligibleNames = new Set(eligible.map((item) => item.receipt));
+  const selectedEligible = selected.filter((receipt) => eligibleNames.has(receipt));
+  const toggleSelected = (receipt: string) => {
+    setSelected((current) =>
+      current.includes(receipt)
+        ? current.filter((item) => item !== receipt)
+        : [...current, receipt]
+    );
   };
 
   return (
@@ -145,8 +159,8 @@ export function BooruFilenameMigration({
             current tagging layout.
           </p>
           <p>
-            Verified safe renames: {report?.eligible ?? 0}. Additional review:{" "}
-            {report?.review ?? 0}.
+            Eligible unconverted renames: {report?.eligible ?? 0}. Additional
+            review: {report?.review ?? 0}.
           </p>
           <Alert variant="info">
             Converted JXL files, directory moves and ambiguous metadata are
@@ -157,10 +171,48 @@ export function BooruFilenameMigration({
           {report?.truncated && (
             <Alert variant="warning">Only 2,000 receipts were checked.</Alert>
           )}
+          <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
+            <span className="small">
+              Selected {selectedEligible.length} of {eligible.length} eligible
+            </span>
+            <div className="d-flex gap-2">
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                disabled={busy || eligible.length === 0}
+                onClick={() => setSelected(eligible.map((item) => item.receipt))}
+              >
+                Select eligible
+              </Button>
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                disabled={busy || selected.length === 0}
+                onClick={() => setSelected([])}
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
           <div style={{ maxHeight: 320, overflowY: "auto" }}>
-            {(report?.items ?? []).slice(0, 150).map((item) => (
+            {(report?.items ?? []).slice(0, visibleCount).map((item) => (
               <div className="border-bottom py-2" key={item.receipt}>
-                <div className="small text-break">{item.oldPath}</div>
+                <div className="d-flex align-items-center gap-2">
+                  {item.status === "ready" && (
+                    <Button
+                      variant={
+                        selected.includes(item.receipt) ? "primary" : "outline-secondary"
+                      }
+                      size="sm"
+                      disabled={busy}
+                      aria-pressed={selected.includes(item.receipt)}
+                      onClick={() => toggleSelected(item.receipt)}
+                    >
+                      {selected.includes(item.receipt) ? "Selected" : "Select"}
+                    </Button>
+                  )}
+                  <div className="small text-break">{item.oldPath}</div>
+                </div>
                 {item.newPath && (
                   <div className="small text-muted text-break">
                     Proposed: {item.newPath}
@@ -177,6 +229,16 @@ export function BooruFilenameMigration({
               </div>
             ))}
           </div>
+          {(report?.items.length ?? 0) > visibleCount && (
+            <Button
+              variant="outline-secondary"
+              size="sm"
+              disabled={busy}
+              onClick={() => setVisibleCount((count) => count + 150)}
+            >
+              Show more results
+            </Button>
+          )}
         </Modal.Body>
         <Modal.Footer>
           <Button
@@ -194,10 +256,10 @@ export function BooruFilenameMigration({
             Don't show again
           </Button>
           <Button
-            disabled={busy || !report?.eligible}
+            disabled={busy || selectedEligible.length === 0}
             onClick={() => void apply()}
           >
-            Rename {report?.eligible ?? 0} verified file(s)
+            Rename {selectedEligible.length} selected file(s)
           </Button>
         </Modal.Footer>
       </Modal>
