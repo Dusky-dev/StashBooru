@@ -111,7 +111,7 @@ func writeFilenameMigrationJournalFixture(t *testing.T, config, directory, origi
 	id := strings.Repeat("a", 32)
 	afterPath := strings.TrimSuffix(originalPath, filepath.Ext(originalPath)) + ".converted-" + id[:8] + ".jxl"
 	record := mediaconvert.Record{
-		ID: id,
+		ID:     id,
 		Status: "restored",
 		Before: mediaconvert.Snapshot{
 			Image: &models.ImageFile{BaseFile: &models.BaseFile{ID: 12, Path: originalPath}},
