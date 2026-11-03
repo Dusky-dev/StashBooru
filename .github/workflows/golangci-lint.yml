@@ -12,13 +12,19 @@ on:
 jobs:
   golangci:
     name: lint
-    runs-on: [self-hosted, stashbooru]
+    # CGO sqlite-vec needs sqlite3.h; hosted Ubuntu provides an isolated apt environment.
+    runs-on: ubuntu-24.04
     steps:
       # no tags or depth needed for lint
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
+
+      - name: Install SQLite CGO headers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libsqlite3-dev
 
       # generate-backend runs natively (just go generate + touch-ui) — no Docker needed
       - name: Generate Backend
