@@ -26,7 +26,7 @@ jobs:
   # Runs natively (no Docker) — go generate/gqlgen and node don't need cross-compilers.
   # Produces artifacts (generated Go files + UI build) consumed by test and build jobs.
   generate:
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, stashbooru]
     permissions:
       actions: write
       contents: read
@@ -128,7 +128,7 @@ jobs:
   # Runs in parallel with the build matrix jobs.
   test:
     needs: generate
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, stashbooru]
     steps:
     - uses: actions/checkout@v6
 
@@ -153,7 +153,7 @@ jobs:
   # Runs in parallel with the test job.
   build:
     needs: generate
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, stashbooru]
     permissions:
       actions: write
       contents: read
@@ -283,7 +283,7 @@ jobs:
   first-library:
     if: github.event_name == 'pull_request'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, stashbooru]
     timeout-minutes: 30
     steps:
     - uses: actions/checkout@v6
@@ -434,7 +434,7 @@ jobs:
   # into dist/ for checksums, GitHub releases, and multi-arch Docker push.
   release:
     needs: [test, build]
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, stashbooru]
     permissions:
       actions: read
       contents: write
@@ -606,7 +606,7 @@ jobs:
   packed-native-acceptance:
     if: github.event_name == 'pull_request'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, stashbooru]
     timeout-minutes: 30
     steps:
     - uses: actions/checkout@v6

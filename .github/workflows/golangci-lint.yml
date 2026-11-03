@@ -12,7 +12,7 @@ on:
 jobs:
   golangci:
     name: lint
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, stashbooru]
     steps:
       # no tags or depth needed for lint
       - uses: actions/checkout@v6
