@@ -436,7 +436,8 @@ jobs:
   # into dist/ for checksums, GitHub releases, and multi-arch Docker push.
   release:
     needs: [test, build]
-    runs-on: [self-hosted, stashbooru]
+    # WithoutPants/github-release is a Docker action; the isolated local runner has no daemon.
+    runs-on: ubuntu-24.04
     permissions:
       actions: read
       contents: write
