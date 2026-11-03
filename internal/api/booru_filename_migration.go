@@ -106,6 +106,45 @@ func legacyCategoryWarning(tags []booru.Tag) []string {
 // A plan is calculated from the per-download saved template and tag snapshot,
 // not the user's current filename settings. Only exact legacy-path matches are
 // candidates. This also avoids renaming arbitrary files merely containing a comma.
+// convertedBooruFilenamePreview only predicts the active JXL filename if the
+// converter's old basename and eight-hex-ID suffix can be verified exactly.
+// It never edits an active conversion or its restoration journal.
+func convertedBooruFilenamePreview(oldOriginal, newOriginal, activePath string) (string, bool) {
+	if filepath.Dir(oldOriginal) != filepath.Dir(activePath) ||
+		filepath.Dir(newOriginal) != filepath.Dir(activePath) {
+		return "", false
+	}
+	active := filepath.Base(activePath)
+	index := strings.LastIndex(active, ".converted-")
+	if index < 1 {
+		return "", false
+	}
+	suffix := active[index:]
+	if len(suffix) < len(".converted-")+8+2 {
+		return "", false
+	}
+	idAndExt := strings.TrimPrefix(suffix, ".converted-")
+	dot := strings.IndexByte(idAndExt, '.')
+	if dot != 8 || dot == len(idAndExt)-1 {
+		return "", false
+	}
+	for _, c := range idAndExt[:8] {
+		if !strings.ContainsRune("0123456789abcdefABCDEF", c) {
+			return "", false
+		}
+	}
+	oldStem := strings.TrimSuffix(filepath.Base(oldOriginal), filepath.Ext(oldOriginal))
+	newStem := strings.TrimSuffix(filepath.Base(newOriginal), filepath.Ext(newOriginal))
+	// A truncated converter basename cannot be verified from the receipt alone.
+	// The actual conversion journal must be consulted to safely propose that case.
+	maxStem := 255 - len(suffix)
+	if maxStem <= 0 || len(oldStem) > maxStem || len(newStem) > maxStem ||
+		active[:index] != oldStem {
+		return "", false
+	}
+	return filepath.Join(filepath.Dir(activePath), newStem+suffix), true
+}
+
 func planBooruFilenameMigration(name string, receipt booruDownloadReceipt) *booruFilenameMigrationItem {
 	item := &booruFilenameMigrationItem{
 		Receipt:  name,
@@ -189,6 +228,12 @@ func planBooruFilenameMigration(name string, receipt booruDownloadReceipt) *boor
 	}
 	if receipt.Library.Converted || receipt.Convert || receipt.Library.Path != receipt.SavedPath {
 		item.Status = "review"
+		item.NewPath = "" // Never propose the original .jpg path for an active .jxl.
+		if receipt.Library.Converted {
+			if convertedPath, ok := convertedBooruFilenamePreview(receipt.SavedPath, changedPath, receipt.Library.Path); ok {
+				item.NewPath = convertedPath
+			}
+		}
 		item.Reason = "Converted or restored media: conversion history must be migrated together"
 		return item
 	}
