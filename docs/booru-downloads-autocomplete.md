@@ -284,11 +284,14 @@ eligible entries after reviewing the report. The dialog reveals additional
 results in increments of 150, and the server revalidates each selected receipt.
 
 - **Ready**: a registered regular file, original file path, same directory, no
-  active conversion history, and no destination collision. The server rechecks
-  the original file's output MD5 and its native DB entry immediately before
-  an opt-in native move. Batches contain at most 20 receipts.
-- **Review**: a converted/restored JXL, changed folder layout, conflicting
-  destination, missing file, changed template rendering or other unsafe case.
+  conversion or upscaling restoration journal referencing either path, and no
+  destination collision. The server rechecks the original file's output MD5,
+  native DB entry and restoration history before an opt-in native move.
+  Renames serialize against converter jobs. Batches contain at most 20 receipts.
+- **Review**: a converted/restored JXL (including an original restored for a
+  future toggle), upscaled media with a restore journal, unreadable journal,
+  changed folder layout, conflicting destination, missing file, changed template
+  rendering or other unsafe case.
   The dialog never automatically renames these paths; converter restoration
   journals must be migrated coherently before this can be enabled.
 - **Metadata warning**: the saved provider classified a suspicious tag such as
