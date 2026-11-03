@@ -20,6 +20,23 @@ interface Report {
 }
 
 const endpoint = "booru-browser/filename-migration";
+const laterKey = "booru-filename-migration-v1-later";
+
+function postponeForSession(): void {
+  try {
+    sessionStorage.setItem(laterKey, "1");
+  } catch {
+    // Storage can be unavailable; the dialog remains dismissible.
+  }
+}
+
+function postponedThisSession(): boolean {
+  try {
+    return sessionStorage.getItem(laterKey) === "1";
+  } catch {
+    return false;
+  }
+}
 
 async function readReport(): Promise<Report> {
   const data = await fetch(endpoint, { cache: "no-store" }).then(
@@ -58,7 +75,9 @@ export function BooruFilenameMigration({
       .then((data) => {
         if (!mounted) return;
         setReport(data);
-        if (!data.dismissed && data.items.length > 0) setOpen(true);
+        if (!data.dismissed && data.items.length > 0 && !postponedThisSession()) {
+          setOpen(true);
+        }
       })
       .catch(() => {
         // Browsing must still work if the optional migration API is absent.
@@ -67,6 +86,11 @@ export function BooruFilenameMigration({
       mounted = false;
     };
   }, []);
+
+  const closeForSession = () => {
+    postponeForSession();
+    setOpen(false);
+  };
 
   const review = async () => {
     setError("");
@@ -148,7 +172,7 @@ export function BooruFilenameMigration({
           Review legacy download filenames
         </Button>
       )}
-      <Modal show={open} onHide={() => setOpen(false)} size="lg" centered>
+      <Modal show={open} onHide={closeForSession} size="lg" centered>
         <Modal.Header closeButton={!busy}>
           <Modal.Title>Legacy Booru filename upgrade</Modal.Title>
         </Modal.Header>
@@ -244,7 +268,7 @@ export function BooruFilenameMigration({
           <Button
             variant="outline-secondary"
             disabled={busy}
-            onClick={() => setOpen(false)}
+            onClick={closeForSession}
           >
             Later
           </Button>
