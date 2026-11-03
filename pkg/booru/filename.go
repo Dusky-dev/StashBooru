@@ -91,7 +91,7 @@ func RenderFilename(format string, s Source, p Post, md5, extension string, num 
 				tags = append(tags, value)
 			}
 		}
-		values[category] = strings.Join(tags, ", ")
+		values[category] = strings.Join(tags, "+")
 	}
 	parts := strings.Split(format, "/")
 	for i, part := range parts {

@@ -67,7 +67,7 @@ ID), `%asset_id%` (stable attachment identity), `%position%` (one-based file ind
 `%authorid%`, `%score%`, `%date%`, `%current_date%`, `%name%`, `%title%`, `%num%`.
 Dates use UTC `MM-DD-YYYY HH.mm` when supplied as RFC3339. Missing text/category
 metadata becomes `unknown`; dimensions/scores can be zero. Categories use supplied
-core tags, not inferred classifications. Multiple core tags join with `, `.
+core tags, not inferred classifications. Multiple core tags join with `+`.
 
 Literal `/` creates subfolders inside the chosen library directory. Values cannot
 introduce folders; forbidden/control characters and Windows reserved names are
