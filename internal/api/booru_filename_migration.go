@@ -237,6 +237,11 @@ func planBooruFilenameMigration(name string, receipt booruDownloadReceipt) *boor
 		item.Reason = "Converted or restored media: conversion history must be migrated together"
 		return item
 	}
+	if receipt.OutputMD5 == "" {
+		item.Status = "review"
+		item.Reason = "Saved download has no output checksum for byte verification"
+		return item
+	}
 	if stat, err := os.Lstat(receipt.Library.Path); err != nil || !stat.Mode().IsRegular() {
 		item.Status, item.Reason = "review", "Saved file is missing or not a regular file"
 		return item
