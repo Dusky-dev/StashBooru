@@ -252,6 +252,42 @@ func planBooruFilenameMigration(name string, receipt booruDownloadReceipt) *boor
 	return item
 }
 
+// Conversion and upscaling restore journals retain original paths even when
+// their active file has been switched back. Renaming one of those paths would
+// invalidate a future ToggleRestore, so they are always review-only.
+func filenameMigrationRestorationPaths(configPath string) (map[string]bool, error) {
+	paths := make(map[string]bool)
+	for _, directory := range []string{"media-conversions", "media-upscaling-restores"} {
+		store := mediaconvert.Store{Root: filepath.Join(configPath, directory)}
+		history, err := store.History()
+		if err != nil {
+			return nil, fmt.Errorf("reading %s restore history: %w", directory, err)
+		}
+		for _, record := range history {
+			for _, snapshot := range []mediaconvert.Snapshot{record.Before, record.After} {
+				if media := snapshot.File(); media != nil && media.Base().Path != "" {
+					paths[filepath.Clean(media.Base().Path)] = true
+				}
+			}
+		}
+	}
+	return paths, nil
+}
+
+func checkFilenameMigrationRestorationRisk(item *booruFilenameMigrationItem, receipt booruDownloadReceipt, paths map[string]bool, historyErr error) {
+	if item == nil || item.Status != "ready" {
+		return
+	}
+	switch {
+	case historyErr != nil:
+		item.Status = "review"
+		item.Reason = "Saved conversion history could not be verified; rename blocked"
+	case paths[filepath.Clean(receipt.SavedPath)] || paths[filepath.Clean(receipt.Library.Path)]:
+		item.Status = "review"
+		item.Reason = "Conversion or upscaling restore history references this file; rename would break recovery"
+	}
+}
+
 func (rs booruBrowserRoutes) filenameMigrationReport() (booruFilenameMigrationReport, error) {
 	report := booruFilenameMigrationReport{
 		Version: booruFilenameMigrationVersion, Dismissed: rs.filenameMigrationDismissed(),
@@ -265,6 +301,7 @@ func (rs booruBrowserRoutes) filenameMigrationReport() (booruFilenameMigrationRe
 	if err != nil {
 		return report, err
 	}
+	restorationPaths, historyErr := filenameMigrationRestorationPaths(rs.configPath)
 	for i, entry := range entries {
 		if i >= booruFilenameMigrationMaxReceipts {
 			report.Truncated = true
@@ -281,6 +318,7 @@ func (rs booruBrowserRoutes) filenameMigrationReport() (booruFilenameMigrationRe
 		if item == nil {
 			continue
 		}
+		checkFilenameMigrationRestorationRisk(item, *receipt, restorationPaths, historyErr)
 		report.Items = append(report.Items, *item)
 		if item.Status == "ready" {
 			report.Eligible++
@@ -303,7 +341,7 @@ func (rs booruBrowserRoutes) FilenameMigration(w http.ResponseWriter, _ *http.Re
 	writeVisualSimilarityJSON(w, report)
 }
 
-func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, name string) error {
+func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, name string, restorationPaths map[string]bool) error {
 	receipt, err := rs.readFilenameMigrationReceipt(name)
 	if err != nil {
 		return err
@@ -311,6 +349,10 @@ func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, na
 	plan := planBooruFilenameMigration(name, *receipt)
 	if plan == nil || plan.Status != "ready" {
 		return fmt.Errorf("download is not eligible for safe filename migration")
+	}
+	checkFilenameMigrationRestorationRisk(plan, *receipt, restorationPaths, nil)
+	if plan.Status != "ready" {
+		return fmt.Errorf("%s", plan.Reason)
 	}
 	if rs.repository.TxnManager == nil || rs.libraryRoots == nil {
 		return fmt.Errorf("native library is unavailable")
@@ -396,6 +438,14 @@ func (rs booruBrowserRoutes) UpdateFilenameMigration(w http.ResponseWriter, r *h
 			writeBooruError(w, 400, "migration", "Choose between 1 and 20 verified receipts per batch.")
 			return
 		}
+		// Serialize against conversions while checking journals and renaming.
+		conversionMutations.Lock()
+		defer conversionMutations.Unlock()
+		restorationPaths, err := filenameMigrationRestorationPaths(rs.configPath)
+		if err != nil {
+			writeBooruError(w, http.StatusConflict, "migration", "Cannot verify saved conversion history; no files renamed.")
+			return
+		}
 		applied := []string{}
 		failures := map[string]string{}
 		for _, name := range input.Receipts {
@@ -403,7 +453,7 @@ func (rs booruBrowserRoutes) UpdateFilenameMigration(w http.ResponseWriter, r *h
 				writeBooruError(w, 400, "migration", "Invalid receipt identifier.")
 				return
 			}
-			if err := rs.applyBooruFilenameMigration(r.Context(), name); err != nil {
+			if err := rs.applyBooruFilenameMigration(r.Context(), name, restorationPaths); err != nil {
 				failures[name] = err.Error()
 			} else {
 				applied = append(applied, name)
