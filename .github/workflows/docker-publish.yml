@@ -23,7 +23,8 @@ concurrency:
 
 jobs:
   build-and-push:
-    runs-on: [self-hosted, stashbooru]
+    # Buildx needs a Docker daemon; never expose the home server's host socket to CI.
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Check out repository
