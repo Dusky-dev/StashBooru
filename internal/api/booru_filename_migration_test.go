@@ -79,6 +79,22 @@ func TestPlanBooruFilenameMigrationSkipsConversionAndConflicts(t *testing.T) {
 	}
 }
 
+func TestConvertedBooruFilenamePreviewPreservesJXLSuffix(t *testing.T) {
+	receipt, oldPath, newOriginal := filenameMigrationFixture(t)
+	receipt.Library.Converted = true
+	receipt.Convert = true
+	receipt.Library.Path = strings.TrimSuffix(oldPath, ".jpg") + ".converted-170c91a2.jxl"
+	plan := planBooruFilenameMigration("fixture-source-123.json", receipt)
+	want := strings.TrimSuffix(newOriginal, ".jpg") + ".converted-170c91a2.jxl"
+	if plan == nil || plan.Status != "review" || plan.NewPath != want {
+		t.Fatalf("converted media must only preview the active JXL destination: %+v; want %q", plan, want)
+	}
+	if _, ok := convertedBooruFilenamePreview(oldPath, newOriginal,
+		filepath.Join(receipt.Directory, "unrelated.converted-170c91a2.jxl")); ok {
+		t.Fatal("unrelated converted filenames cannot be inferred")
+	}
+}
+
 func TestPlanBooruFilenameMigrationFlagsSuspiciousCharacterCategory(t *testing.T) {
 	receipt, _, _ := filenameMigrationFixture(t)
 	receipt.Post.Tags = []booru.Tag{{Name: "animated", Category: "character"}}
