@@ -18,7 +18,7 @@ on:
 
 jobs:
   fidelity-and-recovery:
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, stashbooru]
     steps:
       - uses: actions/checkout@v6
       - name: Install image and array dependencies

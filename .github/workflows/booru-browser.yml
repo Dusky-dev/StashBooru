@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   browser:
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, stashbooru]
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6

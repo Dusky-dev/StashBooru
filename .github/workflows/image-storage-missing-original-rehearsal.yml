@@ -17,7 +17,7 @@ on:
 
 jobs:
   missing-originals:
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, stashbooru]
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
