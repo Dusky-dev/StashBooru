@@ -295,6 +295,40 @@ func TestFilenameMigrationOffersAcknowledgedJXLRename(t *testing.T) {
 	}
 }
 
+func TestUpdateMigratedBooruReceiptDoesNotDereferenceNilConversionRecord(t *testing.T) {
+	receipt, _, proposed := filenameMigrationFixture(t)
+	old := receipt
+	oldHash := receipt.OutputMD5
+	updateMigratedBooruReceipt(&receipt, old, nil, false, proposed, proposed)
+	if receipt.SavedPath != proposed || receipt.Library.Path != proposed ||
+		receipt.Library.Converted || receipt.OutputMD5 != oldHash || !receipt.LegacyFilenameMigrated {
+		t.Fatalf("ordinary original-media rename must update receipt without a conversion record: %+v", receipt)
+	}
+
+	// A conversion performed after download refreshes both paths and MD5.
+	converted := filepath.Join(receipt.Directory, "converted.jxl")
+	activeHash := strings.Repeat("7", 32)
+	record := &mediaconvert.Record{After: mediaconvert.Snapshot{Image: &models.ImageFile{
+		BaseFile: &models.BaseFile{ID: 12, Path: converted, Fingerprints: models.Fingerprints{
+			{Type: "md5", Fingerprint: activeHash},
+		}},
+	}}}
+	receipt = old
+	updateMigratedBooruReceipt(&receipt, old, record, false, proposed, converted)
+	if !receipt.Library.Converted || receipt.OutputMD5 != activeHash ||
+		receipt.SavedPath != proposed || receipt.Library.Path != converted {
+		t.Fatalf("later conversion must refresh receipt: %+v", receipt)
+	}
+
+	receipt = old
+	receipt.Library.Converted = true
+	oldConverted := receipt
+	updateMigratedBooruReceipt(&receipt, oldConverted, record, true, proposed, proposed)
+	if receipt.Library.Converted || receipt.OutputMD5 != receipt.OriginalMD5 {
+		t.Fatalf("restored original must reset converted state: %+v", receipt)
+	}
+}
+
 func TestFilenameMigrationOffersLaterConvertedJPGWithStaleReceipt(t *testing.T) {
 	receipt, oldOriginal, newOriginal := filenameMigrationFixture(t)
 	id := strings.Repeat("9", 32)
@@ -350,6 +384,42 @@ func TestFilenameMigrationOffersLaterConvertedJPGWithStaleReceipt(t *testing.T) 
 		report.Items[0].NewPath != wanted {
 		t.Fatalf("later-converted original must migrate active output and history: %+v %v", report, err)
 	}
+	// A second restorable journal referencing the active output makes BOTH
+	// the output-path entry and the original-path alias unsafe.
+	secondID := strings.Repeat("8", 32)
+	secondOutput := active + ".converted-" + secondID[:8] + ".jxl"
+	secondRecord := mediaconvert.Record{
+		ID: secondID, Status: "restored",
+		Before: mediaconvert.Snapshot{Image: &models.ImageFile{BaseFile: &models.BaseFile{
+			ID: 12, Path: active,
+			Fingerprints: models.Fingerprints{{Type: "md5", Fingerprint: activeMD5}},
+		}}},
+		After: mediaconvert.Snapshot{Image: &models.ImageFile{BaseFile: &models.BaseFile{
+			ID: 12, Path: secondOutput,
+			Fingerprints: models.Fingerprints{{Type: "md5", Fingerprint: strings.Repeat("a", 32)}},
+		}}},
+	}
+	secondData, err := json.Marshal(secondRecord)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondJournal := filepath.Join(root, secondID+".json")
+	if err := os.WriteFile(secondJournal, secondData, 0600); err != nil {
+		t.Fatal(err)
+	}
+	convertedRecords, err := filenameMigrationActiveConvertedRecords(config)
+	if err != nil || convertedRecords[filepath.Clean(oldOriginal)] != nil {
+		t.Fatalf("original alias must be rejected when output has multiple restore references: %v, %v", convertedRecords, err)
+	}
+	report, err = rs.filenameMigrationReport()
+	if err != nil || report.ConvertedEligible != 0 || len(report.Items) != 1 ||
+		report.Items[0].Status != "review" {
+		t.Fatalf("shared output journal must block stale-receipt migration: %+v %v", report, err)
+	}
+	if err := os.Remove(secondJournal); err != nil {
+		t.Fatal(err)
+	}
+
 	// A stale receipt must not override a conversion journal with the wrong
 	// original fingerprint.
 	record.Before.Image.BaseFile.Fingerprints = models.Fingerprints{{Type: "md5", Fingerprint: strings.Repeat("c", 32)}}
