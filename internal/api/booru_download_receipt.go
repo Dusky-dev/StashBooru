@@ -26,6 +26,7 @@ type booruDownloadReceipt struct {
 	OutputMD5   string              `json:"outputMD5"`
 	Convert     bool                `json:"convert"`
 	AutoTagged  bool                `json:"autoTagged,omitempty"`
+	LegacyFilenameMigrated bool        `json:"legacyFilenameMigrated,omitempty"`
 	Library     *booruLibraryResult `json:"library,omitempty"`
 }
 
