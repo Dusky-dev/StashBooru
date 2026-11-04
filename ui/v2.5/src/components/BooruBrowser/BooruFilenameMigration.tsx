@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Button, Modal } from "react-bootstrap";
+import { Alert, Button, Form, Modal } from "react-bootstrap";
 import { readBooruResponse } from "./browser";
 
 interface Item {
@@ -14,6 +14,7 @@ interface Item {
 interface Report {
   dismissed: boolean;
   eligible: number;
+  convertedEligible: number;
   review: number;
   truncated: boolean;
   items: Item[];
@@ -48,11 +49,15 @@ async function readReport(): Promise<Report> {
   return data;
 }
 
-async function sendAction<T>(action: string, receipts?: string[]): Promise<T> {
+async function sendAction<T>(
+  action: string,
+  receipts?: string[],
+  acceptRestoreLoss = false
+): Promise<T> {
   return fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action, receipts }),
+    body: JSON.stringify({ action, receipts, acceptRestoreLoss }),
   }).then(readBooruResponse<T>);
 }
 
@@ -67,6 +72,8 @@ export function BooruFilenameMigration({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
+  const [selectedJXL, setSelectedJXL] = useState<string[]>([]);
+  const [acceptRestoreLoss, setAcceptRestoreLoss] = useState(false);
   const [visibleCount, setVisibleCount] = useState(150);
 
   useEffect(() => {
@@ -101,6 +108,8 @@ export function BooruFilenameMigration({
     try {
       setReport(await readReport());
       setSelected([]);
+      setSelectedJXL([]);
+      setAcceptRestoreLoss(false);
       setVisibleCount(150);
       setOpen(true);
     } catch (cause) {
@@ -121,12 +130,19 @@ export function BooruFilenameMigration({
     }
   };
 
-  const apply = async () => {
-    if (!report || busy || selectedEligible.length === 0) return;
+  const apply = async (converted = false) => {
+    const ready = converted ? selectedConvertedEligible : selectedEligible;
+    if (
+      !report ||
+      busy ||
+      ready.length === 0 ||
+      (converted && !acceptRestoreLoss)
+    ) {
+      return;
+    }
     setBusy(true);
     setError("");
     setNotice("");
-    const ready = selectedEligible;
     let succeeded = 0;
     let failures = 0;
     try {
@@ -134,13 +150,26 @@ export function BooruFilenameMigration({
         const response = await sendAction<{
           applied: string[];
           failures: Record<string, string>;
-        }>("apply", ready.slice(offset, offset + 20));
+        }>(
+          converted ? "apply-jxl" : "apply",
+          ready.slice(offset, offset + 20),
+          converted && acceptRestoreLoss
+        );
         succeeded += response.applied.length;
         failures += Object.keys(response.failures).length;
       }
       setReport(await readReport());
       setSelected([]);
-      setNotice("Renamed " + succeeded + " file(s); no media re-encoding.");
+      setSelectedJXL([]);
+      setAcceptRestoreLoss(false);
+      setNotice(
+        "Renamed " +
+          succeeded +
+          " file(s) without re-encoding." +
+          (converted
+            ? " Conversion restoration for these JXL files is no longer supported."
+            : "")
+      );
       if (failures) setError(failures + " file(s) need manual review.");
     } catch (cause) {
       setError(String(cause));
@@ -158,11 +187,19 @@ export function BooruFilenameMigration({
     (item) => item.status === "ready"
   );
   const eligibleNames = new Set(eligible.map((item) => item.receipt));
+  const convertedEligible = (report?.items ?? []).filter(
+    (item) => item.status === "ready-converted"
+  );
+  const convertedNames = new Set(convertedEligible.map((item) => item.receipt));
   const selectedEligible = selected.filter((receipt) =>
     eligibleNames.has(receipt)
   );
-  const toggleSelected = (receipt: string) => {
-    setSelected((current) =>
+  const selectedConvertedEligible = selectedJXL.filter((receipt) =>
+    convertedNames.has(receipt)
+  );
+  const toggleSelected = (receipt: string, converted = false) => {
+    const setter = converted ? setSelectedJXL : setSelected;
+    setter((current) =>
       current.includes(receipt)
         ? current.filter((item) => item !== receipt)
         : [...current, receipt]
@@ -191,13 +228,24 @@ export function BooruFilenameMigration({
             current tagging layout.
           </p>
           <p>
-            Eligible unconverted renames: {report?.eligible ?? 0}. Additional
-            review: {report?.review ?? 0}.
+            Eligible unconverted renames: {report?.eligible ?? 0}. Eligible JXL
+            renames: {report?.convertedEligible ?? 0}. Additional review:{" "}
+            {report?.review ?? 0}.
           </p>
           <Alert variant="info">
-            Converted JXL files, directory moves and ambiguous metadata are
-            review-only. No metadata or media contents will be changed.
+            Filename changes do not re-encode media or alter tags. Directory
+            moves and ambiguous metadata remain review-only.
           </Alert>
+          {(report?.convertedEligible ?? 0) > 0 && (
+            <Alert variant="warning">
+              <strong>JXL restore warning:</strong> Renaming a converted JXL
+              keeps its image and native library associations, but its saved
+              conversion journal will still reference the old filename.
+              Restoring the original JPEG through StashBooru will no longer work
+              for renamed JXL files. Back up the database, media, and conversion
+              history first. JXL files are never selected automatically.
+            </Alert>
+          )}
           {error && <Alert variant="warning">{error}</Alert>}
           {notice && <Alert variant="success">{notice}</Alert>}
           {report?.truncated && (
@@ -205,7 +253,8 @@ export function BooruFilenameMigration({
           )}
           <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
             <span className="small">
-              Selected {selectedEligible.length} of {eligible.length} eligible
+              Selected {selectedEligible.length} regular and{" "}
+              {selectedConvertedEligible.length} JXL
             </span>
             <div className="d-flex gap-2">
               <Button
@@ -221,8 +270,23 @@ export function BooruFilenameMigration({
               <Button
                 variant="outline-secondary"
                 size="sm"
-                disabled={busy || selected.length === 0}
-                onClick={() => setSelected([])}
+                disabled={busy || convertedEligible.length === 0}
+                onClick={() =>
+                  setSelectedJXL(convertedEligible.map((item) => item.receipt))
+                }
+              >
+                Select eligible JXL
+              </Button>
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                disabled={
+                  busy || (selected.length === 0 && selectedJXL.length === 0)
+                }
+                onClick={() => {
+                  setSelected([]);
+                  setSelectedJXL([]);
+                }}
               >
                 Clear
               </Button>
@@ -232,19 +296,36 @@ export function BooruFilenameMigration({
             {(report?.items ?? []).slice(0, visibleCount).map((item) => (
               <div className="border-bottom py-2" key={item.receipt}>
                 <div className="d-flex align-items-center gap-2">
-                  {item.status === "ready" && (
+                  {(item.status === "ready" ||
+                    item.status === "ready-converted") && (
                     <Button
                       variant={
-                        selected.includes(item.receipt)
+                        (item.status === "ready-converted"
+                          ? selectedJXL
+                          : selected
+                        ).includes(item.receipt)
                           ? "primary"
                           : "outline-secondary"
                       }
                       size="sm"
                       disabled={busy}
-                      aria-pressed={selected.includes(item.receipt)}
-                      onClick={() => toggleSelected(item.receipt)}
+                      aria-pressed={(item.status === "ready-converted"
+                        ? selectedJXL
+                        : selected
+                      ).includes(item.receipt)}
+                      onClick={() =>
+                        toggleSelected(
+                          item.receipt,
+                          item.status === "ready-converted"
+                        )
+                      }
                     >
-                      {selected.includes(item.receipt) ? "Selected" : "Select"}
+                      {(item.status === "ready-converted"
+                        ? selectedJXL
+                        : selected
+                      ).includes(item.receipt)
+                        ? "Selected"
+                        : "Select"}
                     </Button>
                   )}
                   <div className="small text-break">{item.oldPath}</div>
@@ -275,6 +356,16 @@ export function BooruFilenameMigration({
               Show more results
             </Button>
           )}
+          {(report?.convertedEligible ?? 0) > 0 && (
+            <Form.Check
+              id="booru-jxl-restore-loss"
+              type="checkbox"
+              disabled={busy}
+              checked={acceptRestoreLoss}
+              onChange={(event) => setAcceptRestoreLoss(event.target.checked)}
+              label="I understand that restoring originals through conversion history will no longer work for renamed JXL files."
+            />
+          )}
         </Modal.Body>
         <Modal.Footer>
           <Button
@@ -293,9 +384,20 @@ export function BooruFilenameMigration({
           </Button>
           <Button
             disabled={busy || selectedEligible.length === 0}
-            onClick={() => void apply()}
+            onClick={() => void apply(false)}
           >
-            Rename {selectedEligible.length} selected file(s)
+            Rename {selectedEligible.length} regular file(s)
+          </Button>
+          <Button
+            variant="warning"
+            disabled={
+              busy ||
+              !acceptRestoreLoss ||
+              selectedConvertedEligible.length === 0
+            }
+            onClick={() => void apply(true)}
+          >
+            Rename {selectedConvertedEligible.length} JXL file(s)
           </Button>
         </Modal.Footer>
       </Modal>

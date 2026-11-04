@@ -16,9 +16,10 @@ import (
 	"github.com/stashapp/stash/pkg/mediaconvert"
 )
 
-// The v1 upgrader handles verified same-folder, non-converted moves only.
-// Converted assets need coordinated updates of the restoration journal; never
-// offer a destructive file rename without that guarantee.
+// The v1 upgrader handles verified same-folder, non-converted moves. Active
+// converted JXL can be renamed only with a separate explicit acknowledgement:
+// its original conversion journal is intentionally not rewritten and future
+// conversion restoration will no longer work.
 const booruFilenameMigrationVersion = "category-separator-v1"
 const booruFilenameMigrationMaxReceipts = 2000
 
@@ -34,17 +35,19 @@ type booruFilenameMigrationItem struct {
 }
 
 type booruFilenameMigrationReport struct {
-	Version   string                       `json:"version"`
-	Dismissed bool                         `json:"dismissed"`
-	Eligible  int                          `json:"eligible"`
-	Review    int                          `json:"review"`
-	Truncated bool                         `json:"truncated"`
-	Items     []booruFilenameMigrationItem `json:"items"`
+	Version           string                       `json:"version"`
+	Dismissed         bool                         `json:"dismissed"`
+	Eligible          int                          `json:"eligible"`
+	ConvertedEligible int                          `json:"convertedEligible"`
+	Review            int                          `json:"review"`
+	Truncated         bool                         `json:"truncated"`
+	Items             []booruFilenameMigrationItem `json:"items"`
 }
 
 type booruFilenameMigrationRequest struct {
-	Action   string   `json:"action"`
-	Receipts []string `json:"receipts,omitempty"`
+	Action            string   `json:"action"`
+	Receipts          []string `json:"receipts,omitempty"`
+	AcceptRestoreLoss bool     `json:"acceptRestoreLoss,omitempty"`
 }
 
 func (rs booruBrowserRoutes) filenameMigrationDismissed() bool {
@@ -154,6 +157,13 @@ func planBooruFilenameMigration(name string, receipt booruDownloadReceipt) *boor
 	}
 	if receipt.Library != nil && receipt.Library.Path != "" {
 		item.OldPath = receipt.Library.Path
+	}
+	if receipt.LegacyFilenameMigrated {
+		if len(item.Warnings) == 0 {
+			return nil
+		}
+		item.Reason = "Filename already migrated; metadata review only"
+		return item
 	}
 	hasMulti := false
 	for _, category := range []string{"artist", "copyright", "character"} {
@@ -293,6 +303,81 @@ func checkFilenameMigrationRestorationRisk(item *booruFilenameMigrationItem, rec
 	}
 }
 
+// A JXL rename does not re-encode media. The existing conversion journal
+// remains intact, but it will not be able to restore by its original output
+// path. Only an unambiguous, completed conversion for this exact native file
+// can be offered under a separate irreversible-restore confirmation.
+func filenameMigrationActiveJXLRecords(configPath string) (map[string]*mediaconvert.Record, error) {
+	records := make(map[string]*mediaconvert.Record)
+	references := make(map[string]int)
+	for _, directory := range []string{"media-conversions", "media-upscaling-restores"} {
+		store := mediaconvert.Store{Root: filepath.Join(configPath, directory)}
+		history, err := store.History()
+		if err != nil {
+			return nil, fmt.Errorf("reading %s conversion history: %w", directory, err)
+		}
+		for _, record := range history {
+			before, after := record.Before.File(), record.After.File()
+			if before != nil {
+				references[filepath.Clean(before.Base().Path)]++
+			}
+			if after != nil {
+				references[filepath.Clean(after.Base().Path)]++
+				if directory == "media-conversions" && record.Status == "complete" &&
+					strings.EqualFold(filepath.Ext(after.Base().Path), ".jxl") {
+					path := filepath.Clean(after.Base().Path)
+					records[path] = record
+				}
+			}
+		}
+	}
+	for path, record := range records {
+		if references[path] != 1 || references[filepath.Clean(record.Before.File().Base().Path)] != 1 {
+			delete(records, path)
+		}
+	}
+	return records, nil
+}
+
+// Converted files are never enabled by the regular safe-rename path. Their
+// separate action acknowledges that the untouched conversion journal loses
+// its restore capability after the move.
+func checkFilenameMigrationJXLEligibility(item *booruFilenameMigrationItem, receipt booruDownloadReceipt, history map[string]bool, records map[string]*mediaconvert.Record, historyErr error) {
+	if item == nil || receipt.Library == nil || !receipt.Library.Converted ||
+		!strings.EqualFold(filepath.Ext(receipt.Library.Path), ".jxl") ||
+		item.Status != "review" || item.NewPath == "" {
+		return
+	}
+	if historyErr != nil || receipt.OutputMD5 == "" || !strings.EqualFold(filepath.Ext(item.NewPath), ".jxl") {
+		return
+	}
+	oldPath := filepath.Clean(receipt.Library.Path)
+	record := records[oldPath]
+	if record == nil || record.Before.File() == nil || record.After.File() == nil ||
+		record.Status != "complete" ||
+		filepath.Clean(record.Before.File().Base().Path) != filepath.Clean(receipt.SavedPath) ||
+		filepath.Clean(record.After.File().Base().Path) != oldPath ||
+		record.Before.File().Base().Fingerprints.GetString("md5") != receipt.OriginalMD5 ||
+		record.After.File().Base().Fingerprints.GetString("md5") != receipt.OutputMD5 ||
+		filepath.Dir(item.NewPath) != filepath.Dir(oldPath) ||
+		history[filepath.Clean(item.NewPath)] {
+		return
+	}
+	if stat, err := os.Lstat(oldPath); err != nil || !stat.Mode().IsRegular() {
+		item.Reason = "Converted file is missing or is not a regular file"
+		return
+	}
+	if _, err := os.Lstat(item.NewPath); err == nil {
+		item.Reason = "Destination already exists; never overwrite"
+		return
+	} else if !errors.Is(err, os.ErrNotExist) {
+		item.Reason = "Destination could not be checked"
+		return
+	}
+	item.Status = "ready-converted"
+	item.Reason = "JXL rename only: restoring the original through conversion history will no longer work"
+}
+
 func (rs booruBrowserRoutes) filenameMigrationReport() (booruFilenameMigrationReport, error) {
 	report := booruFilenameMigrationReport{
 		Version: booruFilenameMigrationVersion, Dismissed: rs.filenameMigrationDismissed(),
@@ -307,6 +392,10 @@ func (rs booruBrowserRoutes) filenameMigrationReport() (booruFilenameMigrationRe
 		return report, err
 	}
 	restorationPaths, historyErr := filenameMigrationRestorationPaths(rs.configPath)
+	convertedRecords, convertedErr := filenameMigrationActiveJXLRecords(rs.configPath)
+	if historyErr == nil {
+		historyErr = convertedErr
+	}
 	for i, entry := range entries {
 		if i >= booruFilenameMigrationMaxReceipts {
 			report.Truncated = true
@@ -324,10 +413,14 @@ func (rs booruBrowserRoutes) filenameMigrationReport() (booruFilenameMigrationRe
 			continue
 		}
 		checkFilenameMigrationRestorationRisk(item, *receipt, restorationPaths, historyErr)
+		checkFilenameMigrationJXLEligibility(item, *receipt, restorationPaths, convertedRecords, historyErr)
 		report.Items = append(report.Items, *item)
-		if item.Status == "ready" {
+		switch item.Status {
+		case "ready":
 			report.Eligible++
-		} else {
+		case "ready-converted":
+			report.ConvertedEligible++
+		default:
 			report.Review++
 		}
 	}
@@ -346,18 +439,23 @@ func (rs booruBrowserRoutes) FilenameMigration(w http.ResponseWriter, _ *http.Re
 	writeVisualSimilarityJSON(w, report)
 }
 
-func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, name string, restorationPaths map[string]bool) error {
+func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, name string, restorationPaths map[string]bool, convertedRecords map[string]*mediaconvert.Record, allowConverted bool) error {
 	receipt, err := rs.readFilenameMigrationReceipt(name)
 	if err != nil {
 		return err
 	}
 	plan := planBooruFilenameMigration(name, *receipt)
-	if plan == nil || plan.Status != "ready" {
-		return fmt.Errorf("download is not eligible for safe filename migration")
+	if plan == nil {
+		return fmt.Errorf("download is not eligible for filename migration")
 	}
 	checkFilenameMigrationRestorationRisk(plan, *receipt, restorationPaths, nil)
-	if plan.Status != "ready" {
-		return fmt.Errorf("%s", plan.Reason)
+	checkFilenameMigrationJXLEligibility(plan, *receipt, restorationPaths, convertedRecords, nil)
+	if allowConverted {
+		if plan.Status != "ready-converted" {
+			return fmt.Errorf("download is not an eligible converted JXL")
+		}
+	} else if plan.Status != "ready" {
+		return fmt.Errorf("download is not eligible for safe filename migration")
 	}
 	if rs.repository.TxnManager == nil || rs.libraryRoots == nil {
 		return fmt.Errorf("native library is unavailable")
@@ -379,11 +477,19 @@ func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, na
 		return fmt.Errorf("target is occupied or cannot be inspected")
 	}
 	original := *receipt
+	originalLibrary := *receipt.Library
+	original.Library = &originalLibrary // Preserve the pre-rename path for receipt rollback.
 	movedReceipt := false
 	err = rs.repository.WithTxn(ctx, func(ctx context.Context) error {
 		existing, err := rs.repository.File.FindByPath(ctx, oldPath, true)
 		if err != nil || existing == nil {
 			return fmt.Errorf("cannot locate the registered native file: %v", err)
+		}
+		if allowConverted {
+			record := convertedRecords[filepath.Clean(oldPath)]
+			if record == nil || existing.Base().ID != record.Before.File().Base().ID {
+				return fmt.Errorf("registered media identity does not match the conversion journal")
+			}
 		}
 		folder, err := rs.repository.Folder.Find(ctx, existing.Base().ParentFolderID)
 		if err != nil || folder == nil || folder.Path != oldDir {
@@ -396,6 +502,7 @@ func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, na
 		}
 		receipt.SavedPath = newPath
 		receipt.Library.Path = newPath
+		receipt.LegacyFilenameMigrated = true
 		if err := rs.saveDownloadReceipt(*receipt); err != nil {
 			return err
 		}
@@ -438,7 +545,11 @@ func (rs booruBrowserRoutes) UpdateFilenameMigration(w http.ResponseWriter, r *h
 			return
 		}
 		writeVisualSimilarityJSON(w, map[string]bool{"dismissed": true})
-	case "apply":
+	case "apply", "apply-jxl":
+		if input.Action == "apply-jxl" && !input.AcceptRestoreLoss {
+			writeBooruError(w, http.StatusBadRequest, "migration", "Confirm that conversion restore will no longer work after renaming JXL files.")
+			return
+		}
 		if len(input.Receipts) == 0 || len(input.Receipts) > 20 {
 			writeBooruError(w, 400, "migration", "Choose between 1 and 20 verified receipts per batch.")
 			return
@@ -451,6 +562,11 @@ func (rs booruBrowserRoutes) UpdateFilenameMigration(w http.ResponseWriter, r *h
 			writeBooruError(w, http.StatusConflict, "migration", "Cannot verify saved conversion history; no files renamed.")
 			return
 		}
+		convertedRecords, err := filenameMigrationActiveJXLRecords(rs.configPath)
+		if err != nil {
+			writeBooruError(w, http.StatusConflict, "migration", "Cannot verify saved conversion journal; no files renamed.")
+			return
+		}
 		applied := []string{}
 		failures := map[string]string{}
 		for _, name := range input.Receipts {
@@ -458,7 +574,7 @@ func (rs booruBrowserRoutes) UpdateFilenameMigration(w http.ResponseWriter, r *h
 				writeBooruError(w, 400, "migration", "Invalid receipt identifier.")
 				return
 			}
-			if err := rs.applyBooruFilenameMigration(r.Context(), name, restorationPaths); err != nil {
+			if err := rs.applyBooruFilenameMigration(r.Context(), name, restorationPaths, convertedRecords, input.Action == "apply-jxl"); err != nil {
 				failures[name] = err.Error()
 			} else {
 				applied = append(applied, name)

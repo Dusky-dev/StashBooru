@@ -288,10 +288,11 @@ results in increments of 150, and the server revalidates each selected receipt.
   destination collision. The server rechecks the original file's output MD5,
   native DB entry and restoration history before an opt-in native move.
   Renames serialize against converter jobs. Batches contain at most 20 receipts.
-- **Review**: a converted/restored JXL (including an original restored for a
-  future toggle), upscaled media with a restore journal, unreadable journal,
-  changed folder layout, conflicting destination, missing file, changed template
-  rendering or other unsafe case.
+- **Review**: restored JXL, upscaled media with a restore journal, active
+  JXL with missing or ambiguous conversion history, unreadable journals,
+  changed folder layouts, collisions, missing files or unsafe templates.
+  A verified active JXL can be selected only through the separately acknowledged
+  restore-loss action described below.
   The dialog never automatically renames these paths; converter restoration
   journals must be migrated coherently before this can be enabled.
 - **Metadata warning**: the saved provider classified a suspicious tag such as
@@ -299,6 +300,28 @@ results in increments of 150, and the server revalidates each selected receipt.
   permission to remove or recategorize any relationships. Filename-derived
   metadata no longer creates a combined Artist/Character/Copyright from an
   ambiguous old comma-delimited value.
+
+### Optional JXL rename with restore loss
+
+A completed JXL conversion can be renamed without decoding or re-encoding the
+image. The migration checks the original filename receipt, the exact completed
+conversion journal and its file ID, saved output checksum, selected library
+root, destination collision, and all other conversion/upscaling path references.
+It does not guess a JXL name from tags alone. Truncated or ambiguous names,
+missing/changed journal entries and incomplete receipts remain review-only.
+
+**Important:** JXL renames are a separate, unselected-by-default action with a
+required confirmation that restoring the original file through StashBooru's
+conversion history **will no longer work**. The existing conversion journal
+is deliberately not rewritten; it will continue referencing the old JXL path.
+The renamed JXL and native library file associations should remain usable,
+but the conversion history UI, previous restore attempts and any external
+absolute-path references can be stale. Back up the original and converted
+media, database, download receipts and `media-conversions` journal first.
+The action does not alter media bytes or recategorize tags. As with regular
+renames, it does not promise atomic crash rollback across database, receipt
+and filesystem updates. Successful receipts are marked migrated so the
+legacy prompt does not rediscover them.
 
 The tool relies on Booru download receipts; files exported to a computer or
 renamed manually without matching receipts are not guessed from filenames.

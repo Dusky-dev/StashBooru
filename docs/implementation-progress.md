@@ -1,5 +1,13 @@
 # StashBooru implementation progress
 
+## Optional JXL legacy filename migration — 2026-11-04 (PR #304)
+
+- Baseline: `develop` `aa4233c418771d75b036989dcdceffc0c2de9884`; branch `feat/booru-jxl-rename-with-warning-20261104`.
+- Added a separate explicit JXL rename action guarded by a verified legacy Booru receipt, completed unique converter journal, matching original/output MD5 fingerprints, same-folder native file ID and collision checks. JXL assets are never preselected. The browser requires a clear restore-loss acknowledgement, enforced independently by the server on `apply-jxl`.
+- A successful rename updates the native file location and saved download receipt, and marks legacy migration as completed. No image re-encoding or metadata recategorization. Restored, untracked or ambiguous files remain review-only.
+- **Known incompatibility:** The existing converter restoration journal retains the previous file path, so the original JPEG cannot be restored through normal conversion history after renaming. Other path-based references outside StashBooru might need manual updates. Back up media, DB, receipt history, and `media-conversions` first. Multi-resource crash-atomic rollback is not promised.
+- Regression tests added for eligible JXL receipt/journal matches, checksum mismatches, missing histories, backend restore-loss acknowledgement, and avoiding repeated migration prompts. Latest CI pending; no live user-library media was changed.
+
 ## Opt-in legacy Booru filename audit — 2026-11-03
 
 - Baseline: `develop` `17e20d573a319d72d4f35940574bb2781f728181`; PR #298 separator fix and PR #302 isolated Docker CI have merged. Current branch `feat/booru-legacy-filenames-audit-20261103` targets `develop` directly.

@@ -106,6 +106,110 @@ func TestConvertedBooruFilenamePreviewPreservesJXLSuffix(t *testing.T) {
 	}
 }
 
+func TestFilenameMigrationOffersAcknowledgedJXLRename(t *testing.T) {
+	receipt, oldOriginal, newOriginal := filenameMigrationFixture(t)
+	id := strings.Repeat("c", 32)
+	active := strings.TrimSuffix(oldOriginal, ".jpg") + ".converted-" + id[:8] + ".jxl"
+	wanted := strings.TrimSuffix(newOriginal, ".jpg") + ".converted-" + id[:8] + ".jxl"
+	if err := os.WriteFile(active, []byte("synthetic converted bytes"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(oldOriginal); err != nil {
+		t.Fatal(err)
+	}
+	hash, err := mediaconvert.MD5(active)
+	if err != nil {
+		t.Fatal(err)
+	}
+	receipt.Library.Converted = true
+	receipt.Library.Path = active
+	receipt.Convert = true
+	receipt.OutputMD5 = hash
+	config := t.TempDir()
+	rs := booruBrowserRoutes{configPath: config}
+	if err := rs.saveDownloadReceipt(receipt); err != nil {
+		t.Fatal(err)
+	}
+	record := mediaconvert.Record{
+		ID:     id,
+		Status: "complete",
+		Before: mediaconvert.Snapshot{Image: &models.ImageFile{
+			BaseFile: &models.BaseFile{ID: 12, Path: oldOriginal, Fingerprints: models.Fingerprints{
+				{Type: "md5", Fingerprint: receipt.OriginalMD5},
+			}},
+		}},
+		After: mediaconvert.Snapshot{Image: &models.ImageFile{
+			BaseFile: &models.BaseFile{ID: 12, Path: active, Fingerprints: models.Fingerprints{
+				{Type: "md5", Fingerprint: hash},
+			}},
+		}},
+	}
+	root := filepath.Join(config, "media-conversions")
+	if err := os.MkdirAll(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, id+".json"), data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	report, err := rs.filenameMigrationReport()
+	if err != nil || report.ConvertedEligible != 1 || report.Eligible != 0 ||
+		len(report.Items) != 1 || report.Items[0].Status != "ready-converted" ||
+		report.Items[0].NewPath != wanted {
+		t.Fatalf("matching completed JXL needs explicit restore-loss choice: %+v: %v", report, err)
+	}
+	// A checksum mismatch must never present a converted rename action.
+	receipt.OutputMD5 = strings.Repeat("b", 32)
+	if err := rs.saveDownloadReceipt(receipt); err != nil {
+		t.Fatal(err)
+	}
+	report, err = rs.filenameMigrationReport()
+	if err != nil || report.ConvertedEligible != 0 || len(report.Items) != 1 ||
+		report.Items[0].Status != "review" {
+		t.Fatalf("unverified converted output must remain review-only: %+v: %v", report, err)
+	}
+}
+
+func TestFilenameMigrationJXLApplyNeedsExplicitRestoreLossConfirmation(t *testing.T) {
+	rs := booruBrowserRoutes{configPath: t.TempDir()}
+	request := httptest.NewRequest("POST", "/booru-browser/filename-migration",
+		strings.NewReader(`{"action":"apply-jxl","receipts":["fixture-source-123.json"]}`))
+	request.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	rs.UpdateFilenameMigration(w, request)
+	if w.Code != 400 {
+		t.Fatalf("JXL rename must require explicit restore-loss confirmation: %d, %s", w.Code, w.Body.String())
+	}
+}
+
+func TestFilenameMigrationCompletedReceiptSuppressesFurtherRename(t *testing.T) {
+	receipt, _, _ := filenameMigrationFixture(t)
+	receipt.LegacyFilenameMigrated = true
+	if item := planBooruFilenameMigration("fixture-source-123.json", receipt); item != nil {
+		t.Fatalf("completed receipt should not appear again: %+v", item)
+	}
+}
+
+func TestFilenameMigrationRejectsConvertedWithoutJournal(t *testing.T) {
+	receipt, oldOriginal, _ := filenameMigrationFixture(t)
+	receipt.Library.Converted = true
+	receipt.Convert = true
+	receipt.Library.Path = strings.TrimSuffix(oldOriginal, ".jpg") + ".converted-170c91a2.jxl"
+	config := t.TempDir()
+	rs := booruBrowserRoutes{configPath: config}
+	if err := rs.saveDownloadReceipt(receipt); err != nil {
+		t.Fatal(err)
+	}
+	report, err := rs.filenameMigrationReport()
+	if err != nil || report.ConvertedEligible != 0 || len(report.Items) != 1 ||
+		report.Items[0].Status != "review" {
+		t.Fatalf("untracked JXL must remain review-only: %+v: %v", report, err)
+	}
+}
+
 func TestPlanBooruFilenameMigrationFlagsSuspiciousCharacterCategory(t *testing.T) {
 	receipt, _, _ := filenameMigrationFixture(t)
 	receipt.Post.Tags = []booru.Tag{{Name: "animated", Category: "character"}}

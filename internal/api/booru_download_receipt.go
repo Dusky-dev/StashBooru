@@ -16,17 +16,18 @@ import (
 )
 
 type booruDownloadReceipt struct {
-	AssetHash   string              `json:"assetHash,omitempty"`
-	Template    string              `json:"template,omitempty"`
-	Source      booru.PublicSource  `json:"source"`
-	Post        booru.Post          `json:"post"`
-	Directory   string              `json:"directory"`
-	SavedPath   string              `json:"savedPath"`
-	OriginalMD5 string              `json:"originalMD5"`
-	OutputMD5   string              `json:"outputMD5"`
-	Convert     bool                `json:"convert"`
-	AutoTagged  bool                `json:"autoTagged,omitempty"`
-	Library     *booruLibraryResult `json:"library,omitempty"`
+	AssetHash              string              `json:"assetHash,omitempty"`
+	Template               string              `json:"template,omitempty"`
+	Source                 booru.PublicSource  `json:"source"`
+	Post                   booru.Post          `json:"post"`
+	Directory              string              `json:"directory"`
+	SavedPath              string              `json:"savedPath"`
+	OriginalMD5            string              `json:"originalMD5"`
+	OutputMD5              string              `json:"outputMD5"`
+	Convert                bool                `json:"convert"`
+	AutoTagged             bool                `json:"autoTagged,omitempty"`
+	LegacyFilenameMigrated bool                `json:"legacyFilenameMigrated,omitempty"`
+	Library                *booruLibraryResult `json:"library,omitempty"`
 }
 
 func receiptName(instance, id string) string { return instance + "-" + id + ".json" }
