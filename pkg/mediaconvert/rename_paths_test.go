@@ -66,7 +66,7 @@ func TestRenameRestorablePathsRejectsAmbiguousOrIncompleteJournal(t *testing.T) 
 		ID:     id,
 		Status: "complete",
 		Before: Snapshot{Image: &models.ImageFile{BaseFile: &models.BaseFile{ID: 1, Path: before}}},
-		After: Snapshot{Image: &models.ImageFile{BaseFile: &models.BaseFile{ID: 1, Path: after}}},
+		After:  Snapshot{Image: &models.ImageFile{BaseFile: &models.BaseFile{ID: 1, Path: after}}},
 	}
 	if err := store.save(record); err != nil {
 		t.Fatal(err)
