@@ -10,7 +10,7 @@ import (
 	"github.com/stashapp/stash/pkg/models"
 )
 
-func TestRenameCompletedPathsPreservesRestoreSnapshots(t *testing.T) {
+func TestRenameRestorablePathsPreservesRestoreSnapshots(t *testing.T) {
 	root := t.TempDir()
 	store := Store{Root: root}
 	id := strings.Repeat("a", 32)
@@ -32,7 +32,7 @@ func TestRenameCompletedPathsPreservesRestoreSnapshots(t *testing.T) {
 	if err := store.save(record); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.RenameCompletedPaths(id, oldOriginal, newOriginal, oldOutput, newOutput); err != nil {
+	if err := store.RenameRestorablePaths(id, oldOriginal, newOriginal, oldOutput, newOutput); err != nil {
 		t.Fatal(err)
 	}
 	renamed, err := store.Record(id)
@@ -46,7 +46,7 @@ func TestRenameCompletedPathsPreservesRestoreSnapshots(t *testing.T) {
 		!renamed.Cached || renamed.Status != "complete" {
 		t.Fatalf("journal snapshots no longer match the renamed files: %+v", renamed)
 	}
-	if err := store.RenameCompletedPaths(id, newOriginal, oldOriginal, newOutput, oldOutput); err != nil {
+	if err := store.RenameRestorablePaths(id, newOriginal, oldOriginal, newOutput, oldOutput); err != nil {
 		t.Fatal(err)
 	}
 	reverted, err := store.Record(id)
@@ -56,7 +56,7 @@ func TestRenameCompletedPathsPreservesRestoreSnapshots(t *testing.T) {
 	}
 }
 
-func TestRenameCompletedPathsRejectsAmbiguousOrIncompleteJournal(t *testing.T) {
+func TestRenameRestorablePathsRejectsAmbiguousOrIncompleteJournal(t *testing.T) {
 	root := t.TempDir()
 	store := Store{Root: root}
 	id := strings.Repeat("b", 32)
@@ -76,7 +76,7 @@ func TestRenameCompletedPathsRejectsAmbiguousOrIncompleteJournal(t *testing.T) {
 		{"changed output type", filepath.Join(root, "new.gif"), filepath.Join(root, "new.converted-bbbbbbbb.png")},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := store.RenameCompletedPaths(id, tc.original, filepath.Join(root, "new.gif"), after, tc.output); err == nil {
+			if err := store.RenameRestorablePaths(id, tc.original, filepath.Join(root, "new.gif"), after, tc.output); err == nil {
 				t.Fatal("unsafe journal rewrite must be rejected")
 			}
 		})
@@ -85,13 +85,17 @@ func TestRenameCompletedPathsRejectsAmbiguousOrIncompleteJournal(t *testing.T) {
 	if err := store.save(record); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.RenameCompletedPaths(id, before, filepath.Join(root, "new.gif"), after, filepath.Join(root, "new.converted-bbbbbbbb.jxl")); err == nil {
-		t.Fatal("restored journal needs a separate verified migration")
+	if err := store.RenameRestorablePaths(id, before, filepath.Join(root, "new.gif"), after, filepath.Join(root, "new.converted-bbbbbbbb.jxl")); err != nil {
+		t.Fatalf("restored journal must preserve both paths: %v", err)
 	}
-	// The journal must never be modified by a rejected request.
+	restored, err := store.Record(id)
+	if err != nil || restored.Status != "restored" || restored.Before.File().Base().Path != filepath.Join(root, "new.gif") {
+		t.Fatalf("restored journal was not migrated: %+v %v", restored, err)
+	}
+	// The journal must still be valid after the permitted restored-state rewrite.
 	b, err := os.ReadFile(filepath.Join(root, id+".json"))
-	if err != nil || !strings.Contains(string(b), "old.gif") {
-		t.Fatalf("rejected rewrite unexpectedly changed journal: %v", err)
+	if err != nil || !strings.Contains(string(b), "new.gif") {
+		t.Fatalf("restored rewrite did not persist: %v", err)
 	}
 }
 
@@ -110,7 +114,7 @@ func TestRenamedConversionStillRestoresAndReapplies(t *testing.T) {
 	}
 	repo.f.Base().Path = newConverted
 	repo.f.Base().Basename = filepath.Base(newConverted)
-	if err := store.RenameCompletedPaths(record.ID, original, newOriginal, converted, newConverted); err != nil {
+	if err := store.RenameRestorablePaths(record.ID, original, newOriginal, converted, newConverted); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.ToggleRestore(context.Background(), record.ID); err != nil {
