@@ -131,7 +131,7 @@ func TestFilenameMigrationOffersAcknowledgedJXLRename(t *testing.T) {
 		t.Fatal(err)
 	}
 	record := mediaconvert.Record{
-		ID: id,
+		ID:     id,
 		Status: "complete",
 		Before: mediaconvert.Snapshot{Image: &models.ImageFile{
 			BaseFile: &models.BaseFile{ID: 12, Path: oldOriginal, Fingerprints: models.Fingerprints{
@@ -170,6 +170,26 @@ func TestFilenameMigrationOffersAcknowledgedJXLRename(t *testing.T) {
 	if err != nil || report.ConvertedEligible != 0 || len(report.Items) != 1 ||
 		report.Items[0].Status != "review" {
 		t.Fatalf("unverified converted output must remain review-only: %+v: %v", report, err)
+	}
+}
+
+func TestFilenameMigrationJXLApplyNeedsExplicitRestoreLossConfirmation(t *testing.T) {
+	rs := booruBrowserRoutes{configPath: t.TempDir()}
+	request := httptest.NewRequest("POST", "/booru-browser/filename-migration",
+		strings.NewReader(`{"action":"apply-jxl","receipts":["fixture-source-123.json"]}`))
+	request.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	rs.UpdateFilenameMigration(w, request)
+	if w.Code != 400 {
+		t.Fatalf("JXL rename must require explicit restore-loss confirmation: %d, %s", w.Code, w.Body.String())
+	}
+}
+
+func TestFilenameMigrationCompletedReceiptSuppressesFurtherRename(t *testing.T) {
+	receipt, _, _ := filenameMigrationFixture(t)
+	receipt.LegacyFilenameMigrated = true
+	if item := planBooruFilenameMigration("fixture-source-123.json", receipt); item != nil {
+		t.Fatalf("completed receipt should not appear again: %+v", item)
 	}
 }
 
