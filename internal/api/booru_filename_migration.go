@@ -35,19 +35,19 @@ type booruFilenameMigrationItem struct {
 }
 
 type booruFilenameMigrationReport struct {
-	Version   string                       `json:"version"`
-	Dismissed bool                         `json:"dismissed"`
-	Eligible  int                          `json:"eligible"`
-	ConvertedEligible int                 `json:"convertedEligible"`
-	Review    int                          `json:"review"`
-	Truncated bool                         `json:"truncated"`
-	Items     []booruFilenameMigrationItem `json:"items"`
+	Version           string                       `json:"version"`
+	Dismissed         bool                         `json:"dismissed"`
+	Eligible          int                          `json:"eligible"`
+	ConvertedEligible int                          `json:"convertedEligible"`
+	Review            int                          `json:"review"`
+	Truncated         bool                         `json:"truncated"`
+	Items             []booruFilenameMigrationItem `json:"items"`
 }
 
 type booruFilenameMigrationRequest struct {
-	Action   string   `json:"action"`
-	Receipts []string `json:"receipts,omitempty"`
-	AcceptRestoreLoss bool `json:"acceptRestoreLoss,omitempty"`
+	Action            string   `json:"action"`
+	Receipts          []string `json:"receipts,omitempty"`
+	AcceptRestoreLoss bool     `json:"acceptRestoreLoss,omitempty"`
 }
 
 func (rs booruBrowserRoutes) filenameMigrationDismissed() bool {
