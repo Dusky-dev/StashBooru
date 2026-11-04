@@ -52,12 +52,12 @@ async function readReport(): Promise<Report> {
 async function sendAction<T>(
   action: string,
   receipts?: string[],
-  acceptRestoreLoss = false
+  acceptHistoryMigration = false
 ): Promise<T> {
   return fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action, receipts, acceptRestoreLoss }),
+    body: JSON.stringify({ action, receipts, acceptHistoryMigration }),
   }).then(readBooruResponse<T>);
 }
 
@@ -73,7 +73,7 @@ export function BooruFilenameMigration({
   const [notice, setNotice] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [selectedJXL, setSelectedJXL] = useState<string[]>([]);
-  const [acceptRestoreLoss, setAcceptRestoreLoss] = useState(false);
+  const [acceptHistoryMigration, setAcceptRestoreLoss] = useState(false);
   const [visibleCount, setVisibleCount] = useState(150);
 
   useEffect(() => {
@@ -136,7 +136,7 @@ export function BooruFilenameMigration({
       !report ||
       busy ||
       ready.length === 0 ||
-      (converted && !acceptRestoreLoss)
+      (converted && !acceptHistoryMigration)
     ) {
       return;
     }
@@ -153,7 +153,7 @@ export function BooruFilenameMigration({
         }>(
           converted ? "apply-jxl" : "apply",
           ready.slice(offset, offset + 20),
-          converted && acceptRestoreLoss
+          converted && acceptHistoryMigration
         );
         succeeded += response.applied.length;
         failures += Object.keys(response.failures).length;
@@ -167,7 +167,7 @@ export function BooruFilenameMigration({
           succeeded +
           " file(s) without re-encoding." +
           (converted
-            ? " Conversion restoration for these JXL files is no longer supported."
+            ? " Their conversion-history paths were updated; restoration still requires a valid cached original."
             : "")
       );
       if (failures) setError(failures + " file(s) need manual review.");
@@ -238,12 +238,13 @@ export function BooruFilenameMigration({
           </Alert>
           {(report?.convertedEligible ?? 0) > 0 && (
             <Alert variant="warning">
-              <strong>JXL restore warning:</strong> Renaming a converted JXL
-              keeps its image and native library associations, but its saved
-              conversion journal will still reference the old filename.
-              Restoring the original JPEG through StashBooru will no longer work
-              for renamed JXL files. Back up the database, media, and conversion
-              history first. JXL files are never selected automatically.
+              <strong>Converted JXL:</strong> The original and converted paths
+              in the conversion journal will be migrated with the native file
+              and download receipt. Restoration stays available when the
+              original is still cached. Back up media, database, receipts and
+              conversion history first: filesystem, database and journal changes
+              are not yet guaranteed atomic across a process crash. JXL files
+              are never selected automatically.
             </Alert>
           )}
           {error && <Alert variant="warning">{error}</Alert>}
@@ -361,9 +362,9 @@ export function BooruFilenameMigration({
               id="booru-jxl-restore-loss"
               type="checkbox"
               disabled={busy}
-              checked={acceptRestoreLoss}
+              checked={acceptHistoryMigration}
               onChange={(event) => setAcceptRestoreLoss(event.target.checked)}
-              label="I understand that restoring originals through conversion history will no longer work for renamed JXL files."
+              label="I backed up my library and understand that converted-file renaming updates both native media and conversion history, but is not crash-atomic."
             />
           )}
         </Modal.Body>
@@ -392,7 +393,7 @@ export function BooruFilenameMigration({
             variant="warning"
             disabled={
               busy ||
-              !acceptRestoreLoss ||
+              !acceptHistoryMigration ||
               selectedConvertedEligible.length === 0
             }
             onClick={() => void apply(true)}
