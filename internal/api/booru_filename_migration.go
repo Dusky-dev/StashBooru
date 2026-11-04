@@ -477,6 +477,8 @@ func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, na
 		return fmt.Errorf("target is occupied or cannot be inspected")
 	}
 	original := *receipt
+	originalLibrary := *receipt.Library
+	original.Library = &originalLibrary // Preserve the pre-rename path for receipt rollback.
 	movedReceipt := false
 	err = rs.repository.WithTxn(ctx, func(ctx context.Context) error {
 		existing, err := rs.repository.File.FindByPath(ctx, oldPath, true)
