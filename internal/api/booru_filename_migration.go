@@ -740,6 +740,23 @@ func convertedFilenameOriginalTarget(oldOriginal, oldOutput, newOutput string) (
 	return filepath.Join(filepath.Dir(oldOriginal), newStem+filepath.Ext(oldOriginal)), nil
 }
 
+// Regular media renames have no conversion record. Keep their receipt updates
+// independent of the coordinated conversion/restore path.
+func updateMigratedBooruReceipt(receipt *booruDownloadReceipt, original booruDownloadReceipt, record *mediaconvert.Record, restored bool, newOriginal, newPath string) {
+	receipt.SavedPath = newOriginal
+	receipt.Library.Path = newPath
+	switch {
+	case restored:
+		receipt.Library.Converted = false
+		receipt.OutputMD5 = receipt.OriginalMD5
+	case record != nil && !original.Library.Converted:
+		// Conversion occurred after the original Booru download.
+		receipt.Library.Converted = true
+		receipt.OutputMD5 = record.After.File().Base().Fingerprints.GetString("md5")
+	}
+	receipt.LegacyFilenameMigrated = true
+}
+
 func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, name string, restorationPaths map[string]bool, convertedRecords map[string]*mediaconvert.Record, allowConverted bool) error {
 	receipt, err := rs.readFilenameMigrationReceipt(name)
 	if err != nil {
@@ -876,17 +893,7 @@ func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, na
 			}
 			journalUpdated = true
 		}
-		receipt.SavedPath = newOriginal
-		receipt.Library.Path = newPath
-		if restored {
-			receipt.Library.Converted = false
-			receipt.OutputMD5 = receipt.OriginalMD5
-		} else if allowConverted && !original.Library.Converted {
-			// Conversion occurred after the original Booru download.
-			receipt.Library.Converted = true
-			receipt.OutputMD5 = record.After.File().Base().Fingerprints.GetString("md5")
-		}
-		receipt.LegacyFilenameMigrated = true
+		updateMigratedBooruReceipt(receipt, original, record, restored, newOriginal, newPath)
 		if err := rs.saveDownloadReceipt(*receipt); err != nil {
 			return err
 		}
