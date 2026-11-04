@@ -220,6 +220,66 @@ func TestFilenameMigrationOffersAcknowledgedJXLRename(t *testing.T) {
 	}
 }
 
+func TestFilenameMigrationOffersConvertedVideoWithHistoryMigration(t *testing.T) {
+	receipt, previous, _ := filenameMigrationFixture(t)
+	source := booru.Source{ID: receipt.Source.ID, Name: receipt.Source.Name, URL: receipt.Source.URL}
+	originalName, err := booru.RenderLegacyFilename(receipt.Template, source, receipt.Post, receipt.OriginalMD5, "mp4", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nextName, err := booru.RenderFilename(receipt.Template, source, receipt.Post, receipt.OriginalMD5, "mp4", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := filepath.Join(receipt.Directory, originalName)
+	if err := os.Rename(previous, original); err != nil {
+		t.Fatal(err)
+	}
+	id := strings.Repeat("e", 32)
+	converted := strings.TrimSuffix(original, ".mp4") + ".converted-" + id[:8] + ".mp4"
+	if err := os.Rename(original, converted); err != nil {
+		t.Fatal(err)
+	}
+	checksum, err := mediaconvert.MD5(converted)
+	if err != nil {
+		t.Fatal(err)
+	}
+	receipt.SavedPath, receipt.Library.Path = original, converted
+	receipt.Library.Kind, receipt.Library.Converted = "scene", true
+	receipt.Convert, receipt.OutputMD5 = true, checksum
+	config := t.TempDir()
+	rs := booruBrowserRoutes{configPath: config}
+	if err := rs.saveDownloadReceipt(receipt); err != nil {
+		t.Fatal(err)
+	}
+	record := mediaconvert.Record{
+		ID: id, Status: "complete",
+		Before: mediaconvert.Snapshot{Video: &models.VideoFile{BaseFile: &models.BaseFile{
+			ID: 22, Path: original, Fingerprints: models.Fingerprints{{Type: "md5", Fingerprint: receipt.OriginalMD5}},
+		}}},
+		After: mediaconvert.Snapshot{Video: &models.VideoFile{BaseFile: &models.BaseFile{
+			ID: 22, Path: converted, Fingerprints: models.Fingerprints{{Type: "md5", Fingerprint: checksum}},
+		}}},
+	}
+	root := filepath.Join(config, "media-conversions")
+	if err := os.MkdirAll(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, id+".json"), data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	report, err := rs.filenameMigrationReport()
+	expected := strings.TrimSuffix(filepath.Join(receipt.Directory, nextName), ".mp4") + ".converted-" + id[:8] + ".mp4"
+	if err != nil || report.ConvertedEligible != 1 || len(report.Items) != 1 ||
+		report.Items[0].Status != "ready-converted" || report.Items[0].NewPath != expected {
+		t.Fatalf("converted MP4 must preserve a verified journal during rename: %+v %v", report, err)
+	}
+}
+
 func TestFilenameMigrationJXLApplyNeedsExplicitRestoreLossConfirmation(t *testing.T) {
 	rs := booruBrowserRoutes{configPath: t.TempDir()}
 	request := httptest.NewRequest("POST", "/booru-browser/filename-migration",
