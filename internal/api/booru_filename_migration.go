@@ -318,9 +318,6 @@ func filenameMigrationActiveJXLRecords(configPath string) (map[string]*mediaconv
 		}
 		for _, record := range history {
 			before, after := record.Before.File(), record.After.File()
-			for _, media := range []interface{ Base() *models.BaseFile }{} {
-				_ = media
-			}
 			if before != nil {
 				references[filepath.Clean(before.Base().Path)]++
 			}
@@ -396,7 +393,9 @@ func (rs booruBrowserRoutes) filenameMigrationReport() (booruFilenameMigrationRe
 	}
 	restorationPaths, historyErr := filenameMigrationRestorationPaths(rs.configPath)
 	convertedRecords, convertedErr := filenameMigrationActiveJXLRecords(rs.configPath)
-	if historyErr == nil { historyErr = convertedErr }
+	if historyErr == nil {
+		historyErr = convertedErr
+	}
 	for i, entry := range entries {
 		if i >= booruFilenameMigrationMaxReceipts {
 			report.Truncated = true
