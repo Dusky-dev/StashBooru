@@ -62,6 +62,53 @@ func TestPlanBooruFilenameMigrationUsesReceiptAndPreservesLayout(t *testing.T) {
 	}
 }
 
+func TestPlanBooruFilenameMigrationOriginalMediaFormats(t *testing.T) {
+	for _, ext := range []string{"jpg", "jpeg", "png", "gif", "webp", "avif", "jxl", "mp4", "webm", "mov"} {
+		t.Run(ext, func(t *testing.T) {
+			receipt, jpgPath, _ := filenameMigrationFixture(t)
+			source := booru.Source{ID: receipt.Source.ID, Name: receipt.Source.Name, URL: receipt.Source.URL}
+			oldRel, err := booru.RenderLegacyFilename(receipt.Template, source, receipt.Post, receipt.OriginalMD5, ext, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			newRel, err := booru.RenderFilename(receipt.Template, source, receipt.Post, receipt.OriginalMD5, ext, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			oldPath := filepath.Join(receipt.Directory, oldRel)
+			if err := os.Rename(jpgPath, oldPath); err != nil {
+				t.Fatal(err)
+			}
+			receipt.SavedPath = oldPath
+			receipt.Library.Path = oldPath
+			receipt.Convert = true // The requested conversion may have been skipped.
+			if ext == "mp4" || ext == "webm" || ext == "mov" {
+				receipt.Library.Kind = "scene"
+			}
+			plan := planBooruFilenameMigration("fixture-source-123.json", receipt)
+			if plan == nil || plan.Status != "ready" ||
+				plan.NewPath != filepath.Join(receipt.Directory, newRel) {
+				t.Fatalf("verified original %s must be eligible even when conversion was requested: %+v", ext, plan)
+			}
+		})
+	}
+}
+
+func TestConvertedFilenameOriginalTargetPreservesInputFormat(t *testing.T) {
+	for _, extension := range []string{".jpg", ".png", ".gif", ".mp4"} {
+		oldOriginal := filepath.Join("/media", "a, b"+extension)
+		oldOutput := filepath.Join("/media", "a, b.converted-aabbccdd.jxl")
+		newOutput := filepath.Join("/media", "a+b.converted-aabbccdd.jxl")
+		got, err := convertedFilenameOriginalTarget(oldOriginal, oldOutput, newOutput)
+		if err != nil || got != filepath.Join("/media", "a+b"+extension) {
+			t.Fatalf("could not reconstruct %s restore destination: %q %v", extension, got, err)
+		}
+	}
+	if _, err := convertedFilenameOriginalTarget("/media/old.jpg", "/media/unrelated.converted-aabbccdd.jxl", "/media/new.converted-aabbccdd.jxl"); err == nil {
+		t.Fatal("unmatched original and converted paths cannot be migrated")
+	}
+}
+
 func TestPlanBooruFilenameMigrationSkipsConversionAndConflicts(t *testing.T) {
 	receipt, _, destination := filenameMigrationFixture(t)
 	receipt.Library.Converted = true
