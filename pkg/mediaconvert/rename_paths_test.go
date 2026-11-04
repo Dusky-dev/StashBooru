@@ -19,7 +19,7 @@ func TestRenameRestorablePathsPreservesRestoreSnapshots(t *testing.T) {
 	oldOutput := filepath.Join(root, "artist, second.converted-aaaaaaaa.jxl")
 	newOutput := filepath.Join(root, "artist+second.converted-aaaaaaaa.jxl")
 	record := &Record{
-		ID: id,
+		ID:     id,
 		Status: "complete",
 		Cached: true,
 		Before: Snapshot{Image: &models.ImageFile{BaseFile: &models.BaseFile{
@@ -63,7 +63,8 @@ func TestRenameRestorablePathsRejectsAmbiguousOrIncompleteJournal(t *testing.T) 
 	before := filepath.Join(root, "old.gif")
 	after := filepath.Join(root, "old.converted-bbbbbbbb.jxl")
 	record := &Record{
-		ID: id, Status: "complete",
+		ID:     id,
+		Status: "complete",
 		Before: Snapshot{Image: &models.ImageFile{BaseFile: &models.BaseFile{ID: 1, Path: before}}},
 		After: Snapshot{Image: &models.ImageFile{BaseFile: &models.BaseFile{ID: 1, Path: after}}},
 	}
