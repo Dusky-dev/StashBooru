@@ -73,7 +73,7 @@ export function BooruFilenameMigration({
   const [notice, setNotice] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [selectedConverted, setSelectedConverted] = useState<string[]>([]);
-  const [acceptHistoryMigration, setAcceptRestoreLoss] = useState(false);
+  const [acceptHistoryMigration, setAcceptHistoryMigration] = useState(false);
   const [visibleCount, setVisibleCount] = useState(150);
 
   useEffect(() => {
@@ -109,7 +109,7 @@ export function BooruFilenameMigration({
       setReport(await readReport());
       setSelected([]);
       setSelectedConverted([]);
-      setAcceptRestoreLoss(false);
+      setAcceptHistoryMigration(false);
       setVisibleCount(150);
       setOpen(true);
     } catch (cause) {
@@ -161,7 +161,7 @@ export function BooruFilenameMigration({
       setReport(await readReport());
       setSelected([]);
       setSelectedConverted([]);
-      setAcceptRestoreLoss(false);
+      setAcceptHistoryMigration(false);
       setNotice(
         "Renamed " +
           succeeded +
@@ -238,12 +238,12 @@ export function BooruFilenameMigration({
           </Alert>
           {(report?.convertedEligible ?? 0) > 0 && (
             <Alert variant="warning">
-              <strong>Converted Converted media:</strong> The original and converted paths
+              <strong>Converted media:</strong> The original and converted paths
               in the conversion journal will be migrated with the native file
               and download receipt. Restoration stays available when the
               original is still cached. Back up media, database, receipts and
               conversion history first: filesystem, database and journal changes
-              are not yet guaranteed atomic across a process crash. converted files
+              are not yet guaranteed atomic across a process crash. Converted files
               are never selected automatically.
             </Alert>
           )}
@@ -363,7 +363,7 @@ export function BooruFilenameMigration({
               type="checkbox"
               disabled={busy}
               checked={acceptHistoryMigration}
-              onChange={(event) => setAcceptRestoreLoss(event.target.checked)}
+              onChange={(event) => setAcceptHistoryMigration(event.target.checked)}
               label="I backed up my library and understand that converted-file renaming updates both native media and conversion history, but is not crash-atomic."
             />
           )}
