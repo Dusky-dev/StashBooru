@@ -457,7 +457,8 @@ func filenameMigrationActiveConvertedRecords(configPath string) (map[string]*med
 		}
 	}
 	for path, record := range records {
-		if references[path] != 1 || references[filepath.Clean(record.Before.File().Base().Path)] != 1 {
+		if references[filepath.Clean(record.Before.File().Base().Path)] != 1 ||
+			references[filepath.Clean(record.After.File().Base().Path)] != 1 {
 			delete(records, path)
 		}
 	}
@@ -880,7 +881,7 @@ func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, na
 		if restored {
 			receipt.Library.Converted = false
 			receipt.OutputMD5 = receipt.OriginalMD5
-		} else if !original.Library.Converted {
+		} else if allowConverted && !original.Library.Converted {
 			// Conversion occurred after the original Booru download.
 			receipt.Library.Converted = true
 			receipt.OutputMD5 = record.After.File().Base().Fingerprints.GetString("md5")
