@@ -288,7 +288,6 @@ func TestFilenameMigrationOffersRestoredOriginalWithJournal(t *testing.T) {
 	receipt.Library.Path = oldConverted
 	receipt.Convert = true
 	// A successful restore has returned the original-format bytes to disk.
-	receipt.OriginalMD5, _ = mediaconvert.MD5(oldOriginal)
 	receipt.OutputMD5 = strings.Repeat("c", 32)
 
 	config := t.TempDir()
