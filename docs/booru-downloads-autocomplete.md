@@ -300,9 +300,20 @@ results in increments of 150, and the server revalidates each selected receipt.
   the two journal snapshot paths are updated so restoration/reapplication still
   has the correct destinations. Inactive-version cache bytes are unchanged;
   toggling formats still requires the relevant cached representation.
+- **Ready (receipt-only repair)**: when the old file is gone but the proposed
+  filename already exists, the exact bytes must match the saved output MD5 and
+  the native Stash file must belong to the original linked Image/Scene ID. There
+  must be no overlapping conversion/upscaling restore journal, and the old file
+  must still be absent. In that narrow case the tool can update the saved
+  download receipt without moving or re-encoding a file. This action must be
+  explicitly selected like other original-media filename updates.
 - **Review**: ambiguous/missing or interrupted conversion histories, upscaled
   media with a restoration journal, collisions, changed folder layout, missing
-  files and receipts without enough provenance remain review-only.
+  files and receipts without enough provenance remain review-only. For an old
+  path missing at *both* the recorded and proposed filenames, find the media
+  in Stash and verify its current location (or restore from backup) before
+  retrying. The migration never guesses a filename or substitutes unrelated
+  files based on a similar-looking basename.
 - **Metadata warning**: the provider receipt may categorize `animated` as a
   Character. Where the linked native media ID is available, the audit reads
   its actual Image/Scene Character assignments to distinguish an attached
