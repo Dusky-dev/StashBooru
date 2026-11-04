@@ -446,9 +446,10 @@ func filenameMigrationActiveConvertedRecords(configPath string) (map[string]*med
 					filepath.Ext(after.Base().Path) != "" && strings.Contains(filepath.Base(after.Base().Path), ".converted-") {
 					path := filepath.Clean(after.Base().Path)
 					records[path] = record
-					// Restored media may have refreshed download receipts that
-					// already point back to the original (Before) path.
-					if record.Status == "restored" && before != nil {
+					// A receipt can also be stale because the native converter
+					// ran after download, while the receipt still points to
+					// the no-longer-present original format.
+					if before != nil {
 						records[filepath.Clean(before.Base().Path)] = record
 					}
 				}
@@ -480,23 +481,26 @@ func checkFilenameMigrationConvertedEligibility(item *booruFilenameMigrationItem
 	restored := record.Status == "restored"
 	receiptRefreshed := !receipt.Library.Converted && restored &&
 		filepath.Clean(receipt.Library.Path) == oldOriginal
+	receiptStaleConverted := !receipt.Library.Converted && !restored &&
+		filepath.Clean(receipt.Library.Path) == oldOriginal
 	if receipt.Library.Converted {
 		if filepath.Clean(receipt.Library.Path) != oldOutput {
 			return
 		}
-	} else if !receiptRefreshed {
+	} else if !receiptRefreshed && !receiptStaleConverted {
 		return
 	}
 	if filepath.Clean(receipt.SavedPath) != oldOriginal ||
 		before.Fingerprints.GetString("md5") != receipt.OriginalMD5 ||
-		(!receiptRefreshed && after.Fingerprints.GetString("md5") != receipt.OutputMD5) ||
-		(receiptRefreshed && receipt.OutputMD5 != receipt.OriginalMD5) ||
+		(receipt.Library.Converted && after.Fingerprints.GetString("md5") != receipt.OutputMD5) ||
+		(!receipt.Library.Converted && receipt.OutputMD5 != receipt.OriginalMD5) ||
+		(receiptStaleConverted && after.Fingerprints.GetString("md5") == "") ||
 		!strings.HasSuffix(strings.ToLower(filepath.Base(oldOutput)), ".converted-"+record.ID[:8]+strings.ToLower(filepath.Ext(oldOutput))) {
 		return
 	}
 
 	newOriginal, newOutput := "", ""
-	if receiptRefreshed {
+	if receiptRefreshed || receiptStaleConverted {
 		newOriginal = item.NewPath
 		var ok bool
 		newOutput, ok = convertedBooruFilenamePreview(oldOriginal, newOriginal, oldOutput)
@@ -521,6 +525,12 @@ func checkFilenameMigrationConvertedEligibility(item *booruFilenameMigrationItem
 		return
 	}
 	source, target := oldOutput, newOutput
+	if receiptStaleConverted {
+		if _, err := os.Lstat(oldOriginal); !errors.Is(err, os.ErrNotExist) {
+			item.Reason = "Converted media still has an occupied old original path"
+			return
+		}
+	}
 	if restored {
 		source, target = oldOriginal, newOriginal
 		// The inactive converted path must not be occupied by a stale file.
@@ -546,6 +556,8 @@ func checkFilenameMigrationConvertedEligibility(item *booruFilenameMigrationItem
 	item.Status = "ready-converted"
 	if restored {
 		item.Reason = "Restored original: rename both conversion history paths while preserving reapply"
+	} else if receiptStaleConverted {
+		item.Reason = "Converted after download: rename active converted file, update restore history and repair stale receipt"
 	} else {
 		item.Reason = "Converted media: original and output history paths will be migrated together"
 	}
@@ -776,6 +788,12 @@ func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, na
 			return fmt.Errorf("conversion journal was not uniquely verified")
 		}
 		restored = record.Status == "restored"
+		receiptStaleConverted := !receipt.Library.Converted && record.Status == "complete" &&
+			filepath.Clean(receipt.Library.Path) == filepath.Clean(record.Before.File().Base().Path)
+		if receiptStaleConverted {
+			oldPath = record.After.File().Base().Path
+			expectedMD5 = record.After.File().Base().Fingerprints.GetString("md5")
+		}
 		if restored {
 			// Whether or not the download receipt was refreshed, native restore
 			// places the original-format bytes at the Before path.
@@ -861,6 +879,10 @@ func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, na
 		if restored {
 			receipt.Library.Converted = false
 			receipt.OutputMD5 = receipt.OriginalMD5
+		} else if !original.Library.Converted {
+			// Conversion occurred after the original Booru download.
+			receipt.Library.Converted = true
+			receipt.OutputMD5 = record.After.File().Base().Fingerprints.GetString("md5")
 		}
 		receipt.LegacyFilenameMigrated = true
 		if err := rs.saveDownloadReceipt(*receipt); err != nil {
