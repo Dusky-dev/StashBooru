@@ -96,11 +96,23 @@ func (rs booruBrowserRoutes) readFilenameMigrationReceipt(name string) (*booruDo
 	return &receipt, nil
 }
 
+const animatedProviderWarning = "Provider recorded animated as a Character; inspect the media's assigned entities"
+
+func withoutAnimatedProviderWarning(warnings []string) []string {
+	filtered := warnings[:0]
+	for _, warning := range warnings {
+		if warning != animatedProviderWarning {
+			filtered = append(filtered, warning)
+		}
+	}
+	return filtered
+}
+
 func legacyCategoryWarning(tags []booru.Tag) []string {
 	var warnings []string
 	for _, tag := range tags {
 		if tag.Category == "character" && strings.EqualFold(tag.Name, "animated") {
-			warnings = append(warnings, "Provider recorded animated as a Character; inspect the media's assigned entities")
+			warnings = append(warnings, animatedProviderWarning)
 			break
 		}
 	}
@@ -180,8 +192,10 @@ func (rs booruBrowserRoutes) auditFilenameAssignedCharacters(item *booruFilename
 		item.Warnings = append(item.Warnings, "Native Character assignments could not be verified: "+err.Error())
 		return
 	}
+	// The saved provider tag snapshot is not a library assignment. Only keep
+	// an actionable warning if the native media really has this Character.
+	item.Warnings = withoutAnimatedProviderWarning(item.Warnings)
 	if len(matchedIDs) == 0 {
-		item.Warnings = append(item.Warnings, "No Character named animated is currently assigned to this media; the warning comes from the provider snapshot")
 		return
 	}
 	for _, id := range matchedIDs {
@@ -350,9 +364,16 @@ func planBooruFilenameMigration(name string, receipt booruDownloadReceipt) *boor
 	return item
 }
 
+// Failed/skipped conversion attempts are historical records, not recoverable
+// media. Only records with an activation or restoration dependency protect paths.
+// "encoding" remains protected: recovery may still check its original path.
+func filenameMigrationHasRestoreDependency(status string) bool {
+	return status != "failed" && status != "skipped"
+}
+
 // Conversion and upscaling restore journals retain original paths even when
 // their active file has been switched back. Renaming one of those paths would
-// invalidate a future ToggleRestore, so they are always review-only.
+// invalidate a future ToggleRestore, so active dependencies remain review-only.
 func filenameMigrationRestorationPaths(configPath string) (map[string]bool, error) {
 	paths := make(map[string]bool)
 	for _, directory := range []string{"media-conversions", "media-upscaling-restores"} {
@@ -362,6 +383,9 @@ func filenameMigrationRestorationPaths(configPath string) (map[string]bool, erro
 			return nil, fmt.Errorf("reading %s restore history: %w", directory, err)
 		}
 		for _, record := range history {
+			if !filenameMigrationHasRestoreDependency(record.Status) {
+				continue
+			}
 			for _, snapshot := range []mediaconvert.Snapshot{record.Before, record.After} {
 				if media := snapshot.File(); media != nil && media.Base().Path != "" {
 					paths[filepath.Clean(media.Base().Path)] = true
@@ -382,7 +406,7 @@ func checkFilenameMigrationRestorationRisk(item *booruFilenameMigrationItem, rec
 		item.Reason = "Saved conversion history could not be verified; rename blocked"
 	case paths[filepath.Clean(receipt.SavedPath)] || paths[filepath.Clean(receipt.Library.Path)]:
 		item.Status = "review"
-		item.Reason = "Conversion or upscaling restore history references this file; rename would break recovery"
+		item.Reason = "An active conversion or upscaling restore journal references this file; renaming without migrating it would break recovery"
 	}
 }
 
@@ -398,6 +422,9 @@ func filenameMigrationActiveConvertedRecords(configPath string) (map[string]*med
 			return nil, fmt.Errorf("reading %s conversion history: %w", directory, err)
 		}
 		for _, record := range history {
+			if !filenameMigrationHasRestoreDependency(record.Status) {
+				continue
+			}
 			before, after := record.Before.File(), record.After.File()
 			if before != nil {
 				references[filepath.Clean(before.Base().Path)]++
@@ -548,6 +575,9 @@ func (rs booruBrowserRoutes) filenameMigrationReport() (booruFilenameMigrationRe
 			continue
 		}
 		rs.auditFilenameAssignedCharacters(item, *receipt)
+		if item.Status == "audit" && len(item.Warnings) == 0 {
+			continue
+		}
 		checkFilenameMigrationRestorationRisk(item, *receipt, restorationPaths, historyErr)
 		checkFilenameMigrationConvertedEligibility(item, *receipt, restorationPaths, convertedRecords, historyErr)
 		report.Items = append(report.Items, *item)

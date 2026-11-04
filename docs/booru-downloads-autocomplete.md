@@ -288,7 +288,10 @@ results in increments of 150, and the server revalidates each selected receipt.
   MP4, WebM and other registered types. Conversion being *requested* is not
   grounds to block an original file if conversion was skipped. The exact old
   template path, same-directory target, output checksum, DB file and restoration
-  journals must still be verified.
+  journals must still be verified. Historical `failed` and `skipped` converter
+  attempts are not restore dependencies and do not block an otherwise eligible
+  MP4 or image rename. An incomplete `encoding` attempt and all active/restore
+  states remain protected until their recovery state is resolved.
 - **Ready (converted or restored images/videos)**: requires one uniquely matched
   completed or restored conversion journal, saved input/output fingerprints,
   exact converted suffix, native file identity and no overlapping history.
@@ -303,8 +306,11 @@ results in increments of 150, and the server revalidates each selected receipt.
 - **Metadata warning**: the provider receipt may categorize `animated` as a
   Character. Where the linked native media ID is available, the audit reads
   its actual Image/Scene Character assignments to distinguish an attached
-  `animated` Character from a provider-only classification error. It never
-  modifies tags or relationships automatically.
+  `animated` Character from a provider-only classification error. If no such
+  Character is currently assigned, the redundant metadata warning disappears;
+  an unavailable audit remains visible. The saved provider snapshot and rendered
+  filename are **not** silently rewritten, so an old `animated` filename token
+  may still appear. It never modifies tags or relationships automatically.
 
 ### Optional coordinated converted-media rename
 
