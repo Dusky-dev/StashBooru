@@ -96,7 +96,7 @@ func (rs booruBrowserRoutes) readFilenameMigrationReceipt(name string) (*booruDo
 	return &receipt, nil
 }
 
-const animatedProviderWarning = "Provider recorded animated as a Character; inspect the media\'s assigned entities"
+const animatedProviderWarning = "Provider recorded animated as a Character; inspect the media's assigned entities"
 
 func withoutAnimatedProviderWarning(warnings []string) []string {
 	filtered := warnings[:0]
