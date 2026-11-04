@@ -349,8 +349,19 @@ func planBooruFilenameMigration(name string, receipt booruDownloadReceipt) *boor
 		item.Reason = "Saved download has no output checksum for byte verification"
 		return item
 	}
-	if stat, err := os.Lstat(receipt.Library.Path); err != nil || !stat.Mode().IsRegular() {
-		item.Status, item.Reason = "review", "Saved file is missing or not a regular file"
+	if stat, err := os.Lstat(receipt.Library.Path); err != nil {
+		item.Status = "review"
+		switch {
+		case errors.Is(err, os.ErrNotExist):
+			item.Reason = "Saved file is missing at the recorded path"
+		case errors.Is(err, os.ErrPermission):
+			item.Reason = "Stash cannot inspect the saved file: permission denied"
+		default:
+			item.Reason = "Stash cannot inspect the saved file: " + err.Error()
+		}
+		return item
+	} else if !stat.Mode().IsRegular() {
+		item.Status, item.Reason = "review", "Recorded path is not a regular file (directory or symlink)"
 		return item
 	}
 	if _, err := os.Lstat(changedPath); err == nil {
@@ -540,6 +551,99 @@ func checkFilenameMigrationConvertedEligibility(item *booruFilenameMigrationItem
 	}
 }
 
+// Only the currently linked native Image/Scene can authorize a receipt-only
+// repair. The receipt's ID is the media ID, not the underlying file ID.
+func (rs booruBrowserRoutes) filenameMigrationNativeHasPath(path string, library booruLibraryResult) (bool, error) {
+	if rs.repository.TxnManager == nil || rs.repository.File == nil ||
+		rs.repository.Image == nil || rs.repository.Scene == nil {
+		return false, nil
+	}
+	mediaID, err := strconv.Atoi(library.ID)
+	if err != nil || mediaID <= 0 {
+		return false, nil
+	}
+	matched := false
+	err = txn.WithReadTxn(context.Background(), rs.repository.TxnManager, func(ctx context.Context) error {
+		registered, err := rs.repository.File.FindByPath(ctx, path, true)
+		if err != nil || registered == nil {
+			return err
+		}
+		if filepath.Clean(registered.Base().Path) != filepath.Clean(path) {
+			return nil
+		}
+		switch library.Kind {
+		case "image":
+			images, err := rs.repository.Image.FindByFileID(ctx, registered.Base().ID)
+			if err != nil {
+				return err
+			}
+			for _, image := range images {
+				if image != nil && image.ID == mediaID {
+					matched = true
+				}
+			}
+		case "scene":
+			scenes, err := rs.repository.Scene.FindByFileID(ctx, registered.Base().ID)
+			if err != nil {
+				return err
+			}
+			for _, scene := range scenes {
+				if scene != nil && scene.ID == mediaID {
+					matched = true
+				}
+			}
+		}
+		return nil
+	})
+	return matched, err
+}
+
+// If an external move already put the exact verified bytes at the *proposed*
+// destination, a distinct receipt-only repair can reconcile the old snapshot.
+// Never search by fuzzy filename/MD5 or move a different file in its place.
+func checkFilenameMigrationAlreadyRenamed(item *booruFilenameMigrationItem, receipt booruDownloadReceipt, paths map[string]bool, historyErr error, linked func(string, booruLibraryResult) (bool, error)) {
+	if item == nil || item.Status != "review" ||
+		item.Reason != "Saved file is missing at the recorded path" ||
+		receipt.Library == nil || receipt.Library.ID == "" ||
+		item.NewPath == "" || receipt.OutputMD5 == "" {
+		return
+	}
+	if _, err := os.Lstat(receipt.Library.Path); !errors.Is(err, os.ErrNotExist) {
+		return
+	}
+	stat, err := os.Lstat(item.NewPath)
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		item.Reason = "Recorded file and proposed destination are both missing; locate the media or rescan the Stash library"
+		return
+	case err != nil:
+		item.Reason = "Recorded file is missing and the proposed destination cannot be inspected"
+		return
+	case !stat.Mode().IsRegular():
+		item.Reason = "Recorded file is missing and the proposed destination is not a regular file"
+		return
+	}
+	if historyErr != nil || paths[filepath.Clean(receipt.Library.Path)] || paths[filepath.Clean(item.NewPath)] {
+		item.Reason = "Recorded file is missing; conversion history must be verified before repairing its receipt"
+		return
+	}
+	checksum, err := mediaconvert.MD5(item.NewPath)
+	if err != nil || checksum != receipt.OutputMD5 {
+		item.Reason = "Proposed filename exists but does not match the saved file checksum; no automatic repair"
+		return
+	}
+	if linked == nil {
+		return
+	}
+	matched, err := linked(item.NewPath, *receipt.Library)
+	if err != nil || !matched {
+		item.Reason = "Proposed file matches the checksum but is not verified as this native Image/Scene; rescan or review manually"
+		return
+	}
+	item.Status = "ready-receipt"
+	item.Reason = "File already has the proposed name in Stash; only the stale download receipt will be updated"
+}
+
 func (rs booruBrowserRoutes) filenameMigrationReport() (booruFilenameMigrationReport, error) {
 	report := booruFilenameMigrationReport{
 		Version: booruFilenameMigrationVersion, Dismissed: rs.filenameMigrationDismissed(),
@@ -580,9 +684,10 @@ func (rs booruBrowserRoutes) filenameMigrationReport() (booruFilenameMigrationRe
 		}
 		checkFilenameMigrationRestorationRisk(item, *receipt, restorationPaths, historyErr)
 		checkFilenameMigrationConvertedEligibility(item, *receipt, restorationPaths, convertedRecords, historyErr)
+		checkFilenameMigrationAlreadyRenamed(item, *receipt, restorationPaths, historyErr, rs.filenameMigrationNativeHasPath)
 		report.Items = append(report.Items, *item)
 		switch item.Status {
-		case "ready":
+		case "ready", "ready-receipt":
 			report.Eligible++
 		case "ready-converted":
 			report.ConvertedEligible++
@@ -632,15 +737,29 @@ func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, na
 	}
 	checkFilenameMigrationRestorationRisk(plan, *receipt, restorationPaths, nil)
 	checkFilenameMigrationConvertedEligibility(plan, *receipt, restorationPaths, convertedRecords, nil)
+	checkFilenameMigrationAlreadyRenamed(plan, *receipt, restorationPaths, nil, rs.filenameMigrationNativeHasPath)
 	if allowConverted {
 		if plan.Status != "ready-converted" {
 			return fmt.Errorf("download is not eligible for coordinated conversion history migration")
 		}
-	} else if plan.Status != "ready" {
+	} else if plan.Status != "ready" && plan.Status != "ready-receipt" {
 		return fmt.Errorf("download is not eligible for safe filename migration")
 	}
 	if rs.repository.TxnManager == nil || rs.libraryRoots == nil {
 		return fmt.Errorf("native library is unavailable")
+	}
+
+	if plan.Status == "ready-receipt" {
+		oldDir := filepath.Dir(receipt.Library.Path)
+		if valid, err := rs.destination(oldDir); err != nil || valid != oldDir {
+			return fmt.Errorf("receipt repair is outside a selected library root")
+		}
+		// File bytes and native media identity were rechecked above, while
+		// serialized against converter mutations. No native file is moved.
+		receipt.SavedPath = plan.NewPath
+		receipt.Library.Path = plan.NewPath
+		receipt.LegacyFilenameMigrated = true
+		return rs.saveDownloadReceipt(*receipt)
 	}
 
 	original := *receipt
