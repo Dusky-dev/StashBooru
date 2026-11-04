@@ -404,7 +404,7 @@ func filenameMigrationActiveConvertedRecords(configPath string) (map[string]*med
 			}
 			if after != nil {
 				references[filepath.Clean(after.Base().Path)]++
-				if directory == "media-conversions" && record.Status == "complete" &&
+				if directory == "media-conversions" && (record.Status == "complete" || record.Status == "restored") &&
 					filepath.Ext(after.Base().Path) != "" && strings.Contains(filepath.Base(after.Base().Path), ".converted-") {
 					path := filepath.Clean(after.Base().Path)
 					records[path] = record
@@ -427,37 +427,64 @@ func checkFilenameMigrationConvertedEligibility(item *booruFilenameMigrationItem
 		item.Status != "review" || item.NewPath == "" {
 		return
 	}
-	if historyErr != nil || receipt.OutputMD5 == "" ||
+	if historyErr != nil || receipt.OriginalMD5 == "" || receipt.OutputMD5 == "" ||
 		filepath.Ext(item.NewPath) == "" ||
 		!strings.EqualFold(filepath.Ext(receipt.Library.Path), filepath.Ext(item.NewPath)) {
 		return
 	}
-	oldPath := filepath.Clean(receipt.Library.Path)
-	record := records[oldPath]
+	oldOutput := filepath.Clean(receipt.Library.Path)
+	record := records[oldOutput]
 	if record == nil || record.Before.File() == nil || record.After.File() == nil ||
-		record.Status != "complete" || len(record.ID) < 8 ||
-		!strings.Contains(strings.ToLower(filepath.Base(oldPath)), ".converted-"+record.ID[:8]+strings.ToLower(filepath.Ext(oldPath))) ||
+		(record.Status != "complete" && record.Status != "restored") || len(record.ID) < 8 ||
+		!strings.HasSuffix(strings.ToLower(filepath.Base(oldOutput)), ".converted-"+record.ID[:8]+strings.ToLower(filepath.Ext(oldOutput))) ||
 		filepath.Clean(record.Before.File().Base().Path) != filepath.Clean(receipt.SavedPath) ||
-		filepath.Clean(record.After.File().Base().Path) != oldPath ||
+		filepath.Clean(record.After.File().Base().Path) != oldOutput ||
 		record.Before.File().Base().Fingerprints.GetString("md5") != receipt.OriginalMD5 ||
 		record.After.File().Base().Fingerprints.GetString("md5") != receipt.OutputMD5 ||
-		filepath.Dir(item.NewPath) != filepath.Dir(oldPath) ||
+		filepath.Dir(item.NewPath) != filepath.Dir(oldOutput) ||
 		history[filepath.Clean(item.NewPath)] {
 		return
 	}
-	if stat, err := os.Lstat(oldPath); err != nil || !stat.Mode().IsRegular() {
-		item.Reason = "Converted file is missing or is not a regular file"
+	newOutput := item.NewPath
+	source := oldOutput
+	if record.Status == "restored" {
+		// The saved receipt still points at the converted output, but native
+		// restore put the original bytes back at the Before path.
+		if _, err := os.Lstat(oldOutput); !errors.Is(err, os.ErrNotExist) {
+			item.Reason = "Restored conversion has an occupied old output path"
+			return
+		}
+		newOriginal, err := convertedFilenameOriginalTarget(receipt.SavedPath, oldOutput, newOutput)
+		if err != nil || history[filepath.Clean(newOriginal)] {
+			item.Reason = "Restored conversion's proposed original path is ambiguous"
+			return
+		}
+		source = receipt.SavedPath
+		item.OldPath, item.NewPath = source, newOriginal
+	}
+	if stat, err := os.Lstat(source); err != nil || !stat.Mode().IsRegular() {
+		item.Reason = "Converted or restored file is missing or is not regular"
 		return
 	}
-	if _, err := os.Lstat(item.NewPath); err == nil {
-		item.Reason = "Destination already exists; never overwrite"
-		return
-	} else if !errors.Is(err, os.ErrNotExist) {
-		item.Reason = "Destination could not be checked"
-		return
+	for _, target := range []string{item.NewPath, newOutput} {
+		if target == source {
+			item.Reason = "Proposed filename matches existing media"
+			return
+		}
+		if _, err := os.Lstat(target); err == nil {
+			item.Reason = "Destination already exists; never overwrite"
+			return
+		} else if !errors.Is(err, os.ErrNotExist) {
+			item.Reason = "Destination could not be checked"
+			return
+		}
 	}
 	item.Status = "ready-converted"
-	item.Reason = "Converted media: original and output history paths will be migrated together"
+	if record.Status == "restored" {
+		item.Reason = "Restored original: rename both conversion history paths while preserving reapply"
+	} else {
+		item.Reason = "Converted media: original and output history paths will be migrated together"
+	}
 }
 
 func (rs booruBrowserRoutes) filenameMigrationReport() (booruFilenameMigrationReport, error) {
@@ -523,7 +550,7 @@ func (rs booruBrowserRoutes) FilenameMigration(w http.ResponseWriter, _ *http.Re
 }
 
 // convertedFilenameOriginalTarget recovers the proposed original-format name
-// from the already-verified legacy JXL suffix; no extension is guessed.
+// from the verified converted output suffix; no extension is guessed.
 func convertedFilenameOriginalTarget(oldOriginal, oldOutput, newOutput string) (string, error) {
 	oldStem := strings.TrimSuffix(filepath.Base(oldOriginal), filepath.Ext(oldOriginal))
 	suffix := strings.TrimPrefix(filepath.Base(oldOutput), oldStem)
