@@ -158,6 +158,13 @@ func planBooruFilenameMigration(name string, receipt booruDownloadReceipt) *boor
 	if receipt.Library != nil && receipt.Library.Path != "" {
 		item.OldPath = receipt.Library.Path
 	}
+	if receipt.LegacyFilenameMigrated {
+		if len(item.Warnings) == 0 {
+			return nil
+		}
+		item.Reason = "Filename already migrated; metadata review only"
+		return item
+	}
 	hasMulti := false
 	for _, category := range []string{"artist", "copyright", "character"} {
 		if !strings.Contains(receipt.Template, "%"+category+"%") {
@@ -477,6 +484,12 @@ func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, na
 		if err != nil || existing == nil {
 			return fmt.Errorf("cannot locate the registered native file: %v", err)
 		}
+		if allowConverted {
+			record := convertedRecords[filepath.Clean(oldPath)]
+			if record == nil || existing.Base().ID != record.Before.File().Base().ID {
+				return fmt.Errorf("registered media identity does not match the conversion journal")
+			}
+		}
 		folder, err := rs.repository.Folder.Find(ctx, existing.Base().ParentFolderID)
 		if err != nil || folder == nil || folder.Path != oldDir {
 			return fmt.Errorf("cannot locate registered parent folder")
@@ -488,6 +501,7 @@ func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, na
 		}
 		receipt.SavedPath = newPath
 		receipt.Library.Path = newPath
+		receipt.LegacyFilenameMigrated = true
 		if err := rs.saveDownloadReceipt(*receipt); err != nil {
 			return err
 		}
