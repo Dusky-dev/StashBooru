@@ -578,7 +578,7 @@ func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, na
 	checkFilenameMigrationConvertedEligibility(plan, *receipt, restorationPaths, convertedRecords, nil)
 	if allowConverted {
 		if plan.Status != "ready-converted" {
-			return fmt.Errorf("download is not eligible converted media")
+			return fmt.Errorf("download is not eligible for coordinated conversion history migration")
 		}
 	} else if plan.Status != "ready" {
 		return fmt.Errorf("download is not eligible for safe filename migration")
@@ -586,7 +586,28 @@ func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, na
 	if rs.repository.TxnManager == nil || rs.libraryRoots == nil {
 		return fmt.Errorf("native library is unavailable")
 	}
+
+	original := *receipt
+	originalLibrary := *receipt.Library
+	original.Library = &originalLibrary // Keep a separate copy for receipt and journal rollback.
+
 	oldPath, newPath := receipt.Library.Path, plan.NewPath
+	expectedMD5 := receipt.OutputMD5
+	var record *mediaconvert.Record
+	restored := false
+	if allowConverted {
+		record = convertedRecords[filepath.Clean(receipt.Library.Path)]
+		if record == nil {
+			return fmt.Errorf("conversion journal was not uniquely verified")
+		}
+		restored = record.Status == "restored"
+		if restored {
+			// After restoring, the receipt retains the former converted output,
+			// but the registered file and its bytes live at the original path.
+			oldPath = receipt.SavedPath
+			expectedMD5 = receipt.OriginalMD5
+		}
+	}
 	oldDir := filepath.Dir(oldPath)
 	valid, err := rs.destination(oldDir)
 	if err != nil || valid != oldDir {
@@ -596,42 +617,53 @@ func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, na
 		return fmt.Errorf("migration cannot change folder layout")
 	}
 	md5, err := mediaconvert.MD5(oldPath)
-	if err != nil || md5 != receipt.OutputMD5 {
-		return fmt.Errorf("file checksum changed since download; skipping")
+	if err != nil || md5 != expectedMD5 {
+		return fmt.Errorf("media checksum changed since the conversion snapshot; skipping")
 	}
 	if _, err := os.Lstat(newPath); !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("target is occupied or cannot be inspected")
 	}
-	original := *receipt
-	originalLibrary := *receipt.Library
-	original.Library = &originalLibrary // Preserve the pre-rename path for receipt rollback.
-	originalPath := newPath
-	var journalID string
+
+	newOriginal, newOutput := newPath, newPath
+	journalID := ""
 	if allowConverted {
-		originalPath, err = convertedFilenameOriginalTarget(receipt.SavedPath, oldPath, newPath)
-		if err != nil {
-			return err
+		journalID = record.ID
+		if restored {
+			var ok bool
+			newOutput, ok = convertedBooruFilenamePreview(receipt.SavedPath, newPath, receipt.Library.Path)
+			if !ok {
+				return fmt.Errorf("converted restore path cannot be reconstructed exactly")
+			}
+		} else {
+			newOriginal, err = convertedFilenameOriginalTarget(receipt.SavedPath, oldPath, newPath)
+			if err != nil {
+				return err
+			}
 		}
-		if _, err := os.Lstat(originalPath); !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("new original restore path is occupied or cannot be inspected")
+		for _, candidate := range []string{newOriginal, newOutput} {
+			if filepath.Dir(candidate) != oldDir {
+				return fmt.Errorf("conversion history cannot change folder layout")
+			}
+			if candidate != newPath {
+				if _, err := os.Lstat(candidate); !errors.Is(err, os.ErrNotExist) {
+					return fmt.Errorf("conversion restore target is occupied or cannot be inspected")
+				}
+			}
+			if restorationPaths[filepath.Clean(candidate)] {
+				return fmt.Errorf("conversion restore target is referenced by another journal")
+			}
 		}
-		if restorationPaths[filepath.Clean(originalPath)] {
-			return fmt.Errorf("new restore path is referenced by another conversion journal")
-		}
-		journalID = convertedRecords[filepath.Clean(oldPath)].ID
 	}
-	movedReceipt := false
+
+	receiptUpdated := false
 	journalUpdated := false
 	err = rs.repository.WithTxn(ctx, func(ctx context.Context) error {
 		existing, err := rs.repository.File.FindByPath(ctx, oldPath, true)
 		if err != nil || existing == nil {
 			return fmt.Errorf("cannot locate the registered native file: %v", err)
 		}
-		if allowConverted {
-			record := convertedRecords[filepath.Clean(oldPath)]
-			if record == nil || existing.Base().ID != record.Before.File().Base().ID {
-				return fmt.Errorf("registered media identity does not match the conversion journal")
-			}
+		if allowConverted && existing.Base().ID != record.Before.File().Base().ID {
+			return fmt.Errorf("registered media identity does not match the conversion journal")
 		}
 		folder, err := rs.repository.Folder.Find(ctx, existing.Base().ParentFolderID)
 		if err != nil || folder == nil || folder.Path != oldDir {
@@ -644,28 +676,32 @@ func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, na
 		}
 		if allowConverted {
 			store := mediaconvert.Store{Root: filepath.Join(rs.configPath, "media-conversions")}
-			if err := store.RenameCompletedPaths(journalID, receipt.SavedPath, originalPath, oldPath, newPath); err != nil {
+			if err := store.RenameRestorablePaths(journalID, original.SavedPath, newOriginal, original.Library.Path, newOutput); err != nil {
 				return fmt.Errorf("cannot migrate conversion history: %w", err)
 			}
 			journalUpdated = true
 		}
-		receipt.SavedPath = originalPath
+		receipt.SavedPath = newOriginal
 		receipt.Library.Path = newPath
+		if restored {
+			receipt.Library.Converted = false
+			receipt.OutputMD5 = receipt.OriginalMD5
+		}
 		receipt.LegacyFilenameMigrated = true
 		if err := rs.saveDownloadReceipt(*receipt); err != nil {
 			return err
 		}
-		movedReceipt = true
+		receiptUpdated = true
 		return nil
 	})
 	if err != nil {
 		if journalUpdated {
 			store := mediaconvert.Store{Root: filepath.Join(rs.configPath, "media-conversions")}
-			if rollbackErr := store.RenameCompletedPaths(journalID, originalPath, original.SavedPath, newPath, oldPath); rollbackErr != nil {
+			if rollbackErr := store.RenameRestorablePaths(journalID, newOriginal, original.SavedPath, newOutput, original.Library.Path); rollbackErr != nil {
 				return fmt.Errorf("%w; conversion history rollback failed: %v", err, rollbackErr)
 			}
 		}
-		if movedReceipt {
+		if receiptUpdated {
 			if recoveryErr := rs.saveDownloadReceipt(original); recoveryErr != nil {
 				return fmt.Errorf("%w; receipt rollback failed: %v", err, recoveryErr)
 			}
