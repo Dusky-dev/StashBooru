@@ -202,6 +202,17 @@ func TestFilenameMigrationOffersAcknowledgedJXLRename(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, id+".json"), data, 0600); err != nil {
 		t.Fatal(err)
 	}
+	// An earlier failed attempt at converting the same original must not
+	// make a uniquely matched active conversion ambiguous.
+	staleID := strings.Repeat("d", 32)
+	stale := mediaconvert.Record{ID: staleID, Status: "failed", Before: record.Before}
+	staleData, err := json.Marshal(stale)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, staleID+".json"), staleData, 0600); err != nil {
+		t.Fatal(err)
+	}
 	report, err := rs.filenameMigrationReport()
 	if err != nil || report.ConvertedEligible != 1 || report.Eligible != 0 ||
 		len(report.Items) != 1 || report.Items[0].Status != "ready-converted" ||
