@@ -264,3 +264,44 @@ an autocomplete row was explicitly selected with an arrow key; an exact tag or a
 submitted query closes suggestions. Settings has a dedicated `/booru/settings`
 route, so Back returns to the browser. Preview downloads keep the default-converter
 switch and folder actions; detailed policy and default-folder text stay in Settings.
+
+
+## Legacy filename migration and metadata audit (opt-in)
+
+On upgrade, **Booru → Browser** offers a one-time review dialog only when
+download receipts identify affected files or suspicious saved tag categories.
+The dialog can be reopened from **Booru → Settings → Review legacy download
+filenames**. **Later** postpones the decision for this browser session;
+**Don't show again** saves a server-side acknowledgement.
+
+This operation reconstructs the *old* comma-joined filename from each download
+receipt's original template, original MD5 and saved categorized tags; only an
+exact old-name match is eligible. It does **not** apply the currently configured
+filename layout, change tag names, change the tag graph or re-encode files.
+Filename migration and metadata audit are separate operations. Eligible files are
+**not selected by default**: choose individual receipts, or explicitly select all
+eligible entries after reviewing the report. The dialog reveals additional
+results in increments of 150, and the server revalidates each selected receipt.
+
+- **Ready**: a registered regular file, original file path, same directory, no
+  conversion or upscaling restoration journal referencing either path, and no
+  destination collision. The server rechecks the original file's output MD5,
+  native DB entry and restoration history before an opt-in native move.
+  Renames serialize against converter jobs. Batches contain at most 20 receipts.
+- **Review**: a converted/restored JXL (including an original restored for a
+  future toggle), upscaled media with a restore journal, unreadable journal,
+  changed folder layout, conflicting destination, missing file, changed template
+  rendering or other unsafe case.
+  The dialog never automatically renames these paths; converter restoration
+  journals must be migrated coherently before this can be enabled.
+- **Metadata warning**: the saved provider classified a suspicious tag such as
+  \`animated\` as a Character. This is evidence for manual inspection, **not**
+  permission to remove or recategorize any relationships. Filename-derived
+  metadata no longer creates a combined Artist/Character/Copyright from an
+  ambiguous old comma-delimited value.
+
+The tool relies on Booru download receipts; files exported to a computer or
+renamed manually without matching receipts are not guessed from filenames.
+Preview scans a bounded 2,000 receipts. Back up the database, media and
+\`booru-download-history\` before applying a batch. The first release deliberately
+does not migrate converted files or promise crash-atomic multi-file rollback.

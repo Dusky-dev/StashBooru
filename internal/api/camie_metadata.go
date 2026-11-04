@@ -127,7 +127,13 @@ func parseCamieFilename(path string, layout string) ([]camietagger.Tag, error) {
 			continue
 		}
 		value := strings.TrimSpace(match[index])
-		if value == "" {
+		if value == "" || strings.EqualFold(value, "unknown") {
+			// The Booru filename formatter uses unknown for empty tokens.
+			continue
+		}
+		// Old Booru downloads joined tags with comma-space. This can also
+		// occur within a real tag, so ambiguous fields cannot be inferred.
+		if strings.Contains(value, ", ") {
 			continue
 		}
 		for _, item := range splitCamieFilenameValue(category, value) {

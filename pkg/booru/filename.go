@@ -58,6 +58,16 @@ func filenameComponent(value string) string {
 // RenderFilename implements Grabber's common %token% vocabulary. Values never
 // introduce directories: only literal template slashes create folder levels.
 func RenderFilename(format string, s Source, p Post, md5, extension string, num int) (string, error) {
+	return renderFilenameWithSeparator(format, s, p, md5, extension, num, "+")
+}
+
+// RenderLegacyFilename reproduces the old category-list separator for a
+// verified, opt-in download migration. It must not be used for new downloads.
+func RenderLegacyFilename(format string, s Source, p Post, md5, extension string, num int) (string, error) {
+	return renderFilenameWithSeparator(format, s, p, md5, extension, num, ", ")
+}
+
+func renderFilenameWithSeparator(format string, s Source, p Post, md5, extension string, num int, separator string) (string, error) {
 	if err := ValidateFilenameTemplate(format); err != nil {
 		return "", err
 	}
@@ -91,7 +101,7 @@ func RenderFilename(format string, s Source, p Post, md5, extension string, num 
 				tags = append(tags, value)
 			}
 		}
-		values[category] = strings.Join(tags, "+")
+		values[category] = strings.Join(tags, separator)
 	}
 	parts := strings.Split(format, "/")
 	for i, part := range parts {

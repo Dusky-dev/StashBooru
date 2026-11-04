@@ -1,5 +1,14 @@
 # StashBooru implementation progress
 
+## Opt-in legacy Booru filename audit — 2026-11-03
+
+- Baseline: `develop` `17e20d573a319d72d4f35940574bb2781f728181`; PR #298 separator fix and PR #302 isolated Docker CI have merged. Current branch `feat/booru-legacy-filenames-audit-20261103` targets `develop` directly.
+- Added receipt-based old-template reconstruction, per-file preview and selection (none preselected), explicit same-directory native rename for unconverted matches, retained checksums, target collision refusal and server-scoped dismissal. Eligible receipts can be selected explicitly; visible entries are paged in groups of 150. No files changed automatically.
+- Added read-only audit of suspect categories and prevented filename-driven Image Tagging from creating combined entities out of ambiguous legacy comma-separated values.
+- Converted/restored JXL media, changed directories, unverified receipts, and **any path referenced by a conversion or upscaling restore journal** remain review-only. Conversion journal scans happen once per report and again under the converter mutation lock before applying a batch; unreadable journals fail closed. Converter journal/path migration and crash-atomic full rollback remain out of scope until separately validated.
+- Synthetic planning, conflict, converted skip, audit and dismissal regression tests, plus active-JXL filename preview test, passed on PR #299 head `2202bbe77fe304c19c815faf0451f2d20e1486be` (Build, Go lint, Booru Browser, Provider identities, Following feed). Added new restored-conversion/upscaling and unreadable-journal tests alongside the selective UI changes; latest PR CI is pending. The CI runner fix PR #302 was validated on `develop`: Build, Go lint and Docker Publish all passed on `17e20d573a319d72d4f35940574bb2781f728181`. No local workspace or live-library rename end-to-end test was available through GitHub-only source access.
+
+
 ## Disposable restored-app boot acceptance — 2026-10-31 (PR #297)
 
 - Baseline `develop` merge `bafdb41cf123d31a4f14771f1f60bba5d8e22202` (offline checkpoint PR #296); branch `feat/p12-p13-isolated-restored-boot-20261031`, PR #297. Recovery toolchain is based on independently verified backup receipt, full-media scratch restoration, image and all-file SQLite rebasing, and restart checkpoint audit.

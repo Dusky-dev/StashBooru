@@ -265,3 +265,31 @@ func TestMergeCamiePredictionsFillsMissingLocalCategory(t *testing.T) {
 	}
 	t.Fatal("Camie should fill a Character/Artist/Copyright category missing from local metadata")
 }
+
+func TestParseCamieFilenameDoesNotCreateCompositeLegacyEntities(t *testing.T) {
+	predictions, err := parseCamieFilename(
+		"[bossy, vestartist](chainsaw_man).animated, aoi_todo, reze_(chainsaw_man)_8e12eeba08d10de8d5e05253388f9cca.gif",
+		defaultCamieFilenameLayout,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(predictions) != 1 || predictions[0].Category != "copyright" {
+		t.Fatalf("ambiguous comma-joined Artist and Character lists must not create entities: %+v", predictions)
+	}
+}
+
+func TestParseCamieFilenameDoesNotCreateUnknownSentinelEntities(t *testing.T) {
+	predictions, err := parseCamieFilename(
+		"[unknown](chainsaw_man).reze_(chainsaw_man)_8e12eeba08d10de8d5e05253388f9cca.gif",
+		defaultCamieFilenameLayout,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, prediction := range predictions {
+		if prediction.Category == "artist" {
+			t.Fatalf("empty artist placeholder must not be imported: %+v", predictions)
+		}
+	}
+}
