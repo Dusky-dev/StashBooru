@@ -324,6 +324,32 @@ func (s Store) Record(id string) (*Record, error) {
 	return &r, nil
 }
 
+// RenameCompletedPaths rewrites both identities in a completed conversion
+// journal after a verified, same-directory native media rename. The caller
+// must serialize against conversion/restore operations and arrange rollback
+// with the native file and receipt mutations. Cached bytes are ID-based.
+func (s Store) RenameCompletedPaths(id, oldOriginal, newOriginal, oldOutput, newOutput string) error {
+	r, err := s.Record(id)
+	if err != nil {
+		return err
+	}
+	before, after := r.Before.File(), r.After.File()
+	if r.Status != "complete" || before == nil || after == nil ||
+		filepath.Clean(before.Base().Path) != filepath.Clean(oldOriginal) ||
+		filepath.Clean(after.Base().Path) != filepath.Clean(oldOutput) ||
+		filepath.Dir(oldOriginal) != filepath.Dir(newOriginal) ||
+		filepath.Dir(oldOutput) != filepath.Dir(newOutput) ||
+		filepath.Dir(newOriginal) != filepath.Dir(newOutput) ||
+		filepath.Ext(oldOriginal) != filepath.Ext(newOriginal) ||
+		filepath.Ext(oldOutput) != filepath.Ext(newOutput) ||
+		newOriginal == newOutput || oldOriginal == newOriginal || oldOutput == newOutput {
+		return fmt.Errorf("conversion journal paths cannot be safely migrated")
+	}
+	before.Base().Path, before.Base().Basename = newOriginal, filepath.Base(newOriginal)
+	after.Base().Path, after.Base().Basename = newOutput, filepath.Base(newOutput)
+	return s.save(r)
+}
+
 func (s Store) History() ([]*Record, error) {
 	paths, err := filepath.Glob(filepath.Join(s.Root, "*.json"))
 	if err != nil {
