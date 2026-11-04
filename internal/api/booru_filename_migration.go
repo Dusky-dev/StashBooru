@@ -433,18 +433,23 @@ func (rs booruBrowserRoutes) FilenameMigration(w http.ResponseWriter, _ *http.Re
 	writeVisualSimilarityJSON(w, report)
 }
 
-func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, name string, restorationPaths map[string]bool) error {
+func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, name string, restorationPaths map[string]bool, convertedRecords map[string]*mediaconvert.Record, allowConverted bool) error {
 	receipt, err := rs.readFilenameMigrationReceipt(name)
 	if err != nil {
 		return err
 	}
 	plan := planBooruFilenameMigration(name, *receipt)
-	if plan == nil || plan.Status != "ready" {
-		return fmt.Errorf("download is not eligible for safe filename migration")
+	if plan == nil {
+		return fmt.Errorf("download is not eligible for filename migration")
 	}
 	checkFilenameMigrationRestorationRisk(plan, *receipt, restorationPaths, nil)
-	if plan.Status != "ready" {
-		return fmt.Errorf("%s", plan.Reason)
+	checkFilenameMigrationJXLEligibility(plan, *receipt, restorationPaths, convertedRecords, nil)
+	if allowConverted {
+		if plan.Status != "ready-converted" {
+			return fmt.Errorf("download is not an eligible converted JXL")
+		}
+	} else if plan.Status != "ready" {
+		return fmt.Errorf("download is not eligible for safe filename migration")
 	}
 	if rs.repository.TxnManager == nil || rs.libraryRoots == nil {
 		return fmt.Errorf("native library is unavailable")
@@ -525,7 +530,11 @@ func (rs booruBrowserRoutes) UpdateFilenameMigration(w http.ResponseWriter, r *h
 			return
 		}
 		writeVisualSimilarityJSON(w, map[string]bool{"dismissed": true})
-	case "apply":
+	case "apply", "apply-jxl":
+		if input.Action == "apply-jxl" && !input.AcceptRestoreLoss {
+			writeBooruError(w, http.StatusBadRequest, "migration", "Confirm that conversion restore will no longer work after renaming JXL files.")
+			return
+		}
 		if len(input.Receipts) == 0 || len(input.Receipts) > 20 {
 			writeBooruError(w, 400, "migration", "Choose between 1 and 20 verified receipts per batch.")
 			return
@@ -538,6 +547,11 @@ func (rs booruBrowserRoutes) UpdateFilenameMigration(w http.ResponseWriter, r *h
 			writeBooruError(w, http.StatusConflict, "migration", "Cannot verify saved conversion history; no files renamed.")
 			return
 		}
+		convertedRecords, err := filenameMigrationActiveJXLRecords(rs.configPath)
+		if err != nil {
+			writeBooruError(w, http.StatusConflict, "migration", "Cannot verify saved conversion journal; no files renamed.")
+			return
+		}
 		applied := []string{}
 		failures := map[string]string{}
 		for _, name := range input.Receipts {
@@ -545,7 +559,7 @@ func (rs booruBrowserRoutes) UpdateFilenameMigration(w http.ResponseWriter, r *h
 				writeBooruError(w, 400, "migration", "Invalid receipt identifier.")
 				return
 			}
-			if err := rs.applyBooruFilenameMigration(r.Context(), name, restorationPaths); err != nil {
+			if err := rs.applyBooruFilenameMigration(r.Context(), name, restorationPaths, convertedRecords, input.Action == "apply-jxl"); err != nil {
 				failures[name] = err.Error()
 			} else {
 				applied = append(applied, name)
