@@ -8,12 +8,14 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/stashapp/stash/pkg/booru"
 	"github.com/stashapp/stash/pkg/file"
 	"github.com/stashapp/stash/pkg/mediaconvert"
+	"github.com/stashapp/stash/pkg/txn"
 )
 
 // Legacy category separator renames use verified receipts and native file IDs.
@@ -103,6 +105,88 @@ func legacyCategoryWarning(tags []booru.Tag) []string {
 		}
 	}
 	return warnings
+}
+
+// The receipt describes what the provider sent, not necessarily the entities
+// the scanner assigned. Inspect the linked native Image or Scene explicitly;
+// the audit is read-only and never recategorizes a Character automatically.
+func (rs booruBrowserRoutes) auditFilenameAssignedCharacters(item *booruFilenameMigrationItem, receipt booruDownloadReceipt) {
+	if item == nil || len(item.Warnings) == 0 {
+		return
+	}
+	suspicious := false
+	for _, tag := range receipt.Post.Tags {
+		if tag.Category == "character" && strings.EqualFold(tag.Name, "animated") {
+			suspicious = true
+			break
+		}
+	}
+	if !suspicious {
+		return
+	}
+	if receipt.Library == nil || receipt.Library.ID == "" || rs.repository.TxnManager == nil ||
+		rs.repository.Image == nil || rs.repository.Scene == nil || rs.repository.Performer == nil {
+		item.Warnings = append(item.Warnings, "Native media assignments could not be inspected; missing linked library identity")
+		return
+	}
+	id, err := strconv.Atoi(receipt.Library.ID)
+	if err != nil || id <= 0 {
+		item.Warnings = append(item.Warnings, "Native media assignments could not be inspected; invalid linked media ID")
+		return
+	}
+	matchedIDs := []int{}
+	err = txn.WithReadTxn(context.Background(), rs.repository.TxnManager, func(ctx context.Context) error {
+		var performerIDs []int
+		switch receipt.Library.Kind {
+		case "image":
+			media, err := rs.repository.Image.Find(ctx, id)
+			if err != nil {
+				return err
+			}
+			if media == nil {
+				return fmt.Errorf("linked image not found")
+			}
+			if err := media.LoadPerformerIDs(ctx, rs.repository.Image); err != nil {
+				return err
+			}
+			performerIDs = media.PerformerIDs.List()
+		case "scene":
+			media, err := rs.repository.Scene.Find(ctx, id)
+			if err != nil {
+				return err
+			}
+			if media == nil {
+				return fmt.Errorf("linked scene not found")
+			}
+			if err := media.LoadPerformerIDs(ctx, rs.repository.Scene); err != nil {
+				return err
+			}
+			performerIDs = media.PerformerIDs.List()
+		default:
+			return fmt.Errorf("unsupported linked media kind")
+		}
+		for _, performerID := range performerIDs {
+			character, err := rs.repository.Performer.Find(ctx, performerID)
+			if err != nil {
+				return err
+			}
+			if character != nil && strings.EqualFold(strings.TrimSpace(character.Name), "animated") {
+				matchedIDs = append(matchedIDs, performerID)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		item.Warnings = append(item.Warnings, "Native Character assignments could not be verified: "+err.Error())
+		return
+	}
+	if len(matchedIDs) == 0 {
+		item.Warnings = append(item.Warnings, "No Character named animated is currently assigned to this media; the warning comes from the provider snapshot")
+		return
+	}
+	for _, id := range matchedIDs {
+		item.Warnings = append(item.Warnings, fmt.Sprintf("Linked Character animated (ID %d) is actually assigned to this media; review manually", id))
+	}
 }
 
 // A plan is calculated from the per-download saved template and tag snapshot,
@@ -408,6 +492,7 @@ func (rs booruBrowserRoutes) filenameMigrationReport() (booruFilenameMigrationRe
 		if item == nil {
 			continue
 		}
+		rs.auditFilenameAssignedCharacters(item, *receipt)
 		checkFilenameMigrationRestorationRisk(item, *receipt, restorationPaths, historyErr)
 		checkFilenameMigrationJXLEligibility(item, *receipt, restorationPaths, convertedRecords, historyErr)
 		report.Items = append(report.Items, *item)
