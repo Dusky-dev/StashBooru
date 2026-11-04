@@ -300,6 +300,14 @@ results in increments of 150, and the server revalidates each selected receipt.
   the two journal snapshot paths are updated so restoration/reapplication still
   has the correct destinations. Inactive-version cache bytes are unchanged;
   toggling formats still requires the relevant cached representation.
+- **Ready (converted since download)**: a separately run native conversion can
+  leave an old Booru receipt naming a JPG/PNG/GIF whose original bytes have
+  already been replaced by a JXL or another output. A unique *complete*
+  conversion journal with the exact original fingerprint, converted suffix,
+  converted output and linked native file identity permits a coordinated
+  output rename, restoration-history migration and receipt refresh. This
+  requires the explicit converted-media acknowledgement and remains blocked
+  if the original path is still occupied or the evidence disagrees.
 - **Ready (receipt-only repair)**: when the old file is gone but the proposed
   filename already exists, the exact bytes must match the saved output MD5 and
   the native Stash file must belong to the original linked Image/Scene ID. There
