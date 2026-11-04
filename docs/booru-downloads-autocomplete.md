@@ -283,48 +283,49 @@ Filename migration and metadata audit are separate operations. Eligible files ar
 eligible entries after reviewing the report. The dialog reveals additional
 results in increments of 150, and the server revalidates each selected receipt.
 
-- **Ready**: a registered regular file, original file path, same directory, no
-  conversion or upscaling restoration journal referencing either path, and no
-  destination collision. The server rechecks the original file's output MD5,
-  native DB entry and restoration history before an opt-in native move.
-  Renames serialize against converter jobs. Batches contain at most 20 receipts.
-- **Review**: restored JXL, upscaled media with a restore journal, active
-  JXL with missing or ambiguous conversion history, unreadable journals,
-  changed folder layouts, collisions, missing files or unsafe templates.
-  A verified active JXL can be selected only through the separately acknowledged
-  restore-loss action described below.
-  The dialog never automatically renames these paths; converter restoration
-  journals must be migrated coherently before this can be enabled.
-- **Metadata warning**: the saved provider classified a suspicious tag such as
-  \`animated\` as a Character. This is evidence for manual inspection, **not**
-  permission to remove or recategorize any relationships. Filename-derived
-  metadata no longer creates a combined Artist/Character/Copyright from an
-  ambiguous old comma-delimited value.
+- **Ready (original media)**: verified native images or videos of any extension
+  supported by the native scanner, including JPG, JPEG, PNG, GIF, WebP, AVIF,
+  MP4, WebM and other registered types. Conversion being *requested* is not
+  grounds to block an original file if conversion was skipped. The exact old
+  template path, same-directory target, output checksum, DB file and restoration
+  journals must still be verified.
+- **Ready (converted or restored images/videos)**: requires one uniquely matched
+  completed or restored conversion journal, saved input/output fingerprints,
+  exact converted suffix, native file identity and no overlapping history.
+  For an active conversion, the converted file is renamed; for an already
+  restored conversion, the original-format file is renamed. In both cases,
+  the two journal snapshot paths are updated so restoration/reapplication still
+  has the correct destinations. Inactive-version cache bytes are unchanged;
+  toggling formats still requires the relevant cached representation.
+- **Review**: ambiguous/missing or interrupted conversion histories, upscaled
+  media with a restoration journal, collisions, changed folder layout, missing
+  files and receipts without enough provenance remain review-only.
+- **Metadata warning**: the provider receipt may categorize `animated` as a
+  Character. Where the linked native media ID is available, the audit reads
+  its actual Image/Scene Character assignments to distinguish an attached
+  `animated` Character from a provider-only classification error. It never
+  modifies tags or relationships automatically.
 
-### Optional JXL rename with restore loss
+### Optional coordinated converted-media rename
 
-A completed JXL conversion can be renamed without decoding or re-encoding the
-image. The migration checks the original filename receipt, the exact completed
-conversion journal and its file ID, saved output checksum, selected library
-root, destination collision, and all other conversion/upscaling path references.
-It does not guess a JXL name from tags alone. Truncated or ambiguous names,
-missing/changed journal entries and incomplete receipts remain review-only.
+Converted image/video renames use a separate, unselected-by-default action and an
+explicit backup/risk acknowledgement. Both stored conversion snapshot paths
+are rewritten, rather than intentionally sacrificing future restoration.
+If the conversion journal cannot be safely matched or rewritten, no converted
+or restored rename is offered. Each selected receipt is revalidated while conversion
+mutations are locked. The operation does not re-encode media or recategorize
+tags. Converter and upscaling histories that overlap the paths block the action.
 
-**Important:** JXL renames are a separate, unselected-by-default action with a
-required confirmation that restoring the original file through StashBooru's
-conversion history **will no longer work**. The existing conversion journal
-is deliberately not rewritten; it will continue referencing the old JXL path.
-The renamed JXL and native library file associations should remain usable,
-but the conversion history UI, previous restore attempts and any external
-absolute-path references can be stale. Back up the original and converted
-media, database, download receipts and `media-conversions` journal first.
-The action does not alter media bytes or recategorize tags. As with regular
-renames, it does not promise atomic crash rollback across database, receipt
-and filesystem updates. Successful receipts are marked migrated so the
-legacy prompt does not rediscover them.
+**Crash-safety limitation:** native filesystem moves, SQLite updates, journal
+JSON writes and receipt JSON writes cannot be committed as one atomic unit.
+Ordinary failures attempt journal and receipt rollback, but a sudden process
+crash can still leave inconsistent references. Back up media, Stash database,
+download receipts and `media-conversions` before applying. Older converted JXL renames
+performed by the previous restore-loss implementation are *not* automatically
+repaired by this migration; review their history separately.
 
 The tool relies on Booru download receipts; files exported to a computer or
 renamed manually without matching receipts are not guessed from filenames.
 Preview scans a bounded 2,000 receipts. Back up the database, media and
-\`booru-download-history\` before applying a batch. The first release deliberately
-does not migrate converted files or promise crash-atomic multi-file rollback.
+\`booru-download-history\` before applying a batch. Non-receipt files and ambiguous restoration histories remain review-only;
+crash-atomic multi-resource rollback is not yet provided.

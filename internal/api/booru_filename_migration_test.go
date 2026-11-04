@@ -62,6 +62,53 @@ func TestPlanBooruFilenameMigrationUsesReceiptAndPreservesLayout(t *testing.T) {
 	}
 }
 
+func TestPlanBooruFilenameMigrationOriginalMediaFormats(t *testing.T) {
+	for _, ext := range []string{"jpg", "jpeg", "png", "gif", "webp", "avif", "jxl", "mp4", "webm", "mov"} {
+		t.Run(ext, func(t *testing.T) {
+			receipt, jpgPath, _ := filenameMigrationFixture(t)
+			source := booru.Source{ID: receipt.Source.ID, Name: receipt.Source.Name, URL: receipt.Source.URL}
+			oldRel, err := booru.RenderLegacyFilename(receipt.Template, source, receipt.Post, receipt.OriginalMD5, ext, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			newRel, err := booru.RenderFilename(receipt.Template, source, receipt.Post, receipt.OriginalMD5, ext, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			oldPath := filepath.Join(receipt.Directory, oldRel)
+			if err := os.Rename(jpgPath, oldPath); err != nil {
+				t.Fatal(err)
+			}
+			receipt.SavedPath = oldPath
+			receipt.Library.Path = oldPath
+			receipt.Convert = true // The requested conversion may have been skipped.
+			if ext == "mp4" || ext == "webm" || ext == "mov" {
+				receipt.Library.Kind = "scene"
+			}
+			plan := planBooruFilenameMigration("fixture-source-123.json", receipt)
+			if plan == nil || plan.Status != "ready" ||
+				plan.NewPath != filepath.Join(receipt.Directory, newRel) {
+				t.Fatalf("verified original %s must be eligible even when conversion was requested: %+v", ext, plan)
+			}
+		})
+	}
+}
+
+func TestConvertedFilenameOriginalTargetPreservesInputFormat(t *testing.T) {
+	for _, extension := range []string{".jpg", ".png", ".gif", ".mp4"} {
+		oldOriginal := filepath.Join("/media", "a, b"+extension)
+		oldOutput := filepath.Join("/media", "a, b.converted-aabbccdd.jxl")
+		newOutput := filepath.Join("/media", "a+b.converted-aabbccdd.jxl")
+		got, err := convertedFilenameOriginalTarget(oldOriginal, oldOutput, newOutput)
+		if err != nil || got != filepath.Join("/media", "a+b"+extension) {
+			t.Fatalf("could not reconstruct %s restore destination: %q %v", extension, got, err)
+		}
+	}
+	if _, err := convertedFilenameOriginalTarget("/media/old.jpg", "/media/unrelated.converted-aabbccdd.jxl", "/media/new.converted-aabbccdd.jxl"); err == nil {
+		t.Fatal("unmatched original and converted paths cannot be migrated")
+	}
+}
+
 func TestPlanBooruFilenameMigrationSkipsConversionAndConflicts(t *testing.T) {
 	receipt, _, destination := filenameMigrationFixture(t)
 	receipt.Library.Converted = true
@@ -170,6 +217,124 @@ func TestFilenameMigrationOffersAcknowledgedJXLRename(t *testing.T) {
 	if err != nil || report.ConvertedEligible != 0 || len(report.Items) != 1 ||
 		report.Items[0].Status != "review" {
 		t.Fatalf("unverified converted output must remain review-only: %+v: %v", report, err)
+	}
+}
+
+func TestFilenameMigrationOffersConvertedVideoWithHistoryMigration(t *testing.T) {
+	receipt, previous, _ := filenameMigrationFixture(t)
+	source := booru.Source{ID: receipt.Source.ID, Name: receipt.Source.Name, URL: receipt.Source.URL}
+	originalName, err := booru.RenderLegacyFilename(receipt.Template, source, receipt.Post, receipt.OriginalMD5, "mp4", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nextName, err := booru.RenderFilename(receipt.Template, source, receipt.Post, receipt.OriginalMD5, "mp4", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := filepath.Join(receipt.Directory, originalName)
+	if err := os.Rename(previous, original); err != nil {
+		t.Fatal(err)
+	}
+	id := strings.Repeat("e", 32)
+	converted := strings.TrimSuffix(original, ".mp4") + ".converted-" + id[:8] + ".mp4"
+	if err := os.Rename(original, converted); err != nil {
+		t.Fatal(err)
+	}
+	checksum, err := mediaconvert.MD5(converted)
+	if err != nil {
+		t.Fatal(err)
+	}
+	receipt.SavedPath, receipt.Library.Path = original, converted
+	receipt.Library.Kind, receipt.Library.Converted = "scene", true
+	receipt.Convert, receipt.OutputMD5 = true, checksum
+	config := t.TempDir()
+	rs := booruBrowserRoutes{configPath: config}
+	if err := rs.saveDownloadReceipt(receipt); err != nil {
+		t.Fatal(err)
+	}
+	record := mediaconvert.Record{
+		ID: id, Status: "complete",
+		Before: mediaconvert.Snapshot{Video: &models.VideoFile{BaseFile: &models.BaseFile{
+			ID: 22, Path: original, Fingerprints: models.Fingerprints{{Type: "md5", Fingerprint: receipt.OriginalMD5}},
+		}}},
+		After: mediaconvert.Snapshot{Video: &models.VideoFile{BaseFile: &models.BaseFile{
+			ID: 22, Path: converted, Fingerprints: models.Fingerprints{{Type: "md5", Fingerprint: checksum}},
+		}}},
+	}
+	root := filepath.Join(config, "media-conversions")
+	if err := os.MkdirAll(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, id+".json"), data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	report, err := rs.filenameMigrationReport()
+	expected := strings.TrimSuffix(filepath.Join(receipt.Directory, nextName), ".mp4") + ".converted-" + id[:8] + ".mp4"
+	if err != nil || report.ConvertedEligible != 1 || len(report.Items) != 1 ||
+		report.Items[0].Status != "ready-converted" || report.Items[0].NewPath != expected {
+		t.Fatalf("converted MP4 must preserve a verified journal during rename: %+v %v", report, err)
+	}
+}
+
+func TestFilenameMigrationOffersRestoredOriginalWithJournal(t *testing.T) {
+	for _, refreshedReceipt := range []bool{false, true} {
+		testName := "stale converted receipt"
+		if refreshedReceipt {
+			testName = "receipt updated after restore"
+		}
+		t.Run(testName, func(t *testing.T) {
+			receipt, oldOriginal, newOriginal := filenameMigrationFixture(t)
+			id := strings.Repeat("f", 32)
+			oldConverted := strings.TrimSuffix(oldOriginal, ".jpg") + ".converted-" + id[:8] + ".jxl"
+			receipt.Library.Converted = !refreshedReceipt
+			receipt.Library.Path = oldConverted
+			receipt.Convert = true
+			convertedMD5 := strings.Repeat("c", 32)
+			receipt.OutputMD5 = convertedMD5
+			if refreshedReceipt {
+				receipt.Library.Path = oldOriginal
+				receipt.OutputMD5 = receipt.OriginalMD5
+			}
+
+			config := t.TempDir()
+			rs := booruBrowserRoutes{configPath: config}
+			if err := rs.saveDownloadReceipt(receipt); err != nil {
+				t.Fatal(err)
+			}
+			record := mediaconvert.Record{
+				ID: id, Status: "restored",
+				Before: mediaconvert.Snapshot{Image: &models.ImageFile{BaseFile: &models.BaseFile{
+					ID: 32, Path: oldOriginal,
+					Fingerprints: models.Fingerprints{{Type: "md5", Fingerprint: receipt.OriginalMD5}},
+				}}},
+				After: mediaconvert.Snapshot{Image: &models.ImageFile{BaseFile: &models.BaseFile{
+					ID: 32, Path: oldConverted,
+					Fingerprints: models.Fingerprints{{Type: "md5", Fingerprint: convertedMD5}},
+				}}},
+			}
+			root := filepath.Join(config, "media-conversions")
+			if err := os.MkdirAll(root, 0700); err != nil {
+				t.Fatal(err)
+			}
+			data, err := json.Marshal(record)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(root, id+".json"), data, 0600); err != nil {
+				t.Fatal(err)
+			}
+			report, err := rs.filenameMigrationReport()
+			if err != nil || report.ConvertedEligible != 1 || len(report.Items) != 1 ||
+				report.Items[0].Status != "ready-converted" ||
+				report.Items[0].OldPath != oldOriginal ||
+				report.Items[0].NewPath != newOriginal {
+				t.Fatalf("restored original must migrate both history paths: %+v %v", report, err)
+			}
+		})
 	}
 }
 
