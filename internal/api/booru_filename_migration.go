@@ -46,7 +46,7 @@ type booruFilenameMigrationReport struct {
 type booruFilenameMigrationRequest struct {
 	Action            string   `json:"action"`
 	Receipts          []string `json:"receipts,omitempty"`
-	AcceptRestoreLoss bool     `json:"acceptRestoreLoss,omitempty"`
+	AcceptHistoryMigration bool     `json:"acceptHistoryMigration,omitempty"`
 }
 
 func (rs booruBrowserRoutes) filenameMigrationDismissed() bool {
@@ -589,7 +589,7 @@ func (rs booruBrowserRoutes) UpdateFilenameMigration(w http.ResponseWriter, r *h
 		}
 		writeVisualSimilarityJSON(w, map[string]bool{"dismissed": true})
 	case "apply", "apply-jxl":
-		if input.Action == "apply-jxl" && !input.AcceptRestoreLoss {
+		if input.Action == "apply-jxl" && !input.AcceptHistoryMigration {
 			writeBooruError(w, http.StatusBadRequest, "migration", "Confirm the coordinated JXL filename and conversion-history migration.")
 			return
 		}
