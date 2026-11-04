@@ -628,8 +628,8 @@ func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, na
 		}
 		restored = record.Status == "restored"
 		if restored {
-			// After restoring, the receipt retains the former converted output,
-			// but the registered file and its bytes live at the original path.
+			// Whether or not the download receipt was refreshed, native restore
+			// places the original-format bytes at the Before path.
 			oldPath = receipt.SavedPath
 			expectedMD5 = receipt.OriginalMD5
 		}
@@ -656,7 +656,7 @@ func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, na
 		journalID = record.ID
 		if restored {
 			var ok bool
-			newOutput, ok = convertedBooruFilenamePreview(receipt.SavedPath, newPath, receipt.Library.Path)
+			newOutput, ok = convertedBooruFilenamePreview(receipt.SavedPath, newPath, record.After.File().Base().Path)
 			if !ok {
 				return fmt.Errorf("converted restore path cannot be reconstructed exactly")
 			}
@@ -702,7 +702,7 @@ func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, na
 		}
 		if allowConverted {
 			store := mediaconvert.Store{Root: filepath.Join(rs.configPath, "media-conversions")}
-			if err := store.RenameRestorablePaths(journalID, original.SavedPath, newOriginal, original.Library.Path, newOutput); err != nil {
+			if err := store.RenameRestorablePaths(journalID, original.SavedPath, newOriginal, record.After.File().Base().Path, newOutput); err != nil {
 				return fmt.Errorf("cannot migrate conversion history: %w", err)
 			}
 			journalUpdated = true
@@ -723,7 +723,7 @@ func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, na
 	if err != nil {
 		if journalUpdated {
 			store := mediaconvert.Store{Root: filepath.Join(rs.configPath, "media-conversions")}
-			if rollbackErr := store.RenameRestorablePaths(journalID, newOriginal, original.SavedPath, newOutput, original.Library.Path); rollbackErr != nil {
+			if rollbackErr := store.RenameRestorablePaths(journalID, newOriginal, original.SavedPath, newOutput, record.After.File().Base().Path); rollbackErr != nil {
 				return fmt.Errorf("%w; conversion history rollback failed: %v", err, rollbackErr)
 			}
 		}
