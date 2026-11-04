@@ -137,6 +137,70 @@ func TestPlanBooruFilenameMigrationRequiresVerifiedOutputChecksum(t *testing.T) 
 	}
 }
 
+func TestFilenameMigrationReconcilesOnlyVerifiedAlreadyRenamedFile(t *testing.T) {
+	receipt, oldPath, proposed := filenameMigrationFixture(t)
+	checksum, err := mediaconvert.MD5(oldPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	receipt.OutputMD5 = checksum
+	receipt.Library.ID = "12"
+	if err := os.Rename(oldPath, proposed); err != nil {
+		t.Fatal(err)
+	}
+	makePlan := func() *booruFilenameMigrationItem {
+		plan := planBooruFilenameMigration("fixture-source-123.json", receipt)
+		if plan == nil || plan.Status != "review" || plan.NewPath != proposed {
+			t.Fatalf("missing original should be review before identity verification: %+v", plan)
+		}
+		return plan
+	}
+	verified := func(path string, library booruLibraryResult) (bool, error) {
+		if path != proposed || library.ID != "12" || library.Kind != "image" {
+			t.Fatalf("wrong identity candidate: %q %+v", path, library)
+		}
+		return true, nil
+	}
+	plan := makePlan()
+	checkFilenameMigrationAlreadyRenamed(plan, receipt, nil, nil, verified)
+	if plan.Status != "ready-receipt" {
+		t.Fatalf("verified same-media destination should allow receipt-only repair: %+v", plan)
+	}
+	plan = makePlan()
+	checkFilenameMigrationAlreadyRenamed(plan, receipt, nil, nil, func(string, booruLibraryResult) (bool, error) {
+		return false, nil
+	})
+	if plan.Status != "review" {
+		t.Fatalf("matching bytes are insufficient without native media identity: %+v", plan)
+	}
+	plan = makePlan()
+	checkFilenameMigrationAlreadyRenamed(plan, receipt, map[string]bool{filepath.Clean(oldPath): true}, nil, verified)
+	if plan.Status != "review" {
+		t.Fatalf("restore journal dependency must forbid receipt-only repair: %+v", plan)
+	}
+	plan = makePlan()
+	checkFilenameMigrationAlreadyRenamed(plan, receipt, nil, os.ErrPermission, verified)
+	if plan.Status != "review" {
+		t.Fatalf("unreadable journals must forbid receipt-only repair: %+v", plan)
+	}
+	if err := os.WriteFile(proposed, []byte("different content"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	plan = makePlan()
+	checkFilenameMigrationAlreadyRenamed(plan, receipt, nil, nil, verified)
+	if plan.Status != "review" || !strings.Contains(plan.Reason, "checksum") {
+		t.Fatalf("destination modified after rename must not be accepted: %+v", plan)
+	}
+	if err := os.Remove(proposed); err != nil {
+		t.Fatal(err)
+	}
+	plan = makePlan()
+	checkFilenameMigrationAlreadyRenamed(plan, receipt, nil, nil, verified)
+	if plan.Status != "review" || !strings.Contains(plan.Reason, "both missing") {
+		t.Fatalf("missing file cannot be repaired from receipt alone: %+v", plan)
+	}
+}
+
 func TestConvertedBooruFilenamePreviewPreservesJXLSuffix(t *testing.T) {
 	receipt, oldPath, newOriginal := filenameMigrationFixture(t)
 	receipt.Library.Converted = true
@@ -228,6 +292,148 @@ func TestFilenameMigrationOffersAcknowledgedJXLRename(t *testing.T) {
 	if err != nil || report.ConvertedEligible != 0 || len(report.Items) != 1 ||
 		report.Items[0].Status != "review" {
 		t.Fatalf("unverified converted output must remain review-only: %+v: %v", report, err)
+	}
+}
+
+func TestUpdateMigratedBooruReceiptDoesNotDereferenceNilConversionRecord(t *testing.T) {
+	receipt, _, proposed := filenameMigrationFixture(t)
+	old := receipt
+	oldHash := receipt.OutputMD5
+	updateMigratedBooruReceipt(&receipt, old, nil, false, proposed, proposed)
+	if receipt.SavedPath != proposed || receipt.Library.Path != proposed ||
+		receipt.Library.Converted || receipt.OutputMD5 != oldHash || !receipt.LegacyFilenameMigrated {
+		t.Fatalf("ordinary original-media rename must update receipt without a conversion record: %+v", receipt)
+	}
+
+	// A conversion performed after download refreshes both paths and MD5.
+	converted := filepath.Join(receipt.Directory, "converted.jxl")
+	activeHash := strings.Repeat("7", 32)
+	record := &mediaconvert.Record{After: mediaconvert.Snapshot{Image: &models.ImageFile{
+		BaseFile: &models.BaseFile{ID: 12, Path: converted, Fingerprints: models.Fingerprints{
+			{Type: "md5", Fingerprint: activeHash},
+		}},
+	}}}
+	receipt = old
+	updateMigratedBooruReceipt(&receipt, old, record, false, proposed, converted)
+	if !receipt.Library.Converted || receipt.OutputMD5 != activeHash ||
+		receipt.SavedPath != proposed || receipt.Library.Path != converted {
+		t.Fatalf("later conversion must refresh receipt: %+v", receipt)
+	}
+
+	receipt = old
+	receipt.Library.Converted = true
+	oldConverted := receipt
+	updateMigratedBooruReceipt(&receipt, oldConverted, record, true, proposed, proposed)
+	if receipt.Library.Converted || receipt.OutputMD5 != receipt.OriginalMD5 {
+		t.Fatalf("restored original must reset converted state: %+v", receipt)
+	}
+}
+
+func TestFilenameMigrationOffersLaterConvertedJPGWithStaleReceipt(t *testing.T) {
+	receipt, oldOriginal, newOriginal := filenameMigrationFixture(t)
+	id := strings.Repeat("9", 32)
+	active := strings.TrimSuffix(oldOriginal, ".jpg") + ".converted-" + id[:8] + ".jxl"
+	wanted := strings.TrimSuffix(newOriginal, ".jpg") + ".converted-" + id[:8] + ".jxl"
+	if err := os.WriteFile(active, []byte("converted jpeg xl fixture bytes"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(oldOriginal); err != nil {
+		t.Fatal(err)
+	}
+	activeMD5, err := mediaconvert.MD5(active)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Conversion was run separately after Booru download, so receipt still
+	// claims an unconverted original which is now absent.
+	receipt.Library.ID = "12"
+	receipt.Library.Path = oldOriginal
+	receipt.Library.Converted = false
+	receipt.OutputMD5 = receipt.OriginalMD5
+	config := t.TempDir()
+	rs := booruBrowserRoutes{configPath: config}
+	if err := rs.saveDownloadReceipt(receipt); err != nil {
+		t.Fatal(err)
+	}
+	record := mediaconvert.Record{
+		ID: id, Status: "complete",
+		Before: mediaconvert.Snapshot{Image: &models.ImageFile{BaseFile: &models.BaseFile{
+			ID: 12, Path: oldOriginal,
+			Fingerprints: models.Fingerprints{{Type: "md5", Fingerprint: receipt.OriginalMD5}},
+		}}},
+		After: mediaconvert.Snapshot{Image: &models.ImageFile{BaseFile: &models.BaseFile{
+			ID: 12, Path: active,
+			Fingerprints: models.Fingerprints{{Type: "md5", Fingerprint: activeMD5}},
+		}}},
+	}
+	root := filepath.Join(config, "media-conversions")
+	if err := os.MkdirAll(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, id+".json"), data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	report, err := rs.filenameMigrationReport()
+	if err != nil || report.ConvertedEligible != 1 || len(report.Items) != 1 ||
+		report.Items[0].Status != "ready-converted" ||
+		report.Items[0].OldPath != active ||
+		report.Items[0].NewPath != wanted {
+		t.Fatalf("later-converted original must migrate active output and history: %+v %v", report, err)
+	}
+	// A second restorable journal referencing the active output makes BOTH
+	// the output-path entry and the original-path alias unsafe.
+	secondID := strings.Repeat("8", 32)
+	secondOutput := active + ".converted-" + secondID[:8] + ".jxl"
+	secondRecord := mediaconvert.Record{
+		ID: secondID, Status: "restored",
+		Before: mediaconvert.Snapshot{Image: &models.ImageFile{BaseFile: &models.BaseFile{
+			ID: 12, Path: active,
+			Fingerprints: models.Fingerprints{{Type: "md5", Fingerprint: activeMD5}},
+		}}},
+		After: mediaconvert.Snapshot{Image: &models.ImageFile{BaseFile: &models.BaseFile{
+			ID: 12, Path: secondOutput,
+			Fingerprints: models.Fingerprints{{Type: "md5", Fingerprint: strings.Repeat("a", 32)}},
+		}}},
+	}
+	secondData, err := json.Marshal(secondRecord)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondJournal := filepath.Join(root, secondID+".json")
+	if err := os.WriteFile(secondJournal, secondData, 0600); err != nil {
+		t.Fatal(err)
+	}
+	convertedRecords, err := filenameMigrationActiveConvertedRecords(config)
+	if err != nil || convertedRecords[filepath.Clean(oldOriginal)] != nil {
+		t.Fatalf("original alias must be rejected when output has multiple restore references: %v, %v", convertedRecords, err)
+	}
+	report, err = rs.filenameMigrationReport()
+	if err != nil || report.ConvertedEligible != 0 || len(report.Items) != 1 ||
+		report.Items[0].Status != "review" {
+		t.Fatalf("shared output journal must block stale-receipt migration: %+v %v", report, err)
+	}
+	if err := os.Remove(secondJournal); err != nil {
+		t.Fatal(err)
+	}
+
+	// A stale receipt must not override a conversion journal with the wrong
+	// original fingerprint.
+	record.Before.Image.BaseFile.Fingerprints = models.Fingerprints{{Type: "md5", Fingerprint: strings.Repeat("c", 32)}}
+	data, err = json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, id+".json"), data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	report, err = rs.filenameMigrationReport()
+	if err != nil || report.ConvertedEligible != 0 || len(report.Items) != 1 ||
+		report.Items[0].Status != "review" {
+		t.Fatalf("mismatched old snapshot must not be migrated: %+v %v", report, err)
 	}
 }
 

@@ -163,9 +163,9 @@ export function BooruFilenameMigration({
       setSelectedConverted([]);
       setAcceptHistoryMigration(false);
       setNotice(
-        "Renamed " +
+        "Applied " +
           succeeded +
-          " file(s) without re-encoding." +
+          " verified filename/receipt update(s) without re-encoding." +
           (converted
             ? " Their conversion-history paths were updated; restore/reapply still requires the inactive-format cache."
             : "")
@@ -184,7 +184,7 @@ export function BooruFilenameMigration({
   };
 
   const eligible = (report?.items ?? []).filter(
-    (item) => item.status === "ready"
+    (item) => item.status === "ready" || item.status === "ready-receipt"
   );
   const eligibleNames = new Set(eligible.map((item) => item.receipt));
   const convertedEligible = (report?.items ?? []).filter(
@@ -228,12 +228,14 @@ export function BooruFilenameMigration({
             current tagging layout.
           </p>
           <p>
-            Eligible unconverted renames: {report?.eligible ?? 0}. Eligible
+            Eligible original-media updates: {report?.eligible ?? 0}. Eligible
             converted renames: {report?.convertedEligible ?? 0}. Additional
             review: {report?.review ?? 0}.
           </p>
           <Alert variant="info">
-            Filename changes do not re-encode media or alter tags. Directory
+            Filename changes do not re-encode media or alter tags. Files already
+            verified under their proposed names can have their stale download
+            receipts repaired without moving media. Missing files, directory
             moves and ambiguous metadata remain review-only.
           </Alert>
           {(report?.convertedEligible ?? 0) > 0 && (
@@ -253,7 +255,7 @@ export function BooruFilenameMigration({
           )}
           <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
             <span className="small">
-              Selected {selectedEligible.length} regular and{" "}
+              Selected {selectedEligible.length} original-media updates and{" "}
               {selectedConvertedEligible.length} converted media
             </span>
             <div className="d-flex gap-2">
@@ -300,6 +302,7 @@ export function BooruFilenameMigration({
               <div className="border-bottom py-2" key={item.receipt}>
                 <div className="d-flex align-items-center gap-2">
                   {(item.status === "ready" ||
+                    item.status === "ready-receipt" ||
                     item.status === "ready-converted") && (
                     <Button
                       variant={
@@ -391,7 +394,7 @@ export function BooruFilenameMigration({
             disabled={busy || selectedEligible.length === 0}
             onClick={() => void apply(false)}
           >
-            Rename {selectedEligible.length} regular file(s)
+            Apply {selectedEligible.length} original-media update(s)
           </Button>
           <Button
             variant="warning"

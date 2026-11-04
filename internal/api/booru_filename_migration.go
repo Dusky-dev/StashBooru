@@ -349,8 +349,19 @@ func planBooruFilenameMigration(name string, receipt booruDownloadReceipt) *boor
 		item.Reason = "Saved download has no output checksum for byte verification"
 		return item
 	}
-	if stat, err := os.Lstat(receipt.Library.Path); err != nil || !stat.Mode().IsRegular() {
-		item.Status, item.Reason = "review", "Saved file is missing or not a regular file"
+	if stat, err := os.Lstat(receipt.Library.Path); err != nil {
+		item.Status = "review"
+		switch {
+		case errors.Is(err, os.ErrNotExist):
+			item.Reason = "Saved file is missing at the recorded path"
+		case errors.Is(err, os.ErrPermission):
+			item.Reason = "Stash cannot inspect the saved file: permission denied"
+		default:
+			item.Reason = "Stash cannot inspect the saved file: " + err.Error()
+		}
+		return item
+	} else if !stat.Mode().IsRegular() {
+		item.Status, item.Reason = "review", "Recorded path is not a regular file (directory or symlink)"
 		return item
 	}
 	if _, err := os.Lstat(changedPath); err == nil {
@@ -435,9 +446,10 @@ func filenameMigrationActiveConvertedRecords(configPath string) (map[string]*med
 					filepath.Ext(after.Base().Path) != "" && strings.Contains(filepath.Base(after.Base().Path), ".converted-") {
 					path := filepath.Clean(after.Base().Path)
 					records[path] = record
-					// Restored media may have refreshed download receipts that
-					// already point back to the original (Before) path.
-					if record.Status == "restored" && before != nil {
+					// A receipt can also be stale because the native converter
+					// ran after download, while the receipt still points to
+					// the no-longer-present original format.
+					if before != nil {
 						records[filepath.Clean(before.Base().Path)] = record
 					}
 				}
@@ -445,7 +457,8 @@ func filenameMigrationActiveConvertedRecords(configPath string) (map[string]*med
 		}
 	}
 	for path, record := range records {
-		if references[path] != 1 || references[filepath.Clean(record.Before.File().Base().Path)] != 1 {
+		if references[filepath.Clean(record.Before.File().Base().Path)] != 1 ||
+			references[filepath.Clean(record.After.File().Base().Path)] != 1 {
 			delete(records, path)
 		}
 	}
@@ -469,23 +482,26 @@ func checkFilenameMigrationConvertedEligibility(item *booruFilenameMigrationItem
 	restored := record.Status == "restored"
 	receiptRefreshed := !receipt.Library.Converted && restored &&
 		filepath.Clean(receipt.Library.Path) == oldOriginal
+	receiptStaleConverted := !receipt.Library.Converted && !restored &&
+		filepath.Clean(receipt.Library.Path) == oldOriginal
 	if receipt.Library.Converted {
 		if filepath.Clean(receipt.Library.Path) != oldOutput {
 			return
 		}
-	} else if !receiptRefreshed {
+	} else if !receiptRefreshed && !receiptStaleConverted {
 		return
 	}
 	if filepath.Clean(receipt.SavedPath) != oldOriginal ||
 		before.Fingerprints.GetString("md5") != receipt.OriginalMD5 ||
-		(!receiptRefreshed && after.Fingerprints.GetString("md5") != receipt.OutputMD5) ||
-		(receiptRefreshed && receipt.OutputMD5 != receipt.OriginalMD5) ||
+		(receipt.Library.Converted && after.Fingerprints.GetString("md5") != receipt.OutputMD5) ||
+		(!receipt.Library.Converted && receipt.OutputMD5 != receipt.OriginalMD5) ||
+		(receiptStaleConverted && after.Fingerprints.GetString("md5") == "") ||
 		!strings.HasSuffix(strings.ToLower(filepath.Base(oldOutput)), ".converted-"+record.ID[:8]+strings.ToLower(filepath.Ext(oldOutput))) {
 		return
 	}
 
 	newOriginal, newOutput := "", ""
-	if receiptRefreshed {
+	if receiptRefreshed || receiptStaleConverted {
 		newOriginal = item.NewPath
 		var ok bool
 		newOutput, ok = convertedBooruFilenamePreview(oldOriginal, newOriginal, oldOutput)
@@ -510,6 +526,12 @@ func checkFilenameMigrationConvertedEligibility(item *booruFilenameMigrationItem
 		return
 	}
 	source, target := oldOutput, newOutput
+	if receiptStaleConverted {
+		if _, err := os.Lstat(oldOriginal); !errors.Is(err, os.ErrNotExist) {
+			item.Reason = "Converted media still has an occupied old original path"
+			return
+		}
+	}
 	if restored {
 		source, target = oldOriginal, newOriginal
 		// The inactive converted path must not be occupied by a stale file.
@@ -533,11 +555,107 @@ func checkFilenameMigrationConvertedEligibility(item *booruFilenameMigrationItem
 	}
 	item.OldPath, item.NewPath = source, target
 	item.Status = "ready-converted"
-	if restored {
+	switch {
+	case restored:
 		item.Reason = "Restored original: rename both conversion history paths while preserving reapply"
-	} else {
+	case receiptStaleConverted:
+		item.Reason = "Converted after download: rename active converted file, update restore history and repair stale receipt"
+	default:
 		item.Reason = "Converted media: original and output history paths will be migrated together"
 	}
+}
+
+// Only the currently linked native Image/Scene can authorize a receipt-only
+// repair. The receipt's ID is the media ID, not the underlying file ID.
+func (rs booruBrowserRoutes) filenameMigrationNativeHasPath(path string, library booruLibraryResult) (bool, error) {
+	if rs.repository.TxnManager == nil || rs.repository.File == nil ||
+		rs.repository.Image == nil || rs.repository.Scene == nil {
+		return false, nil
+	}
+	mediaID, err := strconv.Atoi(library.ID)
+	if err != nil || mediaID <= 0 {
+		return false, nil
+	}
+	matched := false
+	err = txn.WithReadTxn(context.Background(), rs.repository.TxnManager, func(ctx context.Context) error {
+		registered, err := rs.repository.File.FindByPath(ctx, path, true)
+		if err != nil || registered == nil {
+			return err
+		}
+		if filepath.Clean(registered.Base().Path) != filepath.Clean(path) {
+			return nil
+		}
+		switch library.Kind {
+		case "image":
+			images, err := rs.repository.Image.FindByFileID(ctx, registered.Base().ID)
+			if err != nil {
+				return err
+			}
+			for _, image := range images {
+				if image != nil && image.ID == mediaID {
+					matched = true
+				}
+			}
+		case "scene":
+			scenes, err := rs.repository.Scene.FindByFileID(ctx, registered.Base().ID)
+			if err != nil {
+				return err
+			}
+			for _, scene := range scenes {
+				if scene != nil && scene.ID == mediaID {
+					matched = true
+				}
+			}
+		}
+		return nil
+	})
+	return matched, err
+}
+
+// If an external move already put the exact verified bytes at the *proposed*
+// destination, a distinct receipt-only repair can reconcile the old snapshot.
+// Never search by fuzzy filename/MD5 or move a different file in its place.
+func checkFilenameMigrationAlreadyRenamed(item *booruFilenameMigrationItem, receipt booruDownloadReceipt, paths map[string]bool, historyErr error, linked func(string, booruLibraryResult) (bool, error)) {
+	if item == nil || item.Status != "review" ||
+		item.Reason != "Saved file is missing at the recorded path" ||
+		receipt.Library == nil || receipt.Library.ID == "" ||
+		item.NewPath == "" || receipt.OutputMD5 == "" {
+		return
+	}
+	if _, err := os.Lstat(receipt.Library.Path); !errors.Is(err, os.ErrNotExist) {
+		return
+	}
+	stat, err := os.Lstat(item.NewPath)
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		item.Reason = "Recorded file and proposed destination are both missing; locate the media or rescan the Stash library"
+		return
+	case err != nil:
+		item.Reason = "Recorded file is missing and the proposed destination cannot be inspected"
+		return
+	case !stat.Mode().IsRegular():
+		item.Reason = "Recorded file is missing and the proposed destination is not a regular file"
+		return
+	}
+	if historyErr != nil || paths[filepath.Clean(receipt.Library.Path)] || paths[filepath.Clean(item.NewPath)] {
+		item.Reason = "Recorded file is missing; conversion history must be verified before repairing its receipt"
+		return
+	}
+	checksum, err := mediaconvert.MD5(item.NewPath)
+	if err != nil || checksum != receipt.OutputMD5 {
+		item.Reason = "Proposed filename exists but does not match the saved file checksum; no automatic repair"
+		return
+	}
+	if linked == nil {
+		return
+	}
+	matched, err := linked(item.NewPath, *receipt.Library)
+	if err != nil || !matched {
+		item.Reason = "Proposed file matches the checksum but is not verified as this native Image/Scene; rescan or review manually"
+		return
+	}
+	item.Status = "ready-receipt"
+	item.Reason = "File already has the proposed name in Stash; only the stale download receipt will be updated"
 }
 
 func (rs booruBrowserRoutes) filenameMigrationReport() (booruFilenameMigrationReport, error) {
@@ -580,9 +698,10 @@ func (rs booruBrowserRoutes) filenameMigrationReport() (booruFilenameMigrationRe
 		}
 		checkFilenameMigrationRestorationRisk(item, *receipt, restorationPaths, historyErr)
 		checkFilenameMigrationConvertedEligibility(item, *receipt, restorationPaths, convertedRecords, historyErr)
+		checkFilenameMigrationAlreadyRenamed(item, *receipt, restorationPaths, historyErr, rs.filenameMigrationNativeHasPath)
 		report.Items = append(report.Items, *item)
 		switch item.Status {
-		case "ready":
+		case "ready", "ready-receipt":
 			report.Eligible++
 		case "ready-converted":
 			report.ConvertedEligible++
@@ -621,6 +740,23 @@ func convertedFilenameOriginalTarget(oldOriginal, oldOutput, newOutput string) (
 	return filepath.Join(filepath.Dir(oldOriginal), newStem+filepath.Ext(oldOriginal)), nil
 }
 
+// Regular media renames have no conversion record. Keep their receipt updates
+// independent of the coordinated conversion/restore path.
+func updateMigratedBooruReceipt(receipt *booruDownloadReceipt, original booruDownloadReceipt, record *mediaconvert.Record, restored bool, newOriginal, newPath string) {
+	receipt.SavedPath = newOriginal
+	receipt.Library.Path = newPath
+	switch {
+	case restored:
+		receipt.Library.Converted = false
+		receipt.OutputMD5 = receipt.OriginalMD5
+	case record != nil && !original.Library.Converted:
+		// Conversion occurred after the original Booru download.
+		receipt.Library.Converted = true
+		receipt.OutputMD5 = record.After.File().Base().Fingerprints.GetString("md5")
+	}
+	receipt.LegacyFilenameMigrated = true
+}
+
 func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, name string, restorationPaths map[string]bool, convertedRecords map[string]*mediaconvert.Record, allowConverted bool) error {
 	receipt, err := rs.readFilenameMigrationReceipt(name)
 	if err != nil {
@@ -632,15 +768,29 @@ func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, na
 	}
 	checkFilenameMigrationRestorationRisk(plan, *receipt, restorationPaths, nil)
 	checkFilenameMigrationConvertedEligibility(plan, *receipt, restorationPaths, convertedRecords, nil)
+	checkFilenameMigrationAlreadyRenamed(plan, *receipt, restorationPaths, nil, rs.filenameMigrationNativeHasPath)
 	if allowConverted {
 		if plan.Status != "ready-converted" {
 			return fmt.Errorf("download is not eligible for coordinated conversion history migration")
 		}
-	} else if plan.Status != "ready" {
+	} else if plan.Status != "ready" && plan.Status != "ready-receipt" {
 		return fmt.Errorf("download is not eligible for safe filename migration")
 	}
 	if rs.repository.TxnManager == nil || rs.libraryRoots == nil {
 		return fmt.Errorf("native library is unavailable")
+	}
+
+	if plan.Status == "ready-receipt" {
+		oldDir := filepath.Dir(receipt.Library.Path)
+		if valid, err := rs.destination(oldDir); err != nil || valid != oldDir {
+			return fmt.Errorf("receipt repair is outside a selected library root")
+		}
+		// File bytes and native media identity were rechecked above, while
+		// serialized against converter mutations. No native file is moved.
+		receipt.SavedPath = plan.NewPath
+		receipt.Library.Path = plan.NewPath
+		receipt.LegacyFilenameMigrated = true
+		return rs.saveDownloadReceipt(*receipt)
 	}
 
 	original := *receipt
@@ -657,6 +807,12 @@ func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, na
 			return fmt.Errorf("conversion journal was not uniquely verified")
 		}
 		restored = record.Status == "restored"
+		receiptStaleConverted := !receipt.Library.Converted && record.Status == "complete" &&
+			filepath.Clean(receipt.Library.Path) == filepath.Clean(record.Before.File().Base().Path)
+		if receiptStaleConverted {
+			oldPath = record.After.File().Base().Path
+			expectedMD5 = record.After.File().Base().Fingerprints.GetString("md5")
+		}
 		if restored {
 			// Whether or not the download receipt was refreshed, native restore
 			// places the original-format bytes at the Before path.
@@ -737,13 +893,7 @@ func (rs booruBrowserRoutes) applyBooruFilenameMigration(ctx context.Context, na
 			}
 			journalUpdated = true
 		}
-		receipt.SavedPath = newOriginal
-		receipt.Library.Path = newPath
-		if restored {
-			receipt.Library.Converted = false
-			receipt.OutputMD5 = receipt.OriginalMD5
-		}
-		receipt.LegacyFilenameMigrated = true
+		updateMigratedBooruReceipt(receipt, original, record, restored, newOriginal, newPath)
 		if err := rs.saveDownloadReceipt(*receipt); err != nil {
 			return err
 		}
