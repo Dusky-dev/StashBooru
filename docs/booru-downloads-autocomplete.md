@@ -289,15 +289,17 @@ results in increments of 150, and the server revalidates each selected receipt.
   grounds to block an original file if conversion was skipped. The exact old
   template path, same-directory target, output checksum, DB file and restoration
   journals must still be verified.
-- **Ready (converted images/video)**: requires a unique completed conversion journal,
-  verified original and output fingerprints, exact converted suffix, native file
-  identity and no other restore-history reference. Renaming updates the
-  original and active paths in the conversion journal, native file record and
-  download receipt together, preserving the original-format restore path.
-  Original cached bytes are untouched; restoration still depends on that cache.
-- **Review**: restored conversions, upscaled media with a restore journal,
-  ambiguous/missing histories, collisions, changed folder layout, missing files
-  and receipts without enough provenance remain review-only.
+- **Ready (converted or restored images/videos)**: requires one uniquely matched
+  completed or restored conversion journal, saved input/output fingerprints,
+  exact converted suffix, native file identity and no overlapping history.
+  For an active conversion, the converted file is renamed; for an already
+  restored conversion, the original-format file is renamed. In both cases,
+  the two journal snapshot paths are updated so restoration/reapplication still
+  has the correct destinations. Inactive-version cache bytes are unchanged;
+  toggling formats still requires the relevant cached representation.
+- **Review**: ambiguous/missing or interrupted conversion histories, upscaled
+  media with a restoration journal, collisions, changed folder layout, missing
+  files and receipts without enough provenance remain review-only.
 - **Metadata warning**: the provider receipt may categorize `animated` as a
   Character. Where the linked native media ID is available, the audit reads
   its actual Image/Scene Character assignments to distinguish an attached
@@ -309,8 +311,8 @@ results in increments of 150, and the server revalidates each selected receipt.
 Converted image/video renames use a separate, unselected-by-default action and an
 explicit backup/risk acknowledgement. Both stored conversion snapshot paths
 are rewritten, rather than intentionally sacrificing future restoration.
-If the conversion journal cannot be safely matched or rewritten, no JXL
-rename is offered. Each selected receipt is revalidated while conversion
+If the conversion journal cannot be safely matched or rewritten, no converted
+or restored rename is offered. Each selected receipt is revalidated while conversion
 mutations are locked. The operation does not re-encode media or recategorize
 tags. Converter and upscaling histories that overlap the paths block the action.
 
@@ -325,5 +327,5 @@ repaired by this migration; review their history separately.
 The tool relies on Booru download receipts; files exported to a computer or
 renamed manually without matching receipts are not guessed from filenames.
 Preview scans a bounded 2,000 receipts. Back up the database, media and
-\`booru-download-history\` before applying a batch. Non-receipt files and restored conversions remain review-only; crash-atomic
-multi-resource rollback is not yet provided.
+\`booru-download-history\` before applying a batch. Non-receipt files and ambiguous restoration histories remain review-only;
+crash-atomic multi-resource rollback is not yet provided.
