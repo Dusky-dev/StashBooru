@@ -46,8 +46,8 @@ type booruFilenameMigrationReport struct {
 }
 
 type booruFilenameMigrationRequest struct {
-	Action            string   `json:"action"`
-	Receipts          []string `json:"receipts,omitempty"`
+	Action                 string   `json:"action"`
+	Receipts               []string `json:"receipts,omitempty"`
 	AcceptHistoryMigration bool     `json:"acceptHistoryMigration,omitempty"`
 }
 
