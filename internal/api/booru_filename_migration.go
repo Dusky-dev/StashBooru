@@ -408,6 +408,11 @@ func filenameMigrationActiveConvertedRecords(configPath string) (map[string]*med
 					filepath.Ext(after.Base().Path) != "" && strings.Contains(filepath.Base(after.Base().Path), ".converted-") {
 					path := filepath.Clean(after.Base().Path)
 					records[path] = record
+					// Restored media may have refreshed download receipts that
+					// already point back to the original (Before) path.
+					if record.Status == "restored" && before != nil {
+						records[filepath.Clean(before.Base().Path)] = record
+					}
 				}
 			}
 		}
