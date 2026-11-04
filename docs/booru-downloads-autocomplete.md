@@ -289,7 +289,7 @@ results in increments of 150, and the server revalidates each selected receipt.
   grounds to block an original file if conversion was skipped. The exact old
   template path, same-directory target, output checksum, DB file and restoration
   journals must still be verified.
-- **Ready (converted JXL)**: requires a unique completed conversion journal,
+- **Ready (converted images/video)**: requires a unique completed conversion journal,
   verified original and output fingerprints, exact converted suffix, native file
   identity and no other restore-history reference. Renaming updates the
   original and active paths in the conversion journal, native file record and
@@ -304,9 +304,9 @@ results in increments of 150, and the server revalidates each selected receipt.
   `animated` Character from a provider-only classification error. It never
   modifies tags or relationships automatically.
 
-### Optional coordinated JXL rename
+### Optional coordinated converted-media rename
 
-Converted JXL renames use a separate, unselected-by-default action and an
+Converted image/video renames use a separate, unselected-by-default action and an
 explicit backup/risk acknowledgement. Both stored conversion snapshot paths
 are rewritten, rather than intentionally sacrificing future restoration.
 If the conversion journal cannot be safely matched or rewritten, no JXL
@@ -318,7 +318,7 @@ tags. Converter and upscaling histories that overlap the paths block the action.
 JSON writes and receipt JSON writes cannot be committed as one atomic unit.
 Ordinary failures attempt journal and receipt rollback, but a sudden process
 crash can still leave inconsistent references. Back up media, Stash database,
-download receipts and `media-conversions` before applying. Older JXL renames
+download receipts and `media-conversions` before applying. Older converted JXL renames
 performed by the previous restore-loss implementation are *not* automatically
 repaired by this migration; review their history separately.
 
