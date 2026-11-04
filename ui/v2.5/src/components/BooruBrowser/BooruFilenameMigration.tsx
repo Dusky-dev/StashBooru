@@ -228,9 +228,9 @@ export function BooruFilenameMigration({
             current tagging layout.
           </p>
           <p>
-            Eligible unconverted renames: {report?.eligible ?? 0}. Eligible converted
-            renames: {report?.convertedEligible ?? 0}. Additional review:{" "}
-            {report?.review ?? 0}.
+            Eligible unconverted renames: {report?.eligible ?? 0}. Eligible
+            converted renames: {report?.convertedEligible ?? 0}. Additional
+            review: {report?.review ?? 0}.
           </p>
           <Alert variant="info">
             Filename changes do not re-encode media or alter tags. Directory
@@ -241,9 +241,9 @@ export function BooruFilenameMigration({
               <strong>Converted or restored media:</strong> Both stored paths in
               conversion history will be migrated with the native file and
               receipt. Restore and reapply remain available while the required
-              inactive version is cached. Back up media, database, receipts,
-              and conversion history: these changes are not crash-atomic.
-              Nothing is selected automatically.
+              inactive version is cached. Back up media, database, receipts, and
+              conversion history: these changes are not crash-atomic. Nothing is
+              selected automatically.
             </Alert>
           )}
           {error && <Alert variant="warning">{error}</Alert>}
@@ -273,8 +273,8 @@ export function BooruFilenameMigration({
                 disabled={busy || convertedEligible.length === 0}
                 onClick={() =>
                   setSelectedConverted(
-                     convertedEligible.map((item) => item.receipt)
-                   )
+                    convertedEligible.map((item) => item.receipt)
+                  )
                 }
               >
                 Select eligible converted
@@ -283,7 +283,8 @@ export function BooruFilenameMigration({
                 variant="outline-secondary"
                 size="sm"
                 disabled={
-                  busy || (selected.length === 0 && selectedConverted.length === 0)
+                  busy ||
+                  (selected.length === 0 && selectedConverted.length === 0)
                 }
                 onClick={() => {
                   setSelected([]);
@@ -365,8 +366,8 @@ export function BooruFilenameMigration({
               disabled={busy}
               checked={acceptHistoryMigration}
               onChange={(event) =>
-                 setAcceptHistoryMigration(event.target.checked)
-               }
+                setAcceptHistoryMigration(event.target.checked)
+              }
               label="I backed up my library and understand that converted-file renaming updates both native media and conversion history, but is not crash-atomic."
             />
           )}
