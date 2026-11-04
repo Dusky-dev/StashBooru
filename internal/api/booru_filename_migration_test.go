@@ -434,6 +434,108 @@ func TestFilenameMigrationBlocksRestorationJournalPaths(t *testing.T) {
 	}
 }
 
+func TestFilenameMigrationIgnoresFailedOrSkippedHistoryForMP4(t *testing.T) {
+	for _, directory := range []string{"media-conversions", "media-upscaling-restores"} {
+		for _, status := range []string{"failed", "skipped"} {
+			t.Run(directory+"/"+status, func(t *testing.T) {
+				receipt, oldJPG, _ := filenameMigrationFixture(t)
+				source := booru.Source{ID: receipt.Source.ID, Name: receipt.Source.Name, URL: receipt.Source.URL}
+				legacy, err := booru.RenderLegacyFilename(receipt.Template, source, receipt.Post, receipt.OriginalMD5, "mp4", 0)
+				if err != nil {
+					t.Fatal(err)
+				}
+				expected, err := booru.RenderFilename(receipt.Template, source, receipt.Post, receipt.OriginalMD5, "mp4", 0)
+				if err != nil {
+					t.Fatal(err)
+				}
+				oldMP4 := filepath.Join(receipt.Directory, legacy)
+				if err := os.Rename(oldJPG, oldMP4); err != nil {
+					t.Fatal(err)
+				}
+				receipt.SavedPath, receipt.Library.Path = oldMP4, oldMP4
+				receipt.Library.Kind = "scene"
+				receipt.Convert = true // A requested conversion can fail or be skipped.
+				config := t.TempDir()
+				rs := booruBrowserRoutes{configPath: config}
+				if err := rs.saveDownloadReceipt(receipt); err != nil {
+					t.Fatal(err)
+				}
+				id := strings.Repeat("e", 32)
+				record := mediaconvert.Record{
+					ID: id, Status: status,
+					Before: mediaconvert.Snapshot{Video: &models.VideoFile{
+						BaseFile: &models.BaseFile{ID: 12, Path: oldMP4},
+					}},
+				}
+				root := filepath.Join(config, directory)
+				if err := os.MkdirAll(root, 0700); err != nil {
+					t.Fatal(err)
+				}
+				data, err := json.Marshal(record)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(root, id+".json"), data, 0600); err != nil {
+					t.Fatal(err)
+				}
+				paths, err := filenameMigrationRestorationPaths(config)
+				if err != nil || paths[filepath.Clean(oldMP4)] {
+					t.Fatalf("non-restorable historical attempt should not protect MP4: %v %v", paths, err)
+				}
+				report, err := rs.filenameMigrationReport()
+				if err != nil || report.Eligible != 1 || report.Review != 0 ||
+					len(report.Items) != 1 || report.Items[0].Status != "ready" ||
+					report.Items[0].NewPath != filepath.Join(receipt.Directory, expected) {
+					t.Fatalf("unchanged MP4 should be eligible despite old failed/skipped history: %+v %v", report, err)
+				}
+			})
+		}
+	}
+}
+
+func TestFilenameMigrationEncodingHistoryStillBlocksRename(t *testing.T) {
+	receipt, oldPath, _ := filenameMigrationFixture(t)
+	config := t.TempDir()
+	id := strings.Repeat("f", 32)
+	record := mediaconvert.Record{
+		ID: id, Status: "encoding",
+		Before: mediaconvert.Snapshot{Image: &models.ImageFile{
+			BaseFile: &models.BaseFile{ID: 12, Path: oldPath},
+		}},
+	}
+	root := filepath.Join(config, "media-conversions")
+	if err := os.MkdirAll(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, id+".json"), data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	paths, err := filenameMigrationRestorationPaths(config)
+	if err != nil || !paths[filepath.Clean(oldPath)] {
+		t.Fatalf("incomplete encoding is still a recovery dependency: %v %v", paths, err)
+	}
+	plan := planBooruFilenameMigration("fixture-source-123.json", receipt)
+	checkFilenameMigrationRestorationRisk(plan, receipt, paths, nil)
+	if plan == nil || plan.Status != "review" {
+		t.Fatalf("unrecovered encoding must block rename: %+v", plan)
+	}
+}
+
+func TestFilenameMigrationDropsUnassignedProviderAnimatedWarning(t *testing.T) {
+	tags := []booru.Tag{{Name: "animated", Category: "character"}}
+	warnings := legacyCategoryWarning(tags)
+	if len(warnings) != 1 {
+		t.Fatalf("provider snapshot should prompt assignment verification: %v", warnings)
+	}
+	if remainder := withoutAnimatedProviderWarning(warnings); len(remainder) != 0 {
+		t.Fatalf("verified non-assignment should not leave a metadata warning: %v", remainder)
+	}
+}
+
 func TestFilenameMigrationRejectsUnreadableRestorationHistory(t *testing.T) {
 	receipt, _, _ := filenameMigrationFixture(t)
 	config := t.TempDir()
