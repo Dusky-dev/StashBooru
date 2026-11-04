@@ -132,7 +132,14 @@ export function BooruFilenameMigration({
 
   const apply = async (converted = false) => {
     const ready = converted ? selectedConvertedEligible : selectedEligible;
-    if (!report || busy || ready.length === 0 || (converted && !acceptRestoreLoss)) return;
+    if (
+      !report ||
+      busy ||
+      ready.length === 0 ||
+      (converted && !acceptRestoreLoss)
+    ) {
+      return;
+    }
     setBusy(true);
     setError("");
     setNotice("");
@@ -157,7 +164,9 @@ export function BooruFilenameMigration({
       setAcceptRestoreLoss(false);
       setNotice(
         "Renamed " + succeeded + " file(s) without re-encoding." +
-          (converted ? " Conversion restoration for these JXL files is no longer supported." : "")
+          (converted
+            ? " Conversion restoration for these JXL files is no longer supported."
+            : "")
       );
       if (failures) setError(failures + " file(s) need manual review.");
     } catch (cause) {
@@ -260,15 +269,22 @@ export function BooruFilenameMigration({
                 variant="outline-secondary"
                 size="sm"
                 disabled={busy || convertedEligible.length === 0}
-                onClick={() => setSelectedJXL(convertedEligible.map((item) => item.receipt))}
+                onClick={() =>
+                  setSelectedJXL(convertedEligible.map((item) => item.receipt))
+                }
               >
                 Select eligible JXL
               </Button>
               <Button
                 variant="outline-secondary"
                 size="sm"
-                disabled={busy || (selected.length === 0 && selectedJXL.length === 0)}
-                onClick={() => { setSelected([]); setSelectedJXL([]); }}
+                disabled={
+                  busy || (selected.length === 0 && selectedJXL.length === 0)
+                }
+                onClick={() => {
+                  setSelected([]);
+                  setSelectedJXL([]);
+                }}
               >
                 Clear
               </Button>
@@ -278,7 +294,8 @@ export function BooruFilenameMigration({
             {(report?.items ?? []).slice(0, visibleCount).map((item) => (
               <div className="border-bottom py-2" key={item.receipt}>
                 <div className="d-flex align-items-center gap-2">
-                  {(item.status === "ready" || item.status === "ready-converted") && (
+                  {(item.status === "ready" ||
+                    item.status === "ready-converted") && (
                     <Button
                       variant={
                         (item.status === "ready-converted"
@@ -290,11 +307,19 @@ export function BooruFilenameMigration({
                       }
                       size="sm"
                       disabled={busy}
-                      aria-pressed={(item.status === "ready-converted" ? selectedJXL : selected).includes(item.receipt)}
-                      onClick={() => toggleSelected(item.receipt, item.status === "ready-converted")}
+                      aria-pressed={(
+                        item.status === "ready-converted" ? selectedJXL : selected
+                      ).includes(item.receipt)}
+                      onClick={() =>
+                        toggleSelected(item.receipt, item.status === "ready-converted")
+                      }
                     >
-                      {(item.status === "ready-converted" ? selectedJXL : selected).includes(item.receipt)
-                        ? "Selected" : "Select"}
+                      {(item.status === "ready-converted"
+                        ? selectedJXL
+                        : selected
+                      ).includes(item.receipt)
+                        ? "Selected"
+                        : "Select"}
                     </Button>
                   )}
                   <div className="small text-break">{item.oldPath}</div>
@@ -359,7 +384,9 @@ export function BooruFilenameMigration({
           </Button>
           <Button
             variant="warning"
-            disabled={busy || !acceptRestoreLoss || selectedConvertedEligible.length === 0}
+            disabled={
+              busy || !acceptRestoreLoss || selectedConvertedEligible.length === 0
+            }
             onClick={() => void apply(true)}
           >
             Rename {selectedConvertedEligible.length} JXL file(s)
