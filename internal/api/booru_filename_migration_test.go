@@ -137,6 +137,70 @@ func TestPlanBooruFilenameMigrationRequiresVerifiedOutputChecksum(t *testing.T) 
 	}
 }
 
+func TestFilenameMigrationReconcilesOnlyVerifiedAlreadyRenamedFile(t *testing.T) {
+	receipt, oldPath, proposed := filenameMigrationFixture(t)
+	checksum, err := mediaconvert.MD5(oldPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	receipt.OutputMD5 = checksum
+	receipt.Library.ID = "12"
+	if err := os.Rename(oldPath, proposed); err != nil {
+		t.Fatal(err)
+	}
+	makePlan := func() *booruFilenameMigrationItem {
+		plan := planBooruFilenameMigration("fixture-source-123.json", receipt)
+		if plan == nil || plan.Status != "review" || plan.NewPath != proposed {
+			t.Fatalf("missing original should be review before identity verification: %+v", plan)
+		}
+		return plan
+	}
+	verified := func(path string, library booruLibraryResult) (bool, error) {
+		if path != proposed || library.ID != "12" || library.Kind != "image" {
+			t.Fatalf("wrong identity candidate: %q %+v", path, library)
+		}
+		return true, nil
+	}
+	plan := makePlan()
+	checkFilenameMigrationAlreadyRenamed(plan, receipt, nil, nil, verified)
+	if plan.Status != "ready-receipt" {
+		t.Fatalf("verified same-media destination should allow receipt-only repair: %+v", plan)
+	}
+	plan = makePlan()
+	checkFilenameMigrationAlreadyRenamed(plan, receipt, nil, nil, func(string, booruLibraryResult) (bool, error) {
+		return false, nil
+	})
+	if plan.Status != "review" {
+		t.Fatalf("matching bytes are insufficient without native media identity: %+v", plan)
+	}
+	plan = makePlan()
+	checkFilenameMigrationAlreadyRenamed(plan, receipt, map[string]bool{filepath.Clean(oldPath): true}, nil, verified)
+	if plan.Status != "review" {
+		t.Fatalf("restore journal dependency must forbid receipt-only repair: %+v", plan)
+	}
+	plan = makePlan()
+	checkFilenameMigrationAlreadyRenamed(plan, receipt, nil, os.ErrPermission, verified)
+	if plan.Status != "review" {
+		t.Fatalf("unreadable journals must forbid receipt-only repair: %+v", plan)
+	}
+	if err := os.WriteFile(proposed, []byte("different content"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	plan = makePlan()
+	checkFilenameMigrationAlreadyRenamed(plan, receipt, nil, nil, verified)
+	if plan.Status != "review" || !strings.Contains(plan.Reason, "checksum") {
+		t.Fatalf("destination modified after rename must not be accepted: %+v", plan)
+	}
+	if err := os.Remove(proposed); err != nil {
+		t.Fatal(err)
+	}
+	plan = makePlan()
+	checkFilenameMigrationAlreadyRenamed(plan, receipt, nil, nil, verified)
+	if plan.Status != "review" || !strings.Contains(plan.Reason, "both missing") {
+		t.Fatalf("missing file cannot be repaired from receipt alone: %+v", plan)
+	}
+}
+
 func TestConvertedBooruFilenamePreviewPreservesJXLSuffix(t *testing.T) {
 	receipt, oldPath, newOriginal := filenameMigrationFixture(t)
 	receipt.Library.Converted = true
