@@ -554,11 +554,12 @@ func checkFilenameMigrationConvertedEligibility(item *booruFilenameMigrationItem
 	}
 	item.OldPath, item.NewPath = source, target
 	item.Status = "ready-converted"
-	if restored {
+	switch {
+	case restored:
 		item.Reason = "Restored original: rename both conversion history paths while preserving reapply"
-	} else if receiptStaleConverted {
+	case receiptStaleConverted:
 		item.Reason = "Converted after download: rename active converted file, update restore history and repair stale receipt"
-	} else {
+	default:
 		item.Reason = "Converted media: original and output history paths will be migrated together"
 	}
 }
