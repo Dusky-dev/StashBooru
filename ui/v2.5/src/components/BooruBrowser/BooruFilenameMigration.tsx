@@ -163,7 +163,9 @@ export function BooruFilenameMigration({
       setSelectedJXL([]);
       setAcceptRestoreLoss(false);
       setNotice(
-        "Renamed " + succeeded + " file(s) without re-encoding." +
+        "Renamed " +
+          succeeded +
+          " file(s) without re-encoding." +
           (converted
             ? " Conversion restoration for these JXL files is no longer supported."
             : "")
@@ -231,17 +233,17 @@ export function BooruFilenameMigration({
             {report?.review ?? 0}.
           </p>
           <Alert variant="info">
-            Filename changes do not re-encode media or alter tags. Directory moves
-            and ambiguous metadata remain review-only.
+            Filename changes do not re-encode media or alter tags. Directory
+            moves and ambiguous metadata remain review-only.
           </Alert>
           {(report?.convertedEligible ?? 0) > 0 && (
             <Alert variant="warning">
               <strong>JXL restore warning:</strong> Renaming a converted JXL
               keeps its image and native library associations, but its saved
               conversion journal will still reference the old filename.
-              Restoring the original JPEG through StashBooru will no longer
-              work for renamed JXL files. Back up the database, media, and
-              conversion history first. JXL files are never selected automatically.
+              Restoring the original JPEG through StashBooru will no longer work
+              for renamed JXL files. Back up the database, media, and conversion
+              history first. JXL files are never selected automatically.
             </Alert>
           )}
           {error && <Alert variant="warning">{error}</Alert>}
@@ -307,11 +309,15 @@ export function BooruFilenameMigration({
                       }
                       size="sm"
                       disabled={busy}
-                      aria-pressed={(
-                        item.status === "ready-converted" ? selectedJXL : selected
+                      aria-pressed={(item.status === "ready-converted"
+                        ? selectedJXL
+                        : selected
                       ).includes(item.receipt)}
                       onClick={() =>
-                        toggleSelected(item.receipt, item.status === "ready-converted")
+                        toggleSelected(
+                          item.receipt,
+                          item.status === "ready-converted"
+                        )
                       }
                     >
                       {(item.status === "ready-converted"
@@ -385,7 +391,9 @@ export function BooruFilenameMigration({
           <Button
             variant="warning"
             disabled={
-              busy || !acceptRestoreLoss || selectedConvertedEligible.length === 0
+              busy ||
+                !acceptRestoreLoss ||
+                selectedConvertedEligible.length === 0
             }
             onClick={() => void apply(true)}
           >
