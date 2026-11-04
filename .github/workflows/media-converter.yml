@@ -29,7 +29,8 @@ on:
 
 jobs:
   codec-tests:
-    runs-on: [self-hosted, stashbooru]
+    # FFmpeg/JXL/PIL installation uses sudo, unavailable in the hardened self-hosted container.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
       - name: Install media tools
