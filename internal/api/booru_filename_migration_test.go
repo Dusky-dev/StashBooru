@@ -295,6 +295,78 @@ func TestFilenameMigrationOffersAcknowledgedJXLRename(t *testing.T) {
 	}
 }
 
+func TestFilenameMigrationOffersLaterConvertedJPGWithStaleReceipt(t *testing.T) {
+	receipt, oldOriginal, newOriginal := filenameMigrationFixture(t)
+	id := strings.Repeat("9", 32)
+	active := strings.TrimSuffix(oldOriginal, ".jpg") + ".converted-" + id[:8] + ".jxl"
+	wanted := strings.TrimSuffix(newOriginal, ".jpg") + ".converted-" + id[:8] + ".jxl"
+	if err := os.WriteFile(active, []byte("converted jpeg xl fixture bytes"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(oldOriginal); err != nil {
+		t.Fatal(err)
+	}
+	activeMD5, err := mediaconvert.MD5(active)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Conversion was run separately after Booru download, so receipt still
+	// claims an unconverted original which is now absent.
+	receipt.Library.ID = "12"
+	receipt.Library.Path = oldOriginal
+	receipt.Library.Converted = false
+	receipt.OutputMD5 = receipt.OriginalMD5
+	config := t.TempDir()
+	rs := booruBrowserRoutes{configPath: config}
+	if err := rs.saveDownloadReceipt(receipt); err != nil {
+		t.Fatal(err)
+	}
+	record := mediaconvert.Record{
+		ID: id, Status: "complete",
+		Before: mediaconvert.Snapshot{Image: &models.ImageFile{BaseFile: &models.BaseFile{
+			ID: 12, Path: oldOriginal,
+			Fingerprints: models.Fingerprints{{Type: "md5", Fingerprint: receipt.OriginalMD5}},
+		}}},
+		After: mediaconvert.Snapshot{Image: &models.ImageFile{BaseFile: &models.BaseFile{
+			ID: 12, Path: active,
+			Fingerprints: models.Fingerprints{{Type: "md5", Fingerprint: activeMD5}},
+		}}},
+	}
+	root := filepath.Join(config, "media-conversions")
+	if err := os.MkdirAll(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, id+".json"), data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	report, err := rs.filenameMigrationReport()
+	if err != nil || report.ConvertedEligible != 1 || len(report.Items) != 1 ||
+		report.Items[0].Status != "ready-converted" ||
+		report.Items[0].OldPath != active ||
+		report.Items[0].NewPath != wanted {
+		t.Fatalf("later-converted original must migrate active output and history: %+v %v", report, err)
+	}
+	// A stale receipt must not override a conversion journal with the wrong
+	// original fingerprint.
+	record.Before.Image.BaseFile.Fingerprints = models.Fingerprints{{Type: "md5", Fingerprint: strings.Repeat("c", 32)}}
+	data, err = json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, id+".json"), data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	report, err = rs.filenameMigrationReport()
+	if err != nil || report.ConvertedEligible != 0 || len(report.Items) != 1 ||
+		report.Items[0].Status != "review" {
+		t.Fatalf("mismatched old snapshot must not be migrated: %+v %v", report, err)
+	}
+}
+
 func TestFilenameMigrationOffersConvertedVideoWithHistoryMigration(t *testing.T) {
 	receipt, previous, _ := filenameMigrationFixture(t)
 	source := booru.Source{ID: receipt.Source.ID, Name: receipt.Source.Name, URL: receipt.Source.URL}
