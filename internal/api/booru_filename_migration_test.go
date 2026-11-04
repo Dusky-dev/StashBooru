@@ -280,6 +280,53 @@ func TestFilenameMigrationOffersConvertedVideoWithHistoryMigration(t *testing.T)
 	}
 }
 
+func TestFilenameMigrationOffersRestoredOriginalWithJournal(t *testing.T) {
+	receipt, oldOriginal, newOriginal := filenameMigrationFixture(t)
+	id := strings.Repeat("f", 32)
+	oldConverted := strings.TrimSuffix(oldOriginal, ".jpg") + ".converted-" + id[:8] + ".jxl"
+	receipt.Library.Converted = true
+	receipt.Library.Path = oldConverted
+	receipt.Convert = true
+	// A successful restore has returned the original-format bytes to disk.
+	receipt.OriginalMD5, _ = mediaconvert.MD5(oldOriginal)
+	receipt.OutputMD5 = strings.Repeat("c", 32)
+
+	config := t.TempDir()
+	rs := booruBrowserRoutes{configPath: config}
+	if err := rs.saveDownloadReceipt(receipt); err != nil {
+		t.Fatal(err)
+	}
+	record := mediaconvert.Record{
+		ID: id, Status: "restored",
+		Before: mediaconvert.Snapshot{Image: &models.ImageFile{BaseFile: &models.BaseFile{
+			ID: 32, Path: oldOriginal,
+			Fingerprints: models.Fingerprints{{Type: "md5", Fingerprint: receipt.OriginalMD5}},
+		}}},
+		After: mediaconvert.Snapshot{Image: &models.ImageFile{BaseFile: &models.BaseFile{
+			ID: 32, Path: oldConverted,
+			Fingerprints: models.Fingerprints{{Type: "md5", Fingerprint: receipt.OutputMD5}},
+		}}},
+	}
+	root := filepath.Join(config, "media-conversions")
+	if err := os.MkdirAll(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, id+".json"), data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	report, err := rs.filenameMigrationReport()
+	if err != nil || report.ConvertedEligible != 1 || len(report.Items) != 1 ||
+		report.Items[0].Status != "ready-converted" ||
+		report.Items[0].OldPath != oldOriginal ||
+		report.Items[0].NewPath != newOriginal {
+		t.Fatalf("restored original must migrate both conversion-history paths: %+v %v", report, err)
+	}
+}
+
 func TestFilenameMigrationJXLApplyNeedsExplicitRestoreLossConfirmation(t *testing.T) {
 	rs := booruBrowserRoutes{configPath: t.TempDir()}
 	request := httptest.NewRequest("POST", "/booru-browser/filename-migration",
