@@ -16,9 +16,10 @@ import (
 	"github.com/stashapp/stash/pkg/mediaconvert"
 )
 
-// The v1 upgrader handles verified same-folder, non-converted moves only.
-// Converted assets need coordinated updates of the restoration journal; never
-// offer a destructive file rename without that guarantee.
+// The v1 upgrader handles verified same-folder, non-converted moves. Active
+// converted JXL can be renamed only with a separate explicit acknowledgement:
+// its original conversion journal is intentionally not rewritten and future
+// conversion restoration will no longer work.
 const booruFilenameMigrationVersion = "category-separator-v1"
 const booruFilenameMigrationMaxReceipts = 2000
 
@@ -37,6 +38,7 @@ type booruFilenameMigrationReport struct {
 	Version   string                       `json:"version"`
 	Dismissed bool                         `json:"dismissed"`
 	Eligible  int                          `json:"eligible"`
+	ConvertedEligible int                 `json:"convertedEligible"`
 	Review    int                          `json:"review"`
 	Truncated bool                         `json:"truncated"`
 	Items     []booruFilenameMigrationItem `json:"items"`
@@ -45,6 +47,7 @@ type booruFilenameMigrationReport struct {
 type booruFilenameMigrationRequest struct {
 	Action   string   `json:"action"`
 	Receipts []string `json:"receipts,omitempty"`
+	AcceptRestoreLoss bool `json:"acceptRestoreLoss,omitempty"`
 }
 
 func (rs booruBrowserRoutes) filenameMigrationDismissed() bool {
@@ -293,6 +296,84 @@ func checkFilenameMigrationRestorationRisk(item *booruFilenameMigrationItem, rec
 	}
 }
 
+// A JXL rename does not re-encode media. The existing conversion journal
+// remains intact, but it will not be able to restore by its original output
+// path. Only an unambiguous, completed conversion for this exact native file
+// can be offered under a separate irreversible-restore confirmation.
+func filenameMigrationActiveJXLRecords(configPath string) (map[string]*mediaconvert.Record, error) {
+	records := make(map[string]*mediaconvert.Record)
+	references := make(map[string]int)
+	for _, directory := range []string{"media-conversions", "media-upscaling-restores"} {
+		store := mediaconvert.Store{Root: filepath.Join(configPath, directory)}
+		history, err := store.History()
+		if err != nil {
+			return nil, fmt.Errorf("reading %s conversion history: %w", directory, err)
+		}
+		for _, record := range history {
+			before, after := record.Before.File(), record.After.File()
+			for _, media := range []interface{ Base() *models.BaseFile }{} {
+				_ = media
+			}
+			if before != nil {
+				references[filepath.Clean(before.Base().Path)]++
+			}
+			if after != nil {
+				references[filepath.Clean(after.Base().Path)]++
+				if directory == "media-conversions" && record.Status == "complete" &&
+					strings.EqualFold(filepath.Ext(after.Base().Path), ".jxl") {
+					path := filepath.Clean(after.Base().Path)
+					records[path] = record
+				}
+			}
+		}
+	}
+	for path, record := range records {
+		if references[path] != 1 || references[filepath.Clean(record.Before.File().Base().Path)] != 1 {
+			delete(records, path)
+		}
+	}
+	return records, nil
+}
+
+// Converted files are never enabled by the regular safe-rename path. Their
+// separate action acknowledges that the untouched conversion journal loses
+// its restore capability after the move.
+func checkFilenameMigrationJXLEligibility(item *booruFilenameMigrationItem, receipt booruDownloadReceipt, history map[string]bool, records map[string]*mediaconvert.Record, historyErr error) {
+	if item == nil || receipt.Library == nil || !receipt.Library.Converted ||
+		!strings.EqualFold(filepath.Ext(receipt.Library.Path), ".jxl") ||
+		item.Status != "review" || item.NewPath == "" {
+		return
+	}
+	if historyErr != nil || receipt.OutputMD5 == "" || !strings.EqualFold(filepath.Ext(item.NewPath), ".jxl") {
+		return
+	}
+	oldPath := filepath.Clean(receipt.Library.Path)
+	record := records[oldPath]
+	if record == nil || record.Before.File() == nil || record.After.File() == nil ||
+		record.Status != "complete" ||
+		filepath.Clean(record.Before.File().Base().Path) != filepath.Clean(receipt.SavedPath) ||
+		filepath.Clean(record.After.File().Base().Path) != oldPath ||
+		record.Before.File().Base().Fingerprints.GetString("md5") != receipt.OriginalMD5 ||
+		record.After.File().Base().Fingerprints.GetString("md5") != receipt.OutputMD5 ||
+		filepath.Dir(item.NewPath) != filepath.Dir(oldPath) ||
+		history[filepath.Clean(item.NewPath)] {
+		return
+	}
+	if stat, err := os.Lstat(oldPath); err != nil || !stat.Mode().IsRegular() {
+		item.Reason = "Converted file is missing or is not a regular file"
+		return
+	}
+	if _, err := os.Lstat(item.NewPath); err == nil {
+		item.Reason = "Destination already exists; never overwrite"
+		return
+	} else if !errors.Is(err, os.ErrNotExist) {
+		item.Reason = "Destination could not be checked"
+		return
+	}
+	item.Status = "ready-converted"
+	item.Reason = "JXL rename only: restoring the original through conversion history will no longer work"
+}
+
 func (rs booruBrowserRoutes) filenameMigrationReport() (booruFilenameMigrationReport, error) {
 	report := booruFilenameMigrationReport{
 		Version: booruFilenameMigrationVersion, Dismissed: rs.filenameMigrationDismissed(),
@@ -307,6 +388,8 @@ func (rs booruBrowserRoutes) filenameMigrationReport() (booruFilenameMigrationRe
 		return report, err
 	}
 	restorationPaths, historyErr := filenameMigrationRestorationPaths(rs.configPath)
+	convertedRecords, convertedErr := filenameMigrationActiveJXLRecords(rs.configPath)
+	if historyErr == nil { historyErr = convertedErr }
 	for i, entry := range entries {
 		if i >= booruFilenameMigrationMaxReceipts {
 			report.Truncated = true
@@ -324,10 +407,14 @@ func (rs booruBrowserRoutes) filenameMigrationReport() (booruFilenameMigrationRe
 			continue
 		}
 		checkFilenameMigrationRestorationRisk(item, *receipt, restorationPaths, historyErr)
+		checkFilenameMigrationJXLEligibility(item, *receipt, restorationPaths, convertedRecords, historyErr)
 		report.Items = append(report.Items, *item)
-		if item.Status == "ready" {
+		switch item.Status {
+		case "ready":
 			report.Eligible++
-		} else {
+		case "ready-converted":
+			report.ConvertedEligible++
+		default:
 			report.Review++
 		}
 	}
