@@ -392,8 +392,8 @@ export function BooruFilenameMigration({
             variant="warning"
             disabled={
               busy ||
-                !acceptRestoreLoss ||
-                selectedConvertedEligible.length === 0
+              !acceptRestoreLoss ||
+              selectedConvertedEligible.length === 0
             }
             onClick={() => void apply(true)}
           >
