@@ -167,7 +167,7 @@ export function BooruFilenameMigration({
           succeeded +
           " file(s) without re-encoding." +
           (converted
-            ? " Their conversion-history paths were updated; restoration still requires a valid cached original."
+            ? " Their conversion-history paths were updated; restore/reapply still requires the inactive-format cache."
             : "")
       );
       if (failures) setError(failures + " file(s) need manual review.");
@@ -238,13 +238,12 @@ export function BooruFilenameMigration({
           </Alert>
           {(report?.convertedEligible ?? 0) > 0 && (
             <Alert variant="warning">
-              <strong>Converted media:</strong> The original and converted paths
-              in the conversion journal will be migrated with the native file
-              and download receipt. Restoration stays available when the
-              original is still cached. Back up media, database, receipts and
-              conversion history first: filesystem, database and journal changes
-              are not yet guaranteed atomic across a process crash. Converted files
-              are never selected automatically.
+              <strong>Converted or restored media:</strong> Both stored paths in
+              conversion history will be migrated with the native file and
+              receipt. Restore and reapply remain available while the required
+              inactive version is cached. Back up media, database, receipts,
+              and conversion history: these changes are not crash-atomic.
+              Nothing is selected automatically.
             </Alert>
           )}
           {error && <Alert variant="warning">{error}</Alert>}
@@ -273,7 +272,9 @@ export function BooruFilenameMigration({
                 size="sm"
                 disabled={busy || convertedEligible.length === 0}
                 onClick={() =>
-                  setSelectedConverted(convertedEligible.map((item) => item.receipt))
+                  setSelectedConverted(
+                     convertedEligible.map((item) => item.receipt)
+                   )
                 }
               >
                 Select eligible converted
@@ -359,11 +360,13 @@ export function BooruFilenameMigration({
           )}
           {(report?.convertedEligible ?? 0) > 0 && (
             <Form.Check
-              id="booru-jxl-restore-loss"
+              id="booru-conversion-history-migration"
               type="checkbox"
               disabled={busy}
               checked={acceptHistoryMigration}
-              onChange={(event) => setAcceptHistoryMigration(event.target.checked)}
+              onChange={(event) =>
+                 setAcceptHistoryMigration(event.target.checked)
+               }
               label="I backed up my library and understand that converted-file renaming updates both native media and conversion history, but is not crash-atomic."
             />
           )}
