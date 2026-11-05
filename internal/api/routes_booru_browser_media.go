@@ -208,8 +208,8 @@ func publicBooruPost(source booru.Source, post booru.Post, captureTags ...bool) 
 	return post
 }
 
- // SharedOpen redirects only explicit user clicks on opaque, server-issued link
- // tokens. Links and access keys never appear in the search API response.
+// SharedOpen redirects only explicit user clicks on opaque, server-issued link
+// tokens. Links and access keys never appear in the search API response.
 func (rs booruBrowserRoutes) SharedOpen(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "private, no-store")
 	w.Header().Set("Referrer-Policy", "no-referrer")

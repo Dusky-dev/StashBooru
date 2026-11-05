@@ -2,10 +2,10 @@ package api
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
-    "net/http"
-    "net/http/httptest"
 
 	"github.com/stashapp/stash/pkg/booru"
 )
@@ -56,38 +56,38 @@ func TestPawchiveSharedLinksUseSeparatePrivateSnapshots(t *testing.T) {
 }
 
 func TestPawchiveSharedFolderHasOpenLinkButNoUnsafeDownload(t *testing.T) {
-    raw := "https://mega.nz/folder/abcDEF123#abcdef1234567890"
-    source := booru.SharedLinkSource()
-    item, err := booru.SharedLinkPost(raw)
-    if err != nil {
-        t.Fatal(err)
-    }
-    pub := publicBooruPost(source, item)
-    if pub.DownloadAvailable || pub.MediaKey == "" ||
-        pub.OriginalURL != raw {
-        t.Fatalf("shared folder should have a server token but no download: %+v", pub)
-    }
-    data, err := json.Marshal(pub)
-    if err != nil {
-        t.Fatal(err)
-    }
-    if strings.Contains(string(data), "abcdef1234567890") {
-        t.Fatal("MEGA folder decryption key leaked in public response")
-    }
-    route := booruBrowserRoutes{}
-    request := httptest.NewRequest(http.MethodGet,
-        "/booru-browser/shared-open?key="+pub.MediaKey, nil)
-    result := httptest.NewRecorder()
-    route.SharedOpen(result, request)
-    if result.Code != http.StatusSeeOther ||
-        result.Header().Get("Location") != raw {
-        t.Fatalf("provider opening failed: HTTP %d Location=%q",
-            result.Code, result.Header().Get("Location"))
-    }
-    bad := httptest.NewRecorder()
-    route.SharedOpen(bad, httptest.NewRequest(http.MethodGet,
-        "/booru-browser/shared-open?key=invalid", nil))
-    if bad.Code != http.StatusGone {
-        t.Fatalf("invalid token not rejected: %d", bad.Code)
-    }
+	raw := "https://mega.nz/folder/abcDEF123#abcdef1234567890"
+	source := booru.SharedLinkSource()
+	item, err := booru.SharedLinkPost(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pub := publicBooruPost(source, item)
+	if pub.DownloadAvailable || pub.MediaKey == "" ||
+		pub.OriginalURL != raw {
+		t.Fatalf("shared folder should have a server token but no download: %+v", pub)
+	}
+	data, err := json.Marshal(pub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(data), "abcdef1234567890") {
+		t.Fatal("MEGA folder decryption key leaked in public response")
+	}
+	route := booruBrowserRoutes{}
+	request := httptest.NewRequest(http.MethodGet,
+		"/booru-browser/shared-open?key="+pub.MediaKey, nil)
+	result := httptest.NewRecorder()
+	route.SharedOpen(result, request)
+	if result.Code != http.StatusSeeOther ||
+		result.Header().Get("Location") != raw {
+		t.Fatalf("provider opening failed: HTTP %d Location=%q",
+			result.Code, result.Header().Get("Location"))
+	}
+	bad := httptest.NewRecorder()
+	route.SharedOpen(bad, httptest.NewRequest(http.MethodGet,
+		"/booru-browser/shared-open?key=invalid", nil))
+	if bad.Code != http.StatusGone {
+		t.Fatalf("invalid token not rejected: %d", bad.Code)
+	}
 }

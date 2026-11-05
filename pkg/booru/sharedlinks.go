@@ -219,8 +219,8 @@ func LinkedMediaFromPawchiveContent(content, pawchivePostURL string) ([]Post, in
 // ValidMegaSharedFolderURL accepts only public MEGA folder shares with a
 // complete key, for explicit opening on the provider's website.
 func ValidMegaSharedFolderURL(raw string) bool {
-    u, err := url.Parse(raw)
-    return err == nil && isMegaFolderShare(u)
+	u, err := url.Parse(raw)
+	return err == nil && isMegaFolderShare(u)
 }
 
 func isMegaFolderShare(u *url.URL) bool {

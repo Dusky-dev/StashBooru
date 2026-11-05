@@ -529,52 +529,52 @@ func TestPawchiveArchiveExtractsSharedLinksWithoutLosingAttachments(t *testing.T
 }
 
 func TestPawchivePostDetailDiscoversLinksNotInSearchListing(t *testing.T) {
-    source := testSource("pawchive")
-    var listed object
-    _ = json.Unmarshal([]byte(`{"id":"174460964","user":"3295915","service":"patreon","title":"Archived work"}`), &listed)
-    post, err := parseArchivePost(source, listed)
-    if err != nil || len(post.Attachments) != 0 {
-        t.Fatalf("list fixture already has linked files: %+v %v", post, err)
-    }
-    calls := 0
-    client := testClient(func(req *http.Request) (*http.Response, error) {
-        calls++
-        if req.URL.Path != "/api/v1/patreon/user/3295915/post/174460964" {
-            t.Fatalf("requested wrong post: %s", req.URL)
-        }
-        return response(http.StatusOK, `{
-            "post":{"id":"174460964","user":"3295915","service":"patreon",
-              "title":"Archived work",
-              "content":"Preview https://mega.nz/folder/abcDEF123#abcdef1234567890 and https://www.dropbox.com/scl/fi/abcDEF123/preview.png?rlkey=abcdef123456"},
-            "attachments":[{"path":"/media/cover.jpg","name":"cover.jpg"}]
-        }`), nil
-    })
-    detailed, err := client.PawchivePostDetail(context.Background(), source, post)
-    if err != nil || calls != 1 || detailed.ID != post.ID ||
-        len(detailed.Attachments) != 2 ||
-        detailed.Attachments[0].Format != "folder" || detailed.Attachments[0].DownloadAvailable ||
-        detailed.Attachments[1].Format != "png" || !detailed.Attachments[1].DownloadAvailable ||
-        detailed.Format != "jpg" {
-        t.Fatalf("post-detail link discovery lost originals/links: %+v %v calls=%d", detailed, err, calls)
-    }
+	source := testSource("pawchive")
+	var listed object
+	_ = json.Unmarshal([]byte(`{"id":"174460964","user":"3295915","service":"patreon","title":"Archived work"}`), &listed)
+	post, err := parseArchivePost(source, listed)
+	if err != nil || len(post.Attachments) != 0 {
+		t.Fatalf("list fixture already has linked files: %+v %v", post, err)
+	}
+	calls := 0
+	client := testClient(func(req *http.Request) (*http.Response, error) {
+		calls++
+		if req.URL.Path != "/api/v1/patreon/user/3295915/post/174460964" {
+			t.Fatalf("requested wrong post: %s", req.URL)
+		}
+		return response(http.StatusOK, `{
+			"post":{"id":"174460964","user":"3295915","service":"patreon",
+			  "title":"Archived work",
+			  "content":"Preview https://mega.nz/folder/abcDEF123#abcdef1234567890 and https://www.dropbox.com/scl/fi/abcDEF123/preview.png?rlkey=abcdef123456"},
+			"attachments":[{"path":"/media/cover.jpg","name":"cover.jpg"}]
+		}`), nil
+	})
+	detailed, err := client.PawchivePostDetail(context.Background(), source, post)
+	if err != nil || calls != 1 || detailed.ID != post.ID ||
+		len(detailed.Attachments) != 2 ||
+		detailed.Attachments[0].Format != "folder" || detailed.Attachments[0].DownloadAvailable ||
+		detailed.Attachments[1].Format != "png" || !detailed.Attachments[1].DownloadAvailable ||
+		detailed.Format != "jpg" {
+		t.Fatalf("post-detail link discovery lost originals/links: %+v %v calls=%d", detailed, err, calls)
+	}
 }
 
 func TestPawchivePostDetailRejectsMismatchedResponse(t *testing.T) {
-    source := testSource("pawchive")
-    var listed object
-    _ = json.Unmarshal([]byte(`{"id":"174460964","user":"3295915","service":"patreon"}`), &listed)
-    post, err := parseArchivePost(source, listed)
-    if err != nil {
-        t.Fatal(err)
-    }
-    client := testClient(func(*http.Request) (*http.Response, error) {
-        return response(http.StatusOK, `{"id":"174460965","user":"3295915","service":"patreon"}`), nil
-    })
-    if _, err := client.PawchivePostDetail(context.Background(), source, post); err == nil {
-        t.Fatal("different Pawchive post was accepted")
-    }
-    post.PostURL = "https://evil.example/secret"
-    if _, err := client.PawchivePostDetail(context.Background(), source, post); err == nil {
-        t.Fatal("off-site post identity was accepted")
-    }
+	source := testSource("pawchive")
+	var listed object
+	_ = json.Unmarshal([]byte(`{"id":"174460964","user":"3295915","service":"patreon"}`), &listed)
+	post, err := parseArchivePost(source, listed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := testClient(func(*http.Request) (*http.Response, error) {
+		return response(http.StatusOK, `{"id":"174460965","user":"3295915","service":"patreon"}`), nil
+	})
+	if _, err := client.PawchivePostDetail(context.Background(), source, post); err == nil {
+		t.Fatal("different Pawchive post was accepted")
+	}
+	post.PostURL = "https://evil.example/secret"
+	if _, err := client.PawchivePostDetail(context.Background(), source, post); err == nil {
+		t.Fatal("off-site post identity was accepted")
+	}
 }
