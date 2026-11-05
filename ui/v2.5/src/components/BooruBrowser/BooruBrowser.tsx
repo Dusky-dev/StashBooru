@@ -329,18 +329,20 @@ function PostInspection({
                           alt="Pawchive post cover (not a folder file preview)"
                         />
                         <p className="small text-muted">
-                          Pawchive post cover — folder thumbnails are available on MEGA.
+                          Pawchive post cover — folder thumbnails are available
+                          on MEGA.
                         </p>
                       </>
                     ) : (
                       <Alert variant="secondary">
-                        MEGA folder — open the provider to browse image/video thumbnails.
+                        MEGA folder — open the provider to browse image/video
+                        thumbnails.
                       </Alert>
                     )}
                   </div>
                 ) : ["zip", "cbz", "7z"].includes(
-                  asset.format?.toLowerCase() ?? ""
-                ) ? (
+                    asset.format?.toLowerCase() ?? ""
+                  ) ? (
                   <BooruArchive
                     post={asset}
                     scrollBody={scrollBody}
@@ -868,10 +870,9 @@ function SourceResults({
     const postID = post.id;
     const controller = new AbortController();
     setDetailsLoading(true);
-    void fetch(
-      `booru-browser/post-details?${new URLSearchParams({ key })}`,
-      { signal: controller.signal }
-    )
+    void fetch(`booru-browser/post-details?${new URLSearchParams({ key })}`, {
+      signal: controller.signal,
+    })
       .then(readBooruResponse<{ post: BooruPost }>)
       .then((result) => {
         if (!controller.signal.aborted && result.post.id === postID)
