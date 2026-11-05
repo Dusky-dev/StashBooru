@@ -129,9 +129,7 @@ func estimatePortableMemberName(imageID int, originalPath string) string {
 		extension = ".img"
 	} else {
 		for _, ch := range extension[1:] {
-			if !((ch >= 'a' && ch <= 'z') ||
-				(ch >= 'A' && ch <= 'Z') ||
-				(ch >= '0' && ch <= '9')) {
+			if !strings.ContainsRune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", ch) {
 				extension = ".img"
 				break
 			}

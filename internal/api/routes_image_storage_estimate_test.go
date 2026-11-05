@@ -131,7 +131,7 @@ func TestStorageEstimatePortableMemberName(t *testing.T) {
 	}
 
 	member := estimateSourceMember{
-		ID: "image:34526",
+		ID:   "image:34526",
 		Name: estimatePortableMemberName(34526, "/srv/artist (summer) [1].jpg"),
 		Path: "/srv/artist (summer) [1].jpg",
 	}
