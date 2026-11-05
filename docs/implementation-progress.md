@@ -9,6 +9,14 @@
 - Added matching, API, SQLite integration and desktop/mobile browser regression cases. Local execution unavailable in this connector-only workspace; CI checks and review are pending. No production database or real media were changed.
 
 
+## Portable source filenames in storage estimates — 2026-11-05
+
+- Baseline: `develop` `9763546984ca242361e5a769f7ab31e3881d1f69`; branch `fix/storage-estimate-portable-member-names-20261105`. Owner's real-library automatic byte-exact sample evaluated four pHash groups but failed both methods because the P12/P13 proof scripts default to source filenames and restrict export labels to a portable ASCII subset. The ID prefix in the error was contextual; the rejected text was the original basename.
+- Both manual Visual Stack and automatic pHash groups now supply deterministic `name: image-<ID>.<safe-extension>` in the temporary read-only JSON. Invalid or absent extensions become `.img`. The original absolute file path, media ID, original basename provenance, bytes and catalogue remain unchanged.
+- Regression: Go tests for safe names, fallbacks, JSON identity/path preservation; Python fixture proves that a Unicode/punctuation original can be estimated by both P12/P13 methods in byte-exact mode without touching source contents/mtime.
+- CI checks pending on this branch; production owner-library retest after publication is still necessary. There is no packing activation, original eviction or realized disk saving.
+
+
 ## Automatic, read-only image storage sample — 2026-11-05
 
 - Baseline: `develop` `a7b46be38365810932b83a143f9869d04ed1c3ab`; branch `feat/automatic-image-storage-estimates-20261105`. The existing estimator required manually entering Visual Stack IDs and displayed the operational safety warning as an error-like banner.

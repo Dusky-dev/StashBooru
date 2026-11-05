@@ -60,6 +60,27 @@ class StorageEstimatorTests(unittest.TestCase):
         self.assertEqual(sorted(p.name for p in self.root.iterdir()),
                          ["original.png", "variant.png"])
 
+    def test_portable_labels_keep_unsafe_original_filenames_unchanged(self):
+        # The Go storage-task adapter supplies these labels because real
+        # library names commonly include Unicode, brackets and punctuation.
+        original = self.root / "artist (夏) [set] ♥.png"
+        original.write_bytes(self.first.read_bytes())
+        member_group = {
+            "id": "sample:phash:34526",
+            "representative": "image:34526",
+            "members": [
+                {"id": "image:34526", "name": "image-34526.png", "path": str(original)},
+                {"id": "image:49812", "name": "image-49812.png", "path": str(self.second)},
+            ],
+        }
+        before = (original.read_bytes(), original.stat().st_mtime_ns)
+        report = estimate.estimate([member_group], "byte-exact", 0, 0)
+        self.assertEqual(report["groupsFailed"], 0, report)
+        self.assertEqual(len(report["results"][0]["methods"]), 2)
+        self.assertTrue(all(item["verifiedDuringPlanning"]
+                            for item in report["results"][0]["methods"]))
+        self.assertEqual((original.read_bytes(), original.stat().st_mtime_ns), before)
+
     def test_non_selected_method_is_not_counted_as_savings(self):
         group = {"id": "broken", "members": [
             {"id": "image:1", "path": "/a/no-such-file.png"}]}
