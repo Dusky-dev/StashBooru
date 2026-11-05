@@ -267,9 +267,7 @@ try {
     await page
       .getByRole("button", { name: "Analyze sample automatically" })
       .click();
-    await page
-      .locator("#image-storage-estimate-extended")
-      .check();
+    await page.locator("#image-storage-estimate-extended").check();
     await page
       .getByRole("button", { name: "Analyze sample automatically" })
       .click();
