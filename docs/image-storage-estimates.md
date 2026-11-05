@@ -56,24 +56,39 @@ does not download them automatically.
 
 ## Native Settings task (experimental)
 
-The task in **Settings → Tasks → Inspect media → Experimental image storage
-estimate** accepts **one to eight distinct Visual Stack IDs** separated by
-commas or whitespace. It resolves all image paths from StashBooru's catalogue
-on the server, never from user-supplied filesystem paths. Each selected stack
-must contain 2–16 images with regular primary files; video/mixed stacks,
-repeated IDs, and oversized selections are rejected.
+The default **Analyze sample automatically** action needs no IDs. It
+takes up to four small eligible image groups from the existing image-only
+Visual Stacks (2–16 files), then fills any remaining slots using existing
+primary-file pHash clusters with Hamming distance ≤4. It skips unavailable,
+symlinked and oversized sources, existing stack members in auto pHash samples,
+and groups that exceed 32 MiB/file or 96 MiB/group. No hashing, media scan,
+image grouping, file update, model download, or new persistent Visual Stack
+is performed by this action. If no eligible groups exist, the task explains
+how to create a Visual Stack or generate pHashes.
 
-Choose **Byte-exact** (recommended) or explicitly select **Pixel-exact**,
-acknowledge the warning, and click **Estimate savings (read-only)**. The job
-queue tracks completion and errors. **Refresh report** shows the most recent
-comparison of P12 and P13 candidates, expected sizes and hypothetical savings.
+This is a **bounded convenience sample**, not a representative or full-library
+estimate; the reported hypothetical savings apply only to files actually
+sampled, and should never be extrapolated across the entire library.
+pHash proximity is a candidate-selection hint, **not** proof of duplicate
+files or guaranteed storage savings. Each P12/P13 proposal is still checked
+using actual original bytes and strict reconstruction.
+
+For a specific set, enable **Advanced: enter specific Visual Stack IDs** and
+provide 1–8 distinct IDs separated by commas or spaces. The server resolves
+current paths from its own catalogue; the browser cannot supply file paths.
+Only image-only 2–16-member stacks are allowed in this manual mode.
+
+Leave **Byte-exact** (recommended) selected, then choose automatic or manual
+estimate. **Pixel-exact** remains an explicit experimental option and may
+change container bytes. The job queue tracks completion and errors; **Refresh
+report** shows the latest candidate comparison and sample scope.
 The task requires the Python estimator and its P12/P13 scripts installed
 beside the server (or an explicit `STASH_IMAGE_STORAGE_ESTIMATE_SCRIPT` path).
 
 The batch extension evaluates up to eight existing Visual Stacks at a time
 and reports per-stack recommendations plus hypothetical total savings and the
 increased footprint if candidate packs were retained alongside originals.
-It does **not** automatically scan or cluster the whole library, publish
+It does **not** automatically scan or create Visual Stacks for the whole library, publish
 archive packs, delete original files, or serve reconstructed image data.
 
 ## What this does not establish
