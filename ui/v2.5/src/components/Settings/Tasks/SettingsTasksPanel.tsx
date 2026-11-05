@@ -34,11 +34,6 @@ const sections = defineMessages({
     id: "config.tasks.sections.profiles",
     defaultMessage: "Review profiles & associations",
   },
-  profiles_help: {
-    id: "config.tasks.sections.profiles_help",
-    defaultMessage:
-      "Preview duplicate Character merges and changes to inherited associations before applying them.",
-  },
   media: {
     id: "config.tasks.sections.media",
     defaultMessage: "Inspect media",
@@ -99,7 +94,6 @@ export const SettingsTasksPanel: React.FC = () => {
         <SettingsDisclosure
           id="tasks-profiles"
           title={intl.formatMessage(sections.profiles)}
-          description={intl.formatMessage(sections.profiles_help)}
         >
           <CharacterDedupTask />
           <hr />

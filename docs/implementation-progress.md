@@ -1,5 +1,14 @@
 # StashBooru implementation progress
 
+## Selectable Character dedup review — 2026-11-05
+
+- Baseline: `develop` `9763546984ca242361e5a769f7ab31e3881d1f69`; branch `feat/selectable-character-dedup-decisions-20261105`.
+- Character duplicate candidates are now unchecked by default. Users can select one, multiple or all preview groups, review across pages, and run only selected merges in the existing atomic native job. Apply rechecks the full preview fingerprint and server-approved destination IDs.
+- Users can mark proposed groups as **Not duplicate** (per-row or selected in bulk). Persistent SQLite migration 103 stores ordered native Character-ID pair exclusions, honors them across previews, prevents transitive group merges, and cleans decisions up on Character deletion. **Suggest again** restores individual excluded pairs.
+- Removed the lengthy inline task description and the profiles section summary. The native question-mark icon opens the built-in Tasks help page containing usage, preservation, and safety details.
+- Added matching, API, SQLite integration and desktop/mobile browser regression cases. Local execution unavailable in this connector-only workspace; CI checks and review are pending. No production database or real media were changed.
+
+
 ## Portable source filenames in storage estimates — 2026-11-05
 
 - Baseline: `develop` `9763546984ca242361e5a769f7ab31e3881d1f69`; branch `fix/storage-estimate-portable-member-names-20261105`. Owner's real-library automatic byte-exact sample evaluated four pHash groups but failed both methods because the P12/P13 proof scripts default to source filenames and restrict export labels to a portable ASCII subset. The ID prefix in the error was contextual; the rejected text was the original basename.

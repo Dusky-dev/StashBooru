@@ -135,3 +135,38 @@ func TestSnapshotIncludesPrivateRelationshipContainers(t *testing.T) {
 		})
 	}
 }
+
+func TestRejectedPairBlocksTransitiveMerge(t *testing.T) {
+	records := []record{
+		candidate(1, "Hatsune Miku", 1),
+		candidate(2, "Miku Hatsune", 1),
+		candidate(3, "Miku", 1),
+	}
+	original, err := plan(records)
+	require.NoError(t, err)
+	require.Len(t, original.Groups, 1)
+	require.Len(t, original.Groups[0].Sources, 2)
+
+	rejected, err := planWithExclusions(records, []models.CharacterDedupPair{{LeftID: 1, RightID: 2}})
+	require.NoError(t, err)
+	require.NotEqual(t, original.Fingerprint, rejected.Fingerprint)
+	require.Empty(t, rejected.Groups)
+	require.Len(t, rejected.Ignored, 1)
+	require.Len(t, rejected.Skipped, 3)
+	require.Equal(t, "marked as not duplicate", rejected.Skipped[0].Reason)
+}
+
+func TestSelectedGroupsMustMatchCurrentPreview(t *testing.T) {
+	groups := []Group{
+		{Destination: Character{ID: 1}},
+		{Destination: Character{ID: 3}},
+	}
+	selected, err := selectGroups(groups, []int{3})
+	require.NoError(t, err)
+	require.Len(t, selected, 1)
+	require.Equal(t, 3, selected[0].Destination.ID)
+	for _, ids := range [][]int{nil, {}, {1, 1}, {42}, {1, 42}, {-1}} {
+		_, err := selectGroups(groups, ids)
+		require.Error(t, err)
+	}
+}

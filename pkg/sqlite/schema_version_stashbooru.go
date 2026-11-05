@@ -2,7 +2,7 @@ package sqlite
 
 // Keep the fork schema version aligned with its highest embedded migration.
 func init() {
-	if appSchemaVersion < 102 {
-		appSchemaVersion = 102
+	if appSchemaVersion < 103 {
+		appSchemaVersion = 103
 	}
 }

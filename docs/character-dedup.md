@@ -7,14 +7,16 @@ This package starts at develop `f5579d46940dcc8ad6a96d69c264908f36be85d6`.
 ## Use
 
 Open **Settings → Tasks → Merge duplicate Characters**. Preview the proposed
-survivors, source Characters and native Copyright links. Groups and skips are
-paginated. Applying runs all eligible groups in the native job queue; cancel there
-before completion to roll back the batch. A failed job remains available with its
+survivors, source Characters and native Copyright links. Groups, skips and saved exclusions are
+paginated. Nothing is preselected. Applying only the selected eligible groups
+runs in the native job queue; cancel there before completion to roll back the batch. A failed job remains available with its
 error. Changed catalogues require a fresh preview. No merge runs on scan/startup.
 
 Names and Copyrights are evidence rather than proof of identity: review each group.
-To exclude a proposed group, correct its identity/context or use native manual
-merging instead. Completed merges remove source Character records; undo is not
+To exclude a proposed group, choose **Not duplicate** (or select several groups
+and choose **Mark selected as not duplicates**). Pair decisions persist in the
+native database, and **Suggest again** restores a pair to future reviews.
+A rejected pair blocks its entire candidate group to avoid transitive merging. Completed merges remove source Character records; undo is not
 provided. Their media files and media IDs remain unchanged.
 
 ## Matching contract
@@ -37,8 +39,9 @@ provided. Their media files and media IDs remain unchanged.
   flags and earliest creation time. Transfer Image, Video and Gallery links.
   Direct Copyrights already match. Removed canonical names are stored as
   Copyright-qualified aliases to avoid introducing broad short-name auto-tagging.
-- Preview hashes all Character identities/context/profile/related values and portrait
-  digests. Apply reloads and revalidates inside one write transaction. An error or
+- Preview hashes all Character identities/context/profile/related values, portrait
+  digests and saved exclusions. Selected destination IDs are rechecked against
+  the fresh plan before merging. User decisions are saved in migration 103. Apply reloads and revalidates inside one write transaction. An error or
   cancellation before commit rolls back the entire batch. Media link edits need
   no stale rejection because the latest native links transfer at apply time.
 - The first version supports up to 10,000 Characters per library and aborts above
