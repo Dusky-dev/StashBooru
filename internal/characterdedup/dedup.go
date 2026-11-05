@@ -410,26 +410,139 @@ func Preview(ctx context.Context, repo models.Repository) (Plan, error) {
 	return result, err
 }
 
+// selectGroups accepts only destination IDs from a fresh preview.
+func selectGroups(groups []Group, ids []int) ([]Group, error) {
+	if len(ids) == 0 || len(ids) > len(groups) {
+		return nil, errors.New("select one or more eligible Character merge groups")
+	}
+	wanted := map[int]bool{}
+	for _, id := range ids {
+		if id <= 0 || wanted[id] {
+			return nil, errors.New("invalid or repeated Character merge selection")
+		}
+		wanted[id] = true
+	}
+	result := []Group{}
+	for _, g := range groups {
+		if wanted[g.Destination.ID] {
+			result = append(result, g)
+			delete(wanted, g.Destination.ID)
+		}
+	}
+	if len(wanted) != 0 {
+		return nil, errors.New("Character merge selection is no longer eligible; preview again")
+	}
+	return result, nil
+}
+
+// ChangeDecisions writes user-confirmed non-duplicate pairs or restores existing
+// decisions within the same transaction that verifies the current preview.
+func ChangeDecisions(ctx context.Context, repo models.Repository, fingerprint, action string, selected []int, pairs []models.CharacterDedupPair) (Plan, error) {
+	var updated Plan
+	err := repo.WithTxn(ctx, func(ctx context.Context) error {
+		rs, err := load(ctx, repo)
+		if err != nil {
+			return err
+		}
+		exclusions, err := repo.CharacterDedup.List(ctx)
+		if err != nil {
+			return err
+		}
+		current, err := planWithExclusions(rs, exclusions)
+		if err != nil {
+			return err
+		}
+		if fingerprint == "" || current.Fingerprint != fingerprint {
+			return errors.New("Character catalogue changed; preview again before changing decisions")
+		}
+		switch action {
+		case "exclude":
+			if len(pairs) > 0 {
+				return errors.New("invalid not-duplicate selection")
+			}
+			groups, err := selectGroups(current.Groups, selected)
+			if err != nil {
+				return err
+			}
+			rejected := []models.CharacterDedupPair{}
+			for _, g := range groups {
+				for _, source := range g.Sources {
+					rejected = append(rejected, characterPair(g.Destination.ID, source.ID))
+				}
+			}
+			if err := repo.CharacterDedup.Add(ctx, rejected); err != nil {
+				return err
+			}
+		case "restore":
+			if len(selected) != 0 || len(pairs) == 0 || len(pairs) > len(exclusions) {
+				return errors.New("invalid not-duplicate restoration")
+			}
+			known := map[models.CharacterDedupPair]bool{}
+			for _, pair := range exclusions {
+				known[pair] = true
+			}
+			seen := map[models.CharacterDedupPair]bool{}
+			for _, pair := range pairs {
+				if !known[pair] || seen[pair] {
+					return errors.New("not-duplicate decision changed; preview again")
+				}
+				seen[pair] = true
+			}
+			if err := repo.CharacterDedup.Remove(ctx, pairs); err != nil {
+				return err
+			}
+		default:
+			return errors.New("invalid Character review action")
+		}
+		exclusions, err = repo.CharacterDedup.List(ctx)
+		if err != nil {
+			return err
+		}
+		updated, err = planWithExclusions(rs, exclusions)
+		return err
+	})
+	return updated, err
+}
+
 // Apply revalidates and merges a reviewed batch in one transaction. Cancellation
 // or any failure rolls the entire batch back, including transferred relations.
 func Apply(ctx context.Context, repo models.Repository, fingerprint string, progress func(int, int)) error {
+	return apply(ctx, repo, fingerprint, nil, true, progress)
+}
+
+func ApplySelected(ctx context.Context, repo models.Repository, fingerprint string, selected []int, progress func(int, int)) error {
+	return apply(ctx, repo, fingerprint, selected, false, progress)
+}
+
+func apply(ctx context.Context, repo models.Repository, fingerprint string, selected []int, all bool, progress func(int, int)) error {
 	return repo.WithTxn(ctx, func(ctx context.Context) error {
 		rs, err := load(ctx, repo)
 		if err != nil {
 			return err
 		}
-		p, err := plan(rs)
+		exclusions, err := repo.CharacterDedup.List(ctx)
+		if err != nil {
+			return err
+		}
+		p, err := planWithExclusions(rs, exclusions)
 		if err != nil {
 			return err
 		}
 		if fingerprint == "" || fingerprint != p.Fingerprint {
 			return errors.New("Character catalogue changed; preview again before merging")
 		}
+		groups := p.Groups
+		if !all {
+			groups, err = selectGroups(p.Groups, selected)
+			if err != nil {
+				return err
+			}
+		}
 		byID := map[int]record{}
 		for _, r := range rs {
 			byID[r.Performer.ID] = r
 		}
-		for i, g := range p.Groups {
+		for i, g := range groups {
 			if err := ctx.Err(); err != nil {
 				return err
 			}
@@ -462,7 +575,7 @@ func Apply(ctx context.Context, repo models.Repository, fingerprint string, prog
 				}
 			}
 			if progress != nil {
-				progress(i+1, len(p.Groups))
+				progress(i+1, len(groups))
 			}
 		}
 		return ctx.Err()
