@@ -107,3 +107,19 @@ func TestSharedLinkProviderRedirectAllowsOnlyValidatedServerAssets(t *testing.T)
 		}
 	}
 }
+
+func TestPawchiveWrappedExternalLinksAndDropboxTracking(t *testing.T) {
+	wrapped := "https://www.patreon.com/redirect?url=https%3A%2F%2Fmega.nz%2Ffolder%2FabcDEF123%23abcdef1234567890"
+	actual := "https://mega.nz/folder/abcDEF123#abcdef1234567890"
+	// Dropbox st is an optional sharing/tracking query value and is dropped
+	// before downloading; the access rlkey is retained only server-side.
+	dropbox := "https://www.dropbox.com/scl/fi/abcDEF123/a.png?rlkey=abcdef123456&st=archiveShare987&dl=0"
+	posts, folders := LinkedMediaFromPawchiveContent(
+		`<a href="`+wrapped+`">See MEGA</a> `+actual+` `+dropbox,
+		"https://pawchive.pw/patreon/user/3295915/post/174460964",
+	)
+	if len(posts) != 2 || folders != 1 || posts[0].Format != "folder" ||
+		posts[1].Format != "png" || strings.Contains(posts[1].OriginalURL, "st=") {
+		t.Fatalf("Patreon link wrapper or Dropbox tracking prevented discovery: %+v folders=%d", posts, folders)
+	}
+}

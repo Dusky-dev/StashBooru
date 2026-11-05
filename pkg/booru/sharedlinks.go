@@ -101,7 +101,7 @@ func SharedLinkPost(raw string) (Post, error) {
 		}
 		query := u.Query()
 		for key := range query {
-			if key != "rlkey" && key != "dl" && key != "raw" {
+			if key != "rlkey" && key != "dl" && key != "raw" && key != "st" {
 				return Post{}, fmt.Errorf("dropbox link contains an unsupported query parameter")
 			}
 		}
@@ -182,6 +182,16 @@ func LinkedMediaFromPawchiveContent(content, pawchivePostURL string) ([]Post, in
 		candidate = strings.TrimRight(candidate, ".,;:!?)]}")
 		if len(candidate) > 2048 {
 			continue
+		}
+		// Patreon may wrap an external href in a first-party redirect.
+		// Only decode the nested URL; never follow it on the network.
+		if wrapper, err := url.Parse(candidate); err == nil &&
+			(wrapper.Hostname() == "patreon.com" || wrapper.Hostname() == "www.patreon.com") &&
+			(wrapper.Path == "/redirect" || wrapper.Path == "/redirect/") &&
+			wrapper.Scheme == "https" {
+			if target := wrapper.Query().Get("url"); target != "" {
+				candidate = target
+			}
 		}
 		u, err := url.Parse(candidate)
 		if err != nil {
