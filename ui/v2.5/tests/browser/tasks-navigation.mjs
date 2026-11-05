@@ -97,6 +97,7 @@ try {
             },
           ],
           skipped: [],
+          ignored: [],
         },
       });
     });
