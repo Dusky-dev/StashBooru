@@ -135,15 +135,26 @@ try {
       .getByText("60 Characters checked", { exact: false })
       .waitFor();
     assert.equal(await section.locator("tbody tr").first().count(), 1);
-    assert.equal(await section.locator("table").first().locator("tbody tr").count(), 25);
     assert.equal(
-      await section.getByRole("button", { name: "Merge 0 selected groups" }).isDisabled(),
+      await section.locator("table").first().locator("tbody tr").count(),
+      25
+    );
+    assert.equal(
+      await section
+        .getByRole("button", { name: "Merge 0 selected groups" })
+        .isDisabled(),
       true
     );
 
     await section.locator("#character-merge-1").check();
-    await section.getByRole("button", { name: "Next", exact: true }).first().click();
-    assert.equal(await section.locator("table").first().locator("tbody tr").count(), 1);
+    await section
+      .getByRole("button", { name: "Next", exact: true })
+      .first()
+      .click();
+    assert.equal(
+      await section.locator("table").first().locator("tbody tr").count(),
+      1
+    );
     await section.locator("#character-merge-51").check();
     await section
       .getByRole("button", { name: "Mark selected as not duplicates" })
@@ -151,16 +162,23 @@ try {
     await section.getByText("Not duplicates (2)").waitFor();
     assert.equal(plan.groups.length, 24);
     await section.getByText("Not duplicates (2)").click();
-    await section.getByRole("button", { name: "Suggest again" }).first().click();
+    await section
+      .getByRole("button", { name: "Suggest again" })
+      .first()
+      .click();
     await section.getByText("Not duplicates (1)").waitFor();
     assert.equal(plan.groups.length, 25);
 
     await section.getByText("Skipped Characters (1)").click();
-    await section.getByText("short name is ambiguous", { exact: false }).waitFor();
+    await section
+      .getByText("short name is ambiguous", { exact: false })
+      .waitFor();
     assert.equal(await section.locator('a[href="/copyrights/1"]').count(), 25);
     await section.scrollIntoViewIfNeeded();
     assert.equal(
-      await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth + 1
+      ),
       true
     );
     if (shots) {
@@ -179,7 +197,12 @@ try {
       .getByText("Merge job #42 queued.", { exact: false })
       .waitFor();
     assert.deepEqual(applies, [
-      { fingerprint: mergeFingerprint, action: "merge", selected: [1], pairs: [] },
+      {
+        fingerprint: mergeFingerprint,
+        action: "merge",
+        selected: [1],
+        pairs: [],
+      },
     ]);
     failure = true;
     await section
@@ -194,7 +217,9 @@ try {
     await section
       .getByRole("button", { name: "Preview Character merges" })
       .click();
-    await section.getByRole("button", { name: "Merge 0 selected groups" }).waitFor();
+    await section
+      .getByRole("button", { name: "Merge 0 selected groups" })
+      .waitFor();
     assert.deepEqual(errors, []);
     await page.evaluate(() => window.settingsFixture.dispose());
     await page.close();
