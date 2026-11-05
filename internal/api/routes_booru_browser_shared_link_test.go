@@ -16,7 +16,9 @@ func TestSharedLinkEndpointKeepsAccessKeysOutOfResponse(t *testing.T) {
 	raw := "https://mega.nz/file/abcDEF123#abcdef1234567890"
 	body, _ := json.Marshal(map[string]string{"url": raw})
 	w := httptest.NewRecorder()
-	rs.SharedLink(w, httptest.NewRequest(http.MethodPost, "/booru-browser/shared-link", bytes.NewReader(body)))
+	req := httptest.NewRequest(http.MethodPost, "/booru-browser/shared-link", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rs.SharedLink(w, req)
 	if w.Code != http.StatusOK {
 		t.Fatalf("link inspect: %d %s", w.Code, w.Body.String())
 	}
