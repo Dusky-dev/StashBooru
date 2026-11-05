@@ -125,9 +125,16 @@ try {
     await page.locator("#tasks-profiles > summary").click();
     const section = page.locator("#character-dedup-task");
     assert.equal(
-      await section.locator('h2 a[href="/help/Tasks.md"]').count(),
+      await section.locator('h3.h4 a[href="/help/Tasks.md"]').count(),
       1
     );
+    assert.equal(
+      await section
+        .getByRole("link", { name: "Help with Merge duplicate Characters" })
+        .count(),
+      1
+    );
+    assert.equal(await section.locator("h3.h4 svg.fa-xs").count(), 1);
     await section
       .getByRole("button", { name: "Preview Character merges" })
       .click();
