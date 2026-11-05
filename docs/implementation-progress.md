@@ -14,6 +14,14 @@
 - Move detailed descriptions for the next three tasks into the built-in Tasks help page. Keep the inheritance defaults link, all existing switches, previews, job actions and video review dialog unchanged. Remove the redundant Inspect media disclosure description.
 - Extend desktop/mobile Settings and Character browser fixtures to verify the headings and screen-reader-labelled help links. UI tests and visual checks run on PR CI; no server API, media or database changes.
 
+## Extended, non-overlapping storage-estimate sample — 2026-11-05
+
+- Baseline: `develop` `f013a7c2b7379b0d61728faa493402f939708bd9`; branch `feat/extended-storage-estimate-sample-20261105`. The owner's real-media read-only result: 35 images in four groups, 30.57 MiB originals, 6.60 MiB potential savings (21.6% of this selected sample); P13 shared-tiles preferred for 3/4 groups, with one keep-originals. This sample covers only 0.20% of the owner's 17,640-image library and is not representative.
+- Add optional Extended sample (max eight groups), leaving the four-group default and all per-file/per-group byte and member limits unchanged; server rejects invalid sample size and use in manual-stack mode. No whole-library model or compression activation.
+- Deduplicate candidate image IDs and resolved source paths across group selection; do not double count images or the same file. Return requestedGroups, sampledGroups and sampledImages in read-only selection metadata. Show actual sampled image count and keep non-extrapolation warning.
+- Add Go validation and disjointness tests and desktop/mobile Settings fixture for 4/8 automatic payloads. CI and Codex pending, owner-library eight-group run not performed.
+
+
 ## Image storage estimate React render crash — 2026-11-05
 
 - Baseline: `develop` `8c0b114f68c8122450075a5a34c64c09f860f6e4`; branch `fix/storage-estimate-layout-react-crash-20261105`.

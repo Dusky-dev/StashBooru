@@ -66,6 +66,14 @@ image grouping, file update, model download, or new persistent Visual Stack
 is performed by this action. If no eligible groups exist, the task explains
 how to create a Visual Stack or generate pHashes.
 
+For additional coverage, the optional **Extended sample** checkbox raises
+the group limit from four to eight under the same per-file, per-group and
+read-only safety budgets. Source IDs and resolved original paths cannot be
+counted in more than one selected group. The report states the number of
+sampled images as well as selected groups; zero savings or ineligible groups
+are still meaningful results. Larger samples take longer and remain biased
+towards pre-existing Visual Stacks and pHash-nearby images.
+
 This is a **bounded convenience sample**, not a representative or full-library
 estimate; the reported hypothetical savings apply only to files actually
 sampled, and should never be extrapolated across the entire library.

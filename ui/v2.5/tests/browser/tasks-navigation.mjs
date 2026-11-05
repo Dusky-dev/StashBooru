@@ -110,9 +110,14 @@ try {
         },
       });
     });
+    const storageEstimateRequests = [];
     // A successful P13 estimate includes an object-valued layout.
     // Previously Settings rendered that object in a <td>, crashing React #31.
     await page.route("**/image/storage-estimate", (route) => {
+      if (route.request().method() === "POST") {
+        storageEstimateRequests.push(route.request().postDataJSON());
+        return route.fulfill({ json: { jobID: 88 } });
+      }
       assert.equal(route.request().method(), "GET");
       return route.fulfill({
         json: {
@@ -132,6 +137,7 @@ try {
               totalImages: 600,
               pHashIndexedImages: 450,
               sampledGroups: 1,
+              sampledImages: 2,
             },
             results: [
               {
@@ -281,6 +287,23 @@ try {
       .locator("#image-storage-estimate-task")
       .getByText("shared-tiles (independent)", { exact: true })
       .waitFor();
+
+    // Default and extended automatic options send bounded sample sizes.
+    await page
+      .locator("#image-storage-estimate-task")
+      .getByText("Automatic sample: 1 groups", { exact: false })
+      .waitFor();
+    await page
+      .getByRole("button", { name: "Analyze sample automatically" })
+      .click();
+    await page.locator("#image-storage-estimate-extended").check();
+    await page
+      .getByRole("button", { name: "Analyze sample automatically" })
+      .click();
+    assert.deepEqual(storageEstimateRequests, [
+      { auto: true, sampleSize: 4, fidelity: "byte-exact" },
+      { auto: true, sampleSize: 8, fidelity: "byte-exact" },
+    ]);
 
     // Failed submissions remain visible after closing and reopening a group.
     await page

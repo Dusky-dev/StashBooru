@@ -21,7 +21,7 @@ import (
 
 const estimateMaxMembers = 16
 const estimateMaxGroups = 8
-const estimateAutoMaxGroups = 4
+const estimateAutoDefaultGroups = 4
 const estimateAutoMaxBytesPerGroup int64 = 96 << 20
 const estimateAutoMaxBytesPerFile int64 = 32 << 20
 
@@ -31,10 +31,11 @@ var storageEstimateJobID int
 var storageEstimateResult json.RawMessage
 
 type storageEstimateRequest struct {
-	Auto     bool   `json:"auto,omitempty"`
-	StackID  int    `json:"stackID,omitempty"`
-	StackIDs []int  `json:"stackIDs,omitempty"`
-	Fidelity string `json:"fidelity"`
+	Auto       bool   `json:"auto,omitempty"`
+	StackID    int    `json:"stackID,omitempty"`
+	StackIDs   []int  `json:"stackIDs,omitempty"`
+	SampleSize int    `json:"sampleSize,omitempty"`
+	Fidelity   string `json:"fidelity"`
 }
 
 type storageEstimateStatus struct {
@@ -86,8 +87,30 @@ func storageEstimateSelectedIDs(req storageEstimateRequest) ([]int, error) {
 	return ids, nil
 }
 
+// The default stays small. Extended sampling remains bounded by the same
+// eight-group cap as the read-only P12/P13 batch estimator.
+func storageEstimateAutoGroupLimit(req storageEstimateRequest) (int, error) {
+	if !req.Auto {
+		if req.SampleSize != 0 {
+			return 0, fmt.Errorf("sampleSize is only supported for automatic estimates")
+		}
+		return 0, nil
+	}
+	switch req.SampleSize {
+	case 0, estimateAutoDefaultGroups:
+		return estimateAutoDefaultGroups, nil
+	case estimateMaxGroups:
+		return estimateMaxGroups, nil
+	default:
+		return 0, fmt.Errorf("automatic sampleSize must be 4 or 8")
+	}
+}
+
 func validateStorageEstimateRequest(req storageEstimateRequest) error {
 	if _, err := storageEstimateSelectedIDs(req); err != nil {
+		return err
+	}
+	if _, err := storageEstimateAutoGroupLimit(req); err != nil {
 		return err
 	}
 	if req.Fidelity != "byte-exact" && req.Fidelity != "pixel-exact" {
@@ -235,16 +258,46 @@ type storageEstimateSelection struct {
 	Mode               string `json:"mode"`
 	TotalImages        int    `json:"totalImages"`
 	PHashIndexedImages int    `json:"pHashIndexedImages"`
+	RequestedGroups    int    `json:"requestedGroups"`
 	SampledGroups      int    `json:"sampledGroups"`
+	SampledImages      int    `json:"sampledImages"`
 }
 
 // Automatic discovery is a bounded trial, NOT a library-wide savings scan.
 // Curated image-only stacks take priority; otherwise use existing primary-file
 // pHash clusters as candidate compression groups. pHash does NOT prove that two
 // files are duplicates: the Python estimator verifies every reconstructed byte.
-func estimateAutoSources(ctx context.Context) ([]estimateSourceGroup, storageEstimateSelection, error) {
+// A file can belong to more than one metadata record. Avoid counting it or
+// its image identity twice across selected groups, including within one group.
+func estimateAutoDisjoint(group estimateSourceGroup, used map[string]bool) bool {
+	local := make(map[string]bool, len(group.Members)*2)
+	for _, member := range group.Members {
+		if member.ID == "" || member.Path == "" {
+			return false
+		}
+		for _, key := range []string{"id:" + member.ID, "path:" + filepath.Clean(member.Path)} {
+			if used[key] || local[key] {
+				return false
+			}
+			local[key] = true
+		}
+	}
+	return true
+}
+
+func estimateAutoRemember(group estimateSourceGroup, used map[string]bool) {
+	for _, member := range group.Members {
+		used["id:"+member.ID] = true
+		used["path:"+filepath.Clean(member.Path)] = true
+	}
+}
+
+func estimateAutoSources(ctx context.Context, maxGroups int) ([]estimateSourceGroup, storageEstimateSelection, error) {
+	if maxGroups != estimateAutoDefaultGroups && maxGroups != estimateMaxGroups {
+		return nil, storageEstimateSelection{}, fmt.Errorf("automatic estimates require 4 or 8 sample groups")
+	}
 	mgr := manager.GetInstance()
-	meta := storageEstimateSelection{Mode: "auto"}
+	meta := storageEstimateSelection{Mode: "auto", RequestedGroups: maxGroups}
 	var ids []int
 	err := txn.WithReadTxn(ctx, mgr.Repository.TxnManager, func(ctx context.Context) error {
 		var err error
@@ -259,21 +312,23 @@ func estimateAutoSources(ctx context.Context) ([]estimateSourceGroup, storageEst
 		return nil, meta, err
 	}
 
-	groups := make([]estimateSourceGroup, 0, estimateAutoMaxGroups)
+	groups := make([]estimateSourceGroup, 0, maxGroups)
+	seen := make(map[string]bool, maxGroups*estimateMaxMembers*2)
 	for _, id := range ids {
 		if err := ctx.Err(); err != nil {
 			return nil, meta, err
 		}
 		group, err := estimateStackSources(ctx, id)
-		if err != nil || !estimateAutoWithinBudget(group) {
-			continue // unreadable, changed, oversized or unsafe source
+		if err != nil || !estimateAutoWithinBudget(group) || !estimateAutoDisjoint(group, seen) {
+			continue // unreadable, changed, oversized, overlapping or unsafe source
 		}
 		groups = append(groups, group)
-		if len(groups) == estimateAutoMaxGroups {
+		estimateAutoRemember(group, seen)
+		if len(groups) == maxGroups {
 			break
 		}
 	}
-	if len(groups) < estimateAutoMaxGroups {
+	if len(groups) < maxGroups {
 		var clusters [][]int
 		err = txn.WithReadTxn(ctx, mgr.Repository.TxnManager, func(ctx context.Context) error {
 			var err error
@@ -294,10 +349,11 @@ func estimateAutoSources(ctx context.Context) ([]estimateSourceGroup, storageEst
 			if err != nil {
 				return nil, meta, err
 			}
-			if len(group.Members) >= 2 {
+			if len(group.Members) >= 2 && estimateAutoDisjoint(group, seen) {
 				groups = append(groups, group)
+				estimateAutoRemember(group, seen)
 			}
-			if len(groups) == estimateAutoMaxGroups {
+			if len(groups) == maxGroups {
 				break
 			}
 		}
@@ -306,6 +362,9 @@ func estimateAutoSources(ctx context.Context) ([]estimateSourceGroup, storageEst
 		return nil, meta, fmt.Errorf("no eligible image groups found: create a Visual Stack of 2–16 images or generate image pHashes in Tasks, then retry")
 	}
 	meta.SampledGroups = len(groups)
+	for _, group := range groups {
+		meta.SampledImages += len(group.Members)
+	}
 	return groups, meta, nil
 }
 
@@ -454,8 +513,11 @@ func (rs imageRoutes) StorageEstimateStart(w http.ResponseWriter, r *http.Reques
 			var groups []estimateSourceGroup
 			var selection storageEstimateSelection
 			if req.Auto {
-				var err error
-				groups, selection, err = estimateAutoSources(ctx)
+				limit, err := storageEstimateAutoGroupLimit(req)
+				if err != nil {
+					return err
+				}
+				groups, selection, err = estimateAutoSources(ctx, limit)
 				if err != nil {
 					return err
 				}

@@ -37,6 +37,7 @@ interface StorageEstimateReport {
     totalImages: number;
     pHashIndexedImages: number;
     sampledGroups: number;
+    sampledImages?: number;
   };
   results: GroupEstimate[];
 }
@@ -57,6 +58,7 @@ export const ImageStorageEstimateTask: React.FC = () => {
   const [stackIDsText, setStackIDsText] = useState("");
   const [fidelity, setFidelity] = useState("byte-exact");
   const [autoMode, setAutoMode] = useState(true);
+  const [extendedSample, setExtendedSample] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -91,7 +93,7 @@ export const ImageStorageEstimateTask: React.FC = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
           autoMode
-            ? { auto: true, fidelity }
+            ? { auto: true, sampleSize: extendedSample ? 8 : 4, fidelity }
             : { stackIDs: parsedIDs, fidelity }
         ),
       });
@@ -132,7 +134,7 @@ export const ImageStorageEstimateTask: React.FC = () => {
         Compare possible P12 delta and P13 shared-block compression without
         changing your images. Automatic mode examines a small sample of up to
         four eligible image groups from existing Visual Stacks or pHash matches;
-        it is not a library-wide savings calculation.
+        you can optionally sample eight. It is not a library-wide calculation.
       </p>
       <Alert variant="info">
         <strong>Read-only preview — no files are changed.</strong> The numbers
@@ -160,6 +162,16 @@ export const ImageStorageEstimateTask: React.FC = () => {
         label="Advanced: enter specific Visual Stack IDs"
         disabled={disabled}
       />
+      {autoMode && (
+        <Form.Check
+          id="image-storage-estimate-extended"
+          type="checkbox"
+          checked={extendedSample}
+          onChange={(event) => setExtendedSample(event.currentTarget.checked)}
+          label="Extended sample: up to 8 groups (slower)"
+          disabled={disabled}
+        />
+      )}
       {!autoMode && (
         <Form.Group>
           <Form.Label htmlFor="image-storage-estimate-id">
@@ -239,9 +251,12 @@ export const ImageStorageEstimateTask: React.FC = () => {
           </p>
           {result.selection?.mode === "auto" && (
             <p className="small text-muted">
-              Automatic sample: {result.selection.sampledGroups} groups from a
-              library of {result.selection.totalImages} images. This is not a
-              whole-library estimate and cannot be extrapolated to every image.
+              Automatic sample: {result.selection.sampledGroups} groups
+              {typeof result.selection.sampledImages === "number"
+                ? `, ${result.selection.sampledImages} images`
+                : ""}{" "}
+              from a library of {result.selection.totalImages} images. This is
+              not a whole-library estimate and cannot be extrapolated.
             </p>
           )}
           <Alert variant="info">
