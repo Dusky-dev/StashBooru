@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 from PIL import Image
@@ -109,6 +110,22 @@ class StorageEstimatorTests(unittest.TestCase):
         self.assertNotIn(str(self.root), json.dumps(result))
         self.assertEqual(result["smallestDimensions"],
                          {"width": 96, "height": 96})
+
+    def test_bomb_size_header_is_skipped_without_failing_optional_profile(self):
+        original = self.originals()
+        with patch.object(estimate.Image, "open",
+                          side_effect=Image.DecompressionBombError("too many pixels")):
+            profile = estimate.source_profile(self.group)
+        self.assertEqual(profile["formats"],
+                         [{"format": "unknown", "count": 2}])
+        self.assertNotIn("smallestDimensions", profile)
+        self.assertNotIn("largestDimensions", profile)
+        self.assertEqual(profile["minFileBytes"],
+                         min(self.first.stat().st_size, self.second.stat().st_size))
+        self.assertEqual(profile["maxFileBytes"],
+                         max(self.first.stat().st_size, self.second.stat().st_size))
+        self.assertNotIn(str(self.root), json.dumps(profile))
+        self.assertEqual(self.originals(), original)
 
     def test_non_selected_method_is_not_counted_as_savings(self):
         group = {"id": "broken", "members": [

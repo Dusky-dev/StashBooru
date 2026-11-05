@@ -33,8 +33,9 @@ def source_profile(group: dict) -> dict:
             with Image.open(member["path"]) as opened:
                 kind = (opened.format or "unknown").upper()
                 dimensions.append((opened.width, opened.height))
-        except (OSError, ValueError, KeyError, TypeError):
-            pass  # Unsupported headers do not weaken P12/P13 validation.
+        except (OSError, ValueError, KeyError, TypeError,
+                Image.DecompressionBombError):
+            pass  # Optional profiling must not invalidate byte-exact estimates.
         formats[kind] = formats.get(kind, 0) + 1
         try:
             sizes.append(Path(member["path"]).stat().st_size)

@@ -344,7 +344,8 @@ export const ImageStorageEstimateTask: React.FC = () => {
                   {group.sourceProfile.smallestDimensions &&
                     group.sourceProfile.largestDimensions && (
                       <>
-                        {" "}· Dimensions:{" "}
+                        {" "}
+                        · Dimensions:{" "}
                         {group.sourceProfile.smallestDimensions.width}×
                         {group.sourceProfile.smallestDimensions.height} to{" "}
                         {group.sourceProfile.largestDimensions.width}×
@@ -399,7 +400,8 @@ export const ImageStorageEstimateTask: React.FC = () => {
           <p className="small text-muted">
             In-memory verification does not test persistent pack creation,
             restart recovery or live packed-media serving. Figures exclude
-            caching overhead. No source files were modified and no packs were created.
+            caching overhead. No source files were modified and no packs were
+            created.
           </p>
         </div>
       )}
