@@ -145,3 +145,57 @@ func TestStorageEstimatePortableMemberName(t *testing.T) {
 		t.Fatalf("estimator input must retain original path and identity: %s", b)
 	}
 }
+
+func TestStorageEstimateAutomaticSampleSizeAndDisjointness(t *testing.T) {
+	for _, tc := range []struct {
+		request storageEstimateRequest
+		want    int
+		valid   bool
+	}{
+		{storageEstimateRequest{Auto: true, Fidelity: "byte-exact"}, 4, true},
+		{storageEstimateRequest{Auto: true, SampleSize: 4, Fidelity: "byte-exact"}, 4, true},
+		{storageEstimateRequest{Auto: true, SampleSize: 8, Fidelity: "byte-exact"}, 8, true},
+		{storageEstimateRequest{Auto: true, SampleSize: 1, Fidelity: "byte-exact"}, 0, false},
+		{storageEstimateRequest{Auto: true, SampleSize: 9, Fidelity: "byte-exact"}, 0, false},
+		{storageEstimateRequest{Auto: true, SampleSize: -8, Fidelity: "byte-exact"}, 0, false},
+		{storageEstimateRequest{StackID: 10, SampleSize: 8, Fidelity: "byte-exact"}, 0, false},
+	} {
+		got, err := storageEstimateAutoGroupLimit(tc.request)
+		if tc.valid && (err != nil || got != tc.want) {
+			t.Errorf("sample limit: got %d, %v; want %d for %+v", got, err, tc.want, tc.request)
+		}
+		if !tc.valid && err == nil {
+			t.Errorf("accepted invalid automatic sample size: %+v", tc.request)
+		}
+		if (validateStorageEstimateRequest(tc.request) == nil) != tc.valid {
+			t.Errorf("request validation mismatch for %+v", tc.request)
+		}
+	}
+
+	a := estimateSourceGroup{Members: []estimateSourceMember{
+		{ID: "image:1", Path: "/media/image-one.png"},
+		{ID: "image:2", Path: "/media/image-two.png"},
+	}}
+	seen := make(map[string]bool)
+	if !estimateAutoDisjoint(a, seen) {
+		t.Fatal("initial sample rejected")
+	}
+	estimateAutoRemember(a, seen)
+	for _, collision := range []estimateSourceGroup{
+		{Members: []estimateSourceMember{{ID: "image:1", Path: "/elsewhere/one.png"}, {ID: "image:3", Path: "/media/three.png"}}},
+		{Members: []estimateSourceMember{{ID: "image:3", Path: "/media/image-one.png"}, {ID: "image:4", Path: "/media/four.png"}}},
+		{Members: []estimateSourceMember{{ID: "image:5", Path: "/media/five.png"}, {ID: "image:5", Path: "/media/six.png"}}},
+		{Members: []estimateSourceMember{{ID: "image:5", Path: "/media/five.png"}, {ID: "image:6", Path: "/media/five.png"}}},
+	} {
+		if estimateAutoDisjoint(collision, seen) {
+			t.Fatalf("overlapping sources counted twice: %+v", collision)
+		}
+	}
+	distinct := estimateSourceGroup{Members: []estimateSourceMember{
+		{ID: "image:6", Path: "/media/six.png"},
+		{ID: "image:7", Path: "/media/seven.png"},
+	}}
+	if !estimateAutoDisjoint(distinct, seen) {
+		t.Fatal("independent group rejected")
+	}
+}
