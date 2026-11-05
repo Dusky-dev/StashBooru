@@ -89,7 +89,7 @@ with sqlite3.connect(pathlib.Path(sys.argv[1]).as_uri() + '?mode=ro', uri=True) 
     assert bool(db.execute("SELECT name FROM sqlite_master WHERE name='provider_identities'").fetchall()) == (sys.argv[3] == 'true')
     assert any(col[1] == 'hide_thumbnail' for col in db.execute('PRAGMA table_info(tags)')) == (int(sys.argv[2]) >= 101)
     assert bool(db.execute("SELECT name FROM sqlite_master WHERE type='trigger' AND name='image_visual_embedding_cleanup'").fetchall()) == (int(sys.argv[2]) >= 102)
-    assert bool(db.execute("SELECT name FROM sqlite_master WHERE type=\'table\' AND name=\'character_dedup_exclusions\'").fetchall()) == (int(sys.argv[2]) >= 103)
+    assert bool(db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='character_dedup_exclusions'").fetchall()) == (int(sys.argv[2]) >= 103)
 `,
     file,
     String(version),
