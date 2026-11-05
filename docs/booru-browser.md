@@ -605,3 +605,35 @@ directory is bounded to 64 MiB / 500,000 rows, with two indexes cached for ten m
 concurrent loads of the same source share a request. Normal public-DNS, redirect,
 rate-limit and cancellation rules apply. Invalid records are omitted. No account
 favorites or automatic downloads are created by artist lookup.
+
+
+## Pawchive posts containing external shared media
+
+When a Pawchive search returns a post with a public Dropbox or MEGA URL in
+its `content` or `description`, StashBooru detects it automatically. A
+link icon/count appears on the post card; open the existing post inspector to
+see **Linked media** alongside its ordinary Pawchive attachments.
+
+- Public Dropbox individual image/video shares (`/s/` and `/scl/fi/`)
+  may be previewed and imported with **Download to Stash**.
+- Public Dropbox folder shares (`/sh/` and `/scl/fo/`) are handled as
+  bounded ZIP archives; choose individual supported media entries using the
+  existing archive viewer. Oversized folders cannot be inspected.
+- Public MEGA single-file shares (`/file/ID#key` or `/#!ID!key`) appear
+  as linked media without an automatic preview. An explicit download uses
+  optional `megatools dl` (or legacy `megadl`) installed in the Stash
+  server/container. MEGA folder links are **detected but not downloaded or
+  enumerated** yet, and are identified as unsupported in the inspector.
+
+Discovery scans only the existing bounded public Pawchive API response: no
+extra crawler, provider lookups, or background transfers. At most 16 recognized
+shared media links are exposed per post, and no more than 200 attachments are
+ever returned. Shared-file keys and Dropbox access parameters remain solely
+in short-lived server-owned download snapshots, not in saved search URLs,
+bookmarks, or public JSON. Each shared-file transfer is subject to the
+existing MIME/content verification, maximum file size, job cancellation and
+native import/optional conversion. There is no automatic download or bulk
+import, and passwords/private shares are not bypassed.
+
+The URL must be included in the post's API-visible text; links hidden inside
+scripts, link shorteners, or third-party web pages are not followed.

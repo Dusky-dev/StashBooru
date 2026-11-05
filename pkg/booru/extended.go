@@ -427,6 +427,24 @@ func parseArchivePost(s Source, raw object) (Post, error) {
 	if omitted > 0 {
 		p.MediaNotice = fmt.Sprintf("%d unsupported attachments omitted (documents and unsupported archives).", omitted)
 	}
+	if s.Engine == "pawchive" {
+		// The public archive API embeds external links directly in post content.
+		// Discover their identities without issuing new network requests.
+		links, unsupportedFolders := LinkedMediaFromPawchiveContent(
+			text(raw["content"])+" "+text(raw["description"])+" "+
+				text(child(raw["embed"])["url"]), p.PostURL)
+		if available := 200 - len(p.Attachments); len(links) > available {
+			links = links[:available]
+		}
+		p.Attachments = append(p.Attachments, links...)
+		p.LinkedFolderCount = unsupportedFolders
+		if len(links) > 0 {
+			p.MediaNotice += fmt.Sprintf(" %d Dropbox/MEGA shared link(s) found in this Pawchive post.", len(links))
+		}
+		if unsupportedFolders > 0 {
+			p.MediaNotice += fmt.Sprintf(" %d MEGA folder link(s) detected; folder extraction is not supported yet.", unsupportedFolders)
+		}
+	}
 	if !p.DownloadAvailable {
 		p.MediaNotice += " Full media is unavailable; previews are not substituted for originals."
 	}

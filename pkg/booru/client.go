@@ -55,6 +55,7 @@ type Post struct {
 	CreatedAt         string `json:"createdAt,omitempty"`
 	Favorite          bool   `json:"favorite,omitempty"`
 	MediaNotice       string `json:"mediaNotice,omitempty"`
+	LinkedFolderCount int    `json:"linkedFolderCount,omitempty"`
 }
 
 type Result struct {

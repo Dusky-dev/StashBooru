@@ -35,6 +35,7 @@ import {
   faTags,
   faPlay,
   faStop,
+  faLink,
   faSortAmountDown,
 } from "@fortawesome/free-solid-svg-icons";
 import { Icon } from "../Shared/Icon";
@@ -64,6 +65,8 @@ import {
   readBrowserSearch,
   remoteURL,
   booruMediaURL,
+  inspectionMedia,
+  sharedLinkCount,
 } from "./browser";
 import { BooruReview, ReviewEvidence, type ReviewState } from "./BooruReview";
 import { TagAutocomplete } from "./TagAutocomplete";
@@ -140,7 +143,7 @@ function PostInspection({
     }
   );
   const identity = `${source.instance}:${post.id}`;
-  const assets = [post, ...(post.attachments ?? [])];
+  const assets = inspectionMedia(post);
   // Incremental rendering prevents posts with many attachments from creating
   // hundreds of image/player/download components at once.
   const [stream, setStream] = useState({ identity, count: 3 });
@@ -294,7 +297,10 @@ function PostInspection({
               >
                 {assets.length > 1 && (
                   <h6 className="booru-asset-heading">
-                    Media {index + 1} of {assets.length}
+                    {asset.sourceID === "shared-links"
+                      ? "Linked media"
+                      : "Media"}{" "}
+                    {index + 1} of {assets.length}
                     {asset.format && ` · ${asset.format.toUpperCase()}`}
                   </h6>
                 )}
@@ -318,14 +324,26 @@ function PostInspection({
                       />
                     ) : (
                       <Alert variant="secondary">
-                        {message(
-                          "no_preview",
-                          "No supported preview is available. Open the remote post to inspect it."
-                        )}
+                        {asset.sourceID === "shared-links"
+                          ? "This shared file has no preview. Use Download to Stash to inspect the original."
+                          : message(
+                              "no_preview",
+                              "No supported preview is available. Open the remote post to inspect it."
+                            )}
                       </Alert>
                     )}
                   </MotionPreview>
                 )}
+                {asset.sourceID === "shared-links" && (
+                  <p className="small mb-1">
+                    <Icon icon={faLink} />{" "}
+                    {asset.title || "External shared media"}
+                  </p>
+                )}
+                {asset.mediaNotice &&
+                  asset.mediaNotice !== post.mediaNotice && (
+                    <Alert variant="info">{asset.mediaNotice}</Alert>
+                  )}
                 <div className="booru-file-details mt-2">
                   {!!asset.width && !!asset.height && (
                     <span>
@@ -965,6 +983,14 @@ function SourceResults({
                   >
                     #{item.remoteID ?? item.id}
                   </Button>
+                  {sharedLinkCount(item) > 0 && (
+                    <span
+                      className="small text-muted"
+                      title="External Dropbox/MEGA links detected; inspect post"
+                    >
+                      <Icon icon={faLink} /> {sharedLinkCount(item)}
+                    </span>
+                  )}
                   {item.rating && (
                     <span
                       className={`booru-rating rating-${normalizedRating(item.rating, source)}`}

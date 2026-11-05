@@ -39,6 +39,29 @@ export interface BooruPost {
   title?: string;
   favorite?: boolean;
   mediaNotice?: string;
+  linkedFolderCount?: number;
+}
+
+// Hide a placeholder post when Pawchive has no hosted media but contains
+// external linked attachments.
+export function inspectionMedia(post: BooruPost): BooruPost[] {
+  if (
+    !post.downloadAvailable &&
+    !post.previewURL &&
+    !post.sampleURL &&
+    !post.format &&
+    (post.attachments?.length ?? 0) > 0
+  ) {
+    return post.attachments ?? [];
+  }
+  return [post, ...(post.attachments ?? [])];
+}
+
+export function sharedLinkCount(post: BooruPost): number {
+  return (
+    (post.attachments?.filter((asset) => asset.sourceID === "shared-links")
+      .length ?? 0) + (post.linkedFolderCount ?? 0)
+  );
 }
 
 export interface BooruResult {
