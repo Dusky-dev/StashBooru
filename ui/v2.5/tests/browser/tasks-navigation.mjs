@@ -247,13 +247,13 @@ try {
       1
     );
     await page.reload();
+    if (!(await isOpen(page, "media"))) await summary(page, "media").click();
     await page
       .locator("#image-storage-estimate-task")
       .getByText("shared-tiles (independent)", { exact: true })
       .waitFor();
 
     // Failed submissions remain visible after closing and reopening a group.
-    await summary(page, "media").click();
     await page
       .getByRole("button", { name: "Inspect existing images", exact: true })
       .click();
