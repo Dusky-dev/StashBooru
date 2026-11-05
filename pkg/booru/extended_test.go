@@ -507,7 +507,8 @@ func TestPawchiveArchiveExtractsSharedLinksWithoutLosingAttachments(t *testing.T
 	const sample = `{
 	  "id":"31","user":"42","service":"patreon",
 	  "title":"An artist's post",
-	  "content":"See https://mega.nz/file/abcDEF123#abcdef1234567890 and https://www.dropbox.com/scl/fo/abcDEF123/folder?rlkey=abcdef123456",
+	  "content":"See https://mega.nz/file/abcDEF123#abcdef1234567890",
+	  "embed":{"url":"https://www.dropbox.com/scl/fo/abcDEF123/folder?rlkey=abcdef123456"},
 	  "file":{"path":"/original.png","name":"original.png"},
 	  "attachments":[{"path":"/another.webm","name":"another.webm"}]
 	}`

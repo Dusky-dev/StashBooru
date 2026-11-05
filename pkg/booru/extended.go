@@ -431,7 +431,8 @@ func parseArchivePost(s Source, raw object) (Post, error) {
 		// The public archive API embeds external links directly in post content.
 		// Discover their identities without issuing new network requests.
 		links, unsupportedFolders := LinkedMediaFromPawchiveContent(
-			text(raw["content"])+" "+text(raw["description"]), p.PostURL)
+			text(raw["content"])+" "+text(raw["description"])+" "+
+				text(child(raw["embed"])["url"]), p.PostURL)
 		if available := 200 - len(p.Attachments); len(links) > available {
 			links = links[:available]
 		}

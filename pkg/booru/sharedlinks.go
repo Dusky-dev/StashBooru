@@ -49,7 +49,7 @@ func sharedFormat(name string) string {
 // expanded or downloaded implicitly.
 func ValidMegaSharedFileURL(raw string) bool {
 	u, err := url.Parse(raw)
-	if err != nil || u.Scheme != "https" || u.Hostname() != "mega.nz" ||
+	if err != nil || u.Scheme != "https" || !strings.EqualFold(u.Hostname(), "mega.nz") ||
 		u.Port() != "" || u.User != nil || u.RawQuery != "" {
 		return false
 	}

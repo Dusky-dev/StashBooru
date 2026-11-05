@@ -23,10 +23,10 @@ func fetchMegaMedia(ctx context.Context, request MediaRequest, output io.Writer)
 	// Megatools >=1.11 uses a consolidated "megatools dl" executable. Older
 	// distributions provide "megadl"; both accept --path - for stdout streaming.
 	binary, err := exec.LookPath("megatools")
-	args := []string{"dl", "--path", "-", "--no-progress"}
+	args := []string{"dl", "--ignore-config-file", "--path", "-", "--no-progress"}
 	if err != nil {
 		binary, err = exec.LookPath("megadl")
-		args = []string{"--path", "-", "--no-progress"}
+		args = []string{"--ignore-config-file", "--path", "-", "--no-progress"}
 		if err != nil {
 			return empty, fmt.Errorf("MEGA downloads require megatools installed on the Stash server")
 		}
