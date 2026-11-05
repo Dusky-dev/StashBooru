@@ -40,11 +40,11 @@ type IgnoredPair struct {
 	Right Character `json:"right"`
 }
 type Plan struct {
-	Fingerprint string    `json:"fingerprint"`
-	Groups      []Group   `json:"groups"`
-	Skipped     []Skipped `json:"skipped"`
+	Fingerprint string        `json:"fingerprint"`
+	Groups      []Group       `json:"groups"`
+	Skipped     []Skipped     `json:"skipped"`
 	Ignored     []IgnoredPair `json:"ignored"`
-	Scanned     int       `json:"scanned"`
+	Scanned     int           `json:"scanned"`
 }
 type record struct {
 	Performer  *models.Performer
@@ -222,13 +222,14 @@ func planWithExclusions(records []record, exclusions []models.CharacterDedupPair
 		}
 		return a.RightID - b.RightID
 	})
-	blocked := map[models.CharacterDedupPair]bool{}
+	// An adjacency index avoids quadratic checks for very large matching groups.
+	blocked := map[int][]int{}
 	identities := map[int]Character{}
 	for _, r := range records {
 		identities[r.Performer.ID] = identity(r.Performer)
 	}
 	for _, pair := range exclusions {
-		blocked[pair] = true
+		blocked[pair.LeftID] = append(blocked[pair.LeftID], pair.RightID)
 		left, okLeft := identities[pair.LeftID]
 		right, okRight := identities[pair.RightID]
 		if okLeft && okRight {
@@ -351,13 +352,20 @@ func planWithExclusions(records []record, exclusions []models.CharacterDedupPair
 		})
 		// A rejected pair blocks the entire group: do not merge rejected
 		// identities transitively through a third matching Character.
+		members := map[int]bool{}
+		for _, r := range group {
+			members[r.Performer.ID] = true
+		}
 		rejected := false
-		for i := 0; i < len(group) && !rejected; i++ {
-			for j := i + 1; j < len(group); j++ {
-				if blocked[characterPair(group[i].Performer.ID, group[j].Performer.ID)] {
+		for _, r := range group {
+			for _, partner := range blocked[r.Performer.ID] {
+				if members[partner] {
 					rejected = true
 					break
 				}
+			}
+			if rejected {
+				break
 			}
 		}
 		if rejected {
