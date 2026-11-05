@@ -38,11 +38,7 @@ const sections = defineMessages({
     id: "config.tasks.sections.media",
     defaultMessage: "Inspect media",
   },
-  media_help: {
-    id: "config.tasks.sections.media_help",
-    defaultMessage:
-      "Inspect animation frames and review Video overlap or containment.",
-  },
+
   maintenance: {
     id: "config.tasks.sections.maintenance",
     defaultMessage: "Backup & maintenance",
@@ -102,7 +98,6 @@ export const SettingsTasksPanel: React.FC = () => {
         <SettingsDisclosure
           id="tasks-media"
           title={intl.formatMessage(sections.media)}
-          description={intl.formatMessage(sections.media_help)}
         >
           <AnimationInspectionTask />
           <hr />
