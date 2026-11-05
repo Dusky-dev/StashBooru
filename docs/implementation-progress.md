@@ -1,5 +1,14 @@
 # StashBooru implementation progress
 
+## Full Pawchive shared-link inspection — 2026-11-06
+
+- The previously merged PR #314 parsed link text only from search-list responses. User's example: `https://pawchive.pw/patreon/user/3295915/post/174460964`, reported with no visible link preview.
+- On opening the Booru Browser inspector, fetch the authenticated session's server-owned Pawchive post identity through a bounded public post-detail API call. Re-parse full post content/embeds, retaining existing attachments while adding discovered links.
+- Show MEGA folder shares as real linked-media cards with a secure provider-open action, instead of counting and silently hiding the folder. Render an existing Pawchive post-cover thumbnail when possible; label it clearly rather than implying native MEGA folder previews. The provider handles actual folder thumbnail browsing and downloads. Dropbox individual media/archive ZIPs and MEGA file imports retain their existing controls.
+- The user-facing post body and external-provider decryption keys are kept out of the search JSON. The provider-open route uses short-lived opaque tokens. No cross-site crawler, automatic folder transfer or password bypass.
+- Unit/integration regression fixtures include the *identity* of the supplied Pawchive example, but full live provider data and links could not be retrieved from this workspace. CI and Codex pending; no real-library downloads or imports performed.
+
+
 ## Pawchive external-link media discovery — 2026-11-05
 
 - Branch `feat/booru-shared-link-media-20261105`, PR #314, synchronized with `develop`. Corrected user scope: no paste-link UI. Detect Dropbox/MEGA URLs directly inside Pawchive post content during normal searches.

@@ -329,3 +329,29 @@ test("Pawchive linked files remain visible even when the hosted post has no orig
     link,
   ]);
 });
+
+test("Pawchive shared folders appear as linked assets, not invisible counters", async () => {
+  const { inspectionMedia, sharedLinkCount } = await import(
+    "../src/components/BooruBrowser/browser.ts"
+  );
+  const folder = {
+    id: "p" + "e".repeat(32),
+    sourceID: "shared-links",
+    postURL: "https://pawchive.pw/patreon/user/3295915/post/174460964",
+    tags: [],
+    mediaKey: "a".repeat(48),
+    format: "folder",
+    downloadAvailable: false,
+    title: "MEGA linked folder",
+  };
+  const parent = {
+    id: "a" + "f".repeat(32),
+    sourceID: "pawchive",
+    postURL: folder.postURL,
+    tags: [],
+    attachments: [folder],
+    linkedFolderCount: 0,
+  };
+  assert.equal(sharedLinkCount(parent), 1);
+  assert.deepEqual(inspectionMedia(parent), [folder]);
+});
