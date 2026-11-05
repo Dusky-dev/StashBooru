@@ -294,7 +294,9 @@ export const CharacterDedupTask: React.FC = () => {
                           <Link to={`/performers/${left.id}`}>{left.name}</Link>
                         </td>
                         <td>
-                          <Link to={`/performers/${right.id}`}>{right.name}</Link>
+                          <Link to={`/performers/${right.id}`}>
+                            {right.name}
+                          </Link>
                         </td>
                         <td>
                           <Button
@@ -302,9 +304,11 @@ export const CharacterDedupTask: React.FC = () => {
                             size="sm"
                             disabled={busy}
                             onClick={() =>
-                              void perform("restore", [], [
-                                { leftId: left.id, rightId: right.id },
-                              ])
+                              void perform(
+                                "restore",
+                                [],
+                                [{ leftId: left.id, rightId: right.id }]
+                              )
                             }
                           >
                             Suggest again
