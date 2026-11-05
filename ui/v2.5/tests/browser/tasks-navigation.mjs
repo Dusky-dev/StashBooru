@@ -138,6 +138,7 @@ try {
               pHashIndexedImages: 450,
               sampledGroups: 1,
               sampledImages: 2,
+              diverse: true,
             },
             results: [
               {
@@ -159,11 +160,20 @@ try {
                     method: "shared-tiles",
                     layout: { kind: "independent" },
                     eligible: false,
+                    verifiedDuringPlanning: true,
+                    planSeconds: 1.25,
                     packedBytes: 40000,
                     potentialSavedBytes: 0,
                   },
                 ],
                 methodErrors: [],
+                sourceProfile: {
+                  formats: [{ format: "PNG", count: 2 }],
+                  smallestDimensions: { width: 96, height: 96 },
+                  largestDimensions: { width: 128, height: 128 },
+                  minFileBytes: 1024,
+                  maxFileBytes: 16384,
+                },
               },
             ],
           },
@@ -288,6 +298,20 @@ try {
       .getByText("shared-tiles (independent)", { exact: true })
       .waitFor();
 
+    // New diagnostic profile does not expose paths or crash in the browser.
+    await page
+      .locator("#image-storage-estimate-task")
+      .getByText("Formats: PNG (2)", { exact: false })
+      .waitFor();
+    await page
+      .locator("#image-storage-estimate-task")
+      .getByText("In-memory verified", { exact: true })
+      .waitFor();
+    await page
+      .locator("#image-storage-estimate-task")
+      .getByText("Diversity comparison:", { exact: false })
+      .waitFor();
+
     // Default and extended automatic options send bounded sample sizes.
     await page
       .locator("#image-storage-estimate-task")
@@ -300,9 +324,14 @@ try {
     await page
       .getByRole("button", { name: "Analyze sample automatically" })
       .click();
+    await page.locator("#image-storage-estimate-diverse").check();
+    await page
+      .getByRole("button", { name: "Analyze sample automatically" })
+      .click();
     assert.deepEqual(storageEstimateRequests, [
       { auto: true, sampleSize: 4, fidelity: "byte-exact" },
       { auto: true, sampleSize: 8, fidelity: "byte-exact" },
+      { auto: true, sampleSize: 8, diverse: true, fidelity: "byte-exact" },
     ]);
 
     // Failed submissions remain visible after closing and reopening a group.

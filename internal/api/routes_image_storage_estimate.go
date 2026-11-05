@@ -35,6 +35,7 @@ type storageEstimateRequest struct {
 	StackID    int    `json:"stackID,omitempty"`
 	StackIDs   []int  `json:"stackIDs,omitempty"`
 	SampleSize int    `json:"sampleSize,omitempty"`
+	Diverse    bool   `json:"diverse,omitempty"`
 	Fidelity   string `json:"fidelity"`
 }
 
@@ -112,6 +113,9 @@ func validateStorageEstimateRequest(req storageEstimateRequest) error {
 	}
 	if _, err := storageEstimateAutoGroupLimit(req); err != nil {
 		return err
+	}
+	if req.Diverse && !req.Auto {
+		return fmt.Errorf("diversity sampling requires automatic mode")
 	}
 	if req.Fidelity != "byte-exact" && req.Fidelity != "pixel-exact" {
 		return fmt.Errorf("unsupported storage fidelity")
@@ -261,6 +265,7 @@ type storageEstimateSelection struct {
 	RequestedGroups    int    `json:"requestedGroups"`
 	SampledGroups      int    `json:"sampledGroups"`
 	SampledImages      int    `json:"sampledImages"`
+	Diverse            bool   `json:"diverse,omitempty"`
 }
 
 // Automatic discovery is a bounded trial, NOT a library-wide savings scan.
@@ -292,7 +297,7 @@ func estimateAutoRemember(group estimateSourceGroup, used map[string]bool) {
 	}
 }
 
-func estimateAutoSources(ctx context.Context, maxGroups int) ([]estimateSourceGroup, storageEstimateSelection, error) {
+func estimateAutoSources(ctx context.Context, maxGroups int, diverse bool) ([]estimateSourceGroup, storageEstimateSelection, error) {
 	if maxGroups != estimateAutoDefaultGroups && maxGroups != estimateMaxGroups {
 		return nil, storageEstimateSelection{}, fmt.Errorf("automatic estimates require 4 or 8 sample groups")
 	}
@@ -310,6 +315,10 @@ func estimateAutoSources(ctx context.Context, maxGroups int) ([]estimateSourceGr
 	})
 	if err != nil {
 		return nil, meta, err
+	}
+	if diverse {
+		meta.Diverse = true
+		return estimateDiverseAutoSources(ctx, maxGroups, ids, meta)
 	}
 
 	groups := make([]estimateSourceGroup, 0, maxGroups)
@@ -360,6 +369,172 @@ func estimateAutoSources(ctx context.Context, maxGroups int) ([]estimateSourceGr
 	}
 	if len(groups) == 0 {
 		return nil, meta, fmt.Errorf("no eligible image groups found: create a Visual Stack of 2–16 images or generate image pHashes in Tasks, then retry")
+	}
+	meta.SampledGroups = len(groups)
+	for _, group := range groups {
+		meta.SampledImages += len(group.Members)
+	}
+	return groups, meta, nil
+}
+
+// For an opt-in diagnostic comparison, spread candidate probes across the
+// ranked pHash clusters instead of taking only the largest groups. The
+// underlying pHash clusters are still biased candidate matches, never a
+// statistical sample of all library Images.
+func estimateDiverseClusterIndices(clusters [][]int, limit int) []int {
+	if limit <= 0 {
+		return nil
+	}
+	eligible := make([]int, 0)
+	for index, cluster := range clusters {
+		if len(cluster) >= 2 {
+			eligible = append(eligible, index)
+		}
+	}
+	if len(eligible) <= limit {
+		return eligible
+	}
+	indices := make([]int, 0, limit)
+	if limit == 1 {
+		return append(indices, eligible[0])
+	}
+	for slot := 0; slot < limit; slot++ {
+		index := slot * (len(eligible) - 1) / (limit - 1)
+		indices = append(indices, eligible[index])
+	}
+	return indices
+}
+
+// These labels describe diversity among eligible *candidate groups*, not
+// population-wide format or size distributions. Classification uses bounded
+// path extension and file-size metadata, not image decoders or media writes.
+func estimateDiversityBuckets(group estimateSourceGroup) (string, string, string) {
+	format := ""
+	var total int64
+	for _, member := range group.Members {
+		ext := strings.ToLower(filepath.Ext(member.Path))
+		switch ext {
+		case ".jpg", ".jpeg":
+			ext = "jpeg"
+		case ".png", ".webp", ".jxl", ".gif", ".avif":
+			ext = strings.TrimPrefix(ext, ".")
+		default:
+			ext = "other"
+		}
+		if format == "" {
+			format = ext
+		} else if format != ext {
+			format = "mixed"
+		}
+		if info, err := os.Lstat(member.Path); err == nil && info.Mode().IsRegular() {
+			total += info.Size()
+		}
+	}
+	avg := total / int64(max(1, len(group.Members)))
+	size := "large"
+	switch {
+	case avg < 256<<10:
+		size = "small"
+	case avg < 2<<20:
+		size = "medium"
+	}
+	count := "many"
+	switch {
+	case len(group.Members) <= 3:
+		count = "few"
+	case len(group.Members) <= 8:
+		count = "several"
+	}
+	return format, size, count
+}
+
+// Deterministic greedy selection rewards previously unseen source formats,
+// byte-size bands and membership sizes; all chosen groups remain disjoint.
+func estimateChooseDiverseGroups(candidates []estimateSourceGroup, maxGroups int) []estimateSourceGroup {
+	selected := make([]estimateSourceGroup, 0, maxGroups)
+	used := make(map[string]bool)
+	usedFormats := make(map[string]bool)
+	usedSizes := make(map[string]bool)
+	usedCounts := make(map[string]bool)
+	chosen := make([]bool, len(candidates))
+	for len(selected) < maxGroups {
+		best, bestScore := -1, -1
+		for index, group := range candidates {
+			if chosen[index] || !estimateAutoDisjoint(group, used) {
+				continue
+			}
+			format, size, count := estimateDiversityBuckets(group)
+			score := 0
+			if !usedFormats[format] {
+				score += 4
+			}
+			if !usedSizes[size] {
+				score += 2
+			}
+			if !usedCounts[count] {
+				score++
+			}
+			if score > bestScore {
+				best, bestScore = index, score
+			}
+		}
+		if best == -1 {
+			break
+		}
+		group := candidates[best]
+		chosen[best] = true
+		selected = append(selected, group)
+		estimateAutoRemember(group, used)
+		format, size, count := estimateDiversityBuckets(group)
+		usedFormats[format], usedSizes[size], usedCounts[count] = true, true, true
+	}
+	return selected
+}
+
+// Probe a bounded set of curated and pHash-backed groups, then pick groups
+// covering more source-file characteristics. No scan, regrouping or media
+// mutation: each chosen source is verified through the same P12/P13 script.
+func estimateDiverseAutoSources(ctx context.Context, maxGroups int, ids []int, meta storageEstimateSelection) ([]estimateSourceGroup, storageEstimateSelection, error) {
+	const maxStackCandidates = 8
+	const maxPHashCandidates = 24
+	candidates := make([]estimateSourceGroup, 0, maxStackCandidates+maxPHashCandidates)
+	for _, id := range ids {
+		if err := ctx.Err(); err != nil {
+			return nil, meta, err
+		}
+		group, err := estimateStackSources(ctx, id)
+		if err != nil || !estimateAutoWithinBudget(group) || !estimateAutoDisjoint(group, make(map[string]bool)) {
+			continue
+		}
+		candidates = append(candidates, group)
+		if len(candidates) >= maxStackCandidates {
+			break
+		}
+	}
+	var clusters [][]int
+	err := txn.WithReadTxn(ctx, manager.GetInstance().Repository.TxnManager, func(ctx context.Context) error {
+		var err error
+		clusters, meta.PHashIndexedImages, err = sqlite.ImagePHashClusters(ctx, 4)
+		return err
+	})
+	if err != nil {
+		return nil, meta, err
+	}
+	for _, index := range estimateDiverseClusterIndices(clusters, maxPHashCandidates) {
+		if err := ctx.Err(); err != nil {
+			return nil, meta, err
+		}
+		group, err := estimateAutoPHashGroup(ctx, clusters[index])
+		if err != nil {
+			return nil, meta, err
+		}
+		if len(group.Members) >= 2 && estimateAutoWithinBudget(group) && estimateAutoDisjoint(group, make(map[string]bool)) {
+			candidates = append(candidates, group)
+		}
+	}
+	groups := estimateChooseDiverseGroups(candidates, maxGroups)
+	if len(groups) == 0 {
+		return nil, meta, fmt.Errorf("no eligible image groups found for diverse sample: create image-only Visual Stacks or generate image pHashes")
 	}
 	meta.SampledGroups = len(groups)
 	for _, group := range groups {
@@ -517,7 +692,7 @@ func (rs imageRoutes) StorageEstimateStart(w http.ResponseWriter, r *http.Reques
 				if err != nil {
 					return err
 				}
-				groups, selection, err = estimateAutoSources(ctx, limit)
+				groups, selection, err = estimateAutoSources(ctx, limit, req.Diverse)
 				if err != nil {
 					return err
 				}

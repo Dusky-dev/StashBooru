@@ -9,6 +9,14 @@
 - Unit/integration regression fixtures include the *identity* of the supplied Pawchive example, but full live provider data and links could not be retrieved from this workspace. CI and Codex pending; no real-library downloads or imports performed.
 
 
+## Opt-in diverse storage comparisons and in-memory reconstruction metrics — 2026-11-06
+
+- Baseline: `develop` `b9db256ff3affa3b68ded149de9ab79464f241b0`; branch `feat/diverse-readonly-storage-benchmark-20261106`. Owner's eight-group run evaluated 61 images / 59.78 MiB and showed only the first three pHash groups had eligible savings: 6.60 MiB, 11.0% for that selected sample. The existing largest-first pHash ordering biases the evaluation.
+- Add opt-in diversity comparison using up to eight eligible curated stacks and 24 pHash cluster candidates spread across the ranked cluster range; choose at most four/eight disjoint groups for variation by file extension/format, average source bytes and group member counts. Keep the previous default sampling, source safety limits and byte-exact read-only checks unchanged. This is purposive, **not** representative across the library, and no library-wide savings forecast is made.
+- Add header-only actual image format/dimension/file-size summaries to successful Python estimator reports, per-method wall time and explicit in-memory verification scope. No on-disk pack or read-back operation, file mutation or original eviction.
+- Tests: Go validation, cluster-range and disjoint source-format selection; Python profile/timing/no-source-mutation; desktop/mobile Settings fixture for payload and rendering. CI and review pending. Next independent milestone: persistence/restart-safety and verified native packed-media recovery on disposable copies, then deliberate full-library profiling before any compression activation.
+
+
 ## Pawchive external-link media discovery — 2026-11-05
 
 - Branch `feat/booru-shared-link-media-20261105`, PR #314, synchronized with `develop`. Corrected user scope: no paste-link UI. Detect Dropbox/MEGA URLs directly inside Pawchive post content during normal searches.

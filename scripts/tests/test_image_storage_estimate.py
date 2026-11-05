@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 from PIL import Image
@@ -51,6 +52,21 @@ class StorageEstimatorTests(unittest.TestCase):
         self.assertEqual(row["fidelity"], "byte-exact")
         self.assertEqual(len(row["methods"]), 2)
         self.assertTrue(all(v["verifiedDuringPlanning"] for v in row["methods"]))
+        self.assertEqual(
+            [v["verificationScope"] for v in row["methods"]],
+            ["in-memory", "in-memory"])
+        self.assertTrue(all(isinstance(v["planSeconds"], float)
+                            and v["planSeconds"] >= 0 for v in row["methods"]))
+        self.assertEqual(row["sourceProfile"]["formats"],
+                         [{"format": "PNG", "count": 2}])
+        self.assertEqual(row["sourceProfile"]["smallestDimensions"],
+                         {"width": 96, "height": 96})
+        self.assertEqual(row["sourceProfile"]["largestDimensions"],
+                         {"width": 96, "height": 96})
+        self.assertEqual(row["sourceProfile"]["minFileBytes"],
+                         min(self.first.stat().st_size, self.second.stat().st_size))
+        self.assertEqual(row["sourceProfile"]["maxFileBytes"],
+                         max(self.first.stat().st_size, self.second.stat().st_size))
         self.assertEqual(report["potentialSavedBytes"],
                          row["potentialSavedBytes"])
         self.assertEqual(
@@ -80,6 +96,36 @@ class StorageEstimatorTests(unittest.TestCase):
         self.assertTrue(all(item["verifiedDuringPlanning"]
                             for item in report["results"][0]["methods"]))
         self.assertEqual((original.read_bytes(), original.stat().st_mtime_ns), before)
+
+    def test_source_profile_handles_unsupported_headers_without_paths(self):
+        broken = self.root / "unknown.bin"
+        broken.write_bytes(b"unsupported but unchanged")
+        result = estimate.source_profile({
+            "members": [{"id": "image:9", "path": str(broken)},
+                        {"id": "image:1", "path": str(self.first)}]
+        })
+        self.assertEqual(result["formats"],
+                         [{"format": "PNG", "count": 1},
+                          {"format": "unknown", "count": 1}])
+        self.assertNotIn(str(self.root), json.dumps(result))
+        self.assertEqual(result["smallestDimensions"],
+                         {"width": 96, "height": 96})
+
+    def test_bomb_size_header_is_skipped_without_failing_optional_profile(self):
+        original = self.originals()
+        with patch.object(estimate.Image, "open",
+                          side_effect=Image.DecompressionBombError("too many pixels")):
+            profile = estimate.source_profile(self.group)
+        self.assertEqual(profile["formats"],
+                         [{"format": "unknown", "count": 2}])
+        self.assertNotIn("smallestDimensions", profile)
+        self.assertNotIn("largestDimensions", profile)
+        self.assertEqual(profile["minFileBytes"],
+                         min(self.first.stat().st_size, self.second.stat().st_size))
+        self.assertEqual(profile["maxFileBytes"],
+                         max(self.first.stat().st_size, self.second.stat().st_size))
+        self.assertNotIn(str(self.root), json.dumps(profile))
+        self.assertEqual(self.originals(), original)
 
     def test_non_selected_method_is_not_counted_as_savings(self):
         group = {"id": "broken", "members": [

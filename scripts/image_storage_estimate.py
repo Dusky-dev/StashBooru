@@ -14,9 +14,42 @@ import json
 import math
 from pathlib import Path
 import sys
+import time
+
+from PIL import Image
 
 import image_delta_storage as delta
 import gallery_block_storage as tiles
+
+
+def source_profile(group: dict) -> dict:
+    """Header-only format/dimension and stat summaries; never expose paths."""
+    formats = {}
+    dimensions = []
+    sizes = []
+    for member in group.get("members", []):
+        kind = "unknown"
+        try:
+            with Image.open(member["path"]) as opened:
+                kind = (opened.format or "unknown").upper()
+                dimensions.append((opened.width, opened.height))
+        except (OSError, ValueError, KeyError, TypeError,
+                Image.DecompressionBombError):
+            pass  # Optional profiling must not invalidate byte-exact estimates.
+        formats[kind] = formats.get(kind, 0) + 1
+        try:
+            sizes.append(Path(member["path"]).stat().st_size)
+        except (OSError, KeyError, TypeError):
+            pass
+    ordered = sorted(dimensions, key=lambda size: (size[0] * size[1], size))
+    result = {"formats": [{"format": key, "count": formats[key]}
+                          for key in sorted(formats)],
+              "minFileBytes": min(sizes) if sizes else None,
+              "maxFileBytes": max(sizes) if sizes else None}
+    if ordered:
+        result["smallestDimensions"] = {"width": ordered[0][0], "height": ordered[0][1]}
+        result["largestDimensions"] = {"width": ordered[-1][0], "height": ordered[-1][1]}
+    return result
 
 
 def evaluate_group(group: dict, fidelity: str, minimum_bytes: int,
@@ -26,6 +59,7 @@ def evaluate_group(group: dict, fidelity: str, minimum_bytes: int,
     errors = []
     for method in ("delta", "shared-tiles"):
         try:
+            started = time.monotonic()
             if method == "delta":
                 _manifest, _blobs, report = delta.plan_group(
                     group, fidelity, minimum_bytes, minimum_percent)
@@ -44,6 +78,8 @@ def evaluate_group(group: dict, fidelity: str, minimum_bytes: int,
                 "method": method,
                 "layout": report["layout"],
                 "verifiedDuringPlanning": True,
+                "verificationScope": "in-memory",
+                "planSeconds": round(time.monotonic() - started, 3),
                 "eligible": eligible,
                 "originalBytes": original,
                 "packedBytes": projected,
@@ -81,6 +117,7 @@ def evaluate_group(group: dict, fidelity: str, minimum_bytes: int,
         "physicalBytesIfOriginalsRetained": baseline + best["packedBytes"] if best else baseline,
         "methods": choices,
         "methodErrors": errors,
+        "sourceProfile": source_profile(group),
     }
 
 
