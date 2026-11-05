@@ -1,5 +1,14 @@
 # StashBooru implementation progress
 
+## Selectable Character dedup review — 2026-11-05
+
+- Baseline: `develop` `9763546984ca242361e5a769f7ab31e3881d1f69`; branch `feat/selectable-character-dedup-decisions-20261105`.
+- Character duplicate candidates are now unchecked by default. Users can select one, multiple or all preview groups, review across pages, and run only selected merges in the existing atomic native job. Apply rechecks the full preview fingerprint and server-approved destination IDs.
+- Users can mark proposed groups as **Not duplicate** (per-row or selected in bulk). Persistent SQLite migration 103 stores ordered native Character-ID pair exclusions, honors them across previews, prevents transitive group merges, and cleans decisions up on Character deletion. **Suggest again** restores individual excluded pairs.
+- Removed the lengthy inline task description and the profiles section summary. The native question-mark icon opens the built-in Tasks help page containing usage, preservation, and safety details.
+- Added matching, API, SQLite integration and desktop/mobile browser regression cases. Local execution unavailable in this connector-only workspace; CI checks and review are pending. No production database or real media were changed.
+
+
 ## Automatic, read-only image storage sample — 2026-11-05
 
 - Baseline: `develop` `a7b46be38365810932b83a143f9869d04ed1c3ab`; branch `feat/automatic-image-storage-estimates-20261105`. The existing estimator required manually entering Visual Stack IDs and displayed the operational safety warning as an error-like banner.
