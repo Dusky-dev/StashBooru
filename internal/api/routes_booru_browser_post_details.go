@@ -28,8 +28,14 @@ func (rs booruBrowserRoutes) PostDetails(w http.ResponseWriter, r *http.Request)
 		writeBooruError(w, http.StatusBadGateway, "provider-error", "Could not load complete Pawchive post details. Use the original post link.")
 		return
 	}
+	// Mirror the search handler's native identity projection: detailed results
+	// must retain canonical Artist/Character/Copyright display identities.
+	posts := []booru.Post{detailed}
+	rs.captureIdentityPosts(r.Context(), source, posts)
+	prefs, prefsErr := rs.downloadSettings()
+	captureTags := prefsErr == nil && prefs.ImportTags
 	// A new, bounded opaque snapshot is issued for each discovered linked item.
 	writeVisualSimilarityJSON(w, struct {
 		Post booru.Post `json:"post"`
-	}{Post: publicBooruPost(source, detailed)})
+	}{Post: publicBooruPost(source, posts[0], captureTags)})
 }
