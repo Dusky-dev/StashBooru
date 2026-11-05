@@ -889,7 +889,7 @@ function SourceResults({
     return () => controller.abort();
   }, [post?.id, post?.mediaKey, source.engine, suspended]);
   const inspectedPost =
-    post && details?.key === post.mediaKey ? details.post : post;
+    post && details && details.key === post.mediaKey ? details.post : post;
   const navigation = visiblePosts.filter(
     (item) =>
       item.id === inspect ||
