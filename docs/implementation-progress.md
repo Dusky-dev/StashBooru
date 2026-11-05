@@ -1,5 +1,13 @@
 # StashBooru implementation progress
 
+## Docker runtime Python storage tools — 2026-11-05 (packaging correction)
+
+- Baseline: `develop` `c985b46a7f4162eff5424c2984e8ba07a81e77c2`; branch `fix/docker-image-storage-scripts-20261105`. The server-side estimator invokes `scripts/image_storage_estimate.py`, but production Docker previously copied only four worker scripts and thus showed a missing-script warning despite Python, Pillow and NumPy being installed.
+- Copy the complete `scripts/` tree from the existing backend build stage into `/scripts` in the final image; explicitly retain `/` as the working directory for legacy relative Python entry points and set the estimator's absolute environment override. This also makes existing native media-backup and P12/P13 helper entry points available without operator copies. No production storage activation, library mutation or source eviction added.
+- Add a packaging contract regression test to the existing estimates workflow and document the image-recreate requirement and standalone-binary limitations.
+- Validation status: CI pending on new PR; no container was deployed to the owner's server and no manual production estimate was run. Next: verify packaging workflow, Docker Publish after merge, then have the owner pull/recreate the Docker image and test the estimator against an image-only Visual Stack.
+
+
 ## Optional JXL legacy filename migration — 2026-11-04 (PR #304)
 
 - Baseline: `develop` `aa4233c418771d75b036989dcdceffc0c2de9884`; branch `feat/booru-jxl-rename-with-warning-20261104`.

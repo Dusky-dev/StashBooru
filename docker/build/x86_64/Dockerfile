@@ -72,6 +72,12 @@ RUN apk upgrade --no-cache \
         yt-dlp
 
 COPY --from=backend /stash/stash /usr/bin/
+# Native image storage tasks run Python entry points under scripts/*.py.
+# Publish the complete script tree together so sibling imports and the
+# remaining backup/candidate/recovery commands resolve in the image.
+# The production container's fixed working directory is /.
+WORKDIR /
+COPY --from=backend /stash/scripts /scripts
 COPY --from=backend /stash/scripts/visual_embedding_worker.py /usr/lib/stash/visual_embedding_worker.py
 COPY --from=backend /stash/scripts/camie_tagger_worker.py /usr/lib/stash/camie_tagger_worker.py
 COPY --from=backend /stash/scripts/media_conversion_worker.py /usr/lib/stash/media_conversion_worker.py
@@ -81,6 +87,7 @@ ENV STASH_CONFIG_FILE=/root/.stash/config.yml
 ENV STASH_VISUAL_EMBEDDING_WORKER=/usr/lib/stash/visual_embedding_worker.py
 ENV STASH_CAMIE_TAGGER_WORKER=/usr/lib/stash/camie_tagger_worker.py
 ENV STASH_MEDIA_CONVERSION_WORKER=/usr/lib/stash/media_conversion_worker.py
+ENV STASH_IMAGE_STORAGE_ESTIMATE_SCRIPT=/scripts/image_storage_estimate.py
 
 EXPOSE 9999 9443
 ENTRYPOINT ["stash"]
