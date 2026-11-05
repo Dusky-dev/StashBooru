@@ -59,6 +59,21 @@ The scan task accepts the following options:
 | Generate previews for image clips | Generates a gif/looping video as thumbnail for image clips/gifs. |
 | Rescan files | By default, Stash will only rescan existing files if the file's modified date has been updated since its previous scan. Stash will rescan files in the path when this option is enabled, regardless of the file modification time. Only required if Stash needs to recalculate video/image metadata, or to rescan gallery zips. |
 
+## Merge duplicate Characters
+
+**Settings → Tasks → Review profiles & associations → Merge duplicate Characters**
+
+This tool proposes possible duplicates among native Character profiles. It compares normalized names (including reversed first/last names and unambiguous shortened names) and requires the **same nonempty, directly assigned Copyrights**. Characters without Copyrights, variants, ambiguous names, or conflicting profile details are skipped. Matching names alone are not proof of identity.
+
+1. Click **Preview Character merges** to inspect proposed survivors, source profiles and their Copyrights. This preview changes nothing.
+2. Select individual groups, or **Select all**. Nothing is preselected.
+3. Choose **Merge selected groups** to queue only those groups, or **Mark selected as not duplicates** to prevent those matches from being proposed again. There is also a per-row **Not duplicate** action.
+4. Expand **Not duplicates** to review saved rejected pairs. **Suggest again** removes an exclusion if you change your mind.
+
+Not-duplicate decisions are stored in the StashBooru database and survive rescans and restarts. They apply to the exact Character IDs, not globally to similar names; a rejected pair also blocks its larger suggested group, preventing an indirect merge through a third profile. If either Character is deleted, the decision is discarded. Back up your database if you need to preserve these decisions through restoration.
+
+Merging combines compatible metadata and Image, Video and Gallery links into a surviving Character; the removed Character profile records are deleted, **not the media files**. Merges are not undoable through this task. A merge job validates the preview again and runs transactionally: cancellation or failure before commit rolls back its changes. Make a database backup first, and review each group before merging.
+
 ## Auto tagging
 
 See the [Auto tagging](/help/AutoTagging.md) page.
