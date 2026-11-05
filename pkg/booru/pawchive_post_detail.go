@@ -51,7 +51,7 @@ func (c *Client) PawchivePostDetail(ctx context.Context, source Source, post Pos
     }
     var raw object
     if json.Unmarshal(data, &raw) != nil {
-        return Post{}, fmt.Errorf("Pawchive post details are invalid")
+        return Post{}, fmt.Errorf("pawchive post details are invalid")
     }
     if nested := child(raw["post"]); nested != nil {
         // Pawchive/Kemono versions differ: some return the post directly,
@@ -63,7 +63,7 @@ func (c *Client) PawchivePostDetail(ctx context.Context, source Source, post Pos
     }
     detailed, err := parseArchivePost(source, raw)
     if err != nil || detailed.ID != post.ID {
-        return Post{}, fmt.Errorf("Pawchive returned a different or invalid post")
+        return Post{}, fmt.Errorf("pawchive returned a different or invalid post")
     }
     return detailed, nil
 }

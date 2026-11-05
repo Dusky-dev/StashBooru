@@ -20,7 +20,7 @@ func SharedLinkSource() Source {
 		Name:       "Shared links",
 		Engine:     "danbooru",
 		URL:        "https://www.dropbox.com",
-		MediaHosts: []string{"dropboxusercontent.com"},
+		MediaHosts: []string{"dropbox.com", "dropboxusercontent.com"},
 	}
 }
 

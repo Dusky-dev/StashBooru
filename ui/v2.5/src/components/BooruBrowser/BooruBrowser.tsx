@@ -113,6 +113,8 @@ function PostInspection({
   onBlacklistTag,
   blacklistBusy,
   blacklistError,
+  detailsLoading,
+  detailsError,
 }: {
   post: BooruPost;
   source: BooruSource;
@@ -127,6 +129,8 @@ function PostInspection({
   onBlacklistTag: (name: string) => void;
   blacklistBusy: boolean;
   blacklistError: string;
+  detailsLoading?: boolean;
+  detailsError?: string;
 }) {
   const groups = [...new Set(post.tags.map((tag) => tag.category))].sort(
     (a, b) => {
@@ -277,6 +281,17 @@ function PostInspection({
             onClick={onNext}
           />
         </nav>
+        {detailsLoading && (
+          <p role="status">
+            <Spinner animation="border" size="sm" className="mr-2" />
+            Checking full Pawchive post for shared links…
+          </p>
+        )}
+        {detailsError && (
+          <Alert variant="warning">
+            {detailsError} The listed Pawchive media remains available.
+          </Alert>
+        )}
         {post.mediaNotice && <Alert variant="info">{post.mediaNotice}</Alert>}
         <div className="booru-inspection-media" aria-label="Post media">
           {assets.slice(0, visibleCount).map((asset, index) => {
@@ -304,7 +319,26 @@ function PostInspection({
                     {asset.format && ` · ${asset.format.toUpperCase()}`}
                   </h6>
                 )}
-                {["zip", "cbz", "7z"].includes(
+                {asset.format === "folder" ? (
+                  <div className="booru-shared-folder">
+                    {post.previewURL ? (
+                      <>
+                        <RemoteImage
+                          src={booruMediaURL(post, "preview") || ""}
+                          className="booru-sample"
+                          alt="Pawchive post cover (not a folder file preview)"
+                        />
+                        <p className="small text-muted">
+                          Pawchive post cover — folder thumbnails are available on MEGA.
+                        </p>
+                      </>
+                    ) : (
+                      <Alert variant="secondary">
+                        MEGA folder — open the provider to browse image/video thumbnails.
+                      </Alert>
+                    )}
+                  </div>
+                ) : ["zip", "cbz", "7z"].includes(
                   asset.format?.toLowerCase() ?? ""
                 ) ? (
                   <BooruArchive
@@ -340,6 +374,18 @@ function PostInspection({
                     {asset.title || "External shared media"}
                   </p>
                 )}
+                {asset.sourceID === "shared-links" &&
+                  /^[a-f0-9]{48}$/.test(asset.mediaKey ?? "") && (
+                    <ExternalLink
+                      className="btn btn-outline-secondary btn-sm mb-2"
+                      href={`booru-browser/shared-open?key=${asset.mediaKey}`}
+                    >
+                      <Icon icon={faLink} />{" "}
+                      {asset.format === "folder"
+                        ? "Browse thumbnails and download on MEGA"
+                        : "Open original on Dropbox / MEGA"}
+                    </ExternalLink>
+                  )}
                 {asset.mediaNotice &&
                   asset.mediaNotice !== post.mediaNotice && (
                     <Alert variant="info">{asset.mediaNotice}</Alert>
@@ -365,7 +411,7 @@ function PostInspection({
                     </span>
                   )}
                 </div>
-                {!["zip", "cbz", "7z"].includes(
+                {!["zip", "cbz", "7z", "folder"].includes(
                   asset.format?.toLowerCase() ?? ""
                 ) && (
                   <BooruDownload
@@ -808,6 +854,42 @@ function SourceResults({
     suspended,
   ]);
   const post = result?.posts.find((item) => item.id === inspect);
+  const [details, setDetails] = useState<{ key: string; post: BooruPost }>();
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsError, setDetailsError] = useState("");
+  useEffect(() => {
+    setDetails(undefined);
+    setDetailsError("");
+    if (source.engine !== "pawchive" || suspended || !post?.mediaKey) {
+      setDetailsLoading(false);
+      return;
+    }
+    const key = post.mediaKey;
+    const postID = post.id;
+    const controller = new AbortController();
+    setDetailsLoading(true);
+    void fetch(
+      `booru-browser/post-details?${new URLSearchParams({ key })}`,
+      { signal: controller.signal }
+    )
+      .then(readBooruResponse<{ post: BooruPost }>)
+      .then((result) => {
+        if (!controller.signal.aborted && result.post.id === postID)
+          setDetails({ key, post: result.post });
+      })
+      .catch((cause: unknown) => {
+        if (!controller.signal.aborted)
+          setDetailsError(
+            cause instanceof Error ? cause.message : String(cause)
+          );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setDetailsLoading(false);
+      });
+    return () => controller.abort();
+  }, [post?.id, post?.mediaKey, source.engine, suspended]);
+  const inspectedPost =
+    post && details?.key === post.mediaKey ? details.post : post;
   const navigation = visiblePosts.filter(
     (item) =>
       item.id === inspect ||
@@ -914,7 +996,9 @@ function SourceResults({
             preview={({ ignore, busy }) =>
               post && (
                 <PostInspection
-                  post={post}
+                  post={inspectedPost ?? post}
+                  detailsLoading={detailsLoading}
+                  detailsError={detailsError}
                   source={source}
                   onTag={onTag}
                   onBlacklistTag={(name) => void blacklistTag(name)}
@@ -971,7 +1055,13 @@ function SourceResults({
                     />
                   ) : (
                     <span>
-                      {message("missing_thumbnail", "Preview unavailable")}
+                      {sharedLinkCount(item) > 0 ? (
+                        <>
+                          <Icon icon={faLink} /> Shared media — inspect post
+                        </>
+                      ) : (
+                        message("missing_thumbnail", "Preview unavailable")
+                      )}
                     </span>
                   )}
                 </Button>
