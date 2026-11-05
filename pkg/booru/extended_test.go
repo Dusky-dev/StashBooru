@@ -501,3 +501,28 @@ func TestArchiveUnavailableOriginalAndNonMediaNotice(t *testing.T) {
 		t.Fatal(post, err)
 	}
 }
+
+func TestPawchiveArchiveExtractsSharedLinksWithoutLosingAttachments(t *testing.T) {
+	var raw object
+	const sample = `{
+	  "id":"31","user":"42","service":"patreon",
+	  "title":"An artist's post",
+	  "content":"See https://mega.nz/file/abcDEF123#abcdef1234567890 and https://www.dropbox.com/scl/fo/abcDEF123/folder?rlkey=abcdef123456",
+	  "file":{"path":"/original.png","name":"original.png"},
+	  "attachments":[{"path":"/another.webm","name":"another.webm"}]
+	}`
+	if err := json.Unmarshal([]byte(sample), &raw); err != nil {
+		t.Fatal(err)
+	}
+	post, err := parseArchivePost(testSource("pawchive"), raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if post.Format != "png" || len(post.Attachments) != 3 ||
+		post.Attachments[0].Format != "webm" ||
+		post.Attachments[1].SourceID != "shared-links" ||
+		post.Attachments[2].Format != "zip" ||
+		!strings.Contains(post.MediaNotice, "shared link") {
+		t.Fatalf("external links hid Pawchive originals or are missing: %+v", post)
+	}
+}

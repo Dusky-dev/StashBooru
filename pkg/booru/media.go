@@ -37,7 +37,13 @@ func (c *Client) FetchMedia(ctx context.Context, source Source, input MediaReque
 	if source.Validate() != nil || input.URL == "" || (!isMega && source.mediaURL(input.URL) != input.URL) || input.Limit < 1 || input.Limit > 512<<20 || input.ExpectedBytes > input.Limit {
 		return ret, fmt.Errorf("media is unavailable, unsafe or exceeds the download limit")
 	}
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	timeout := 2 * time.Minute
+	if isMega {
+		// A bounded large video transfer may take longer than a thumbnail.
+		// The owning download job has a separate 30-minute cancellation.
+		timeout = 15 * time.Minute
+	}
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	select {
 	case c.media <- struct{}{}:

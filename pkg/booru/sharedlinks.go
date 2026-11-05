@@ -155,7 +155,7 @@ const maxLinkedMedia = 16
 // Shared links may occur as HTML hrefs, bare URLs, Markdown links or BBCode
 // inside Pawchive's content. A bounded scan of provider text is sufficient:
 // never crawl pages or follow arbitrary external redirects during search.
-var sharedLinkPattern = regexp.MustCompile(`https://[^\\s<>"']+`)
+var sharedLinkPattern = regexp.MustCompile(`https://[^\s<>"']+`)
 
 // LinkedMediaFromPawchiveContent discovers up to 16 valid shared files/folders,
 // without fetching any of them. MEGA folder links are reported but not fetched:
@@ -178,9 +178,7 @@ func LinkedMediaFromPawchiveContent(content, pawchivePostURL string) ([]Post, in
 			continue
 		}
 		host := strings.ToLower(u.Hostname())
-		if host == "mega.nz" && strings.HasPrefix(u.Path, "/folder/") &&
-			sharedLinkID.MatchString(strings.TrimPrefix(u.Path, "/folder/")) &&
-			sharedLinkKey.MatchString(u.Fragment) {
+		if isMegaFolderShare(u) {
 			if !seen[candidate] {
 				seen[candidate] = true
 				folders++
@@ -206,4 +204,22 @@ func LinkedMediaFromPawchiveContent(content, pawchivePostURL string) ([]Post, in
 		}
 	}
 	return found, folders
+}
+
+// Treat an intact MEGA folder share as a detected-but-unavailable source.
+// We never use a folder link as a single-media download target.
+func isMegaFolderShare(u *url.URL) bool {
+	if u == nil || u.Scheme != "https" || u.Hostname() != "mega.nz" ||
+		u.User != nil || u.Port() != "" || u.RawQuery != "" {
+		return false
+	}
+	if strings.HasPrefix(u.Path, "/folder/") &&
+		sharedLinkID.MatchString(strings.TrimPrefix(u.Path, "/folder/")) &&
+		sharedLinkKey.MatchString(u.Fragment) {
+		return true
+	}
+	parts := strings.Split(u.Fragment, "!")
+	return (u.Path == "/" || u.Path == "") && len(parts) == 3 &&
+		parts[0] == "F" && sharedLinkID.MatchString(parts[1]) &&
+		sharedLinkKey.MatchString(parts[2])
 }

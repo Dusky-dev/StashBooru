@@ -336,7 +336,9 @@ function PostInspection({
                     <Icon icon={faLink} /> {asset.title || "External shared media"}
                   </p>
                 )}
-                {asset.mediaNotice && <Alert variant="info">{asset.mediaNotice}</Alert>}
+                {asset.mediaNotice && asset.mediaNotice !== post.mediaNotice && (
+                  <Alert variant="info">{asset.mediaNotice}</Alert>
+                )}
                 <div className="booru-file-details mt-2">
                   {!!asset.width && !!asset.height && (
                     <span>

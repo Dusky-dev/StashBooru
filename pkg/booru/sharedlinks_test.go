@@ -1,6 +1,7 @@
 package booru
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -47,5 +48,41 @@ func TestSharedLinkPostRejectsInvalidAndPrivateURLs(t *testing.T) {
 		if _, err := SharedLinkPost(raw); err == nil {
 			t.Errorf("expected rejected share URL: %q", raw)
 		}
+	}
+}
+
+func TestLinkedMediaFromPawchiveContent(t *testing.T) {
+	content := `<p>Files <a href="https://www.dropbox.com/scl/fi/abcDEF123/cat.png?rlkey=abcdef123456&amp;dl=0">Dropbox</a>
+	<a href="https://mega.nz/file/abcDEF123#abcdef1234567890">MEGA</a></p>
+	Backup https://www.dropbox.com/scl/fi/abcDEF123/cat.png?rlkey=abcdef123456&dl=1
+	Folder https://mega.nz/folder/abcDEF123#abcdef1234567890
+	Legacy https://mega.nz/#F!abcDEF123!abcdef1234567890
+	Unsafe https://dropbox.com.bad.test/s/abcDEF123/evil.jpg
+	Invalid https://mega.nz/file/abcDEF123#not*valid
+	`
+	links, folders := LinkedMediaFromPawchiveContent(content, "https://pawchive.pw/patreon/user/42/post/31")
+	if len(links) != 2 || folders != 2 {
+		t.Fatalf("expected deduplicated Dropbox + MEGA files and two folder links, got %d and %d: %+v", len(links), folders, links)
+	}
+	for _, item := range links {
+		if item.PostURL != "https://pawchive.pw/patreon/user/42/post/31" ||
+			item.SourceID != "shared-links" || item.OriginalURL == "" || !item.DownloadAvailable ||
+			!ValidPostID(item.ID) {
+			t.Fatalf("bad linked-file provenance or identity: %+v", item)
+		}
+	}
+	if links[0].Format != "png" || links[1].Format != "" {
+		t.Fatalf("wrong linked media formats: %+v", links)
+	}
+}
+
+func TestLinkedMediaFromPawchiveContentBounded(t *testing.T) {
+	content := ""
+	for i := 0; i < 30; i++ {
+		content += fmt.Sprintf("https://www.dropbox.com/s/abcDEF%06d/file.png ", i)
+	}
+	links, folders := LinkedMediaFromPawchiveContent(content, "https://pawchive.pw/post")
+	if len(links) != maxLinkedMedia || folders != 0 {
+		t.Fatalf("unbounded linked-media results: %d, %d", len(links), folders)
 	}
 }

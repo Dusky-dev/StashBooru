@@ -17,7 +17,7 @@ func fetchMegaMedia(ctx context.Context, request MediaRequest, output io.Writer)
 	if !ValidMegaSharedFileURL(request.URL) {
 		return empty, fmt.Errorf("unsupported MEGA file link")
 	}
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Minute)
 	defer cancel()
 
 	// Megatools >=1.11 uses a consolidated "megatools dl" executable. Older
