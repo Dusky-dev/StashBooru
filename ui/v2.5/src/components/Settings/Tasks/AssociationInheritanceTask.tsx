@@ -11,6 +11,7 @@ import {
 import { useIntl } from "react-intl";
 import { Link } from "react-router-dom";
 import { useSettings } from "../context";
+import { TaskHelpHeading } from "./TaskHelpHeading";
 
 type Domain = "character" | "artist" | "copyright" | "tag";
 
@@ -300,13 +301,7 @@ export const AssociationInheritanceTask: React.FC = () => {
   const report = review?.report;
   return (
     <div id="association-inheritance-task">
-      <h2>{message("heading")}</h2>
-      <p>{message("description")}</p>
-      <p>
-        <Link to="/settings?tab=library#association-inheritance-settings">
-          {message("shared_defaults")}
-        </Link>
-      </p>
+      <TaskHelpHeading title={message("heading")} />
       {flags.map((flag) => (
         <Form.Check
           key={flag}
@@ -323,6 +318,11 @@ export const AssociationInheritanceTask: React.FC = () => {
           }}
         />
       ))}
+      <p className="small mt-2">
+        <Link to="/settings?tab=library#association-inheritance-settings">
+          {message("shared_defaults")}
+        </Link>
+      </p>
       {error || review?.error ? (
         <Alert variant="danger" className="mt-3">
           {error || review?.error}
