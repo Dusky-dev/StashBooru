@@ -78,6 +78,11 @@ For a specific set, enable **Advanced: enter specific Visual Stack IDs** and
 provide 1–8 distinct IDs separated by commas or spaces. The server resolves
 current paths from its own catalogue; the browser cannot supply file paths.
 Only image-only 2–16-member stacks are allowed in this manual mode.
+Both automatic and manual estimates assign synthetic ASCII-safe member names
+in the temporary input to avoid rejecting library filenames containing
+Unicode or punctuation. Original paths, bytes, catalogue identities and
+filename provenance remain unchanged. The synthetic name is only an
+estimator/pack-export label, not a request to rename media files.
 
 Leave **Byte-exact** (recommended) selected, then choose automatic or manual
 estimate. **Pixel-exact** remains an explicit experimental option and may

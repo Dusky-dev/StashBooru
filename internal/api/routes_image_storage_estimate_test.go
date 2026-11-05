@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -108,5 +109,39 @@ func TestStorageEstimateAutoSampleBudgetAndReportMetadata(t *testing.T) {
 	}
 	if !strings.Contains(string(value), `"totalImages":100`) || !strings.Contains(string(value), `"readOnly":true`) {
 		t.Fatalf("report metadata missing: %s", value)
+	}
+}
+
+func TestStorageEstimatePortableMemberName(t *testing.T) {
+	// P12/P13 permits a portable export label even when the real filename
+	// has Unicode/punctuation. The original name is preserved as sourceName.
+	for _, tc := range []struct {
+		source string
+		want   string
+	}{
+		{"/media/lacrima (夏) [variant] ♥.PNG", "image-34526.png"},
+		{"/media/creator:patreon:123.jxl", "image-34526.jxl"},
+		{"/media/file", "image-34526.img"},
+		{"/media/file.üñí", "image-34526.img"},
+		{"/media/file.xxxxxxxxxxxxxxxxxxxx", "image-34526.img"},
+	} {
+		if got := estimatePortableMemberName(34526, tc.source); got != tc.want {
+			t.Errorf("portable estimate name for %q: got %q, want %q", tc.source, got, tc.want)
+		}
+	}
+
+	member := estimateSourceMember{
+		ID: "image:34526",
+		Name: estimatePortableMemberName(34526, "/srv/artist (summer) [1].jpg"),
+		Path: "/srv/artist (summer) [1].jpg",
+	}
+	b, err := json.Marshal(member)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), `"name":"image-34526.jpg"`) ||
+		!strings.Contains(string(b), `"id":"image:34526"`) ||
+		!strings.Contains(string(b), `"path":"/srv/artist (summer) [1].jpg"`) {
+		t.Fatalf("estimator input must retain original path and identity: %s", b)
 	}
 }
