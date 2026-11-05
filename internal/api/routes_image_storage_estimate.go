@@ -209,12 +209,11 @@ func estimatePython(ctx context.Context, groups []estimateSourceGroup, fidelity 
 	return append(json.RawMessage(nil), data...), nil
 }
 
-
 type storageEstimateSelection struct {
-	Mode              string `json:"mode"`
-	TotalImages       int    `json:"totalImages"`
+	Mode               string `json:"mode"`
+	TotalImages        int    `json:"totalImages"`
 	PHashIndexedImages int    `json:"pHashIndexedImages"`
-	SampledGroups     int    `json:"sampledGroups"`
+	SampledGroups      int    `json:"sampledGroups"`
 }
 
 // Automatic discovery is a bounded trial, NOT a library-wide savings scan.
@@ -428,7 +427,7 @@ func (rs imageRoutes) StorageEstimateStart(w http.ResponseWriter, r *http.Reques
 				storageEstimateBusy = false
 				storageEstimateMutex.Unlock()
 			}()
-			groups := []estimateSourceGroup{}
+			var groups []estimateSourceGroup
 			var selection storageEstimateSelection
 			if req.Auto {
 				var err error
