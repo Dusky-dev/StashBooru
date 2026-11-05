@@ -46,6 +46,7 @@ type storageEstimateStatus struct {
 
 type estimateSourceMember struct {
 	ID   string `json:"id"`
+	Name string `json:"name"`
 	Path string `json:"path"`
 }
 
@@ -118,6 +119,25 @@ func estimateRegularSource(path string) error {
 	return nil
 }
 
+// estimatePortableMemberName supplies an ASCII-only export name to the P12/P13
+// prototype, whose default is the source basename and excludes Unicode and
+// common filename punctuation. This changes only the temporary read-only
+// estimator input: source paths, names, bytes and catalogue IDs stay untouched.
+func estimatePortableMemberName(imageID int, originalPath string) string {
+	extension := filepath.Ext(originalPath)
+	if len(extension) < 2 || len(extension) > 12 {
+		extension = ".img"
+	} else {
+		for _, ch := range extension[1:] {
+			if !strings.ContainsRune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", ch) {
+				extension = ".img"
+				break
+			}
+		}
+	}
+	return "image-" + strconv.Itoa(imageID) + strings.ToLower(extension)
+}
+
 func estimateStackSources(ctx context.Context, id int) (estimateSourceGroup, error) {
 	mgr := manager.GetInstance()
 	var result estimateSourceGroup
@@ -159,7 +179,9 @@ func estimateStackSources(ctx context.Context, id int) (estimateSourceGroup, err
 			if err := estimateRegularSource(path); err != nil {
 				return fmt.Errorf("invalid image source %d: %w", item.Media.ID, err)
 			}
-			result.Members = append(result.Members, estimateSourceMember{ID: item.Media.Key(), Path: path})
+			result.Members = append(result.Members, estimateSourceMember{
+				ID: item.Media.Key(), Name: estimatePortableMemberName(item.Media.ID, path), Path: path,
+			})
 		}
 		return nil
 	})
@@ -342,7 +364,9 @@ func estimateAutoPHashGroup(ctx context.Context, ids []int) (estimateSourceGroup
 				continue
 			}
 			total += info.Size()
-			group.Members = append(group.Members, estimateSourceMember{ID: ref.Key(), Path: primary.Base().Path})
+			group.Members = append(group.Members, estimateSourceMember{
+				ID: ref.Key(), Name: estimatePortableMemberName(id, primary.Base().Path), Path: primary.Base().Path,
+			})
 		}
 		return nil
 	})
