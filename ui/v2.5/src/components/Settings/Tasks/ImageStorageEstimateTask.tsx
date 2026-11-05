@@ -5,11 +5,20 @@ import { formatStorageEstimateLayout } from "./storageEstimateLayout";
 interface MethodEstimate {
   method: string;
   layout: unknown;
+  verifiedDuringPlanning?: boolean;
+  planSeconds?: number;
   eligible: boolean;
   originalBytes: number;
   packedBytes: number;
   potentialSavedBytes: number;
   reason: string;
+}
+interface SourceProfile {
+  formats: { format: string; count: number }[];
+  smallestDimensions?: { width: number; height: number };
+  largestDimensions?: { width: number; height: number };
+  minFileBytes: number | null;
+  maxFileBytes: number | null;
 }
 interface GroupEstimate {
   group: string;
@@ -22,6 +31,7 @@ interface GroupEstimate {
   physicalBytesIfOriginalsRetained: number;
   methods: MethodEstimate[];
   methodErrors: { method: string; error: string }[];
+  sourceProfile?: SourceProfile;
 }
 interface StorageEstimateReport {
   readOnly: boolean;
@@ -38,6 +48,7 @@ interface StorageEstimateReport {
     pHashIndexedImages: number;
     sampledGroups: number;
     sampledImages?: number;
+    diverse?: boolean;
   };
   results: GroupEstimate[];
 }
@@ -59,6 +70,7 @@ export const ImageStorageEstimateTask: React.FC = () => {
   const [fidelity, setFidelity] = useState("byte-exact");
   const [autoMode, setAutoMode] = useState(true);
   const [extendedSample, setExtendedSample] = useState(false);
+  const [diverseSample, setDiverseSample] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -93,7 +105,12 @@ export const ImageStorageEstimateTask: React.FC = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
           autoMode
-            ? { auto: true, sampleSize: extendedSample ? 8 : 4, fidelity }
+            ? {
+                auto: true,
+                sampleSize: extendedSample ? 8 : 4,
+                ...(diverseSample ? { diverse: true } : {}),
+                fidelity,
+              }
             : { stackIDs: parsedIDs, fidelity }
         ),
       });
@@ -163,14 +180,31 @@ export const ImageStorageEstimateTask: React.FC = () => {
         disabled={disabled}
       />
       {autoMode && (
-        <Form.Check
-          id="image-storage-estimate-extended"
-          type="checkbox"
-          checked={extendedSample}
-          onChange={(event) => setExtendedSample(event.currentTarget.checked)}
-          label="Extended sample: up to 8 groups (slower)"
-          disabled={disabled}
-        />
+        <>
+          <Form.Check
+            id="image-storage-estimate-extended"
+            type="checkbox"
+            checked={extendedSample}
+            onChange={(event) => setExtendedSample(event.currentTarget.checked)}
+            label="Extended sample: up to 8 groups (slower)"
+            disabled={disabled}
+          />
+          <Form.Check
+            id="image-storage-estimate-diverse"
+            type="checkbox"
+            checked={diverseSample}
+            onChange={(event) => setDiverseSample(event.currentTarget.checked)}
+            label="Explore different image formats and sizes (experimental)"
+            disabled={disabled}
+          />
+          {diverseSample && (
+            <Form.Text className="text-muted d-block">
+              Spreads candidates across file formats, source sizes and group
+              sizes. This remains a biased sample of existing image groups, not
+              a statistical estimate of the whole library.
+            </Form.Text>
+          )}
+        </>
       )}
       {!autoMode && (
         <Form.Group>
@@ -259,6 +293,13 @@ export const ImageStorageEstimateTask: React.FC = () => {
               not a whole-library estimate and cannot be extrapolated.
             </p>
           )}
+          {result.selection?.diverse && (
+            <p className="small text-muted">
+              Diversity comparison: candidate groups were spread across formats,
+              file sizes and group sizes. Results are not representative of the
+              entire library.
+            </p>
+          )}
           <Alert variant="info">
             Originals were retained. Storing the candidate packs alongside them
             would instead require about{" "}
@@ -294,6 +335,24 @@ export const ImageStorageEstimateTask: React.FC = () => {
               <h4>
                 {group.group} · {group.fidelity}
               </h4>
+              {group.sourceProfile && (
+                <p className="small text-muted">
+                  Formats:{" "}
+                  {group.sourceProfile.formats
+                    .map((item) => item.format + " (" + item.count + ")")
+                    .join(", ")}
+                  {group.sourceProfile.smallestDimensions &&
+                    group.sourceProfile.largestDimensions && (
+                      <>
+                        {" "}· Dimensions:{" "}
+                        {group.sourceProfile.smallestDimensions.width}×
+                        {group.sourceProfile.smallestDimensions.height} to{" "}
+                        {group.sourceProfile.largestDimensions.width}×
+                        {group.sourceProfile.largestDimensions.height}
+                      </>
+                    )}
+                </p>
+              )}
               <Table responsive size="sm">
                 <thead>
                   <tr>
@@ -301,6 +360,8 @@ export const ImageStorageEstimateTask: React.FC = () => {
                     <th>Candidate size</th>
                     <th>Potential saved</th>
                     <th>Eligible?</th>
+                    <th>Reconstruction</th>
+                    <th>Planning time</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -313,6 +374,17 @@ export const ImageStorageEstimateTask: React.FC = () => {
                       <td>{formatSize(method.packedBytes)}</td>
                       <td>{formatSize(method.potentialSavedBytes)}</td>
                       <td>{method.eligible ? "Yes" : "No"}</td>
+                      <td>
+                        {method.verifiedDuringPlanning
+                          ? "In-memory verified"
+                          : "Unknown"}
+                      </td>
+                      <td>
+                        {typeof method.planSeconds === "number" &&
+                        Number.isFinite(method.planSeconds)
+                          ? method.planSeconds.toFixed(2) + " s"
+                          : "—"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -325,8 +397,9 @@ export const ImageStorageEstimateTask: React.FC = () => {
             </div>
           ))}
           <p className="small text-muted">
-            Figures exclude live storage integration and caching overhead. No
-            source files were modified and no storage packs were created.
+            In-memory verification does not test persistent pack creation,
+            restart recovery or live packed-media serving. Figures exclude
+            caching overhead. No source files were modified and no packs were created.
           </p>
         </div>
       )}

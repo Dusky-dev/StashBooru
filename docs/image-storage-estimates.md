@@ -68,7 +68,19 @@ how to create a Visual Stack or generate pHashes.
 
 For additional coverage, the optional **Extended sample** checkbox raises
 the group limit from four to eight under the same per-file, per-group and
-read-only safety budgets. Source IDs and resolved original paths cannot be
+read-only safety budgets.
+
+The optional **Explore different image formats and sizes** checkbox is an
+opt-in *diversity comparison* within the same 4/8 group limits. It considers
+at most eight eligible Visual Stacks and 24 eligible pHash clusters selected
+across the cluster-size ranking rather than simply taking its largest groups.
+It then chooses non-overlapping candidate groups to cover more filename
+format categories (JPEG/PNG/WebP/JXL/GIF/AVIF/mixed/other), average source-file
+size bands (under 256 KiB, 256 KiB–2 MiB, above 2 MiB) and group-size bands
+(2–3, 4–8, 9–16). No extra media scans, hashing or original-file writes occur.
+This is a **purposive diagnostic comparison**, not a statistically random,
+stratified or population-representative sample; unsupported formats and scarce
+image groups may be absent from the results. Source IDs and resolved original paths cannot be
 counted in more than one selected group. The report states the number of
 sampled images as well as selected groups; zero savings or ineligible groups
 are still meaningful results. Larger samples take longer and remain biased
@@ -81,6 +93,14 @@ In automatic mode, sampling is deliberately capped to bound processing cost.
 pHash proximity is a candidate-selection hint, **not** proof of duplicate
 files or guaranteed storage savings. Each P12/P13 proposal is still checked
 using actual original bytes and strict reconstruction.
+
+The report also describes each measured group's actual image formats,
+smallest/largest decoded pixel dimensions and file-size range without
+exposing original paths. Individual P12/P13 methods show planning wall time
+and whether their **in-memory** reconstruction checks completed. These
+verification results are distinct from persistent archive packing,
+post-restart recovery, production packed-media serving or a disk benchmark.
+They are not proof that the library can safely evict any originals.
 
 For a specific set, enable **Advanced: enter specific Visual Stack IDs** and
 provide 1–8 distinct IDs separated by commas or spaces. The server resolves
