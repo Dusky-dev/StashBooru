@@ -1,5 +1,12 @@
 # StashBooru implementation progress
 
+## Compact task headings and help — 2026-11-05
+
+- Baseline: `develop` `f013a7c2b7379b0d61728faa493402f939708bd9`; branch `feat/compact-tasks-help-20261105`.
+- Reduce the oversized Character merge task heading and question-mark icon. Apply one reusable, accessible, compact heading to Character merge, Review library inheritance, Animation inspection and Video overlap / containment.
+- Move detailed descriptions for the next three tasks into the built-in Tasks help page. Keep the inheritance defaults link, all existing switches, previews, job actions and video review dialog unchanged. Remove the redundant Inspect media disclosure description.
+- Extend desktop/mobile Settings and Character browser fixtures to verify the headings and screen-reader-labelled help links. UI tests and visual checks run on PR CI; no server API, media or database changes.
+
 ## Extended, non-overlapping storage-estimate sample — 2026-11-05
 
 - Baseline: `develop` `f013a7c2b7379b0d61728faa493402f939708bd9`; branch `feat/extended-storage-estimate-sample-20261105`. The owner's real-media read-only result: 35 images in four groups, 30.57 MiB originals, 6.60 MiB potential savings (21.6% of this selected sample); P13 shared-tiles preferred for 3/4 groups, with one keep-originals. This sample covers only 0.20% of the owner's 17,640-image library and is not representative.

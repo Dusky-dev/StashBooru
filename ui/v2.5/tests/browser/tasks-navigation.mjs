@@ -34,6 +34,15 @@ const groups = ["library", "profiles", "media", "maintenance", "plugins"];
 const summary = (page, group) => page.locator(`#tasks-${group} > summary`);
 const isOpen = (page, group) =>
   page.locator(`#tasks-${group}`).evaluate((el) => el.open);
+async function checkTaskHelp(page, id, title) {
+  const heading = page.locator(`#${id} h3.h4`);
+  assert.equal(await heading.count(), 1);
+  assert.equal(
+    await heading.getByRole("link", { name: `Help with ${title}` }).count(),
+    1
+  );
+  assert.equal(await heading.locator("svg.fa-xs").count(), 1);
+}
 const fit = async (page) =>
   assert.equal(
     await page.evaluate(
@@ -198,6 +207,16 @@ try {
     await summary(page, "profiles").focus();
     await summary(page, "profiles").press("Enter");
     assert.equal(await isOpen(page, "profiles"), true);
+    await checkTaskHelp(
+      page,
+      "character-dedup-task",
+      "Merge duplicate Characters"
+    );
+    await checkTaskHelp(
+      page,
+      "association-inheritance-task",
+      "Review library inheritance"
+    );
     const started = new Promise((resolve) => {
       previewStarted = resolve;
     });
@@ -241,6 +260,16 @@ try {
     // Complete read-only reports must not crash Settings after refresh/remount.
     // P12 supplies a layout string while P13 supplies an object with "kind".
     await summary(page, "media").click();
+    await checkTaskHelp(
+      page,
+      "animation-inspection-task",
+      "Animation inspection"
+    );
+    await checkTaskHelp(
+      page,
+      "video-overlap-task",
+      "Video overlap / containment"
+    );
     await page
       .locator("#image-storage-estimate-task")
       .getByText("shared-tiles (independent)", { exact: true })

@@ -1,17 +1,13 @@
 import { useState } from "react";
 import { Button } from "react-bootstrap";
 import { VideoOverlapDialog } from "../../Shared/VideoOverlapDialog";
+import { TaskHelpHeading } from "./TaskHelpHeading";
 
 export function VideoOverlapTask() {
   const [show, setShow] = useState(false);
   return (
     <div id="video-overlap-task">
-      <h2>Video overlap / containment</h2>
-      <p>
-        Incrementally index timestamped frames, then review trims, re-encodes
-        and compilation segments. Index checkpoints can resume after
-        cancellation or restart. Videos stay in their native catalogue.
-      </p>
+      <TaskHelpHeading title="Video overlap / containment" />
       <Button variant="secondary" onClick={() => setShow(true)}>
         Open video overlap review
       </Button>

@@ -1,9 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Alert, Button, Form, Table } from "react-bootstrap";
 import { Link } from "react-router-dom";
-import { ManualLink } from "src/components/Help/context";
-import { Icon } from "src/components/Shared/Icon";
-import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
+import { TaskHelpHeading } from "./TaskHelpHeading";
 
 interface Character {
   id: number;
@@ -134,12 +132,10 @@ export const CharacterDedupTask: React.FC = () => {
       id="character-dedup-task"
       aria-labelledby="character-dedup-heading"
     >
-      <h2 id="character-dedup-heading">
-        Merge duplicate Characters{" "}
-        <ManualLink tab="Tasks">
-          <Icon icon={faQuestionCircle} />
-        </ManualLink>
-      </h2>
+      <TaskHelpHeading
+        id="character-dedup-heading"
+        title="Merge duplicate Characters"
+      />
       <Button
         variant="secondary"
         disabled={busy}
