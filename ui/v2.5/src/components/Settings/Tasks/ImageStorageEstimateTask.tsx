@@ -292,7 +292,8 @@ export const ImageStorageEstimateTask: React.FC = () => {
                   {group.methods?.map((method) => (
                     <tr key={method.method}>
                       <td>
-                        {method.method} ({formatStorageEstimateLayout(method.layout)})
+                        {method.method} (
+                        {formatStorageEstimateLayout(method.layout)})
                       </td>
                       <td>{formatSize(method.packedBytes)}</td>
                       <td>{formatSize(method.potentialSavedBytes)}</td>

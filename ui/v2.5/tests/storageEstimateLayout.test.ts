@@ -37,6 +37,12 @@ test("unexpected layout data never renders an object or causes a crash", () => {
   ]) {
     assert.equal(formatStorageEstimateLayout(layout), "Unknown");
   }
-  assert.equal(formatStorageEstimateLayout({ kind: "fixed", size: null }), "fixed");
-  assert.equal(formatStorageEstimateLayout({ kind: "fixed", size: -1 }), "fixed");
+  assert.equal(
+    formatStorageEstimateLayout({ kind: "fixed", size: null }),
+    "fixed"
+  );
+  assert.equal(
+    formatStorageEstimateLayout({ kind: "fixed", size: -1 }),
+    "fixed"
+  );
 });
