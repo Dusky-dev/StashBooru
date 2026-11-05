@@ -22,6 +22,7 @@ type Repository struct {
 	Image            ImageReaderWriter
 	Media            MediaReader
 	VisualStack      VisualStackReaderWriter
+	CharacterDedup   CharacterDedupExclusionReaderWriter
 	BooruReview      BooruReviewReaderWriter
 	BooruFollow      BooruFollowReaderWriter
 	Following        FollowingReaderWriter
