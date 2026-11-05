@@ -65,6 +65,8 @@ import {
   readBrowserSearch,
   remoteURL,
   booruMediaURL,
+  inspectionMedia,
+  sharedLinkCount,
 } from "./browser";
 import { BooruReview, ReviewEvidence, type ReviewState } from "./BooruReview";
 import { TagAutocomplete } from "./TagAutocomplete";
@@ -141,11 +143,7 @@ function PostInspection({
     }
   );
   const identity = `${source.instance}:${post.id}`;
-  const assets =
-    !post.downloadAvailable && !post.previewURL && !post.sampleURL &&
-    !post.format && (post.attachments?.length ?? 0) > 0
-      ? post.attachments ?? []
-      : [post, ...(post.attachments ?? [])];
+  const assets = inspectionMedia(post);
   // Incremental rendering prevents posts with many attachments from creating
   // hundreds of image/player/download components at once.
   const [stream, setStream] = useState({ identity, count: 3 });
@@ -323,10 +321,12 @@ function PostInspection({
                       />
                     ) : (
                       <Alert variant="secondary">
-                        {message(
-                          "no_preview",
-                          "No supported preview is available. Open the remote post to inspect it."
-                        )}
+                        {asset.sourceID === "shared-links"
+                          ? "This shared file has no preview. Use Download to Stash to inspect the original."
+                          : message(
+                              "no_preview",
+                              "No supported preview is available. Open the remote post to inspect it."
+                            )}
                       </Alert>
                     )}
                   </MotionPreview>
@@ -978,12 +978,10 @@ function SourceResults({
                   >
                     #{item.remoteID ?? item.id}
                   </Button>
-                  {(item.attachments?.some((asset) => asset.sourceID === "shared-links") ||
-                    !!item.linkedFolderCount) && (
+                  {sharedLinkCount(item) > 0 && (
                     <span className="small text-muted" title="External Dropbox/MEGA links detected; inspect post">
                       <Icon icon={faLink} />{" "}
-                      {(item.attachments?.filter((asset) => asset.sourceID === "shared-links").length ?? 0) +
-                        (item.linkedFolderCount ?? 0)}
+                      {sharedLinkCount(item)}
                     </span>
                   )}
                   {item.rating && (

@@ -301,3 +301,31 @@ test("Preview tag actions preserve native query syntax and rating identities", a
     false
   );
 });
+
+test("Pawchive linked files remain visible even when the hosted post has no original", async () => {
+  const { inspectionMedia, sharedLinkCount } = await import(
+    "../src/components/BooruBrowser/browser.ts"
+  );
+  const link = {
+    id: "p" + "a".repeat(32),
+    sourceID: "shared-links",
+    postURL: "https://pawchive.pw/patreon/user/42/post/31",
+    tags: [],
+    downloadAvailable: true,
+    title: "MEGA linked file",
+  };
+  const root = {
+    id: "a" + "b".repeat(32),
+    sourceID: "pawchive",
+    postURL: link.postURL,
+    tags: [],
+    attachments: [link],
+    linkedFolderCount: 1,
+  };
+  assert.deepEqual(inspectionMedia(root), [link]);
+  assert.equal(sharedLinkCount(root), 2);
+  assert.deepEqual(inspectionMedia({ ...root, format: "jpg" }), [
+    { ...root, format: "jpg" },
+    link,
+  ]);
+});
