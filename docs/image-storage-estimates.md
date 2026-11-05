@@ -69,6 +69,7 @@ how to create a Visual Stack or generate pHashes.
 This is a **bounded convenience sample**, not a representative or full-library
 estimate; the reported hypothetical savings apply only to files actually
 sampled, and should never be extrapolated across the entire library.
+In automatic mode, sampling is deliberately capped to bound processing cost.
 pHash proximity is a candidate-selection hint, **not** proof of duplicate
 files or guaranteed storage savings. Each P12/P13 proposal is still checked
 using actual original bytes and strict reconstruction.
