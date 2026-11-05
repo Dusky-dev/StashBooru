@@ -20,7 +20,10 @@ on:
 
 jobs:
   estimate:
-    runs-on: [self-hosted, stashbooru]
+    # The self-hosted runner is hardened with no-new-privileges; sudo apt is blocked.
+    # This isolated Python suite needs OS-packaged Pillow/NumPy, so run it on a
+    # standard hosted runner instead of changing the security boundary.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
       - name: Install Python image dependencies
