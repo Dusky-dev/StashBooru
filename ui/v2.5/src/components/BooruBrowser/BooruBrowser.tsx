@@ -1732,6 +1732,7 @@ export default function BooruBrowser() {
         </Form>
       )}
       {bookmarkError && <Alert variant="warning">{bookmarkError}</Alert>}
+      {!showSettings && <SharedLinkBrowser />}
       <div className="booru-layout" hidden={showSettings}>
         <aside className="booru-sidebar" aria-label="Search and tags">
           {sourceError && (

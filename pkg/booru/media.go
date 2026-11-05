@@ -37,9 +37,6 @@ func (c *Client) FetchMedia(ctx context.Context, source Source, input MediaReque
 	if source.Validate() != nil || input.URL == "" || (!isMega && source.mediaURL(input.URL) != input.URL) || input.Limit < 1 || input.Limit > 512<<20 || input.ExpectedBytes > input.Limit {
 		return ret, fmt.Errorf("media is unavailable, unsafe or exceeds the download limit")
 	}
-	if isMega {
-		return fetchMegaMedia(ctx, input, output)
-	}
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 	select {
@@ -47,6 +44,9 @@ func (c *Client) FetchMedia(ctx context.Context, source Source, input MediaReque
 		defer func() { <-c.media }()
 	case <-ctx.Done():
 		return ret, ctx.Err()
+	}
+	if isMega {
+		return fetchMegaMedia(ctx, input, output)
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, input.URL, nil)
 	if err != nil {
