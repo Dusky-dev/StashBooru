@@ -51,7 +51,7 @@ func (s *CharacterDedupExclusionStore) Remove(ctx context.Context, pairs []model
 			return err
 		}
 		if affected != 1 {
-			return errors.New("Character not-duplicate decision changed; preview again")
+			return errors.New("character not-duplicate decision changed; preview again")
 		}
 	}
 	return nil
