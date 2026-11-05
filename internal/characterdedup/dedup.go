@@ -35,10 +35,15 @@ type Skipped struct {
 	Character Character `json:"character"`
 	Reason    string    `json:"reason"`
 }
+type IgnoredPair struct {
+	Left  Character `json:"left"`
+	Right Character `json:"right"`
+}
 type Plan struct {
 	Fingerprint string    `json:"fingerprint"`
 	Groups      []Group   `json:"groups"`
 	Skipped     []Skipped `json:"skipped"`
+	Ignored     []IgnoredPair `json:"ignored"`
 	Scanned     int       `json:"scanned"`
 }
 type record struct {
@@ -197,8 +202,39 @@ func merge(destination, source record) (record, error) {
 	return record{Performer: &d, Copyrights: destination.Copyrights, Fields: fields, Image: portrait, ImageID: imageID}, nil
 }
 
+func characterPair(a, b int) models.CharacterDedupPair {
+	if a > b {
+		a, b = b, a
+	}
+	return models.CharacterDedupPair{LeftID: a, RightID: b}
+}
+
 func plan(records []record) (Plan, error) {
-	p := Plan{Groups: []Group{}, Skipped: []Skipped{}, Scanned: len(records)}
+	return planWithExclusions(records, nil)
+}
+
+func planWithExclusions(records []record, exclusions []models.CharacterDedupPair) (Plan, error) {
+	p := Plan{Groups: []Group{}, Skipped: []Skipped{}, Ignored: []IgnoredPair{}, Scanned: len(records)}
+	exclusions = append([]models.CharacterDedupPair{}, exclusions...)
+	slices.SortFunc(exclusions, func(a, b models.CharacterDedupPair) int {
+		if a.LeftID != b.LeftID {
+			return a.LeftID - b.LeftID
+		}
+		return a.RightID - b.RightID
+	})
+	blocked := map[models.CharacterDedupPair]bool{}
+	identities := map[int]Character{}
+	for _, r := range records {
+		identities[r.Performer.ID] = identity(r.Performer)
+	}
+	for _, pair := range exclusions {
+		blocked[pair] = true
+		left, okLeft := identities[pair.LeftID]
+		right, okRight := identities[pair.RightID]
+		if okLeft && okRight {
+			p.Ignored = append(p.Ignored, IgnoredPair{Left: left, Right: right})
+		}
+	}
 	// Snapshot includes all candidates, aliases, profiles, Copyrights and portraits.
 	// A new ambiguous Character or changed context invalidates the entire review.
 	// Related model containers keep their values private; include them explicitly.
@@ -212,7 +248,10 @@ func plan(records []record) (Plan, error) {
 	for _, r := range records {
 		snapshots = append(snapshots, snapshotRecord{r, r.Performer.Aliases.List(), r.Performer.URLs.List(), r.Performer.TagIDs.List(), r.Performer.StashIDs.List()})
 	}
-	snapshot, err := json.Marshal(snapshots)
+	snapshot, err := json.Marshal(struct {
+		Records    []snapshotRecord
+		Exclusions []models.CharacterDedupPair
+	}{snapshots, exclusions})
 	if err != nil {
 		return p, err
 	}
@@ -310,6 +349,23 @@ func plan(records []record) (Plan, error) {
 			}
 			return a.Performer.ID - b.Performer.ID
 		})
+		// A rejected pair blocks the entire group: do not merge rejected
+		// identities transitively through a third matching Character.
+		rejected := false
+		for i := 0; i < len(group) && !rejected; i++ {
+			for j := i + 1; j < len(group); j++ {
+				if blocked[characterPair(group[i].Performer.ID, group[j].Performer.ID)] {
+					rejected = true
+					break
+				}
+			}
+		}
+		if rejected {
+			for _, r := range group {
+				skip(r, "marked as not duplicate")
+			}
+			continue
+		}
 		merged := group[0]
 		conflict := ""
 		for _, source := range group[1:] {
@@ -344,7 +400,11 @@ func Preview(ctx context.Context, repo models.Repository) (Plan, error) {
 		if err != nil {
 			return err
 		}
-		result, err = plan(rs)
+		exclusions, err := repo.CharacterDedup.List(ctx)
+		if err != nil {
+			return err
+		}
+		result, err = planWithExclusions(rs, exclusions)
 		return err
 	})
 	return result, err
