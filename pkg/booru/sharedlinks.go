@@ -4,14 +4,16 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"html"
 	"net/url"
 	"path"
 	"regexp"
 	"strings"
 )
 
-// SharedLinkSource is a dedicated, server-owned identity for pasted public links.
-// It is not part of the configurable provider list or a general-purpose URL proxy.
+// SharedLinkSource is a dedicated server-owned identity for recognized share
+// links found inside an existing Pawchive post. It is not selectable as a search
+// source and does not authorize arbitrary browser-supplied URLs.
 func SharedLinkSource() Source {
 	return Source{
 		ID: "shared-links", Name: "Shared links", Engine: "danbooru",
@@ -62,13 +64,13 @@ func ValidMegaSharedFileURL(raw string) bool {
 		sharedLinkKey.MatchString(parts[2])
 }
 
-// SharedLinkPost resolves a recognized Dropbox or MEGA share into one virtual
-// post. The remote media is not downloaded until the user explicitly chooses
-// a preview, archive listing or import.
+// SharedLinkPost validates a recognized Dropbox or MEGA share and produces one
+// virtual media item. This is called on URLs extracted from Pawchive content;
+// it never performs a network request.
 func SharedLinkPost(raw string) (Post, error) {
 	raw = strings.TrimSpace(raw)
 	if len(raw) == 0 || len(raw) > 2048 || strings.ContainsAny(raw, "\r\n\x00") {
-		return Post{}, fmt.Errorf("paste one public Dropbox or MEGA share link (up to 2048 bytes)")
+		return Post{}, fmt.Errorf("invalid Dropbox or MEGA share link")
 	}
 	u, err := url.Parse(raw)
 	if err != nil || u.Scheme != "https" || u.User != nil ||
@@ -117,11 +119,11 @@ func SharedLinkPost(raw string) (Post, error) {
 		if folder {
 			post.Format = "zip"
 			post.Filename = "Dropbox folder.zip"
-			post.MediaNotice = "Dropbox folder contents are provided as a ZIP archive. Select an individual supported media file below; the archive size limit still applies."
+			post.MediaNotice = "Linked Dropbox folder: select a supported image or video from the bounded ZIP archive below."
 		} else {
 			post.Format = sharedFormat(post.Filename)
 			if post.Format == "" || post.Format == "zip" || post.Format == "cbz" || post.Format == "7z" {
-				return Post{}, fmt.Errorf("this Dropbox file link does not name a supported image or video")
+				return Post{}, fmt.Errorf("Dropbox share does not identify a supported image or video")
 			}
 			if post.Format != "mp4" && post.Format != "webm" {
 				post.PreviewURL, post.SampleURL = original, original
@@ -130,14 +132,14 @@ func SharedLinkPost(raw string) (Post, error) {
 		post.Title = post.Filename
 	case "mega.nz":
 		if !ValidMegaSharedFileURL(raw) {
-			return Post{}, fmt.Errorf("MEGA requires a complete public file link with its decryption key; folder links are not supported in this first version")
+			return Post{}, fmt.Errorf("not a supported public MEGA file link")
 		}
 		original = raw
 		public := *u
 		public.Fragment = ""
 		post.PostURL = public.String()
 		post.Title = "MEGA shared file"
-		post.MediaNotice = "MEGA files have no remote preview before download. The Stash server needs the megadl executable (megatools) to decrypt and import this file."
+		post.MediaNotice = "Linked MEGA file; select Download to Stash to decrypt it. The Stash server requires megatools."
 	default:
 		return Post{}, fmt.Errorf("supported link hosts are Dropbox and MEGA only")
 	}
@@ -146,4 +148,62 @@ func SharedLinkPost(raw string) (Post, error) {
 	post.OriginalURL = original
 	post.DownloadAvailable = true
 	return post, nil
+}
+
+const maxLinkedMedia = 16
+
+// Shared links may occur as HTML hrefs, bare URLs, Markdown links or BBCode
+// inside Pawchive's content. A bounded scan of provider text is sufficient:
+// never crawl pages or follow arbitrary external redirects during search.
+var sharedLinkPattern = regexp.MustCompile(`https://[^\\s<>"']+`)
+
+// LinkedMediaFromPawchiveContent discovers up to 16 valid shared files/folders,
+// without fetching any of them. MEGA folder links are reported but not fetched:
+// streaming a folder would be an unbounded download.
+func LinkedMediaFromPawchiveContent(content, pawchivePostURL string) ([]Post, int) {
+	if len(content) > 64<<10 {
+		content = content[:64<<10]
+	}
+	content = html.UnescapeString(content)
+	found := make([]Post, 0)
+	seen := make(map[string]bool)
+	folders := 0
+	for _, candidate := range sharedLinkPattern.FindAllString(content, 80) {
+		candidate = strings.TrimRight(candidate, ".,;:!?)]}")
+		if len(candidate) > 2048 {
+			continue
+		}
+		u, err := url.Parse(candidate)
+		if err != nil {
+			continue
+		}
+		host := strings.ToLower(u.Hostname())
+		if host == "mega.nz" && strings.HasPrefix(u.Path, "/folder/") &&
+			sharedLinkID.MatchString(strings.TrimPrefix(u.Path, "/folder/")) &&
+			sharedLinkKey.MatchString(u.Fragment) {
+			if !seen[candidate] {
+				seen[candidate] = true
+				folders++
+			}
+			continue
+		}
+		post, err := SharedLinkPost(candidate)
+		if err != nil || seen[post.ID] {
+			continue
+		}
+		seen[post.ID] = true
+		post.PostURL = pawchivePostURL // retain the originating post as provenance
+		if host == "mega.nz" {
+			post.Title = "MEGA linked file"
+		} else if post.Format == "zip" {
+			post.Title = "Dropbox linked folder"
+		} else {
+			post.Title = "Dropbox: " + post.Filename
+		}
+		found = append(found, post)
+		if len(found) == maxLinkedMedia {
+			break
+		}
+	}
+	return found, folders
 }

@@ -35,6 +35,7 @@ import {
   faTags,
   faPlay,
   faStop,
+  faLink,
   faSortAmountDown,
 } from "@fortawesome/free-solid-svg-icons";
 import { Icon } from "../Shared/Icon";
@@ -70,7 +71,6 @@ import { TagAutocomplete } from "./TagAutocomplete";
 import { BooruDownload } from "./BooruDownload";
 import { BooruFilenameMigration } from "./BooruFilenameMigration";
 import { BooruArchive } from "./BooruArchive";
-import { SharedLinkBrowser } from "./SharedLinkBrowser";
 import { readBrowserMemory, saveBrowserMemory } from "./browser";
 import { SourceSettings } from "./SourceSettings";
 import { SourceSelector } from "./SourceSelector";
@@ -141,7 +141,11 @@ function PostInspection({
     }
   );
   const identity = `${source.instance}:${post.id}`;
-  const assets = [post, ...(post.attachments ?? [])];
+  const assets =
+    !post.downloadAvailable && !post.previewURL && !post.sampleURL &&
+    !post.format && (post.attachments?.length ?? 0) > 0
+      ? post.attachments ?? []
+      : [post, ...(post.attachments ?? [])];
   // Incremental rendering prevents posts with many attachments from creating
   // hundreds of image/player/download components at once.
   const [stream, setStream] = useState({ identity, count: 3 });
@@ -295,7 +299,7 @@ function PostInspection({
               >
                 {assets.length > 1 && (
                   <h6 className="booru-asset-heading">
-                    Media {index + 1} of {assets.length}
+                    {asset.sourceID === "shared-links" ? "Linked media" : "Media"} {index + 1} of {assets.length}
                     {asset.format && ` · ${asset.format.toUpperCase()}`}
                   </h6>
                 )}
@@ -327,6 +331,12 @@ function PostInspection({
                     )}
                   </MotionPreview>
                 )}
+                {asset.sourceID === "shared-links" && (
+                  <p className="small mb-1">
+                    <Icon icon={faLink} /> {asset.title || "External shared media"}
+                  </p>
+                )}
+                {asset.mediaNotice && <Alert variant="info">{asset.mediaNotice}</Alert>}
                 <div className="booru-file-details mt-2">
                   {!!asset.width && !!asset.height && (
                     <span>
@@ -966,6 +976,14 @@ function SourceResults({
                   >
                     #{item.remoteID ?? item.id}
                   </Button>
+                  {(item.attachments?.some((asset) => asset.sourceID === "shared-links") ||
+                    !!item.linkedFolderCount) && (
+                    <span className="small text-muted" title="External Dropbox/MEGA links detected; inspect post">
+                      <Icon icon={faLink} />{" "}
+                      {(item.attachments?.filter((asset) => asset.sourceID === "shared-links").length ?? 0) +
+                        (item.linkedFolderCount ?? 0)}
+                    </span>
+                  )}
                   {item.rating && (
                     <span
                       className={`booru-rating rating-${normalizedRating(item.rating, source)}`}
@@ -1732,7 +1750,6 @@ export default function BooruBrowser() {
         </Form>
       )}
       {bookmarkError && <Alert variant="warning">{bookmarkError}</Alert>}
-      {!showSettings && <SharedLinkBrowser />}
       <div className="booru-layout" hidden={showSettings}>
         <aside className="booru-sidebar" aria-label="Search and tags">
           {sourceError && (

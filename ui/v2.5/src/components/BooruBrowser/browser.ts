@@ -39,6 +39,7 @@ export interface BooruPost {
   title?: string;
   favorite?: boolean;
   mediaNotice?: string;
+  linkedFolderCount?: number;
 }
 
 export interface BooruResult {

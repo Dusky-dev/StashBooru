@@ -157,9 +157,23 @@ func (rs booruBrowserRoutes) Media(w http.ResponseWriter, r *http.Request) {
 
 // Public responses contain opaque keys and public image fallbacks, never originals.
 func publicBooruPost(source booru.Source, post booru.Post, captureTags ...bool) booru.Post {
-	post.PreviewURL = source.ApprovedMediaURL(post.PreviewURL)
-	post.SampleURL = source.ApprovedMediaURL(post.SampleURL)
-	post.OriginalURL = source.ApprovedMediaURL(post.OriginalURL)
+	shared := booru.SharedLinkSource()
+	isShared := source.ID == shared.ID && source.Instance() == shared.Instance()
+	if isShared {
+		// Only a validated, server-extracted share may bypass Pawchive's CDN
+		// allowlist. The original URL (including decryption keys) stays in the
+		// private snapshot, never in the public JSON.
+		if link, err := booru.SharedLinkPost(post.OriginalURL); err == nil {
+			post.OriginalURL = link.OriginalURL
+			post.PreviewURL, post.SampleURL = link.PreviewURL, link.SampleURL
+		} else {
+			post.OriginalURL, post.PreviewURL, post.SampleURL = "", "", ""
+		}
+	} else {
+		post.PreviewURL = source.ApprovedMediaURL(post.PreviewURL)
+		post.SampleURL = source.ApprovedMediaURL(post.SampleURL)
+		post.OriginalURL = source.ApprovedMediaURL(post.OriginalURL)
+	}
 	post.DownloadAvailable = post.OriginalURL != ""
 	post.DirectPreviewURL, post.DirectSampleURL = "", ""
 
@@ -167,16 +181,20 @@ func publicBooruPost(source booru.Source, post booru.Post, captureTags ...bool) 
 		if len(asset.Tags) == 0 {
 			asset.Tags = post.Tags
 		}
-		post.Attachments[i] = publicBooruPost(source, asset, captureTags...)
+		assetSource := source
+		if asset.SourceID == shared.ID && source.Engine == "pawchive" {
+			assetSource = shared
+		}
+		post.Attachments[i] = publicBooruPost(assetSource, asset, captureTags...)
 	}
 	post.MediaKey = rememberBooruPost(source, post, captureTags...)
-	if u, err := url.Parse(post.PreviewURL); err == nil && u.Scheme == "https" && u.RawQuery == "" {
+	if u, err := url.Parse(post.PreviewURL); !isShared && err == nil && u.Scheme == "https" && u.RawQuery == "" {
 		post.DirectPreviewURL = u.String()
 	}
 	// Samples promoted from originals must remain behind the bounded
 	// server proxy. Do not retry original media directly from the browser
 	// after an oversized or rejected proxy request.
-	if post.SampleURL != "" && post.SampleURL != post.OriginalURL {
+	if !isShared && post.SampleURL != "" && post.SampleURL != post.OriginalURL {
 		if u, err := url.Parse(post.SampleURL); err == nil && u.Scheme == "https" && u.RawQuery == "" {
 			post.DirectSampleURL = u.String()
 		}

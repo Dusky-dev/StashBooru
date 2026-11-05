@@ -1,13 +1,11 @@
 # StashBooru implementation progress
 
-## Shared-link media in Booru Browser — 2026-11-05
+## Pawchive external-link media discovery — 2026-11-05
 
-- Baseline: `develop` `f013a7c2b7379b0d61728faa493402f939708bd9`; branch `feat/booru-shared-link-media-20261105`.
-- Added a separate paste-link inspector for recognized public Dropbox and MEGA HTTPS links, reusing the existing time-limited server media-key, native media download/import, and individual archive-member selection.
-- Dropbox individual images/videos use provider file links; folder links are inspected as bounded ZIP downloads. MEGA individual public file links are decrypted only on explicit download using optional server-installed `megadl`. MEGA folders, authenticated/password shares, archive-over-limit folders and unattended/bulk link crawling are not implemented.
-- Share secrets are submitted only via POST, not saved search URLs; never reflected in API post JSON. CDN redirects stay allowlisted; content is bounded and MIME-checked. MEGA downloads share the standard media concurrency limiter.
-- Parser/security and API media-key regression tests added. This connector-only workspace cannot run the Go 1.25/React toolchain or live provider/container tests; CI, Codex review and real Dropbox/MEGA smoke checks are pending. No user's media, configuration or existing catalogue changed.
-
+- Branch `feat/booru-shared-link-media-20261105`, PR #314, based on `develop` `f013a7c2b7379b0d61728faa493402f939708bd9`. Corrected user scope: no paste-link UI. Detect Dropbox/MEGA URLs directly inside Pawchive post content during normal searches.
+- Recognized links become read-only external media attachments with separate server-owned short-lived media/download tokens, retaining the originating Pawchive post. Show linked-media indicators and use existing inspector, archive selection, native download and import.
+- Dropbox individual files and bounded folder ZIPs supported; MEGA single-file links require an optional installed megatools executable. MEGA folder URLs are detected and reported but not downloaded. No remote post crawler or automatic bulk import, and no arbitrary URL proxy.
+- Bounded parsing, strict URL validation and secret-redaction protections. Added unit tests and source-level review, but live-provider/container execution and CI/Codex verification remain pending. No existing library data modified.
 
 ## Image storage estimate React render crash — 2026-11-05
 

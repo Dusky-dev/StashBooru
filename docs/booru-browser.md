@@ -607,31 +607,33 @@ rate-limit and cancellation rules apply. Invalid records are omitted. No account
 favorites or automatic downloads are created by artist lookup.
 
 
-## Public Dropbox and MEGA share links
+## Pawchive posts containing external shared media
 
-Open **Browse a shared link (Dropbox / MEGA)** in Booru Browser. Paste one
-public link and choose **Find media**. This uses a POST request, not the
-normal search query: access/decryption keys are not added to the browser URL,
-saved filters, or bookmarks. Each successful inspection creates a temporary
-server-side media key; it expires after 30 minutes or server restart.
+When a Pawchive search returns a post with a public Dropbox or MEGA URL in
+its `content` or `description`, StashBooru detects it automatically. A
+link icon/count appears on the post card; open the existing post inspector to
+see **Linked media** alongside its ordinary Pawchive attachments.
 
-- **Dropbox files:** Current `/scl/fi/` and legacy `/s/` public share links
-  pointing to supported images or videos. The original is fetched only after
-  preview or download. Select **Download to Stash** for normal native import.
-- **Dropbox folders:** Public `/scl/fo/` or legacy `/sh/` folder links are
-  treated as a ZIP download. The existing bounded archive inspector extracts
-  and offers supported individual images/videos. Very large folders exceed the
-  server's configured archive limit and cannot be previewed in this flow.
-- **MEGA files:** Complete public `/file/ID#key` or legacy `/#!ID!key`
-  links. Download/decryption uses the optional `megatools dl` command (or legacy `megadl`), installed
-  on the machine/container that runs StashBooru.
-  MEGA links have no automatic preview; selected downloads are MIME-checked
-  and subject to the same media size limit before import. This dependency is
-  not bundled into the default Docker image.
+- Public Dropbox individual image/video shares (`/s/` and `/scl/fi/`)
+  may be previewed and imported with **Download to Stash**.
+- Public Dropbox folder shares (`/sh/` and `/scl/fo/`) are handled as
+  bounded ZIP archives; choose individual supported media entries using the
+  existing archive viewer. Oversized folders cannot be inspected.
+- Public MEGA single-file shares (`/file/ID#key` or `/#!ID!key`) appear
+  as linked media without an automatic preview. An explicit download uses
+  optional `megatools dl` (or legacy `megadl`) installed in the Stash
+  server/container. MEGA folder links are **detected but not downloaded or
+  enumerated** yet, and are identified as unsupported in the inspector.
 
-This initial integration **does not enumerate MEGA folders**, accept
-password-protected or authenticated shares, circumvent quotas, or bulk-import
-unselected files. A new link must be inspected again after a restart/expiry.
-Only recognized Dropbox/MEGA HTTPS share-link patterns are accepted; arbitrary
-file URLs are rejected. Keep your share links private: access keys may
-grant anyone with the full URL access to those files.
+Discovery scans only the existing bounded public Pawchive API response: no
+extra crawler, provider lookups, or background transfers. At most 16 recognized
+shared media links are exposed per post, and no more than 200 attachments are
+ever returned. Shared-file keys and Dropbox access parameters remain solely
+in short-lived server-owned download snapshots, not in saved search URLs,
+bookmarks, or public JSON. Each shared-file transfer is subject to the
+existing MIME/content verification, maximum file size, job cancellation and
+native import/optional conversion. There is no automatic download or bulk
+import, and passwords/private shares are not bypassed.
+
+The URL must be included in the post's API-visible text; links hidden inside
+scripts, link shorteners, or third-party web pages are not followed.
