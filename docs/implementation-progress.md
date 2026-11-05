@@ -1,5 +1,13 @@
 # StashBooru implementation progress
 
+## Image storage estimate React render crash — 2026-11-05
+
+- Baseline: `develop` `8c0b114f68c8122450075a5a34c64c09f860f6e4`; branch `fix/storage-estimate-layout-react-crash-20261105`.
+- Owner's successful image storage estimate caused Settings to crash with React minified error #31 and an object with keys `{kind}` inside a table cell. Root cause: the P12 `layout` is a string, but the P13 `layout` is a JSON algorithm object (`{kind: "independent"}`, `{kind: "fixed", size: ...}`); the UI incorrectly rendered both as raw React children.
+- Render algorithm kinds and optional numeric sizes as simple safe text. Keep the estimator and its read-only file/savings limitations unchanged; tolerate malformed layout values without crashing.
+- Add standalone TypeScript regression tests for both contracts and fallback types, and a mounted desktop/mobile Settings fixture that loads a successful P12+P13 result, checks the table and revisits it after reload. CI and Codex outcomes pending; real application/container retest not yet performed.
+
+
 ## Selectable Character dedup review — 2026-11-05
 
 - Baseline: `develop` `9763546984ca242361e5a769f7ab31e3881d1f69`; branch `feat/selectable-character-dedup-decisions-20261105`.

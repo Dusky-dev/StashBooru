@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Alert, Button, Form, Table } from "react-bootstrap";
+import { formatStorageEstimateLayout } from "./storageEstimateLayout";
 
 interface MethodEstimate {
   method: string;
-  layout: string;
+  layout: unknown;
   eligible: boolean;
   originalBytes: number;
   packedBytes: number;
@@ -291,7 +292,8 @@ export const ImageStorageEstimateTask: React.FC = () => {
                   {group.methods?.map((method) => (
                     <tr key={method.method}>
                       <td>
-                        {method.method} ({method.layout})
+                        {method.method} (
+                        {formatStorageEstimateLayout(method.layout)})
                       </td>
                       <td>{formatSize(method.packedBytes)}</td>
                       <td>{formatSize(method.potentialSavedBytes)}</td>

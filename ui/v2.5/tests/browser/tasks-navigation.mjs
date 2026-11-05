@@ -101,6 +101,60 @@ try {
         },
       });
     });
+    // A successful P13 estimate includes an object-valued layout.
+    // Previously Settings rendered that object in a <td>, crashing React #31.
+    await page.route("**/image/storage-estimate", (route) => {
+      assert.equal(route.request().method(), "GET");
+      return route.fulfill({
+        json: {
+          available: true,
+          busy: false,
+          result: {
+            readOnly: true,
+            sourcesRetained: true,
+            sourceBytes: 32768,
+            potentialSavedBytes: 0,
+            hypotheticalBytesAfterFullActivation: 32768,
+            physicalBytesBeforeEvictionWithAllCandidatePacks: 32768,
+            groupsChecked: 1,
+            groupsFailed: 0,
+            selection: {
+              mode: "auto",
+              totalImages: 600,
+              pHashIndexedImages: 450,
+              sampledGroups: 1,
+            },
+            results: [
+              {
+                group: "sample:phash:34526",
+                fidelity: "byte-exact",
+                members: 2,
+                sourceBytes: 32768,
+                recommendedMethod: "keep-originals",
+                potentialSavedBytes: 0,
+                methods: [
+                  {
+                    method: "delta",
+                    layout: "independent",
+                    eligible: false,
+                    packedBytes: 39000,
+                    potentialSavedBytes: 0,
+                  },
+                  {
+                    method: "shared-tiles",
+                    layout: { kind: "independent" },
+                    eligible: false,
+                    packedBytes: 40000,
+                    potentialSavedBytes: 0,
+                  },
+                ],
+                methodErrors: [],
+              },
+            ],
+          },
+        },
+      });
+    });
     await page.route("**/image/converter", (route) => {
       posts.push(route.request().postDataJSON());
       return route.fulfill({
@@ -178,8 +232,28 @@ try {
     if (shots)
       await page.screenshot({ path: `${shots}/tasks-review-${name}.png` });
 
-    // Failed submissions remain visible after closing and reopening a group.
+    // Complete read-only reports must not crash Settings after refresh/remount.
+    // P12 supplies a layout string while P13 supplies an object with "kind".
     await summary(page, "media").click();
+    await page
+      .locator("#image-storage-estimate-task")
+      .getByText("shared-tiles (independent)", { exact: true })
+      .waitFor();
+    assert.equal(
+      await page
+        .locator("#image-storage-estimate-task")
+        .getByText("delta (independent)", { exact: true })
+        .count(),
+      1
+    );
+    await page.reload();
+    if (!(await isOpen(page, "media"))) await summary(page, "media").click();
+    await page
+      .locator("#image-storage-estimate-task")
+      .getByText("shared-tiles (independent)", { exact: true })
+      .waitFor();
+
+    // Failed submissions remain visible after closing and reopening a group.
     await page
       .getByRole("button", { name: "Inspect existing images", exact: true })
       .click();
