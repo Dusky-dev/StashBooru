@@ -11,6 +11,10 @@ on:
       - docs/image-storage-estimates.md
       - docker/build/x86_64/Dockerfile
       - scripts/tests/test_docker_storage_scripts.py
+      - internal/api/routes_image_storage_estimate.go
+      - pkg/sqlite/storage_estimate_stacks.go
+      - pkg/sqlite/storage_estimate_stacks_test.go
+      - ui/v2.5/src/components/Settings/Tasks/ImageStorageEstimateTask.tsx
   push:
     branches: [develop]
     paths:

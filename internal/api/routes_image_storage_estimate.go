@@ -15,11 +15,15 @@ import (
 	"github.com/stashapp/stash/internal/manager"
 	"github.com/stashapp/stash/pkg/job"
 	"github.com/stashapp/stash/pkg/models"
+	"github.com/stashapp/stash/pkg/sqlite"
 	"github.com/stashapp/stash/pkg/txn"
 )
 
 const estimateMaxMembers = 16
 const estimateMaxGroups = 8
+const estimateAutoMaxGroups = 4
+const estimateAutoMaxBytesPerGroup int64 = 96 << 20
+const estimateAutoMaxBytesPerFile int64 = 32 << 20
 
 var storageEstimateMutex sync.Mutex
 var storageEstimateBusy bool
@@ -27,6 +31,7 @@ var storageEstimateJobID int
 var storageEstimateResult json.RawMessage
 
 type storageEstimateRequest struct {
+	Auto     bool   `json:"auto,omitempty"`
 	StackID  int    `json:"stackID,omitempty"`
 	StackIDs []int  `json:"stackIDs,omitempty"`
 	Fidelity string `json:"fidelity"`
@@ -51,6 +56,12 @@ type estimateSourceGroup struct {
 }
 
 func storageEstimateSelectedIDs(req storageEstimateRequest) ([]int, error) {
+	if req.Auto {
+		if req.StackID != 0 || len(req.StackIDs) != 0 {
+			return nil, fmt.Errorf("automatic estimate cannot include manual Visual Stack IDs")
+		}
+		return nil, nil
+	}
 	if len(req.StackIDs) != 0 && req.StackID != 0 {
 		return nil, fmt.Errorf("provide stackID or stackIDs, not both")
 	}
@@ -198,6 +209,166 @@ func estimatePython(ctx context.Context, groups []estimateSourceGroup, fidelity 
 	return append(json.RawMessage(nil), data...), nil
 }
 
+type storageEstimateSelection struct {
+	Mode               string `json:"mode"`
+	TotalImages        int    `json:"totalImages"`
+	PHashIndexedImages int    `json:"pHashIndexedImages"`
+	SampledGroups      int    `json:"sampledGroups"`
+}
+
+// Automatic discovery is a bounded trial, NOT a library-wide savings scan.
+// Curated image-only stacks take priority; otherwise use existing primary-file
+// pHash clusters as candidate compression groups. pHash does NOT prove that two
+// files are duplicates: the Python estimator verifies every reconstructed byte.
+func estimateAutoSources(ctx context.Context) ([]estimateSourceGroup, storageEstimateSelection, error) {
+	mgr := manager.GetInstance()
+	meta := storageEstimateSelection{Mode: "auto"}
+	var ids []int
+	err := txn.WithReadTxn(ctx, mgr.Repository.TxnManager, func(ctx context.Context) error {
+		var err error
+		ids, err = sqlite.StorageEstimateVisualStackIDs(ctx, 64)
+		if err != nil {
+			return err
+		}
+		meta.TotalImages, err = mgr.Repository.Image.Count(ctx)
+		return err
+	})
+	if err != nil {
+		return nil, meta, err
+	}
+
+	groups := make([]estimateSourceGroup, 0, estimateAutoMaxGroups)
+	for _, id := range ids {
+		if err := ctx.Err(); err != nil {
+			return nil, meta, err
+		}
+		group, err := estimateStackSources(ctx, id)
+		if err != nil || !estimateAutoWithinBudget(group) {
+			continue // unreadable, changed, oversized or unsafe source
+		}
+		groups = append(groups, group)
+		if len(groups) == estimateAutoMaxGroups {
+			break
+		}
+	}
+	if len(groups) < estimateAutoMaxGroups {
+		var clusters [][]int
+		err = txn.WithReadTxn(ctx, mgr.Repository.TxnManager, func(ctx context.Context) error {
+			var err error
+			clusters, meta.PHashIndexedImages, err = sqlite.ImagePHashClusters(ctx, 4)
+			return err
+		})
+		if err != nil {
+			return nil, meta, err
+		}
+		for _, cluster := range clusters {
+			if err := ctx.Err(); err != nil {
+				return nil, meta, err
+			}
+			if len(cluster) < 2 {
+				continue
+			}
+			group, err := estimateAutoPHashGroup(ctx, cluster)
+			if err != nil {
+				return nil, meta, err
+			}
+			if len(group.Members) >= 2 {
+				groups = append(groups, group)
+			}
+			if len(groups) == estimateAutoMaxGroups {
+				break
+			}
+		}
+	}
+	if len(groups) == 0 {
+		return nil, meta, fmt.Errorf("no eligible image groups found: create a Visual Stack of 2–16 images or generate image pHashes in Tasks, then retry")
+	}
+	meta.SampledGroups = len(groups)
+	return groups, meta, nil
+}
+
+func estimateAutoWithinBudget(group estimateSourceGroup) bool {
+	if len(group.Members) < 2 || len(group.Members) > estimateMaxMembers {
+		return false
+	}
+	var total int64
+	for _, member := range group.Members {
+		info, err := os.Lstat(member.Path)
+		if err != nil || !info.Mode().IsRegular() || info.Size() <= 0 || info.Size() > estimateAutoMaxBytesPerFile {
+			return false
+		}
+		total += info.Size()
+		if total > estimateAutoMaxBytesPerGroup {
+			return false
+		}
+	}
+	return true
+}
+
+func estimateAutoPHashGroup(ctx context.Context, ids []int) (estimateSourceGroup, error) {
+	mgr := manager.GetInstance()
+	group := estimateSourceGroup{Members: make([]estimateSourceMember, 0, estimateMaxMembers)}
+	var total int64
+	err := txn.WithReadTxn(ctx, mgr.Repository.TxnManager, func(ctx context.Context) error {
+		// Bound file and metadata probes even when a pHash cluster is huge.
+		for index, id := range ids {
+			if index >= 64 || len(group.Members) == estimateMaxMembers {
+				break
+			}
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			ref := models.MediaReference{Kind: models.MediaKindImage, ID: id}
+			stack, err := mgr.Repository.VisualStack.FindByMedia(ctx, ref)
+			if err != nil {
+				return err
+			}
+			if stack != nil {
+				continue // do not relabel existing curated membership
+			}
+			image, err := mgr.Repository.Image.Find(ctx, id)
+			if err != nil {
+				return err
+			}
+			if image == nil || image.LoadPrimaryFile(ctx, mgr.Repository.File) != nil {
+				continue
+			}
+			primary := image.Files.Primary()
+			if primary == nil || estimateRegularSource(primary.Base().Path) != nil {
+				continue
+			}
+			info, err := os.Lstat(primary.Base().Path)
+			if err != nil || info.Size() <= 0 || info.Size() > estimateAutoMaxBytesPerFile || total+info.Size() > estimateAutoMaxBytesPerGroup {
+				continue
+			}
+			total += info.Size()
+			group.Members = append(group.Members, estimateSourceMember{ID: ref.Key(), Path: primary.Base().Path})
+		}
+		return nil
+	})
+	if err != nil {
+		return group, err
+	}
+	if len(group.Members) >= 2 {
+		group.ID = "sample:phash:" + strings.TrimPrefix(group.Members[0].ID, "image:")
+		group.Representative = group.Members[0].ID
+	}
+	return group, nil
+}
+
+func estimateAnnotateAutoReport(raw json.RawMessage, meta storageEstimateSelection) (json.RawMessage, error) {
+	var report map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &report); err != nil {
+		return nil, err
+	}
+	selection, err := json.Marshal(meta)
+	if err != nil {
+		return nil, err
+	}
+	report["selection"] = selection
+	return json.Marshal(report)
+}
+
 func estimateBusyLocked() bool {
 	if storageEstimateBusy && storageEstimateJobID != 0 {
 		current := manager.GetInstance().JobManager.GetJob(storageEstimateJobID)
@@ -256,31 +427,49 @@ func (rs imageRoutes) StorageEstimateStart(w http.ResponseWriter, r *http.Reques
 				storageEstimateBusy = false
 				storageEstimateMutex.Unlock()
 			}()
-			ids, err := storageEstimateSelectedIDs(req)
-			if err != nil {
-				return err
-			}
-			progress.SetTotal(len(ids) + 1)
-			groups := make([]estimateSourceGroup, 0, len(ids))
-			for i, id := range ids {
-				if job.IsCancelled(ctx) {
-					return nil
-				}
-				group, err := estimateStackSources(ctx, id)
+			var groups []estimateSourceGroup
+			var selection storageEstimateSelection
+			if req.Auto {
+				var err error
+				groups, selection, err = estimateAutoSources(ctx)
 				if err != nil {
-					return fmt.Errorf("stack %d: %w", id, err)
+					return err
 				}
-				groups = append(groups, group)
-				progress.SetProcessed(i + 1)
+			} else {
+				ids, err := storageEstimateSelectedIDs(req)
+				if err != nil {
+					return err
+				}
+				groups = make([]estimateSourceGroup, 0, len(ids))
+				for _, id := range ids {
+					if job.IsCancelled(ctx) {
+						return nil
+					}
+					group, err := estimateStackSources(ctx, id)
+					if err != nil {
+						return fmt.Errorf("stack %d: %w", id, err)
+					}
+					groups = append(groups, group)
+				}
 			}
+			if job.IsCancelled(ctx) {
+				return nil
+			}
+			progress.SetTotal(len(groups) + 1)
 			report, err := estimatePython(ctx, groups, req.Fidelity)
 			if err != nil {
 				return err
 			}
+			if req.Auto {
+				report, err = estimateAnnotateAutoReport(report, selection)
+				if err != nil {
+					return err
+				}
+			}
 			storageEstimateMutex.Lock()
 			storageEstimateResult = report
 			storageEstimateMutex.Unlock()
-			progress.SetProcessed(len(ids) + 1)
+			progress.SetProcessed(len(groups) + 1)
 			return nil
 		},
 	))

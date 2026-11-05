@@ -31,6 +31,12 @@ interface StorageEstimateReport {
   physicalBytesBeforeEvictionWithAllCandidatePacks: number;
   groupsChecked: number;
   groupsFailed: number;
+  selection?: {
+    mode: "auto";
+    totalImages: number;
+    pHashIndexedImages: number;
+    sampledGroups: number;
+  };
   results: GroupEstimate[];
 }
 interface EstimationStatus {
@@ -49,7 +55,7 @@ export const ImageStorageEstimateTask: React.FC = () => {
   const [status, setStatus] = useState<EstimationStatus>();
   const [stackIDsText, setStackIDsText] = useState("");
   const [fidelity, setFidelity] = useState("byte-exact");
-  const [acknowledged, setAcknowledged] = useState(false);
+  const [autoMode, setAutoMode] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -82,7 +88,11 @@ export const ImageStorageEstimateTask: React.FC = () => {
       const response = await fetch("image/storage-estimate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stackIDs: parsedIDs, fidelity }),
+        body: JSON.stringify(
+          autoMode
+            ? { auto: true, fidelity }
+            : { stackIDs: parsedIDs, fidelity }
+        ),
       });
       if (!response.ok) throw new Error(await response.text());
       const result = (await response.json()) as { jobID: number };
@@ -118,17 +128,15 @@ export const ImageStorageEstimateTask: React.FC = () => {
         Experimental image storage estimate
       </h2>
       <p>
-        Compare P12 delta storage against P13 shared image blocks for up to
-        eight existing image-only Visual Stacks (2–16 images each). This
-        performs read-only estimates using current primary files without
-        creating packs, modifying the catalogue or removing originals.
+        Compare possible P12 delta and P13 shared-block compression without
+        changing your images. Automatic mode examines a small sample of up to
+        four eligible image groups from existing Visual Stacks or pHash matches;
+        it is not a library-wide savings calculation.
       </p>
-      <Alert variant="warning">
-        <strong>No real disk savings yet.</strong> Estimated compression only
-        describes potential future storage. Until packed-file serving, verified
-        backups and library reconstruction are completed, retaining originals
-        alongside packs would increase disk usage. Byte-exact mode is
-        recommended; pixel-exact may change image container bytes.
+      <Alert variant="info">
+        <strong>Read-only preview — no files are changed.</strong> The numbers
+        describe possible future compression, not freed disk space. Originals
+        remain required until packed serving and safe recovery are finished.
       </Alert>
       {error && <Alert variant="danger">{error}</Alert>}
       {message && (
@@ -143,23 +151,32 @@ export const ImageStorageEstimateTask: React.FC = () => {
           STASH_IMAGE_STORAGE_ESTIMATE_SCRIPT.
         </Alert>
       )}
-      <Form.Group>
-        <Form.Label htmlFor="image-storage-estimate-id">
-          Visual Stack IDs
-        </Form.Label>
-        <Form.Control
-          id="image-storage-estimate-id"
-          type="text"
-          value={stackIDsText}
-          onChange={(event) => setStackIDsText(event.currentTarget.value)}
-          placeholder="17, 21, 32"
-          disabled={disabled}
-        />
-        <Form.Text className="text-muted">
-          Enter up to eight distinct numeric IDs separated by commas or spaces.
-          Every selected stack must contain 2–16 image files.
-        </Form.Text>
-      </Form.Group>
+      <Form.Check
+        id="image-storage-estimate-manual"
+        type="checkbox"
+        checked={!autoMode}
+        onChange={(event) => setAutoMode(!event.currentTarget.checked)}
+        label="Advanced: enter specific Visual Stack IDs"
+        disabled={disabled}
+      />
+      {!autoMode && (
+        <Form.Group>
+          <Form.Label htmlFor="image-storage-estimate-id">
+            Visual Stack IDs
+          </Form.Label>
+          <Form.Control
+            id="image-storage-estimate-id"
+            type="text"
+            value={stackIDsText}
+            onChange={(event) => setStackIDsText(event.currentTarget.value)}
+            placeholder="17, 21, 32"
+            disabled={disabled}
+          />
+          <Form.Text className="text-muted">
+            Enter up to eight distinct IDs. Each stack needs 2–16 images.
+          </Form.Text>
+        </Form.Group>
+      )}
       <Form.Group>
         <Form.Label htmlFor="image-storage-estimate-fidelity">
           Fidelity
@@ -170,7 +187,6 @@ export const ImageStorageEstimateTask: React.FC = () => {
           value={fidelity}
           onChange={(event) => {
             setFidelity(event.currentTarget.value);
-            setAcknowledged(false);
           }}
           disabled={disabled}
         >
@@ -178,20 +194,18 @@ export const ImageStorageEstimateTask: React.FC = () => {
           <option value="pixel-exact">Pixel-exact (experimental)</option>
         </Form.Control>
       </Form.Group>
-      <Form.Check
-        id="image-storage-estimate-acknowledge"
-        type="checkbox"
-        checked={acknowledged}
-        onChange={(event) => setAcknowledged(event.currentTarget.checked)}
-        label="I understand this is an experimental estimate, not storage optimization or a backup."
-        disabled={disabled}
-      />
+      {fidelity === "pixel-exact" && (
+        <Alert variant="warning">
+          Pixel-exact is experimental and can change image container bytes.
+          Select byte-exact to preserve original-file bytes.
+        </Alert>
+      )}
       <Button
         variant="secondary"
-        disabled={disabled || !validIDs || !acknowledged}
+        disabled={disabled || (!autoMode && !validIDs)}
         onClick={() => void start()}
       >
-        Estimate savings (read-only)
+        {autoMode ? "Analyze sample automatically" : "Estimate selected stacks"}
       </Button>{" "}
       <Button
         variant="outline-secondary"
@@ -207,18 +221,28 @@ export const ImageStorageEstimateTask: React.FC = () => {
       </Button>
       {status?.busy && (
         <p className="small mt-2" role="status">
-          Estimating selected Visual Stacks in the task queue…
+          Estimating image groups in the task queue…
         </p>
       )}
       {result?.readOnly && result.sourcesRetained && groups.length > 0 && (
         <div className="mt-3">
-          <h3>Most recent storage estimate: {groups.length} stacks</h3>
+          <h3>Most recent storage estimate: {groups.length} groups</h3>
           <p>
-            Original files: {formatSize(result.sourceBytes)} · Hypothetical
-            savings: {formatSize(result.potentialSavedBytes)} · Potential
-            footprint after full activation:{" "}
+            {result.selection?.mode === "auto"
+              ? "Sampled originals"
+              : "Original files"}
+            : {formatSize(result.sourceBytes)} · Hypothetical savings:{" "}
+            {formatSize(result.potentialSavedBytes)} · Potential footprint after
+            full activation:{" "}
             {formatSize(result.hypotheticalBytesAfterFullActivation)}.
           </p>
+          {result.selection?.mode === "auto" && (
+            <p className="small text-muted">
+              Automatic sample: {result.selection.sampledGroups} groups from a
+              library of {result.selection.totalImages} images. This is not a
+              whole-library estimate and cannot be extrapolated to every image.
+            </p>
+          )}
           <Alert variant="info">
             Originals were retained. Storing the candidate packs alongside them
             would instead require about{" "}
@@ -230,7 +254,7 @@ export const ImageStorageEstimateTask: React.FC = () => {
           <Table responsive size="sm">
             <thead>
               <tr>
-                <th>Visual Stack</th>
+                <th>Image group</th>
                 <th>Images</th>
                 <th>Originals</th>
                 <th>Best method</th>

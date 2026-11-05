@@ -1,5 +1,13 @@
 # StashBooru implementation progress
 
+## Automatic, read-only image storage sample — 2026-11-05
+
+- Baseline: `develop` `a7b46be38365810932b83a143f9869d04ed1c3ab`; branch `feat/automatic-image-storage-estimates-20261105`. The existing estimator required manually entering Visual Stack IDs and displayed the operational safety warning as an error-like banner.
+- New default mode discovers up to four small eligible pre-existing image-only stacks, then bounded nearby primary pHash clusters without writing catalogue relationships. This is a sampled preview, never a full-library savings forecast. Manual Visual Stack IDs remain an advanced option. No auto grouping is persisted or used as a byte-equivalence claim; the P12/P13 estimator independently validates actual reconstructed bytes.
+- The UI now defaults to one action with byte-exact fidelity; displays a concise non-alarming note that estimates do not free disk space; and limits the stronger warning to explicit pixel-exact use. Job/read-only/archived-source boundaries unchanged. Automatic candidate file size budgets bound workload; unsupported and unsafe inputs are skipped.
+- Test scope: request validation, sampling budget, standalone sqlite Visual Stack query and CI Build/Go lint. Review/check results pending. No owner-library runtime evaluation, native activation, original eviction or recovery guarantee is claimed.
+
+
 ## Docker runtime Python storage tools — 2026-11-05 (packaging correction)
 
 - Baseline: `develop` `c985b46a7f4162eff5424c2984e8ba07a81e77c2`; branch `fix/docker-image-storage-scripts-20261105`. The server-side estimator invokes `scripts/image_storage_estimate.py`, but production Docker previously copied only four worker scripts and thus showed a missing-script warning despite Python, Pillow and NumPy being installed.
