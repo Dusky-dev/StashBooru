@@ -201,8 +201,16 @@ try {
     await summary(page, "profiles").focus();
     await summary(page, "profiles").press("Enter");
     assert.equal(await isOpen(page, "profiles"), true);
-    await checkTaskHelp(page, "character-dedup-task", "Merge duplicate Characters");
-    await checkTaskHelp(page, "association-inheritance-task", "Review library inheritance");
+    await checkTaskHelp(
+      page,
+      "character-dedup-task",
+      "Merge duplicate Characters"
+    );
+    await checkTaskHelp(
+      page,
+      "association-inheritance-task",
+      "Review library inheritance"
+    );
     const started = new Promise((resolve) => {
       previewStarted = resolve;
     });
@@ -246,8 +254,16 @@ try {
     // Complete read-only reports must not crash Settings after refresh/remount.
     // P12 supplies a layout string while P13 supplies an object with "kind".
     await summary(page, "media").click();
-    await checkTaskHelp(page, "animation-inspection-task", "Animation inspection");
-    await checkTaskHelp(page, "video-overlap-task", "Video overlap / containment");
+    await checkTaskHelp(
+      page,
+      "animation-inspection-task",
+      "Animation inspection"
+    );
+    await checkTaskHelp(
+      page,
+      "video-overlap-task",
+      "Video overlap / containment"
+    );
     await page
       .locator("#image-storage-estimate-task")
       .getByText("shared-tiles (independent)", { exact: true })
