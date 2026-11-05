@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Alert, Button } from "react-bootstrap";
 
 import { useToast } from "src/hooks/Toast";
+import { TaskHelpHeading } from "./TaskHelpHeading";
 import {
   conversionEndpoint,
   conversionResponse,
@@ -31,13 +32,7 @@ export const AnimationInspectionTask: React.FC = () => {
 
   return (
     <div id="animation-inspection-task">
-      <h2>Animation inspection</h2>
-      <p>
-        Scans inspect image frame counts and automatically add the native
-        <strong> animated</strong> tag without replacing existing metadata. Use
-        this task to backfill images that were scanned before animation
-        detection was enabled.
-      </p>
+      <TaskHelpHeading title="Animation inspection" />
       {error && <Alert variant="danger">{error}</Alert>}
       <Button
         variant="secondary"
