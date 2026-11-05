@@ -89,3 +89,25 @@ Next step: a native **Estimate savings** task that creates verified input
 specifications from current Visual Stacks and reports progress/results without
 making filesystem mutations. Only after independent restoration, backups and
 all media consumers are integrated should any opt-in optimizer be considered.
+
+## Docker installation (no manual Python script copying)
+
+The StashBooru `develop` Docker image built with this change packages the
+repository's Python storage scripts at `/scripts`, including the estimator,
+P12/P13 modules, media-backup tools and candidate verification/recovery helpers.
+The container already installs Python 3, NumPy and Pillow. Its
+`STASH_IMAGE_STORAGE_ESTIMATE_SCRIPT` points at the packaged estimator.
+
+After a successfully published updated Docker image, pull it and recreate the
+StashBooru container using the same configuration and volume mounts. The
+**Experimental image storage estimate** warning about a missing script should
+disappear. An existing image is not changed by a git pull alone, and this does
+not activate compression or touch any originals.
+
+**Standalone executable releases** do not include these Python scripts
+inside the `stash-linux` binary. For a standalone server, keep the matching
+`scripts/` directory from the source tree beside the running binary's
+working directory (or set `STASH_IMAGE_STORAGE_ESTIMATE_SCRIPT` to the absolute
+path of `image_storage_estimate.py`); Python 3 with Pillow/NumPy must also
+be available. An image-only Visual Stack of 2–16 files is still required
+to run an estimate.
