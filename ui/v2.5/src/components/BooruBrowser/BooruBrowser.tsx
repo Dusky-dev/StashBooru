@@ -297,7 +297,10 @@ function PostInspection({
               >
                 {assets.length > 1 && (
                   <h6 className="booru-asset-heading">
-                    {asset.sourceID === "shared-links" ? "Linked media" : "Media"} {index + 1} of {assets.length}
+                    {asset.sourceID === "shared-links"
+                      ? "Linked media"
+                      : "Media"}{" "}
+                    {index + 1} of {assets.length}
                     {asset.format && ` · ${asset.format.toUpperCase()}`}
                   </h6>
                 )}
@@ -333,12 +336,14 @@ function PostInspection({
                 )}
                 {asset.sourceID === "shared-links" && (
                   <p className="small mb-1">
-                    <Icon icon={faLink} /> {asset.title || "External shared media"}
+                    <Icon icon={faLink} />{" "}
+                    {asset.title || "External shared media"}
                   </p>
                 )}
-                {asset.mediaNotice && asset.mediaNotice !== post.mediaNotice && (
-                  <Alert variant="info">{asset.mediaNotice}</Alert>
-                )}
+                {asset.mediaNotice &&
+                  asset.mediaNotice !== post.mediaNotice && (
+                    <Alert variant="info">{asset.mediaNotice}</Alert>
+                  )}
                 <div className="booru-file-details mt-2">
                   {!!asset.width && !!asset.height && (
                     <span>
@@ -979,9 +984,11 @@ function SourceResults({
                     #{item.remoteID ?? item.id}
                   </Button>
                   {sharedLinkCount(item) > 0 && (
-                    <span className="small text-muted" title="External Dropbox/MEGA links detected; inspect post">
-                      <Icon icon={faLink} />{" "}
-                      {sharedLinkCount(item)}
+                    <span
+                      className="small text-muted"
+                      title="External Dropbox/MEGA links detected; inspect post"
+                    >
+                      <Icon icon={faLink} /> {sharedLinkCount(item)}
                     </span>
                   )}
                   {item.rating && (

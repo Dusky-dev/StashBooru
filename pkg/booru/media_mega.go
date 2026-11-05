@@ -36,7 +36,7 @@ func fetchMegaMedia(ctx context.Context, request MediaRequest, output io.Writer)
 	u, _ := url.Parse(request.URL)
 	link := request.URL
 	if strings.HasPrefix(u.Path, "/file/") {
-		link = "https://mega.nz/#!"+strings.TrimPrefix(u.Path, "/file/")+"!"+u.Fragment
+		link = "https://mega.nz/#!" + strings.TrimPrefix(u.Path, "/file/") + "!" + u.Fragment
 	}
 	args = append(args, link)
 	cmd := exec.CommandContext(ctx, binary, args...)

@@ -16,8 +16,10 @@ import (
 // source and does not authorize arbitrary browser-supplied URLs.
 func SharedLinkSource() Source {
 	return Source{
-		ID: "shared-links", Name: "Shared links", Engine: "danbooru",
-		URL: "https://www.dropbox.com",
+		ID:         "shared-links",
+		Name:       "Shared links",
+		Engine:     "danbooru",
+		URL:        "https://www.dropbox.com",
 		MediaHosts: []string{"dropboxusercontent.com"},
 	}
 }
@@ -82,7 +84,7 @@ func SharedLinkPost(raw string) (Post, error) {
 	switch strings.ToLower(u.Hostname()) {
 	case "dropbox.com", "www.dropbox.com":
 		if u.Fragment != "" {
-			return Post{}, fmt.Errorf("Dropbox share links cannot contain fragments")
+			return Post{}, fmt.Errorf("dropbox share links cannot contain fragments")
 		}
 		parts := strings.Split(strings.Trim(u.EscapedPath(), "/"), "/")
 		folder := false
@@ -100,7 +102,7 @@ func SharedLinkPost(raw string) (Post, error) {
 		query := u.Query()
 		for key := range query {
 			if key != "rlkey" && key != "dl" && key != "raw" {
-				return Post{}, fmt.Errorf("Dropbox link contains an unsupported query parameter")
+				return Post{}, fmt.Errorf("dropbox link contains an unsupported query parameter")
 			}
 		}
 		rlkey := query.Get("rlkey")
@@ -123,7 +125,7 @@ func SharedLinkPost(raw string) (Post, error) {
 		} else {
 			post.Format = sharedFormat(post.Filename)
 			if post.Format == "" || post.Format == "zip" || post.Format == "cbz" || post.Format == "7z" {
-				return Post{}, fmt.Errorf("Dropbox share does not identify a supported image or video")
+				return Post{}, fmt.Errorf("dropbox share does not identify a supported image or video")
 			}
 			if post.Format != "mp4" && post.Format != "webm" {
 				post.PreviewURL, post.SampleURL = original, original
@@ -191,11 +193,12 @@ func LinkedMediaFromPawchiveContent(content, pawchivePostURL string) ([]Post, in
 		}
 		seen[post.ID] = true
 		post.PostURL = pawchivePostURL // retain the originating post as provenance
-		if host == "mega.nz" {
+		switch {
+		case host == "mega.nz":
 			post.Title = "MEGA linked file"
-		} else if post.Format == "zip" {
+		case post.Format == "zip":
 			post.Title = "Dropbox linked folder"
-		} else {
+		default:
 			post.Title = "Dropbox: " + post.Filename
 		}
 		found = append(found, post)
