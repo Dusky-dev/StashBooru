@@ -176,3 +176,72 @@ func TestStaleReviewAndCancellationLeaveAllCharacters(t *testing.T) {
 		})
 	}
 }
+
+func TestSelectedMergesAndPersistentNotDuplicateDecisions(t *testing.T) {
+	r := fixture(t)
+	ctx := context.Background()
+	before, err := Preview(ctx, r)
+	require.NoError(t, err)
+	require.Len(t, before.Groups, 2)
+
+	// Reject the Hatsune/Miku pair while leaving the independent other pair
+	// eligible. The saved decision is returned by later database reads.
+	after, err := ChangeDecisions(ctx, r, before.Fingerprint, "exclude", []int{1}, nil)
+	require.NoError(t, err)
+	require.Len(t, after.Groups, 1)
+	require.Equal(t, 3, after.Groups[0].Destination.ID)
+	require.Len(t, after.Ignored, 1)
+	require.Equal(t, 1, after.Ignored[0].Left.ID)
+	require.Equal(t, 2, after.Ignored[0].Right.ID)
+	require.NotEqual(t, before.Fingerprint, after.Fingerprint)
+	require.ErrorContains(t, ApplySelected(ctx, r, before.Fingerprint, []int{3}, nil), "preview again")
+	require.ErrorContains(t, ApplySelected(ctx, r, after.Fingerprint, []int{1}, nil), "no longer eligible")
+
+	// Merge only the selected pair; the declined pair is still intact.
+	require.NoError(t, ApplySelected(ctx, r, after.Fingerprint, []int{3}, nil))
+	require.NoError(t, r.WithReadTxn(ctx, func(ctx context.Context) error {
+		for _, id := range []int{1, 2, 3} {
+			item, err := r.Performer.Find(ctx, id)
+			require.NoError(t, err)
+			require.NotNil(t, item)
+		}
+		removed, err := r.Performer.Find(ctx, 4)
+		require.NoError(t, err)
+		require.Nil(t, removed)
+		saved, err := r.CharacterDedup.List(ctx)
+		require.NoError(t, err)
+		require.Equal(t, []models.CharacterDedupPair{{LeftID: 1, RightID: 2}}, saved)
+		return nil
+	}))
+
+	latest, err := Preview(ctx, r)
+	require.NoError(t, err)
+	require.Empty(t, latest.Groups)
+	require.Len(t, latest.Ignored, 1)
+
+	// Undo the decision explicitly, then the pair can be suggested again.
+	restored, err := ChangeDecisions(ctx, r, latest.Fingerprint, "restore", nil,
+		[]models.CharacterDedupPair{{LeftID: 1, RightID: 2}})
+	require.NoError(t, err)
+	require.Empty(t, restored.Ignored)
+	require.Len(t, restored.Groups, 1)
+	require.ErrorContains(t, ApplySelected(ctx, r, latest.Fingerprint, []int{1}, nil), "preview again")
+	require.NoError(t, ApplySelected(ctx, r, restored.Fingerprint, []int{1}, nil))
+}
+
+func TestRejectingStaleCharacterPreviewIsAtomic(t *testing.T) {
+	r := fixture(t)
+	ctx := context.Background()
+	p, err := Preview(ctx, r)
+	require.NoError(t, err)
+	_, err = ChangeDecisions(ctx, r, p.Fingerprint, "exclude", []int{1}, nil)
+	require.NoError(t, err)
+	_, err = ChangeDecisions(ctx, r, p.Fingerprint, "exclude", []int{3}, nil)
+	require.ErrorContains(t, err, "preview again")
+	require.NoError(t, r.WithReadTxn(ctx, func(ctx context.Context) error {
+		pairs, err := r.CharacterDedup.List(ctx)
+		require.NoError(t, err)
+		require.Len(t, pairs, 1)
+		return nil
+	}))
+}
