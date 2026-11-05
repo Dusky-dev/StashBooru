@@ -2,10 +2,17 @@
 
 ## Pawchive external-link media discovery — 2026-11-05
 
-- Branch `feat/booru-shared-link-media-20261105`, PR #314, based on `develop` `f013a7c2b7379b0d61728faa493402f939708bd9`. Corrected user scope: no paste-link UI. Detect Dropbox/MEGA URLs directly inside Pawchive post content during normal searches.
+- Branch `feat/booru-shared-link-media-20261105`, PR #314, synchronized with `develop`. Corrected user scope: no paste-link UI. Detect Dropbox/MEGA URLs directly inside Pawchive post content during normal searches.
 - Recognized links become read-only external media attachments with separate server-owned short-lived media/download tokens, retaining the originating Pawchive post. Show linked-media indicators and use existing inspector, archive selection, native download and import.
 - Dropbox individual files and bounded folder ZIPs supported; MEGA single-file links require an optional installed megatools executable. MEGA folder URLs are detected and reported but not downloaded. No remote post crawler or automatic bulk import, and no arbitrary URL proxy.
 - Bounded parsing, strict URL validation and secret-redaction protections. Added unit tests and source-level review, but live-provider/container execution and CI/Codex verification remain pending. No existing library data modified.
+
+## Compact task headings and help — 2026-11-05
+
+- Baseline: `develop` `f013a7c2b7379b0d61728faa493402f939708bd9`; branch `feat/compact-tasks-help-20261105`.
+- Reduce the oversized Character merge task heading and question-mark icon. Apply one reusable, accessible, compact heading to Character merge, Review library inheritance, Animation inspection and Video overlap / containment.
+- Move detailed descriptions for the next three tasks into the built-in Tasks help page. Keep the inheritance defaults link, all existing switches, previews, job actions and video review dialog unchanged. Remove the redundant Inspect media disclosure description.
+- Extend desktop/mobile Settings and Character browser fixtures to verify the headings and screen-reader-labelled help links. UI tests and visual checks run on PR CI; no server API, media or database changes.
 
 ## Image storage estimate React render crash — 2026-11-05
 

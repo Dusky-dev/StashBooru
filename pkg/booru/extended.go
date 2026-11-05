@@ -446,11 +446,7 @@ func parseArchivePost(s Source, raw object) (Post, error) {
 		}
 	}
 	if !p.DownloadAvailable {
-		if len(p.Attachments) == 0 {
-			p.MediaNotice += " Full media is unavailable; previews are not substituted for originals."
-		} else {
-			p.MediaNotice += " No hosted original is available for this post; inspect its attachments."
-		}
+		p.MediaNotice += " Full media is unavailable; previews are not substituted for originals."
 	}
 	return p, nil
 }

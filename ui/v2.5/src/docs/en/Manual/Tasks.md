@@ -74,6 +74,36 @@ Not-duplicate decisions are stored in the StashBooru database and survive rescan
 
 Merging combines compatible metadata and Image, Video and Gallery links into a surviving Character; the removed Character profile records are deleted, **not the media files**. Merges are not undoable through this task. A merge job validates the preview again and runs transactionally: cancellation or failure before commit rolls back its changes. Make a database backup first, and review each group before merging.
 
+## Review library inheritance
+
+**Settings → Tasks → Review profiles & associations → Review library inheritance**
+
+Use this task to preview how the library's calculated associations would change if you include or exclude ancestor Characters, Artists, Copyrights, or Tags. These four switches control inherited associations; they **do not rewrite directly assigned Image or Video links**. The same hierarchy defaults are shared by System and Tagging settings.
+
+1. Adjust the four inheritance switches and click **Preview library**. The preview runs as a background task; no settings change until you apply.
+2. Review the counts for Images, Videos, affected media and added/removed inherited associations. Expand individual examples to see current and proposed memberships and their sources. The examples are a sample; the review covers the whole library.
+3. Choose **Apply reviewed defaults** only after checking the report. A review with errors cannot be applied. You can cancel a running job or discard a finished review to adjust the switches and preview again.
+
+The review can resume in the same browser session. While an existing review is active, its proposed settings are locked until you apply or discard it. If profiles or associations change in the meantime, preview again rather than relying on stale results.
+
+## Animation inspection
+
+**Settings → Tasks → Inspect media → Animation inspection**
+
+Regular scans inspect frame counts and add the native **animated** Tag to animated Images without replacing other metadata. Click **Inspect existing images** to backfill Images imported before animation detection was available. This queues a background task; use the Task Queue to follow its progress. It can add missing Tags but does not replace original media files.
+
+## Video overlap / containment
+
+**Settings → Tasks → Inspect media → Video overlap / containment**
+
+Use **Open video overlap review** to find Videos containing matching segments, including trimmed or re-encoded copies and clips within compilations. The review indexes timestamped video samples, then presents candidate matches and their intervals for manual comparison.
+
+- Choose an indexing backend and sample interval, then index the library or the selected reference Video. Index checkpoints can resume after a cancellation or restart.
+- Search for overlapping segments and examine the match evidence, coverage and unmatched intervals. Use **Compare matched segments** for synchronized playback before drawing conclusions.
+- A similarity result is evidence to review, **not proof that two files are interchangeable**. Video records and source files remain in the native catalogue; this review does not automatically delete duplicates.
+
+The comparison and indexing settings are available inside the review dialog. Some codec or worker configurations may require additional setup.
+
 ## Auto tagging
 
 See the [Auto tagging](/help/AutoTagging.md) page.
