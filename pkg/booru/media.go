@@ -30,11 +30,15 @@ type MediaInfo struct {
 
 func (c *Client) FetchMedia(ctx context.Context, source Source, input MediaRequest, output io.Writer) (MediaInfo, error) {
 	var ret MediaInfo
+	isMega := source.ID == SharedLinkSource().ID && source.Instance() == SharedLinkSource().Instance() && ValidMegaSharedFileURL(input.URL)
 	if err := ctx.Err(); err != nil {
 		return ret, err
 	}
-	if source.Validate() != nil || input.URL == "" || source.mediaURL(input.URL) != input.URL || input.Limit < 1 || input.Limit > 512<<20 || input.ExpectedBytes > input.Limit {
+	if source.Validate() != nil || input.URL == "" || (!isMega && source.mediaURL(input.URL) != input.URL) || input.Limit < 1 || input.Limit > 512<<20 || input.ExpectedBytes > input.Limit {
 		return ret, fmt.Errorf("media is unavailable, unsafe or exceeds the download limit")
+	}
+	if isMega {
+		return fetchMegaMedia(ctx, input, output)
 	}
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
@@ -86,8 +90,15 @@ func (c *Client) FetchMedia(ctx context.Context, source Source, input MediaReque
 	if res.ContentLength > input.Limit {
 		return ret, fmt.Errorf("media exceeds the size limit")
 	}
+	return readValidatedMedia(res.Body, input, output, res.ContentLength)
+}
+
+// readValidatedMedia enforces the same MIME, length and checksum policy for
+// HTTPS providers and explicitly opted-in MEGA decryption streams.
+func readValidatedMedia(body io.Reader, input MediaRequest, output io.Writer, contentLength int64) (MediaInfo, error) {
+	var ret MediaInfo
 	prefix := make([]byte, 512)
-	n, err := io.ReadFull(res.Body, prefix)
+	n, err := io.ReadFull(body, prefix)
 	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
 		return ret, fmt.Errorf("cannot read media")
 	}
@@ -149,9 +160,9 @@ func (c *Client) FetchMedia(ctx context.Context, source Source, input MediaReque
 	if _, err = dest.Write(prefix); err != nil {
 		return ret, err
 	}
-	count, err := io.Copy(dest, io.LimitReader(res.Body, input.Limit-int64(n)+1))
+	count, err := io.Copy(dest, io.LimitReader(body, input.Limit-int64(n)+1))
 	ret.Bytes = int64(n) + count
-	if err != nil || ret.Bytes > input.Limit || (res.ContentLength >= 0 && res.ContentLength != ret.Bytes) || (input.ExpectedBytes > 0 && input.ExpectedBytes != ret.Bytes) {
+	if err != nil || ret.Bytes > input.Limit || (contentLength >= 0 && contentLength != ret.Bytes) || (input.ExpectedBytes > 0 && input.ExpectedBytes != ret.Bytes) {
 		return ret, fmt.Errorf("media was truncated or exceeded the size limit")
 	}
 	ret.MD5 = fmt.Sprintf("%x", h.Sum(nil))

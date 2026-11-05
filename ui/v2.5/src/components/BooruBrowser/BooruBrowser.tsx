@@ -70,6 +70,7 @@ import { TagAutocomplete } from "./TagAutocomplete";
 import { BooruDownload } from "./BooruDownload";
 import { BooruFilenameMigration } from "./BooruFilenameMigration";
 import { BooruArchive } from "./BooruArchive";
+import { SharedLinkBrowser } from "./SharedLinkBrowser";
 import { readBrowserMemory, saveBrowserMemory } from "./browser";
 import { SourceSettings } from "./SourceSettings";
 import { SourceSelector } from "./SourceSelector";

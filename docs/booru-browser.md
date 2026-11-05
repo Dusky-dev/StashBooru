@@ -605,3 +605,33 @@ directory is bounded to 64 MiB / 500,000 rows, with two indexes cached for ten m
 concurrent loads of the same source share a request. Normal public-DNS, redirect,
 rate-limit and cancellation rules apply. Invalid records are omitted. No account
 favorites or automatic downloads are created by artist lookup.
+
+
+## Public Dropbox and MEGA share links
+
+Open **Browse a shared link (Dropbox / MEGA)** in Booru Browser. Paste one
+public link and choose **Find media**. This uses a POST request, not the
+normal search query: access/decryption keys are not added to the browser URL,
+saved filters, or bookmarks. Each successful inspection creates a temporary
+server-side media key; it expires after 30 minutes or server restart.
+
+- **Dropbox files:** Current `/scl/fi/` and legacy `/s/` public share links
+  pointing to supported images or videos. The original is fetched only after
+  preview or download. Select **Download to Stash** for normal native import.
+- **Dropbox folders:** Public `/scl/fo/` or legacy `/sh/` folder links are
+  treated as a ZIP download. The existing bounded archive inspector extracts
+  and offers supported individual images/videos. Very large folders exceed the
+  server's configured archive limit and cannot be previewed in this flow.
+- **MEGA files:** Complete public `/file/ID#key` or legacy `/#!ID!key`
+  links. Download/decryption uses the optional `megadl` executable from
+  `megatools`, installed on the machine/container that runs StashBooru.
+  MEGA links have no automatic preview; selected downloads are MIME-checked
+  and subject to the same media size limit before import. This dependency is
+  not bundled into the default Docker image.
+
+This initial integration **does not enumerate MEGA folders**, accept
+password-protected or authenticated shares, circumvent quotas, or bulk-import
+unselected files. A new link must be inspected again after a restart/expiry.
+Only recognized Dropbox/MEGA HTTPS share-link patterns are accepted; arbitrary
+file URLs are rejected. Keep your share links private: access keys may
+grant anyone with the full URL access to those files.

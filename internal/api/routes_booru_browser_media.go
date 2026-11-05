@@ -92,6 +92,12 @@ func (rs booruBrowserRoutes) mediaSnapshot(key string) (booru.Source, booru.Post
 	if !ok || time.Since(item.Created) > booruSnapshotTTL {
 		return booru.Source{}, booru.Post{}, false
 	}
+	shared := booru.SharedLinkSource()
+	if item.Source == shared.ID && item.Instance == shared.Instance() {
+		if _, err := booru.SharedLinkPost(item.Post.OriginalURL); err == nil {
+			return shared, item.Post, true
+		}
+	}
 	sources, err := rs.sources()
 	if err != nil {
 		return booru.Source{}, booru.Post{}, false
