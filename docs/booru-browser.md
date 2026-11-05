@@ -623,8 +623,8 @@ server-side media key; it expires after 30 minutes or server restart.
   and offers supported individual images/videos. Very large folders exceed the
   server's configured archive limit and cannot be previewed in this flow.
 - **MEGA files:** Complete public `/file/ID#key` or legacy `/#!ID!key`
-  links. Download/decryption uses the optional `megadl` executable from
-  `megatools`, installed on the machine/container that runs StashBooru.
+  links. Download/decryption uses the optional `megatools dl` command (or legacy `megadl`), installed
+  on the machine/container that runs StashBooru.
   MEGA links have no automatic preview; selected downloads are MIME-checked
   and subject to the same media size limit before import. This dependency is
   not bundled into the default Docker image.

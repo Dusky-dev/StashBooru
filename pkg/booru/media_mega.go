@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/url"
 	"os/exec"
+	"strings"
 	"time"
 )
 
@@ -17,10 +19,27 @@ func fetchMegaMedia(ctx context.Context, request MediaRequest, output io.Writer)
 	}
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
-	if _, err := exec.LookPath("megadl"); err != nil {
-		return empty, fmt.Errorf("MEGA downloads require megadl (megatools) installed on the Stash server")
+
+	// Megatools >=1.11 uses a consolidated "megatools dl" executable. Older
+	// distributions provide "megadl"; both accept --path - for stdout streaming.
+	binary, err := exec.LookPath("megatools")
+	args := []string{"dl", "--path", "-", "--no-progress"}
+	if err != nil {
+		binary, err = exec.LookPath("megadl")
+		args = []string{"--path", "-", "--no-progress"}
+		if err != nil {
+			return empty, fmt.Errorf("MEGA downloads require megatools installed on the Stash server")
+		}
 	}
-	cmd := exec.CommandContext(ctx, "megadl", "--path", "-", "--no-progress", request.URL)
+	// Translate modern file links to the legacy equivalent for older helpers.
+	// Revalidate before constructing any subprocess argument.
+	u, _ := url.Parse(request.URL)
+	link := request.URL
+	if strings.HasPrefix(u.Path, "/file/") {
+		link = "https://mega.nz/#!"+strings.TrimPrefix(u.Path, "/file/")+"!"+u.Fragment
+	}
+	args = append(args, link)
+	cmd := exec.CommandContext(ctx, binary, args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return empty, fmt.Errorf("cannot start MEGA file download")
