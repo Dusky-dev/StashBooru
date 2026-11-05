@@ -199,3 +199,75 @@ func TestStorageEstimateAutomaticSampleSizeAndDisjointness(t *testing.T) {
 		t.Fatal("independent group rejected")
 	}
 }
+
+func TestStorageEstimateDiverseModeValidationAndRankSpread(t *testing.T) {
+	if err := validateStorageEstimateRequest(storageEstimateRequest{Auto: true, Diverse: true, SampleSize: 8, Fidelity: "byte-exact"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, request := range []storageEstimateRequest{
+		{StackID: 1, Diverse: true, Fidelity: "byte-exact"},
+		{Auto: true, Diverse: true, SampleSize: 32, Fidelity: "byte-exact"},
+	} {
+		if err := validateStorageEstimateRequest(request); err == nil {
+			t.Fatalf("accepted invalid diverse estimate: %+v", request)
+		}
+	}
+	clusters := [][]int{{1, 2, 3, 4}, {5}, {6, 7, 8}, {9}, {10, 11}, {12}}
+	indices := estimateDiverseClusterIndices(clusters, 2)
+	if len(indices) != 2 || indices[0] != 0 || indices[1] != 4 {
+		t.Fatalf("sampling must cover both largest and smaller matched pHash groups: %v", indices)
+	}
+	if got := estimateDiverseClusterIndices(clusters, 5); len(got) != 3 || got[1] != 2 {
+		t.Fatalf("full eligible pHash range not returned: %v", got)
+	}
+	if got := estimateDiverseClusterIndices(clusters, 0); len(got) != 0 {
+		t.Fatalf("invalid limit accepted: %v", got)
+	}
+}
+
+func TestStorageEstimateDiverseSelectionCoversDifferentSourceTypes(t *testing.T) {
+	root := t.TempDir()
+	makeMember := func(id, name string, size int) estimateSourceMember {
+		t.Helper()
+		path := filepath.Join(root, name)
+		if err := os.WriteFile(path, make([]byte, size), 0600); err != nil {
+			t.Fatal(err)
+		}
+		return estimateSourceMember{ID: id, Path: path}
+	}
+	a := estimateSourceGroup{ID: "a", Members: []estimateSourceMember{
+		makeMember("image:1", "one.jpg", 1024),
+		makeMember("image:2", "two.jpeg", 1024),
+	}}
+	b := estimateSourceGroup{ID: "b", Members: []estimateSourceMember{
+		makeMember("image:3", "three.png", 512<<10),
+		makeMember("image:4", "four.png", 512<<10),
+	}}
+	c := estimateSourceGroup{ID: "c", Members: []estimateSourceMember{
+		makeMember("image:5", "five.webp", 3<<20),
+		makeMember("image:6", "six.webp", 3<<20),
+	}}
+	duplicate := estimateSourceGroup{ID: "duplicate", Members: []estimateSourceMember{
+		a.Members[0],
+		makeMember("image:7", "seven.avif", 1024),
+	}}
+	format, size, count := estimateDiversityBuckets(a)
+	if format != "jpeg" || size != "small" || count != "few" {
+		t.Fatalf("wrong source buckets: %s %s %s", format, size, count)
+	}
+	format, size, _ = estimateDiversityBuckets(c)
+	if format != "webp" || size != "large" {
+		t.Fatalf("wrong large image buckets: %s %s", format, size)
+	}
+	selected := estimateChooseDiverseGroups([]estimateSourceGroup{a, b, c, duplicate}, 4)
+	if len(selected) != 3 {
+		t.Fatalf("selected overlapping group or lost independent candidate: %+v", selected)
+	}
+	if selected[0].ID != "a" || selected[1].ID != "b" || selected[2].ID != "c" {
+		t.Fatalf("non-deterministic diverse ordering: %+v", selected)
+	}
+	limited := estimateChooseDiverseGroups([]estimateSourceGroup{a, b, c}, 2)
+	if len(limited) != 2 || limited[0].ID != "a" || limited[1].ID != "b" {
+		t.Fatalf("diverse group limit not respected: %+v", limited)
+	}
+}
