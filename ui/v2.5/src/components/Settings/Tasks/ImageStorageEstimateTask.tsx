@@ -88,7 +88,11 @@ export const ImageStorageEstimateTask: React.FC = () => {
       const response = await fetch("image/storage-estimate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(autoMode ? { auto: true, fidelity } : { stackIDs: parsedIDs, fidelity }),
+        body: JSON.stringify(
+          autoMode
+            ? { auto: true, fidelity }
+            : { stackIDs: parsedIDs, fidelity }
+        ),
       });
       if (!response.ok) throw new Error(await response.text());
       const result = (await response.json()) as { jobID: number };
@@ -222,12 +226,14 @@ export const ImageStorageEstimateTask: React.FC = () => {
       )}
       {result?.readOnly && result.sourcesRetained && groups.length > 0 && (
         <div className="mt-3">
-          <h3>Most recent storage estimate: {groups.length} stacks</h3>
+          <h3>Most recent storage estimate: {groups.length} groups</h3>
           <p>
-            {result.selection?.mode === "auto" ? "Sampled originals" : "Original files"}:{" "}
-            {formatSize(result.sourceBytes)} · Hypothetical
-            savings: {formatSize(result.potentialSavedBytes)} · Potential
-            footprint after full activation:{" "}
+            {result.selection?.mode === "auto"
+              ? "Sampled originals"
+              : "Original files"}
+            : {formatSize(result.sourceBytes)} · Hypothetical savings:{" "}
+            {formatSize(result.potentialSavedBytes)} · Potential footprint after
+            full activation:{" "}
             {formatSize(result.hypotheticalBytesAfterFullActivation)}.
           </p>
           {result.selection?.mode === "auto" && (
@@ -248,7 +254,7 @@ export const ImageStorageEstimateTask: React.FC = () => {
           <Table responsive size="sm">
             <thead>
               <tr>
-                <th>Visual Stack</th>
+                <th>Image group</th>
                 <th>Images</th>
                 <th>Originals</th>
                 <th>Best method</th>

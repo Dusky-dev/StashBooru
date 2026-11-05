@@ -88,7 +88,7 @@ func TestStorageEstimateAutoSampleBudgetAndReportMetadata(t *testing.T) {
 	}}) {
 		t.Fatal("valid small read-only sample rejected")
 	}
-	if estimateAutoWithinBudget(estimateSourceGroup{Members: []estimateSourceMember{{ID: "image:1", Path: good}}) {
+	if estimateAutoWithinBudget(estimateSourceGroup{Members: []estimateSourceMember{{ID: "image:1", Path: good}}}) {
 		t.Fatal("singleton accepted")
 	}
 	symlink := filepath.Join(folder, "link.png")

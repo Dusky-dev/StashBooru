@@ -31,7 +31,7 @@ var storageEstimateJobID int
 var storageEstimateResult json.RawMessage
 
 type storageEstimateRequest struct {
-	Auto bool `json:"auto,omitempty"`
+	Auto     bool   `json:"auto,omitempty"`
 	StackID  int    `json:"stackID,omitempty"`
 	StackIDs []int  `json:"stackIDs,omitempty"`
 	Fidelity string `json:"fidelity"`
@@ -211,10 +211,10 @@ func estimatePython(ctx context.Context, groups []estimateSourceGroup, fidelity 
 
 
 type storageEstimateSelection struct {
-	Mode string `json:"mode"`
-	TotalImages int `json:"totalImages"`
-	PHashIndexedImages int `json:"pHashIndexedImages"`
-	SampledGroups int `json:"sampledGroups"`
+	Mode              string `json:"mode"`
+	TotalImages       int    `json:"totalImages"`
+	PHashIndexedImages int    `json:"pHashIndexedImages"`
+	SampledGroups     int    `json:"sampledGroups"`
 }
 
 // Automatic discovery is a bounded trial, NOT a library-wide savings scan.
