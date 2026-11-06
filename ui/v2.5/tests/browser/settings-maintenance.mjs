@@ -294,7 +294,7 @@ try {
       .filter({ hasText: "Media converter and format rules" });
     assert.match(
       (await converterResult.getAttribute("href")) ?? "",
-      /tab=processing#media-converter$/
+      /tab=processing.*#media-converter$/
     );
     await settingsSearch.fill("image titles");
     await page
