@@ -223,16 +223,13 @@ export const VisualSimilaritySettings: React.FC = () => {
         visual similarity groups side by side and choose which images to keep.
       </p>
       <div className="sub-heading">
-        Find similar defaults to <strong>Same image / variants (pHash)</strong>.
-        Switch to <strong>Related content (EVA02)</strong> for similar subjects
-        or composition. pHash needs generated perceptual hashes; EVA02 needs its
-        own model and image index. Neither mode proves two files are identical.
+        Configure visual similarity and automatic tagging.
       </div>
       <Card>
         <Setting
           className="flex-column align-items-stretch"
           heading="Related-content index"
-          subHeading={`${indexSummary}. Generate embeddings after installing the model. Unchanged images are skipped.`}
+          subHeading={indexSummary}
         >
           <div className="mt-3 w-100">
             {workerStatus(status)}
@@ -270,11 +267,7 @@ export const VisualSimilaritySettings: React.FC = () => {
                 Refresh status
               </Button>
             </div>
-            <p className="small text-muted mt-2 mb-0">
-              For pHash matching, generate Image perceptual hashes in{" "}
-              <Link to="/settings?tab=tasks">Tasks</Link>. The EVA02 index stays
-              on this server when inference runs remotely.
-            </p>
+
             <details className="settings-details mt-3">
               <summary>EVA02 model details</summary>
               <div className="pt-2">
@@ -314,7 +307,7 @@ export const VisualSimilaritySettings: React.FC = () => {
         <Setting
           className="flex-column align-items-stretch"
           heading="Tagging defaults"
-          subHeading="Server-wide defaults for Image Tagging and Video frame analysis. Higher thresholds keep fewer predictions. Filename metadata works without Camie."
+          subHeading="Configure tagging thresholds and sources."
         >
           <Form
             className="mt-3 w-100"
@@ -443,15 +436,7 @@ export const VisualSimilaritySettings: React.FC = () => {
                 }
                 label="Enable bulk auto-tagging for multiple selected Images"
               />
-              <Form.Text className="text-muted d-block mb-3">
-                When enabled, Review metadata on two or more selected Images
-                shows one confirmation warning, then runs the chosen Camie
-                and/or EVA02 models plus configured filename predictions as a
-                background job without per-image approval. Booru and library
-                suggestions are not included. If disabled, selecting multiple
-                Images instead offers per-image review with a dismissible
-                warning.
-              </Form.Text>
+
               <p className="small">
                 <Link to="/settings?tab=library#association-inheritance-settings">
                   {intl.formatMessage({
@@ -470,7 +455,7 @@ export const VisualSimilaritySettings: React.FC = () => {
         <Setting
           className="flex-column align-items-stretch"
           heading="Camie Tagger v2 (optional)"
-          subHeading="Adds Character, Copyright, Artist and general Tag predictions. The model is downloaded only when you select Install; files are stored on the selected worker."
+          subHeading="Optional tagging model."
         >
           <div className="mt-3 w-100">
             {workerStatus(camieStatus)}
@@ -545,7 +530,7 @@ export const VisualSimilaritySettings: React.FC = () => {
         <Setting
           className="flex-column align-items-stretch"
           heading="PixAI Tagger v1 (optional)"
-          subHeading="Higher-resolution anime Character, Copyright and general tagging. Installs the model and an optimized inference runtime only when requested."
+          subHeading="Optional anime tagging model."
         >
           <div className="mt-3 w-100">
             {workerStatus(pixaiStatus)}
@@ -588,11 +573,7 @@ export const VisualSimilaritySettings: React.FC = () => {
                 Refresh PixAI status
               </Button>
             </div>
-            <p className="small text-muted mt-2">
-              NVIDIA installations need the CUDA Toolkit 12.8+ (nvcc) or
-              precompiled inference kernels. The installer runs on the selected
-              worker. Model and runtime are Apache-2.0.
-            </p>
+
             <details className="settings-details mt-3">
               <summary>PixAI model details</summary>
               <p className="text-break mt-2">
