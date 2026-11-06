@@ -46,6 +46,77 @@ func TestFormatDefaultsPersistAcrossUpgrade(t *testing.T) {
 	}
 }
 
+func TestDisabledFormatRulesPersistAndDoNotChooseAutomaticOutputs(t *testing.T) {
+	s := Store{Root: t.TempDir()}
+	c, err := s.Config()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.FormatRuleEnabled("png") || c.DefaultOutput("png", false) != "jxl" {
+		t.Fatal("legacy rules must start enabled")
+	}
+
+	c.FormatRulesEnabled = map[string]bool{
+		"png":   false,
+		"gif":   false,
+		"image": false,
+		"video": false,
+		"mp4":   true,
+	}
+	if err := s.Configure(c); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := s.Config()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(c, loaded) || loaded.FormatDefaults["png"] != "jxl" {
+		t.Fatalf("disabled rules lost their output or settings: %+v", loaded)
+	}
+	for _, tc := range []struct {
+		input string
+		video bool
+		want string
+	}{
+		{"png", false, ""},
+		{"gif", false, ""},
+		{"bmp", false, ""},
+		{"avi", true, ""},
+		{"mp4", true, "av1-mp4"},
+		{"jpeg", false, "jxl"},
+	} {
+		if got := loaded.DefaultOutput(tc.input, tc.video); got != tc.want {
+			t.Errorf("%s: got %q, want %q", tc.input, got, tc.want)
+		}
+	}
+	loaded.FormatRulesEnabled["png"] = true
+	loaded.FormatRulesEnabled["image"] = true
+	loaded.FormatRulesEnabled["video"] = true
+	if err := s.Configure(loaded); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := s.Config()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reopened.DefaultOutput("png", false) != "jxl" ||
+		reopened.DefaultOutput("bmp", false) != "jxl" ||
+		reopened.DefaultOutput("avi", true) != "av1-mp4" {
+		t.Fatal("re-enabling rules did not restore saved outputs")
+	}
+	for _, states := range []map[string]bool{
+		{"not-a-format": false},
+		{"bmp": false}, // no saved BMP format rule
+	} {
+		if err := ValidateFormatRulesEnabled(states, reopened.FormatDefaults); err == nil {
+			t.Fatalf("accepted state for missing rule: %v", states)
+		}
+	}
+	if err := ValidateFormatRulesEnabled(nil, reopened.FormatDefaults); err != nil {
+		t.Fatal("legacy enabled state should remain optional:", err)
+	}
+}
+
 func TestMixedInputsUseIndividualDefaults(t *testing.T) {
 	c := Config{FormatDefaults: DefaultFormatDefaults()}
 	root := t.TempDir()
