@@ -23,6 +23,9 @@ Inspect a post for full progress, conversion controls and destination details:
   not change the default directory.
 - **Convert using Media converter defaults** to run the existing converter after
   native import. Its default checkbox state comes from the browser settings.
+  Formats with disabled converter rules are imported unchanged and reported as
+  **conversion skipped** instead of failing the download. This also applies when
+  the generic Other images / Other videos rule used by an input is disabled.
 
 The native Jobs queue downloads the original, checks its actual size and provider
 MD5 when supplied, saves it without overwriting an existing file, and runs the
