@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Form } from "react-bootstrap";
 import { Link, useLocation } from "react-router-dom";
 import { useIntl } from "react-intl";
