@@ -607,7 +607,9 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
             onChange={(v) =>
               saveUI({
                 showImageAssociationTitles: v,
-                hideImageFilenames: v ? false : (ui.hideImageFilenames ?? false),
+                hideImageFilenames: v
+                  ? false
+                  : (ui.hideImageFilenames ?? false),
               })
             }
           />
