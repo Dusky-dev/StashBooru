@@ -190,6 +190,61 @@ async function check(mode) {
           "Image deselection changed Video selection"
         );
         await videoCheck.uncheck();
+
+        // Every All filter must reach findMedia, not the Images or Videos query.
+        const filterCases = [
+          {
+            type: "media_types",
+            modifier: "EQUALS",
+            value: ["VIDEO"],
+            check: (value) => assert.deepEqual(value.media_types, ["VIDEO"]),
+          },
+          {
+            type: "title",
+            modifier: "INCLUDES",
+            value: "this-title-does-not-exist",
+            check: (value) =>
+              assert.equal(value.title.value, "this-title-does-not-exist"),
+          },
+          ...["tags", "studios", "copyrights", "performers"].map((type) => ({
+            type,
+            modifier: "INCLUDES",
+            value: {
+              items: [{ id: "1", label: "Fixture" }],
+              excluded: [],
+              ...(type === "performers" ? {} : { depth: -1 }),
+            },
+            check: (value) =>
+              assert.deepEqual(value[type].value, ["1"]),
+          })),
+        ];
+        for (const { type, modifier, value, check } of filterCases) {
+          const encoded = encodeURIComponent(
+            JSON.stringify({ type, modifier, value })
+          );
+          const response = page.waitForResponse((r) => {
+            if (!r.url().includes("/graphql")) return false;
+            const request = r.request().postDataJSON();
+            return (
+              request?.operationName === "FindMedia" &&
+              request?.variables?.media_filter?.[type] !== undefined
+            );
+          });
+          await page.goto(`${baseURL}/media?c=${encoded}`, {
+            waitUntil: "domcontentloaded",
+          });
+          const matched = await response;
+          check(matched.request().postDataJSON().variables.media_filter);
+          assert.equal(
+            await page.locator(".media-list").count(),
+            1,
+            `All did not render with ${type} filter`
+          );
+        }
+        await page.goto(`${baseURL}/media`, {
+          waitUntil: "domcontentloaded",
+        });
+        await page.locator(".media-list .scene-card").first().waitFor();
       }
       await page
         .locator(".media-list button")
