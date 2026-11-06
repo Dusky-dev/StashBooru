@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   imageAssociationHeading,
   imageDisplayHeading,
+  formattedImageFilenameHeading,
   imageHeadingVisible,
 } from "../src/utils/imageHeadingVisible.ts";
 
@@ -92,4 +93,77 @@ test("metadata titles handle missing associations, duplicate names and older Art
     }),
     "Image #99"
   );
+});
+
+test("formatted filename fallback is opt-in and only applies without association names", () => {
+  const untagged = { id: "42", title: null };
+  const options = {
+    showImageAssociationTitles: true,
+    showFormattedImageFilenameFallback: true,
+  };
+  assert.equal(
+    imageDisplayHeading(untagged, "emilia_winter_outfit.PNG", options),
+    "Emilia winter outfit"
+  );
+  assert.equal(
+    imageDisplayHeading(untagged, "emilia_winter_outfit.PNG", {
+      showImageAssociationTitles: true,
+    }),
+    "Image #42"
+  );
+  assert.equal(
+    imageDisplayHeading(untagged, "emilia_winter_outfit.PNG", {
+      showFormattedImageFilenameFallback: true,
+    }),
+    "emilia_winter_outfit.PNG"
+  );
+  assert.equal(
+    imageDisplayHeading(untagged, "emilia_winter_outfit.PNG", {
+      hideImageFilenames: true,
+      showFormattedImageFilenameFallback: true,
+    }),
+    null
+  );
+  assert.equal(
+    imageDisplayHeading(
+      { ...untagged, performers: [{ name: "Emilia" }] },
+      "emilia_winter_outfit.PNG",
+      options
+    ),
+    "Emilia"
+  );
+  assert.equal(
+    imageDisplayHeading(
+      { ...untagged, title: "Handpicked title" },
+      "emilia_winter_outfit.PNG",
+      options
+    ),
+    "Handpicked title"
+  );
+  assert.equal(imageDisplayHeading(untagged, "", options), "Image #42");
+  assert.equal(
+    imageDisplayHeading(untagged, "No File Name", options),
+    "Image #42"
+  );
+});
+
+test("filename fallback cleans separators, extensions and machine hashes", () => {
+  assert.equal(
+    formattedImageFilenameHeading("/media/emilia_winter--outfit_2024.JXL"),
+    "Emilia winter outfit 2024"
+  );
+  assert.equal(
+    formattedImageFilenameHeading(
+      "booru-danbooru-post_014_aabbccddeeff00112233445566778899.webp"
+    ),
+    "Booru danbooru-post 014"
+  );
+  assert.equal(
+    formattedImageFilenameHeading(
+      "aabbccddeeff00112233445566778899.png"
+    ),
+    "Aabbccddeeff…"
+  );
+  assert.equal(formattedImageFilenameHeading("2024-10-25.jpg"), "2024-10-25");
+  assert.equal(formattedImageFilenameHeading(""), "");
 });
