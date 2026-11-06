@@ -1,6 +1,8 @@
 @include media-breakpoint-up(md) {
   #settings-menu-container {
     position: fixed;
+    max-height: calc(100vh - 5rem);
+    overflow-y: auto;
   }
 }
 @include media-breakpoint-down(sm) {
