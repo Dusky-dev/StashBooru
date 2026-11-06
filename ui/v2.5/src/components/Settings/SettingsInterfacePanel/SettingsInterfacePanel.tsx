@@ -193,7 +193,7 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
 
     return (
       <>
-        <SettingSection headingID="config.ui.basic_settings">
+        <SettingSection id="interface-basic" headingID="config.ui.basic_settings">
           <SelectSetting
             id="language"
             headingID="config.ui.language.heading"
@@ -385,7 +385,7 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
           />
         </SettingSection>
 
-        <SettingSection headingID="config.ui.scene_wall.heading">
+        <SettingSection id="interface-video-wall" headingID="config.ui.scene_wall.heading">
           <BooleanSetting
             id="wall-show-title"
             headingID="config.ui.scene_wall.options.display_title"
@@ -428,7 +428,7 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
           />
         </SettingSection>
 
-        <SettingSection headingID="config.ui.scene_player.heading">
+        <SettingSection id="interface-video-player" headingID="config.ui.scene_player.heading">
           <BooleanSetting
             id="enable-chromecast"
             headingID="config.ui.scene_player.options.enable_chromecast"
@@ -648,7 +648,7 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
           </SelectSetting>
         </SettingSection>
 
-        <SettingSection headingID="config.ui.image_lightbox.heading">
+        <SettingSection id="interface-image-lightbox" headingID="config.ui.image_lightbox.heading">
           <NumberSetting
             headingID="config.ui.slideshow_delay.heading"
             subHeadingID="config.ui.slideshow_delay.description"
@@ -741,7 +741,7 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
           />
         </SettingSection>
 
-        <SettingSection headingID="config.ui.detail.heading">
+        <SettingSection id="interface-detail" headingID="config.ui.detail.heading">
           <div className="setting-group">
             <div className="setting">
               <div>
@@ -806,7 +806,7 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
           />
         </SettingSection>
 
-        <SettingSection headingID="config.ui.editing.heading">
+        <SettingSection id="interface-editing" headingID="config.ui.editing.heading">
           <div className="setting-group">
             <div className="setting">
               <div>
@@ -933,7 +933,7 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
           )}
         </SettingSection>
 
-        <SettingSection headingID="config.ui.custom_css.heading">
+        <SettingSection id="interface-custom-css" headingID="config.ui.custom_css.heading">
           <BooleanSetting
             id="custom-css-enabled"
             headingID="config.ui.custom_css.option_label"
@@ -963,7 +963,7 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
             }}
           />
         </SettingSection>
-        <SettingSection headingID="config.ui.custom_javascript.heading">
+        <SettingSection id="interface-custom-javascript" headingID="config.ui.custom_javascript.heading">
           <BooleanSetting
             id="custom-javascript-enabled"
             headingID="config.ui.custom_javascript.option_label"
