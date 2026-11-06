@@ -181,9 +181,7 @@ export const MediaUpscalingSettings: React.FC = () => {
     <div className="setting-section" id="media-upscaling">
       <h1>Image upscaling</h1>
       <div className="sub-heading">
-        Create larger Images with waifu2x or SeedVR2. New upscaled copies keep
-        the source Image; replacing an Image is a separate choice in the job
-        dialog.
+        Configure image upscaling defaults and models.
       </div>
 
       {error && <Alert variant="danger">{error}</Alert>}
@@ -193,8 +191,7 @@ export const MediaUpscalingSettings: React.FC = () => {
           <Card className="p-3 mb-3">
             <h2 className="h5">Job defaults</h2>
             <p className="small text-muted">
-              Saved in this browser and used by new upscaling jobs. Local model
-              setup below is saved on the server.
+              Job defaults are saved in this browser.
             </p>
             <Form.Group controlId="upscaling-default-model">
               <Form.Label>Upscaler</Form.Label>
@@ -318,9 +315,7 @@ export const MediaUpscalingSettings: React.FC = () => {
                   ? "Remote worker"
                   : "This server"
                 : "Unavailable"}
-              . New copies inherit source metadata. Replacements use the
-              separate upscaling restore cache; compression savings limits do
-              not apply.
+              .
             </p>
             {capabilities?.notice && (
               <Alert variant="info" className="mt-2 mb-0">
@@ -352,17 +347,11 @@ export const MediaUpscalingSettings: React.FC = () => {
                 )}
                 <fieldset disabled={saving || configLoading || !configLoaded}>
                   <p className="text-muted">
-                    These are filesystem paths on this StashBooru server. They
-                    are saved server-side and are never sent in an upscaling
-                    request. Leave a field blank to use the process environment
-                    or built-in worker default.
+                    Local server paths. Leave blank for defaults.
                   </p>
                   {capabilities?.backend === "remote" && (
                     <Alert variant="info">
-                      Automatic mode is currently using the remote inference
-                      worker. The paths below configure the local fallback only.
-                      Configure the equivalent STASH_WAIFU2X_* / STASH_SEEDVR2_*
-                      variables on that worker.
+                      These paths affect the local worker, not the remote worker.
                     </Alert>
                   )}
 
@@ -560,11 +549,6 @@ export const MediaUpscalingSettings: React.FC = () => {
                     . {!refreshing && localSeedVR2?.notice}
                   </Alert>
                 </fieldset>
-                <p className="small text-muted">
-                  Reload replaces unsaved local paths with the saved server
-                  setup. Saving paths checks worker readiness without changing
-                  your browser job defaults.
-                </p>
                 <div className="settings-actions">
                   <Button
                     variant="secondary"
