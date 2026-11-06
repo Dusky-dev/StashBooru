@@ -15,13 +15,15 @@ func TestSharedLinkPostSupported(t *testing.T) {
 		{"https://www.dropbox.com/scl/fo/abcDEF123/folder?rlkey=abcdef123456", "zip"},
 		{"https://mega.nz/file/abcDEF123#abcdef1234567890", ""},
 		{"https://mega.nz/#!abcDEF123!abcdef1234567890", ""},
+		{"https://mega.nz/folder/abcDEF123#abcdef1234567890", "folder"},
+		{"https://mega.nz/#F!abcDEF123!abcdef1234567890", "folder"},
 	}
 	for _, tc := range cases {
 		post, err := SharedLinkPost(tc.url)
 		if err != nil {
 			t.Fatalf("shared link %q: %v", tc.url, err)
 		}
-		if post.Format != tc.format || !post.DownloadAvailable ||
+		if post.Format != tc.format || post.DownloadAvailable != (tc.format != "folder") ||
 			post.SourceID != SharedLinkSource().ID || post.OriginalURL == "" ||
 			!ValidPostID(post.ID) || strings.Contains(post.PostURL, "#") ||
 			strings.Contains(post.PostURL, "rlkey=") {
@@ -37,7 +39,8 @@ func TestSharedLinkPostRejectsInvalidAndPrivateURLs(t *testing.T) {
 		"https://www.dropbox.com/scl/fi/abcDEF123/a.jpg?token=secret",
 		"https://www.dropbox.com/s/abcDEF123/a.jpg#fragment",
 		"https://www.dropbox.com/s/abcDEF123/malware.exe",
-		"https://mega.nz/folder/abcDEF123#abcdef1234567890",
+		"https://mega.nz/folder/abcDEF123",
+		"https://mega.nz/folder/abcDEF123#not-a*key",
 		"https://mega.nz/file/abcDEF123",
 		"https://mega.nz/file/abcDEF123#not*base64",
 		"https://mega.nz:8443/file/abcDEF123#abcdef1234567890",
@@ -61,17 +64,19 @@ func TestLinkedMediaFromPawchiveContent(t *testing.T) {
 	Invalid https://mega.nz/file/abcDEF123#not*valid
 	`
 	links, folders := LinkedMediaFromPawchiveContent(content, "https://pawchive.pw/patreon/user/42/post/31")
-	if len(links) != 2 || folders != 2 {
+	if len(links) != 4 || folders != 2 {
 		t.Fatalf("expected deduplicated Dropbox + MEGA files and two folder links, got %d and %d: %+v", len(links), folders, links)
 	}
 	for _, item := range links {
 		if item.PostURL != "https://pawchive.pw/patreon/user/42/post/31" ||
-			item.SourceID != "shared-links" || item.OriginalURL == "" || !item.DownloadAvailable ||
+			item.SourceID != "shared-links" || item.OriginalURL == "" ||
 			!ValidPostID(item.ID) {
 			t.Fatalf("bad linked-file provenance or identity: %+v", item)
 		}
 	}
-	if links[0].Format != "png" || links[1].Format != "" {
+	if links[0].Format != "png" || links[1].Format != "" ||
+		links[2].Format != "folder" || links[3].Format != "folder" ||
+		links[2].DownloadAvailable || links[3].DownloadAvailable {
 		t.Fatalf("wrong linked media formats: %+v", links)
 	}
 }
@@ -84,5 +89,37 @@ func TestLinkedMediaFromPawchiveContentBounded(t *testing.T) {
 	links, folders := LinkedMediaFromPawchiveContent(content, "https://pawchive.pw/post")
 	if len(links) != maxLinkedMedia || folders != 0 {
 		t.Fatalf("unbounded linked-media results: %d, %d", len(links), folders)
+	}
+}
+
+func TestSharedLinkProviderRedirectAllowsOnlyValidatedServerAssets(t *testing.T) {
+	if !ValidMegaSharedFolderURL("https://mega.nz/folder/abcDEF123#abcdef1234567890") {
+		t.Fatal("valid folder share rejected")
+	}
+	for _, link := range []string{
+		"https://mega.nz/folder/abcDEF123",
+		"https://mega.nz/folder/abcDEF123#not*valid",
+		"https://mega.nz.evil.example/folder/abcDEF123#abcdef1234567890",
+		"https://mega.nz@127.0.0.1/folder/abcDEF123#abcdef1234567890",
+	} {
+		if ValidMegaSharedFolderURL(link) {
+			t.Fatalf("unsafe folder accepted: %q", link)
+		}
+	}
+}
+
+func TestPawchiveWrappedExternalLinksAndDropboxTracking(t *testing.T) {
+	wrapped := "https://www.patreon.com/redirect?url=https%3A%2F%2Fmega.nz%2Ffolder%2FabcDEF123%23abcdef1234567890"
+	actual := "https://mega.nz/folder/abcDEF123#abcdef1234567890"
+	// Dropbox st is an optional sharing/tracking query value and is dropped
+	// before downloading; the access rlkey is retained only server-side.
+	dropbox := "https://www.dropbox.com/scl/fi/abcDEF123/a.png?rlkey=abcdef123456&st=archiveShare987&dl=0"
+	posts, folders := LinkedMediaFromPawchiveContent(
+		`<a href="`+wrapped+`">See MEGA</a> `+actual+` `+dropbox,
+		"https://pawchive.pw/patreon/user/3295915/post/174460964",
+	)
+	if len(posts) != 2 || folders != 1 || posts[0].Format != "folder" ||
+		posts[1].Format != "png" || strings.Contains(posts[1].OriginalURL, "st=") {
+		t.Fatalf("Patreon link wrapper or Dropbox tracking prevented discovery: %+v folders=%d", posts, folders)
 	}
 }

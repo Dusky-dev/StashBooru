@@ -637,3 +637,35 @@ import, and passwords/private shares are not bypassed.
 
 The URL must be included in the post's API-visible text; links hidden inside
 scripts, link shorteners, or third-party web pages are not followed.
+
+
+## Pawchive post-detail shared media discovery (November 2026)
+
+Pawchive search-result pages sometimes omit a post's HTML content or embedded
+links. The Booru Browser now fetches the **full public post detail** only when
+the post inspector opens, using the server-validated identity already associated
+with that result. No arbitrary external URLs or new per-search crawler requests
+are accepted. When full detail is unavailable, the original search result and
+its existing media remain visible with a warning.
+
+Linked Dropbox images/videos use the existing preview and Download to Stash
+controls. Dropbox shared folders use the bounded ZIP archive inspector. MEGA
+single-file shares can be downloaded when the Stash server has `megatools`
+installed; otherwise **Open original on MEGA** opens the provider. MEGA
+folder links are now visible as explicit **Linked media** items with an
+**Open on MEGA** action for provider thumbnails and downloads; StashBooru
+cannot enumerate/decrypt or natively download individual files inside a
+MEGA folder yet. An existing Pawchive cover thumbnail is labeled as a
+cover, not misrepresented as a preview of folder contents.
+
+External shares are opened with a click on a short-lived server-issued link
+token; the full MEGA decryption key and Dropbox access parameters never appear
+in normal post/search JSON. The user sees the actual share URL only after
+choosing to navigate to the external provider.
+
+Regression fixture: a search-list entry with identity
+`patreon/3295915/post/174460964` and no links becomes a detail response
+with public share links. This is a synthetic response to test missing-list
+content; it is not a claim that the live Pawchive page has been fetched or
+that the real link's files are available. Pawchive Cloudflare restrictions
+may prevent this server-side detail fetch on some installations.

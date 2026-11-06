@@ -20,7 +20,7 @@ func SharedLinkSource() Source {
 		Name:       "Shared links",
 		Engine:     "danbooru",
 		URL:        "https://www.dropbox.com",
-		MediaHosts: []string{"dropboxusercontent.com"},
+		MediaHosts: []string{"dropbox.com", "dropboxusercontent.com"},
 	}
 }
 
@@ -101,7 +101,7 @@ func SharedLinkPost(raw string) (Post, error) {
 		}
 		query := u.Query()
 		for key := range query {
-			if key != "rlkey" && key != "dl" && key != "raw" {
+			if key != "rlkey" && key != "dl" && key != "raw" && key != "st" {
 				return Post{}, fmt.Errorf("dropbox link contains an unsupported query parameter")
 			}
 		}
@@ -133,8 +133,16 @@ func SharedLinkPost(raw string) (Post, error) {
 		}
 		post.Title = post.Filename
 	case "mega.nz":
+		if ValidMegaSharedFolderURL(raw) {
+			original = raw
+			post.Format = "folder"
+			post.Title = "MEGA shared folder"
+			post.MediaNotice = "Browse thumbnails and download individual files on MEGA. Direct MEGA folder extraction inside StashBooru is not available."
+			post.DownloadAvailable = false
+			break
+		}
 		if !ValidMegaSharedFileURL(raw) {
-			return Post{}, fmt.Errorf("not a supported public MEGA file link")
+			return Post{}, fmt.Errorf("not a supported public MEGA file or folder link")
 		}
 		original = raw
 		public := *u
@@ -148,7 +156,7 @@ func SharedLinkPost(raw string) (Post, error) {
 	sum := sha256.Sum256([]byte(original))
 	post.ID = "p" + hex.EncodeToString(sum[:16])
 	post.OriginalURL = original
-	post.DownloadAvailable = true
+	post.DownloadAvailable = post.Format != "folder"
 	return post, nil
 }
 
@@ -175,17 +183,24 @@ func LinkedMediaFromPawchiveContent(content, pawchivePostURL string) ([]Post, in
 		if len(candidate) > 2048 {
 			continue
 		}
+		// Patreon may wrap an external href in a first-party redirect.
+		// Only decode the nested URL; never follow it on the network.
+		if wrapper, err := url.Parse(candidate); err == nil &&
+			(wrapper.Hostname() == "patreon.com" || wrapper.Hostname() == "www.patreon.com") &&
+			(wrapper.Path == "/redirect" || wrapper.Path == "/redirect/") &&
+			wrapper.Scheme == "https" {
+			if target := wrapper.Query().Get("url"); target != "" {
+				candidate = target
+			}
+		}
 		u, err := url.Parse(candidate)
 		if err != nil {
 			continue
 		}
 		host := strings.ToLower(u.Hostname())
-		if isMegaFolderShare(u) {
-			if !seen[candidate] {
-				seen[candidate] = true
-				folders++
-			}
-			continue
+		if isMegaFolderShare(u) && !seen[candidate] {
+			seen[candidate] = true
+			folders++
 		}
 		post, err := SharedLinkPost(candidate)
 		if err != nil || seen[post.ID] {
@@ -194,6 +209,8 @@ func LinkedMediaFromPawchiveContent(content, pawchivePostURL string) ([]Post, in
 		seen[post.ID] = true
 		post.PostURL = pawchivePostURL // retain the originating post as provenance
 		switch {
+		case post.Format == "folder":
+			post.Title = "MEGA linked folder"
 		case host == "mega.nz":
 			post.Title = "MEGA linked file"
 		case post.Format == "zip":
@@ -209,8 +226,13 @@ func LinkedMediaFromPawchiveContent(content, pawchivePostURL string) ([]Post, in
 	return found, folders
 }
 
-// Treat an intact MEGA folder share as a detected-but-unavailable source.
-// We never use a folder link as a single-media download target.
+// ValidMegaSharedFolderURL accepts only public MEGA folder shares with a
+// complete key, for explicit opening on the provider's website.
+func ValidMegaSharedFolderURL(raw string) bool {
+	u, err := url.Parse(raw)
+	return err == nil && isMegaFolderShare(u)
+}
+
 func isMegaFolderShare(u *url.URL) bool {
 	if u == nil || u.Scheme != "https" || u.Hostname() != "mega.nz" ||
 		u.User != nil || u.Port() != "" || u.RawQuery != "" {

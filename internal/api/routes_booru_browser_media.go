@@ -174,7 +174,7 @@ func publicBooruPost(source booru.Source, post booru.Post, captureTags ...bool) 
 		post.SampleURL = source.ApprovedMediaURL(post.SampleURL)
 		post.OriginalURL = source.ApprovedMediaURL(post.OriginalURL)
 	}
-	post.DownloadAvailable = post.OriginalURL != ""
+	post.DownloadAvailable = post.OriginalURL != "" && post.Format != "folder"
 	post.DirectPreviewURL, post.DirectSampleURL = "", ""
 
 	for i, asset := range post.Attachments {
@@ -206,4 +206,22 @@ func publicBooruPost(source booru.Source, post booru.Post, captureTags ...bool) 
 		post.SampleURL = "booru-browser/media?key=" + post.MediaKey + "&kind=sample"
 	}
 	return post
+}
+
+// SharedOpen redirects only explicit user clicks on opaque, server-issued link
+// tokens. Links and access keys never appear in the search API response.
+func (rs booruBrowserRoutes) SharedOpen(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "private, no-store")
+	w.Header().Set("Referrer-Policy", "no-referrer")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	source, post, ok := rs.mediaSnapshot(r.URL.Query().Get("key"))
+	if !ok || source.ID != booru.SharedLinkSource().ID {
+		writeBooruError(w, http.StatusGone, "expired", "Shared link expired. Reopen the Pawchive post.")
+		return
+	}
+	if _, err := booru.SharedLinkPost(post.OriginalURL); err != nil {
+		writeBooruError(w, http.StatusBadRequest, "invalid-link", "Unsupported shared link.")
+		return
+	}
+	http.Redirect(w, r, post.OriginalURL, http.StatusSeeOther)
 }

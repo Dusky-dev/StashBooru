@@ -437,12 +437,13 @@ func parseArchivePost(s Source, raw object) (Post, error) {
 			links = links[:available]
 		}
 		p.Attachments = append(p.Attachments, links...)
-		p.LinkedFolderCount = unsupportedFolders
+		// MEGA folders are now visible as linked cards, not invisible counters.
+		p.LinkedFolderCount = 0
 		if len(links) > 0 {
 			p.MediaNotice += fmt.Sprintf(" %d Dropbox/MEGA shared link(s) found in this Pawchive post.", len(links))
 		}
 		if unsupportedFolders > 0 {
-			p.MediaNotice += fmt.Sprintf(" %d MEGA folder link(s) detected; folder extraction is not supported yet.", unsupportedFolders)
+			p.MediaNotice += " MEGA folders open in the provider's file browser for thumbnails and downloads."
 		}
 	}
 	if !p.DownloadAvailable {
