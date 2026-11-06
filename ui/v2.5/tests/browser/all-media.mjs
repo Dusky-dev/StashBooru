@@ -245,6 +245,30 @@ async function check(mode) {
           waitUntil: "domcontentloaded",
         });
         await page.locator(".media-list .scene-card").first().waitFor();
+
+        // Exercise the actual All filter editor and apply action, not only URLs.
+        await page.locator(".media-list .edit-filter-button").click();
+        await page
+          .locator(".edit-filter-dialog [data-type=media_types] .filter-item-header")
+          .click();
+        await page.locator(".edit-filter-dialog #media_types-VIDEO").check();
+        const applied = page.waitForResponse((r) => {
+          if (!r.url().includes("/graphql")) return false;
+          const request = r.request().postDataJSON();
+          return (
+            request?.operationName === "FindMedia" &&
+            request?.variables?.media_filter?.media_types?.[0] === "VIDEO"
+          );
+        });
+        await page
+          .locator(".edit-filter-dialog .modal-footer")
+          .getByRole("button", { name: "Apply" })
+          .click();
+        await applied;
+        await page.goto(`${baseURL}/media`, {
+          waitUntil: "domcontentloaded",
+        });
+        await page.locator(".media-list .scene-card").first().waitFor();
       }
       await page
         .locator(".media-list button")
