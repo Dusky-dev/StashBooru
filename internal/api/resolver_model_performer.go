@@ -189,9 +189,25 @@ func (r *performerResolver) DisambiguationContext(ctx context.Context, obj *mode
 	}, nil
 }
 
-func (r *performerResolver) SceneCount(ctx context.Context, obj *models.Performer) (ret int, err error) {
+// performerCriterion returns a criterion matching content featuring the given performer.
+func performerCriterion(performerID int) *models.MultiCriterionInput {
+	return &models.MultiCriterionInput{
+		Value:    []string{strconv.Itoa(performerID)},
+		Modifier: models.CriterionModifierIncludes,
+	}
+}
+
+func (r *performerResolver) SceneCount(ctx context.Context, obj *models.Performer, filter *models.SceneFilterType) (ret int, err error) {
 	if err := r.withReadTxn(ctx, func(ctx context.Context) error {
-		ret, err = r.repository.Scene.CountByPerformerID(ctx, obj.ID)
+		if filter == nil {
+			ret, err = r.repository.Scene.CountByPerformerID(ctx, obj.ID)
+			return err
+		}
+
+		ret, err = r.repository.Scene.QueryCount(ctx, &models.SceneFilterType{
+			OperatorFilter: models.OperatorFilter[models.SceneFilterType]{And: filter},
+			Performers:     performerCriterion(obj.ID),
+		}, nil)
 		return err
 	}); err != nil {
 		return 0, err
@@ -200,9 +216,17 @@ func (r *performerResolver) SceneCount(ctx context.Context, obj *models.Performe
 	return ret, nil
 }
 
-func (r *performerResolver) ImageCount(ctx context.Context, obj *models.Performer) (ret int, err error) {
+func (r *performerResolver) ImageCount(ctx context.Context, obj *models.Performer, filter *models.ImageFilterType) (ret int, err error) {
 	if err := r.withReadTxn(ctx, func(ctx context.Context) error {
-		ret, err = image.CountByPerformerID(ctx, r.repository.Image, obj.ID)
+		if filter == nil {
+			ret, err = image.CountByPerformerID(ctx, r.repository.Image, obj.ID)
+			return err
+		}
+
+		ret, err = r.repository.Image.QueryCount(ctx, &models.ImageFilterType{
+			OperatorFilter: models.OperatorFilter[models.ImageFilterType]{And: filter},
+			Performers:     performerCriterion(obj.ID),
+		}, nil)
 		return err
 	}); err != nil {
 		return 0, err
@@ -211,9 +235,17 @@ func (r *performerResolver) ImageCount(ctx context.Context, obj *models.Performe
 	return ret, nil
 }
 
-func (r *performerResolver) GalleryCount(ctx context.Context, obj *models.Performer) (ret int, err error) {
+func (r *performerResolver) GalleryCount(ctx context.Context, obj *models.Performer, filter *models.GalleryFilterType) (ret int, err error) {
 	if err := r.withReadTxn(ctx, func(ctx context.Context) error {
-		ret, err = gallery.CountByPerformerID(ctx, r.repository.Gallery, obj.ID)
+		if filter == nil {
+			ret, err = gallery.CountByPerformerID(ctx, r.repository.Gallery, obj.ID)
+			return err
+		}
+
+		ret, err = r.repository.Gallery.QueryCount(ctx, &models.GalleryFilterType{
+			OperatorFilter: models.OperatorFilter[models.GalleryFilterType]{And: filter},
+			Performers:     performerCriterion(obj.ID),
+		}, nil)
 		return err
 	}); err != nil {
 		return 0, err
@@ -222,9 +254,17 @@ func (r *performerResolver) GalleryCount(ctx context.Context, obj *models.Perfor
 	return ret, nil
 }
 
-func (r *performerResolver) GroupCount(ctx context.Context, obj *models.Performer) (ret int, err error) {
+func (r *performerResolver) GroupCount(ctx context.Context, obj *models.Performer, filter *models.GroupFilterType) (ret int, err error) {
 	if err := r.withReadTxn(ctx, func(ctx context.Context) error {
-		ret, err = r.repository.Group.CountByPerformerID(ctx, obj.ID)
+		if filter == nil {
+			ret, err = r.repository.Group.CountByPerformerID(ctx, obj.ID)
+			return err
+		}
+
+		ret, err = r.repository.Group.QueryCount(ctx, &models.GroupFilterType{
+			OperatorFilter: models.OperatorFilter[models.GroupFilterType]{And: filter},
+			Performers:     performerCriterion(obj.ID),
+		}, nil)
 		return err
 	}); err != nil {
 		return 0, err
@@ -234,8 +274,8 @@ func (r *performerResolver) GroupCount(ctx context.Context, obj *models.Performe
 }
 
 // deprecated
-func (r *performerResolver) MovieCount(ctx context.Context, obj *models.Performer) (ret int, err error) {
-	return r.GroupCount(ctx, obj)
+func (r *performerResolver) MovieCount(ctx context.Context, obj *models.Performer, filter *models.GroupFilterType) (ret int, err error) {
+	return r.GroupCount(ctx, obj, filter)
 }
 
 func (r *performerResolver) PerformerCount(ctx context.Context, obj *models.Performer) (ret int, err error) {
