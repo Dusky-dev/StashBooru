@@ -190,9 +190,7 @@ export const MediaUpscalingSettings: React.FC = () => {
         <>
           <Card className="p-3 mb-3">
             <h2 className="h5">Job defaults</h2>
-            <p className="small text-muted">
-              Saved in this browser.
-            </p>
+            <p className="small text-muted">Saved in this browser.</p>
             <Form.Group controlId="upscaling-default-model">
               <Form.Label>Upscaler</Form.Label>
               <Form.Control
@@ -314,7 +312,8 @@ export const MediaUpscalingSettings: React.FC = () => {
                 ? capabilities.backend === "remote"
                   ? "Remote worker"
                   : "This server"
-                : "Unavailable"}.
+                : "Unavailable"}
+              .
             </p>
             {capabilities?.notice && (
               <Alert variant="info" className="mt-2 mb-0">
@@ -350,7 +349,8 @@ export const MediaUpscalingSettings: React.FC = () => {
                   </p>
                   {capabilities?.backend === "remote" && (
                     <Alert variant="info">
-                      These paths affect the local worker, not the remote worker.
+                      These paths affect the local worker, not the remote
+                      worker.
                     </Alert>
                   )}
 
