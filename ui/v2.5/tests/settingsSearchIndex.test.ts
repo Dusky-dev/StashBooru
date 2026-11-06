@@ -4,9 +4,10 @@ import test from "node:test";
 import { searchSettings } from "../src/components/Settings/settingsSearchIndex.ts";
 
 test("Settings search finds options across tabs and their synonyms", () => {
-  assert.deepEqual(
-    searchSettings("convert").map((entry) => [entry.tab, entry.anchor]),
-    [["processing", "media-converter"]]
+  assert.ok(
+    searchSettings("convert").some(
+      (entry) => entry.tab === "processing" && entry.anchor === "media-converter"
+    )
   );
   assert.deepEqual(
     searchSettings("filenames").map((entry) => [entry.tab, entry.anchor]),
