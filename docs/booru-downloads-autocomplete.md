@@ -105,8 +105,11 @@ converter** first, then enable browser conversion.
 The original is first imported as a normal native file. The existing converter
 then updates that same file/media identity through its activation and recovery
 system, retaining metadata and relationships. Its normal original-cache and
-restore rules apply. A savings-policy skip keeps the original and reports why.
-A conversion failure leaves the imported original available in Stash and reports
+restore rules apply. A disabled format rule skips conversion before contacting
+any worker; the download and native import still succeed, including metadata
+linking and optional tagging. The original is kept and the UI shows a notice.
+A savings-policy skip likewise keeps the original and reports why.
+An actual conversion failure leaves the imported original available in Stash and reports
 the failure. Repeating a download does not automatically re-encode an already
 converted result or restore an original over a curated current file.
 
