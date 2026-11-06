@@ -12,5 +12,20 @@
     "performers": "{count, plural, one {Character} other {Characters}}",
     "studios": "{count, plural, one {Artist} other {Artists}}",
     "groups": "{count, plural, one {Collection} other {Collections}}"
-  }
+  },
+  "scene_count": "Video Count",
+  "scene_tags": "Video Tags",
+  "scene_date": "Video Date",
+  "scene_created_at": "Video Created At",
+  "scene_updated_at": "Video Updated At",
+  "performer_count": "Character Count",
+  "performer_age": "Character Age",
+  "performer_tags": "Character Tags",
+  "performer_favorite": "Character Favorited",
+  "performer_favorite_count": "Favorite Character Count",
+  "performer_created_at": "Character Created At",
+  "performer_updated_at": "Character Updated At",
+  "studio_count": "Artist Count",
+  "studio_tags": "Artist Tags",
+  "media_types": "Media type"
 }
