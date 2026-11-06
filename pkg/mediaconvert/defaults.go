@@ -177,8 +177,25 @@ func ValidateFormatDefaults(defaults map[string]string) error {
 	return nil
 }
 
+// Missing flags in old configs mean that every saved format rule is enabled.
+func (c Config) FormatRuleEnabled(input string) bool {
+	return c.FormatRulesEnabled == nil || c.FormatRulesEnabled[input] != false
+}
+
+func ValidateFormatRulesEnabled(states map[string]bool, formats map[string]string) error {
+	for input := range states {
+		if _, found := formats[input]; !found {
+			return fmt.Errorf("enabled state has no format rule: %s", input)
+		}
+	}
+	return nil
+}
+
 func (c Config) DefaultOutput(input string, video bool) string {
 	if output := c.FormatDefaults[input]; output != "" {
+		if !c.FormatRuleEnabled(input) {
+			return ""
+		}
 		return output
 	}
 	// New animation subtypes must remain safe with configs saved before those
@@ -197,6 +214,9 @@ func (c Config) DefaultOutput(input string, video bool) string {
 		fallback, output = "video", "av1-mp4"
 	}
 	if configured := c.FormatDefaults[fallback]; configured != "" {
+		if !c.FormatRuleEnabled(fallback) {
+			return ""
+		}
 		return configured
 	}
 	return output
