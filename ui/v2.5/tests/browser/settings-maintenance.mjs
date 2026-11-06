@@ -490,6 +490,25 @@ try {
     await converter
       .getByLabel("Minimum saved bytes", { exact: true })
       .fill("8192");
+    // A rule can be paused without dropping its saved output or encoder settings.
+    const imageRule = converter.getByRole("checkbox", {
+      name: "Enable image format rule",
+    });
+    assert.equal(await imageRule.isChecked(), true);
+    assert.equal(
+      await page.locator('a[href="/help/Processing.md"]').count(),
+      1
+    );
+    await imageRule.uncheck();
+    await converter
+      .getByRole("button", { name: "Save conversion defaults", exact: true })
+      .click();
+    await page
+      .getByText("Saved media conversion defaults.", { exact: true })
+      .waitFor();
+    assert.equal(config.formatRulesEnabled.image, false);
+    assert.equal(config.formatDefaults.image, "webp");
+    assert.equal(config.encodingDefaults.image.quality, 90);
 
     // A status refresh must not discard an unsaved tagging draft.
     await page
@@ -860,6 +879,18 @@ try {
       .getByText("You are running the latest stable StashBooru release.")
       .waitFor();
     await chooseSection(page, "processing");
+    await page.reload();
+    await imageRule.waitFor();
+    assert.equal(await imageRule.isChecked(), false);
+    await imageRule.check();
+    await converter
+      .getByRole("button", { name: "Save conversion defaults", exact: true })
+      .click();
+    await page
+      .getByText("Saved media conversion defaults.", { exact: true })
+      .waitFor();
+    assert.equal(config.formatRulesEnabled.image, true);
+    assert.equal(config.formatDefaults.image, "webp");
     // Late retry/status responses after leaving Settings must not update an unmounted view.
     failConverterConfig = true;
     await page.reload();
