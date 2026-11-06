@@ -895,14 +895,25 @@ try {
     await chooseSection(page, "interface");
     const hideFilename = page.locator("#hide-image-filenames");
     const associationTitles = page.locator("#show-image-association-titles");
+    const formattedFallback = page.locator(
+      "#show-formatted-image-filename-fallback"
+    );
     await associationTitles.waitFor();
     assert.equal(await hideFilename.isChecked(), false);
     assert.equal(await associationTitles.isChecked(), false);
+    assert.equal(await formattedFallback.isDisabled(), true);
     await hideFilename.check();
     assert.equal(await associationTitles.isChecked(), false);
     await associationTitles.check();
     assert.equal(await hideFilename.isChecked(), false);
     assert.equal(await associationTitles.isChecked(), true);
+    assert.equal(await formattedFallback.isEnabled(), true);
+    await formattedFallback.check();
+    await page.waitForFunction(() =>
+      window.settingsFixture.changes.some(
+        (change) => change.ui?.showFormattedImageFilenameFallback === true
+      )
+    );
     await page.waitForFunction(() =>
       window.settingsFixture.changes.some(
         (change) =>
@@ -913,8 +924,11 @@ try {
     await chooseSection(page, "library");
     await chooseSection(page, "interface");
     assert.equal(await associationTitles.isChecked(), true);
+    assert.equal(await formattedFallback.isChecked(), true);
     await hideFilename.check();
     assert.equal(await associationTitles.isChecked(), false);
+    assert.equal(await formattedFallback.isDisabled(), true);
+    assert.equal(await formattedFallback.isChecked(), true);
     await page.waitForFunction(() =>
       window.settingsFixture.changes.some(
         (change) =>
