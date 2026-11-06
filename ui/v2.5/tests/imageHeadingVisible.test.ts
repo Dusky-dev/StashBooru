@@ -156,7 +156,7 @@ test("filename fallback cleans separators, extensions and machine hashes", () =>
     formattedImageFilenameHeading(
       "booru-danbooru-post_014_aabbccddeeff00112233445566778899.webp"
     ),
-    "Booru danbooru-post 014"
+    "Booru danbooru post 014"
   );
   assert.equal(
     formattedImageFilenameHeading(
