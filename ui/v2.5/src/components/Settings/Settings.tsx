@@ -23,6 +23,7 @@ import {
   SettingsTab,
 } from "./settingsNavigation";
 import { SettingsSectionNavigation } from "./SettingsSectionNavigation";
+import { SettingsSearch } from "./SettingsSearch";
 import Changelog from "../Changelog/Changelog";
 import { TroubleshootingModeButton } from "../TroubleshootingMode/TroubleshootingModeButton";
 import { useTroubleshootingMode } from "../TroubleshootingMode/useTroubleshootingMode";
@@ -78,6 +79,7 @@ const SettingTabs: React.FC<{ tab: SettingsTab }> = ({ tab }) => {
       <Helmet {...titleProps} />
       <Row>
         <Col id="settings-menu-container" md={3} xl={2}>
+          <SettingsSearch />
           <SettingsSectionNavigation tab={tab} />
           <div className="settings-menu-options">
             <div className="advanced-switch">
