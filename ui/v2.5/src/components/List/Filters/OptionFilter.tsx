@@ -14,7 +14,13 @@ import {
   ModifierValue,
   modifierValueToModifier,
 } from "./LabeledIdFilter";
-import { useIntl } from "react-intl";
+import { useIntl, type IntlShape } from "react-intl";
+
+function optionLabel(type: string, value: string, intl: IntlShape): string {
+  return type === "media_types"
+    ? intl.formatMessage({ id: value === "IMAGE" ? "images" : "scenes" })
+    : value;
+}
 
 interface IOptionsFilter {
   criterion: ModifierCriterion<CriterionValue>;
@@ -78,10 +84,6 @@ export const OptionListFilter: React.FC<IOptionsListFilter> = ({
   const { options } = criterion.modifierCriterionOption();
   const value = criterion.value as string[];
   const intl = useIntl();
-  const mediaKindLabel = (kind: string) =>
-    criterion.criterionOption.type === "media_types"
-      ? intl.formatMessage({ id: kind === "IMAGE" ? "images" : "scenes" })
-      : kind;
 
   return (
     <div className="option-list-filter">
@@ -92,7 +94,7 @@ export const OptionListFilter: React.FC<IOptionsListFilter> = ({
           onChange={() => onSelect(o.toString())}
           checked={value.includes(o.toString())}
           type="checkbox"
-          label={mediaKindLabel(o.toString())}
+          label={optionLabel(criterion.criterionOption.type, o.toString(), intl)}
         />
       ))}
     </div>
@@ -121,10 +123,6 @@ export const SidebarOptionFilter: React.FC<ISidebarFilter> = ({
   ) as ModifierCriterion<CriterionValue>[];
   const criterion = criteria.length > 0 ? criteria[0] : null;
   const { options: criterionOptions = [] } = option;
-  const optionLabel = (kind: string) =>
-    option.type === "media_types"
-      ? intl.formatMessage({ id: kind === "IMAGE" ? "images" : "scenes" })
-      : kind;
   const currentValues = criteria.flatMap((c) => c.value as string[]);
 
   const hasNullModifiers =
@@ -154,9 +152,9 @@ export const SidebarOptionFilter: React.FC<ISidebarFilter> = ({
       .filter((o) => currentValues.includes(o.toString()))
       .map((o) => ({
         id: o.toString(),
-        label: optionLabel(o.toString()),
+        label: optionLabel(option.type, o.toString(), intl),
       }));
-  }, [criterion, currentValues, criterionOptions, intl]);
+  }, [criterion, currentValues, criterionOptions, intl, option.type]);
 
   const modifierCandidates: Option[] = useMemo(() => {
     if (!hasNullModifiers) return [];
@@ -188,11 +186,11 @@ export const SidebarOptionFilter: React.FC<ISidebarFilter> = ({
       .filter((oo) => !currentValues.includes(oo.toString()))
       .map((oo) => ({
         id: oo.toString(),
-        label: optionLabel(oo.toString()),
+        label: optionLabel(option.type, oo.toString(), intl),
       }));
 
     return [...modifierCandidates, ...o];
-  }, [criterionOptions, currentValues, modifierCandidates]);
+  }, [criterionOptions, currentValues, modifierCandidates, intl, option.type]);
 
   function onSelect(item: Option) {
     const newCriterion = criterion ? criterion.clone() : option.makeCriterion();
