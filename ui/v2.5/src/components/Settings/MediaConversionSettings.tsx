@@ -352,15 +352,14 @@ export const MediaConversionSettings: React.FC = () => {
                         aria-label={`Enable ${rule.input} format rule`}
                         checked={rule.enabled}
                         disabled={saving}
-                        onChange={(event) =>
-                          setRules(
-                            rules.map((r, i) =>
-                              i === index
-                                ? { ...r, enabled: event.currentTarget.checked }
-                                : r
+                        onChange={(event) => {
+                          const enabled = event.currentTarget.checked;
+                          setRules((previous) =>
+                            previous.map((r, i) =>
+                              i === index ? { ...r, enabled } : r
                             )
-                          )
-                        }
+                          );
+                        }}
                       />
                     </td>
                     <td>
