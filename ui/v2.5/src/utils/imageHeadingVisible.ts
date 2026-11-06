@@ -45,8 +45,7 @@ function namesForHeading(
 /** Human-readable display label only; never renames or modifies the source. */
 export function imageAssociationHeading(image: ImageHeadingMetadata): string {
   const copyright =
-    image.primary_copyright?.name?.trim() ||
-    namesForHeading(image.copyrights);
+    image.primary_copyright?.name?.trim() || namesForHeading(image.copyrights);
   const characters = namesForHeading(image.performers);
   const artists = namesForHeading(
     image.artists?.length ? image.artists : image.studio ? [image.studio] : []
