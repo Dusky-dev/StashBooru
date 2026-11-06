@@ -54,6 +54,7 @@ export interface IUIConfig {
   hideImageFilenames?: boolean;
   // Show Copyright · Character · Artist labels in place of generated filenames.
   showImageAssociationTitles?: boolean;
+  showFormattedImageFilenameFallback?: boolean;
 
   showStudioText?: boolean;
 

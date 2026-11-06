@@ -1,5 +1,13 @@
 # StashBooru implementation progress
 
+## Formatted filename fallback for association-based Image titles — 2026-11-06
+
+- Baseline: `develop` `ec48f8b44bb376c91d1fb6fa1e4e7f6ea12adef3`; branch `feat/image-filename-title-fallback-20261106`.
+- Add a separate opt-in **Use formatted filenames when no metadata is available** setting under Settings → Interface → Image titles. It is active only with **Use Copyright / Character / Artist image titles** and retains its saved value when that parent setting is turned off.
+- Retain authored Image titles and linked Copyright / Character / Artist labels as highest priorities. When no usable associations exist, derive a readable title from the existing Image filename, removing common media extensions, replacing awkward separators, and shortening opaque trailing hashes without changing any files or metadata. Fall back to `Image #ID` when no filename is available.
+- Use the shared heading formatter for Image cards and detail pages; no GraphQL schema, backend settings migration or persistent media change. Add unit tests for title precedence and filename normalization plus desktop/mobile Settings navigation fixture assertions. Document behavior in Interface Help.
+- CI and review are pending on this branch.
+
 ## Booru download skip for disabled conversion rules — 2026-11-06
 
 - Baseline: `develop` `0a81080d1362ee03e7ed2904a1a83c7ad3329318`; branch `fix/booru-disabled-conversion-default-skip-20261106`.
