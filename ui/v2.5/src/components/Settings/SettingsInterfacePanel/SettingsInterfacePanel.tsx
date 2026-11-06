@@ -619,9 +619,7 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
             subHeading="Without Copyright, Character or Artist names, show a readable filename instead of Image #ID."
             checked={ui.showFormattedImageFilenameFallback ?? false}
             disabled={!ui.showImageAssociationTitles}
-            onChange={(v) =>
-              saveUI({ showFormattedImageFilenameFallback: v })
-            }
+            onChange={(v) => saveUI({ showFormattedImageFilenameFallback: v })}
           />
         </SettingSection>
 
