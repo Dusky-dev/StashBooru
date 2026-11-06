@@ -94,7 +94,11 @@ export const OptionListFilter: React.FC<IOptionsListFilter> = ({
           onChange={() => onSelect(o.toString())}
           checked={value.includes(o.toString())}
           type="checkbox"
-          label={optionLabel(criterion.criterionOption.type, o.toString(), intl)}
+          label={optionLabel(
+            criterion.criterionOption.type,
+            o.toString(),
+            intl
+          )}
         />
       ))}
     </div>
