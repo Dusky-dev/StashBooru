@@ -76,7 +76,7 @@ func TestDisabledFormatRulesPersistAndDoNotChooseAutomaticOutputs(t *testing.T) 
 	for _, tc := range []struct {
 		input string
 		video bool
-		want string
+		want  string
 	}{
 		{"png", false, ""},
 		{"gif", false, ""},
