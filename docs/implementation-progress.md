@@ -1,5 +1,12 @@
 # StashBooru implementation progress
 
+## Upstream Stash sync: filtered Character counts, fileless Video cover, public whitelist — 2026-11-06
+
+- Fork baseline `develop` `dec9b157e9300cd532116a4a3c55141ee13c77ea`; upstream `stashapp/stash develop` `34f8a384a11a45bd8eeb8fea15d163db643236bc`, common ancestor `9e9ad972643320e737c711884f10e4285f0f3a88`. Integration branch `sync/upstream-20261106-3-fixes`. Exactly three upstream commits: `944dd694` (optional filtered Character/Performer counts), `f62ace6c` (cover behind fileless Video message), `34f8a384` (single-IP public whitelist parsing and debug rejection log).
+- Reconcile overlapping fork code in `resolver_model_performer.go` and `PerformerList.tsx` while preserving Character Parent/DisambiguationContext resolvers, Character-ID filtering and its empty-selection skip. For optional scoped counts, preserve the custom list query variables and append scoped filter variables. Apply the remaining upstream hunks without dropping fork-specific metadata/UI.
+- Upstream changes introduce no database migrations or dependencies; normal code generation is required for added GraphQL count arguments and query variables. Risk areas are filtered count behavior and performance, fork-specific Character selection, Video page rendering, and whitelist validation. The UI/backend CI and Codex Review are required before merging into `develop`.
+- Original GitHub cross-fork PR #323 reports conflicts; use a fork-owned integration branch and preserve upstream commit ancestry in the merge commit. No media/database/user-config data changed by this review.
+
 ## Formatted filename fallback for association-based Image titles — 2026-11-06
 
 - Baseline: `develop` `ec48f8b44bb376c91d1fb6fa1e4e7f6ea12adef3`; branch `feat/image-filename-title-fallback-20261106`.
