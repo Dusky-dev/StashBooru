@@ -36,6 +36,21 @@ fragment SlimImageData on Image {
     image_path
   }
 
+  artists {
+    id
+    name
+  }
+
+  primary_copyright {
+    id
+    name
+  }
+
+  copyrights {
+    id
+    name
+  }
+
   tags {
     id
     name

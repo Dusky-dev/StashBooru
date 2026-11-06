@@ -27,7 +27,7 @@ import { OCounterButton } from "../Shared/CountButton";
 import NavUtils from "src/utils/navigation";
 import { useIntl } from "react-intl";
 import { useConfigurationContextOptional } from "src/hooks/Config";
-import { imageHeadingVisible } from "src/utils/imageHeadingVisible";
+import { imageDisplayHeading } from "src/utils/imageHeadingVisible";
 
 interface IImageCardProps {
   stackSelectedIds?: Set<string>;
@@ -233,9 +233,11 @@ export const ImageCard: React.FC<IImageCardProps> = PatchComponent(
   (props: IImageCardProps) => {
     const intl = useIntl();
     const config = useConfigurationContextOptional();
-    const hideImageFilenames =
-      config?.configuration.ui?.hideImageFilenames ?? false;
-    const hideTitle = !imageHeadingVisible(props.image, hideImageFilenames);
+    const displayTitle = imageDisplayHeading(
+      props.image,
+      imageTitle(props.image),
+      config?.configuration.ui
+    );
     const findSimilarLabel = intl.formatMessage({
       id: "actions.find_similar",
       defaultMessage: "Find similar",
@@ -258,8 +260,8 @@ export const ImageCard: React.FC<IImageCardProps> = PatchComponent(
         className={`image-card zoom-${props.zoomIndex}`}
         url={`/images/${props.image.id}`}
         width={props.cardWidth}
-        title={imageTitle(props.image)}
-        hideTitle={hideTitle}
+        title={displayTitle ?? ""}
+        hideTitle={displayTitle === null}
         titleAction={findSimilarAction}
         linkClassName="image-card-link"
         image={<ImageCardImage {...props} />}
