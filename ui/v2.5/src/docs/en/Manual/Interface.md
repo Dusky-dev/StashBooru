@@ -13,6 +13,17 @@ When SFW content mode is enabled, the following changes are made to the UI:
 - certain adult-specific metadata fields are hidden (e.g. performer genital fields)
 - `O`-Counter is replaced with `Like`-counter
 
+## Image titles
+
+**Settings → Interface → Image titles** offers two optional ways to reduce filename clutter on Image cards and detail pages:
+
+- **Hide image filenames:** Hide the visible heading when it would otherwise be generated from the file name.
+- **Use Copyright / Character / Artist image titles:** Replace generated filename headings with the linked Copyright, Character and Artist names in that order, separated by ` · `. For example: `Re:Zero · Emilia · Artist Name`. Multiple Characters or Artists appear together, up to two names followed by a count of additional associations.
+
+The options are mutually exclusive. Titles you entered manually always take priority and are never replaced or hidden. Missing association categories are omitted; an Image with no associations displays **Image #ID** instead of an opaque filename. When the setting is off, the original filename heading is shown.
+
+These are **display-only preferences**. They do not rename files, change saved Image titles, modify associations or hide file paths in File information. The same label is used on Image cards and details; the image wall has no text heading to replace.
+
 ## Scene/marker wall preview type
 
 The Scene Wall and Marker pages display scene preview videos (mp4) by default. This can be changed to animated image (webp) or static image. 

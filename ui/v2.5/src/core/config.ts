@@ -52,6 +52,8 @@ export interface IUIConfig {
   hideGeneralTagThumbnails?: boolean;
   // Hide only generated filename headings; custom Image titles remain visible.
   hideImageFilenames?: boolean;
+  // Show Copyright · Character · Artist labels in place of generated filenames.
+  showImageAssociationTitles?: boolean;
 
   showStudioText?: boolean;
 
