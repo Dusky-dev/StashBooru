@@ -33,7 +33,7 @@ Conversion rules configure new jobs. Run **Estimate**, a verified **Trial**, or 
 **Format rules:** Each input format has an output, quality, effort, optional decode speed and codec-specific options. The **Enabled** checkbox determines whether that saved rule can be selected automatically.
 
 - **Enabled:** Automatic conversion uses that rule for its matching format.
-- **Disabled:** The rule and all its settings are retained, but automatic conversion is *not* allowed for an input with that disabled rule. The job reports that automatic conversion is disabled. Choose an output format explicitly to override it, or re-enable the rule.
+- **Disabled:** The rule and all its settings are retained, but automatic conversion is *not* allowed for an input with that disabled rule. In the Media converter itself, an automatic job reports that the selected rule is disabled; choose an output format explicitly or re-enable the rule. In the **Booru Browser**, downloads using converter defaults still import normally: conversion is skipped for disabled formats and the original is kept.
 - **Missing rule:** An input without a specific saved rule uses **Other images** or **Other videos**, or the existing safe animation fallback. If the applicable category rule is disabled, automatic conversion is blocked for inputs relying on it. A format rule that is disabled is *not* silently replaced by a generic rule.
 
 Already running jobs retain the settings selected when they started. Older conversion configs without enabled flags treat all existing rules as enabled. Removing a rule is different from disabling it: removal discards its saved rule definition, while disabling preserves its settings.

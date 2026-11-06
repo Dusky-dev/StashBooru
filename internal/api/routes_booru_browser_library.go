@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/stashapp/stash/internal/manager"
 	managerConfig "github.com/stashapp/stash/internal/manager/config"
@@ -191,6 +192,17 @@ func booruImportFile(ctx context.Context, path string, source booru.Source, post
 	if err != nil {
 		return result, err
 	}
+	// A disabled default means do not convert this format, not that the
+	// already-imported original has failed. Check before initializing a worker
+	// (which may not be available or configured on a skipped import).
+	skipNotice, err := booruDisabledConversionNotice(ctx, store, config, fileID)
+	if err != nil {
+		return result, err
+	}
+	if skipNotice != "" {
+		result.Notice = skipNotice
+		return result, nil
+	}
 	client, caps, notice, err := conversionClient(ctx, config.Backend)
 	if err != nil {
 		return result, err
@@ -219,4 +231,17 @@ func booruImportFile(ctx context.Context, path string, source booru.Source, post
 		result.Notice = "Converted and imported; thumbnail generation needs retry in Stash."
 	}
 	return result, nil
+}
+
+// A disabled converter default is an intentional no-op for Booru downloads.
+// Native scan and metadata linking have already succeeded at this point.
+func booruDisabledConversionNotice(ctx context.Context, store mediaconvert.Store, config mediaconvert.Config, fileID models.FileID) (string, error) {
+	output, input, err := conversionDefaultForFile(ctx, store, config, fileID)
+	if err != nil {
+		return "", err
+	}
+	if output == "" {
+		return fmt.Sprintf("Conversion skipped for %s: no enabled format rule. Original imported without conversion.", strings.ToUpper(input)), nil
+	}
+	return "", nil
 }

@@ -8,6 +8,14 @@
 - Use the shared heading formatter for Image cards and detail pages; no GraphQL schema, backend settings migration or persistent media change. Add unit tests for title precedence and filename normalization plus desktop/mobile Settings navigation fixture assertions. Document behavior in Interface Help.
 - CI and review are pending on this branch.
 
+## Booru download skip for disabled conversion rules — 2026-11-06
+
+- Baseline: `develop` `0a81080d1362ee03e7ed2904a1a83c7ad3329318`; branch `fix/booru-disabled-conversion-default-skip-20261106`.
+- Regression: **Convert using Media converter defaults** caused otherwise-successful Booru downloads to end in `file saved in Stash; import/conversion needs retry: automatic conversion is disabled for mp4` when the MP4 rule was disabled.
+- Fix at `booruImportFile`: after native scan, entity linkage and saved converter config retrieval, check the input's automatic format output *before* contacting any worker. A disabled specific or fallback rule leaves the original file as imported, returns success with a visible non-error "Conversion skipped" notice, and permits optional tagging and receipt completion. Real converter failures still report errors; a user explicitly selecting an output via the converter is unaffected.
+- Add a regression integration test for disabled rule skips, persistence, re-enabling and video MP4 defaults. Update the Booru download guide and native Processing help. No media records or library files are modified in this branch.
+- CI / Codex review: pending on PR.
+
 ## Image titles from Copyright / Character / Artist — 2026-11-06
 
 - Baseline: `develop` `0a81080d1362ee03e7ed2904a1a83c7ad3329318`; branch `feat/image-association-display-titles-20261106`.
