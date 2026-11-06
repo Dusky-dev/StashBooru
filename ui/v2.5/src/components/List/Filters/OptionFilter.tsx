@@ -77,6 +77,11 @@ export const OptionListFilter: React.FC<IOptionsListFilter> = ({
 
   const { options } = criterion.modifierCriterionOption();
   const value = criterion.value as string[];
+  const intl = useIntl();
+  const mediaKindLabel = (kind: string) =>
+    criterion.criterionOption.type === "media_types"
+      ? intl.formatMessage({ id: kind === "IMAGE" ? "images" : "scenes" })
+      : kind;
 
   return (
     <div className="option-list-filter">
@@ -87,7 +92,7 @@ export const OptionListFilter: React.FC<IOptionsListFilter> = ({
           onChange={() => onSelect(o.toString())}
           checked={value.includes(o.toString())}
           type="checkbox"
-          label={o.toString()}
+          label={mediaKindLabel(o.toString())}
         />
       ))}
     </div>
@@ -116,6 +121,10 @@ export const SidebarOptionFilter: React.FC<ISidebarFilter> = ({
   ) as ModifierCriterion<CriterionValue>[];
   const criterion = criteria.length > 0 ? criteria[0] : null;
   const { options: criterionOptions = [] } = option;
+  const optionLabel = (kind: string) =>
+    option.type === "media_types"
+      ? intl.formatMessage({ id: kind === "IMAGE" ? "images" : "scenes" })
+      : kind;
   const currentValues = criteria.flatMap((c) => c.value as string[]);
 
   const hasNullModifiers =
@@ -145,7 +154,7 @@ export const SidebarOptionFilter: React.FC<ISidebarFilter> = ({
       .filter((o) => currentValues.includes(o.toString()))
       .map((o) => ({
         id: o.toString(),
-        label: o.toLocaleString(),
+        label: optionLabel(o.toString()),
       }));
   }, [criterion, currentValues, criterionOptions, intl]);
 
@@ -179,7 +188,7 @@ export const SidebarOptionFilter: React.FC<ISidebarFilter> = ({
       .filter((oo) => !currentValues.includes(oo.toString()))
       .map((oo) => ({
         id: oo.toString(),
-        label: oo.toString(),
+        label: optionLabel(oo.toString()),
       }));
 
     return [...modifierCandidates, ...o];
@@ -215,7 +224,18 @@ export const SidebarOptionFilter: React.FC<ISidebarFilter> = ({
       return;
     }
 
-    setFilter(filter.removeCriterion(option.type));
+    if (!criterion || !Array.isArray(criterion.value)) {
+      setFilter(filter.removeCriterion(option.type));
+      return;
+    }
+    const remaining = criterion.value.filter((value) => value !== item.id);
+    if (!remaining.length) {
+      setFilter(filter.removeCriterion(option.type));
+    } else {
+      const next = criterion.clone();
+      next.value = remaining;
+      setFilter(filter.replaceCriteria(option.type, [next]));
+    }
   }
 
   return (
