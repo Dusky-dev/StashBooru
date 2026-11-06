@@ -590,7 +590,26 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
             heading="Hide image filenames"
             subHeading="Hide filenames used as titles on Image cards and details pages. Custom titles and file information remain visible."
             checked={ui.hideImageFilenames ?? false}
-            onChange={(v) => saveUI({ hideImageFilenames: v })}
+            onChange={(v) =>
+              saveUI({
+                hideImageFilenames: v,
+                showImageAssociationTitles: v
+                  ? false
+                  : (ui.showImageAssociationTitles ?? false),
+              })
+            }
+          />
+          <BooleanSetting
+            id="show-image-association-titles"
+            heading="Use Copyright / Character / Artist image titles"
+            subHeading="Show available Copyright, Character and Artist names instead of filename titles. Custom titles are kept."
+            checked={ui.showImageAssociationTitles ?? false}
+            onChange={(v) =>
+              saveUI({
+                showImageAssociationTitles: v,
+                hideImageFilenames: v ? false : (ui.hideImageFilenames ?? false),
+              })
+            }
           />
         </SettingSection>
 
