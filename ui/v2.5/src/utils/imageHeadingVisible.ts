@@ -28,7 +28,9 @@ interface ImageHeadingOptions {
   showImageAssociationTitles?: boolean;
 }
 
-function namesForHeading(entries: readonly NamedAssociation[] | null | undefined) {
+function namesForHeading(
+  entries: readonly NamedAssociation[] | null | undefined
+) {
   const names = Array.from(
     new Set(
       (entries ?? [])
