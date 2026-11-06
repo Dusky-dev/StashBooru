@@ -52,3 +52,42 @@ func TestBooruConverterUsesSavedFormatAndEncodingDefaults(t *testing.T) {
 	require.Equal(t, "webp", format.ID)
 	require.Equal(t, float64(37), options.Quality)
 }
+
+func TestBooruImportSkipsDisabledConversionWithoutFailing(t *testing.T) {
+	repository := p07Fixture(t)
+	store := mediaconvert.Store{Root: t.TempDir(), Repository: mediaconvert.ModelRepository{Repository: repository}}
+	config, err := store.Config()
+	require.NoError(t, err)
+
+	file, err := store.Repository.Get(context.Background(), 1)
+	require.NoError(t, err)
+	input := mediaconvert.SourceFormat(file)
+	require.NotEmpty(t, input)
+	config.FormatRulesEnabled = map[string]bool{input: false}
+	require.NoError(t, store.Configure(config))
+	config, err = store.Config()
+	require.NoError(t, err)
+
+	// The file was already scanned and metadata-linked. Disabled format rules
+	// must be treated as a successful import without touching any converter worker.
+	notice, err := booruDisabledConversionNotice(context.Background(), store, config, 1)
+	require.NoError(t, err)
+	require.Contains(t, notice, "Conversion skipped")
+	require.Contains(t, notice, "Original imported without conversion")
+	require.Equal(t, "", config.DefaultOutput(input, false))
+
+	// Re-enabling the rule restores conversion eligibility, with no forced
+	// retries and with the saved output mapping unchanged.
+	config.FormatRulesEnabled[input] = true
+	require.NoError(t, store.Configure(config))
+	notice, err = booruDisabledConversionNotice(context.Background(), store, config, 1)
+	require.NoError(t, err)
+	require.Empty(t, notice)
+	require.NotEmpty(t, config.DefaultOutput(input, false))
+
+	// A disabled video format must likewise retain the imported MP4 rather than
+	// treating the intentionally disabled conversion as an import failure.
+	config.FormatRulesEnabled["mp4"] = false
+	require.NoError(t, store.Configure(config))
+	require.Empty(t, config.DefaultOutput("mp4", true))
+}
