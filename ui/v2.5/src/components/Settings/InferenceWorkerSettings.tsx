@@ -102,9 +102,7 @@ export const InferenceWorkerSettings: React.FC = () => {
     <div className="setting-section" id="inference-worker">
       <h1>Processing worker</h1>
       <div className="sub-heading">
-        Share one remote worker across similarity, tagging, conversion,
-        upscaling, restoration and Video indexing. Each operation checks its
-        required capabilities. Leave the URL empty for supported local work.
+        Connect an optional remote processing worker.
       </div>
       <div className="mb-3">
         <ExternalLink href="https://github.com/Dusky-dev/StashBooru/releases/download/latest_develop/stash-remote-worker.zip">
@@ -118,22 +116,12 @@ export const InferenceWorkerSettings: React.FC = () => {
         <ExternalLink href="https://github.com/Dusky-dev/StashBooru/blob/develop/scripts/visual_embedding_server.md">
           Setup and capability guide
         </ExternalLink>
-        <p className="small text-muted mb-0 mt-2">
-          Extract the complete ZIP on the worker PC, install its Python
-          requirements, and start visual_embedding_server.py. Run the included
-          remote_worker_check.py to verify available services. All processing
-          modules are included; optional models, GPU runtimes and codecs must be
-          installed separately. Match your server version. Development downloads
-          update after a successful release build.
-        </p>
       </div>
       <Card>
         <Setting
           className="flex-column align-items-stretch"
           heading="Remote worker"
-          subHeading={
-            "Connection settings are saved on this server. Models are installed on the machine that performs the work."
-          }
+          subHeading="Worker address and access token."
         >
           <div className="mt-3 w-100">
             {error && <Alert variant="danger">{error}</Alert>}

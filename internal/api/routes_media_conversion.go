@@ -82,6 +82,7 @@ type conversionRequest struct {
 	JobBatch                 string                                   `json:"jobBatch"`
 	CacheLimitBytes          int64                                    `json:"cacheLimitBytes"`
 	FormatDefaults           map[string]string                        `json:"formatDefaults"`
+	FormatRulesEnabled       map[string]bool                          `json:"formatRulesEnabled"`
 	UseQuality               bool                                     `json:"useQuality"`
 	UseEncodingDefaults      bool                                     `json:"useEncodingDefaults"`
 	UseDecodingSpeedDefaults *bool                                    `json:"useDecodingSpeedDefaults,omitempty"`
@@ -316,6 +317,10 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+		if err := mediaconvert.ValidateFormatRulesEnabled(request.FormatRulesEnabled, request.FormatDefaults); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		if err := mediaconvert.ValidateEncodingDefaults(request.EncodingDefaults, request.Backend); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -325,6 +330,16 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 		config, err := conversionStore().Config()
 		if err == nil {
 			config.FormatDefaults = request.FormatDefaults
+			if request.FormatRulesEnabled != nil {
+				config.FormatRulesEnabled = request.FormatRulesEnabled
+			} else {
+				// Older clients still replace the rule list; drop flags for removed rules.
+				for input := range config.FormatRulesEnabled {
+					if _, ok := request.FormatDefaults[input]; !ok {
+						delete(config.FormatRulesEnabled, input)
+					}
+				}
+			}
 			if request.EncodingDefaults != nil {
 				config.EncodingDefaults = request.EncodingDefaults
 			}
@@ -544,6 +559,9 @@ func resolveConversionOptions(ctx context.Context, s mediaconvert.Store, config 
 	var input string
 	if options.Format == "" || options.Format == "auto" {
 		options.Format, input, err = conversionDefaultForFile(ctx, s, config, id)
+		if err == nil && options.Format == "" {
+			err = fmt.Errorf("automatic conversion is disabled for %s; enable its rule or choose an output format", input)
+		}
 	} else if request.UseEncodingDefaults || conversionUsesDecodingSpeedDefaults(request) {
 		_, input, err = conversionDefaultForFile(ctx, s, config, id)
 	}

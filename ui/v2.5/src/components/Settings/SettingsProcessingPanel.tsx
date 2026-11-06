@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ExternalLink } from "../Shared/ExternalLink";
+import { ManualLink } from "../Help/context";
 import { InferenceWorkerSettings } from "./InferenceWorkerSettings";
 import { VisualSimilaritySettings } from "./VisualSimilaritySettings";
 import { MediaConversionSettings } from "./MediaConversionSettings";
@@ -9,8 +10,7 @@ export function SettingsProcessingPanel() {
   return (
     <div id="processing-settings" className="processing-settings">
       <p className="text-muted">
-        Configure workers and defaults here; start processing from the selected
-        media or Tasks. Each section has its own Save action.
+        Processing settings and defaults. Use each section’s Save button.
       </p>
       <nav
         className="processing-settings-nav"
@@ -22,6 +22,7 @@ export function SettingsProcessingPanel() {
         </Link>
         <Link to="/settings?tab=processing#media-converter">Conversion</Link>
         <Link to="/settings?tab=processing#media-upscaling">Upscaling</Link>
+        <ManualLink tab="Processing">Processing help</ManualLink>
         <ExternalLink
           href={`https://github.com/Dusky-dev/StashBooru/blob/stashbooru-v${import.meta.env.VITE_APP_STASHBOORU_VERSION}/docs/features.md`}
         >

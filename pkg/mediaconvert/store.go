@@ -116,6 +116,7 @@ type Record struct {
 type Config struct {
 	CacheLimitBytes      int64                       `json:"cacheLimitBytes"`
 	FormatDefaults       map[string]string           `json:"formatDefaults"`
+	FormatRulesEnabled   map[string]bool             `json:"formatRulesEnabled,omitempty"`
 	EncodingDefaults     map[string]EncodingDefaults `json:"encodingDefaults"`
 	Backend              string                      `json:"backend"`
 	Savings              SavingsThresholds           `json:"savings"`
@@ -289,6 +290,9 @@ func (s Store) Configure(c Config) error {
 		c.FormatDefaults = DefaultFormatDefaults()
 	}
 	if err := ValidateFormatDefaults(c.FormatDefaults); err != nil {
+		return err
+	}
+	if err := ValidateFormatRulesEnabled(c.FormatRulesEnabled, c.FormatDefaults); err != nil {
 		return err
 	}
 	return atomicJSON(filepath.Join(s.Root, "config.json"), c)

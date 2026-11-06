@@ -26,6 +26,7 @@ export interface ConversionEncodingDefaults {
 export interface ConversionConfig {
   cacheLimitBytes: number;
   formatDefaults: Record<string, string>;
+  formatRulesEnabled?: Record<string, boolean>;
   encodingDefaults: Record<string, ConversionEncodingDefaults>;
   backend: string;
   savings: SavingsThresholds;
