@@ -283,6 +283,32 @@ try {
       0,
       "unvisited processing settings must not contact workers"
     );
+
+    // Search must locate settings in other tabs without mounting every panel.
+    const settingsSearch = page.getByRole("searchbox", {
+      name: "Find a setting",
+    });
+    await settingsSearch.fill("converter");
+    const converterResult = page
+      .locator("#settings-search-results a")
+      .filter({ hasText: "Media converter and format rules" });
+    assert.match(
+      (await converterResult.getAttribute("href")) ?? "",
+      /tab=processing.*#media-converter$/
+    );
+    await settingsSearch.fill("image titles");
+    await page
+      .locator("#settings-search-results a")
+      .filter({ hasText: "Image titles" })
+      .click();
+    await page.waitForURL(/tab=interface.*#image-filename-display$/);
+    await page.locator("#image-filename-display").waitFor();
+    await settingsSearch.fill("not-a-real-setting-xyz");
+    await page.getByText("No matching settings.", { exact: true }).waitFor();
+    await settingsSearch.fill("");
+    await chooseSection(page, "library");
+    await page.locator("#inherit-character-ancestors").waitFor();
+
     const chooser = page.locator("#settings-section");
     assert.equal(
       await page

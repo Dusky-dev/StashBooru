@@ -1,6 +1,7 @@
 import { BooleanCriterionOption } from "./criteria/criterion";
 import { ImageListFilterOptions } from "./images";
 import { DurationCriterionOption } from "./scenes";
+import { MediaKindCriterionOption } from "./criteria/media-types";
 import { ListFilterOptions } from "./filter-options";
 import { DisplayMode } from "./types";
 
@@ -32,6 +33,7 @@ export const MediaListFilterOptions = new ListFilterOptions(
   ),
   [DisplayMode.Grid, DisplayMode.Wall],
   [
+    MediaKindCriterionOption,
     ...ImageListFilterOptions.criterionOptions.filter((c) =>
       shared.has(c.type)
     ),

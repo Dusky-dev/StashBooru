@@ -1,5 +1,14 @@
 # StashBooru implementation progress
 
+## Searchable Settings and usable All filters / Video-Character terms — 2026-11-06
+
+- Baseline: `develop` `e117fa924bb73bc71995c220d337c53e5cc434fb`; branch `feat/settings-search-all-filters-terminology-20261106`.
+- Add a **Find a setting** search control to Settings navigation on mobile and desktop. Cross-tab index links common sections and controls to stable hash anchors, including Worker, Media converter, Booru sources, Image titles, backup, library exclusions and API keys. Querying does not mount every settings panel or modify configuration. Advanced-only sections retain normal gating.
+- Improve All filtering using its native `findMedia` query and `MediaFilterType`: add a proper `media_types` criterion (Images/Videos) to the filter editor and sidebar, support multi-selection, persist it through URL/saved filters and remove only the unselected type. Existing shared Tag, Character, Artist, Copyright, Title, Date and other criteria remain on the native query; unsupported type-specific criteria remain excluded.
+- Expand English UI terminology overrides for filter criteria so Video/Character/Artist labels replace upstream Scene/Performer/Studio wording without renaming GraphQL/internal keys.
+- Add regression coverage for Settings cross-tab search (pure index + mounted desktop/mobile navigation) and All query variables for type/title/taxonomy filters, including applying a type through the filter editor. Existing backend P07 integration tests already cover native filtered results and distinct Image/Video identities; extend validation with Build, Settings navigation, Go lint and browser suite.
+- No schema or database migration, conversion logic change or media write. CI and Codex Review pending at PR publication.
+
 ## Upstream Stash sync: filtered Character counts, fileless Video cover, public whitelist — 2026-11-06
 
 - Fork baseline `develop` `dec9b157e9300cd532116a4a3c55141ee13c77ea`; upstream `stashapp/stash develop` `34f8a384a11a45bd8eeb8fea15d163db643236bc`, common ancestor `9e9ad972643320e737c711884f10e4285f0f3a88`. Integration branch `sync/upstream-20261106-3-fixes`. Exactly three upstream commits: `944dd694` (optional filtered Character/Performer counts), `f62ace6c` (cover behind fileless Video message), `34f8a384` (single-IP public whitelist parsing and debug rejection log).

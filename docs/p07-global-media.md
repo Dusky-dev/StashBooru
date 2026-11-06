@@ -38,8 +38,14 @@ identities remain suitable for future P08 stack members.
 Text search, title, details, path, rating, dates/timestamps, organized status,
 favorite Characters, Tags, Characters, Artists and Copyrights use their existing
 native predicates. Hierarchy depth and P06 inheritance retain native semantics.
+The **Media type** sidebar filter and the full Filter dialog can select Images,
+Videos, or both via the native `media_types` GraphQL field. The All filter editor
+persists these criteria in the URL alongside shared metadata filters. Removing
+one selected type keeps the other type selected.
 Any duration criterion, including
 `IS_NULL`, excludes Images; the page shows that rule while the criterion is active.
+The filter dialog uses the user-facing names Video, Character and Artist instead
+of upstream Scene, Performer and Studio for related count and metadata criteria.
 
 Shared criteria, sort, page size, Grid/Wall mode and zoom are preserved in the
 URL/native filter state. Saved All filters store shared criteria. Selection carries

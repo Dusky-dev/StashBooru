@@ -32,6 +32,8 @@ import { SidebarTagsFilter } from "../List/Filters/TagsFilter";
 import { SidebarRatingFilter } from "../List/Filters/RatingFilter";
 import { SidebarDurationFilter } from "../List/Filters/SidebarDurationFilter";
 import { SidebarBooleanFilter } from "../List/Filters/BooleanFilter";
+import { SidebarOptionFilter } from "../List/Filters/OptionFilter";
+import { MediaKindCriterionOption } from "src/models/list-filter/criteria/media-types";
 import {
   Sidebar,
   SidebarPane,
@@ -278,6 +280,13 @@ export const FilteredMediaList = PatchComponent("FilteredMediaList", () => {
               setFilter={setFilter}
               view={View.Media}
               focus={searchFocus}
+            />
+            <SidebarOptionFilter
+              title="Media type"
+              option={MediaKindCriterionOption}
+              filter={filter}
+              setFilter={setFilter}
+              sectionID="media-types"
             />
             <SidebarStudiosFilter filter={filter} setFilter={setFilter} />
             <SidebarPerformersFilter filter={filter} setFilter={setFilter} />
