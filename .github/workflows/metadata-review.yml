@@ -19,7 +19,8 @@ permissions:
 
 jobs:
   browser:
-    runs-on: [self-hosted, stashbooru]
+    # Playwright --with-deps invokes sudo, which is blocked on the hardened runner.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
