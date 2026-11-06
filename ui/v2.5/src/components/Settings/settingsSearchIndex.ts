@@ -1,4 +1,4 @@
-import { SettingsTab } from "./settingsNavigation";
+import type { SettingsTab } from "./settingsNavigation";
 
 export interface SettingsSearchEntry {
   tab: SettingsTab;
