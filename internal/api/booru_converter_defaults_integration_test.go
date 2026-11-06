@@ -31,4 +31,24 @@ func TestBooruConverterUsesSavedFormatAndEncodingDefaults(t *testing.T) {
 	require.True(t, options.AllowLarger)
 	require.Equal(t, "auto", options.Hardware)
 	require.Equal(t, "remote", saved.Backend)
+
+	// Disabling a saved format rule must stop auto selection without deleting
+	// its configured encoder options. An explicit requested output still works.
+	file, err := store.Repository.Get(context.Background(), 1)
+	require.NoError(t, err)
+	input := mediaconvert.SourceFormat(file)
+	saved.FormatRulesEnabled = map[string]bool{input: false}
+	require.NoError(t, store.Configure(saved))
+	disabled, err := store.Config()
+	require.NoError(t, err)
+	_, _, err = resolveConversionOptions(context.Background(), store, disabled, 1,
+		conversionTarget{Kind: "image", ID: 1},
+		conversionRequest{Options: mediaconvert.Options{Format: "auto"}, UseEncodingDefaults: true}, caps)
+	require.ErrorContains(t, err, "automatic conversion is disabled")
+	options, format, err = resolveConversionOptions(context.Background(), store, disabled, 1,
+		conversionTarget{Kind: "image", ID: 1},
+		conversionRequest{Options: mediaconvert.Options{Format: "webp"}, UseEncodingDefaults: true}, caps)
+	require.NoError(t, err)
+	require.Equal(t, "webp", format.ID)
+	require.Equal(t, float64(37), options.Quality)
 }
