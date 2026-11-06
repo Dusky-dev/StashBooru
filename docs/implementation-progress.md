@@ -1,5 +1,13 @@
 # StashBooru implementation progress
 
+## Conversion format-rule toggles and compact Processing help — 2026-11-06
+
+- Baseline: `develop` `f8a679a43e26a544c244ff6cbe93599db30b0715`; branch `feat/processing-rule-toggles-help-20261106`.
+- Add a persistent `formatRulesEnabled` map to conversion defaults. Old configurations assume enabled. Format rules retain their output, quality and other encoding options when disabled; automatic format selection rejects a disabled matching rule (or a disabled category fallback). Explicitly chosen outputs remain usable. Validate state keys against saved rules, and clean up removed keys from legacy rule-list saves. No schema migration is required (converter JSON preferences).
+- Add the Enabled checkbox to every Format rules row, persist it through Save, and cover save/reload behavior in the mounted Settings desktop/mobile browser fixture. Add Go persistence/fallback validation tests and an integration test for explicit-output bypass.
+- Shorten explanatory text in Worker, Similarity & tagging, Media conversion and Upscaling sections; preserve operational notices and actionable errors. Add `Processing.md` to the native in-app Help manual and a Processing help link in the section navigation. Detailed worker setup, tagging, codec options, safety and local-model paths move there.
+- Checks: pending on PR. Changes are to Processing UI, conversion settings and tests; no owner media, background job or production configuration was touched.
+
 ## Full Pawchive shared-link inspection — 2026-11-06
 
 - The previously merged PR #314 parsed link text only from search-list responses. User's example: `https://pawchive.pw/patreon/user/3295915/post/174460964`, reported with no visible link preview.
