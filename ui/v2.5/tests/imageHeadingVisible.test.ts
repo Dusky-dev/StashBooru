@@ -159,9 +159,7 @@ test("filename fallback cleans separators, extensions and machine hashes", () =>
     "Booru danbooru post 014"
   );
   assert.equal(
-    formattedImageFilenameHeading(
-      "aabbccddeeff00112233445566778899.png"
-    ),
+    formattedImageFilenameHeading("aabbccddeeff00112233445566778899.png"),
     "Aabbccddeeff…"
   );
   assert.equal(formattedImageFilenameHeading("2024-10-25.jpg"), "2024-10-25");
