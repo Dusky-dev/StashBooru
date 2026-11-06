@@ -214,8 +214,7 @@ async function check(mode) {
               excluded: [],
               ...(type === "performers" ? {} : { depth: -1 }),
             },
-            check: (value) =>
-              assert.deepEqual(value[type].value, ["1"]),
+            check: (value) => assert.deepEqual(value[type].value, ["1"]),
           })),
         ];
         for (const { type, modifier, value, check } of filterCases) {
@@ -249,7 +248,9 @@ async function check(mode) {
         // Exercise the actual All filter editor and apply action, not only URLs.
         await page.locator(".media-list .edit-filter-button").click();
         await page
-          .locator(".edit-filter-dialog [data-type=media_types] .filter-item-header")
+          .locator(
+            ".edit-filter-dialog [data-type=media_types] .filter-item-header"
+          )
           .click();
         await page.locator(".edit-filter-dialog #media_types-VIDEO").check();
         const applied = page.waitForResponse((r) => {
