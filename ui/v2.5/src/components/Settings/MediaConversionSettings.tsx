@@ -284,7 +284,6 @@ export const MediaConversionSettings: React.FC = () => {
                 disabled={saving || !settings}
                 onChange={(e) => setTrialCacheGiB(Number(e.target.value))}
               />
-
             </Form.Group>
             <Form.Group controlId="converter-trial-expiry">
               <Form.Label>Trial expiry (hours)</Form.Label>
@@ -326,7 +325,8 @@ export const MediaConversionSettings: React.FC = () => {
           <>
             <h2 className="h5">Format rules</h2>
             <p className="small text-muted">
-              Turn off rules to skip their automatic conversion without losing settings.
+              Turn off rules to skip their automatic conversion without losing
+              settings.
             </p>
             <Table responsive size="sm">
               <thead>
@@ -670,7 +670,6 @@ export const MediaConversionSettings: React.FC = () => {
                 {saving ? "Saving…" : "Save conversion defaults"}
               </Button>
             </div>
-
           </>
         )}
       </Card>
