@@ -1,5 +1,13 @@
 # Interface options
 
+## Search settings
+
+Use **Find a setting** in the Settings navigation to search across sections.
+Results link to the appropriate tab and subsection, including options not
+currently visible. Search for topics such as `converter`, `filenames`,
+`booru`, `api key` or `backup`. This search navigates to settings; it
+does not change any preferences. Advanced options still require Advanced mode.
+
 ## Language
 
 Setting the language affects the formatting of numbers and dates.
