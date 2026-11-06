@@ -891,6 +891,38 @@ try {
       .waitFor();
     assert.equal(config.formatRulesEnabled.image, true);
     assert.equal(config.formatDefaults.image, "webp");
+    // Image metadata titles replace filename fallbacks, without changing custom titles.
+    await chooseSection(page, "interface");
+    const hideFilename = page.locator("#hide-image-filenames");
+    const associationTitles = page.locator("#show-image-association-titles");
+    await associationTitles.waitFor();
+    assert.equal(await hideFilename.isChecked(), false);
+    assert.equal(await associationTitles.isChecked(), false);
+    await hideFilename.check();
+    assert.equal(await associationTitles.isChecked(), false);
+    await associationTitles.check();
+    assert.equal(await hideFilename.isChecked(), false);
+    assert.equal(await associationTitles.isChecked(), true);
+    await page.waitForFunction(() =>
+      window.settingsFixture.changes.some(
+        (change) =>
+          change.ui?.showImageAssociationTitles === true &&
+          change.ui?.hideImageFilenames === false
+      )
+    );
+    await chooseSection(page, "library");
+    await chooseSection(page, "interface");
+    assert.equal(await associationTitles.isChecked(), true);
+    await hideFilename.check();
+    assert.equal(await associationTitles.isChecked(), false);
+    await page.waitForFunction(() =>
+      window.settingsFixture.changes.some(
+        (change) =>
+          change.ui?.hideImageFilenames === true &&
+          change.ui?.showImageAssociationTitles === false
+      )
+    );
+    await chooseSection(page, "processing");
     // Late retry/status responses after leaving Settings must not update an unmounted view.
     failConverterConfig = true;
     await page.reload();
