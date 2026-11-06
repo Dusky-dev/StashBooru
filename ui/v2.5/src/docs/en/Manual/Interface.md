@@ -20,7 +20,9 @@ When SFW content mode is enabled, the following changes are made to the UI:
 - **Hide image filenames:** Hide the visible heading when it would otherwise be generated from the file name.
 - **Use Copyright / Character / Artist image titles:** Replace generated filename headings with the linked Copyright, Character and Artist names in that order, separated by ` · `. For example: `Re:Zero · Emilia · Artist Name`. Multiple Characters or Artists appear together, up to two names followed by a count of additional associations.
 
-The options are mutually exclusive. Titles you entered manually always take priority and are never replaced or hidden. Missing association categories are omitted; an Image with no associations displays **Image #ID** instead of an opaque filename. When the setting is off, the original filename heading is shown.
+The two main options are mutually exclusive. Titles you entered manually always take priority and are never replaced or hidden. Missing association categories are omitted. By default, an Image with no Copyright, Character or Artist association displays **Image #ID** instead of an opaque filename.
+
+**Use formatted filenames when no metadata is available** is an additional, opt-in switch under association titles. When enabled, Images without any of those association names use a cleaned-up filename instead: `emilia_winter--outfit_2024.jxl` becomes **Emilia winter outfit 2024**. The display omits recognized media extensions, converts underscores and repeated separators into spaces, and hides trailing full-file hashes when the name contains meaningful text. A hash-only name is shortened; if no filename exists, **Image #ID** remains. This switch is inactive while association titles are turned off, but its saved choice is retained.
 
 These are **display-only preferences**. They do not rename files, change saved Image titles, modify associations or hide file paths in File information. The same label is used on Image cards and details; the image wall has no text heading to replace.
 
