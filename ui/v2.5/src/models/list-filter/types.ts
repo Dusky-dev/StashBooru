@@ -123,6 +123,7 @@ export interface IOptionType {
 }
 
 export type CriterionType =
+  | "media_types"
   | "collapse_stacks"
   | "path"
   | "rating100"
