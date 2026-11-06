@@ -1,5 +1,14 @@
 # StashBooru implementation progress
 
+## Image titles from Copyright / Character / Artist — 2026-11-06
+
+- Baseline: `develop` `0a81080d1362ee03e7ed2904a1a83c7ad3329318`; branch `feat/image-association-display-titles-20261106`.
+- Add a separate **Use Copyright / Character / Artist image titles** toggle beside **Hide image filenames** under Settings → Interface → Image titles. The two are mutually exclusive and save in native UI settings. Legacy defaults remain unchanged.
+- Construct display-only headings from the primary Copyright (or linked Copyrights), linked Characters, and linked Artists (legacy studio fallback), with deterministic omission of empty groups and an `Image #ID` fallback. Authored Image titles always take precedence. Image cards and detail headings use the shared formatter; file names, records and paths are never rewritten.
+- Extend the slim Image GraphQL fragment with small association name fields to avoid N+1 requests. UI generation is handled by the existing CI generator; no hand-edited generated code or schema/database migration.
+- Cover formatter defaults, missing associations, duplicates, custom titles and precedence with unit tests; verify Settings toggle persistence, exclusivity and desktop/mobile navigation in the mounted fixture. Document behavior in built-in Interface Help.
+- CI and Codex review pending at PR publication; no changes to user media, server config or deployed `develop`.
+
 ## Conversion format-rule toggles and compact Processing help — 2026-11-06
 
 - Baseline: `develop` `f8a679a43e26a544c244ff6cbe93599db30b0715`; branch `feat/processing-rule-toggles-help-20261106`.
