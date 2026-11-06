@@ -613,6 +613,16 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
               })
             }
           />
+          <BooleanSetting
+            id="show-formatted-image-filename-fallback"
+            heading="Use formatted filenames when no metadata is available"
+            subHeading="Without Copyright, Character or Artist names, show a readable filename instead of Image #ID."
+            checked={ui.showFormattedImageFilenameFallback ?? false}
+            disabled={!ui.showImageAssociationTitles}
+            onChange={(v) =>
+              saveUI({ showFormattedImageFilenameFallback: v })
+            }
+          />
         </SettingSection>
 
         <SettingSection headingID="config.ui.image_wall.heading">
