@@ -101,7 +101,9 @@ export const InferenceWorkerSettings: React.FC = () => {
   return (
     <div className="setting-section" id="inference-worker">
       <h1>Processing worker</h1>
-      <div className="sub-heading">Connect an optional remote processing worker.</div>
+      <div className="sub-heading">
+        Connect an optional remote processing worker.
+      </div>
       <div className="mb-3">
         <ExternalLink href="https://github.com/Dusky-dev/StashBooru/releases/download/latest_develop/stash-remote-worker.zip">
           Download remote worker ZIP (development)
@@ -114,7 +116,6 @@ export const InferenceWorkerSettings: React.FC = () => {
         <ExternalLink href="https://github.com/Dusky-dev/StashBooru/blob/develop/scripts/visual_embedding_server.md">
           Setup and capability guide
         </ExternalLink>
-
       </div>
       <Card>
         <Setting
