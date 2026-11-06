@@ -30,7 +30,7 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
   { tab: "interface", label: "Language and basic interface options", anchor: "interface-basic", keywords: "theme appearance sfw" },
   { tab: "interface", label: "Video player", anchor: "interface-video-player", keywords: "scene playback loop subtitles scrubber" },
   { tab: "interface", label: "Video wall and previews", anchor: "interface-video-wall", keywords: "scene thumbnails" },
-  { tab: "interface", label: "Image titles", anchor: "image-filename-display", keywords: "filename character copyright artist formatted fallback hide" },
+  { tab: "interface", label: "Image titles", anchor: "image-filename-display", keywords: "filename filenames character copyright artist formatted fallback hide" },
   { tab: "interface", label: "Image wall and lightbox", anchor: "interface-image-lightbox", keywords: "slideshow previews zoom" },
   { tab: "interface", label: "Metadata detail panels", anchor: "interface-detail", keywords: "character artist tags panels" },
   { tab: "interface", label: "Editing preferences", anchor: "interface-editing", keywords: "forms autocomplete ratings" },
