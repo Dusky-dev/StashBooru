@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Button, Card, Form, Spinner, Table } from "react-bootstrap";
 import { useToast } from "src/hooks/Toast";
-import { Link } from "react-router-dom";
 import { ProcessingBackendOptions } from "../Shared/ProcessingBackendOptions";
 import {
   conversionEndpoint,
@@ -19,6 +18,7 @@ import {
 interface Rule {
   input: string;
   output: string;
+  enabled: boolean;
   quality: number;
   effort: number;
   decodingSpeed: number;
@@ -80,6 +80,7 @@ export const MediaConversionSettings: React.FC = () => {
               return {
                 input: f.id,
                 output,
+                enabled: value.config.formatRulesEnabled?.[f.id] !== false,
                 quality:
                   saved?.quality ??
                   fallback?.quality ??
@@ -213,6 +214,9 @@ export const MediaConversionSettings: React.FC = () => {
           formatDefaults: Object.fromEntries(
             rules.map((r) => [r.input, r.output])
           ),
+          formatRulesEnabled: Object.fromEntries(
+            rules.map((r) => [r.input, r.enabled])
+          ),
         }),
       }).then(conversionResponse<ConversionConfig>);
       setSettings((old) => old && { ...old, config });
@@ -232,9 +236,7 @@ export const MediaConversionSettings: React.FC = () => {
     <div className="setting-section" id="media-converter">
       <h1>Media converter</h1>
       <div className="sub-heading">
-        Set server-wide defaults for new conversion jobs. Review estimated
-        savings or run a verified trial from selected media before replacing
-        files. Original-file restore history is available in the converter.
+        Configure conversion defaults. Start conversions from selected media.
       </div>
       <Card className="p-3">
         {!settings && (
@@ -282,12 +284,7 @@ export const MediaConversionSettings: React.FC = () => {
                 disabled={saving || !settings}
                 onChange={(e) => setTrialCacheGiB(Number(e.target.value))}
               />
-              <Form.Text className="text-muted">
-                Separate from original-file restore backups. Zero disables saved
-                trials; expired outputs are cleaned during startup and converter
-                jobs. Reducing the limit evicts oldest reviewed outputs on the
-                next job.
-              </Form.Text>
+
             </Form.Group>
             <Form.Group controlId="converter-trial-expiry">
               <Form.Label>Trial expiry (hours)</Form.Label>
@@ -316,20 +313,7 @@ export const MediaConversionSettings: React.FC = () => {
             <ProcessingBackendOptions />
           </Form.Control>
         </Form.Group>
-        <p>
-          Automatic mode prefers the shared remote inference worker configured
-          above when it is reachable. Otherwise, conversions run on this server.
-          Explicit server-only and remote-only choices do not fall back. The
-          processor defaults to <strong>Prefer GPU, otherwise CPU</strong>.
-        </p>
-        <p className="text-muted">
-          Animated PNG and WebP are detected separately from still images.
-          Formats without a specific rule use Other images or Other videos.
-          Decode-speed defaults stay editable independently of the selected
-          worker; unsupported controls are skipped at conversion time. Existing
-          library animation inspection is available from{" "}
-          <Link to="/settings?tab=tasks#animation-inspection-task">Tasks</Link>.
-        </p>
+
         {error && <Alert variant="danger">{error}</Alert>}
         {workerCapabilityError && (
           <Alert variant="warning">
@@ -341,9 +325,13 @@ export const MediaConversionSettings: React.FC = () => {
         {settings && (
           <>
             <h2 className="h5">Format rules</h2>
+            <p className="small text-muted">
+              Turn off rules to skip their automatic conversion without losing settings.
+            </p>
             <Table responsive size="sm">
               <thead>
                 <tr>
+                  <th>Enabled</th>
                   <th>Input format</th>
                   <th>Default output format</th>
                   <th>Quality (0–100)</th>
@@ -358,6 +346,23 @@ export const MediaConversionSettings: React.FC = () => {
               <tbody>
                 {rules.map((rule, index) => (
                   <tr key={rule.input}>
+                    <td>
+                      <Form.Check
+                        type="checkbox"
+                        aria-label={`Enable ${rule.input} format rule`}
+                        checked={rule.enabled}
+                        disabled={saving}
+                        onChange={(event) =>
+                          setRules(
+                            rules.map((r, i) =>
+                              i === index
+                                ? { ...r, enabled: event.currentTarget.checked }
+                                : r
+                            )
+                          )
+                        }
+                      />
+                    </td>
                     <td>
                       <Form.Control
                         as="select"
@@ -623,6 +628,7 @@ export const MediaConversionSettings: React.FC = () => {
                     {
                       input,
                       output: outputsFor(input)[0].id,
+                      enabled: true,
                       quality:
                         settings.inputFormats.find((f) => f.id === input)
                           ?.family === "video"
@@ -665,18 +671,7 @@ export const MediaConversionSettings: React.FC = () => {
                 {saving ? "Saving…" : "Save conversion defaults"}
               </Button>
             </div>
-            <Form.Text className="text-muted">
-              Higher quality retains more detail; higher effort takes longer.
-              JPEG XL quality 100 is lossless. Format-specific options appear
-              only where the selected output supports them (for example,
-              lossless WebP). Decode speed is codec-specific: JPEG XL offers
-              tiers 0–4, while compatible AV1/libaom workers offer an on/off
-              low-complexity decode mode that uses CPU. Higher JXL tiers can
-              reduce compression or quality. These encoding hints do not
-              guarantee faster playback in every browser. Saved defaults apply
-              when a new conversion job starts. Existing running jobs keep their
-              selected formats and settings.
-            </Form.Text>
+
           </>
         )}
       </Card>
