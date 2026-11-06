@@ -179,7 +179,8 @@ func ValidateFormatDefaults(defaults map[string]string) error {
 
 // Missing flags in old configs mean that every saved format rule is enabled.
 func (c Config) FormatRuleEnabled(input string) bool {
-	return c.FormatRulesEnabled == nil || c.FormatRulesEnabled[input] != false
+	enabled, configured := c.FormatRulesEnabled[input]
+	return !configured || enabled
 }
 
 func ValidateFormatRulesEnabled(states map[string]bool, formats map[string]string) error {
