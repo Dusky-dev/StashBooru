@@ -33,7 +33,7 @@ import NavUtils from "src/utils/navigation";
 import { useScrollToTopOnMount } from "src/hooks/scrollToTop";
 import { useRatingKeybinds } from "src/hooks/keybinds";
 import { useConfigurationContext } from "src/hooks/Config";
-import { imageHeadingVisible } from "src/utils/imageHeadingVisible";
+import { imageDisplayHeading } from "src/utils/imageHeadingVisible";
 import TextUtils from "src/utils/text";
 import { RatingSystem } from "src/components/Shared/Rating/RatingSystem";
 import { TruncatedText } from "src/components/Shared/TruncatedText";
@@ -326,10 +326,8 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
     [image]
   );
   const title = imageTitle(image);
-  const showImageHeading = imageHeadingVisible(
-    image,
-    configuration?.ui?.hideImageFilenames
-  );
+  const displayTitle = imageDisplayHeading(image, title, configuration?.ui);
+  const showImageHeading = displayTitle !== null;
   const ImageView =
     image.visual_files.length > 0 && isVideo(image.visual_files[0])
       ? "video"
@@ -390,7 +388,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
   return (
     <div className="row">
       <Helmet>
-        <title>{title}</title>
+        <title>{displayTitle ?? title}</title>
       </Helmet>
 
       {maybeRenderDeleteDialog()}
@@ -429,7 +427,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
           {showImageHeading && (
             <div className="image-header-container">
               <h3 className="image-header">
-                <TruncatedText lineCount={2} text={title} />
+                <TruncatedText lineCount={2} text={displayTitle ?? ""} />
               </h3>
             </div>
           )}
