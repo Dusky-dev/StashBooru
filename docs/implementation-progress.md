@@ -5369,3 +5369,25 @@ these historical CI snapshots.
   persistence and partial selections. Updated the processing job resume mock
   to recognize status reads; added Go test coverage for converted status when
   cache retention has expired. Current-head CI is still a release gate.
+
+
+## All and Copyrights native-alignment pass — November 8, 2026
+
+- Branch: `fix/native-all-copyrights-alignment-20261108`; baseline:
+  `develop` `fff35abc9e2c654dda885c7466b863491685ac68`
+  (includes merged PR #332). The goal is parity with native entity lists.
+- Copyright profile: replaced the empty All tab with shared
+  `FilteredMediaList` and `useCopyrightFilterHook`, preserving subtree depth
+  and using separate `View.CopyrightMedia` state. Count uses Images + Videos.
+- Copyright list: replaced custom read-only table with native `ListTable`,
+  column preferences and checkbox selection. Preserved hierarchy labels,
+  added native count links and selection actions. Random now queries a random
+  result across the entire filtered Copyright set, not only the current page.
+  Added route title handling and an image placeholder.
+- Isolated browser regression `copyright-save-retry.mjs` exercises the
+  scoped All query and native list selection. It requires a built app binary
+  and installed Chromium; not executed in the connector-only environment.
+- Still unverified / deferred: whole-library All filter result correctness,
+  Wall-mode stack member selection, richer Copyright backend filters, and
+  full real-media regression on a representative library.
+- UI checks and CI are pending for this branch; do not merge until green.
