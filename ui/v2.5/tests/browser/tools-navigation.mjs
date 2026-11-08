@@ -116,9 +116,11 @@ try {
         };
       else if (url.pathname.endsWith("/clusters"))
         data = {
+          method: url.searchParams.get("method") ?? "embedding",
           threshold: Number(url.searchParams.get("threshold")),
           neighbors: 10,
           indexedImages: 2,
+          totalImages: 2,
           singletonsShown: true,
           clusters: [
             {
@@ -152,7 +154,7 @@ try {
     });
     await page.goto(`${origin}/settings?tab=tools&return=images%2F42`);
     await summary(page, "health").waitFor();
-    for (const group of ["health", "similarity", "developer"])
+    for (const group of ["health", "developer"])
       assert.equal(await isOpen(page, group), false);
     assert.equal(
       requests.length,
@@ -286,61 +288,13 @@ try {
         .locator('#settings-menu-container a[href*="tab=tools"]')
         .click();
     await page.waitForURL(/tab=tools/);
-    await summary(page, "similarity").click();
-    await page.getByLabel("Similarity threshold", { exact: true }).fill("0.85");
-    await page.getByLabel("Show singletons", { exact: true }).focus();
-    await page.getByLabel("Show singletons", { exact: true }).press("Space");
-    await page
-      .getByRole("button", { name: "Find clusters", exact: true })
-      .click();
-    await page.getByText("Preferred Image #1", { exact: true }).waitFor();
-    const clusterRequest = requests.find((r) => r.path.endsWith("/clusters"));
+    assert.equal(await page.locator("#tools-similarity").count(), 0);
     assert.equal(
-      new URLSearchParams(clusterRequest.search).get("threshold"),
-      "0.85"
-    );
-    assert.equal(
-      new URLSearchParams(clusterRequest.search).get("includeSingletons"),
-      "true"
-    );
-    await page
-      .getByRole("button", { name: "Select other Images", exact: true })
-      .click();
-    await summary(page, "similarity").click();
-    await summary(page, "similarity").click();
-    assert.equal(
-      await page
-        .getByLabel("Similarity threshold", { exact: true })
-        .inputValue(),
-      "0.85"
-    );
-    assert.equal(
-      await page
-        .getByLabel("Add preferred metadata", { exact: true })
-        .isChecked(),
-      true
-    );
-    page.once("dialog", (dialog) => dialog.dismiss());
-    await page
-      .getByRole("button", { name: "Add metadata to 1 selected", exact: true })
-      .click();
-    assert.equal(requests.filter((r) => r.body).length, 0);
-    page.once("dialog", (dialog) => dialog.accept());
-    await page
-      .getByRole("button", { name: "Add metadata to 1 selected", exact: true })
-      .click();
-    await page.getByText("Added 1 Character", { exact: false }).waitFor();
-    assert.deepEqual(
-      requests.filter((r) => r.body).map((r) => r.body),
-      [{ sourceImageID: 1, targetImageIDs: [2] }]
-    );
-    assert.equal(
-      (await page.locator('#tools-similarity a[href="/images/1"]').count()) > 0,
-      true
+      requests.filter((request) => request.path.endsWith("/clusters")).length,
+      0,
+      "Tools should not run visual similarity clustering"
     );
     await fit(page);
-    if (shots)
-      await page.screenshot({ path: `${shots}/tools-results-${name}.png` });
 
     await summary(page, "developer").focus();
     await summary(page, "developer").press("Enter");
@@ -381,10 +335,61 @@ try {
     await summary(page, "developer").focus();
     await summary(page, "developer").press("Space");
     assert.equal(await isOpen(page, "developer"), false);
+
+    // Old Visual Similarity Triage bookmarks open the real image duplicate
+    // review in EVA02 mode, with explicit add-only metadata copy.
+    await page.goto(
+      `${origin}/settings?tab=tools&return=images%2F42#tools-similarity`
+    );
+    await page.waitForURL(/\/image-duplicates\?.*method=embedding/);
+    assert.equal(
+      new URL(page.url()).searchParams.get("return"),
+      "images/42"
+    );
+    await page.getByRole("heading", { name: "Review similar images" }).waitFor();
+    assert.equal(
+      await page.locator("#duplicate-method").inputValue(),
+      "embedding"
+    );
+    await page.getByRole("button", { name: "Copy missing metadata" }).waitFor();
+    const beforeCopy = requests.filter((request) => request.body).length;
+    await page
+      .getByRole("button", { name: "Copy missing metadata" })
+      .click();
+    const dialog = page.getByRole("dialog");
+    assert.equal(await dialog.locator("#similarity-metadata-source").inputValue(), "1");
+    assert.equal(
+      await dialog.getByRole("button", { name: "Copy to 0 selected" }).isDisabled(),
+      true
+    );
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    assert.equal(
+      requests.filter((request) => request.body).length,
+      beforeCopy,
+      "Cancel must not copy metadata or delete images"
+    );
+    await page
+      .getByRole("button", { name: "Copy missing metadata" })
+      .click();
+    await dialog.getByLabel("Image #2").check();
+    await dialog.getByRole("button", { name: "Copy to 1 selected" }).click();
+    await page.waitForFunction(
+      () => !document.querySelector(".modal.show")
+    );
+    assert.deepEqual(
+      requests.filter((request) => request.body).map((request) => request.body),
+      [{ sourceImageID: 1, targetImageIDs: [2] }]
+    );
+    await fit(page);
+    if (shots)
+      await page.screenshot({
+        path: `${shots}/similar-images-metadata-${name}.png`,
+        fullPage: true,
+      });
     assert.deepEqual(errors, [], errors.join("\n"));
     await page.close();
     console.log(
-      `${name}: Tools grouping, explicit reads/copy confirmation, retained results/drafts, links, bookmarks, refresh and layout passed`
+      `${name}: Tools grouping, independent image metadata copy, bookmarks, refresh and layout passed`
     );
   }
 } catch (error) {
