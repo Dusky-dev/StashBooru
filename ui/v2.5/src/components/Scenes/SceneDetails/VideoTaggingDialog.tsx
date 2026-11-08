@@ -539,260 +539,260 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
           ) : (
             <>
               <MetadataReviewInfo
-            kind="Video"
-            id={sceneId}
-            context={reviewContext}
-            busy={busy || applying}
-          />
-          <div className="d-flex flex-wrap align-items-end mb-3">
-            <Form.Group className="mr-3 mb-2">
-              <Form.Label>Frame threshold</Form.Label>
-              <Form.Control
-                type="number"
-                min="0.001"
-                max="0.999"
-                step="0.01"
-                value={frameThreshold}
-                onChange={(event) =>
-                  setFrameThreshold(event.currentTarget.value)
-                }
-                style={{ width: "8rem" }}
+                kind="Video"
+                id={sceneId}
+                context={reviewContext}
+                busy={busy || applying}
               />
-            </Form.Group>
-            <Form.Group className="mr-3 mb-2">
-              <Form.Label>Per-category limit</Form.Label>
-              <Form.Control
-                type="number"
-                min="1"
-                max="200"
-                value={limit}
-                onChange={(event) => setLimit(event.currentTarget.value)}
-                style={{ width: "8rem" }}
-              />
-            </Form.Group>
-            <Button
-              className="mr-2 mb-2"
-              variant="secondary"
-              disabled={busy || applying}
-              onClick={() => void loadBooruMetadata()}
-            >
-              {loadingBooru ? "Fetching…" : "Look up by MD5"}
-            </Button>
-            <Button
-              className="mb-2"
-              variant="secondary"
-              disabled={busy || applying}
-              onClick={() => void loadFrameMetadata()}
-            >
-              {loadingFrames ? "Analyzing…" : "Analyze frames"}
-            </Button>
-            <Button
-              className="ml-2 mb-2"
-              variant="outline-secondary"
-              disabled={busy || applying}
-              onClick={() => setShowFilenamePatterns(true)}
-            >
-              Advanced filename patterns…
-            </Button>
-          </div>
+              <div className="d-flex flex-wrap align-items-end mb-3">
+                <Form.Group className="mr-3 mb-2">
+                  <Form.Label>Frame threshold</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min="0.001"
+                    max="0.999"
+                    step="0.01"
+                    value={frameThreshold}
+                    onChange={(event) =>
+                      setFrameThreshold(event.currentTarget.value)
+                    }
+                    style={{ width: "8rem" }}
+                  />
+                </Form.Group>
+                <Form.Group className="mr-3 mb-2">
+                  <Form.Label>Per-category limit</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min="1"
+                    max="200"
+                    value={limit}
+                    onChange={(event) => setLimit(event.currentTarget.value)}
+                    style={{ width: "8rem" }}
+                  />
+                </Form.Group>
+                <Button
+                  className="mr-2 mb-2"
+                  variant="secondary"
+                  disabled={busy || applying}
+                  onClick={() => void loadBooruMetadata()}
+                >
+                  {loadingBooru ? "Fetching…" : "Look up by MD5"}
+                </Button>
+                <Button
+                  className="mb-2"
+                  variant="secondary"
+                  disabled={busy || applying}
+                  onClick={() => void loadFrameMetadata()}
+                >
+                  {loadingFrames ? "Analyzing…" : "Analyze frames"}
+                </Button>
+                <Button
+                  className="ml-2 mb-2"
+                  variant="outline-secondary"
+                  disabled={busy || applying}
+                  onClick={() => setShowFilenamePatterns(true)}
+                >
+                  Advanced filename patterns…
+                </Button>
+              </div>
 
-          <div className="d-flex flex-wrap align-items-center mb-3">
-            <Badge className="mr-2 mb-1" variant="success">
-              Local loaded
-            </Badge>
-            {booruMetadata ? (
-              <Badge className="mr-2 mb-1" variant="info">
-                {booruMetadata.source}
-              </Badge>
-            ) : null}
-            {frameMetadata ? (
-              <Badge className="mb-1" variant="warning">
-                Frames {frameMetadata.sampleTimes.length} samples ·{" "}
-                {frameMetadata.backend}
-              </Badge>
-            ) : null}
-          </div>
-
-          {booruMetadata ? (
-            <div className="alert alert-info py-2">
-              <div className="d-flex flex-wrap align-items-center">
-                <strong>{booruMetadata.source}</strong>
-                <Badge className="ml-2" variant="secondary">
-                  MD5 from {booruMetadata.md5Source}
+              <div className="d-flex flex-wrap align-items-center mb-3">
+                <Badge className="mr-2 mb-1" variant="success">
+                  Local loaded
                 </Badge>
-                <code className="ml-2">{booruMetadata.md5}</code>
-                {booruMetadata.postURL ? (
-                  <a
-                    className="ml-auto"
-                    href={booruMetadata.postURL}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Post {booruMetadata.postID || "match"}{" "}
-                    <Icon icon={faExternalLinkAlt} />
-                  </a>
+                {booruMetadata ? (
+                  <Badge className="mr-2 mb-1" variant="info">
+                    {booruMetadata.source}
+                  </Badge>
+                ) : null}
+                {frameMetadata ? (
+                  <Badge className="mb-1" variant="warning">
+                    Frames {frameMetadata.sampleTimes.length} samples ·{" "}
+                    {frameMetadata.backend}
+                  </Badge>
                 ) : null}
               </div>
-            </div>
-          ) : null}
 
-          <details className="mb-3 text-muted">
-            <summary>How sources are combined</summary>
-            Sources are merged in priority order: Local → Booru → Frames.
-            Opening this dialog loads Local metadata only. Provider MD5 lookup
-            and representative-frame analysis are explicit. Frame analysis uses
-            the configured Camie/frame threshold and per-category limit, samples
-            the Video through ffmpeg, and starts its suggestions unselected for
-            review. Frame predictions cannot override authoritative Local
-            Character, Artist, or Copyright identity.
-          </details>
-
-          <Form.Check
-            className="mb-3"
-            type="checkbox"
-            id="video-tagging-replace-artists"
-            checked={replaceArtists}
-            onChange={(event) => setReplaceArtists(event.currentTarget.checked)}
-            label="Replace existing Artists instead of adding selected Artists"
-          />
-
-          {error ? <div className="alert alert-danger">{error}</div> : null}
-
-          {loading ? (
-            <div className="text-center py-5">
-              <Spinner animation="border" role="status" />
-            </div>
-          ) : predictions.length === 0 && !error ? (
-            <div className="text-muted">
-              No Local metadata was found. Fetch Danbooru or explicitly analyze
-              representative frames to add predictions.
-            </div>
-          ) : (
-            <>
-              <div className="d-flex mb-3">
-                <Button
-                  className="mr-2"
-                  size="sm"
-                  variant="outline-secondary"
-                  disabled={visibleSelectedCount === predictions.length}
-                  onClick={() =>
-                    setSelected(new Set(predictions.map(predictionKey)))
-                  }
-                >
-                  Select all
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline-secondary"
-                  disabled={visibleSelectedCount === 0}
-                  onClick={() => setSelected(new Set())}
-                >
-                  Unselect all
-                </Button>
-                <span className="ml-auto text-muted align-self-center">
-                  {visibleSelectedCount} / {predictions.length} selected
-                </span>
-              </div>
-
-              <div style={{ maxHeight: "55vh", overflowY: "auto" }}>
-                {grouped.map(([category, items]) => (
-                  <div className="mb-4" key={category}>
-                    <h5>{categoryLabel(category)}</h5>
-                    {items.map((prediction, index) => {
-                      const key = predictionKey(prediction);
-                      const possibleMatch =
-                        possibleBareCharacterMatch(prediction);
-                      const candidates =
-                        ambiguousCharacterCandidates(prediction);
-                      return (
-                        <div
-                          className="d-flex align-items-center py-1 border-bottom"
-                          key={key}
-                        >
-                          <Form.Check
-                            type="checkbox"
-                            id={`video-tagging-${category}-${index}`}
-                            checked={selected.has(key)}
-                            onChange={() => toggle(prediction)}
-                            label={prediction.name}
-                          />
-                          {prediction.provenance.map((source) => (
-                            <Badge
-                              className="ml-2"
-                              key={sourceKey(source)}
-                              variant={sourceBadgeVariant(source.kind)}
-                              title={source.detail}
-                            >
-                              {source.label}
-                            </Badge>
-                          ))}
-                          {prediction.targetExists ? (
-                            <Badge
-                              className="ml-2"
-                              variant="primary"
-                              title="This metadata entity already exists in Stash"
-                            >
-                              exists
-                            </Badge>
-                          ) : null}
-                          {possibleMatch ? (
-                            <Badge
-                              className="ml-2"
-                              variant="secondary"
-                              title={`Possible existing Character: ${possibleMatch.bareName}`}
-                            >
-                              possible match
-                            </Badge>
-                          ) : null}
-                          {candidates.length > 1 ? (
-                            <Badge
-                              className="ml-2"
-                              variant="warning"
-                              title={`${candidates.length} existing Characters share this name`}
-                            >
-                              choose Character
-                            </Badge>
-                          ) : null}
-                          {prediction.rawName &&
-                          prediction.rawName !== prediction.name ? (
-                            <span className="ml-2 small text-muted">
-                              alias: {prediction.rawName}
-                            </span>
-                          ) : null}
-                          {prediction.targetPath ? (
-                            <Button
-                              className="ml-auto mr-2 py-0 px-2"
-                              size="sm"
-                              variant="outline-secondary"
-                              title={
-                                prediction.targetExists
-                                  ? "Open metadata page"
-                                  : possibleMatch
-                                    ? `Open possible existing Character “${possibleMatch.bareName}”`
-                                    : "Search for this metadata"
-                              }
-                              onClick={() => {
-                                onHide();
-                                history.push(prediction.targetPath!);
-                              }}
-                            >
-                              <Icon icon={faSearch} />
-                            </Button>
-                          ) : null}
-                          <Badge
-                            className={prediction.targetPath ? "" : "ml-auto"}
-                            variant="secondary"
-                          >
-                            {(prediction.score * 100).toFixed(1)}%
-                          </Badge>
-                        </div>
-                      );
-                    })}
+              {booruMetadata ? (
+                <div className="alert alert-info py-2">
+                  <div className="d-flex flex-wrap align-items-center">
+                    <strong>{booruMetadata.source}</strong>
+                    <Badge className="ml-2" variant="secondary">
+                      MD5 from {booruMetadata.md5Source}
+                    </Badge>
+                    <code className="ml-2">{booruMetadata.md5}</code>
+                    {booruMetadata.postURL ? (
+                      <a
+                        className="ml-auto"
+                        href={booruMetadata.postURL}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Post {booruMetadata.postID || "match"}{" "}
+                        <Icon icon={faExternalLinkAlt} />
+                      </a>
+                    ) : null}
                   </div>
-                ))}
-              </div>
-            </>
-          )}
+                </div>
+              ) : null}
+
+              <details className="mb-3 text-muted">
+                <summary>How sources are combined</summary>
+                Sources are merged in priority order: Local → Booru → Frames.
+                Opening this dialog loads Local metadata only. Provider MD5 lookup
+                and representative-frame analysis are explicit. Frame analysis uses
+                the configured Camie/frame threshold and per-category limit, samples
+                the Video through ffmpeg, and starts its suggestions unselected for
+                review. Frame predictions cannot override authoritative Local
+                Character, Artist, or Copyright identity.
+              </details>
+
+              <Form.Check
+                className="mb-3"
+                type="checkbox"
+                id="video-tagging-replace-artists"
+                checked={replaceArtists}
+                onChange={(event) => setReplaceArtists(event.currentTarget.checked)}
+                label="Replace existing Artists instead of adding selected Artists"
+              />
+
+              {error ? <div className="alert alert-danger">{error}</div> : null}
+
+              {loading ? (
+                <div className="text-center py-5">
+                  <Spinner animation="border" role="status" />
+                </div>
+              ) : predictions.length === 0 && !error ? (
+                <div className="text-muted">
+                  No Local metadata was found. Fetch Danbooru or explicitly analyze
+                  representative frames to add predictions.
+                </div>
+              ) : (
+                <>
+                  <div className="d-flex mb-3">
+                    <Button
+                      className="mr-2"
+                      size="sm"
+                      variant="outline-secondary"
+                      disabled={visibleSelectedCount === predictions.length}
+                      onClick={() =>
+                        setSelected(new Set(predictions.map(predictionKey)))
+                      }
+                    >
+                      Select all
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline-secondary"
+                      disabled={visibleSelectedCount === 0}
+                      onClick={() => setSelected(new Set())}
+                    >
+                      Unselect all
+                    </Button>
+                    <span className="ml-auto text-muted align-self-center">
+                      {visibleSelectedCount} / {predictions.length} selected
+                    </span>
+                  </div>
+
+                  <div style={{ maxHeight: "55vh", overflowY: "auto" }}>
+                    {grouped.map(([category, items]) => (
+                      <div className="mb-4" key={category}>
+                        <h5>{categoryLabel(category)}</h5>
+                        {items.map((prediction, index) => {
+                          const key = predictionKey(prediction);
+                          const possibleMatch =
+                            possibleBareCharacterMatch(prediction);
+                          const candidates =
+                            ambiguousCharacterCandidates(prediction);
+                          return (
+                            <div
+                              className="d-flex align-items-center py-1 border-bottom"
+                              key={key}
+                            >
+                              <Form.Check
+                                type="checkbox"
+                                id={`video-tagging-${category}-${index}`}
+                                checked={selected.has(key)}
+                                onChange={() => toggle(prediction)}
+                                label={prediction.name}
+                              />
+                              {prediction.provenance.map((source) => (
+                                <Badge
+                                  className="ml-2"
+                                  key={sourceKey(source)}
+                                  variant={sourceBadgeVariant(source.kind)}
+                                  title={source.detail}
+                                >
+                                  {source.label}
+                                </Badge>
+                              ))}
+                              {prediction.targetExists ? (
+                                <Badge
+                                  className="ml-2"
+                                  variant="primary"
+                                  title="This metadata entity already exists in Stash"
+                                >
+                                  exists
+                                </Badge>
+                              ) : null}
+                              {possibleMatch ? (
+                                <Badge
+                                  className="ml-2"
+                                  variant="secondary"
+                                  title={`Possible existing Character: ${possibleMatch.bareName}`}
+                                >
+                                  possible match
+                                </Badge>
+                              ) : null}
+                              {candidates.length > 1 ? (
+                                <Badge
+                                  className="ml-2"
+                                  variant="warning"
+                                  title={`${candidates.length} existing Characters share this name`}
+                                >
+                                  choose Character
+                                </Badge>
+                              ) : null}
+                              {prediction.rawName &&
+                              prediction.rawName !== prediction.name ? (
+                                <span className="ml-2 small text-muted">
+                                  alias: {prediction.rawName}
+                                </span>
+                              ) : null}
+                              {prediction.targetPath ? (
+                                <Button
+                                  className="ml-auto mr-2 py-0 px-2"
+                                  size="sm"
+                                  variant="outline-secondary"
+                                  title={
+                                    prediction.targetExists
+                                      ? "Open metadata page"
+                                      : possibleMatch
+                                        ? `Open possible existing Character “${possibleMatch.bareName}”`
+                                        : "Search for this metadata"
+                                  }
+                                  onClick={() => {
+                                    onHide();
+                                    history.push(prediction.targetPath!);
+                                  }}
+                                >
+                                  <Icon icon={faSearch} />
+                                </Button>
+                              ) : null}
+                              <Badge
+                                className={prediction.targetPath ? "" : "ml-auto"}
+                                variant="secondary"
+                              >
+                                {(prediction.score * 100).toFixed(1)}%
+                              </Badge>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </>
           )}
         </Modal.Body>
