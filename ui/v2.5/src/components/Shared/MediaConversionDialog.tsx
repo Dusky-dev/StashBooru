@@ -37,6 +37,11 @@ interface Target {
   kind: "image" | "scene";
   id: number;
 }
+interface TargetRestoreStatus {
+  target: Target;
+  restorable: boolean;
+}
+const targetKey = (target: Target) => `${target.kind}:${target.id}`;
 interface Options {
   format: string;
   hardware: string;
@@ -187,6 +192,11 @@ export const MediaConversionDialog: React.FC<{
   const [loadingCapabilities, setLoadingCapabilities] = useState(false);
   const [capabilityError, setCapabilityError] = useState("");
   const [state, setState] = useState<State>();
+  const [restoreLookup, setRestoreLookup] = useState<{
+    key: string;
+    targets: TargetRestoreStatus[];
+  }>();
+  const [restoreLookupError, setRestoreLookupError] = useState("");
   const [historyOffset, setHistoryOffset] = useState(0);
   const [trialOffset, setTrialOffset] = useState(0);
   const [tab, setTab] = useState("convert");
@@ -308,6 +318,34 @@ export const MediaConversionDialog: React.FC<{
       window.clearInterval(timer);
     };
   }, [refresh]);
+
+  // Check the currently active file version, not merely this dialog's last
+  // action. A completed job (including a restore) refreshes the primary button.
+  useEffect(() => {
+    if (!state || running) return;
+    const controller = new AbortController();
+    setRestoreLookup(undefined);
+    setRestoreLookupError("");
+    void fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "restore-status",
+        targets: JSON.parse(targetsJSON),
+      }),
+      signal: controller.signal,
+    })
+      .then(response<{ targets: TargetRestoreStatus[] }>)
+      .then((result) => {
+        if (!controller.signal.aborted) {
+          setRestoreLookup({ key: targetsJSON, targets: result.targets });
+        }
+      })
+      .catch((e: Error) => {
+        if (!controller.signal.aborted) setRestoreLookupError(e.message);
+      });
+    return () => controller.abort();
+  }, [targetsJSON, !!state, state?.job?.status, state?.job?.batch, running]);
 
   useEffect(() => {
     if (!backend) return;
@@ -453,6 +491,21 @@ export const MediaConversionDialog: React.FC<{
     useDecodingSpeedDefaults,
     targets,
   };
+  const statuses =
+    restoreLookup?.key === targetsJSON ? restoreLookup.targets : undefined;
+  const restorable = new Set(
+    statuses?.filter((item) => item.restorable).map((item) => targetKey(item.target))
+  );
+  const statusReady =
+    !!statuses &&
+    targets.every((target) =>
+      statuses.some((item) => targetKey(item.target) === targetKey(target))
+    );
+  const allRestorable =
+    statusReady && selectedCount > 0 && targets.every((target) => restorable.has(targetKey(target)));
+  const remainingTargets = targets.filter(
+    (target) => !restorable.has(targetKey(target))
+  );
   const canConvert =
     !busy &&
     !!savings &&
@@ -515,13 +568,9 @@ export const MediaConversionDialog: React.FC<{
         >
           <Tab eventKey="convert" title="Convert">
             <p className="text-muted">
-              Choose a format, then Convert {selectedCount} selected{" "}
-              {mixedTargets
-                ? "media entries"
-                : kind === "scene"
-                  ? "videos"
-                  : "images"}
-              . Use Revert to restore saved originals.
+              {allRestorable
+                ? "Restore the selected media to its original version."
+                : `Choose a format and convert ${remainingTargets.length} selected ${mixedTargets ? "media entries" : kind === "scene" ? "videos" : "images"}.`}
             </p>
             <details className="settings-details mb-3">
               <summary>What happens to my files?</summary>
@@ -588,28 +637,48 @@ export const MediaConversionDialog: React.FC<{
                 </Form.Text>
               </Form.Group>
             </Row>
-            <div className="d-flex flex-wrap align-items-center mb-3">
+            <div className="mb-3">
               <Button
+                id="converter-primary-action"
                 variant="primary"
-                className="mr-2 mb-2"
-                disabled={!canConvert}
-                onClick={() => void action({ ...reviewRequest, action: "start" })}
-              >
-                Convert
-              </Button>
-              <Button
-                variant="outline-secondary"
-                className="mr-2 mb-2"
-                disabled={busy || selectedCount === 0}
+                disabled={
+                  busy ||
+                  !statusReady ||
+                  (allRestorable ? false : !canConvert)
+                }
                 onClick={() =>
-                  void action({ action: "restore-targets", targets })
+                  void action(
+                    allRestorable
+                      ? { action: "restore-targets", targets }
+                      : {
+                          ...reviewRequest,
+                          action: "start",
+                          targets: remainingTargets,
+                        }
+                  )
                 }
               >
-                Revert
+                {!statusReady
+                  ? "Checking conversion state…"
+                  : allRestorable
+                    ? "Revert"
+                    : remainingTargets.length < selectedCount
+                      ? "Convert remaining"
+                      : "Convert"}
               </Button>
-              <span className="small text-muted mb-2">
-                Revert requires an original in the restore cache.
-              </span>
+              {statusReady &&
+                !allRestorable &&
+                remainingTargets.length < selectedCount && (
+                  <small className="d-block text-muted mt-2">
+                    Already converted files will be skipped. Select converted
+                    files separately to revert them.
+                  </small>
+                )}
+              {restoreLookupError && (
+                <Alert variant="warning" className="mt-2">
+                  Could not check the current conversion state: {restoreLookupError}
+                </Alert>
+              )}
             </div>
             {gpuDecodeSpeedConflict && (
               <Alert variant="warning">
