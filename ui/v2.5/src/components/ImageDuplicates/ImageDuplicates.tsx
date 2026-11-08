@@ -8,7 +8,7 @@ import {
   Modal,
   Spinner,
 } from "react-bootstrap";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Helmet } from "react-helmet";
 
 import { useImagesDestroy } from "src/core/StashService";
@@ -22,6 +22,7 @@ import {
   duplicateReviewPlan,
   keptImageIDs,
   readableFileSize,
+  similarityMetadataCopyPlan,
   type SimilarImageGroup,
   type SimilarImageMember,
 } from "./review";
@@ -35,8 +36,19 @@ interface ClusterResponse {
   clusters: SimilarImageGroup[];
 }
 
+interface MetadataCopyCounts {
+  characters: number;
+  artists: number;
+  copyrights: number;
+  tags: number;
+}
+
 interface MetadataCopyResponse {
-  results: { imageID: number; error?: string }[];
+  results: {
+    imageID: number;
+    added: MetadataCopyCounts;
+    error?: string;
+  }[];
 }
 
 const pageSize = 12;
@@ -51,8 +63,13 @@ async function jsonResponse<T>(response: Response): Promise<T> {
 
 export default function ImageDuplicates() {
   const Toast = useToast();
+  const { search: locationSearch } = useLocation();
+  const initialMethod =
+    new URLSearchParams(locationSearch).get("method") === "embedding"
+      ? "embedding"
+      : defaultDuplicateMethod;
   const [search, setSearch] = useState({
-    method: defaultDuplicateMethod as DuplicateMatchMethod,
+    method: initialMethod as DuplicateMatchMethod,
     distance: "5",
     threshold: "0.94",
   });
@@ -72,6 +89,14 @@ export default function ImageDuplicates() {
   const [deleteFiles, setDeleteFiles] = useState(false);
   const [copyMetadata, setCopyMetadata] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [metadataReview, setMetadataReview] = useState<{
+    group: SimilarImageGroup;
+    sourceID: number;
+    targetIDs: number[];
+  }>();
+  const [metadataBusy, setMetadataBusy] = useState(false);
+  const [metadataCopyError, setMetadataCopyError] = useState("");
+  const [metadataCopyReport, setMetadataCopyReport] = useState<MetadataCopyResponse>();
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: reloadToken explicitly refreshes the server-derived similarity groups.
   useEffect(() => {
@@ -195,6 +220,80 @@ export default function ImageDuplicates() {
       Toast.error(cause);
     } finally {
       setBusy(false);
+    }
+  };
+
+  const metadataPlan = metadataReview
+    ? similarityMetadataCopyPlan(
+        metadataReview.group,
+        metadataReview.sourceID,
+        metadataReview.targetIDs
+      )
+    : { sourceImageID: 0, targetImageIDs: [] };
+
+  const startMetadataCopy = (group: SimilarImageGroup) => {
+    setMetadataReview({
+      group,
+      sourceID: group.members.some((item) => item.id === group.preferredID)
+        ? group.preferredID
+        : group.members[0].id,
+      targetIDs: [],
+    });
+    setMetadataCopyError("");
+    setMetadataCopyReport(undefined);
+  };
+
+  const confirmMetadataCopy = async () => {
+    if (
+      !metadataReview ||
+      metadataBusy ||
+      busy ||
+      metadataPlan.sourceImageID <= 0 ||
+      metadataPlan.targetImageIDs.length === 0
+    ) {
+      return;
+    }
+    setMetadataBusy(true);
+    setMetadataCopyError("");
+    setMetadataCopyReport(undefined);
+    try {
+      const response = await fetch(
+        "image/visual-similarity/clusters/copy-metadata",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(metadataPlan),
+        }
+      ).then(jsonResponse<MetadataCopyResponse>);
+      const failures = response.results.filter((item) => item.error);
+      const confirmed = new Set(response.results.map((item) => item.imageID));
+      const missing = metadataPlan.targetImageIDs.filter(
+        (id) => !confirmed.has(id)
+      );
+      if (failures.length > 0 || missing.length > 0) {
+        setMetadataCopyReport(response);
+        setMetadataCopyError(
+          "Some images could not be updated. Review the failed targets before retrying."
+        );
+        return;
+      }
+      const totals = response.results.reduce(
+        (sum, item) => ({
+          characters: sum.characters + item.added.characters,
+          artists: sum.artists + item.added.artists,
+          copyrights: sum.copyrights + item.added.copyrights,
+          tags: sum.tags + item.added.tags,
+        }),
+        { characters: 0, artists: 0, copyrights: 0, tags: 0 }
+      );
+      Toast.success(
+        `Added ${totals.characters} Characters, ${totals.artists} Artists, ${totals.copyrights} Copyrights and ${totals.tags} Tags to ${response.results.length} image(s).`
+      );
+      setMetadataReview(undefined);
+    } catch (cause) {
+      setMetadataCopyError(String(cause));
+    } finally {
+      setMetadataBusy(false);
     }
   };
 
@@ -510,6 +609,14 @@ export default function ImageDuplicates() {
                   </Button>
                   <Button
                     size="sm"
+                    variant="outline-secondary"
+                    disabled={busy || metadataBusy}
+                    onClick={() => startMetadataCopy(group)}
+                  >
+                    Copy missing metadata
+                  </Button>
+                  <Button
+                    size="sm"
                     variant="danger"
                     disabled={plan.remove.length === 0 || busy}
                     onClick={() => {
@@ -558,6 +665,132 @@ export default function ImageDuplicates() {
           onClose={() => setPreviewGroup(undefined)}
         />
       )}
+
+      <Modal
+        show={!!metadataReview}
+        onHide={() => !metadataBusy && setMetadataReview(undefined)}
+        centered
+      >
+        <Modal.Header closeButton={!metadataBusy}>
+          <Modal.Title>Copy missing image metadata</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="text-muted">
+            Copy existing Characters, Artists, Copyrights and Tags from one image
+            to the selected images. This only adds missing relationships; it
+            never replaces metadata, removes images or changes files.
+          </p>
+          {metadataReview && (
+            <>
+              <Form.Group controlId="similarity-metadata-source">
+                <Form.Label>Copy metadata from</Form.Label>
+                <Form.Control
+                  as="select"
+                  value={metadataReview.sourceID}
+                  disabled={metadataBusy}
+                  onChange={(event) => {
+                    const sourceID = Number(event.currentTarget.value);
+                    setMetadataReview((current) =>
+                      current ? { ...current, sourceID, targetIDs: [] } : current
+                    );
+                    setMetadataCopyError("");
+                    setMetadataCopyReport(undefined);
+                  }}
+                >
+                  {metadataReview.group.members.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      Image #{member.id}
+                      {member.preferred ? " (suggested)" : ""}
+                    </option>
+                  ))}
+                </Form.Control>
+              </Form.Group>
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <strong>Copy missing metadata to</strong>
+                <Button
+                  variant="link"
+                  size="sm"
+                  disabled={metadataBusy}
+                  onClick={() =>
+                    setMetadataReview((current) =>
+                      current
+                        ? {
+                            ...current,
+                            targetIDs: current.group.members
+                              .map((member) => member.id)
+                              .filter((id) => id !== current.sourceID),
+                          }
+                        : current
+                    )
+                  }
+                >
+                  Select all others
+                </Button>
+              </div>
+              {metadataReview.group.members
+                .filter((member) => member.id !== metadataReview.sourceID)
+                .map((member) => (
+                  <Form.Check
+                    key={member.id}
+                    type="checkbox"
+                    className="mb-2"
+                    id={`similarity-metadata-target-${member.id}`}
+                    label={`Image #${member.id}`}
+                    checked={metadataReview.targetIDs.includes(member.id)}
+                    disabled={metadataBusy}
+                    onChange={(event) => {
+                      const checked = event.currentTarget.checked;
+                      setMetadataReview((current) =>
+                        current
+                          ? {
+                              ...current,
+                              targetIDs: checked
+                                ? [...current.targetIDs, member.id]
+                                : current.targetIDs.filter(
+                                    (id) => id !== member.id
+                                  ),
+                            }
+                          : current
+                      );
+                      setMetadataCopyError("");
+                      setMetadataCopyReport(undefined);
+                    }}
+                  />
+                ))}
+            </>
+          )}
+          {metadataCopyError && (
+            <Alert variant="danger" role="alert">
+              {metadataCopyError}
+              {metadataCopyReport?.results
+                .filter((item) => item.error)
+                .map((item) => (
+                  <div key={item.imageID}>
+                    Image #{item.imageID}: {item.error}
+                  </div>
+                ))}
+            </Alert>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            disabled={metadataBusy}
+            onClick={() => setMetadataReview(undefined)}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            disabled={metadataBusy || metadataPlan.targetImageIDs.length === 0}
+            onClick={() => void confirmMetadataCopy()}
+          >
+            {metadataBusy
+              ? "Copying…"
+              : `Copy to ${metadataPlan.targetImageIDs.length} selected`}
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       <Modal
         show={!!reviewGroup}
