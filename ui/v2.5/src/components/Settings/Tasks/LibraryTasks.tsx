@@ -25,6 +25,7 @@ import {
   AutoTagWarning,
 } from "src/components/Shared/AutoTagConfirmDialog";
 import { useSettings } from "../context";
+import { AnimationInspectionTask } from "./AnimationInspectionTask";
 
 interface IAutoTagOptions {
   options: GQL.AutoTagMetadataInput;
@@ -403,6 +404,9 @@ export const LibraryTasks: React.FC = () => {
         >
           <ScanOptions options={scanOptions} setOptions={onSetScanOptions} />
         </SettingGroup>
+        <div className="mt-3">
+          <AnimationInspectionTask />
+        </div>
       </SettingSection>
 
       <SettingSection advanced>

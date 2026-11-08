@@ -33,6 +33,10 @@ export const AnimationInspectionTask: React.FC = () => {
   return (
     <div id="animation-inspection-task">
       <TaskHelpHeading title="Animation inspection" />
+      <p className="text-muted">
+        Regular scans detect animation in new Images. Run this once to inspect
+        existing Images imported before that detection was available.
+      </p>
       {error && <Alert variant="danger">{error}</Alert>}
       <Button
         variant="secondary"

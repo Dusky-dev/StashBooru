@@ -321,7 +321,8 @@ try {
       1
     );
     await chooseSection(page, "tasks");
-    await page.locator("#tasks-media").waitFor();
+    await page.locator("#tasks-library").waitFor();
+    assert.equal(await active(page).locator("#video-overlap-task").count(), 0);
     assert.equal(
       await active(page).locator("#image-storage-estimate-task").count(),
       0

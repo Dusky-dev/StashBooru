@@ -25,13 +25,16 @@ const movedSections: Record<string, SettingsTab> = {
   "#association-inheritance-settings": "library",
 };
 
-// Existing deep links to P12/P13 tools should follow their relocated panels.
+// Existing P12/P13 and Video overlap bookmarks should follow their relocated panels.
 // Task Queue and original-media backup remain on the Tasks page.
-const experimentalStorageAnchors = new Set([
+const experimentalAnchors = new Set([
   "#experimental-image-storage",
   "#experimental-storage-assess",
   "#experimental-storage-candidates",
   "#experimental-storage-recovery",
+  "#experimental-video-overlap",
+  "#video-overlap-task",
+  "#tasks-media",
   "#image-storage-estimate-task",
   "#image-storage-estimate-heading",
   "#image-storage-backup-preflight-task",
@@ -50,7 +53,7 @@ const experimentalStorageAnchors = new Set([
 // Keep bookmarks from before processing settings moved out of System.
 export function resolveSettingsTab(search: string, hash: string): SettingsTab {
   const tab = new URLSearchParams(search).get("tab");
-  if ((!tab || tab === "tasks") && experimentalStorageAnchors.has(hash)) {
+  if ((!tab || tab === "tasks") && experimentalAnchors.has(hash)) {
     return "experimental";
   }
   if ((!tab || tab === "system") && movedSections[hash]) {

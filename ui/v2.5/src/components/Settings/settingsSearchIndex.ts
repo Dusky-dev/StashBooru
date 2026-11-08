@@ -29,9 +29,9 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
   },
   {
     tab: "tasks",
-    label: "Image and Video processing tasks",
-    anchor: "tasks-media",
-    keywords: "animation overlap video inspect",
+    label: "Animation inspection",
+    anchor: "animation-inspection-task",
+    keywords: "scan library update image animated backfill",
   },
   {
     tab: "tasks",
@@ -43,6 +43,13 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
     tab: "tasks",
     label: "Plugin tasks",
     anchor: "tasks-plugins",
+  },
+  {
+    tab: "experimental",
+    label: "Video overlap / containment",
+    anchor: "experimental-video-overlap",
+    keywords:
+      "duplicate clip compilation matching index timeline partial video analysis",
   },
   {
     tab: "experimental",

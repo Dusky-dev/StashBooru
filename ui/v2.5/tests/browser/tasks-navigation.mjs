@@ -30,7 +30,7 @@ const browser = await chromium.launch({
 });
 const shots = process.env.STASH_BROWSER_SCREENSHOTS;
 if (shots) fs.mkdirSync(shots, { recursive: true });
-const groups = ["library", "profiles", "media", "maintenance", "plugins"];
+const groups = ["library", "profiles", "maintenance", "plugins"];
 const summary = (page, group) => page.locator(`#tasks-${group} > summary`);
 const isOpen = (page, group) =>
   page.locator(`#tasks-${group}`).evaluate((el) => el.open);
@@ -269,12 +269,19 @@ try {
 
     // Storage experiments move out of Tasks, but read-only P12/P13 reports
     // must continue working after navigation and reload.
-    await summary(page, "media").click();
+    await summary(page, "library").click();
     await checkTaskHelp(
       page,
       "animation-inspection-task",
       "Animation inspection"
     );
+    assert.equal(
+      await page.locator(".tab-pane.active #video-overlap-task").count(),
+      0
+    );
+    await chooseSection(page, "experimental");
+    await page.waitForURL(/tab=experimental/);
+    await page.locator("#experimental-video-overlap > summary").click();
     await checkTaskHelp(
       page,
       "video-overlap-task",
@@ -283,11 +290,9 @@ try {
     assert.equal(
       await page
         .locator(".tab-pane.active #image-storage-estimate-task")
-        .count(),
-      0
+        .isVisible(),
+      false
     );
-    await chooseSection(page, "experimental");
-    await page.waitForURL(/tab=experimental/);
     await page.locator("#experimental-storage-assess > summary").click();
     await page
       .locator("#image-storage-estimate-task")
@@ -352,7 +357,9 @@ try {
 
     // Return to Tasks; experimental controls are absent from the active pane.
     await chooseSection(page, "tasks");
-    if (!(await isOpen(page, "media"))) await summary(page, "media").click();
+    if (!(await isOpen(page, "library"))) {
+      await summary(page, "library").click();
+    }
     assert.equal(
       await page
         .locator(".tab-pane.active #image-storage-estimate-task")
@@ -367,8 +374,8 @@ try {
     await page
       .getByText("Animation worker unavailable", { exact: true })
       .waitFor();
-    await summary(page, "media").click();
-    await summary(page, "media").click();
+    await summary(page, "library").click();
+    await summary(page, "library").click();
     await page
       .getByText("Animation worker unavailable", { exact: true })
       .waitFor();
@@ -392,7 +399,7 @@ try {
     // Existing target IDs reveal the containing group and stay above the fold.
     for (const [hash, group] of [
       ["character-dedup-task", "profiles"],
-      ["animation-inspection-task", "media"],
+      ["animation-inspection-task", "library"],
       ["backup", "maintenance"],
     ]) {
       await page.goto(
@@ -410,6 +417,20 @@ try {
       assert.equal(new URL(page.url()).searchParams.get("return"), "images/42");
       await fit(page);
     }
+    // Old video-overlap links should open the Experimental disclosure.
+    await page.goto(
+      `${origin}/settings?tab=tasks&return=images%2F42#video-overlap-task`
+    );
+    await page.waitForURL(/tab=experimental.*#video-overlap-task$/);
+    await page.waitForFunction(
+      () => document.querySelector("#experimental-video-overlap")?.open
+    );
+    await page.locator(".tab-pane.active #video-overlap-task").waitFor();
+
+    await page.goto(`${origin}/settings?tab=tasks&return=images%2F42#backup`);
+    await page.waitForFunction(
+      () => document.querySelector("#tasks-maintenance")?.open
+    );
     await page.reload();
     await page.waitForFunction(
       () => document.querySelector("#tasks-maintenance")?.open
