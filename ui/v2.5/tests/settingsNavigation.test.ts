@@ -38,6 +38,25 @@ test("P12/P13 bookmarks move from Tasks to Experimental", () => {
   assert.equal(resolveSettingsTab("?tab=tasks", "#media-backup-task"), "tasks");
 });
 
+test("animation inspection stays with Tasks and legacy overlap bookmarks redirect", () => {
+  assert.equal(
+    resolveSettingsTab("?tab=tasks", "#animation-inspection-task"),
+    "tasks"
+  );
+  assert.equal(
+    resolveSettingsTab("?tab=tasks", "#video-overlap-task"),
+    "experimental"
+  );
+  assert.equal(
+    resolveSettingsTab("?tab=tasks", "#tasks-media"),
+    "experimental"
+  );
+  assert.equal(
+    resolveSettingsTab("?tab=experimental", "#experimental-video-overlap"),
+    "experimental"
+  );
+});
+
 test("ordinary settings routes and explicit tabs keep their destination", () => {
   assert.equal(resolveSettingsTab("?tab=system", "#transcoding"), "system");
   assert.equal(resolveSettingsTab("?tab=tasks", "#media-converter"), "tasks");
