@@ -5391,3 +5391,12 @@ these historical CI snapshots.
   Wall-mode stack member selection, richer Copyright backend filters, and
   full real-media regression on a representative library.
 - UI checks and CI are pending for this branch; do not merge until green.
+
+- Follow-up: shared All now exposes a native Copyright sidebar filter using
+  the existing Copyright selection GraphQL query; existing backend Copyright
+  criterion handles filtering. The scoped Copyright filter function was made
+  referentially stable with React useCallback to avoid repeated computation
+  across profile render cycles. The shared toolbar suppresses Filter when an
+  entity type has no supported criteria (Copyright list still has Search and
+  sorting). First CI Build had only Biome formatting findings, fixed in the
+  subsequent commits. Fresh checks remain pending.
