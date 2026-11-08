@@ -119,6 +119,7 @@ try {
               json: {
                 targets: body.targets.map((target) => ({
                   target,
+                  converted: false,
                   restorable: false,
                 })),
               },

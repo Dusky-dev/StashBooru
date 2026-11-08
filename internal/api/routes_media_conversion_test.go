@@ -93,6 +93,9 @@ func TestLatestRestorableConversionMatchesActiveFile(t *testing.T) {
 		t.Fatal("must not select a stale conversion for an unrelated active file")
 	}
 	history[2].Cached = false
+	if active := latestActiveConversion(history, 5, "/videos/current.webm"); active == nil || active.ID != "current" {
+		t.Fatal("evicted cache must not hide an actively converted file")
+	}
 	if _, err := latestRestorableConversion(history, 5, "/videos/current.webm"); err == nil {
 		t.Fatal("must refuse an evicted original")
 	}

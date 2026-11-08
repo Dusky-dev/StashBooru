@@ -318,3 +318,17 @@ Choose **Show advanced rule options** for quality, effort, decoding speed and
 format-specific overrides. The separate **Advanced conversion defaults** panel
 holds savings thresholds and trial retention. Hiding these controls does not
 reset or change their saved values; saving still applies the full configuration.
+
+
+### One-button Convert/Revert
+
+The primary button reflects the selected media's **active conversion status**, not
+merely the most recent button click. A newly imported Image or Video offers
+**Convert**. Once it has an active converted version, the same button reads
+**Revert**. After successfully restoring the original, the button reads
+**Convert** again. This state is loaded from the server when the dialog is
+reopened; existing conversions are detected as well. If the original restore
+cache has expired, Revert remains labeled correctly but is disabled with an
+explanation. For a mixed selection, **Convert remaining** converts only
+unconverted entries and does not automatically re-encode already-converted
+entries. Use a converted-only selection to revert a subset.

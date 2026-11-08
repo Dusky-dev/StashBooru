@@ -5355,3 +5355,17 @@ these historical CI snapshots.
   job-feedback browser run expected the old always-visible Statistics tab;
   updated it to open Advanced tools and History first. The final-head CI
   and runtime tests remain to be verified, and the PR is not merged.
+
+## Follow-up: one state-aware conversion button — 2026-11-08
+
+- PR #331, branch `fix/video-tab-title-and-converter-ui-20261108`.
+- Replaced the side-by-side Convert/Revert pair with a single button whose
+  label is obtained from the selected media's active conversion records via
+  the new read-only `restore-status` action. Reloads status when the dialog
+  opens and when a job completes. Revert returns to Convert after a successful
+  restore. Evicted originals still show a disabled Revert, not an unsafe
+  Convert. A mixed selection converts only remaining unconverted entries.
+- Extended the browser conversion fixture to model active conversions, reopen
+  persistence and partial selections. Updated the processing job resume mock
+  to recognize status reads; added Go test coverage for converted status when
+  cache retention has expired. Current-head CI is still a release gate.

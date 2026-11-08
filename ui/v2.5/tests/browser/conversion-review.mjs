@@ -217,6 +217,7 @@ try {
           payload = {
             targets: body.targets.map((target) => ({
               target,
+              converted: convertedTargets.has(key(target)),
               restorable: convertedTargets.has(key(target)),
             })),
           };
