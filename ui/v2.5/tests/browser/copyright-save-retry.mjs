@@ -98,6 +98,13 @@ async function check(viewport, label) {
       'mutation {tagCreate(input:{name:"Root Copyright",aliases:["Keep ordinary Tag"]}){id}}'
     )
   ).tagCreate;
+  const artist = (
+    await call(
+      page,
+      url,
+      'mutation {studioCreate(input:{name:"Scoped All Artist"}){id}}'
+    )
+  ).studioCreate;
   const others = async () =>
     await call(
       page,
@@ -383,29 +390,40 @@ async function check(viewport, label) {
     assert.deepEqual(await all(), final);
     await page.reload();
     await profile(first.id);
-    // A selected Copyright's All tab is a mixed Image/Video feed scoped
-    // to that Copyright and descendants, never the Copyright catalogue.
-    const mediaRequest = page.waitForRequest((request) => {
-      const payload = request.postDataJSON?.();
-      return (
-        request.url().endsWith("/graphql") &&
-        payload?.operationName === "FindMedia" &&
-        payload.variables?.media_filter?.copyrights !== undefined
-      );
-    });
-    await page.goto(url + `/copyrights/${first.id}/all`);
-    await page
-      .locator("#copyright-media-tabs-tabpane-all .media-list")
-      .waitFor();
-    const scoped = (await mediaRequest).postDataJSON().variables.media_filter;
-    assert.deepEqual(scoped.copyrights.value, [first.id]);
-    assert.equal(
-      await page.locator("#copyright-media-tabs-tabpane-all .copyright-list").count(),
-      0
-    );
+    // All inside a selected entity displays only that entity's Images and
+    // Videos, with the same native mixed-media list for all four entity types.
+    // Global /media is a separate, unscoped category.
+    const allScopes = [
+      {
+        route: "copyrights",
+        id: first.id,
+        field: "copyrights",
+        tab: "#copyright-media-tabs",
+      },
+      { route: "performers", id: keep.id, field: "performers", tab: "#performer-tabs" },
+      { route: "studios", id: artist.id, field: "studios", tab: "#studio-tabs" },
+      { route: "tags", id: tag.id, field: "tags", tab: "#tag-tabs" },
+    ];
+    for (const scope of allScopes) {
+      const mediaRequest = page.waitForRequest((request) => {
+        const payload = request.postDataJSON?.();
+        return (
+          request.url().endsWith("/graphql") &&
+          payload?.operationName === "FindMedia" &&
+          payload.variables?.media_filter?.[scope.field] !== undefined
+        );
+      });
+      await page.goto(url + `/${scope.route}/${scope.id}/all`);
+      await page
+        .locator(`${scope.tab}-tabpane-all .media-list`)
+        .waitFor();
+      const applied = (await mediaRequest).postDataJSON().variables.media_filter;
+      assert.deepEqual(applied[scope.field].value, [scope.id]);
+      assert.equal(await page.locator(".unified-media-inline-pane").count(), 0);
+    }
+
     await page.goto(url + "/media");
     await page.locator(".media-list").waitFor();
-    // Global All remains independent of selected Copyrights.
     const globalResults = await page.request.post(url + "/graphql", {
       data: {
         operationName: "FindMedia",
