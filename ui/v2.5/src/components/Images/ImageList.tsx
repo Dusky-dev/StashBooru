@@ -28,6 +28,7 @@ import { objectTitle, animationBadge } from "src/core/files";
 import { useConfigurationContext } from "src/hooks/Config";
 import { ImageCardGrid } from "./ImageCardGrid";
 import { View } from "../List/views";
+import { useInterfaceLocalForage } from "src/hooks/LocalForage";
 import {
   FilteredListToolbar,
   IItemListOperation,
@@ -538,6 +539,8 @@ export const FilteredImageList = PatchComponent(
   "FilteredImageList",
   (props: IImageList) => {
     const intl = useIntl();
+    const [{ data: localInterface }] = useInterfaceLocalForage();
+    const collapseStacks = localInterface?.hideStackVariants === true;
 
     const [slideshowRunning, setSlideshowRunning] = useState<boolean>(false);
 
@@ -559,7 +562,7 @@ export const FilteredImageList = PatchComponent(
         skip: imageIDs !== undefined && imageIDs.length === 0,
         variables: {
           filter: filter.makeFindFilter(),
-          image_filter: filter.makeFilter(),
+          image_filter: { ...filter.makeFilter(), collapse_stacks: collapseStacks },
           image_ids: imageIDs,
         },
       });
@@ -570,7 +573,7 @@ export const FilteredImageList = PatchComponent(
         skip: imageIDs !== undefined && imageIDs.length === 0,
         variables: {
           filter: filter.makeFindFilter(),
-          image_filter: filter.makeFilter(),
+          image_filter: { ...filter.makeFilter(), collapse_stacks: collapseStacks },
           image_ids: imageIDs,
         },
       });
