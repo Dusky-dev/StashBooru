@@ -113,10 +113,7 @@ test("old Tools visual similarity bookmarks open consolidated image review", () 
     undefined
   );
   assert.equal(
-    legacySimilarityReviewDestination(
-      "?tab=experimental",
-      "#tools-similarity"
-    ),
+    legacySimilarityReviewDestination("?tab=experimental", "#tools-similarity"),
     undefined
   );
 });
