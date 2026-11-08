@@ -929,7 +929,22 @@ func (qb *ImageStore) makeQuery(ctx context.Context, imageFilter *models.ImageFi
 }
 
 func (qb *ImageStore) Query(ctx context.Context, options models.ImageQueryOptions) (*models.ImageQueryResult, error) {
-	query, err := qb.makeQuery(ctx, options.ImageFilter, options.FindFilter)
+	similarity, err := getPHashSimilarityOptions(options.FindFilter)
+	if err != nil {
+		return nil, fmt.Errorf("reading perceptual similarity options: %w", err)
+	}
+	collapsePHash := options.ImageFilter != nil &&
+		options.ImageFilter.CollapseStacks != nil && *options.ImageFilter.CollapseStacks &&
+		similarity != nil && similarity.ReferenceID != nil && similarity.Method == "phash"
+	imageFilter := options.ImageFilter
+	if collapsePHash {
+		// For similarity, match all eligible variants first, not only the
+		// representative (which can be the excluded reference Image).
+		copyFilter := *imageFilter
+		copyFilter.CollapseStacks = nil
+		imageFilter = &copyFilter
+	}
+	query, err := qb.makeQuery(ctx, imageFilter, options.FindFilter)
 	if err != nil {
 		return nil, err
 	}
@@ -939,17 +954,18 @@ func (qb *ImageStore) Query(ctx context.Context, options models.ImageQueryOption
 		return nil, fmt.Errorf("error querying aggregate fields: %w", err)
 	}
 
-	similarity, err := getPHashSimilarityOptions(options.FindFilter)
-	if err != nil {
-		return nil, fmt.Errorf("reading perceptual similarity options: %w", err)
-	}
-
 	var idsResult []int
 	if similarity != nil {
 		var similarityCount int
-		idsResult, similarityCount, err = findPHashSimilarityIDs(
-			ctx, *query, imagesFilesTable, imageIDColumn, options.FindFilter, similarity,
-		)
+		if collapsePHash {
+			idsResult, similarityCount, err = findImagePHashSimilarityIDsCollapsed(
+				ctx, *query, options.FindFilter, *similarity.ReferenceID, similarity.Distance,
+			)
+		} else {
+			idsResult, similarityCount, err = findPHashSimilarityIDs(
+				ctx, *query, imagesFilesTable, imageIDColumn, options.FindFilter, similarity,
+			)
+		}
 		if options.Count {
 			result.Count = similarityCount
 		}
