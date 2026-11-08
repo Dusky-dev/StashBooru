@@ -108,9 +108,7 @@ export const SettingsAliasCollisionInspector: React.FC = () => {
             disabled={inspectLoading}
             placeholder="Canonical name or alias"
             aria-label="Canonical name or alias to inspect"
-            onChange={(event) =>
-              setInspectValue(event.currentTarget.value)
-            }
+            onChange={(event) => setInspectValue(event.currentTarget.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();
@@ -211,11 +209,7 @@ export const SettingsAliasCollisionInspector: React.FC = () => {
             {Object.entries(collisions.counts)
               .sort(([left], [right]) => left.localeCompare(right))
               .map(([kind, count]) => (
-                <Badge
-                  className="mr-2 mb-1"
-                  key={kind}
-                  variant="secondary"
-                >
+                <Badge className="mr-2 mb-1" key={kind} variant="secondary">
                   {kind}: {count}
                 </Badge>
               ))}
@@ -252,9 +246,7 @@ export const SettingsAliasCollisionInspector: React.FC = () => {
                               className="mr-1"
                               key={matchKind}
                               variant={
-                                matchKind === "canonical"
-                                  ? "primary"
-                                  : "info"
+                                matchKind === "canonical" ? "primary" : "info"
                               }
                             >
                               {matchKind}
