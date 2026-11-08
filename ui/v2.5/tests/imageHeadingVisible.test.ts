@@ -186,7 +186,11 @@ test("configured filename layout fills missing image title fields without taggin
     "re zero · emilia · Canonical Artist"
   );
   assert.equal(
-    imageDisplayHeading({ ...image, title: "My custom title" }, filename, options),
+    imageDisplayHeading(
+      { ...image, title: "My custom title" },
+      filename,
+      options
+    ),
     "My custom title"
   );
   assert.equal(
@@ -211,7 +215,9 @@ test("folder-based layout parses full file path and fills only missing slots", (
     title: null,
     id: "8",
     primary_copyright: { name: "Canonical Series" },
-    visual_files: [{ path: `/download/[source_artist]/(re_zero).emilia_${md5}.jxl` }],
+    visual_files: [
+      { path: `/download/[source_artist]/(re_zero).emilia_${md5}.jxl` },
+    ],
   };
   const options = {
     showImageAssociationTitles: true,
