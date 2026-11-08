@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import * as GQL from "src/core/generated-graphql";
 import {
   IHierarchicalLabeledIdCriterion,
@@ -25,14 +26,15 @@ const CopyrightsCriterionOption: ModifierCriterionOption =
 export const useCopyrightFilterHook = (
   copyright: Pick<GQL.CopyrightDataFragment, "id" | "name">
 ) => {
-  return (filter: ListFilterModel) => {
+  const { id, name } = copyright;
+  return useCallback((filter: ListFilterModel) => {
     const criterion = new IHierarchicalLabeledIdCriterion(
       CopyrightsCriterionOption,
       {
         items: [
           {
-            id: copyright.id,
-            label: copyright.name,
+            id,
+            label: name,
           },
         ],
         excluded: [],
@@ -47,5 +49,5 @@ export const useCopyrightFilterHook = (
     );
     filter.criteria.push(criterion);
     return filter;
-  };
+  }, [id, name]);
 };
