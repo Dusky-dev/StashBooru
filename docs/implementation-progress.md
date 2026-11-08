@@ -5409,3 +5409,26 @@ these historical CI snapshots.
   `View.CopyrightMedia` special case and restored global All's own state;
   kept the native Copyright selection filter on global All itself. Updated
   isolated browser coverage to prevent those two scopes being conflated.
+
+
+## Universal selected-entity All tab correction — November 9, 2026
+
+- Corrected prior assumption: top-menu `/media` is global Image+Video; after
+  selecting a Copyright, Character, Artist or Tag, its `/all` tab is **only**
+  matching Images+Videos. It does not display Copyright entity records.
+- All four profile tabs now use one native React `FilteredMediaList` with an
+  entity-specific filter hook and separate `View` preference keys. The native
+  Images/Videos/other entity tabs remain untouched.
+- Removed synthetic All tab injection for Character/Artist/Tag and disabled
+  Copyright All portal from the bundled Unified Media source. Preserved global
+  video-preview and animated-image enhancements, and updated the validated
+  bundled SHA-256 checksum to match. Eliminated competing tab owners and
+  route mutation observers that caused inconsistent active tabs and preview.
+- Stabilized native Character/Artist/Tag filter hooks via `useCallback`, and
+  ensured the descendant switch rewrites filter depth even when a criterion
+  already existed. Copyrights retain subtree semantics.
+- Updated Copyright and Character browser regression fixtures. Tests must
+  verify scoped `FindMedia` variables for all four detail pages, verify no
+  synthetic inline pane remains, and ensure global All stays unscoped.
+- Full compiled browser verification and CI still required; this is not a
+  claim that all filter, selection, Wall or stack issues have been eliminated.
