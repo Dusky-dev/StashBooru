@@ -342,24 +342,28 @@ try {
       `${origin}/settings?tab=tools&return=images%2F42#tools-similarity`
     );
     await page.waitForURL(/\/image-duplicates\?.*method=embedding/);
-    assert.equal(
-      new URL(page.url()).searchParams.get("return"),
-      "images/42"
-    );
-    await page.getByRole("heading", { name: "Review similar images" }).waitFor();
+    assert.equal(new URL(page.url()).searchParams.get("return"), "images/42");
+    await page
+      .getByRole("heading", { name: "Review similar images" })
+      .waitFor();
     assert.equal(
       await page.locator("#duplicate-method").inputValue(),
       "embedding"
     );
-    await page.getByRole("button", { name: "Copy missing metadata" }).waitFor();
-    const beforeCopy = requests.filter((request) => request.body).length;
     await page
       .getByRole("button", { name: "Copy missing metadata" })
-      .click();
+      .waitFor();
+    const beforeCopy = requests.filter((request) => request.body).length;
+    await page.getByRole("button", { name: "Copy missing metadata" }).click();
     const dialog = page.getByRole("dialog");
-    assert.equal(await dialog.locator("#similarity-metadata-source").inputValue(), "1");
     assert.equal(
-      await dialog.getByRole("button", { name: "Copy to 0 selected" }).isDisabled(),
+      await dialog.locator("#similarity-metadata-source").inputValue(),
+      "1"
+    );
+    assert.equal(
+      await dialog
+        .getByRole("button", { name: "Copy to 0 selected" })
+        .isDisabled(),
       true
     );
     await dialog.getByRole("button", { name: "Cancel" }).click();
@@ -373,9 +377,7 @@ try {
       .click();
     await dialog.getByLabel("Image #2").check();
     await dialog.getByRole("button", { name: "Copy to 1 selected" }).click();
-    await page.waitForFunction(
-      () => !document.querySelector(".modal.show")
-    );
+    await page.waitForFunction(() => !document.querySelector(".modal.show"));
     assert.deepEqual(
       requests.filter((request) => request.body).map((request) => request.body),
       [{ sourceImageID: 1, targetImageIDs: [2] }]
