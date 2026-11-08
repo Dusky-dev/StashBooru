@@ -55,3 +55,19 @@ test("P12/P13 storage settings search goes to Experimental", () => {
     )
   );
 });
+
+test("Animation inspection search leads to scanning and Video overlap to Experimental", () => {
+  assert.ok(
+    searchSettings("animation inspection").some(
+      (entry) =>
+        entry.tab === "tasks" && entry.anchor === "animation-inspection-task"
+    )
+  );
+  assert.ok(
+    searchSettings("video overlap").some(
+      (entry) =>
+        entry.tab === "experimental" &&
+        entry.anchor === "experimental-video-overlap"
+    )
+  );
+});
