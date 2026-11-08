@@ -6,7 +6,16 @@ import {
 } from "../src/models/list-filter/pageValidity.ts";
 
 test("URL page and page-size values must be positive safe integers", () => {
-  for (const invalid of ["", "0", "-2", "2garbage", "2.5", "Infinity", "NaN", "9999999999999999999999999999"]) {
+  for (const invalid of [
+    "",
+    "0",
+    "-2",
+    "2garbage",
+    "2.5",
+    "Infinity",
+    "NaN",
+    "9999999999999999999999999999",
+  ]) {
     assert.equal(parsePositiveListInteger(invalid), undefined, invalid);
   }
   assert.equal(parsePositiveListInteger(null), undefined);
