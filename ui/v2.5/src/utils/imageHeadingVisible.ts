@@ -1,4 +1,4 @@
-import { parseImageFilenameLayout } from "./mediaFilenameLayout";
+import { parseImageFilenameLayout } from "./mediaFilenameLayout.ts";
 
 /**
  * Image headings use the filename when no title was supplied by the user.
