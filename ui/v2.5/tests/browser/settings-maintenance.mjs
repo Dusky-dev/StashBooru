@@ -364,6 +364,7 @@ try {
         .evaluateAll((options) => options.map((option) => option.value)),
       [
         "tasks",
+        "experimental",
         "library",
         "processing",
         "interface",
