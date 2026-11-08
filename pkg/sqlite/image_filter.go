@@ -53,14 +53,6 @@ func (qb *imageFilterHandler) handle(ctx context.Context, f *filterBuilder) {
 func (qb *imageFilterHandler) criterionHandler() criterionHandler {
 	imageFilter := qb.imageFilter
 	return compoundHandler{
-		criterionHandlerFunc(func(_ context.Context, f *filterBuilder) {
-			if imageFilter.CollapseStacks != nil && *imageFilter.CollapseStacks {
-				// Filtering in SQL keeps counts, sorting and pagination correct.
-				// Images belonging to a stack represented by a Video are hidden
-				// from the Images-only list; they remain available in global All.
-				f.addWhere("NOT EXISTS (SELECT 1 FROM visual_stack_members sm WHERE sm.image_id = images.id AND sm.representative = 0)")
-			}
-		}),
 		intCriterionHandler(imageFilter.ID, "images.id", nil),
 		criterionHandlerFunc(func(ctx context.Context, f *filterBuilder) {
 			if imageFilter.Checksum != nil {
