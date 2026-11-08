@@ -138,3 +138,20 @@ If an editor removes the originally opened member during a preview, that preview
 falls back to its original native item; representative changes preserve the
 selected variant while the opened member remains grouped. P09 conversion
 trial/threshold work is a separate package.
+
+
+## All Wall view controls
+
+Mixed **All → Wall** cards show the same **Stack · N** control as Grid cards
+for Images and Videos belonging to visual stacks. The badge opens the existing
+viewport-bounded stack member popover, including thumbnails, previews, links
+and checkboxes. Clicking the badge or its controls must not navigate to the
+media detail page or toggle the representative card's selection. Selecting
+hidden stack members uses typed media IDs and preserves the current grouping,
+filters and page.
+
+Both Image and Video native Wall items accept an optional stack-control slot.
+It is populated by the All Wall renderer only when the item has a visual stack;
+ordinary native Images and Videos walls are unchanged. A desktop/mobile
+isolated visual-stack browser regression covers reopening the Wall badge and
+selecting a hidden member while the stack is collapsed.
