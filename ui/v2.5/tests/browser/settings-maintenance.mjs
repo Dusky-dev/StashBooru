@@ -306,6 +306,32 @@ try {
     await settingsSearch.fill("not-a-real-setting-xyz");
     await page.getByText("No matching settings.", { exact: true }).waitFor();
     await settingsSearch.fill("");
+
+    // P12/P13 tools are only on Experimental; direct old Task bookmarks
+    // and the Settings search must both reach the same lazy-mounted page.
+    await settingsSearch.fill("p12");
+    await page
+      .locator("#settings-search-results a")
+      .filter({ hasText: "P12/P13 image storage experiments" })
+      .click();
+    await page.waitForURL(/tab=experimental.*#experimental-image-storage$/);
+    await page.locator("#experimental-storage-assess").waitFor();
+    assert.equal(
+      await page.locator("#experimental-storage-candidates").count(),
+      1
+    );
+    await chooseSection(page, "tasks");
+    await page.locator("#tasks-media").waitFor();
+    assert.equal(await page.locator("#image-storage-estimate-task").count(), 0);
+    await page.goto(
+      `${baseURL}/settings?tab=tasks&return=images%2F42#image-storage-estimate-task`
+    );
+    await page.waitForURL(/tab=experimental.*#image-storage-estimate-task$/);
+    await page.locator("#image-storage-estimate-task").waitFor();
+    await page.waitForFunction(
+      () => document.querySelector("#experimental-storage-assess")?.open
+    );
+    assert.equal(new URL(page.url()).searchParams.get("return"), "images/42");
     await chooseSection(page, "library");
     await page.locator("#inherit-character-ancestors").waitFor();
 
@@ -319,7 +345,7 @@ try {
     const desktopLinks = page.locator(
       "#settings-menu-container .nav-link:visible"
     );
-    assert.equal(await desktopLinks.count(), name === "mobile" ? 0 : 13);
+    assert.equal(await desktopLinks.count(), name === "mobile" ? 0 : 14);
     assert.equal(await chooser.isVisible(), name === "mobile");
     assert.equal(await chooser.inputValue(), "library");
     assert.equal(
@@ -727,7 +753,7 @@ try {
     for (const width of [575, 576, 767, 768]) {
       await page.setViewportSize({ width, height: viewport.height });
       assert.equal(await chooser.isVisible(), width < 768);
-      assert.equal(await desktopLinks.count(), width < 768 ? 0 : 13);
+      assert.equal(await desktopLinks.count(), width < 768 ? 0 : 14);
       assert.equal(
         await page.locator("#settings-menu-container .nav-link.active").count(),
         1
