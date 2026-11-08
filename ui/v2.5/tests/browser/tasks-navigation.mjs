@@ -267,8 +267,8 @@ try {
     if (shots)
       await page.screenshot({ path: `${shots}/tasks-review-${name}.png` });
 
-    // Complete read-only reports must not crash Settings after refresh/remount.
-    // P12 supplies a layout string while P13 supplies an object with "kind".
+    // Storage experiments move out of Tasks, but read-only P12/P13 reports
+    // must continue working after navigation and reload.
     await summary(page, "media").click();
     await checkTaskHelp(
       page,
@@ -280,6 +280,10 @@ try {
       "video-overlap-task",
       "Video overlap / containment"
     );
+    assert.equal(await page.locator(".tab-pane.active #image-storage-estimate-task").count(), 0);
+    await chooseSection(page, "experimental");
+    await page.waitForURL(/tab=experimental/);
+    await page.locator("#experimental-storage-assess > summary").click();
     await page
       .locator("#image-storage-estimate-task")
       .getByText("shared-tiles (independent)", { exact: true })
@@ -292,7 +296,14 @@ try {
       1
     );
     await page.reload();
-    if (!(await isOpen(page, "media"))) await summary(page, "media").click();
+    await page.waitForURL(/tab=experimental/);
+    if (
+      !(await page
+        .locator("#experimental-storage-assess")
+        .evaluate((el) => el.open))
+    ) {
+      await page.locator("#experimental-storage-assess > summary").click();
+    }
     await page
       .locator("#image-storage-estimate-task")
       .getByText("shared-tiles (independent)", { exact: true })
@@ -333,6 +344,11 @@ try {
       { auto: true, sampleSize: 8, fidelity: "byte-exact" },
       { auto: true, sampleSize: 8, diverse: true, fidelity: "byte-exact" },
     ]);
+
+    // Return to Tasks; experimental controls are absent from the active pane.
+    await chooseSection(page, "tasks");
+    if (!(await isOpen(page, "media"))) await summary(page, "media").click();
+    assert.equal(await page.locator(".tab-pane.active #image-storage-estimate-task").count(), 0);
 
     // Failed submissions remain visible after closing and reopening a group.
     await page
