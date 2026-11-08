@@ -459,7 +459,7 @@ async function check(viewport, label) {
     assert.equal(await page.locator(".selected-count").count(), 0);
     await page
       .locator(".copyright-list .filtered-list-toolbar button")
-      .filter({ has: page.locator("svg[data-icon='th-large']") })
+      .filter({ has: page.locator("svg[data-icon='table-cells-large']") })
       .click();
     await page
       .locator(`.card-section-title-row a[href="/copyrights/${first.id}"]`)
