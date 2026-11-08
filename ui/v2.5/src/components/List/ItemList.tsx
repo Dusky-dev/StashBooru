@@ -46,7 +46,7 @@ export function useFilteredItemList<
     filter,
     ...props.queryResultProps,
   });
-  const { result, items, totalCount, pages, metadataInfo } = queryResult;
+  const { result, items, pages, metadataInfo } = queryResult;
 
   const listSelect = useListSelect(items, props.initialSelected);
   const { onSelectAll, onSelectNone, onInvertSelection } = listSelect;
