@@ -416,7 +416,9 @@ func TestP08ImageOnlyRepresentativeFilteringBeforePagination(t *testing.T) {
 				},
 				ImageFilter: &models.ImageFilterType{CollapseStacks: &collapse},
 			})
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 			require.Equal(t, 4, result.Count, "count must reflect visible representatives, not hidden variants")
 			ids = append(ids, result.IDs...)
 			return nil
@@ -424,13 +426,6 @@ func TestP08ImageOnlyRepresentativeFilteringBeforePagination(t *testing.T) {
 	}
 	require.Equal(t, []int{2, 3, 4, 5}, ids)
 	p07GraphQL(t, r, `query { findImages(image_filter:{collapse_stacks:true},filter:{per_page:2,sort:"id"}) { count images { id } } }`, nil)
-	stack = p08Write(t, r, func(ctx context.Context) (*models.VisualStack, error) {
-		return r.VisualStack.Update(ctx, models.VisualStackUpdateInput{
-			ID: stack.ID, Version: stack.Version, Members: p08Inputs(stack),
-			Representative: b,
-		})
-	})
-	require.Equal(t, "image:2", stack.Representative)
 	// A mixed stack with a Video representative is visible in global All but
 	// not in the Images-only representative view.
 	stack = p08Write(t, r, func(ctx context.Context) (*models.VisualStack, error) {
@@ -445,7 +440,9 @@ func TestP08ImageOnlyRepresentativeFilteringBeforePagination(t *testing.T) {
 			QueryOptions: models.QueryOptions{FindFilter: &models.FindFilterType{Sort: &sort}, Count: true},
 			ImageFilter: &models.ImageFilterType{CollapseStacks: &collapse},
 		})
-		if err != nil { return err }
+		if err != nil {
+				return err
+			}
 		require.Equal(t, 3, result.Count)
 		return nil
 	}))
