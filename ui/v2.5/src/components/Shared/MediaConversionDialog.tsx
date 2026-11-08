@@ -39,6 +39,7 @@ interface Target {
 }
 interface TargetRestoreStatus {
   target: Target;
+  converted: boolean;
   restorable: boolean;
 }
 const targetKey = (target: Target) => `${target.kind}:${target.id}`;
@@ -493,6 +494,9 @@ export const MediaConversionDialog: React.FC<{
   };
   const statuses =
     restoreLookup?.key === targetsJSON ? restoreLookup.targets : undefined;
+  const converted = new Set(
+    statuses?.filter((item) => item.converted).map((item) => targetKey(item.target))
+  );
   const restorable = new Set(
     statuses?.filter((item) => item.restorable).map((item) => targetKey(item.target))
   );
@@ -501,10 +505,14 @@ export const MediaConversionDialog: React.FC<{
     targets.every((target) =>
       statuses.some((item) => targetKey(item.target) === targetKey(target))
     );
+  const allConverted =
+    statusReady &&
+    selectedCount > 0 &&
+    targets.every((target) => converted.has(targetKey(target)));
   const allRestorable =
-    statusReady && selectedCount > 0 && targets.every((target) => restorable.has(targetKey(target)));
+    allConverted && targets.every((target) => restorable.has(targetKey(target)));
   const remainingTargets = targets.filter(
-    (target) => !restorable.has(targetKey(target))
+    (target) => !converted.has(targetKey(target))
   );
   const canConvert =
     !busy &&
@@ -568,7 +576,7 @@ export const MediaConversionDialog: React.FC<{
         >
           <Tab eventKey="convert" title="Convert">
             <p className="text-muted">
-              {allRestorable
+              {allConverted
                 ? "Restore the selected media to its original version."
                 : `Choose a format and convert ${remainingTargets.length} selected ${mixedTargets ? "media entries" : kind === "scene" ? "videos" : "images"}.`}
             </p>
@@ -644,11 +652,11 @@ export const MediaConversionDialog: React.FC<{
                 disabled={
                   busy ||
                   !statusReady ||
-                  (allRestorable ? false : !canConvert)
+                  (allConverted ? !allRestorable : !canConvert)
                 }
                 onClick={() =>
                   void action(
-                    allRestorable
+                    allConverted
                       ? { action: "restore-targets", targets }
                       : {
                           ...reviewRequest,
@@ -660,20 +668,25 @@ export const MediaConversionDialog: React.FC<{
               >
                 {!statusReady
                   ? "Checking conversion state…"
-                  : allRestorable
+                  : allConverted
                     ? "Revert"
                     : remainingTargets.length < selectedCount
                       ? "Convert remaining"
                       : "Convert"}
               </Button>
               {statusReady &&
-                !allRestorable &&
+                !allConverted &&
                 remainingTargets.length < selectedCount && (
                   <small className="d-block text-muted mt-2">
                     Already converted files will be skipped. Select converted
                     files separately to revert them.
                   </small>
                 )}
+              {allConverted && !allRestorable && (
+                <small className="d-block text-warning mt-2">
+                  Original version is no longer available in the restore cache.
+                </small>
+              )}
               {restoreLookupError && (
                 <Alert variant="warning" className="mt-2">
                   Could not check the current conversion state: {restoreLookupError}
