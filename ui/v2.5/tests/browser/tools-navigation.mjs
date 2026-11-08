@@ -168,8 +168,9 @@ try {
     assert.equal(
       await page
         .getByRole("link", { name: "Video filename parser", exact: true })
-        .getAttribute("href"),
-      "/sceneFilenameParser"
+        .count(),
+      0,
+      "The standalone parser is retired from Tools"
     );
     assert.equal(
       await page

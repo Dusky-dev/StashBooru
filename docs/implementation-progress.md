@@ -5267,3 +5267,20 @@ these historical CI snapshots.
 - Next: applicable CI and completed Codex Review on the final head; end when only
   external gates remain. Continue Collection hierarchy/ordered editing as its own
   bounded acceptance pass, followed by recovery/upgrade/plugin workflows.
+
+
+## Video filename parser retirement — 2026-11-08
+
+- Baseline: `develop` `e53624b23076656be5498edf11cd347ca80a0bda`.
+  Branch: `refactor/retire-video-filename-parser-20261108`.
+- Moved advanced pattern matching/review into the Video **Review metadata…**
+  dialog, removed the standalone Settings → Tools link, and redirect old parser
+  bookmarks to Videos. Kept the existing GraphQL/Go parser for filename-format
+  compatibility; the standard Processing Filename layout remains unchanged.
+- The legacy apply path replaces selected Character/Tag ID sets: added an
+  explicit confirmation when proposed changes would remove prior relationships.
+  Fixed rating100 parsing for multi-digit values, and added safety and parser
+  regression tests plus a browser navigation/review fixture.
+- Verification: source edits checked against branch head; local build/test
+  execution unavailable in this API-only GitHub environment. CI, browser runtime
+  and Codex review on the PR remain the release gates; do not merge unverified.
