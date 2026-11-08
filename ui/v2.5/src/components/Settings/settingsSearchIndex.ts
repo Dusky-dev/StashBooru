@@ -48,7 +48,8 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
     tab: "experimental",
     label: "Video overlap / containment",
     anchor: "experimental-video-overlap",
-    keywords: "duplicate clip compilation matching index timeline partial video analysis",
+    keywords:
+      "duplicate clip compilation matching index timeline partial video analysis",
   },
   {
     tab: "experimental",
