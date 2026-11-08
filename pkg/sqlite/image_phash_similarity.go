@@ -28,6 +28,14 @@ GROUP BY candidates.id`, candidateSQL)
 }
 
 func findImagePHashSimilarityIDs(ctx context.Context, query queryBuilder, findFilter *models.FindFilterType, referenceID, distance int) ([]int, int, error) {
+	return findImagePHashSimilarityIDsWithCollapse(ctx, query, findFilter, referenceID, distance, false)
+}
+
+func findImagePHashSimilarityIDsCollapsed(ctx context.Context, query queryBuilder, findFilter *models.FindFilterType, referenceID, distance int) ([]int, int, error) {
+	return findImagePHashSimilarityIDsWithCollapse(ctx, query, findFilter, referenceID, distance, true)
+}
+
+func findImagePHashSimilarityIDsWithCollapse(ctx context.Context, query queryBuilder, findFilter *models.FindFilterType, referenceID, distance int, collapse bool) ([]int, int, error) {
 	// Load the reference separately: it need not pass the result filters.
 	var reference sql.NullInt64
 	if err := dbWrapper.Get(ctx, &reference, imagePrimaryPHashSQL, referenceID); err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -38,6 +46,23 @@ func findImagePHashSimilarityIDs(ctx context.Context, query queryBuilder, findFi
 	}
 
 	matchesSQL := imagePHashMatchesSQL(query.toSQL(false))
+	if collapse {
+		// Match variants first, then choose their actual stack representative.
+		// The reference itself is excluded from matches; a matching variant
+		// must still yield its representative even when that is the reference.
+		// Mixed stacks represented by a Video have no Image card in Images.
+		matchesSQL = `WITH matched AS (` + matchesSQL + `),
+  grouped AS (
+    SELECT COALESCE('stack:' || sm.stack_id, 'image:' || matched.id) AS group_key,
+      CASE WHEN sm.stack_id IS NULL THEN matched.id ELSE rep.image_id END AS display_id,
+      matched.distance
+    FROM matched
+    LEFT JOIN visual_stack_members sm ON sm.image_id = matched.id
+    LEFT JOIN visual_stack_members rep ON rep.stack_id = sm.stack_id AND rep.representative = 1
+  )
+  SELECT MAX(display_id) AS id, MIN(distance) AS distance
+  FROM grouped GROUP BY group_key HAVING MAX(display_id) IS NOT NULL`
+	}
 	args := []interface{}{reference.Int64}
 	args = append(args, query.allArgs()...)
 	args = append(args, referenceID, reference.Int64, distance)
