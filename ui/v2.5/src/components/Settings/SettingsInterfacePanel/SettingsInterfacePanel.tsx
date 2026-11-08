@@ -647,7 +647,9 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
               />
             )}
             renderValue={(value) => (
-              <span>{value || "Not configured (legacy filenames remain unchanged)"}</span>
+              <span>
+                {value || "Not configured (legacy filenames remain unchanged)"}
+              </span>
             )}
           />
           <BooleanSetting
