@@ -8,6 +8,7 @@ import {
   duplicateReviewPlan,
   keptImageIDs,
   readableFileSize,
+  similarityMetadataCopyPlan,
 } from "../src/components/ImageDuplicates/review.ts";
 
 const group = {
@@ -95,5 +96,27 @@ test("comparison tolerates missing preferred ID without crashing", () => {
   assert.deepEqual(duplicateComparisonPair({ ...group, preferredID: 777 }, 2), {
     referenceID: 9,
     selectedID: 2,
+  });
+});
+
+test("metadata copying is independent of duplicate removal choices", () => {
+  assert.deepEqual(similarityMetadataCopyPlan(group, 5, [9, 2]), {
+    sourceImageID: 5,
+    targetImageIDs: [9, 2],
+  });
+  assert.deepEqual(
+    similarityMetadataCopyPlan(group, 5, []),
+    { sourceImageID: 5, targetImageIDs: [] }
+  );
+});
+
+test("metadata copy rejects source, foreign IDs and duplicate targets", () => {
+  assert.deepEqual(similarityMetadataCopyPlan(group, 5, [5, 2, 2, 777, 9]), {
+    sourceImageID: 5,
+    targetImageIDs: [2, 9],
+  });
+  assert.deepEqual(similarityMetadataCopyPlan(group, 777, [5, 2]), {
+    sourceImageID: 5,
+    targetImageIDs: [2],
   });
 });
