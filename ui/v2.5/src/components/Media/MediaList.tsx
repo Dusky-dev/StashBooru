@@ -29,6 +29,7 @@ import {
 import { SidebarStudiosFilter } from "../List/Filters/StudiosFilter";
 import { SidebarPerformersFilter } from "../List/Filters/PerformersFilter";
 import { SidebarTagsFilter } from "../List/Filters/TagsFilter";
+import { SidebarCopyrightsFilter } from "../List/Filters/CopyrightsFilter";
 import { SidebarRatingFilter } from "../List/Filters/RatingFilter";
 import { SidebarDurationFilter } from "../List/Filters/SidebarDurationFilter";
 import { SidebarBooleanFilter } from "../List/Filters/BooleanFilter";
@@ -299,6 +300,7 @@ const FilteredMediaListComponent = ({
             <SidebarStudiosFilter filter={filter} setFilter={setFilter} />
             <SidebarPerformersFilter filter={filter} setFilter={setFilter} />
             <SidebarTagsFilter filter={filter} setFilter={setFilter} />
+            <SidebarCopyrightsFilter filter={filter} setFilter={setFilter} />
             <SidebarRatingFilter filter={filter} setFilter={setFilter} />
             <SidebarDurationFilter filter={filter} setFilter={setFilter} />
             <SidebarBooleanFilter
