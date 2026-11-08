@@ -10,6 +10,7 @@ import { ImageStorageMissingOriginalTask } from "./Tasks/ImageStorageMissingOrig
 import { ImageStorageRestorePlanTask } from "./Tasks/ImageStorageRestorePlanTask";
 import { ImageStorageShadowTask } from "./Tasks/ImageStorageShadowTask";
 import { ImageStorageConsumerAuditTask } from "./Tasks/ImageStorageConsumerAuditTask";
+import { VideoOverlapTask } from "./Tasks/VideoOverlapTask";
 
 export function SettingsExperimentalPanel() {
   const location = useLocation();
@@ -23,8 +24,8 @@ export function SettingsExperimentalPanel() {
     <div id="experimental-settings" className="tasks-panel-tasks">
       <h1>Experimental</h1>
       <p className="text-muted">
-        Early-stage tools are separated from routine Settings tasks. Opening
-        this page does not start a job or enable packed image serving.
+        Early-stage analysis tools are separated from routine Settings tasks.
+        Opening this page does not start a job or enable packed image serving.
       </p>
       <Alert variant="warning">
         <strong>
@@ -40,6 +41,13 @@ export function SettingsExperimentalPanel() {
         Follow running experiments in the{" "}
         <Link to={tasksLink("#job-queue")}>Task Queue</Link>.
       </p>
+      <SettingsDisclosure
+        id="experimental-video-overlap"
+        title="Video overlap / containment"
+        description="Explore possible Video duplicates, partial overlaps and clips within compilations. Indexing and matches require review before taking action."
+      >
+        <VideoOverlapTask />
+      </SettingsDisclosure>
       <section id="experimental-image-storage">
         <h2>P12/P13 image storage experiments</h2>
         <SettingsDisclosure
