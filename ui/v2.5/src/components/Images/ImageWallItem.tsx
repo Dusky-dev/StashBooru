@@ -77,6 +77,7 @@ export const ImageWallItem: React.FC<RenderImageProps & IExtraProps> = (
   return (
     <div
       className="wall-item"
+      data-media-kind="image"
       data-animation-badge={props.animationLabel || undefined}
       style={divStyle}
       onClick={handleClick}
@@ -129,7 +130,6 @@ export const ImageWallItem: React.FC<RenderImageProps & IExtraProps> = (
         width={width}
         height={height}
         alt={props.photo.alt}
-        onClick={handleClick}
       />
       <AnimationBadge label={props.animationLabel} />
     </div>
