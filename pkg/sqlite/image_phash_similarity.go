@@ -79,3 +79,41 @@ func findImagePHashSimilarityIDsWithCollapse(ctx context.Context, query queryBui
 	}
 	return ids, total, nil
 }
+
+// collapseSortedImageIDs retains the first ranked hit for each visual stack
+ // but displays its actual Image representative. A Video representative has
+ // no Images-only card, so matching Images in that stack are omitted here.
+func collapseSortedImageIDs(ctx context.Context, ranked []int, findFilter *models.FindFilterType) ([]int, int, error) {
+	var members []struct {
+		ImageID int           `db:"image_id"`
+		DisplayID sql.NullInt64 `db:"display_id"`
+	}
+	err := dbWrapper.Select(ctx, &members, `SELECT sm.image_id AS image_id, rep.image_id AS display_id
+  FROM visual_stack_members sm
+  LEFT JOIN visual_stack_members rep ON rep.stack_id = sm.stack_id AND rep.representative = 1
+  WHERE sm.image_id IS NOT NULL`)
+	if err != nil {
+		return nil, 0, fmt.Errorf("looking up ranked Image stack representatives: %w", err)
+	}
+	representatives := make(map[int]int, len(members))
+	for _, member := range members {
+		if member.DisplayID.Valid {
+			representatives[member.ImageID] = int(member.DisplayID.Int64)
+		} else {
+			representatives[member.ImageID] = 0
+		}
+	}
+	collapsed := make([]int, 0, len(ranked))
+	seen := make(map[int]bool)
+	for _, id := range ranked {
+		if representative, grouped := representatives[id]; grouped {
+			id = representative
+		}
+		if id <= 0 || seen[id] {
+			continue
+		}
+		seen[id] = true
+		collapsed = append(collapsed, id)
+	}
+	return paginatePHashSimilarityIDs(collapsed, findFilter), len(collapsed), nil
+}
