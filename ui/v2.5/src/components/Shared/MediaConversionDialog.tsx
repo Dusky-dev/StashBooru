@@ -229,6 +229,8 @@ export const MediaConversionDialog: React.FC<{
   const running =
     state?.job?.status === "queued" || state?.job?.status === "running";
   const busy = submitting || running;
+  const hasLoadedState = Boolean(state);
+  const jobStatusKey = `${state?.job?.batch ?? ""}:${state?.job?.status ?? ""}`;
   const defaultOutputIDs = [
     ...new Set(plans.filter((p) => !p.error).map((p) => p.output)),
   ];
@@ -323,7 +325,7 @@ export const MediaConversionDialog: React.FC<{
   // Check the currently active file version, not merely this dialog's last
   // action. A completed job (including a restore) refreshes the primary button.
   useEffect(() => {
-    if (!state || running) return;
+    if (!hasLoadedState || running) return;
     const controller = new AbortController();
     setRestoreLookup(undefined);
     setRestoreLookupError("");
@@ -346,7 +348,7 @@ export const MediaConversionDialog: React.FC<{
         if (!controller.signal.aborted) setRestoreLookupError(e.message);
       });
     return () => controller.abort();
-  }, [targetsJSON, !!state, state?.job?.status, state?.job?.batch, running]);
+  }, [targetsJSON, hasLoadedState, jobStatusKey, running]);
 
   useEffect(() => {
     if (!backend) return;
