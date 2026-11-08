@@ -104,10 +104,10 @@ test("metadata copying is independent of duplicate removal choices", () => {
     sourceImageID: 5,
     targetImageIDs: [9, 2],
   });
-  assert.deepEqual(
-    similarityMetadataCopyPlan(group, 5, []),
-    { sourceImageID: 5, targetImageIDs: [] }
-  );
+  assert.deepEqual(similarityMetadataCopyPlan(group, 5, []), {
+    sourceImageID: 5,
+    targetImageIDs: [],
+  });
 });
 
 test("metadata copy rejects source, foreign IDs and duplicate targets", () => {
