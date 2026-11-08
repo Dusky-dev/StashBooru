@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  legacySimilarityReviewDestination,
   resolveSettingsTab,
   settingsSearch,
   settingsTabs,
@@ -93,4 +94,29 @@ test("Experimental is the last Settings section without changing its URLs", () =
   assert.equal(settingsTabs[settingsTabs.length - 1], "experimental");
   assert.equal(new Set(settingsTabs).size, settingsTabs.length);
   assert.equal(resolveSettingsTab("?tab=experimental", ""), "experimental");
+});
+
+test("old Tools visual similarity bookmarks open consolidated image review", () => {
+  assert.equal(
+    legacySimilarityReviewDestination("?tab=tools", "#tools-similarity"),
+    "/image-duplicates?method=embedding"
+  );
+  assert.equal(
+    legacySimilarityReviewDestination(
+      "?tab=tools&return=images%2F42",
+      "#tools-similarity"
+    ),
+    "/image-duplicates?return=images%2F42&method=embedding"
+  );
+  assert.equal(
+    legacySimilarityReviewDestination("?tab=tools", "#tools-health"),
+    undefined
+  );
+  assert.equal(
+    legacySimilarityReviewDestination(
+      "?tab=experimental",
+      "#tools-similarity"
+    ),
+    undefined
+  );
 });
