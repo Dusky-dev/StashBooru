@@ -389,11 +389,11 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 		startConversionReview(w, r, request)
 		return
 	}
-	if request.Action != "start" && request.Action != "restore" && request.Action != "restore-targets" && request.Action != "configure" && request.Action != "recover" && request.Action != "preview" {
+	if request.Action != "start" && request.Action != "restore" && request.Action != "restore-targets" && request.Action != "restore-status" && request.Action != "configure" && request.Action != "recover" && request.Action != "preview" {
 		http.Error(w, "unknown conversion action", http.StatusBadRequest)
 		return
 	}
-	if (request.Action == "start" || request.Action == "preview" || request.Action == "restore-targets") && (len(request.Targets) == 0 || len(request.Targets) > 10000) {
+	if (request.Action == "start" || request.Action == "preview" || request.Action == "restore-targets" || request.Action == "restore-status") && (len(request.Targets) == 0 || len(request.Targets) > 10000) {
 		http.Error(w, "select between 1 and 10000 media entries", http.StatusBadRequest)
 		return
 	}
@@ -412,6 +412,33 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	request.Targets = uniqueTargets
+	if request.Action == "restore-status" {
+		store := conversionStore()
+		history, err := store.History()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		type targetRestoreStatus struct {
+			Target     conversionTarget `json:"target"`
+			Restorable bool             `json:"restorable"`
+		}
+		statuses := make([]targetRestoreStatus, 0, len(request.Targets))
+		for _, target := range request.Targets {
+			status := targetRestoreStatus{Target: target}
+			fileID, err := conversionTargetFile(r.Context(), target)
+			if err == nil {
+				current, lookupErr := store.Repository.Get(r.Context(), fileID)
+				if lookupErr == nil && current != nil {
+					_, err = latestRestorableConversion(history, fileID, current.Base().Path)
+					status.Restorable = err == nil
+				}
+			}
+			statuses = append(statuses, status)
+		}
+		writeVisualSimilarityJSON(w, map[string]interface{}{"targets": statuses})
+		return
+	}
 	if request.Action == "preview" {
 		previewConversionDefaults(w, r, request.Targets)
 		return
