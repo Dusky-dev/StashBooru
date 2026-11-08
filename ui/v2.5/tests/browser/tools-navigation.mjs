@@ -152,7 +152,7 @@ try {
     });
     await page.goto(`${origin}/settings?tab=tools&return=images%2F42`);
     await summary(page, "health").waitFor();
-    for (const group of ["health", "similarity", "aliases", "developer"])
+    for (const group of ["health", "similarity", "developer"])
       assert.equal(await isOpen(page, group), false);
     assert.equal(
       requests.length,
@@ -224,7 +224,17 @@ try {
       2
     );
 
-    await summary(page, "aliases").click();
+    // The specialized Alias Collision Inspector now lives under Experimental.
+    assert.equal(await page.locator("#tools-aliases").count(), 0);
+    if (await page.locator("#settings-section").isVisible())
+      await page.locator("#settings-section").selectOption("experimental");
+    else
+      await page
+        .locator('#settings-menu-container a[href*="tab=experimental"]')
+        .click();
+    await page.waitForURL(/tab=experimental/);
+    await page.locator("#experimental-alias-collisions > summary").click();
+    const beforeAlias = requests.length;
     const alias = page.getByRole("textbox", {
       name: "Canonical name or alias to inspect",
       exact: true,
@@ -234,14 +244,15 @@ try {
       "rgb(255, 255, 255)"
     );
     await alias.fill("same_name");
+    assert.equal(requests.length, beforeAlias);
     await page
       .getByRole("button", { name: "Inspect value", exact: true })
       .click();
     await page.getByText("Artist A #7", { exact: true }).waitFor();
     await page.getByText("Artist B #8", { exact: true }).waitFor();
     await alias.fill("unsaved_draft");
-    await summary(page, "aliases").click();
-    await summary(page, "aliases").click();
+    await page.locator("#experimental-alias-collisions > summary").click();
+    await page.locator("#experimental-alias-collisions > summary").click();
     assert.equal(await alias.inputValue(), "unsaved_draft");
     await page.getByText("Artist A #7", { exact: true }).waitFor();
     if (await page.locator("#settings-section").isVisible())
@@ -251,9 +262,12 @@ try {
         .locator('#settings-menu-container a[href*="tab=library"]')
         .click();
     await page.goBack();
-    await page.waitForURL(/tab=tools/);
+    await page.waitForURL(/tab=experimental/);
     assert.equal(await alias.inputValue(), "unsaved_draft");
-    assert.equal(await isOpen(page, "aliases"), true);
+    assert.equal(
+      await page.locator("#experimental-alias-collisions").evaluate((el) => el.open),
+      true
+    );
     await page.getByText("Artist A #7", { exact: true }).waitFor();
     await page
       .getByRole("button", { name: "Scan all collisions", exact: true })
@@ -262,6 +276,13 @@ try {
       .getByText("No alias collisions found.", { exact: true })
       .waitFor();
 
+    if (await page.locator("#settings-section").isVisible())
+      await page.locator("#settings-section").selectOption("tools");
+    else
+      await page
+        .locator('#settings-menu-container a[href*="tab=tools"]')
+        .click();
+    await page.waitForURL(/tab=tools/);
     await summary(page, "similarity").click();
     await page.getByLabel("Similarity threshold", { exact: true }).fill("0.85");
     await page.getByLabel("Show singletons", { exact: true }).focus();
@@ -326,17 +347,30 @@ try {
     });
     assert.equal(await playground.getAttribute("href"), "/playground");
     assert.equal(await playground.getAttribute("target"), "_blank");
-    for (const group of ["aliases", "developer"]) {
-      await page.goto(
-        `${origin}/settings?tab=tools&return=images%2F42#tools-${group}`
-      );
-      await page.waitForFunction(
-        (key) => document.querySelector(`#tools-${key}`)?.open,
-        group
-      );
-      assert.equal(new URL(page.url()).searchParams.get("return"), "images/42");
-      await fit(page);
-    }
+    // Legacy bookmarks redirect to Experimental and reveal the inspector.
+    await page.goto(
+      `${origin}/settings?tab=tools&return=images%2F42#tools-aliases`
+    );
+    await page.waitForURL(/tab=experimental.*#tools-aliases$/);
+    await page.waitForFunction(
+      () => document.querySelector("#experimental-alias-collisions")?.open
+    );
+    assert.equal(new URL(page.url()).searchParams.get("return"), "images/42");
+    await fit(page);
+    await page.goto(
+      `${origin}/settings?tab=experimental&return=images%2F42#experimental-alias-collisions`
+    );
+    await page.waitForFunction(
+      () => document.querySelector("#experimental-alias-collisions")?.open
+    );
+    await page.goto(
+      `${origin}/settings?tab=tools&return=images%2F42#tools-developer`
+    );
+    await page.waitForFunction(
+      () => document.querySelector("#tools-developer")?.open
+    );
+    assert.equal(new URL(page.url()).searchParams.get("return"), "images/42");
+    await fit(page);
     await page.reload();
     await page.waitForFunction(
       () => document.querySelector("#tools-developer")?.open
