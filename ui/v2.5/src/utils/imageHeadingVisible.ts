@@ -1,3 +1,5 @@
+import { parseImageFilenameLayout } from "./mediaFilenameLayout.ts";
+
 /**
  * Image headings use the filename when no title was supplied by the user.
  * Keep explicit titles, even when the filename display preference is enabled.
@@ -21,12 +23,14 @@ export interface ImageHeadingMetadata {
   performers?: readonly NamedAssociation[] | null;
   artists?: readonly NamedAssociation[] | null;
   studio?: NamedAssociation | null;
+  visual_files?: readonly { path: string }[] | null;
 }
 
 interface ImageHeadingOptions {
   hideImageFilenames?: boolean;
   showImageAssociationTitles?: boolean;
   showFormattedImageFilenameFallback?: boolean;
+  imageFilenameLayout?: string;
 }
 
 function namesForHeading(
@@ -92,6 +96,37 @@ export function imageDisplayHeading(
 ): string | null {
   if (image.title) return image.title;
   if (options?.showImageAssociationTitles) {
+    if (
+      options.showFormattedImageFilenameFallback &&
+      options.imageFilenameLayout
+    ) {
+      // A complete path suffix must follow the configured layout. Filename-only
+      // guessing is never used to assign a missing Copyright/Character/Artist.
+      const parsed = parseImageFilenameLayout(
+        image.visual_files?.[0]?.path ?? filenameHeading,
+        options.imageFilenameLayout
+      );
+      if (parsed) {
+        const copyright =
+          image.primary_copyright?.name?.trim() ||
+          namesForHeading(image.copyrights) ||
+          parsed.copyright;
+        const characters =
+          namesForHeading(image.performers) || parsed.character;
+        const artists =
+          namesForHeading(
+            image.artists?.length
+              ? image.artists
+              : image.studio
+                ? [image.studio]
+                : []
+          ) || parsed.artist;
+        const complete = [copyright, characters, artists]
+          .filter(Boolean)
+          .join(" · ");
+        if (complete) return complete;
+      }
+    }
     const labels = associationHeading(image);
     if (labels) return labels;
     if (options.showFormattedImageFilenameFallback) {

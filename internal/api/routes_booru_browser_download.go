@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/stashapp/stash/internal/manager/config"
 	"github.com/stashapp/stash/pkg/booru"
 	"github.com/stashapp/stash/pkg/job"
 	"github.com/stashapp/stash/pkg/mediaconvert"
@@ -90,6 +91,20 @@ func (settings booruDownloadSettings) validateAutoTagSources(sources []booru.Sou
 		}
 	}
 	return nil
+}
+
+// A separately saved Booru template remains an override for legacy download
+// receipts. Without one, all new downloads use the same validated layout as
+// Image display headings. Invalid UI input never reaches filesystem rendering.
+func effectiveBooruFilenameTemplate(override string, ui map[string]interface{}) string {
+	if override != "" {
+		return override
+	}
+	layout, _ := ui["imageFilenameLayout"].(string)
+	if layout != "" && booru.ValidateFilenameTemplate(layout) == nil {
+		return layout
+	}
+	return ""
 }
 
 var booruDownloadSettingsMu sync.Mutex
@@ -325,6 +340,10 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 		writeBooruError(w, 500, "settings", "Cannot read download settings.")
 		return
 	}
+	// Freeze the effective template for this job and its durable receipt.
+	preferences.FilenameTemplate = effectiveBooruFilenameTemplate(
+		preferences.FilenameTemplate, config.GetInstance().GetUIConfiguration(),
+	)
 	post.ImportTags = preferences.ImportTags && !input.Computer
 	shouldAutoTag := !input.Computer && preferences.autoTagsSource(source)
 	maxFileBytes := int64(preferences.MaxFileSizeMiB) << 20
