@@ -398,7 +398,9 @@ async function check(viewport, label) {
     const allFilter = (await allRequest).postDataJSON().variables.media_filter;
     assert.deepEqual(allFilter.copyrights.value, [first.id]);
     assert.equal(
-      await page.locator("#copyright-media-tabs-tabpane-all .media-list").count(),
+      await page
+        .locator("#copyright-media-tabs-tabpane-all .media-list")
+        .count(),
       1
     );
 
@@ -411,9 +413,9 @@ async function check(viewport, label) {
       .locator(".copyright-list .filtered-list-toolbar button")
       .filter({ has: page.locator("svg[data-icon='list']") })
       .click();
-    const firstRowCheck = page.locator(
-      ".copyright-table tbody .select-col input[type='checkbox']"
-    ).first();
+    const firstRowCheck = page
+      .locator(".copyright-table tbody .select-col input[type='checkbox']")
+      .first();
     await firstRowCheck.check();
     assert.equal(await page.locator(".selected-count").innerText(), "1");
     await firstRowCheck.uncheck();
