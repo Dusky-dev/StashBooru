@@ -383,28 +383,36 @@ async function check(viewport, label) {
     assert.deepEqual(await all(), final);
     await page.reload();
     await profile(first.id);
-    // General All is the mixed-media library. Copyrights > All lists
-    // Copyright entities, not Images/Videos or a scoped findMedia query.
-    const allCopyrightsQuery = page.waitForRequest((request) => {
+    // A selected Copyright's All tab is a mixed Image/Video feed scoped
+    // to that Copyright and descendants, never the Copyright catalogue.
+    const mediaRequest = page.waitForRequest((request) => {
       const payload = request.postDataJSON?.();
       return (
         request.url().endsWith("/graphql") &&
-        payload?.operationName === "FindCopyrights"
+        payload?.operationName === "FindMedia" &&
+        payload.variables?.media_filter?.copyrights !== undefined
       );
     });
     await page.goto(url + `/copyrights/${first.id}/all`);
     await page
-      .locator("#copyright-media-tabs-tabpane-all .copyright-list")
+      .locator("#copyright-media-tabs-tabpane-all .media-list")
       .waitFor();
-    await allCopyrightsQuery;
+    const scoped = (await mediaRequest).postDataJSON().variables.media_filter;
+    assert.deepEqual(scoped.copyrights.value, [first.id]);
     assert.equal(
-      await page.locator("#copyright-media-tabs-tabpane-all .media-list").count(),
+      await page.locator("#copyright-media-tabs-tabpane-all .copyright-list").count(),
       0
     );
-    await page
-      .locator(`#copyright-media-tabs-tabpane-all a[href="/copyrights/${otherParent.id}"]`)
-      .first()
-      .waitFor();
+    await page.goto(url + "/media");
+    await page.locator(".media-list").waitFor();
+    // Global All remains independent of selected Copyrights.
+    const globalResults = await page.request.post(url + "/graphql", {
+      data: {
+        operationName: "FindMedia",
+        query: "query FindMedia { findMedia { count } }",
+      },
+    });
+    assert.equal(globalResults.ok(), true);
 
     await page.goto(url + "/copyrights");
     await page.waitForURL((u) => u.searchParams.get("sortby") === "hierarchy");
