@@ -447,3 +447,58 @@ func TestP08ImageOnlyRepresentativeFilteringBeforePagination(t *testing.T) {
 		return nil
 	}))
 }
+
+func TestP08PHashVariantMatchStillShowsRepresentative(t *testing.T) {
+	r := p07Fixture(t)
+	a := p08Ref(models.MediaKindImage, 1)
+	b := p08Ref(models.MediaKindImage, 2)
+	p08Write(t, r, func(ctx context.Context) (*models.VisualStack, error) {
+		return r.VisualStack.Create(ctx, models.VisualStackCreateInput{
+			Members: p08Members(a, b), Representative: a,
+		})
+	})
+	require.NoError(t, r.WithTxn(context.Background(), func(ctx context.Context) error {
+		existing, err := r.File.Find(ctx, 1)
+		if err != nil {
+			return err
+		}
+		require.Len(t, existing, 1)
+		if err := r.File.ModifyFingerprints(ctx, 1, []models.Fingerprint{
+			{Type: "phash", Fingerprint: int64(42)},
+		}); err != nil {
+			return err
+		}
+		path := filepath.Join(t.TempDir(), "variant.png")
+		require.NoError(t, os.WriteFile(path, []byte("variant"), 0o600))
+		file := &models.ImageFile{
+			BaseFile: &models.BaseFile{
+				Path: path, Basename: "variant.png", ParentFolderID: existing[0].Base().ParentFolderID,
+				Size: 7, DirEntry: models.DirEntry{ModTime: existing[0].Base().ModTime},
+				Fingerprints: models.Fingerprints{{Type: "phash", Fingerprint: int64(42)}},
+			},
+			Format: "png", Width: 8, Height: 8,
+		}
+		if err := r.File.Create(ctx, file); err != nil {
+			return err
+		}
+		if err := r.Image.AddFileID(ctx, 2, file.ID); err != nil {
+			return err
+		}
+		_, err = r.Image.UpdatePartial(ctx, 2, models.ImagePartial{PrimaryFileID: &file.ID})
+		return err
+	}))
+	collapse := true
+	sort := "perceptual_similarity:0:1:phash"
+	require.NoError(t, r.WithReadTxn(context.Background(), func(ctx context.Context) error {
+		result, err := r.Image.Query(ctx, models.ImageQueryOptions{
+			QueryOptions: models.QueryOptions{FindFilter: &models.FindFilterType{Sort: &sort}, Count: true},
+			ImageFilter: &models.ImageFilterType{CollapseStacks: &collapse},
+		})
+		if err != nil {
+			return err
+		}
+		require.Equal(t, 1, result.Count)
+		require.Equal(t, []int{1}, result.IDs, "a matching variant must show its representative even if the reference itself is excluded")
+		return nil
+	}))
+}
