@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Mousetrap from "mousetrap";
 import { ListFilterModel } from "src/models/list-filter/filter";
+import { correctedListPage } from "src/models/list-filter/pageValidity";
 import { useHistory, useLocation } from "react-router-dom";
 import { isEqual, isFunction } from "lodash-es";
 import { QueryResult } from "@apollo/client";
@@ -783,14 +784,30 @@ export function useScrollToTopOnPageChange(
 // handle case where page is more than there are pages
 export function useEnsureValidPage(
   filter: ListFilterModel,
-  totalCount: number,
+  completedCount: number | undefined,
   setFilter: React.Dispatch<React.SetStateAction<ListFilterModel>>
 ) {
   useEffect(() => {
-    const totalPages = Math.ceil(totalCount / filter.itemsPerPage);
+    // Wait for the current query to complete. Cached counts from a previous
+    // criterion or media entity can otherwise clamp an unrelated page.
+    if (completedCount === undefined) return;
+    const page = correctedListPage(
+      filter.currentPage,
+      completedCount,
+      filter.itemsPerPage
+    );
+    if (page === undefined) return;
 
-    if (totalPages > 0 && filter.currentPage > totalPages) {
-      setFilter((prevFilter) => prevFilter.changePage(totalPages));
-    }
-  }, [filter, totalCount, setFilter]);
+    setFilter((current) => {
+      // A newer filter/page navigation must not be overwritten by a late
+      // pagination effect from an earlier result.
+      if (
+        current.currentPage !== filter.currentPage ||
+        current.itemsPerPage !== filter.itemsPerPage
+      ) {
+        return current;
+      }
+      return current.changePage(page);
+    });
+  }, [filter.currentPage, filter.itemsPerPage, completedCount, setFilter]);
 }
