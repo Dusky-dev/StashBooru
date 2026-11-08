@@ -253,6 +253,21 @@ try {
         .getByRole("button", { name: "Manage stack", exact: true })
         .click();
       await row(page, "image:2").waitFor();
+      // The stack manager's pHash search is an actual native Images query,
+      // with the first Image anchoring mixed stacks represented by a Video.
+      const similarRequest = page.waitForRequest((request) => {
+        const payload = request.postDataJSON?.();
+        return (
+          request.url().endsWith("/graphql") &&
+          payload?.operationName === "FindImages" &&
+          payload?.variables?.filter?.sort === "perceptual_similarity:5:1:phash"
+        );
+      });
+      await modal(page)
+        .getByRole("button", { name: "Find similar Images (pHash)", exact: true })
+        .click();
+      await similarRequest;
+      await modal(page).getByLabel("Maximum pHash distance").selectOption("3");
       await modal(page).getByLabel("Stack title (optional)").focus();
       await page.keyboard.press("ArrowLeft");
       await selected(page, "scene:2");
