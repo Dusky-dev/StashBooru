@@ -24,6 +24,7 @@ import {
 } from "./settingsNavigation";
 import { SettingsSectionNavigation } from "./SettingsSectionNavigation";
 import { SettingsSearch } from "./SettingsSearch";
+import { SettingsExperimentalPanel } from "./SettingsExperimentalPanel";
 import Changelog from "../Changelog/Changelog";
 import { TroubleshootingModeButton } from "../TroubleshootingMode/TroubleshootingModeButton";
 import { useTroubleshootingMode } from "../TroubleshootingMode/useTroubleshootingMode";
@@ -112,6 +113,9 @@ const SettingTabs: React.FC<{ tab: SettingsTab }> = ({ tab }) => {
             </Tab.Pane>
             <Tab.Pane eventKey="tasks">
               <SettingsTasksPanel />
+            </Tab.Pane>
+            <Tab.Pane eventKey="experimental" mountOnEnter>
+              <SettingsExperimentalPanel />
             </Tab.Pane>
             <Tab.Pane eventKey="services" unmountOnExit>
               <SettingsServicesPanel />

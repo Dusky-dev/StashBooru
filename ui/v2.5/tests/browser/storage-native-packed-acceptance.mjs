@@ -434,11 +434,10 @@ try {
   await page.goto(url + "/settings?tab=library", {
     waitUntil: "domcontentloaded",
   });
-  await page.getByRole("tab", { name: "Tasks", exact: true }).click();
-  // The storage tools are inside a native <details> disclosure.  Playwright
-  // must expand it before interacting with the candidate selector; bypassing
-  // visibility here would hide a real Settings navigation regression.
-  await page.locator("#tasks-media > summary").click();
+  await page.getByRole("tab", { name: "Experimental", exact: true }).click();
+  // Storage tools are in an Experimental <details> group; expand it before
+  // using the selector to test real Settings navigation and visibility.
+  await page.locator("#experimental-storage-candidates > summary").click();
   await page.locator("#shadow-candidate").selectOption(created[0].id);
   await page.locator("#shadow-intent-acknowledge").check();
   await page
@@ -559,12 +558,12 @@ try {
     (await fetch(canaryURL(members[0]))).headers.get("x-stash-shadow-source"),
     "packed-verified"
   );
-  // Reopen Settings on the replacement isolated process for disarm coverage.
+  // Reopen Experimental on the replacement isolated process for disarm coverage.
   await page.goto(url + "/settings?tab=library", {
     waitUntil: "domcontentloaded",
   });
-  await page.getByRole("tab", { name: "Tasks", exact: true }).click();
-  await page.locator("#tasks-media > summary").click();
+  await page.getByRole("tab", { name: "Experimental", exact: true }).click();
+  await page.locator("#experimental-storage-candidates > summary").click();
 
   for (const key of [
     "NativeRoutingEnabled",

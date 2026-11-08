@@ -37,3 +37,21 @@ test("Settings search combines terms and does not match unrelated sections", () 
   );
   assert.equal(searchSettings("  MEDIA   CONVERTER ")[0]?.tab, "processing");
 });
+
+test("P12/P13 storage settings search goes to Experimental", () => {
+  const storage = searchSettings("p12");
+  assert.ok(storage.length > 0);
+  assert.ok(storage.every((entry) => entry.tab === "experimental"));
+  assert.ok(
+    searchSettings("shadow").some(
+      (entry) =>
+        entry.tab === "experimental" &&
+        entry.anchor === "experimental-storage-candidates"
+    )
+  );
+  assert.ok(
+    searchSettings("missing originals").some(
+      (entry) => entry.anchor === "experimental-storage-recovery"
+    )
+  );
+});

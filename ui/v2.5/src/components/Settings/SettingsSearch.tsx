@@ -50,7 +50,10 @@ export function SettingsSearch() {
                 <small className="text-muted">
                   {intl.formatMessage({
                     id: `config.categories.${entry.tab.replaceAll("-", "_")}`,
-                    defaultMessage: entry.tab.replaceAll("-", " "),
+                    defaultMessage:
+                      entry.tab === "experimental"
+                        ? "Experimental"
+                        : entry.tab.replaceAll("-", " "),
                   })}
                 </small>
               </Link>

@@ -10,6 +10,10 @@ import {
 
 const labels: Record<SettingsTab, { id: string; defaultMessage: string }> = {
   tasks: { id: "config.categories.tasks", defaultMessage: "Tasks" },
+  experimental: {
+    id: "config.categories.experimental",
+    defaultMessage: "Experimental",
+  },
   library: { id: "library", defaultMessage: "Library" },
   processing: {
     id: "config.categories.processing",

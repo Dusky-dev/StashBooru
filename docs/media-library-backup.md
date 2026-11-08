@@ -2,17 +2,20 @@
 
 StashBooru's existing **Settings → Tasks → Backup** backs up the database and,
 optionally, filesystem blobs. It does **not** include original media files. P12
-image-delta and P13 gallery block-sharing remain offline, non-destructive
+image-delta and P13 gallery block-sharing remain non-destructive
 prototypes. Never activate source eviction using only database backups.
 
 This first media-file backup package provides a **manual, opt-in, offline**
 file-level snapshot/verify/restore tool using only Python 3's standard library.
-It is a safety building block, not a live StashBooru Settings button, automatic
+It is a safety building block with an opt-in Settings task, not an automatic
 backup scheduler, full application backup, or source-eviction authorization.
+
+P12/P13 estimate, candidate, shadow, and scratch-recovery panels live in
+**Settings → Experimental**; their backup link returns to this Tasks workflow.
 
 ## Native Settings → Tasks integration
 
-The follow-up native task appears in **Settings → Tasks → Backup & maintenance**
+The native task appears in **Settings → Tasks → Backup & maintenance**
 under **Original media backup**. The server must have Python 3 and the
 `scripts/media_library_backup.py` file installed alongside the app, or use
 `STASH_MEDIA_BACKUP_SCRIPT` to point to that exact local script. A missing

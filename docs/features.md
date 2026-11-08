@@ -30,7 +30,8 @@ Fork issues link to the StashBooru repository; upstream help/support links remai
 | **Identities** / profile **Sources & aliases** | Review connections between exact provider identifiers and existing native Artists, Characters and Copyrights. |
 | **Settings → Library** | Media folders, scan rules and automatic ancestor/profile associations. Inheritance switches save automatically. |
 | **Settings → Processing** | Shared worker connection, links to the complete version-matched worker ZIP, similarity/tagging defaults, conversion rules and upscaling setup. Use each section's Save button. |
-| **Settings → Tasks** | Jobs, generated files/hashes, animation inspection, Character merging, association review, Video overlap indexing and database management. |
+| **Settings → Tasks** | Jobs, generated files/hashes, animation inspection, Character merging, association review, Video overlap indexing, original-media backups and database management. |
+| **Settings → Experimental** | Isolated P12/P13 image storage estimates, verified backup coverage, candidate packs, shadow reads and recovery rehearsals. This is not live storage activation. |
 | **Settings → Tools** | Metadata Health, Alias Collision Inspector and EVA02 Visual Similarity Triage, including explicit add-only metadata copying. |
 | **Settings → System** | Application paths, FFmpeg, transcodes and other server settings. |
 
@@ -487,11 +488,16 @@ real media/processing workflows or physical devices.
 
 ## Experimental storage and backups
 
-Image delta storage and Gallery block sharing currently run as optional offline
-prototypes. They benchmark, pack, verify and extract while retaining originals;
-they are not active transparent application storage. Byte-exact archives restore
-original file bytes. Pixel-exact archives preserve the documented decoded-pixel
-contract, not an identical original compressed file. Real-library savings vary.
+P12 image delta storage and P13 shared-tile storage can be evaluated under
+**Settings → Experimental**. The eight isolated panels cover read-only estimates,
+verified backup coverage and restore-readiness checks, candidate creation,
+shadow reads, whole-stack consumer audits and scratch recovery rehearsals.
+Their standalone command-line prototypes remain available. None of these
+controls activates global packed storage, replaces source images, or enables
+original eviction; candidates may use **more** disk space while originals stay
+active. Byte-exact archives restore original file bytes. Pixel-exact archives
+preserve the documented decoded-pixel contract, not an identical original
+compressed file. Real-library savings vary.
 
 See [image delta storage](p12-image-delta-storage.md) and
 [Gallery sharing](p13-gallery-block-storage.md) for commands and production gates.

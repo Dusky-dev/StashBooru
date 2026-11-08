@@ -1,5 +1,6 @@
 export const settingsTabs = [
   "tasks",
+  "experimental",
   "library",
   "processing",
   "interface",
@@ -24,9 +25,34 @@ const movedSections: Record<string, SettingsTab> = {
   "#association-inheritance-settings": "library",
 };
 
+// Existing deep links to P12/P13 tools should follow their relocated panels.
+// Task Queue and original-media backup remain on the Tasks page.
+const experimentalStorageAnchors = new Set([
+  "#experimental-image-storage",
+  "#experimental-storage-assess",
+  "#experimental-storage-candidates",
+  "#experimental-storage-recovery",
+  "#image-storage-estimate-task",
+  "#image-storage-estimate-heading",
+  "#image-storage-backup-preflight-task",
+  "#image-storage-backup-preflight-heading",
+  "#image-storage-candidate-task",
+  "#image-storage-candidate-title",
+  "#image-storage-recovery-task",
+  "#image-storage-recovery-title",
+  "#image-storage-restore-plan-task",
+  "#image-storage-restore-plan-title",
+  "#image-missing-original-title",
+  "#image-storage-shadow-title",
+  "#image-consumer-audit-title",
+]);
+
 // Keep bookmarks from before processing settings moved out of System.
 export function resolveSettingsTab(search: string, hash: string): SettingsTab {
   const tab = new URLSearchParams(search).get("tab");
+  if ((!tab || tab === "tasks") && experimentalStorageAnchors.has(hash)) {
+    return "experimental";
+  }
   if ((!tab || tab === "system") && movedSections[hash]) {
     return movedSections[hash];
   }
