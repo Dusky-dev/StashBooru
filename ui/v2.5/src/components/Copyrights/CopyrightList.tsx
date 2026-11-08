@@ -1,5 +1,6 @@
 import React from "react";
-import { ButtonGroup, Table } from "react-bootstrap";
+import { ButtonGroup } from "react-bootstrap";
+import { useApolloClient } from "@apollo/client";
 import { Link, useHistory } from "react-router-dom";
 import { FormattedMessage, useIntl } from "react-intl";
 
@@ -19,6 +20,9 @@ import {
   useContainerDimensions,
 } from "src/components/Shared/GridCard/GridCard";
 import { PopoverCountButton } from "src/components/Shared/PopoverCountButton";
+import { ListTable, IColumn } from "src/components/List/ListTable";
+import { useTableColumns } from "src/hooks/useTableColumns";
+import { useToast } from "src/hooks/Toast";
 
 const zoomWidths = [280, 340, 480, 640];
 const COPYRIGHT_LIST_ZOOM_PREFERENCE_KEY = "copyrights-list";
@@ -54,12 +58,19 @@ const CopyrightCard: React.FC<CopyrightCardProps> = ({
     title={copyright.name}
     linkClassName="tag-card-header copyright-card-header"
     image={
-      <img
-        loading="lazy"
-        className="tag-card-image copyright-card-image"
-        alt={copyright.name}
-        src={copyright.image_path ?? ""}
-      />
+      copyright.image_path ? (
+        <img
+          loading="lazy"
+          className="tag-card-image copyright-card-image"
+          alt={copyright.name}
+          src={copyright.image_path}
+        />
+      ) : (
+        <span
+          className="tag-card-image copyright-card-image"
+          aria-hidden="true"
+        />
+      )
     }
     details={
       copyright.description ? (
@@ -107,6 +118,8 @@ const CopyrightCard: React.FC<CopyrightCardProps> = ({
 const CopyrightList: React.FC = () => {
   const intl = useIntl();
   const history = useHistory();
+  const client = useApolloClient();
+  const Toast = useToast();
   const view = View.Copyrights;
 
   const { filterState, queryResult, modalState, listSelect, showEditFilter } =
@@ -126,14 +139,45 @@ const CopyrightList: React.FC = () => {
   const { filter, setFilter } = filterState;
   const { result, cachedResult, items: copyrights, totalCount } = queryResult;
   const { modal } = modalState;
-  const { selectedIds, onSelectChange } = listSelect;
+  const {
+    selectedIds,
+    selectedItems,
+    onSelectChange,
+    onSelectAll,
+    onSelectNone,
+    onInvertSelection,
+  } = listSelect;
+  const columns: IColumn[] = [
+    { value: "name", label: "Name", mandatory: true },
+    { value: "scene_count", label: "Videos" },
+    { value: "image_count", label: "Images" },
+    { value: "performer_count", label: "Characters" },
+  ];
+  const { selectedColumns, saveColumns } = useTableColumns("copyrights", [
+    "name",
+    "scene_count",
+    "image_count",
+    "performer_count",
+  ]);
   const [componentRef, { width: containerWidth }] = useContainerDimensions();
   const cardWidth = useCardWidth(containerWidth, filter.zoomIndex, zoomWidths);
 
-  function viewRandom() {
-    if (copyrights.length === 0) return;
-    const item = copyrights[Math.floor(Math.random() * copyrights.length)];
-    history.push(`/copyrights/${item.id}`);
+  async function viewRandom() {
+    if (totalCount === 0) return;
+    const randomFilter = filter.clone();
+    randomFilter.currentPage = Math.floor(Math.random() * totalCount) + 1;
+    randomFilter.itemsPerPage = 1;
+    try {
+      const { data } = await client.query<GQL.FindCopyrightsQuery>({
+        query: GQL.FindCopyrightsDocument,
+        variables: { filter: randomFilter.makeFindFilter() },
+        fetchPolicy: "network-only",
+      });
+      const selected = data.findCopyrights.copyrights[0];
+      if (selected) history.push(`/copyrights/${selected.id}`);
+    } catch (error) {
+      Toast.error(error);
+    }
   }
 
   const operations = (
@@ -147,8 +191,28 @@ const CopyrightList: React.FC = () => {
           isDisplayed: () => selectedIds.size === 0,
         },
         {
+          text: intl.formatMessage({ id: "actions.select_all" }),
+          onClick: onSelectAll,
+          isDisplayed: () => copyrights.length > 0,
+        },
+        {
+          text: intl.formatMessage({ id: "actions.select_none" }),
+          onClick: onSelectNone,
+          isDisplayed: () => selectedIds.size > 0,
+        },
+        {
+          text: intl.formatMessage({ id: "actions.invert_selection" }),
+          onClick: onInvertSelection,
+          isDisplayed: () => copyrights.length > 0,
+        },
+        {
+          text: "Open selected Copyright",
+          onClick: () => history.push(`/copyrights/${selectedItems[0].id}`),
+          isDisplayed: () => selectedItems.length === 1,
+        },
+        {
           text: intl.formatMessage({ id: "actions.view_random" }),
-          onClick: viewRandom,
+          onClick: () => void viewRandom(),
           isDisplayed: () => totalCount > 0 && selectedIds.size === 0,
         },
       ]}
@@ -176,72 +240,74 @@ const CopyrightList: React.FC = () => {
   }
 
   function renderList() {
-    return (
-      <Table responsive hover className="list-table" role="treegrid">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Videos</th>
-            <th>Images</th>
-            <th>Characters</th>
-          </tr>
-        </thead>
-        <tbody>
-          {copyrights.map((copyright) => (
-            <tr
-              key={copyright.id}
-              className="copyright-list-row"
-              aria-level={Math.max(copyright.breadcrumb.length, 1)}
+    const renderCell = (
+      column: IColumn,
+      copyright: GQL.CopyrightListDataFragment
+    ) => {
+      switch (column.value) {
+        case "name":
+          return (
+            <div
+              className="copyright-list-name"
+              style={{
+                paddingInlineStart: `${Math.min(
+                  Math.max(copyright.breadcrumb.length - 1, 0),
+                  12
+                ) * 1.25}rem`,
+              }}
+              title={copyright.breadcrumb.map((item) => item.name).join(" / ")}
             >
-              <td>
-                <div
-                  className="copyright-list-name"
-                  style={{
-                    paddingInlineStart: `${
-                      Math.min(
-                        Math.max(copyright.breadcrumb.length - 1, 0),
-                        12
-                      ) * 1.25
-                    }rem`,
-                  }}
-                  title={copyright.breadcrumb
-                    .map((item) => item.name)
-                    .join(" / ")}
-                >
-                  <Link to={`/copyrights/${copyright.id}`}>
-                    {copyright.name}
-                  </Link>
-                  {copyright.ordered_children.length > 0 ? (
-                    <span className="text-muted small ml-2">
-                      {copyright.ordered_children.length}{" "}
-                      {copyright.ordered_children.length === 1
-                        ? "Sub-Copyright"
-                        : "Sub-Copyrights"}
-                    </span>
-                  ) : null}
-                  {copyright.breadcrumb.length > 1 ? (
-                    <div className="small text-muted copyright-list-path">
-                      {copyright.breadcrumb
-                        .slice(0, -1)
-                        .map((ancestor, index) => (
-                          <React.Fragment key={ancestor.id}>
-                            {index > 0 ? " / " : null}
-                            <Link to={`/copyrights/${ancestor.id}`}>
-                              {ancestor.name}
-                            </Link>
-                          </React.Fragment>
-                        ))}
-                    </div>
-                  ) : null}
+              <Link to={`/copyrights/${copyright.id}`}>{copyright.name}</Link>
+              {copyright.ordered_children.length > 0 && (
+                <span className="text-muted small ml-2">
+                  {copyright.ordered_children.length} Sub-Copyrights
+                </span>
+              )}
+              {copyright.breadcrumb.length > 1 && (
+                <div className="small text-muted copyright-list-path">
+                  {copyright.breadcrumb.slice(0, -1).map((ancestor, index) => (
+                    <React.Fragment key={ancestor.id}>
+                      {index > 0 ? " / " : null}
+                      <Link to={`/copyrights/${ancestor.id}`}>
+                        {ancestor.name}
+                      </Link>
+                    </React.Fragment>
+                  ))}
                 </div>
-              </td>
-              <td>{copyright.scene_count}</td>
-              <td>{copyright.image_count}</td>
-              <td>{copyright.performer_count}</td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
+              )}
+            </div>
+          );
+        case "scene_count":
+          return (
+            <Link to={`/copyrights/${copyright.id}/videos`}>
+              {copyright.scene_count}
+            </Link>
+          );
+        case "image_count":
+          return (
+            <Link to={`/copyrights/${copyright.id}/images`}>
+              {copyright.image_count}
+            </Link>
+          );
+        case "performer_count":
+          return (
+            <Link to={`/copyrights/${copyright.id}/characters`}>
+              {copyright.performer_count}
+            </Link>
+          );
+      }
+    };
+    return (
+      <ListTable
+        className="copyright-table"
+        items={copyrights}
+        allColumns={columns}
+        columns={selectedColumns}
+        setColumns={saveColumns}
+        selectedIds={selectedIds}
+        onSelectChange={onSelectChange}
+        renderCell={renderCell}
+      />
     );
   }
 
