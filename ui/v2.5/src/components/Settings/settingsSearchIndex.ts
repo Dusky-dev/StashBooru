@@ -289,12 +289,6 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
     keywords: "diagnostics",
   },
   {
-    tab: "tools",
-    label: "Visual similarity",
-    anchor: "tools-similarity",
-    keywords: "duplicates phash clusters",
-  },
-  {
     tab: "experimental",
     label: "Alias collision inspector",
     anchor: "experimental-alias-collisions",
