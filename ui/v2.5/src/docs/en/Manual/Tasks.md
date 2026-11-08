@@ -2,7 +2,7 @@
 
 This page allows you to direct the stash server to perform a variety of tasks.
 
-**P12/P13 image storage experiments** now live under **Settings → Experimental**, not under Inspect media. The new page contains estimates, backup-coverage and restore-readiness checks, candidate packing, shadow image comparisons, and isolated recovery rehearsals. They do not enable production packed serving or deletion of originals. Your normal job queue and Original media backup remain here in Tasks.
+**Video overlap / containment** and **P12/P13 image storage experiments** now live under **Settings → Experimental**, not in the routine Tasks groups. **Animation inspection** is grouped with **Update library → Scan**. The new page contains estimates, backup-coverage and restore-readiness checks, candidate packing, shadow image comparisons, and isolated recovery rehearsals. They do not enable production packed serving or deletion of originals. Your normal job queue and Original media backup remain here in Tasks.
 
 ## Scanning
 
@@ -90,13 +90,13 @@ The review can resume in the same browser session. While an existing review is a
 
 ## Animation inspection
 
-**Settings → Tasks → Inspect media → Animation inspection**
+**Settings → Tasks → Update library → Scan → Animation inspection**
 
 Regular scans inspect frame counts and add the native **animated** Tag to animated Images without replacing other metadata. Click **Inspect existing images** to backfill Images imported before animation detection was available. This queues a background task; use the Task Queue to follow its progress. It can add missing Tags but does not replace original media files.
 
 ## Video overlap / containment
 
-**Settings → Tasks → Inspect media → Video overlap / containment**
+**Settings → Experimental → Video overlap / containment**
 
 Use **Open video overlap review** to find Videos containing matching segments, including trimmed or re-encoded copies and clips within compilations. The review indexes timestamped video samples, then presents candidate matches and their intervals for manual comparison.
 
