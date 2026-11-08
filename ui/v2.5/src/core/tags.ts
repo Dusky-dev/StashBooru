@@ -36,6 +36,7 @@ export const useTagFilterHook = (
         tagCriterion.value.items = [tagValue];
       }
 
+      tagCriterion.value.depth = showSubTagContent ? -1 : 0;
       tagCriterion.modifier = GQL.CriterionModifier.IncludesAll;
     } else {
       tagCriterion = new TagsCriterion(TagsCriterionOption);
