@@ -265,7 +265,9 @@ try {
     await page.waitForURL(/tab=experimental/);
     assert.equal(await alias.inputValue(), "unsaved_draft");
     assert.equal(
-      await page.locator("#experimental-alias-collisions").evaluate((el) => el.open),
+      await page
+        .locator("#experimental-alias-collisions")
+        .evaluate((el) => el.open),
       true
     );
     await page.getByText("Artist A #7", { exact: true }).waitFor();
