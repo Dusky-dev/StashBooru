@@ -47,6 +47,9 @@ export function SidebarCopyrightsFilter({
     option,
     useQuery: useCopyrightQueryFilter,
     hierarchical: true,
+    // Hierarchical selectors render an include-descendants modifier on mount.
+    // Without its translation key, react-intl throws and crashes global All.
+    includeSubMessageID: "sub_tags",
   });
   return (
     <SidebarListFilter
