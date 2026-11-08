@@ -96,7 +96,8 @@ export default function ImageDuplicates() {
   }>();
   const [metadataBusy, setMetadataBusy] = useState(false);
   const [metadataCopyError, setMetadataCopyError] = useState("");
-  const [metadataCopyReport, setMetadataCopyReport] = useState<MetadataCopyResponse>();
+  const [metadataCopyReport, setMetadataCopyReport] =
+    useState<MetadataCopyResponse>();
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: reloadToken explicitly refreshes the server-derived similarity groups.
   useEffect(() => {
@@ -676,9 +677,9 @@ export default function ImageDuplicates() {
         </Modal.Header>
         <Modal.Body>
           <p className="text-muted">
-            Copy existing Characters, Artists, Copyrights and Tags from one image
-            to the selected images. This only adds missing relationships; it
-            never replaces metadata, removes images or changes files.
+            Copy existing Characters, Artists, Copyrights and Tags from one
+            image to the selected images. This only adds missing relationships;
+            it never replaces metadata, removes images or changes files.
           </p>
           {metadataReview && (
             <>
@@ -691,7 +692,9 @@ export default function ImageDuplicates() {
                   onChange={(event) => {
                     const sourceID = Number(event.currentTarget.value);
                     setMetadataReview((current) =>
-                      current ? { ...current, sourceID, targetIDs: [] } : current
+                      current
+                        ? { ...current, sourceID, targetIDs: [] }
+                        : current
                     );
                     setMetadataCopyError("");
                     setMetadataCopyReport(undefined);
