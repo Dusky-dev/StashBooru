@@ -79,10 +79,18 @@ try {
           `${origin}/tests/browser/fixtures/processing-job-resume.html?mode=${mode}&prefix=${encodeURIComponent(prefix)}`
         );
       const footer = () => page.getByRole("dialog").locator(".modal-footer");
-      const statistics = () =>
-        page
-          .getByRole("tab", { name: "Statistics & restore", exact: true })
-          .click();
+      const statistics = async () => {
+        if (mode === "conversion") {
+          await page
+            .getByRole("button", { name: "Advanced tools", exact: true })
+            .click();
+          await page.getByRole("tab", { name: "History", exact: true }).click();
+        } else {
+          await page
+            .getByRole("tab", { name: "Statistics & restore", exact: true })
+            .click();
+        }
+      };
       const start = () =>
         page
           .getByRole("button", {
