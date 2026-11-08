@@ -295,10 +295,10 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
     keywords: "duplicates phash clusters",
   },
   {
-    tab: "tools",
+    tab: "experimental",
     label: "Alias collision inspector",
-    anchor: "tools-aliases",
-    keywords: "tags character artist merge",
+    anchor: "experimental-alias-collisions",
+    keywords: "aliases ambiguity conflicting names characters artists copyrights tags diagnostics",
   },
   {
     tab: "tools",
