@@ -425,6 +425,21 @@ func TestP08ImageOnlyRepresentativeFilteringBeforePagination(t *testing.T) {
 		}))
 	}
 	require.Equal(t, []int{2, 3, 4, 5}, ids)
+	// Image 1 matches the title, but the actual stack representative is
+	// Image 2; a variant-specific filter must keep one visible stack card.
+	require.NoError(t, r.WithReadTxn(context.Background(), func(ctx context.Context) error {
+		title := &models.StringCriterionInput{Value: "Item 2", Modifier: models.CriterionModifierEquals}
+		result, err := r.Image.Query(ctx, models.ImageQueryOptions{
+			QueryOptions: models.QueryOptions{Count: true},
+			ImageFilter: &models.ImageFilterType{CollapseStacks: &collapse, Title: title},
+		})
+		if err != nil {
+			return err
+		}
+		require.Equal(t, 1, result.Count)
+		require.Equal(t, []int{2}, result.IDs, "matching a hidden variant must show its representative")
+		return nil
+	}))
 	p07GraphQL(t, r, `query { findImages(image_filter:{collapse_stacks:true},filter:{per_page:2,sort:"id"}) { count images { id } } }`, nil)
 	// A mixed stack with a Video representative is visible in global All but
 	// not in the Images-only representative view.
