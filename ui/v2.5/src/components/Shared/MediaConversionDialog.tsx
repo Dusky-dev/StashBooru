@@ -279,6 +279,7 @@ export const MediaConversionDialog: React.FC<{
     chosenFormats.every((f) => f.available && encodersFor(f).length > 0) &&
     !gpuDecodeSpeedConflict;
   const targetsJSON = JSON.stringify(targets);
+  const restoreLookupKey = `${targetsJSON}:${jobStatusKey}`;
   const defaultsJSON = JSON.stringify([
     state?.config.formatDefaults,
     state?.config.encodingDefaults,
@@ -341,14 +342,14 @@ export const MediaConversionDialog: React.FC<{
       .then(response<{ targets: TargetRestoreStatus[] }>)
       .then((result) => {
         if (!controller.signal.aborted) {
-          setRestoreLookup({ key: targetsJSON, targets: result.targets });
+          setRestoreLookup({ key: restoreLookupKey, targets: result.targets });
         }
       })
       .catch((e: Error) => {
         if (!controller.signal.aborted) setRestoreLookupError(e.message);
       });
     return () => controller.abort();
-  }, [targetsJSON, hasLoadedState, jobStatusKey, running]);
+  }, [targetsJSON, restoreLookupKey, hasLoadedState, running]);
 
   useEffect(() => {
     if (!backend) return;
@@ -495,7 +496,7 @@ export const MediaConversionDialog: React.FC<{
     targets,
   };
   const statuses =
-    restoreLookup?.key === targetsJSON ? restoreLookup.targets : undefined;
+    restoreLookup?.key === restoreLookupKey ? restoreLookup.targets : undefined;
   const converted = new Set(
     statuses?.filter((item) => item.converted).map((item) => targetKey(item.target))
   );
