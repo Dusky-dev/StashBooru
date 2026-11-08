@@ -284,6 +284,24 @@ try {
         .getByText(view === "Images" ? "Image #1" : "Video #1", { exact: true })
         .waitFor();
       if (view === "Videos") {
+        await main()
+          .getByRole("button", { name: "Advanced filename patterns…" })
+          .click();
+        const filenameReview = page.getByRole("dialog", {
+          name: "Review filename patterns",
+        });
+        await filenameReview
+          .getByText("Advanced filename pattern matching")
+          .waitFor();
+        assert.equal(
+          await filenameReview.getByRole("button", { name: "Apply" }).count(),
+          0,
+          "No filename changes can be applied before Find and review"
+        );
+        await filenameReview
+          .getByRole("button", { name: "Back to Video metadata" })
+          .click();
+        await main().getByText("Video #1", { exact: true }).waitFor();
         await apply();
         await page.getByRole("dialog").waitFor({ state: "detached" });
         assert.deepEqual(writes, ["image:1", "scene:1"]);

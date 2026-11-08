@@ -368,7 +368,6 @@ try {
         .evaluateAll((options) => options.map((option) => option.value)),
       [
         "tasks",
-        "experimental",
         "library",
         "processing",
         "interface",
@@ -381,6 +380,7 @@ try {
         "tools",
         "changelog",
         "about",
+        "experimental",
       ]
     );
     if (name === "mobile") {

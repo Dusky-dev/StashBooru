@@ -1,6 +1,6 @@
-# Scene filename parser
+# Advanced Video filename patterns
 
-[This tool](/sceneFilenameParser) parses the scene filenames in your library and allows setting the metadata from those filenames.
+From a Video, choose **Review metadata… → Advanced filename patterns…** to search the library for matching Video filenames and review metadata changes. The standalone Tools link was retired; bookmarks to `/sceneFilenameParser` redirect to Videos. The basic **Filename layout** in Processing remains the recommended way to read Booru-style Artist/Character/Copyright identities. The advanced pattern tool preserves legacy title/date/rating and Tag/Character/Artist extraction.
 
 ## Parser options
 
@@ -59,6 +59,6 @@ Once the options are correct, click on the `Find` button. The system will search
 
 The results are presented in a table showing the existing and generated values of the discovered fields, along with a checkbox to determine whether or not the field will be set on each scene. These fields can also be edited manually.
 
-The `Apply` button updates the scenes based on the set fields.
+The `Apply` button updates the Videos based on the selected fields. Applying Character or Tag fields **replaces** the existing relationships; if a proposed change would remove existing relationships, the application requires explicit confirmation before applying. Deselect those fields to preserve their current values.
 
 > **⚠️ Note:** results are paged and the `Apply` button only applies to scenes on the current page.

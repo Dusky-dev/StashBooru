@@ -5267,3 +5267,45 @@ these historical CI snapshots.
 - Next: applicable CI and completed Codex Review on the final head; end when only
   external gates remain. Continue Collection hierarchy/ordered editing as its own
   bounded acceptance pass, followed by recovery/upgrade/plugin workflows.
+
+
+## Video filename parser retirement — 2026-11-08
+
+- Baseline: `develop` `e53624b23076656be5498edf11cd347ca80a0bda`.
+  Branch: `refactor/retire-video-filename-parser-20261108`.
+- Moved advanced pattern matching/review into the Video **Review metadata…**
+  dialog, removed the standalone Settings → Tools link, and redirect old parser
+  bookmarks to Videos. Kept the existing GraphQL/Go parser for filename-format
+  compatibility; the standard Processing Filename layout remains unchanged.
+- The legacy apply path replaces selected Character/Tag ID sets: added an
+  explicit confirmation when proposed changes would remove prior relationships.
+  Fixed rating100 parsing for multi-digit values, and added safety and parser
+  regression tests plus a browser navigation/review fixture.
+- Verification: source edits checked against branch head; local build/test
+  execution unavailable in this API-only GitHub environment. CI, browser runtime
+  and Codex review on the PR remain the release gates; do not merge unverified.
+
+## Video filename parser PR #329 — Settings order and CI corrections (2026-11-08)
+
+- Settings tab ordering now places Experimental after About for desktop and mobile;
+  existing query/anchor routing is unchanged. Added an order regression assertion.
+- CI on `f2b6e0538f9615894b81dfdec73b2892a5d7e930`: Build/Validate UI failed
+  on Biome formatting of two files; Metadata review browser test timed out
+  switching between two Bootstrap modals. Reworked advanced filename patterns
+  to render as an alternate view inside a single Review Video Metadata modal,
+  avoiding overlapping modal transitions, and applied the exact formatter edits.
+- Previous checks for Settings navigation and Go lint passed. Current-head CI
+  and Codex Review status must be evaluated separately; no merge at this point.
+
+## PR #329 follow-up CI corrections — 2026-11-08
+
+- Settings navigation mounted-browser fixture was asserting the obsolete
+  Experimental placement. Updated its desktop/mobile expected option order.
+- Metadata review fixture lacked an Apollo provider, which the newly embedded
+  legacy filename parser needs for its GraphQL mutation hook. Added a local
+  ApolloClient/Provider around the fixture; production already provides Apollo.
+- Fixed the remaining Biome formatting failures in VideoTaggingDialog.
+- Baseline checks on commit `5be7247f6cba8e114ea3b0625d4f0f54fbe85290`:
+  Settings navigation failed old-order assertion; metadata review timed out on
+  the advanced view; Build failed Biome formatting; Go lint passed.
+- Await final-head CI verification. Codex review quota is exhausted; no merge.

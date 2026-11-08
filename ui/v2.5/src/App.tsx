@@ -1,5 +1,6 @@
 import React, { Suspense, useEffect, useState } from "react";
 import {
+  Redirect,
   Route,
   Switch,
   useHistory,
@@ -95,9 +96,6 @@ const Following = lazyComponent(
 const Setup = lazyComponent(() => import("./components/Setup/Setup"));
 const Migrate = lazyComponent(() => import("./components/Setup/Migrate"));
 
-const SceneFilenameParser = lazyComponent(
-  () => import("./components/SceneFilenameParser/SceneFilenameParser")
-);
 const SceneDuplicateChecker = lazyComponent(
   () => import("./components/SceneDuplicateChecker/SceneDuplicateChecker")
 );
@@ -296,9 +294,11 @@ export const App: React.FC = () => {
             <Route path="/groups" component={Groups} />
             <Route path="/stats" component={Stats} />
             <Route path="/settings" component={Settings} />
+            {/* Old bookmarks lead to Videos; filename review now lives in Review metadata. */}
             <Route
+              exact
               path="/sceneFilenameParser"
-              component={SceneFilenameParser}
+              render={() => <Redirect to="/scenes" />}
             />
             <Route
               path="/sceneDuplicateChecker"

@@ -1,6 +1,5 @@
 export const settingsTabs = [
   "tasks",
-  "experimental",
   "library",
   "processing",
   "interface",
@@ -13,6 +12,7 @@ export const settingsTabs = [
   "tools",
   "changelog",
   "about",
+  "experimental",
 ] as const;
 
 export type SettingsTab = (typeof settingsTabs)[number];
