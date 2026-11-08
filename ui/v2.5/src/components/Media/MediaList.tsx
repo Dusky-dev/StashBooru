@@ -47,6 +47,7 @@ import { PatchComponent } from "src/patch";
 import { MediaListContent } from "./MediaListContent";
 import { EditMediaDialog } from "./EditMediaDialog";
 import { mediaConversionTargets, splitMediaSelection } from "./mediaSelection";
+import { useInterfaceLocalForage } from "src/hooks/LocalForage";
 
 const emptyItems: GQL.MediaListItemFragment[] = [];
 const getItems = (result: GQL.FindMediaQueryResult) =>
@@ -54,10 +55,15 @@ const getItems = (result: GQL.FindMediaQueryResult) =>
 const getCount = (result: GQL.FindMediaQueryResult) =>
   result.data?.findMedia.count ?? 0;
 function useResult(filter: ListFilterModel) {
+  const [{ data: localInterface }] = useInterfaceLocalForage();
+  const explicit = filter.criteriaFor("collapse_stacks") as BooleanCriterion[];
+  const collapse = explicit.length
+    ? explicit.some((criterion) => criterion.value === "true")
+    : localInterface?.hideStackVariants === true;
   return GQL.useFindMediaQuery({
     variables: {
       filter: filter.makeFindFilter(),
-      media_filter: filter.makeFilter(),
+      media_filter: { ...filter.makeFilter(), collapse_stacks: collapse },
     },
   });
 }
@@ -69,6 +75,7 @@ const historyState = new Map<
 
 export const FilteredMediaList = PatchComponent("FilteredMediaList", () => {
   const intl = useIntl();
+  const [{ data: localInterface }] = useInterfaceLocalForage();
   const history = useHistory();
   const location = useLocation();
   const searchFocus = useFocus();
@@ -168,9 +175,10 @@ export const FilteredMediaList = PatchComponent("FilteredMediaList", () => {
       ),
     [showModal, selectedItems, refreshed]
   );
-  const collapsed = filter
-    .criteriaFor("collapse_stacks")
-    .some((c) => (c as BooleanCriterion).value === "true");
+  const explicitCollapse = filter.criteriaFor("collapse_stacks") as BooleanCriterion[];
+  const collapsed = explicitCollapse.length
+    ? explicitCollapse.some((criterion) => criterion.value === "true")
+    : localInterface?.hideStackVariants === true;
   const hiddenSelected = selectedItems.filter(
     (m) => !items.some((item) => item.id === m.id)
   ).length;
@@ -335,13 +343,10 @@ export const FilteredMediaList = PatchComponent("FilteredMediaList", () => {
                   next.criteria = next.criteria.filter(
                     (c) => c.criterionOption.type !== "collapse_stacks"
                   );
-                  if (!collapsed) {
-                    const criterion = new BooleanCriterion(
-                      CollapseStacksOption
-                    );
-                    criterion.value = "true";
-                    next.criteria.push(criterion);
-                  }
+                  // An explicit false overrides the Interface default as well.
+                  const criterion = new BooleanCriterion(CollapseStacksOption);
+                  criterion.value = collapsed ? "false" : "true";
+                  next.criteria.push(criterion);
                   next.currentPage = 1;
                   setFilter(next);
                 }}
