@@ -6,14 +6,6 @@ import { LibraryTasks } from "./LibraryTasks";
 import { AnimationInspectionTask } from "./AnimationInspectionTask";
 import { AssociationInheritanceTask } from "./AssociationInheritanceTask";
 import { VideoOverlapTask } from "./VideoOverlapTask";
-import { ImageStorageEstimateTask } from "./ImageStorageEstimateTask";
-import { ImageStorageBackupPreflightTask } from "./ImageStorageBackupPreflightTask";
-import { ImageStorageCandidateTask } from "./ImageStorageCandidateTask";
-import { ImageStorageRecoveryTask } from "./ImageStorageRecoveryTask";
-import { ImageStorageMissingOriginalTask } from "./ImageStorageMissingOriginalTask";
-import { ImageStorageRestorePlanTask } from "./ImageStorageRestorePlanTask";
-import { ImageStorageShadowTask } from "./ImageStorageShadowTask";
-import { ImageStorageConsumerAuditTask } from "./ImageStorageConsumerAuditTask";
 import { DataManagementTasks } from "./DataManagementTasks";
 import { MediaBackupTask } from "./MediaBackupTask";
 import { PluginTasks } from "./PluginTasks";
@@ -102,22 +94,6 @@ export const SettingsTasksPanel: React.FC = () => {
           <AnimationInspectionTask />
           <hr />
           <VideoOverlapTask />
-          <hr />
-          <ImageStorageEstimateTask />
-          <hr />
-          <ImageStorageBackupPreflightTask />
-          <hr />
-          <ImageStorageCandidateTask />
-          <hr />
-          <ImageStorageRecoveryTask />
-          <hr />
-          <ImageStorageMissingOriginalTask />
-          <hr />
-          <ImageStorageRestorePlanTask />
-          <hr />
-          <ImageStorageShadowTask />
-          <hr />
-          <ImageStorageConsumerAuditTask />
         </SettingsDisclosure>
         <SettingsDisclosure
           id="tasks-maintenance"
