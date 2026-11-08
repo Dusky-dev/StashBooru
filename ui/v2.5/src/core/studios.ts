@@ -16,6 +16,7 @@ export const useStudioFilterHook = (
     if (studioCriterion) {
       // we should be showing studio only. Remove other values
       studioCriterion.value.items = [studioValue];
+      studioCriterion.value.depth = showChildStudioContent ? -1 : 0;
       studioCriterion.modifier = GQL.CriterionModifier.Includes;
     } else {
       studioCriterion = new StudiosCriterion();
