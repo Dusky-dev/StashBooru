@@ -427,9 +427,7 @@ try {
     );
     await page.locator(".tab-pane.active #video-overlap-task").waitFor();
 
-    await page.goto(
-      `${origin}/settings?tab=tasks&return=images%2F42#backup`
-    );
+    await page.goto(`${origin}/settings?tab=tasks&return=images%2F42#backup`);
     await page.waitForFunction(
       () => document.querySelector("#tasks-maintenance")?.open
     );
