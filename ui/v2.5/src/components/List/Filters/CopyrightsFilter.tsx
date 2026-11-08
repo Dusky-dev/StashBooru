@@ -1,8 +1,6 @@
 import { useMemo } from "react";
 import { FormattedMessage } from "react-intl";
-import {
-  useFindCopyrightsForSelectQuery,
-} from "src/core/generated-graphql";
+import { useFindCopyrightsForSelectQuery } from "src/core/generated-graphql";
 import { CriterionOption } from "src/models/list-filter/criteria/criterion";
 import { CopyrightsCriterionOption } from "src/models/list-filter/criteria/copyrights";
 import { ListFilterModel } from "src/models/list-filter/filter";
