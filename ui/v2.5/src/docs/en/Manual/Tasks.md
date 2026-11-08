@@ -2,6 +2,8 @@
 
 This page allows you to direct the stash server to perform a variety of tasks.
 
+**P12/P13 image storage experiments** now live under **Settings → Experimental**, not under Inspect media. The new page contains estimates, backup-coverage and restore-readiness checks, candidate packing, shadow image comparisons, and isolated recovery rehearsals. They do not enable production packed serving or deletion of originals. Your normal job queue and Original media backup remain here in Tasks.
+
 ## Scanning
 
 The scan function walks through the stash directories you have configured for new and moved files. 
@@ -178,7 +180,7 @@ When including filesystem blob storage, the backup is stored as a zip file, with
 
 > **⚠️ Backup scope:** Neither backup option includes your media files, conversion/upscaling original-file restore caches, generated files, or configuration. Back up media, restore caches, and configuration separately. Generated files can be backed up or regenerated after restoring. A database backup alone cannot recover missing media or cached originals.
 
-For an **experimental, manual original-media backup** before storage optimization, StashBooru also ships `scripts/media_library_backup.py`. It creates SHA-256-verified, reusable file snapshots and restores to a separate directory. This is a command-line safety tool, **not** a setting in the running app or a substitute for backing up the database, configuration, and conversion/upscaling caches. See the repository's [media library backup guide](https://github.com/Dusky-dev/StashBooru/blob/develop/docs/media-library-backup.md).
+**Original media backup** is available in **Settings → Tasks → Backup & maintenance**. It creates SHA-256-verified reusable snapshots of media files and can verify or restore them to a separate directory. The same feature also has a command-line helper, `scripts/media_library_backup.py`. It is experimental and does not replace database, configuration, conversion/upscaling-cache, or off-device backups. The P12/P13 workflows under **Settings → Experimental** link back to this backup tool as a prerequisite. See the [media library backup guide](https://github.com/Dusky-dev/StashBooru/blob/develop/docs/media-library-backup.md).
 
 For database-only backups, only the database file is copied into the destination. This is useful for quick backups before performing risky operations, or for users who do not use filesystem blob storage.
 
