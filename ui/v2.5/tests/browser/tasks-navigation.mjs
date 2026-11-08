@@ -281,7 +281,9 @@ try {
       "Video overlap / containment"
     );
     assert.equal(
-      await page.locator(".tab-pane.active #image-storage-estimate-task").count(),
+      await page
+        .locator(".tab-pane.active #image-storage-estimate-task")
+        .count(),
       0
     );
     await chooseSection(page, "experimental");
@@ -352,7 +354,9 @@ try {
     await chooseSection(page, "tasks");
     if (!(await isOpen(page, "media"))) await summary(page, "media").click();
     assert.equal(
-      await page.locator(".tab-pane.active #image-storage-estimate-task").count(),
+      await page
+        .locator(".tab-pane.active #image-storage-estimate-task")
+        .count(),
       0
     );
 
