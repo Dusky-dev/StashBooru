@@ -547,6 +547,24 @@ try {
     await converter
       .getByLabel("Minimum saved bytes", { exact: true })
       .fill("8192");
+    // The default presentation is compact. Technical values remain editable
+    // on demand and their stored values survive hiding the advanced columns.
+    const advancedRuleToggle = converter.getByRole("button", {
+      name: "Show advanced rule options",
+      exact: true,
+    });
+    const imageQuality = converter.getByLabel("quality for image", {
+      exact: true,
+    });
+    assert.equal(await imageQuality.isVisible(), false);
+    await advancedRuleToggle.click();
+    assert.equal(await imageQuality.isVisible(), true);
+    assert.equal(await imageQuality.inputValue(), "90");
+    await converter
+      .getByRole("button", { name: "Hide advanced rule options", exact: true })
+      .click();
+    assert.equal(await imageQuality.isVisible(), false);
+
     // A rule can be paused without dropping its saved output or encoder settings.
     const imageRule = converter.getByRole("checkbox", {
       name: "Enable image format rule",

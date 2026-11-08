@@ -19,7 +19,7 @@ export default function Media() {
 
   return (
     <>
-      <Helmet {...titleProps} />
+      <Helmet defer={false} {...titleProps} />
       <FilteredMediaList />
     </>
   );

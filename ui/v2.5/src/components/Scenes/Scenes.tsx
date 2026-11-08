@@ -28,7 +28,7 @@ const SceneRoutes: React.FC = () => {
   const titleProps = useTitleProps({ id: "scenes" });
   return (
     <>
-      <Helmet {...titleProps} />
+      <Helmet defer={false} {...titleProps} />
       <Switch>
         <Route exact path="/scenes" component={Scenes} />
         <Route exact path="/scenes/markers" component={SceneMarkers} />

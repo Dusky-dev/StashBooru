@@ -39,6 +39,7 @@ export const MediaConversionSettings: React.FC = () => {
   const [workerCapabilityError, setWorkerCapabilityError] = useState("");
   const [rules, setRules] = useState<Rule[]>([]);
   const [saving, setSaving] = useState(false);
+  const [showAdvancedRules, setShowAdvancedRules] = useState(false);
   const [error, setError] = useState("");
   const [backend, setBackend] = useState("auto");
   const [savings, setSavings] = useState<SavingsThresholds>({
@@ -323,21 +324,44 @@ export const MediaConversionSettings: React.FC = () => {
         )}
         {settings && (
           <>
-            <h2 className="h5">Format rules</h2>
-            <p className="small text-muted">
-              Turn off rules to skip their automatic conversion without losing
-              settings.
-            </p>
+            <div className="d-flex flex-wrap align-items-center justify-content-between mb-2">
+              <div>
+                <h2 className="h5">Format rules</h2>
+                <p className="small text-muted mb-2">
+                  Choose what to convert automatically. Disabled rules keep their settings.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline-secondary"
+                className="mb-2"
+                disabled={saving}
+                aria-expanded={showAdvancedRules}
+                onClick={() => setShowAdvancedRules((value) => !value)}
+              >
+                {showAdvancedRules
+                  ? "Hide advanced rule options"
+                  : "Show advanced rule options"}
+              </Button>
+            </div>
             <Table responsive size="sm">
               <thead>
                 <tr>
                   <th>Enabled</th>
                   <th>Input format</th>
                   <th>Default output format</th>
-                  <th>Quality (0–100)</th>
-                  <th>Effort (1–9)</th>
-                  <th>Decode speed</th>
-                  <th>Conversion options</th>
+                  <th className={showAdvancedRules ? undefined : "d-none"}>
+                    Quality (0–100)
+                  </th>
+                  <th className={showAdvancedRules ? undefined : "d-none"}>
+                    Effort (1–9)
+                  </th>
+                  <th className={showAdvancedRules ? undefined : "d-none"}>
+                    Decode speed
+                  </th>
+                  <th className={showAdvancedRules ? undefined : "d-none"}>
+                    Conversion options
+                  </th>
                   <th>
                     <span className="sr-only">Remove rule</span>
                   </th>
@@ -454,7 +478,10 @@ export const MediaConversionSettings: React.FC = () => {
                       </Form.Control>
                     </td>
                     {(["quality", "effort"] as const).map((key) => (
-                      <td key={key}>
+                      <td
+                        key={key}
+                        className={showAdvancedRules ? undefined : "d-none"}
+                      >
                         <Form.Control
                           type="number"
                           className="text-input"
@@ -476,7 +503,7 @@ export const MediaConversionSettings: React.FC = () => {
                         />
                       </td>
                     ))}
-                    <td>
+                    <td className={showAdvancedRules ? undefined : "d-none"}>
                       {decodingSpeedLevels(rule.output) > 1 ? (
                         <Form.Control
                           type="number"
@@ -532,7 +559,7 @@ export const MediaConversionSettings: React.FC = () => {
                           </Form.Text>
                         )}
                     </td>
-                    <td>
+                    <td className={showAdvancedRules ? undefined : "d-none"}>
                       <Form.Check
                         type="checkbox"
                         label="Keep larger"
