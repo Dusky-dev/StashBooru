@@ -53,6 +53,10 @@ const experimentalAnchors = new Set([
 // Keep bookmarks from before processing settings moved out of System.
 export function resolveSettingsTab(search: string, hash: string): SettingsTab {
   const tab = new URLSearchParams(search).get("tab");
+  // Preserve saved Tools links and profile inspector bookmarks after relocation.
+  if ((!tab || tab === "tools") && hash === "#tools-aliases") {
+    return "experimental";
+  }
   if ((!tab || tab === "tasks") && experimentalAnchors.has(hash)) {
     return "experimental";
   }
