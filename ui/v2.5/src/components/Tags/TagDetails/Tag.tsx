@@ -181,10 +181,7 @@ const TagTabs: React.FC<{
         }
       >
         {contentSwitch}
-        <FilteredMediaList
-          filterHook={mediaFilterHook}
-          view={View.TagMedia}
-        />
+        <FilteredMediaList filterHook={mediaFilterHook} view={View.TagMedia} />
       </Tab>
       <Tab
         eventKey="scenes"
