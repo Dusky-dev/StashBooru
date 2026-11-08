@@ -6,6 +6,7 @@ import (
 
 type ImageFilterType struct {
 	OperatorFilter[ImageFilterType]
+	CollapseStacks *bool `json:"collapse_stacks"`
 	ID           *IntCriterionInput    `json:"id"`
 	Title        *StringCriterionInput `json:"title"`
 	Code         *StringCriterionInput `json:"code"`
