@@ -280,6 +280,23 @@ async function check(mode) {
         .first()
         .waitFor({ timeout: 10000 });
       assert.equal(await page.locator(".main .nav-tabs").count(), 0);
+      if (mode === "loaded") {
+        // Selecting a Wall image by clicking its preview must fire once.
+        // The native ImageWallItem previously handled the same bubbled
+        // click on both its preview and its parent.
+        const imageWall = page
+          .locator('.media-wall [data-media-kind="image"]')
+          .first();
+        const videoWall = page
+          .locator('.media-wall [data-media-kind="video"]')
+          .first();
+        await videoWall.locator(".wall-item-check").check();
+        await imageWall.locator("img, video").first().click();
+        assert.equal(await page.locator(".selected-count").innerText(), "2");
+        await imageWall.locator("img, video").first().click();
+        assert.equal(await page.locator(".selected-count").innerText(), "1");
+        await videoWall.locator(".wall-item-check").uncheck();
+      }
       const videoLink = page
         .locator(".media-wall .wall-item a[href^='/scenes/']")
         .first();
