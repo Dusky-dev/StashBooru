@@ -5388,3 +5388,11 @@ these historical CI snapshots.
   typed selections, does not navigate, and does not alter grouped card count.
 - Local isolated browser run requires a seeded fixture and explicit stack
   mutation authorization; CI and real-library verification remain pending.
+
+- Follow-up Wall selection correctness: Image Wall previews had both a child
+  and parent `onClick={handleClick}`, causing the same click to be handled
+  twice through event bubbling (unlike native Video Wall, which already handled
+  clicks only at the wrapper). Removed the redundant child handler and added a
+  mixed-media Wall regression for selecting/deselecting by preview click.
+  Typed `data-media-kind` attributes make the fixture select its Image and
+  Video wall cards without relying on their sort order.
