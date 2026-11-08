@@ -32,7 +32,7 @@ Fork issues link to the StashBooru repository; upstream help/support links remai
 | **Settings → Processing** | Shared worker connection, links to the complete version-matched worker ZIP, similarity/tagging defaults, conversion rules and upscaling setup. Use each section's Save button. |
 | **Settings → Tasks** | Jobs, scanning and animation inspection, generated files/hashes, Character merging, association review, original-media backups and database management. |
 | **Settings → Experimental** | Video overlap / containment, read-only Alias Collision Inspector, and isolated P12/P13 image storage diagnostics and recovery rehearsals. P12/P13 storage is not live storage activation. |
-| **Settings → Tools** | Metadata Health and EVA02 Visual Similarity Triage, including explicit add-only metadata copying; developer and Video tools. |
+| **Settings → Tools** | Metadata Health diagnostics, developer tools, and Video duplicate checker. |
 | **Settings → System** | Application paths, FFmpeg, transcodes and other server settings. |
 
 On phones, use **Settings section** above the controls to change sections. On
@@ -48,15 +48,13 @@ review results; jobs continue normally. Existing task bookmarks open their group
 automatically. The queue scrolls with the page so it does not cover a bookmarked
 action. Save scopes and confirmation steps remain with each tool.
 
-Tools groups **Metadata Health** and **Visual Similarity Triage** into
-expandable reviews. The read-only **Alias Collision Inspector** is now under
-**Settings → Experimental**. Existing profile links and older Tools bookmarks
-open its new location. **Developer tools** contains the GraphQL playground;
-**Video tools** keeps the filename parser and duplicate checker. Opening a group does not start a scan or copy metadata. Inputs, results
-and selections remain when a group is closed or another Settings section is
-visited and you return. Leaving Settings or refreshing starts a new review;
-these temporary results are not durable history. Metadata copy still requires
-explicit selection and confirmation.
+**Settings → Tools** retains the read-only **Metadata Health** diagnostics,
+the GraphQL playground and the Video duplicate checker. **Alias Collision
+Inspector** is under **Experimental**; existing profile links and older Tools
+bookmarks still reach it. The former **Visual Similarity Triage** is now
+integrated into **Review similar images**. Opening Tools does not start a scan.
+Tools disclosure contents remain mounted while you navigate Settings sections;
+leaving Settings or refreshing begins a new review.
 
 Expanded Character, Artist and Copyright profiles include **Library review**.
 **Inspect this name** prefills the name collision inspector; press **Inspect
@@ -127,11 +125,16 @@ heatmap with highlighted regions. It compares bounded previews; it is not a
 byte-equality check or whole-animation verification. Automatic geometric alignment
 and Video-frame comparison are not currently included.
 
-**Settings → Tools → Visual Similarity Triage** uses EVA02 clusters, not pHash
-groups. It suggests a preferred Image and can explicitly add missing metadata to
-selected other members. It does not merge/delete Images; a connected cluster is
-not proof that every pair is a duplicate. The planned browser's pHash grouping
-and red disfavored-tag comparison are [separate work](booru-browser-roadmap.md#b05--phash-groups-compare-and-tag-warnings).
+**Review similar images** (`/image-duplicates`) combines pHash duplicate
+groups and EVA02 related-image clusters in one review page. Each group has a
+**Copy missing metadata** action: choose a source Image, explicitly select
+targets and confirm. The add-only action copies missing Characters, Artists,
+Copyrights and Tags without changing files or deleting Images. This is
+independent of the separate destructive **Review removal** workflow. A related
+EVA02 cluster is not proof that every pair is a duplicate. Old
+`Settings → Tools → Visual Similarity Triage` bookmarks lead to the EVA02
+review mode. The planned Booru browser's pHash grouping and red disfavored-tag
+comparison are [separate work](booru-browser-roadmap.md#b05--phash-groups-compare-and-tag-warnings).
 
 ## Booru filled pages and page size
 
