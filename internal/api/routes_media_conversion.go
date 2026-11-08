@@ -159,25 +159,32 @@ func conversionTargetFile(ctx context.Context, target conversionTarget) (models.
 	return id, err
 }
 
-// latestRestorableConversion selects the active converted version for a
-// particular file. Older conversion records must not be used to roll back a
-// different active file (for instance after a second conversion or a rescan).
-func latestRestorableConversion(history []*mediaconvert.Record, fileID models.FileID, currentPath string) (string, error) {
+// latestActiveConversion checks the active media path, never an older journal
+// for the same entity. Restorability is a separate cache-retention question.
+func latestActiveConversion(history []*mediaconvert.Record, fileID models.FileID, currentPath string) *mediaconvert.Record {
 	for i := len(history) - 1; i >= 0; i-- {
 		record := history[i]
 		if record.Status != "complete" {
 			continue
 		}
 		after := record.After.File()
-		if after == nil || after.Base().ID != fileID || after.Base().Path != currentPath {
-			continue
+		if after != nil && after.Base().ID == fileID && after.Base().Path == currentPath {
+			return record
 		}
-		if !record.Cached {
-			return "", fmt.Errorf("the original for this conversion is no longer in the restore cache")
-		}
-		return record.ID, nil
 	}
-	return "", fmt.Errorf("no converted version with a restorable original was found for this file")
+	return nil
+}
+
+// The restore operation rechecks checksums and journal identity before any swap.
+func latestRestorableConversion(history []*mediaconvert.Record, fileID models.FileID, currentPath string) (string, error) {
+	record := latestActiveConversion(history, fileID, currentPath)
+	if record == nil {
+		return "", fmt.Errorf("no converted version with a restorable original was found for this file")
+	}
+	if !record.Cached {
+		return "", fmt.Errorf("the original for this conversion is no longer in the restore cache")
+	}
+	return record.ID, nil
 }
 
 func handleMediaConversionGet(w http.ResponseWriter, r *http.Request) {
@@ -421,6 +428,7 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 		}
 		type targetRestoreStatus struct {
 			Target     conversionTarget `json:"target"`
+			Converted  bool             `json:"converted"`
 			Restorable bool             `json:"restorable"`
 		}
 		statuses := make([]targetRestoreStatus, 0, len(request.Targets))
@@ -430,8 +438,9 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 			if err == nil {
 				current, lookupErr := store.Repository.Get(r.Context(), fileID)
 				if lookupErr == nil && current != nil {
-					_, err = latestRestorableConversion(history, fileID, current.Base().Path)
-					status.Restorable = err == nil
+					record := latestActiveConversion(history, fileID, current.Base().Path)
+					status.Converted = record != nil
+					status.Restorable = record != nil && record.Cached
 				}
 			}
 			statuses = append(statuses, status)
