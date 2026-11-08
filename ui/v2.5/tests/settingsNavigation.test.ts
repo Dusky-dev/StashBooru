@@ -17,10 +17,32 @@ test("old processing and inheritance bookmarks follow their moved sections", () 
   );
 });
 
+test("P12/P13 bookmarks move from Tasks to Experimental", () => {
+  assert.equal(
+    resolveSettingsTab("?tab=tasks", "#image-storage-estimate-task"),
+    "experimental"
+  );
+  assert.equal(
+    resolveSettingsTab("?tab=tasks", "#image-storage-shadow-title"),
+    "experimental"
+  );
+  assert.equal(
+    resolveSettingsTab("", "#image-storage-recovery-task"),
+    "experimental"
+  );
+  assert.equal(
+    resolveSettingsTab("?tab=experimental", "#experimental-storage-candidates"),
+    "experimental"
+  );
+  assert.equal(resolveSettingsTab("?tab=tasks", "#job-queue"), "tasks");
+  assert.equal(resolveSettingsTab("?tab=tasks", "#media-backup-task"), "tasks");
+});
+
 test("ordinary settings routes and explicit tabs keep their destination", () => {
   assert.equal(resolveSettingsTab("?tab=system", "#transcoding"), "system");
   assert.equal(resolveSettingsTab("?tab=tasks", "#media-converter"), "tasks");
   assert.equal(resolveSettingsTab("?tab=processing", ""), "processing");
+  assert.equal(resolveSettingsTab("?tab=experimental", ""), "experimental");
   assert.equal(resolveSettingsTab("?tab=invalid", ""), "tasks");
 });
 
