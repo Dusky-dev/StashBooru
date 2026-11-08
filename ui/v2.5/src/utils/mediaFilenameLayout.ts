@@ -7,10 +7,28 @@ export const exampleImageFilenameLayout =
   "[%artist%]/(%copyright%).%character%_%md5%.%ext%";
 
 const supportedTokens = new Set([
-  "id", "asset_id", "md5", "ext", "artist", "copyright", "character",
-  "filename", "rating", "website", "websitename", "width", "height",
-  "author", "authorid", "position", "score", "date", "current_date",
-  "name", "title", "num",
+  "id",
+  "asset_id",
+  "md5",
+  "ext",
+  "artist",
+  "copyright",
+  "character",
+  "filename",
+  "rating",
+  "website",
+  "websitename",
+  "width",
+  "height",
+  "author",
+  "authorid",
+  "position",
+  "score",
+  "date",
+  "current_date",
+  "name",
+  "title",
+  "num",
 ]);
 const categoryTokens = new Set(["copyright", "character", "artist"]);
 const templateToken = /%([a-z_][a-z0-9_]*)%/g;
@@ -21,7 +39,9 @@ export interface FilenameCategoryFields {
   artist?: string;
 }
 
-export function validateImageFilenameLayout(layout: string): string | undefined {
+export function validateImageFilenameLayout(
+  layout: string
+): string | undefined {
   if (!layout) return undefined;
   if (
     layout.length > 512 ||
