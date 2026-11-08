@@ -10,7 +10,10 @@ import {
 const hash = "2c20e78d4c3163a761873936d4380ead";
 
 test("a Grabber filename layout decodes all three categories from a path suffix", () => {
-  assert.equal(validateImageFilenameLayout(exampleImageFilenameLayout), undefined);
+  assert.equal(
+    validateImageFilenameLayout(exampleImageFilenameLayout),
+    undefined
+  );
   assert.deepEqual(
     parseImageFilenameLayout(
       `/library/downloads/[waligner]/(re_zero).emilia_${hash}.jxl`,
@@ -39,11 +42,17 @@ test("multiple labels, unknown fields and converted file extensions", () => {
 
 test("unmatched and incomplete names are never interpreted as category data", () => {
   assert.equal(
-    parseImageFilenameLayout(`/library/re_zero-emilia-${hash}.jxl`, exampleImageFilenameLayout),
+    parseImageFilenameLayout(
+      `/library/re_zero-emilia-${hash}.jxl`,
+      exampleImageFilenameLayout
+    ),
     undefined
   );
   assert.equal(
-    parseImageFilenameLayout("waligner-emilia_00000000000000000000000000000000.png", exampleImageFilenameLayout),
+    parseImageFilenameLayout(
+      "waligner-emilia_00000000000000000000000000000000.png",
+      exampleImageFilenameLayout
+    ),
     undefined
   );
 });
@@ -58,7 +67,10 @@ test("reject invalid layouts and ambiguous adjacent token captures", () => {
     "%artist%-%artist%.%ext%",
     "%artist%_%md5%.jpg",
   ]) {
-    assert.ok(validateImageFilenameLayout(bad), `unexpected valid layout: ${bad}`);
+    assert.ok(
+      validateImageFilenameLayout(bad),
+      `unexpected valid layout: ${bad}`
+    );
     assert.equal(parseImageFilenameLayout("any.jpg", bad), undefined);
   }
   assert.equal(validateImageFilenameLayout(""), undefined);
