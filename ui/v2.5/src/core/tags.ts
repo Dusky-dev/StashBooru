@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { gql } from "@apollo/client";
 import * as GQL from "src/core/generated-graphql";
 import { getClient } from "src/core/StashService";
@@ -11,46 +12,41 @@ export const useTagFilterHook = (
   tag: GQL.TagDataFragment,
   showSubTagContent?: boolean
 ) => {
-  return (filter: ListFilterModel) => {
-    const tagValue = { id: tag.id, label: tag.name };
-    // if tag is already present, then we modify it, otherwise add
-    let tagCriterion = filter.criteria.find((c) => {
-      return c.criterionOption.type === "tags";
-    }) as TagsCriterion | undefined;
+  const { id, name } = tag;
+  return useCallback(
+    (filter: ListFilterModel) => {
+      const tagValue = { id, label: name };
+      let tagCriterion = filter.criteria.find(
+        (criterion) => criterion.criterionOption.type === "tags"
+      ) as TagsCriterion | undefined;
 
-    if (tagCriterion) {
-      if (
-        tagCriterion.modifier === GQL.CriterionModifier.IncludesAll ||
-        tagCriterion.modifier === GQL.CriterionModifier.Includes
-      ) {
-        // add the tag if not present
+      if (tagCriterion) {
         if (
-          !tagCriterion.value.items.find((p) => {
-            return p.id === tag.id;
-          })
+          tagCriterion.modifier === GQL.CriterionModifier.IncludesAll ||
+          tagCriterion.modifier === GQL.CriterionModifier.Includes
         ) {
-          tagCriterion.value.items.push(tagValue);
+          if (!tagCriterion.value.items.some((item) => item.id === id)) {
+            tagCriterion.value.items.push(tagValue);
+          }
+        } else {
+          tagCriterion.value.items = [tagValue];
         }
+        tagCriterion.value.depth = showSubTagContent ? -1 : 0;
+        tagCriterion.modifier = GQL.CriterionModifier.IncludesAll;
       } else {
-        // overwrite
-        tagCriterion.value.items = [tagValue];
+        tagCriterion = new TagsCriterion(TagsCriterionOption);
+        tagCriterion.value = {
+          items: [tagValue],
+          excluded: [],
+          depth: showSubTagContent ? -1 : 0,
+        };
+        tagCriterion.modifier = GQL.CriterionModifier.IncludesAll;
+        filter.criteria.push(tagCriterion);
       }
-
-      tagCriterion.value.depth = showSubTagContent ? -1 : 0;
-      tagCriterion.modifier = GQL.CriterionModifier.IncludesAll;
-    } else {
-      tagCriterion = new TagsCriterion(TagsCriterionOption);
-      tagCriterion.value = {
-        items: [tagValue],
-        excluded: [],
-        depth: showSubTagContent ? -1 : 0,
-      };
-      tagCriterion.modifier = GQL.CriterionModifier.IncludesAll;
-      filter.criteria.push(tagCriterion);
-    }
-
-    return filter;
-  };
+      return filter;
+    },
+    [id, name, showSubTagContent]
+  );
 };
 
 interface ITagRelationTuple {
