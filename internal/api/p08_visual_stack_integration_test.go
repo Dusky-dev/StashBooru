@@ -391,3 +391,62 @@ func TestP08MergeValidatesVersionsAndRollsBackTransfers(t *testing.T) {
 	require.Equal(t, first, p08Read(t, r, first.ID))
 	require.Equal(t, second, p08Read(t, r, second.ID))
 }
+
+func TestP08ImageOnlyRepresentativeFilteringBeforePagination(t *testing.T) {
+	r := p07Fixture(t)
+	a := p08Ref(models.MediaKindImage, 1)
+	b := p08Ref(models.MediaKindImage, 2)
+	video := p08Ref(models.MediaKindVideo, 1)
+	stack := p08Write(t, r, func(ctx context.Context) (*models.VisualStack, error) {
+		return r.VisualStack.Create(ctx, models.VisualStackCreateInput{
+			Members: p08Members(a, b), Representative: b,
+		})
+	})
+	collapse := true
+	sort := "id"
+	direction := models.SortDirectionEnumAsc
+	perPage := 2
+	ids := []int{}
+	for page := 1; page <= 2; page++ {
+		require.NoError(t, r.WithReadTxn(context.Background(), func(ctx context.Context) error {
+			result, err := r.Image.Query(ctx, models.ImageQueryOptions{
+				QueryOptions: models.QueryOptions{
+					FindFilter: &models.FindFilterType{Sort: &sort, Direction: &direction, PerPage: &perPage, Page: &page},
+					Count: true,
+				},
+				ImageFilter: &models.ImageFilterType{CollapseStacks: &collapse},
+			})
+			if err != nil { return err }
+			require.Equal(t, 4, result.Count, "count must reflect visible representatives, not hidden variants")
+			ids = append(ids, result.IDs...)
+			return nil
+		}))
+	}
+	require.Equal(t, []int{2, 3, 4, 5}, ids)
+	p07GraphQL(t, r, `query { findImages(image_filter:{collapse_stacks:true},filter:{per_page:2,sort:"id"}) { count images { id } } }`, nil)
+	stack = p08Write(t, r, func(ctx context.Context) (*models.VisualStack, error) {
+		return r.VisualStack.Update(ctx, models.VisualStackUpdateInput{
+			ID: stack.ID, Version: stack.Version, Members: p08Inputs(stack),
+			Representative: b,
+		})
+	})
+	require.Equal(t, "image:2", stack.Representative)
+	// A mixed stack with a Video representative is visible in global All but
+	// not in the Images-only representative view.
+	stack = p08Write(t, r, func(ctx context.Context) (*models.VisualStack, error) {
+		return r.VisualStack.Update(ctx, models.VisualStackUpdateInput{
+			ID: stack.ID, Version: stack.Version,
+			Members: append(p08Inputs(stack), &models.VisualStackMemberInput{Media: video}),
+			Representative: video,
+		})
+	})
+	require.NoError(t, r.WithReadTxn(context.Background(), func(ctx context.Context) error {
+		result, err := r.Image.Query(ctx, models.ImageQueryOptions{
+			QueryOptions: models.QueryOptions{FindFilter: &models.FindFilterType{Sort: &sort}, Count: true},
+			ImageFilter: &models.ImageFilterType{CollapseStacks: &collapse},
+		})
+		if err != nil { return err }
+		require.Equal(t, 3, result.Count)
+		return nil
+	}))
+}
