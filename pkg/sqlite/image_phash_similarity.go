@@ -85,7 +85,7 @@ func findImagePHashSimilarityIDsWithCollapse(ctx context.Context, query queryBui
  // no Images-only card, so matching Images in that stack are omitted here.
 func collapseSortedImageIDs(ctx context.Context, ranked []int, findFilter *models.FindFilterType) ([]int, int, error) {
 	var members []struct {
-		ImageID int           `db:"image_id"`
+		ImageID   int           `db:"image_id"`
 		DisplayID sql.NullInt64 `db:"display_id"`
 	}
 	err := dbWrapper.Select(ctx, &members, `SELECT sm.image_id AS image_id, rep.image_id AS display_id
