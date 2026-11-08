@@ -298,7 +298,8 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
     tab: "experimental",
     label: "Alias collision inspector",
     anchor: "experimental-alias-collisions",
-    keywords: "aliases ambiguity conflicting names characters artists copyrights tags diagnostics",
+    keywords:
+      "aliases ambiguity conflicting names characters artists copyrights tags diagnostics",
   },
   {
     tab: "tools",
