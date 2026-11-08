@@ -68,6 +68,21 @@ export function resolveSettingsTab(search: string, hash: string): SettingsTab {
     : "tasks";
 }
 
+/** Legacy Tools bookmark opens the consolidated duplicate/related-image review. */
+export function legacySimilarityReviewDestination(
+  search: string,
+  hash: string
+): string | undefined {
+  const params = new URLSearchParams(search);
+  const tab = params.get("tab");
+  if (hash !== "#tools-similarity" || (tab && tab !== "tools")) {
+    return undefined;
+  }
+  params.delete("tab");
+  params.set("method", "embedding");
+  return `/image-duplicates?${params.toString()}`;
+}
+
 export function settingsSearch(search: string, tab: SettingsTab): string {
   const params = new URLSearchParams(search);
   params.set("tab", tab);
