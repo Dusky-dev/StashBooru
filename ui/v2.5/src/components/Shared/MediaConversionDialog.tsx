@@ -953,7 +953,7 @@ export const MediaConversionDialog: React.FC<{
                     className="my-3 ml-2"
                     onClick={() => setTab("review")}
                   >
-                    Review trials &amp; apply
+                    View saved trials
                   </Button>
                 </div>
               </>
@@ -1001,7 +1001,7 @@ export const MediaConversionDialog: React.FC<{
               }
             />
           </Tab>
-          <Tab eventKey="statistics" title="History &amp; restore">
+          <Tab eventKey="statistics" title="History">
             {state && (
               <>
                 <h5>All conversions</h5>

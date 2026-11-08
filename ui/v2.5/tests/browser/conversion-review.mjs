@@ -353,10 +353,7 @@ try {
     });
     try {
       await dialog
-        .getByRole("button", {
-          name: "Verified trial for 2 files",
-          exact: true,
-        })
+        .getByRole("button", { name: "Convert", exact: true })
         .waitFor({ timeout: 10000 });
     } catch (error) {
       console.error(errors, await page.locator("body").innerText());
@@ -366,6 +363,12 @@ try {
         });
       throw error;
     }
+    const directConvert = dialog.getByRole("button", { name: "Convert", exact: true });
+    const revert = dialog.getByRole("button", { name: "Revert", exact: true });
+    assert.equal(await revert.isVisible(), true);
+    assert.equal(await dialog.getByRole("tab", { name: "Trials", exact: true }).count(), 0);
+    await dialog.getByRole("button", { name: "Advanced tools", exact: true }).click();
+    await dialog.getByRole("button", { name: "Verified trial for 2 files", exact: true }).waitFor();
     const advanced = dialog.locator("details").filter({
       has: page.locator("#converter-hardware"),
     });
@@ -379,6 +382,7 @@ try {
         (b) => b.textContent === "Verified trial for 2 files" && !b.disabled
       )
     );
+    await dialog.getByText("Resolved format details", { exact: true }).click();
     await dialog.getByText("1 file: PNG → WebP", { exact: false }).waitFor();
     await dialog.getByText("1 file: MP4 → AV1 MP4", { exact: false }).waitFor();
     assert.equal(await advanced.getAttribute("open"), null);
@@ -405,9 +409,8 @@ try {
       true,
       "Savings limits precede the actions they govern"
     );
-    await dialog
-      .getByText("Cache eviction can remove them;", { exact: false })
-      .waitFor();
+    await dialog.getByText("What happens to my files?", { exact: true }).click();
+    await dialog.getByText("Keep separate backups.", { exact: false }).waitFor();
     if (shots) {
       await dialog.locator(".tab-pane.active").evaluate(async () => {
         await Promise.all(
@@ -671,6 +674,7 @@ try {
       .last()
       .click();
     await dialog.waitFor({ state: "hidden" });
+    await page.getByText("Advanced conversion defaults", { exact: true }).click();
     await page.locator("#converter-global-saved-bytes").fill("200");
     await page.locator("#converter-global-saved-percent").fill("20");
     await page
@@ -698,7 +702,7 @@ try {
       .click();
     await dialog
       .getByRole("tab", {
-        name: "Estimate / trial review / apply",
+        name: "Trials",
         exact: true,
       })
       .click();
@@ -707,7 +711,7 @@ try {
     // Keep the launching tab selected: the error must remain visible and copyable.
     failMaintenance = true;
     const statistics = dialog.getByRole("tab", {
-      name: "Statistics & restore",
+      name: "History",
       exact: true,
     });
     await statistics.click();
@@ -744,8 +748,8 @@ try {
     }
     for (const name of [
       "Convert",
-      "Estimate / trial review / apply",
-      "Statistics & restore",
+      "Trials",
+      "History",
     ]) {
       await dialog.getByRole("tab", { name, exact: true }).click();
       await dialog
@@ -777,6 +781,16 @@ try {
       await page.screenshot({
         path: path.join(shots, `statistics-error-${viewport.width}.png`),
       });
+    await dialog.getByRole("tab", { name: "Convert", exact: true }).click();
+    await directConvert.click();
+    await revert.click();
+    const directRequest = requests.find((r) => r.action === "start");
+    const revertRequest = requests.find((r) => r.action === "restore-targets");
+    assert.deepEqual(directRequest.targets, [
+      { kind: "image", id: 1 },
+      { kind: "scene", id: 1 },
+    ]);
+    assert.deepEqual(revertRequest.targets, directRequest.targets);
     assert.deepEqual(errors, [], "mounted component errors");
     await context.close();
     console.log(

@@ -1,19 +1,23 @@
 # Media converter
 
-Open **Convert media…** from an image or video's operations menu. In an image or
-video list, select files and choose **Convert selected media…**. The same dialog
-opens on the **Convert** tab. **Statistics & restore** holds full statistics,
-cache settings and paginated restore history. A compact latest-batch summary
-remains on the Convert tab. The dialog explains the result before the technical
-controls: estimates measure and delete sample outputs; verified trials keep
-outputs in a temporary cache for comparison. Neither changes active files.
-**Review trials & apply** lets you select eligible saved outputs explicitly.
-Apply places converted files beside their sources and keeps the same library
-entries and metadata. Originals use the converter restore cache, available from
-**Statistics & restore**, until eviction. Keep separate backups.
+Open **Convert media…** from an image or video's operations menu, or
+**Convert selected media…** from a list. The normal workflow is **Output format →
+Convert**. **Revert** restores retained originals for the selected media.
+Convert uses the existing direct conversion backend, including per-file
+validation, disk preflight and saved quality/savings defaults; no trial or
+separate Apply is required. The library entry and metadata remain intact.
+Revert verifies that the selected file still matches its latest active conversion,
+and that its original is retained; expired restore-cache copies cannot be reverted.
+Any failed items report their errors. Keep separate backups.
 
-Output format and the savings minimums stay visible before the job actions.
-**Encoding and worker options** expands processor, worker checks and temporary
+**Advanced tools** reveals optional saved trials, sampling estimates, comparison
+and manual Apply, conversion history, cache controls, and recovery operations.
+These are not necessary for a normal Convert or Revert. Jobs continue after
+the window closes.
+
+Output format remains visible above Convert and Revert. Batch savings minimums
+are under Advanced tools. **Encoding and worker options** expands processor,
+worker checks and temporary
 encoding overrides. It starts collapsed; explicit CPU/GPU choices and custom
 overrides appear in its summary. Resolved per-input plans and errors remain
 visible. Estimates are optional; you can create trials directly. Existing trials
