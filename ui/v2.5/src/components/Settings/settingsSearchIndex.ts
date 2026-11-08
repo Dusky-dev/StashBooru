@@ -31,7 +31,7 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
     tab: "tasks",
     label: "Image and Video processing tasks",
     anchor: "tasks-media",
-    keywords: "convert duplicate restore storage",
+    keywords: "animation overlap video inspect",
   },
   {
     tab: "tasks",
@@ -43,6 +43,30 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
     tab: "tasks",
     label: "Plugin tasks",
     anchor: "tasks-plugins",
+  },
+  {
+    tab: "experimental",
+    label: "P12/P13 image storage experiments",
+    anchor: "experimental-image-storage",
+    keywords: "experimental delta shared tiles compression packed archive",
+  },
+  {
+    tab: "experimental",
+    label: "Estimate P12/P13 image storage savings",
+    anchor: "experimental-storage-assess",
+    keywords: "estimate sample read only backup coverage restore audit",
+  },
+  {
+    tab: "experimental",
+    label: "Create candidates and compare shadow images",
+    anchor: "experimental-storage-candidates",
+    keywords: "p12 p13 publish pack native preview serving compare",
+  },
+  {
+    tab: "experimental",
+    label: "Rehearse recovery of packed images",
+    anchor: "experimental-storage-recovery",
+    keywords: "p12 p13 restore reconstruct missing originals scratch",
   },
   {
     tab: "library",
