@@ -290,8 +290,8 @@ try {
     assert.equal(
       await page
         .locator(".tab-pane.active #image-storage-estimate-task")
-        .count(),
-      0
+        .isVisible(),
+      false
     );
     await page.locator("#experimental-storage-assess > summary").click();
     await page
