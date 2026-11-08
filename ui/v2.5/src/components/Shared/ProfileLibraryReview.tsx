@@ -9,7 +9,7 @@ export function ProfileLibraryReview({
   name: string;
 }) {
   const intl = useIntl();
-  const query = new URLSearchParams({ tab: "tools", alias: name });
+  const query = new URLSearchParams({ tab: "experimental", alias: name });
   return (
     <details className="profile-library-review my-3">
       <summary>
@@ -30,7 +30,7 @@ export function ProfileLibraryReview({
             to={{
               pathname: "/settings",
               search: `?${query}`,
-              hash: "#tools-aliases",
+              hash: "#experimental-alias-collisions",
             }}
             target="_blank"
             rel="noreferrer"
