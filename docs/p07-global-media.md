@@ -717,3 +717,14 @@ codec/playback support, Save & New interaction, physical touch behavior,
 owner-library usability, large-library performance or recovery/upgrade/plugin
 compatibility. Other entity editors' repeated-save contracts remain separate
 acceptance work.
+
+
+## Copyright-scoped All
+
+The Copyright profile's **All** tab uses `FilteredMediaList` rather than an
+empty placeholder or a separate browser. It applies the existing hierarchical
+Copyright predicate (including descendants) to `findMedia`, sharing native
+Image/Video cards, selection, filters, grouping, pagination, and media actions.
+The distinct `CopyrightMedia` view key keeps this page's preferred layout
+and sidebar settings separate from global All. A browser regression checks the
+Copyright subtree predicate on `/copyrights/:id/all`.
