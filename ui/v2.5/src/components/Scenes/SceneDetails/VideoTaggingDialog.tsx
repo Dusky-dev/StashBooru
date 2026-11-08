@@ -3,6 +3,7 @@ import {
   type MetadataReviewContext,
 } from "src/components/Tagging/MetadataReviewInfo";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { SceneFilenameParser } from "src/components/SceneFilenameParser/SceneFilenameParser";
 import { Badge, Button, Form, Modal, Spinner } from "react-bootstrap";
 import { faExternalLinkAlt, faSearch } from "@fortawesome/free-solid-svg-icons";
 import { useHistory } from "react-router-dom";
@@ -228,6 +229,7 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
   const [loading, setLoading] = useState(true);
   const [loadingBooru, setLoadingBooru] = useState(false);
   const [loadingFrames, setLoadingFrames] = useState(false);
+  const [showFilenamePatterns, setShowFilenamePatterns] = useState(false);
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string>();
   const [pendingCharacterResolution, setPendingCharacterResolution] =
@@ -507,7 +509,7 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
   return (
     <>
       <Modal
-        show={!pendingCharacterResolution && !changePlan}
+        show={!pendingCharacterResolution && !changePlan && !showFilenamePatterns}
         onHide={() => {
           if (!applying) onHide();
         }}
@@ -565,6 +567,14 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
               onClick={() => void loadFrameMetadata()}
             >
               {loadingFrames ? "Analyzing…" : "Analyze frames"}
+            </Button>
+            <Button
+              className="ml-2 mb-2"
+              variant="outline-secondary"
+              disabled={busy || applying}
+              onClick={() => setShowFilenamePatterns(true)}
+            >
+              Advanced filename patterns…
             </Button>
           </div>
 
@@ -776,6 +786,34 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
             onClick={applySelected}
           >
             {applying ? "Applying…" : "Apply selected metadata"}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal
+        show={showFilenamePatterns}
+        onHide={() => setShowFilenamePatterns(false)}
+        size="xl"
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Review filename patterns</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="text-muted">
+            For videos with custom filename formats, search the library using a
+            pattern, review proposed changes and apply only the selected fields.
+            This search is library-wide, not limited to the current Video.
+            Applying updates only the current results page.
+          </p>
+          <SceneFilenameParser onApplied={onApplied} />
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            onClick={() => setShowFilenamePatterns(false)}
+          >
+            Back to Video metadata
           </Button>
         </Modal.Footer>
       </Modal>

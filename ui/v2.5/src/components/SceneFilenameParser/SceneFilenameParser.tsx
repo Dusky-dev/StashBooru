@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { Button, Card, Form, Table } from "react-bootstrap";
+import { Button, Form, Table } from "react-bootstrap";
+import { countParserAssociationReplacements } from "./parserReviewSafety";
 import { FormattedMessage, useIntl } from "react-intl";
 import clone from "lodash-es/clone";
 import {
@@ -34,7 +35,9 @@ const initialShowFieldsState = new Map<string, boolean>([
   ["Studio", true],
 ]);
 
-export const SceneFilenameParser: React.FC = () => {
+export const SceneFilenameParser: React.FC<{
+  onApplied?: () => Promise<unknown>;
+}> = ({ onApplied }) => {
   const intl = useIntl();
   const Toast = useToast();
   const [parserResult, setParserResult] = useState<SceneParserResult[]>([]);
@@ -181,10 +184,25 @@ export const SceneFilenameParser: React.FC = () => {
   }
 
   async function onApply() {
+    if (getScenesUpdateData().length === 0) return;
+
+    const replacements = countParserAssociationReplacements(
+      parserResult.filter((result) => result.isChanged())
+    );
+    if (
+      (replacements.characters > 0 || replacements.tags > 0) &&
+      !window.confirm(
+        `This will replace existing Characters on ${replacements.characters} Video(s) and Tags on ${replacements.tags} Video(s). The filename parser replaces those relationships, not adds to them. Continue?`
+      )
+    ) {
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       await updateScenes();
+      await onApplied?.();
       Toast.success(
         intl.formatMessage(
           { id: "toast.updated_entity" },
@@ -395,7 +413,11 @@ export const SceneFilenameParser: React.FC = () => {
           metadataByline={[]}
           onChangePage={(page) => onPageChanged(page)}
         />
-        <Button variant="primary" onClick={onApply}>
+        <Button
+          variant="primary"
+          disabled={isLoading || getScenesUpdateData().length === 0}
+          onClick={onApply}
+        >
           <FormattedMessage id="actions.apply" />
         </Button>
       </>
@@ -403,10 +425,8 @@ export const SceneFilenameParser: React.FC = () => {
   }
 
   return (
-    <Card id="parser-container" className="col col-sm-9 mx-auto">
-      <h4>
-        {intl.formatMessage({ id: "config.tools.scene_filename_parser.title" })}
-      </h4>
+    <div id="parser-container" className="w-100">
+      <h5>Advanced filename pattern matching</h5>
       <ParserInput
         input={parserInput}
         onFind={(input) => onFindClicked(input)}
@@ -417,7 +437,7 @@ export const SceneFilenameParser: React.FC = () => {
 
       {isLoading && <LoadingIndicator />}
       {renderTable()}
-    </Card>
+    </div>
   );
 };
 

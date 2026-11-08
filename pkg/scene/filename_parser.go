@@ -84,7 +84,7 @@ func initParserFields() {
 
 	ret["d"] = newParserField("d", `(?:\.|-|_)`, false)
 	ret["rating"] = newParserField("rating", `\d`, true)
-	ret["rating100"] = newParserField("rating100", `\d`, true)
+	ret["rating100"] = newParserField("rating100", `\d{1,3}`, true)
 	ret["performer"] = newParserField("performer", ".*", true)
 	ret["studio"] = newParserField("studio", ".*", true)
 	ret["movie"] = newParserField("movie", ".*", true)

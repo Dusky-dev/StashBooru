@@ -884,16 +884,6 @@ export const SettingsToolsPanel: React.FC = () => {
         <SettingsToolsSection>
           <Setting
             heading={
-              <Link to="/sceneFilenameParser">
-                <Button>
-                  <FormattedMessage id="config.tools.scene_filename_parser.title" />
-                </Button>
-              </Link>
-            }
-          />
-
-          <Setting
-            heading={
               <Link to="/sceneDuplicateChecker">
                 <Button>
                   <FormattedMessage id="config.tools.scene_duplicate_checker" />
