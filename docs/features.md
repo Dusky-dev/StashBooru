@@ -31,8 +31,8 @@ Fork issues link to the StashBooru repository; upstream help/support links remai
 | **Settings → Library** | Media folders, scan rules and automatic ancestor/profile associations. Inheritance switches save automatically. |
 | **Settings → Processing** | Shared worker connection, links to the complete version-matched worker ZIP, similarity/tagging defaults, conversion rules and upscaling setup. Use each section's Save button. |
 | **Settings → Tasks** | Jobs, scanning and animation inspection, generated files/hashes, Character merging, association review, original-media backups and database management. |
-| **Settings → Experimental** | Video overlap / containment analysis and isolated P12/P13 image storage estimates, verified backup coverage, candidate packs, shadow reads and recovery rehearsals. This is not live storage activation. |
-| **Settings → Tools** | Metadata Health, Alias Collision Inspector and EVA02 Visual Similarity Triage, including explicit add-only metadata copying. |
+| **Settings → Experimental** | Video overlap / containment, read-only Alias Collision Inspector, and isolated P12/P13 image storage diagnostics and recovery rehearsals. P12/P13 storage is not live storage activation. |
+| **Settings → Tools** | Metadata Health and EVA02 Visual Similarity Triage, including explicit add-only metadata copying; developer and Video tools. |
 | **Settings → System** | Application paths, FFmpeg, transcodes and other server settings. |
 
 On phones, use **Settings section** above the controls to change sections. On
@@ -48,10 +48,11 @@ review results; jobs continue normally. Existing task bookmarks open their group
 automatically. The queue scrolls with the page so it does not cover a bookmarked
 action. Save scopes and confirmation steps remain with each tool.
 
-Tools groups **Metadata Health**, **Visual Similarity Triage** and **Alias
-Collision Inspector** into expandable reviews. **Developer tools** contains the
-GraphQL playground; **Video tools** keeps the filename parser and duplicate
-checker. Opening a group does not start a scan or copy metadata. Inputs, results
+Tools groups **Metadata Health** and **Visual Similarity Triage** into
+expandable reviews. The read-only **Alias Collision Inspector** is now under
+**Settings → Experimental**. Existing profile links and older Tools bookmarks
+open its new location. **Developer tools** contains the GraphQL playground;
+**Video tools** keeps the filename parser and duplicate checker. Opening a group does not start a scan or copy metadata. Inputs, results
 and selections remain when a group is closed or another Settings section is
 visited and you return. Leaving Settings or refreshing starts a new review;
 these temporary results are not durable history. Metadata copy still requires
@@ -309,8 +310,9 @@ when explicit artwork is absent.
 
 **Settings → Tools → Metadata Health** reports duplicate/same-name identities,
 legacy Copyright Tags, Artist-link drift, orphaned links and ambiguous migration
-candidates. **Alias Collision Inspector** shows conflicting canonical/alias
-matches. Both diagnose without automatically repairing or merging records.
+candidates. **Settings → Experimental → Alias Collision Inspector** shows
+conflicting canonical/alias matches. Both diagnose without automatically
+repairing or merging records.
 
 ### Character creation and saves
 
