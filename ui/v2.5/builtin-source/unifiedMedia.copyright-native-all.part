@@ -97,4 +97,5 @@
     );
   }
 
-  CopyrightUnifiedMediaPortalHost = CopyrightUnifiedNativeAllPortalHost;
+  // The native Copyright All tab now owns this surface entirely.
+  CopyrightUnifiedMediaPortalHost = () => null;

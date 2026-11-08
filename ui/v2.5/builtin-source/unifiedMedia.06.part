@@ -345,9 +345,9 @@
     );
   });
 
-  patchPage("PerformerPage", "performer", "performer", "performer-tabs");
-  patchPage("StudioPage", "studio", "studio", "studio-tabs");
-  patchPage("TagPage", "tag", "tag", "tag-tabs");
+  // Entity All tabs are now native React-Bootstrap tabs backed by findMedia.
+  // Do not inject synthetic tabs or independent mixed-media controllers here.
+  // Preserve the global Scene preview / GIF enhancement patches above.
 
   console.log(`[Unified Media] v${VERSION} loaded - mixed feed + restart-safe app-wide video previews + restored scene navigation/GIF badges`);
 })();
