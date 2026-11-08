@@ -332,7 +332,20 @@ export function VisualStackDialog({
       ]);
       setMemberURL("");
     });
-  const add = () => reviewMember(parseMemberURL(memberURL));
+  const add = () => {
+    const parsed = parseMemberURL(memberURL);
+    return reviewMember(
+      parsed
+        ? {
+            ...parsed,
+            kind:
+              parsed.kind === "IMAGE"
+                ? GQL.MediaKind.Image
+                : GQL.MediaKind.Video,
+          }
+        : undefined
+    );
+  };
 
   const mergeSelectionInto = (targetStackID: string) =>
     run(async () => {
