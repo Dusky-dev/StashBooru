@@ -92,9 +92,6 @@ export function VisualStackDialog({
   const candidates = (similarQuery.data?.findImages.images ?? []).filter(
     (image) => !rows.some((row) => row.id === `image:${image.id}`)
   );
-  useEffect(() => {
-    setSimilarPage(1);
-  }, [referenceImage?.media.id, similarDistance]);
 
   const adopt = useCallback((value: GQL.VisualStackDataFragment) => {
     if (!mounted.current) return;
@@ -634,7 +631,10 @@ export function VisualStackDialog({
                 aria-label={`Representative ${m.id}`}
                 checked={representative === m.id}
                 disabled={busy}
-                onChange={() => setRepresentative(m.id)}
+                onChange={() => {
+                  setRepresentative(m.id);
+                  setSimilarPage(1);
+                }}
               />
               {snapshot && (
                 <Form.Check
