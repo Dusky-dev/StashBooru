@@ -14,6 +14,7 @@ import { StudioDetailsPanel } from "../../../src/components/Studios/StudioDetail
 import { CopyrightDetailsPanel } from "../../../src/components/Tags/Copyrights";
 import { IntlProvider } from "react-intl";
 import { Settings } from "../../../src/components/Settings/Settings";
+import ImageDuplicates from "../../../src/components/ImageDuplicates/ImageDuplicates";
 import { ConfigurationProvider } from "../../../src/hooks/Config";
 import { ToastProvider } from "../../../src/hooks/Toast";
 import { JobQueueProvider } from "../../../src/hooks/JobQueue";
@@ -233,6 +234,9 @@ ReactDOM.render(
                   </Route>
                   <Route path="/copyrights/7">
                     <ProfileFixture kind="copyright" />
+                  </Route>
+                  <Route path="/image-duplicates">
+                    <ImageDuplicates />
                   </Route>
                   <Route>
                     <Settings />

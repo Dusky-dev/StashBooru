@@ -18,6 +18,7 @@ import { SettingsLibraryPanel } from "./SettingsLibraryPanel";
 import { SettingsSecurityPanel } from "./SettingsSecurityPanel";
 import { SettingsProcessingPanel } from "./SettingsProcessingPanel";
 import {
+  legacySimilarityReviewDestination,
   resolveSettingsTab,
   settingsSearch,
   SettingsTab,
@@ -150,8 +151,15 @@ const SettingTabs: React.FC<{ tab: SettingsTab }> = ({ tab }) => {
 
 export const Settings: React.FC = () => {
   const location = useLocation();
+  const movedSimilarity = legacySimilarityReviewDestination(
+    location.search,
+    location.hash
+  );
   const tab = resolveSettingsTab(location.search, location.hash);
 
+  if (movedSimilarity) {
+    return <Redirect to={movedSimilarity} />;
+  }
   if (new URLSearchParams(location.search).get("tab") !== tab) {
     return (
       <Redirect

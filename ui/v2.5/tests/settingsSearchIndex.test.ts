@@ -85,3 +85,12 @@ test("Alias Collision Inspector search is an Experimental destination", () => {
     false
   );
 });
+
+test("retired similarity triage is not a standalone Tools search result", () => {
+  assert.equal(
+    searchSettings("visual similarity").some(
+      (entry) => entry.anchor === "tools-similarity"
+    ),
+    false
+  );
+});
