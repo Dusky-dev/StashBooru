@@ -72,9 +72,10 @@ interface IFilteredMediaList {
   view?: View;
 }
 
-export const FilteredMediaList = PatchComponent(
-  "FilteredMediaList",
-  ({ filterHook, view = View.Media }: IFilteredMediaList) => {
+const FilteredMediaListComponent = ({
+  filterHook,
+  view = View.Media,
+}: IFilteredMediaList) => {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
@@ -427,5 +428,9 @@ export const FilteredMediaList = PatchComponent(
       </SidebarStateContext.Provider>
     </div>
   );
-  }
+};
+
+export const FilteredMediaList = PatchComponent(
+  "FilteredMediaList",
+  FilteredMediaListComponent
 );
