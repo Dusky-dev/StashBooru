@@ -717,3 +717,19 @@ codec/playback support, Save & New interaction, physical touch behavior,
 owner-library usability, large-library performance or recovery/upgrade/plugin
 compatibility. Other entity editors' repeated-save contracts remain separate
 acceptance work.
+
+
+## Shared pagination and empty filtered results
+
+All uses the same pagination state as native Images, Videos, Characters,
+Artists, Tags and Copyrights. Invalid URL page numbers and page sizes
+(e.g. `p=-3`, `p=abc`, `perPage=0`) fall back to safe defaults instead
+of producing invalid pagination or native query arguments. A completed query
+with no matching items normalizes any deep-link page to page 1, so users can
+change filters and recover without being stranded on a non-existent page.
+A smaller completed result set clamps to its final real page.
+
+Page correction waits for the **current** completed GraphQL result, rather
+than using a count cached during page/sort/filter transitions. Errors and
+loading states do not cause page resets. Pure unit tests cover the numeric
+and range rules; the All browser suite checks an empty-result deep link.
