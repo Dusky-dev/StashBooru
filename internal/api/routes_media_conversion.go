@@ -159,6 +159,27 @@ func conversionTargetFile(ctx context.Context, target conversionTarget) (models.
 	return id, err
 }
 
+// latestRestorableConversion selects the active converted version for a
+// particular file. Older conversion records must not be used to roll back a
+// different active file (for instance after a second conversion or a rescan).
+func latestRestorableConversion(history []*mediaconvert.Record, fileID models.FileID, currentPath string) (string, error) {
+	for i := len(history) - 1; i >= 0; i-- {
+		record := history[i]
+		if record.Status != "complete" {
+			continue
+		}
+		after := record.After.File()
+		if after == nil || after.Base().ID != fileID || after.Base().Path != currentPath {
+			continue
+		}
+		if !record.Cached {
+			return "", fmt.Errorf("the original for this conversion is no longer in the restore cache")
+		}
+		return record.ID, nil
+	}
+	return "", fmt.Errorf("no converted version with a restorable original was found for this file")
+}
+
 func handleMediaConversionGet(w http.ResponseWriter, r *http.Request) {
 	if id := r.URL.Query().Get("trialID"); id != "" {
 		role := r.URL.Query().Get("file")
@@ -368,11 +389,11 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 		startConversionReview(w, r, request)
 		return
 	}
-	if request.Action != "start" && request.Action != "restore" && request.Action != "configure" && request.Action != "recover" && request.Action != "preview" {
+	if request.Action != "start" && request.Action != "restore" && request.Action != "restore-targets" && request.Action != "configure" && request.Action != "recover" && request.Action != "preview" {
 		http.Error(w, "unknown conversion action", http.StatusBadRequest)
 		return
 	}
-	if (request.Action == "start" || request.Action == "preview") && (len(request.Targets) == 0 || len(request.Targets) > 10000) {
+	if (request.Action == "start" || request.Action == "preview" || request.Action == "restore-targets") && (len(request.Targets) == 0 || len(request.Targets) > 10000) {
 		http.Error(w, "select between 1 and 10000 media entries", http.StatusBadRequest)
 		return
 	}
@@ -443,6 +464,52 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 				return err
 			}
 			return s.Trim()
+		case "restore-targets":
+			history, err := s.History()
+			if err != nil {
+				return err
+			}
+			progress.SetTotal(len(request.Targets))
+			var restored []models.FileID
+			defer func() {
+				if len(restored) > 0 {
+					_ = generateConvertedMedia(context.WithoutCancel(ctx), restored)
+				}
+			}()
+			for _, target := range request.Targets {
+				if err := ctx.Err(); err != nil {
+					return err
+				}
+				item := conversionItem{Target: target, Status: "failed"}
+				fileID, itemErr := conversionTargetFile(ctx, target)
+				if itemErr == nil {
+					var current models.File
+					current, itemErr = s.Repository.Get(ctx, fileID)
+					if itemErr == nil && current == nil {
+						itemErr = fmt.Errorf("selected media file no longer exists")
+					}
+					if itemErr == nil {
+						var recordID string
+						recordID, itemErr = latestRestorableConversion(history, fileID, current.Base().Path)
+						if itemErr == nil {
+							item.RecordID = recordID
+							itemErr = s.Restore(ctx, recordID)
+							if itemErr == nil {
+								item.Status = "restored"
+								restored = append(restored, fileID)
+							}
+						}
+					}
+				}
+				if itemErr != nil {
+					item.Error = itemErr.Error()
+				}
+				conversionJobs.Lock()
+				state.Items = append(state.Items, item)
+				conversionJobs.Unlock()
+				progress.Increment()
+			}
+			return nil
 		case "restore":
 			if err := s.Restore(ctx, request.RecordID); err != nil {
 				return err
