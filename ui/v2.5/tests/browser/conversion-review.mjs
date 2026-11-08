@@ -127,6 +127,8 @@ try {
     let trials = [],
       job,
       nextJob = 1;
+    const convertedTargets = new Set();
+    const key = (target) => `${target.kind}:${target.id}`;
     let failMaintenance = false,
       pendingFailure;
     let failCapabilities = false;
@@ -211,7 +213,15 @@ try {
               },
             ],
           };
-        else if (body.action === "save-defaults") payload = config;
+        else if (body.action === "restore-status") {
+          payload = {
+            targets: body.targets.map((target) => ({
+              target,
+              converted: convertedTargets.has(key(target)),
+              restorable: convertedTargets.has(key(target)),
+            })),
+          };
+        } else if (body.action === "save-defaults") payload = config;
         else {
           job = {
             jobID: nextJob++,
@@ -265,7 +275,20 @@ try {
               status: t.status,
             }));
           }
+          if (body.action === "start") {
+            for (const target of body.targets)
+              convertedTargets.add(key(target));
+          }
+          if (body.action === "restore-targets") {
+            for (const target of body.targets)
+              convertedTargets.delete(key(target));
+          }
           if (body.action === "apply-trials") {
+            for (const trial of trials) {
+              if (body.trialIDs.includes(trial.id)) {
+                convertedTargets.add(key(trial.target));
+              }
+            }
             trials = trials.map((t) =>
               body.trialIDs.includes(t.id)
                 ? { ...t, status: "applied", retained: false }
@@ -353,10 +376,7 @@ try {
     });
     try {
       await dialog
-        .getByRole("button", {
-          name: "Verified trial for 2 files",
-          exact: true,
-        })
+        .getByRole("button", { name: "Convert", exact: true })
         .waitFor({ timeout: 10000 });
     } catch (error) {
       console.error(errors, await page.locator("body").innerText());
@@ -366,6 +386,23 @@ try {
         });
       throw error;
     }
+    const primaryAction = dialog.locator("#converter-primary-action");
+    assert.equal(await primaryAction.innerText(), "Convert");
+    assert.equal(
+      await dialog.getByRole("button", { name: "Revert", exact: true }).count(),
+      0,
+      "Before conversion there is no second Revert button"
+    );
+    assert.equal(
+      await dialog.getByRole("tab", { name: "Trials", exact: true }).count(),
+      0
+    );
+    await dialog
+      .getByRole("button", { name: "Advanced tools", exact: true })
+      .click();
+    await dialog
+      .getByRole("button", { name: "Verified trial for 2 files", exact: true })
+      .waitFor();
     const advanced = dialog.locator("details").filter({
       has: page.locator("#converter-hardware"),
     });
@@ -379,6 +416,7 @@ try {
         (b) => b.textContent === "Verified trial for 2 files" && !b.disabled
       )
     );
+    await dialog.getByText("Resolved format details", { exact: true }).click();
     await dialog.getByText("1 file: PNG → WebP", { exact: false }).waitFor();
     await dialog.getByText("1 file: MP4 → AV1 MP4", { exact: false }).waitFor();
     assert.equal(await advanced.getAttribute("open"), null);
@@ -406,7 +444,10 @@ try {
       "Savings limits precede the actions they govern"
     );
     await dialog
-      .getByText("Cache eviction can remove them;", { exact: false })
+      .getByText("What happens to my files?", { exact: true })
+      .click();
+    await dialog
+      .getByText("Conversion preserves the library entries", { exact: false })
       .waitFor();
     if (shots) {
       await dialog.locator(".tab-pane.active").evaluate(async () => {
@@ -671,6 +712,9 @@ try {
       .last()
       .click();
     await dialog.waitFor({ state: "hidden" });
+    await page
+      .getByText("Advanced conversion defaults", { exact: true })
+      .click();
     await page.locator("#converter-global-saved-bytes").fill("200");
     await page.locator("#converter-global-saved-percent").fill("20");
     await page
@@ -697,17 +741,15 @@ try {
       .getByRole("button", { name: "Open converter", exact: true })
       .click();
     await dialog
-      .getByRole("tab", {
-        name: "Estimate / trial review / apply",
-        exact: true,
-      })
+      .getByRole("button", { name: "Advanced tools", exact: true })
       .click();
+    await dialog.getByRole("tab", { name: "Trials", exact: true }).click();
     await dialog.locator('[data-trial-id="' + "1".repeat(32) + '"]').waitFor();
     // Maintenance jobs return an accepted ID first and fail only on a later poll.
     // Keep the launching tab selected: the error must remain visible and copyable.
     failMaintenance = true;
     const statistics = dialog.getByRole("tab", {
-      name: "Statistics & restore",
+      name: "History",
       exact: true,
     });
     await statistics.click();
@@ -742,11 +784,7 @@ try {
           restoreRecord.id
         );
     }
-    for (const name of [
-      "Convert",
-      "Estimate / trial review / apply",
-      "Statistics & restore",
-    ]) {
+    for (const name of ["Convert", "Trials", "History"]) {
       await dialog.getByRole("tab", { name, exact: true }).click();
       await dialog
         .getByRole("region", { name: "Conversion job feedback", exact: true })
@@ -777,6 +815,41 @@ try {
       await page.screenshot({
         path: path.join(shots, `statistics-error-${viewport.width}.png`),
       });
+    await dialog.getByRole("tab", { name: "Convert", exact: true }).click();
+    await primaryAction
+      .getByText("Convert remaining", { exact: true })
+      .waitFor();
+    await primaryAction.click();
+    await primaryAction.getByText("Revert", { exact: true }).waitFor();
+    const directRequest = requests.find((r) => r.action === "start");
+    assert.deepEqual(
+      directRequest.targets,
+      [{ kind: "scene", id: 1 }],
+      "Mixed selection converts only unconverted media"
+    );
+    // Reopening the dialog must detect the converted files from server state.
+    await dialog
+      .getByRole("button", { name: "Close", exact: true })
+      .last()
+      .click();
+    await dialog.waitFor({ state: "hidden" });
+    await page
+      .getByRole("button", { name: "Open converter", exact: true })
+      .click();
+    await dialog
+      .locator("#converter-primary-action")
+      .getByText("Revert", { exact: true })
+      .waitFor();
+    await dialog.locator("#converter-primary-action").click();
+    await dialog
+      .locator("#converter-primary-action")
+      .getByText("Convert", { exact: true })
+      .waitFor();
+    const revertRequest = requests.find((r) => r.action === "restore-targets");
+    assert.deepEqual(revertRequest.targets, [
+      { kind: "image", id: 1 },
+      { kind: "scene", id: 1 },
+    ]);
     assert.deepEqual(errors, [], "mounted component errors");
     await context.close();
     console.log(

@@ -283,10 +283,19 @@ async function check(mode) {
       const videoLink = page
         .locator(".media-wall .wall-item a[href^='/scenes/']")
         .first();
+      const listTitle = await page.title();
       await videoLink.click({ timeout: 10000 });
       await page.waitForURL(/\/scenes\/\d+/);
+      await page.waitForFunction(
+        (previous) => document.title !== previous,
+        listTitle
+      );
       await page.goBack();
       await page.locator(".media-list").waitFor();
+      await page.waitForFunction(
+        (previous) => document.title === previous,
+        listTitle
+      );
     }
     assert.deepEqual(errors, [], `Browser errors in ${mode}`);
     console.log(

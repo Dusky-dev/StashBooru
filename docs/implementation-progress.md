@@ -5309,3 +5309,63 @@ these historical CI snapshots.
   Settings navigation failed old-order assertion; metadata review timed out on
   the advanced view; Build failed Biome formatting; Go lint passed.
 - Await final-head CI verification. Codex review quota is exhausted; no merge.
+
+
+## Video tab title refresh and compact converter settings — 2026-11-08
+
+- Baseline: `develop` `f097550be482ab16a06059240d2f36624e6991a0`.
+  Branch: `fix/video-tab-title-and-converter-ui-20261108`.
+- Browser title: make root, Videos route, Video details, All and Images
+  react-helmet updates synchronous so old Video titles do not linger when
+  navigating out of a detail page. Added a video → All → back-title assertion
+  to the mounted All-media regression suite.
+- Media Converter: retain existing format-rule storage and encoder options,
+  but show only enabled/input/output columns by default; expose advanced
+  per-format quality, effort, decode speed, and loss-related controls on
+  request. Move savings thresholds and trial retention into a collapsed
+  Advanced conversion defaults disclosure. Preserve draft/save behavior.
+- Existing Settings mounted-browser regression now checks collapsed defaults,
+  expanded advanced encoding controls and preservation of quality values.
+- Validation is to be performed by CI and supported mounted-browser tests;
+  only static source and branch checks were possible in the connector environment.
+  Do not merge until applicable CI checks complete; Codex review status is
+  assessed independently.
+
+
+## Media converter direct Convert/Revert workflow — 2026-11-08
+
+- Continued PR #331 (`fix/video-tab-title-and-converter-ui-20261108`) on
+  `develop` baseline `f097550be482ab16a06059240d2f36624e6991a0`.
+- Simplified the conversion dialog, not only Processing settings. The normal
+  flow is **Output format → Convert**, with **Revert** for selected media that
+  still has an original in the restore cache. The existing backend `start`
+  path performs preflight, resolved per-format defaults and direct conversion.
+- Added `restore-targets` action to resolve each selected media's primary
+  file and locate the latest active, checksum-verified conversion with a
+  retained original. Refuses evicted originals and stale/mismatched records;
+  bulk failures are reported per item. Original version cache semantics and
+  standalone verified-trial review/apply APIs remain intact.
+- Moved samples/estimates, verified trials and their Apply, conversion history
+  and savings overrides behind **Advanced tools**; collapsed detailed plans
+  and file-replacement guidance. Added Go selection regression and the
+  dedicated `conversion-dialog.yml` Playwright workflow, and updated
+  `conversion-review.mjs` and `processing-job-resume.mjs` browser fixtures.
+- An earlier conversion-dialog CI run failed only because the browser locator
+  for backup safety copy matched two alerts; fixed the locator. An earlier
+  job-feedback browser run expected the old always-visible Statistics tab;
+  updated it to open Advanced tools and History first. The final-head CI
+  and runtime tests remain to be verified, and the PR is not merged.
+
+## Follow-up: one state-aware conversion button — 2026-11-08
+
+- PR #331, branch `fix/video-tab-title-and-converter-ui-20261108`.
+- Replaced the side-by-side Convert/Revert pair with a single button whose
+  label is obtained from the selected media's active conversion records via
+  the new read-only `restore-status` action. Reloads status when the dialog
+  opens and when a job completes. Revert returns to Convert after a successful
+  restore. Evicted originals still show a disabled Revert, not an unsafe
+  Convert. A mixed selection converts only remaining unconverted entries.
+- Extended the browser conversion fixture to model active conversions, reopen
+  persistence and partial selections. Updated the processing job resume mock
+  to recognize status reads; added Go test coverage for converted status when
+  cache retention has expired. Current-head CI is still a release gate.

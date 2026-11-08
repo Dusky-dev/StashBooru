@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stashapp/stash/pkg/mediaconvert"
+	"github.com/stashapp/stash/pkg/models"
 )
 
 func TestConversionOutputValidation(t *testing.T) {
@@ -72,5 +73,35 @@ func TestConversionUsesDecodingSpeedDefaults(t *testing.T) {
 				t.Fatalf("conversionUsesDecodingSpeedDefaults() = %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestLatestRestorableConversionMatchesActiveFile(t *testing.T) {
+	file := func(id models.FileID, path string) mediaconvert.Snapshot {
+		return mediaconvert.Snapshot{Video: &models.VideoFile{BaseFile: &models.BaseFile{ID: id, Path: path}}}
+	}
+	history := []*mediaconvert.Record{
+		{ID: "old", Status: "complete", Cached: true, After: file(5, "/videos/old.webm")},
+		{ID: "other", Status: "complete", Cached: true, After: file(7, "/videos/other.webm")},
+		{ID: "current", Status: "complete", Cached: true, After: file(5, "/videos/current.webm")},
+	}
+	recordID, err := latestRestorableConversion(history, 5, "/videos/current.webm")
+	if err != nil || recordID != "current" {
+		t.Fatalf("latest active conversion = %q, err %v", recordID, err)
+	}
+	if _, err := latestRestorableConversion(history, 5, "/videos/unrelated.webm"); err == nil {
+		t.Fatal("must not select a stale conversion for an unrelated active file")
+	}
+	history[2].Cached = false
+	if active := latestActiveConversion(history, 5, "/videos/current.webm"); active == nil || active.ID != "current" {
+		t.Fatal("evicted cache must not hide an actively converted file")
+	}
+	if _, err := latestRestorableConversion(history, 5, "/videos/current.webm"); err == nil {
+		t.Fatal("must refuse an evicted original")
+	}
+	history[2].Cached = true
+	history[2].Status = "restored"
+	if _, err := latestRestorableConversion(history, 5, "/videos/current.webm"); err == nil {
+		t.Fatal("must not revert a conversion that is already restored")
 	}
 }

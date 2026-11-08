@@ -700,7 +700,7 @@ const ScenePage: React.FC<IProps> = PatchComponent("ScenePage", (props) => {
 
   return (
     <>
-      <Helmet>
+      <Helmet defer={false}>
         <title>{title}</title>
       </Helmet>
       {isVideoTaggingOpen && (

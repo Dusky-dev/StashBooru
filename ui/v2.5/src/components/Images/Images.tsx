@@ -14,7 +14,7 @@ const ImageRoutes: React.FC = () => {
   const titleProps = useTitleProps({ id: "images" });
   return (
     <>
-      <Helmet {...titleProps} />
+      <Helmet defer={false} {...titleProps} />
       <Switch>
         <Route exact path="/images" component={Images} />
         <Route path="/images/:id" component={Image} />

@@ -407,6 +407,7 @@ export const App: React.FC = () => {
                         <InteractiveProvider>
                           <Helmet
                             {...titleProps}
+                            defer={false}
                             htmlAttributes={htmlAttributes}
                           />
                           {maybeRenderNavbar()}
