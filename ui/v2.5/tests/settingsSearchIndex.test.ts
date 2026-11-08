@@ -71,3 +71,17 @@ test("Animation inspection search leads to scanning and Video overlap to Experim
     )
   );
 });
+
+test("Alias Collision Inspector search is an Experimental destination", () => {
+  assert.ok(
+    searchSettings("alias collision").some(
+      (entry) =>
+        entry.tab === "experimental" &&
+        entry.anchor === "experimental-alias-collisions"
+    )
+  );
+  assert.equal(
+    searchSettings("alias collision").some((entry) => entry.tab === "tools"),
+    false
+  );
+});

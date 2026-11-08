@@ -123,7 +123,8 @@ try {
       const destination = new URL(await inspect.getAttribute("href"), origin);
       assert.equal(destination.pathname, `${prefix}/settings`);
       assert.equal(destination.searchParams.get("alias"), profileName);
-      assert.equal(destination.hash, "#tools-aliases");
+      assert.equal(destination.searchParams.get("tab"), "experimental");
+      assert.equal(destination.hash, "#experimental-alias-collisions");
       assert.equal(await inspect.getAttribute("target"), "_blank");
       assert.equal(
         requests.length,

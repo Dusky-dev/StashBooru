@@ -11,6 +11,7 @@ import { ImageStorageRestorePlanTask } from "./Tasks/ImageStorageRestorePlanTask
 import { ImageStorageShadowTask } from "./Tasks/ImageStorageShadowTask";
 import { ImageStorageConsumerAuditTask } from "./Tasks/ImageStorageConsumerAuditTask";
 import { VideoOverlapTask } from "./Tasks/VideoOverlapTask";
+import { SettingsAliasCollisionInspector } from "./SettingsAliasCollisionInspector";
 
 export function SettingsExperimentalPanel() {
   const location = useLocation();
@@ -35,6 +36,7 @@ export function SettingsExperimentalPanel() {
         <span id="tasks-media" />
         <VideoOverlapTask />
       </SettingsDisclosure>
+      <SettingsAliasCollisionInspector />
       <section id="experimental-image-storage">
         <h2>P12/P13 image storage experiments</h2>
         <Alert variant="warning">
