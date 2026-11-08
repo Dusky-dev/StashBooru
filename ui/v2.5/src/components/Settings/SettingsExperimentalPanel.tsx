@@ -27,7 +27,9 @@ export function SettingsExperimentalPanel() {
         this page does not start a job or enable packed image serving.
       </p>
       <Alert variant="warning">
-        <strong>P12/P13 storage is not ready to replace original images.</strong>{" "}
+        <strong>
+          P12/P13 storage is not ready to replace original images.
+        </strong>{" "}
         Estimates are hypothetical, candidate packs consume extra space, and
         recovery/shadow tests do not permit deleting originals. Preserve your
         original files and independent, verified backups.
