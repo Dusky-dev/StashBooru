@@ -928,23 +928,48 @@ func (qb *ImageStore) makeQuery(ctx context.Context, imageFilter *models.ImageFi
 	return &query, nil
 }
 
+// makeCollapsedQuery first matches the user's image filters against every
+// member, then projects those matches to the actual Image representative.
+// A variant can therefore make its stack visible even when the representative
+// does not carry the same title, tag or copyright.
+func (qb *ImageStore) makeCollapsedQuery(ctx context.Context, imageFilter *models.ImageFilterType, findFilter *models.FindFilterType) (*queryBuilder, error) {
+	matchFilter := &models.FindFilterType{}
+	if findFilter != nil {
+		matchFilter.Q = findFilter.Q
+	}
+	matched, err := qb.makeQuery(ctx, imageFilter, matchFilter)
+	if err != nil {
+		return nil, err
+	}
+	query := imageRepository.newQuery()
+	distinctIDs(&query, imageTable)
+	query.addWhere(`images.id IN (
+  WITH matching AS (` + matched.toSQL(false) + `)
+  SELECT DISTINCT CASE WHEN sm.stack_id IS NULL THEN matching.id ELSE rep.image_id END
+  FROM matching
+  LEFT JOIN visual_stack_members sm ON sm.image_id = matching.id
+  LEFT JOIN visual_stack_members rep ON rep.stack_id = sm.stack_id AND rep.representative = 1
+  WHERE sm.stack_id IS NULL OR rep.image_id IS NOT NULL
+)`)
+	query.addArg(matched.allArgs()...)
+	if err := qb.setImageSortAndPagination(&query, findFilter); err != nil {
+		return nil, err
+	}
+	return &query, nil
+}
+
 func (qb *ImageStore) Query(ctx context.Context, options models.ImageQueryOptions) (*models.ImageQueryResult, error) {
 	similarity, err := getPHashSimilarityOptions(options.FindFilter)
 	if err != nil {
 		return nil, fmt.Errorf("reading perceptual similarity options: %w", err)
 	}
-	collapsePHash := options.ImageFilter != nil &&
-		options.ImageFilter.CollapseStacks != nil && *options.ImageFilter.CollapseStacks &&
-		similarity != nil && similarity.ReferenceID != nil && similarity.Method == "phash"
-	imageFilter := options.ImageFilter
-	if collapsePHash {
-		// For similarity, match all eligible variants first, not only the
-		// representative (which can be the excluded reference Image).
-		copyFilter := *imageFilter
-		copyFilter.CollapseStacks = nil
-		imageFilter = &copyFilter
+	collapse := options.ImageFilter != nil && options.ImageFilter.CollapseStacks != nil && *options.ImageFilter.CollapseStacks
+	var query *queryBuilder
+	if collapse && similarity == nil {
+		query, err = qb.makeCollapsedQuery(ctx, options.ImageFilter, options.FindFilter)
+	} else {
+		query, err = qb.makeQuery(ctx, options.ImageFilter, options.FindFilter)
 	}
-	query, err := qb.makeQuery(ctx, imageFilter, options.FindFilter)
 	if err != nil {
 		return nil, err
 	}
@@ -957,11 +982,25 @@ func (qb *ImageStore) Query(ctx context.Context, options models.ImageQueryOption
 	var idsResult []int
 	if similarity != nil {
 		var similarityCount int
-		if collapsePHash {
+		switch {
+		case collapse && similarity.ReferenceID != nil && similarity.Method == "phash":
+			// Resolve matches to representatives before pHash pagination.
 			idsResult, similarityCount, err = findImagePHashSimilarityIDsCollapsed(
 				ctx, *query, options.FindFilter, *similarity.ReferenceID, similarity.Distance,
 			)
-		} else {
+		case collapse:
+			// Global pHash clustering and visual-embedding similarity already
+			// produce a ranked list. Deduplicate that list before pagination.
+			all := -1
+			unpaged := &models.FindFilterType{PerPage: &all}
+			var matches []int
+			matches, _, err = findPHashSimilarityIDs(
+				ctx, *query, imagesFilesTable, imageIDColumn, unpaged, similarity,
+			)
+			if err == nil {
+				idsResult, similarityCount, err = collapseSortedImageIDs(ctx, matches, options.FindFilter)
+			}
+		default:
 			idsResult, similarityCount, err = findPHashSimilarityIDs(
 				ctx, *query, imagesFilesTable, imageIDColumn, options.FindFilter, similarity,
 			)
@@ -1047,7 +1086,13 @@ func (qb *ImageStore) queryGroupedFields(ctx context.Context, options models.Ima
 }
 
 func (qb *ImageStore) QueryCount(ctx context.Context, imageFilter *models.ImageFilterType, findFilter *models.FindFilterType) (int, error) {
-	query, err := qb.makeQuery(ctx, imageFilter, findFilter)
+	var query *queryBuilder
+	var err error
+	if imageFilter != nil && imageFilter.CollapseStacks != nil && *imageFilter.CollapseStacks {
+		query, err = qb.makeCollapsedQuery(ctx, imageFilter, findFilter)
+	} else {
+		query, err = qb.makeQuery(ctx, imageFilter, findFilter)
+	}
 	if err != nil {
 		return 0, err
 	}
