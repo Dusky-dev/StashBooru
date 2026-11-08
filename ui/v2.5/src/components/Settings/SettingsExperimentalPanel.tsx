@@ -47,8 +47,10 @@ export function SettingsExperimentalPanel() {
         </Alert>
         <p>
           Before creating candidates, make and verify an{" "}
-          <Link to={tasksLink("#media-backup-task")}>original-media backup</Link>.
-          Follow running experiments in the{" "}
+          <Link to={tasksLink("#media-backup-task")}>
+            original-media backup
+          </Link>
+          . Follow running experiments in the{" "}
           <Link to={tasksLink("#job-queue")}>Task Queue</Link>.
         </p>
         <SettingsDisclosure
