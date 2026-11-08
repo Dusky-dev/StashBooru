@@ -190,6 +190,7 @@ export const MediaConversionDialog: React.FC<{
   const [historyOffset, setHistoryOffset] = useState(0);
   const [trialOffset, setTrialOffset] = useState(0);
   const [tab, setTab] = useState("convert");
+  const [showAdvancedTools, setShowAdvancedTools] = useState(false);
   const [comparing, setComparing] = useState(false);
   const [savings, setSavings] = useState<SavingsThresholds>();
   const {
@@ -452,6 +453,20 @@ export const MediaConversionDialog: React.FC<{
     useDecodingSpeedDefaults,
     targets,
   };
+  const canConvert =
+    !busy &&
+    !!savings &&
+    validSavings(savings) &&
+    canEncode &&
+    selectedCount > 0 &&
+    !loadingCapabilities &&
+    (options.format !== "auto" || (!loadingPreview && !previewError)) &&
+    Number.isFinite(options.quality) &&
+    options.quality >= 0 &&
+    options.quality <= 100 &&
+    Number.isInteger(options.effort) &&
+    options.effort >= 1 &&
+    options.effort <= 9;
 
   return (
     <Modal
@@ -479,31 +494,44 @@ export const MediaConversionDialog: React.FC<{
             onNavigate={onHide}
           />
         )}
+        <div className="d-flex justify-content-end mb-2">
+          <Button
+            size="sm"
+            variant="link"
+            aria-expanded={showAdvancedTools}
+            onClick={() => {
+              setShowAdvancedTools((value) => !value);
+              setTab("convert");
+            }}
+          >
+            {showAdvancedTools ? "Hide advanced tools" : "Advanced tools"}
+          </Button>
+        </div>
         <Tabs
           id="media-converter-tabs"
           activeKey={tab}
           onSelect={(key) => setTab(key ?? "convert")}
-          className="mb-3"
+          className={showAdvancedTools ? "mb-3" : "d-none"}
         >
           <Tab eventKey="convert" title="Convert">
-            <p>
-              Convert {selectedCount} selected{" "}
+            <p className="text-muted">
+              Choose a format, then Convert {selectedCount} selected{" "}
               {mixedTargets
                 ? "media entries"
                 : kind === "scene"
                   ? "videos"
                   : "images"}
-              . Estimate savings or create trials, then compare and select saved
-              trials in Review trials &amp; apply. Neither action changes your
-              active files.
+              . Use Revert to restore saved originals.
             </p>
-            <Alert variant="info">
-              Applying selected trials replaces the active files beside their
-              sources, keeping the same library entries, metadata and original
-              fingerprints. Originals go into the converter restore cache in
-              Statistics &amp; restore. Cache eviction can remove them; keep
-              separate backups.
-            </Alert>
+            <details className="settings-details mb-3">
+              <summary>What happens to my files?</summary>
+              <Alert variant="info" className="mt-2">
+                Conversion preserves the library entries and metadata. The
+                original version is kept in the restore cache when space and
+                retention settings allow. Revert works only while that version
+                is available. Keep separate backups.
+              </Alert>
+            </details>
             <Row>
               <Form.Group as={Col} xs={12} controlId="converter-format">
                 <Form.Label>Output format</Form.Label>
@@ -560,6 +588,29 @@ export const MediaConversionDialog: React.FC<{
                 </Form.Text>
               </Form.Group>
             </Row>
+            <div className="d-flex flex-wrap align-items-center mb-3">
+              <Button
+                variant="primary"
+                className="mr-2 mb-2"
+                disabled={!canConvert}
+                onClick={() => void action({ ...reviewRequest, action: "start" })}
+              >
+                Convert
+              </Button>
+              <Button
+                variant="outline-secondary"
+                className="mr-2 mb-2"
+                disabled={busy || selectedCount === 0}
+                onClick={() =>
+                  void action({ action: "restore-targets", targets })
+                }
+              >
+                Revert
+              </Button>
+              <span className="small text-muted mb-2">
+                Revert requires an original in the restore cache.
+              </span>
+            </div>
             {gpuDecodeSpeedConflict && (
               <Alert variant="warning">
                 AV1 low-complexity decode uses the CPU libaom encoder. Choose
@@ -582,15 +633,21 @@ export const MediaConversionDialog: React.FC<{
                 {previewError && (
                   <Alert variant="warning">{previewError}</Alert>
                 )}
-                {!loadingPreview &&
-                  plans.map((plan, index) => (
-                    <div
-                      key={`${plan.input}-${plan.output}-${index}`}
-                      className={`mb-1${plan.error ? " text-warning" : ""}`}
-                    >
-                      {planText(plan)}
+                {!loadingPreview && plans.length > 0 && (
+                  <details className="settings-details">
+                    <summary>Resolved format details</summary>
+                    <div className="mt-2">
+                      {plans.map((plan, index) => (
+                        <div
+                          key={`${plan.input}-${plan.output}-${index}`}
+                          className={`mb-1${plan.error ? " text-warning" : ""}`}
+                        >
+                          {planText(plan)}
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </details>
+                )}
               </div>
             )}
             <details className="settings-details mb-3">
@@ -819,84 +876,88 @@ export const MediaConversionDialog: React.FC<{
                 }
               />
             </details>
-            <h5>Savings minimums for this batch</h5>
-            {savings && (
-              <SavingsThresholdFields
-                value={savings}
-                onChange={setSavings}
-                disabled={busy}
-                prefix="converter-job"
-              />
+            {showAdvancedTools && (
+              <>
+                <h5>Savings minimums for this batch</h5>
+                {savings && (
+                  <SavingsThresholdFields
+                    value={savings}
+                    onChange={setSavings}
+                    disabled={busy}
+                    prefix="converter-job"
+                  />
+                )}
+                <p>
+                  <strong>Verified trial</strong> saves outputs for comparison and
+                  later apply. <strong>Estimate savings</strong> measures a sample
+                  and deletes its outputs; it is optional and cannot be applied.
+                </p>
+                <div className="d-flex flex-wrap">
+                  <Button
+                    className="my-3"
+                    disabled={
+                      busy ||
+                      !savings ||
+                      !validSavings(savings) ||
+                      !canEncode ||
+                      !selectedCount ||
+                      loadingCapabilities ||
+                      (options.format === "auto" &&
+                        (loadingPreview || !!previewError)) ||
+                      !Number.isFinite(options.quality) ||
+                      options.quality < 0 ||
+                      options.quality > 100 ||
+                      !Number.isInteger(options.effort) ||
+                      options.effort < 1 ||
+                      options.effort > 9
+                    }
+                    onClick={() => {
+                      setTab("review");
+                      void action({
+                        ...reviewRequest,
+                        action: "trial",
+                      });
+                    }}
+                  >
+                    Verified trial for{" "}
+                    {selectedCount === 1 ? "file" : `${selectedCount} files`}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="my-3 ml-2"
+                    disabled={
+                      busy ||
+                      !canEncode ||
+                      !selectedCount ||
+                      loadingCapabilities ||
+                      (options.format === "auto" &&
+                        (loadingPreview || !!previewError)) ||
+                      !savings ||
+                      !validSavings(savings) ||
+                      !Number.isFinite(options.quality) ||
+                      options.quality < 0 ||
+                      options.quality > 100 ||
+                      !Number.isInteger(options.effort) ||
+                      options.effort < 1 ||
+                      options.effort > 9
+                    }
+                    onClick={() => {
+                      setTab("review");
+                      void action({ ...reviewRequest, action: "estimate" });
+                    }}
+                  >
+                    Estimate savings
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="my-3 ml-2"
+                    onClick={() => setTab("review")}
+                  >
+                    Review trials &amp; apply
+                  </Button>
+                </div>
+              </>
             )}
-            <p>
-              <strong>Verified trial</strong> saves outputs for comparison and
-              later apply. <strong>Estimate savings</strong> measures a sample
-              and deletes its outputs; it is optional and cannot be applied.
-            </p>
-            <div className="d-flex flex-wrap">
-              <Button
-                className="my-3"
-                disabled={
-                  busy ||
-                  !savings ||
-                  !validSavings(savings) ||
-                  !canEncode ||
-                  !selectedCount ||
-                  loadingCapabilities ||
-                  (options.format === "auto" &&
-                    (loadingPreview || !!previewError)) ||
-                  !Number.isFinite(options.quality) ||
-                  options.quality < 0 ||
-                  options.quality > 100 ||
-                  !Number.isInteger(options.effort) ||
-                  options.effort < 1 ||
-                  options.effort > 9
-                }
-                onClick={() => {
-                  setTab("review");
-                  void action({
-                    ...reviewRequest,
-                    action: "trial",
-                  });
-                }}
-              >
-                Verified trial for{" "}
-                {selectedCount === 1 ? "file" : `${selectedCount} files`}
-              </Button>
-              <Button
-                variant="secondary"
-                className="my-3 ml-2"
-                disabled={
-                  busy ||
-                  !canEncode ||
-                  !selectedCount ||
-                  loadingCapabilities ||
-                  (options.format === "auto" &&
-                    (loadingPreview || !!previewError)) ||
-                  !savings ||
-                  !validSavings(savings) ||
-                  !Number.isFinite(options.quality) ||
-                  options.quality < 0 ||
-                  options.quality > 100 ||
-                  !Number.isInteger(options.effort) ||
-                  options.effort < 1 ||
-                  options.effort > 9
-                }
-                onClick={() => {
-                  setTab("review");
-                  void action({ ...reviewRequest, action: "estimate" });
-                }}
-              >
-                Estimate savings
-              </Button>
-              <Button
-                variant="secondary"
-                className="my-3 ml-2"
-                onClick={() => setTab("review")}
-              >
-                Review trials &amp; apply
-              </Button>
-            </div>
             {state?.job && (
               <div>
                 <p className="mt-2">
@@ -917,7 +978,7 @@ export const MediaConversionDialog: React.FC<{
               </p>
             )}
           </Tab>
-          <Tab eventKey="review" title="Estimate / trial review / apply">
+          <Tab eventKey="review" title="Trials">
             <ConversionReview
               trials={state?.trials ?? []}
               stats={state?.trialStats}
@@ -940,7 +1001,7 @@ export const MediaConversionDialog: React.FC<{
               }
             />
           </Tab>
-          <Tab eventKey="statistics" title="Statistics & restore">
+          <Tab eventKey="statistics" title="History &amp; restore">
             {state && (
               <>
                 <h5>All conversions</h5>
