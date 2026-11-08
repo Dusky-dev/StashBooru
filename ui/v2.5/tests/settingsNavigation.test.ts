@@ -58,7 +58,10 @@ test("animation inspection stays with Tasks and legacy overlap bookmarks redirec
 });
 
 test("saved Alias Collision Inspector links follow the Experimental move", () => {
-  assert.equal(resolveSettingsTab("?tab=tools", "#tools-aliases"), "experimental");
+  assert.equal(
+    resolveSettingsTab("?tab=tools", "#tools-aliases"),
+    "experimental"
+  );
   assert.equal(resolveSettingsTab("", "#tools-aliases"), "experimental");
   assert.equal(
     resolveSettingsTab("?tab=experimental", "#experimental-alias-collisions"),
