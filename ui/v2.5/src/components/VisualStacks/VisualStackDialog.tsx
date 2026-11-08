@@ -41,6 +41,9 @@ export function VisualStackDialog({
   const [splitKeys, setSplitKeys] = useState<Set<string>>(new Set());
   const [merge, setMerge] = useState<GQL.VisualStackDataFragment>();
   const [memberURL, setMemberURL] = useState("");
+  const [showSimilar, setShowSimilar] = useState(false);
+  const [similarDistance, setSimilarDistance] = useState(5);
+  const [similarPage, setSimilarPage] = useState(1);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const mounted = useRef(true);
@@ -71,6 +74,27 @@ export function VisualStackDialog({
   const [mergeStacks] = GQL.useVisualStackMergeMutation();
   const [destroy] = GQL.useVisualStackDestroyMutation();
   const stack = query.data?.findVisualStack;
+  // Search by the representative's current primary-file pHash when possible.
+  const referenceImage =
+    rows.find((row) => row.id === representative && row.image) ??
+    rows.find((row) => row.image);
+  const similarQuery = GQL.useFindImagesQuery({
+    skip: !showSimilar || !referenceImage,
+    fetchPolicy: "network-only",
+    variables: {
+      filter: {
+        page: similarPage,
+        per_page: 50,
+        sort: `perceptual_similarity:${similarDistance}:${referenceImage?.media.id ?? 0}:phash`,
+      },
+    },
+  });
+  const candidates = (similarQuery.data?.findImages.images ?? []).filter(
+    (image) => !rows.some((row) => row.id === `image:${image.id}`)
+  );
+  useEffect(() => {
+    setSimilarPage(1);
+  }, [referenceImage?.media.id, similarDistance]);
 
   const adopt = useCallback((value: GQL.VisualStackDataFragment) => {
     if (!mounted.current) return;
@@ -244,9 +268,8 @@ export function VisualStackDialog({
     const target = rows[index + direction];
     if (target) reorder(rows[index].id, target.id);
   }
-  const add = () =>
+  const reviewMember = (media?: GQL.MediaReferenceInput) =>
     run(async () => {
-      const media = parseMemberURL(memberURL);
       if (!media)
         throw new Error(
           "Enter an Image or Video URL, such as /images/123 or /scenes/123."
@@ -312,6 +335,7 @@ export function VisualStackDialog({
       ]);
       setMemberURL("");
     });
+  const add = () => reviewMember(parseMemberURL(memberURL));
 
   const mergeSelectionInto = (targetStackID: string) =>
     run(async () => {
@@ -675,6 +699,116 @@ export function VisualStackDialog({
       <Button disabled={busy || !memberURL} onClick={add}>
         Review member
       </Button>
+      <section className="visual-stack-similarity mt-3" aria-label="Find similar Images">
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={busy || !referenceImage}
+          onClick={() => setShowSimilar((current) => !current)}
+          aria-expanded={showSimilar}
+        >
+          {showSimilar ? "Hide similar Images" : "Find similar Images (pHash)"}
+        </Button>
+        {!referenceImage && (
+          <small className="d-block">
+            Add an Image member to search for visually similar Images.
+          </small>
+        )}
+        {showSimilar && referenceImage && (
+          <>
+            <p className="mt-2 mb-2">
+              Compare Images with {memberTitle(referenceImage)} using current
+              primary-file pHashes. Add a result, then save the stack.
+            </p>
+            <Form.Group controlId="stack-similarity-distance">
+              <Form.Label>Maximum pHash distance</Form.Label>
+              <Form.Control
+                as="select"
+                className="input-control"
+                value={similarDistance}
+                disabled={busy}
+                onChange={(event) => {
+                  setSimilarDistance(Number(event.currentTarget.value));
+                  setSimilarPage(1);
+                }}
+              >
+                {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((distance) => (
+                  <option key={distance} value={distance}>
+                    {distance}{distance === 5 ? " (default)" : ""}
+                  </option>
+                ))}
+              </Form.Control>
+            </Form.Group>
+            {similarQuery.loading && <p role="status">Searching similar Images…</p>}
+            {similarQuery.error && (
+              <Alert variant="warning">
+                {similarQuery.error.message}. Generate perceptual hashes in
+                Tasks if the reference Image has no current pHash.
+              </Alert>
+            )}
+            {!similarQuery.loading && !similarQuery.error && (
+              <>
+                <small className="d-block mb-2">
+                  {similarQuery.data?.findImages.count ?? 0} matching Images;
+                  current stack members are excluded from these candidates.
+                </small>
+                {candidates.length === 0 && <p>No additional matches on this page.</p>}
+                <div className="visual-stack-similar-results">
+                  {candidates.map((image) => (
+                    <div className="visual-stack-similar-row" key={image.id}>
+                      <img src={image.paths.thumbnail ?? ""} alt="" />
+                      <div className="visual-stack-member-info">
+                        <a href={`/images/${image.id}`} target="_blank" rel="noreferrer">
+                          {image.title || `Image ${image.id}`}
+                        </a>
+                        {image.visual_stack && (
+                          <small>
+                            Already belongs to stack {image.visual_stack.id}.
+                            Review merging rather than duplicating its membership.
+                          </small>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        disabled={busy || rows.length >= 200}
+                        onClick={() =>
+                          void reviewMember({ kind: GQL.MediaKind.Image, id: image.id })
+                        }
+                      >
+                        {image.visual_stack ? "Review stack" : "Add to stack"}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                {(similarQuery.data?.findImages.count ?? 0) > 50 && (
+                  <div className="mt-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={busy || similarPage <= 1}
+                      onClick={() => setSimilarPage((page) => page - 1)}
+                    >
+                      Previous
+                    </Button>{" "}
+                    <span>Page {similarPage}</span>{" "}
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={
+                        busy ||
+                        similarPage * 50 >= (similarQuery.data?.findImages.count ?? 0)
+                      }
+                      onClick={() => setSimilarPage((page) => page + 1)}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </section>
       {snapshot && (
         <div className="mt-3">
           <Button
