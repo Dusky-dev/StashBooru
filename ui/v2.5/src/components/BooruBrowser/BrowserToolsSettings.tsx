@@ -232,8 +232,8 @@ export function BrowserToolsSettings() {
         <Form.Text muted>
           Common Grabber tokens: %artist%, %copyright%, %character%, %id%,
           %md5%, %ext%, %filename%, %websitename%, %position%, %num%. Use / for
-          subfolders. Leave blank to use the shared filename layout in
-          Settings → Interface → Image titles. Existing custom templates remain
+          subfolders. Leave blank to use the shared filename layout in Settings
+          → Interface → Image titles. Existing custom templates remain
           overrides. Unknown metadata becomes unknown; existing files are never
           overwritten.
         </Form.Text>
