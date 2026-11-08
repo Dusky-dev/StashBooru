@@ -280,7 +280,10 @@ try {
       "video-overlap-task",
       "Video overlap / containment"
     );
-    assert.equal(await page.locator(".tab-pane.active #image-storage-estimate-task").count(), 0);
+    assert.equal(
+      await page.locator(".tab-pane.active #image-storage-estimate-task").count(),
+      0
+    );
     await chooseSection(page, "experimental");
     await page.waitForURL(/tab=experimental/);
     await page.locator("#experimental-storage-assess > summary").click();
@@ -348,7 +351,10 @@ try {
     // Return to Tasks; experimental controls are absent from the active pane.
     await chooseSection(page, "tasks");
     if (!(await isOpen(page, "media"))) await summary(page, "media").click();
-    assert.equal(await page.locator(".tab-pane.active #image-storage-estimate-task").count(), 0);
+    assert.equal(
+      await page.locator(".tab-pane.active #image-storage-estimate-task").count(),
+      0
+    );
 
     // Failed submissions remain visible after closing and reopening a group.
     await page
