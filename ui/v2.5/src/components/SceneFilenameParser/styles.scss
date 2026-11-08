@@ -3,14 +3,17 @@
 }
 
 .scene-parser-results {
-  margin-left: 31ch;
+  // The parser is embedded in a review dialog now. Keep the full table inside
+  // its own horizontal scroller rather than absolutely positioning its first
+  // column relative to the modal.
+  margin-left: 0;
+  max-width: 100%;
   overflow-x: auto;
 }
 
 .scene-parser-row {
   .parser-field-filename {
-    left: 1ch;
-    position: absolute;
+    min-width: 24ch;
     width: 30ch;
   }
 

@@ -795,11 +795,14 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
       <Modal
         show={showFilenamePatterns}
         onHide={() => setShowFilenamePatterns(false)}
+        aria-labelledby="advanced-filename-pattern-review-title"
         size="xl"
         centered
       >
         <Modal.Header closeButton>
-          <Modal.Title>Review filename patterns</Modal.Title>
+          <Modal.Title id="advanced-filename-pattern-review-title">
+            Review filename patterns
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <p className="text-muted">
