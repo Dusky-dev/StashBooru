@@ -153,7 +153,9 @@ async function check(mode) {
         timeout: 10000,
       });
       assert.equal(
-        await page.locator(".media-list .image-card, .media-list .scene-card").count(),
+        await page
+          .locator(".media-list .image-card, .media-list .scene-card")
+          .count(),
         0
       );
     } else {
