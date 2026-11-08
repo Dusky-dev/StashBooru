@@ -221,7 +221,7 @@ export function BrowserToolsSettings() {
         Choose default folder
       </Button>
       <Form.Group controlId="booru-filename-template" className="mt-3">
-        <Form.Label>Download filename template (optional override)</Form.Label>
+        <Form.Label>Download filename template</Form.Label>
         <Form.Control
           className="text-input"
           value={filenameTemplate}
