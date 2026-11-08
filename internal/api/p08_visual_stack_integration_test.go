@@ -441,8 +441,8 @@ func TestP08ImageOnlyRepresentativeFilteringBeforePagination(t *testing.T) {
 			ImageFilter: &models.ImageFilterType{CollapseStacks: &collapse},
 		})
 		if err != nil {
-				return err
-			}
+			return err
+		}
 		require.Equal(t, 3, result.Count)
 		return nil
 	}))
