@@ -350,9 +350,7 @@ try {
       await page.locator("#duplicate-method").inputValue(),
       "embedding"
     );
-    await page
-      .getByRole("button", { name: "Copy missing metadata" })
-      .waitFor();
+    await page.getByRole("button", { name: "Copy missing metadata" }).waitFor();
     const beforeCopy = requests.filter((request) => request.body).length;
     await page.getByRole("button", { name: "Copy missing metadata" }).click();
     const dialog = page.getByRole("dialog");
