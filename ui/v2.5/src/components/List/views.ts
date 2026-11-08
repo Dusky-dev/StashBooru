@@ -7,6 +7,10 @@ export enum View {
   Performers = "performers",
   Tags = "tags",
   Copyrights = "copyrights",
+  CopyrightMedia = "copyright_media",
+  PerformerMedia = "performer_media",
+  StudioMedia = "studio_media",
+  TagMedia = "tag_media",
   SceneMarkers = "scene_markers",
   Studios = "studios",
 
