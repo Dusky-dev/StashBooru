@@ -25,8 +25,6 @@ export function countParserAssociationReplacements(
 function wouldRemoveAssociations(field: AssociationField): boolean {
   return (
     field.isSet &&
-    (field.originalValue ?? []).some(
-      (id) => !(field.value ?? []).includes(id)
-    )
+    (field.originalValue ?? []).some((id) => !(field.value ?? []).includes(id))
   );
 }

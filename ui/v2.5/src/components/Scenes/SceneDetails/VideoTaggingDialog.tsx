@@ -509,20 +509,36 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
   return (
     <>
       <Modal
-        show={
-          !pendingCharacterResolution && !changePlan && !showFilenamePatterns
-        }
+        show={!pendingCharacterResolution && !changePlan}
         onHide={() => {
           if (!applying) onHide();
         }}
-        size="lg"
+        size={showFilenamePatterns ? "xl" : "lg"}
+        aria-labelledby="video-metadata-review-title"
         centered
       >
         <Modal.Header closeButton={!applying}>
-          <Modal.Title>Review video metadata</Modal.Title>
+          <Modal.Title id="video-metadata-review-title">
+            {showFilenamePatterns
+              ? "Review filename patterns"
+              : "Review video metadata"}
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <MetadataReviewInfo
+          {showFilenamePatterns ? (
+            <>
+              <p className="text-muted">
+                For videos with custom filename formats, search the library
+                using a pattern, review proposed changes and apply only the
+                selected fields. This is a library-wide search, not limited to
+                the current Video. Applying updates only the current results
+                page.
+              </p>
+              <SceneFilenameParser onApplied={onApplied} />
+            </>
+          ) : (
+            <>
+              <MetadataReviewInfo
             kind="Video"
             id={sceneId}
             context={reviewContext}
@@ -777,49 +793,31 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
               </div>
             </>
           )}
+            </>
+          )}
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" disabled={applying} onClick={onHide}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            disabled={busy || applying || visibleSelectedCount === 0}
-            onClick={applySelected}
-          >
-            {applying ? "Applying…" : "Apply selected metadata"}
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
-      <Modal
-        show={showFilenamePatterns}
-        onHide={() => setShowFilenamePatterns(false)}
-        aria-labelledby="advanced-filename-pattern-review-title"
-        size="xl"
-        centered
-      >
-        <Modal.Header closeButton>
-          <Modal.Title id="advanced-filename-pattern-review-title">
-            Review filename patterns
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p className="text-muted">
-            For videos with custom filename formats, search the library using a
-            pattern, review proposed changes and apply only the selected fields.
-            This search is library-wide, not limited to the current Video.
-            Applying updates only the current results page.
-          </p>
-          <SceneFilenameParser onApplied={onApplied} />
-        </Modal.Body>
-        <Modal.Footer>
-          <Button
-            variant="secondary"
-            onClick={() => setShowFilenamePatterns(false)}
-          >
-            Back to Video metadata
-          </Button>
+          {showFilenamePatterns ? (
+            <Button
+              variant="secondary"
+              onClick={() => setShowFilenamePatterns(false)}
+            >
+              Back to Video metadata
+            </Button>
+          ) : (
+            <>
+              <Button variant="secondary" disabled={applying} onClick={onHide}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                disabled={busy || applying || visibleSelectedCount === 0}
+                onClick={applySelected}
+              >
+                {applying ? "Applying…" : "Apply selected metadata"}
+              </Button>
+            </>
+          )}
         </Modal.Footer>
       </Modal>
 

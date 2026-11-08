@@ -5284,3 +5284,15 @@ these historical CI snapshots.
 - Verification: source edits checked against branch head; local build/test
   execution unavailable in this API-only GitHub environment. CI, browser runtime
   and Codex review on the PR remain the release gates; do not merge unverified.
+
+## Video filename parser PR #329 — Settings order and CI corrections (2026-11-08)
+
+- Settings tab ordering now places Experimental after About for desktop and mobile;
+  existing query/anchor routing is unchanged. Added an order regression assertion.
+- CI on `f2b6e0538f9615894b81dfdec73b2892a5d7e930`: Build/Validate UI failed
+  on Biome formatting of two files; Metadata review browser test timed out
+  switching between two Bootstrap modals. Reworked advanced filename patterns
+  to render as an alternate view inside a single Review Video Metadata modal,
+  avoiding overlapping modal transitions, and applied the exact formatter edits.
+- Previous checks for Settings navigation and Go lint passed. Current-head CI
+  and Codex Review status must be evaluated separately; no merge at this point.

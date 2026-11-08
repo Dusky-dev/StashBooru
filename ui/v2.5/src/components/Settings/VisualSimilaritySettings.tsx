@@ -420,8 +420,8 @@ export const VisualSimilaritySettings: React.FC = () => {
                   Supported tokens: <code>%artist%</code>,{" "}
                   <code>%copyright%</code>, <code>%character%</code>,{" "}
                   <code>%md5%</code>, <code>%ext%</code>. Matched filename
-                  identities take priority over inferred identities.
-                  For more flexible Video filename rules (title, date, rating,
+                  identities take priority over inferred identities. For more
+                  flexible Video filename rules (title, date, rating,
                   Characters, Artists or Tags), use Review metadata → Advanced
                   filename patterns on a Video.
                 </Form.Text>

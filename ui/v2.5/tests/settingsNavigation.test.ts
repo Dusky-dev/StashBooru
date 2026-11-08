@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   resolveSettingsTab,
   settingsSearch,
+  settingsTabs,
 } from "../src/components/Settings/settingsNavigation.ts";
 
 test("old processing and inheritance bookmarks follow their moved sections", () => {
@@ -72,4 +73,11 @@ test("normalizing a settings URL preserves unrelated query parameters", () => {
   assert.equal(params.get("tab"), "processing");
   assert.equal(params.get("return"), "images/42");
   assert.deepEqual(params.getAll("hint"), ["a", "b"]);
+});
+
+test("Experimental is the last Settings section without changing its URLs", () => {
+  assert.equal(settingsTabs[0], "tasks");
+  assert.equal(settingsTabs[settingsTabs.length - 1], "experimental");
+  assert.equal(new Set(settingsTabs).size, settingsTabs.length);
+  assert.equal(resolveSettingsTab("?tab=experimental", ""), "experimental");
 });
