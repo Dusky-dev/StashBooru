@@ -132,6 +132,7 @@ export const SceneWallItem: React.FC<
   return (
     <div
       className={cx("wall-item", { "show-title": showTitle })}
+      data-media-kind="video"
       role="button"
       onClick={handleClick}
       {...dragProps}
