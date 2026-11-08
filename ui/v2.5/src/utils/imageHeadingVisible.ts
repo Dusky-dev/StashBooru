@@ -96,7 +96,10 @@ export function imageDisplayHeading(
 ): string | null {
   if (image.title) return image.title;
   if (options?.showImageAssociationTitles) {
-    if (options.showFormattedImageFilenameFallback && options.imageFilenameLayout) {
+    if (
+      options.showFormattedImageFilenameFallback &&
+      options.imageFilenameLayout
+    ) {
       // A complete path suffix must follow the configured layout. Filename-only
       // guessing is never used to assign a missing Copyright/Character/Artist.
       const parsed = parseImageFilenameLayout(
@@ -108,10 +111,15 @@ export function imageDisplayHeading(
           image.primary_copyright?.name?.trim() ||
           namesForHeading(image.copyrights) ||
           parsed.copyright;
-        const characters = namesForHeading(image.performers) || parsed.character;
+        const characters =
+          namesForHeading(image.performers) || parsed.character;
         const artists =
           namesForHeading(
-            image.artists?.length ? image.artists : image.studio ? [image.studio] : []
+            image.artists?.length
+              ? image.artists
+              : image.studio
+                ? [image.studio]
+                : []
           ) || parsed.artist;
         const complete = [copyright, characters, artists]
           .filter(Boolean)
