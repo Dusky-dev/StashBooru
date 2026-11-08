@@ -5369,3 +5369,22 @@ these historical CI snapshots.
   persistence and partial selections. Updated the processing job resume mock
   to recognize status reads; added Go test coverage for converted status when
   cache retention has expired. Current-head CI is still a release gate.
+
+
+## P08 All Wall stack controls — November 9, 2026
+
+- Independent branch `fix/all-wall-stack-controls-20261109` targeting
+  `develop`, not PR #333.
+- Root issue: `MediaGrid` forwarded `stackSelectedIds` and
+  `onStackMemberSelect` to `VisualStackBadge`; `MediaWall` omitted the
+  stack control completely, so grouped cards could not expand their hidden
+  members for selection in Wall mode.
+- Added opt-in Wall badge slots to native Image/Video Wall items and passed
+  the existing stack badge (typed member selection, previews, manage modal)
+  from mixed All Wall. Badge clicks stop propagation to media navigation and
+  selection. It is anchored to the upper-right corner, away from checkboxes.
+- Extended the P08 isolated browser regression across desktop/mobile:
+  grouped Wall stack badge exists, expanded member deselect/select preserves
+  typed selections, does not navigate, and does not alter grouped card count.
+- Local isolated browser run requires a seeded fixture and explicit stack
+  mutation authorization; CI and real-library verification remain pending.
