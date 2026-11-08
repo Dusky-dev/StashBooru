@@ -1,6 +1,7 @@
 import { cloneElement, useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import { BrowserRouter } from "react-router-dom";
+import { ApolloClient, ApolloProvider, InMemoryCache } from "@apollo/client";
 import { IntlProvider } from "react-intl";
 import { Button, Form } from "react-bootstrap";
 import { MediaKind } from "../../../src/core/generated-graphql";
@@ -12,6 +13,12 @@ import { VideoTaggingDialog } from "../../../src/components/Scenes/SceneDetails/
 import { BatchImageMetadataDialog } from "../../../src/components/Images/ImageDetails/BatchImageMetadataDialog";
 import { BooruTagSidebar } from "../../../src/components/Shared/BooruTagSidebar";
 import "../../../src/index.scss";
+
+// The advanced filename pattern view retains the native GraphQL mutation hook.
+const apolloClient = new ApolloClient({
+  uri: "/graphql",
+  cache: new InMemoryCache(),
+});
 
 const original = [
   { kind: MediaKind.Image, id: "1" },
@@ -134,11 +141,13 @@ function Fixture() {
 }
 ReactDOM.render(
   <BrowserRouter>
-    <IntlProvider locale="en" messages={{ "actions.more": "More" }}>
-      <ToastProvider>
-        <Fixture />
-      </ToastProvider>
-    </IntlProvider>
+    <ApolloProvider client={apolloClient}>
+      <IntlProvider locale="en" messages={{ "actions.more": "More" }}>
+        <ToastProvider>
+          <Fixture />
+        </ToastProvider>
+      </IntlProvider>
+    </ApolloProvider>
   </BrowserRouter>,
   document.getElementById("root")
 );

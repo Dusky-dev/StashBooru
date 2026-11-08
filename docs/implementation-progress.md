@@ -5296,3 +5296,16 @@ these historical CI snapshots.
   avoiding overlapping modal transitions, and applied the exact formatter edits.
 - Previous checks for Settings navigation and Go lint passed. Current-head CI
   and Codex Review status must be evaluated separately; no merge at this point.
+
+## PR #329 follow-up CI corrections — 2026-11-08
+
+- Settings navigation mounted-browser fixture was asserting the obsolete
+  Experimental placement. Updated its desktop/mobile expected option order.
+- Metadata review fixture lacked an Apollo provider, which the newly embedded
+  legacy filename parser needs for its GraphQL mutation hook. Added a local
+  ApolloClient/Provider around the fixture; production already provides Apollo.
+- Fixed the remaining Biome formatting failures in VideoTaggingDialog.
+- Baseline checks on commit `5be7247f6cba8e114ea3b0625d4f0f54fbe85290`:
+  Settings navigation failed old-order assertion; metadata review timed out on
+  the advanced view; Build failed Biome formatting; Go lint passed.
+- Await final-head CI verification. Codex review quota is exhausted; no merge.

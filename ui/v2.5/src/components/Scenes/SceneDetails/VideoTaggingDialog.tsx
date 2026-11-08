@@ -639,12 +639,13 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
               <details className="mb-3 text-muted">
                 <summary>How sources are combined</summary>
                 Sources are merged in priority order: Local → Booru → Frames.
-                Opening this dialog loads Local metadata only. Provider MD5 lookup
-                and representative-frame analysis are explicit. Frame analysis uses
-                the configured Camie/frame threshold and per-category limit, samples
-                the Video through ffmpeg, and starts its suggestions unselected for
-                review. Frame predictions cannot override authoritative Local
-                Character, Artist, or Copyright identity.
+                Opening this dialog loads Local metadata only. Provider MD5
+                lookup and representative-frame analysis are explicit. Frame
+                analysis uses the configured Camie/frame threshold and
+                per-category limit, samples the Video through ffmpeg, and starts
+                its suggestions unselected for review. Frame predictions cannot
+                override authoritative Local Character, Artist, or Copyright
+                identity.
               </details>
 
               <Form.Check
@@ -652,7 +653,9 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
                 type="checkbox"
                 id="video-tagging-replace-artists"
                 checked={replaceArtists}
-                onChange={(event) => setReplaceArtists(event.currentTarget.checked)}
+                onChange={(event) =>
+                  setReplaceArtists(event.currentTarget.checked)
+                }
                 label="Replace existing Artists instead of adding selected Artists"
               />
 
@@ -664,8 +667,8 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
                 </div>
               ) : predictions.length === 0 && !error ? (
                 <div className="text-muted">
-                  No Local metadata was found. Fetch Danbooru or explicitly analyze
-                  representative frames to add predictions.
+                  No Local metadata was found. Fetch Danbooru or explicitly
+                  analyze representative frames to add predictions.
                 </div>
               ) : (
                 <>
@@ -780,7 +783,9 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
                                 </Button>
                               ) : null}
                               <Badge
-                                className={prediction.targetPath ? "" : "ml-auto"}
+                                className={
+                                  prediction.targetPath ? "" : "ml-auto"
+                                }
                                 variant="secondary"
                               >
                                 {(prediction.score * 100).toFixed(1)}%
