@@ -5400,3 +5400,12 @@ these historical CI snapshots.
   entity type has no supported criteria (Copyright list still has Search and
   sorting). First CI Build had only Biome formatting findings, fixed in the
   subsequent commits. Fresh checks remain pending.
+
+- Clarification: top-level `/media` is the whole media library, whereas
+  Copyrights > All is the Copyright catalogue. Removed the erroneous scoped
+  mixed-media All from individual Copyright profiles; `/copyrights/:id/all`
+  now presents the native Copyright list. This is a catalogue of Copyright
+  entities, **not** a `findMedia` feed. Removed the unnecessary
+  `View.CopyrightMedia` special case and restored global All's own state;
+  kept the native Copyright selection filter on global All itself. Updated
+  isolated browser coverage to prevent those two scopes being conflated.

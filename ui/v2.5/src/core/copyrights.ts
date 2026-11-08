@@ -27,27 +27,30 @@ export const useCopyrightFilterHook = (
   copyright: Pick<GQL.CopyrightDataFragment, "id" | "name">
 ) => {
   const { id, name } = copyright;
-  return useCallback((filter: ListFilterModel) => {
-    const criterion = new IHierarchicalLabeledIdCriterion(
-      CopyrightsCriterionOption,
-      {
-        items: [
-          {
-            id,
-            label: name,
-          },
-        ],
-        excluded: [],
-        // P04 Copyright pages represent the whole taxonomy branch by default.
-        depth: -1,
-      }
-    );
-    criterion.modifier = GQL.CriterionModifier.IncludesAll;
+  return useCallback(
+    (filter: ListFilterModel) => {
+      const criterion = new IHierarchicalLabeledIdCriterion(
+        CopyrightsCriterionOption,
+        {
+          items: [
+            {
+              id,
+              label: name,
+            },
+          ],
+          excluded: [],
+          // P04 Copyright pages represent the whole taxonomy branch by default.
+          depth: -1,
+        }
+      );
+      criterion.modifier = GQL.CriterionModifier.IncludesAll;
 
-    filter.criteria = filter.criteria.filter(
-      (item) => item.criterionOption.type !== ("copyrights" as CriterionType)
-    );
-    filter.criteria.push(criterion);
-    return filter;
-  }, [id, name]);
+      filter.criteria = filter.criteria.filter(
+        (item) => item.criterionOption.type !== ("copyrights" as CriterionType)
+      );
+      filter.criteria.push(criterion);
+      return filter;
+    },
+    [id, name]
+  );
 };

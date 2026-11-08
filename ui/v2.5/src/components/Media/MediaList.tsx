@@ -68,15 +68,7 @@ const historyState = new Map<
   { selected: GQL.MediaListItemFragment[]; scroll: number }
 >();
 
-interface IFilteredMediaList {
-  filterHook?: (filter: ListFilterModel) => ListFilterModel;
-  view?: View;
-}
-
-const FilteredMediaListComponent = ({
-  filterHook,
-  view = View.Media,
-}: IFilteredMediaList) => {
+export const FilteredMediaList = PatchComponent("FilteredMediaList", () => {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
@@ -91,11 +83,11 @@ const FilteredMediaListComponent = ({
     useFilteredItemList({
       filterStateProps: {
         filterMode: GQL.FilterMode.Media,
-        view,
+        view: View.Media,
         defaultSort: "date",
         useURL: true,
       },
-      queryResultProps: { useResult, getCount, getItems, filterHook },
+      queryResultProps: { useResult, getCount, getItems },
       initialSelected: restore?.selected,
     });
   const {
@@ -104,7 +96,7 @@ const FilteredMediaListComponent = ({
     sectionOpen,
     setSectionOpen,
     loading: sidebarStateLoading,
-  } = useSidebarState(view);
+  } = useSidebarState(View.Media);
   const { filter, setFilter } = filterState;
   const { effectiveFilter, result, items, totalCount, cachedResult } =
     queryResult;
@@ -287,7 +279,7 @@ const FilteredMediaListComponent = ({
               showEditFilter={showEditFilter}
               filter={filter}
               setFilter={setFilter}
-              view={view}
+              view={View.Media}
               focus={searchFocus}
             />
             <SidebarOptionFilter
@@ -330,7 +322,7 @@ const FilteredMediaListComponent = ({
               setFilter={setFilter}
               listSelect={listSelect}
               showEditFilter={showEditFilter}
-              view={view}
+              view={View.Media}
               zoomable
               maxPageSize={500}
               onEdit={onEdit}
@@ -375,7 +367,7 @@ const FilteredMediaListComponent = ({
               </Alert>
             )}
             <FilterTags
-              view={view}
+              view={View.Media}
               criteria={filter.criteria}
               onEditCriterion={(criterion) =>
                 showEditFilter(criterion.criterionOption.type)
@@ -430,9 +422,4 @@ const FilteredMediaListComponent = ({
       </SidebarStateContext.Provider>
     </div>
   );
-};
-
-export const FilteredMediaList = PatchComponent(
-  "FilteredMediaList",
-  FilteredMediaListComponent
-);
+});

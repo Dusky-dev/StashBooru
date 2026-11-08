@@ -719,12 +719,11 @@ compatibility. Other entity editors' repeated-save contracts remain separate
 acceptance work.
 
 
-## Copyright-scoped All
+## All versus Copyrights
 
-The Copyright profile's **All** tab uses `FilteredMediaList` rather than an
-empty placeholder or a separate browser. It applies the existing hierarchical
-Copyright predicate (including descendants) to `findMedia`, sharing native
-Image/Video cards, selection, filters, grouping, pagination, and media actions.
-The distinct `CopyrightMedia` view key keeps this page's preferred layout
-and sidebar settings separate from global All. A browser regression checks the
-Copyright subtree predicate on `/copyrights/:id/all`.
+The main navigation **All** (`/media`) is the full mixed Image/Video
+library. **Copyrights** (`/copyrights`) is the catalogue of Copyright
+records. Its **All Copyrights** view (`/copyrights/:id/all`) reuses that
+Copyright catalogue; it does not run `findMedia` or display Image/Video
+cards. Individual Copyright pages still have separate native Images, Videos
+and Characters tabs for content related to that Copyright.

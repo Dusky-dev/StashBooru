@@ -383,26 +383,28 @@ async function check(viewport, label) {
     assert.deepEqual(await all(), final);
     await page.reload();
     await profile(first.id);
-    // The Copyright All tab must use the same typed native media query as the
-    // main All page, filtered to the Copyright hierarchy rather than blank.
-    const allRequest = page.waitForRequest((request) => {
+    // General All is the mixed-media library. Copyrights > All lists
+    // Copyright entities, not Images/Videos or a scoped findMedia query.
+    const allCopyrightsQuery = page.waitForRequest((request) => {
       const payload = request.postDataJSON?.();
       return (
         request.url().endsWith("/graphql") &&
-        payload?.operationName === "FindMedia" &&
-        payload.variables?.media_filter?.copyrights !== undefined
+        payload?.operationName === "FindCopyrights"
       );
     });
     await page.goto(url + `/copyrights/${first.id}/all`);
-    await page.locator(".media-list").waitFor();
-    const allFilter = (await allRequest).postDataJSON().variables.media_filter;
-    assert.deepEqual(allFilter.copyrights.value, [first.id]);
+    await page
+      .locator("#copyright-media-tabs-tabpane-all .copyright-list")
+      .waitFor();
+    await allCopyrightsQuery;
     assert.equal(
-      await page
-        .locator("#copyright-media-tabs-tabpane-all .media-list")
-        .count(),
-      1
+      await page.locator("#copyright-media-tabs-tabpane-all .media-list").count(),
+      0
     );
+    await page
+      .locator(`#copyright-media-tabs-tabpane-all a[href="/copyrights/${otherParent.id}"]`)
+      .first()
+      .waitFor();
 
     await page.goto(url + "/copyrights");
     await page.waitForURL((u) => u.searchParams.get("sortby") === "hierarchy");

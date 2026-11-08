@@ -48,7 +48,7 @@ import {
 import { FilteredPerformerList } from "src/components/Performers/PerformerList";
 import { FilteredSceneList } from "src/components/Scenes/SceneList";
 import { FilteredImageList } from "src/components/Images/ImageList";
-import { FilteredMediaList } from "src/components/Media/MediaList";
+import CopyrightList from "src/components/Copyrights/CopyrightList";
 import { View } from "src/components/List/views";
 import { useConfigurationContext } from "src/hooks/Config";
 import { useToast } from "src/hooks/Toast";
@@ -462,22 +462,8 @@ const CopyrightMediaTabs: React.FC<{
       mountOnEnter
       unmountOnExit
     >
-      <Tab
-        eventKey="all"
-        title={
-          <TabTitleCounter
-            messageID="media_all"
-            count={
-              copyright.subtree_image_count + copyright.subtree_scene_count
-            }
-            abbreviateCounter={abbreviateCounter}
-          />
-        }
-      >
-        <FilteredMediaList
-          filterHook={imageFilterHook}
-          view={View.CopyrightMedia}
-        />
+      <Tab eventKey="all" title="All Copyrights">
+        <CopyrightList />
       </Tab>
       <Tab
         eventKey="images"
