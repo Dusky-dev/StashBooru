@@ -5330,3 +5330,28 @@ these historical CI snapshots.
   only static source and branch checks were possible in the connector environment.
   Do not merge until applicable CI checks complete; Codex review status is
   assessed independently.
+
+
+## Media converter direct Convert/Revert workflow — 2026-11-08
+
+- Continued PR #331 (`fix/video-tab-title-and-converter-ui-20261108`) on
+  `develop` baseline `f097550be482ab16a06059240d2f36624e6991a0`.
+- Simplified the conversion dialog, not only Processing settings. The normal
+  flow is **Output format → Convert**, with **Revert** for selected media that
+  still has an original in the restore cache. The existing backend `start`
+  path performs preflight, resolved per-format defaults and direct conversion.
+- Added `restore-targets` action to resolve each selected media's primary
+  file and locate the latest active, checksum-verified conversion with a
+  retained original. Refuses evicted originals and stale/mismatched records;
+  bulk failures are reported per item. Original version cache semantics and
+  standalone verified-trial review/apply APIs remain intact.
+- Moved samples/estimates, verified trials and their Apply, conversion history
+  and savings overrides behind **Advanced tools**; collapsed detailed plans
+  and file-replacement guidance. Added Go selection regression and the
+  dedicated `conversion-dialog.yml` Playwright workflow, and updated
+  `conversion-review.mjs` and `processing-job-resume.mjs` browser fixtures.
+- An earlier conversion-dialog CI run failed only because the browser locator
+  for backup safety copy matched two alerts; fixed the locator. An earlier
+  job-feedback browser run expected the old always-visible Statistics tab;
+  updated it to open Advanced tools and History first. The final-head CI
+  and runtime tests remain to be verified, and the PR is not merged.
