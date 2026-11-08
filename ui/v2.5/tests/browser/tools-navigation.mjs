@@ -372,9 +372,7 @@ try {
       beforeCopy,
       "Cancel must not copy metadata or delete images"
     );
-    await page
-      .getByRole("button", { name: "Copy missing metadata" })
-      .click();
+    await page.getByRole("button", { name: "Copy missing metadata" }).click();
     await dialog.getByLabel("Image #2").check();
     await dialog.getByRole("button", { name: "Copy to 1 selected" }).click();
     await page.waitForFunction(() => !document.querySelector(".modal.show"));
