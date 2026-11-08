@@ -383,9 +383,45 @@ async function check(viewport, label) {
     assert.deepEqual(await all(), final);
     await page.reload();
     await profile(first.id);
+    // The Copyright All tab must use the same typed native media query as the
+    // main All page, filtered to the Copyright hierarchy rather than blank.
+    const allRequest = page.waitForRequest((request) => {
+      const payload = request.postDataJSON?.();
+      return (
+        request.url().endsWith("/graphql") &&
+        payload?.operationName === "FindMedia" &&
+        payload.variables?.media_filter?.copyrights !== undefined
+      );
+    });
+    await page.goto(url + `/copyrights/${first.id}/all`);
+    await page.locator(".media-list").waitFor();
+    const allFilter = (await allRequest).postDataJSON().variables.media_filter;
+    assert.deepEqual(allFilter.copyrights.value, [first.id]);
+    assert.equal(
+      await page.locator("#copyright-media-tabs-tabpane-all .media-list").count(),
+      1
+    );
+
     await page.goto(url + "/copyrights");
     await page.waitForURL((u) => u.searchParams.get("sortby") === "hierarchy");
     const listURL = page.url();
+    // Copyright List now uses the same native selectable table as Characters,
+    // Artists and Tags; selecting a row must update the shared selection UI.
+    await page
+      .locator(".copyright-list .filtered-list-toolbar button")
+      .filter({ has: page.locator("svg[data-icon='list']") })
+      .click();
+    const firstRowCheck = page.locator(
+      ".copyright-table tbody .select-col input[type='checkbox']"
+    ).first();
+    await firstRowCheck.check();
+    assert.equal(await page.locator(".selected-count").innerText(), "1");
+    await firstRowCheck.uncheck();
+    assert.equal(await page.locator(".selected-count").count(), 0);
+    await page
+      .locator(".copyright-list .filtered-list-toolbar button")
+      .filter({ has: page.locator("svg[data-icon='table-cells-large']") })
+      .click();
     await page
       .locator(`.card-section-title-row a[href="/copyrights/${first.id}"]`)
       .click();
