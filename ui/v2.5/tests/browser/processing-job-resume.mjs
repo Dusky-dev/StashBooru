@@ -114,6 +114,15 @@ try {
           posts.push({ path: url.pathname, ...body });
           if (body.action === "preview")
             return route.fulfill({ json: { plans: [] } });
+          if (body.action === "restore-status")
+            return route.fulfill({
+              json: {
+                targets: body.targets.map((target) => ({
+                  target,
+                  restorable: false,
+                })),
+              },
+            });
           if (body.action === "cancel") {
             const current = jobs.get(url.pathname);
             assert.equal(body.jobID, current.jobID);
