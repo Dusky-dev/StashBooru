@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { PerformersCriterion } from "src/models/list-filter/criteria/performers";
 import * as GQL from "src/core/generated-graphql";
 import { ListFilterModel } from "src/models/list-filter/filter";
@@ -8,44 +9,39 @@ import { stringToCircumcised } from "src/utils/circumcised";
 export const usePerformerFilterHook = (
   performer: GQL.PerformerDataFragment
 ) => {
-  return (filter: ListFilterModel) => {
-    const performerValue = {
-      id: performer.id,
-      label: performer.name ?? `Performer ${performer.id}`,
-    };
-    // if performers is already present, then we modify it, otherwise add
-    let performerCriterion = filter.criteria.find((c) => {
-      return c.criterionOption.type === "performers";
-    }) as PerformersCriterion | undefined;
+  const { id, name } = performer;
+  return useCallback(
+    (filter: ListFilterModel) => {
+      const performerValue = {
+        id,
+        label: name ?? `Performer ${id}`,
+      };
+      let performerCriterion = filter.criteria.find(
+        (criterion) => criterion.criterionOption.type === "performers"
+      ) as PerformersCriterion | undefined;
 
-    if (performerCriterion) {
-      if (
-        performerCriterion.modifier === GQL.CriterionModifier.IncludesAll ||
-        performerCriterion.modifier === GQL.CriterionModifier.Includes
-      ) {
-        // add the performer if not present
+      if (performerCriterion) {
         if (
-          !performerCriterion.value.items.find((p) => {
-            return p.id === performer.id;
-          })
+          performerCriterion.modifier === GQL.CriterionModifier.IncludesAll ||
+          performerCriterion.modifier === GQL.CriterionModifier.Includes
         ) {
-          performerCriterion.value.items.push(performerValue);
+          if (!performerCriterion.value.items.some((item) => item.id === id)) {
+            performerCriterion.value.items.push(performerValue);
+          }
+        } else {
+          performerCriterion.value.items = [performerValue];
         }
+        performerCriterion.modifier = GQL.CriterionModifier.IncludesAll;
       } else {
-        // overwrite
+        performerCriterion = new PerformersCriterion();
         performerCriterion.value.items = [performerValue];
+        performerCriterion.modifier = GQL.CriterionModifier.IncludesAll;
+        filter.criteria.push(performerCriterion);
       }
-
-      performerCriterion.modifier = GQL.CriterionModifier.IncludesAll;
-    } else {
-      performerCriterion = new PerformersCriterion();
-      performerCriterion.value.items = [performerValue];
-      performerCriterion.modifier = GQL.CriterionModifier.IncludesAll;
-      filter.criteria.push(performerCriterion);
-    }
-
-    return filter;
-  };
+      return filter;
+    },
+    [id, name]
+  );
 };
 
 interface IPerformerFragment {

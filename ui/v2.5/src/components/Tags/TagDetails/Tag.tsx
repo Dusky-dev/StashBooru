@@ -21,6 +21,9 @@ import { useToast } from "src/hooks/Toast";
 import { useConfigurationContext } from "src/hooks/Config";
 import { tagRelationHook } from "src/core/tags";
 import { TagScenesPanel } from "./TagScenesPanel";
+import { FilteredMediaList } from "src/components/Media/MediaList";
+import { useTagFilterHook } from "src/core/tags";
+import { View } from "src/components/List/views";
 import { TagMarkersPanel } from "./TagMarkersPanel";
 import { TagImagesPanel } from "./TagImagesPanel";
 import { TagPerformersPanel } from "./TagPerformersPanel";
@@ -62,6 +65,7 @@ interface ITagParams {
 
 const validTabs = [
   "default",
+  "all",
   "scenes",
   "images",
   "galleries",
@@ -156,6 +160,8 @@ const TagTabs: React.FC<{
     );
   }, [showAllDetails, tag.children.length]);
 
+  const mediaFilterHook = useTagFilterHook(tag, showAllDetails);
+
   return (
     <Tabs
       id="tag-tabs"
@@ -164,6 +170,19 @@ const TagTabs: React.FC<{
       activeKey={activeTabKey}
       onSelect={setTabKey}
     >
+      <Tab
+        eventKey="all"
+        title={
+          <TabTitleCounter
+            messageID="media_all"
+            count={sceneCount + imageCount}
+            abbreviateCounter={abbreviateCounter}
+          />
+        }
+      >
+        {contentSwitch}
+        <FilteredMediaList filterHook={mediaFilterHook} view={View.TagMedia} />
+      </Tab>
       <Tab
         eventKey="scenes"
         title={

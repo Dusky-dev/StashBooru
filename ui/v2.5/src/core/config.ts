@@ -55,6 +55,9 @@ export interface IUIConfig {
   // Show Copyright · Character · Artist labels in place of generated filenames.
   showImageAssociationTitles?: boolean;
   showFormattedImageFilenameFallback?: boolean;
+  // Shared, Grabber-style layout used for image title decoding and as the
+  // default Booru filename format when no download override is configured.
+  imageFilenameLayout?: string;
 
   showStudioText?: boolean;
 

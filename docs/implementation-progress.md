@@ -5371,6 +5371,69 @@ these historical CI snapshots.
   cache retention has expired. Current-head CI is still a release gate.
 
 
+## All and Copyrights native-alignment pass — November 8, 2026
+
+- Branch: `fix/native-all-copyrights-alignment-20261108`; baseline:
+  `develop` `fff35abc9e2c654dda885c7466b863491685ac68`
+  (includes merged PR #332). The goal is parity with native entity lists.
+- Copyright profile: replaced the empty All tab with shared
+  `FilteredMediaList` and `useCopyrightFilterHook`, preserving subtree depth
+  and using separate `View.CopyrightMedia` state. Count uses Images + Videos.
+- Copyright list: replaced custom read-only table with native `ListTable`,
+  column preferences and checkbox selection. Preserved hierarchy labels,
+  added native count links and selection actions. Random now queries a random
+  result across the entire filtered Copyright set, not only the current page.
+  Added route title handling and an image placeholder.
+- Isolated browser regression `copyright-save-retry.mjs` exercises the
+  scoped All query and native list selection. It requires a built app binary
+  and installed Chromium; not executed in the connector-only environment.
+- Still unverified / deferred: whole-library All filter result correctness,
+  Wall-mode stack member selection, richer Copyright backend filters, and
+  full real-media regression on a representative library.
+- UI checks and CI are pending for this branch; do not merge until green.
+
+- Follow-up: shared All now exposes a native Copyright sidebar filter using
+  the existing Copyright selection GraphQL query; existing backend Copyright
+  criterion handles filtering. The scoped Copyright filter function was made
+  referentially stable with React useCallback to avoid repeated computation
+  across profile render cycles. The shared toolbar suppresses Filter when an
+  entity type has no supported criteria (Copyright list still has Search and
+  sorting). First CI Build had only Biome formatting findings, fixed in the
+  subsequent commits. Fresh checks remain pending.
+
+- Clarification: top-level `/media` is the whole media library, whereas
+  Copyrights > All is the Copyright catalogue. Removed the erroneous scoped
+  mixed-media All from individual Copyright profiles; `/copyrights/:id/all`
+  now presents the native Copyright list. This is a catalogue of Copyright
+  entities, **not** a `findMedia` feed. Removed the unnecessary
+  `View.CopyrightMedia` special case and restored global All's own state;
+  kept the native Copyright selection filter on global All itself. Updated
+  isolated browser coverage to prevent those two scopes being conflated.
+
+
+## Universal selected-entity All tab correction — November 9, 2026
+
+- Corrected prior assumption: top-menu `/media` is global Image+Video; after
+  selecting a Copyright, Character, Artist or Tag, its `/all` tab is **only**
+  matching Images+Videos. It does not display Copyright entity records.
+- All four profile tabs now use one native React `FilteredMediaList` with an
+  entity-specific filter hook and separate `View` preference keys. The native
+  Images/Videos/other entity tabs remain untouched.
+- Removed synthetic All tab injection for Character/Artist/Tag and disabled
+  Copyright All portal from the bundled Unified Media source. Preserved global
+  video-preview and animated-image enhancements, and updated the validated
+  bundled SHA-256 checksum to match. Eliminated competing tab owners and
+  route mutation observers that caused inconsistent active tabs and preview.
+- Stabilized native Character/Artist/Tag filter hooks via `useCallback`, and
+  ensured the descendant switch rewrites filter depth even when a criterion
+  already existed. Copyrights retain subtree semantics.
+- Updated Copyright and Character browser regression fixtures. Tests must
+  verify scoped `FindMedia` variables for all four detail pages, verify no
+  synthetic inline pane remains, and ensure global All stays unscoped.
+- Full compiled browser verification and CI still required; this is not a
+  claim that all filter, selection, Wall or stack issues have been eliminated.
+
+
 ## Shared list pagination fixes — November 9, 2026
 
 - Branch `fix/shared-list-pagination-edge-cases-20261109` based on

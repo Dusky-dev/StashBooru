@@ -175,47 +175,49 @@ try {
   );
   await page.setViewportSize({ width: 1440, height: 1000 });
 
-  const allTab = page.locator(
-    '.performer-tabs > .nav-tabs [data-unified-media-all="tab"]'
-  );
+  const allTab = page.locator("#performer-tabs-tab-all");
+  const scopedRequest = page.waitForRequest((request) => {
+    const payload = request.postDataJSON?.();
+    return (
+      request.url().endsWith("/graphql") &&
+      payload?.operationName === "FindMedia" &&
+      payload.variables?.media_filter?.performers !== undefined
+    );
+  });
   await allTab.click();
+  const applied = (await scopedRequest).postDataJSON().variables.media_filter;
+  assert.deepEqual(applied.performers.value, [characterID]);
   await page
-    .locator(".unified-media-inline-pane .scene-card")
+    .locator("#performer-tabs-tabpane-all .media-list .scene-card")
     .first()
     .waitFor();
   await page
-    .locator(".unified-media-inline-pane .image-card")
+    .locator("#performer-tabs-tabpane-all .media-list .image-card")
     .first()
     .waitFor();
-  const video = page.locator(".unified-media-inline-pane .scene-card").first();
+  const video = page
+    .locator("#performer-tabs-tabpane-all .media-list .scene-card")
+    .first();
   await video.hover();
   await video.locator(".unified-media-video-preview-button button").click();
   await page.locator(".unified-media-native-scene-player .video-js").waitFor();
   await page.getByTitle("Close Lightbox", { exact: true }).click();
   await page.locator(".Lightbox").waitFor({ state: "hidden" });
-  console.log("PASS: Character All uses the shared Video preview player");
+  console.log("PASS: native Character All uses shared scoped Video preview");
   const edit = page.locator(".details-edit button.edit");
   await edit.click();
   await page.locator(".detail-header.edit").waitFor();
-  await page.waitForFunction(
-    () =>
-      !document.querySelector(
-        ".performer-tabs .unified-media-inline-pane:not([hidden])"
-      ) &&
-      !document.querySelector(".performer-tabs .unified-media-controller") &&
-      !document.querySelector(".performer-tabs .nav-tabs")
-  );
+  await page
+    .locator("#performer-tabs-tabpane-all .media-list")
+    .waitFor({ state: "detached" });
   await page
     .getByRole("button", { name: "Cancel", exact: true })
     .first()
     .click();
   await allTab.waitFor();
-  assert.equal(
-    await page.locator(".performer-tabs.unified-media-all-active").count(),
-    0
-  );
+  assert.equal(await page.locator(".unified-media-inline-pane").count(), 0);
   console.log(
-    "PASS: active Character All contents unmount on Edit; Cancel restores native tabs"
+    "PASS: active Character All unmounts during Edit; Cancel restores native tabs"
   );
 
   many = true;

@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import * as GQL from "src/core/generated-graphql";
 import {
   IHierarchicalLabeledIdCriterion,
@@ -25,27 +26,31 @@ const CopyrightsCriterionOption: ModifierCriterionOption =
 export const useCopyrightFilterHook = (
   copyright: Pick<GQL.CopyrightDataFragment, "id" | "name">
 ) => {
-  return (filter: ListFilterModel) => {
-    const criterion = new IHierarchicalLabeledIdCriterion(
-      CopyrightsCriterionOption,
-      {
-        items: [
-          {
-            id: copyright.id,
-            label: copyright.name,
-          },
-        ],
-        excluded: [],
-        // P04 Copyright pages represent the whole taxonomy branch by default.
-        depth: -1,
-      }
-    );
-    criterion.modifier = GQL.CriterionModifier.IncludesAll;
+  const { id, name } = copyright;
+  return useCallback(
+    (filter: ListFilterModel) => {
+      const criterion = new IHierarchicalLabeledIdCriterion(
+        CopyrightsCriterionOption,
+        {
+          items: [
+            {
+              id,
+              label: name,
+            },
+          ],
+          excluded: [],
+          // P04 Copyright pages represent the whole taxonomy branch by default.
+          depth: -1,
+        }
+      );
+      criterion.modifier = GQL.CriterionModifier.IncludesAll;
 
-    filter.criteria = filter.criteria.filter(
-      (item) => item.criterionOption.type !== ("copyrights" as CriterionType)
-    );
-    filter.criteria.push(criterion);
-    return filter;
-  };
+      filter.criteria = filter.criteria.filter(
+        (item) => item.criterionOption.type !== ("copyrights" as CriterionType)
+      );
+      filter.criteria.push(criterion);
+      return filter;
+    },
+    [id, name]
+  );
 };
