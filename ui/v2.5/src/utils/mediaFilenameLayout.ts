@@ -26,7 +26,12 @@ export function validateImageFilenameLayout(layout: string): string | undefined 
   if (
     layout.length > 512 ||
     layout.startsWith("/") ||
-    /[\\:\x00-\x1f\x7f]/.test(layout) ||
+    layout.includes("\\") ||
+    layout.includes(":") ||
+    [...layout].some((char) => {
+      const code = char.charCodeAt(0);
+      return code < 32 || code === 127;
+    }) ||
     !layout.endsWith(".%ext%") ||
     layout.split("/").length > 8 ||
     layout.split("/").some((part) => !part || part === "." || part === "..")
@@ -35,7 +40,7 @@ export function validateImageFilenameLayout(layout: string): string | undefined 
   }
   const matches = [...layout.matchAll(templateToken)];
   const names = new Set<string>();
-  let left = layout.replace(templateToken, "");
+  const left = layout.replace(templateToken, "");
   if (left.includes("%")) return "Use valid %token% placeholders.";
   for (const match of matches) {
     const token = match[1];
