@@ -25,7 +25,7 @@ const movedSections: Record<string, SettingsTab> = {
   "#association-inheritance-settings": "library",
 };
 
-// Existing deep links to P12/P13 tools should follow their relocated panels.
+// Existing P12/P13 and Video overlap bookmarks should follow their relocated panels.
 // Task Queue and original-media backup remain on the Tasks page.
 const experimentalAnchors = new Set([
   "#experimental-image-storage",
