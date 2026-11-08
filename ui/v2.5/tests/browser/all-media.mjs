@@ -143,6 +143,19 @@ async function check(mode) {
           .count(),
         0
       );
+      // A deep link to an out-of-range page must return to page 1 even
+      // when the completed filter has no results. Do not normalize while
+      // the request is loading or using an earlier query's cached count.
+      await page.goto(`${baseURL}/media?p=9`, {
+        waitUntil: "domcontentloaded",
+      });
+      await page.waitForURL((url) => !url.searchParams.has("p"), {
+        timeout: 10000,
+      });
+      assert.equal(
+        await page.locator(".media-list .image-card, .media-list .scene-card").count(),
+        0
+      );
     } else {
       await page.locator(".media-list .scene-card").first().waitFor();
       await checkVideoPreview(page, ".media-list .scene-card");
