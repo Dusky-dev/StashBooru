@@ -30,8 +30,8 @@ Fork issues link to the StashBooru repository; upstream help/support links remai
 | **Identities** / profile **Sources & aliases** | Review connections between exact provider identifiers and existing native Artists, Characters and Copyrights. |
 | **Settings → Library** | Media folders, scan rules and automatic ancestor/profile associations. Inheritance switches save automatically. |
 | **Settings → Processing** | Shared worker connection, links to the complete version-matched worker ZIP, similarity/tagging defaults, conversion rules and upscaling setup. Use each section's Save button. |
-| **Settings → Tasks** | Jobs, generated files/hashes, animation inspection, Character merging, association review, Video overlap indexing, original-media backups and database management. |
-| **Settings → Experimental** | Isolated P12/P13 image storage estimates, verified backup coverage, candidate packs, shadow reads and recovery rehearsals. This is not live storage activation. |
+| **Settings → Tasks** | Jobs, scanning and animation inspection, generated files/hashes, Character merging, association review, original-media backups and database management. |
+| **Settings → Experimental** | Video overlap / containment analysis and isolated P12/P13 image storage estimates, verified backup coverage, candidate packs, shadow reads and recovery rehearsals. This is not live storage activation. |
 | **Settings → Tools** | Metadata Health, Alias Collision Inspector and EVA02 Visual Similarity Triage, including explicit add-only metadata copying. |
 | **Settings → System** | Application paths, FFmpeg, transcodes and other server settings. |
 
@@ -40,8 +40,9 @@ larger screens the section list stays beside the controls. Both use the same
 section URLs; Back, refresh and existing section bookmarks keep their destination.
 Advanced mode and troubleshooting remain available beside the navigation.
 
-Tasks starts with the job queue, followed by **Update library**, **Review profiles
-& associations**, **Inspect media**, **Backup & maintenance** and **Plugin tasks**.
+Tasks starts with the job queue, followed by **Update library** (including
+animation inspection beside Scan), **Review profiles & associations**,
+**Backup & maintenance** and **Plugin tasks**.
 Open the group for the work you need. Closing it keeps its current draft and
 review results; jobs continue normally. Existing task bookmarks open their group
 automatically. The queue scrolls with the page so it does not cover a bookmarked
@@ -406,7 +407,7 @@ survives navigation/refresh in the same browser tab. It ends when that tab close
 and does not recover jobs that finished while the app was closed/disconnected.
 Successful/cancelled jobs disappear after ten seconds.
 
-**Video overlap review** in Tasks indexes timestamped frames and reviews duplicate,
+**Video overlap review** in Settings → Experimental indexes timestamped frames and reviews duplicate,
 contained, partial and compilation matches. Indexing is incremental and resumes
 after cancellation/restart. Inspect both matched timelines and unmatched content;
 partial overlap is not a reason to automatically delete an entire Video.
@@ -417,7 +418,8 @@ Scanning inspects image frame counts and adds the native `animated` Tag for
 multi-frame images without removing existing metadata. Native cards/walls display
 animation-format badges beyond GIF, including APNG, AJXL and animated WebP/AVIF.
 Missing inspectors leave animation status unknown. Use **Settings → Tasks →
-Animation inspection → Inspect existing images** for older records; JXL inspection
+Animation inspection → Inspect existing images** under Tasks → Update library
+for older records; JXL inspection
 needs libjxl tools on the catalogue server even with remote conversion.
 
 Animated Image headers show average FPS across the whole timeline, including long
