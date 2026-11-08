@@ -3,9 +3,7 @@ import { defineMessages, useIntl } from "react-intl";
 import { LoadingIndicator } from "src/components/Shared/LoadingIndicator";
 import { CharacterDedupTask } from "./CharacterDedupTask";
 import { LibraryTasks } from "./LibraryTasks";
-import { AnimationInspectionTask } from "./AnimationInspectionTask";
 import { AssociationInheritanceTask } from "./AssociationInheritanceTask";
-import { VideoOverlapTask } from "./VideoOverlapTask";
 import { DataManagementTasks } from "./DataManagementTasks";
 import { MediaBackupTask } from "./MediaBackupTask";
 import { PluginTasks } from "./PluginTasks";
@@ -20,17 +18,12 @@ const sections = defineMessages({
   library_help: {
     id: "config.tasks.sections.library_help",
     defaultMessage:
-      "Scan folders, generate previews and hashes, or match metadata from paths.",
+      "Scan folders, inspect animated images, generate previews and hashes, or match metadata from paths.",
   },
   profiles: {
     id: "config.tasks.sections.profiles",
     defaultMessage: "Review profiles & associations",
   },
-  media: {
-    id: "config.tasks.sections.media",
-    defaultMessage: "Inspect media",
-  },
-
   maintenance: {
     id: "config.tasks.sections.maintenance",
     defaultMessage: "Backup & maintenance",
@@ -86,14 +79,6 @@ export const SettingsTasksPanel: React.FC = () => {
           <CharacterDedupTask />
           <hr />
           <AssociationInheritanceTask />
-        </SettingsDisclosure>
-        <SettingsDisclosure
-          id="tasks-media"
-          title={intl.formatMessage(sections.media)}
-        >
-          <AnimationInspectionTask />
-          <hr />
-          <VideoOverlapTask />
         </SettingsDisclosure>
         <SettingsDisclosure
           id="tasks-maintenance"
