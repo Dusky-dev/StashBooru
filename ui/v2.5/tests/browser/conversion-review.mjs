@@ -410,7 +410,9 @@ try {
       "Savings limits precede the actions they govern"
     );
     await dialog.getByText("What happens to my files?", { exact: true }).click();
-    await dialog.getByText("Keep separate backups.", { exact: false }).waitFor();
+    await dialog
+      .getByText("Conversion preserves the library entries", { exact: false })
+      .waitFor();
     if (shots) {
       await dialog.locator(".tab-pane.active").evaluate(async () => {
         await Promise.all(
