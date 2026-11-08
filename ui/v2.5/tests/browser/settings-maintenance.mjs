@@ -322,7 +322,10 @@ try {
     );
     await chooseSection(page, "tasks");
     await page.locator("#tasks-media").waitFor();
-    assert.equal(await page.locator("#image-storage-estimate-task").count(), 0);
+    assert.equal(
+      await active(page).locator("#image-storage-estimate-task").count(),
+      0
+    );
     await page.goto(
       `${baseURL}/settings?tab=tasks&return=images%2F42#image-storage-estimate-task`
     );
