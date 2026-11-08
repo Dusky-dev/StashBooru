@@ -255,7 +255,9 @@ func (s *Manager) ScanNow(ctx context.Context, input ScanMetadataInput, progress
 	}
 
 	scanner := s.makeScanner(input.Rescan, minModTime)
-	taskQueue := s.startGenerateJob(ctx, "Generating for scanned files...")
+	// Keep generation in the calling Job; the manager may be unavailable in
+	// embedded scan workflows, and an additional queued Job could deadlock.
+	taskQueue := job.NewTaskQueue(ctx, progress, 200000, s.Config.GetParallelTasksWithAutoDetection())
 	scanJob := ScanJob{
 		scanner:         scanner,
 		generateOptions: makeGenerateOptions(input),
