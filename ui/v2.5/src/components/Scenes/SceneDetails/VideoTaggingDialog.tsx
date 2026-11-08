@@ -509,7 +509,9 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
   return (
     <>
       <Modal
-        show={!pendingCharacterResolution && !changePlan && !showFilenamePatterns}
+        show={
+          !pendingCharacterResolution && !changePlan && !showFilenamePatterns
+        }
         onHide={() => {
           if (!applying) onHide();
         }}

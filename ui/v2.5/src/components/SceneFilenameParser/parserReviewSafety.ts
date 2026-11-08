@@ -10,7 +10,9 @@ interface FilenameReviewRow {
   tags: AssociationField;
 }
 
-export function countParserAssociationReplacements(rows: readonly FilenameReviewRow[]) {
+export function countParserAssociationReplacements(
+  rows: readonly FilenameReviewRow[]
+) {
   let characters = 0;
   let tags = 0;
   for (const row of rows) {

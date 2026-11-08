@@ -294,8 +294,8 @@ try {
           .getByText("Advanced filename pattern matching")
           .waitFor();
         assert.equal(
-          await filenameReview.getByRole("button", { name: "Apply" }).isDisabled(),
-          true,
+          await filenameReview.getByRole("button", { name: "Apply" }).count(),
+          0,
           "No filename changes can be applied before Find and review"
         );
         await filenameReview
