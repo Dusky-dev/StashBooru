@@ -400,8 +400,18 @@ async function check(viewport, label) {
         field: "copyrights",
         tab: "#copyright-media-tabs",
       },
-      { route: "performers", id: keep.id, field: "performers", tab: "#performer-tabs" },
-      { route: "studios", id: artist.id, field: "studios", tab: "#studio-tabs" },
+      {
+        route: "performers",
+        id: keep.id,
+        field: "performers",
+        tab: "#performer-tabs",
+      },
+      {
+        route: "studios",
+        id: artist.id,
+        field: "studios",
+        tab: "#studio-tabs",
+      },
       { route: "tags", id: tag.id, field: "tags", tab: "#tag-tabs" },
     ];
     for (const scope of allScopes) {
@@ -414,10 +424,9 @@ async function check(viewport, label) {
         );
       });
       await page.goto(url + `/${scope.route}/${scope.id}/all`);
-      await page
-        .locator(`${scope.tab}-tabpane-all .media-list`)
-        .waitFor();
-      const applied = (await mediaRequest).postDataJSON().variables.media_filter;
+      await page.locator(`${scope.tab}-tabpane-all .media-list`).waitFor();
+      const applied = (await mediaRequest).postDataJSON().variables
+        .media_filter;
       assert.deepEqual(applied[scope.field].value, [scope.id]);
       assert.equal(await page.locator(".unified-media-inline-pane").count(), 0);
     }
