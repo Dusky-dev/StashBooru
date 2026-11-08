@@ -75,6 +75,28 @@ export function duplicateReviewPlan(
   };
 }
 
+/** Build a safe add-only metadata transfer independent of deletion selections. */
+export function similarityMetadataCopyPlan(
+  group: SimilarImageGroup,
+  selectedSourceID: number,
+  selectedTargetIDs: number[]
+): { sourceImageID: number; targetImageIDs: number[] } {
+  const memberIDs = group.members.map((member) => member.id);
+  const sourceImageID = memberIDs.includes(selectedSourceID)
+    ? selectedSourceID
+    : memberIDs.includes(group.preferredID)
+      ? group.preferredID
+      : (memberIDs[0] ?? 0);
+  const targetImageIDs = [
+    ...new Set(
+      selectedTargetIDs.filter(
+        (id) => memberIDs.includes(id) && id !== sourceImageID
+      )
+    ),
+  ];
+  return { sourceImageID, targetImageIDs };
+}
+
 export function readableFileSize(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes < 0) return "Unknown size";
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + " KiB";
