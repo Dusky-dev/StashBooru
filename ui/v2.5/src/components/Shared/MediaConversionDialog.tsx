@@ -498,10 +498,14 @@ export const MediaConversionDialog: React.FC<{
   const statuses =
     restoreLookup?.key === restoreLookupKey ? restoreLookup.targets : undefined;
   const converted = new Set(
-    statuses?.filter((item) => item.converted).map((item) => targetKey(item.target))
+    statuses
+      ?.filter((item) => item.converted)
+      .map((item) => targetKey(item.target))
   );
   const restorable = new Set(
-    statuses?.filter((item) => item.restorable).map((item) => targetKey(item.target))
+    statuses
+      ?.filter((item) => item.restorable)
+      .map((item) => targetKey(item.target))
   );
   const statusReady =
     !!statuses &&
@@ -513,7 +517,8 @@ export const MediaConversionDialog: React.FC<{
     selectedCount > 0 &&
     targets.every((target) => converted.has(targetKey(target)));
   const allRestorable =
-    allConverted && targets.every((target) => restorable.has(targetKey(target)));
+    allConverted &&
+    targets.every((target) => restorable.has(targetKey(target)));
   const remainingTargets = targets.filter(
     (target) => !converted.has(targetKey(target))
   );
@@ -692,7 +697,8 @@ export const MediaConversionDialog: React.FC<{
               )}
               {restoreLookupError && (
                 <Alert variant="warning" className="mt-2">
-                  Could not check the current conversion state: {restoreLookupError}
+                  Could not check the current conversion state:{" "}
+                  {restoreLookupError}
                 </Alert>
               )}
             </div>
@@ -973,9 +979,10 @@ export const MediaConversionDialog: React.FC<{
                   />
                 )}
                 <p>
-                  <strong>Verified trial</strong> saves outputs for comparison and
-                  later apply. <strong>Estimate savings</strong> measures a sample
-                  and deletes its outputs; it is optional and cannot be applied.
+                  <strong>Verified trial</strong> saves outputs for comparison
+                  and later apply. <strong>Estimate savings</strong> measures a
+                  sample and deletes its outputs; it is optional and cannot be
+                  applied.
                 </p>
                 <div className="d-flex flex-wrap">
                   <Button

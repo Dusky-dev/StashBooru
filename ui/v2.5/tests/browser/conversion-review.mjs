@@ -276,10 +276,12 @@ try {
             }));
           }
           if (body.action === "start") {
-            for (const target of body.targets) convertedTargets.add(key(target));
+            for (const target of body.targets)
+              convertedTargets.add(key(target));
           }
           if (body.action === "restore-targets") {
-            for (const target of body.targets) convertedTargets.delete(key(target));
+            for (const target of body.targets)
+              convertedTargets.delete(key(target));
           }
           if (body.action === "apply-trials") {
             for (const trial of trials) {
@@ -441,7 +443,9 @@ try {
       true,
       "Savings limits precede the actions they govern"
     );
-    await dialog.getByText("What happens to my files?", { exact: true }).click();
+    await dialog
+      .getByText("What happens to my files?", { exact: true })
+      .click();
     await dialog
       .getByText("Conversion preserves the library entries", { exact: false })
       .waitFor();
@@ -708,7 +712,9 @@ try {
       .last()
       .click();
     await dialog.waitFor({ state: "hidden" });
-    await page.getByText("Advanced conversion defaults", { exact: true }).click();
+    await page
+      .getByText("Advanced conversion defaults", { exact: true })
+      .click();
     await page.locator("#converter-global-saved-bytes").fill("200");
     await page.locator("#converter-global-saved-percent").fill("20");
     await page
@@ -737,9 +743,7 @@ try {
     await dialog
       .getByRole("button", { name: "Advanced tools", exact: true })
       .click();
-    await dialog
-      .getByRole("tab", { name: "Trials", exact: true })
-      .click();
+    await dialog.getByRole("tab", { name: "Trials", exact: true }).click();
     await dialog.locator('[data-trial-id="' + "1".repeat(32) + '"]').waitFor();
     // Maintenance jobs return an accepted ID first and fail only on a later poll.
     // Keep the launching tab selected: the error must remain visible and copyable.
@@ -780,11 +784,7 @@ try {
           restoreRecord.id
         );
     }
-    for (const name of [
-      "Convert",
-      "Trials",
-      "History",
-    ]) {
+    for (const name of ["Convert", "Trials", "History"]) {
       await dialog.getByRole("tab", { name, exact: true }).click();
       await dialog
         .getByRole("region", { name: "Conversion job feedback", exact: true })
@@ -816,7 +816,9 @@ try {
         path: path.join(shots, `statistics-error-${viewport.width}.png`),
       });
     await dialog.getByRole("tab", { name: "Convert", exact: true }).click();
-    await primaryAction.getByText("Convert remaining", { exact: true }).waitFor();
+    await primaryAction
+      .getByText("Convert remaining", { exact: true })
+      .waitFor();
     await primaryAction.click();
     await primaryAction.getByText("Revert", { exact: true }).waitFor();
     const directRequest = requests.find((r) => r.action === "start");
@@ -826,16 +828,21 @@ try {
       "Mixed selection converts only unconverted media"
     );
     // Reopening the dialog must detect the converted files from server state.
-    await dialog.getByRole("button", { name: "Close", exact: true }).last().click();
+    await dialog
+      .getByRole("button", { name: "Close", exact: true })
+      .last()
+      .click();
     await dialog.waitFor({ state: "hidden" });
     await page
       .getByRole("button", { name: "Open converter", exact: true })
       .click();
-    await dialog.locator("#converter-primary-action")
+    await dialog
+      .locator("#converter-primary-action")
       .getByText("Revert", { exact: true })
       .waitFor();
     await dialog.locator("#converter-primary-action").click();
-    await dialog.locator("#converter-primary-action")
+    await dialog
+      .locator("#converter-primary-action")
       .getByText("Convert", { exact: true })
       .waitFor();
     const revertRequest = requests.find((r) => r.action === "restore-targets");

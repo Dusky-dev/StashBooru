@@ -336,7 +336,8 @@ export const MediaConversionSettings: React.FC = () => {
               <div>
                 <h2 className="h5">Format rules</h2>
                 <p className="small text-muted mb-2">
-                  Choose what to convert automatically. Disabled rules keep their settings.
+                  Choose what to convert automatically. Disabled rules keep
+                  their settings.
                 </p>
               </div>
               <Button
