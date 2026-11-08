@@ -304,3 +304,13 @@ References: [FFmpeg encoders](https://ffmpeg.org/ffmpeg-codecs.html),
 [JPEG XL tools](https://github.com/libjxl/libjxl/tree/main/tools),
 [JPEG XL quality mapping](https://github.com/libjxl/libjxl/blob/main/lib/jxl/encode.cc),
 [NVIDIA encode/decode support](https://developer.nvidia.com/video-encode-decode-support-matrix).
+
+
+### Compact conversion defaults
+
+The Processing settings page now shows the format rules in a short table with
+only **Enabled**, **Input format** and **Default output format** visible by default.
+Choose **Show advanced rule options** for quality, effort, decoding speed and
+format-specific overrides. The separate **Advanced conversion defaults** panel
+holds savings thresholds and trial retention. Hiding these controls does not
+reset or change their saved values; saving still applies the full configuration.

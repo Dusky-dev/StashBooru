@@ -264,41 +264,49 @@ export const MediaConversionSettings: React.FC = () => {
             )}
           </div>
         )}
-        <h2 className="h5">Compression savings</h2>
-        <SavingsThresholdFields
-          value={savings}
-          onChange={setSavings}
-          disabled={saving || !settings}
-          prefix="converter-global"
-        />
-        <details className="settings-details mb-3">
-          <summary>Saved trial storage and expiry</summary>
+        <details
+          id="converter-advanced-defaults"
+          className="settings-details mb-3"
+        >
+          <summary>Advanced conversion defaults</summary>
           <div className="pt-3">
-            <Form.Group controlId="converter-trial-cache">
-              <Form.Label>Trial cache limit (GiB)</Form.Label>
-              <Form.Control
-                className="text-input"
-                type="number"
-                min={0}
-                step={0.25}
-                value={trialCacheGiB}
-                disabled={saving || !settings}
-                onChange={(e) => setTrialCacheGiB(Number(e.target.value))}
-              />
-            </Form.Group>
-            <Form.Group controlId="converter-trial-expiry">
-              <Form.Label>Trial expiry (hours)</Form.Label>
-              <Form.Control
-                className="text-input"
-                type="number"
-                min={1}
-                max={168}
-                step={1}
-                value={trialTTLHours}
-                disabled={saving || !settings}
-                onChange={(e) => setTrialTTLHours(Number(e.target.value))}
-              />
-            </Form.Group>
+            <h2 className="h5">Compression savings</h2>
+            <SavingsThresholdFields
+              value={savings}
+              onChange={setSavings}
+              disabled={saving || !settings}
+              prefix="converter-global"
+            />
+            <details className="settings-details mb-3">
+              <summary>Saved trial storage and expiry</summary>
+              <div className="pt-3">
+                <Form.Group controlId="converter-trial-cache">
+                  <Form.Label>Trial cache limit (GiB)</Form.Label>
+                  <Form.Control
+                    className="text-input"
+                    type="number"
+                    min={0}
+                    step={0.25}
+                    value={trialCacheGiB}
+                    disabled={saving || !settings}
+                    onChange={(e) => setTrialCacheGiB(Number(e.target.value))}
+                  />
+                </Form.Group>
+                <Form.Group controlId="converter-trial-expiry">
+                  <Form.Label>Trial expiry (hours)</Form.Label>
+                  <Form.Control
+                    className="text-input"
+                    type="number"
+                    min={1}
+                    max={168}
+                    step={1}
+                    value={trialTTLHours}
+                    disabled={saving || !settings}
+                    onChange={(e) => setTrialTTLHours(Number(e.target.value))}
+                  />
+                </Form.Group>
+              </div>
+            </details>
           </div>
         </details>
         <Form.Group controlId="converter-default-backend">

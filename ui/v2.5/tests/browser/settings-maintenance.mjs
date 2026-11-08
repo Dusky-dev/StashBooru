@@ -516,6 +516,17 @@ try {
       await converter.getByLabel("Run on", { exact: true }).inputValue(),
       "local"
     );
+    // Less frequently used savings/trial settings stay available on demand.
+    const advancedDefaults = converter.locator(
+      "#converter-advanced-defaults > summary"
+    );
+    assert.equal(
+      await converter
+        .getByLabel("Minimum saved bytes", { exact: true })
+        .isVisible(),
+      false
+    );
+    await advancedDefaults.click();
     assert.equal(
       await converter
         .getByLabel("Minimum saved bytes", { exact: true })
