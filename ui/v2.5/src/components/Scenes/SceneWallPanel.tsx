@@ -38,6 +38,7 @@ interface IScenePhoto {
 
 interface IExtraProps {
   maxHeight: number;
+  stackBadge?: React.ReactNode;
   selected?: boolean;
   onSelectedChanged?: (selected: boolean, shiftKey: boolean) => void;
   selecting?: boolean;
@@ -69,6 +70,7 @@ export const SceneWallItem: React.FC<
   var divStyle: style = {
     margin: props.margin,
     display: "block",
+    position: "relative",
   };
 
   if (props.direction === "column") {
@@ -150,6 +152,14 @@ export const SceneWallItem: React.FC<
             event.stopPropagation();
           }}
         />
+      )}
+      {props.stackBadge && (
+        <div
+          className="visual-stack-wall-control"
+          onClick={(event) => event.stopPropagation()}
+        >
+          {props.stackBadge}
+        </div>
       )}
       {video ? (
         <video {...previewProps} ref={videoEl} />
