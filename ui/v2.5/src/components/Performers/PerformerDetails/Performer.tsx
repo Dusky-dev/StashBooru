@@ -22,6 +22,9 @@ import {
   PerformerDetailsPanel,
 } from "./PerformerDetailsPanel";
 import { PerformerScenesPanel } from "./PerformerScenesPanel";
+import { FilteredMediaList } from "src/components/Media/MediaList";
+import { usePerformerFilterHook } from "src/core/performers";
+import { View } from "src/components/List/views";
 import { PerformerGalleriesPanel } from "./PerformerGalleriesPanel";
 import { PerformerGroupsPanel } from "./PerformerGroupsPanel";
 import { PerformerImagesPanel } from "./PerformerImagesPanel";
@@ -64,6 +67,7 @@ interface IPerformerParams {
 
 const validTabs = [
   "default",
+  "all",
   "scenes",
   "galleries",
   "images",
@@ -115,6 +119,8 @@ const PerformerTabs: React.FC<{
     };
   });
 
+  const mediaFilterHook = usePerformerFilterHook(performer);
+
   return (
     <Tabs
       id="performer-tabs"
@@ -123,6 +129,21 @@ const PerformerTabs: React.FC<{
       activeKey={activeTabKey}
       onSelect={setTabKey}
     >
+      <Tab
+        eventKey="all"
+        title={
+          <TabTitleCounter
+            messageID="media_all"
+            count={performer.scene_count + performer.image_count}
+            abbreviateCounter={abbreviateCounter}
+          />
+        }
+      >
+        <FilteredMediaList
+          filterHook={mediaFilterHook}
+          view={View.PerformerMedia}
+        />
+      </Tab>
       <Tab
         eventKey="scenes"
         title={

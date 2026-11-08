@@ -212,10 +212,12 @@ export const FilteredListToolbar: React.FC<IFilteredListToolbar> = ({
                 view={view}
                 menuPortalTarget={menuPortalTarget}
               />
-              <FilterButton
-                onClick={() => showEditFilter()}
-                count={filter.count()}
-              />
+              {filterOptions.criterionOptions.length > 0 && (
+                <FilterButton
+                  onClick={() => showEditFilter()}
+                  count={filter.count()}
+                />
+              )}
             </ButtonGroup>
           )}
 
