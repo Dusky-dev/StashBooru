@@ -719,11 +719,19 @@ compatibility. Other entity editors' repeated-save contracts remain separate
 acceptance work.
 
 
-## All versus Copyrights
+## Global All versus entity All
 
-The main navigation **All** (`/media`) is the full mixed Image/Video
-library. **Copyrights** (`/copyrights`) is the catalogue of Copyright
-records. Its **All Copyrights** view (`/copyrights/:id/all`) reuses that
-Copyright catalogue; it does not run `findMedia` or display Image/Video
-cards. Individual Copyright pages still have separate native Images, Videos
-and Characters tabs for content related to that Copyright.
+The main navigation **All** (`/media`) shows the entire Image and Video
+library. After opening a specific **Copyright**, **Character** (`/performers`),
+**Artist** (`/studios`) or **Tag**, that profile's **All** tab shows only
+Images and Videos associated with that selected entity. Copyright profile
+All includes descendants by default; Artist and Tag have the same
+include-child-content switch used by their native Images and Videos tabs.
+Each entity type has a separate `View` key for layout, zoom and sidebar
+preferences. The global All view and the four entity views reuse the same
+`FilteredMediaList` (native `findMedia`) rather than synthetic UI tabs.
+The profile's Images/Videos and other entity-relation tabs remain separate.
+
+The bundled Unified Media extension no longer injects or portals synthetic
+entity All tabs. Its app-wide Scene preview/GIF enhancements remain active.
+
