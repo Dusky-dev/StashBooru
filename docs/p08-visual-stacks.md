@@ -28,11 +28,17 @@ compression base.
 
 ## Filtering, counts and order
 
-The **Group stacks** toggle on All is stored in native URL/filter state and is
-off by default. Native media filters execute first. A stack appears when any
-member matches; its representative can be outside the filters, including the
-media-type filter. The notice explains this, and expanding the card shows all
-members with individual selection, preview and native links.
+The **Show individual variants** option is located in All's **View options**
+menu next to the Grid/Wall controls. It is off by default: visual stacks show
+only their representatives. Turning it on shows every member separately.
+The setting is an explicit per-list URL/filter override of the browser-wide
+Settings → Interface preference; it does not change any stack memberships.
+
+Native media filters execute first. A stack appears when any member matches;
+its representative can be outside the filters, including the media-type filter.
+Expanding the representative card shows all members with individual selection,
+preview and native links. A notice appears only when already-selected members
+are hidden by grouping or other filters.
 
 Grouping occurs before pagination. `count` counts displayed cards;
 `image_count` and `video_count` describe representative card kinds;

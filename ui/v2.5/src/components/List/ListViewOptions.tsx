@@ -14,6 +14,8 @@ import { IntlShape, useIntl } from "react-intl";
 import { Icon } from "../Shared/Icon";
 import {
   faChevronDown,
+  faCheck,
+  faSlidersH,
   faList,
   faSquare,
   faTags,
@@ -21,7 +23,14 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { ZoomSelect } from "./ZoomSlider";
 
+export interface IAdditionalViewOption {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}
+
 interface IListViewOptionsProps {
+  additionalOption?: IAdditionalViewOption;
   zoomIndex?: number;
   onSetZoom?: (zoomIndex: number) => void;
   displayMode: DisplayMode;
@@ -172,6 +181,7 @@ export const ListViewOptions: React.FC<IListViewOptionsProps> = ({
 };
 
 export const ListViewButtonGroup: React.FC<IListViewOptionsProps> = ({
+  additionalOption,
   zoomIndex,
   onSetZoom,
   displayMode,
@@ -202,6 +212,36 @@ export const ListViewButtonGroup: React.FC<IListViewOptionsProps> = ({
               </Button>
             </OverlayTrigger>
           ))}
+          {additionalOption && (
+            <Dropdown>
+              <Dropdown.Toggle
+                variant="secondary"
+                aria-label="View options"
+                title="View options"
+              >
+                <Icon icon={faSlidersH} />
+              </Dropdown.Toggle>
+              <Dropdown.Menu alignRight>
+                <Dropdown.Item
+                  as="button"
+                  role="menuitemcheckbox"
+                  aria-checked={additionalOption.checked}
+                  onClick={() =>
+                    additionalOption.onChange(!additionalOption.checked)
+                  }
+                >
+                  <span className="mr-2" aria-hidden="true">
+                    {additionalOption.checked ? (
+                      <Icon icon={faCheck} />
+                    ) : (
+                      <span style={{ display: "inline-block", width: "1em" }} />
+                    )}
+                  </span>
+                  {additionalOption.label}
+                </Dropdown.Item>
+              </Dropdown.Menu>
+            </Dropdown>
+          )}
         </ButtonGroup>
       )}
       <div className="zoom-slider-container">

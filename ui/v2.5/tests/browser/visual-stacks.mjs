@@ -161,18 +161,6 @@ try {
       const before = await snapshot();
       await page.goto(`${baseURL}/media`, { waitUntil: "domcontentloaded" });
       await page.locator(".media-list .image-card").first().waitFor();
-      const grouping = page.getByRole("button", {
-        name: "Group stacks",
-        exact: true,
-      });
-      // No browser-local setting exists in the fresh Playwright context.
-      // Representative-only mode must now be the default.
-      await grouping.waitFor();
-      assert.equal(
-        await grouping.getAttribute("aria-pressed"),
-        "true",
-        "Fresh installs must show only stack representatives by default"
-      );
       if (
         await modal(page)
           .getByText("Release Notes", { exact: true })
@@ -183,6 +171,17 @@ try {
           .click();
         await modal(page).waitFor({ state: "hidden" });
       }
+      const viewOptions = page
+        .locator(".media-list")
+        .getByRole("button", { name: "View options", exact: true });
+      const individualVariants = page.getByRole("menuitemcheckbox", {
+        name: "Show individual variants",
+        exact: true,
+      });
+      // Fresh browser profiles show just representatives until overridden.
+      await viewOptions.click();
+      assert.equal(await individualVariants.getAttribute("aria-checked"), "false");
+      await viewOptions.click();
       if (shots && engineName === "chromium" && width === 1440)
         await page.screenshot({
           path: path.join(shots, "before.png"),
@@ -231,23 +230,21 @@ try {
       );
       // An explicit false must override the default, and toggling back
       // must restore one card per stack without changing selected members.
-      await grouping.click();
+      await viewOptions.click();
+      await individualVariants.click();
       await page.waitForFunction(
         () =>
           document.querySelectorAll(
             ".media-list .image-card,.media-list .scene-card"
           ).length === 8
       );
-      await grouping.click();
+      await viewOptions.click();
+      await individualVariants.click();
       await page.waitForFunction(
         () =>
           document.querySelectorAll(
             ".media-list .image-card,.media-list .scene-card"
           ).length === 5
-      );
-      assert.match(
-        await page.locator(".media-list").innerText(),
-        /matching members.*hidden member/s
       );
       assert.match(
         await page.locator(".media-list").innerText(),
