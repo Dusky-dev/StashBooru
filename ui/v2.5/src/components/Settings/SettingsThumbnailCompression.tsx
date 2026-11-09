@@ -7,6 +7,9 @@ type Category = "image" | "clip" | "animated";
 type ThumbnailStatus = {
   busy: boolean;
   jobID?: number;
+  jobStatus?: "READY" | "RUNNING" | "STOPPING" | "FINISHED" | "FAILED" | "CANCELLED";
+  jobError?: string;
+  progress?: number;
   category?: Category;
   imageEnabled: boolean;
   clipEnabled: boolean;
@@ -173,6 +176,18 @@ export const SettingsThumbnailCompression: React.FC = () => {
       {message && (
         <Alert variant="info" role="status">
           {message}
+        </Alert>
+      )}
+      {status?.jobStatus === "FAILED" && (
+        <Alert variant="danger" role="alert">
+          Thumbnail cache rebuild failed: {status.jobError ?? "Unknown error"}.
+          Check the Task Queue. Original media were not modified.
+        </Alert>
+      )}
+      {status?.jobStatus === "CANCELLED" && (
+        <Alert variant="warning" role="status">
+          Thumbnail cache rebuild was cancelled. Missing previews can still be
+          generated on demand or regenerated from Tasks.
         </Alert>
       )}
       {status?.busy && (

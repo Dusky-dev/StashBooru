@@ -107,12 +107,27 @@ func (rs imageRoutes) ThumbnailCompressionStatus(w http.ResponseWriter, r *http.
 	thumbnailRebuildMu.Lock()
 	busy, id, category := thumbnailRebuildBusy, thumbnailRebuildID, thumbnailRebuildCategory
 	thumbnailRebuildMu.Unlock()
-	writeVisualSimilarityJSON(w, map[string]any{
-		"busy": busy, "jobID": id, "category": category,
+	status := map[string]any{
+		"busy":            busy,
+		"jobID":           id,
+		"category":        category,
 		"imageEnabled":    m.Config.IsExperimentalImageThumbnailEnabled(),
 		"clipEnabled":     m.Config.IsExperimentalClipPreviewEnabled(),
 		"animatedEnabled": m.Config.IsExperimentalAnimatedThumbnailEnabled(),
-	})
+	}
+	if id != 0 {
+		if current := m.JobManager.GetJob(id); current != nil {
+			status["jobStatus"] = current.Status
+			status["progress"] = current.Progress
+			if current.Error != nil {
+				status["jobError"] = *current.Error
+			}
+			if current.Status == job.StatusReady || current.Status == job.StatusRunning || current.Status == job.StatusStopping {
+				status["busy"] = true
+			}
+		}
+	}
+	writeVisualSimilarityJSON(w, status)
 }
 
 func (rs imageRoutes) ThumbnailCompressionApply(w http.ResponseWriter, r *http.Request) {
