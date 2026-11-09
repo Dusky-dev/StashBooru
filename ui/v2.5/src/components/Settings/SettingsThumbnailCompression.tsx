@@ -39,6 +39,18 @@ export const SettingsThumbnailCompression: React.FC = () => {
   const [imageQuality, setImageQuality] = useState(
     ui.thumbnailImageQuality ?? 70
   );
+  const [imageResolution, setImageResolution] = useState(
+    ui.thumbnailImageResolution ?? 320
+  );
+  const [imageMode, setImageMode] = useState<"fixed" | "adaptive">(
+    ui.thumbnailImageMode ?? "fixed"
+  );
+  const [imageMinQuality, setImageMinQuality] = useState(
+    ui.thumbnailImageMinQuality ?? Math.min(55, ui.thumbnailImageQuality ?? 70)
+  );
+  const [imageBudget, setImageBudget] = useState(
+    ui.thumbnailImageBudget ?? 100
+  );
   const [videoFormat, setVideoFormat] = useState<"webm" | "mp4">(
     ui.thumbnailVideoFormat ?? "webm"
   );
@@ -47,6 +59,9 @@ export const SettingsThumbnailCompression: React.FC = () => {
   );
   const [animatedQuality, setAnimatedQuality] = useState(
     ui.thumbnailAnimatedQuality ?? 70
+  );
+  const [animatedResolution, setAnimatedResolution] = useState(
+    ui.thumbnailAnimatedResolution ?? 320
   );
   const [imageKeepOld, setImageKeepOld] = useState(
     ui.thumbnailImageKeepOld ?? true
@@ -65,17 +80,30 @@ export const SettingsThumbnailCompression: React.FC = () => {
   useEffect(() => {
     setImageFormat(ui.thumbnailImageFormat ?? "jpg");
     setImageQuality(ui.thumbnailImageQuality ?? 70);
+    setImageResolution(ui.thumbnailImageResolution ?? 320);
+    setImageMode(ui.thumbnailImageMode ?? "fixed");
+    setImageMinQuality(
+      ui.thumbnailImageMinQuality ??
+        Math.min(55, ui.thumbnailImageQuality ?? 70)
+    );
+    setImageBudget(ui.thumbnailImageBudget ?? 100);
     setVideoFormat(ui.thumbnailVideoFormat ?? "webm");
     setVideoQuality(ui.thumbnailVideoQuality ?? 75);
     setAnimatedQuality(ui.thumbnailAnimatedQuality ?? 70);
+    setAnimatedResolution(ui.thumbnailAnimatedResolution ?? 320);
     setImageKeepOld(ui.thumbnailImageKeepOld ?? true);
     setVideoKeepOld(ui.thumbnailVideoKeepOld ?? true);
   }, [
     ui.thumbnailImageFormat,
     ui.thumbnailImageQuality,
+    ui.thumbnailImageResolution,
+    ui.thumbnailImageMode,
+    ui.thumbnailImageMinQuality,
+    ui.thumbnailImageBudget,
     ui.thumbnailVideoFormat,
     ui.thumbnailVideoQuality,
     ui.thumbnailAnimatedQuality,
+    ui.thumbnailAnimatedResolution,
     ui.thumbnailImageKeepOld,
     ui.thumbnailVideoKeepOld,
   ]);
@@ -140,11 +168,20 @@ export const SettingsThumbnailCompression: React.FC = () => {
   const unchanged: Record<Category, boolean> = {
     image:
       imageFormat === (ui.thumbnailImageFormat ?? "jpg") &&
-      imageQuality === (ui.thumbnailImageQuality ?? 70),
+      imageQuality === (ui.thumbnailImageQuality ?? 70) &&
+      imageResolution === (ui.thumbnailImageResolution ?? 320) &&
+      imageMode === (ui.thumbnailImageMode ?? "fixed") &&
+      (imageMode !== "adaptive" ||
+        (imageMinQuality ===
+          (ui.thumbnailImageMinQuality ??
+            Math.min(55, ui.thumbnailImageQuality ?? 70)) &&
+          imageBudget === (ui.thumbnailImageBudget ?? 100))),
     clip:
       videoFormat === (ui.thumbnailVideoFormat ?? "webm") &&
       videoQuality === (ui.thumbnailVideoQuality ?? 75),
-    animated: animatedQuality === (ui.thumbnailAnimatedQuality ?? 70),
+    animated:
+      animatedQuality === (ui.thumbnailAnimatedQuality ?? 70) &&
+      animatedResolution === (ui.thumbnailAnimatedResolution ?? 320),
   };
 
   const disabled = saving || Boolean(status?.busy);
@@ -181,6 +218,12 @@ export const SettingsThumbnailCompression: React.FC = () => {
           : category === "clip"
             ? videoKeepOld
             : false;
+      const resolution =
+        category === "image"
+          ? imageResolution
+          : category === "animated"
+            ? animatedResolution
+            : 0;
       const response = await fetch("image/thumbnail-compression", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -190,6 +233,10 @@ export const SettingsThumbnailCompression: React.FC = () => {
           enabled: turnOn,
           format,
           quality,
+          resolution,
+          mode: category === "image" ? imageMode : "fixed",
+          minQuality: category === "image" ? imageMinQuality : 0,
+          budget: category === "image" ? imageBudget : 0,
           keepOld,
           acknowledged: turnOn || action === "deleteOld",
         }),
@@ -306,9 +353,90 @@ export const SettingsThumbnailCompression: React.FC = () => {
           step={5}
           disabled={disabled}
           value={imageQuality}
-          onChange={(e) => setImageQuality(Number(e.currentTarget.value))}
+          onChange={(e) => {
+            const q = Number(e.currentTarget.value);
+            setImageQuality(q);
+            setImageMinQuality((prev) => Math.min(prev, q));
+          }}
         />
       </Form.Group>
+      <Form.Group controlId="experimental-image-resolution">
+        <Form.Label>
+          Maximum thumbnail resolution: {imageResolution} px
+        </Form.Label>
+        <Form.Control
+          type="range"
+          min={320}
+          max={640}
+          step={80}
+          value={imageResolution}
+          disabled={disabled}
+          onChange={(e) => setImageResolution(Number(e.currentTarget.value))}
+        />
+        <Form.Text className="text-muted">
+          Applies to experimental still-image thumbnails only. Native thumbnails
+          remain 320 px; smaller originals are never upscaled.
+        </Form.Text>
+      </Form.Group>
+      <Form.Group controlId="experimental-image-quality-mode">
+        <Form.Label>Quality strategy</Form.Label>
+        <Form.Control
+          as="select"
+          value={imageMode}
+          disabled={disabled}
+          onChange={(e) =>
+            setImageMode(e.currentTarget.value as "fixed" | "adaptive")
+          }
+        >
+          <option value="fixed">Fixed quality and resolution</option>
+          <option value="adaptive">
+            Adaptive size-aware quality and resolution
+          </option>
+        </Form.Control>
+      </Form.Group>
+      {imageMode === "adaptive" && (
+        <>
+          <Form.Text className="text-muted d-block">
+            The quality slider above becomes the maximum. StashBooru tests
+            several resolutions and quality levels, choosing a candidate that
+            fits the selected fraction of native JPEG 70 size when possible.
+            This is size-aware, not a perceptual-quality guarantee, and requires
+            extra encoding work. If none fits, the smallest candidate is kept.
+          </Form.Text>
+          <Form.Group controlId="experimental-image-min-quality">
+            <Form.Label>
+              Minimum quality: {Math.min(imageMinQuality, imageQuality)}
+            </Form.Label>
+            <Form.Control
+              type="range"
+              min={10}
+              max={imageQuality}
+              step={5}
+              disabled={disabled}
+              value={Math.min(imageMinQuality, imageQuality)}
+              onChange={(e) =>
+                setImageMinQuality(Number(e.currentTarget.value))
+              }
+            />
+          </Form.Group>
+          <Form.Group controlId="experimental-image-budget">
+            <Form.Label>Target size vs native JPEG: {imageBudget}%</Form.Label>
+            <Form.Control
+              type="range"
+              min={50}
+              max={150}
+              step={10}
+              disabled={disabled}
+              value={imageBudget}
+              onChange={(e) => setImageBudget(Number(e.currentTarget.value))}
+            />
+            <Form.Text className="text-muted">
+              100% targets the same bytes as Stash JPEG at 320 px / Q70. Above
+              100% allows larger files for better fidelity or resolution.
+            </Form.Text>
+          </Form.Group>
+        </>
+      )}
       <Form.Check
         id="experimental-image-keep-old"
         type="checkbox"
@@ -451,6 +579,23 @@ export const SettingsThumbnailCompression: React.FC = () => {
           onChange={(e) => setAnimatedQuality(Number(e.currentTarget.value))}
         />
       </Form.Group>
+      <Form.Group controlId="experimental-animated-resolution">
+        <Form.Label>
+          Maximum animated thumbnail resolution: {animatedResolution} px
+        </Form.Label>
+        <Form.Control
+          type="range"
+          min={320}
+          max={640}
+          step={80}
+          value={animatedResolution}
+          disabled={disabled}
+          onChange={(e) => setAnimatedResolution(Number(e.currentTarget.value))}
+        />
+        <Form.Text className="text-muted">
+          Independent of still images; uses fixed animated WebP quality.
+        </Form.Text>
+      </Form.Group>
       {enabled.animated && !unchanged.animated && (
         <Button
           variant="outline-warning"
@@ -473,7 +618,7 @@ export const SettingsThumbnailCompression: React.FC = () => {
             <strong>
               {pending ? labels[pending].toLowerCase() : "selected"}
             </strong>{" "}
-            using your selected codec and quality.
+            using your selected codec, resolution and quality settings.
             {pending === "image" && imageKeepOld
               ? " Existing native JPEG thumbnails will be retained for instant restoration."
               : pending === "clip" && videoKeepOld

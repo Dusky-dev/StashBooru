@@ -134,3 +134,17 @@ func (gp *generatedPaths) GetExperimentalClipPreviewPath(checksum string, width 
 	fname := fmt.Sprintf("%s_%d_exp_q%d.%s", checksum, width, quality, format)
 	return filepath.Join(gp.Thumbnails, fsutil.GetIntraDir(checksum, thumbDirDepth, thumbDirLength), fname)
 }
+
+// A profile key identifies the requested maximum resolution, format and
+// adaptive limits, not the per-image output choice. The actual encoded image
+// may be smaller or use a different quality when adaptive mode is enabled.
+func (gp *generatedPaths) GetExperimentalThumbnailProfilePath(checksum string, width int, format string, quality int, mode string, minimum int, budget int) string {
+	if mode != "adaptive" {
+		return gp.GetExperimentalThumbnailPath(checksum, width, format, quality)
+	}
+	if format != "jpg" && format != "webp" && format != "jxl" {
+		format = "jpg"
+	}
+	fname := fmt.Sprintf("%s_%d_exp_aq%d_m%d_b%d.%s", checksum, width, quality, minimum, budget, format)
+	return filepath.Join(gp.Thumbnails, fsutil.GetIntraDir(checksum, thumbDirDepth, thumbDirLength), fname)
+}

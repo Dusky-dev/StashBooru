@@ -50,3 +50,33 @@ func TestValidateDeleteOldRequiresConfirmationAndNativeCategory(t *testing.T) {
 		t.Fatal("invalid cache action accepted")
 	}
 }
+
+func TestValidateAdaptiveThumbnailSettings(t *testing.T) {
+	req := thumbnailCompressionRequest{
+		Category: "image", Enabled: true, Acknowledged: true,
+		Format: "jxl", Quality: 75, Resolution: 480,
+		Mode: "adaptive", MinQuality: 55, Budget: 100,
+	}
+	if err := validateThumbnailCompressionRequest(req); err != nil {
+		t.Fatal(err)
+	}
+	req.Resolution = 500
+	if err := validateThumbnailCompressionRequest(req); err == nil {
+		t.Fatal("invalid resolution accepted")
+	}
+	req.Resolution = 480
+	req.MinQuality = 90
+	if err := validateThumbnailCompressionRequest(req); err == nil {
+		t.Fatal("minimum quality above max accepted")
+	}
+	req.MinQuality = 55
+	req.Budget = 200
+	if err := validateThumbnailCompressionRequest(req); err == nil {
+		t.Fatal("invalid size budget accepted")
+	}
+	req.Budget = 100
+	req.Mode = "unknown"
+	if err := validateThumbnailCompressionRequest(req); err == nil {
+		t.Fatal("unsupported adaptive mode accepted")
+	}
+}

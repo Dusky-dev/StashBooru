@@ -158,12 +158,20 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 			format, quality = "jpg", 70
 		}
 	}
-	filepath := mgr.Paths.Generated.GetThumbnailPathForEncoding(img.Checksum, models.DefaultGthumbWidth, format, quality)
+	width := models.DefaultGthumbWidth
+	filepath := mgr.Paths.Generated.GetThumbnailPathForEncoding(img.Checksum, width, format, quality)
 	if !animated && mgr.Config.IsExperimentalImageThumbnailEnabled() {
-		filepath = mgr.Paths.Generated.GetExperimentalThumbnailPath(img.Checksum, models.DefaultGthumbWidth, format, quality)
+		width = mgr.Config.GetExperimentalThumbnailResolution()
+		filepath = mgr.Paths.Generated.GetExperimentalThumbnailProfilePath(
+			img.Checksum, width, format, quality,
+			mgr.Config.GetExperimentalThumbnailMode(),
+			mgr.Config.GetExperimentalThumbnailMinQuality(),
+			mgr.Config.GetExperimentalThumbnailBudget(),
+		)
 	}
 	if animated && mgr.Config.IsExperimentalAnimatedThumbnailEnabled() {
-		filepath = mgr.Paths.Generated.GetAnimatedThumbnailPathForEncoding(img.Checksum, models.DefaultGthumbWidth, quality)
+		width = mgr.Config.GetExperimentalAnimatedThumbnailResolution()
+		filepath = mgr.Paths.Generated.GetAnimatedThumbnailPathForEncoding(img.Checksum, width, quality)
 	}
 	if format != "jpg" || quality != 70 || mgr.Config.IsExperimentalImageThumbnailEnabled() || mgr.Config.IsExperimentalAnimatedThumbnailEnabled() {
 		w.Header().Set("Cache-Control", "no-cache, must-revalidate")
@@ -204,10 +212,17 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 		encoder.ThumbnailQuality = quality
 		var data []byte
 		var err error
-		if animated && mgr.Config.IsExperimentalAnimatedThumbnailEnabled() {
-			data, err = encoder.GetAnimatedThumbnail(f, models.DefaultGthumbWidth, quality)
-		} else {
-			data, err = encoder.GetThumbnail(f, models.DefaultGthumbWidth)
+		switch {
+		case animated && mgr.Config.IsExperimentalAnimatedThumbnailEnabled():
+			data, err = encoder.GetAnimatedThumbnail(f, width, quality)
+		case !animated && mgr.Config.IsExperimentalImageThumbnailEnabled() && mgr.Config.GetExperimentalThumbnailMode() == "adaptive":
+			nativePath := mgr.Paths.Generated.GetThumbnailPath(img.Checksum, models.DefaultGthumbWidth)
+			data, _, err = encoder.GetAdaptiveThumbnail(
+				r.Context(), f, width, mgr.Config.GetExperimentalThumbnailMinQuality(),
+				mgr.Config.GetExperimentalThumbnailBudget(), nativePath,
+			)
+		default:
+			data, err = encoder.GetThumbnail(f, width)
 		}
 		if err != nil {
 			// don't log for unsupported image format

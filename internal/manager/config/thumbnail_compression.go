@@ -77,3 +77,57 @@ func (i *Config) GetClipPreviewQuality() int {
 	}
 	return experimentalQuality(i.GetUIConfiguration(), "thumbnailVideoQuality", 75)
 }
+
+func experimentalResolution(settings map[string]interface{}, key string) int {
+	width := experimentalInt(settings, key, 320)
+	if width < 320 || width > 640 || width%80 != 0 {
+		return 320
+	}
+	return width
+}
+
+func experimentalInt(settings map[string]interface{}, key string, fallback int) int {
+	switch v := settings[key].(type) {
+	case int:
+		return v
+	case int64:
+		return int(v)
+	case float64:
+		return int(v)
+	default:
+		return fallback
+	}
+}
+
+func (i *Config) GetExperimentalThumbnailResolution() int {
+	return experimentalResolution(i.GetUIConfiguration(), "thumbnailImageResolution")
+}
+
+func (i *Config) GetExperimentalAnimatedThumbnailResolution() int {
+	return experimentalResolution(i.GetUIConfiguration(), "thumbnailAnimatedResolution")
+}
+
+func (i *Config) GetExperimentalThumbnailMode() string {
+	mode, _ := i.GetUIConfiguration()["thumbnailImageMode"].(string)
+	if mode == "adaptive" {
+		return "adaptive"
+	}
+	return "fixed"
+}
+
+func (i *Config) GetExperimentalThumbnailMinQuality() int {
+	q := experimentalQuality(i.GetUIConfiguration(), "thumbnailImageMinQuality", 55)
+	maxQ := i.GetImageThumbnailQuality()
+	if q > maxQ {
+		return maxQ
+	}
+	return q
+}
+
+func (i *Config) GetExperimentalThumbnailBudget() int {
+	pct := experimentalInt(i.GetUIConfiguration(), "thumbnailImageBudget", 100)
+	if pct < 50 || pct > 150 || pct%10 != 0 {
+		return 100
+	}
+	return pct
+}

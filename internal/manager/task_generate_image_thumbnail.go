@@ -48,14 +48,22 @@ func (t *GenerateImageThumbnailTask) Start(ctx context.Context) {
 	}
 	format := mgr.Config.GetImageThumbnailFormat()
 	quality := mgr.Config.GetImageThumbnailQuality()
-	thumbPath := mgr.Paths.Generated.GetThumbnailPathForEncoding(t.Image.Checksum, models.DefaultGthumbWidth, format, quality)
+	width := models.DefaultGthumbWidth
+	thumbPath := mgr.Paths.Generated.GetThumbnailPathForEncoding(t.Image.Checksum, width, format, quality)
 	if mgr.Config.IsExperimentalImageThumbnailEnabled() {
-		thumbPath = mgr.Paths.Generated.GetExperimentalThumbnailPath(t.Image.Checksum, models.DefaultGthumbWidth, format, quality)
+		width = mgr.Config.GetExperimentalThumbnailResolution()
+		thumbPath = mgr.Paths.Generated.GetExperimentalThumbnailProfilePath(
+			t.Image.Checksum, width, format, quality,
+			mgr.Config.GetExperimentalThumbnailMode(),
+			mgr.Config.GetExperimentalThumbnailMinQuality(),
+			mgr.Config.GetExperimentalThumbnailBudget(),
+		)
 	}
 	if animated {
 		format = "webp"
 		quality = mgr.Config.GetAnimatedThumbnailQuality()
-		thumbPath = mgr.Paths.Generated.GetAnimatedThumbnailPathForEncoding(t.Image.Checksum, models.DefaultGthumbWidth, quality)
+		width = mgr.Config.GetExperimentalAnimatedThumbnailResolution()
+		thumbPath = mgr.Paths.Generated.GetAnimatedThumbnailPathForEncoding(t.Image.Checksum, width, quality)
 	}
 	path := f.Base().Path
 
@@ -73,10 +81,21 @@ func (t *GenerateImageThumbnailTask) Start(ctx context.Context) {
 	encoder.ThumbnailFormat = format
 	encoder.ThumbnailQuality = quality
 	var data []byte
-	if animated {
-		data, err = encoder.GetAnimatedThumbnail(f, models.DefaultGthumbWidth, quality)
-	} else {
-		data, err = encoder.GetThumbnail(f, models.DefaultGthumbWidth)
+	switch {
+	case animated:
+		data, err = encoder.GetAnimatedThumbnail(f, width, quality)
+	case mgr.Config.IsExperimentalImageThumbnailEnabled() && mgr.Config.GetExperimentalThumbnailMode() == "adaptive":
+		nativePath := mgr.Paths.Generated.GetThumbnailPath(t.Image.Checksum, models.DefaultGthumbWidth)
+		var choice image.AdaptiveThumbnailChoice
+		data, choice, err = encoder.GetAdaptiveThumbnail(
+			ctx, f, width, mgr.Config.GetExperimentalThumbnailMinQuality(),
+			mgr.Config.GetExperimentalThumbnailBudget(), nativePath,
+		)
+		if err == nil {
+			logger.Debugf("[generator] adaptive thumbnail %s: %dpx Q%d, %d bytes", path, choice.Resolution, choice.Quality, choice.Bytes)
+		}
+	default:
+		data, err = encoder.GetThumbnail(f, width)
 	}
 	if err != nil {
 		// Unsupported animated images are expected; selected JXL encoder errors
@@ -134,13 +153,21 @@ func (t *GenerateImageThumbnailTask) required() bool {
 
 	format := mgr.Config.GetImageThumbnailFormat()
 	quality := mgr.Config.GetImageThumbnailQuality()
-	thumbPath := mgr.Paths.Generated.GetThumbnailPathForEncoding(t.Image.Checksum, models.DefaultGthumbWidth, format, quality)
+	width := models.DefaultGthumbWidth
+	thumbPath := mgr.Paths.Generated.GetThumbnailPathForEncoding(t.Image.Checksum, width, format, quality)
 	if mgr.Config.IsExperimentalImageThumbnailEnabled() {
-		thumbPath = mgr.Paths.Generated.GetExperimentalThumbnailPath(t.Image.Checksum, models.DefaultGthumbWidth, format, quality)
+		width = mgr.Config.GetExperimentalThumbnailResolution()
+		thumbPath = mgr.Paths.Generated.GetExperimentalThumbnailProfilePath(
+			t.Image.Checksum, width, format, quality,
+			mgr.Config.GetExperimentalThumbnailMode(),
+			mgr.Config.GetExperimentalThumbnailMinQuality(),
+			mgr.Config.GetExperimentalThumbnailBudget(),
+		)
 	}
 	if animated {
 		quality = mgr.Config.GetAnimatedThumbnailQuality()
-		thumbPath = mgr.Paths.Generated.GetAnimatedThumbnailPathForEncoding(t.Image.Checksum, models.DefaultGthumbWidth, quality)
+		width = mgr.Config.GetExperimentalAnimatedThumbnailResolution()
+		thumbPath = mgr.Paths.Generated.GetAnimatedThumbnailPathForEncoding(t.Image.Checksum, width, quality)
 	}
 	exists, _ := fsutil.FileExists(thumbPath)
 	return !exists
