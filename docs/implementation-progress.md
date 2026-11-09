@@ -5459,3 +5459,24 @@ these historical CI snapshots.
   mixed-media Wall regression for selecting/deselecting by preview click.
   Typed `data-media-kind` attributes make the fixture select its Image and
   Video wall cards without relying on their sort order.
+
+
+## Shared list pagination fixes — November 9, 2026
+
+- Branch `fix/shared-list-pagination-edge-cases-20261109` based on
+  `develop` `fff35abc9e2c654dda885c7466b863491685ac68`, independent
+  of #333 (native entity All) and #334 (Wall stack controls).
+- Root cause: native `ListFilterModel.decodeParams` used `parseInt` on
+  untrusted `p` and `perPage`, accepting zero/negative/partial/NaN values.
+  The shared `useEnsureValidPage` skipped an empty result set entirely, so
+  a deep link to page 9 with zero matches could remain stuck on page 9.
+- Use positive safe-integer decoding for page/page-size URL values. The shared
+  list now clamps completed results to page [1, last], treating empty as one
+  logical page, while never validating against a loading/error result or a
+  previous filter's cached count. A late effect refuses to overwrite newer
+  page or page-size navigation.
+- Added `pageValidity.test.ts` unit tests for malformed values, empty,
+  out-of-range and invalid results. Extended `all-media.mjs` isolated
+  browser suite to cover empty-result `?p=9` returning to page 1.
+- CI and runtime tests pending; no loaded application/browser was available
+  in the GitHub connector environment.

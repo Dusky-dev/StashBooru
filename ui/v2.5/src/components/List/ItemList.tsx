@@ -46,7 +46,7 @@ export function useFilteredItemList<
     filter,
     ...props.queryResultProps,
   });
-  const { result, items, totalCount, pages, metadataInfo } = queryResult;
+  const { result, items, pages, metadataInfo } = queryResult;
 
   const listSelect = useListSelect(items, props.initialSelected);
   const { onSelectAll, onSelectNone, onInvertSelection } = listSelect;
@@ -60,8 +60,13 @@ export function useFilteredItemList<
   // scroll to the top of the page when the page changes
   useScrollToTopOnPageChange(filter.currentPage, result.loading);
 
-  // ensure that the current page is valid
-  useEnsureValidPage(filter, totalCount, setFilter);
+  // Validate against this query's completed count, never the count cache
+  // retained while a different filter or entity is still loading.
+  const completedCount =
+    !result.loading && !result.error && result.data
+      ? props.queryResultProps.getCount(result)
+      : undefined;
+  useEnsureValidPage(filter, completedCount, setFilter);
 
   const showEditFilter = useShowEditFilter({
     showModal,

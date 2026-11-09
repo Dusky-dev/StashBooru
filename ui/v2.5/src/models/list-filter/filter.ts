@@ -9,6 +9,7 @@ import { Criterion, UnsupportedCriterionOption } from "./criteria/criterion";
 import { getFilterOptions } from "./factory";
 import { CriterionType, DisplayMode, SavedUIOptions } from "./types";
 import { ListFilterOptions } from "./filter-options";
+import { parsePositiveListInteger } from "./pageValidity";
 import { CustomFieldsCriterion } from "./criteria/custom-fields";
 
 interface IDecodedParams {
@@ -223,9 +224,7 @@ export class ListFilterModel {
   public static decodeParams(params: IEncodedParams): IDecodedParams {
     const ret: IDecodedParams = {};
 
-    if (params.perPage) {
-      ret.perPage = Number.parseInt(params.perPage, 10);
-    }
+    ret.perPage = parsePositiveListInteger(params.perPage);
     if (params.sortby) {
       ret.sortby = params.sortby;
     }
@@ -238,9 +237,7 @@ export class ListFilterModel {
     if (params.q) {
       ret.q = params.q;
     }
-    if (params.p) {
-      ret.p = Number.parseInt(params.p, 10);
-    }
+    ret.p = parsePositiveListInteger(params.p);
     if (params.z) {
       const zoomIndex = Number.parseInt(params.z, 10);
       if (zoomIndex >= 0) {
