@@ -1,8 +1,11 @@
 import React, { useState } from "react";
 import { Alert, Button } from "react-bootstrap";
+import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 
+import { ManualLink } from "src/components/Help/context";
+import { Icon } from "src/components/Shared/Icon";
 import { useToast } from "src/hooks/Toast";
-import { TaskHelpHeading } from "./TaskHelpHeading";
+import { Setting } from "../Inputs";
 import {
   conversionEndpoint,
   conversionResponse,
@@ -31,13 +34,30 @@ export const AnimationInspectionTask: React.FC = () => {
   }
 
   return (
-    <div id="animation-inspection-task">
-      <TaskHelpHeading title="Animation inspection" />
-      <p className="text-muted">
-        Regular scans detect animation in new Images. Run this once to inspect
-        existing Images imported before that detection was available.
-      </p>
-      {error && <Alert variant="danger">{error}</Alert>}
+    <Setting
+      id="animation-inspection-task"
+      heading={
+        <>
+          Animation inspection{" "}
+          <ManualLink tab="Tasks">
+            <Icon icon={faQuestionCircle} size="xs" aria-hidden="true" />
+            <span className="sr-only">Help with Animation inspection</span>
+          </ManualLink>
+        </>
+      }
+      subHeading={
+        <>
+          Inspect existing Images imported before automatic animation detection
+          was available. Regular scans already inspect new Images; this action
+          checks the whole library, not just folders selected for a scan.
+          {error && (
+            <Alert variant="danger" role="alert" className="mt-2 mb-0">
+              {error}
+            </Alert>
+          )}
+        </>
+      }
+    >
       <Button
         variant="secondary"
         disabled={submitting}
@@ -45,6 +65,6 @@ export const AnimationInspectionTask: React.FC = () => {
       >
         {submitting ? "Queuing…" : "Inspect existing images"}
       </Button>
-    </div>
+    </Setting>
   );
 };

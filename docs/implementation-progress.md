@@ -1,3 +1,11 @@
+## Scan animation inspection layout — 2026-11-09
+
+- Baseline: `develop` `9fb7962b28fb1c2b916d964de0c7719c652cd445`; branch `fix/scan-animation-inspection-settings-row-20261109`.
+- Place the one-shot animation inspection action inside Scan's native collapsible options using a shared `Setting` row, small help icon, secondary button and short explanation; remove the disconnected block below Scan.
+- Keep backend invocation (`inspect-animations`), pending/disabled state, inline failure message, full-library scope and bookmark ID unchanged. It remains a one-off action, not a persistent toggle or path-limited scan option.
+- Extend Tasks desktop/mobile browser fixture assertions for row placement, button and help link. Static structure verified; UI build/browser suite not executed locally because repository dependencies/browser are unavailable.
+- No schema, storage or database changes. CI and Codex Review pending.
+
 # StashBooru implementation progress
 
 ## Searchable Settings and usable All filters / Video-Character terms — 2026-11-06
