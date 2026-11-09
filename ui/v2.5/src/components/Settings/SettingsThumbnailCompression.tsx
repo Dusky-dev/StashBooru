@@ -53,9 +53,10 @@ export const SettingsThumbnailCompression: React.FC = () => {
       </Form.Group>
       {imageFormat === "jxl" && (
         <p className="text-warning">
-          JPEG XL is not supported by every browser or encoder build. Clients
-          without advertised JXL support receive WebP; generation also falls
-          back to WebP if JXL encoding fails.
+          Strict JPEG XL mode: generated thumbnails are served as JXL
+          regardless of browser support. If your browser cannot decode JXL,
+          thumbnails may not display. If your encoder cannot write JXL,
+          generation fails with an error rather than switching formats.
         </p>
       )}
       <hr />
@@ -94,8 +95,8 @@ export const SettingsThumbnailCompression: React.FC = () => {
       <p className="text-muted">
         These settings apply to newly generated assets. Existing variants stay
         on disk. For previously generated files, run Generate with overwrite for
-        image thumbnails or clip previews. Legacy video previews continue
-        displaying until their replacement is generated.
+        image thumbnails or clip previews. There is no automatic format
+        fallback: selected variants must be generated before they can display.
       </p>
     </SettingsDisclosure>
   );

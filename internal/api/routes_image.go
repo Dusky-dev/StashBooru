@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os/exec"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -140,10 +139,6 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 	mgr := manager.GetInstance()
 	format := mgr.Config.GetImageThumbnailFormat()
 	quality := mgr.Config.GetImageThumbnailQuality()
-	// Only use JXL if the requesting browser advertises decoding support.
-	if format == "jxl" && !strings.Contains(strings.ToLower(r.Header.Get("Accept")), "image/jxl") {
-		format = "webp"
-	}
 	filepath := mgr.Paths.Generated.GetThumbnailPathForEncoding(img.Checksum, models.DefaultGthumbWidth, format, quality)
 	if format != "jpg" || quality != 70 {
 		w.Header().Set("Cache-Control", "no-cache, must-revalidate")
@@ -183,17 +178,6 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 		encoder.ThumbnailFormat = format
 		encoder.ThumbnailQuality = quality
 		data, err := encoder.GetThumbnail(f, models.DefaultGthumbWidth)
-		if err != nil && format == "jxl" {
-			logger.Warnf("JXL thumbnail encoding unavailable, using WebP: %v", err)
-			format = "webp"
-			filepath = mgr.Paths.Generated.GetThumbnailPathForEncoding(img.Checksum, models.DefaultGthumbWidth, format, quality)
-			encoder.ThumbnailFormat = format
-			if found, _ := fsutil.FileExists(filepath); found {
-				utils.ServeStaticFile(w, r, filepath)
-				return
-			}
-			data, err = encoder.GetThumbnail(f, models.DefaultGthumbWidth)
-		}
 		if err != nil {
 			// don't log for unsupported image format
 			if !errors.Is(err, image.ErrNotSupportedForThumbnail) && !errors.Is(err, fs.ErrNotExist) {
@@ -205,7 +189,13 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 				}
 			}
 
-			// backwards compatibility - fallback to original image instead
+			// An explicitly selected experimental codec must never silently
+			// fall back to source media or another thumbnail format.
+			if format != "jpg" {
+				http.Error(w, "failed to generate selected "+format+" thumbnail: "+err.Error(), http.StatusUnprocessableEntity)
+				return
+			}
+			// Legacy JPEG keeps its original fallback behavior.
 			rs.serveImage(w, r, img, useDefault)
 			return
 		}
@@ -235,10 +225,6 @@ func (rs imageRoutes) Preview(w http.ResponseWriter, r *http.Request) {
 	img := r.Context().Value(imageKey).(*models.Image)
 	mgr := manager.GetInstance()
 	filepath := mgr.Paths.Generated.GetClipPreviewPathForEncoding(img.Checksum, models.DefaultGthumbWidth, mgr.Config.GetClipPreviewFormat(), mgr.Config.GetClipPreviewQuality())
-	// Keep showing an old preview until the new codec/quality is generated.
-	if exists, _ := fsutil.FileExists(filepath); !exists {
-		filepath = mgr.Paths.Generated.GetClipPreviewPath(img.Checksum, models.DefaultGthumbWidth)
-	}
 	utils.ServeStaticFile(w, r, filepath)
 }
 
