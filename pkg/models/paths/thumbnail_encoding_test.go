@@ -16,9 +16,10 @@ func TestEncodingPathsKeepLegacyDefaultsAndSeparateVariants(t *testing.T) {
 		t.Fatalf("legacy clip path changed: got %q want %q", got, want)
 	}
 	a := p.GetThumbnailPathForEncoding(sum, 320, "jxl", 55)
+	avif := p.GetThumbnailPathForEncoding(sum, 320, "avif", 55)
 	b := p.GetThumbnailPathForEncoding(sum, 320, "webp", 55)
 	c := p.GetThumbnailPathForEncoding(sum, 320, "webp", 70)
-	if a == b || b == c || filepath.Ext(a) != ".jxl" || filepath.Ext(b) != ".webp" {
+	if a == b || b == c || a == avif || b == avif || filepath.Ext(avif) != ".avif" || filepath.Ext(a) != ".jxl" || filepath.Ext(b) != ".webp" {
 		t.Fatalf("format/quality cache collisions: %q %q %q", a, b, c)
 	}
 	if got := p.GetClipPreviewPathForEncoding(sum, 320, "mp4", 55); filepath.Ext(got) != ".mp4" {
@@ -35,6 +36,7 @@ func TestExperimentalPathsNeverOverwriteNativeCache(t *testing.T) {
 	}{
 		{p.GetExperimentalThumbnailPath(checksum, 320, "jpg", 70), p.GetThumbnailPath(checksum, 320)},
 		{p.GetExperimentalThumbnailPath(checksum, 320, "jxl", 60), p.GetThumbnailPath(checksum, 320)},
+		{p.GetExperimentalThumbnailPath(checksum, 320, "avif", 60), p.GetThumbnailPath(checksum, 320)},
 		{p.GetExperimentalClipPreviewPath(checksum, 320, "webm", 75), p.GetClipPreviewPath(checksum, 320)},
 		{p.GetExperimentalClipPreviewPath(checksum, 320, "mp4", 60), p.GetClipPreviewPath(checksum, 320)},
 	} {

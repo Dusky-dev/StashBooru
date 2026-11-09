@@ -46,7 +46,7 @@ func (i *Config) GetImageThumbnailFormat() string {
 
 	value, _ := i.GetUIConfiguration()["thumbnailImageFormat"].(string)
 	switch value {
-	case "jpg", "webp", "jxl":
+	case "jpg", "webp", "jxl", "avif":
 		return value
 	default:
 		return "jpg"
