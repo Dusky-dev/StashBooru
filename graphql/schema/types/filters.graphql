@@ -707,6 +707,8 @@ input TagFilterType {
 }
 
 input ImageFilterType {
+  "Show only the representative Image for each visual stack. Applied before pagination."
+  collapse_stacks: Boolean
   AND: ImageFilterType
   OR: ImageFilterType
   NOT: ImageFilterType

@@ -11,6 +11,8 @@ type ImageFilterType struct {
 	Code         *StringCriterionInput `json:"code"`
 	Details      *StringCriterionInput `json:"details"`
 	Photographer *StringCriterionInput `json:"photographer"`
+	// Show stack representative Images only; does not change membership.
+	CollapseStacks *bool `json:"collapse_stacks"`
 	// Filter by file checksum
 	Checksum *StringCriterionInput `json:"checksum"`
 	// Filter by phash distance

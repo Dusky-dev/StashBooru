@@ -100,7 +100,7 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
       sync: interactiveSync,
     } = React.useContext(InteractiveContext);
 
-    const [, setInterfaceLocalForage] = useInterfaceLocalForage();
+    const [localInterface, setInterfaceLocalForage] = useInterfaceLocalForage();
 
     function saveLightboxSettings(v: Partial<GQL.ConfigImageLightboxInput>) {
       // save in local forage as well for consistency
@@ -339,6 +339,19 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
               </div>
             </div>
           </div>
+
+          <BooleanSetting
+            id="show-stack-representatives-only"
+            heading="Show only stack representatives"
+            subHeading="Show one representative per stack in library lists by default. Turn off to see every variant. No media is deleted; open a stack to access its members. This preference is saved in this browser."
+            checked={localInterface.data?.hideStackVariants ?? true}
+            onChange={(value) =>
+              setInterfaceLocalForage((prev) => ({
+                ...prev,
+                hideStackVariants: value,
+              }))
+            }
+          />
 
           <BooleanSetting
             id="abbreviate-counters"

@@ -174,3 +174,32 @@
     min-height: 0;
   }
 }
+
+.visual-stack-similarity {
+  border-top: 1px solid $card-border-color;
+  padding-top: 0.75rem;
+}
+
+.visual-stack-similar-results {
+  max-height: 35vh;
+  overflow-y: auto;
+}
+
+.visual-stack-similar-row {
+  align-items: center;
+  border-bottom: 1px solid $card-border-color;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.35rem 0;
+
+  img {
+    height: 64px;
+    object-fit: contain;
+    width: 80px;
+  }
+
+  .btn {
+    flex-shrink: 0;
+  }
+}

@@ -17,6 +17,8 @@ export interface IViewConfig {
 type IQueryConfig = Record<string, IInterfaceQueryConfig>;
 
 interface IInterfaceConfig {
+  // Local browser preference; never changes stack membership or files.
+  hideStackVariants?: boolean;
   queryConfig: IQueryConfig;
   imageLightbox: ConfigImageLightboxInput;
   // Partial is required because using View makes the key mandatory
