@@ -403,10 +403,8 @@ export const LibraryTasks: React.FC = () => {
           collapsible
         >
           <ScanOptions options={scanOptions} setOptions={onSetScanOptions} />
-        </SettingGroup>
-        <div className="mt-3">
           <AnimationInspectionTask />
-        </div>
+        </SettingGroup>
       </SettingSection>
 
       <SettingSection advanced>

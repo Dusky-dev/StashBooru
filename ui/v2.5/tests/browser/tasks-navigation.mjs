@@ -270,10 +270,25 @@ try {
     // Storage experiments move out of Tasks, but read-only P12/P13 reports
     // must continue working after navigation and reload.
     await summary(page, "library").click();
-    await checkTaskHelp(
-      page,
-      "animation-inspection-task",
-      "Animation inspection"
+    // Animation inspection shares the same row layout and indentation as
+    // other Scan options rather than rendering a disconnected task card.
+    const animationSetting = page.locator(
+      "#tasks-library .setting-group .collapsible-section #animation-inspection-task.setting"
+    );
+    assert.equal(await animationSetting.count(), 1);
+    assert.equal(await animationSetting.locator("h3").count(), 1);
+    assert.equal(
+      await animationSetting
+        .getByRole("link", { name: "Help with Animation inspection" })
+        .count(),
+      1
+    );
+    assert.equal(await animationSetting.locator("svg.fa-xs").count(), 1);
+    assert.equal(
+      await animationSetting
+        .getByRole("button", { name: "Inspect existing images" })
+        .count(),
+      1
     );
     assert.equal(
       await page.locator(".tab-pane.active #video-overlap-task").count(),
