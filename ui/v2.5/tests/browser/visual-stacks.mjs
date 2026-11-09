@@ -446,7 +446,9 @@ try {
         'query { findImages(filter:{per_page:20,sort:"perceptual_similarity:0:2:phash"}) { images { id } } }'
       );
       assert.ok(
-        nativeMatches.findImages.images.some((image) => String(image.id) === "3"),
+        nativeMatches.findImages.images.some(
+          (image) => String(image.id) === "3"
+        ),
         "SQLite pHash similarity must return the seeded Image 3"
       );
 
