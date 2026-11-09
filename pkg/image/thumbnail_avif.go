@@ -131,7 +131,7 @@ func PreflightAVIFWithFFmpeg(ctx context.Context, ff *ffmpeg.FFMpeg) error {
 		return fmt.Errorf("creating AVIF preflight input: %w", err)
 	}
 	encoder := ThumbnailEncoder{FFMpeg: ff, ThumbnailQuality: 60}
-	_, err = encoder.ffmpegAVIFThumbnail(ctx, bytes.NewReader(src.Bytes()), "", 16)
+	_, err := encoder.ffmpegAVIFThumbnail(ctx, bytes.NewReader(src.Bytes()), "", 16)
 	if err != nil {
 		return fmt.Errorf("AVIF is unavailable: libvips cannot encode AVIF and FFmpeg with libaom-av1 + AVIF muxer also failed (%v); thumbnails unchanged", err)
 	}
