@@ -5,7 +5,7 @@ import { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { PageSizeSelector, SearchTermInput } from "./ListFilter";
 import { SortBySelect } from "./SortBySelect";
 import { PerceptualSimilarityControls } from "./PerceptualSimilarityControls";
-import { ListViewButtonGroup } from "./ListViewOptions";
+import { ListViewButtonGroup, IAdditionalViewOption } from "./ListViewOptions";
 import {
   IListFilterOperation,
   ListOperationButtons,
@@ -89,6 +89,8 @@ export interface IFilteredListToolbar {
   filterable?: boolean;
   sortable?: boolean;
   maxPageSize?: number;
+  additionalViewOption?: IAdditionalViewOption;
+  filterCount?: number;
 }
 
 export const FilteredListToolbar: React.FC<IFilteredListToolbar> = ({
@@ -105,6 +107,8 @@ export const FilteredListToolbar: React.FC<IFilteredListToolbar> = ({
   filterable = true,
   sortable = true,
   maxPageSize,
+  additionalViewOption,
+  filterCount,
 }) => {
   const { configuration } = useConfigurationContext();
   const { pinnedSortBy = {} } = configuration.ui;
@@ -215,7 +219,7 @@ export const FilteredListToolbar: React.FC<IFilteredListToolbar> = ({
               {filterOptions.criterionOptions.length > 0 && (
                 <FilterButton
                   onClick={() => showEditFilter()}
-                  count={filter.count()}
+                  count={filterCount ?? filter.count()}
                 />
               )}
             </ButtonGroup>
@@ -257,6 +261,7 @@ export const FilteredListToolbar: React.FC<IFilteredListToolbar> = ({
       {renderOperations}
 
       <ListViewButtonGroup
+        additionalOption={additionalViewOption}
         displayMode={filter.displayMode}
         displayModeOptions={filterOptions.displayModeOptions}
         onSetDisplayMode={setDisplayMode}

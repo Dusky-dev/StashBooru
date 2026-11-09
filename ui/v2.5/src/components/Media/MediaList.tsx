@@ -116,7 +116,7 @@ const FilteredMediaListComponent = ({
   const { effectiveFilter, result, items, totalCount, cachedResult } =
     queryResult;
   const { modal, showModal, closeModal } = modalState;
-  const { setPage, removeCriterion, clearAllCriteria } = useFilterOperations({
+  const { setPage, removeCriterion } = useFilterOperations({
     filter,
     setFilter,
   });
@@ -345,36 +345,25 @@ const FilteredMediaListComponent = ({
               maxPageSize={500}
               onEdit={onEdit}
               operationComponent={operations}
+              filterCount={filter.count() - explicitCollapse.length}
+              additionalViewOption={{
+                label: "Show individual variants",
+                checked: !collapsed,
+                onChange: (shown) => {
+                  // Keep the explicit per-list override in the URL/filter state.
+                  // An explicit false still overrides the browser-wide default.
+                  setFilter((current) => {
+                    const criterion = new BooleanCriterion(
+                      CollapseStacksOption
+                    );
+                    criterion.value = shown ? "false" : "true";
+                    return current.replaceCriteria("collapse_stacks", [
+                      criterion,
+                    ]);
+                  });
+                },
+              }}
             />
-            <div className="my-2">
-              <Button
-                variant={collapsed ? "primary" : "secondary"}
-                aria-pressed={collapsed}
-                onClick={() => {
-                  const next = filter.clone();
-                  next.criteria = next.criteria.filter(
-                    (c) => c.criterionOption.type !== "collapse_stacks"
-                  );
-                  // Explicit false overrides the browser-wide Interface preference.
-                  const criterion = new BooleanCriterion(CollapseStacksOption);
-                  criterion.value = collapsed ? "false" : "true";
-                  next.criteria.push(criterion);
-                  next.currentPage = 1;
-                  setFilter(next);
-                }}
-              >
-                Group stacks
-              </Button>
-            </div>
-            {collapsed && (
-              <Alert variant="info">
-                {totalCount} cards represent{" "}
-                {cachedResult.data?.findMedia.matched_count ?? 0} matching
-                members. Any matching hidden member can make a stack appear; its
-                representative may be outside the filters. Expand a stack to
-                select individual members.
-              </Alert>
-            )}
             {hiddenSelected > 0 && (
               <Alert variant="info">
                 {hiddenSelected} selected members are hidden by grouping or
@@ -383,12 +372,21 @@ const FilteredMediaListComponent = ({
             )}
             <FilterTags
               view={view}
-              criteria={filter.criteria}
+              criteria={filter.criteria.filter(
+                (criterion) =>
+                  criterion.criterionOption.type !== "collapse_stacks"
+              )}
               onEditCriterion={(criterion) =>
                 showEditFilter(criterion.criterionOption.type)
               }
               onRemoveCriterion={removeCriterion}
-              onRemoveAll={clearAllCriteria}
+              onRemoveAll={() =>
+                setFilter((current) =>
+                  current
+                    .clearCriteria()
+                    .setCriteria(current.criteriaFor("collapse_stacks"))
+                )
+              }
             />
             {filter.criteriaFor("duration").length > 0 && (
               <Alert variant="info">
