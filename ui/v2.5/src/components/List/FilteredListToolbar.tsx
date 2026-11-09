@@ -5,10 +5,7 @@ import { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { PageSizeSelector, SearchTermInput } from "./ListFilter";
 import { SortBySelect } from "./SortBySelect";
 import { PerceptualSimilarityControls } from "./PerceptualSimilarityControls";
-import {
-  ListViewButtonGroup,
-  IAdditionalViewOption,
-} from "./ListViewOptions";
+import { ListViewButtonGroup, IAdditionalViewOption } from "./ListViewOptions";
 import {
   IListFilterOperation,
   ListOperationButtons,

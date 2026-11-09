@@ -382,9 +382,9 @@ const FilteredMediaListComponent = ({
               onRemoveCriterion={removeCriterion}
               onRemoveAll={() =>
                 setFilter((current) =>
-                  current.clearCriteria().setCriteria(
-                    current.criteriaFor("collapse_stacks")
-                  )
+                  current
+                    .clearCriteria()
+                    .setCriteria(current.criteriaFor("collapse_stacks"))
                 )
               }
             />
