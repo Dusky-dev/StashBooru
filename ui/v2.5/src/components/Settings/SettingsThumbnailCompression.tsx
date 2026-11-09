@@ -7,7 +7,13 @@ type Category = "image" | "clip" | "animated";
 type ThumbnailStatus = {
   busy: boolean;
   jobID?: number;
-  jobStatus?: "READY" | "RUNNING" | "STOPPING" | "FINISHED" | "FAILED" | "CANCELLED";
+  jobStatus?:
+    | "READY"
+    | "RUNNING"
+    | "STOPPING"
+    | "FINISHED"
+    | "FAILED"
+    | "CANCELLED";
   jobError?: string;
   progress?: number;
   category?: Category;
