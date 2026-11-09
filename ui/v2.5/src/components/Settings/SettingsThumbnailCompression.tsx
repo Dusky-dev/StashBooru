@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Button, Form, Modal } from "react-bootstrap";
 import { SettingsDisclosure } from "./SettingsDisclosure";
 import { useSettings } from "./context";
@@ -58,6 +58,7 @@ export const SettingsThumbnailCompression: React.FC = () => {
   const [pending, setPending] = useState<Category | null>(null);
   const [deletePending, setDeletePending] = useState<Category | null>(null);
   const [saving, setSaving] = useState(false);
+  const lastCompletedDeletion = useRef(0);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -104,6 +105,31 @@ export const SettingsThumbnailCompression: React.FC = () => {
     }, 2500);
     return () => clearInterval(handle);
   }, [refresh, status?.busy]);
+
+  // A delete-old job completes asynchronously. Sync the local Keep old
+  // checkbox after completion so subsequent format changes cannot accidentally
+  // claim an already-deleted native cache is still retained.
+  useEffect(() => {
+    if (
+      !status?.busy &&
+      status?.operation === "deleteOld" &&
+      status.jobStatus === "FINISHED" &&
+      status.jobID &&
+      status.jobID !== lastCompletedDeletion.current
+    ) {
+      lastCompletedDeletion.current = status.jobID;
+      if (status.category === "image") setImageKeepOld(false);
+      if (status.category === "clip") setVideoKeepOld(false);
+      refetch();
+    }
+  }, [
+    refetch,
+    status?.busy,
+    status?.category,
+    status?.jobID,
+    status?.jobStatus,
+    status?.operation,
+  ]);
 
   const enabled: Record<Category, boolean> = {
     image: status?.imageEnabled ?? ui.thumbnailImageEnabled ?? false,
