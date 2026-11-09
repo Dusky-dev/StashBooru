@@ -933,6 +933,9 @@ func (qb *ImageStore) makeQuery(ctx context.Context, imageFilter *models.ImageFi
 // A variant can therefore make its stack visible even when the representative
 // does not carry the same title, tag or copyright.
 func (qb *ImageStore) makeCollapsedQuery(ctx context.Context, imageFilter *models.ImageFilterType, findFilter *models.FindFilterType) (*queryBuilder, error) {
+	if findFilter == nil {
+		findFilter = &models.FindFilterType{}
+	}
 	matchFilter := &models.FindFilterType{}
 	if findFilter != nil {
 		matchFilter.Q = findFilter.Q
