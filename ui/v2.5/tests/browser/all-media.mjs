@@ -375,6 +375,45 @@ async function check(mode) {
         .waitFor({ timeout: 10000 });
       assert.equal(await page.locator(".main .nav-tabs").count(), 0);
       if (mode === "loaded") {
+        const wallItems = page.locator(".media-wall .wall-item");
+        const kinds = await wallItems.evaluateAll((nodes) =>
+          nodes.map((node) => node.getAttribute("data-media-kind"))
+        );
+        for (const [from, to] of [
+          ["image", "video"],
+          ["video", "image"],
+        ]) {
+          const boundary = kinds.findIndex(
+            (kind, i) =>
+              kind === from && kinds[(i + 1) % kinds.length] === to
+          );
+          assert.ok(boundary >= 0, `Missing Wall ${from} → ${to} boundary`);
+          const previousURL = page.url();
+          await wallItems.nth(boundary).locator("img, video").first().click();
+          await page.locator(".Lightbox").waitFor();
+          assert.equal(page.url(), previousURL, "Wall preview navigated away");
+          await page
+            .locator(".Lightbox-display > .Lightbox-navbutton")
+            .last()
+            .click();
+          if (to === "video") {
+            await page
+              .locator(".unified-media-native-scene-player .video-js")
+              .waitFor();
+          } else {
+            await page.waitForFunction(
+              () =>
+                document
+                  .querySelector(".Lightbox-footer-center .image-link")
+                  ?.getAttribute("href")
+                  ?.startsWith("/images/") === true
+            );
+          }
+          await page.getByTitle("Close Lightbox", { exact: true }).click();
+          await page.locator(".Lightbox").waitFor({ state: "hidden" });
+        }
+      }
+      if (mode === "loaded") {
         // Selecting a Wall image by clicking its preview must fire once.
         // The native ImageWallItem previously handled the same bubbled
         // click on both its preview and its parent.
