@@ -31,7 +31,7 @@ func vipsThumbnailOutput(format string, quality int) string {
 	if format == "avif" {
 		// At thumbnail sizes, 4:4:4 preserves colored outlines in artwork.
 		// Effort 4 avoids the exceptionally slow AV1 high-effort presets.
-		return fmt.Sprintf(".avif[Q=%d,effort=4,subsample_mode=off,strip]", quality)
+		return fmt.Sprintf(".avif[Q=%d,effort=4,subsample_mode=off,bitdepth=8,strip]", quality)
 	}
 	return fmt.Sprintf(".%s[Q=%d,strip]", format, quality)
 }
@@ -117,7 +117,11 @@ func PreflightAVIFThumbnail(ctx context.Context) error {
 		return fmt.Errorf("AVIF thumbnail encoding requires libvips")
 	}
 	var input bytes.Buffer
-	if err := png.Encode(&input, stdimage.NewRGBA(stdimage.Rect(0, 0, 16, 16))); err != nil {
+	sample := stdimage.NewRGBA(stdimage.Rect(0, 0, 16, 16))
+	for i := 3; i < len(sample.Pix); i += 4 {
+		sample.Pix[i] = 255 // probe an opaque thumbnail, not alpha-only AVIF support
+	}
+	if err := png.Encode(&input, sample); err != nil {
 		return fmt.Errorf("preparing AVIF encoder test: %w", err)
 	}
 	cmd := stdexec.CommandContext(ctx, vips,

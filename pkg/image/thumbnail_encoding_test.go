@@ -7,7 +7,7 @@ func TestVipsThumbnailOutputFormats(t *testing.T) {
 		{"jpg", ".jpg[Q=70,strip]"},
 		{"webp", ".webp[Q=70,strip]"},
 		{"jxl", ".jxl[Q=70,strip]"},
-		{"avif", ".avif[Q=70,effort=4,subsample_mode=off,strip]"},
+		{"avif", ".avif[Q=70,effort=4,subsample_mode=off,bitdepth=8,strip]"},
 		{"bad", ".jpg[Q=70,strip]"},
 	} {
 		if got := vipsThumbnailOutput(tc.format, 70); got != tc.expected {
