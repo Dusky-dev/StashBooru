@@ -71,6 +71,11 @@ export interface IUIConfig {
   thumbnailVideoKeepOld?: boolean;
   thumbnailImageFormat?: "jpg" | "webp" | "jxl";
   thumbnailImageQuality?: number;
+  thumbnailImageResolution?: number;
+  thumbnailImageMode?: "fixed" | "adaptive";
+  thumbnailImageMinQuality?: number;
+  thumbnailImageBudget?: number;
+  thumbnailAnimatedResolution?: number;
   thumbnailVideoFormat?: "webm" | "mp4";
   thumbnailVideoQuality?: number;
 
