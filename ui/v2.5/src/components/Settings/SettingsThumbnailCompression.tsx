@@ -83,7 +83,8 @@ export const SettingsThumbnailCompression: React.FC = () => {
     setImageResolution(ui.thumbnailImageResolution ?? 320);
     setImageMode(ui.thumbnailImageMode ?? "fixed");
     setImageMinQuality(
-      ui.thumbnailImageMinQuality ?? Math.min(55, ui.thumbnailImageQuality ?? 70)
+      ui.thumbnailImageMinQuality ??
+        Math.min(55, ui.thumbnailImageQuality ?? 70)
     );
     setImageBudget(ui.thumbnailImageBudget ?? 100);
     setVideoFormat(ui.thumbnailVideoFormat ?? "webm");
@@ -360,7 +361,9 @@ export const SettingsThumbnailCompression: React.FC = () => {
         />
       </Form.Group>
       <Form.Group controlId="experimental-image-resolution">
-        <Form.Label>Maximum thumbnail resolution: {imageResolution} px</Form.Label>
+        <Form.Label>
+          Maximum thumbnail resolution: {imageResolution} px
+        </Form.Label>
         <Form.Control
           type="range"
           min={320}
@@ -386,7 +389,9 @@ export const SettingsThumbnailCompression: React.FC = () => {
           }
         >
           <option value="fixed">Fixed quality and resolution</option>
-          <option value="adaptive">Adaptive size-aware quality and resolution</option>
+          <option value="adaptive">
+            Adaptive size-aware quality and resolution
+          </option>
         </Form.Control>
       </Form.Group>
       {imageMode === "adaptive" && (
@@ -399,7 +404,9 @@ export const SettingsThumbnailCompression: React.FC = () => {
             extra encoding work. If none fits, the smallest candidate is kept.
           </Form.Text>
           <Form.Group controlId="experimental-image-min-quality">
-            <Form.Label>Minimum quality: {Math.min(imageMinQuality, imageQuality)}</Form.Label>
+            <Form.Label>
+              Minimum quality: {Math.min(imageMinQuality, imageQuality)}
+            </Form.Label>
             <Form.Control
               type="range"
               min={10}
@@ -407,7 +414,9 @@ export const SettingsThumbnailCompression: React.FC = () => {
               step={5}
               disabled={disabled}
               value={Math.min(imageMinQuality, imageQuality)}
-              onChange={(e) => setImageMinQuality(Number(e.currentTarget.value))}
+              onChange={(e) =>
+                setImageMinQuality(Number(e.currentTarget.value))
+              }
             />
           </Form.Group>
           <Form.Group controlId="experimental-image-budget">
@@ -422,8 +431,8 @@ export const SettingsThumbnailCompression: React.FC = () => {
               onChange={(e) => setImageBudget(Number(e.currentTarget.value))}
             />
             <Form.Text className="text-muted">
-              100% targets the same bytes as Stash JPEG at 320 px / Q70.
-              Above 100% allows larger files for better fidelity or resolution.
+              100% targets the same bytes as Stash JPEG at 320 px / Q70. Above
+              100% allows larger files for better fidelity or resolution.
             </Form.Text>
           </Form.Group>
         </>
@@ -571,7 +580,9 @@ export const SettingsThumbnailCompression: React.FC = () => {
         />
       </Form.Group>
       <Form.Group controlId="experimental-animated-resolution">
-        <Form.Label>Maximum animated thumbnail resolution: {animatedResolution} px</Form.Label>
+        <Form.Label>
+          Maximum animated thumbnail resolution: {animatedResolution} px
+        </Form.Label>
         <Form.Control
           type="range"
           min={320}
@@ -579,9 +590,7 @@ export const SettingsThumbnailCompression: React.FC = () => {
           step={80}
           value={animatedResolution}
           disabled={disabled}
-          onChange={(e) =>
-            setAnimatedResolution(Number(e.currentTarget.value))
-          }
+          onChange={(e) => setAnimatedResolution(Number(e.currentTarget.value))}
         />
         <Form.Text className="text-muted">
           Independent of still images; uses fixed animated WebP quality.
