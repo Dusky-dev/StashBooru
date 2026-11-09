@@ -159,10 +159,13 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 		}
 	}
 	filepath := mgr.Paths.Generated.GetThumbnailPathForEncoding(img.Checksum, models.DefaultGthumbWidth, format, quality)
+	if !animated && mgr.Config.IsExperimentalImageThumbnailEnabled() {
+		filepath = mgr.Paths.Generated.GetExperimentalThumbnailPath(img.Checksum, models.DefaultGthumbWidth, format, quality)
+	}
 	if animated && mgr.Config.IsExperimentalAnimatedThumbnailEnabled() {
 		filepath = mgr.Paths.Generated.GetAnimatedThumbnailPathForEncoding(img.Checksum, models.DefaultGthumbWidth, quality)
 	}
-	if format != "jpg" || quality != 70 {
+	if format != "jpg" || quality != 70 || mgr.Config.IsExperimentalImageThumbnailEnabled() || mgr.Config.IsExperimentalAnimatedThumbnailEnabled() {
 		w.Header().Set("Cache-Control", "no-cache, must-revalidate")
 	}
 
@@ -253,6 +256,10 @@ func (rs imageRoutes) Preview(w http.ResponseWriter, r *http.Request) {
 	img := r.Context().Value(imageKey).(*models.Image)
 	mgr := manager.GetInstance()
 	filepath := mgr.Paths.Generated.GetClipPreviewPathForEncoding(img.Checksum, models.DefaultGthumbWidth, mgr.Config.GetClipPreviewFormat(), mgr.Config.GetClipPreviewQuality())
+	if mgr.Config.IsExperimentalClipPreviewEnabled() {
+		filepath = mgr.Paths.Generated.GetExperimentalClipPreviewPath(img.Checksum, models.DefaultGthumbWidth, mgr.Config.GetClipPreviewFormat(), mgr.Config.GetClipPreviewQuality())
+	}
+	w.Header().Set("Cache-Control", "no-cache, must-revalidate")
 	utils.ServeStaticFile(w, r, filepath)
 }
 

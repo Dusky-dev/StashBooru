@@ -13,7 +13,54 @@ import (
 	"github.com/stashapp/stash/pkg/logger"
 )
 
-var thumbnailCacheName = regexp.MustCompile(`^[a-fA-F0-9]{32}_[0-9]+(?:_q[0-9]+)?\.(?:jpg|webp|jxl|webm|mp4)$`)
+var thumbnailCacheName = regexp.MustCompile(`^[a-fA-F0-9]{32}_[0-9]+(?:(?:_exp)?_q[0-9]+)?\.(?:jpg|webp|jxl|webm|mp4)package manager
+
+import (
+	"context"
+	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+
+	"github.com/stashapp/stash/pkg/job"
+	"github.com/stashapp/stash/pkg/logger"
+)
+
+)
+var legacyImageCacheName = regexp.MustCompile(`^[a-fA-F0-9]{32}_[0-9]+\.jpgpackage manager
+
+import (
+	"context"
+	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+
+	"github.com/stashapp/stash/pkg/job"
+	"github.com/stashapp/stash/pkg/logger"
+)
+
+)
+var legacyClipCacheName = regexp.MustCompile(`^[a-fA-F0-9]{32}_[0-9]+\.webmpackage manager
+
+import (
+	"context"
+	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+
+	"github.com/stashapp/stash/pkg/job"
+	"github.com/stashapp/stash/pkg/logger"
+)
+
+)
 var animationCacheName = regexp.MustCompile(`^[a-fA-F0-9]{32}_[0-9]+_anim_q[0-9]+\.webp$`)
 
 // Cache files are shared by hash prefix but not by media type. Never remove
@@ -36,9 +83,22 @@ func thumbnailCacheMatches(name, category string) bool {
 	}
 }
 
-// removeThumbnailCategory removes only recognized native generated cache files
-// in the selected category. WalkDir does not follow symlink directories.
-func removeThumbnailCategory(ctx context.Context, root, category string) (int, error) {
+// native thumbnails predate the experiment and must be retained verbatim
+// so switching the experiment off can instantly bring the old cache back.
+func legacyThumbnailCacheMatches(name, category string) bool {
+	switch category {
+	case "image":
+		return legacyImageCacheName.MatchString(name)
+	case "clip":
+		return legacyClipCacheName.MatchString(name)
+	default:
+		return false
+	}
+}
+
+// WalkDir does not follow symlink directories. Only generated, checksum-keyed
+// cache paths are eligible for deletion, never original media or unknown files.
+func removeMatchingThumbnailCache(ctx context.Context, root, category string, matches func(name, category string) bool) (int, error) {
 	if category != "image" && category != "clip" && category != "animated" {
 		return 0, fmt.Errorf("unrecognized thumbnail cache category")
 	}
@@ -63,7 +123,7 @@ func removeThumbnailCategory(ctx context.Context, root, category string) (int, e
 		if entry.IsDir() {
 			return nil
 		}
-		if !entry.Type().IsRegular() || !thumbnailCacheMatches(entry.Name(), category) {
+		if !entry.Type().IsRegular() || !matches(entry.Name(), category) {
 			return nil
 		}
 		// Ensure a checksum cache filename is under the expected nested hash directories.
@@ -88,14 +148,39 @@ func removeThumbnailCategory(ctx context.Context, root, category string) (int, e
 	return count, err
 }
 
+// removeThumbnailCategory remains the broad category cleaner, including
+// native and experimental variants.
+func removeThumbnailCategory(ctx context.Context, root, category string) (int, error) {
+	return removeMatchingThumbnailCache(ctx, root, category, thumbnailCacheMatches)
+}
+
+func removeThumbnailCategoryPreservingOld(ctx context.Context, root, category string) (int, error) {
+	return removeMatchingThumbnailCache(ctx, root, category, func(name, category string) bool {
+		return thumbnailCacheMatches(name, category) && !legacyThumbnailCacheMatches(name, category)
+	})
+}
+
+func RemoveOldThumbnailCategory(ctx context.Context, root, category string) (int, error) {
+	if category != "image" && category != "clip" {
+		return 0, fmt.Errorf("only still-image and clip preview caches have native thumbnails to remove")
+	}
+	return removeMatchingThumbnailCache(ctx, root, category, legacyThumbnailCacheMatches)
+}
+
 // Run in the Job Manager: cleanup and generation are consecutive stages of
 // one queued job, not a scan and not separate, racy button presses.
-func (s *Manager) RebuildExperimentalThumbnailCache(ctx context.Context, progress *job.Progress, category string) error {
+func (s *Manager) RebuildExperimentalThumbnailCache(ctx context.Context, progress *job.Progress, category string, keepOld bool) error {
 	progress.SetTotal(1)
 	progress.ExecuteTask("Removing selected generated thumbnail cache", func() {
 		logger.Infof("Experimental %s thumbnail cache rebuild requested", category)
 	})
-	removed, err := removeThumbnailCategory(ctx, s.Paths.Generated.Thumbnails, category)
+	var removed int
+	var err error
+	if keepOld {
+		removed, err = removeThumbnailCategoryPreservingOld(ctx, s.Paths.Generated.Thumbnails, category)
+	} else {
+		removed, err = removeThumbnailCategory(ctx, s.Paths.Generated.Thumbnails, category)
+	}
 	if err != nil {
 		return err // never generate after a partial/failed cleanup
 	}
