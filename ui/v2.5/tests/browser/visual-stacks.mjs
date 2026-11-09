@@ -180,7 +180,10 @@ try {
       });
       // Fresh browser profiles show just representatives until overridden.
       await viewOptions.click();
-      assert.equal(await individualVariants.getAttribute("aria-checked"), "false");
+      assert.equal(
+        await individualVariants.getAttribute("aria-checked"),
+        "false"
+      );
       await viewOptions.click();
       if (shots && engineName === "chromium" && width === 1440)
         await page.screenshot({

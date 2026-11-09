@@ -353,9 +353,13 @@ const FilteredMediaListComponent = ({
                   // Keep the explicit per-list override in the URL/filter state.
                   // An explicit false still overrides the browser-wide default.
                   setFilter((current) => {
-                    const criterion = new BooleanCriterion(CollapseStacksOption);
+                    const criterion = new BooleanCriterion(
+                      CollapseStacksOption
+                    );
                     criterion.value = shown ? "false" : "true";
-                    return current.replaceCriteria("collapse_stacks", [criterion]);
+                    return current.replaceCriteria("collapse_stacks", [
+                      criterion,
+                    ]);
                   });
                 },
               }}
@@ -369,7 +373,8 @@ const FilteredMediaListComponent = ({
             <FilterTags
               view={view}
               criteria={filter.criteria.filter(
-                (criterion) => criterion.criterionOption.type !== "collapse_stacks"
+                (criterion) =>
+                  criterion.criterionOption.type !== "collapse_stacks"
               )}
               onEditCriterion={(criterion) =>
                 showEditFilter(criterion.criterionOption.type)
