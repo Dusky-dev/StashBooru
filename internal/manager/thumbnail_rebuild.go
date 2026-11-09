@@ -13,54 +13,9 @@ import (
 	"github.com/stashapp/stash/pkg/logger"
 )
 
-var thumbnailCacheName = regexp.MustCompile(`^[a-fA-F0-9]{32}_[0-9]+(?:(?:_exp)?_q[0-9]+)?\.(?:jpg|webp|jxl|webm|mp4)package manager
-
-import (
-	"context"
-	"fmt"
-	"io/fs"
-	"os"
-	"path/filepath"
-	"regexp"
-	"strings"
-
-	"github.com/stashapp/stash/pkg/job"
-	"github.com/stashapp/stash/pkg/logger"
-)
-
-)
-var legacyImageCacheName = regexp.MustCompile(`^[a-fA-F0-9]{32}_[0-9]+\.jpgpackage manager
-
-import (
-	"context"
-	"fmt"
-	"io/fs"
-	"os"
-	"path/filepath"
-	"regexp"
-	"strings"
-
-	"github.com/stashapp/stash/pkg/job"
-	"github.com/stashapp/stash/pkg/logger"
-)
-
-)
-var legacyClipCacheName = regexp.MustCompile(`^[a-fA-F0-9]{32}_[0-9]+\.webmpackage manager
-
-import (
-	"context"
-	"fmt"
-	"io/fs"
-	"os"
-	"path/filepath"
-	"regexp"
-	"strings"
-
-	"github.com/stashapp/stash/pkg/job"
-	"github.com/stashapp/stash/pkg/logger"
-)
-
-)
+var thumbnailCacheName = regexp.MustCompile(`^[a-fA-F0-9]{32}_[0-9]+(?:(?:_exp)?_q[0-9]+)?\.(?:jpg|webp|jxl|webm|mp4)$`)
+var legacyImageCacheName = regexp.MustCompile(`^[a-fA-F0-9]{32}_[0-9]+\.jpg$`)
+var legacyClipCacheName = regexp.MustCompile(`^[a-fA-F0-9]{32}_[0-9]+\.webm$`)
 var animationCacheName = regexp.MustCompile(`^[a-fA-F0-9]{32}_[0-9]+_anim_q[0-9]+\.webp$`)
 
 // Cache files are shared by hash prefix but not by media type. Never remove
