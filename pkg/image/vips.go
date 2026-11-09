@@ -22,12 +22,16 @@ func (e *vipsEncoder) ImageThumbnail(image *bytes.Buffer, maxSize int) ([]byte, 
 
 func vipsThumbnailOutput(format string, quality int) string {
 	switch format {
-	case "webp", "jxl", "avif":
+	case "webp", "jxl", "avif", "png":
 	default:
 		format = "jpg"
 	}
 	if quality < 10 || quality > 100 {
 		quality = defaultThumbnailQuality
+	}
+	if format == "png" {
+		// The FFmpeg AVIF backend consumes a lossless, resized still frame.
+		return ".png[compression=3,strip]"
 	}
 	if format == "avif" {
 		// At thumbnail sizes, 4:4:4 preserves colored outlines in artwork.
