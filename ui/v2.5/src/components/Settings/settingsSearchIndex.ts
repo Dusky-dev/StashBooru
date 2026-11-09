@@ -53,6 +53,12 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
   },
   {
     tab: "experimental",
+    label: "Thumbnail and video preview formats",
+    anchor: "experimental-thumbnail-compression",
+    keywords: "jpeg jpg webp jxl format quality slider compression thumbnails video previews mp4 webm",
+  },
+  {
+    tab: "experimental",
     label: "P12/P13 image storage experiments",
     anchor: "experimental-image-storage",
     keywords: "experimental delta shared tiles compression packed archive",
