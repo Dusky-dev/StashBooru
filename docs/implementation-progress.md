@@ -5434,6 +5434,33 @@ these historical CI snapshots.
   claim that all filter, selection, Wall or stack issues have been eliminated.
 
 
+## P08 All Wall stack controls — November 9, 2026
+
+- Independent branch `fix/all-wall-stack-controls-20261109` targeting
+  `develop`, not PR #333.
+- Root issue: `MediaGrid` forwarded `stackSelectedIds` and
+  `onStackMemberSelect` to `VisualStackBadge`; `MediaWall` omitted the
+  stack control completely, so grouped cards could not expand their hidden
+  members for selection in Wall mode.
+- Added opt-in Wall badge slots to native Image/Video Wall items and passed
+  the existing stack badge (typed member selection, previews, manage modal)
+  from mixed All Wall. Badge clicks stop propagation to media navigation and
+  selection. It is anchored to the upper-right corner, away from checkboxes.
+- Extended the P08 isolated browser regression across desktop/mobile:
+  grouped Wall stack badge exists, expanded member deselect/select preserves
+  typed selections, does not navigate, and does not alter grouped card count.
+- Local isolated browser run requires a seeded fixture and explicit stack
+  mutation authorization; CI and real-library verification remain pending.
+
+- Follow-up Wall selection correctness: Image Wall previews had both a child
+  and parent `onClick={handleClick}`, causing the same click to be handled
+  twice through event bubbling (unlike native Video Wall, which already handled
+  clicks only at the wrapper). Removed the redundant child handler and added a
+  mixed-media Wall regression for selecting/deselecting by preview click.
+  Typed `data-media-kind` attributes make the fixture select its Image and
+  Video wall cards without relying on their sort order.
+
+
 ## Shared list pagination fixes — November 9, 2026
 
 - Branch `fix/shared-list-pagination-edge-cases-20261109` based on

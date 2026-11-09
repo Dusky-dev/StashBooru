@@ -11,6 +11,7 @@ import { AnimationBadge } from "../Shared/AnimationBadge";
 
 interface IExtraProps {
   animationLabel?: string;
+  stackBadge?: React.ReactNode;
   maxHeight: number;
   selected?: boolean;
   onSelectedChanged?: (selected: boolean, shiftKey: boolean) => void;
@@ -76,6 +77,7 @@ export const ImageWallItem: React.FC<RenderImageProps & IExtraProps> = (
   return (
     <div
       className="wall-item"
+      data-media-kind="image"
       data-animation-badge={props.animationLabel || undefined}
       style={divStyle}
       onClick={handleClick}
@@ -92,6 +94,14 @@ export const ImageWallItem: React.FC<RenderImageProps & IExtraProps> = (
             event.stopPropagation();
           }}
         />
+      )}
+      {props.stackBadge && (
+        <div
+          className="visual-stack-wall-control"
+          onClick={(event) => event.stopPropagation()}
+        >
+          {props.stackBadge}
+        </div>
       )}
       {!props.selecting && imageID ? (
         <Link
@@ -120,7 +130,6 @@ export const ImageWallItem: React.FC<RenderImageProps & IExtraProps> = (
         width={width}
         height={height}
         alt={props.photo.alt}
-        onClick={handleClick}
       />
       <AnimationBadge label={props.animationLabel} />
     </div>

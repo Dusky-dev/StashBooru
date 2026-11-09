@@ -1,4 +1,5 @@
 import { StackMember } from "../VisualStacks/media";
+import { VisualStackBadge } from "../VisualStacks/VisualStackBadge";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useHistory } from "react-router-dom";
 import Gallery, { GalleryI, RenderImageProps } from "react-photo-gallery";
@@ -108,6 +109,7 @@ export function MediaWall({
   zoomIndex,
   onSelectChange,
   onPreviewImage,
+  onStackMemberSelect,
 }: Props) {
   const { configuration } = useConfigurationContext();
   const history = useHistory();
@@ -179,6 +181,15 @@ export function MediaWall({
           {...extra}
           photo={{ ...props.photo, key: item.image.id }}
           animationLabel={animationBadge(item.image)}
+          stackBadge={
+            item.image.visual_stack && (
+              <VisualStackBadge
+                stack={item.image.visual_stack}
+                selectedIds={selectedIds}
+                onSelectMember={onStackMemberSelect}
+              />
+            )
+          }
         />
       );
     if (!item.scene) return null;
@@ -192,6 +203,15 @@ export function MediaWall({
           link: queue.makeLink(item.scene.id, {}),
           onError: () => onPreviewError(item.id, props.photo.src),
         }}
+        stackBadge={
+          item.scene.visual_stack && (
+            <VisualStackBadge
+              stack={item.scene.visual_stack}
+              selectedIds={selectedIds}
+              onSelectMember={onStackMemberSelect}
+            />
+          )
+        }
       />
     );
   }
