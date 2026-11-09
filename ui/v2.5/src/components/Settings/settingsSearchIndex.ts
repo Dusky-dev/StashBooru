@@ -55,7 +55,8 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
     tab: "experimental",
     label: "Thumbnail and video preview formats",
     anchor: "experimental-thumbnail-compression",
-    keywords: "jpeg jpg webp jxl format quality slider compression thumbnails video previews mp4 webm",
+    keywords:
+      "jpeg jpg webp jxl format quality slider compression thumbnails video previews mp4 webm",
   },
   {
     tab: "experimental",

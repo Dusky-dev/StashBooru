@@ -23,7 +23,10 @@ export const SettingsThumbnailCompression: React.FC = () => {
           value={imageFormat}
           onChange={(e) =>
             saveUI({
-              thumbnailImageFormat: e.currentTarget.value as "jpg" | "webp" | "jxl",
+              thumbnailImageFormat: e.currentTarget.value as
+                | "jpg"
+                | "webp"
+                | "jxl",
             })
           }
         >
@@ -90,8 +93,8 @@ export const SettingsThumbnailCompression: React.FC = () => {
       </Form.Group>
       <p className="text-muted">
         These settings apply to newly generated assets. Existing variants stay
-        on disk. For previously generated files, run Generate with overwrite
-        for image thumbnails or clip previews. Legacy video previews continue
+        on disk. For previously generated files, run Generate with overwrite for
+        image thumbnails or clip previews. Legacy video previews continue
         displaying until their replacement is generated.
       </p>
     </SettingsDisclosure>
