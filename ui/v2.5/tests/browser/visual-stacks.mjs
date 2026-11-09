@@ -264,7 +264,10 @@ try {
         );
       });
       await modal(page)
-        .getByRole("button", { name: "Find similar Images (pHash)", exact: true })
+        .getByRole("button", {
+          name: "Find similar Images (pHash)",
+          exact: true,
+        })
         .click();
       await similarRequest;
       await modal(page).getByLabel("Maximum pHash distance").selectOption("3");
