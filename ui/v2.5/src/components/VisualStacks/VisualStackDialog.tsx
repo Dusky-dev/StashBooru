@@ -712,7 +712,10 @@ export function VisualStackDialog({
       <Button disabled={busy || !memberURL} onClick={add}>
         Review member
       </Button>
-      <section className="visual-stack-similarity mt-3" aria-label="Find similar Images">
+      <section
+        className="visual-stack-similarity mt-3"
+        aria-label="Find similar Images"
+      >
         <Button
           size="sm"
           variant="secondary"
@@ -747,12 +750,15 @@ export function VisualStackDialog({
               >
                 {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((distance) => (
                   <option key={distance} value={distance}>
-                    {distance}{distance === 5 ? " (default)" : ""}
+                    {distance}
+                    {distance === 5 ? " (default)" : ""}
                   </option>
                 ))}
               </Form.Control>
             </Form.Group>
-            {similarQuery.loading && <p role="status">Searching similar Images…</p>}
+            {similarQuery.loading && (
+              <p role="status">Searching similar Images…</p>
+            )}
             {similarQuery.error && (
               <Alert variant="warning">
                 {similarQuery.error.message}. Generate perceptual hashes in
@@ -765,19 +771,26 @@ export function VisualStackDialog({
                   {similarQuery.data?.findImages.count ?? 0} matching Images;
                   current stack members are excluded from these candidates.
                 </small>
-                {candidates.length === 0 && <p>No additional matches on this page.</p>}
+                {candidates.length === 0 && (
+                  <p>No additional matches on this page.</p>
+                )}
                 <div className="visual-stack-similar-results">
                   {candidates.map((image) => (
                     <div className="visual-stack-similar-row" key={image.id}>
                       <img src={image.paths.thumbnail ?? ""} alt="" />
                       <div className="visual-stack-member-info">
-                        <a href={`/images/${image.id}`} target="_blank" rel="noreferrer">
+                        <a
+                          href={`/images/${image.id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
                           {image.title || `Image ${image.id}`}
                         </a>
                         {image.visual_stack && (
                           <small>
                             Already belongs to stack {image.visual_stack.id}.
-                            Review merging rather than duplicating its membership.
+                            Review merging rather than duplicating its
+                            membership.
                           </small>
                         )}
                       </div>
@@ -785,7 +798,10 @@ export function VisualStackDialog({
                         size="sm"
                         disabled={busy || rows.length >= 200}
                         onClick={() =>
-                          void reviewMember({ kind: GQL.MediaKind.Image, id: image.id })
+                          void reviewMember({
+                          kind: GQL.MediaKind.Image,
+                          id: image.id,
+                        })
                         }
                       >
                         {image.visual_stack ? "Review stack" : "Add to stack"}
@@ -809,7 +825,8 @@ export function VisualStackDialog({
                       variant="secondary"
                       disabled={
                         busy ||
-                        similarPage * 50 >= (similarQuery.data?.findImages.count ?? 0)
+                        similarPage * 50 >=
+                        (similarQuery.data?.findImages.count ?? 0)
                       }
                       onClick={() => setSimilarPage((page) => page + 1)}
                     >
