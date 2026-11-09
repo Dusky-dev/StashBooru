@@ -129,6 +129,9 @@ export const ScenePreview: React.FC<IScenePreviewProps> = React.memo(
 interface ISceneCardProps {
   stackSelectedIds?: Set<string>;
   onStackMemberSelect?: (member: StackMember, selected: boolean) => void;
+  // Mixed All overrides the global Video-only preview sequence. Other
+  // SceneCard callers continue using the existing native Video carousel.
+  onPreview?: (event: React.MouseEvent) => void;
   scene: GQL.SlimSceneDataFragment;
   width?: number;
   previewHeight?: number;
