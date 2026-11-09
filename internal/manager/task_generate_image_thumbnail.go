@@ -114,10 +114,15 @@ func (t *GenerateImageThumbnailTask) required() bool {
 	// Native mode keeps Stash's no-reencode behavior for small images.
 	// Explicit experimental codecs rebuild every eligible source regardless
 	// of size so the user-selected cache is actually populated.
-	if vf.GetHeight() <= models.DefaultGthumbWidth && vf.GetWidth() <= models.DefaultGthumbWidth &&
-		!(animated && mgr.Config.IsExperimentalAnimatedThumbnailEnabled()) &&
-		!(!animated && mgr.Config.IsExperimentalImageThumbnailEnabled()) {
-		return false
+	if vf.GetHeight() <= models.DefaultGthumbWidth && vf.GetWidth() <= models.DefaultGthumbWidth {
+		// Native mode does not need resized thumbnails for small sources,
+		// while an explicitly enabled codec still rebuilds them.
+		if animated && !mgr.Config.IsExperimentalAnimatedThumbnailEnabled() {
+			return false
+		}
+		if !animated && !mgr.Config.IsExperimentalImageThumbnailEnabled() {
+			return false
+		}
 	}
 
 	if t.Overwrite {
