@@ -39,7 +39,10 @@ import { BackgroundImage } from "src/components/Shared/DetailsPage/BackgroundIma
 import { AliasList } from "src/components/Shared/DetailsPage/AliasList";
 import { DetailTitle } from "src/components/Shared/DetailsPage/DetailTitle";
 import { HeaderImage } from "src/components/Shared/DetailsPage/HeaderImage";
-import { TabTitleCounter } from "src/components/Shared/DetailsPage/Tabs";
+import {
+  TabTitleCounter,
+  useTabKey,
+} from "src/components/Shared/DetailsPage/Tabs";
 import { ExpandCollapseButton } from "src/components/Shared/CollapseButton";
 import {
   Performer,
@@ -48,6 +51,7 @@ import {
 import { FilteredPerformerList } from "src/components/Performers/PerformerList";
 import { FilteredSceneList } from "src/components/Scenes/SceneList";
 import { FilteredImageList } from "src/components/Images/ImageList";
+import { FilteredMediaList } from "src/components/Media/MediaList";
 import { View } from "src/components/List/views";
 import { useConfigurationContext } from "src/hooks/Config";
 import { useToast } from "src/hooks/Toast";
@@ -421,17 +425,18 @@ const CopyrightMediaTabs: React.FC<{
   initialTab?: string;
   abbreviateCounter: boolean;
 }> = ({ copyright, initialTab, abbreviateCounter }) => {
-  const history = useHistory();
-  const validTabs = ["all", "images", "videos", "characters"];
   const populatedDefaultTab =
     copyright.subtree_image_count > 0
       ? "images"
       : copyright.subtree_scene_count > 0
         ? "videos"
         : "characters";
-  const active = validTabs.includes(initialTab ?? "")
-    ? initialTab
-    : populatedDefaultTab;
+  const { activeTabKey, setTabKey } = useTabKey({
+    tabKey: initialTab,
+    validTabs: ["all", "images", "videos", "characters"],
+    defaultTabKey: populatedDefaultTab,
+    baseURL: `/copyrights/${copyright.id}`,
+  });
 
   const imageFilterHook = useCopyrightFilterHook(copyright);
 
@@ -454,15 +459,27 @@ const CopyrightMediaTabs: React.FC<{
   return (
     <Tabs
       id="copyright-media-tabs"
-      activeKey={active}
-      onSelect={(key) => {
-        if (key) history.replace(`/copyrights/${copyright.id}/${key}`);
-      }}
+      activeKey={activeTabKey}
+      onSelect={setTabKey}
       mountOnEnter
       unmountOnExit
     >
-      <Tab eventKey="all" title="All">
-        <div />
+      <Tab
+        eventKey="all"
+        title={
+          <TabTitleCounter
+            messageID="media_all"
+            count={
+              copyright.subtree_image_count + copyright.subtree_scene_count
+            }
+            abbreviateCounter={abbreviateCounter}
+          />
+        }
+      >
+        <FilteredMediaList
+          filterHook={imageFilterHook}
+          view={View.CopyrightMedia}
+        />
       </Tab>
       <Tab
         eventKey="images"

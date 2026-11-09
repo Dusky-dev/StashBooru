@@ -315,6 +315,33 @@ try {
         0
       );
 
+      // A collapsed stack must remain expandable in Wall mode, just as it is
+      // in Grid mode. Opening its badge must not navigate away or toggle the
+      // representative. Individual hidden members still use typed IDs.
+      await page
+        .locator(".media-list button")
+        .filter({ has: page.locator("svg[data-icon='square']") })
+        .click();
+      await page.locator(".media-wall .wall-item").first().waitFor();
+      const wallBadge = page
+        .locator(".media-wall .visual-stack-wall-control")
+        .getByRole("button", { name: "Stack · 4", exact: true });
+      await wallBadge.waitFor();
+      const wallURL = page.url();
+      await wallBadge.click();
+      const wallMembers = page.locator(".visual-stack-expanded");
+      await wallMembers.getByLabel("Select image:1", { exact: true }).uncheck();
+      assert.equal(await page.locator(".selected-count").innerText(), "3");
+      await wallMembers.getByLabel("Select image:1", { exact: true }).check();
+      assert.equal(await page.locator(".selected-count").innerText(), "4");
+      assert.equal(page.url(), wallURL, "Stack badge click navigated away");
+      assert.equal(
+        await page.locator(".media-wall .wall-item").count(),
+        5,
+        "Expanding a stack unexpectedly changed the grouped Wall results"
+      );
+      await wallBadge.click();
+
       await page.goto(`${baseURL}/images/1`);
       await selected(page, "image:1");
       await page

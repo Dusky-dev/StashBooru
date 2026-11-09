@@ -44,6 +44,10 @@ import {
 } from "src/utils/imageWall";
 import { defaultMaxOptionsShown, defaultPreviewVolume } from "src/core/config";
 import { PatchComponent } from "src/patch";
+import {
+  exampleImageFilenameLayout,
+  validateImageFilenameLayout,
+} from "src/utils/mediaFilenameLayout";
 
 const allMenuItems = [
   { id: "media", headingID: "media_all" },
@@ -635,10 +639,36 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
               })
             }
           />
+          <ModalSetting<string>
+            id="shared-image-filename-layout"
+            heading="Shared filename layout"
+            subHeading="Set the Grabber-style filename pattern used to read missing Image title fields. Booru downloads also use it when no separate download template is set. Examples: %artist%, %copyright%, %character%, %md5%, %ext%. Leave empty to disable strict matching."
+            value={ui.imageFilenameLayout ?? ""}
+            onChange={(v) => saveUI({ imageFilenameLayout: v })}
+            validateChange={(layout) => {
+              const error = validateImageFilenameLayout(layout);
+              if (error) throw new Error(error);
+            }}
+            renderField={(value, setValue) => (
+              <Form.Control
+                className="text-input"
+                value={value ?? ""}
+                placeholder={exampleImageFilenameLayout}
+                onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                  setValue(event.currentTarget.value)
+                }
+              />
+            )}
+            renderValue={(value) => (
+              <span>
+                {value || "Not configured (legacy filenames remain unchanged)"}
+              </span>
+            )}
+          />
           <BooleanSetting
             id="show-formatted-image-filename-fallback"
-            heading="Use formatted filenames when no metadata is available"
-            subHeading="Without Copyright, Character or Artist names, show a readable filename instead of Image #ID."
+            heading="Use formatted filenames when metadata is missing or incomplete"
+            subHeading="Read missing Copyright, Character or Artist fields from filenames that match the shared layout; if no categories are available, show a readable filename instead of Image #ID."
             checked={ui.showFormattedImageFilenameFallback ?? false}
             disabled={!ui.showImageAssociationTitles}
             onChange={(v) => saveUI({ showFormattedImageFilenameFallback: v })}

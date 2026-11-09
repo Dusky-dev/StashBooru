@@ -19,6 +19,9 @@ import { ErrorMessage } from "src/components/Shared/ErrorMessage";
 import { useToast } from "src/hooks/Toast";
 import { useConfigurationContext } from "src/hooks/Config";
 import { StudioScenesPanel } from "./StudioScenesPanel";
+import { FilteredMediaList } from "src/components/Media/MediaList";
+import { useStudioFilterHook } from "src/core/studios";
+import { View } from "src/components/List/views";
 import { StudioGalleriesPanel } from "./StudioGalleriesPanel";
 import { StudioImagesPanel } from "./StudioImagesPanel";
 import { StudioChildrenPanel } from "./StudioChildrenPanel";
@@ -65,6 +68,7 @@ interface IStudioParams {
 
 const validTabs = [
   "default",
+  "all",
   "scenes",
   "galleries",
   "images",
@@ -150,6 +154,8 @@ const StudioTabs: React.FC<{
     );
   }, [showAllDetails, studio.child_studios.length]);
 
+  const mediaFilterHook = useStudioFilterHook(studio, showAllDetails);
+
   return (
     <Tabs
       id="studio-tabs"
@@ -158,6 +164,22 @@ const StudioTabs: React.FC<{
       activeKey={activeTabKey}
       onSelect={setTabKey}
     >
+      <Tab
+        eventKey="all"
+        title={
+          <TabTitleCounter
+            messageID="media_all"
+            count={sceneCount + imageCount}
+            abbreviateCounter={abbreviateCounter}
+          />
+        }
+      >
+        {contentSwitch}
+        <FilteredMediaList
+          filterHook={mediaFilterHook}
+          view={View.StudioMedia}
+        />
+      </Tab>
       <Tab
         eventKey="scenes"
         title={

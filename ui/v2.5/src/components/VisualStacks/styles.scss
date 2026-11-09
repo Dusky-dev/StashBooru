@@ -124,6 +124,19 @@
   position: relative;
 }
 
+.visual-stack-wall-control {
+  position: absolute;
+  right: 0.35rem;
+  top: 0.35rem;
+  z-index: 3;
+
+  // The same expanded-member control used by Grid, anchored within the Wall
+  // card rather than overlaying the visual preview or modifying the stack.
+  .visual-stack-card {
+    max-width: 100%;
+  }
+}
+
 .visual-stack-expanded {
   background: #20252b;
   border: 1px solid #59616b;

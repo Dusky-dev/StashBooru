@@ -29,6 +29,7 @@ import {
 import { SidebarStudiosFilter } from "../List/Filters/StudiosFilter";
 import { SidebarPerformersFilter } from "../List/Filters/PerformersFilter";
 import { SidebarTagsFilter } from "../List/Filters/TagsFilter";
+import { SidebarCopyrightsFilter } from "../List/Filters/CopyrightsFilter";
 import { SidebarRatingFilter } from "../List/Filters/RatingFilter";
 import { SidebarDurationFilter } from "../List/Filters/SidebarDurationFilter";
 import { SidebarBooleanFilter } from "../List/Filters/BooleanFilter";
@@ -73,7 +74,15 @@ const historyState = new Map<
   { selected: GQL.MediaListItemFragment[]; scroll: number }
 >();
 
-export const FilteredMediaList = PatchComponent("FilteredMediaList", () => {
+interface IFilteredMediaList {
+  filterHook?: (filter: ListFilterModel) => ListFilterModel;
+  view?: View;
+}
+
+const FilteredMediaListComponent = ({
+  filterHook,
+  view = View.Media,
+}: IFilteredMediaList) => {
   const intl = useIntl();
   const [{ data: localInterface }] = useInterfaceLocalForage();
   const history = useHistory();
@@ -89,11 +98,11 @@ export const FilteredMediaList = PatchComponent("FilteredMediaList", () => {
     useFilteredItemList({
       filterStateProps: {
         filterMode: GQL.FilterMode.Media,
-        view: View.Media,
+        view,
         defaultSort: "date",
         useURL: true,
       },
-      queryResultProps: { useResult, getCount, getItems },
+      queryResultProps: { useResult, getCount, getItems, filterHook },
       initialSelected: restore?.selected,
     });
   const {
@@ -102,7 +111,7 @@ export const FilteredMediaList = PatchComponent("FilteredMediaList", () => {
     sectionOpen,
     setSectionOpen,
     loading: sidebarStateLoading,
-  } = useSidebarState(View.Media);
+  } = useSidebarState(view);
   const { filter, setFilter } = filterState;
   const { effectiveFilter, result, items, totalCount, cachedResult } =
     queryResult;
@@ -175,7 +184,9 @@ export const FilteredMediaList = PatchComponent("FilteredMediaList", () => {
       ),
     [showModal, selectedItems, refreshed]
   );
-  const explicitCollapse = filter.criteriaFor("collapse_stacks") as BooleanCriterion[];
+  const explicitCollapse = filter.criteriaFor(
+    "collapse_stacks"
+  ) as BooleanCriterion[];
   const collapsed = explicitCollapse.length
     ? explicitCollapse.some((criterion) => criterion.value === "true")
     : localInterface?.hideStackVariants === true;
@@ -286,7 +297,7 @@ export const FilteredMediaList = PatchComponent("FilteredMediaList", () => {
               showEditFilter={showEditFilter}
               filter={filter}
               setFilter={setFilter}
-              view={View.Media}
+              view={view}
               focus={searchFocus}
             />
             <SidebarOptionFilter
@@ -299,6 +310,7 @@ export const FilteredMediaList = PatchComponent("FilteredMediaList", () => {
             <SidebarStudiosFilter filter={filter} setFilter={setFilter} />
             <SidebarPerformersFilter filter={filter} setFilter={setFilter} />
             <SidebarTagsFilter filter={filter} setFilter={setFilter} />
+            <SidebarCopyrightsFilter filter={filter} setFilter={setFilter} />
             <SidebarRatingFilter filter={filter} setFilter={setFilter} />
             <SidebarDurationFilter filter={filter} setFilter={setFilter} />
             <SidebarBooleanFilter
@@ -328,7 +340,7 @@ export const FilteredMediaList = PatchComponent("FilteredMediaList", () => {
               setFilter={setFilter}
               listSelect={listSelect}
               showEditFilter={showEditFilter}
-              view={View.Media}
+              view={view}
               zoomable
               maxPageSize={500}
               onEdit={onEdit}
@@ -343,7 +355,7 @@ export const FilteredMediaList = PatchComponent("FilteredMediaList", () => {
                   next.criteria = next.criteria.filter(
                     (c) => c.criterionOption.type !== "collapse_stacks"
                   );
-                  // An explicit false overrides the Interface default as well.
+                  // Explicit false overrides the browser-wide Interface preference.
                   const criterion = new BooleanCriterion(CollapseStacksOption);
                   criterion.value = collapsed ? "false" : "true";
                   next.criteria.push(criterion);
@@ -370,7 +382,7 @@ export const FilteredMediaList = PatchComponent("FilteredMediaList", () => {
               </Alert>
             )}
             <FilterTags
-              view={View.Media}
+              view={view}
               criteria={filter.criteria}
               onEditCriterion={(criterion) =>
                 showEditFilter(criterion.criterionOption.type)
@@ -425,4 +437,9 @@ export const FilteredMediaList = PatchComponent("FilteredMediaList", () => {
       </SidebarStateContext.Provider>
     </div>
   );
-});
+};
+
+export const FilteredMediaList = PatchComponent(
+  "FilteredMediaList",
+  FilteredMediaListComponent
+);

@@ -143,6 +143,21 @@ async function check(mode) {
           .count(),
         0
       );
+      // A deep link to an out-of-range page must return to page 1 even
+      // when the completed filter has no results. Do not normalize while
+      // the request is loading or using an earlier query's cached count.
+      await page.goto(`${baseURL}/media?p=9`, {
+        waitUntil: "domcontentloaded",
+      });
+      await page.waitForURL((url) => !url.searchParams.has("p"), {
+        timeout: 10000,
+      });
+      assert.equal(
+        await page
+          .locator(".media-list .image-card, .media-list .scene-card")
+          .count(),
+        0
+      );
     } else {
       await page.locator(".media-list .scene-card").first().waitFor();
       await checkVideoPreview(page, ".media-list .scene-card");
@@ -280,6 +295,23 @@ async function check(mode) {
         .first()
         .waitFor({ timeout: 10000 });
       assert.equal(await page.locator(".main .nav-tabs").count(), 0);
+      if (mode === "loaded") {
+        // Selecting a Wall image by clicking its preview must fire once.
+        // The native ImageWallItem previously handled the same bubbled
+        // click on both its preview and its parent.
+        const imageWall = page
+          .locator('.media-wall [data-media-kind="image"]')
+          .first();
+        const videoWall = page
+          .locator('.media-wall [data-media-kind="video"]')
+          .first();
+        await videoWall.locator(".wall-item-check").check();
+        await imageWall.locator("img, video").first().click();
+        assert.equal(await page.locator(".selected-count").innerText(), "2");
+        await imageWall.locator("img, video").first().click();
+        assert.equal(await page.locator(".selected-count").innerText(), "1");
+        await videoWall.locator(".wall-item-check").uncheck();
+      }
       const videoLink = page
         .locator(".media-wall .wall-item a[href^='/scenes/']")
         .first();

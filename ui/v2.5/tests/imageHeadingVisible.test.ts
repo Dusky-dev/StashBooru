@@ -165,3 +165,75 @@ test("filename fallback cleans separators, extensions and machine hashes", () =>
   assert.equal(formattedImageFilenameHeading("2024-10-25.jpg"), "2024-10-25");
   assert.equal(formattedImageFilenameHeading(""), "");
 });
+
+test("configured filename layout fills missing image title fields without tagging media", () => {
+  const md5 = "2c20e78d4c3163a761873936d4380ead";
+  const layout = "%copyright% - %character% - %artist%_%md5%.%ext%";
+  const filename = `re_zero - emilia - source_artist_${md5}.jxl`;
+  const image = {
+    id: "7",
+    title: null,
+    artists: [{ name: "Canonical Artist" }],
+    visual_files: [{ path: `/media/${filename}` }],
+  };
+  const options = {
+    showImageAssociationTitles: true,
+    showFormattedImageFilenameFallback: true,
+    imageFilenameLayout: layout,
+  };
+  assert.equal(
+    imageDisplayHeading(image, filename, options),
+    "re zero · emilia · Canonical Artist"
+  );
+  assert.equal(
+    imageDisplayHeading(
+      { ...image, title: "My custom title" },
+      filename,
+      options
+    ),
+    "My custom title"
+  );
+  assert.equal(
+    imageDisplayHeading(image, filename, {
+      ...options,
+      showFormattedImageFilenameFallback: false,
+    }),
+    "Canonical Artist"
+  );
+  assert.equal(
+    imageDisplayHeading(image, "different.jpg", {
+      ...options,
+      imageFilenameLayout: "%artist%/%copyright%.%character%_%md5%.%ext%",
+    }),
+    "Canonical Artist"
+  );
+});
+
+test("folder-based layout parses full file path and fills only missing slots", () => {
+  const md5 = "2c20e78d4c3163a761873936d4380ead";
+  const image = {
+    title: null,
+    id: "8",
+    primary_copyright: { name: "Canonical Series" },
+    visual_files: [
+      { path: `/download/[source_artist]/(re_zero).emilia_${md5}.jxl` },
+    ],
+  };
+  const options = {
+    showImageAssociationTitles: true,
+    showFormattedImageFilenameFallback: true,
+    imageFilenameLayout: "[%artist%]/(%copyright%).%character%_%md5%.%ext%",
+  };
+  assert.equal(
+    imageDisplayHeading(image, `(re_zero).emilia_${md5}.jxl`, options),
+    "Canonical Series · emilia · source artist"
+  );
+  const mismatch = {
+    ...image,
+    visual_files: [{ path: "/media/unmatched_random_name.jxl" }],
+  };
+  assert.equal(
+    imageDisplayHeading(mismatch, "unmatched_random_name.jxl", options),
+    "Canonical Series"
+  );
+});

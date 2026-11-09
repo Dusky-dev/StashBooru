@@ -159,6 +159,24 @@ to remove the automatically generated filename headings from Image grid cards
 Explicitly entered Image titles remain visible, and filenames remain available
 in file information, while browser tab titles and image alt text are preserved.
 
+To display **Copyright · Character · Artist** titles, enable **Use Copyright /
+Character / Artist image titles** and optionally **Use formatted filenames when
+metadata is missing or incomplete**. The **Shared filename layout** accepts
+Grabber-style placeholders such as `%artist%`, `%copyright%`, `%character%`,
+`%md5%` and `%ext%`, including literal separators and folder components.
+For example, `[%artist%]/(%copyright%).%character%_%md5%.%ext%` can recover
+Copyright/Character display labels from a matching filename even if only the
+Artist is associated with an Image. The canonical library association takes
+precedence for every populated field. Filename parsing is *read-only*: it
+does not create tags, change associations, rename files or infer categories
+from names that do not match the complete configured layout.
+
+The shared layout also serves as the default for **Booru downloads** when the
+Booru download filename template is blank. A previously saved Booru template
+remains an explicit override, preserving existing download naming and receipts.
+A blank shared layout keeps previous title/fallback behavior unchanged. The
+Video filename parser uses its existing independent layout syntax.
+
 ## Booru page navigation
 
 Booru Browser uses Stash’s standard pagination control (first/previous,
