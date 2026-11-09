@@ -140,6 +140,7 @@ const PerformerTabs: React.FC<{
         }
       >
         <FilteredMediaList
+          key={performer.id}
           filterHook={mediaFilterHook}
           view={View.PerformerMedia}
         />

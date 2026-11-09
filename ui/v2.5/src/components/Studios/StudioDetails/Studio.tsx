@@ -176,6 +176,7 @@ const StudioTabs: React.FC<{
       >
         {contentSwitch}
         <FilteredMediaList
+          key={studio.id}
           filterHook={mediaFilterHook}
           view={View.StudioMedia}
         />
