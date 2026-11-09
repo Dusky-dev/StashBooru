@@ -306,7 +306,9 @@
     React.useEffect(() => {
       const onClick = (ev) => {
         const item = ev.target?.closest?.(".scene-wall .wall-item");
-        if (!item || item.closest(".unified-media-wall")) return;
+        // The native mixed All wall supplies its own mixed Image/Video
+        // preview. Only intercept native Videos-only walls.
+        if (!item || item.closest(".unified-media-wall, .media-wall")) return;
         if (ev.target?.closest?.(".wall-item-check, .wall-item-footer a")) return;
         if (item.querySelector?.('.wall-item-check:checked')) return;
 
