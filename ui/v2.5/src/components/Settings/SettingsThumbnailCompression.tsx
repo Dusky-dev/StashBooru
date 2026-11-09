@@ -356,7 +356,7 @@ export const SettingsThumbnailCompression: React.FC = () => {
             const q = Number(e.currentTarget.value);
             setImageQuality(q);
             setImageMinQuality((prev) => Math.min(prev, q));
-          }
+          }}
         />
       </Form.Group>
       <Form.Group controlId="experimental-image-resolution">
