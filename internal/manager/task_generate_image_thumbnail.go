@@ -34,12 +34,25 @@ func (t *GenerateImageThumbnailTask) Start(ctx context.Context) {
 	}
 
 	mgr := GetInstance()
-	format := mgr.Config.GetImageThumbnailFormat()
-	quality := mgr.Config.GetImageThumbnailQuality()
-	thumbPath := mgr.Paths.Generated.GetThumbnailPathForEncoding(t.Image.Checksum, models.DefaultGthumbWidth, format, quality)
 	f := t.Image.Files.Primary()
 	if f == nil {
 		return
+	}
+	animated, err := image.IsAnimatedSource(f)
+	if err != nil {
+		logger.Errorf("[generator] detecting animation for %s: %v", f.Base().Path, err)
+		return
+	}
+	if animated && !mgr.Config.IsExperimentalAnimatedThumbnailEnabled() {
+		return // preserve native animated GIF/WebP behavior
+	}
+	format := mgr.Config.GetImageThumbnailFormat()
+	quality := mgr.Config.GetImageThumbnailQuality()
+	thumbPath := mgr.Paths.Generated.GetThumbnailPathForEncoding(t.Image.Checksum, models.DefaultGthumbWidth, format, quality)
+	if animated {
+		format = "webp"
+		quality = mgr.Config.GetAnimatedThumbnailQuality()
+		thumbPath = mgr.Paths.Generated.GetAnimatedThumbnailPathForEncoding(t.Image.Checksum, models.DefaultGthumbWidth, quality)
 	}
 	path := f.Base().Path
 
@@ -56,7 +69,12 @@ func (t *GenerateImageThumbnailTask) Start(ctx context.Context) {
 	encoder := image.NewThumbnailEncoder(mgr.FFMpeg, mgr.FFProbe, clipPreviewOptions)
 	encoder.ThumbnailFormat = format
 	encoder.ThumbnailQuality = quality
-	data, err := encoder.GetThumbnail(f, models.DefaultGthumbWidth)
+	var data []byte
+	if animated {
+		data, err = encoder.GetAnimatedThumbnail(f, models.DefaultGthumbWidth, quality)
+	} else {
+		data, err = encoder.GetThumbnail(f, models.DefaultGthumbWidth)
+	}
 	if err != nil {
 		// Unsupported animated images are expected; selected JXL encoder errors
 		// are not, and must remain visible instead of being silently replaced.
@@ -75,7 +93,20 @@ func (t *GenerateImageThumbnailTask) Start(ctx context.Context) {
 }
 
 func (t *GenerateImageThumbnailTask) required() bool {
-	vf, ok := t.Image.Files.Primary().(models.VisualFile)
+	f := t.Image.Files.Primary()
+	if f == nil {
+		return false
+	}
+	animated, err := image.IsAnimatedSource(f)
+	if err != nil {
+		logger.Errorf("[generator] determining animation: %v", err)
+		return false
+	}
+	mgr := GetInstance()
+	if animated && !mgr.Config.IsExperimentalAnimatedThumbnailEnabled() {
+		return false
+	}
+	vf, ok := f.(models.VisualFile)
 	if !ok {
 		return false
 	}
@@ -88,10 +119,13 @@ func (t *GenerateImageThumbnailTask) required() bool {
 		return true
 	}
 
-	mgr := GetInstance()
 	format := mgr.Config.GetImageThumbnailFormat()
 	quality := mgr.Config.GetImageThumbnailQuality()
 	thumbPath := mgr.Paths.Generated.GetThumbnailPathForEncoding(t.Image.Checksum, models.DefaultGthumbWidth, format, quality)
+	if animated {
+		quality = mgr.Config.GetAnimatedThumbnailQuality()
+		thumbPath = mgr.Paths.Generated.GetAnimatedThumbnailPathForEncoding(t.Image.Checksum, models.DefaultGthumbWidth, quality)
+	}
 	exists, _ := fsutil.FileExists(thumbPath)
 	return !exists
 }

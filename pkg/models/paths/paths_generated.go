@@ -110,3 +110,8 @@ func (gp *generatedPaths) GetClipPreviewPathForEncoding(checksum string, width i
 	fname := fmt.Sprintf("%s_%d_q%d.%s", checksum, width, quality, format)
 	return filepath.Join(gp.Thumbnails, fsutil.GetIntraDir(checksum, thumbDirDepth, thumbDirLength), fname)
 }
+
+func (gp *generatedPaths) GetAnimatedThumbnailPathForEncoding(checksum string, width int, quality int) string {
+	fname := fmt.Sprintf("%s_%d_anim_q%d.webp", checksum, width, quality)
+	return filepath.Join(gp.Thumbnails, fsutil.GetIntraDir(checksum, thumbDirDepth, thumbDirLength), fname)
+}

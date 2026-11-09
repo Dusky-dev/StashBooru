@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -65,6 +66,63 @@ func NewThumbnailEncoder(ffmpegEncoder *ffmpeg.FFMpeg, ffProbe *ffmpeg.FFProbe, 
 	}
 
 	return ret
+}
+
+// IsAnimatedSource identifies GIF and animated WebP without reading an
+// entire source image into memory. It does not alter source files.
+func IsAnimatedSource(f models.File) (bool, error) {
+	imageFile, ok := f.(*models.ImageFile)
+	if !ok {
+		return false, nil
+	}
+	if imageFile.Format == formatGif {
+		return true, nil
+	}
+	if imageFile.Format != formatWebP {
+		return false, nil
+	}
+	reader, err := f.Open(&file.OsFS{})
+	if err != nil {
+		return false, err
+	}
+	defer reader.Close()
+	buf := make([]byte, 48)
+	n, err := io.ReadFull(reader, buf)
+	if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+		return false, err
+	}
+	return isWebPAnimated(buf[:n]), nil
+}
+
+// GetAnimatedThumbnail generates a reduced-frame-rate animated WebP preview.
+// It never writes or replaces the original GIF/WebP source.
+func (e *ThumbnailEncoder) GetAnimatedThumbnail(f models.File, maxSize, quality int) ([]byte, error) {
+	animated, err := IsAnimatedSource(f)
+	if err != nil {
+		return nil, err
+	}
+	if !animated {
+		return nil, fmt.Errorf("%w: source is not animated GIF/WebP", ErrNotSupportedForThumbnail)
+	}
+	if quality < 10 || quality > 100 {
+		quality = 70
+	}
+	reader, err := f.Open(&file.OsFS{})
+	if err != nil {
+		return nil, err
+	}
+	defer reader.Close()
+	if e.FFMpeg == nil {
+		return nil, fmt.Errorf("FFmpeg is required for animated WebP thumbnails")
+	}
+	args := ffmpeg.Args{
+		"-hide_banner", "-loglevel", "error",
+		"-i", "pipe:0",
+		"-vf", fmt.Sprintf("fps=12,scale='min(%d,iw)':'min(%d,ih)':force_original_aspect_ratio=decrease:flags=lanczos", maxSize, maxSize),
+		"-an", "-c:v", "libwebp_anim", "-quality", fmt.Sprint(quality),
+		"-loop", "0", "-f", "webp", "pipe:1",
+	}
+	return e.FFMpeg.GenerateOutput(context.TODO(), args, reader)
 }
 
 // GetThumbnail returns the thumbnail image of the provided image resized to

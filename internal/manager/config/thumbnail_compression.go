@@ -20,7 +20,30 @@ func experimentalQuality(settings map[string]interface{}, key string, fallback i
 	return quality
 }
 
+func (i *Config) IsExperimentalImageThumbnailEnabled() bool {
+	value, _ := i.GetUIConfiguration()["thumbnailImageEnabled"].(bool)
+	return value
+}
+
+func (i *Config) IsExperimentalClipPreviewEnabled() bool {
+	value, _ := i.GetUIConfiguration()["thumbnailVideoEnabled"].(bool)
+	return value
+}
+
+func (i *Config) IsExperimentalAnimatedThumbnailEnabled() bool {
+	value, _ := i.GetUIConfiguration()["thumbnailAnimatedEnabled"].(bool)
+	return value
+}
+
+func (i *Config) GetAnimatedThumbnailQuality() int {
+	return experimentalQuality(i.GetUIConfiguration(), "thumbnailAnimatedQuality", 70)
+}
+
 func (i *Config) GetImageThumbnailFormat() string {
+	if !i.IsExperimentalImageThumbnailEnabled() {
+		return "jpg"
+	}
+
 	value, _ := i.GetUIConfiguration()["thumbnailImageFormat"].(string)
 	switch value {
 	case "jpg", "webp", "jxl":
@@ -31,10 +54,16 @@ func (i *Config) GetImageThumbnailFormat() string {
 }
 
 func (i *Config) GetImageThumbnailQuality() int {
+	if !i.IsExperimentalImageThumbnailEnabled() {
+		return 70
+	}
 	return experimentalQuality(i.GetUIConfiguration(), "thumbnailImageQuality", 70)
 }
 
 func (i *Config) GetClipPreviewFormat() string {
+	if !i.IsExperimentalClipPreviewEnabled() {
+		return "webm"
+	}
 	value, _ := i.GetUIConfiguration()["thumbnailVideoFormat"].(string)
 	if value == "mp4" {
 		return "mp4"
@@ -43,5 +72,8 @@ func (i *Config) GetClipPreviewFormat() string {
 }
 
 func (i *Config) GetClipPreviewQuality() int {
+	if !i.IsExperimentalClipPreviewEnabled() {
+		return 75
+	}
 	return experimentalQuality(i.GetUIConfiguration(), "thumbnailVideoQuality", 75)
 }

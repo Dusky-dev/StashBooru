@@ -139,7 +139,27 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 	mgr := manager.GetInstance()
 	format := mgr.Config.GetImageThumbnailFormat()
 	quality := mgr.Config.GetImageThumbnailQuality()
+	animated := false
+	if f := img.Files.Primary(); f != nil {
+		var detectionError error
+		animated, detectionError = image.IsAnimatedSource(f)
+		if detectionError != nil {
+			logger.Warnf("cannot detect animation for image %s: %v", img.Path, detectionError)
+		}
+	}
+	if animated {
+		if mgr.Config.IsExperimentalAnimatedThumbnailEnabled() {
+			format = "webp"
+			quality = mgr.Config.GetAnimatedThumbnailQuality()
+		} else {
+			// Keep native animation behavior even when static image compression is enabled.
+			format, quality = "jpg", 70
+		}
+	}
 	filepath := mgr.Paths.Generated.GetThumbnailPathForEncoding(img.Checksum, models.DefaultGthumbWidth, format, quality)
+	if animated && mgr.Config.IsExperimentalAnimatedThumbnailEnabled() {
+		filepath = mgr.Paths.Generated.GetAnimatedThumbnailPathForEncoding(img.Checksum, models.DefaultGthumbWidth, quality)
+	}
 	if format != "jpg" || quality != 70 {
 		w.Header().Set("Cache-Control", "no-cache, must-revalidate")
 	}
@@ -177,7 +197,13 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 		encoder := image.NewThumbnailEncoder(mgr.FFMpeg, mgr.FFProbe, clipPreviewOptions)
 		encoder.ThumbnailFormat = format
 		encoder.ThumbnailQuality = quality
-		data, err := encoder.GetThumbnail(f, models.DefaultGthumbWidth)
+		var data []byte
+		var err error
+		if animated && mgr.Config.IsExperimentalAnimatedThumbnailEnabled() {
+			data, err = encoder.GetAnimatedThumbnail(f, models.DefaultGthumbWidth, quality)
+		} else {
+			data, err = encoder.GetThumbnail(f, models.DefaultGthumbWidth)
+		}
 		if err != nil {
 			// don't log for unsupported image format
 			if !errors.Is(err, image.ErrNotSupportedForThumbnail) && !errors.Is(err, fs.ErrNotExist) {
