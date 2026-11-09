@@ -470,10 +470,9 @@ export const SettingsThumbnailCompression: React.FC = () => {
       )}
       {imageFormat === "avif" && (
         <Alert variant="info">
-          AVIF uses libvips with an AV1 encoder (effort 4, 4:4:4 chroma). The
-          server verifies that AVIF encoding works before rebuilding. Start at
-          320 px and quality 55–65 in Fixed mode; encoder quality values are not
-          comparable with JPEG or JXL.
+          AVIF uses libvips when available, or FFmpeg/libaom-av1 when it isn't.
+          The server tests encoding before rebuilding. Start at 320 px and
+          quality 55–65 in Fixed mode; quality values differ between encoders.
         </Alert>
       )}
       {enabled.image && !unchanged.image && (

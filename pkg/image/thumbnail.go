@@ -130,6 +130,10 @@ func (e *ThumbnailEncoder) GetAnimatedThumbnail(f models.File, maxSize, quality 
 // It returns nil and an error if an error occurs reading, decoding or encoding
 // the image, or if the image is not suitable for thumbnails.
 func (e *ThumbnailEncoder) GetThumbnail(f models.File, maxSize int) ([]byte, error) {
+	if e.ThumbnailFormat == "avif" {
+		return e.getAVIFThumbnail(f, maxSize)
+	}
+
 	// Video-backed image clips can be large, so avoid buffering the whole file.
 	if _, ok := f.(*models.VideoFile); ok {
 		if e.ThumbnailFormat == "jxl" || e.ThumbnailFormat == "avif" {
