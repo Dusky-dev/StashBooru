@@ -62,6 +62,15 @@ export interface IUIConfig {
   showStudioText?: boolean;
 
   previewVolume?: number;
+  // Experimental server-side compression (saved through ConfigureUI).
+  thumbnailImageEnabled?: boolean;
+  thumbnailVideoEnabled?: boolean;
+  thumbnailAnimatedEnabled?: boolean;
+  thumbnailAnimatedQuality?: number;
+  thumbnailImageFormat?: "jpg" | "webp" | "jxl";
+  thumbnailImageQuality?: number;
+  thumbnailVideoFormat?: "webm" | "mp4";
+  thumbnailVideoQuality?: number;
 
   abbreviateCounters?: boolean;
 

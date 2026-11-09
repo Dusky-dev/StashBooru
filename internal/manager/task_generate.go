@@ -68,6 +68,8 @@ type GenerateJob struct {
 
 	overwrite      bool
 	fileNamingAlgo models.HashAlgorithm
+	// Nonempty only for category-scoped experimental cache rebuilds.
+	ThumbnailCategory string
 
 	totals totalsGenerate
 }
@@ -560,10 +562,24 @@ func (j *GenerateJob) queueMarkerJob(g *generate.Generator, marker *models.Scene
 	queue <- task
 }
 
-func (j *GenerateJob) queueImageJob(g *generate.Generator, image *models.Image, queue chan<- Task) {
+func (j *GenerateJob) queueImageJob(g *generate.Generator, img *models.Image, queue chan<- Task) {
 	if j.input.ImageThumbnails {
+		if j.ThumbnailCategory == "image" || j.ThumbnailCategory == "animated" {
+			f := img.Files.Primary()
+			if f == nil {
+				return
+			}
+			animated, err := image.IsAnimatedSource(f)
+			if err != nil {
+				logger.Errorf("could not inspect animation for image %s: %v", f.Base().Path, err)
+				return
+			}
+			if (j.ThumbnailCategory == "animated") != animated {
+				return
+			}
+		}
 		task := &GenerateImageThumbnailTask{
-			Image:     *image,
+			Image:     *img,
 			Overwrite: j.overwrite,
 		}
 
@@ -576,7 +592,7 @@ func (j *GenerateJob) queueImageJob(g *generate.Generator, image *models.Image, 
 
 	if j.input.ClipPreviews {
 		task := &GenerateClipPreviewTask{
-			Image:     *image,
+			Image:     *img,
 			Overwrite: j.overwrite,
 		}
 
@@ -589,7 +605,7 @@ func (j *GenerateJob) queueImageJob(g *generate.Generator, image *models.Image, 
 
 	if j.input.ImagePhashes {
 		// generate for all files in image
-		for _, f := range image.Files.List() {
+		for _, f := range img.Files.List() {
 			if imageFile, ok := f.(*models.ImageFile); ok {
 				task := &GenerateImagePhashTask{
 					repository: j.repository,

@@ -33,16 +33,31 @@ func (t *GenerateImageThumbnailTask) Start(ctx context.Context) {
 		return
 	}
 
-	thumbPath := GetInstance().Paths.Generated.GetThumbnailPath(t.Image.Checksum, models.DefaultGthumbWidth)
+	mgr := GetInstance()
 	f := t.Image.Files.Primary()
 	if f == nil {
 		return
+	}
+	animated, err := image.IsAnimatedSource(f)
+	if err != nil {
+		logger.Errorf("[generator] detecting animation for %s: %v", f.Base().Path, err)
+		return
+	}
+	if animated && !mgr.Config.IsExperimentalAnimatedThumbnailEnabled() {
+		return // preserve native animated GIF/WebP behavior
+	}
+	format := mgr.Config.GetImageThumbnailFormat()
+	quality := mgr.Config.GetImageThumbnailQuality()
+	thumbPath := mgr.Paths.Generated.GetThumbnailPathForEncoding(t.Image.Checksum, models.DefaultGthumbWidth, format, quality)
+	if animated {
+		format = "webp"
+		quality = mgr.Config.GetAnimatedThumbnailQuality()
+		thumbPath = mgr.Paths.Generated.GetAnimatedThumbnailPathForEncoding(t.Image.Checksum, models.DefaultGthumbWidth, quality)
 	}
 	path := f.Base().Path
 
 	logger.Debugf("Generating thumbnail for %s", path)
 
-	mgr := GetInstance()
 	c := mgr.Config
 
 	clipPreviewOptions := image.ClipPreviewOptions{
@@ -52,11 +67,18 @@ func (t *GenerateImageThumbnailTask) Start(ctx context.Context) {
 	}
 
 	encoder := image.NewThumbnailEncoder(mgr.FFMpeg, mgr.FFProbe, clipPreviewOptions)
-	data, err := encoder.GetThumbnail(f, models.DefaultGthumbWidth)
-
+	encoder.ThumbnailFormat = format
+	encoder.ThumbnailQuality = quality
+	var data []byte
+	if animated {
+		data, err = encoder.GetAnimatedThumbnail(f, models.DefaultGthumbWidth, quality)
+	} else {
+		data, err = encoder.GetThumbnail(f, models.DefaultGthumbWidth)
+	}
 	if err != nil {
-		// don't log for animated images
-		if !errors.Is(err, image.ErrNotSupportedForThumbnail) {
+		// Unsupported animated images are expected; selected JXL encoder errors
+		// are not, and must remain visible instead of being silently replaced.
+		if format == "jxl" || !errors.Is(err, image.ErrNotSupportedForThumbnail) {
 			logger.Errorf("[generator] getting thumbnail for image %s: %s", path, err.Error())
 			t.logStderr(err)
 		}
@@ -71,21 +93,49 @@ func (t *GenerateImageThumbnailTask) Start(ctx context.Context) {
 }
 
 func (t *GenerateImageThumbnailTask) required() bool {
-	vf, ok := t.Image.Files.Primary().(models.VisualFile)
+	f := t.Image.Files.Primary()
+	if f == nil {
+		return false
+	}
+	animated, err := image.IsAnimatedSource(f)
+	if err != nil {
+		logger.Errorf("[generator] determining animation: %v", err)
+		return false
+	}
+	mgr := GetInstance()
+	if animated && !mgr.Config.IsExperimentalAnimatedThumbnailEnabled() {
+		return false
+	}
+	vf, ok := f.(models.VisualFile)
 	if !ok {
 		return false
 	}
 
+	// Native mode keeps Stash's no-reencode behavior for small images.
+	// Explicit experimental codecs rebuild every eligible source regardless
+	// of size so the user-selected cache is actually populated.
 	if vf.GetHeight() <= models.DefaultGthumbWidth && vf.GetWidth() <= models.DefaultGthumbWidth {
-		return false
+		// Native mode does not need resized thumbnails for small sources,
+		// while an explicitly enabled codec still rebuilds them.
+		if animated && !mgr.Config.IsExperimentalAnimatedThumbnailEnabled() {
+			return false
+		}
+		if !animated && !mgr.Config.IsExperimentalImageThumbnailEnabled() {
+			return false
+		}
 	}
 
 	if t.Overwrite {
 		return true
 	}
 
-	thumbPath := GetInstance().Paths.Generated.GetThumbnailPath(t.Image.Checksum, models.DefaultGthumbWidth)
+	format := mgr.Config.GetImageThumbnailFormat()
+	quality := mgr.Config.GetImageThumbnailQuality()
+	thumbPath := mgr.Paths.Generated.GetThumbnailPathForEncoding(t.Image.Checksum, models.DefaultGthumbWidth, format, quality)
+	if animated {
+		quality = mgr.Config.GetAnimatedThumbnailQuality()
+		thumbPath = mgr.Paths.Generated.GetAnimatedThumbnailPathForEncoding(t.Image.Checksum, models.DefaultGthumbWidth, quality)
+	}
 	exists, _ := fsutil.FileExists(thumbPath)
-
 	return !exists
 }

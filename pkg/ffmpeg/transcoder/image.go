@@ -2,6 +2,7 @@ package transcoder
 
 import (
 	"errors"
+	"strconv"
 
 	"github.com/stashapp/stash/pkg/ffmpeg"
 )
@@ -27,18 +28,26 @@ func ImageThumbnail(input string, options ImageThumbnailOptions) ffmpeg.Args {
 	args = args.Overwrite().
 		ImageFormat(options.InputFormat).
 		Input(input).
-		VideoFilter(videoFilter).
-		VideoCodec(ffmpeg.VideoCodecMJpeg)
+		VideoFilter(videoFilter)
+
+	if options.OutputFormat == ffmpeg.ImageFormatWebp {
+		args = args.VideoCodec(ffmpeg.VideoCodecLibWebP)
+	} else {
+		args = args.VideoCodec(ffmpeg.VideoCodecMJpeg)
+	}
 
 	args = append(args, "-frames:v", "1")
 
 	if options.Quality > 0 {
-		args = args.FixedQualityScaleVideo(options.Quality)
+		if options.OutputFormat == ffmpeg.ImageFormatWebp {
+			args = append(args, "-q:v", strconv.Itoa(options.Quality))
+		} else {
+			args = args.FixedQualityScaleVideo(options.Quality)
+		}
 	}
 
 	args = args.ImageFormat(ffmpeg.ImageFormatImage2Pipe).
-		Output(options.OutputPath).
-		ImageFormat(options.OutputFormat)
+		Output(options.OutputPath)
 
 	return args
 }

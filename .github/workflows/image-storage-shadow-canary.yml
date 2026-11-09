@@ -17,8 +17,11 @@ on:
 
 jobs:
   prepared-canary:
-    runs-on: [self-hosted, stashbooru]
+    # sqlite-vec CGO bindings require sqlite3.h; the self-hosted runner lacks it.
+    runs-on: ubuntu-24.04
     steps:
+      - name: Install SQLite development headers
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libsqlite3-dev pkg-config
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:

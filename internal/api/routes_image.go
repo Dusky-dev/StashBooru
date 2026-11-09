@@ -40,6 +40,8 @@ func (rs imageRoutes) Routes() chi.Router {
 	}
 
 	r := chi.NewRouter()
+	r.Get("/thumbnail-compression", rs.ThumbnailCompressionStatus)
+	r.Post("/thumbnail-compression", rs.ThumbnailCompressionApply)
 	r.Get("/storage-estimate", rs.StorageEstimateStatus)
 	r.Post("/storage-estimate", rs.StorageEstimateStart)
 	r.Get("/storage-backup-preflight", rs.StorageBackupPreflightStatus)
@@ -137,11 +139,39 @@ func (rs imageRoutes) Thumbnail(w http.ResponseWriter, r *http.Request) {
 
 func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img *models.Image, modTime *time.Time) {
 	mgr := manager.GetInstance()
-	filepath := mgr.Paths.Generated.GetThumbnailPath(img.Checksum, models.DefaultGthumbWidth)
+	format := mgr.Config.GetImageThumbnailFormat()
+	quality := mgr.Config.GetImageThumbnailQuality()
+	animated := false
+	if f := img.Files.Primary(); f != nil {
+		var detectionError error
+		animated, detectionError = image.IsAnimatedSource(f)
+		if detectionError != nil {
+			logger.Warnf("cannot detect animation for image %s: %v", img.Path, detectionError)
+		}
+	}
+	if animated {
+		if mgr.Config.IsExperimentalAnimatedThumbnailEnabled() {
+			format = "webp"
+			quality = mgr.Config.GetAnimatedThumbnailQuality()
+		} else {
+			// Keep native animation behavior even when static image compression is enabled.
+			format, quality = "jpg", 70
+		}
+	}
+	filepath := mgr.Paths.Generated.GetThumbnailPathForEncoding(img.Checksum, models.DefaultGthumbWidth, format, quality)
+	if animated && mgr.Config.IsExperimentalAnimatedThumbnailEnabled() {
+		filepath = mgr.Paths.Generated.GetAnimatedThumbnailPathForEncoding(img.Checksum, models.DefaultGthumbWidth, quality)
+	}
+	if format != "jpg" || quality != 70 {
+		w.Header().Set("Cache-Control", "no-cache, must-revalidate")
+	}
 
 	// if the thumbnail doesn't exist, encode on the fly
 	exists, _ := fsutil.FileExists(filepath)
 	if exists {
+		if format == "jxl" {
+			w.Header().Set("Content-Type", "image/jxl")
+		}
 		if modTime == nil {
 			utils.ServeStaticFile(w, r, filepath)
 		} else {
@@ -166,8 +196,16 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 			Preset:     manager.GetInstance().Config.GetPreviewPreset().String(),
 		}
 
-		encoder := image.NewThumbnailEncoder(manager.GetInstance().FFMpeg, manager.GetInstance().FFProbe, clipPreviewOptions)
-		data, err := encoder.GetThumbnail(f, models.DefaultGthumbWidth)
+		encoder := image.NewThumbnailEncoder(mgr.FFMpeg, mgr.FFProbe, clipPreviewOptions)
+		encoder.ThumbnailFormat = format
+		encoder.ThumbnailQuality = quality
+		var data []byte
+		var err error
+		if animated && mgr.Config.IsExperimentalAnimatedThumbnailEnabled() {
+			data, err = encoder.GetAnimatedThumbnail(f, models.DefaultGthumbWidth, quality)
+		} else {
+			data, err = encoder.GetThumbnail(f, models.DefaultGthumbWidth)
+		}
 		if err != nil {
 			// don't log for unsupported image format
 			if !errors.Is(err, image.ErrNotSupportedForThumbnail) && !errors.Is(err, fs.ErrNotExist) {
@@ -179,13 +217,19 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 				}
 			}
 
-			// backwards compatibility - fallback to original image instead
+			// An explicitly selected experimental codec must never silently
+			// fall back to source media or another thumbnail format.
+			if format != "jpg" {
+				http.Error(w, "failed to generate selected "+format+" thumbnail: "+err.Error(), http.StatusUnprocessableEntity)
+				return
+			}
+			// Legacy JPEG keeps its original fallback behavior.
 			rs.serveImage(w, r, img, useDefault)
 			return
 		}
 
 		// write the generated thumbnail to disk if enabled
-		if manager.GetInstance().Config.IsWriteImageThumbnails() {
+		if mgr.Config.IsWriteImageThumbnails() {
 			logger.Debugf("writing thumbnail to disk: %s", img.Path)
 			if err := fsutil.WriteFile(filepath, data); err == nil {
 				utils.ServeStaticFile(w, r, filepath)
@@ -193,15 +237,22 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 			}
 			logger.Errorf("error writing thumbnail for image %s: %v", img.Path, err)
 		}
+		switch format {
+		case "jxl":
+			w.Header().Set("Content-Type", "image/jxl")
+		case "webp":
+			w.Header().Set("Content-Type", "image/webp")
+		default:
+			w.Header().Set("Content-Type", "image/jpeg")
+		}
 		utils.ServeStaticContent(w, r, data)
 	}
 }
 
 func (rs imageRoutes) Preview(w http.ResponseWriter, r *http.Request) {
 	img := r.Context().Value(imageKey).(*models.Image)
-	filepath := manager.GetInstance().Paths.Generated.GetClipPreviewPath(img.Checksum, models.DefaultGthumbWidth)
-
-	// don't check if the preview exists - we'll just return a 404 if it doesn't
+	mgr := manager.GetInstance()
+	filepath := mgr.Paths.Generated.GetClipPreviewPathForEncoding(img.Checksum, models.DefaultGthumbWidth, mgr.Config.GetClipPreviewFormat(), mgr.Config.GetClipPreviewQuality())
 	utils.ServeStaticFile(w, r, filepath)
 }
 
