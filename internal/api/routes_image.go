@@ -40,6 +40,8 @@ func (rs imageRoutes) Routes() chi.Router {
 	}
 
 	r := chi.NewRouter()
+	r.Get("/thumbnail-compression", rs.ThumbnailCompressionStatus)
+	r.Post("/thumbnail-compression", rs.ThumbnailCompressionApply)
 	r.Get("/storage-estimate", rs.StorageEstimateStatus)
 	r.Post("/storage-estimate", rs.StorageEstimateStart)
 	r.Get("/storage-backup-preflight", rs.StorageBackupPreflightStatus)
