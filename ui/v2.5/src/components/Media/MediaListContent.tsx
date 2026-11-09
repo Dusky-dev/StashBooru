@@ -1,7 +1,4 @@
-import {
-  mixedMediaLightboxImage,
-  StackMember,
-} from "../VisualStacks/media";
+import { mixedMediaLightboxImage, StackMember } from "../VisualStacks/media";
 import { useCallback, useMemo } from "react";
 import * as GQL from "src/core/generated-graphql";
 import { useLightbox } from "src/hooks/Lightbox/hooks";
