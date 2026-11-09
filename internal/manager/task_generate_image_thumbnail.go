@@ -81,9 +81,10 @@ func (t *GenerateImageThumbnailTask) Start(ctx context.Context) {
 	encoder.ThumbnailFormat = format
 	encoder.ThumbnailQuality = quality
 	var data []byte
-	if animated {
+	switch {
+	case animated:
 		data, err = encoder.GetAnimatedThumbnail(f, width, quality)
-	} else if mgr.Config.IsExperimentalImageThumbnailEnabled() && mgr.Config.GetExperimentalThumbnailMode() == "adaptive" {
+	case mgr.Config.IsExperimentalImageThumbnailEnabled() && mgr.Config.GetExperimentalThumbnailMode() == "adaptive":
 		nativePath := mgr.Paths.Generated.GetThumbnailPath(t.Image.Checksum, models.DefaultGthumbWidth)
 		var choice image.AdaptiveThumbnailChoice
 		data, choice, err = encoder.GetAdaptiveThumbnail(
@@ -93,7 +94,7 @@ func (t *GenerateImageThumbnailTask) Start(ctx context.Context) {
 		if err == nil {
 			logger.Debugf("[generator] adaptive thumbnail %s: %dpx Q%d, %d bytes", path, choice.Resolution, choice.Quality, choice.Bytes)
 		}
-	} else {
+	default:
 		data, err = encoder.GetThumbnail(f, width)
 	}
 	if err != nil {

@@ -212,15 +212,16 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 		encoder.ThumbnailQuality = quality
 		var data []byte
 		var err error
-		if animated && mgr.Config.IsExperimentalAnimatedThumbnailEnabled() {
+		switch {
+		case animated && mgr.Config.IsExperimentalAnimatedThumbnailEnabled():
 			data, err = encoder.GetAnimatedThumbnail(f, width, quality)
-		} else if !animated && mgr.Config.IsExperimentalImageThumbnailEnabled() && mgr.Config.GetExperimentalThumbnailMode() == "adaptive" {
+		case !animated && mgr.Config.IsExperimentalImageThumbnailEnabled() && mgr.Config.GetExperimentalThumbnailMode() == "adaptive":
 			nativePath := mgr.Paths.Generated.GetThumbnailPath(img.Checksum, models.DefaultGthumbWidth)
 			data, _, err = encoder.GetAdaptiveThumbnail(
 				r.Context(), f, width, mgr.Config.GetExperimentalThumbnailMinQuality(),
 				mgr.Config.GetExperimentalThumbnailBudget(), nativePath,
 			)
-		} else {
+		default:
 			data, err = encoder.GetThumbnail(f, width)
 		}
 		if err != nil {
