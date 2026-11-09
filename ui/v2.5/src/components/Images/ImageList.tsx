@@ -546,7 +546,7 @@ export const FilteredImageList = PatchComponent(
   (props: IImageList) => {
     const intl = useIntl();
     const [{ data: localInterface }] = useInterfaceLocalForage();
-    const collapseStacks = localInterface?.hideStackVariants === true;
+    const collapseStacks = localInterface?.hideStackVariants !== false;
 
     const [slideshowRunning, setSlideshowRunning] = useState<boolean>(false);
 

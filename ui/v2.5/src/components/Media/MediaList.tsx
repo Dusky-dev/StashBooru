@@ -60,7 +60,7 @@ function useResult(filter: ListFilterModel) {
   const explicit = filter.criteriaFor("collapse_stacks") as BooleanCriterion[];
   const collapse = explicit.length
     ? explicit.some((criterion) => criterion.value === "true")
-    : localInterface?.hideStackVariants === true;
+    : localInterface?.hideStackVariants !== false;
   return GQL.useFindMediaQuery({
     variables: {
       filter: filter.makeFindFilter(),
@@ -189,7 +189,7 @@ const FilteredMediaListComponent = ({
   ) as BooleanCriterion[];
   const collapsed = explicitCollapse.length
     ? explicitCollapse.some((criterion) => criterion.value === "true")
-    : localInterface?.hideStackVariants === true;
+    : localInterface?.hideStackVariants !== false;
   const hiddenSelected = selectedItems.filter(
     (m) => !items.some((item) => item.id === m.id)
   ).length;

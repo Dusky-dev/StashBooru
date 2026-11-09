@@ -59,6 +59,16 @@ async function getStack(id) {
     await gql(`query($id:ID!){findVisualStack(id:$id){${stackFields}}}`, { id })
   ).findVisualStack;
 }
+
+// Only mutate fingerprints in the explicit isolated fixture. Restore every
+// previous value even after a failed assertion, so no persistent test data changes.
+async function setPHash(fileID, value) {
+  const result = await gql(
+    "mutation($input:FileSetFingerprintsInput!){fileSetFingerprints(input:$input)}",
+    { input: { id: String(fileID), fingerprints: [{ type: "phash", value }] } }
+  );
+  assert.equal(result.fileSetFingerprints, true);
+}
 async function snapshot() {
   return gql(`query {
     findImages(filter:{per_page:100,sort:"id"}){count images{id title details date rating100 organized urls galleries{id} visual_files{
@@ -129,6 +139,13 @@ try {
       viewport: { width, height: width < 500 ? 844 : 1000 },
     });
     const errors = [];
+    const originalPHashes = new Map();
+    async function restorePHashes() {
+      for (const [fileID, value] of originalPHashes) {
+        await setPHash(fileID, value);
+        originalPHashes.delete(fileID);
+      }
+    }
     page.on("pageerror", (e) => errors.push(e.message));
     await page.route("**/graphql", async (route) => {
       const name = route.request().postDataJSON()?.operationName;
@@ -144,6 +161,18 @@ try {
       const before = await snapshot();
       await page.goto(`${baseURL}/media`, { waitUntil: "domcontentloaded" });
       await page.locator(".media-list .image-card").first().waitFor();
+      const grouping = page.getByRole("button", {
+        name: "Group stacks",
+        exact: true,
+      });
+      // No browser-local setting exists in the fresh Playwright context.
+      // Representative-only mode must now be the default.
+      await grouping.waitFor();
+      assert.equal(
+        await grouping.getAttribute("aria-pressed"),
+        "true",
+        "Fresh installs must show only stack representatives by default"
+      );
       if (
         await modal(page)
           .getByText("Release Notes", { exact: true })
@@ -200,9 +229,16 @@ try {
         stack.members.map((m) => m.id),
         ["image:1", "scene:1", "image:2", "scene:2"]
       );
-      await page
-        .getByRole("button", { name: "Group stacks", exact: true })
-        .click();
+      // An explicit false must override the default, and toggling back
+      // must restore one card per stack without changing selected members.
+      await grouping.click();
+      await page.waitForFunction(
+        () =>
+          document.querySelectorAll(
+            ".media-list .image-card,.media-list .scene-card"
+          ).length === 8
+      );
+      await grouping.click();
       await page.waitForFunction(
         () =>
           document.querySelectorAll(
@@ -342,6 +378,31 @@ try {
       );
       await wallBadge.click();
 
+      // Images-only Wall: the true Image representative must be present
+      // exactly once. Opening its stack expands hidden Image/Video variants
+      // without navigating away or changing the number of Wall cards.
+      await page.goto(`${baseURL}/images`, { waitUntil: "domcontentloaded" });
+      await page.locator(".image-list .image-card").first().waitFor();
+      await page
+        .locator(".image-list button")
+        .filter({ has: page.locator("svg[data-icon='square']") })
+        .click();
+      await page.locator(".image-list .gallery .wall-item").first().waitFor();
+      const imagesWall = page.locator(".image-list .gallery .wall-item");
+      assert.equal(await imagesWall.count(), 3);
+      const imageWallBadge = page
+        .locator(".image-list .visual-stack-wall-control")
+        .getByRole("button", { name: "Stack · 4", exact: true });
+      await imageWallBadge.waitFor();
+      const imageWallURL = page.url();
+      await imageWallBadge.click();
+      await page
+        .locator('.visual-stack-expanded a[href="/images/1"]')
+        .waitFor();
+      assert.equal(page.url(), imageWallURL);
+      assert.equal(await imagesWall.count(), 3);
+      await imageWallBadge.click();
+
       await page.goto(`${baseURL}/images/1`);
       await selected(page, "image:1");
       await page
@@ -362,18 +423,58 @@ try {
         stack.members.map((m) => m.id),
         ["image:1", "scene:1", "scene:2", "image:2"]
       );
+      // Seed an actual pHash collision in two existing fixture Images.
+      // The search below goes through SQLite and the real GraphQL endpoint,
+      // and Save persists membership only after the user reviews the match.
+      const imageFiles = [2, 3].map((id) => {
+        const image = before.findImages.images.find(
+          (item) => Number(item.id) === id
+        );
+        const file = image?.visual_files?.[0];
+        assert.ok(file?.id, `Image ${id} must have a primary file`);
+        return file;
+      });
+      assert.notEqual(imageFiles[0].id, imageFiles[1].id);
+      for (const file of imageFiles) {
+        const original = file.fingerprints.find(
+          (fingerprint) => fingerprint.type === "phash"
+        );
+        originalPHashes.set(String(file.id), original?.value ?? null);
+        await setPHash(file.id, "1a2b3c4d5e6f7081");
+      }
+      const nativeMatches = await gql(
+        'query { findImages(filter:{per_page:20,sort:"perceptual_similarity:0:2:phash"}) { images { id } } }'
+      );
+      assert.ok(
+        nativeMatches.findImages.images.some((image) => String(image.id) === "3"),
+        "SQLite pHash similarity must return the seeded Image 3"
+      );
+
       await page
         .locator(".visual-stack-filmstrip")
         .getByRole("button", { name: "Manage stack", exact: true })
         .click();
       await modal(page)
-        .getByLabel("Add member by Image or Video URL")
-        .fill("/images/3");
-      await modal(page)
-        .getByRole("button", { name: "Review member", exact: true })
+        .getByRole("button", {
+          name: "Find similar Images (pHash)",
+          exact: true,
+        })
         .click();
+      await modal(page).getByLabel("Maximum pHash distance").selectOption("0");
+      const similarRow = modal(page)
+        .locator(".visual-stack-similar-row")
+        .filter({ has: page.locator('a[href="/images/3"]') });
+      await similarRow.waitFor();
+      assert.equal((await getStack(stack.id)).member_count, 4);
+      await similarRow.getByRole("button", { name: "Add to stack" }).click();
       await row(page, "image:3").waitFor();
+      assert.equal(
+        (await getStack(stack.id)).member_count,
+        4,
+        "Suggested membership must not be committed before Save"
+      );
       await save(page);
+      assert.equal((await getStack(stack.id)).member_count, 5);
       await page
         .locator(".visual-stack-filmstrip")
         .getByRole("button", { name: "Manage stack", exact: true })
@@ -433,6 +534,7 @@ try {
         .locator(".visual-stack-filmstrip")
         .waitFor({ state: "hidden" });
       assert.equal(await getStack(stack.id), null);
+      await restorePHashes();
       assert.deepEqual(
         await snapshot(),
         before,
@@ -440,7 +542,7 @@ try {
       );
       assert.deepEqual(errors, []);
       console.log(
-        `${engineName} ${width}px: create, collapse, hidden selection, previews, stable representative selection, native detail URLs, reorder, add, split, merge, remove and unstack passed`
+        `${engineName} ${width}px: default representative grouping, Grid and both Wall expansion controls, native pHash suggestion and staged Save, create, reorder, split, merge and unstack passed`
       );
     } catch (error) {
       if (shots)
@@ -449,6 +551,7 @@ try {
         });
       throw error;
     } finally {
+      await restorePHashes();
       await page.close();
     }
   }

@@ -343,8 +343,8 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
           <BooleanSetting
             id="show-stack-representatives-only"
             heading="Show only stack representatives"
-            subHeading="Hide variant Images in library lists. Stacks remain intact; open a stack to see and select every member. This preference is saved in this browser."
-            checked={localInterface.data?.hideStackVariants ?? false}
+            subHeading="Show one representative per stack in library lists by default. Turn off to see every variant. No media is deleted; open a stack to access its members. This preference is saved in this browser."
+            checked={localInterface.data?.hideStackVariants ?? true}
             onChange={(value) =>
               setInterfaceLocalForage((prev) => ({
                 ...prev,
