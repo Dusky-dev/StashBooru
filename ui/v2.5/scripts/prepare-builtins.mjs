@@ -25,7 +25,7 @@ const unifiedExtensions = [
 const unifiedClose = Buffer.from("})();\n");
 
 const expectedUnifiedSha256 =
-  "b11e6b33a74b0ff78f6ab6761fc85eb50db9d98f799b2ea576502a5bc3b78edd";
+  "3643d4df8f3e08475d26a1c7dd9d39b385e978b62d83706af05f22fd78b3dcd4";
 
 rmSync(outputDir, { recursive: true, force: true });
 mkdirSync(outputDir, { recursive: true });
