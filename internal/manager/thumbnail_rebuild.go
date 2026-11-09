@@ -90,12 +90,12 @@ func removeThumbnailCategory(ctx context.Context, root, category string) (int, e
 
 // Run in the Job Manager: cleanup and generation are consecutive stages of
 // one queued job, not a scan and not separate, racy button presses.
-func (m *Manager) RebuildExperimentalThumbnailCache(ctx context.Context, progress *job.Progress, category string) error {
+func (s *Manager) RebuildExperimentalThumbnailCache(ctx context.Context, progress *job.Progress, category string) error {
 	progress.SetTotal(1)
 	progress.ExecuteTask("Removing selected generated thumbnail cache", func() {
 		logger.Infof("Experimental %s thumbnail cache rebuild requested", category)
 	})
-	removed, err := removeThumbnailCategory(ctx, m.Paths.Generated.Thumbnails, category)
+	removed, err := removeThumbnailCategory(ctx, s.Paths.Generated.Thumbnails, category)
 	if err != nil {
 		return err // never generate after a partial/failed cleanup
 	}
@@ -110,8 +110,8 @@ func (m *Manager) RebuildExperimentalThumbnailCache(ctx context.Context, progres
 		input.ImageThumbnails = true
 	}
 	return (&GenerateJob{
-		repository:       m.Repository,
-		input:            input,
+		repository:        s.Repository,
+		input:             input,
 		ThumbnailCategory: category,
 	}).Execute(ctx, progress)
 }

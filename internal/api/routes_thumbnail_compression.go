@@ -59,8 +59,8 @@ func (rs imageRoutes) ThumbnailCompressionStatus(w http.ResponseWriter, r *http.
 	thumbnailRebuildMu.Unlock()
 	writeVisualSimilarityJSON(w, map[string]any{
 		"busy": busy, "jobID": id, "category": category,
-		"imageEnabled": m.Config.IsExperimentalImageThumbnailEnabled(),
-		"clipEnabled": m.Config.IsExperimentalClipPreviewEnabled(),
+		"imageEnabled":    m.Config.IsExperimentalImageThumbnailEnabled(),
+		"clipEnabled":     m.Config.IsExperimentalClipPreviewEnabled(),
 		"animatedEnabled": m.Config.IsExperimentalAnimatedThumbnailEnabled(),
 	})
 }

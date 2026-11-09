@@ -88,7 +88,7 @@ func IsAnimatedSource(f models.File) (bool, error) {
 	defer reader.Close()
 	buf := make([]byte, 48)
 	n, err := io.ReadFull(reader, buf)
-	if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
 		return false, err
 	}
 	return isWebPAnimated(buf[:n]), nil

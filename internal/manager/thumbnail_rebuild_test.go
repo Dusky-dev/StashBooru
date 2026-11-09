@@ -12,7 +12,7 @@ func TestThumbnailCacheMatchesIsolated(t *testing.T) {
 	prefix := strings.Repeat("a", 32) + "_320"
 	cases := []struct {
 		name, category string
-		want bool
+		want           bool
 	}{
 		{prefix + ".jpg", "image", true},
 		{prefix + "_q60.jxl", "image", true},
