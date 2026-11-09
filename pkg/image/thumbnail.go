@@ -132,19 +132,17 @@ func (e *ThumbnailEncoder) GetAnimatedThumbnail(f models.File, maxSize, quality 
 func (e *ThumbnailEncoder) GetThumbnail(f models.File, maxSize int) ([]byte, error) {
 	// Video-backed image clips can be large, so avoid buffering the whole file.
 	if _, ok := f.(*models.VideoFile); ok {
-		if e.ThumbnailFormat == "jxl" {
-			// FFmpeg only provides the poster frame; let libvips encode JXL.
-			// Do not substitute WebP/JPEG as the final selected format.
+		if e.ThumbnailFormat == "jxl" || e.ThumbnailFormat == "avif" {
+			// Extract a lossless PNG frame, avoiding a lossy JPEG intermediate
+			// before encoding JXL/AVIF poster thumbnails for video-backed Images.
 			if e.vips == nil {
-				return nil, fmt.Errorf("%w: JXL poster frame encoding requires libvips", ErrNotSupportedForThumbnail)
+				return nil, fmt.Errorf("%w: %s poster frame encoding requires libvips", ErrNotSupportedForThumbnail, e.ThumbnailFormat)
 			}
-			jpegEncoder := *e
-			jpegEncoder.ThumbnailFormat = "jpg"
-			poster, err := jpegEncoder.ffmpegImageThumbnailPath(f.Base().Path, maxSize)
+			poster, err := e.ffmpegLosslessPosterPath(f.Base().Path, maxSize)
 			if err != nil {
 				return nil, err
 			}
-			return e.vips.ImageThumbnailWithOptions(bytes.NewBuffer(poster), maxSize, "jxl", e.ThumbnailQuality)
+			return e.vips.ImageThumbnailWithOptions(bytes.NewBuffer(poster), maxSize, e.ThumbnailFormat, e.ThumbnailQuality)
 		}
 		return e.ffmpegImageThumbnailPath(f.Base().Path, maxSize)
 	}
@@ -253,8 +251,8 @@ func (e *ThumbnailEncoder) ffmpegThumbnailOptions(maxSize int) (transcoder.Image
 	if quality < 10 || quality > 100 {
 		quality = defaultThumbnailQuality
 	}
-	if format == "jxl" {
-		return transcoder.ImageThumbnailOptions{}, fmt.Errorf("%w: JXL encoding requires libvips", ErrNotSupportedForThumbnail)
+	if format == "jxl" || format == "avif" {
+		return transcoder.ImageThumbnailOptions{}, fmt.Errorf("%w: %s encoding requires libvips", ErrNotSupportedForThumbnail, format)
 	}
 	opts := transcoder.ImageThumbnailOptions{
 		OutputFormat:  ffmpeg.ImageFormatJpeg,
@@ -278,6 +276,17 @@ func (e *ThumbnailEncoder) ffmpegImageThumbnail(image *bytes.Buffer, maxSize int
 		return nil, err
 	}
 	return e.FFMpeg.GenerateOutput(context.TODO(), transcoder.ImageThumbnail("-", options), image)
+}
+
+// ffmpegLosslessPosterPath extracts a single frame at thumbnail dimensions
+// without introducing JPEG artifacts before libvips AVIF/JXL encoding.
+func (e *ThumbnailEncoder) ffmpegLosslessPosterPath(inputPath string, maxSize int) ([]byte, error) {
+	var scale ffmpeg.VideoFilter
+	scale = scale.ScaleMaxSize(maxSize)
+	args := ffmpeg.Args{"-hide_banner", "-loglevel", "error", "-i", inputPath}
+	args = args.VideoFilter(scale)
+	args = append(args, "-frames:v", "1", "-c:v", "png", "-f", "image2pipe", "pipe:1")
+	return e.FFMpeg.GenerateOutput(context.TODO(), args, nil)
 }
 
 func (e *ThumbnailEncoder) ffmpegImageThumbnailPath(inputPath string, maxSize int) ([]byte, error) {

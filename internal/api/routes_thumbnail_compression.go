@@ -145,7 +145,7 @@ func validateThumbnailCompressionRequest(req thumbnailCompressionRequest) error 
 	}
 	switch req.Category {
 	case "image":
-		if req.Format != "jpg" && req.Format != "webp" && req.Format != "jxl" {
+		if req.Format != "jpg" && req.Format != "webp" && req.Format != "jxl" && req.Format != "avif" {
 			return fmt.Errorf("unsupported still thumbnail format")
 		}
 	case "clip":
@@ -180,7 +180,7 @@ func validateThumbnailCompressionRequest(req thumbnailCompressionRequest) error 
 }
 
 // Verify the requested codec before deleting any existing generated cache.
-// An unavailable JXL/WebP/VP9/H264 encoder must fail the confirmation request
+// An unavailable JXL/AVIF/WebP/VP9/H264 encoder must fail the confirmation request
 // without changing settings or deleting thumbnails.
 func preflightThumbnailCodec(ctx context.Context, req thumbnailCompressionRequest, mgr *manager.Manager) error {
 	if !req.Enabled {
@@ -193,6 +193,10 @@ func preflightThumbnailCodec(ctx context.Context, req thumbnailCompressionReques
 		switch req.Format {
 		case "jxl":
 			vipsOperation = "jxlsave"
+		case "avif":
+			// heifsave alone is insufficient: libheif may have no AV1 encoder.
+			// Test a tiny real AVIF encode before changing settings or caches.
+			return image.PreflightAVIFThumbnail(ctx)
 		case "webp":
 			vipsOperation = "webpsave"
 			ffmpegEncoder = "libwebp"

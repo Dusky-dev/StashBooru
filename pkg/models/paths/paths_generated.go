@@ -93,7 +93,7 @@ func (gp *generatedPaths) GetThumbnailPathForEncoding(checksum string, width int
 	if format == "jpg" && quality == 70 {
 		return gp.GetThumbnailPath(checksum, width)
 	}
-	if format != "webp" && format != "jxl" {
+	if format != "webp" && format != "jxl" && format != "avif" {
 		format = "jpg"
 	}
 	fname := fmt.Sprintf("%s_%d_q%d.%s", checksum, width, quality, format)
@@ -120,7 +120,7 @@ func (gp *generatedPaths) GetAnimatedThumbnailPathForEncoding(checksum string, w
 // the user selects native-like codec/quality values. This lets "Keep old"
 // restore the exact pre-experiment thumbnails by simply disabling the feature.
 func (gp *generatedPaths) GetExperimentalThumbnailPath(checksum string, width int, format string, quality int) string {
-	if format != "jpg" && format != "webp" && format != "jxl" {
+	if format != "jpg" && format != "webp" && format != "jxl" && format != "avif" {
 		format = "jpg"
 	}
 	fname := fmt.Sprintf("%s_%d_exp_q%d.%s", checksum, width, quality, format)
@@ -142,7 +142,7 @@ func (gp *generatedPaths) GetExperimentalThumbnailProfilePath(checksum string, w
 	if mode != "adaptive" {
 		return gp.GetExperimentalThumbnailPath(checksum, width, format, quality)
 	}
-	if format != "jpg" && format != "webp" && format != "jxl" {
+	if format != "jpg" && format != "webp" && format != "jxl" && format != "avif" {
 		format = "jpg"
 	}
 	fname := fmt.Sprintf("%s_%d_exp_aq%d_m%d_b%d.%s", checksum, width, quality, minimum, budget, format)

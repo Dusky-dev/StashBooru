@@ -180,8 +180,11 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 	// if the thumbnail doesn't exist, encode on the fly
 	exists, _ := fsutil.FileExists(filepath)
 	if exists {
-		if format == "jxl" {
+		switch format {
+		case "jxl":
 			w.Header().Set("Content-Type", "image/jxl")
+		case "avif":
+			w.Header().Set("Content-Type", "image/avif")
 		}
 		if modTime == nil {
 			utils.ServeStaticFile(w, r, filepath)
@@ -258,6 +261,8 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 		switch format {
 		case "jxl":
 			w.Header().Set("Content-Type", "image/jxl")
+		case "avif":
+			w.Header().Set("Content-Type", "image/avif")
 		case "webp":
 			w.Header().Set("Content-Type", "image/webp")
 		default:

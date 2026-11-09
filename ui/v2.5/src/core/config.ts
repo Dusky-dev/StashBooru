@@ -69,7 +69,7 @@ export interface IUIConfig {
   thumbnailAnimatedQuality?: number;
   thumbnailImageKeepOld?: boolean;
   thumbnailVideoKeepOld?: boolean;
-  thumbnailImageFormat?: "jpg" | "webp" | "jxl";
+  thumbnailImageFormat?: "jpg" | "webp" | "jxl" | "avif";
   thumbnailImageQuality?: number;
   thumbnailImageResolution?: number;
   thumbnailImageMode?: "fixed" | "adaptive";

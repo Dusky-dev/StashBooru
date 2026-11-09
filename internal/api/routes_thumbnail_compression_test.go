@@ -80,3 +80,23 @@ func TestValidateAdaptiveThumbnailSettings(t *testing.T) {
 		t.Fatal("unsupported adaptive mode accepted")
 	}
 }
+
+func TestAVIFThumbnailCompressionRequest(t *testing.T) {
+	req := thumbnailCompressionRequest{
+		Category: "image", Enabled: true, Format: "avif",
+		Quality: 60, Resolution: 320, Mode: "fixed", Acknowledged: true,
+	}
+	if err := validateThumbnailCompressionRequest(req); err != nil {
+		t.Fatalf("valid still AVIF rejected: %v", err)
+	}
+	req.Mode = "adaptive"
+	req.MinQuality = 40
+	req.Budget = 100
+	if err := validateThumbnailCompressionRequest(req); err != nil {
+		t.Fatalf("valid adaptive AVIF rejected: %v", err)
+	}
+	req.Category = "animated"
+	if err := validateThumbnailCompressionRequest(req); err == nil {
+		t.Fatal("animated AVIF output must not be accepted")
+	}
+}

@@ -33,9 +33,9 @@ const labels: Record<Category, string> = {
 
 export const SettingsThumbnailCompression: React.FC = () => {
   const { ui, refetch } = useSettings();
-  const [imageFormat, setImageFormat] = useState<"jpg" | "webp" | "jxl">(
-    ui.thumbnailImageFormat ?? "jpg"
-  );
+  const [imageFormat, setImageFormat] = useState<
+    "jpg" | "webp" | "jxl" | "avif"
+  >(ui.thumbnailImageFormat ?? "jpg");
   const [imageQuality, setImageQuality] = useState(
     ui.thumbnailImageQuality ?? 70
   );
@@ -336,12 +336,15 @@ export const SettingsThumbnailCompression: React.FC = () => {
           value={imageFormat}
           disabled={disabled}
           onChange={(e) =>
-            setImageFormat(e.currentTarget.value as "jpg" | "webp" | "jxl")
+            setImageFormat(
+              e.currentTarget.value as "jpg" | "webp" | "jxl" | "avif"
+            )
           }
         >
           <option value="jpg">JPEG (native)</option>
           <option value="webp">WebP</option>
           <option value="jxl">JPEG XL (experimental)</option>
+          <option value="avif">AVIF (experimental)</option>
         </Form.Control>
       </Form.Group>
       <Form.Group controlId="experimental-image-thumb-quality">
@@ -463,6 +466,14 @@ export const SettingsThumbnailCompression: React.FC = () => {
         <Alert variant="warning">
           JPEG XL requires an encoder and browser that support JXL. The selected
           format is strictly enforced; there is no WebP fallback.
+        </Alert>
+      )}
+      {imageFormat === "avif" && (
+        <Alert variant="info">
+          AVIF uses libvips with an AV1 encoder (effort 4, 4:4:4 chroma). The
+          server verifies that AVIF encoding works before rebuilding. Start at
+          320 px and quality 55–65 in Fixed mode; encoder quality values are not
+          comparable with JPEG or JXL.
         </Alert>
       )}
       {enabled.image && !unchanged.image && (

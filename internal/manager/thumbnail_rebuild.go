@@ -13,7 +13,7 @@ import (
 	"github.com/stashapp/stash/pkg/logger"
 )
 
-var thumbnailCacheName = regexp.MustCompile(`^[a-fA-F0-9]{32}_[0-9]+(?:(?:_exp)?_q[0-9]+|_exp_aq[0-9]+_m[0-9]+_b[0-9]+)?\.(?:jpg|webp|jxl|webm|mp4)$`)
+var thumbnailCacheName = regexp.MustCompile(`^[a-fA-F0-9]{32}_[0-9]+(?:(?:_exp)?_q[0-9]+|_exp_aq[0-9]+_m[0-9]+_b[0-9]+)?\.(?:jpg|webp|jxl|avif|webm|mp4)$`)
 var legacyImageCacheName = regexp.MustCompile(`^[a-fA-F0-9]{32}_[0-9]+\.jpg$`)
 var legacyClipCacheName = regexp.MustCompile(`^[a-fA-F0-9]{32}_[0-9]+\.webm$`)
 var animationCacheName = regexp.MustCompile(`^[a-fA-F0-9]{32}_[0-9]+_anim_q[0-9]+\.webp$`)
@@ -30,7 +30,7 @@ func thumbnailCacheMatches(name, category string) bool {
 	extension := strings.ToLower(filepath.Ext(name))
 	switch category {
 	case "image":
-		return extension == ".jpg" || extension == ".webp" || extension == ".jxl"
+		return extension == ".jpg" || extension == ".webp" || extension == ".jxl" || extension == ".avif"
 	case "clip":
 		return extension == ".webm" || extension == ".mp4"
 	default:
