@@ -25,3 +25,21 @@ func TestEncodingPathsKeepLegacyDefaultsAndSeparateVariants(t *testing.T) {
 		t.Fatalf("MP4 clip path extension: %q", got)
 	}
 }
+
+func TestExperimentalPathsNeverOverwriteNativeCache(t *testing.T) {
+	p := newGeneratedPaths(t.TempDir())
+	checksum := strings.Repeat("a", 32)
+	for _, tc := range []struct {
+		experiment string
+		native     string
+	}{
+		{p.GetExperimentalThumbnailPath(checksum, 320, "jpg", 70), p.GetThumbnailPath(checksum, 320)},
+		{p.GetExperimentalThumbnailPath(checksum, 320, "jxl", 60), p.GetThumbnailPath(checksum, 320)},
+		{p.GetExperimentalClipPreviewPath(checksum, 320, "webm", 75), p.GetClipPreviewPath(checksum, 320)},
+		{p.GetExperimentalClipPreviewPath(checksum, 320, "mp4", 60), p.GetClipPreviewPath(checksum, 320)},
+	} {
+		if tc.experiment == tc.native || !strings.Contains(filepath.Base(tc.experiment), "_exp_q") {
+			t.Fatalf("experimental cache must be isolated: %q and %q", tc.experiment, tc.native)
+		}
+	}
+}

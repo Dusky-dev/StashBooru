@@ -49,6 +49,9 @@ func (t *GenerateImageThumbnailTask) Start(ctx context.Context) {
 	format := mgr.Config.GetImageThumbnailFormat()
 	quality := mgr.Config.GetImageThumbnailQuality()
 	thumbPath := mgr.Paths.Generated.GetThumbnailPathForEncoding(t.Image.Checksum, models.DefaultGthumbWidth, format, quality)
+	if mgr.Config.IsExperimentalImageThumbnailEnabled() {
+		thumbPath = mgr.Paths.Generated.GetExperimentalThumbnailPath(t.Image.Checksum, models.DefaultGthumbWidth, format, quality)
+	}
 	if animated {
 		format = "webp"
 		quality = mgr.Config.GetAnimatedThumbnailQuality()
@@ -132,6 +135,9 @@ func (t *GenerateImageThumbnailTask) required() bool {
 	format := mgr.Config.GetImageThumbnailFormat()
 	quality := mgr.Config.GetImageThumbnailQuality()
 	thumbPath := mgr.Paths.Generated.GetThumbnailPathForEncoding(t.Image.Checksum, models.DefaultGthumbWidth, format, quality)
+	if mgr.Config.IsExperimentalImageThumbnailEnabled() {
+		thumbPath = mgr.Paths.Generated.GetExperimentalThumbnailPath(t.Image.Checksum, models.DefaultGthumbWidth, format, quality)
+	}
 	if animated {
 		quality = mgr.Config.GetAnimatedThumbnailQuality()
 		thumbPath = mgr.Paths.Generated.GetAnimatedThumbnailPathForEncoding(t.Image.Checksum, models.DefaultGthumbWidth, quality)

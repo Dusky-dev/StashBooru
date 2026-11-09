@@ -28,6 +28,9 @@ func (t *GenerateClipPreviewTask) Start(ctx context.Context) {
 	format := mgr.Config.GetClipPreviewFormat()
 	quality := mgr.Config.GetClipPreviewQuality()
 	prevPath := mgr.Paths.Generated.GetClipPreviewPathForEncoding(t.Image.Checksum, models.DefaultGthumbWidth, format, quality)
+	if mgr.Config.IsExperimentalClipPreviewEnabled() {
+		prevPath = mgr.Paths.Generated.GetExperimentalClipPreviewPath(t.Image.Checksum, models.DefaultGthumbWidth, format, quality)
+	}
 	f := t.Image.Files.Primary()
 	if f == nil {
 		return
@@ -65,6 +68,9 @@ func (t *GenerateClipPreviewTask) required() bool {
 	format := mgr.Config.GetClipPreviewFormat()
 	quality := mgr.Config.GetClipPreviewQuality()
 	prevPath := mgr.Paths.Generated.GetClipPreviewPathForEncoding(t.Image.Checksum, models.DefaultGthumbWidth, format, quality)
+	if mgr.Config.IsExperimentalClipPreviewEnabled() {
+		prevPath = mgr.Paths.Generated.GetExperimentalClipPreviewPath(t.Image.Checksum, models.DefaultGthumbWidth, format, quality)
+	}
 	if exists, _ := fsutil.FileExists(prevPath); exists {
 		return false
 	}

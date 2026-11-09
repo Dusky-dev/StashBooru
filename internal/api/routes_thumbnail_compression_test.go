@@ -31,3 +31,22 @@ func TestValidateThumbnailCompressionRequestRequiresAcknowledgement(t *testing.T
 		t.Fatal("invalid quality accepted")
 	}
 }
+
+func TestValidateDeleteOldRequiresConfirmationAndNativeCategory(t *testing.T) {
+	req := thumbnailCompressionRequest{Action: "deleteOld", Category: "image"}
+	if err := validateThumbnailCompressionRequest(req); err == nil {
+		t.Fatal("deleteOld must require acknowledgement")
+	}
+	req.Acknowledged = true
+	if err := validateThumbnailCompressionRequest(req); err != nil {
+		t.Fatal(err)
+	}
+	req.Category = "animated"
+	if err := validateThumbnailCompressionRequest(req); err == nil {
+		t.Fatal("animated sources do not have a deletable legacy cache")
+	}
+	req.Action = "invalid"
+	if err := validateThumbnailCompressionRequest(req); err == nil {
+		t.Fatal("invalid cache action accepted")
+	}
+}

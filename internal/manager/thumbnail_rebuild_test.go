@@ -16,6 +16,8 @@ func TestThumbnailCacheMatchesIsolated(t *testing.T) {
 	}{
 		{prefix + ".jpg", "image", true},
 		{prefix + "_q60.jxl", "image", true},
+		{prefix + "_exp_q60.jxl", "image", true},
+		{prefix + "_exp_q45.jpg", "image", true},
 		{prefix + "_q45.webp", "image", true},
 		{prefix + ".webm", "image", false},
 		{prefix + "_anim_q65.webp", "image", false},
@@ -23,6 +25,8 @@ func TestThumbnailCacheMatchesIsolated(t *testing.T) {
 		{prefix + "_q65.webp", "animated", false},
 		{prefix + ".webm", "clip", true},
 		{prefix + "_q55.mp4", "clip", true},
+		{prefix + "_exp_q75.webm", "clip", true},
+		{prefix + "_exp_q55.mp4", "clip", true},
 		{prefix + ".jpg", "clip", false},
 		{"notes.webp", "image", false},
 		{"../../bad.jpg", "image", false},
@@ -64,5 +68,55 @@ func TestRemoveThumbnailCategoryLeavesOtherCachesAndUnknownFiles(t *testing.T) {
 	}
 	if _, err := removeThumbnailCategory(context.Background(), root, "bogus"); err == nil {
 		t.Fatal("invalid category accepted")
+	}
+}
+
+// Existing native thumbnails are not touched when keeping the old cache.
+// A separate deletion must remove only those legacy paths, not experimental
+// files or animated media.
+func TestKeepOldAndDeleteOldAreCategoryScoped(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "thumbnails")
+	sum := strings.Repeat("b", 32)
+	folder := filepath.Join(root, "bb", "bb")
+	if err := os.MkdirAll(folder, 0700); err != nil {
+		t.Fatal(err)
+	}
+	for _, suffix := range []string{
+		"_320.jpg", "_320_exp_q70.jpg", "_320_exp_q55.webp",
+		"_320.webm", "_320_exp_q50.mp4", "_320_anim_q70.webp",
+	} {
+		if err := os.WriteFile(filepath.Join(folder, sum+suffix), []byte("data"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	n, err := removeThumbnailCategoryPreservingOld(context.Background(), root, "image")
+	if err != nil || n != 2 {
+		t.Fatalf("image cleanup removed %d, err %v", n, err)
+	}
+	for _, suffix := range []string{"_320.jpg", "_320.webm", "_320_exp_q50.mp4", "_320_anim_q70.webp"} {
+		if _, err := os.Stat(filepath.Join(folder, sum+suffix)); err != nil {
+			t.Errorf("unrelated/old variant lost: %s: %v", suffix, err)
+		}
+	}
+	n, err = RemoveOldThumbnailCategory(context.Background(), root, "image")
+	if err != nil || n != 1 {
+		t.Fatalf("old-image cleanup removed %d, err %v", n, err)
+	}
+	if _, err := os.Stat(filepath.Join(folder, sum+"_320.webm")); err != nil {
+		t.Fatal("video clip native cache must survive still-image cleanup", err)
+	}
+	n, err = removeThumbnailCategoryPreservingOld(context.Background(), root, "clip")
+	if err != nil || n != 1 {
+		t.Fatalf("clip cleanup removed %d, err %v", n, err)
+	}
+	if _, err := os.Stat(filepath.Join(folder, sum+"_320.webm")); err != nil {
+		t.Fatal("old clip cache must remain:", err)
+	}
+	n, err = RemoveOldThumbnailCategory(context.Background(), root, "clip")
+	if err != nil || n != 1 {
+		t.Fatalf("old-clip cleanup removed %d, err %v", n, err)
+	}
+	if _, err := os.Stat(filepath.Join(folder, sum+"_320_anim_q70.webp")); err != nil {
+		t.Fatal("animated thumbnail cache must survive:", err)
 	}
 }
