@@ -1116,8 +1116,10 @@ export const LightboxComponent: React.FC<IProps> = ({
             : lightboxEntryKey(image, imageIndex)
         }
         src={image.paths.image ?? ""}
-        width={image.visual_files?.[0]?.width ?? 0}
-        height={image.visual_files?.[0]?.height ?? 0}
+        // Native Scene players need usable geometry even when a Video has
+        // no screenshot or its file dimensions have not been indexed yet.
+        width={image.visual_files?.[0]?.width || (image.renderMedia ? 1280 : 0)}
+        height={image.visual_files?.[0]?.height || (image.renderMedia ? 720 : 0)}
         displayMode={displayMode}
         scaleUp={scaleUp}
         scrollMode={scrollMode}
