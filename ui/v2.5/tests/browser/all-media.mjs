@@ -384,8 +384,7 @@ async function check(mode) {
           ["video", "image"],
         ]) {
           const boundary = kinds.findIndex(
-            (kind, i) =>
-              kind === from && kinds[(i + 1) % kinds.length] === to
+            (kind, i) => kind === from && kinds[(i + 1) % kinds.length] === to
           );
           assert.ok(boundary >= 0, `Missing Wall ${from} → ${to} boundary`);
           const previousURL = page.url();
