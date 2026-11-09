@@ -138,6 +138,64 @@ func PreflightAVIFWithFFmpeg(ctx context.Context, ff *ffmpeg.FFMpeg) error {
 	return nil
 }
 
+// encodeAVIFWithLosslessFallback keeps the original media as the source of
+// truth. Formats such as JPEG XL may be decodable by libvips but not by the
+// installed FFmpeg. In that case, hand FFmpeg a resized lossless PNG rather
+// than re-encoding an existing JPEG thumbnail.
+func encodeAVIFWithLosslessFallback(
+	source []byte,
+	decodeFirst bool,
+	encode func([]byte) ([]byte, error),
+	decodePNG func() ([]byte, error),
+) ([]byte, error) {
+	var decodeErr error
+	if decodeFirst && decodePNG != nil {
+		pngData, err := decodePNG()
+		if err == nil {
+			return encode(pngData)
+		}
+		decodeErr = err
+	}
+
+	out, directErr := encode(source)
+	if directErr == nil {
+		return out, nil
+	}
+	if !decodeFirst && decodePNG != nil {
+		pngData, err := decodePNG()
+		if err == nil {
+			return encode(pngData)
+		}
+		decodeErr = err
+	}
+	if decodeErr != nil {
+		return nil, fmt.Errorf("AVIF encoding from source failed: %w (libvips lossless PNG decoding also failed: %v)", directErr, decodeErr)
+	}
+	return nil, directErr
+}
+
+func (e *ThumbnailEncoder) vipsLosslessThumbnailPNG(f models.File, source []byte, maxSize int) ([]byte, error) {
+	if e.vips == nil {
+		return nil, fmt.Errorf("libvips unavailable for lossless source decoding")
+	}
+	var data []byte
+	var err error
+	// Windows libvips has trouble seeking on stdin for some formats. Prefer
+	// the source path when it is accessible; ZIP members still use bytes.
+	if runtime.GOOS == "windows" && f.Base().ZipFileID == nil {
+		data, err = e.vips.ImageThumbnailPathWithOptions(f.Base().Path, maxSize, "png", 100)
+	} else {
+		data, err = e.vips.ImageThumbnailWithOptions(bytes.NewBuffer(source), maxSize, "png", 100)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !bytes.HasPrefix(data, []byte("\x89PNG\r\n\x1a\n")) {
+		return nil, fmt.Errorf("libvips returned invalid lossless PNG data")
+	}
+	return data, nil
+}
+
 // getAVIFThumbnail prefers libvips when it supports AVIF (including alpha),
 // otherwise it uses a native AVIF encode from the original media via FFmpeg.
 // It never re-encodes an existing JPEG thumbnail.
@@ -198,5 +256,24 @@ func (e *ThumbnailEncoder) getAVIFThumbnail(f models.File, maxSize int) ([]byte,
 			}
 		}
 	}
-	return e.ffmpegAVIFThumbnail(context.TODO(), bytes.NewReader(buf.Bytes()), "", maxSize)
+	// A JPEG XL source may have no FFmpeg decoder even though the AV1 encoder
+	// works. Decode it with libvips before FFmpeg; for other still formats,
+	// only use the lossless handoff when direct FFmpeg decoding fails.
+	decodeFirst := false
+	if img, ok := f.(*models.ImageFile); ok {
+		decodeFirst = strings.EqualFold(img.Format, "jxl")
+	}
+	var decodePNG func() ([]byte, error)
+	if e.vips != nil {
+		decodePNG = func() ([]byte, error) {
+			return e.vipsLosslessThumbnailPNG(f, buf.Bytes(), maxSize)
+		}
+	}
+	return encodeAVIFWithLosslessFallback(
+		buf.Bytes(), decodeFirst,
+		func(source []byte) ([]byte, error) {
+			return e.ffmpegAVIFThumbnail(context.TODO(), bytes.NewReader(source), "", maxSize)
+		},
+		decodePNG,
+	)
 }
