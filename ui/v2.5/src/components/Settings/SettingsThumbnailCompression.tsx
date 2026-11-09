@@ -20,6 +20,9 @@ type ThumbnailStatus = {
   imageEnabled: boolean;
   clipEnabled: boolean;
   animatedEnabled: boolean;
+  imageKeepOld?: boolean;
+  clipKeepOld?: boolean;
+  operation?: "rebuild" | "restore" | "deleteOld";
 };
 
 const labels: Record<Category, string> = {
@@ -45,8 +48,15 @@ export const SettingsThumbnailCompression: React.FC = () => {
   const [animatedQuality, setAnimatedQuality] = useState(
     ui.thumbnailAnimatedQuality ?? 70
   );
+  const [imageKeepOld, setImageKeepOld] = useState(
+    ui.thumbnailImageKeepOld ?? true
+  );
+  const [videoKeepOld, setVideoKeepOld] = useState(
+    ui.thumbnailVideoKeepOld ?? true
+  );
   const [status, setStatus] = useState<ThumbnailStatus>();
   const [pending, setPending] = useState<Category | null>(null);
+  const [deletePending, setDeletePending] = useState<Category | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -57,12 +67,16 @@ export const SettingsThumbnailCompression: React.FC = () => {
     setVideoFormat(ui.thumbnailVideoFormat ?? "webm");
     setVideoQuality(ui.thumbnailVideoQuality ?? 75);
     setAnimatedQuality(ui.thumbnailAnimatedQuality ?? 70);
+    setImageKeepOld(ui.thumbnailImageKeepOld ?? true);
+    setVideoKeepOld(ui.thumbnailVideoKeepOld ?? true);
   }, [
     ui.thumbnailImageFormat,
     ui.thumbnailImageQuality,
     ui.thumbnailVideoFormat,
     ui.thumbnailVideoQuality,
     ui.thumbnailAnimatedQuality,
+    ui.thumbnailImageKeepOld,
+    ui.thumbnailVideoKeepOld,
   ]);
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
@@ -108,8 +122,17 @@ export const SettingsThumbnailCompression: React.FC = () => {
   };
 
   const disabled = saving || Boolean(status?.busy);
+  const retained = {
+    image: status?.imageKeepOld ?? ui.thumbnailImageKeepOld ?? false,
+    clip: status?.clipKeepOld ?? ui.thumbnailVideoKeepOld ?? false,
+    animated: false,
+  };
 
-  async function apply(category: Category, turnOn: boolean) {
+  async function apply(
+    category: Category,
+    turnOn: boolean,
+    action: "apply" | "deleteOld" = "apply"
+  ) {
     setSaving(true);
     setError("");
     setMessage("");
@@ -126,15 +149,23 @@ export const SettingsThumbnailCompression: React.FC = () => {
           : category === "clip"
             ? videoQuality
             : animatedQuality;
+      const keepOld =
+        category === "image"
+          ? imageKeepOld
+          : category === "clip"
+            ? videoKeepOld
+            : false;
       const response = await fetch("image/thumbnail-compression", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          action,
           category,
           enabled: turnOn,
           format,
           quality,
-          acknowledged: turnOn,
+          keepOld,
+          acknowledged: turnOn || action === "deleteOld",
         }),
       });
       if (!response.ok) throw new Error(await response.text());
@@ -143,11 +174,16 @@ export const SettingsThumbnailCompression: React.FC = () => {
         enabled: boolean;
       };
       setMessage(
-        turnOn
-          ? `Rebuilding ${labels[category].toLowerCase()} as job #${result.jobID}. Follow progress in the Task Queue.`
-          : `${labels[category]} experiment disabled. Native previews will be generated on demand if missing.`
+        action === "deleteOld"
+          ? `Deleting retained native ${labels[category].toLowerCase()} as job #${result.jobID}. The deleted cache cannot be restored; disable experimental mode to regenerate native previews.`
+          : turnOn
+            ? `Rebuilding ${labels[category].toLowerCase()} as job #${result.jobID}. Follow progress in the Task Queue.`
+            : result.jobID
+              ? `${labels[category]} experiment disabled. Missing native previews will be regenerated as job #${result.jobID}.`
+              : `${labels[category]} experiment disabled. The retained native cache is active again.`
       );
       setPending(null);
+      setDeletePending(null);
       await refresh();
       refetch();
     } catch (cause) {
@@ -173,10 +209,12 @@ export const SettingsThumbnailCompression: React.FC = () => {
       description="Try new generated thumbnail codecs independently. Each experiment is off by default."
     >
       <p className="text-muted">
-        Enabling a category, or applying new settings to an enabled category,
-        asks for confirmation before deleting that category's existing generated
-        cache and automatically rebuilding it. No library scan is required.
-        Original media, other categories, and scene previews are not touched.
+        Choose whether to retain the native cache before enabling compression.
+        With Keep old thumbnails selected, the original JPEG/WebM files remain
+        untouched, and disabling the experiment selects them again. You can
+        explicitly delete retained native thumbnails to reclaim disk space.
+        Changes rebuild only the chosen category; no library scan is required.
+        Original media and scene previews are never deleted.
       </p>
       {error && <Alert variant="danger">{error}</Alert>}
       {message && (
@@ -198,7 +236,12 @@ export const SettingsThumbnailCompression: React.FC = () => {
       )}
       {status?.busy && (
         <Alert variant="info" role="status">
-          Rebuilding {labels[status.category ?? "image"].toLowerCase()}
+          {status.operation === "deleteOld"
+            ? "Deleting retained native"
+            : status.operation === "restore"
+              ? "Restoring native"
+              : "Rebuilding"}{" "}
+          {labels[status.category ?? "image"].toLowerCase()}
           {status.jobID ? ` (job #${status.jobID})` : ""}. Settings are locked
           until this task finishes.
         </Alert>
@@ -240,6 +283,28 @@ export const SettingsThumbnailCompression: React.FC = () => {
           onChange={(e) => setImageQuality(Number(e.currentTarget.value))}
         />
       </Form.Group>
+      <Form.Check
+        id="experimental-image-keep-old"
+        type="checkbox"
+        label="Keep old thumbnails (restore instantly when disabled)"
+        checked={enabled.image ? retained.image : imageKeepOld}
+        disabled={disabled || enabled.image}
+        onChange={(event) => setImageKeepOld(event.currentTarget.checked)}
+      />
+      {enabled.image && (
+        <Button
+          variant="outline-danger"
+          disabled={disabled || !retained.image}
+          onClick={() => setDeletePending("image")}
+        >
+          Delete old thumbnails
+        </Button>
+      )}
+      {enabled.image && !retained.image && (
+        <Form.Text className="text-muted d-block">
+          No native cache retained. Disabling regenerates missing thumbnails.
+        </Form.Text>
+      )}
       {imageFormat === "jxl" && (
         <Alert variant="warning">
           JPEG XL requires an encoder and browser that support JXL. The selected
@@ -296,6 +361,28 @@ export const SettingsThumbnailCompression: React.FC = () => {
           onChange={(e) => setVideoQuality(Number(e.currentTarget.value))}
         />
       </Form.Group>
+      <Form.Check
+        id="experimental-video-keep-old"
+        type="checkbox"
+        label="Keep old clip previews (restore instantly when disabled)"
+        checked={enabled.clip ? retained.clip : videoKeepOld}
+        disabled={disabled || enabled.clip}
+        onChange={(event) => setVideoKeepOld(event.currentTarget.checked)}
+      />
+      {enabled.clip && (
+        <Button
+          variant="outline-danger"
+          disabled={disabled || !retained.clip}
+          onClick={() => setDeletePending("clip")}
+        >
+          Delete old clip previews
+        </Button>
+      )}
+      {enabled.clip && !retained.clip && (
+        <Form.Text className="text-muted d-block">
+          No native WebM cache retained. Disabling regenerates native previews.
+        </Form.Text>
+      )}
       {enabled.clip && !unchanged.clip && (
         <Button
           variant="outline-warning"
@@ -322,8 +409,9 @@ export const SettingsThumbnailCompression: React.FC = () => {
       />
       <p className="small text-muted">
         Independently replaces native animated GIF/WebP display with resized
-        12-fps animated WebP thumbnail caches. Requires FFmpeg with
-        libwebp_anim; unsupported decoders or encoders report errors.
+        12-fps animated WebP thumbnail caches. Original animated files are never
+        deleted, so disabling restores native playback without a backup option.
+        Requires FFmpeg with libwebp_anim.
       </p>
       <Form.Group controlId="experimental-animated-quality">
         <Form.Label>Animated WebP quality: {animatedQuality}%</Form.Label>
@@ -355,12 +443,18 @@ export const SettingsThumbnailCompression: React.FC = () => {
         </Modal.Header>
         <Modal.Body>
           <Alert variant="warning">
-            This will permanently delete all existing{" "}
+            This will rebuild{" "}
             <strong>
               {pending ? labels[pending].toLowerCase() : "selected"}
             </strong>{" "}
-            generated cache variants and queue a full regeneration using the
-            chosen format and quality.
+            using your selected codec and quality.
+            {pending === "image" && imageKeepOld
+              ? " Existing native JPEG thumbnails will be retained for instant restoration."
+              : pending === "clip" && videoKeepOld
+                ? " Existing native WebM clip previews will be retained for instant restoration."
+                : pending === "animated"
+                  ? " Native animated image originals remain untouched."
+                  : " Existing native cache files in this category will be deleted and require regeneration to restore."}
           </Alert>
           <p>
             The rebuild may be lengthy for a large library. Some thumbnails may
@@ -381,7 +475,50 @@ export const SettingsThumbnailCompression: React.FC = () => {
             disabled={saving || pending === null}
             onClick={() => pending && void apply(pending, true)}
           >
-            Delete selected cache and rebuild
+            Confirm and rebuild selected cache
+          </Button>
+        </Modal.Footer>
+      </Modal>
+      <Modal
+        show={deletePending !== null}
+        onHide={() => !saving && setDeletePending(null)}
+      >
+        <Modal.Header closeButton={!saving}>
+          <Modal.Title>Delete retained original thumbnails?</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Alert variant="danger">
+            This permanently deletes the retained native{" "}
+            <strong>
+              {deletePending
+                ? labels[deletePending].toLowerCase()
+                : "thumbnail"}
+            </strong>{" "}
+            cache, not the experimental cache. Your original media files remain
+            untouched. Disabling the experiment later will require regeneration
+            instead of bringing back the old cached files.
+          </Alert>
+          <p>
+            Only the selected category is affected. You can keep using the
+            experimental thumbnails while this deletion runs.
+          </p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            disabled={saving}
+            onClick={() => setDeletePending(null)}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            disabled={saving || deletePending === null}
+            onClick={() =>
+              deletePending && void apply(deletePending, true, "deleteOld")
+            }
+          >
+            Delete old thumbnails permanently
           </Button>
         </Modal.Footer>
       </Modal>
