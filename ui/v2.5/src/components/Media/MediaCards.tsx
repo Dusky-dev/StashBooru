@@ -1,7 +1,6 @@
 import { StackMember } from "../VisualStacks/media";
 import { VisualStackBadge } from "../VisualStacks/VisualStackBadge";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { useHistory } from "react-router-dom";
 import Gallery, { GalleryI, RenderImageProps } from "react-photo-gallery";
 import * as GQL from "src/core/generated-graphql";
 import { animationBadge, objectTitle } from "src/core/files";
@@ -30,7 +29,7 @@ interface Props {
   selectedIds: Set<string>;
   zoomIndex: number;
   onSelectChange: (id: string, selected: boolean, shiftKey: boolean) => void;
-  onPreviewImage: (image: GQL.SlimImageDataFragment) => void;
+  onPreviewMedia: (item: GQL.MediaListItemFragment) => void;
 }
 
 export function MediaGrid({
@@ -38,7 +37,7 @@ export function MediaGrid({
   selectedIds,
   zoomIndex,
   onSelectChange,
-  onPreviewImage,
+  onPreviewMedia,
   onStackMemberSelect,
 }: Props) {
   const [ref, { width }] = useContainerDimensions();
@@ -70,7 +69,7 @@ export function MediaGrid({
               selectedIds.size === 0
                 ? (event) => {
                     event.preventDefault();
-                    onPreviewImage(item.image!);
+                    onPreviewMedia(item);
                   }
                 : undefined
             }
@@ -82,6 +81,14 @@ export function MediaGrid({
             width={cardWidth}
             zoomIndex={zoomIndex}
             queue={queue}
+            onPreview={
+              selectedIds.size === 0
+                ? (event) => {
+                    event.preventDefault();
+                    onPreviewMedia(item);
+                  }
+                : undefined
+            }
             stackSelectedIds={selectedIds}
             onStackMemberSelect={onStackMemberSelect}
             selecting={selectedIds.size > 0}
@@ -108,11 +115,10 @@ export function MediaWall({
   selectedIds,
   zoomIndex,
   onSelectChange,
-  onPreviewImage,
+  onPreviewMedia,
   onStackMemberSelect,
 }: Props) {
   const { configuration } = useConfigurationContext();
-  const history = useHistory();
   const containerRef = useRef<HTMLDivElement>(null);
   const [invalid, setInvalid] = useState<Record<string, string[]>>({});
   const playback = configuration.interface.wallPlayback;
@@ -249,9 +255,10 @@ export function MediaWall({
             if (selectedIds.size > 0) return;
             if (item.image) {
               e.preventDefault();
-              onPreviewImage(item.image);
+              onPreviewMedia(item);
             } else if (item.scene) {
-              history.push(queue.makeLink(item.scene.id, {}));
+              e.preventDefault();
+              onPreviewMedia(item);
             }
           }}
         />
