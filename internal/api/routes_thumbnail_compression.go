@@ -195,8 +195,8 @@ func preflightThumbnailCodec(ctx context.Context, req thumbnailCompressionReques
 			vipsOperation = "jxlsave"
 		case "avif":
 			// heifsave alone is insufficient: libheif may have no AV1 encoder.
-			// Test a tiny real AVIF encode before changing settings or caches.
-			return image.PreflightAVIFThumbnail(ctx)
+			// Verify actual output from libvips or FFmpeg before cache cleanup.
+			return image.PreflightAVIFWithFFmpeg(ctx, mgr.FFMpeg)
 		case "webp":
 			vipsOperation = "webpsave"
 			ffmpegEncoder = "libwebp"
