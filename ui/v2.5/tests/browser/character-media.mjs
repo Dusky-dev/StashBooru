@@ -219,9 +219,7 @@ try {
   );
   assert.ok(order.some((item) => item.kind === "image"));
   assert.ok(order.some((item) => item.kind === "video"));
-  const currentVideo = order.findIndex(
-    (item) => item.kind === "video"
-  );
+  const currentVideo = order.findIndex((item) => item.kind === "video");
   const expectedNext = order[(currentVideo + 1) % order.length];
   await page.locator(".Lightbox-display > .Lightbox-navbutton").last().click();
   await page.waitForFunction(
