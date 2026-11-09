@@ -83,9 +83,9 @@ export const SettingsThumbnailCompression: React.FC = () => {
   }, [refresh, status?.busy]);
 
   const enabled: Record<Category, boolean> = {
-    image: status?.imageEnabled ?? (ui.thumbnailImageEnabled ?? false),
-    clip: status?.clipEnabled ?? (ui.thumbnailVideoEnabled ?? false),
-    animated: status?.animatedEnabled ?? (ui.thumbnailAnimatedEnabled ?? false),
+    image: status?.imageEnabled ?? ui.thumbnailImageEnabled ?? false,
+    clip: status?.clipEnabled ?? ui.thumbnailVideoEnabled ?? false,
+    animated: status?.animatedEnabled ?? ui.thumbnailAnimatedEnabled ?? false,
   };
 
   const unchanged: Record<Category, boolean> = {
@@ -106,7 +106,11 @@ export const SettingsThumbnailCompression: React.FC = () => {
     setMessage("");
     try {
       const format =
-        category === "image" ? imageFormat : category === "clip" ? videoFormat : "webp";
+        category === "image"
+          ? imageFormat
+          : category === "clip"
+            ? videoFormat
+            : "webp";
       const quality =
         category === "image"
           ? imageQuality
@@ -166,7 +170,11 @@ export const SettingsThumbnailCompression: React.FC = () => {
         Original media, other categories, and scene previews are not touched.
       </p>
       {error && <Alert variant="danger">{error}</Alert>}
-      {message && <Alert variant="info" role="status">{message}</Alert>}
+      {message && (
+        <Alert variant="info" role="status">
+          {message}
+        </Alert>
+      )}
       {status?.busy && (
         <Alert variant="info" role="status">
           Rebuilding {labels[status.category ?? "image"].toLowerCase()}
@@ -213,13 +221,16 @@ export const SettingsThumbnailCompression: React.FC = () => {
       </Form.Group>
       {imageFormat === "jxl" && (
         <Alert variant="warning">
-          JPEG XL requires an encoder and browser that support JXL. The
-          selected format is strictly enforced; there is no WebP fallback.
+          JPEG XL requires an encoder and browser that support JXL. The selected
+          format is strictly enforced; there is no WebP fallback.
         </Alert>
       )}
       {enabled.image && !unchanged.image && (
-        <Button variant="outline-warning" disabled={disabled}
-          onClick={() => setPending("image")}>
+        <Button
+          variant="outline-warning"
+          disabled={disabled}
+          onClick={() => setPending("image")}
+        >
           Apply still-image changes and rebuild
         </Button>
       )}
@@ -244,7 +255,9 @@ export const SettingsThumbnailCompression: React.FC = () => {
           as="select"
           value={videoFormat}
           disabled={disabled}
-          onChange={(e) => setVideoFormat(e.currentTarget.value as "webm" | "mp4")}
+          onChange={(e) =>
+            setVideoFormat(e.currentTarget.value as "webm" | "mp4")
+          }
         >
           <option value="webm">WebM / VP9 (native)</option>
           <option value="mp4">MP4 / H.264</option>
@@ -263,8 +276,11 @@ export const SettingsThumbnailCompression: React.FC = () => {
         />
       </Form.Group>
       {enabled.clip && !unchanged.clip && (
-        <Button variant="outline-warning" disabled={disabled}
-          onClick={() => setPending("clip")}>
+        <Button
+          variant="outline-warning"
+          disabled={disabled}
+          onClick={() => setPending("clip")}
+        >
           Apply video preview changes and rebuild
         </Button>
       )}
@@ -301,36 +317,49 @@ export const SettingsThumbnailCompression: React.FC = () => {
         />
       </Form.Group>
       {enabled.animated && !unchanged.animated && (
-        <Button variant="outline-warning" disabled={disabled}
-          onClick={() => setPending("animated")}>
+        <Button
+          variant="outline-warning"
+          disabled={disabled}
+          onClick={() => setPending("animated")}
+        >
           Apply animated-image changes and rebuild
         </Button>
       )}
 
       <Modal show={pending !== null} onHide={() => !saving && setPending(null)}>
         <Modal.Header closeButton={!saving}>
-          <Modal.Title>Delete and rebuild selected thumbnail cache?</Modal.Title>
+          <Modal.Title>
+            Delete and rebuild selected thumbnail cache?
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Alert variant="warning">
-            This will permanently delete all existing <strong>
+            This will permanently delete all existing{" "}
+            <strong>
               {pending ? labels[pending].toLowerCase() : "selected"}
-            </strong> generated cache variants and queue a full regeneration
-            using the chosen format and quality.
+            </strong>{" "}
+            generated cache variants and queue a full regeneration using the
+            chosen format and quality.
           </Alert>
           <p>
-            The rebuild may be lengthy for a large library. Some thumbnails
-            may be temporarily unavailable while it runs. Originals and
-            caches for the other two categories remain unchanged.
+            The rebuild may be lengthy for a large library. Some thumbnails may
+            be temporarily unavailable while it runs. Originals and caches for
+            the other two categories remain unchanged.
           </p>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" disabled={saving}
-            onClick={() => setPending(null)}>
+          <Button
+            variant="secondary"
+            disabled={saving}
+            onClick={() => setPending(null)}
+          >
             Cancel
           </Button>
-          <Button variant="danger" disabled={saving || pending === null}
-            onClick={() => pending && void apply(pending, true)}>
+          <Button
+            variant="danger"
+            disabled={saving || pending === null}
+            onClick={() => pending && void apply(pending, true)}
+          >
             Delete selected cache and rebuild
           </Button>
         </Modal.Footer>
