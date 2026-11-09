@@ -26,7 +26,7 @@ func TestAVIFPreflightChecksContainerSignature(t *testing.T) {
 }
 
 func TestAVIFLosslessDecodeBridgeSourceDetection(t *testing.T) {
-	f := &models.ImageFile{Format: "jpegxl"}
+	f := &models.ImageFile{BaseFile: &models.BaseFile{Path: "test.jxl"}, Format: "jpegxl"}
 	if !isJXLSource(f) {
 		t.Fatal("FFprobe JPEG XL codec should be decoded by libvips")
 	}
@@ -35,6 +35,7 @@ func TestAVIFLosslessDecodeBridgeSourceDetection(t *testing.T) {
 		t.Fatal("JXL alias should be decoded by libvips")
 	}
 	f.Format = "png"
+	f.BaseFile.Path = "test.png"
 	if isJXLSource(f) {
 		t.Fatal("PNG must not be routed as JPEG XL")
 	}
