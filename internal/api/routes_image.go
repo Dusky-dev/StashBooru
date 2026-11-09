@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os/exec"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -137,11 +138,23 @@ func (rs imageRoutes) Thumbnail(w http.ResponseWriter, r *http.Request) {
 
 func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img *models.Image, modTime *time.Time) {
 	mgr := manager.GetInstance()
-	filepath := mgr.Paths.Generated.GetThumbnailPath(img.Checksum, models.DefaultGthumbWidth)
+	format := mgr.Config.GetImageThumbnailFormat()
+	quality := mgr.Config.GetImageThumbnailQuality()
+	// Only use JXL if the requesting browser advertises decoding support.
+	if format == "jxl" && !strings.Contains(strings.ToLower(r.Header.Get("Accept")), "image/jxl") {
+		format = "webp"
+	}
+	filepath := mgr.Paths.Generated.GetThumbnailPathForEncoding(img.Checksum, models.DefaultGthumbWidth, format, quality)
+	if format != "jpg" || quality != 70 {
+		w.Header().Set("Cache-Control", "no-cache, must-revalidate")
+	}
 
 	// if the thumbnail doesn't exist, encode on the fly
 	exists, _ := fsutil.FileExists(filepath)
 	if exists {
+		if format == "jxl" {
+			w.Header().Set("Content-Type", "image/jxl")
+		}
 		if modTime == nil {
 			utils.ServeStaticFile(w, r, filepath)
 		} else {
@@ -166,8 +179,21 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 			Preset:     manager.GetInstance().Config.GetPreviewPreset().String(),
 		}
 
-		encoder := image.NewThumbnailEncoder(manager.GetInstance().FFMpeg, manager.GetInstance().FFProbe, clipPreviewOptions)
+		encoder := image.NewThumbnailEncoder(mgr.FFMpeg, mgr.FFProbe, clipPreviewOptions)
+		encoder.ThumbnailFormat = format
+		encoder.ThumbnailQuality = quality
 		data, err := encoder.GetThumbnail(f, models.DefaultGthumbWidth)
+		if err != nil && format == "jxl" {
+			logger.Warnf("JXL thumbnail encoding unavailable, using WebP: %v", err)
+			format = "webp"
+			filepath = mgr.Paths.Generated.GetThumbnailPathForEncoding(img.Checksum, models.DefaultGthumbWidth, format, quality)
+			encoder.ThumbnailFormat = format
+			if found, _ := fsutil.FileExists(filepath); found {
+				utils.ServeStaticFile(w, r, filepath)
+				return
+			}
+			data, err = encoder.GetThumbnail(f, models.DefaultGthumbWidth)
+		}
 		if err != nil {
 			// don't log for unsupported image format
 			if !errors.Is(err, image.ErrNotSupportedForThumbnail) && !errors.Is(err, fs.ErrNotExist) {
@@ -185,7 +211,7 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 		}
 
 		// write the generated thumbnail to disk if enabled
-		if manager.GetInstance().Config.IsWriteImageThumbnails() {
+		if mgr.Config.IsWriteImageThumbnails() {
 			logger.Debugf("writing thumbnail to disk: %s", img.Path)
 			if err := fsutil.WriteFile(filepath, data); err == nil {
 				utils.ServeStaticFile(w, r, filepath)
@@ -193,15 +219,26 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 			}
 			logger.Errorf("error writing thumbnail for image %s: %v", img.Path, err)
 		}
+		switch format {
+		case "jxl":
+			w.Header().Set("Content-Type", "image/jxl")
+		case "webp":
+			w.Header().Set("Content-Type", "image/webp")
+		default:
+			w.Header().Set("Content-Type", "image/jpeg")
+		}
 		utils.ServeStaticContent(w, r, data)
 	}
 }
 
 func (rs imageRoutes) Preview(w http.ResponseWriter, r *http.Request) {
 	img := r.Context().Value(imageKey).(*models.Image)
-	filepath := manager.GetInstance().Paths.Generated.GetClipPreviewPath(img.Checksum, models.DefaultGthumbWidth)
-
-	// don't check if the preview exists - we'll just return a 404 if it doesn't
+	mgr := manager.GetInstance()
+	filepath := mgr.Paths.Generated.GetClipPreviewPathForEncoding(img.Checksum, models.DefaultGthumbWidth, mgr.Config.GetClipPreviewFormat(), mgr.Config.GetClipPreviewQuality())
+	// Keep showing an old preview until the new codec/quality is generated.
+	if exists, _ := fsutil.FileExists(filepath); !exists {
+		filepath = mgr.Paths.Generated.GetClipPreviewPath(img.Checksum, models.DefaultGthumbWidth)
+	}
 	utils.ServeStaticFile(w, r, filepath)
 }
 

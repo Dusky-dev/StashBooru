@@ -33,7 +33,10 @@ func (t *GenerateImageThumbnailTask) Start(ctx context.Context) {
 		return
 	}
 
-	thumbPath := GetInstance().Paths.Generated.GetThumbnailPath(t.Image.Checksum, models.DefaultGthumbWidth)
+	mgr := GetInstance()
+	format := mgr.Config.GetImageThumbnailFormat()
+	quality := mgr.Config.GetImageThumbnailQuality()
+	thumbPath := mgr.Paths.Generated.GetThumbnailPathForEncoding(t.Image.Checksum, models.DefaultGthumbWidth, format, quality)
 	f := t.Image.Files.Primary()
 	if f == nil {
 		return
@@ -42,7 +45,6 @@ func (t *GenerateImageThumbnailTask) Start(ctx context.Context) {
 
 	logger.Debugf("Generating thumbnail for %s", path)
 
-	mgr := GetInstance()
 	c := mgr.Config
 
 	clipPreviewOptions := image.ClipPreviewOptions{
@@ -52,7 +54,15 @@ func (t *GenerateImageThumbnailTask) Start(ctx context.Context) {
 	}
 
 	encoder := image.NewThumbnailEncoder(mgr.FFMpeg, mgr.FFProbe, clipPreviewOptions)
+	encoder.ThumbnailFormat = format
+	encoder.ThumbnailQuality = quality
 	data, err := encoder.GetThumbnail(f, models.DefaultGthumbWidth)
+	if err != nil && format == "jxl" {
+		logger.Warnf("[generator] JXL thumbnail unavailable for %s, using WebP: %v", path, err)
+		encoder.ThumbnailFormat = "webp"
+		thumbPath = mgr.Paths.Generated.GetThumbnailPathForEncoding(t.Image.Checksum, models.DefaultGthumbWidth, "webp", quality)
+		data, err = encoder.GetThumbnail(f, models.DefaultGthumbWidth)
+	}
 
 	if err != nil {
 		// don't log for animated images
@@ -84,8 +94,14 @@ func (t *GenerateImageThumbnailTask) required() bool {
 		return true
 	}
 
-	thumbPath := GetInstance().Paths.Generated.GetThumbnailPath(t.Image.Checksum, models.DefaultGthumbWidth)
+	mgr := GetInstance()
+	format := mgr.Config.GetImageThumbnailFormat()
+	quality := mgr.Config.GetImageThumbnailQuality()
+	thumbPath := mgr.Paths.Generated.GetThumbnailPathForEncoding(t.Image.Checksum, models.DefaultGthumbWidth, format, quality)
 	exists, _ := fsutil.FileExists(thumbPath)
-
+	if !exists && format == "jxl" {
+		fallback := mgr.Paths.Generated.GetThumbnailPathForEncoding(t.Image.Checksum, models.DefaultGthumbWidth, "webp", quality)
+		exists, _ = fsutil.FileExists(fallback)
+	}
 	return !exists
 }
