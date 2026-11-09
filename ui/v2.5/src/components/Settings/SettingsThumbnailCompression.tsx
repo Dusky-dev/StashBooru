@@ -74,12 +74,12 @@ export const SettingsThumbnailCompression: React.FC = () => {
 
   useEffect(() => {
     if (!status?.busy) return;
-    const handle = setTimeout(() => {
+    const handle = setInterval(() => {
       void refresh().catch((cause: unknown) => {
         setError(cause instanceof Error ? cause.message : String(cause));
       });
     }, 2500);
-    return () => clearTimeout(handle);
+    return () => clearInterval(handle);
   }, [refresh, status?.busy]);
 
   const enabled: Record<Category, boolean> = {
