@@ -99,9 +99,10 @@ func queueThumbnailCacheOperation(w http.ResponseWriter, r *http.Request, mgr *m
 	thumbnailRebuildCategory = category
 	thumbnailRebuildOperation = operation
 	description := "Rebuild thumbnail cache"
-	if operation == "deleteOld" {
+	switch operation {
+	case "deleteOld":
 		description = "Delete retained old thumbnails"
-	} else if operation == "restore" {
+	case "restore":
 		description = "Regenerate native thumbnails"
 	}
 	id := mgr.JobManager.Add(r.Context(), description+" ("+category+")", job.MakeJobExec(func(ctx context.Context, progress *job.Progress) error {
