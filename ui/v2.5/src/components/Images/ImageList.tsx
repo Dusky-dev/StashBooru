@@ -19,6 +19,7 @@ import { useLightbox } from "src/hooks/Lightbox/hooks";
 import { ListFilterModel } from "src/models/list-filter/filter";
 import { DisplayMode } from "src/models/list-filter/types";
 import { ImageWallItem } from "./ImageWallItem";
+import { VisualStackBadge } from "../VisualStacks/VisualStackBadge";
 import { EditImagesDialog } from "./EditImagesDialog";
 import { DeleteImagesDialog } from "./DeleteImagesDialog";
 import "flexbin/flexbin.css";
@@ -194,6 +195,11 @@ const ImageWall: React.FC<IImageWallProps> = ({
           animationLabel={animationBadge(
             images.find((image) => image.id === imageId)
           )}
+          stackBadge={
+            <VisualStackBadge
+              stack={images.find((image) => image.id === imageId)?.visual_stack}
+            />
+          }
           maxHeight={maxHeight}
           selected={selectedIds?.has(imageId)}
           onSelectedChanged={
@@ -562,7 +568,10 @@ export const FilteredImageList = PatchComponent(
         skip: imageIDs !== undefined && imageIDs.length === 0,
         variables: {
           filter: filter.makeFindFilter(),
-          image_filter: { ...filter.makeFilter(), collapse_stacks: collapseStacks },
+          image_filter: {
+            ...filter.makeFilter(),
+            collapse_stacks: collapseStacks,
+          },
           image_ids: imageIDs,
         },
       });
@@ -573,7 +582,10 @@ export const FilteredImageList = PatchComponent(
         skip: imageIDs !== undefined && imageIDs.length === 0,
         variables: {
           filter: filter.makeFindFilter(),
-          image_filter: { ...filter.makeFilter(), collapse_stacks: collapseStacks },
+          image_filter: {
+            ...filter.makeFilter(),
+            collapse_stacks: collapseStacks,
+          },
           image_ids: imageIDs,
         },
       });
