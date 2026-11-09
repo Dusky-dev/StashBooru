@@ -6,9 +6,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os/exec"
+	"strings"
 	"sync"
 
 	"github.com/stashapp/stash/internal/manager"
+	"github.com/stashapp/stash/pkg/ffmpeg"
+	"github.com/stashapp/stash/pkg/image"
 	"github.com/stashapp/stash/pkg/job"
 )
 
@@ -52,6 +56,52 @@ func validateThumbnailCompressionRequest(req thumbnailCompressionRequest) error 
 	return nil
 }
 
+// Verify the requested codec before deleting any existing generated cache.
+// An unavailable JXL/WebP/VP9/H264 encoder must fail the confirmation request
+// without changing settings or deleting thumbnails.
+func preflightThumbnailCodec(ctx context.Context, req thumbnailCompressionRequest, mgr *manager.Manager) error {
+	if !req.Enabled {
+		return nil
+	}
+	vipsOperation := ""
+	ffmpegEncoder := ""
+	switch req.Category {
+	case "image":
+		switch req.Format {
+		case "jxl":
+			vipsOperation = "jxlsave"
+		case "webp":
+			vipsOperation = "webpsave"
+			ffmpegEncoder = "libwebp"
+		default:
+			return nil
+		}
+	case "animated":
+		ffmpegEncoder = "libwebp_anim"
+	case "clip":
+		if req.Format == "mp4" {
+			ffmpegEncoder = "libx264"
+		} else {
+			ffmpegEncoder = "libvpx-vp9"
+		}
+	}
+	if vipsOperation != "" {
+		if vips := image.GetVipsPath(); vips != "" {
+			data, err := exec.CommandContext(ctx, vips, "-l").Output()
+			if err == nil && strings.Contains(strings.ToLower(string(data)), vipsOperation) {
+				return nil
+			}
+		}
+	}
+	if ffmpegEncoder != "" && mgr.FFMpeg != nil {
+		out, err := mgr.FFMpeg.Command(ctx, ffmpeg.Args{"-hide_banner", "-encoders"}).Output()
+		if err == nil && strings.Contains(string(out), " "+ffmpegEncoder+" ") {
+			return nil
+		}
+	}
+	return fmt.Errorf("%s encoder unavailable; no thumbnail settings were changed or caches deleted", req.Format)
+}
+
 func (rs imageRoutes) ThumbnailCompressionStatus(w http.ResponseWriter, r *http.Request) {
 	m := manager.GetInstance()
 	thumbnailRebuildMu.Lock()
@@ -90,6 +140,10 @@ func (rs imageRoutes) ThumbnailCompressionApply(w http.ResponseWriter, r *http.R
 	}
 
 	m := manager.GetInstance()
+	if err := preflightThumbnailCodec(r.Context(), req, m); err != nil {
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
 	settings := m.Config.GetUIConfiguration()
 	next := make(map[string]interface{}, len(settings)+4)
 	for key, value := range settings {
