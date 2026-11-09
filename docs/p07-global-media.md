@@ -751,3 +751,25 @@ Page correction waits for the **current** completed GraphQL result, rather
 than using a count cached during page/sort/filter transitions. Errors and
 loading states do not cause page resets. Pure unit tests cover the numeric
 and range rules; the All browser suite checks an empty-result deep link.
+
+
+## Mixed-media preview navigation
+
+The main **All** and each selected Copyright/Character/Artist/Tag **All** tab
+open one shared Lightbox sequence in the exact `findMedia.items` order.
+The next/previous controls traverse Images **and** Videos without skipping
+either kind. A Video is rendered via the existing lazy native ScenePlayer in
+the Lightbox, not by navigating to the Video detail page or opening the
+independent Videos-only preview queue. Selecting a Video from All's Grid or Wall
+opens the same mixed preview as selecting an Image.
+
+The reusable Image and Video detail links keep their native URLs and typed
+identities. Video cards in the native Videos-only lists continue using their
+existing Video-only previews; entity Images/Videos tabs remain unchanged.
+Video players mount only for the selected preview item and dispose when the
+user moves back to an Image or closes the Lightbox.
+
+Regression coverage: `tests/browser/all-media.mjs` asserts Image→Video
+and Video→Image boundaries in mixed result order; the selected Character
+fixture also verifies the resulting mixed sequence. These tests need a
+real mounted isolated fixture for full browser verification.

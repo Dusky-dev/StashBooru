@@ -12,7 +12,7 @@ const browser = await chromium.launch({
   args: ["--no-sandbox", "--disable-dev-shm-usage"],
 });
 
-async function checkVideoPreview(page, selector) {
+async function checkVideoPreview(page, selector, videoOnly = true) {
   const cards = page.locator(selector);
   const first = cards.first();
   const link = await first.locator("a.scene-card-link").getAttribute("href");
@@ -36,7 +36,7 @@ async function checkVideoPreview(page, selector) {
         ?.getAttribute("href") === path,
     scenePath
   );
-  if ((await cards.count()) > 1) {
+  if (videoOnly && (await cards.count()) > 1) {
     const nextLink = await cards
       .nth(1)
       .locator("a.scene-card-link")
@@ -58,6 +58,80 @@ async function checkVideoPreview(page, selector) {
   await page
     .locator(".unified-media-native-scene-player")
     .waitFor({ state: "hidden" });
+}
+
+// In the actual All order, the next result may be the other media kind. A
+// separate Images-only or Videos-only carousel silently skipped those items.
+async function checkMixedPreviewOrder(page) {
+  const cards = page.locator(
+    ".media-list .row.justify-content-center > .grid-card"
+  );
+  const order = await cards.evaluateAll((nodes) =>
+    nodes.map((node) => ({
+      kind: node.classList.contains("image-card") ? "image" : "video",
+      path: new URL(
+        node
+          .querySelector("a.image-card-link, a.scene-card-link")
+          .getAttribute("href"),
+        location.origin
+      ).pathname,
+    }))
+  );
+  assert.ok(order.some((item) => item.kind === "image"));
+  assert.ok(order.some((item) => item.kind === "video"));
+
+  for (const [from, to] of [
+    ["image", "video"],
+    ["video", "image"],
+  ]) {
+    const index = order.findIndex(
+      (item, i) =>
+        item.kind === from && order[(i + 1) % order.length].kind === to
+    );
+    assert.ok(index >= 0, `Missing ${from} → ${to} boundary`);
+    const before = order[index];
+    const next = order[(index + 1) % order.length];
+    const card = cards.nth(index);
+    await card.hover();
+    await card
+      .locator(
+        from === "image"
+          ? ".preview-button button"
+          : ".unified-media-video-preview-button button"
+      )
+      .click();
+    await page.waitForFunction(
+      (path) =>
+        document
+          .querySelector(".Lightbox-footer-center .image-link")
+          ?.getAttribute("href") === path,
+      before.path
+    );
+    await page
+      .locator(".Lightbox-display > .Lightbox-navbutton")
+      .last()
+      .click();
+    await page.waitForFunction(
+      (path) =>
+        document
+          .querySelector(".Lightbox-footer-center .image-link")
+          ?.getAttribute("href") === path,
+      next.path
+    );
+    if (to === "video") {
+      await page
+        .locator(".unified-media-native-scene-player .video-js")
+        .waitFor();
+    } else {
+      assert.equal(
+        await page.locator(".unified-media-native-scene-player").count(),
+        0,
+        "Video player remained mounted after navigating to an Image"
+      );
+    }
+    await page.getByTitle("Close Lightbox", { exact: true }).click();
+    await page.locator(".Lightbox").waitFor({ state: "hidden" });
+  }
 }
 
 async function check(mode) {
@@ -160,8 +234,13 @@ async function check(mode) {
       );
     } else {
       await page.locator(".media-list .scene-card").first().waitFor();
-      await checkVideoPreview(page, ".media-list .scene-card");
+      await checkVideoPreview(
+        page,
+        ".media-list .scene-card",
+        mode === "videos"
+      );
       if (mode === "loaded") {
+        await checkMixedPreviewOrder(page);
         const image = page.locator(".media-list .image-card").first();
         const imageLink = await image
           .locator("a.image-card-link")
@@ -295,6 +374,44 @@ async function check(mode) {
         .first()
         .waitFor({ timeout: 10000 });
       assert.equal(await page.locator(".main .nav-tabs").count(), 0);
+      if (mode === "loaded") {
+        const wallItems = page.locator(".media-wall .wall-item");
+        const kinds = await wallItems.evaluateAll((nodes) =>
+          nodes.map((node) => node.getAttribute("data-media-kind"))
+        );
+        for (const [from, to] of [
+          ["image", "video"],
+          ["video", "image"],
+        ]) {
+          const boundary = kinds.findIndex(
+            (kind, i) => kind === from && kinds[(i + 1) % kinds.length] === to
+          );
+          assert.ok(boundary >= 0, `Missing Wall ${from} → ${to} boundary`);
+          const previousURL = page.url();
+          await wallItems.nth(boundary).locator("img, video").first().click();
+          await page.locator(".Lightbox").waitFor();
+          assert.equal(page.url(), previousURL, "Wall preview navigated away");
+          await page
+            .locator(".Lightbox-display > .Lightbox-navbutton")
+            .last()
+            .click();
+          if (to === "video") {
+            await page
+              .locator(".unified-media-native-scene-player .video-js")
+              .waitFor();
+          } else {
+            await page.waitForFunction(
+              () =>
+                document
+                  .querySelector(".Lightbox-footer-center .image-link")
+                  ?.getAttribute("href")
+                  ?.startsWith("/images/") === true
+            );
+          }
+          await page.getByTitle("Close Lightbox", { exact: true }).click();
+          await page.locator(".Lightbox").waitFor({ state: "hidden" });
+        }
+      }
       if (mode === "loaded") {
         // Selecting a Wall image by clicking its preview must fire once.
         // The native ImageWallItem previously handled the same bubbled

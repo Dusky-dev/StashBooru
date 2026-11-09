@@ -47,6 +47,7 @@ import * as GQL from "src/core/generated-graphql";
 import { useInterfaceLocalForage } from "../LocalForage";
 import { imageLightboxDisplayModeIntlMap } from "src/core/enums";
 import { ILightboxImage, IChapter } from "./types";
+import { lightboxEntryKey } from "./itemKey";
 import {
   faArrowLeft,
   faArrowRight,
@@ -828,7 +829,7 @@ export const LightboxComponent: React.FC<IProps> = ({
       onClick: (e: React.MouseEvent) => selectIndex(e, i),
       role: "presentation",
       loading: "lazy",
-      key: image.paths.thumbnail,
+      key: lightboxEntryKey(image, i),
       onLoad: imageLoaded,
     })
   );
@@ -1107,16 +1108,23 @@ export const LightboxComponent: React.FC<IProps> = ({
       return undefined;
     }
 
+    // Native Scene players need valid geometry before screenshot/file
+    // dimensions have been indexed; do not leave their viewer blank.
+    const width =
+      image.visual_files?.[0]?.width || (image.renderMedia ? 1280 : 0);
+    const height =
+      image.visual_files?.[0]?.height || (image.renderMedia ? 720 : 0);
+
     return (
       <LightboxImage
         key={
           imageIndex === currentIndex
             ? stackViewer.selectedKey
-            : image.paths.image
+            : lightboxEntryKey(image, imageIndex)
         }
         src={image.paths.image ?? ""}
-        width={image.visual_files?.[0]?.width ?? 0}
-        height={image.visual_files?.[0]?.height ?? 0}
+        width={width}
+        height={height}
         displayMode={displayMode}
         scaleUp={scaleUp}
         scrollMode={scrollMode}
@@ -1327,7 +1335,10 @@ export const LightboxComponent: React.FC<IProps> = ({
               ref={carouselRef}
             >
               {images.map((image, imageIndex) => (
-                <div className={`${CLASSNAME_IMAGE}`} key={image.paths.image}>
+                <div
+                  className={`${CLASSNAME_IMAGE}`}
+                  key={lightboxEntryKey(image, imageIndex)}
+                >
                   {renderCarouselImage(image, imageIndex)}
                 </div>
               ))}

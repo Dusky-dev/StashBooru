@@ -47,6 +47,38 @@ function StackVideo({
   );
 }
 
+// Preserve the native mixed findMedia order in All's shared Lightbox. Images
+// retain their own native identity; Videos use the existing lazy native player
+// but deliberately have no Image id (Image-only edit/delete controls stay off).
+export function mixedMediaLightboxImage(
+  item: GQL.MediaListItemFragment
+): ILightboxImage {
+  if (item.image) {
+    return {
+      ...item.image,
+      mediaReference: { kind: "IMAGE", id: item.image.id },
+      href: `/images/${item.image.id}`,
+    };
+  }
+  if (!item.scene) {
+    throw new Error(`Mixed media result ${item.id} has no Image or Video`);
+  }
+  const scene = item.scene;
+  return {
+    title: scene.title || `Video ${scene.id}`,
+    paths: {
+      image: scene.paths.screenshot,
+      thumbnail: scene.paths.screenshot,
+    },
+    visual_files: scene.files,
+    href: `/scenes/${scene.id}`,
+    mediaReference: { kind: "VIDEO", id: scene.id },
+    renderMedia: ({ onNext, onPrevious }) => (
+      <StackVideo id={scene.id} onNext={onNext} onPrevious={onPrevious} />
+    ),
+  };
+}
+
 export function memberImage(member: StackMember): ILightboxImage {
   if (member.image)
     return {

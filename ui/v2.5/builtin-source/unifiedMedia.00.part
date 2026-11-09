@@ -112,7 +112,8 @@
                 onClick: (event) => {
                   event.preventDefault();
                   event.stopPropagation();
-                  if (mixed?.openVisualPreview) mixed.openVisualPreview(`scene:${scene.id}`);
+                  if (props.onPreview) props.onPreview(event);
+                  else if (mixed?.openVisualPreview) mixed.openVisualPreview(`scene:${scene.id}`);
                   else if (page?.openScenePreview) page.openScenePreview(scene);
                   else requestGlobalScenePreview(scene);
                 },

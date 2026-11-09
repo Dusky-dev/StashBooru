@@ -1,4 +1,4 @@
-import { StackMember } from "../VisualStacks/media";
+import { mixedMediaLightboxImage, StackMember } from "../VisualStacks/media";
 import { useCallback, useMemo } from "react";
 import * as GQL from "src/core/generated-graphql";
 import { useLightbox } from "src/hooks/Lightbox/hooks";
@@ -23,38 +23,42 @@ export function MediaListContent({
   onSelectChange,
   onStackMemberSelect,
 }: Props) {
-  const images = useMemo(
-    () => items.flatMap((item) => (item.image ? [item.image] : [])),
+  // One ordered preview sequence for both Images and Videos. Building an
+  // Image-only list here and a separate scene-only queue in cards caused the
+  // next/previous controls to skip every item of the other kind.
+  const previewItems = useMemo(
+    () => items.map(mixedMediaLightboxImage),
     [items]
   );
   const showLightbox = useLightbox({
-    images,
-    totalCount: images.length,
+    images: previewItems,
+    totalCount: previewItems.length,
     page: 1,
     pages: 1,
-    pageSize: images.length,
+    pageSize: previewItems.length,
     showNavigation: false,
     slideshowEnabled: false,
   });
-  const onPreviewImage = useCallback(
-    (image: GQL.SlimImageDataFragment) => {
-      const initialIndex = images.findIndex((item) => item.id === image.id);
+  const onPreviewMedia = useCallback(
+    (item: GQL.MediaListItemFragment) => {
+      // Typed result keys distinguish image:123 from scene:123.
+      const initialIndex = items.findIndex((value) => value.id === item.id);
       if (initialIndex >= 0)
         showLightbox({
           initialIndex,
-          images,
+          images: previewItems,
           onClose: undefined,
           slideshowEnabled: false,
         });
     },
-    [images, showLightbox]
+    [items, previewItems, showLightbox]
   );
   const props = {
     items,
     selectedIds,
     zoomIndex: filter.zoomIndex,
     onSelectChange,
-    onPreviewImage,
+    onPreviewMedia,
     onStackMemberSelect,
   };
   return filter.displayMode === DisplayMode.Wall ? (
