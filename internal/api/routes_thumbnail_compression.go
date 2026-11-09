@@ -300,12 +300,16 @@ func (rs imageRoutes) ThumbnailCompressionApply(w http.ResponseWriter, r *http.R
 		next["thumbnailImageEnabled"] = req.Enabled
 		next["thumbnailImageFormat"] = req.Format
 		next["thumbnailImageQuality"] = req.Quality
-		next["thumbnailImageKeepOld"] = req.KeepOld
+		if req.Enabled {
+			next["thumbnailImageKeepOld"] = req.KeepOld
+		}
 	case "clip":
 		next["thumbnailVideoEnabled"] = req.Enabled
 		next["thumbnailVideoFormat"] = req.Format
 		next["thumbnailVideoQuality"] = req.Quality
-		next["thumbnailVideoKeepOld"] = req.KeepOld
+		if req.Enabled {
+			next["thumbnailVideoKeepOld"] = req.KeepOld
+		}
 	case "animated":
 		next["thumbnailAnimatedEnabled"] = req.Enabled
 		next["thumbnailAnimatedQuality"] = req.Quality
@@ -320,9 +324,12 @@ func (rs imageRoutes) ThumbnailCompressionApply(w http.ResponseWriter, r *http.R
 		// With retained native files, switching back is immediate: the
 		// serving paths already point to the untouched legacy JPEG/WebM.
 		// If the user deleted them, regenerate only that category.
-		if priorEnabled && !priorKept && req.Category != "animated" {
+		// The playable clip endpoint cannot create missing native WebM files
+		// on demand. Regenerate any missing clips while preserving old ones.
+		// For still thumbnails, generate only when the old cache was deleted.
+		if priorEnabled && (req.Category == "clip" || (req.Category == "image" && !priorKept)) {
 			queueThumbnailCacheOperation(w, r, m, req.Category, "restore", func(ctx context.Context, progress *job.Progress) error {
-				return m.RebuildExperimentalThumbnailCache(ctx, progress, req.Category, false)
+				return m.RebuildExperimentalThumbnailCache(ctx, progress, req.Category, priorKept)
 			})
 			return
 		}
