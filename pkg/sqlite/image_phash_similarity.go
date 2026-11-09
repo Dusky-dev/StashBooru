@@ -81,8 +81,8 @@ func findImagePHashSimilarityIDsWithCollapse(ctx context.Context, query queryBui
 }
 
 // collapseSortedImageIDs retains the first ranked hit for each visual stack
- // but displays its actual Image representative. A Video representative has
- // no Images-only card, so matching Images in that stack are omitted here.
+// but displays its actual Image representative. A Video representative has
+// no Images-only card, so matching Images in that stack are omitted here.
 func collapseSortedImageIDs(ctx context.Context, ranked []int, findFilter *models.FindFilterType) ([]int, int, error) {
 	var members []struct {
 		ImageID   int           `db:"image_id"`
