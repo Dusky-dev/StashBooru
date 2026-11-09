@@ -18,6 +18,8 @@ func TestThumbnailCacheMatchesIsolated(t *testing.T) {
 		{prefix + "_q60.jxl", "image", true},
 		{prefix + "_exp_q60.jxl", "image", true},
 		{prefix + "_exp_q45.jpg", "image", true},
+		{prefix + "_exp_aq75_m55_b100.jxl", "image", true},
+		{prefix + "_exp_aq75_m55_b100.jpg", "image", true},
 		{prefix + "_q45.webp", "image", true},
 		{prefix + ".webm", "image", false},
 		{prefix + "_anim_q65.webp", "image", false},

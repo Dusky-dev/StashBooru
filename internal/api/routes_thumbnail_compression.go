@@ -22,6 +22,10 @@ type thumbnailCompressionRequest struct {
 	Enabled      bool   `json:"enabled"`
 	Format       string `json:"format"`
 	Quality      int    `json:"quality"`
+	Resolution   int    `json:"resolution"`
+	Mode         string `json:"mode"`
+	MinQuality   int    `json:"minQuality"`
+	Budget       int    `json:"budget"`
 	KeepOld      bool   `json:"keepOld"`
 	Acknowledged bool   `json:"acknowledged"`
 }
@@ -151,6 +155,22 @@ func validateThumbnailCompressionRequest(req thumbnailCompressionRequest) error 
 	case "animated":
 		if req.Format != "webp" {
 			return fmt.Errorf("animated thumbnails currently support WebP only")
+		}
+	}
+	if req.Category == "image" || req.Category == "animated" {
+		if req.Resolution != 0 && (req.Resolution < 320 || req.Resolution > 640 || req.Resolution%80 != 0) {
+			return fmt.Errorf("thumbnail resolution must be 320-640px in steps of 80px")
+		}
+	}
+	if req.Category == "image" {
+		if req.Mode != "" && req.Mode != "fixed" && req.Mode != "adaptive" {
+			return fmt.Errorf("invalid thumbnail quality mode")
+		}
+		if req.MinQuality != 0 && (req.MinQuality < 10 || req.MinQuality > req.Quality) {
+			return fmt.Errorf("minimum adaptive quality must not exceed maximum quality")
+		}
+		if req.Budget != 0 && (req.Budget < 50 || req.Budget > 150 || req.Budget%10 != 0) {
+			return fmt.Errorf("adaptive size budget must be 50-150 percent in steps of 10")
 		}
 	}
 	if req.Enabled && !req.Acknowledged {
@@ -305,6 +325,26 @@ func (rs imageRoutes) ThumbnailCompressionApply(w http.ResponseWriter, r *http.R
 		next["thumbnailImageEnabled"] = req.Enabled
 		next["thumbnailImageFormat"] = req.Format
 		next["thumbnailImageQuality"] = req.Quality
+		next["thumbnailImageResolution"] = req.Resolution
+		if req.Resolution == 0 {
+			next["thumbnailImageResolution"] = 320
+		}
+		next["thumbnailImageMode"] = req.Mode
+		if req.Mode == "" {
+			next["thumbnailImageMode"] = "fixed"
+		}
+		minQuality := req.MinQuality
+		if minQuality == 0 {
+			minQuality = 55
+			if req.Quality < minQuality {
+				minQuality = req.Quality
+			}
+		}
+		next["thumbnailImageMinQuality"] = minQuality
+		next["thumbnailImageBudget"] = req.Budget
+		if req.Budget == 0 {
+			next["thumbnailImageBudget"] = 100
+		}
 		if req.Enabled {
 			next["thumbnailImageKeepOld"] = req.KeepOld
 		}
@@ -318,6 +358,10 @@ func (rs imageRoutes) ThumbnailCompressionApply(w http.ResponseWriter, r *http.R
 	case "animated":
 		next["thumbnailAnimatedEnabled"] = req.Enabled
 		next["thumbnailAnimatedQuality"] = req.Quality
+		next["thumbnailAnimatedResolution"] = req.Resolution
+		if req.Resolution == 0 {
+			next["thumbnailAnimatedResolution"] = 320
+		}
 	}
 	m.Config.SetUIConfiguration(next)
 	if err := m.Config.Write(); err != nil {
