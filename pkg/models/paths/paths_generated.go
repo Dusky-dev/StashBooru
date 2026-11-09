@@ -115,3 +115,22 @@ func (gp *generatedPaths) GetAnimatedThumbnailPathForEncoding(checksum string, w
 	fname := fmt.Sprintf("%s_%d_anim_q%d.webp", checksum, width, quality)
 	return filepath.Join(gp.Thumbnails, fsutil.GetIntraDir(checksum, thumbDirDepth, thumbDirLength), fname)
 }
+
+// Experimental keys must never alias the native JPG/WebM cache, even when
+// the user selects native-like codec/quality values. This lets "Keep old"
+// restore the exact pre-experiment thumbnails by simply disabling the feature.
+func (gp *generatedPaths) GetExperimentalThumbnailPath(checksum string, width int, format string, quality int) string {
+	if format != "jpg" && format != "webp" && format != "jxl" {
+		format = "jpg"
+	}
+	fname := fmt.Sprintf("%s_%d_exp_q%d.%s", checksum, width, quality, format)
+	return filepath.Join(gp.Thumbnails, fsutil.GetIntraDir(checksum, thumbDirDepth, thumbDirLength), fname)
+}
+
+func (gp *generatedPaths) GetExperimentalClipPreviewPath(checksum string, width int, format string, quality int) string {
+	if format != "webm" && format != "mp4" {
+		format = "webm"
+	}
+	fname := fmt.Sprintf("%s_%d_exp_q%d.%s", checksum, width, quality, format)
+	return filepath.Join(gp.Thumbnails, fsutil.GetIntraDir(checksum, thumbDirDepth, thumbDirLength), fname)
+}
