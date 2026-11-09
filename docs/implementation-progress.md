@@ -5480,3 +5480,28 @@ these historical CI snapshots.
   browser suite to cover empty-result `?p=9` returning to page 1.
 - CI and runtime tests pending; no loaded application/browser was available
   in the GitHub connector environment.
+
+
+## Mixed All preview order repair — November 9, 2026
+
+- Base: `develop` `57a4c0ab7bd4792ce0af77e0926a7951054800ae`,
+  branch `fix/mixed-all-preview-navigation-20261109`.
+- Root cause: `MediaListContent` constructed its Lightbox array with
+  `items.flatMap(item => item.image ? [item.image] : [])`; the bundled
+  global native Scene preview host independently registered Video cards and
+  created a Video-only Lightbox queue. Arrows skipped all entries of the
+  opposite kind in both directions, for global All and entity All.
+- Compose the Lightbox sequence directly from typed `findMedia.items` in
+  their current sort and filter order. Convert Video entries to existing
+  `StackVideo` native ScenePlayer renderers with typed VIDEO references,
+  screenshot and direct native details link. No Image-only edit/delete
+  controls are offered for Video entries.
+- All Grid Scene preview buttons now use the per-card mixed `onPreview`
+  callback when supplied. Global Scene preview behavior is unchanged for
+  Videos-only pages. The app-wide Video Wall click capture explicitly excludes
+  native mixed All Wall cards so its React handler opens the shared sequence.
+  Both built-in sources and their verified composed SHA-256 are updated.
+- Browser regressions cover both mixed media transitions from Grid and
+  navigation from the selected Character All tab. Validate real playback,
+  keyboard/arrow behavior, lightbox cleanup and browser Back before merging.
+- No GraphQL, SQL or original media bytes changed.
