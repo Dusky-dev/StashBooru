@@ -132,6 +132,20 @@ func (e *ThumbnailEncoder) GetAnimatedThumbnail(f models.File, maxSize, quality 
 func (e *ThumbnailEncoder) GetThumbnail(f models.File, maxSize int) ([]byte, error) {
 	// Video-backed image clips can be large, so avoid buffering the whole file.
 	if _, ok := f.(*models.VideoFile); ok {
+		if e.ThumbnailFormat == "jxl" {
+			// FFmpeg only provides the poster frame; let libvips encode JXL.
+			// Do not substitute WebP/JPEG as the final selected format.
+			if e.vips == nil {
+				return nil, fmt.Errorf("%w: JXL poster frame encoding requires libvips", ErrNotSupportedForThumbnail)
+			}
+			jpegEncoder := *e
+			jpegEncoder.ThumbnailFormat = "jpg"
+			poster, err := jpegEncoder.ffmpegImageThumbnailPath(f.Base().Path, maxSize)
+			if err != nil {
+				return nil, err
+			}
+			return e.vips.ImageThumbnailWithOptions(bytes.NewBuffer(poster), maxSize, "jxl", e.ThumbnailQuality)
+		}
 		return e.ffmpegImageThumbnailPath(f.Base().Path, maxSize)
 	}
 
