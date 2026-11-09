@@ -1110,8 +1110,10 @@ export const LightboxComponent: React.FC<IProps> = ({
 
     // Native Scene players need valid geometry before screenshot/file
     // dimensions have been indexed; do not leave their viewer blank.
-    const width = image.visual_files?.[0]?.width || (image.renderMedia ? 1280 : 0);
-    const height = image.visual_files?.[0]?.height || (image.renderMedia ? 720 : 0);
+    const width =
+      image.visual_files?.[0]?.width || (image.renderMedia ? 1280 : 0);
+    const height =
+      image.visual_files?.[0]?.height || (image.renderMedia ? 720 : 0);
 
     return (
       <LightboxImage
