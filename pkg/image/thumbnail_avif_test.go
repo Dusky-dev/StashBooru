@@ -1,6 +1,10 @@
 package image
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stashapp/stash/pkg/models"
+)
 
 func TestAVIFQualityCRFIsMonotonic(t *testing.T) {
 	if avifQualityCRF(100) != 0 || avifQualityCRF(60) != 22 || avifQualityCRF(10) != 49 {
@@ -18,5 +22,28 @@ func TestAVIFPreflightChecksContainerSignature(t *testing.T) {
 	bad := []byte{0, 0, 0, 32, 'f', 't', 'y', 'p', 'h', 'e', 'i', 'c', 0, 0, 0, 0}
 	if !isAVIFEncoded(good) || isAVIFEncoded(bad) || isAVIFEncoded(nil) {
 		t.Fatal("invalid AVIF signature detection")
+	}
+}
+
+func TestAVIFLosslessDecodeBridgeSourceDetection(t *testing.T) {
+	f := &models.ImageFile{Format: "jpegxl"}
+	if !isJXLSource(f) {
+		t.Fatal("FFprobe JPEG XL codec should be decoded by libvips")
+	}
+	f.Format = "jxl"
+	if !isJXLSource(f) {
+		t.Fatal("JXL alias should be decoded by libvips")
+	}
+	f.Format = "png"
+	if isJXLSource(f) {
+		t.Fatal("PNG must not be routed as JPEG XL")
+	}
+}
+
+func TestAVIFLosslessPNGValidation(t *testing.T) {
+	png := []byte{137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 0}
+	jpg := []byte{255, 216, 255, 219}
+	if !isPNGEncoded(png) || isPNGEncoded(jpg) || isPNGEncoded(nil) {
+		t.Fatal("lossless PNG validation failed")
 	}
 }
