@@ -799,9 +799,9 @@ export function VisualStackDialog({
                         disabled={busy || rows.length >= 200}
                         onClick={() =>
                           void reviewMember({
-                          kind: GQL.MediaKind.Image,
-                          id: image.id,
-                        })
+                            kind: GQL.MediaKind.Image,
+                            id: image.id,
+                          })
                         }
                       >
                         {image.visual_stack ? "Review stack" : "Add to stack"}
@@ -826,7 +826,7 @@ export function VisualStackDialog({
                       disabled={
                         busy ||
                         similarPage * 50 >=
-                        (similarQuery.data?.findImages.count ?? 0)
+                          (similarQuery.data?.findImages.count ?? 0)
                       }
                       onClick={() => setSimilarPage((page) => page + 1)}
                     >
