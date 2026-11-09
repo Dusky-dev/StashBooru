@@ -5,7 +5,7 @@ import "testing"
 func TestExperimentalQualityFallbackAndBounds(t *testing.T) {
 	for _, tc := range []struct {
 		value interface{}
-		want int
+		want  int
 	}{
 		{nil, 70}, {"garbage", 70}, {float64(-1), 70},
 		{float64(101), 70}, {float64(35), 35}, {95, 95},

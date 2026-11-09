@@ -88,7 +88,7 @@ func (gp *generatedPaths) GetClipPreviewPath(checksum string, width int) string 
 }
 
 // Cache keys include format and quality so switching settings never serves
- // bytes with a stale extension or silently reuses a different quality.
+// bytes with a stale extension or silently reuses a different quality.
 func (gp *generatedPaths) GetThumbnailPathForEncoding(checksum string, width int, format string, quality int) string {
 	if format == "jpg" && quality == 70 {
 		return gp.GetThumbnailPath(checksum, width)

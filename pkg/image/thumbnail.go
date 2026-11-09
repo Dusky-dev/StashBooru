@@ -185,10 +185,10 @@ func (e *ThumbnailEncoder) ffmpegThumbnailOptions(maxSize int) (transcoder.Image
 		return transcoder.ImageThumbnailOptions{}, fmt.Errorf("%w: JXL encoding requires libvips", ErrNotSupportedForThumbnail)
 	}
 	opts := transcoder.ImageThumbnailOptions{
-		OutputFormat: ffmpeg.ImageFormatJpeg,
-		OutputPath: "-",
+		OutputFormat:  ffmpeg.ImageFormatJpeg,
+		OutputPath:    "-",
 		MaxDimensions: maxSize,
-		Quality: 2 + (100-quality)*(100-quality)/300,
+		Quality:       2 + (100-quality)*(100-quality)/300,
 	}
 	if opts.Quality > 31 {
 		opts.Quality = 31
