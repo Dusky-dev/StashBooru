@@ -60,7 +60,6 @@ async function checkVideoPreview(page, selector, videoOnly = true) {
     .waitFor({ state: "hidden" });
 }
 
-
 // In the actual All order, the next result may be the other media kind. A
 // separate Images-only or Videos-only carousel silently skipped those items.
 async function checkMixedPreviewOrder(page) {
@@ -71,7 +70,9 @@ async function checkMixedPreviewOrder(page) {
     nodes.map((node) => ({
       kind: node.classList.contains("image-card") ? "image" : "video",
       path: new URL(
-        node.querySelector("a.image-card-link, a.scene-card-link").getAttribute("href"),
+        node
+          .querySelector("a.image-card-link, a.scene-card-link")
+          .getAttribute("href"),
         location.origin
       ).pathname,
     }))
@@ -101,14 +102,19 @@ async function checkMixedPreviewOrder(page) {
       .click();
     await page.waitForFunction(
       (path) =>
-        document.querySelector(".Lightbox-footer-center .image-link")
+        document
+          .querySelector(".Lightbox-footer-center .image-link")
           ?.getAttribute("href") === path,
       before.path
     );
-    await page.locator(".Lightbox-display > .Lightbox-navbutton").last().click();
+    await page
+      .locator(".Lightbox-display > .Lightbox-navbutton")
+      .last()
+      .click();
     await page.waitForFunction(
       (path) =>
-        document.querySelector(".Lightbox-footer-center .image-link")
+        document
+          .querySelector(".Lightbox-footer-center .image-link")
           ?.getAttribute("href") === path,
       next.path
     );
