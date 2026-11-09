@@ -12,10 +12,26 @@ import (
 type vipsEncoder string
 
 func (e *vipsEncoder) ImageThumbnail(image *bytes.Buffer, maxSize int) ([]byte, error) {
+	return e.ImageThumbnailWithOptions(image, maxSize, "jpg", defaultThumbnailQuality)
+}
+
+func vipsThumbnailOutput(format string, quality int) string {
+	switch format {
+	case "webp", "jxl":
+	default:
+		format = "jpg"
+	}
+	if quality < 10 || quality > 100 {
+		quality = defaultThumbnailQuality
+	}
+	return fmt.Sprintf(".%s[Q=%d,strip]", format, quality)
+}
+
+func (e *vipsEncoder) ImageThumbnailWithOptions(image *bytes.Buffer, maxSize int, format string, quality int) ([]byte, error) {
 	args := []string{
 		"thumbnail_source",
 		"[descriptor=0]",
-		".jpg[Q=70,strip]",
+		vipsThumbnailOutput(format, quality),
 		fmt.Sprint(maxSize),
 		"--size", "down",
 	}
@@ -28,12 +44,16 @@ func (e *vipsEncoder) ImageThumbnail(image *bytes.Buffer, maxSize int) ([]byte, 
 // This is required for formats like AVIF that need random file access (seeking)
 // which stdin cannot provide.
 func (e *vipsEncoder) ImageThumbnailPath(path string, maxSize int) ([]byte, error) {
+	return e.ImageThumbnailPathWithOptions(path, maxSize, "jpg", defaultThumbnailQuality)
+}
+
+func (e *vipsEncoder) ImageThumbnailPathWithOptions(path string, maxSize int, format string, quality int) ([]byte, error) {
 	// vips thumbnail syntax: thumbnail input output width [options]
 	// Using .jpg[Q=70,strip] as output writes to stdout
 	args := []string{
 		"thumbnail",
 		path,
-		".jpg[Q=70,strip]",
+		vipsThumbnailOutput(format, quality),
 		fmt.Sprint(maxSize),
 		"--size", "down",
 	}

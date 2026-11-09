@@ -17,7 +17,7 @@ import (
 	"github.com/stashapp/stash/pkg/models"
 )
 
-const ffmpegImageQuality = 5
+const defaultThumbnailQuality = 70
 
 var vipsPath string
 var once sync.Once
@@ -29,6 +29,8 @@ type ThumbnailEncoder struct {
 	FFMpeg             *ffmpeg.FFMpeg
 	FFProbe            *ffmpeg.FFProbe
 	ClipPreviewOptions ClipPreviewOptions
+	ThumbnailFormat    string
+	ThumbnailQuality   int
 	vips               *vipsEncoder
 }
 
@@ -36,6 +38,8 @@ type ClipPreviewOptions struct {
 	InputArgs  []string
 	OutputArgs []string
 	Preset     string
+	Format     string
+	Quality    int
 }
 
 func GetVipsPath() string {
@@ -50,6 +54,8 @@ func NewThumbnailEncoder(ffmpegEncoder *ffmpeg.FFMpeg, ffProbe *ffmpeg.FFProbe, 
 		FFMpeg:             ffmpegEncoder,
 		FFProbe:            ffProbe,
 		ClipPreviewOptions: clipPreviewOptions,
+		ThumbnailFormat:    "jpg",
+		ThumbnailQuality:   defaultThumbnailQuality,
 	}
 
 	vipsPath := GetVipsPath()
@@ -107,7 +113,7 @@ func (e *ThumbnailEncoder) GetThumbnail(f models.File, maxSize int) ([]byte, err
 				return nil, fmt.Errorf("%w: AVIF in zip file", ErrNotSupportedForThumbnail)
 			}
 			if e.vips != nil {
-				return e.vips.ImageThumbnailPath(f.Base().Path, maxSize)
+				return e.vips.ImageThumbnailPathWithOptions(f.Base().Path, maxSize, e.ThumbnailFormat, e.ThumbnailQuality)
 			}
 			return e.ffmpegImageThumbnailPath(f.Base().Path, maxSize)
 		}
@@ -116,10 +122,10 @@ func (e *ThumbnailEncoder) GetThumbnail(f models.File, maxSize int) ([]byte, err
 	// vips has issues loading files from stdin on Windows
 	if e.vips != nil {
 		if runtime.GOOS == "windows" && f.Base().ZipFileID == nil {
-			return e.vips.ImageThumbnailPath(f.Base().Path, maxSize)
+			return e.vips.ImageThumbnailPathWithOptions(f.Base().Path, maxSize, e.ThumbnailFormat, e.ThumbnailQuality)
 		}
 		if runtime.GOOS != "windows" {
-			return e.vips.ImageThumbnail(buf, maxSize)
+			return e.vips.ImageThumbnailWithOptions(buf, maxSize, e.ThumbnailFormat, e.ThumbnailQuality)
 		}
 	}
 	return e.ffmpegImageThumbnail(buf, maxSize)
@@ -170,31 +176,44 @@ func (e *ThumbnailEncoder) GetPreview(inPath string, outPath string, maxSize int
 	return e.getClipPreview(inPath, outPath, maxSize, clipDuration, fileData.FrameRate)
 }
 
-func (e *ThumbnailEncoder) ffmpegImageThumbnail(image *bytes.Buffer, maxSize int) ([]byte, error) {
-	options := transcoder.ImageThumbnailOptions{
-		OutputFormat:  ffmpeg.ImageFormatJpeg,
-		OutputPath:    "-",
-		MaxDimensions: maxSize,
-		Quality:       ffmpegImageQuality,
+func (e *ThumbnailEncoder) ffmpegThumbnailOptions(maxSize int) (transcoder.ImageThumbnailOptions, error) {
+	format, quality := e.ThumbnailFormat, e.ThumbnailQuality
+	if quality < 10 || quality > 100 {
+		quality = defaultThumbnailQuality
 	}
-
-	args := transcoder.ImageThumbnail("-", options)
-
-	return e.FFMpeg.GenerateOutput(context.TODO(), args, image)
+	if format == "jxl" {
+		return transcoder.ImageThumbnailOptions{}, fmt.Errorf("%w: JXL encoding requires libvips", ErrNotSupportedForThumbnail)
+	}
+	opts := transcoder.ImageThumbnailOptions{
+		OutputFormat: ffmpeg.ImageFormatJpeg,
+		OutputPath: "-",
+		MaxDimensions: maxSize,
+		Quality: 2 + (100-quality)*(100-quality)/300,
+	}
+	if opts.Quality > 31 {
+		opts.Quality = 31
+	}
+	if format == "webp" {
+		opts.OutputFormat = ffmpeg.ImageFormatWebp
+		opts.Quality = quality
+	}
+	return opts, nil
 }
 
-// ffmpegImageThumbnailPath generates a thumbnail from a file path (used for AVIF which can't be piped)
-func (e *ThumbnailEncoder) ffmpegImageThumbnailPath(inputPath string, maxSize int) ([]byte, error) {
-	options := transcoder.ImageThumbnailOptions{
-		OutputFormat:  ffmpeg.ImageFormatJpeg,
-		OutputPath:    "-",
-		MaxDimensions: maxSize,
-		Quality:       ffmpegImageQuality,
+func (e *ThumbnailEncoder) ffmpegImageThumbnail(image *bytes.Buffer, maxSize int) ([]byte, error) {
+	options, err := e.ffmpegThumbnailOptions(maxSize)
+	if err != nil {
+		return nil, err
 	}
+	return e.FFMpeg.GenerateOutput(context.TODO(), transcoder.ImageThumbnail("-", options), image)
+}
 
-	args := transcoder.ImageThumbnail(inputPath, options)
-
-	return e.FFMpeg.GenerateOutput(context.TODO(), args, nil)
+func (e *ThumbnailEncoder) ffmpegImageThumbnailPath(inputPath string, maxSize int) ([]byte, error) {
+	options, err := e.ffmpegThumbnailOptions(maxSize)
+	if err != nil {
+		return nil, err
+	}
+	return e.FFMpeg.GenerateOutput(context.TODO(), transcoder.ImageThumbnail(inputPath, options), nil)
 }
 
 func (e *ThumbnailEncoder) getClipPreview(inPath string, outPath string, maxSize int, clipDuration float64, frameRate float64) error {
@@ -206,13 +225,32 @@ func (e *ThumbnailEncoder) getClipPreview(inPath string, outPath string, maxSize
 
 	o := e.ClipPreviewOptions
 
+	format := o.Format
+	if format != "mp4" {
+		format = "webm"
+	}
+	quality := o.Quality
+	if quality < 10 || quality > 100 {
+		quality = 75
+	}
+	crf := 25 + (75-quality)/3
+	if crf < 15 {
+		crf = 15
+	}
+	if crf > 45 {
+		crf = 45
+	}
+	codec := ffmpeg.VideoCodecVP9
+	if format == "mp4" {
+		codec = ffmpeg.VideoCodecLibX264
+	}
 	thumbArgs = append(thumbArgs,
 		"-pix_fmt", "yuv420p",
 		"-preset", o.Preset,
-		"-crf", "25",
+		"-crf", fmt.Sprint(crf),
 		"-threads", "4",
 		"-strict", "-2",
-		"-f", "webm",
+		"-f", format,
 	)
 
 	if frameRate <= 0.01 {
@@ -227,7 +265,7 @@ func (e *ThumbnailEncoder) getClipPreview(inPath string, outPath string, maxSize
 		XError:   true,
 		SlowSeek: false,
 
-		VideoCodec: ffmpeg.VideoCodecVP9,
+		VideoCodec: codec,
 		VideoArgs:  thumbArgs,
 
 		ExtraInputArgs:  o.InputArgs,

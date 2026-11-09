@@ -86,3 +86,27 @@ func (gp *generatedPaths) GetClipPreviewPath(checksum string, width int) string 
 	fname := fmt.Sprintf("%s_%d.webm", checksum, width)
 	return filepath.Join(gp.Thumbnails, fsutil.GetIntraDir(checksum, thumbDirDepth, thumbDirLength), fname)
 }
+
+// Cache keys include format and quality so switching settings never serves
+ // bytes with a stale extension or silently reuses a different quality.
+func (gp *generatedPaths) GetThumbnailPathForEncoding(checksum string, width int, format string, quality int) string {
+	if format == "jpg" && quality == 70 {
+		return gp.GetThumbnailPath(checksum, width)
+	}
+	if format != "webp" && format != "jxl" {
+		format = "jpg"
+	}
+	fname := fmt.Sprintf("%s_%d_q%d.%s", checksum, width, quality, format)
+	return filepath.Join(gp.Thumbnails, fsutil.GetIntraDir(checksum, thumbDirDepth, thumbDirLength), fname)
+}
+
+func (gp *generatedPaths) GetClipPreviewPathForEncoding(checksum string, width int, format string, quality int) string {
+	if format == "webm" && quality == 75 {
+		return gp.GetClipPreviewPath(checksum, width)
+	}
+	if format != "mp4" {
+		format = "webm"
+	}
+	fname := fmt.Sprintf("%s_%d_q%d.%s", checksum, width, quality, format)
+	return filepath.Join(gp.Thumbnails, fsutil.GetIntraDir(checksum, thumbDirDepth, thumbDirLength), fname)
+}
