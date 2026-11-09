@@ -290,6 +290,10 @@ func (rs imageRoutes) ThumbnailCompressionApply(w http.ResponseWriter, r *http.R
 	}
 	priorEnabled := thumbnailEnabled(m, req.Category)
 	priorKept := thumbnailKeepOld(m, req.Category)
+	if req.Enabled && priorEnabled && req.KeepOld && !priorKept && req.Category != "animated" {
+		http.Error(w, "the original cache was already deleted; disable and regenerate native thumbnails before choosing Keep old", http.StatusConflict)
+		return
+	}
 	settings := m.Config.GetUIConfiguration()
 	next := make(map[string]interface{}, len(settings)+5)
 	for key, value := range settings {
