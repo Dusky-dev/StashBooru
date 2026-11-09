@@ -477,6 +477,7 @@ const CopyrightMediaTabs: React.FC<{
         }
       >
         <FilteredMediaList
+          key={copyright.id}
           filterHook={imageFilterHook}
           view={View.CopyrightMedia}
         />

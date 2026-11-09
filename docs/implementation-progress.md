@@ -5482,6 +5482,28 @@ these historical CI snapshots.
   in the GitHub connector environment.
 
 
+## Entity All selection ownership — November 9, 2026
+
+- Base `develop` at branch creation; independent PR from the mixed
+  Lightbox navigation fix (#338).
+- Native `FilteredMediaList` intentionally retains checked items across
+  filter and page changes within a library. A selected entity profile, however,
+  is a *different* selection scope. React Router can reuse the same detail-page
+  and All-list component when navigating from one cached Character, Artist,
+  Tag or Copyright to another without an intervening loading/unmount render.
+  Without a keyed list, operations in the second profile can still target the
+  first profile's previously selected, now hidden media.
+- Key the native All list by the selected entity's canonical ID at each of
+  these four profile call sites. This forces a fresh list selection and scroll
+  state for each new entity, without changing the global All list or clearing
+  intentional multi-page/multi-filter selections inside the *same* profile.
+- The existing All history-state map remains keyed by browser location;
+  navigating Back to the original profile can restore its earlier selection.
+- Validation still needed for rapid cached SPA entity-to-entity navigation,
+  retained All view preference and browser Back selection restoration. No
+  media associations, original files or SQL queries were changed.
+
+
 ## Mixed All preview order repair — November 9, 2026
 
 - Base: `develop` `57a4c0ab7bd4792ce0af77e0926a7951054800ae`,
