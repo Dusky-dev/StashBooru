@@ -3,6 +3,7 @@ package image
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	stdimage "image"
 	"image/png"
@@ -130,7 +131,8 @@ func PreflightAVIFThumbnail(ctx context.Context) error {
 	cmd.Stdin = &input
 	out, err := cmd.Output()
 	if err != nil {
-		if exit, ok := err.(*stdexec.ExitError); ok {
+		var exit *stdexec.ExitError
+		if errors.As(err, &exit) {
 			return fmt.Errorf("AVIF encoder unavailable (%s); thumbnails unchanged: %w", strings.TrimSpace(string(exit.Stderr)), err)
 		}
 		return fmt.Errorf("AVIF encoder unavailable; thumbnails unchanged: %w", err)

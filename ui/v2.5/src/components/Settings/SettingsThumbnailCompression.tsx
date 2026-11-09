@@ -33,9 +33,9 @@ const labels: Record<Category, string> = {
 
 export const SettingsThumbnailCompression: React.FC = () => {
   const { ui, refetch } = useSettings();
-  const [imageFormat, setImageFormat] = useState<"jpg" | "webp" | "jxl" | "avif">(
-    ui.thumbnailImageFormat ?? "jpg"
-  );
+  const [imageFormat, setImageFormat] = useState<
+    "jpg" | "webp" | "jxl" | "avif"
+  >(ui.thumbnailImageFormat ?? "jpg");
   const [imageQuality, setImageQuality] = useState(
     ui.thumbnailImageQuality ?? 70
   );
@@ -336,7 +336,9 @@ export const SettingsThumbnailCompression: React.FC = () => {
           value={imageFormat}
           disabled={disabled}
           onChange={(e) =>
-            setImageFormat(e.currentTarget.value as "jpg" | "webp" | "jxl" | "avif")
+            setImageFormat(
+              e.currentTarget.value as "jpg" | "webp" | "jxl" | "avif"
+            )
           }
         >
           <option value="jpg">JPEG (native)</option>
@@ -470,8 +472,8 @@ export const SettingsThumbnailCompression: React.FC = () => {
         <Alert variant="info">
           AVIF uses libvips with an AV1 encoder (effort 4, 4:4:4 chroma). The
           server verifies that AVIF encoding works before rebuilding. Start at
-          320 px and quality 55–65 in Fixed mode; encoder quality values are
-          not comparable with JPEG or JXL.
+          320 px and quality 55–65 in Fixed mode; encoder quality values are not
+          comparable with JPEG or JXL.
         </Alert>
       )}
       {enabled.image && !unchanged.image && (
