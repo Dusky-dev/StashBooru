@@ -802,6 +802,7 @@ export function useEnsureValidPage(
       // A newer filter/page navigation must not be overwritten by a late
       // pagination effect from an earlier result.
       if (
+        current !== filter ||
         current.currentPage !== filter.currentPage ||
         current.itemsPerPage !== filter.itemsPerPage
       ) {
@@ -809,5 +810,5 @@ export function useEnsureValidPage(
       }
       return current.changePage(page);
     });
-  }, [filter.currentPage, filter.itemsPerPage, completedCount, setFilter]);
+  }, [filter, completedCount, setFilter]);
 }
