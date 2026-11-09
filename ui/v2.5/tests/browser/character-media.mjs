@@ -201,6 +201,36 @@ try {
   await video.hover();
   await video.locator(".unified-media-video-preview-button button").click();
   await page.locator(".unified-media-native-scene-player .video-js").waitFor();
+  // All inside an individual Character has exactly the same typed Image+Video
+  // sequence as global All: arrows must not jump between Video-only entries.
+  const ordered = page.locator(
+    "#performer-tabs-tabpane-all .row.justify-content-center > .grid-card"
+  );
+  const order = await ordered.evaluateAll((nodes) =>
+    nodes.map((node) => ({
+      kind: node.classList.contains("image-card") ? "image" : "video",
+      path: new URL(
+        node
+          .querySelector("a.image-card-link, a.scene-card-link")
+          .getAttribute("href"),
+        location.origin
+      ).pathname,
+    }))
+  );
+  assert.ok(order.some((item) => item.kind === "image"));
+  assert.ok(order.some((item) => item.kind === "video"));
+  const currentVideo = order.findIndex(
+    (item) => item.kind === "video"
+  );
+  const expectedNext = order[(currentVideo + 1) % order.length];
+  await page.locator(".Lightbox-display > .Lightbox-navbutton").last().click();
+  await page.waitForFunction(
+    (path) =>
+      document
+        .querySelector(".Lightbox-footer-center .image-link")
+        ?.getAttribute("href") === path,
+    expectedNext.path
+  );
   await page.getByTitle("Close Lightbox", { exact: true }).click();
   await page.locator(".Lightbox").waitFor({ state: "hidden" });
   console.log("PASS: native Character All uses shared scoped Video preview");
