@@ -260,6 +260,7 @@ func Initialize() (*Server, error) {
 	r.Post("/booru-browser/tag-path", booruRoutes.ImportTagPath)
 	r.Get("/booru-browser/directories", booruRoutes.Directories)
 	r.Post("/media-upload", booruRoutes.UploadMedia)
+	r.Post("/media-upload/folder", booruRoutes.CreateUploadFolder)
 	r.Post("/booru-browser/review/read", booruRoutes.ReadReview)
 	r.Post("/booru-browser/review/update", booruRoutes.UpdateReview)
 

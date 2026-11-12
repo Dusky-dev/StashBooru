@@ -20,13 +20,9 @@ import (
 	"github.com/stashapp/stash/pkg/txn"
 )
 
-// A single multipart request uploads one file; the UI queues multiple files
-// sequentially so one browser tab cannot trigger unbounded parallel scans.
-// No arbitrary server paths or URL fetches are accepted by this endpoint.
-const (
-	mediaUploadMaxBytes = int64(512) << 20
-	mediaUploadEnvelope = int64(64) << 10
-)
+// One multipart request streams one file to the configured library directory.
+// No fixed size cap: uploads are bounded by available server storage and any
+// limits configured by the administrator's reverse proxy.
 
 var mediaUploadExtensions = map[string]bool{
 	".jpg": true, ".jpeg": true, ".png": true, ".gif": true,
@@ -307,11 +303,6 @@ func (rs booruBrowserRoutes) UploadMedia(w http.ResponseWriter, r *http.Request)
 		writeBooruError(w, http.StatusForbidden, "origin", "Uploads must come from this StashBooru interface.")
 		return
 	}
-	if r.ContentLength > mediaUploadMaxBytes+mediaUploadEnvelope {
-		writeBooruError(w, http.StatusRequestEntityTooLarge, "size", "Uploads are limited to 512 MiB per file.")
-		return
-	}
-	r.Body = http.MaxBytesReader(w, r.Body, mediaUploadMaxBytes+mediaUploadEnvelope)
 	parts, err := r.MultipartReader()
 	if err != nil {
 		writeBooruError(w, http.StatusBadRequest, "upload", "Expected a multipart file upload.")
@@ -331,7 +322,7 @@ func (rs booruBrowserRoutes) UploadMedia(w http.ResponseWriter, r *http.Request)
 			break
 		}
 		if nextErr != nil {
-			writeBooruError(w, http.StatusBadRequest, "upload", "Malformed upload or size limit exceeded.")
+			writeBooruError(w, http.StatusBadRequest, "upload", "Malformed or interrupted upload.")
 			return
 		}
 		key := part.FormName()
@@ -361,14 +352,14 @@ func (rs booruBrowserRoutes) UploadMedia(w http.ResponseWriter, r *http.Request)
 				return
 			}
 			stage = staged.Name()
-			n, copyErr := io.Copy(staged, io.LimitReader(part, mediaUploadMaxBytes+1))
+			n, copyErr := io.Copy(staged, part)
 			if copyErr == nil {
 				copyErr = staged.Sync()
 			}
 			closeErr := staged.Close()
 			_ = part.Close()
-			if n == 0 || n > mediaUploadMaxBytes || copyErr != nil || closeErr != nil {
-				writeBooruError(w, http.StatusRequestEntityTooLarge, "file", "Upload was empty, too large, or could not be saved.")
+			if n == 0 || copyErr != nil || closeErr != nil {
+				writeBooruError(w, http.StatusBadRequest, "file", "Upload was empty, interrupted, or could not be saved.")
 				return
 			}
 			continue
