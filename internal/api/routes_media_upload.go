@@ -71,6 +71,17 @@ func validBooruWriteOrigin(origin, host string) bool {
 		strings.EqualFold(u.Host, host) && u.User == nil && u.Path == "" && u.RawQuery == ""
 }
 
+func parseMediaUploadBoolean(value string) (bool, error) {
+	switch value {
+	case "true":
+		return true, nil
+	case "false":
+		return false, nil
+	default:
+		return false, fmt.Errorf("invalid upload processing setting")
+	}
+}
+
 func parseMediaUploadIDs(input string, limit int) ([]int, error) {
 	if input == "" {
 		return nil, nil
