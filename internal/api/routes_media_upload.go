@@ -15,6 +15,7 @@ import (
 	"github.com/stashapp/stash/internal/manager"
 	managerConfig "github.com/stashapp/stash/internal/manager/config"
 	"github.com/stashapp/stash/pkg/fsutil"
+	"github.com/stashapp/stash/pkg/job"
 	"github.com/stashapp/stash/pkg/models"
 	"github.com/stashapp/stash/pkg/txn"
 )
@@ -157,7 +158,7 @@ func validateMediaUploadMetadata(ctx context.Context, repo models.Repository, ar
 // importUploadedMedia invokes Stash's native scanner, then attaches only
 // explicitly selected metadata. If metadata fails, the saved media is retained
 // and the error explains that the user should retry metadata association.
-func importUploadedMedia(ctx context.Context, path string, artistIDs, galleryIDs, tagIDs []int) (booruLibraryResult, error) {
+func importUploadedMedia(ctx context.Context, progress *job.Progress, path string, artistIDs, galleryIDs, tagIDs []int) (booruLibraryResult, error) {
 	var result booruLibraryResult
 	mgr := manager.GetInstance()
 	if err := mgr.ScanNow(ctx, manager.ScanMetadataInput{
@@ -165,7 +166,7 @@ func importUploadedMedia(ctx context.Context, path string, artistIDs, galleryIDs
 		ScanMetadataOptions: managerConfig.ScanMetadataOptions{
 			ScanGenerateThumbnails: true, ScanGenerateCovers: true,
 		},
-	}, nil); err != nil {
+	}, progress); err != nil {
 		return result, fmt.Errorf("file saved at %s, but library scan failed: %w", path, err)
 	}
 	err := txn.WithReadTxn(ctx, mgr.Repository.TxnManager, func(ctx context.Context) error {
@@ -398,12 +399,32 @@ func (rs booruBrowserRoutes) UploadMedia(w http.ResponseWriter, r *http.Request)
 		writeBooruError(w, http.StatusBadRequest, "file", "Invalid library target.")
 		return
 	}
-	imported, err := importUploadedMedia(r.Context(), path, artistIDs, galleryIDs, tagIDs)
-	if err != nil {
-		// The fully written original remains on disk for repair or a normal
-		// library scan, even when metadata linking fails.
-		writeBooruError(w, http.StatusInternalServerError, "import", err.Error())
+	if rs.jobs == nil {
+		writeBooruError(w, http.StatusServiceUnavailable, "import", "Library import service is unavailable; the saved file remains in the selected folder.")
 		return
 	}
-	writeVisualSimilarityJSON(w, imported)
+	type importOutcome struct {
+		result booruLibraryResult
+		err    error
+	}
+	completed := make(chan importOutcome, 1)
+	rs.jobs.Add(r.Context(), "Import uploaded media: "+uploadedName, job.MakeJobExec(
+		func(ctx context.Context, progress *job.Progress) error {
+			result, importErr := importUploadedMedia(ctx, progress, path, artistIDs, galleryIDs, tagIDs)
+			completed <- importOutcome{result: result, err: importErr}
+			return importErr
+		},
+	))
+	select {
+	case outcome := <-completed:
+		if outcome.err != nil {
+			// The fully written original remains for a later scan/repair.
+			writeBooruError(w, http.StatusInternalServerError, "import", outcome.err.Error())
+			return
+		}
+		writeVisualSimilarityJSON(w, outcome.result)
+	case <-r.Context().Done():
+		// Browser closed the upload; a fully saved original remains recoverable.
+		writeBooruError(w, http.StatusRequestTimeout, "import", "Import cancelled; the saved file is still in the library folder.")
+	}
 }
