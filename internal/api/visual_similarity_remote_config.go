@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/stashapp/stash/internal/manager"
 	"github.com/stashapp/stash/pkg/visualembedding"
@@ -20,19 +22,30 @@ const visualSimilarityRemoteConfigFilename = "visual-similarity-remote.json"
 var visualSimilarityRemoteConfigMu sync.Mutex
 
 type visualSimilarityRemoteConfig struct {
-	URL   string `json:"url"`
-	Token string `json:"token,omitempty"`
+	URL           string `json:"url"`
+	Token         string `json:"token,omitempty"`
+	Enabled       *bool  `json:"enabled,omitempty"`
+	FallbackLocal bool   `json:"fallbackLocal,omitempty"`
+}
+
+// A saved URL from older versions remains enabled until explicitly disabled.
+func (config visualSimilarityRemoteConfig) isEnabled() bool {
+	return config.URL != "" && (config.Enabled == nil || *config.Enabled)
 }
 
 type visualSimilarityRemoteConfigResponse struct {
 	URL             string `json:"url"`
 	TokenConfigured bool   `json:"tokenConfigured"`
+	Enabled         bool   `json:"enabled"`
+	FallbackLocal   bool   `json:"fallbackLocal"`
 }
 
 type visualSimilarityRemoteConfigUpdate struct {
-	URL        string  `json:"url"`
-	Token      *string `json:"token,omitempty"`
-	ClearToken bool    `json:"clearToken,omitempty"`
+	URL           string  `json:"url"`
+	Token         *string `json:"token,omitempty"`
+	ClearToken    bool    `json:"clearToken,omitempty"`
+	Enabled       *bool   `json:"enabled,omitempty"`
+	FallbackLocal *bool   `json:"fallbackLocal,omitempty"`
 }
 
 func visualSimilarityRemoteConfigPath() string {
@@ -127,13 +140,25 @@ func newVisualSimilarityEmbedder() (visualembedding.Embedder, string, string, er
 	if err != nil {
 		return nil, "local", "", err
 	}
-	if strings.TrimSpace(config.URL) == "" {
+	if !config.isEnabled() {
 		return visualembedding.New(""), "local", "", nil
 	}
 
 	client, err := visualembedding.NewRemote(config.URL, config.Token)
 	if err != nil {
+		if config.FallbackLocal {
+			return visualembedding.New(""), "local", "", nil
+		}
 		return nil, "remote", config.URL, err
+	}
+	if config.FallbackLocal {
+		probeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		status, probeErr := client.Status(probeCtx)
+		cancel()
+		if probeErr != nil || !status.Installed {
+			_ = client.Close()
+			return visualembedding.New(""), "local", "", nil
+		}
 	}
 	return client, "remote", config.URL, nil
 }
@@ -147,6 +172,8 @@ func (rs imageRoutes) VisualSimilarityRemoteConfig(w http.ResponseWriter, _ *htt
 	writeVisualSimilarityJSON(w, visualSimilarityRemoteConfigResponse{
 		URL:             config.URL,
 		TokenConfigured: strings.TrimSpace(config.Token) != "",
+		Enabled:         config.isEnabled(),
+		FallbackLocal:   config.FallbackLocal,
 	})
 }
 
@@ -170,6 +197,12 @@ func (rs imageRoutes) VisualSimilarityRemoteConfigUpdate(w http.ResponseWriter, 
 		return
 	}
 	current.URL = normalizedURL
+	if update.Enabled != nil {
+		current.Enabled = update.Enabled
+	}
+	if update.FallbackLocal != nil {
+		current.FallbackLocal = *update.FallbackLocal
+	}
 	if update.ClearToken {
 		current.Token = ""
 	} else if update.Token != nil {
@@ -184,5 +217,7 @@ func (rs imageRoutes) VisualSimilarityRemoteConfigUpdate(w http.ResponseWriter, 
 	writeVisualSimilarityJSON(w, visualSimilarityRemoteConfigResponse{
 		URL:             current.URL,
 		TokenConfigured: strings.TrimSpace(current.Token) != "",
+		Enabled:         current.isEnabled(),
+		FallbackLocal:   current.FallbackLocal,
 	})
 }
