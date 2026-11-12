@@ -1,3 +1,10 @@
+## Upload queue-wide processing and real media previews — 2026-11-13
+
+- Follow-up on PR #354, same branch and `develop` baseline. The owner clarified that Tag and Convert defaults must apply to **the entire import queue**, not repeat per file. Removed two per-row switches and now render one pair of queue-level switches, initialized from saved Quick upload settings. Both options are captured once at batch start and passed to local-file and URL import endpoints. Already-running items do not change if the queue switches are edited.
+- The queue now renders a 76px browser-native preview for local image files, with a larger 220px preview for the selected item. For successfully imported Images, browser-unsupported formats and direct URL items can fall back to Stash's `image/{id}/thumbnail` generated thumbnail. Unsupported/blocked previews show an explicit unavailable message rather than silently implying a real thumbnail. Remote URLs are not fetched by the browser prior to server-side SSRF validation. Per-file metadata, destination selection, remove/retry, and original preservation remain unchanged.
+- Existing thumbnail support relies on browser codecs before import and Stash's thumbnail encoder afterward. JXL/HEIC previews before import are unavailable unless the user's browser can decode them; Stash's generated thumbnails may also fail when the server cannot decode the source. This limitation is not masked as a successful preview.
+- UI type-check, Biome, and browser acceptance pending CI; live codec matrix not tested.
+
 ## No-prompt quick upload and opt-in remote worker fallback — 2026-11-13
 
 - Baseline: `develop` `4cef61437405918044d3a43c9a1a4709029fbb3a`; branch `feat/quick-upload-no-prompt-remote-worker-controls-20261113`.
