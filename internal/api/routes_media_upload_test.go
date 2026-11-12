@@ -105,3 +105,17 @@ func TestMediaUploadRejectsCrossOriginAndBadFields(t *testing.T) {
 		t.Fatalf("unknown field was accepted: %d %s", w.Code, w.Body.String())
 	}
 }
+
+func TestMediaUploadProcessingFlagsParseStrictly(t *testing.T) {
+	for _, input := range []string{"true", "false"} {
+		value, err := parseMediaUploadBoolean(input)
+		if err != nil || value != (input == "true") {
+			t.Errorf("processing flag %q: %v, %v", input, value, err)
+		}
+	}
+	for _, input := range []string{"", "1", "TRUE", "yes", "false ", " true", "invalid"} {
+		if _, err := parseMediaUploadBoolean(input); err == nil {
+			t.Errorf("accepted malformed processing flag %q", input)
+		}
+	}
+}
