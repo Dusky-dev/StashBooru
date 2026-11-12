@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Button, Form, Modal, ProgressBar } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import { FolderPicker } from "../BooruBrowser/FolderPicker";
@@ -186,9 +186,13 @@ let nextUploadId = 0;
 export function MediaUploadDialog({
   onHide,
   onImported,
+  incomingBatch,
+  dropActive = false,
 }: {
   onHide: () => void;
   onImported: () => void;
+  incomingBatch?: { id: number; files: File[] };
+  dropActive?: boolean;
 }) {
   const [entries, setEntries] = useState<UploadEntry[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
@@ -200,6 +204,7 @@ export function MediaUploadDialog({
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
   const [progress, setProgress] = useState<Record<number, EntryProgress>>({});
+  const processedBatch = useRef(0);
 
   useEffect(() => {
     let active = true;
@@ -238,22 +243,33 @@ export function MediaUploadDialog({
     (entry) => progress[entry.id]?.phase !== "complete"
   );
 
-  function addFiles(files: File[]) {
-    if (files.length === 0 || working) return;
-    const newEntries = files.map(
-      (file): UploadEntry => ({
-        id: ++nextUploadId,
-        name: file.name,
-        file,
-        destination: defaultDirectory,
-        artistIDs: [],
-        galleryIDs: [],
-        tagIDs: [],
-      })
-    );
-    setEntries((old) => [...old, ...newEntries]);
-    setSelected(newEntries[0].id);
-  }
+  const addFiles = useCallback(
+    (files: File[]) => {
+      if (files.length === 0 || working) return;
+      const newEntries = files.map(
+        (file): UploadEntry => ({
+          id: ++nextUploadId,
+          name: file.name,
+          file,
+          destination: defaultDirectory,
+          artistIDs: [],
+          galleryIDs: [],
+          tagIDs: [],
+        })
+      );
+      setEntries((old) => [...old, ...newEntries]);
+      setSelected(newEntries[0].id);
+    },
+    [defaultDirectory, working]
+  );
+
+  // Append each incoming file drop once without losing edited queue items.
+  useEffect(() => {
+    if (!incomingBatch || incomingBatch.id === processedBatch.current || working)
+      return;
+    processedBatch.current = incomingBatch.id;
+    addFiles(incomingBatch.files);
+  }, [incomingBatch, working, addFiles]);
 
   function addURL() {
     const value = url.trim();
@@ -353,8 +369,18 @@ export function MediaUploadDialog({
           </Modal.Header>
           <Modal.Body>
             {error && <Alert variant="warning">{error}</Alert>}
-            <Form.Group controlId="media-upload-files">
-              <Form.Label>Upload from device</Form.Label>
+            <div
+              className="rounded p-3 mb-3 text-center"
+              style={{
+                border: "2px dashed currentColor",
+                background: dropActive ? "rgba(128, 128, 128, 0.2)" : undefined,
+              }}
+            >
+              <div className="font-weight-bold mb-2">
+                Drag and drop images or videos here
+              </div>
+              <Form.Group controlId="media-upload-files">
+                <Form.Label>Or browse files from your device</Form.Label>
               <Form.Control
                 type="file"
                 accept="image/*,video/*,.jxl,.heic,.heif,.mkv,.avi,.wmv,.ts"
@@ -373,7 +399,8 @@ export function MediaUploadDialog({
                 Add multiple files, including large videos. No fixed upload
                 limit; files stream into the Stash library.
               </Form.Text>
-            </Form.Group>
+              </Form.Group>
+            </div>
             {featureSettings?.allowURL && (
               <Form.Group controlId="media-upload-url">
                 <Form.Label>
