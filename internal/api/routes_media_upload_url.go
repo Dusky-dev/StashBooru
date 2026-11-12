@@ -80,24 +80,24 @@ func newMediaUploadRemoteClient() *http.Client {
 	transport.ResponseHeaderTimeout = 30 * time.Second
 	transport.TLSHandshakeTimeout = 12 * time.Second
 	transport.DialContext = func(ctx context.Context, network, address string) (net.Conn, error) {
-			host, port, err := net.SplitHostPort(address)
-			if err != nil {
-				return nil, fmt.Errorf("invalid remote host")
+		host, port, err := net.SplitHostPort(address)
+		if err != nil {
+			return nil, fmt.Errorf("invalid remote host")
+		}
+		resolved, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+		if err != nil || len(resolved) == 0 {
+			return nil, fmt.Errorf("remote hostname could not be resolved")
+		}
+		// Reject mixed public/private DNS answers instead of choosing the
+		// public answer today and risking a private answer on a later call.
+		for _, addr := range resolved {
+			ip, ok := netip.AddrFromSlice(addr.IP)
+			if !ok || !mediaUploadPublicIP(ip) {
+				return nil, fmt.Errorf("private or reserved remote address is not allowed")
 			}
-			resolved, err := net.DefaultResolver.LookupIPAddr(ctx, host)
-			if err != nil || len(resolved) == 0 {
-				return nil, fmt.Errorf("remote hostname could not be resolved")
-			}
-			// Reject mixed public/private DNS answers instead of choosing the
-			// public answer today and risking a private answer on a later call.
-			for _, addr := range resolved {
-				ip, ok := netip.AddrFromSlice(addr.IP)
-				if !ok || !mediaUploadPublicIP(ip) {
-					return nil, fmt.Errorf("private or reserved remote address is not allowed")
-				}
-			}
-			dialer := net.Dialer{Timeout: 12 * time.Second, KeepAlive: -1}
-			return dialer.DialContext(ctx, network, net.JoinHostPort(resolved[0].IP.String(), port))
+		}
+		dialer := net.Dialer{Timeout: 12 * time.Second, KeepAlive: -1}
+		return dialer.DialContext(ctx, network, net.JoinHostPort(resolved[0].IP.String(), port))
 	}
 	return &http.Client{
 		Transport: transport,
