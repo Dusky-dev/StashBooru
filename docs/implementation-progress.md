@@ -1,3 +1,11 @@
+## Upload settings and import switches crash fix — 2026-11-13
+
+- Baseline: `develop` `4cef61437405918044d3a43c9a1a4709029fbb3a`; branch `fix/upload-settings-null-current-target-20261113`, follow-up to merged PR #352.
+- Reproduced the source-level cause of `TypeError: can't access property "checked", event.currentTarget is null`: six Experimental upload settings switches passed the synthetic React event into a deferred functional `setSettings` callback. Two per-queue Tag/Convert switches made the same mistake in `setEntries`.
+- Capture the checkbox's boolean synchronously in `onChange` and pass only the boolean into state updater functions. Preserve all existing settings keys, upload behavior, and server storage schema.
+- Extend `ui/v2.5/tests/browser/settings-maintenance.mjs` with a routed upload-settings fixture that toggles all six switches, saves, checks persisted values, and asserts no uncaught page errors.
+- GitHub CI and browser regression are pending. No production build/browser acceptance was performed in this connected editor environment.
+
 ## Quick upload, thumbnail queue and saved processing defaults — 2026-11-12
 
 - Baseline: `develop` `5d9f6c0ae6f0f38873c13df80e9f099d48b73b9f`; feature branch `feat/upload-quick-defaults-thumbnails-20261112`.
