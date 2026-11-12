@@ -303,7 +303,7 @@ func (rs booruBrowserRoutes) ImportMediaURL(w http.ResponseWriter, r *http.Reque
 	writeMediaUploadEvent(w, mediaUploadStreamEvent{Type: "processing", Message: "Download complete; importing into Stash"})
 	type outcome struct {
 		result booruLibraryResult
-		err error
+		err    error
 	}
 	done := make(chan outcome, 1)
 	rs.jobs.Add(r.Context(), "Import downloaded media: "+name, job.MakeJobExec(func(ctx context.Context, progress *job.Progress) error {
