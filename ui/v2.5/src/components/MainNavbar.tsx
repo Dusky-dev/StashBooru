@@ -42,6 +42,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { baseURL } from "src/core/createClient";
 import { PatchComponent } from "src/patch";
+import { GlobalMediaUpload } from "./Shared/GlobalMediaUpload";
 
 interface IMenuItem {
   name: string;
@@ -460,6 +461,7 @@ export const MainNavbar: React.FC = () => {
       </Navbar.Brand>
 
       <Nav className="navbar-buttons flex-row ml-auto order-xl-2">
+        <GlobalMediaUpload />
         {!!newPath && (
           <div className="mr-2">
             <Link to={newPath}>

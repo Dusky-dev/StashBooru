@@ -70,8 +70,7 @@ import { OrganizedCriterionOption } from "src/models/list-filter/criteria/organi
 import { SidebarAgeFilter } from "../List/Filters/SidebarAgeFilter";
 import { PerformerAgeCriterionOption } from "src/models/list-filter/images";
 import { SidebarFolderFilter } from "../List/Filters/FolderFilter";
-import { MediaUploadDialog } from "../Shared/MediaUploadDialog";
-import { useMediaUploadEnabled } from "../Shared/mediaUploadSettings";
+import { MEDIA_UPLOAD_IMPORTED_EVENT } from "../Shared/mediaUploadSettings";
 
 interface IImageWallProps {
   images: GQL.SlimImageDataFragment[];
@@ -547,7 +546,6 @@ export const FilteredImageList = PatchComponent(
   "FilteredImageList",
   (props: IImageList) => {
     const intl = useIntl();
-    const mediaUploadsEnabled = useMediaUploadEnabled();
     const [{ data: localInterface }] = useInterfaceLocalForage();
     const collapseStacks = localInterface?.hideStackVariants !== false;
 
@@ -628,6 +626,18 @@ export const FilteredImageList = PatchComponent(
 
     const { effectiveFilter, result, cachedResult, items, totalCount } =
       queryResult;
+
+    useEffect(() => {
+      const refetchAfterUpload = () => {
+        void result.refetch();
+      };
+      window.addEventListener(MEDIA_UPLOAD_IMPORTED_EVENT, refetchAfterUpload);
+      return () =>
+        window.removeEventListener(
+          MEDIA_UPLOAD_IMPORTED_EVENT,
+          refetchAfterUpload
+        );
+    }, [result.refetch]);
 
     const metadataByline = useMemo(() => {
       if (cachedResult.loading) return null;
@@ -850,25 +860,6 @@ export const FilteredImageList = PatchComponent(
 
     const operations = (
       <div className="d-flex align-items-center">
-        {mediaUploadsEnabled && view === View.Images && (
-          <Button
-            size="sm"
-            variant="primary"
-            className="mr-2"
-            onClick={() =>
-              showModal(
-                <MediaUploadDialog
-                  onHide={closeModal}
-                  onImported={() => {
-                    void result.refetch();
-                  }}
-                />
-              )
-            }
-          >
-            Upload
-          </Button>
-        )}
         <ListOperations
           items={items.length}
           hasSelection={hasSelection}
