@@ -2,62 +2,103 @@ import { useEffect, useState } from "react";
 import { faFilm, faImage, faLink } from "@fortawesome/free-solid-svg-icons";
 import { Icon } from "./Icon";
 
-const previewSize = { width: "54px", height: "54px" };
+type ImportedMedia = {
+  kind: "image" | "scene";
+  id: string;
+};
 
 export function MediaUploadThumbnail({
   file,
   name,
+  result,
+  size = 76,
 }: {
   file?: File;
   name: string;
+  result?: ImportedMedia;
+  size?: number;
 }) {
-  const [objectURL, setObjectURL] = useState("");
-  const [failed, setFailed] = useState(false);
+  const [localURL, setLocalURL] = useState("");
+  const [localFailed, setLocalFailed] = useState(false);
+  const [importedFailed, setImportedFailed] = useState(false);
   const isVideo =
-    !!file &&
-    (file.type.startsWith("video/") ||
-      /\.(mp4|m4v|webm|mkv|mov|avi|wmv|mpg|mpeg|flv|ts)$/i.test(file.name));
+    result?.kind === "scene" ||
+    (!!file &&
+      (file.type.startsWith("video/") ||
+        /\.(mp4|m4v|webm|mkv|mov|avi|wmv|mpg|mpeg|flv|ts)$/i.test(
+          file.name
+        )));
   const isImage =
-    !!file &&
-    (file.type.startsWith("image/") ||
-      /\.(jpe?g|png|gif|webp|avif|jxl|bmp|tiff?|heic|heif)$/i.test(file.name));
+    result?.kind === "image" ||
+    (!!file &&
+      (file.type.startsWith("image/") ||
+        /\.(jpe?g|png|gif|webp|avif|jxl|bmp|tiff?|heic|heif)$/i.test(
+          file.name
+        )));
 
   useEffect(() => {
-    setFailed(false);
+    setLocalFailed(false);
     if (!file) {
-      setObjectURL("");
+      setLocalURL("");
       return;
     }
-    const preview = URL.createObjectURL(file);
-    setObjectURL(preview);
-    return () => URL.revokeObjectURL(preview);
+    // Browser-native JPEG, PNG, GIF, WebP and AVIF render before the upload
+    // finishes. Revoke the URL when a queued file is removed or dismissed.
+    const url = URL.createObjectURL(file);
+    setLocalURL(url);
+    return () => URL.revokeObjectURL(url);
   }, [file]);
 
+  useEffect(() => {
+    setImportedFailed(false);
+  }, [result?.id]);
+
+  // Once Stash has imported a URL or a browser-unsupported format (e.g. JXL
+  // or HEIC), prefer Stash's generated thumbnail instead of an image icon.
+  // Use the document's base URL to respect deployments under a subpath.
+  const importedThumbnail =
+    result?.kind === "image" && /^\d+$/.test(result.id)
+      ? new URL(`image/${result.id}/thumbnail`, document.baseURI).href
+      : "";
+  const source = isImage
+    ? !localFailed && localURL
+      ? localURL
+      : !importedFailed
+        ? importedThumbnail
+        : ""
+    : "";
   const frameStyle = {
-    ...previewSize,
+    width: size,
+    height: size,
     objectFit: "cover" as const,
-    borderRadius: "4px",
+    borderRadius: 4,
+    maxWidth: "100%",
   };
 
-  if (objectURL && !failed && isImage) {
+  if (source) {
     return (
       <img
-        src={objectURL}
-        alt=""
-        aria-hidden="true"
+        src={source}
+        alt={`Preview of ${name}`}
+        title={name}
         style={frameStyle}
-        onError={() => setFailed(true)}
+        onError={() => {
+          if (source === localURL) setLocalFailed(true);
+          else setImportedFailed(true);
+        }}
       />
     );
   }
-  if (objectURL && !failed && isVideo) {
+
+  if (localURL && !localFailed && isVideo) {
     return (
       <video
-        src={objectURL}
+        src={localURL}
         muted
         playsInline
         preload="metadata"
-        aria-hidden="true"
+        title={name}
+        aria-label={`Preview of ${name}`}
         style={frameStyle}
         onLoadedMetadata={(event) => {
           const player = event.currentTarget;
@@ -65,20 +106,28 @@ export function MediaUploadThumbnail({
             player.currentTime = 0.1;
           }
         }}
-        onError={() => setFailed(true)}
+        onError={() => setLocalFailed(true)}
       />
     );
   }
-  // A remote URL is never fetched just to make a preview. The server validates
-  // and downloads it on import. Unsupported local formats get a safe icon.
+
+  // Remote media cannot be previewed safely before the SSRF-protected import;
+  // never load an unvalidated URL in the browser just for a thumbnail.
+  const hint = file
+    ? "Preview unavailable in this browser"
+    : result
+      ? "Open imported media to preview"
+      : "Preview after import";
   return (
     <span
-      className="d-inline-flex justify-content-center align-items-center"
-      style={previewSize}
+      className="d-inline-flex flex-column justify-content-center align-items-center text-muted border rounded text-center"
+      style={{ width: size, height: size, fontSize: size <= 80 ? 9 : 13 }}
       title={name}
-      aria-hidden="true"
+      role="img"
+      aria-label={`${name}: ${hint}`}
     >
-      <Icon icon={file ? (isVideo ? faFilm : faImage) : faLink} />
+      <Icon icon={isVideo ? faFilm : isImage ? faImage : faLink} />
+      <span className="mt-1">{hint}</span>
     </span>
   );
 }
