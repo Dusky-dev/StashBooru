@@ -409,11 +409,10 @@ export function MediaUploadDialog({
     void submit(queued);
   }, [ready, featureSettings?.quickUpload, entries, progress, working, submit]);
 
+  const actionLabel = featureSettings?.quickUpload ? "Retry / Import" : "Import";
   const buttonLabel = working
     ? "Importing…"
-    : (featureSettings?.quickUpload ? "Retry / Import " : "Import ") +
-      pending.length +
-      " item(s)";
+    : `${actionLabel} ${pending.length} item(s)`;
 
   return (
     <>
