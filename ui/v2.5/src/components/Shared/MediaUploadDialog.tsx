@@ -197,11 +197,13 @@ export function MediaUploadDialog({
   onImported,
   incomingBatch,
   dropActive = false,
+  quickMode = false,
 }: {
   onHide: () => void;
   onImported: () => void;
   incomingBatch?: { id: number; files: File[] };
   dropActive?: boolean;
+  quickMode?: boolean;
 }) {
   const [entries, setEntries] = useState<UploadEntry[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
@@ -209,6 +211,7 @@ export function MediaUploadDialog({
   const [featureSettings, setFeatureSettings] = useState<MediaUploadSettings>();
   const [url, setURL] = useState("");
   const [picker, setPicker] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
@@ -409,6 +412,17 @@ export function MediaUploadDialog({
     void submit(queued);
   }, [ready, featureSettings?.quickUpload, entries, progress, working, submit]);
 
+  useEffect(() => {
+    if (
+      quickMode &&
+      ready &&
+      entries.some((entry) => !entry.destination && !progress[entry.id])
+    ) {
+      // Folder selection still requires interaction if no default exists.
+      setShowDetails(true);
+    }
+  }, [quickMode, ready, entries, progress]);
+
   const actionLabel = featureSettings?.quickUpload
     ? "Retry / Import"
     : "Import";
@@ -416,9 +430,87 @@ export function MediaUploadDialog({
     ? "Importing…"
     : `${actionLabel} ${pending.length} item(s)`;
 
+  const completed = entries.filter(
+    (entry) => progress[entry.id]?.phase === "complete"
+  ).length;
+  const failed = entries.filter(
+    (entry) => progress[entry.id]?.phase === "failed"
+  ).length;
+  const activeTransfer = entries.find((entry) => {
+    const phase = progress[entry.id]?.phase;
+    return (
+      phase === "uploading" ||
+      phase === "downloading" ||
+      phase === "processing"
+    );
+  });
+
   return (
     <>
-      {!picker && (
+      {quickMode && !showDetails && !picker && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="border rounded shadow p-3"
+          style={{
+            position: "fixed",
+            right: "16px",
+            bottom: "16px",
+            width: "min(360px, calc(100vw - 32px))",
+            zIndex: 1050,
+            background: "var(--bs-body-bg, var(--background-color, #242424))",
+          }}
+        >
+          <strong>Quick upload</strong>
+          <div className="small mt-1 mb-2">
+            {working
+              ? "Uploading and importing…"
+              : failed > 0
+                ? `${failed} item(s) failed`
+                : completed === entries.length && completed > 0
+                  ? "Import complete"
+                  : "Preparing uploads…"}
+            {" · "}
+            {completed}/{entries.length} complete
+          </div>
+          {activeTransfer && (
+            <div className="small text-muted text-truncate mb-2" title={activeTransfer.name}>
+              {activeTransfer.name}
+              {progress[activeTransfer.id]?.message
+                ? " — " + progress[activeTransfer.id]?.message
+                : ""}
+            </div>
+          )}
+          {error && <Alert variant="warning">{error}</Alert>}
+          {failed > 0 &&
+            entries
+              .filter((entry) => progress[entry.id]?.phase === "failed")
+              .map((entry) => (
+                <div key={entry.id} className="small text-danger text-truncate">
+                  {entry.name}: {progress[entry.id]?.message}
+                </div>
+              ))}
+          <div className="d-flex justify-content-end mt-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setShowDetails(true)}
+            >
+              Details / retry
+            </Button>
+            <Button
+              size="sm"
+              variant="outline-secondary"
+              className="ml-2"
+              disabled={working}
+              onClick={onHide}
+            >
+              Dismiss
+            </Button>
+          </div>
+        </div>
+      )}
+      {!picker && (!quickMode || showDetails) && (
         <Modal
           show
           size="lg"
