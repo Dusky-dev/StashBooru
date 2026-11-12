@@ -381,24 +381,24 @@ export function MediaUploadDialog({
               </div>
               <Form.Group controlId="media-upload-files">
                 <Form.Label>Or browse files from your device</Form.Label>
-              <Form.Control
-                type="file"
-                accept="image/*,video/*,.jxl,.heic,.heif,.mkv,.avi,.wmv,.ts"
-                multiple
-                disabled={working}
-                onChange={(event) => {
-                  addFiles(
-                    Array.from(
-                      (event.currentTarget as HTMLInputElement).files ?? []
-                    )
-                  );
-                  event.currentTarget.value = "";
-                }}
-              />
-              <Form.Text className="text-muted">
-                Add multiple files, including large videos. No fixed upload
-                limit; files stream into the Stash library.
-              </Form.Text>
+                <Form.Control
+                  type="file"
+                  accept="image/*,video/*,.jxl,.heic,.heif,.mkv,.avi,.wmv,.ts"
+                  multiple
+                  disabled={working}
+                  onChange={(event) => {
+                    addFiles(
+                      Array.from(
+                        (event.currentTarget as HTMLInputElement).files ?? []
+                      )
+                    );
+                    event.currentTarget.value = "";
+                  }}
+                />
+                <Form.Text className="text-muted">
+                  Add multiple files, including large videos. No fixed upload
+                  limit; files stream into the Stash library.
+                </Form.Text>
               </Form.Group>
             </div>
             {featureSettings?.allowURL && (
