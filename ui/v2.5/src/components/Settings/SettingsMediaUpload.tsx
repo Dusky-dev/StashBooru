@@ -13,6 +13,9 @@ const defaults: MediaUploadSettings = {
   allowURL: true,
   allowFolderCreation: true,
   defaultDirectory: "",
+  quickUpload: false,
+  quickTagDefaults: false,
+  quickConvertDefaults: false,
 };
 
 export function SettingsMediaUpload() {
@@ -109,6 +112,53 @@ export function SettingsMediaUpload() {
             }))
           }
         />
+
+        <hr />
+        <Form.Check
+          id="experimental-enable-quick-upload"
+          type="switch"
+          label="Quick upload — start importing as soon as files are added"
+          checked={settings.quickUpload}
+          onChange={(event) =>
+            setSettings((old) => ({
+              ...old,
+              quickUpload: event.currentTarget.checked,
+            }))
+          }
+        />
+        {settings.quickUpload && (
+          <div className="ml-3 mt-2 mb-3">
+            <Form.Check
+              id="experimental-quick-upload-tag-defaults"
+              type="switch"
+              label="Use tagging defaults"
+              checked={settings.quickTagDefaults}
+              onChange={(event) =>
+                setSettings((old) => ({
+                  ...old,
+                  quickTagDefaults: event.currentTarget.checked,
+                }))
+              }
+            />
+            <Form.Check
+              id="experimental-quick-upload-conversion-defaults"
+              type="switch"
+              label="Use conversion defaults"
+              checked={settings.quickConvertDefaults}
+              onChange={(event) =>
+                setSettings((old) => ({
+                  ...old,
+                  quickConvertDefaults: event.currentTarget.checked,
+                }))
+              }
+            />
+            <small className="d-block text-muted">
+              Tagging and conversion use your saved Processing settings only
+              when enabled. Quick upload needs an existing default upload folder
+              (or saved Booru download folder).
+            </small>
+          </div>
+        )}
         <Form.Group controlId="experimental-media-upload-default-folder">
           <Form.Label>Default upload folder (optional)</Form.Label>
           <div className="d-flex align-items-center">
