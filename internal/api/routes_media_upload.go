@@ -74,12 +74,12 @@ func validBooruWriteOrigin(origin, host string) bool {
 		strings.EqualFold(u.Host, host) && u.User == nil && u.Path == "" && u.RawQuery == ""
 }
 
-func parseMediaUploadIDs(input string, max int) ([]int, error) {
+func parseMediaUploadIDs(input string, limit int) ([]int, error) {
 	if input == "" {
 		return nil, nil
 	}
 	parts := strings.Split(input, ",")
-	if len(parts) > max {
+	if len(parts) > limit {
 		return nil, fmt.Errorf("too many metadata selections")
 	}
 	ret := make([]int, 0, len(parts))
