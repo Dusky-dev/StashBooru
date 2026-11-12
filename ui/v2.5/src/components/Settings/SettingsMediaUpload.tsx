@@ -153,9 +153,10 @@ export function SettingsMediaUpload() {
               }
             />
             <small className="d-block text-muted">
-              Tagging and conversion use your saved Processing settings only
-              when enabled. Quick upload needs an existing default upload folder
-              (or saved Booru download folder).
+              When enabled, tagging uses saved Image Tagging (Camie) or
+              unambiguous Video filename metadata; conversion uses saved Media
+              converter rules. Quick upload needs a default library folder (or
+              your saved Booru download folder).
             </small>
           </div>
         )}
