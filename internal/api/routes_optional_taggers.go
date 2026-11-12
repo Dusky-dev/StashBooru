@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"time"
 	"fmt"
 	"net/http"
 	"strings"
@@ -17,11 +18,26 @@ func newPixaiTagger() (pixaitagger.Tagger, string, string, error) {
 	if err != nil {
 		return nil, "local", "", err
 	}
-	if strings.TrimSpace(config.URL) == "" {
+	if !config.isEnabled() {
 		return pixaitagger.New(""), "local", "", nil
 	}
 	client, err := pixaitagger.NewRemote(config.URL, config.Token)
-	return client, "remote", config.URL, err
+	if err != nil {
+		if config.FallbackLocal {
+			return pixaitagger.New(""), "local", "", nil
+		}
+		return nil, "remote", config.URL, err
+	}
+	if config.FallbackLocal {
+		probeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		status, probeErr := client.Status(probeCtx)
+		cancel()
+		if probeErr != nil || !status.Installed {
+			_ = client.Close()
+			return pixaitagger.New(""), "local", "", nil
+		}
+	}
+	return client, "remote", config.URL, nil
 }
 
 type pixaiStatusResponse struct {
