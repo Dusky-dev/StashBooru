@@ -425,6 +425,16 @@ export function MediaUploadDialog({
           </Modal.Header>
           <Modal.Body>
             {error && <Alert variant="warning">{error}</Alert>}
+            {featureSettings?.quickUpload &&
+              ready &&
+              entries.some(
+                (entry) => !progress[entry.id] && !entry.destination
+              ) && (
+                <Alert variant="info">
+                  Choose a library folder for each queued item or set a
+                  default folder in Experimental settings to start quick upload.
+                </Alert>
+              )}
             <div
               className="rounded p-3 mb-3 text-center"
               style={{
