@@ -290,11 +290,7 @@ export function MediaUploadDialog({
 
   // Append each incoming file drop once without losing edited queue items.
   useEffect(() => {
-    if (
-      !incomingBatch ||
-      incomingBatch.id === processedBatch.current
-    )
-      return;
+    if (!incomingBatch || incomingBatch.id === processedBatch.current) return;
     processedBatch.current = incomingBatch.id;
     addFiles(incomingBatch.files);
   }, [incomingBatch, addFiles]);
@@ -345,55 +341,58 @@ export function MediaUploadDialog({
     setProgress((old) => ({ ...old, [id]: next }));
   }, []);
 
-  const submit = useCallback(async (batch: UploadEntry[]) => {
-    if (
-      !ready ||
-      !featureSettings?.enabled ||
-      processingNow.current ||
-      batch.length === 0
-    )
-      return;
-    processingNow.current = true;
-    setWorking(true);
-    setError("");
-    for (const entry of batch) {
-      if (!entry.destination) {
-        setSelected(entry.id);
-        setError("Choose a library destination for " + entry.name);
-        break;
+  const submit = useCallback(
+    async (batch: UploadEntry[]) => {
+      if (
+        !ready ||
+        !featureSettings?.enabled ||
+        processingNow.current ||
+        batch.length === 0
+      )
+        return;
+      processingNow.current = true;
+      setWorking(true);
+      setError("");
+      for (const entry of batch) {
+        if (!entry.destination) {
+          setSelected(entry.id);
+          setError("Choose a library destination for " + entry.name);
+          break;
+        }
+        try {
+          const update = (state: EntryProgress) =>
+            updateProgress(entry.id, state);
+          const result = entry.file
+            ? await uploadLocal(entry, update)
+            : await uploadURL(entry, update);
+          updateProgress(entry.id, {
+            phase: "complete",
+            loaded: entry.file?.size ?? 0,
+            total: entry.file?.size ?? 0,
+            result,
+          });
+          onImported();
+        } catch (reason) {
+          const message =
+            reason instanceof Error ? reason.message : String(reason);
+          updateProgress(entry.id, {
+            phase: "failed",
+            loaded: 0,
+            total: 0,
+            message,
+          });
+          setSelected(entry.id);
+          setError(
+            entry.name + ": " + message + ". Remaining items were not imported."
+          );
+          break;
+        }
       }
-      try {
-        const update = (state: EntryProgress) =>
-          updateProgress(entry.id, state);
-        const result = entry.file
-          ? await uploadLocal(entry, update)
-          : await uploadURL(entry, update);
-        updateProgress(entry.id, {
-          phase: "complete",
-          loaded: entry.file?.size ?? 0,
-          total: entry.file?.size ?? 0,
-          result,
-        });
-        onImported();
-      } catch (reason) {
-        const message =
-          reason instanceof Error ? reason.message : String(reason);
-        updateProgress(entry.id, {
-          phase: "failed",
-          loaded: 0,
-          total: 0,
-          message,
-        });
-        setSelected(entry.id);
-        setError(
-          entry.name + ": " + message + ". Remaining items were not imported."
-        );
-        break;
-      }
-    }
-    processingNow.current = false;
-    setWorking(false);
-  }, [ready, featureSettings?.enabled, updateProgress, onImported]);
+      processingNow.current = false;
+      setWorking(false);
+    },
+    [ready, featureSettings?.enabled, updateProgress, onImported]
+  );
 
   // Quick upload needs no Import click. It only picks fresh entries: failed
   // items remain visible for a deliberate Retry, never an infinite auto-loop.
@@ -409,6 +408,12 @@ export function MediaUploadDialog({
     if (!queued.length || !queued.every((entry) => !!entry.destination)) return;
     void submit(queued);
   }, [ready, featureSettings?.quickUpload, entries, progress, working, submit]);
+
+  const buttonLabel = working
+    ? "Importing…"
+    : (featureSettings?.quickUpload ? "Retry / Import " : "Import ") +
+      pending.length +
+      " item(s)";
 
   return (
     <>
@@ -431,8 +436,8 @@ export function MediaUploadDialog({
                 (entry) => !progress[entry.id] && !entry.destination
               ) && (
                 <Alert variant="info">
-                  Choose a library folder for each queued item or set a
-                  default folder in Experimental settings to start quick upload.
+                  Choose a library folder for each queued item or set a default
+                  folder in Experimental settings to start quick upload.
                 </Alert>
               )}
             <div
@@ -532,7 +537,9 @@ export function MediaUploadDialog({
                           <Button
                             size="sm"
                             variant={
-                              selected === entry.id ? "primary" : "outline-secondary"
+                              selected === entry.id
+                                ? "primary"
+                                : "outline-secondary"
                             }
                             className="p-1 mr-2"
                             title={entry.name}
@@ -588,7 +595,8 @@ export function MediaUploadDialog({
                                 }
                               />
                             </div>
-                            {(entry.taggingDefaults || entry.conversionDefaults) && (
+                            {(entry.taggingDefaults ||
+                              entry.conversionDefaults) && (
                               <small className="text-muted">
                                 {entry.taggingDefaults &&
                                   "Tagging uses saved defaults. "}
@@ -682,7 +690,10 @@ export function MediaUploadDialog({
                 <legend className="h6">
                   Metadata and destination for selected item
                 </legend>
-                <small className="d-block text-muted text-truncate mb-2" title={active.name}>
+                <small
+                  className="d-block text-muted text-truncate mb-2"
+                  title={active.name}
+                >
                   {active.name}
                 </small>
                 <Form.Group controlId="media-upload-destination">
@@ -754,11 +765,7 @@ export function MediaUploadDialog({
               disabled={!ready || working || pending.length === 0}
               onClick={() => void submit(pending)}
             >
-              {working
-                ? "Importing…"
-                : (featureSettings?.quickUpload ? "Retry / Import " : "Import ") +
-                  pending.length +
-                  " item(s)"}
+              {buttonLabel}
             </Button>
           </Modal.Footer>
         </Modal>
