@@ -8,10 +8,12 @@ export function FolderPicker({
   initial,
   onClose,
   title = "Choose Stash download folder",
+  allowCreate = false,
 }: {
   initial: string;
   onClose: (value?: string) => void;
   title?: string;
+  allowCreate?: boolean;
 }) {
   const [path, setPath] = useState(initial);
   const [directory, setDirectory] = useState(initial);
@@ -20,6 +22,8 @@ export function FolderPicker({
     parent: string;
   }>();
   const [error, setError] = useState("");
+  const [newFolder, setNewFolder] = useState("");
+  const [creating, setCreating] = useState(false);
   useEffect(() => {
     if (path === directory) return;
     const timer = window.setTimeout(() => setDirectory(path), 400);
@@ -45,6 +49,25 @@ export function FolderPicker({
   function navigate(value: string) {
     setPath(value);
     setDirectory(value);
+  }
+  async function createFolder() {
+    if (!listing || !directory || !newFolder.trim() || creating) return;
+    setCreating(true);
+    setError("");
+    try {
+      const response = await fetch("media-upload/folder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ parent: directory, name: newFolder.trim() }),
+      });
+      const result = await readBooruResponse<{ path: string }>(response);
+      setNewFolder("");
+      navigate(result.path);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setCreating(false);
+    }
   }
   return (
     <Modal show onHide={() => onClose()}>
@@ -96,8 +119,37 @@ export function FolderPicker({
             </li>
           ))}
         </ul>
+        {allowCreate && directory && listing && (
+          <Form.Group controlId="upload-create-subfolder">
+            <Form.Label>New subfolder</Form.Label>
+            <div className="d-flex">
+              <Form.Control
+                value={newFolder}
+                disabled={creating}
+                placeholder="Folder name"
+                onChange={(event) => setNewFolder(event.currentTarget.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    void createFolder();
+                  }
+                }}
+              />
+              <Button
+                variant="secondary"
+                className="ml-2"
+                disabled={creating || !newFolder.trim()}
+                onClick={() => void createFolder()}
+              >
+                Create
+              </Button>
+            </div>
+          </Form.Group>
+        )}
         <small>
-          Choose an existing folder inside a configured Stash library.
+          {allowCreate
+            ? "Choose or create a folder inside a configured Stash library."
+            : "Choose an existing folder inside a configured Stash library."}
         </small>
       </Modal.Body>
       <Modal.Footer>
