@@ -454,8 +454,10 @@ try {
     const fallbackLocal = page.locator("#inference-worker-fallback-local");
     assert.equal(await remoteEnabled.isChecked(), true);
     assert.equal(await fallbackLocal.isChecked(), false);
-    await remoteEnabled.uncheck();
-    await fallbackLocal.check();
+    await page.locator('label[for="inference-worker-enabled"]').click();
+    await page.locator('label[for="inference-worker-fallback-local"]').click();
+    assert.equal(await remoteEnabled.isChecked(), false);
+    assert.equal(await fallbackLocal.isChecked(), true);
     const savedWorker = page.waitForResponse(
       (response) =>
         response.url().endsWith("/remote-config") &&
