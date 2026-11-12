@@ -76,10 +76,8 @@ export function SettingsMediaUpload() {
         checked={settings.enabled}
         disabled={!loaded || saving}
         onChange={(event) => {
-          setSettings((old) => ({
-            ...old,
-            enabled: event.currentTarget.checked,
-          }));
+          const checked = event.currentTarget.checked;
+          setSettings((old) => ({ ...old, enabled: checked }));
           setMessage("");
         }}
       />
@@ -89,12 +87,10 @@ export function SettingsMediaUpload() {
           type="switch"
           label="Allow importing direct image and video URLs"
           checked={settings.allowURL}
-          onChange={(event) =>
-            setSettings((old) => ({
-              ...old,
-              allowURL: event.currentTarget.checked,
-            }))
-          }
+          onChange={(event) => {
+            const checked = event.currentTarget.checked;
+            setSettings((old) => ({ ...old, allowURL: checked }));
+          }}
         />
         <small className="d-block text-muted mb-2">
           Only public HTTP/HTTPS links on standard ports. Private network and
@@ -105,26 +101,22 @@ export function SettingsMediaUpload() {
           type="switch"
           label="Allow creating subfolders during upload"
           checked={settings.allowFolderCreation}
-          onChange={(event) =>
-            setSettings((old) => ({
-              ...old,
-              allowFolderCreation: event.currentTarget.checked,
-            }))
-          }
+          onChange={(event) => {
+            const checked = event.currentTarget.checked;
+            setSettings((old) => ({ ...old, allowFolderCreation: checked }));
+          }}
         />
 
         <hr />
         <Form.Check
           id="experimental-enable-quick-upload"
           type="switch"
-          label="Quick upload — start importing as soon as files are added"
+          label="Quick upload — skip the import dialog and start immediately"
           checked={settings.quickUpload}
-          onChange={(event) =>
-            setSettings((old) => ({
-              ...old,
-              quickUpload: event.currentTarget.checked,
-            }))
-          }
+          onChange={(event) => {
+            const checked = event.currentTarget.checked;
+            setSettings((old) => ({ ...old, quickUpload: checked }));
+          }}
         />
         {settings.quickUpload && (
           <div className="ml-3 mt-2 mb-3">
@@ -133,24 +125,23 @@ export function SettingsMediaUpload() {
               type="switch"
               label="Use tagging defaults"
               checked={settings.quickTagDefaults}
-              onChange={(event) =>
-                setSettings((old) => ({
-                  ...old,
-                  quickTagDefaults: event.currentTarget.checked,
-                }))
-              }
+              onChange={(event) => {
+                const checked = event.currentTarget.checked;
+                setSettings((old) => ({ ...old, quickTagDefaults: checked }));
+              }}
             />
             <Form.Check
               id="experimental-quick-upload-conversion-defaults"
               type="switch"
               label="Use conversion defaults"
               checked={settings.quickConvertDefaults}
-              onChange={(event) =>
+              onChange={(event) => {
+                const checked = event.currentTarget.checked;
                 setSettings((old) => ({
                   ...old,
-                  quickConvertDefaults: event.currentTarget.checked,
-                }))
-              }
+                  quickConvertDefaults: checked,
+                }));
+              }}
             />
             <small className="d-block text-muted">
               When enabled, tagging uses saved Image Tagging (Camie) or
