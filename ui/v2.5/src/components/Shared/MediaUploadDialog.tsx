@@ -14,11 +14,14 @@ import {
   excludeFileBasedGalleries,
 } from "../Galleries/GallerySelect";
 import { TagIDSelect } from "../Tags/TagSelect";
+import { MediaUploadThumbnail } from "./MediaUploadThumbnail";
 
 type UploadResult = {
   kind: "image" | "scene";
   id: string;
   path: string;
+  converted?: boolean;
+  notice?: string;
 };
 
 type UploadEntry = {
@@ -30,6 +33,8 @@ type UploadEntry = {
   artistIDs: string[];
   galleryIDs: string[];
   tagIDs: string[];
+  taggingDefaults: boolean;
+  conversionDefaults: boolean;
 };
 
 type EntryProgress = {
@@ -70,6 +75,8 @@ function uploadLocal(
     form.append("artistIDs", entry.artistIDs.join(","));
     form.append("galleryIDs", entry.galleryIDs.join(","));
     form.append("tagIDs", entry.tagIDs.join(","));
+    form.append("taggingDefaults", String(entry.taggingDefaults));
+    form.append("conversionDefaults", String(entry.conversionDefaults));
     form.append("file", file, file.name);
     request.open("POST", "media-upload");
     request.upload.onprogress = (event) => {
@@ -125,6 +132,8 @@ async function uploadURL(
       artistIDs: entry.artistIDs.join(","),
       galleryIDs: entry.galleryIDs.join(","),
       tagIDs: entry.tagIDs.join(","),
+      taggingDefaults: entry.taggingDefaults,
+      conversionDefaults: entry.conversionDefaults,
     }),
   });
   if (!response.ok) {
@@ -205,6 +214,7 @@ export function MediaUploadDialog({
   const [ready, setReady] = useState(false);
   const [progress, setProgress] = useState<Record<number, EntryProgress>>({});
   const processedBatch = useRef(0);
+  const processingNow = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -221,9 +231,17 @@ export function MediaUploadDialog({
           feature.defaultDirectory || preference.defaultDirectory || "";
         setDefaultDirectory(directory);
         setEntries((old) =>
-          old.map((entry) =>
-            entry.destination ? entry : { ...entry, destination: directory }
-          )
+          old.map((entry) => ({
+            ...entry,
+            destination: entry.destination || directory,
+            // A drop may arrive before Experimental settings finish loading.
+            taggingDefaults: feature.quickUpload
+              ? feature.quickTagDefaults
+              : entry.taggingDefaults,
+            conversionDefaults: feature.quickUpload
+              ? feature.quickConvertDefaults
+              : entry.conversionDefaults,
+          }))
         );
         setReady(true);
       })
@@ -245,7 +263,8 @@ export function MediaUploadDialog({
 
   const addFiles = useCallback(
     (files: File[]) => {
-      if (files.length === 0 || working) return;
+      // Accept new drops during a running transfer; the next pass uploads them.
+      if (files.length === 0) return;
       const newEntries = files.map(
         (file): UploadEntry => ({
           id: ++nextUploadId,
@@ -255,20 +274,25 @@ export function MediaUploadDialog({
           artistIDs: [],
           galleryIDs: [],
           tagIDs: [],
+          taggingDefaults: !!(
+            featureSettings?.quickUpload && featureSettings.quickTagDefaults
+          ),
+          conversionDefaults: !!(
+            featureSettings?.quickUpload && featureSettings.quickConvertDefaults
+          ),
         })
       );
       setEntries((old) => [...old, ...newEntries]);
       setSelected(newEntries[0].id);
     },
-    [defaultDirectory, working]
+    [defaultDirectory, featureSettings]
   );
 
   // Append each incoming file drop once without losing edited queue items.
   useEffect(() => {
     if (
       !incomingBatch ||
-      incomingBatch.id === processedBatch.current ||
-      working
+      incomingBatch.id === processedBatch.current
     )
       return;
     processedBatch.current = incomingBatch.id;
@@ -295,6 +319,12 @@ export function MediaUploadDialog({
       artistIDs: [],
       galleryIDs: [],
       tagIDs: [],
+      taggingDefaults: !!(
+        featureSettings?.quickUpload && featureSettings.quickTagDefaults
+      ),
+      conversionDefaults: !!(
+        featureSettings?.quickUpload && featureSettings.quickConvertDefaults
+      ),
     };
     setEntries((old) => [...old, entry]);
     setSelected(entry.id);
@@ -315,12 +345,18 @@ export function MediaUploadDialog({
     setProgress((old) => ({ ...old, [id]: next }));
   }
 
-  async function submit() {
-    if (!ready || !featureSettings?.enabled || working || pending.length === 0)
+  async function submit(batch: UploadEntry[] = pending) {
+    if (
+      !ready ||
+      !featureSettings?.enabled ||
+      processingNow.current ||
+      batch.length === 0
+    )
       return;
+    processingNow.current = true;
     setWorking(true);
     setError("");
-    for (const entry of pending) {
+    for (const entry of batch) {
       if (!entry.destination) {
         setSelected(entry.id);
         setError("Choose a library destination for " + entry.name);
@@ -355,8 +391,24 @@ export function MediaUploadDialog({
         break;
       }
     }
+    processingNow.current = false;
     setWorking(false);
   }
+
+  // Quick upload needs no Import click. It only picks fresh entries: failed
+  // items remain visible for a deliberate Retry, never an infinite auto-loop.
+  useEffect(() => {
+    if (
+      !ready ||
+      !featureSettings?.quickUpload ||
+      working ||
+      processingNow.current
+    )
+      return;
+    const queued = entries.filter((entry) => !progress[entry.id]);
+    if (!queued.length || !queued.every((entry) => !!entry.destination)) return;
+    void submit(queued);
+  }, [ready, featureSettings, entries, progress, working]);
 
   return (
     <>
