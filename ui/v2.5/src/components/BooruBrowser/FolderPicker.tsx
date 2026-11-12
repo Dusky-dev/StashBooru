@@ -7,9 +7,11 @@ import { readBooruResponse } from "./browser";
 export function FolderPicker({
   initial,
   onClose,
+  title = "Choose Stash download folder",
 }: {
   initial: string;
   onClose: (value?: string) => void;
+  title?: string;
 }) {
   const [path, setPath] = useState(initial);
   const [directory, setDirectory] = useState(initial);
@@ -47,7 +49,7 @@ export function FolderPicker({
   return (
     <Modal show onHide={() => onClose()}>
       <Modal.Header closeButton>
-        <Modal.Title>Choose Stash download folder</Modal.Title>
+        <Modal.Title>{title}</Modal.Title>
         <Button
           size="sm"
           variant="secondary"
