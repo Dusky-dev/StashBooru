@@ -19,6 +19,9 @@ type mediaUploadSettings struct {
 	AllowURL            bool   `json:"allowURL"`
 	AllowFolderCreation bool   `json:"allowFolderCreation"`
 	DefaultDirectory    string `json:"defaultDirectory"`
+	QuickUpload          bool   `json:"quickUpload"`
+	QuickTagDefaults     bool   `json:"quickTagDefaults"`
+	QuickConvertDefaults bool  `json:"quickConvertDefaults"`
 }
 
 var mediaUploadSettingsMu sync.Mutex
