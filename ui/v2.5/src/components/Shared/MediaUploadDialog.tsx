@@ -621,6 +621,43 @@ export function MediaUploadDialog({
                     destination is configured.
                   </small>
                 )}
+                <fieldset
+                  className="border rounded p-2 mt-2"
+                  disabled={working || pending.length === 0}
+                >
+                  <legend className="h6 mb-1">Processing for the entire queue</legend>
+                  <div className="d-flex align-items-center flex-wrap">
+                    <Form.Check
+                      id="upload-queue-tag-defaults"
+                      type="switch"
+                      className="mr-3"
+                      label="Tag"
+                      checked={taggingDefaults}
+                      onChange={(event) =>
+                        setTaggingDefaults(event.currentTarget.checked)
+                      }
+                    />
+                    <Form.Check
+                      id="upload-queue-convert-defaults"
+                      type="switch"
+                      label="Convert"
+                      checked={conversionDefaults}
+                      onChange={(event) =>
+                        setConversionDefaults(event.currentTarget.checked)
+                      }
+                    />
+                  </div>
+                  {(taggingDefaults || conversionDefaults) && (
+                    <small className="d-block text-muted">
+                      {taggingDefaults && "Tagging uses saved defaults. "}
+                      {conversionDefaults && "Conversion uses saved defaults."}
+                    </small>
+                  )}
+                  <small className="d-block text-muted">
+                    Applies to all queued uploads when import starts, not to
+                    files already being processed.
+                  </small>
+                </fieldset>
                 <div
                   className="border rounded mb-3 mt-2 p-2"
                   style={{ maxHeight: "220px", overflowY: "auto" }}
@@ -653,59 +690,10 @@ export function MediaUploadDialog({
                             <MediaUploadThumbnail
                               file={entry.file}
                               name={entry.name}
+                              result={state?.result}
                             />
                           </Button>
-                          <div className="d-flex flex-column flex-grow-1">
-                            <div className="d-flex align-items-center">
-                              <Form.Check
-                                id={"upload-tag-" + entry.id}
-                                type="switch"
-                                className="mr-3"
-                                label={<small>Tag</small>}
-                                checked={entry.taggingDefaults}
-                                disabled={working || complete}
-                                onChange={(event) => {
-                                  const checked = event.currentTarget.checked;
-                                  setEntries((old) =>
-                                    old.map((item) =>
-                                      item.id === entry.id
-                                        ? { ...item, taggingDefaults: checked }
-                                        : item
-                                    )
-                                  );
-                                }}
-                              />
-                              <Form.Check
-                                id={"upload-convert-" + entry.id}
-                                type="switch"
-                                label={<small>Convert</small>}
-                                checked={entry.conversionDefaults}
-                                disabled={working || complete}
-                                onChange={(event) => {
-                                  const checked = event.currentTarget.checked;
-                                  setEntries((old) =>
-                                    old.map((item) =>
-                                      item.id === entry.id
-                                        ? {
-                                            ...item,
-                                            conversionDefaults: checked,
-                                          }
-                                        : item
-                                    )
-                                  );
-                                }}
-                              />
-                            </div>
-                            {(entry.taggingDefaults ||
-                              entry.conversionDefaults) && (
-                              <small className="text-muted">
-                                {entry.taggingDefaults &&
-                                  "Tagging uses saved defaults. "}
-                                {entry.conversionDefaults &&
-                                  "Conversion uses saved defaults."}
-                              </small>
-                            )}
-                          </div>
+                          <div className="flex-grow-1" />
                           {!working && !complete && (
                             <Button
                               size="sm"
@@ -797,6 +785,14 @@ export function MediaUploadDialog({
                 >
                   {active.name}
                 </small>
+                <div className="mb-3">
+                  <MediaUploadThumbnail
+                    file={active.file}
+                    name={active.name}
+                    result={progress[active.id]?.result}
+                    size={220}
+                  />
+                </div>
                 <Form.Group controlId="media-upload-destination">
                   <Form.Label>Save to folder</Form.Label>
                   <div className="d-flex align-items-center">
