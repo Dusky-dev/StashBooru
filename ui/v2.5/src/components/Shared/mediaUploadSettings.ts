@@ -6,6 +6,9 @@ export type MediaUploadSettings = {
   allowURL: boolean;
   allowFolderCreation: boolean;
   defaultDirectory: string;
+  quickUpload: boolean;
+  quickTagDefaults: boolean;
+  quickConvertDefaults: boolean;
 };
 
 export async function readMediaUploadSettings(
