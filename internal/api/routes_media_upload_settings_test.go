@@ -35,7 +35,7 @@ func TestMediaUploadSettingsDefaultDisabled(t *testing.T) {
 func TestMediaUploadSettingsPersistAndEnforceSubfeatures(t *testing.T) {
 	root := t.TempDir()
 	rs := booruBrowserRoutes{
-		configPath: t.TempDir(),
+		configPath:   t.TempDir(),
 		libraryRoots: func() []string { return []string{root} },
 	}
 	body := []byte(`{"enabled":true,"allowURL":false,"allowFolderCreation":false,"defaultDirectory":` +
