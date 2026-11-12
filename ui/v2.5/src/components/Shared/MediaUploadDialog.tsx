@@ -4,6 +4,10 @@ import { Link } from "react-router-dom";
 import { FolderPicker } from "../BooruBrowser/FolderPicker";
 import { readBooruResponse } from "../BooruBrowser/browser";
 import { loadDownloadPreferences } from "../BooruBrowser/downloadPreferences";
+import {
+  MediaUploadSettings,
+  readMediaUploadSettings,
+} from "./mediaUploadSettings";
 import { StudioIDSelect } from "../Studios/StudioSelect";
 import {
   GalleryIDSelect,
@@ -189,6 +193,7 @@ export function MediaUploadDialog({
   const [entries, setEntries] = useState<UploadEntry[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [defaultDirectory, setDefaultDirectory] = useState("");
+  const [featureSettings, setFeatureSettings] = useState<MediaUploadSettings>();
   const [url, setURL] = useState("");
   const [picker, setPicker] = useState(false);
   const [working, setWorking] = useState(false);
@@ -198,15 +203,21 @@ export function MediaUploadDialog({
 
   useEffect(() => {
     let active = true;
-    void loadDownloadPreferences()
-      .then((settings) => {
+    void Promise.all([readMediaUploadSettings(), loadDownloadPreferences()])
+      .then(([feature, preference]) => {
         if (!active) return;
-        setDefaultDirectory(settings.defaultDirectory ?? "");
+        setFeatureSettings(feature);
+        if (!feature.enabled) {
+          setError("Enable media uploads in Settings > Experimental first.");
+          setReady(false);
+          return;
+        }
+        const directory =
+          feature.defaultDirectory || preference.defaultDirectory || "";
+        setDefaultDirectory(directory);
         setEntries((old) =>
           old.map((entry) =>
-            entry.destination
-              ? entry
-              : { ...entry, destination: settings.defaultDirectory ?? "" }
+            entry.destination ? entry : { ...entry, destination: directory }
           )
         );
         setReady(true);
@@ -214,7 +225,7 @@ export function MediaUploadDialog({
       .catch((reason: unknown) => {
         if (active) {
           setError(reason instanceof Error ? reason.message : String(reason));
-          setReady(true);
+          setReady(false);
         }
       });
     return () => {
@@ -246,7 +257,7 @@ export function MediaUploadDialog({
 
   function addURL() {
     const value = url.trim();
-    if (!value || working) return;
+    if (!value || working || !featureSettings?.allowURL) return;
     try {
       const parsed = new URL(value);
       if (!["http:", "https:"].includes(parsed.protocol)) {
@@ -285,7 +296,7 @@ export function MediaUploadDialog({
   }
 
   async function submit() {
-    if (!ready || working || pending.length === 0) return;
+    if (!ready || !featureSettings?.enabled || working || pending.length === 0) return;
     setWorking(true);
     setError("");
     for (const entry of pending) {
@@ -362,6 +373,7 @@ export function MediaUploadDialog({
                 limit; files stream into the Stash library.
               </Form.Text>
             </Form.Group>
+            {featureSettings?.allowURL && (
             <Form.Group controlId="media-upload-url">
               <Form.Label>Or download from a direct image/video URL</Form.Label>
               <div className="d-flex">
@@ -392,6 +404,7 @@ export function MediaUploadDialog({
                 network destinations are blocked.
               </Form.Text>
             </Form.Group>
+            )}
             {entries.length > 0 && (
               <>
                 <strong>
@@ -581,8 +594,8 @@ export function MediaUploadDialog({
       {picker && active && (
         <FolderPicker
           initial={active.destination}
-          allowCreate
-          title="Choose or create an upload folder"
+          allowCreate={featureSettings?.allowFolderCreation ?? false}
+          title="Choose upload folder"
           onClose={(value) => {
             if (value) updateEntry({ destination: value });
             setPicker(false);

@@ -65,6 +65,7 @@ import { FilteredListToolbar } from "../List/FilteredListToolbar";
 import { FilterTags } from "../List/FilterTags";
 import { SidebarFolderFilter } from "../List/Filters/FolderFilter";
 import { MediaUploadDialog } from "../Shared/MediaUploadDialog";
+import { useMediaUploadEnabled } from "../Shared/mediaUploadSettings";
 
 function renderMetadataByline(result: GQL.FindScenesQueryResult) {
   const duration = result?.data?.findScenes?.duration;
@@ -390,6 +391,7 @@ export const FilteredSceneList = PatchComponent(
   "FilteredSceneList",
   (props: IFilteredScenes) => {
     const intl = useIntl();
+    const mediaUploadsEnabled = useMediaUploadEnabled();
     const history = useHistory();
     const location = useLocation();
 
@@ -743,7 +745,7 @@ export const FilteredSceneList = PatchComponent(
 
     const operations = (
       <div className="d-flex align-items-center">
-        {view === View.Scenes && (
+        {mediaUploadsEnabled && view === View.Scenes && (
           <Button
             size="sm"
             variant="primary"
