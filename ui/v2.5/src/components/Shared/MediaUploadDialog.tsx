@@ -479,7 +479,10 @@ export function MediaUploadDialog({
             {completed}/{entries.length} complete
           </div>
           {activeTransfer && (
-            <div className="small text-muted text-truncate mb-2" title={activeTransfer.name}>
+            <div
+              className="small text-muted text-truncate mb-2"
+              title={activeTransfer.name}
+            >
               {activeTransfer.name}
               {progress[activeTransfer.id]?.message
                 ? " — " + progress[activeTransfer.id]?.message
@@ -491,7 +494,10 @@ export function MediaUploadDialog({
             entries
               .filter((entry) => progress[entry.id]?.phase === "failed")
               .map((entry) => (
-                <div key={entry.id} className="small text-danger text-truncate">
+                <div
+                  key={entry.id}
+                  className="small text-danger text-truncate"
+                >
                   {entry.name}: {progress[entry.id]?.message}
                 </div>
               ))}
