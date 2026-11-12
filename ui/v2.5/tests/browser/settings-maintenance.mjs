@@ -165,6 +165,25 @@ try {
       totalImages: 60,
       modelPath: `/models/${"long-path-".repeat(20)}model.onnx`,
     };
+    // Regression: upload settings handlers must snapshot checked during the
+    // event, before React evaluates their state updater callbacks.
+    let uploadSettings = {
+      enabled: true,
+      allowURL: true,
+      allowFolderCreation: true,
+      defaultDirectory: "",
+      quickUpload: false,
+      quickTagDefaults: false,
+      quickConvertDefaults: false,
+    };
+    const uploadSettingsSaves = [];
+    await page.route("**/media-upload/settings", (route) => {
+      if (route.request().method() === "POST") {
+        uploadSettings = route.request().postDataJSON();
+        uploadSettingsSaves.push(uploadSettings);
+      }
+      return route.fulfill({ json: uploadSettings });
+    });
     await page.route(/\/(image|metadata)\//, async (route) => {
       const url = new URL(route.request().url());
       const method = route.request().method();
@@ -320,6 +339,36 @@ try {
       await page.locator("#experimental-storage-candidates").count(),
       1
     );
+
+    // Every toggle must work without dereferencing a nulled event.currentTarget.
+    await page.locator("#experimental-media-uploads > summary").click();
+    const uploadEnabled = page.locator("#experimental-enable-uploads");
+    await uploadEnabled.uncheck();
+    assert.equal(await uploadEnabled.isChecked(), false);
+    await uploadEnabled.check();
+    await page.locator("#experimental-enable-url-imports").uncheck();
+    await page
+      .locator("#experimental-enable-upload-folder-creation")
+      .uncheck();
+    await page.locator("#experimental-enable-quick-upload").check();
+    await page.locator("#experimental-quick-upload-tag-defaults").check();
+    await page.locator("#experimental-quick-upload-conversion-defaults").check();
+    await page
+      .getByRole("button", { name: "Save upload settings" })
+      .click();
+    await page.getByText("Experimental media upload settings saved.").waitFor();
+    assert.equal(uploadSettingsSaves.length, 1);
+    assert.deepEqual(uploadSettingsSaves[0], {
+      enabled: true,
+      allowURL: false,
+      allowFolderCreation: false,
+      defaultDirectory: "",
+      quickUpload: true,
+      quickTagDefaults: true,
+      quickConvertDefaults: true,
+    });
+    assert.deepEqual(errors, [], errors.join("\\n"));
+
     await chooseSection(page, "tasks");
     await page.locator("#tasks-library").waitFor();
     assert.equal(await active(page).locator("#video-overlap-task").count(), 0);
