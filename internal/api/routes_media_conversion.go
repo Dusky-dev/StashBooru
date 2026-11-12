@@ -63,7 +63,17 @@ func conversionClient(ctx context.Context, backend string) (mediaconvert.Client,
 		if err != nil {
 			return c, mediaconvert.Capabilities{}, "", err
 		}
-		remote.URL, remote.Token = config.URL, config.Token
+		if config.isEnabled() {
+			remote.URL, remote.Token = config.URL, config.Token
+			if config.FallbackLocal && backend == "remote" {
+				// Only an explicit fallback opt-in can downgrade remote-only.
+				backend = "auto"
+			}
+		} else {
+			// Disabling the worker is authoritative even when saved
+			// conversion defaults previously selected "remote".
+			backend = "local"
+		}
 	}
 	return mediaconvert.SelectWorker(ctx, backend, c, remote)
 }
