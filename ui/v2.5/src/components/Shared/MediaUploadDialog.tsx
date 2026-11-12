@@ -33,6 +33,9 @@ type UploadEntry = {
   artistIDs: string[];
   galleryIDs: string[];
   tagIDs: string[];
+};
+
+type UploadProcessingOptions = {
   taggingDefaults: boolean;
   conversionDefaults: boolean;
 };
@@ -60,7 +63,8 @@ const describeSize = (bytes: number) =>
 
 function uploadLocal(
   entry: UploadEntry,
-  progress: (update: EntryProgress) => void
+  progress: (update: EntryProgress) => void,
+  processing: UploadProcessingOptions
 ): Promise<UploadResult> {
   return new Promise((resolve, reject) => {
     if (!entry.file) {
@@ -75,8 +79,8 @@ function uploadLocal(
     form.append("artistIDs", entry.artistIDs.join(","));
     form.append("galleryIDs", entry.galleryIDs.join(","));
     form.append("tagIDs", entry.tagIDs.join(","));
-    form.append("taggingDefaults", String(entry.taggingDefaults));
-    form.append("conversionDefaults", String(entry.conversionDefaults));
+    form.append("taggingDefaults", String(processing.taggingDefaults));
+    form.append("conversionDefaults", String(processing.conversionDefaults));
     form.append("file", file, file.name);
     request.open("POST", "media-upload");
     request.upload.onprogress = (event) => {
@@ -121,7 +125,8 @@ function uploadLocal(
 
 async function uploadURL(
   entry: UploadEntry,
-  progress: (update: EntryProgress) => void
+  progress: (update: EntryProgress) => void,
+  processing: UploadProcessingOptions
 ): Promise<UploadResult> {
   const response = await fetch("media-upload/url", {
     method: "POST",
@@ -132,8 +137,8 @@ async function uploadURL(
       artistIDs: entry.artistIDs.join(","),
       galleryIDs: entry.galleryIDs.join(","),
       tagIDs: entry.tagIDs.join(","),
-      taggingDefaults: entry.taggingDefaults,
-      conversionDefaults: entry.conversionDefaults,
+      taggingDefaults: processing.taggingDefaults,
+      conversionDefaults: processing.conversionDefaults,
     }),
   });
   if (!response.ok) {
@@ -209,6 +214,10 @@ export function MediaUploadDialog({
   const [selected, setSelected] = useState<number | null>(null);
   const [defaultDirectory, setDefaultDirectory] = useState("");
   const [featureSettings, setFeatureSettings] = useState<MediaUploadSettings>();
+  // These are queue-wide options. Their values are captured per batch when it
+  // begins so later clicks never alter items already being processed.
+  const [taggingDefaults, setTaggingDefaults] = useState(false);
+  const [conversionDefaults, setConversionDefaults] = useState(false);
   const [url, setURL] = useState("");
   const [picker, setPicker] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -228,6 +237,10 @@ export function MediaUploadDialog({
       .then(([feature, preference]) => {
         if (!active) return;
         setFeatureSettings(feature);
+        setTaggingDefaults(feature.quickUpload && feature.quickTagDefaults);
+        setConversionDefaults(
+          feature.quickUpload && feature.quickConvertDefaults
+        );
         if (!feature.enabled) {
           setError("Enable media uploads in Settings > Experimental first.");
           setReady(false);
@@ -240,13 +253,6 @@ export function MediaUploadDialog({
           old.map((entry) => ({
             ...entry,
             destination: entry.destination || directory,
-            // A drop may arrive before Experimental settings finish loading.
-            taggingDefaults: feature.quickUpload
-              ? feature.quickTagDefaults
-              : entry.taggingDefaults,
-            conversionDefaults: feature.quickUpload
-              ? feature.quickConvertDefaults
-              : entry.conversionDefaults,
           }))
         );
         setReady(true);
@@ -280,18 +286,12 @@ export function MediaUploadDialog({
           artistIDs: [],
           galleryIDs: [],
           tagIDs: [],
-          taggingDefaults: !!(
-            featureSettings?.quickUpload && featureSettings.quickTagDefaults
-          ),
-          conversionDefaults: !!(
-            featureSettings?.quickUpload && featureSettings.quickConvertDefaults
-          ),
         })
       );
       setEntries((old) => [...old, ...newEntries]);
       setSelected(newEntries[0].id);
     },
-    [defaultDirectory, featureSettings]
+    [defaultDirectory]
   );
 
   // Append each incoming file drop once without losing edited queue items.
@@ -321,12 +321,6 @@ export function MediaUploadDialog({
       artistIDs: [],
       galleryIDs: [],
       tagIDs: [],
-      taggingDefaults: !!(
-        featureSettings?.quickUpload && featureSettings.quickTagDefaults
-      ),
-      conversionDefaults: !!(
-        featureSettings?.quickUpload && featureSettings.quickConvertDefaults
-      ),
     };
     setEntries((old) => [...old, entry]);
     setSelected(entry.id);
@@ -359,6 +353,7 @@ export function MediaUploadDialog({
       processingNow.current = true;
       setWorking(true);
       setError("");
+      const processing = { taggingDefaults, conversionDefaults };
       for (const entry of batch) {
         if (!entry.destination) {
           setSelected(entry.id);
@@ -369,8 +364,8 @@ export function MediaUploadDialog({
           const update = (state: EntryProgress) =>
             updateProgress(entry.id, state);
           const result = entry.file
-            ? await uploadLocal(entry, update)
-            : await uploadURL(entry, update);
+            ? await uploadLocal(entry, update, processing)
+            : await uploadURL(entry, update, processing);
           updateProgress(entry.id, {
             phase: "complete",
             loaded: entry.file?.size ?? 0,
@@ -397,7 +392,14 @@ export function MediaUploadDialog({
       processingNow.current = false;
       setWorking(false);
     },
-    [ready, featureSettings?.enabled, updateProgress, onImported]
+    [
+      ready,
+      featureSettings?.enabled,
+      taggingDefaults,
+      conversionDefaults,
+      updateProgress,
+      onImported,
+    ]
   );
 
   // Quick upload needs no Import click. It only picks fresh entries: failed
