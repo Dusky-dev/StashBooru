@@ -265,7 +265,11 @@ export function MediaUploadDialog({
 
   // Append each incoming file drop once without losing edited queue items.
   useEffect(() => {
-    if (!incomingBatch || incomingBatch.id === processedBatch.current || working)
+    if (
+      !incomingBatch ||
+      incomingBatch.id === processedBatch.current ||
+      working
+    )
       return;
     processedBatch.current = incomingBatch.id;
     addFiles(incomingBatch.files);
