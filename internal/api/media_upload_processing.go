@@ -20,45 +20,49 @@ func applyMediaUploadDefaults(ctx context.Context, result *booruLibraryResult, t
 	var notices []string
 	if tagging {
 		id, err := strconv.Atoi(result.ID)
-		if err != nil || id <= 0 {
+		switch {
+		case err != nil || id <= 0:
 			err = fmt.Errorf("invalid imported media ID")
-		} else if result.Kind == "image" {
+		case result.Kind == "image":
 			// Camie's threshold, limit, filename authority and identity linking
 			// come from the saved Image Tagging configuration.
 			err = runBooruAutomaticImageTagging(ctx, id, true, false)
-		} else if result.Kind == "scene" {
+		case result.Kind == "scene":
 			var config camieConfig
 			config, err = loadCamieConfig()
 			if err == nil {
 				// Video tagging uses the existing conservative batch review rules:
 				// only unambiguous filename metadata is auto-applied.
 				outcome := processSceneTaggingBatchItem(ctx, id, config, sceneTaggingBatchRequest{AutoApply: true})
-				if outcome.Error != "" {
+				switch {
+				case outcome.Error != "":
 					err = fmt.Errorf("%s", outcome.Error)
-				} else if outcome.Applied == nil {
+				case outcome.Applied == nil:
 					notices = append(notices, "Video tagging found no unambiguous saved-default metadata to apply.")
 				}
 			}
-		} else {
+		default:
 			err = fmt.Errorf("unsupported media type")
 		}
-		if err != nil {
+		switch {
+		case err != nil:
 			logger.Warnf("Upload tagging for %s #%s: %v", result.Kind, result.ID, err)
 			notices = append(notices, "Tagging with saved defaults failed: "+err.Error())
-		} else if result.Kind == "image" {
+		case result.Kind == "image":
 			notices = append(notices, "Tagged with saved Image Tagging defaults.")
-		} else if len(notices) == 0 {
+		case len(notices) == 0:
 			notices = append(notices, "Applied saved Video Tagging defaults.")
 		}
 	}
 	if conversion {
 		notice, err := convertUploadedMediaWithDefaults(ctx, result)
-		if err != nil {
+		switch {
+		case err != nil:
 			logger.Warnf("Upload conversion for %s #%s: %v", result.Kind, result.ID, err)
 			notices = append(notices, "Conversion with saved defaults failed: "+err.Error())
-		} else if notice != "" {
+		case notice != "":
 			notices = append(notices, notice)
-		} else {
+		default:
 			notices = append(notices, "Converted with saved Media converter defaults.")
 		}
 	}
@@ -95,10 +99,9 @@ func convertUploadedMediaWithDefaults(ctx context.Context, result *booruLibraryR
 	if err != nil {
 		return "", err
 	}
-	options, format, err := resolveConversionOptions(ctx, store, config, fileID, target, conversionRequest{
-		Options: mediaconvert.Options{Format: "auto", Hardware: "auto"},
-		UseEncodingDefaults: true,
-	}, caps)
+	request := conversionRequest{UseEncodingDefaults: true}
+	request.Options = mediaconvert.Options{Format: "auto", Hardware: "auto"}
+	options, format, err := resolveConversionOptions(ctx, store, config, fileID, target, request, caps)
 	if err != nil {
 		return "", err
 	}
