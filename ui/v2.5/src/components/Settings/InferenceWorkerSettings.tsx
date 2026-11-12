@@ -95,8 +95,8 @@ export const InferenceWorkerSettings: React.FC = () => {
         if (!mounted.current) return;
         setRemoteURL(config.url);
         setTokenConfigured(config.tokenConfigured);
-        setRemoteEnabled(config.enabled);
-        setFallbackLocal(config.fallbackLocal);
+        setRemoteEnabled(config.enabled ?? !!config.url);
+        setFallbackLocal(config.fallbackLocal ?? false);
         setRemoteToken("");
         setError(undefined);
         Toast.success("Saved inference worker settings.");
