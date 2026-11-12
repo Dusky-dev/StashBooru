@@ -64,6 +64,7 @@ import { useZoomKeybinds } from "../List/ZoomSlider";
 import { FilteredListToolbar } from "../List/FilteredListToolbar";
 import { FilterTags } from "../List/FilterTags";
 import { SidebarFolderFilter } from "../List/Filters/FolderFilter";
+import { MediaUploadDialog } from "../Shared/MediaUploadDialog";
 
 function renderMetadataByline(result: GQL.FindScenesQueryResult) {
   const duration = result?.data?.findScenes?.duration;
@@ -741,15 +742,36 @@ export const FilteredSceneList = PatchComponent(
     if (sidebarStateLoading) return null;
 
     const operations = (
-      <ListOperations
-        items={items.length}
-        hasSelection={hasSelection}
-        operations={otherOperations}
-        onEdit={onEdit}
-        onDelete={onDelete}
-        onPlay={onPlay}
-        operationsMenuClassName="scene-list-operations-dropdown"
-      />
+      <div className="d-flex align-items-center">
+        {view === View.Scenes && (
+          <Button
+            size="sm"
+            variant="primary"
+            className="mr-2"
+            onClick={() =>
+              showModal(
+                <MediaUploadDialog
+                  onHide={closeModal}
+                  onImported={() => {
+                    void result.refetch();
+                  }}
+                />
+              )
+            }
+          >
+            Upload
+          </Button>
+        )}
+        <ListOperations
+          items={items.length}
+          hasSelection={hasSelection}
+          operations={otherOperations}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onPlay={onPlay}
+          operationsMenuClassName="scene-list-operations-dropdown"
+        />
+      </div>
     );
 
     const toolbarProps: FilteredSceneListToolbarProps = {
