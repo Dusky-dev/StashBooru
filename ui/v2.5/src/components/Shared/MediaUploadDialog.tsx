@@ -443,9 +443,7 @@ export function MediaUploadDialog({
   const activeTransfer = entries.find((entry) => {
     const phase = progress[entry.id]?.phase;
     return (
-      phase === "uploading" ||
-      phase === "downloading" ||
-      phase === "processing"
+      phase === "uploading" || phase === "downloading" || phase === "processing"
     );
   });
 
