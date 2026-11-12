@@ -123,7 +123,10 @@ const FilteredMediaListComponent = ({
     };
     window.addEventListener(MEDIA_UPLOAD_IMPORTED_EVENT, refetchAfterUpload);
     return () =>
-      window.removeEventListener(MEDIA_UPLOAD_IMPORTED_EVENT, refetchAfterUpload);
+      window.removeEventListener(
+        MEDIA_UPLOAD_IMPORTED_EVENT,
+        refetchAfterUpload
+      );
   }, [result.refetch]);
   const { modal, showModal, closeModal } = modalState;
   const { setPage, removeCriterion } = useFilterOperations({
