@@ -70,6 +70,8 @@ import { OrganizedCriterionOption } from "src/models/list-filter/criteria/organi
 import { SidebarAgeFilter } from "../List/Filters/SidebarAgeFilter";
 import { PerformerAgeCriterionOption } from "src/models/list-filter/images";
 import { SidebarFolderFilter } from "../List/Filters/FolderFilter";
+import { MediaUploadDialog } from "../Shared/MediaUploadDialog";
+import { useMediaUploadEnabled } from "../Shared/mediaUploadSettings";
 
 interface IImageWallProps {
   images: GQL.SlimImageDataFragment[];
@@ -545,6 +547,7 @@ export const FilteredImageList = PatchComponent(
   "FilteredImageList",
   (props: IImageList) => {
     const intl = useIntl();
+    const mediaUploadsEnabled = useMediaUploadEnabled();
     const [{ data: localInterface }] = useInterfaceLocalForage();
     const collapseStacks = localInterface?.hideStackVariants !== false;
 
@@ -846,14 +849,35 @@ export const FilteredImageList = PatchComponent(
     if (sidebarStateLoading) return null;
 
     const operations = (
-      <ListOperations
-        items={items.length}
-        hasSelection={hasSelection}
-        operations={otherOperations}
-        onEdit={onEdit}
-        onDelete={onDelete}
-        operationsMenuClassName="image-list-operations-dropdown"
-      />
+      <div className="d-flex align-items-center">
+        {mediaUploadsEnabled && view === View.Images && (
+          <Button
+            size="sm"
+            variant="primary"
+            className="mr-2"
+            onClick={() =>
+              showModal(
+                <MediaUploadDialog
+                  onHide={closeModal}
+                  onImported={() => {
+                    void result.refetch();
+                  }}
+                />
+              )
+            }
+          >
+            Upload
+          </Button>
+        )}
+        <ListOperations
+          items={items.length}
+          hasSelection={hasSelection}
+          operations={otherOperations}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          operationsMenuClassName="image-list-operations-dropdown"
+        />
+      </div>
     );
 
     const pageCount = Math.ceil(totalCount / filter.itemsPerPage);

@@ -259,6 +259,11 @@ func Initialize() (*Server, error) {
 	r.Post("/booru-browser/tags", booruRoutes.ImportTags)
 	r.Post("/booru-browser/tag-path", booruRoutes.ImportTagPath)
 	r.Get("/booru-browser/directories", booruRoutes.Directories)
+	r.Get("/media-upload/settings", booruRoutes.GetMediaUploadSettings)
+	r.Post("/media-upload/settings", booruRoutes.UpdateMediaUploadSettings)
+	r.Post("/media-upload", booruRoutes.UploadMedia)
+	r.Post("/media-upload/url", booruRoutes.ImportMediaURL)
+	r.Post("/media-upload/folder", booruRoutes.CreateUploadFolder)
 	r.Post("/booru-browser/review/read", booruRoutes.ReadReview)
 	r.Post("/booru-browser/review/update", booruRoutes.UpdateReview)
 

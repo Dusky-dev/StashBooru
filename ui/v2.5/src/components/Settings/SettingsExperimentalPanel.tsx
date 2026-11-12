@@ -13,6 +13,7 @@ import { ImageStorageConsumerAuditTask } from "./Tasks/ImageStorageConsumerAudit
 import { VideoOverlapTask } from "./Tasks/VideoOverlapTask";
 import { SettingsAliasCollisionInspector } from "./SettingsAliasCollisionInspector";
 import { SettingsThumbnailCompression } from "./SettingsThumbnailCompression";
+import { SettingsMediaUpload } from "./SettingsMediaUpload";
 
 export function SettingsExperimentalPanel() {
   const location = useLocation();
@@ -26,8 +27,9 @@ export function SettingsExperimentalPanel() {
     <div id="experimental-settings" className="tasks-panel-tasks">
       <h1>Experimental</h1>
       <p className="text-muted">
-        Early-stage analysis tools are separated from routine Settings tasks.
-        Opening this page does not start a job or enable packed image serving.
+        New and early-stage features live here until they are ready for normal
+        Settings. Enable experimental features individually; opening this page
+        does not start a job or activate any feature.
       </p>
       <SettingsDisclosure
         id="experimental-video-overlap"
@@ -37,6 +39,7 @@ export function SettingsExperimentalPanel() {
         <span id="tasks-media" />
         <VideoOverlapTask />
       </SettingsDisclosure>
+      <SettingsMediaUpload />
       <SettingsThumbnailCompression />
       <SettingsAliasCollisionInspector />
       <section id="experimental-image-storage">

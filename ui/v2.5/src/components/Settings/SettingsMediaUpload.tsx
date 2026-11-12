@@ -1,0 +1,167 @@
+import { useEffect, useState } from "react";
+import { Alert, Button, Form } from "react-bootstrap";
+import { FolderPicker } from "../BooruBrowser/FolderPicker";
+import {
+  MediaUploadSettings,
+  readMediaUploadSettings,
+  saveMediaUploadSettings,
+} from "../Shared/mediaUploadSettings";
+import { SettingsDisclosure } from "./SettingsDisclosure";
+
+const defaults: MediaUploadSettings = {
+  enabled: false,
+  allowURL: true,
+  allowFolderCreation: true,
+  defaultDirectory: "",
+};
+
+export function SettingsMediaUpload() {
+  const [settings, setSettings] = useState<MediaUploadSettings>(defaults);
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [picker, setPicker] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void readMediaUploadSettings(controller.signal)
+      .then((current) => {
+        if (controller.signal.aborted) return;
+        setSettings(current);
+        setLoaded(true);
+      })
+      .catch((reason: unknown) => {
+        if (controller.signal.aborted) return;
+        setError(reason instanceof Error ? reason.message : String(reason));
+      });
+    return () => controller.abort();
+  }, []);
+
+  async function save() {
+    setSaving(true);
+    setError("");
+    setMessage("");
+    try {
+      const updated = await saveMediaUploadSettings(settings);
+      setSettings(updated);
+      setMessage("Experimental media upload settings saved.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <SettingsDisclosure
+      id="experimental-media-uploads"
+      title="Media uploads"
+      description="Allow web uploads and optional direct-URL imports. Disabled by default while experimental."
+    >
+      <p className="text-muted">
+        This feature writes directly to your configured Stash libraries. Local
+        media is scanned into Stash after upload. Transfer sizes are not capped
+        by StashBooru, but server storage and reverse-proxy limits still apply.
+      </p>
+      {error && <Alert variant="warning">{error}</Alert>}
+      {message && <Alert variant="success">{message}</Alert>}
+      <Form.Check
+        id="experimental-enable-uploads"
+        type="switch"
+        label="Enable web media uploads"
+        checked={settings.enabled}
+        disabled={!loaded || saving}
+        onChange={(event) => {
+          setSettings((old) => ({
+            ...old,
+            enabled: event.currentTarget.checked,
+          }));
+          setMessage("");
+        }}
+      />
+      <fieldset disabled={!loaded || !settings.enabled || saving}>
+        <Form.Check
+          id="experimental-enable-url-imports"
+          type="switch"
+          label="Allow importing direct image and video URLs"
+          checked={settings.allowURL}
+          onChange={(event) =>
+            setSettings((old) => ({
+              ...old,
+              allowURL: event.currentTarget.checked,
+            }))
+          }
+        />
+        <small className="d-block text-muted mb-2">
+          Only public HTTP/HTTPS links on standard ports. Private network and
+          localhost URLs are blocked even when URL imports are enabled.
+        </small>
+        <Form.Check
+          id="experimental-enable-upload-folder-creation"
+          type="switch"
+          label="Allow creating subfolders during upload"
+          checked={settings.allowFolderCreation}
+          onChange={(event) =>
+            setSettings((old) => ({
+              ...old,
+              allowFolderCreation: event.currentTarget.checked,
+            }))
+          }
+        />
+        <Form.Group controlId="experimental-media-upload-default-folder">
+          <Form.Label>Default upload folder (optional)</Form.Label>
+          <div className="d-flex align-items-center">
+            <Form.Control
+              value={settings.defaultDirectory}
+              readOnly
+              placeholder="Choose a Stash library folder"
+            />
+            <Button
+              variant="secondary"
+              className="ml-2"
+              disabled={saving}
+              onClick={() => setPicker(true)}
+            >
+              Browse…
+            </Button>
+            {settings.defaultDirectory && (
+              <Button
+                variant="link"
+                disabled={saving}
+                onClick={() =>
+                  setSettings((old) => ({ ...old, defaultDirectory: "" }))
+                }
+              >
+                Clear
+              </Button>
+            )}
+          </div>
+          <Form.Text className="text-muted">
+            Leave empty to use your existing Booru download folder preference or
+            choose a folder when importing each file.
+          </Form.Text>
+        </Form.Group>
+      </fieldset>
+      <Button
+        disabled={!loaded || saving}
+        onClick={() => void save()}
+        variant="primary"
+      >
+        {saving ? "Saving…" : "Save upload settings"}
+      </Button>
+      {picker && (
+        <FolderPicker
+          initial={settings.defaultDirectory}
+          title="Select default upload folder"
+          onClose={(value) => {
+            if (value) {
+              setSettings((old) => ({ ...old, defaultDirectory: value }));
+            }
+            setPicker(false);
+          }}
+        />
+      )}
+    </SettingsDisclosure>
+  );
+}
