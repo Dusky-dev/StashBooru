@@ -14,11 +14,14 @@ import {
   excludeFileBasedGalleries,
 } from "../Galleries/GallerySelect";
 import { TagIDSelect } from "../Tags/TagSelect";
+import { MediaUploadThumbnail } from "./MediaUploadThumbnail";
 
 type UploadResult = {
   kind: "image" | "scene";
   id: string;
   path: string;
+  converted?: boolean;
+  notice?: string;
 };
 
 type UploadEntry = {
@@ -30,6 +33,8 @@ type UploadEntry = {
   artistIDs: string[];
   galleryIDs: string[];
   tagIDs: string[];
+  taggingDefaults: boolean;
+  conversionDefaults: boolean;
 };
 
 type EntryProgress = {
@@ -70,6 +75,8 @@ function uploadLocal(
     form.append("artistIDs", entry.artistIDs.join(","));
     form.append("galleryIDs", entry.galleryIDs.join(","));
     form.append("tagIDs", entry.tagIDs.join(","));
+    form.append("taggingDefaults", String(entry.taggingDefaults));
+    form.append("conversionDefaults", String(entry.conversionDefaults));
     form.append("file", file, file.name);
     request.open("POST", "media-upload");
     request.upload.onprogress = (event) => {
@@ -125,6 +132,8 @@ async function uploadURL(
       artistIDs: entry.artistIDs.join(","),
       galleryIDs: entry.galleryIDs.join(","),
       tagIDs: entry.tagIDs.join(","),
+      taggingDefaults: entry.taggingDefaults,
+      conversionDefaults: entry.conversionDefaults,
     }),
   });
   if (!response.ok) {
@@ -205,6 +214,7 @@ export function MediaUploadDialog({
   const [ready, setReady] = useState(false);
   const [progress, setProgress] = useState<Record<number, EntryProgress>>({});
   const processedBatch = useRef(0);
+  const processingNow = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -221,9 +231,17 @@ export function MediaUploadDialog({
           feature.defaultDirectory || preference.defaultDirectory || "";
         setDefaultDirectory(directory);
         setEntries((old) =>
-          old.map((entry) =>
-            entry.destination ? entry : { ...entry, destination: directory }
-          )
+          old.map((entry) => ({
+            ...entry,
+            destination: entry.destination || directory,
+            // A drop may arrive before Experimental settings finish loading.
+            taggingDefaults: feature.quickUpload
+              ? feature.quickTagDefaults
+              : entry.taggingDefaults,
+            conversionDefaults: feature.quickUpload
+              ? feature.quickConvertDefaults
+              : entry.conversionDefaults,
+          }))
         );
         setReady(true);
       })
@@ -245,7 +263,8 @@ export function MediaUploadDialog({
 
   const addFiles = useCallback(
     (files: File[]) => {
-      if (files.length === 0 || working) return;
+      // Accept new drops during a running transfer; the next pass uploads them.
+      if (files.length === 0) return;
       const newEntries = files.map(
         (file): UploadEntry => ({
           id: ++nextUploadId,
@@ -255,25 +274,26 @@ export function MediaUploadDialog({
           artistIDs: [],
           galleryIDs: [],
           tagIDs: [],
+          taggingDefaults: !!(
+            featureSettings?.quickUpload && featureSettings.quickTagDefaults
+          ),
+          conversionDefaults: !!(
+            featureSettings?.quickUpload && featureSettings.quickConvertDefaults
+          ),
         })
       );
       setEntries((old) => [...old, ...newEntries]);
       setSelected(newEntries[0].id);
     },
-    [defaultDirectory, working]
+    [defaultDirectory, featureSettings]
   );
 
   // Append each incoming file drop once without losing edited queue items.
   useEffect(() => {
-    if (
-      !incomingBatch ||
-      incomingBatch.id === processedBatch.current ||
-      working
-    )
-      return;
+    if (!incomingBatch || incomingBatch.id === processedBatch.current) return;
     processedBatch.current = incomingBatch.id;
     addFiles(incomingBatch.files);
-  }, [incomingBatch, working, addFiles]);
+  }, [incomingBatch, addFiles]);
 
   function addURL() {
     const value = url.trim();
@@ -295,6 +315,12 @@ export function MediaUploadDialog({
       artistIDs: [],
       galleryIDs: [],
       tagIDs: [],
+      taggingDefaults: !!(
+        featureSettings?.quickUpload && featureSettings.quickTagDefaults
+      ),
+      conversionDefaults: !!(
+        featureSettings?.quickUpload && featureSettings.quickConvertDefaults
+      ),
     };
     setEntries((old) => [...old, entry]);
     setSelected(entry.id);
@@ -311,52 +337,84 @@ export function MediaUploadDialog({
     );
   }
 
-  function updateProgress(id: number, next: EntryProgress) {
+  const updateProgress = useCallback((id: number, next: EntryProgress) => {
     setProgress((old) => ({ ...old, [id]: next }));
-  }
+  }, []);
 
-  async function submit() {
-    if (!ready || !featureSettings?.enabled || working || pending.length === 0)
+  const submit = useCallback(
+    async (batch: UploadEntry[]) => {
+      if (
+        !ready ||
+        !featureSettings?.enabled ||
+        processingNow.current ||
+        batch.length === 0
+      )
+        return;
+      processingNow.current = true;
+      setWorking(true);
+      setError("");
+      for (const entry of batch) {
+        if (!entry.destination) {
+          setSelected(entry.id);
+          setError("Choose a library destination for " + entry.name);
+          break;
+        }
+        try {
+          const update = (state: EntryProgress) =>
+            updateProgress(entry.id, state);
+          const result = entry.file
+            ? await uploadLocal(entry, update)
+            : await uploadURL(entry, update);
+          updateProgress(entry.id, {
+            phase: "complete",
+            loaded: entry.file?.size ?? 0,
+            total: entry.file?.size ?? 0,
+            result,
+          });
+          onImported();
+        } catch (reason) {
+          const message =
+            reason instanceof Error ? reason.message : String(reason);
+          updateProgress(entry.id, {
+            phase: "failed",
+            loaded: 0,
+            total: 0,
+            message,
+          });
+          setSelected(entry.id);
+          setError(
+            entry.name + ": " + message + ". Remaining items were not imported."
+          );
+          break;
+        }
+      }
+      processingNow.current = false;
+      setWorking(false);
+    },
+    [ready, featureSettings?.enabled, updateProgress, onImported]
+  );
+
+  // Quick upload needs no Import click. It only picks fresh entries: failed
+  // items remain visible for a deliberate Retry, never an infinite auto-loop.
+  useEffect(() => {
+    if (
+      !ready ||
+      !featureSettings?.quickUpload ||
+      working ||
+      processingNow.current
+    )
       return;
-    setWorking(true);
-    setError("");
-    for (const entry of pending) {
-      if (!entry.destination) {
-        setSelected(entry.id);
-        setError("Choose a library destination for " + entry.name);
-        break;
-      }
-      try {
-        const update = (state: EntryProgress) =>
-          updateProgress(entry.id, state);
-        const result = entry.file
-          ? await uploadLocal(entry, update)
-          : await uploadURL(entry, update);
-        updateProgress(entry.id, {
-          phase: "complete",
-          loaded: entry.file?.size ?? 0,
-          total: entry.file?.size ?? 0,
-          result,
-        });
-        onImported();
-      } catch (reason) {
-        const message =
-          reason instanceof Error ? reason.message : String(reason);
-        updateProgress(entry.id, {
-          phase: "failed",
-          loaded: 0,
-          total: 0,
-          message,
-        });
-        setSelected(entry.id);
-        setError(
-          entry.name + ": " + message + ". Remaining items were not imported."
-        );
-        break;
-      }
-    }
-    setWorking(false);
-  }
+    const queued = entries.filter((entry) => !progress[entry.id]);
+    if (!queued.length || !queued.every((entry) => !!entry.destination)) return;
+    void submit(queued);
+  }, [ready, featureSettings?.quickUpload, entries, progress, working, submit]);
+
+  const actionLabel = featureSettings?.quickUpload
+    ? "Retry / Import"
+    : "Import";
+  const buttonLabel = working
+    ? "Importing…"
+    : `${actionLabel} ${pending.length} item(s)`;
 
   return (
     <>
@@ -373,6 +431,16 @@ export function MediaUploadDialog({
           </Modal.Header>
           <Modal.Body>
             {error && <Alert variant="warning">{error}</Alert>}
+            {featureSettings?.quickUpload &&
+              ready &&
+              entries.some(
+                (entry) => !progress[entry.id] && !entry.destination
+              ) && (
+                <Alert variant="info">
+                  Choose a library folder for each queued item or set a default
+                  folder in Experimental settings to start quick upload.
+                </Alert>
+              )}
             <div
               className="rounded p-3 mb-3 text-center"
               style={{
@@ -442,8 +510,14 @@ export function MediaUploadDialog({
             {entries.length > 0 && (
               <>
                 <strong>
-                  Import queue — select an item to edit its metadata
+                  Import queue — select a thumbnail to edit its metadata
                 </strong>
+                {featureSettings?.quickUpload && (
+                  <small className="d-block text-muted">
+                    Quick upload is on: new files start automatically when a
+                    destination is configured.
+                  </small>
+                )}
                 <div
                   className="border rounded mb-3 mt-2 p-2"
                   style={{ maxHeight: "220px", overflowY: "auto" }}
@@ -463,14 +537,75 @@ export function MediaUploadDialog({
                         <div className="d-flex align-items-center">
                           <Button
                             size="sm"
-                            variant={selected === entry.id ? "primary" : "link"}
-                            className="text-truncate"
-                            style={{ maxWidth: "85%" }}
+                            variant={
+                              selected === entry.id
+                                ? "primary"
+                                : "outline-secondary"
+                            }
+                            className="p-1 mr-2"
+                            title={entry.name}
+                            aria-label={"Select " + entry.name}
                             onClick={() => setSelected(entry.id)}
                           >
-                            {entry.file ? "File: " : "URL: "}
-                            {entry.name}
+                            <MediaUploadThumbnail
+                              file={entry.file}
+                              name={entry.name}
+                            />
                           </Button>
+                          <div className="d-flex flex-column flex-grow-1">
+                            <div className="d-flex align-items-center">
+                              <Form.Check
+                                id={"upload-tag-" + entry.id}
+                                type="switch"
+                                className="mr-3"
+                                label={<small>Tag</small>}
+                                checked={entry.taggingDefaults}
+                                disabled={working || complete}
+                                onChange={(event) =>
+                                  setEntries((old) =>
+                                    old.map((item) =>
+                                      item.id === entry.id
+                                        ? {
+                                            ...item,
+                                            taggingDefaults:
+                                              event.currentTarget.checked,
+                                          }
+                                        : item
+                                    )
+                                  )
+                                }
+                              />
+                              <Form.Check
+                                id={"upload-convert-" + entry.id}
+                                type="switch"
+                                label={<small>Convert</small>}
+                                checked={entry.conversionDefaults}
+                                disabled={working || complete}
+                                onChange={(event) =>
+                                  setEntries((old) =>
+                                    old.map((item) =>
+                                      item.id === entry.id
+                                        ? {
+                                            ...item,
+                                            conversionDefaults:
+                                              event.currentTarget.checked,
+                                          }
+                                        : item
+                                    )
+                                  )
+                                }
+                              />
+                            </div>
+                            {(entry.taggingDefaults ||
+                              entry.conversionDefaults) && (
+                              <small className="text-muted">
+                                {entry.taggingDefaults &&
+                                  "Tagging uses saved defaults. "}
+                                {entry.conversionDefaults &&
+                                  "Conversion uses saved defaults."}
+                              </small>
+                            )}
+                          </div>
                           {!working && !complete && (
                             <Button
                               size="sm"
@@ -523,6 +658,11 @@ export function MediaUploadDialog({
                                   ? "Imported"
                                   : (state.message ?? state.phase)}
                             </small>
+                            {state.result?.notice && (
+                              <small className="d-block text-muted">
+                                {state.result.notice}
+                              </small>
+                            )}
                             {state.result && (
                               <Link
                                 className="ml-2"
@@ -551,6 +691,12 @@ export function MediaUploadDialog({
                 <legend className="h6">
                   Metadata and destination for selected item
                 </legend>
+                <small
+                  className="d-block text-muted text-truncate mb-2"
+                  title={active.name}
+                >
+                  {active.name}
+                </small>
                 <Form.Group controlId="media-upload-destination">
                   <Form.Label>Save to folder</Form.Label>
                   <div className="d-flex align-items-center">
@@ -618,9 +764,9 @@ export function MediaUploadDialog({
             <Button
               variant="primary"
               disabled={!ready || working || pending.length === 0}
-              onClick={() => void submit()}
+              onClick={() => void submit(pending)}
             >
-              {working ? "Importing…" : "Import " + pending.length + " item(s)"}
+              {buttonLabel}
             </Button>
           </Modal.Footer>
         </Modal>

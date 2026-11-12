@@ -1,3 +1,12 @@
+## Quick upload, thumbnail queue and saved processing defaults — 2026-11-12
+
+- Baseline: `develop` `5d9f6c0ae6f0f38873c13df80e9f099d48b73b9f`; feature branch `feat/upload-quick-defaults-thumbnails-20261112`.
+- Under Settings → Experimental → Media uploads, add opt-in **Quick upload** (default off), revealing **Use tagging defaults** and **Use conversion defaults** toggles (both default off) only when quick upload is enabled. All are persisted in the server's upload settings and old configuration files remain compatible.
+- Quick upload automatically starts new local or direct-URL items after the destination is resolved; no click on Import is required. A missing configured destination retains the queued item for a manual folder selection rather than attempting an unsafe upload. Manual upload mode remains unchanged.
+- Display a 54 × 54 local media thumbnail in each import queue row (object URL released on removal or dismissal), video-frame preview when browser-supported, or safe icon for unsupported/remote files. Keep the filename as an accessible tooltip and in the selected detail, not the primary queue label.
+- Add small independent Tag/Convert switches per item; only show the "uses saved defaults" hint when enabled. Local and URL endpoints now accept explicit flags. Image tagging reuses saved Camie inference settings; Video tagging auto-applies only safe filename defaults. Conversion reuses the saved Media converter rules, backend, encoding and savings policy and skips disabled rules without failing the import. Processing errors are returned as notices; imported originals are preserved.
+- Added strict flag parse and settings persistence regression tests. CI, formatting, Go tests, production bundle and browser integration are not locally verified; GitHub checks pending.
+
 ## Global navbar upload and drag-and-drop — 2026-11-12
 
 - Baseline: `develop` `b758e7b5b19229975061fe44eaf4defa2040fd81`; branch `fix/global-upload-navbar-dropzone-20261112`. Follow-up to merged PR #350 and issue #349.

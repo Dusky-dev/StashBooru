@@ -151,11 +151,13 @@ func mediaUploadURLResponseAllowed(response *http.Response) error {
 }
 
 type mediaUploadURLRequest struct {
-	URL         string `json:"url"`
-	Destination string `json:"destination"`
-	ArtistIDs   string `json:"artistIDs"`
-	GalleryIDs  string `json:"galleryIDs"`
-	TagIDs      string `json:"tagIDs"`
+	URL                string `json:"url"`
+	Destination        string `json:"destination"`
+	ArtistIDs          string `json:"artistIDs"`
+	GalleryIDs         string `json:"galleryIDs"`
+	TagIDs             string `json:"tagIDs"`
+	TaggingDefaults    bool   `json:"taggingDefaults"`
+	ConversionDefaults bool   `json:"conversionDefaults"`
 }
 
 type mediaUploadStreamEvent struct {
@@ -311,6 +313,9 @@ func (rs booruBrowserRoutes) ImportMediaURL(w http.ResponseWriter, r *http.Reque
 	done := make(chan outcome, 1)
 	rs.jobs.Add(r.Context(), "Import downloaded media: "+name, job.MakeJobExec(func(ctx context.Context, progress *job.Progress) error {
 		result, e := importUploadedMedia(ctx, progress, published, artistIDs, galleryIDs, tagIDs)
+		if e == nil {
+			applyMediaUploadDefaults(ctx, &result, input.TaggingDefaults, input.ConversionDefaults)
+		}
 		done <- outcome{result: result, err: e}
 		return e
 	}))

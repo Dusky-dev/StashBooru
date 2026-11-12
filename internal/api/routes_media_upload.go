@@ -71,6 +71,17 @@ func validBooruWriteOrigin(origin, host string) bool {
 		strings.EqualFold(u.Host, host) && u.User == nil && u.Path == "" && u.RawQuery == ""
 }
 
+func parseMediaUploadBoolean(value string) (bool, error) {
+	switch value {
+	case "true":
+		return true, nil
+	case "false":
+		return false, nil
+	default:
+		return false, fmt.Errorf("invalid upload processing setting")
+	}
+}
+
 func parseMediaUploadIDs(input string, limit int) ([]int, error) {
 	if input == "" {
 		return nil, nil
@@ -313,6 +324,7 @@ func (rs booruBrowserRoutes) UploadMedia(w http.ResponseWriter, r *http.Request)
 	}
 	var destination, uploadedName, stage string
 	var artistIDs, galleryIDs, tagIDs []int
+	var taggingDefaults, conversionDefaults bool
 	defer func() {
 		if stage != "" {
 			_ = os.Remove(stage)
@@ -386,6 +398,10 @@ func (rs booruBrowserRoutes) UploadMedia(w http.ResponseWriter, r *http.Request)
 			galleryIDs, err = parseMediaUploadIDs(string(data), 32)
 		case "tagIDs":
 			tagIDs, err = parseMediaUploadIDs(string(data), 64)
+		case "taggingDefaults":
+			taggingDefaults, err = parseMediaUploadBoolean(string(data))
+		case "conversionDefaults":
+			conversionDefaults, err = parseMediaUploadBoolean(string(data))
 		default:
 			writeBooruError(w, http.StatusBadRequest, "upload", "Unexpected upload field.")
 			return
@@ -431,6 +447,9 @@ func (rs booruBrowserRoutes) UploadMedia(w http.ResponseWriter, r *http.Request)
 	rs.jobs.Add(r.Context(), "Import uploaded media: "+uploadedName, job.MakeJobExec(
 		func(ctx context.Context, progress *job.Progress) error {
 			result, importErr := importUploadedMedia(ctx, progress, path, artistIDs, galleryIDs, tagIDs)
+			if importErr == nil {
+				applyMediaUploadDefaults(ctx, &result, taggingDefaults, conversionDefaults)
+			}
 			completed <- importOutcome{result: result, err: importErr}
 			return importErr
 		},

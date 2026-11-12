@@ -15,10 +15,13 @@ import (
 // Uploads are opt-in while experimental. These settings are server-side,
 // separate from local browser preferences, and enforced on all write endpoints.
 type mediaUploadSettings struct {
-	Enabled             bool   `json:"enabled"`
-	AllowURL            bool   `json:"allowURL"`
-	AllowFolderCreation bool   `json:"allowFolderCreation"`
-	DefaultDirectory    string `json:"defaultDirectory"`
+	Enabled              bool   `json:"enabled"`
+	AllowURL             bool   `json:"allowURL"`
+	AllowFolderCreation  bool   `json:"allowFolderCreation"`
+	DefaultDirectory     string `json:"defaultDirectory"`
+	QuickUpload          bool   `json:"quickUpload"`
+	QuickTagDefaults     bool   `json:"quickTagDefaults"`
+	QuickConvertDefaults bool   `json:"quickConvertDefaults"`
 }
 
 var mediaUploadSettingsMu sync.Mutex
