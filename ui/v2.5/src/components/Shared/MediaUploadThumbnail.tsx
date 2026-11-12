@@ -13,14 +13,14 @@ export function MediaUploadThumbnail({
 }) {
   const [objectURL, setObjectURL] = useState("");
   const [failed, setFailed] = useState(false);
-  const isVideo = !!file && (
-    file.type.startsWith("video/") ||
-    /\.(mp4|m4v|webm|mkv|mov|avi|wmv|mpg|mpeg|flv|ts)$/i.test(file.name)
-  );
-  const isImage = !!file && (
-    file.type.startsWith("image/") ||
-    /\.(jpe?g|png|gif|webp|avif|jxl|bmp|tiff?|heic|heif)$/i.test(file.name)
-  );
+  const isVideo =
+    !!file &&
+    (file.type.startsWith("video/") ||
+      /\.(mp4|m4v|webm|mkv|mov|avi|wmv|mpg|mpeg|flv|ts)$/i.test(file.name));
+  const isImage =
+    !!file &&
+    (file.type.startsWith("image/") ||
+      /\.(jpe?g|png|gif|webp|avif|jxl|bmp|tiff?|heic|heif)$/i.test(file.name));
 
   useEffect(() => {
     setFailed(false);
