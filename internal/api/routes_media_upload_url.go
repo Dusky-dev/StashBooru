@@ -151,13 +151,13 @@ func mediaUploadURLResponseAllowed(response *http.Response) error {
 }
 
 type mediaUploadURLRequest struct {
-	URL         string `json:"url"`
-	Destination string `json:"destination"`
-	ArtistIDs   string `json:"artistIDs"`
-	GalleryIDs  string `json:"galleryIDs"`
-	TagIDs      string `json:"tagIDs"`
-	TaggingDefaults bool `json:"taggingDefaults"`
-	ConversionDefaults bool `json:"conversionDefaults"`
+	URL                string `json:"url"`
+	Destination        string `json:"destination"`
+	ArtistIDs          string `json:"artistIDs"`
+	GalleryIDs         string `json:"galleryIDs"`
+	TagIDs             string `json:"tagIDs"`
+	TaggingDefaults    bool   `json:"taggingDefaults"`
+	ConversionDefaults bool   `json:"conversionDefaults"`
 }
 
 type mediaUploadStreamEvent struct {
