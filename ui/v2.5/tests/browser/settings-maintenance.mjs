@@ -463,7 +463,9 @@ try {
         response.url().endsWith("/remote-config") &&
         response.request().method() === "POST"
     );
-    await page.getByRole("button", { name: "Save worker", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Save worker", exact: true })
+      .click();
     await savedWorker;
     assert.equal(worker.enabled, false);
     assert.equal(worker.fallbackLocal, true);
