@@ -658,19 +658,16 @@ export function MediaUploadDialog({
                                 label={<small>Tag</small>}
                                 checked={entry.taggingDefaults}
                                 disabled={working || complete}
-                                onChange={(event) =>
+                                onChange={(event) => {
+                                  const checked = event.currentTarget.checked;
                                   setEntries((old) =>
                                     old.map((item) =>
                                       item.id === entry.id
-                                        ? {
-                                            ...item,
-                                            taggingDefaults:
-                                              event.currentTarget.checked,
-                                          }
+                                        ? { ...item, taggingDefaults: checked }
                                         : item
                                     )
-                                  )
-                                }
+                                  );
+                                }}
                               />
                               <Form.Check
                                 id={"upload-convert-" + entry.id}
@@ -678,19 +675,19 @@ export function MediaUploadDialog({
                                 label={<small>Convert</small>}
                                 checked={entry.conversionDefaults}
                                 disabled={working || complete}
-                                onChange={(event) =>
+                                onChange={(event) => {
+                                  const checked = event.currentTarget.checked;
                                   setEntries((old) =>
                                     old.map((item) =>
                                       item.id === entry.id
                                         ? {
                                             ...item,
-                                            conversionDefaults:
-                                              event.currentTarget.checked,
+                                            conversionDefaults: checked,
                                           }
                                         : item
                                     )
-                                  )
-                                }
+                                  );
+                                }}
                               />
                             </div>
                             {(entry.taggingDefaults ||
