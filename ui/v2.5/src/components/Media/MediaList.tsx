@@ -49,6 +49,7 @@ import { MediaListContent } from "./MediaListContent";
 import { EditMediaDialog } from "./EditMediaDialog";
 import { mediaConversionTargets, splitMediaSelection } from "./mediaSelection";
 import { useInterfaceLocalForage } from "src/hooks/LocalForage";
+import { MEDIA_UPLOAD_IMPORTED_EVENT } from "../Shared/mediaUploadSettings";
 
 const emptyItems: GQL.MediaListItemFragment[] = [];
 const getItems = (result: GQL.FindMediaQueryResult) =>
@@ -115,6 +116,15 @@ const FilteredMediaListComponent = ({
   const { filter, setFilter } = filterState;
   const { effectiveFilter, result, items, totalCount, cachedResult } =
     queryResult;
+
+  useEffect(() => {
+    const refetchAfterUpload = () => {
+      void result.refetch();
+    };
+    window.addEventListener(MEDIA_UPLOAD_IMPORTED_EVENT, refetchAfterUpload);
+    return () =>
+      window.removeEventListener(MEDIA_UPLOAD_IMPORTED_EVENT, refetchAfterUpload);
+  }, [result.refetch]);
   const { modal, showModal, closeModal } = modalState;
   const { setPage, removeCriterion } = useFilterOperations({
     filter,
