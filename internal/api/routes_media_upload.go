@@ -115,9 +115,35 @@ func publishMediaUpload(stage, dir, name string) (string, error) {
 		if err == nil {
 			return target, nil
 		}
-		if !errors.Is(err, os.ErrExist) {
-			return "", fmt.Errorf("cannot publish upload in the chosen folder: %w", err)
+		if errors.Is(err, os.ErrExist) {
+			continue
 		}
+		// Some network shares do not allow hard links. Reserve the destination
+		// exclusively and copy the fully staged data instead; never overwrite.
+		src, openErr := os.Open(stage)
+		if openErr != nil {
+			return "", fmt.Errorf("cannot reopen staged upload: %w", openErr)
+		}
+		dest, createErr := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+		if errors.Is(createErr, os.ErrExist) {
+			_ = src.Close()
+			continue
+		}
+		if createErr != nil {
+			_ = src.Close()
+			return "", fmt.Errorf("cannot create uploaded file in this folder: %w", createErr)
+		}
+		_, copyErr := io.Copy(dest, src)
+		if copyErr == nil {
+			copyErr = dest.Sync()
+		}
+		closeErr := dest.Close()
+		_ = src.Close()
+		if copyErr != nil || closeErr != nil {
+			_ = os.Remove(target)
+			return "", fmt.Errorf("cannot complete upload in the chosen folder")
+		}
+		return target, nil
 	}
 	return "", fmt.Errorf("too many files with the same filename")
 }
