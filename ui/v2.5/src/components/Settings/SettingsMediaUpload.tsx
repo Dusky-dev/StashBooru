@@ -138,8 +138,8 @@ export function SettingsMediaUpload() {
             )}
           </div>
           <Form.Text className="text-muted">
-            Leave empty to use your existing Booru download folder preference
-            or choose a folder when importing each file.
+            Leave empty to use your existing Booru download folder preference or
+            choose a folder when importing each file.
           </Form.Text>
         </Form.Group>
       </fieldset>

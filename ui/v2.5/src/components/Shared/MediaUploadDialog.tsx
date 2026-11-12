@@ -296,7 +296,8 @@ export function MediaUploadDialog({
   }
 
   async function submit() {
-    if (!ready || !featureSettings?.enabled || working || pending.length === 0) return;
+    if (!ready || !featureSettings?.enabled || working || pending.length === 0)
+      return;
     setWorking(true);
     setError("");
     for (const entry of pending) {
@@ -374,36 +375,38 @@ export function MediaUploadDialog({
               </Form.Text>
             </Form.Group>
             {featureSettings?.allowURL && (
-            <Form.Group controlId="media-upload-url">
-              <Form.Label>Or download from a direct image/video URL</Form.Label>
-              <div className="d-flex">
-                <Form.Control
-                  value={url}
-                  disabled={working}
-                  type="url"
-                  placeholder="https://example.org/media/image.jpg"
-                  onChange={(event) => setURL(event.currentTarget.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      addURL();
-                    }
-                  }}
-                />
-                <Button
-                  className="ml-2"
-                  variant="secondary"
-                  disabled={working || !url.trim()}
-                  onClick={addURL}
-                >
-                  Add URL
-                </Button>
-              </div>
-              <Form.Text className="text-muted">
-                Direct public HTTP/HTTPS media links only. Local and private
-                network destinations are blocked.
-              </Form.Text>
-            </Form.Group>
+              <Form.Group controlId="media-upload-url">
+                <Form.Label>
+                  Or download from a direct image/video URL
+                </Form.Label>
+                <div className="d-flex">
+                  <Form.Control
+                    value={url}
+                    disabled={working}
+                    type="url"
+                    placeholder="https://example.org/media/image.jpg"
+                    onChange={(event) => setURL(event.currentTarget.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        addURL();
+                      }
+                    }}
+                  />
+                  <Button
+                    className="ml-2"
+                    variant="secondary"
+                    disabled={working || !url.trim()}
+                    onClick={addURL}
+                  >
+                    Add URL
+                  </Button>
+                </div>
+                <Form.Text className="text-muted">
+                  Direct public HTTP/HTTPS media links only. Local and private
+                  network destinations are blocked.
+                </Form.Text>
+              </Form.Group>
             )}
             {entries.length > 0 && (
               <>
