@@ -24,6 +24,7 @@ export function GlobalMediaUpload() {
   const quickUpload = !!settings?.quickUpload;
   const inputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
+  const [advancedOptions, setAdvancedOptions] = useState(false);
   const [dropActive, setDropActive] = useState(false);
   const [incomingBatch, setIncomingBatch] = useState<FileBatch>();
   const nextBatchId = useRef(0);
@@ -111,6 +112,21 @@ export function GlobalMediaUpload() {
         <Icon icon={faUpload} />
         <span className="ml-1 d-none d-sm-inline">Upload</span>
       </Button>
+      {quickUpload && (
+        <Button
+          variant="outline-secondary"
+          size="sm"
+          className="mr-2"
+          title="Upload from URL or review the import queue"
+          aria-label="More upload options"
+          onClick={() => {
+            setAdvancedOptions(true);
+            setOpen(true);
+          }}
+        >
+          ⋯
+        </Button>
+      )}
       {dropActive && (
         <div
           aria-hidden="true"
@@ -136,10 +152,11 @@ export function GlobalMediaUpload() {
       {open && (
         <MediaUploadDialog
           incomingBatch={incomingBatch}
-          quickMode={quickUpload}
+          quickMode={quickUpload && !advancedOptions}
           dropActive={dropActive}
           onHide={() => {
             setOpen(false);
+            setAdvancedOptions(false);
             setIncomingBatch(undefined);
           }}
           onImported={() =>
