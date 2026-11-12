@@ -323,4 +323,3 @@ func (rs booruBrowserRoutes) ImportMediaURL(w http.ResponseWriter, r *http.Reque
 		return
 	}
 }
-
