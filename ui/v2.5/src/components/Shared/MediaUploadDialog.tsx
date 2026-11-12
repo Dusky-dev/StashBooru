@@ -494,8 +494,14 @@ export function MediaUploadDialog({
             {entries.length > 0 && (
               <>
                 <strong>
-                  Import queue — select an item to edit its metadata
+                  Import queue — select a thumbnail to edit its metadata
                 </strong>
+                {featureSettings?.quickUpload && (
+                  <small className="d-block text-muted">
+                    Quick upload is on: new files start automatically when a
+                    destination is configured.
+                  </small>
+                )}
                 <div
                   className="border rounded mb-3 mt-2 p-2"
                   style={{ maxHeight: "220px", overflowY: "auto" }}
@@ -515,14 +521,72 @@ export function MediaUploadDialog({
                         <div className="d-flex align-items-center">
                           <Button
                             size="sm"
-                            variant={selected === entry.id ? "primary" : "link"}
-                            className="text-truncate"
-                            style={{ maxWidth: "85%" }}
+                            variant={
+                              selected === entry.id ? "primary" : "outline-secondary"
+                            }
+                            className="p-1 mr-2"
+                            title={entry.name}
+                            aria-label={"Select " + entry.name}
                             onClick={() => setSelected(entry.id)}
                           >
-                            {entry.file ? "File: " : "URL: "}
-                            {entry.name}
+                            <MediaUploadThumbnail
+                              file={entry.file}
+                              name={entry.name}
+                            />
                           </Button>
+                          <div className="d-flex flex-column flex-grow-1">
+                            <div className="d-flex align-items-center">
+                              <Form.Check
+                                id={"upload-tag-" + entry.id}
+                                type="switch"
+                                className="mr-3"
+                                label={<small>Tag</small>}
+                                checked={entry.taggingDefaults}
+                                disabled={working || complete}
+                                onChange={(event) =>
+                                  setEntries((old) =>
+                                    old.map((item) =>
+                                      item.id === entry.id
+                                        ? {
+                                            ...item,
+                                            taggingDefaults:
+                                              event.currentTarget.checked,
+                                          }
+                                        : item
+                                    )
+                                  )
+                                }
+                              />
+                              <Form.Check
+                                id={"upload-convert-" + entry.id}
+                                type="switch"
+                                label={<small>Convert</small>}
+                                checked={entry.conversionDefaults}
+                                disabled={working || complete}
+                                onChange={(event) =>
+                                  setEntries((old) =>
+                                    old.map((item) =>
+                                      item.id === entry.id
+                                        ? {
+                                            ...item,
+                                            conversionDefaults:
+                                              event.currentTarget.checked,
+                                          }
+                                        : item
+                                    )
+                                  )
+                                }
+                              />
+                            </div>
+                            {(entry.taggingDefaults || entry.conversionDefaults) && (
+                              <small className="text-muted">
+                                {entry.taggingDefaults &&
+                                  "Tagging uses saved defaults. "}
+                                {entry.conversionDefaults &&
+                                  "Conversion uses saved defaults."}
+                              </small>
+                            )}
+                          </div>
                           {!working && !complete && (
                             <Button
                               size="sm"
@@ -575,6 +639,11 @@ export function MediaUploadDialog({
                                   ? "Imported"
                                   : (state.message ?? state.phase)}
                             </small>
+                            {state.result?.notice && (
+                              <small className="d-block text-muted">
+                                {state.result.notice}
+                              </small>
+                            )}
                             {state.result && (
                               <Link
                                 className="ml-2"
@@ -603,6 +672,9 @@ export function MediaUploadDialog({
                 <legend className="h6">
                   Metadata and destination for selected item
                 </legend>
+                <small className="d-block text-muted text-truncate mb-2" title={active.name}>
+                  {active.name}
+                </small>
                 <Form.Group controlId="media-upload-destination">
                   <Form.Label>Save to folder</Form.Label>
                   <div className="d-flex align-items-center">
@@ -672,7 +744,11 @@ export function MediaUploadDialog({
               disabled={!ready || working || pending.length === 0}
               onClick={() => void submit()}
             >
-              {working ? "Importing…" : "Import " + pending.length + " item(s)"}
+              {working
+                ? "Importing…"
+                : (featureSettings?.quickUpload ? "Retry / Import " : "Import ") +
+                  pending.length +
+                  " item(s)"}
             </Button>
           </Modal.Footer>
         </Modal>
