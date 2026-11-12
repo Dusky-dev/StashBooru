@@ -69,7 +69,8 @@ export function MediaUploadDialog({
       const file = batch[i];
       if (file.size === 0 || file.size > maxUploadSize) {
         setError(
-          file.name + ": file must be between 1 byte and 512 MiB. Remaining files were not uploaded."
+          file.name +
+            ": file must be between 1 byte and 512 MiB. Remaining files were not uploaded."
         );
         break;
       }
@@ -130,8 +131,8 @@ export function MediaUploadDialog({
           </Modal.Header>
           <Modal.Body>
             <p className="text-muted">
-              Upload media from this device to an existing Stash library
-              folder. Each file is scanned and imported after saving.
+              Upload media from this device to an existing Stash library folder.
+              Each file is scanned and imported after saving.
             </p>
             {error && <Alert variant="warning">{error}</Alert>}
             {current && (
@@ -190,9 +191,7 @@ export function MediaUploadDialog({
                 isMulti
                 isDisabled={working}
                 isClearable
-                onSelect={(items) =>
-                  setArtistIDs(items.map((item) => item.id))
-                }
+                onSelect={(items) => setArtistIDs(items.map((item) => item.id))}
                 menuPortalTarget={document.body}
               />
             </Form.Group>
@@ -247,11 +246,7 @@ export function MediaUploadDialog({
             )}
           </Modal.Body>
           <Modal.Footer>
-            <Button
-              variant="secondary"
-              onClick={onHide}
-              disabled={working}
-            >
+            <Button variant="secondary" onClick={onHide} disabled={working}>
               {imported.length > 0 ? "Close" : "Cancel"}
             </Button>
             <Button
