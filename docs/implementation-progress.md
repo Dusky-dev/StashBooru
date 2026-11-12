@@ -1,3 +1,11 @@
+## Global navbar upload and drag-and-drop — 2026-11-12
+
+- Baseline: `develop` `b758e7b5b19229975061fe44eaf4defa2040fd81`; branch `fix/global-upload-navbar-dropzone-20261112`. Follow-up to merged PR #350 and issue #349.
+- Move the single **Upload** action from the Images/Videos list operations to the fixed main navigation bar. When Experimental media uploads are disabled, the button and file-drop interception remain absent. Saving the Experimental setting updates the navbar without a reload.
+- Accept multiple dropped files anywhere on the application page without allowing browser file navigation; show a drag overlay. Drops open the existing upload dialog, and later drops append to its current queue. The dialog includes a visible dashed drop zone and file picker.
+- Preserve per-item metadata, destination selection / folder creation, direct media URLs, existing transfer/import progress and server-side authorization. Signal active All/Images/Videos lists to refresh after each completed import.
+- Source-level GitHub review completed; local UI build, formatting, browser fixture and drag-and-drop behavior are not runtime-verified in this environment. CI and Codex Review remain pending.
+
 ## Scan animation inspection layout — 2026-11-09
 
 - Baseline: `develop` `9fb7962b28fb1c2b916d964de0c7719c652cd445`; branch `fix/scan-animation-inspection-settings-row-20261109`.
