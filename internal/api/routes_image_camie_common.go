@@ -1,9 +1,10 @@
 package api
 
 import (
+	"context"
 	"net/http"
-	"strings"
-
+	"time"
+ 
 	"github.com/stashapp/stash/pkg/camietagger"
 )
 
@@ -50,13 +51,25 @@ func newCamieTagger() (camietagger.Tagger, string, string, error) {
 	if err != nil {
 		return nil, "local", "", err
 	}
-	if strings.TrimSpace(config.URL) == "" {
+	if !config.isEnabled() {
 		return camietagger.New(""), "local", "", nil
 	}
 
 	client, err := camietagger.NewRemote(config.URL, config.Token)
 	if err != nil {
+		if config.FallbackLocal {
+			return camietagger.New(""), "local", "", nil
+		}
 		return nil, "remote", config.URL, err
+	}
+	if config.FallbackLocal {
+		probeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		status, probeErr := client.Status(probeCtx)
+		cancel()
+		if probeErr != nil || !status.Installed {
+			_ = client.Close()
+			return camietagger.New(""), "local", "", nil
+		}
 	}
 	return client, "remote", config.URL, nil
 }
