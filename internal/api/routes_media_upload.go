@@ -176,7 +176,7 @@ func importUploadedMedia(ctx context.Context, path string, artistIDs, galleryIDs
 		if file == nil {
 			return fmt.Errorf("the scanner did not register the file; check scan exclusions")
 		}
-		images, err := mgr.Repository.Image.FindByFileID(ctx, file.ID)
+		images, err := mgr.Repository.Image.FindByFileID(ctx, file.Base().ID)
 		if err != nil {
 			return err
 		}
@@ -184,7 +184,7 @@ func importUploadedMedia(ctx context.Context, path string, artistIDs, galleryIDs
 			result.Kind, result.ID = "image", strconv.Itoa(images[0].ID)
 			return nil
 		}
-		scenes, err := mgr.Repository.Scene.FindByFileID(ctx, file.ID)
+		scenes, err := mgr.Repository.Scene.FindByFileID(ctx, file.Base().ID)
 		if err != nil {
 			return err
 		}
