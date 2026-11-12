@@ -297,7 +297,7 @@ export function MediaUploadDialog({
       return;
     processedBatch.current = incomingBatch.id;
     addFiles(incomingBatch.files);
-  }, [incomingBatch, working, addFiles]);
+  }, [incomingBatch, addFiles]);
 
   function addURL() {
     const value = url.trim();
@@ -341,11 +341,11 @@ export function MediaUploadDialog({
     );
   }
 
-  function updateProgress(id: number, next: EntryProgress) {
+  const updateProgress = useCallback((id: number, next: EntryProgress) => {
     setProgress((old) => ({ ...old, [id]: next }));
-  }
+  }, []);
 
-  async function submit(batch: UploadEntry[] = pending) {
+  const submit = useCallback(async (batch: UploadEntry[]) => {
     if (
       !ready ||
       !featureSettings?.enabled ||
@@ -393,7 +393,7 @@ export function MediaUploadDialog({
     }
     processingNow.current = false;
     setWorking(false);
-  }
+  }, [ready, featureSettings?.enabled, updateProgress, onImported]);
 
   // Quick upload needs no Import click. It only picks fresh entries: failed
   // items remain visible for a deliberate Retry, never an infinite auto-loop.
@@ -408,7 +408,7 @@ export function MediaUploadDialog({
     const queued = entries.filter((entry) => !progress[entry.id]);
     if (!queued.length || !queued.every((entry) => !!entry.destination)) return;
     void submit(queued);
-  }, [ready, featureSettings, entries, progress, working]);
+  }, [ready, featureSettings?.quickUpload, entries, progress, working, submit]);
 
   return (
     <>
@@ -752,7 +752,7 @@ export function MediaUploadDialog({
             <Button
               variant="primary"
               disabled={!ready || working || pending.length === 0}
-              onClick={() => void submit()}
+              onClick={() => void submit(pending)}
             >
               {working
                 ? "Importing…"
