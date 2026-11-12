@@ -26,23 +26,36 @@ export async function saveMediaUploadSettings(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(settings),
   });
-  return readBooruResponse<MediaUploadSettings>(response);
+  const saved = await readBooruResponse<MediaUploadSettings>(response);
+  window.dispatchEvent(new Event(MEDIA_UPLOAD_SETTINGS_CHANGED_EVENT));
+  return saved;
 }
 
+export const MEDIA_UPLOAD_IMPORTED_EVENT = "stashbooru:media-upload-imported";
+const MEDIA_UPLOAD_SETTINGS_CHANGED_EVENT =
+  "stashbooru:media-upload-settings-changed";
+
 // Fail closed while settings load, when unavailable, and when disabled.
-// Both the Images and Videos toolbar use this hook.
+// The main navigation button updates when Experimental settings change.
 export function useMediaUploadEnabled() {
   const [enabled, setEnabled] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
-    void readMediaUploadSettings(controller.signal)
-      .then((settings) => {
-        if (!controller.signal.aborted) setEnabled(settings.enabled);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setEnabled(false);
-      });
-    return () => controller.abort();
+    const refresh = () => {
+      void readMediaUploadSettings(controller.signal)
+        .then((settings) => {
+          if (!controller.signal.aborted) setEnabled(settings.enabled);
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) setEnabled(false);
+        });
+    };
+    refresh();
+    window.addEventListener(MEDIA_UPLOAD_SETTINGS_CHANGED_EVENT, refresh);
+    return () => {
+      controller.abort();
+      window.removeEventListener(MEDIA_UPLOAD_SETTINGS_CHANGED_EVENT, refresh);
+    };
   }, []);
   return enabled;
 }
