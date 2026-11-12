@@ -58,8 +58,14 @@ func parseMediaUploadURL(value string) (*url.URL, error) {
 		return nil, fmt.Errorf("provide a public http or https image/video URL")
 	}
 	port := u.Port()
-	if port != "" && !((u.Scheme == "https" && port == "443") || (u.Scheme == "http" && port == "80")) {
-		return nil, fmt.Errorf("only the standard HTTP/HTTPS ports are allowed")
+	if port != "" {
+		expected := "80"
+		if u.Scheme == "https" {
+			expected = "443"
+		}
+		if port != expected {
+			return nil, fmt.Errorf("only the standard HTTP/HTTPS ports are allowed")
+		}
 	}
 	if u.Fragment != "" {
 		u.Fragment = ""
@@ -68,13 +74,12 @@ func parseMediaUploadURL(value string) (*url.URL, error) {
 }
 
 func newMediaUploadRemoteClient() *http.Client {
-	transport := &http.Transport{
-		Proxy: nil,
-		DisableKeepAlives: true,
-		DisableCompression: true,
-		ResponseHeaderTimeout: 30 * time.Second,
-		TLSHandshakeTimeout: 12 * time.Second,
-		DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
+	transport := new(http.Transport)
+	transport.DisableKeepAlives = true
+	transport.DisableCompression = true
+	transport.ResponseHeaderTimeout = 30 * time.Second
+	transport.TLSHandshakeTimeout = 12 * time.Second
+	transport.DialContext = func(ctx context.Context, network, address string) (net.Conn, error) {
 			host, port, err := net.SplitHostPort(address)
 			if err != nil {
 				return nil, fmt.Errorf("invalid remote host")
@@ -93,7 +98,6 @@ func newMediaUploadRemoteClient() *http.Client {
 			}
 			dialer := net.Dialer{Timeout: 12 * time.Second, KeepAlive: -1}
 			return dialer.DialContext(ctx, network, net.JoinHostPort(resolved[0].IP.String(), port))
-		},
 	}
 	return &http.Client{
 		Transport: transport,
@@ -163,7 +167,9 @@ type mediaUploadStreamEvent struct {
 }
 
 func writeMediaUploadEvent(w http.ResponseWriter, e mediaUploadStreamEvent) {
-	_ = json.NewEncoder(w).Encode(e)
+	if err := json.NewEncoder(w).Encode(e); err != nil {
+		return
+	}
 	if flusher, ok := w.(http.Flusher); ok {
 		flusher.Flush()
 	}

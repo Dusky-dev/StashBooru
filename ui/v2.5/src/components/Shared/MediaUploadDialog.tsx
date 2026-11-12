@@ -229,15 +229,17 @@ export function MediaUploadDialog({
 
   function addFiles(files: File[]) {
     if (files.length === 0 || working) return;
-    const newEntries = files.map((file): UploadEntry => ({
-      id: ++nextUploadId,
-      name: file.name,
-      file,
-      destination: defaultDirectory,
-      artistIDs: [],
-      galleryIDs: [],
-      tagIDs: [],
-    }));
+    const newEntries = files.map(
+      (file): UploadEntry => ({
+        id: ++nextUploadId,
+        name: file.name,
+        file,
+        destination: defaultDirectory,
+        artistIDs: [],
+        galleryIDs: [],
+        tagIDs: [],
+      })
+    );
     setEntries((old) => [...old, ...newEntries]);
     setSelected(newEntries[0].id);
   }
@@ -293,7 +295,8 @@ export function MediaUploadDialog({
         break;
       }
       try {
-        const update = (state: EntryProgress) => updateProgress(entry.id, state);
+        const update = (state: EntryProgress) =>
+          updateProgress(entry.id, state);
         const result = entry.file
           ? await uploadLocal(entry, update)
           : await uploadURL(entry, update);
@@ -305,7 +308,8 @@ export function MediaUploadDialog({
         });
         onImported();
       } catch (reason) {
-        const message = reason instanceof Error ? reason.message : String(reason);
+        const message =
+          reason instanceof Error ? reason.message : String(reason);
         updateProgress(entry.id, {
           phase: "failed",
           loaded: 0,
@@ -313,7 +317,9 @@ export function MediaUploadDialog({
           message,
         });
         setSelected(entry.id);
-        setError(entry.name + ": " + message + ". Remaining items were not imported.");
+        setError(
+          entry.name + ": " + message + ". Remaining items were not imported."
+        );
         break;
       }
     }
@@ -388,7 +394,9 @@ export function MediaUploadDialog({
             </Form.Group>
             {entries.length > 0 && (
               <>
-                <strong>Import queue — select an item to edit its metadata</strong>
+                <strong>
+                  Import queue — select an item to edit its metadata
+                </strong>
                 <div
                   className="border rounded mb-3 mt-2 p-2"
                   style={{ maxHeight: "220px", overflowY: "auto" }}
@@ -439,7 +447,8 @@ export function MediaUploadDialog({
                             state.phase === "downloading" ? (
                               <ProgressBar
                                 animated
-                                now={percent}
+                                striped={state.total === 0}
+                                now={state.total === 0 ? 100 : percent}
                                 label={
                                   state.total > 0 ? percent + "%" : undefined
                                 }
@@ -465,7 +474,7 @@ export function MediaUploadDialog({
                                     : " (size unknown)")
                                 : state.phase === "complete"
                                   ? "Imported"
-                                  : state.message ?? state.phase}
+                                  : (state.message ?? state.phase)}
                             </small>
                             {state.result && (
                               <Link
@@ -489,8 +498,12 @@ export function MediaUploadDialog({
               </>
             )}
             {active && (
-              <fieldset disabled={working || progress[active.id]?.phase === "complete"}>
-                <legend className="h6">Metadata and destination for selected item</legend>
+              <fieldset
+                disabled={working || progress[active.id]?.phase === "complete"}
+              >
+                <legend className="h6">
+                  Metadata and destination for selected item
+                </legend>
                 <Form.Group controlId="media-upload-destination">
                   <Form.Label>Save to folder</Form.Label>
                   <div className="d-flex align-items-center">

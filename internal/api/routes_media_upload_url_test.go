@@ -79,9 +79,15 @@ type mediaUploadBufferResponse struct {
 	bytes.Buffer
 }
 
-func (w *mediaUploadBufferResponse) Header() http.Header { return http.Header{} }
+func (w *mediaUploadBufferResponse) Header() http.Header {
+	return http.Header{}
+}
+
 func (w *mediaUploadBufferResponse) WriteHeader(int) {}
-func (w *mediaUploadBufferResponse) Write(b []byte) (int, error) { return w.Buffer.Write(b) }
+
+func (w *mediaUploadBufferResponse) Write(b []byte) (int, error) {
+	return w.Buffer.Write(b)
+}
 
 func TestMediaUploadRemoteProgressUsesActualBytes(t *testing.T) {
 	src := strings.NewReader(strings.Repeat("x", 1500000))
@@ -102,4 +108,7 @@ func TestMediaUploadRemoteProgressUsesActualBytes(t *testing.T) {
 }
 
 type errorMediaReader struct{}
-func (errorMediaReader) Read([]byte) (int, error) { return 0, errors.New("disconnected") }
+
+func (errorMediaReader) Read([]byte) (int, error) {
+	return 0, errors.New("disconnected")
+}
