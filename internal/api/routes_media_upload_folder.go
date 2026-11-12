@@ -33,6 +33,9 @@ func (rs booruBrowserRoutes) CreateUploadFolder(w http.ResponseWriter, r *http.R
 		writeBooruError(w, http.StatusForbidden, "origin", "Folder changes must come from StashBooru.")
 		return
 	}
+	if !rs.requireMediaUpload(w, "folder") {
+		return
+	}
 	var input mediaUploadFolderInput
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8192)).Decode(&input); err != nil ||
 		!validMediaUploadFolderName(input.Name) {

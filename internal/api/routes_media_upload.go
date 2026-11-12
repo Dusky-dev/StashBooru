@@ -303,6 +303,9 @@ func (rs booruBrowserRoutes) UploadMedia(w http.ResponseWriter, r *http.Request)
 		writeBooruError(w, http.StatusForbidden, "origin", "Uploads must come from this StashBooru interface.")
 		return
 	}
+	if !rs.requireMediaUpload(w, "file") {
+		return
+	}
 	parts, err := r.MultipartReader()
 	if err != nil {
 		writeBooruError(w, http.StatusBadRequest, "upload", "Expected a multipart file upload.")

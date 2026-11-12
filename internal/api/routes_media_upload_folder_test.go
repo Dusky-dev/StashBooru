@@ -25,7 +25,10 @@ func TestMediaUploadFolderNames(t *testing.T) {
 
 func TestCreateUploadFolderWithinLibrary(t *testing.T) {
 	root := t.TempDir()
-	rs := booruBrowserRoutes{libraryRoots: func() []string { return []string{root} }}
+	rs := booruBrowserRoutes{configPath: t.TempDir(), libraryRoots: func() []string { return []string{root} }}
+	if err := rs.saveMediaUploadSettings(mediaUploadSettings{Enabled: true, AllowURL: true, AllowFolderCreation: true}); err != nil {
+		t.Fatal(err)
+	}
 	body := []byte(`{"parent":` + strconv.Quote(root) + `,"name":"New art"}`)
 	request := httptest.NewRequest(http.MethodPost, "http://stash.test/media-upload/folder", bytes.NewReader(body))
 	request.Header.Set("Origin", "http://stash.test")

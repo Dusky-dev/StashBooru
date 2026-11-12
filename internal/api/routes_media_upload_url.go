@@ -211,6 +211,9 @@ func (rs booruBrowserRoutes) ImportMediaURL(w http.ResponseWriter, r *http.Reque
 		writeBooruError(w, http.StatusForbidden, "origin", "URL imports must originate in StashBooru.")
 		return
 	}
+	if !rs.requireMediaUpload(w, "url") {
+		return
+	}
 	var input mediaUploadURLRequest
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16384)).Decode(&input); err != nil {
 		writeBooruError(w, http.StatusBadRequest, "url", "Invalid URL import request.")

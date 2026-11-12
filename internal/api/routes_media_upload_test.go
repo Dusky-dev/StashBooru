@@ -62,7 +62,10 @@ func TestMediaUploadPublishDoesNotOverwrite(t *testing.T) {
 }
 
 func TestMediaUploadRejectsCrossOriginAndBadFields(t *testing.T) {
-	rs := booruBrowserRoutes{}
+	rs := booruBrowserRoutes{configPath: t.TempDir()}
+	if err := rs.saveMediaUploadSettings(mediaUploadSettings{Enabled: true, AllowURL: true, AllowFolderCreation: true}); err != nil {
+		t.Fatal(err)
+	}
 	for _, origin := range []string{"http://attacker.test", "https://attacker.test", "http://stash.test.evil"} {
 		req := httptest.NewRequest(http.MethodPost, "http://stash.test/media-upload", nil)
 		req.Header.Set("Origin", origin)
