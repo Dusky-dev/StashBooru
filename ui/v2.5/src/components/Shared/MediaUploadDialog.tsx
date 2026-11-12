@@ -221,7 +221,10 @@ export function MediaUploadDialog({
 
   useEffect(() => {
     let active = true;
-    void Promise.all([readMediaUploadSettings(), loadDownloadPreferences()])
+    void Promise.all([
+      readMediaUploadSettings(),
+      loadDownloadPreferences().catch(() => ({ defaultDirectory: "" })),
+    ])
       .then(([feature, preference]) => {
         if (!active) return;
         setFeatureSettings(feature);
@@ -407,6 +410,7 @@ export function MediaUploadDialog({
       processingNow.current
     )
       return;
+    if (entries.some((entry) => progress[entry.id]?.phase === "failed")) return;
     const queued = entries.filter((entry) => !progress[entry.id]);
     if (!queued.length || !queued.every((entry) => !!entry.destination)) return;
     void submit(queued);
@@ -451,14 +455,15 @@ export function MediaUploadDialog({
         <div
           role="status"
           aria-live="polite"
-          className="border rounded shadow p-3"
+          className="card shadow p-3"
           style={{
             position: "fixed",
             right: "16px",
             bottom: "16px",
             width: "min(360px, calc(100vw - 32px))",
             zIndex: 1050,
-            background: "var(--bs-body-bg, var(--background-color, #242424))",
+            maxHeight: "min(70vh, 450px)",
+            overflowY: "auto",
           }}
         >
           <strong>Quick upload</strong>
