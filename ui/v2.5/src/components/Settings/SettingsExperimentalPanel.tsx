@@ -13,6 +13,7 @@ import { ImageStorageConsumerAuditTask } from "./Tasks/ImageStorageConsumerAudit
 import { VideoOverlapTask } from "./Tasks/VideoOverlapTask";
 import { SettingsAliasCollisionInspector } from "./SettingsAliasCollisionInspector";
 import { SettingsThumbnailCompression } from "./SettingsThumbnailCompression";
+import { SettingsMediaUpload } from "./SettingsMediaUpload";
 
 export function SettingsExperimentalPanel() {
   const location = useLocation();
@@ -37,6 +38,7 @@ export function SettingsExperimentalPanel() {
         <span id="tasks-media" />
         <VideoOverlapTask />
       </SettingsDisclosure>
+      <SettingsMediaUpload />
       <SettingsThumbnailCompression />
       <SettingsAliasCollisionInspector />
       <section id="experimental-image-storage">
