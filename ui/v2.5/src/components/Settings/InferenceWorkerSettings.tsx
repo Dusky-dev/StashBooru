@@ -145,7 +145,9 @@ export const InferenceWorkerSettings: React.FC = () => {
               label="Enable remote worker"
               checked={remoteEnabled}
               disabled={loading || saving}
-              onChange={(event) => setRemoteEnabled(event.currentTarget.checked)}
+              onChange={(event) =>
+                setRemoteEnabled(event.currentTarget.checked)
+              }
             />
             <Form.Check
               id="inference-worker-fallback-local"
@@ -153,7 +155,9 @@ export const InferenceWorkerSettings: React.FC = () => {
               label="Fall back to local processing when the remote worker is unavailable"
               checked={fallbackLocal}
               disabled={loading || saving}
-              onChange={(event) => setFallbackLocal(event.currentTarget.checked)}
+              onChange={(event) =>
+                setFallbackLocal(event.currentTarget.checked)
+              }
             />
             <Form.Text className="d-block text-muted mb-3">
               Disabling the remote worker keeps its URL and token. Local
