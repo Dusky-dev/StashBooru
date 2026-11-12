@@ -11,7 +11,8 @@ import (
 func TestMediaUploadSettingsDefaultDisabled(t *testing.T) {
 	rs := booruBrowserRoutes{configPath: t.TempDir()}
 	settings, err := rs.readMediaUploadSettings()
-	if err != nil || settings.Enabled || !settings.AllowURL || !settings.AllowFolderCreation {
+	if err != nil || settings.Enabled || !settings.AllowURL || !settings.AllowFolderCreation ||
+		settings.QuickUpload || settings.QuickTagDefaults || settings.QuickConvertDefaults {
 		t.Fatalf("experimental uploads must be opt-in: %+v %v", settings, err)
 	}
 	for _, endpoint := range []struct {
@@ -38,7 +39,7 @@ func TestMediaUploadSettingsPersistAndEnforceSubfeatures(t *testing.T) {
 		configPath:   t.TempDir(),
 		libraryRoots: func() []string { return []string{root} },
 	}
-	body := []byte(`{"enabled":true,"allowURL":false,"allowFolderCreation":false,"defaultDirectory":` +
+	body := []byte(`{"enabled":true,"allowURL":false,"allowFolderCreation":false,"quickUpload":true,"quickTagDefaults":true,"quickConvertDefaults":true,"defaultDirectory":` +
 		strconv.Quote(root) + `}`)
 	req := httptest.NewRequest(http.MethodPost, "http://stash.test/media-upload/settings", bytes.NewReader(body))
 	req.Header.Set("Origin", "http://stash.test")
@@ -48,7 +49,8 @@ func TestMediaUploadSettingsPersistAndEnforceSubfeatures(t *testing.T) {
 		t.Fatalf("update failed: %d %s", w.Code, w.Body.String())
 	}
 	read, err := rs.readMediaUploadSettings()
-	if err != nil || !read.Enabled || read.AllowURL || read.AllowFolderCreation || read.DefaultDirectory != root {
+	if err != nil || !read.Enabled || read.AllowURL || read.AllowFolderCreation ||
+		!read.QuickUpload || !read.QuickTagDefaults || !read.QuickConvertDefaults || read.DefaultDirectory != root {
 		t.Fatalf("settings not persisted: %+v %v", read, err)
 	}
 	for _, entry := range []struct {
