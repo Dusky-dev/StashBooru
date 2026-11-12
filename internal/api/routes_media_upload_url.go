@@ -13,7 +13,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"strings"
 	"time"
 
 	"github.com/stashapp/stash/pkg/job"
