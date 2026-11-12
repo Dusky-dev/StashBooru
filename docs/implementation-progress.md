@@ -1,3 +1,12 @@
+## No-prompt quick upload and opt-in remote worker fallback — 2026-11-13
+
+- Baseline: `develop` `4cef61437405918044d3a43c9a1a4709029fbb3a`; branch `feat/quick-upload-no-prompt-remote-worker-controls-20261113`.
+- Quick Upload now routes a navbar click to the native file picker; dropping files immediately queues them without opening the full uploader dialog. A compact non-modal status panel shows progress, failures and access to Details / retry. The adjacent More upload options button still opens the full uploader for direct URLs or manual edits. When no library destination is configured, explicit folder selection is still required; the server never guesses a writable path.
+- Normal (non-quick) uploader remains unchanged. A Booru preferences read failure no longer prevents a valid explicitly configured upload folder from working. Failed files do not cause an unattended auto-retry loop.
+- Processing → Remote worker: persist an explicit enabled flag and opt-in fallbackLocal flag in the existing server configuration, retaining saved worker URL/token even when disabled. Legacy URL-only configs remain enabled, with fallback disabled until selected. Remote Camie/PixAI/EVA02 status probes use a bounded timeout; unavailable remote workers fall back locally only when allowed. Converter auto/local/remote selection respects the same configuration, preserving explicit remote-only behavior unless fallback is enabled.
+- Standalone remote-config compatibility test and desktop/mobile Settings fixture assertions for saving both switches added. Includes earlier upload switch event-lifetime fix pending in PR #353 so this feature branch is functional independently.
+- CI, manual remote-worker outage simulation and real-media browser drag/drop verification not locally executed. Review GitHub workflows and Codex before merging.
+
 ## Quick upload, thumbnail queue and saved processing defaults — 2026-11-12
 
 - Baseline: `develop` `5d9f6c0ae6f0f38873c13df80e9f099d48b73b9f`; feature branch `feat/upload-quick-defaults-thumbnails-20261112`.
