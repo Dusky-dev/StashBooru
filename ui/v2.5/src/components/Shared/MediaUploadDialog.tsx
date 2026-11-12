@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Button, Form, Modal } from "react-bootstrap";
+import { Alert, Button, Form, Modal, ProgressBar } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import { FolderPicker } from "../BooruBrowser/FolderPicker";
 import { readBooruResponse } from "../BooruBrowser/browser";
@@ -11,13 +11,173 @@ import {
 } from "../Galleries/GallerySelect";
 import { TagIDSelect } from "../Tags/TagSelect";
 
-const maxUploadSize = 512 * 1024 * 1024;
-
 type UploadResult = {
   kind: "image" | "scene";
   id: string;
   path: string;
 };
+
+type UploadEntry = {
+  id: number;
+  name: string;
+  file?: File;
+  url?: string;
+  destination: string;
+  artistIDs: string[];
+  galleryIDs: string[];
+  tagIDs: string[];
+};
+
+type EntryProgress = {
+  phase: "uploading" | "downloading" | "processing" | "complete" | "failed";
+  loaded: number;
+  total: number;
+  message?: string;
+  result?: UploadResult;
+};
+
+type RemoteEvent = {
+  type: "progress" | "processing" | "complete" | "error";
+  loaded?: number;
+  total?: number;
+  message?: string;
+  result?: UploadResult;
+};
+
+const describeSize = (bytes: number) =>
+  bytes >= 1048576
+    ? (bytes / 1048576).toFixed(1) + " MiB"
+    : (bytes / 1024).toFixed(1) + " KiB";
+
+function uploadLocal(
+  entry: UploadEntry,
+  progress: (update: EntryProgress) => void
+): Promise<UploadResult> {
+  return new Promise((resolve, reject) => {
+    if (!entry.file) {
+      reject(new Error("No local file selected"));
+      return;
+    }
+    const file = entry.file;
+    const request = new XMLHttpRequest();
+    const form = new FormData();
+    // The server processes and streams each file into the selected folder.
+    form.append("destination", entry.destination);
+    form.append("artistIDs", entry.artistIDs.join(","));
+    form.append("galleryIDs", entry.galleryIDs.join(","));
+    form.append("tagIDs", entry.tagIDs.join(","));
+    form.append("file", file, file.name);
+    request.open("POST", "media-upload");
+    request.upload.onprogress = (event) => {
+      progress({
+        phase: "uploading",
+        loaded: event.loaded,
+        total: event.lengthComputable ? event.total : 0,
+      });
+    };
+    request.upload.onload = () => {
+      progress({
+        phase: "processing",
+        loaded: file.size,
+        total: file.size,
+        message: "Transfer complete; scanning and applying metadata",
+      });
+    };
+    request.onerror = () => reject(new Error("Upload connection failed"));
+    request.onabort = () => reject(new Error("Upload cancelled"));
+    request.onload = () => {
+      if (request.status < 200 || request.status >= 300) {
+        let message = "Upload failed (HTTP " + request.status + ")";
+        try {
+          const body = JSON.parse(request.responseText) as { error?: string };
+          if (typeof body.error === "string") message = body.error;
+        } catch {
+          // Do not display HTML response bodies.
+        }
+        reject(new Error(message));
+        return;
+      }
+      try {
+        resolve(JSON.parse(request.responseText) as UploadResult);
+      } catch {
+        reject(new Error("The server did not return a valid import result"));
+      }
+    };
+    progress({ phase: "uploading", loaded: 0, total: file.size });
+    request.send(form);
+  });
+}
+
+async function uploadURL(
+  entry: UploadEntry,
+  progress: (update: EntryProgress) => void
+): Promise<UploadResult> {
+  const response = await fetch("media-upload/url", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      url: entry.url,
+      destination: entry.destination,
+      artistIDs: entry.artistIDs.join(","),
+      galleryIDs: entry.galleryIDs.join(","),
+      tagIDs: entry.tagIDs.join(","),
+    }),
+  });
+  if (!response.ok) {
+    await readBooruResponse(response);
+    throw new Error("Could not download remote media");
+  }
+  if (!response.body) {
+    throw new Error("Streaming URL progress is unavailable in this browser");
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let remainder = "";
+  let imported: UploadResult | undefined;
+  const handleLine = (line: string) => {
+    if (!line.trim()) return;
+    const event = JSON.parse(line) as RemoteEvent;
+    if (event.type === "error") {
+      throw new Error(event.message ?? "Remote download failed");
+    }
+    if (event.type === "progress") {
+      progress({
+        phase: "downloading",
+        loaded: event.loaded ?? 0,
+        total: Math.max(0, event.total ?? 0),
+      });
+    } else if (event.type === "processing") {
+      progress({
+        phase: "processing",
+        loaded: 0,
+        total: 0,
+        message: event.message ?? "Importing into Stash",
+      });
+    } else if (event.type === "complete" && event.result) {
+      imported = event.result;
+    }
+  };
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      remainder += decoder.decode(value ?? new Uint8Array(), { stream: !done });
+      let nextLine = remainder.indexOf("\n");
+      while (nextLine >= 0) {
+        handleLine(remainder.slice(0, nextLine));
+        remainder = remainder.slice(nextLine + 1);
+        nextLine = remainder.indexOf("\n");
+      }
+      if (done) break;
+    }
+    if (remainder.trim()) handleLine(remainder);
+    if (!imported) throw new Error("Remote import ended without a result");
+    return imported;
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+let nextUploadId = 0;
 
 export function MediaUploadDialog({
   onHide,
@@ -26,28 +186,30 @@ export function MediaUploadDialog({
   onHide: () => void;
   onImported: () => void;
 }) {
-  const [files, setFiles] = useState<File[]>([]);
-  const [directory, setDirectory] = useState("");
-  const [artistIDs, setArtistIDs] = useState<string[]>([]);
-  const [galleryIDs, setGalleryIDs] = useState<string[]>([]);
-  const [tagIDs, setTagIDs] = useState<string[]>([]);
+  const [entries, setEntries] = useState<UploadEntry[]>([]);
+  const [selected, setSelected] = useState<number | null>(null);
+  const [defaultDirectory, setDefaultDirectory] = useState("");
+  const [url, setURL] = useState("");
   const [picker, setPicker] = useState(false);
   const [working, setWorking] = useState(false);
-  const [current, setCurrent] = useState("");
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
-  const [imported, setImported] = useState<
-    { filename: string; result: UploadResult }[]
-  >([]);
+  const [progress, setProgress] = useState<Record<number, EntryProgress>>({});
 
   useEffect(() => {
     let active = true;
     void loadDownloadPreferences()
       .then((settings) => {
-        if (active) {
-          setDirectory(settings.defaultDirectory ?? "");
-          setReady(true);
-        }
+        if (!active) return;
+        setDefaultDirectory(settings.defaultDirectory ?? "");
+        setEntries((old) =>
+          old.map((entry) =>
+            entry.destination
+              ? entry
+              : { ...entry, destination: settings.defaultDirectory ?? "" }
+          )
+        );
+        setReady(true);
       })
       .catch((reason: unknown) => {
         if (active) {
@@ -60,59 +222,101 @@ export function MediaUploadDialog({
     };
   }, []);
 
-  async function upload() {
-    if (!directory || files.length === 0 || working) return;
+  const active = entries.find((entry) => entry.id === selected);
+  const pending = entries.filter(
+    (entry) => progress[entry.id]?.phase !== "complete"
+  );
+
+  function addFiles(files: File[]) {
+    if (files.length === 0 || working) return;
+    const newEntries = files.map((file): UploadEntry => ({
+      id: ++nextUploadId,
+      name: file.name,
+      file,
+      destination: defaultDirectory,
+      artistIDs: [],
+      galleryIDs: [],
+      tagIDs: [],
+    }));
+    setEntries((old) => [...old, ...newEntries]);
+    setSelected(newEntries[0].id);
+  }
+
+  function addURL() {
+    const value = url.trim();
+    if (!value || working) return;
+    try {
+      const parsed = new URL(value);
+      if (!["http:", "https:"].includes(parsed.protocol)) {
+        throw new Error("Only HTTP and HTTPS URLs are supported");
+      }
+    } catch {
+      setError("Enter a valid HTTP or HTTPS direct media URL.");
+      return;
+    }
+    const entry: UploadEntry = {
+      id: ++nextUploadId,
+      name: value,
+      url: value,
+      destination: defaultDirectory,
+      artistIDs: [],
+      galleryIDs: [],
+      tagIDs: [],
+    };
+    setEntries((old) => [...old, entry]);
+    setSelected(entry.id);
+    setURL("");
+    setError("");
+  }
+
+  function updateEntry(changes: Partial<UploadEntry>) {
+    if (!active || working) return;
+    setEntries((old) =>
+      old.map((entry) =>
+        entry.id === active.id ? { ...entry, ...changes } : entry
+      )
+    );
+  }
+
+  function updateProgress(id: number, next: EntryProgress) {
+    setProgress((old) => ({ ...old, [id]: next }));
+  }
+
+  async function submit() {
+    if (!ready || working || pending.length === 0) return;
     setWorking(true);
     setError("");
-    const batch = [...files];
-    for (let i = 0; i < batch.length; i++) {
-      const file = batch[i];
-      if (file.size === 0 || file.size > maxUploadSize) {
-        setError(
-          file.name +
-            ": file must be between 1 byte and 512 MiB. Remaining files were not uploaded."
-        );
+    for (const entry of pending) {
+      if (!entry.destination) {
+        setSelected(entry.id);
+        setError("Choose a library destination for " + entry.name);
         break;
       }
-      setCurrent(
-        "Uploading and importing " +
-          (i + 1) +
-          " of " +
-          batch.length +
-          ": " +
-          file.name
-      );
-      const form = new FormData();
-      // Metadata and destination precede the file so the backend can stream
-      // directly to a validated library folder without buffering large data.
-      form.append("destination", directory);
-      form.append("artistIDs", artistIDs.join(","));
-      form.append("galleryIDs", galleryIDs.join(","));
-      form.append("tagIDs", tagIDs.join(","));
-      form.append("file", file, file.name);
       try {
-        const response = await fetch("media-upload", {
-          method: "POST",
-          body: form,
+        const update = (state: EntryProgress) => updateProgress(entry.id, state);
+        const result = entry.file
+          ? await uploadLocal(entry, update)
+          : await uploadURL(entry, update);
+        updateProgress(entry.id, {
+          phase: "complete",
+          loaded: entry.file?.size ?? 0,
+          total: entry.file?.size ?? 0,
+          result,
         });
-        const result = await readBooruResponse<UploadResult>(response);
-        setImported((previous) => [
-          ...previous,
-          { filename: file.name, result },
-        ]);
-        setFiles(batch.slice(i + 1));
         onImported();
       } catch (reason) {
-        setError(
-          file.name +
-            ": " +
-            (reason instanceof Error ? reason.message : String(reason)) +
-            ". Remaining files were not uploaded."
-        );
+        const message = reason instanceof Error ? reason.message : String(reason);
+        updateProgress(entry.id, {
+          phase: "failed",
+          loaded: 0,
+          total: 0,
+          message,
+        });
+        setSelected(entry.id);
+        setError(entry.name + ": " + message + ". Remaining items were not imported.");
         break;
       }
     }
-    setCurrent("");
     setWorking(false);
   }
 
@@ -127,144 +331,247 @@ export function MediaUploadDialog({
           }}
         >
           <Modal.Header closeButton={!working}>
-            <Modal.Title>Upload images or videos to Stash</Modal.Title>
+            <Modal.Title>Add media to Stash</Modal.Title>
           </Modal.Header>
           <Modal.Body>
-            <p className="text-muted">
-              Upload media from this device to an existing Stash library folder.
-              Each file is scanned and imported after saving.
-            </p>
             {error && <Alert variant="warning">{error}</Alert>}
-            {current && (
-              <Alert variant="info" role="status">
-                {current}
-              </Alert>
-            )}
             <Form.Group controlId="media-upload-files">
-              <Form.Label>Media files</Form.Label>
+              <Form.Label>Upload from device</Form.Label>
               <Form.Control
                 type="file"
                 accept="image/*,video/*,.jxl,.heic,.heif,.mkv,.avi,.wmv,.ts"
                 multiple
                 disabled={working}
-                onChange={(event) =>
-                  setFiles(
+                onChange={(event) => {
+                  addFiles(
                     Array.from(
                       (event.currentTarget as HTMLInputElement).files ?? []
                     )
-                  )
-                }
+                  );
+                  event.currentTarget.value = "";
+                }}
               />
               <Form.Text className="text-muted">
-                Multiple files supported, uploaded one at a time, maximum 512
-                MiB each. Existing media files are never overwritten.
+                Add multiple files, including large videos. No fixed upload
+                limit; files stream into the Stash library.
               </Form.Text>
-              {files.length > 0 && (
-                <small className="d-block mt-1">
-                  {files.length} selected: {files.map((f) => f.name).join(", ")}
-                </small>
-              )}
             </Form.Group>
-            <Form.Group controlId="media-upload-destination">
-              <Form.Label>Destination folder</Form.Label>
-              <div className="d-flex align-items-center">
+            <Form.Group controlId="media-upload-url">
+              <Form.Label>Or download from a direct image/video URL</Form.Label>
+              <div className="d-flex">
                 <Form.Control
-                  type="text"
-                  value={directory}
-                  placeholder="Choose a configured library folder"
-                  readOnly
+                  value={url}
+                  disabled={working}
+                  type="url"
+                  placeholder="https://example.org/media/image.jpg"
+                  onChange={(event) => setURL(event.currentTarget.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      addURL();
+                    }
+                  }}
                 />
                 <Button
-                  variant="secondary"
                   className="ml-2"
-                  disabled={working}
-                  onClick={() => setPicker(true)}
+                  variant="secondary"
+                  disabled={working || !url.trim()}
+                  onClick={addURL}
                 >
-                  Browse…
+                  Add URL
                 </Button>
               </div>
-            </Form.Group>
-            <Form.Group>
-              <Form.Label>Artists (optional)</Form.Label>
-              <StudioIDSelect
-                ids={artistIDs}
-                isMulti
-                isDisabled={working}
-                isClearable
-                onSelect={(items) => setArtistIDs(items.map((item) => item.id))}
-                menuPortalTarget={document.body}
-              />
-            </Form.Group>
-            <Form.Group>
-              <Form.Label>Galleries (optional)</Form.Label>
-              <GalleryIDSelect
-                ids={galleryIDs}
-                isMulti
-                isDisabled={working}
-                isClearable
-                extraCriteria={excludeFileBasedGalleries}
-                onSelect={(items) =>
-                  setGalleryIDs(items.map((item) => item.id))
-                }
-                menuPortalTarget={document.body}
-              />
               <Form.Text className="text-muted">
-                Only user-created galleries can be selected.
+                Direct public HTTP/HTTPS media links only. Local and private
+                network destinations are blocked.
               </Form.Text>
             </Form.Group>
-            <Form.Group>
-              <Form.Label>Tags (optional)</Form.Label>
-              <TagIDSelect
-                ids={tagIDs}
-                isMulti
-                isDisabled={working}
-                isClearable
-                onSelect={(items) => setTagIDs(items.map((item) => item.id))}
-                menuPortalTarget={document.body}
-              />
-            </Form.Group>
-            {imported.length > 0 && (
-              <section aria-label="Imported files">
-                <strong>Imported files</strong>
-                <ul className="mt-2">
-                  {imported.map(({ filename, result }, index) => (
-                    <li key={result.kind + "-" + result.id + "-" + index}>
-                      <Link
-                        to={
-                          result.kind === "image"
-                            ? "/images/" + result.id
-                            : "/scenes/" + result.id
-                        }
-                        onClick={onHide}
-                      >
-                        {filename}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </section>
+            {entries.length > 0 && (
+              <>
+                <strong>Import queue — select an item to edit its metadata</strong>
+                <div
+                  className="border rounded mb-3 mt-2 p-2"
+                  style={{ maxHeight: "220px", overflowY: "auto" }}
+                >
+                  {entries.map((entry) => {
+                    const state = progress[entry.id];
+                    const complete = state?.phase === "complete";
+                    const percent =
+                      state?.total && state.total > 0
+                        ? Math.min(
+                            100,
+                            Math.round((state.loaded / state.total) * 100)
+                          )
+                        : 0;
+                    return (
+                      <div key={entry.id} className="mb-2">
+                        <div className="d-flex align-items-center">
+                          <Button
+                            size="sm"
+                            variant={selected === entry.id ? "primary" : "link"}
+                            className="text-truncate"
+                            style={{ maxWidth: "85%" }}
+                            onClick={() => setSelected(entry.id)}
+                          >
+                            {entry.file ? "File: " : "URL: "}
+                            {entry.name}
+                          </Button>
+                          {!working && !complete && (
+                            <Button
+                              size="sm"
+                              variant="outline-secondary"
+                              className="ml-auto"
+                              aria-label={"Remove " + entry.name}
+                              onClick={() => {
+                                setEntries((old) =>
+                                  old.filter((item) => item.id !== entry.id)
+                                );
+                                if (selected === entry.id) setSelected(null);
+                              }}
+                            >
+                              Remove
+                            </Button>
+                          )}
+                        </div>
+                        {state && (
+                          <div className="px-2">
+                            {state.phase === "uploading" ||
+                            state.phase === "downloading" ? (
+                              <ProgressBar
+                                animated
+                                now={percent}
+                                label={
+                                  state.total > 0 ? percent + "%" : undefined
+                                }
+                                className="mb-1"
+                              />
+                            ) : state.phase === "processing" ? (
+                              <ProgressBar
+                                animated
+                                striped
+                                now={100}
+                                className="mb-1"
+                              />
+                            ) : null}
+                            <small className="text-muted">
+                              {state.phase === "uploading" ||
+                              state.phase === "downloading"
+                                ? (state.phase === "uploading"
+                                    ? "Uploading: "
+                                    : "Downloading: ") +
+                                  describeSize(state.loaded) +
+                                  (state.total > 0
+                                    ? " / " + describeSize(state.total)
+                                    : " (size unknown)")
+                                : state.phase === "complete"
+                                  ? "Imported"
+                                  : state.message ?? state.phase}
+                            </small>
+                            {state.result && (
+                              <Link
+                                className="ml-2"
+                                onClick={onHide}
+                                to={
+                                  state.result.kind === "image"
+                                    ? "/images/" + state.result.id
+                                    : "/scenes/" + state.result.id
+                                }
+                              >
+                                Open in Stash
+                              </Link>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+            {active && (
+              <fieldset disabled={working || progress[active.id]?.phase === "complete"}>
+                <legend className="h6">Metadata and destination for selected item</legend>
+                <Form.Group controlId="media-upload-destination">
+                  <Form.Label>Save to folder</Form.Label>
+                  <div className="d-flex align-items-center">
+                    <Form.Control
+                      value={active.destination}
+                      placeholder="Select or create a library folder"
+                      readOnly
+                    />
+                    <Button
+                      variant="secondary"
+                      className="ml-2"
+                      onClick={() => setPicker(true)}
+                    >
+                      Browse…
+                    </Button>
+                  </div>
+                </Form.Group>
+                <Form.Group>
+                  <Form.Label>Artist(s)</Form.Label>
+                  <StudioIDSelect
+                    ids={active.artistIDs}
+                    isMulti
+                    isClearable
+                    onSelect={(items) =>
+                      updateEntry({ artistIDs: items.map((item) => item.id) })
+                    }
+                    menuPortalTarget={document.body}
+                  />
+                </Form.Group>
+                <Form.Group>
+                  <Form.Label>Gallery / galleries</Form.Label>
+                  <GalleryIDSelect
+                    ids={active.galleryIDs}
+                    isMulti
+                    isClearable
+                    extraCriteria={excludeFileBasedGalleries}
+                    onSelect={(items) =>
+                      updateEntry({ galleryIDs: items.map((item) => item.id) })
+                    }
+                    menuPortalTarget={document.body}
+                  />
+                  <Form.Text className="text-muted">
+                    User-created galleries only.
+                  </Form.Text>
+                </Form.Group>
+                <Form.Group>
+                  <Form.Label>Tags</Form.Label>
+                  <TagIDSelect
+                    ids={active.tagIDs}
+                    isMulti
+                    isClearable
+                    onSelect={(items) =>
+                      updateEntry({ tagIDs: items.map((item) => item.id) })
+                    }
+                    menuPortalTarget={document.body}
+                  />
+                </Form.Group>
+              </fieldset>
             )}
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" onClick={onHide} disabled={working}>
-              {imported.length > 0 ? "Close" : "Cancel"}
+            <Button variant="secondary" disabled={working} onClick={onHide}>
+              {pending.length === 0 ? "Close" : "Cancel"}
             </Button>
             <Button
               variant="primary"
-              disabled={!ready || working || !directory || files.length === 0}
-              onClick={() => void upload()}
+              disabled={!ready || working || pending.length === 0}
+              onClick={() => void submit()}
             >
-              {working ? "Uploading and importing…" : "Upload to Stash"}
+              {working ? "Importing…" : "Import " + pending.length + " item(s)"}
             </Button>
           </Modal.Footer>
         </Modal>
       )}
-      {picker && (
+      {picker && active && (
         <FolderPicker
-          initial={directory}
-          title="Choose upload destination"
-          onClose={(path) => {
-            if (path) setDirectory(path);
+          initial={active.destination}
+          allowCreate
+          title="Choose or create an upload folder"
+          onClose={(value) => {
+            if (value) updateEntry({ destination: value });
             setPicker(false);
           }}
         />
