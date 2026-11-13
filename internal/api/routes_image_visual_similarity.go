@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/stashapp/stash/internal/manager"
@@ -105,8 +104,11 @@ func (rs imageRoutes) VisualSimilarityDownload(w http.ResponseWriter, r *http.Re
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if strings.TrimSpace(remoteConfig.URL) != "" {
-		http.Error(w, "model downloads are managed on the remote visual embedding worker", http.StatusBadRequest)
+	// This endpoint installs the local EVA02 model. A saved but disabled
+	// remote URL must not prevent local setup; explicit local fallback also
+	// allows preinstalling the model before the remote goes offline.
+	if remoteConfig.isEnabled() && !remoteConfig.FallbackLocal {
+		http.Error(w, "model downloads are managed on the remote visual embedding worker; disable remote processing or enable local fallback to install locally", http.StatusBadRequest)
 		return
 	}
 
