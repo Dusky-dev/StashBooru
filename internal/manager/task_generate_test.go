@@ -17,6 +17,13 @@ import (
 func TestGenerateJobQueuesTaskPerOption(t *testing.T) {
 	config.InitializeEmpty()
 
+	// StashBooru's thumbnail eligibility checks consult the manager's
+	// configured experimental thumbnail policy, even for overwrite jobs.
+	// Keep the upstream table test self-contained without a running server.
+	previousManager := instance
+	instance = &Manager{Config: config.GetInstance()}
+	t.Cleanup(func() { instance = previousManager })
+
 	const sceneID = 1
 	videoFile := &models.VideoFile{BaseFile: &models.BaseFile{ID: 1}, Width: 1920, Height: 1080, Interactive: true}
 	scene := &models.Scene{
