@@ -1,7 +1,13 @@
+## PR #354 strict remote-only and CI formatting remediation — 2026-11-13
+
+- Fixed remaining UI Build failure: Biome wanted compact formatting of the Quick Upload action label. Previous build passed 129 UI unit tests, JavaScript lint, CSS lint, and TypeScript check before the formatting step failed.
+- Fixed a new Codex P1 finding: explicit Remote worker only must always stay remote-only, even when global fallback is enabled. The shared processing policy now permits fallback solely for Auto; when the remote worker is disabled, explicit Remote fails closed without contacting the saved URL while Auto selects local. Regression tests cover disabled, legacy, and fallback-enabled combinations.
+- Fresh GitHub CI and Codex review pending after these changes.
+
 ## PR #354 follow-up Codex review remediation — 2026-11-13
 
 - Corrected three P2 issues from Codex review of `c2197c78`: Camie/PixAI model status now inspects the same management target (local or remote) used by pinned Install/Delete operations, rather than an inference client that may silently fall back. Settings labels clarify the distinction between model-management status and inference fallback.
-- Backend auto selection honors the explicit `fallbackLocal` switch across conversion, restoration and video overlap. With a configured, enabled remote and fallback disabled, `auto` is treated as strict `remote`; opt-in fallback retains `auto` negotiation; a disabled remote always selects local without passing its saved URL/token. Extended Go policy regression cases for legacy and explicit enabled configurations.
+- Backend auto selection honors the explicit `fallbackLocal` switch across conversion, restoration and video overlap. With a configured, enabled remote and fallback disabled, `auto` is treated as strict `remote`; opt-in fallback retains `auto` negotiation; a disabled remote selects local for auto requests, while explicitly remote-only requests fail closed without contacting its saved URL or passing its token. Extended Go policy regression cases for legacy and explicit enabled configurations.
 - The advanced upload modal (`More upload options`) now stays manual even when Quick upload and a default directory are enabled: auto-submit requires `quickMode` and a collapsed quick panel, while Details / retry also pauses auto-submit to allow editing. Normal quick-upload from the main Upload button and drag/drop is unchanged.
 - Status: GitHub CI and follow-up Codex review pending. No live upload or offline worker integration test run in connected GitHub editing environment.
 
@@ -10,7 +16,7 @@
 - Addressed three Codex P2 findings from review of `ae49aa91d4` after merging the latest `develop`.
 - Camie/PixAI model install and delete now snapshot the remote enable setting before scheduling the job and never redirect model management to a fallback worker. An unavailable remote raises an error rather than deleting/installing a local model.
 - Local EVA02 download is allowed when the remote worker is disabled or explicit local fallback is enabled, without clearing the stored URL or token.
-- The same central worker-selection policy applies to media conversion, image restoration and video overlap; a disabled worker is never selected, and opt-in fallback downgrades remote-only selections to auto. Explicitly local processing receives no remote URL/token.
+- The same central worker-selection policy applies to media conversion, image restoration and video overlap; a disabled worker is never contacted, explicit remote-only selections remain strict and fail when unavailable, and only automatic selections may fall back locally when opted in. Explicitly local processing receives no remote URL/token.
 - Added unit tests for legacy worker configuration, worker disable/fallback routing, target-pinned model management and local EVA02 download eligibility.
 - GitHub CI and follow-up Codex review pending; no local remote-offline simulation has been executed.
 
