@@ -58,7 +58,7 @@ export function MediaUploadThumbnail({
   // Use the document's base URL to respect deployments under a subpath.
   const importedThumbnail =
     result?.kind === "image" && /^\d+$/.test(result.id)
-      ? new URL(`image/${result.id}/thumbnail`, document.baseURI).href
+      ? new URL(`image/${result.id}/thumbnail?uploadPreview=jpeg`, document.baseURI).href
       : "";
   const source = isImage
     ? !localFailed && localURL
