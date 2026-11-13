@@ -8,10 +8,10 @@ import (
 func TestUploadPreviewJPEGDoesNotChangeNormalThumbnailPreferences(t *testing.T) {
 	for _, tc := range []struct {
 		name, rawURL, format string
-		quality int
-		wantFormat string
-		wantQuality int
-		wantPreview bool
+		quality              int
+		wantFormat           string
+		wantQuality          int
+		wantPreview          bool
 	}{
 		{"configured JXL stays JXL", "/image/7/thumbnail", "jxl", 90, "jxl", 90, false},
 		{"configured AVIF stays AVIF", "/image/7/thumbnail?uploadPreview=other", "avif", 80, "avif", 80, false},
