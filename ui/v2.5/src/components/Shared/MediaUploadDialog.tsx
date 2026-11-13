@@ -583,7 +583,10 @@ export function MediaUploadDialog({
                                   setEntries((old) =>
                                     old.map((item) =>
                                       item.id === entry.id
-                                        ? { ...item, conversionDefaults: checked }
+                                        ? {
+                                            ...item,
+                                            conversionDefaults: checked,
+                                          }
                                         : item
                                     )
                                   );
