@@ -628,9 +628,7 @@ export function MediaUploadDialog({
               />
               <small
                 className={
-                  dropActive
-                    ? "d-block mt-3"
-                    : "d-block text-muted mt-3"
+                  dropActive ? "d-block mt-3" : "d-block text-muted mt-3"
                 }
               >
                 Multiple files supported, including large videos. No fixed
