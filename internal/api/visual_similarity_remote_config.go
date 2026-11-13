@@ -44,7 +44,7 @@ func (config visualSimilarityRemoteConfig) allowLocalModelDownload() bool {
 // overlap. Disabling the worker must never contact its saved URL, including
 // for callers that explicitly requested "remote" earlier. Fallback is opt-in.
 func (config visualSimilarityRemoteConfig) processingBackend(requested string) (string, string, string) {
-	if !config.isEnabled() {
+	if requested == "local" || !config.isEnabled() {
 		return "local", "", ""
 	}
 	if requested == "remote" && config.FallbackLocal {
