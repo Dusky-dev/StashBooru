@@ -1,3 +1,10 @@
+## PR #354 follow-up Codex review remediation — 2026-11-13
+
+- Corrected three P2 issues from Codex review of `c2197c78`: Camie/PixAI model status now inspects the same management target (local or remote) used by pinned Install/Delete operations, rather than an inference client that may silently fall back. Settings labels clarify the distinction between model-management status and inference fallback.
+- Backend auto selection honors the explicit `fallbackLocal` switch across conversion, restoration and video overlap. With a configured, enabled remote and fallback disabled, `auto` is treated as strict `remote`; opt-in fallback retains `auto` negotiation; a disabled remote always selects local without passing its saved URL/token. Extended Go policy regression cases for legacy and explicit enabled configurations.
+- The advanced upload modal (`More upload options`) now stays manual even when Quick upload and a default directory are enabled: auto-submit requires `quickMode` and a collapsed quick panel, while Details / retry also pauses auto-submit to allow editing. Normal quick-upload from the main Upload button and drag/drop is unchanged.
+- Status: GitHub CI and follow-up Codex review pending. No live upload or offline worker integration test run in connected GitHub editing environment.
+
 ## PR #354 Codex review remediation — 2026-11-13
 
 - Addressed three Codex P2 findings from review of `ae49aa91d4` after merging the latest `develop`.
