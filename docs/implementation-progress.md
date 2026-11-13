@@ -1,3 +1,12 @@
+## PR #354 Codex review remediation — 2026-11-13
+
+- Addressed three Codex P2 findings from review of `ae49aa91d4` after merging the latest `develop`.
+- Camie/PixAI model install and delete now snapshot the remote enable setting before scheduling the job and never redirect model management to a fallback worker. An unavailable remote raises an error rather than deleting/installing a local model.
+- Local EVA02 download is allowed when the remote worker is disabled or explicit local fallback is enabled, without clearing the stored URL or token.
+- The same central worker-selection policy applies to media conversion, image restoration and video overlap; a disabled worker is never selected, and opt-in fallback downgrades remote-only selections to auto. Explicitly local processing receives no remote URL/token.
+- Added unit tests for legacy worker configuration, worker disable/fallback routing, target-pinned model management and local EVA02 download eligibility.
+- GitHub CI and follow-up Codex review pending; no local remote-offline simulation has been executed.
+
 ## Upload settings and import switches crash fix — 2026-11-13
 
 - Baseline: `develop` `4cef61437405918044d3a43c9a1a4709029fbb3a`; branch `fix/upload-settings-null-current-target-20261113`, follow-up to merged PR #352.
