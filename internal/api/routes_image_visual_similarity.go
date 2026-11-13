@@ -107,7 +107,7 @@ func (rs imageRoutes) VisualSimilarityDownload(w http.ResponseWriter, r *http.Re
 	// This endpoint installs the local EVA02 model. A saved but disabled
 	// remote URL must not prevent local setup; explicit local fallback also
 	// allows preinstalling the model before the remote goes offline.
-	if remoteConfig.isEnabled() && !remoteConfig.FallbackLocal {
+	if !remoteConfig.allowLocalModelDownload() {
 		http.Error(w, "model downloads are managed on the remote visual embedding worker; disable remote processing or enable local fallback to install locally", http.StatusBadRequest)
 		return
 	}
