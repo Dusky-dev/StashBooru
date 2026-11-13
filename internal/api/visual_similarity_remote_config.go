@@ -49,21 +49,23 @@ func (config visualSimilarityRemoteConfig) modelManagementTarget() (backend, rem
 	return "local", ""
 }
 
-// Worker settings apply consistently to conversion, restoration, and video
-// overlap. Disabling the worker must never contact its saved URL, including
-// for callers that explicitly requested "remote" earlier. Fallback is opt-in.
+// Apply global worker settings to all conversion, restoration and overlap
+// clients without changing per-job intent. Explicit "remote" is always strict;
+// only "auto" may fall back locally, and only when fallback is enabled.
 func (config visualSimilarityRemoteConfig) processingBackend(requested string) (string, string, string) {
-	if requested == "local" || !config.isEnabled() {
+	if requested == "local" {
 		return "local", "", ""
 	}
-	if config.FallbackLocal {
-		// Auto negotiation may fall back to local when the remote is down.
+	if !config.isEnabled() {
 		if requested == "remote" {
-			requested = "auto"
+			// Preserve remote-only semantics, but never contact a disabled
+			// worker. The selector returns a missing-worker error.
+			return "remote", "", ""
 		}
-	} else if requested == "auto" {
-		// SelectWorker's auto mode falls back unconditionally. A disabled
-		// fallback switch must therefore pin auto requests to remote.
+		return "local", "", ""
+	}
+	if requested == "auto" && !config.FallbackLocal {
+		// SelectWorker's auto mode otherwise fails over unconditionally.
 		requested = "remote"
 	}
 	return requested, config.URL, config.Token
