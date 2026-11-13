@@ -33,6 +33,19 @@ func (config visualSimilarityRemoteConfig) isEnabled() bool {
 	return config.URL != "" && (config.Enabled == nil || *config.Enabled)
 }
 
+// Worker settings apply consistently to conversion, restoration, and video
+// overlap. Disabling the worker must never contact its saved URL, including
+// for callers that explicitly requested "remote" earlier. Fallback is opt-in.
+func (config visualSimilarityRemoteConfig) processingBackend(requested string) (string, string, string) {
+	if !config.isEnabled() {
+		return "local", "", ""
+	}
+	if requested == "remote" && config.FallbackLocal {
+		requested = "auto"
+	}
+	return requested, config.URL, config.Token
+}
+
 type visualSimilarityRemoteConfigResponse struct {
 	URL             string `json:"url"`
 	TokenConfigured bool   `json:"tokenConfigured"`
