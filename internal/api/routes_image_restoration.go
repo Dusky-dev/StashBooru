@@ -33,7 +33,7 @@ func restorationClient(ctx context.Context, backend string) (imagerestore.Client
 		if err != nil {
 			return remote, imagerestore.Capabilities{}, "", err
 		}
-		remote.URL, remote.Token = config.URL, config.Token
+		backend, remote.URL, remote.Token = config.processingBackend(backend)
 	}
 	return imagerestore.SelectWorker(ctx, backend, imagerestore.Client{}, remote)
 }
