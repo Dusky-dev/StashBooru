@@ -508,10 +508,7 @@ export function MediaUploadDialog({
             entries
               .filter((entry) => progress[entry.id]?.phase === "failed")
               .map((entry) => (
-                <div
-                  key={entry.id}
-                  className="small text-danger text-truncate"
-                >
+                <div key={entry.id} className="small text-danger text-truncate">
                   {entry.name}: {progress[entry.id]?.message}
                 </div>
               ))}
@@ -639,7 +636,9 @@ export function MediaUploadDialog({
                   className="border rounded p-2 mt-2"
                   disabled={working || pending.length === 0}
                 >
-                  <legend className="h6 mb-1">Processing for the entire queue</legend>
+                  <legend className="h6 mb-1">
+                    Processing for the entire queue
+                  </legend>
                   <div className="d-flex align-items-center flex-wrap">
                     <Form.Check
                       id="upload-queue-tag-defaults"
