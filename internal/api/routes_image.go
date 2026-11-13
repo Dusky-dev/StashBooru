@@ -137,17 +137,20 @@ func (rs imageRoutes) Thumbnail(w http.ResponseWriter, r *http.Request) {
 	rs.serveThumbnail(w, r, img, nil)
 }
 
+// A queue preview must be browser-readable even if a user's normal Stash
+// thumbnail preferences select JXL, AVIF or an animated format.
+func thumbnailEncodingForUploadPreview(r *http.Request, format string, quality int) (string, int, bool) {
+	if r.URL.Query().Get("uploadPreview") == "jpeg" {
+		return "jpg", 70, true
+	}
+	return format, quality, false
+}
+
 func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img *models.Image, modTime *time.Time) {
 	mgr := manager.GetInstance()
-	// The upload queue needs a browser-compatible thumbnail even when the
-	// user's normal Stash thumbnails use JXL, AVIF or an animated codec.
-	// This opt-in request does not change the saved thumbnail preferences.
-	uploadPreviewJPEG := r.URL.Query().Get("uploadPreview") == "jpeg"
-	format := mgr.Config.GetImageThumbnailFormat()
-	quality := mgr.Config.GetImageThumbnailQuality()
-	if uploadPreviewJPEG {
-		format, quality = "jpg", 70
-	}
+	format, quality, uploadPreviewJPEG := thumbnailEncodingForUploadPreview(
+		r, mgr.Config.GetImageThumbnailFormat(), mgr.Config.GetImageThumbnailQuality(),
+	)
 	animated := false
 	if f := img.Files.Primary(); f != nil {
 		var detectionError error
