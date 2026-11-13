@@ -112,8 +112,10 @@ export function MediaUploadThumbnail({
 
   // Remote media cannot be previewed safely before the SSRF-protected import;
   // never load an unvalidated URL in the browser just for a thumbnail.
+  // Loading can fail because of permissions, CSP, or invalid source bytes;
+  // it does not imply that a normal JPEG is unsupported by the browser.
   const hint = file
-    ? "Preview unavailable in this browser"
+    ? "Could not load preview"
     : result
       ? "Open imported media to preview"
       : "Preview after import";
