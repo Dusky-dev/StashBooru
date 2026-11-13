@@ -343,19 +343,17 @@ try {
     // Every toggle must work without dereferencing a nulled event.currentTarget.
     await page.locator("#experimental-media-uploads > summary").click();
     const uploadEnabled = page.locator("#experimental-enable-uploads");
-    await uploadEnabled.uncheck();
+    await page.locator('label[for="experimental-enable-uploads"]').click();
     assert.equal(await uploadEnabled.isChecked(), false);
-    await uploadEnabled.check();
-    await page.locator("#experimental-enable-url-imports").uncheck();
+    await page.locator('label[for="experimental-enable-uploads"]').click();
+    await page.locator('label[for="experimental-enable-url-imports"]').click();
+    await page.locator('label[for="experimental-enable-upload-folder-creation"]').click();
+    await page.locator('label[for="experimental-enable-quick-upload"]').click();
+    await page.locator('label[for="experimental-quick-upload-tag-defaults"]').click();
     await page
-      .locator("#experimental-enable-upload-folder-creation")
-      .uncheck();
-    await page.locator("#experimental-enable-quick-upload").check();
-    await page.locator("#experimental-quick-upload-tag-defaults").check();
-    await page.locator("#experimental-quick-upload-conversion-defaults").check();
-    await page
-      .getByRole("button", { name: "Save upload settings" })
+      .locator('label[for="experimental-quick-upload-conversion-defaults"]')
       .click();
+    await page.getByRole("button", { name: "Save upload settings" }).click();
     await page.getByText("Experimental media upload settings saved.").waitFor();
     assert.equal(uploadSettingsSaves.length, 1);
     assert.deepEqual(uploadSettingsSaves[0], {
