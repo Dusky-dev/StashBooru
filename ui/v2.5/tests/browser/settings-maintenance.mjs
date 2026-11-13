@@ -347,9 +347,13 @@ try {
     assert.equal(await uploadEnabled.isChecked(), false);
     await page.locator("label[for='experimental-enable-uploads']").click();
     await page.locator("label[for='experimental-enable-url-imports']").click();
-    await page.locator("label[for='experimental-enable-upload-folder-creation']").click();
+    await page
+      .locator("label[for='experimental-enable-upload-folder-creation']")
+      .click();
     await page.locator("label[for='experimental-enable-quick-upload']").click();
-    await page.locator("label[for='experimental-quick-upload-tag-defaults']").click();
+    await page
+      .locator("label[for='experimental-quick-upload-tag-defaults']")
+      .click();
     await page
       .locator("label[for='experimental-quick-upload-conversion-defaults']")
       .click();
