@@ -47,8 +47,15 @@ func (config visualSimilarityRemoteConfig) processingBackend(requested string) (
 	if requested == "local" || !config.isEnabled() {
 		return "local", "", ""
 	}
-	if requested == "remote" && config.FallbackLocal {
-		requested = "auto"
+	if config.FallbackLocal {
+		// Auto negotiation may fall back to local when the remote is down.
+		if requested == "remote" {
+			requested = "auto"
+		}
+	} else if requested == "auto" {
+		// SelectWorker's auto mode falls back unconditionally. A disabled
+		// fallback switch must therefore pin auto requests to remote.
+		requested = "remote"
 	}
 	return requested, config.URL, config.Token
 }
