@@ -478,6 +478,20 @@ export function MediaUploadDialog({
             {" · "}
             {completed}/{entries.length} complete
           </div>
+          {entries.length > 0 && (
+            <div className="d-flex mb-2" style={{ gap: 6, overflowX: "auto" }}>
+              {entries.slice(-6).map((entry) => (
+                <div key={entry.id} className="flex-shrink-0">
+                  <MediaUploadThumbnail
+                    file={entry.file}
+                    name={entry.name}
+                    result={progress[entry.id]?.result}
+                    size={64}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
           {activeTransfer && (
             <div
               className="small text-muted text-truncate mb-2"
