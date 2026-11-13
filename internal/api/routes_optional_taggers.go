@@ -120,6 +120,23 @@ func (rs imageRoutes) PixaiPredictions(w http.ResponseWriter, r *http.Request) {
 	writeVisualSimilarityJSON(w, camieTagsResponse{Backend: backend, Model: pixaitagger.Model, Threshold: config.Threshold, Limit: config.Limit, Tags: tags})
 }
 
+// Model management deliberately never uses inference fallback. A user action
+// must not install or delete a different local model just because the remote
+// worker becomes unavailable between clicking and executing the queued job.
+func pixaiModelManagementClient(config visualSimilarityRemoteConfig) (pixaitagger.Tagger, error) {
+	if config.isEnabled() {
+		return pixaitagger.NewRemote(config.URL, config.Token)
+	}
+	return pixaitagger.New(""), nil
+}
+
+func camieModelManagementClient(config visualSimilarityRemoteConfig) (camietagger.Tagger, error) {
+	if config.isEnabled() {
+		return camietagger.NewRemote(config.URL, config.Token)
+	}
+	return camietagger.New(""), nil
+}
+
 func (rs imageRoutes) ModelInstall(w http.ResponseWriter, r *http.Request) {
 	rs.modelAction(w, r, false)
 }
@@ -136,12 +153,23 @@ func (rs imageRoutes) modelAction(w http.ResponseWriter, r *http.Request, remove
 	if remove {
 		action = "Deleting"
 	}
+	// Snapshot the selected worker at admission, not after the job starts.
+	// Any remote outage must report an error rather than changing its target.
+	workerConfig, err := loadVisualSimilarityRemoteConfig()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	target := "local"
+	if workerConfig.isEnabled() {
+		target = "remote"
+	}
 	mgr := manager.GetInstance()
-	jobID := mgr.JobManager.Add(r.Context(), fmt.Sprintf("%s %s model...", action, model), job.MakeJobExec(
+	jobID := mgr.JobManager.Add(r.Context(), fmt.Sprintf("%s %s model on %s worker...", action, model, target), job.MakeJobExec(
 		func(ctx context.Context, progress *job.Progress) error {
 			progress.SetTotal(1)
 			if model == "PixAI" {
-				client, _, _, err := newPixaiTagger()
+				client, err := pixaiModelManagementClient(workerConfig)
 				if err != nil {
 					return err
 				}
@@ -159,7 +187,7 @@ func (rs imageRoutes) modelAction(w http.ResponseWriter, r *http.Request, remove
 					return err
 				}
 			} else {
-				client, _, _, err := newCamieTagger()
+				client, err := camieModelManagementClient(workerConfig)
 				if err != nil {
 					return err
 				}
