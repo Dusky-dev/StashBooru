@@ -1,3 +1,11 @@
+## Upstream sync — Stash develop 2026-11-13
+
+- Fork baseline: `develop` `1bf776dfa56d8ee7758a73998891fc0b7bc151c9`; upstream `stashapp/stash/develop` `47057616fe9da0cf38cfa8c39ab160e5441eeafc`, two commits ahead of the common ancestor `aefc9373fe57e5cb32fbbb7215fd508ed799743f`.
+- Integrate upstream #7343 and #7348: correct video-preview task generation; wake the job dispatcher for new queued jobs even when started jobs remain in the queue; cancel all queued jobs rather than skipping entries; share an actual semaphore cap across generation task queues.
+- Retain StashBooru's cancellation/error classification, experimental thumbnail-category generation and native Copyright scan options. The fork-only synchronous `ScanNow` uses the same shared generation semaphore as `startGenerateJob`, preserving its no-secondary-job behavior and preventing resource overcommit.
+- Port upstream task-queue, dispatcher, cancellation and preview regression tests, plus a focused fork-only shared-slot test. No workflow, schema or dependency updates needed.
+- Stage as an upstream-parent merge commit on an isolated sync branch for CI/Codex review before merging into fork `develop`. GitHub CI and live scan stress testing pending.
+
 ## Local JPEG upload previews and refreshed import dropzone — 2026-11-13
 
 - Baseline: merged PR #354 at `develop` `8d0feca93e8a1c8e0bc95e521c357289ba6e0061`; follow-up branch `fix/media-upload-jpeg-preview-dropzone-20261113`.

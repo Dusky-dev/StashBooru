@@ -241,6 +241,16 @@ func (s *Manager) Scan(ctx context.Context, input ScanMetadataInput) (int, error
 	return jobID, nil
 }
 
+// generateTaskSlots shares the configured concurrency limit between scan
+// generation and ScanNow. Like upstream this limit is fixed on first use;
+// changing parallelTasks requires restarting the server.
+func (s *Manager) generateTaskSlots() chan struct{} {
+	s.generateSlotsOnce.Do(func() {
+		s.generateSlots = make(chan struct{}, s.Config.GetParallelTasksWithAutoDetection())
+	})
+	return s.generateSlots
+}
+
 // ScanNow runs the scan within an existing Job instead of queuing a second
 // scan Job behind its caller. Wait for generated files before returning, as
 // fork processing workflows depend on synchronous scan completion.
@@ -257,7 +267,7 @@ func (s *Manager) ScanNow(ctx context.Context, input ScanMetadataInput, progress
 	scanner := s.makeScanner(input.Rescan, minModTime)
 	// Keep generation in the calling Job; the manager may be unavailable in
 	// embedded scan workflows, and an additional queued Job could deadlock.
-	taskQueue := job.NewTaskQueue(ctx, progress, 200000, s.Config.GetParallelTasksWithAutoDetection())
+	taskQueue := job.NewTaskQueue(ctx, progress, 200000, s.generateTaskSlots())
 	scanJob := ScanJob{
 		scanner:         scanner,
 		generateOptions: makeGenerateOptions(input),
@@ -280,8 +290,7 @@ func (s *Manager) startGenerateJob(ctx context.Context, description string) *job
 
 	s.JobManager.Start(ctx, description, job.MakeJobExec(func(ctx context.Context, progress *job.Progress) error {
 		const taskQueueSize = 200000
-		nTasks := s.Config.GetParallelTasksWithAutoDetection()
-		taskQueue := job.NewTaskQueue(ctx, progress, taskQueueSize, nTasks)
+		taskQueue := job.NewTaskQueue(ctx, progress, taskQueueSize, s.generateTaskSlots())
 
 		taskQueueChan <- taskQueue
 
