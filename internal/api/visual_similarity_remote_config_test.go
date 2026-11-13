@@ -86,9 +86,9 @@ func TestRemoteWorkerProcessingSelection(t *testing.T) {
 func TestModelManagementNeverFallsBackToAnotherWorker(t *testing.T) {
 	disabled, enabled := false, true
 	remoteConfig := visualSimilarityRemoteConfig{
-		URL: "https://worker.test",
-		Token: "secret",
-		Enabled: &enabled,
+		URL:           "https://worker.test",
+		Token:         "secret",
+		Enabled:       &enabled,
 		FallbackLocal: true,
 	}
 	if backend, url := remoteConfig.modelManagementTarget(); backend != "remote" || url != remoteConfig.URL {
