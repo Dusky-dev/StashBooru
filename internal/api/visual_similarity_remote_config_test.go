@@ -58,7 +58,7 @@ func TestRemoteWorkerProcessingSelection(t *testing.T) {
 		{"enabled remote without fallback", visualSimilarityRemoteConfig{URL: "https://worker.test", Enabled: &enabled}, "remote", "remote", "https://worker.test"},
 		{"enabled remote with fallback", visualSimilarityRemoteConfig{URL: "https://worker.test", Enabled: &enabled, FallbackLocal: true}, "remote", "auto", "https://worker.test"},
 		{"enabled auto", visualSimilarityRemoteConfig{URL: "https://worker.test", Enabled: &enabled, FallbackLocal: true}, "auto", "auto", "https://worker.test"},
-		{"explicit local", visualSimilarityRemoteConfig{URL: "https://worker.test", Enabled: &enabled}, "local", "local", "https://worker.test"},
+		{"explicit local", visualSimilarityRemoteConfig{URL: "https://worker.test", Enabled: &enabled}, "local", "local", ""},
 		{"disabled remote fails closed", visualSimilarityRemoteConfig{URL: "https://worker.test", Enabled: &disabled}, "remote", "local", ""},
 		{"disabled auto fails closed", visualSimilarityRemoteConfig{URL: "https://worker.test", Enabled: &disabled, FallbackLocal: true}, "auto", "local", ""},
 		{"legacy no worker", visualSimilarityRemoteConfig{}, "remote", "local", ""},
