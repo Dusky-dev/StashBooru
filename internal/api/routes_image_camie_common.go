@@ -80,9 +80,15 @@ func (rs imageRoutes) CamieStatus(w http.ResponseWriter, r *http.Request) {
 		Model:   camietagger.Model,
 	}
 
-	client, backend, remoteURL, err := newCamieTagger()
-	response.Backend = backend
-	response.RemoteURL = remoteURL
+	config, err := loadVisualSimilarityRemoteConfig()
+	if err != nil {
+		response.WorkerError = err.Error()
+		writeVisualSimilarityJSON(w, response)
+		return
+	}
+	response.Backend, response.RemoteURL = config.modelManagementTarget()
+	// Report the management destination, never the inference fallback target.
+	client, err := camieModelManagementClient(config)
 	if err != nil {
 		response.WorkerError = err.Error()
 		writeVisualSimilarityJSON(w, response)
