@@ -406,6 +406,8 @@ export function MediaUploadDialog({
   // items remain visible for a deliberate Retry, never an infinite auto-loop.
   useEffect(() => {
     if (
+      !quickMode ||
+      showDetails ||
       !ready ||
       !featureSettings?.quickUpload ||
       working ||
@@ -416,7 +418,16 @@ export function MediaUploadDialog({
     const queued = entries.filter((entry) => !progress[entry.id]);
     if (!queued.length || !queued.every((entry) => !!entry.destination)) return;
     void submit(queued);
-  }, [ready, featureSettings?.quickUpload, entries, progress, working, submit]);
+  }, [
+    quickMode,
+    showDetails,
+    ready,
+    featureSettings?.quickUpload,
+    entries,
+    progress,
+    working,
+    submit,
+  ]);
 
   useEffect(() => {
     if (
@@ -429,7 +440,7 @@ export function MediaUploadDialog({
     }
   }, [quickMode, ready, entries, progress]);
 
-  const actionLabel = featureSettings?.quickUpload
+  const actionLabel = quickMode && featureSettings?.quickUpload
     ? "Retry / Import"
     : "Import";
   const buttonLabel = working
