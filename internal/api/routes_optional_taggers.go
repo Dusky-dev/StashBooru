@@ -54,9 +54,17 @@ type pixaiStatusResponse struct {
 }
 
 func (rs imageRoutes) PixaiStatus(w http.ResponseWriter, r *http.Request) {
-	response := pixaiStatusResponse{Model: pixaitagger.Model}
-	client, backend, remoteURL, err := newPixaiTagger()
-	response.Backend, response.RemoteURL = backend, remoteURL
+	response := pixaiStatusResponse{Model: pixaitagger.Model, Backend: "local"}
+	config, err := loadVisualSimilarityRemoteConfig()
+	if err != nil {
+		response.WorkerError = err.Error()
+		writeVisualSimilarityJSON(w, response)
+		return
+	}
+	response.Backend, response.RemoteURL = config.modelManagementTarget()
+	// Status must reflect the same pinned worker as Install/Delete, even
+	// when inference may fall back to a different local model.
+	client, err := pixaiModelManagementClient(config)
 	if err == nil {
 		defer client.Close()
 		var status pixaitagger.Status
@@ -160,10 +168,7 @@ func (rs imageRoutes) modelAction(w http.ResponseWriter, r *http.Request, remove
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	target := "local"
-	if workerConfig.isEnabled() {
-		target = "remote"
-	}
+	target, _ := workerConfig.modelManagementTarget()
 	mgr := manager.GetInstance()
 	jobID := mgr.JobManager.Add(r.Context(), fmt.Sprintf("%s %s model on %s worker...", action, model, target), job.MakeJobExec(
 		func(ctx context.Context, progress *job.Progress) error {
