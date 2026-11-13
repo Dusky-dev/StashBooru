@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"runtime/debug"
+	"slices"
 	"sync"
 	"time"
 
@@ -66,10 +67,9 @@ func (m *Manager) Add(ctx context.Context, description string, e JobExec) int {
 
 	m.queue = append(m.queue, &j)
 
-	if len(m.queue) == 1 {
-		// notify that there is now a job in the queue
-		m.notEmpty.Broadcast()
-	}
+	// Always wake the dispatcher. Started jobs can leave the queue nonempty
+	// even while the dispatcher is idle.
+	m.notEmpty.Broadcast()
 
 	m.notifyNewJob(&j)
 
@@ -312,8 +312,8 @@ func (m *Manager) CancelAll() {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	// call cancel on all
-	for _, j := range m.queue {
+	// removeJob mutates m.queue, so iterate a snapshot to cancel each job.
+	for _, j := range slices.Clone(m.queue) {
 		j.cancel()
 
 		if j.Status == StatusCancelled {
