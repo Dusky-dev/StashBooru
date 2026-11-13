@@ -27,9 +27,7 @@ export function MediaUploadThumbnail({
     result?.kind === "scene" ||
     (!!file &&
       (file.type.startsWith("video/") ||
-        /\.(mp4|m4v|webm|mkv|mov|avi|wmv|mpg|mpeg|flv|ts)$/i.test(
-          file.name
-        )));
+        /\.(mp4|m4v|webm|mkv|mov|avi|wmv|mpg|mpeg|flv|ts)$/i.test(file.name)));
   const isImage =
     result?.kind === "image" ||
     (!!file &&
