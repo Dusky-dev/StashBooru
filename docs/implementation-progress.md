@@ -1,3 +1,12 @@
+## Local JPEG upload previews and refreshed import dropzone — 2026-11-13
+
+- Baseline: merged PR #354 at `develop` `8d0feca93e8a1c8e0bc95e521c357289ba6e0061`; follow-up branch `fix/media-upload-jpeg-preview-dropzone-20261113`.
+- Root cause: `MediaUploadThumbnail` uses `URL.createObjectURL(file)` for local image previews, but the page's `img-src data: *` Content Security Policy omitted `blob:`, which wildcard sources do not cover. The browser therefore blocked even ordinary JPEGs and displayed “Preview unavailable in this browser.” Explicitly permit `blob:` in page image sources while retaining existing `data:` and remote-image policies. Added a Go regression test for the page image source policy.
+- Keep the existing bordered `border rounded mb-3 mt-2 p-2` import queue thumbnails as the preview; remove the redundant separate `mb-3` large preview from selected-item metadata.
+- Replace the import modal's native file picker block with a compact, accessible upload dropzone containing a prominent upload icon, instructions and Browse files action. During a file drag, the dropzone uses the same high-contrast dark highlight as the global drop overlay; suppress the page-wide overlay while the modal is open so it does not cover the dialog. Keep multi-file selection, large-file support, URL importing and queue metadata editing.
+- The advanced modal correctly describes its manual Import workflow even when Quick upload is enabled. No image/video bytes, import destination, metadata rules, or upload restrictions were changed.
+- CI and actual browser/production JPEG validation pending; edits made through connected GitHub tools, not a local browser session.
+
 ## PR #354 strict remote-only and CI formatting remediation — 2026-11-13
 
 - Fixed remaining UI Build failure: Biome wanted compact formatting of the Quick Upload action label. Previous build passed 129 UI unit tests, JavaScript lint, CSS lint, and TypeScript check before the formatting step failed.

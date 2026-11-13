@@ -127,7 +127,7 @@ export function GlobalMediaUpload() {
           ⋯
         </Button>
       )}
-      {dropActive && (
+      {dropActive && !open && (
         <div
           aria-hidden="true"
           style={{

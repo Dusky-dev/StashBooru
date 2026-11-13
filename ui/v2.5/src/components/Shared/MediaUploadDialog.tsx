@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Button, Form, Modal, ProgressBar } from "react-bootstrap";
 import { Link } from "react-router-dom";
+import { faUpload } from "@fortawesome/free-solid-svg-icons";
 import { FolderPicker } from "../BooruBrowser/FolderPicker";
 import { readBooruResponse } from "../BooruBrowser/browser";
 import { loadDownloadPreferences } from "../BooruBrowser/downloadPreferences";
@@ -15,6 +16,7 @@ import {
 } from "../Galleries/GallerySelect";
 import { TagIDSelect } from "../Tags/TagSelect";
 import { MediaUploadThumbnail } from "./MediaUploadThumbnail";
+import { Icon } from "./Icon";
 
 type UploadResult = {
   kind: "image" | "scene";
@@ -225,6 +227,7 @@ export function MediaUploadDialog({
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
   const [progress, setProgress] = useState<Record<number, EntryProgress>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const processedBatch = useRef(0);
   const processingNow = useRef(false);
 
@@ -566,36 +569,74 @@ export function MediaUploadDialog({
                 </Alert>
               )}
             <div
-              className="rounded p-3 mb-3 text-center"
+              role="region"
+              aria-label="Drop images or videos to upload"
+              className="rounded p-4 mb-3 text-center"
               style={{
                 border: "2px dashed currentColor",
-                background: dropActive ? "rgba(128, 128, 128, 0.2)" : undefined,
+                background: dropActive
+                  ? "rgba(0, 0, 0, 0.55)"
+                  : "rgba(128, 128, 128, 0.08)",
+                color: dropActive ? "#fff" : undefined,
+                transition: "background-color 150ms ease",
               }}
             >
-              <div className="font-weight-bold mb-2">
-                Drag and drop images or videos here
+              <div
+                className="rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                style={{
+                  width: 56,
+                  height: 56,
+                  fontSize: 24,
+                  background: dropActive
+                    ? "rgba(255, 255, 255, 0.2)"
+                    : "rgba(128, 128, 128, 0.18)",
+                }}
+              >
+                <Icon icon={faUpload} />
               </div>
-              <Form.Group controlId="media-upload-files">
-                <Form.Label>Or browse files from your device</Form.Label>
-                <Form.Control
-                  type="file"
-                  accept="image/*,video/*,.jxl,.heic,.heif,.mkv,.avi,.wmv,.ts"
-                  multiple
-                  disabled={working}
-                  onChange={(event) => {
-                    addFiles(
-                      Array.from(
-                        (event.currentTarget as HTMLInputElement).files ?? []
-                      )
-                    );
-                    event.currentTarget.value = "";
-                  }}
-                />
-                <Form.Text className="text-muted">
-                  Add multiple files, including large videos. No fixed upload
-                  limit; files stream into the Stash library.
-                </Form.Text>
-              </Form.Group>
+              <div className="h5 mb-1">
+                {dropActive
+                  ? "Release to add files"
+                  : "Drop images or videos here"}
+              </div>
+              <p
+                className={dropActive ? "small mb-3" : "small text-muted mb-3"}
+              >
+                Drop files anywhere on the page, or select them from your
+                device.
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                variant={dropActive ? "light" : "outline-primary"}
+                disabled={working}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Browse files
+              </Button>
+              <input
+                ref={fileInputRef}
+                id="media-upload-files"
+                type="file"
+                className="d-none"
+                aria-label="Choose images or videos to upload"
+                accept="image/*,video/*,.jxl,.heic,.heif,.mkv,.avi,.wmv,.ts"
+                multiple
+                disabled={working}
+                onChange={(event) => {
+                  const files = Array.from(event.currentTarget.files ?? []);
+                  event.currentTarget.value = "";
+                  addFiles(files);
+                }}
+              />
+              <small
+                className={
+                  dropActive ? "d-block mt-3" : "d-block text-muted mt-3"
+                }
+              >
+                Multiple files supported, including large videos. No fixed
+                upload limit.
+              </small>
             </div>
             {featureSettings?.allowURL && (
               <Form.Group controlId="media-upload-url">
@@ -636,12 +677,9 @@ export function MediaUploadDialog({
                 <strong>
                   Import queue — select a thumbnail to edit its metadata
                 </strong>
-                {featureSettings?.quickUpload && (
-                  <small className="d-block text-muted">
-                    Quick upload is on: new files start automatically when a
-                    destination is configured.
-                  </small>
-                )}
+                <small className="d-block text-muted">
+                  Review the queue and metadata, then click Import to start.
+                </small>
                 <fieldset
                   className="border rounded p-2 mt-2"
                   disabled={working || pending.length === 0}
@@ -808,14 +846,6 @@ export function MediaUploadDialog({
                 >
                   {active.name}
                 </small>
-                <div className="mb-3">
-                  <MediaUploadThumbnail
-                    file={active.file}
-                    name={active.name}
-                    result={progress[active.id]?.result}
-                    size={220}
-                  />
-                </div>
                 <Form.Group controlId="media-upload-destination">
                   <Form.Label>Save to folder</Form.Label>
                   <div className="d-flex align-items-center">
