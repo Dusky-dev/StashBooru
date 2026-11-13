@@ -20,7 +20,9 @@ export function MediaUploadThumbnail({
 }) {
   const [localURL, setLocalURL] = useState("");
   const [localFailed, setLocalFailed] = useState(false);
-  const [importedFailed, setImportedFailed] = useState(false);
+  // Remember the ID whose imported thumbnail failed. A different imported
+  // image can still be previewed without resetting state in an effect.
+  const [failedImportedID, setFailedImportedID] = useState<string>();
   const isVideo =
     result?.kind === "scene" ||
     (!!file &&
@@ -49,21 +51,20 @@ export function MediaUploadThumbnail({
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
-  useEffect(() => {
-    setImportedFailed(false);
-  }, [result?.id]);
-
   // Once Stash has imported a URL or a browser-unsupported format (e.g. JXL
   // or HEIC), prefer Stash's generated thumbnail instead of an image icon.
   // Use the document's base URL to respect deployments under a subpath.
   const importedThumbnail =
     result?.kind === "image" && /^\d+$/.test(result.id)
-      ? new URL(`image/${result.id}/thumbnail?uploadPreview=jpeg`, document.baseURI).href
+      ? new URL(
+          `image/${result.id}/thumbnail?uploadPreview=jpeg`,
+          document.baseURI
+        ).href
       : "";
   const source = isImage
     ? !localFailed && localURL
       ? localURL
-      : !importedFailed
+      : failedImportedID !== result?.id
         ? importedThumbnail
         : ""
     : "";
@@ -84,7 +85,7 @@ export function MediaUploadThumbnail({
         style={frameStyle}
         onError={() => {
           if (source === localURL) setLocalFailed(true);
-          else setImportedFailed(true);
+          else setFailedImportedID(result?.id);
         }}
       />
     );
