@@ -137,7 +137,10 @@ export function SettingsMediaUpload() {
               checked={settings.quickConvertDefaults}
               onChange={(event) => {
                 const checked = event.currentTarget.checked;
-                setSettings((old) => ({ ...old, quickConvertDefaults: checked }));
+                setSettings((old) => ({
+                  ...old,
+                  quickConvertDefaults: checked,
+                }));
               }}
             />
             <small className="d-block text-muted">
