@@ -605,6 +605,8 @@ func isURL(s string) bool {
 	return strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://")
 }
 
+const pageImageSourcePolicy = "blob: data: *"
+
 func setPageSecurityHeaders(w http.ResponseWriter, r *http.Request, plugins []*plugin.Plugin) {
 	c := config.GetInstance()
 
@@ -613,7 +615,9 @@ func setPageSecurityHeaders(w http.ResponseWriter, r *http.Request, plugins []*p
 		"data:",
 		"'self'",
 	}
-	imageSrc := "data: *"
+	// Local upload previews use URL.createObjectURL(file). The image CSP must
+	// explicitly allow blob:; a wildcard does not include blob: URLs.
+	imageSrc := pageImageSourcePolicy
 	scriptSrcSlice := []string{
 		"'self'",
 		"http://www.gstatic.com",
