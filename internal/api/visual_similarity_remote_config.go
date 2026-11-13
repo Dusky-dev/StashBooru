@@ -33,6 +33,13 @@ func (config visualSimilarityRemoteConfig) isEnabled() bool {
 	return config.URL != "" && (config.Enabled == nil || *config.Enabled)
 }
 
+// The EVA02 download endpoint explicitly installs a local model. An enabled
+// remote-only policy forbids it, but disabled workers and opt-in local fallback
+// allow local preinstallation without clearing the saved URL.
+func (config visualSimilarityRemoteConfig) allowLocalModelDownload() bool {
+	return !config.isEnabled() || config.FallbackLocal
+}
+
 // Worker settings apply consistently to conversion, restoration, and video
 // overlap. Disabling the worker must never contact its saved URL, including
 // for callers that explicitly requested "remote" earlier. Fallback is opt-in.
