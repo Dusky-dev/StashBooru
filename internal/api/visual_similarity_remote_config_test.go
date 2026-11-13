@@ -89,6 +89,9 @@ func TestModelManagementNeverFallsBackToAnotherWorker(t *testing.T) {
 		Enabled: &enabled,
 		FallbackLocal: true,
 	}
+	if backend, url := remoteConfig.modelManagementTarget(); backend != "remote" || url != remoteConfig.URL {
+		t.Fatalf("enabled management status target should be remote: %q, %q", backend, url)
+	}
 	camieRemote, err := camieModelManagementClient(remoteConfig)
 	if err != nil {
 		t.Fatal(err)
@@ -107,6 +110,9 @@ func TestModelManagementNeverFallsBackToAnotherWorker(t *testing.T) {
 	}
 
 	remoteConfig.Enabled = &disabled
+	if backend, url := remoteConfig.modelManagementTarget(); backend != "local" || url != "" {
+		t.Fatalf("disabled management status target should be local: %q, %q", backend, url)
+	}
 	camieLocal, err := camieModelManagementClient(remoteConfig)
 	if err != nil {
 		t.Fatal(err)
