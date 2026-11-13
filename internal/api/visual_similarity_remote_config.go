@@ -40,6 +40,15 @@ func (config visualSimilarityRemoteConfig) allowLocalModelDownload() bool {
 	return !config.isEnabled() || config.FallbackLocal
 }
 
+// Management operations use a fixed destination, unlike inference. The
+// status endpoint must inspect the very same worker as Install/Delete.
+func (config visualSimilarityRemoteConfig) modelManagementTarget() (backend, remoteURL string) {
+	if config.isEnabled() {
+		return "remote", config.URL
+	}
+	return "local", ""
+}
+
 // Worker settings apply consistently to conversion, restoration, and video
 // overlap. Disabling the worker must never contact its saved URL, including
 // for callers that explicitly requested "remote" earlier. Fallback is opt-in.
