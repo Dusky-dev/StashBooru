@@ -1,3 +1,11 @@
+## Upload settings and import switches crash fix — 2026-11-13
+
+- Baseline: `develop` `4cef61437405918044d3a43c9a1a4709029fbb3a`; branch `fix/upload-settings-null-current-target-20261113`, follow-up to merged PR #352.
+- Reproduced the source-level cause of `TypeError: can't access property "checked", event.currentTarget is null`: six Experimental upload settings switches passed the synthetic React event into a deferred functional `setSettings` callback. Two per-queue Tag/Convert switches made the same mistake in `setEntries`.
+- Capture the checkbox's boolean synchronously in `onChange` and pass only the boolean into state updater functions. Preserve all existing settings keys, upload behavior, and server storage schema.
+- Extend `ui/v2.5/tests/browser/settings-maintenance.mjs` with a routed upload-settings fixture that toggles all six switches, saves, checks persisted values, and asserts no uncaught page errors.
+- GitHub CI and browser regression are pending. No production build/browser acceptance was performed in this connected editor environment.
+
 ## Upload queue-wide processing and real media previews — 2026-11-13
 
 - Follow-up on PR #354, same branch and `develop` baseline. The owner clarified that Tag and Convert defaults must apply to **the entire import queue**, not repeat per file. Removed two per-row switches and now render one pair of queue-level switches, initialized from saved Quick upload settings. Both options are captured once at batch start and passed to local-file and URL import endpoints. Already-running items do not change if the queue switches are edited.
