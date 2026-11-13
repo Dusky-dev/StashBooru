@@ -599,8 +599,11 @@ export function MediaUploadDialog({
                   ? "Release to add files"
                   : "Drop images or videos here"}
               </div>
-              <p className={dropActive ? "small mb-3" : "small text-muted mb-3"}>
-                Drop files anywhere on the page, or select them from your device.
+              <p
+                className={dropActive ? "small mb-3" : "small text-muted mb-3"}
+              >
+                Drop files anywhere on the page, or select them from your
+                device.
               </p>
               <Button
                 type="button"
