@@ -440,9 +440,8 @@ export function MediaUploadDialog({
     }
   }, [quickMode, ready, entries, progress]);
 
-  const actionLabel = quickMode && featureSettings?.quickUpload
-    ? "Retry / Import"
-    : "Import";
+  const actionLabel =
+    quickMode && featureSettings?.quickUpload ? "Retry / Import" : "Import";
   const buttonLabel = working
     ? "Importing…"
     : `${actionLabel} ${pending.length} item(s)`;
