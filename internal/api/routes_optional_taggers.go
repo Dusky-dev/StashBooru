@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/stashapp/stash/internal/manager"
 	"github.com/stashapp/stash/pkg/camietagger"
@@ -17,11 +18,26 @@ func newPixaiTagger() (pixaitagger.Tagger, string, string, error) {
 	if err != nil {
 		return nil, "local", "", err
 	}
-	if strings.TrimSpace(config.URL) == "" {
+	if !config.isEnabled() {
 		return pixaitagger.New(""), "local", "", nil
 	}
 	client, err := pixaitagger.NewRemote(config.URL, config.Token)
-	return client, "remote", config.URL, err
+	if err != nil {
+		if config.FallbackLocal {
+			return pixaitagger.New(""), "local", "", nil
+		}
+		return nil, "remote", config.URL, err
+	}
+	if config.FallbackLocal {
+		probeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		status, probeErr := client.Status(probeCtx)
+		cancel()
+		if probeErr != nil || !status.Installed {
+			_ = client.Close()
+			return pixaitagger.New(""), "local", "", nil
+		}
+	}
+	return client, "remote", config.URL, nil
 }
 
 type pixaiStatusResponse struct {
@@ -38,9 +54,17 @@ type pixaiStatusResponse struct {
 }
 
 func (rs imageRoutes) PixaiStatus(w http.ResponseWriter, r *http.Request) {
-	response := pixaiStatusResponse{Model: pixaitagger.Model}
-	client, backend, remoteURL, err := newPixaiTagger()
-	response.Backend, response.RemoteURL = backend, remoteURL
+	response := pixaiStatusResponse{Model: pixaitagger.Model, Backend: "local"}
+	config, err := loadVisualSimilarityRemoteConfig()
+	if err != nil {
+		response.WorkerError = err.Error()
+		writeVisualSimilarityJSON(w, response)
+		return
+	}
+	response.Backend, response.RemoteURL = config.modelManagementTarget()
+	// Status must reflect the same pinned worker as Install/Delete, even
+	// when inference may fall back to a different local model.
+	client, err := pixaiModelManagementClient(config)
 	if err == nil {
 		defer client.Close()
 		var status pixaitagger.Status
@@ -104,6 +128,23 @@ func (rs imageRoutes) PixaiPredictions(w http.ResponseWriter, r *http.Request) {
 	writeVisualSimilarityJSON(w, camieTagsResponse{Backend: backend, Model: pixaitagger.Model, Threshold: config.Threshold, Limit: config.Limit, Tags: tags})
 }
 
+// Model management deliberately never uses inference fallback. A user action
+// must not install or delete a different local model just because the remote
+// worker becomes unavailable between clicking and executing the queued job.
+func pixaiModelManagementClient(config visualSimilarityRemoteConfig) (pixaitagger.Tagger, error) {
+	if config.isEnabled() {
+		return pixaitagger.NewRemote(config.URL, config.Token)
+	}
+	return pixaitagger.New(""), nil
+}
+
+func camieModelManagementClient(config visualSimilarityRemoteConfig) (camietagger.Tagger, error) {
+	if config.isEnabled() {
+		return camietagger.NewRemote(config.URL, config.Token)
+	}
+	return camietagger.New(""), nil
+}
+
 func (rs imageRoutes) ModelInstall(w http.ResponseWriter, r *http.Request) {
 	rs.modelAction(w, r, false)
 }
@@ -120,12 +161,20 @@ func (rs imageRoutes) modelAction(w http.ResponseWriter, r *http.Request, remove
 	if remove {
 		action = "Deleting"
 	}
+	// Snapshot the selected worker at admission, not after the job starts.
+	// Any remote outage must report an error rather than changing its target.
+	workerConfig, err := loadVisualSimilarityRemoteConfig()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	target, _ := workerConfig.modelManagementTarget()
 	mgr := manager.GetInstance()
-	jobID := mgr.JobManager.Add(r.Context(), fmt.Sprintf("%s %s model...", action, model), job.MakeJobExec(
+	jobID := mgr.JobManager.Add(r.Context(), fmt.Sprintf("%s %s model on %s worker...", action, model, target), job.MakeJobExec(
 		func(ctx context.Context, progress *job.Progress) error {
 			progress.SetTotal(1)
 			if model == "PixAI" {
-				client, _, _, err := newPixaiTagger()
+				client, err := pixaiModelManagementClient(workerConfig)
 				if err != nil {
 					return err
 				}
@@ -143,7 +192,7 @@ func (rs imageRoutes) modelAction(w http.ResponseWriter, r *http.Request, remove
 					return err
 				}
 			} else {
-				client, _, _, err := newCamieTagger()
+				client, err := camieModelManagementClient(workerConfig)
 				if err != nil {
 					return err
 				}

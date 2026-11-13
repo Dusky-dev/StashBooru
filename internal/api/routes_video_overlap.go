@@ -118,7 +118,7 @@ func videoOverlapClient(ctx context.Context, c videooverlap.Config) (videooverla
 		if err != nil {
 			return local, videooverlap.Capabilities{}, "", err
 		}
-		remote.URL, remote.Token = config.URL, config.Token
+		c.Backend, remote.URL, remote.Token = config.processingBackend(c.Backend)
 	}
 	return videooverlap.SelectClient(ctx, c.Backend, local, remote)
 }

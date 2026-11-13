@@ -5,7 +5,7 @@ import { Icon } from "./Icon";
 import { MediaUploadDialog } from "./MediaUploadDialog";
 import {
   MEDIA_UPLOAD_IMPORTED_EVENT,
-  useMediaUploadEnabled,
+  useMediaUploadSettings,
 } from "./mediaUploadSettings";
 
 type FileBatch = { id: number; files: File[] };
@@ -19,8 +19,12 @@ function isFileDrag(event: DragEvent) {
 
 /** One upload entry point across all pages, including file drops onto the page. */
 export function GlobalMediaUpload() {
-  const enabled = useMediaUploadEnabled();
+  const settings = useMediaUploadSettings();
+  const enabled = !!settings?.enabled;
+  const quickUpload = !!settings?.quickUpload;
+  const inputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
+  const [advancedOptions, setAdvancedOptions] = useState(false);
   const [dropActive, setDropActive] = useState(false);
   const [incomingBatch, setIncomingBatch] = useState<FileBatch>();
   const nextBatchId = useRef(0);
@@ -78,16 +82,51 @@ export function GlobalMediaUpload() {
 
   return (
     <>
+      {quickUpload && (
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          accept="image/*,video/*,.jxl,.heic,.heif,.mkv,.avi,.wmv,.ts"
+          aria-label="Select images or videos to upload"
+          className="d-none"
+          onChange={(event) => {
+            const files = Array.from(event.currentTarget.files ?? []);
+            event.currentTarget.value = "";
+            if (!files.length) return;
+            setIncomingBatch({ id: ++nextBatchId.current, files });
+            setOpen(true);
+          }}
+        />
+      )}
       <Button
         variant="primary"
         className="mr-2 d-flex align-items-center"
         title="Upload images or videos"
         aria-label="Upload images or videos"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          if (quickUpload) inputRef.current?.click();
+          else setOpen(true);
+        }}
       >
         <Icon icon={faUpload} />
         <span className="ml-1 d-none d-sm-inline">Upload</span>
       </Button>
+      {quickUpload && (
+        <Button
+          variant="outline-secondary"
+          size="sm"
+          className="mr-2"
+          title="Upload from URL or review the import queue"
+          aria-label="More upload options"
+          onClick={() => {
+            setAdvancedOptions(true);
+            setOpen(true);
+          }}
+        >
+          ⋯
+        </Button>
+      )}
       {dropActive && (
         <div
           aria-hidden="true"
@@ -113,9 +152,11 @@ export function GlobalMediaUpload() {
       {open && (
         <MediaUploadDialog
           incomingBatch={incomingBatch}
+          quickMode={quickUpload && !advancedOptions}
           dropActive={dropActive}
           onHide={() => {
             setOpen(false);
+            setAdvancedOptions(false);
             setIncomingBatch(undefined);
           }}
           onImported={() =>

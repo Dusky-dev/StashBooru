@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/stashapp/stash/internal/manager"
 	"github.com/stashapp/stash/pkg/visualembedding"
@@ -20,19 +22,68 @@ const visualSimilarityRemoteConfigFilename = "visual-similarity-remote.json"
 var visualSimilarityRemoteConfigMu sync.Mutex
 
 type visualSimilarityRemoteConfig struct {
-	URL   string `json:"url"`
-	Token string `json:"token,omitempty"`
+	URL           string `json:"url"`
+	Token         string `json:"token,omitempty"`
+	Enabled       *bool  `json:"enabled,omitempty"`
+	FallbackLocal bool   `json:"fallbackLocal,omitempty"`
+}
+
+// A saved URL from older versions remains enabled until explicitly disabled.
+func (config visualSimilarityRemoteConfig) isEnabled() bool {
+	return config.URL != "" && (config.Enabled == nil || *config.Enabled)
+}
+
+// The EVA02 download endpoint explicitly installs a local model. An enabled
+// remote-only policy forbids it, but disabled workers and opt-in local fallback
+// allow local preinstallation without clearing the saved URL.
+func (config visualSimilarityRemoteConfig) allowLocalModelDownload() bool {
+	return !config.isEnabled() || config.FallbackLocal
+}
+
+// Management operations use a fixed destination, unlike inference. The
+// status endpoint must inspect the very same worker as Install/Delete.
+func (config visualSimilarityRemoteConfig) modelManagementTarget() (backend, remoteURL string) {
+	if config.isEnabled() {
+		return "remote", config.URL
+	}
+	return "local", ""
+}
+
+// Apply global worker settings to all conversion, restoration and overlap
+// clients without changing per-job intent. Explicit "remote" is always strict;
+// only "auto" may fall back locally, and only when fallback is enabled.
+func (config visualSimilarityRemoteConfig) processingBackend(requested string) (string, string, string) {
+	if requested == "local" {
+		return "local", "", ""
+	}
+	if !config.isEnabled() {
+		if requested == "remote" {
+			// Preserve remote-only semantics, but never contact a disabled
+			// worker. The selector returns a missing-worker error.
+			return "remote", "", ""
+		}
+		return "local", "", ""
+	}
+	if requested == "auto" && !config.FallbackLocal {
+		// SelectWorker's auto mode otherwise fails over unconditionally.
+		requested = "remote"
+	}
+	return requested, config.URL, config.Token
 }
 
 type visualSimilarityRemoteConfigResponse struct {
 	URL             string `json:"url"`
 	TokenConfigured bool   `json:"tokenConfigured"`
+	Enabled         bool   `json:"enabled"`
+	FallbackLocal   bool   `json:"fallbackLocal"`
 }
 
 type visualSimilarityRemoteConfigUpdate struct {
-	URL        string  `json:"url"`
-	Token      *string `json:"token,omitempty"`
-	ClearToken bool    `json:"clearToken,omitempty"`
+	URL           string  `json:"url"`
+	Token         *string `json:"token,omitempty"`
+	ClearToken    bool    `json:"clearToken,omitempty"`
+	Enabled       *bool   `json:"enabled,omitempty"`
+	FallbackLocal *bool   `json:"fallbackLocal,omitempty"`
 }
 
 func visualSimilarityRemoteConfigPath() string {
@@ -127,13 +178,25 @@ func newVisualSimilarityEmbedder() (visualembedding.Embedder, string, string, er
 	if err != nil {
 		return nil, "local", "", err
 	}
-	if strings.TrimSpace(config.URL) == "" {
+	if !config.isEnabled() {
 		return visualembedding.New(""), "local", "", nil
 	}
 
 	client, err := visualembedding.NewRemote(config.URL, config.Token)
 	if err != nil {
+		if config.FallbackLocal {
+			return visualembedding.New(""), "local", "", nil
+		}
 		return nil, "remote", config.URL, err
+	}
+	if config.FallbackLocal {
+		probeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		status, probeErr := client.Status(probeCtx)
+		cancel()
+		if probeErr != nil || !status.Installed {
+			_ = client.Close()
+			return visualembedding.New(""), "local", "", nil
+		}
 	}
 	return client, "remote", config.URL, nil
 }
@@ -147,6 +210,8 @@ func (rs imageRoutes) VisualSimilarityRemoteConfig(w http.ResponseWriter, _ *htt
 	writeVisualSimilarityJSON(w, visualSimilarityRemoteConfigResponse{
 		URL:             config.URL,
 		TokenConfigured: strings.TrimSpace(config.Token) != "",
+		Enabled:         config.isEnabled(),
+		FallbackLocal:   config.FallbackLocal,
 	})
 }
 
@@ -170,6 +235,12 @@ func (rs imageRoutes) VisualSimilarityRemoteConfigUpdate(w http.ResponseWriter, 
 		return
 	}
 	current.URL = normalizedURL
+	if update.Enabled != nil {
+		current.Enabled = update.Enabled
+	}
+	if update.FallbackLocal != nil {
+		current.FallbackLocal = *update.FallbackLocal
+	}
 	if update.ClearToken {
 		current.Token = ""
 	} else if update.Token != nil {
@@ -184,5 +255,7 @@ func (rs imageRoutes) VisualSimilarityRemoteConfigUpdate(w http.ResponseWriter, 
 	writeVisualSimilarityJSON(w, visualSimilarityRemoteConfigResponse{
 		URL:             current.URL,
 		TokenConfigured: strings.TrimSpace(current.Token) != "",
+		Enabled:         current.isEnabled(),
+		FallbackLocal:   current.FallbackLocal,
 	})
 }

@@ -462,6 +462,10 @@ export const VisualSimilaritySettings: React.FC = () => {
         >
           <div className="mt-3 w-100">
             {workerStatus(camieStatus)}
+            <small className="d-block text-muted mt-1">
+              Model status and Install/Delete target this worker. Inference may
+              use local fallback separately.
+            </small>
             {(camieStatusError || camieStatus?.workerError) && (
               <Alert variant="warning" className="mt-2">
                 {camieStatusError || camieStatus?.workerError}
@@ -537,6 +541,10 @@ export const VisualSimilaritySettings: React.FC = () => {
         >
           <div className="mt-3 w-100">
             {workerStatus(pixaiStatus)}
+            <small className="d-block text-muted mt-1">
+              Model status and Install/Delete target this worker. Inference may
+              use local fallback separately.
+            </small>
             {(pixaiStatusError || pixaiStatus?.workerError) && (
               <Alert variant="warning" className="mt-2">
                 {pixaiStatusError || pixaiStatus?.workerError}

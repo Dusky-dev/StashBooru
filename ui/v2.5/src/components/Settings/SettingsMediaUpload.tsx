@@ -111,7 +111,7 @@ export function SettingsMediaUpload() {
         <Form.Check
           id="experimental-enable-quick-upload"
           type="switch"
-          label="Quick upload — start importing as soon as files are added"
+          label="Quick upload — skip the import dialog and start immediately"
           checked={settings.quickUpload}
           onChange={(event) => {
             const checked = event.currentTarget.checked;

@@ -112,7 +112,12 @@ try {
       filenameEnabled: true,
       filenameLayout: "[%artist%](%copyright%).%character%_%md5%.%ext%",
     };
-    let worker = { url: "http://worker.invalid:8000", tokenConfigured: true };
+    let worker = {
+      url: "http://worker.invalid:8000",
+      tokenConfigured: true,
+      enabled: true,
+      fallbackLocal: false,
+    };
     let local = {
       waifu2xExecutable: "/usr/bin/waifu2x-ncnn-vulkan",
       waifu2xModels: "/models/cunet",
@@ -198,6 +203,8 @@ try {
             tokenConfigured: body.clearToken
               ? false
               : !!body.token || worker.tokenConfigured,
+            enabled: body.enabled ?? worker.enabled,
+            fallbackLocal: body.fallbackLocal ?? worker.fallbackLocal,
           };
         data = worker;
       } else if (url.pathname.endsWith("/camie/config")) {
@@ -339,7 +346,6 @@ try {
       await page.locator("#experimental-storage-candidates").count(),
       1
     );
-
     // Every toggle must work without dereferencing a nulled event.currentTarget.
     await page.locator("#experimental-media-uploads > summary").click();
     const uploadEnabled = page.locator("#experimental-enable-uploads");
@@ -494,6 +500,27 @@ try {
         await page.screenshot({ path: `${shots}/compact-settings-mobile.png` });
     }
     await page.locator("#inference-worker").scrollIntoViewIfNeeded();
+    const remoteEnabled = page.locator("#inference-worker-enabled");
+    const fallbackLocal = page.locator("#inference-worker-fallback-local");
+    assert.equal(await remoteEnabled.isChecked(), true);
+    assert.equal(await fallbackLocal.isChecked(), false);
+    await page.locator("label[for='inference-worker-enabled']").click();
+    await page.locator("label[for='inference-worker-fallback-local']").click();
+    assert.equal(await remoteEnabled.isChecked(), false);
+    assert.equal(await fallbackLocal.isChecked(), true);
+    const savedWorker = page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/remote-config") &&
+        response.request().method() === "POST"
+    );
+    await page
+      .getByRole("button", { name: "Save worker", exact: true })
+      .click();
+    await savedWorker;
+    assert.equal(worker.enabled, false);
+    assert.equal(worker.fallbackLocal, true);
+    assert.equal(worker.url, "http://worker.invalid:8000");
+    assert.equal(worker.tokenConfigured, true);
     if (shots)
       await page.screenshot({
         path: `${shots}/processing-settings-${name}.png`,

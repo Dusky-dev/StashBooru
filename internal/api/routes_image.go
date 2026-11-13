@@ -137,10 +137,20 @@ func (rs imageRoutes) Thumbnail(w http.ResponseWriter, r *http.Request) {
 	rs.serveThumbnail(w, r, img, nil)
 }
 
+// A queue preview must be browser-readable even if a user's normal Stash
+// thumbnail preferences select JXL, AVIF or an animated format.
+func thumbnailEncodingForUploadPreview(r *http.Request, format string, quality int) (string, int, bool) {
+	if r.URL.Query().Get("uploadPreview") == "jpeg" {
+		return "jpg", 70, true
+	}
+	return format, quality, false
+}
+
 func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img *models.Image, modTime *time.Time) {
 	mgr := manager.GetInstance()
-	format := mgr.Config.GetImageThumbnailFormat()
-	quality := mgr.Config.GetImageThumbnailQuality()
+	format, quality, uploadPreviewJPEG := thumbnailEncodingForUploadPreview(
+		r, mgr.Config.GetImageThumbnailFormat(), mgr.Config.GetImageThumbnailQuality(),
+	)
 	animated := false
 	if f := img.Files.Primary(); f != nil {
 		var detectionError error
@@ -149,7 +159,7 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 			logger.Warnf("cannot detect animation for image %s: %v", img.Path, detectionError)
 		}
 	}
-	if animated {
+	if animated && !uploadPreviewJPEG {
 		if mgr.Config.IsExperimentalAnimatedThumbnailEnabled() {
 			format = "webp"
 			quality = mgr.Config.GetAnimatedThumbnailQuality()
@@ -160,7 +170,7 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 	}
 	width := models.DefaultGthumbWidth
 	filepath := mgr.Paths.Generated.GetThumbnailPathForEncoding(img.Checksum, width, format, quality)
-	if !animated && mgr.Config.IsExperimentalImageThumbnailEnabled() {
+	if !uploadPreviewJPEG && !animated && mgr.Config.IsExperimentalImageThumbnailEnabled() {
 		width = mgr.Config.GetExperimentalThumbnailResolution()
 		filepath = mgr.Paths.Generated.GetExperimentalThumbnailProfilePath(
 			img.Checksum, width, format, quality,
@@ -169,7 +179,7 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 			mgr.Config.GetExperimentalThumbnailBudget(),
 		)
 	}
-	if animated && mgr.Config.IsExperimentalAnimatedThumbnailEnabled() {
+	if !uploadPreviewJPEG && animated && mgr.Config.IsExperimentalAnimatedThumbnailEnabled() {
 		width = mgr.Config.GetExperimentalAnimatedThumbnailResolution()
 		filepath = mgr.Paths.Generated.GetAnimatedThumbnailPathForEncoding(img.Checksum, width, quality)
 	}
@@ -216,9 +226,9 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 		var data []byte
 		var err error
 		switch {
-		case animated && mgr.Config.IsExperimentalAnimatedThumbnailEnabled():
+		case !uploadPreviewJPEG && animated && mgr.Config.IsExperimentalAnimatedThumbnailEnabled():
 			data, err = encoder.GetAnimatedThumbnail(f, width, quality)
-		case !animated && mgr.Config.IsExperimentalImageThumbnailEnabled() && mgr.Config.GetExperimentalThumbnailMode() == "adaptive":
+		case !uploadPreviewJPEG && !animated && mgr.Config.IsExperimentalImageThumbnailEnabled() && mgr.Config.GetExperimentalThumbnailMode() == "adaptive":
 			nativePath := mgr.Paths.Generated.GetThumbnailPath(img.Checksum, models.DefaultGthumbWidth)
 			data, _, err = encoder.GetAdaptiveThumbnail(
 				r.Context(), f, width, mgr.Config.GetExperimentalThumbnailMinQuality(),
@@ -242,6 +252,12 @@ func (rs imageRoutes) serveThumbnail(w http.ResponseWriter, r *http.Request, img
 			// fall back to source media or another thumbnail format.
 			if format != "jpg" {
 				http.Error(w, "failed to generate selected "+format+" thumbnail: "+err.Error(), http.StatusUnprocessableEntity)
+				return
+			}
+			if uploadPreviewJPEG {
+				// Do not send a JXL/HEIC original to a browser that cannot
+				// decode it; the queue will show a clear unavailable state.
+				http.Error(w, "JPEG upload preview could not be generated", http.StatusUnprocessableEntity)
 				return
 			}
 			// Legacy JPEG keeps its original fallback behavior.

@@ -8,6 +8,8 @@ import { ExternalLink } from "src/components/Shared/ExternalLink";
 interface InferenceWorkerConfig {
   url: string;
   tokenConfigured: boolean;
+  enabled: boolean;
+  fallbackLocal: boolean;
 }
 
 async function readResponse<T>(response: Response): Promise<T> {
@@ -22,6 +24,8 @@ export const InferenceWorkerSettings: React.FC = () => {
   const [remoteURL, setRemoteURL] = useState("");
   const [remoteToken, setRemoteToken] = useState("");
   const [tokenConfigured, setTokenConfigured] = useState(false);
+  const [remoteEnabled, setRemoteEnabled] = useState(false);
+  const [fallbackLocal, setFallbackLocal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
@@ -41,6 +45,8 @@ export const InferenceWorkerSettings: React.FC = () => {
       if (controller.signal.aborted || !mounted.current) return;
       setRemoteURL(config.url);
       setTokenConfigured(config.tokenConfigured);
+      setRemoteEnabled(config.enabled ?? !!config.url);
+      setFallbackLocal(config.fallbackLocal ?? false);
       setError(undefined);
     } catch (e) {
       if (!controller.signal.aborted && mounted.current)
@@ -67,7 +73,13 @@ export const InferenceWorkerSettings: React.FC = () => {
           url: string;
           token?: string;
           clearToken?: boolean;
-        } = { url: remoteURL.trim() };
+          enabled: boolean;
+          fallbackLocal: boolean;
+        } = {
+          url: remoteURL.trim(),
+          enabled: remoteEnabled,
+          fallbackLocal,
+        };
         if (clearToken) {
           payload.clearToken = true;
         } else if (remoteToken.trim()) {
@@ -83,6 +95,8 @@ export const InferenceWorkerSettings: React.FC = () => {
         if (!mounted.current) return;
         setRemoteURL(config.url);
         setTokenConfigured(config.tokenConfigured);
+        setRemoteEnabled(config.enabled ?? !!config.url);
+        setFallbackLocal(config.fallbackLocal ?? false);
         setRemoteToken("");
         setError(undefined);
         Toast.success("Saved inference worker settings.");
@@ -95,7 +109,7 @@ export const InferenceWorkerSettings: React.FC = () => {
         if (mounted.current) setSaving(false);
       }
     },
-    [Toast, remoteToken, remoteURL]
+    [Toast, remoteToken, remoteURL, remoteEnabled, fallbackLocal]
   );
 
   return (
@@ -125,6 +139,32 @@ export const InferenceWorkerSettings: React.FC = () => {
         >
           <div className="mt-3 w-100">
             {error && <Alert variant="danger">{error}</Alert>}
+            <Form.Check
+              id="inference-worker-enabled"
+              type="switch"
+              label="Enable remote worker"
+              checked={remoteEnabled}
+              disabled={loading || saving}
+              onChange={(event) =>
+                setRemoteEnabled(event.currentTarget.checked)
+              }
+            />
+            <Form.Check
+              id="inference-worker-fallback-local"
+              type="switch"
+              label="Fall back to local processing when the remote worker is unavailable"
+              checked={fallbackLocal}
+              disabled={loading || saving}
+              onChange={(event) =>
+                setFallbackLocal(event.currentTarget.checked)
+              }
+            />
+            <Form.Text className="d-block text-muted mb-3">
+              Disabling the remote worker keeps its URL and token. Local
+              fallback requires the matching models and codecs to be installed
+              on this StashBooru server. If fallback is off, remote failures
+              remain visible instead of silently switching workers.
+            </Form.Text>
             <Form.Group controlId="inference-worker-url">
               <Form.Label>Worker URL</Form.Label>
               <Form.Control

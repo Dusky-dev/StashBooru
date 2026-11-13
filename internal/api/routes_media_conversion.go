@@ -63,7 +63,7 @@ func conversionClient(ctx context.Context, backend string) (mediaconvert.Client,
 		if err != nil {
 			return c, mediaconvert.Capabilities{}, "", err
 		}
-		remote.URL, remote.Token = config.URL, config.Token
+		backend, remote.URL, remote.Token = config.processingBackend(backend)
 	}
 	return mediaconvert.SelectWorker(ctx, backend, c, remote)
 }

@@ -40,17 +40,17 @@ const MEDIA_UPLOAD_SETTINGS_CHANGED_EVENT =
 
 // Fail closed while settings load, when unavailable, and when disabled.
 // The main navigation button updates when Experimental settings change.
-export function useMediaUploadEnabled() {
-  const [enabled, setEnabled] = useState(false);
+export function useMediaUploadSettings() {
+  const [settings, setSettings] = useState<MediaUploadSettings>();
   useEffect(() => {
     const controller = new AbortController();
     const refresh = () => {
       void readMediaUploadSettings(controller.signal)
-        .then((settings) => {
-          if (!controller.signal.aborted) setEnabled(settings.enabled);
+        .then((next) => {
+          if (!controller.signal.aborted) setSettings(next);
         })
         .catch(() => {
-          if (!controller.signal.aborted) setEnabled(false);
+          if (!controller.signal.aborted) setSettings(undefined);
         });
     };
     refresh();
@@ -60,5 +60,9 @@ export function useMediaUploadEnabled() {
       window.removeEventListener(MEDIA_UPLOAD_SETTINGS_CHANGED_EVENT, refresh);
     };
   }, []);
-  return enabled;
+  return settings;
+}
+
+export function useMediaUploadEnabled() {
+  return !!useMediaUploadSettings()?.enabled;
 }
