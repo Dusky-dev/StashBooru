@@ -66,8 +66,8 @@ async function checkImageStackBrowse(page, url, images, representative) {
   await viewOptions.click();
   assert.equal(await variants.getAttribute("aria-checked"), "false");
   await variants.click();
-  await page.waitForURL((location) =>
-    location.searchParams.get("variants") === "true"
+  await page.waitForURL(
+    (location) => location.searchParams.get("variants") === "true"
   );
   const variantPath = `/images/${images[0].id}`;
   const variantLink = list.locator(`a.image-card-link[href="${variantPath}"]`);

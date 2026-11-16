@@ -360,9 +360,10 @@ export class ListFilterModel {
 
     this.displayMode = uiOptions?.display_mode ?? this.displayMode;
     this.zoomIndex = uiOptions?.zoom_index ?? this.zoomIndex;
-    const variants = uiOptions?.show_stack_variants;
-    if (this.mode === FilterMode.Images && typeof variants === "boolean") {
-      this.showStackVariants = variants;
+    if (this.mode === FilterMode.Images) {
+      const variants = uiOptions?.show_stack_variants;
+      this.showStackVariants =
+        typeof variants === "boolean" ? variants : undefined;
     }
 
     this.currentPage = 1;

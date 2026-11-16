@@ -145,6 +145,14 @@
   order at desktop and phone widths. Parsed the fixture and checked the
   URL/saved-view round trips and Random scope in focused source simulations.
   Mounted execution and full validation await repository CI.
+- Original head `f47da21d58875d818f9e5e2d5db882a8b18f98c0` passed all 129 UI tests, lint and
+  TypeScript. [CI formatting](https://github.com/Dusky-dev/StashBooru/actions/runs/43981436756/job/133698626301)
+  rejected a fixture line wrap; use the formatter's layout. Codex Review
+  correctly identified that a saved view with no variant override inherited
+  the current list's override. Both saved-filter loaders use a clone; loading
+  an Images view now clears the override unless its value is an explicit
+  boolean. Checked the source for absent, false and true selections.
+  Fresh CI and review are pending.
 
 ## Upstream sync — Stash develop 2026-11-13
 
