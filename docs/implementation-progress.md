@@ -1,3 +1,25 @@
+## Explain the Booru filename rule (BOO-11) — 2026-11-17
+
+- Baseline: `develop` `0e8936f316f61227925520e5d06fe268eec6fda5`, after #363 merged with 14 green
+  checks and clean Codex Review. Branch
+  [`fix/booru-filename-rule-20261117`](https://github.com/Dusky-dev/StashBooru/tree/fix/booru-filename-rule-20261117),
+  source `ce514d7197204258af0d2f0fc5fd993521e60fcc`, tree `d9e091bc6fa1129c99ffab6f74a6dbabdb5af8a2`.
+- Booru Settings shows whether the current draft uses a custom template, the
+  saved shared pattern, or built-in names when saved. The shared pattern
+  links to the existing Interface setting. Correct the guide, which
+  previously said a blank Booru override always used built-in names.
+- The download settings GET returns the shared pattern via the existing
+  server validator. The value is read-only; Save still submits the Booru
+  override, and the download naming rules and saved files are unchanged.
+- Checked the GET-to-form binding, the Interface link and source whitespace
+  against the pinned code. The existing backend and Booru browser CI are
+  pending; a local executor was unavailable.
+- On original head `4a26286d29edce0c9974a42a9ddf13f2e3a1f6e7`, both browser jobs and all 129 UI unit
+  tests passed, and Codex Review found no issues. Go lint reported a field
+  alignment issue, and UI lint rejected a semicolon after inline JSX. Align
+  the response fields and use two plain sentences in the help text. The
+  new head needs fresh CI and review.
+
 ## Stack match counts in All (LIB-05) — 2026-11-17
 
 - Based on `develop` `045683c7b9b53007d0c5aa3ea98659468ece4c60` after #360. Branch
