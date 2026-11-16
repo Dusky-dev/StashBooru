@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -209,6 +210,7 @@ func (qb *performerFilterHandler) criterionHandler() criterionHandler {
 		qb.aliasCriterionHandler(filter.Aliases),
 
 		qb.tagsCriterionHandler(filter.Tags),
+		qb.copyrightsCriterionHandler(filter.Copyrights),
 
 		qb.studiosCriterionHandler(filter.Studios),
 
@@ -419,6 +421,39 @@ func (qb *performerFilterHandler) tagsCriterionHandler(tags *models.Hierarchical
 	}
 
 	return h.handler(tags)
+}
+
+func (qb *performerFilterHandler) copyrightsCriterionHandler(copyrights *models.HierarchicalMultiCriterionInput) criterionHandlerFunc {
+	h := joinedHierarchicalMultiCriterionHandlerBuilder{
+		primaryTable:   performerTable,
+		foreignTable:   copyrightTable,
+		foreignFK:      "copyright_id",
+		relationsTable: copyrightRelationsTable,
+		joinAs:         "performer_copyright",
+		joinTable:      performersCopyrightsTable,
+		primaryFK:      performerIDColumn,
+	}
+
+	return func(ctx context.Context, f *filterBuilder) {
+		if copyrights == nil {
+			return
+		}
+
+		for _, ids := range [][]string{copyrights.Value, copyrights.Excludes} {
+			for _, id := range ids {
+				if _, err := strconv.Atoi(id); err != nil {
+					f.setError(fmt.Errorf("invalid Copyright ID %q", id))
+					return
+				}
+			}
+		}
+
+		// Keep the request safe to reuse when the hierarchy helper rewrites IDs.
+		criterion := *copyrights
+		criterion.Value = slices.Clone(copyrights.Value)
+		criterion.Excludes = slices.Clone(copyrights.Excludes)
+		h.handler(&criterion)(ctx, f)
+	}
 }
 
 func (qb *performerFilterHandler) tagCountCriterionHandler(count *models.IntCriterionInput) criterionHandlerFunc {

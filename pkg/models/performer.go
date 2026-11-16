@@ -155,6 +155,8 @@ type PerformerFilterType struct {
 	IsMissing *string `json:"is_missing"`
 	// Filter to only include performers with these tags
 	Tags *HierarchicalMultiCriterionInput `json:"tags"`
+	// Filter by linked Copyrights in the selected hierarchy
+	Copyrights *HierarchicalMultiCriterionInput `json:"copyrights"`
 	// Filter by tag count
 	TagCount *IntCriterionInput `json:"tag_count"`
 	// Filter by scene count

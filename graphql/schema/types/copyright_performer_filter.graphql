@@ -1,0 +1,4 @@
+extend input PerformerFilterType {
+  "Filter Characters by Copyright hierarchy. depth 0 is direct only; -1 includes all descendants."
+  copyrights: HierarchicalMultiCriterionInput
+}
