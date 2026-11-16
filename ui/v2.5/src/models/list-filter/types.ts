@@ -7,6 +7,7 @@ export type SavedObjectFilter = {
 export type SavedUIOptions = {
   display_mode?: DisplayMode;
   zoom_index?: number;
+  show_stack_variants?: boolean;
 };
 
 // NOTE: add new enum values to the end, to ensure existing data

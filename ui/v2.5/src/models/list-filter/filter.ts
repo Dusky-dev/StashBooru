@@ -20,6 +20,7 @@ interface IDecodedParams {
   q?: string;
   p?: number;
   z?: number;
+  variants?: boolean;
   c?: string[];
 }
 
@@ -31,6 +32,7 @@ interface IEncodedParams {
   q?: string | null;
   p?: string | null;
   z?: string | null;
+  variants?: string | null;
   c?: string[];
 }
 
@@ -61,6 +63,7 @@ export class ListFilterModel {
   public similarityMethod: ImageSimilarityMethod = "phash";
   public displayMode: DisplayMode = DEFAULT_PARAMS.displayMode;
   public zoomIndex: number = 1;
+  public showStackVariants?: boolean;
   public criteria: Array<Criterion> = [];
   public randomSeed = -1;
   private defaultZoomIndex: number = 1;
@@ -201,6 +204,8 @@ export class ListFilterModel {
     if (params.z !== undefined) {
       this.zoomIndex = params.z;
     }
+    this.showStackVariants =
+      this.mode === FilterMode.Images ? params.variants : undefined;
 
     this.criteria = [];
     if (params.c !== undefined) {
@@ -243,6 +248,10 @@ export class ListFilterModel {
       if (zoomIndex >= 0) {
         ret.z = zoomIndex;
       }
+    }
+
+    if (params.variants === "true" || params.variants === "false") {
+      ret.variants = params.variants === "true";
     }
 
     if (params.c && params.c.length !== 0) {
@@ -317,6 +326,7 @@ export class ListFilterModel {
       q: query.get("q"),
       p: query.get("p"),
       z: query.get("z"),
+      variants: query.get("variants"),
       c: query.getAll("c"),
     };
     const decoded = ListFilterModel.decodeParams(params);
@@ -350,6 +360,10 @@ export class ListFilterModel {
 
     this.displayMode = uiOptions?.display_mode ?? this.displayMode;
     this.zoomIndex = uiOptions?.zoom_index ?? this.zoomIndex;
+    const variants = uiOptions?.show_stack_variants;
+    if (this.mode === FilterMode.Images && typeof variants === "boolean") {
+      this.showStackVariants = variants;
+    }
 
     this.currentPage = 1;
 
@@ -448,6 +462,7 @@ export class ListFilterModel {
         this.zoomIndex !== this.defaultZoomIndex
           ? String(this.zoomIndex)
           : undefined,
+      variants: this.showStackVariants?.toString(),
       c: encodedCriteria,
     };
   }
@@ -481,6 +496,10 @@ export class ListFilterModel {
     }
     if (params.p) {
       query.push(`p=${params.p}`);
+    }
+
+    if (params.variants) {
+      query.push(`variants=${params.variants}`);
     }
 
     return query.join("&");
@@ -529,6 +548,9 @@ export class ListFilterModel {
     return {
       display_mode: this.displayMode,
       zoom_index: this.zoomIndex,
+      ...(this.showStackVariants === undefined
+        ? {}
+        : { show_stack_variants: this.showStackVariants }),
     };
   }
 
@@ -595,6 +617,13 @@ export class ListFilterModel {
       c.value = newCriteria;
     }
 
+    return ret;
+  }
+
+  public setShowStackVariants(show: boolean | undefined) {
+    const ret = this.clone();
+    ret.showStackVariants = show;
+    ret.currentPage = 1;
     return ret;
   }
 

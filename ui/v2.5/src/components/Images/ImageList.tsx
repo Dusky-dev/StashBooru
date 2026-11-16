@@ -9,13 +9,13 @@ import React, {
   useEffect,
 } from "react";
 import { FormattedMessage, FormattedNumber, useIntl } from "react-intl";
-import cloneDeep from "lodash-es/cloneDeep";
 import { useHistory } from "react-router-dom";
 import Mousetrap from "mousetrap";
 import * as GQL from "src/core/generated-graphql";
 import { queryFindImages } from "src/core/StashService";
 import { useFilteredItemList } from "../List/ItemList";
 import { useListScrollRestoration } from "../List/useListScrollRestoration";
+import { useToast } from "src/hooks/Toast";
 import { useLightbox } from "src/hooks/Lightbox/hooks";
 import { ListFilterModel } from "src/models/list-filter/filter";
 import { DisplayMode } from "src/models/list-filter/types";
@@ -66,7 +66,7 @@ import { SidebarPerformersFilter } from "../List/Filters/PerformersFilter";
 import { SidebarTagsFilter } from "../List/Filters/TagsFilter";
 import { SidebarRatingFilter } from "../List/Filters/RatingFilter";
 import { SidebarBooleanFilter } from "../List/Filters/BooleanFilter";
-import { Button } from "react-bootstrap";
+import { Alert, Button } from "react-bootstrap";
 import { OrganizedCriterionOption } from "src/models/list-filter/criteria/organized";
 import { SidebarAgeFilter } from "../List/Filters/SidebarAgeFilter";
 import { PerformerAgeCriterionOption } from "src/models/list-filter/images";
@@ -492,46 +492,48 @@ const SidebarContent: React.FC<{
   );
 };
 
-function useViewRandom(filter: ListFilterModel, count: number) {
-  const history = useHistory();
-
-  const viewRandom = useCallback(async () => {
-    if (count === 0) {
-      return;
-    }
-
-    const index = Math.floor(Math.random() * count);
-    const filterCopy = cloneDeep(filter);
-    filterCopy.itemsPerPage = 1;
-    filterCopy.currentPage = index + 1;
-    const singleResult = await queryFindImages(filterCopy);
-    if (singleResult.data.findImages.images.length === 1) {
-      const { id } = singleResult.data.findImages.images[0];
-      history.push(`/images/${id}`);
-    }
-  }, [history, filter, count]);
-
-  return viewRandom;
-}
-
-function useAddKeybinds(
+function useViewRandom(
   filter: ListFilterModel,
   count: number,
-  randomEnabled = true
+  collapseStacks: boolean
 ) {
-  const viewRandom = useViewRandom(filter, count);
+  const history = useHistory();
+  const toast = useToast();
 
+  return useCallback(async () => {
+    if (count === 0) return;
+
+    const location = history.location;
+    const index = Math.floor(Math.random() * count);
+    const filterCopy = filter.changePage(index + 1);
+    filterCopy.itemsPerPage = 1;
+    try {
+      const singleResult = await queryFindImages(filterCopy, {
+        ...filterCopy.makeFilter(),
+        collapse_stacks: collapseStacks,
+      });
+      const image = singleResult.data.findImages.images[0];
+      if (image && history.location === location) {
+        history.push(`/images/${image.id}`);
+      }
+    } catch (error) {
+      if (history.location === location) toast.error(error);
+    }
+  }, [history, toast, filter, count, collapseStacks]);
+}
+
+function useRandomKeybind(viewRandom: () => Promise<void>, enabled: boolean) {
   useEffect(() => {
-    if (!randomEnabled) return;
+    if (!enabled) return;
 
     Mousetrap.bind("p r", () => {
-      viewRandom();
+      void viewRandom();
     });
 
     return () => {
       Mousetrap.unbind("p r");
     };
-  }, [viewRandom, randomEnabled]);
+  }, [viewRandom, enabled]);
 }
 
 interface IImageList {
@@ -548,10 +550,7 @@ export const FilteredImageList = PatchComponent(
   (props: IImageList) => {
     const intl = useIntl();
     const [{ data: localInterface }] = useInterfaceLocalForage();
-    // A stack representative can be outside the gallery's own membership.
-    const collapseStacks =
-      props.view !== View.GalleryImages &&
-      localInterface?.hideStackVariants !== false;
+    const defaultShowVariants = localInterface?.hideStackVariants === false;
 
     const [slideshowRunning, setSlideshowRunning] = useState<boolean>(false);
 
@@ -567,6 +566,16 @@ export const FilteredImageList = PatchComponent(
       chapters,
       imageIDs,
     } = props;
+    const canToggleVariants = withSidebar && imageIDs === undefined;
+
+    function stacksCollapsed(filter: ListFilterModel) {
+      // Galleries always keep their own members and reading order.
+      if (!withSidebar) return false;
+      if (canToggleVariants && filter.showStackVariants !== undefined) {
+        return !filter.showStackVariants;
+      }
+      return !defaultShowVariants;
+    }
 
     function useResult(filter: ListFilterModel) {
       return GQL.useFindImagesQuery({
@@ -575,7 +584,7 @@ export const FilteredImageList = PatchComponent(
           filter: filter.makeFindFilter(),
           image_filter: {
             ...filter.makeFilter(),
-            collapse_stacks: collapseStacks,
+            collapse_stacks: stacksCollapsed(filter),
           },
           image_ids: imageIDs,
         },
@@ -589,7 +598,7 @@ export const FilteredImageList = PatchComponent(
           filter: filter.makeFindFilter(),
           image_filter: {
             ...filter.makeFilter(),
-            collapse_stacks: collapseStacks,
+            collapse_stacks: stacksCollapsed(filter),
           },
           image_ids: imageIDs,
         },
@@ -673,7 +682,15 @@ export const FilteredImageList = PatchComponent(
       setFilter,
     });
 
-    useAddKeybinds(filter, totalCount, imageIDs === undefined);
+    const count = listReady ? (result.data?.findImages.count ?? 0) : 0;
+    const randomEnabled =
+      alterQuery !== false && imageIDs === undefined && count > 0;
+    const viewRandom = useViewRandom(
+      effectiveFilter,
+      count,
+      stacksCollapsed(effectiveFilter)
+    );
+    useRandomKeybind(viewRandom, randomEnabled);
     useFilteredSidebarKeybinds({
       showSidebar,
       setShowSidebar,
@@ -684,8 +701,6 @@ export const FilteredImageList = PatchComponent(
       onSelectNone,
       result,
     });
-
-    const viewRandom = useViewRandom(effectiveFilter, totalCount);
 
     function onExport(all: boolean) {
       const exportAllRestricted = all && imageIDs !== undefined;
@@ -801,7 +816,7 @@ export const FilteredImageList = PatchComponent(
       {
         text: intl.formatMessage({ id: "actions.view_random" }),
         onClick: viewRandom,
-        isDisplayed: () => imageIDs === undefined && totalCount > 0,
+        isDisplayed: () => randomEnabled,
       },
       metadataReviewOperation(
         Array.from(selectedIds).map((id) => ({
@@ -883,6 +898,10 @@ export const FilteredImageList = PatchComponent(
     );
 
     const pageCount = Math.ceil(totalCount / filter.itemsPerPage);
+    const visibleIds = new Set(items.map((image) => image.id));
+    const hiddenSelected = listReady
+      ? selectedItems.filter((image) => !visibleIds.has(image.id)).length
+      : 0;
 
     const content = (
       <>
@@ -896,7 +915,38 @@ export const FilteredImageList = PatchComponent(
           operationComponent={operations}
           view={view}
           zoomable
+          additionalViewOption={
+            canToggleVariants
+              ? {
+                  label: "Show individual variants",
+                  checked: !stacksCollapsed(effectiveFilter),
+                  onChange: (show) =>
+                    setFilter((current) =>
+                      current.setShowStackVariants(
+                        show === defaultShowVariants ? undefined : show
+                      )
+                    ),
+                }
+              : undefined
+          }
         />
+
+        {hiddenSelected > 0 && (
+          <Alert variant="info" className="image-hidden-selection">
+            <FormattedMessage
+              id="actions.hidden_image_selection"
+              values={{ count: hiddenSelected }}
+            />
+            <Button
+              className="ml-2"
+              variant="link"
+              size="sm"
+              onClick={onSelectNone}
+            >
+              <FormattedMessage id="actions.select_none" />
+            </Button>
+          </Alert>
+        )}
 
         <FilterTags
           view={view}

@@ -28,11 +28,12 @@ compression base.
 
 ## Filtering, counts and order
 
-The **Show individual variants** option is located in All's **View options**
-menu next to the Grid/Wall controls. It is off by default: visual stacks show
-only their representatives. Turning it on shows every member separately.
-The setting is an explicit per-list URL/filter override of the browser-wide
-Settings → Interface preference; it does not change any stack memberships.
+In All and Images, open **View options** next to Grid/Wall and choose
+**Show individual variants**. When it is off, a stack shows its representative.
+Turning it on shows the members separately. Lists start with the browser-wide
+Settings → Interface preference and can override it without changing stack
+membership. Images keeps the choice in the list URL and saved view options;
+choosing the Interface default again removes its override.
 
 Native media filters execute first. A stack appears when any member matches;
 its representative can be outside the filters, including the media-type filter.
@@ -40,8 +41,13 @@ In All's Grid and Wall, **Stack · 2/4 match** means two of the stack's four
 members are in the current list scope. The card still shows the representative.
 If every member matches, or **Show individual variants** is on, the badge
 shows the total stack size instead. Expanding the card shows all members with
-individual selection, preview and native links. A notice appears only when
-already-selected members are hidden by grouping or other filters.
+individual selection, preview and native links.
+
+If grouping, filtering or paging hides a selected Image, it stays selected.
+Images shows how many selected files are outside the current page and offers
+**Select None**. Actions still use the explicit selection. **View Random**
+and its `p r` shortcut use the same scoped Images results and stack grouping
+as the list, across all matching pages.
 
 Grouping occurs before pagination. `count` counts displayed cards;
 `image_count` and `video_count` describe representative card kinds;
