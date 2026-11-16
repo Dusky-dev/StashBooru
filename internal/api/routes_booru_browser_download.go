@@ -146,7 +146,17 @@ func (rs booruBrowserRoutes) DownloadSettings(w http.ResponseWriter, r *http.Req
 		writeBooruError(w, 500, "settings", "Cannot load download settings.")
 		return
 	}
-	writeVisualSimilarityJSON(w, value)
+	var sharedFilenameLayout string
+	if rs.uiConfig != nil {
+		sharedFilenameLayout = effectiveBooruFilenameTemplate("", rs.uiConfig())
+	}
+	writeVisualSimilarityJSON(w, struct {
+		booruDownloadSettings
+		SharedFilenameLayout string `json:"sharedFilenameLayout,omitempty"`
+	}{
+		booruDownloadSettings: value,
+		SharedFilenameLayout: sharedFilenameLayout,
+	})
 }
 func (rs booruBrowserRoutes) UpdateDownloadSettings(w http.ResponseWriter, r *http.Request) {
 	var value booruDownloadSettings
