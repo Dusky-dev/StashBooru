@@ -66,10 +66,15 @@ from the Image to the Video and back with the desktop arrows or the visible
 Previous/Next buttons at phone width, then checks the type tabs, Back and
 reload. The profile grid is captured in the same first-library artifact.
 
-It also checks for page errors and editor page overflow. The client is closed
-before the deliberate server shutdown; restart uses a fresh page/context so
-Apollo cannot report shutdown fetch failures or supply the saved title from its
-old cache. Page errors are asserted before shutdown and after restart.
+The same CI job's `image-editor-save.mjs` suite also opens an Image detail
+from a scrolled second page of Images and All, then checks that Back restores
+the list and scroll position. This uses real scanned PNGs at desktop and
+phone widths with the browser's automatic scroll restoration disabled.
+
+The first-library check also tests for page errors and editor overflow. The
+client is closed before deliberate server shutdown; restart uses a fresh page
+so Apollo cannot report shutdown fetch failures or supply the saved title
+from its old cache. Page errors are asserted before shutdown and after restart.
 
 Successful temporary instances are removed; a failed instance is retained at the
 printed path for diagnosis. Requested output contains screenshots and server

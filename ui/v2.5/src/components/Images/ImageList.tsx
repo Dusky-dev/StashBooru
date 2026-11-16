@@ -15,6 +15,7 @@ import Mousetrap from "mousetrap";
 import * as GQL from "src/core/generated-graphql";
 import { queryFindImages } from "src/core/StashService";
 import { useFilteredItemList } from "../List/ItemList";
+import { useListScrollRestoration } from "../List/useListScrollRestoration";
 import { useLightbox } from "src/hooks/Lightbox/hooks";
 import { ListFilterModel } from "src/models/list-filter/filter";
 import { DisplayMode } from "src/models/list-filter/types";
@@ -626,6 +627,13 @@ export const FilteredImageList = PatchComponent(
 
     const { effectiveFilter, result, cachedResult, items, totalCount } =
       queryResult;
+    const listReady = !result.loading && !result.error && !!result.data;
+    const listRef = useListScrollRestoration({
+      view: view ?? View.Images,
+      filter,
+      active: alterQuery !== false,
+      ready: listReady && !sidebarStateLoading,
+    });
 
     useEffect(() => {
       const refetchAfterUpload = () => {
@@ -947,9 +955,12 @@ export const FilteredImageList = PatchComponent(
       <>
         {modal}
         {!withSidebar ? (
-          <div className="item-list-container image-list">{content}</div>
+          <div className="item-list-container image-list" ref={listRef}>
+            {content}
+          </div>
         ) : (
           <div
+            ref={listRef}
             className={cx("item-list-container image-list", {
               "hide-sidebar": !showSidebar,
             })}
