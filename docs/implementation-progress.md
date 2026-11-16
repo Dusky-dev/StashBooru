@@ -21,6 +21,30 @@
   verification with that branch is clean. CI and Codex Review remain the
   merge gates. Next: repair the Copyright profile's Characters query.
 
+## Populated global and profile All acceptance (LIB-03/LIB-04) — 2026-11-16
+
+- Based on `develop` `707605cf42bf7fb87900f1f5c3e62aed7e1b8402`, after #358 and #359. Independent of
+  the pending Copyright Characters filter in #360; this check uses the native
+  media tabs.
+- Branch [`test/populated-profile-all-20261116`](https://github.com/Dusky-dev/StashBooru/tree/test/populated-profile-all-20261116),
+  test source `9d76a3d02cfd84f9dd636eeb9b20e6ba8e1cc85d`, tree `c201349c2dff5c84bca91d82922b76eab2869479`.
+- Extend the existing first-library desktop/mobile browser run after its setup,
+  scan, editor and restart checks. The scanned Image and Video share a numeric
+  ID; seed native Character, Artist, Tag and Sub-Copyright links and one unrelated
+  fileless Video. Compare the exact typed card paths that render in global All
+  and each profile's All tab. The parent Copyright includes its child's media.
+- Use the shared Copyright preview to move from Image to Video and back, close
+  it on the same list, and switch Images, Videos and All. Then verify global All
+  still shows the outsider, and Back and refresh still show only the branch.
+  The existing CI job runs the extended fixture, with a profile capture.
+  No production behavior, schema, dependencies or workflow steps changed.
+- Verified the GraphQL fields and native card selectors against the pinned
+  source, and parsed the added fixture body. Runtime verification awaits
+  first-library CI because the executor is unavailable. This exercises a small
+  owned library, not playback across codecs, physical touch, large libraries
+  or owner data. Next: assess real CI failures if any; continue mixed selection
+  and Wall acceptance separately.
+
 ## Upstream sync — Security policy (2026-11-16)
 
 - Fork baseline: `develop` `b170006db0988e1cfdff6983cab17a1810f907eb`; upstream `stashapp/stash/develop` `987c211ca4acf4c62c2b77850b01d97c8b987755` (upstream commits `1678ebfb`, `987c211c`).
