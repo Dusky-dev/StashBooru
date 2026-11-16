@@ -127,6 +127,25 @@
 - The path did not previously exist in StashBooru; no fork-specific file conflict. Preserve upstream commit ancestry with an isolated merge commit; existing fork code and documentation remain unchanged except this checkpoint.
 - Validation: compared exact current upstream/fork SHAs and upstream diff; root file's blob matches upstream; no runtime tests required for doc-only sync. GitHub PR and its review/checks pending.
 
+## Make Images stack browsing and selection agree (LIB-05/LIB-06/LIB-08) — 2026-11-17
+
+- Baseline: `develop` `597f4a4e07152f27c1d7ef5bfecdc23188a1d102` after #364 merged with 14 green checks.
+  Branch [`fix/images-stack-browsing-20261117`](https://github.com/Dusky-dev/StashBooru/tree/fix/images-stack-browsing-20261117),
+  source `71a5a85fa3cb35a0e9b3d4a37e0ba3ae4921f45b`, tree `dd621b474e7934112e94ed5eb78502340c558368`.
+- Bundle three related Images fixes. **Show individual variants** lives in
+  the native View options. It starts from the Interface setting, saves an
+  override in the list link and saved view options, and starts at page one
+  when grouping changes. Gallery Images keeps its native membership/order.
+- A notice counts selected Images absent from the loaded page and offers
+  **Select None** while retaining the explicit selection. The menu and
+  keyboard Random actions now share the applied filters, grouping and
+  current result count. A late response cannot navigate from a new list.
+- Used the existing gallery-chapters fixture to exercise variants, reload,
+  hidden selection and clearing, both Random actions, and gallery member
+  order at desktop and phone widths. Parsed the fixture and checked the
+  URL/saved-view round trips and Random scope in focused source simulations.
+  Mounted execution and full validation await repository CI.
+
 ## Upstream sync — Stash develop 2026-11-13
 
 - Fork baseline: `develop` `1bf776dfa56d8ee7758a73998891fc0b7bc151c9`; upstream `stashapp/stash/develop` `47057616fe9da0cf38cfa8c39ab160e5441eeafc`, two commits ahead of the common ancestor `aefc9373fe57e5cb32fbbb7215fd508ed799743f`.
