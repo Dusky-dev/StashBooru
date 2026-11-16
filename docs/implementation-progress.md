@@ -1,3 +1,10 @@
+## Upstream sync — Security policy (2026-11-16)
+
+- Fork baseline: `develop` `b170006db0988e1cfdff6983cab17a1810f907eb`; upstream `stashapp/stash/develop` `987c211ca4acf4c62c2b77850b01d97c8b987755` (upstream commits `1678ebfb`, `987c211c`).
+- Diff since upstream `47057616fe9da0cf38cfa8c39ab160e5441eeafc`: one new root `SECURITY.md` with instructions to report upstream vulnerabilities privately to the upstream Stash team. No application source, dependency, migration, configuration, or workflow changes.
+- The path did not previously exist in StashBooru; no fork-specific file conflict. Preserve upstream commit ancestry with an isolated merge commit; existing fork code and documentation remain unchanged except this checkpoint.
+- Validation: compared exact current upstream/fork SHAs and upstream diff; root file's blob matches upstream; no runtime tests required for doc-only sync. GitHub PR and its review/checks pending.
+
 ## Upstream sync — Stash develop 2026-11-13
 
 - Fork baseline: `develop` `1bf776dfa56d8ee7758a73998891fc0b7bc151c9`; upstream `stashapp/stash/develop` `47057616fe9da0cf38cfa8c39ab160e5441eeafc`, two commits ahead of the common ancestor `aefc9373fe57e5cb32fbbb7215fd508ed799743f`.
