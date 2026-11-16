@@ -1355,6 +1355,28 @@ export const LightboxComponent: React.FC<IProps> = ({
             </Button>
           )}
         </div>
+        {allowNavigation && !stackViewer.stack && !showNavigation && (
+          <div className="Lightbox-compact-navigation d-flex d-lg-none flex-shrink-0 justify-content-center">
+            <Button
+              variant="link"
+              size="lg"
+              className="mx-2"
+              aria-label={intl.formatMessage({ id: "pagination.previous" })}
+              onClick={() => handleLeft()}
+            >
+              <Icon icon={faChevronLeft} />
+            </Button>
+            <Button
+              variant="link"
+              size="lg"
+              className="mx-2"
+              aria-label={intl.formatMessage({ id: "pagination.next" })}
+              onClick={() => handleRight()}
+            >
+              <Icon icon={faChevronRight} />
+            </Button>
+          </div>
+        )}
         {stackViewer.stack && (
           <StackFilmstrip
             key={stackViewer.stack.id}

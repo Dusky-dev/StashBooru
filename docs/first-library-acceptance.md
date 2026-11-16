@@ -56,6 +56,16 @@ checks Finish's Library destination and persisted note acknowledgement, starts a
 real scan from Tasks, checks one typed Image and one typed Video with decoded
 thumbnails in All, opens the native Image editor through its viewer, saves a
 title, reloads, restarts the server and checks the same native ID and title.
+
+After restart, the suite links the scanned Image and Video to a Character,
+Artist, Tag and Sub-Copyright. Both media have the same numeric ID in their
+separate native tables. An unrelated fileless Video stays visible in global All
+but is absent from all four profile grids. The parent Copyright includes the
+Sub-Copyright's media. The test opens that profile's shared preview, navigates
+from the Image to the Video and back with the desktop arrows or the visible
+Previous/Next buttons at phone width, then checks the type tabs, Back and
+reload. The profile grid is captured in the same first-library artifact.
+
 It also checks for page errors and editor page overflow. The client is closed
 before the deliberate server shutdown; restart uses a fresh page/context so
 Apollo cannot report shutdown fetch failures or supply the saved title from its
@@ -75,8 +85,8 @@ can run.
 
 This is automated acceptance against actual SQLite, scanning, generated
 thumbnails and metadata persistence. It is not owner usability testing or a
-representative production library. It does not establish Video playback/codec
-coverage, account security, upgrades, non-root hosting, Windows/macOS behavior,
-provider/model integrations, relationship editing or backup recovery. Continue
-E07/E12 with selection, viewer return navigation and native relationships in the
-same isolated-library approach; keep those separate from first-use acceptance.
+representative production library. The profile checks cover list scoping and viewer navigation. They do not establish
+Video playback/codec coverage, physical-device behavior, upgrades, non-root
+hosting, Windows/macOS behavior, account security, provider/model integrations,
+relationship editing or backup recovery. Continue E07/E12 with selection and
+representative-library checks in the same isolated-library approach.

@@ -48,6 +48,33 @@
   verification with that branch is clean. CI and Codex Review remain the
   merge gates. Next: repair the Copyright profile's Characters query.
 
+## All previews at phone widths and populated acceptance (LIB-03/LIB-04) — 2026-11-17
+
+- [#361](https://github.com/Dusky-dev/StashBooru/pull/361) starts from
+  `develop` `707605cf42bf7fb87900f1f5c3e62aed7e1b8402`, after #358 and #359.
+  The independent Copyright Characters filter is on `develop` via #360
+  (merge `045683c7b9b53007d0c5aa3ea98659468ece4c60`).
+- Extend the existing first-library desktop/mobile browser run after its setup,
+  scan, editor and restart checks. The scanned Image and Video share a numeric
+  ID; seed native Character, Artist, Tag and Sub-Copyright links and one unrelated
+  fileless Video. Compare the exact typed card paths that render in global All
+  and each profile's All tab. The parent Copyright includes its child's media.
+- Use the shared Copyright preview to move from Image to Video and back, close
+  it on the same list, and switch Images, Videos and All. Global All still shows
+  the outsider after that journey; Back and refresh retain the profile's scope.
+  The existing CI job also captures each viewport's profile grid.
+- At initial PR head `8d2096ab13f4a3c181e30c676fab2bf28fa5da07`,
+  [first-library CI](https://github.com/Dusky-dev/StashBooru/actions/runs/43961857090/job/133639396079)
+  passed the desktop journey and timed out on a hidden desktop arrow at phone
+  width, confirming the Codex Review finding. All opens the shared viewer
+  without a thumbnail strip; it now shows Previous and Next below the media
+  at phone widths when the sequence can move. The fixture uses those buttons
+  at phone width and the existing desktop arrows at desktop width.
+- Checked the fixture syntax, control conditions and labels against the source.
+  The revised browser journey awaits first-library CI; a local executor was
+  unavailable. It uses a small owned library and does not measure codec
+  playback, touch hardware or production libraries.
+
 ## Upstream sync — Security policy (2026-11-16)
 
 - Fork baseline: `develop` `b170006db0988e1cfdff6983cab17a1810f907eb`; upstream `stashapp/stash/develop` `987c211ca4acf4c62c2b77850b01d97c8b987755` (upstream commits `1678ebfb`, `987c211c`).

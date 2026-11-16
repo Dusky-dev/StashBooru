@@ -761,7 +761,9 @@ The next/previous controls traverse Images **and** Videos without skipping
 either kind. A Video is rendered via the existing lazy native ScenePlayer in
 the Lightbox, not by navigating to the Video detail page or opening the
 independent Videos-only preview queue. Selecting a Video from All's Grid or Wall
-opens the same mixed preview as selecting an Image.
+opens the same mixed preview as selecting an Image. At phone widths, a
+multi-item preview that has no thumbnail strip shows Previous and Next buttons
+below the media.
 
 The reusable Image and Video detail links keep their native URLs and typed
 identities. Video cards in the native Videos-only lists continue using their
@@ -769,7 +771,9 @@ existing Video-only previews; entity Images/Videos tabs remain unchanged.
 Video players mount only for the selected preview item and dispose when the
 user moves back to an Image or closes the Lightbox.
 
-Regression coverage: `tests/browser/all-media.mjs` asserts Image→Video
-and Video→Image boundaries in mixed result order; the selected Character
-fixture also verifies the resulting mixed sequence. These tests need a
-real mounted isolated fixture for full browser verification.
+The [first-library browser suite](first-library-acceptance.md) checks global and
+profile grids against a scanned Image and Video, plus an unrelated fileless
+Video. It covers Copyright descendant scope, both preview navigation directions,
+type tab switches, Back and refresh on desktop and mobile.
+The separate `tests/browser/all-media.mjs` suite covers broader filters, Grid
+and Wall modes and mixed result order on an isolated populated library.
