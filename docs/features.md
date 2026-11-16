@@ -216,6 +216,8 @@ association preview to inspect the effects of changing shared defaults.
 The Copyright list defaults to **Hierarchy** sorting, which keeps each Main
 Copyright above its Sub-Copyrights and respects saved sibling order. Name,
 Sort Name, count and date sorts remain available when a flat list is wanted.
+Directory counts and count sorting include all descendants. An Image, Video or
+Character assigned more than once within a branch counts once for that branch.
 
 Copyrights have their own aliases, artwork, favorites and media/Character links;
 they remain separate from ordinary Tags. Multiple Artists can be attached to an
