@@ -1,3 +1,26 @@
+## Settings search discoverability (SET-01) — 2026-11-16
+
+- Baseline: `develop` `2031c970afeb0f002efc3c61b13572330fba97f3`;
+  branch [`fix/settings-search-discoverability-20261116`](https://github.com/Dusky-dev/StashBooru/tree/fix/settings-search-discoverability-20261116).
+  Verified source `2c07c4019a56620944c3c4f251c341bb99ab3333`, tree
+  `e2ba58d8337b34f44f3ebfb37e638298769cdd74`.
+- Index Media uploads (including Quick upload, drag and drop, and direct URL),
+  the shared filename layout, AVIF/thumbnail resolution, and remote worker
+  fallback using the existing Settings anchors. Upload and thumbnail controls
+  stay in Experimental. Selecting a result uses existing tab/disclosure
+  navigation and does not change preferences. Feature guide now lists these
+  controls in their current sections.
+- `make generate-ui`, `make validate-ui` (129 tests, lint, TypeScript and
+  format) and `make ui-only` passed with the locked pnpm version and Node 20
+  for validation/build. Verified eleven search phrases resolve to four real
+  anchors. The mounted Settings fixture passed on desktop and mobile with
+  temporary probes for the filename, AVIF and Quick upload search results,
+  including opening the upload disclosure without saving. The fixture uses
+  local response stubs; no actual upload or worker operation was performed.
+- Independent Copyright count copy correction is PR #358. Merge-tree
+  verification with that branch is clean. CI and Codex Review remain the
+  merge gates. Next: repair the Copyright profile's Characters query.
+
 ## Upstream sync — Security policy (2026-11-16)
 
 - Fork baseline: `develop` `b170006db0988e1cfdff6983cab17a1810f907eb`; upstream `stashapp/stash/develop` `987c211ca4acf4c62c2b77850b01d97c8b987755` (upstream commits `1678ebfb`, `987c211c`).
