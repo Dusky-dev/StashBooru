@@ -155,7 +155,7 @@ func (rs booruBrowserRoutes) DownloadSettings(w http.ResponseWriter, r *http.Req
 		SharedFilenameLayout string `json:"sharedFilenameLayout,omitempty"`
 	}{
 		booruDownloadSettings: value,
-		SharedFilenameLayout: sharedFilenameLayout,
+		SharedFilenameLayout:  sharedFilenameLayout,
 	})
 }
 func (rs booruBrowserRoutes) UpdateDownloadSettings(w http.ResponseWriter, r *http.Request) {

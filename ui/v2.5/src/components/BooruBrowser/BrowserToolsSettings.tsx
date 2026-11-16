@@ -257,8 +257,8 @@ export function BrowserToolsSettings() {
           . Booru uses built-in filenames if that layout is missing or invalid.
           Common Grabber tokens: %artist%, %copyright%, %character%, %id%,
           %md5%, %ext%, %filename%, %websitename%, %position%, %num%. Use / for
-          subfolders. Missing text metadata becomes <code>unknown</code>;
-          existing files are never overwritten.
+          subfolders. Missing text metadata becomes unknown. Existing files are
+          never overwritten.
         </Form.Text>
       </Form.Group>
       <Form.Group controlId="booru-max-file-size" className="mt-3">

@@ -14,6 +14,11 @@
 - Checked the GET-to-form binding, the Interface link and source whitespace
   against the pinned code. The existing backend and Booru browser CI are
   pending; a local executor was unavailable.
+- On original head `4a26286d29edce0c9974a42a9ddf13f2e3a1f6e7`, both browser jobs and all 129 UI unit
+  tests passed, and Codex Review found no issues. Go lint reported a field
+  alignment issue, and UI lint rejected a semicolon after inline JSX. Align
+  the response fields and use two plain sentences in the help text. The
+  new head needs fresh CI and review.
 
 ## Stack match counts in All (LIB-05) — 2026-11-17
 
