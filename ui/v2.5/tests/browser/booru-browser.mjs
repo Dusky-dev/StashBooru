@@ -277,7 +277,7 @@ try {
           questionable: "Questionable",
           explicit: "Explicit",
         },
-        "Media on this page": {
+        "Media type": {
           "": "All media",
           images: "Images",
           videos: "Videos",
@@ -1883,7 +1883,7 @@ try {
       .waitFor();
     assert.ok(page.url().includes("rating=safe"));
     const hideAIGenerated = page.getByRole("button", {
-      name: "Hide AI-generated posts on this page",
+      name: "Hide AI-generated posts",
       exact: true,
     });
     assert.equal(await hideAIGenerated.getAttribute("aria-pressed"), "false");
@@ -1894,6 +1894,14 @@ try {
     assert.ok(
       !(await hideAIGenerated.getAttribute("class")).includes("active")
     );
+    async function openGalleryPageTwo() {
+      await listingPagination.getByTitle("Next page").click();
+      await dan
+        .getByRole("button", { name: "Inspect Danbooru post 201", exact: true })
+        .waitFor();
+      assert.equal(new URL(page.url()).searchParams.get("p.danbooru"), "2");
+    }
+    await openGalleryPageTwo();
     const requestsBeforeAI = requests.length;
     const waitForFilteredPage = (media, ai) =>
       page.waitForResponse((response) => {
@@ -1908,7 +1916,10 @@ try {
       });
     let filteredResponse = waitForFilteredPage(null, "hide");
     await hideAIGenerated.click();
-    await filteredResponse;
+    assert.equal(
+      new URL((await filteredResponse).url()).searchParams.get("page"),
+      "1"
+    );
     await page.waitForURL((url) => url.searchParams.get("ai") === "hide");
     assert.equal(await hideAIGenerated.getAttribute("aria-pressed"), "true");
     assert.equal(
@@ -1951,10 +1962,14 @@ try {
       await hideAIGenerated.locator('svg[data-icon="slash"]').count(),
       0
     );
+    await openGalleryPageTwo();
     const searchesBeforeMedia = requests.length;
     filteredResponse = waitForFilteredPage("videos", null);
-    await pickFilter("Media on this page", "videos");
-    await filteredResponse;
+    await pickFilter("Media type", "videos");
+    assert.equal(
+      new URL((await filteredResponse).url()).searchParams.get("page"),
+      "1"
+    );
     await dan
       .getByText("Showing 4 posts after the selected filters.", {
         exact: false,
@@ -1986,13 +2001,13 @@ try {
     assert.equal(requests.at(-1).ai, null);
     assert.equal(
       await page
-        .getByRole("button", { name: "Media on this page", exact: true })
+        .getByRole("button", { name: "Media type", exact: true })
         .getAttribute("class")
         .then((c) => c.includes("active")),
       false
     );
     filteredResponse = waitForFilteredPage("images", null);
-    await pickFilter("Media on this page", "images");
+    await pickFilter("Media type", "images");
     await filteredResponse;
     await dan
       .getByText("Showing 8 posts after the selected filters.", {
@@ -2002,7 +2017,7 @@ try {
     assert.equal(await dan.locator(".booru-post").count(), 8);
     assert.equal(requests.at(-1).media, "images");
     filteredResponse = waitForFilteredPage("videos", null);
-    await pickFilter("Media on this page", "videos");
+    await pickFilter("Media type", "videos");
     await filteredResponse;
     await setChecked(
       page.getByLabel("Show thumbnails", { exact: true }),
@@ -2021,7 +2036,7 @@ try {
     );
     await setChecked(page.getByLabel("Show thumbnails", { exact: true }), true);
     filteredResponse = waitForFilteredPage(null, null);
-    await pickFilter("Media on this page", "");
+    await pickFilter("Media type", "");
     await filteredResponse;
     await dan
       .getByRole("button", { name: "Download danbooru post 102", exact: true })
