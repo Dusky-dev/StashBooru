@@ -53,10 +53,17 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
   },
   {
     tab: "experimental",
+    label: "Media uploads",
+    anchor: "experimental-media-uploads",
+    keywords:
+      "quick upload drag and drop direct url import default folder destination conversion tagging",
+  },
+  {
+    tab: "experimental",
     label: "Opt-in thumbnail compression",
     anchor: "experimental-thumbnail-compression",
     keywords:
-      "jpeg jpg webp jxl format quality slider compression thumbnails video previews mp4 webm",
+      "jpeg jpg webp jxl avif format quality resolution slider compression thumbnails video previews mp4 webm",
   },
   {
     tab: "experimental",
@@ -130,7 +137,7 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
     tab: "processing",
     label: "Worker connection",
     anchor: "inference-worker",
-    keywords: "remote cpu gpu url token",
+    keywords: "remote local fallback enable disable cpu gpu url token",
   },
   {
     tab: "processing",
@@ -174,6 +181,12 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
     anchor: "image-filename-display",
     keywords:
       "filename filenames character copyright artist formatted fallback hide",
+  },
+  {
+    tab: "interface",
+    label: "Shared filename layout",
+    anchor: "shared-image-filename-layout",
+    keywords: "grabber imggrabber pattern template booru download image",
   },
   {
     tab: "interface",
