@@ -1585,7 +1585,7 @@ export default function BooruBrowser() {
                 }
               />
               <BooruIconMenu
-                label="Media on this page"
+                label="Media type"
                 icon={faImages}
                 value={active.media ?? ""}
                 options={[
@@ -1598,6 +1598,7 @@ export default function BooruBrowser() {
                     search: browserSearchURL({
                       ...active,
                       media: (value || undefined) as BrowserSearch["media"],
+                      pages: {},
                       inspect: undefined,
                     }),
                   })
@@ -1620,7 +1621,7 @@ export default function BooruBrowser() {
               />
               <BooruIconButton
                 icon={faRobot}
-                label="Hide AI-generated posts on this page"
+                label="Hide AI-generated posts"
                 crossedOut={!!active.hideAI}
                 aria-pressed={!!active.hideAI}
                 onClick={() =>
@@ -1628,6 +1629,7 @@ export default function BooruBrowser() {
                     search: browserSearchURL({
                       ...active,
                       hideAI: !active.hideAI,
+                      pages: {},
                       inspect: undefined,
                     }),
                   })
