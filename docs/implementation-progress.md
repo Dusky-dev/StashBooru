@@ -1,3 +1,23 @@
+## Stack match counts in All (LIB-05) — 2026-11-17
+
+- Based on `develop` `045683c7b9b53007d0c5aa3ea98659468ece4c60` after #360. Branch
+  [`fix/all-stack-match-count-20261117`](https://github.com/Dusky-dev/StashBooru/tree/fix/all-stack-match-count-20261117),
+  source `4679dd6ee7072c07934e167ef97bca6b3a796dfa`, tree `afff5a4baa17240a277b95bd7f2ccc3a40f87e65`.
+- Use the existing grouped `findMedia` match count in global/profile All Grid
+  and Wall. A badge such as **Stack · 2/4 match** distinguishes matching scope
+  from total stack membership. The card still shows the saved representative.
+  Full or ungrouped stacks show their usual total, and expansion still lists
+  all members with actions limited to the individual selection.
+- Extend the isolated visual-stacks browser suite at both viewport widths:
+  filter a mixed four-member stack to Videos while its Image remains the
+  representative, check the partial count in Grid and Wall, then show
+  individual Videos and verify their badges revert to the full stack total.
+- Checked fixture syntax, existing GraphQL fields and Grid/Wall prop wiring
+  against the pinned source. The mounted fixture was not run because the
+  executor is unavailable; the pull request runs the repository CI checks.
+  No changes to query results, selection targets, files or stack membership.
+  The Images list's per-view grouping override remains a separate change.
+
 ## Copyright Characters branch filter (LIB-01) — 2026-11-16
 
 - Baseline: `develop` `707605cf42bf7fb87900f1f5c3e62aed7e1b8402`,
