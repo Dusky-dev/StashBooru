@@ -31,7 +31,7 @@ Fork issues link to the StashBooru repository; upstream help/support links remai
 | **Settings → Library** | Media folders, scan rules and automatic ancestor/profile associations. Inheritance switches save automatically. |
 | **Settings → Processing** | Shared worker connection, links to the complete version-matched worker ZIP, similarity/tagging defaults, conversion rules and upscaling setup. Use each section's Save button. |
 | **Settings → Tasks** | Jobs, scanning and animation inspection, generated files/hashes, Character merging, association review, original-media backups and database management. |
-| **Settings → Experimental** | Video overlap / containment, read-only Alias Collision Inspector, and isolated P12/P13 image storage diagnostics and recovery rehearsals. P12/P13 storage is not live storage activation. |
+| **Settings → Experimental** | Opt-in web uploads and thumbnail formats, Video overlap / containment, read-only Alias Collision Inspector, and isolated P12/P13 image storage diagnostics and recovery rehearsals. P12/P13 storage is not live storage activation. |
 | **Settings → Tools** | Metadata Health diagnostics, developer tools, and Video duplicate checker. |
 | **Settings → System** | Application paths, FFmpeg, transcodes and other server settings. |
 
@@ -39,6 +39,11 @@ On phones, use **Settings section** above the controls to change sections. On
 larger screens the section list stays beside the controls. Both use the same
 section URLs; Back, refresh and existing section bookmarks keep their destination.
 Advanced mode and troubleshooting remain available beside the navigation.
+
+Use **Find a setting** to jump directly to **Media uploads** (try “quick upload”
+or “direct URL”), thumbnail compression (try “AVIF”), the **Shared filename
+layout**, or the worker connection (try “remote fallback”). Opening a search
+result shows the setting; it does not enable an experiment or save a change.
 
 Tasks starts with the job queue, followed by **Update library** (including
 animation inspection beside Scan), **Review profiles & associations**,
