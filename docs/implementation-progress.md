@@ -181,6 +181,22 @@
 - Existing thumbnail support relies on browser codecs before import and Stash's thumbnail encoder afterward. JXL/HEIC previews before import are unavailable unless the user's browser can decode them; Stash's generated thumbnails may also fail when the server cannot decode the source. This limitation is not masked as a successful preview.
 - UI type-check, Biome, and browser acceptance pending CI; live codec matrix not tested.
 
+## Restart Booru media filters at page one (BOO-10) — 2026-11-17
+
+- Based on `develop` `0e8936f316f61227925520e5d06fe268eec6fda5` after #363. Branch
+  [`fix/booru-filter-page-reset-20261117`](https://github.com/Dusky-dev/StashBooru/tree/fix/booru-filter-page-reset-20261117),
+  source `3333bcfca6fc78486846b758aa344748080738c4`, tree `675ab30bcc9f575efe9ccdcf5bdf8584d88c1764`.
+- Media type and Hide AI-generated posts filter across the selected source's
+  results before the server fills the browser page. Changing either now
+  clears the prior page and inspection while keeping the active search or
+  favorites, the selected source and the page size.
+- Updated the guide for filtered searches and favorites, the 24-post default,
+  maximum of 250 displayed posts, and the separate provider batch limit.
+- Extended the mounted fixture to open page two before each filter change
+  and assert a request for page one of the filtered results. Parsed the
+  fixture body and checked the labels and paging against the pinned
+  handlers and fill limits. The existing browser/CI runs are pending.
+
 ## No-prompt quick upload and opt-in remote worker fallback — 2026-11-13
 
 - Baseline: `develop` `4cef61437405918044d3a43c9a1a4709029fbb3a`; branch `feat/quick-upload-no-prompt-remote-worker-controls-20261113`.
