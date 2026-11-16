@@ -488,6 +488,79 @@ async function check(viewport, label) {
       )
     ).findCopyright.image_path;
     assert.deepEqual(await (await page.request.get(after)).body(), imageBytes);
+    // The native Characters list must stay within the Copyright branch, even
+    // when one Character has links at more than one level.
+    const descendantOnly = await character("Descendant Character");
+    const unrelated = await character("Unrelated Character");
+    const linkCharacters =
+      "mutation($id:ID!,$ids:[ID!]!){copyrightPerformersUpdate(copyright_id:$id,performer_ids:$ids){id}}";
+    await call(page, url, linkCharacters, {
+      id: descendant.id,
+      ids: [keep.id, descendantOnly.id],
+    });
+    await call(page, url, linkCharacters, {
+      id: otherParent.id,
+      ids: [unrelated.id],
+    });
+    const counts = await call(
+      page,
+      url,
+      "query($id:ID!){findCopyright(id:$id){performer_count subtree_performer_count}}",
+      { id: first.id }
+    );
+    assert.deepEqual(counts.findCopyright, {
+      performer_count: 1,
+      subtree_performer_count: 2,
+    });
+    const findCharacters =
+      "query($filter:FindFilterType!,$copyrights:HierarchicalMultiCriterionInput!){findPerformers(filter:$filter,performer_filter:{copyrights:$copyrights}){count performers{id}}}";
+    const branch = { value: [first.id], modifier: "INCLUDES_ALL", depth: -1 };
+    for (const [options, depth, count, performers] of [
+      [{ per_page: 1, page: 1 }, -1, 2, [descendantOnly]],
+      [{ per_page: 1, page: 2 }, -1, 2, [keep]],
+      [{ q: "Descendant" }, -1, 1, [descendantOnly]],
+      [{ q: "Unrelated" }, -1, 0, []],
+      [{}, 0, 1, [keep]],
+    ]) {
+      const result = await call(page, url, findCharacters, {
+        filter: { sort: "name", direction: "ASC", ...options },
+        copyrights: { ...branch, depth },
+      });
+      assert.deepEqual(result.findPerformers, { count, performers });
+    }
+    const invalid = await (
+      await page.request.post(url + "/graphql", {
+        data: {
+          query: findCharacters,
+          variables: {
+            filter: {},
+            copyrights: { ...branch, value: ["not-a-copyright-id"] },
+          },
+        },
+      })
+    ).json();
+    assert.match(invalid.errors?.[0]?.message ?? "", /invalid Copyright ID/);
+
+    await page.goto(url + `/copyrights/${first.id}/images`);
+    await page.locator("#copyright-media-tabs-tab-characters").click();
+    await page.waitForURL(
+      (u) => u.pathname === `/copyrights/${first.id}/characters`
+    );
+    const cards = page.locator(
+      '#copyright-media-tabs-tabpane-characters .card-section-title-row a[href^="/performers/"]'
+    );
+    const expectedLinks = [keep, descendantOnly]
+      .map(({ id }) => `/performers/${id}`)
+      .sort();
+    for (const href of expectedLinks) {
+      await cards.and(page.locator(`a[href="${href}"]`)).waitFor();
+    }
+    assert.deepEqual(
+      await cards.evaluateAll((links) =>
+        links.map((link) => link.getAttribute("href")).sort()
+      ),
+      expectedLinks
+    );
     assert.equal(
       await page.evaluate(
         () => document.documentElement.scrollWidth > innerWidth
@@ -501,7 +574,7 @@ async function check(viewport, label) {
     });
     console.log(
       label +
-        ": Copyright rejected create, partial-link retry, hierarchy retry, Cancel, Back, refresh and restart passed"
+        ": Copyright create/edit retry, restart and branch Character list passed"
     );
   } catch (error) {
     await page

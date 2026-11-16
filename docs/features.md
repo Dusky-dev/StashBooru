@@ -223,6 +223,8 @@ Copyright above its Sub-Copyrights and respects saved sibling order. Name,
 Sort Name, count and date sorts remain available when a flat list is wanted.
 Directory counts and count sorting include all descendants. An Image, Video or
 Character assigned more than once within a branch counts once for that branch.
+The **Characters** tab shows each Character linked to this Copyright or any
+Sub-Copyright once. Search, sorting and pagination stay within that branch.
 
 Copyrights have their own aliases, artwork, favorites and media/Character links;
 they remain separate from ordinary Tags. Multiple Artists can be attached to an

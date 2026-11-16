@@ -1,3 +1,30 @@
+## Copyright Characters branch filter (LIB-01) — 2026-11-16
+
+- Baseline: `develop` `707605cf42bf7fb87900f1f5c3e62aed7e1b8402`,
+  after [#358](https://github.com/Dusky-dev/StashBooru/pull/358) and
+  [#359](https://github.com/Dusky-dev/StashBooru/pull/359) both merged after
+  14 successful checks apiece and clean completed Codex Reviews.
+- Branch [`fix/copyright-characters-filter-20261116`](https://github.com/Dusky-dev/StashBooru/tree/fix/copyright-characters-filter-20261116);
+  production source `680cf909b552a9ac3dccc8e8dd26afb7922cbe6b`, tree
+  `bf30edfa466bdf715d0682a3d4d6d6a0a0e0c987`. The native Characters tab was already sending
+  `performer_filter.copyrights`, which failed GraphQL validation before querying
+  the library. Accept the same hierarchy criterion as Images and Videos.
+- Reuse the SQLite hierarchical relationship handler and existing Character list
+  query, using explicit native Copyright-to-Character links. Depth 0 is direct;
+  depth -1 includes descendants. Read-time filtering, distinct totals, text
+  search, sort and pagination share the normal query. Validate numeric filter IDs
+  and pass copies of the input slices to the shared helper. No DB migration or
+  changes to stored links and inheritance rules.
+- Extend the existing owned-server Copyright browser fixture for direct and
+  descendant Character links, one Character linked twice, separate sort pages,
+  matching and empty searches, direct-only scope, invalid ID rejection and
+  actual Characters-tab card links on desktop and mobile. The fixture already
+  runs in first-library CI.
+- Source and binding reviewed; the browser fixture body parsed. This session
+  has no local executor. Code generation, builds and the native browser run
+  require CI; no runtime pass is claimed. Next: inspect the actual CI and
+  Codex results before merging, then continue the populated-library All checks.
+
 ## Settings search discoverability (SET-01) — 2026-11-16
 
 - Baseline: `develop` `2031c970afeb0f002efc3c61b13572330fba97f3`;
