@@ -326,7 +326,7 @@ const CopyrightList: React.FC = () => {
       />
 
       <p className="text-muted small">
-        <FormattedMessage id="copyright_hierarchy.direct_count_help" />
+        <FormattedMessage id="copyright_hierarchy.subtree_count_help" />
       </p>
 
       <div className="pagination-index-container">
