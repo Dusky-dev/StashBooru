@@ -761,7 +761,9 @@ The next/previous controls traverse Images **and** Videos without skipping
 either kind. A Video is rendered via the existing lazy native ScenePlayer in
 the Lightbox, not by navigating to the Video detail page or opening the
 independent Videos-only preview queue. Selecting a Video from All's Grid or Wall
-opens the same mixed preview as selecting an Image.
+opens the same mixed preview as selecting an Image. At phone widths, a
+multi-item preview that has no thumbnail strip shows Previous and Next buttons
+below the media.
 
 The reusable Image and Video detail links keep their native URLs and typed
 identities. Video cards in the native Videos-only lists continue using their

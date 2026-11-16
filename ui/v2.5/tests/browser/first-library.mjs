@@ -228,10 +228,24 @@ async function checkProfileAll(page, url, imageID, label) {
     .click();
   await lightboxLink(imagePath).waitFor();
   const steps = page.locator(".Lightbox-display > .Lightbox-navbutton");
-  await (imageFirst ? steps.last() : steps.first()).click();
+  const compact = page.locator(".Lightbox-compact-navigation");
+  const mobile = label === "mobile";
+  assert.equal(await compact.isVisible(), mobile);
+  function step(forward) {
+    if (mobile) {
+      return compact
+        .getByRole("button", {
+          name: forward ? "Next" : "Previous",
+          exact: true,
+        })
+        .click();
+    }
+    return (forward ? steps.last() : steps.first()).click();
+  }
+  await step(imageFirst);
   await lightboxLink(videoPath).waitFor();
   await page.locator(".unified-media-native-scene-player .video-js").waitFor();
-  await (imageFirst ? steps.first() : steps.last()).click();
+  await step(!imageFirst);
   await lightboxLink(imagePath).waitFor();
   await page
     .locator(".unified-media-native-scene-player")

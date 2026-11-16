@@ -62,8 +62,9 @@ Artist, Tag and Sub-Copyright. Both media have the same numeric ID in their
 separate native tables. An unrelated fileless Video stays visible in global All
 but is absent from all four profile grids. The parent Copyright includes the
 Sub-Copyright's media. The test opens that profile's shared preview, navigates
-from the Image to the Video and back, then checks the type tabs, Back and reload.
-The profile grid is captured in the same first-library artifact.
+from the Image to the Video and back with the desktop arrows or the visible
+Previous/Next buttons at phone width, then checks the type tabs, Back and
+reload. The profile grid is captured in the same first-library artifact.
 
 It also checks for page errors and editor page overflow. The client is closed
 before the deliberate server shutdown; restart uses a fresh page/context so
