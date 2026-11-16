@@ -4,7 +4,7 @@ import { StackProposalsDialog } from "../VisualStacks/StackProposalsDialog";
 import { StackMember } from "../VisualStacks/media";
 import { CollapseStacksOption } from "src/models/list-filter/media";
 import { BooleanCriterion } from "src/models/list-filter/criteria/criterion";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { Alert, Button } from "react-bootstrap";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
@@ -15,6 +15,7 @@ import { OrganizedCriterionOption } from "src/models/list-filter/criteria/organi
 import { useZoomKeybinds } from "../List/ZoomSlider";
 import useFocus from "src/utils/focus";
 import { useFilteredItemList } from "../List/ItemList";
+import { useListScrollRestoration } from "../List/useListScrollRestoration";
 import { FilteredListToolbar } from "../List/FilteredListToolbar";
 import { FilterTags } from "../List/FilterTags";
 import { ListOperations } from "../List/ListOperationButtons";
@@ -70,10 +71,7 @@ function useResult(filter: ListFilterModel) {
   });
 }
 
-const historyState = new Map<
-  string,
-  { selected: GQL.MediaListItemFragment[]; scroll: number }
->();
+const historySelection = new Map<string, GQL.MediaListItemFragment[]>();
 
 interface IFilteredMediaList {
   filterHook?: (filter: ListFilterModel) => ListFilterModel;
@@ -90,10 +88,10 @@ const FilteredMediaListComponent = ({
   const searchFocus = useFocus();
   const historyKey = location.key ?? location.pathname + location.search;
   const restore = useMemo(
-    () => (history.action === "POP" ? historyState.get(historyKey) : undefined),
+    () =>
+      history.action === "POP" ? historySelection.get(historyKey) : undefined,
     [historyKey, history.action]
   );
-  const pendingScroll = useRef(restore?.scroll);
   const { filterState, queryResult, listSelect, modalState, showEditFilter } =
     useFilteredItemList({
       filterStateProps: {
@@ -103,7 +101,7 @@ const FilteredMediaListComponent = ({
         useURL: true,
       },
       queryResultProps: { useResult, getCount, getItems, filterHook },
-      initialSelected: restore?.selected,
+      initialSelected: restore,
     });
   const {
     showSidebar,
@@ -115,6 +113,12 @@ const FilteredMediaListComponent = ({
   const { filter, setFilter } = filterState;
   const { effectiveFilter, result, items, totalCount, cachedResult } =
     queryResult;
+  const listReady = !result.loading && !result.error && !!result.data;
+  const listRef = useListScrollRestoration({
+    view,
+    filter,
+    ready: listReady && !sidebarStateLoading,
+  });
 
   useEffect(() => {
     const refetchAfterUpload = () => {
@@ -150,35 +154,13 @@ const FilteredMediaListComponent = ({
     onChangeZoom: (zoom) => setFilter(filter.setZoom(zoom)),
   });
   useEffect(() => {
-    if (restore) {
-      pendingScroll.current = restore.scroll;
-      restoreSelection(restore.selected);
-    } else if (history.action !== "REPLACE") pendingScroll.current = undefined;
-  }, [restore, restoreSelection, history.action]);
+    if (restore) restoreSelection(restore);
+  }, [restore, restoreSelection]);
   useEffect(() => {
-    const scroll = pendingScroll.current;
-    if (result.loading || sidebarStateLoading || scroll === undefined) return;
-    const frame = requestAnimationFrame(() => {
-      window.scrollTo(0, scroll);
-      pendingScroll.current = undefined;
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [result.loading, sidebarStateLoading]);
-  useEffect(() => {
-    const save = () => {
-      historyState.set(historyKey, {
-        selected: selectedItems,
-        scroll: pendingScroll.current ?? window.scrollY,
-      });
-      if (historyState.size > 8)
-        historyState.delete(historyState.keys().next().value!);
-    };
-    save();
-    window.addEventListener("scroll", save, { passive: true });
-    return () => {
-      save();
-      window.removeEventListener("scroll", save);
-    };
+    historySelection.set(historyKey, selectedItems);
+    if (historySelection.size > 8) {
+      historySelection.delete(historySelection.keys().next().value!);
+    }
   }, [historyKey, selectedItems]);
 
   const refreshed = useCallback(
@@ -294,6 +276,7 @@ const FilteredMediaListComponent = ({
   if (sidebarStateLoading) return null;
   return (
     <div
+      ref={listRef}
       className={cx("item-list-container media-list", {
         "hide-sidebar": !showSidebar,
       })}

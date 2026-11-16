@@ -29,6 +29,86 @@ async function call(page, url, query, variables = {}) {
   assert.equal(payload.errors, undefined, JSON.stringify(payload.errors));
   return payload.data;
 }
+async function checkListReturn(page, url, media) {
+  // Add enough real scanned Images to scroll on page two even on desktop.
+  const pngs = await page.evaluate(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 128;
+    canvas.height = 96;
+    const context = canvas.getContext("2d");
+    return Array.from({ length: 31 }, (_, i) => {
+      context.fillStyle = `rgb(${32 + i * 7}, 110, 155)`;
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL("image/png").split(",")[1];
+    });
+  });
+  await Promise.all(
+    pngs.map((png, i) =>
+      writeFile(join(media, `scroll-${i}.png`), Buffer.from(png, "base64"))
+    )
+  );
+  await call(
+    page,
+    url,
+    "mutation($path: String!) {metadataScan(input: {paths: [$path]})}",
+    { path: media }
+  );
+  let secondPage;
+  for (let attempt = 0; attempt < 120; attempt++) {
+    secondPage = (
+      await call(
+        page,
+        url,
+        '{findImages(filter: {per_page: 16, page: 2, sort: "path", direction: ASC}) {count images {id}}}'
+      )
+    ).findImages;
+    if (secondPage.count === 32) break;
+    await new Promise((done) => setTimeout(done, 250));
+  }
+  assert.equal(secondPage?.count, 32, "Scan must populate both Images pages");
+  assert.equal(secondPage.images.length, 16);
+
+  for (const [route, list] of [
+    ["/images", ".image-list"],
+    ["/media", ".media-list"],
+  ]) {
+    await page.goto(url + route + "?sortby=path&perPage=16&z=3&p=2", {
+      waitUntil: "networkidle",
+    });
+    // Exercise the app's restoration even when Chromium cannot restore a
+    // document position automatically.
+    await page.evaluate(() => {
+      window.history.scrollRestoration = "manual";
+    });
+    const detail = `/images/${secondPage.images[9].id}`;
+    const selector = `${list} .card-section-title-row > a[href="${detail}"]`;
+    const link = page.locator(selector);
+    await link.scrollIntoViewIfNeeded();
+    const offset = await page.evaluate(() => window.scrollY);
+    assert.ok(offset > 150, `${route} detail must open from a scrolled list`);
+    const returnURL = page.url();
+    await link.click();
+    await page.waitForURL(url + detail);
+    await page.getByRole("tab", { name: "Edit", exact: true }).waitFor();
+    await page.waitForFunction(() => window.scrollY === 0);
+
+    await page.goBack();
+    await page.waitForURL(returnURL);
+    await page.waitForFunction(
+      ({ selector, offset }) => {
+        const card = document.querySelector(selector)?.getBoundingClientRect();
+        return (
+          Math.abs(window.scrollY - offset) <= 2 &&
+          card &&
+          card.bottom > 0 &&
+          card.top < window.innerHeight
+        );
+      },
+      { selector, offset },
+      { timeout: 5000 }
+    );
+  }
+}
 async function check(viewport, label) {
   const directory = join(root, label);
   const media = join(directory, "media");
@@ -397,6 +477,7 @@ async function check(viewport, label) {
   assert.equal(await title().inputValue(), "Final save");
   assert.deepEqual(await snapshot(), expected("Final save"));
   assert.deepEqual(await readFile(filename), bytes);
+  await checkListReturn(page, url, media);
   assert.deepEqual(errors, []);
   await page.close();
   await instance.stop();
@@ -404,7 +485,7 @@ async function check(viewport, label) {
   console.log(
     "Image editor " +
       label +
-      ": repeated saves, scalar full field, real rejection/draft retry, Back, refresh/restart, native relationships and PNG bytes passed."
+      ": repeated saves, rejection/draft retry, Back with scroll restoration, restart, native relationships and PNG bytes passed."
   );
 }
 try {
