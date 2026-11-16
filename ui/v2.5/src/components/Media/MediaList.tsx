@@ -85,7 +85,6 @@ const FilteredMediaListComponent = ({
   view = View.Media,
 }: IFilteredMediaList) => {
   const intl = useIntl();
-  const [{ data: localInterface }] = useInterfaceLocalForage();
   const history = useHistory();
   const location = useLocation();
   const searchFocus = useFocus();
@@ -200,9 +199,7 @@ const FilteredMediaListComponent = ({
   const explicitCollapse = filter.criteriaFor(
     "collapse_stacks"
   ) as BooleanCriterion[];
-  const collapsed = explicitCollapse.length
-    ? explicitCollapse.some((criterion) => criterion.value === "true")
-    : localInterface?.hideStackVariants !== false;
+  const collapsed = result.variables.media_filter?.collapse_stacks === true;
   const hiddenSelected = selectedItems.filter(
     (m) => !items.some((item) => item.id === m.id)
   ).length;
@@ -424,6 +421,7 @@ const FilteredMediaListComponent = ({
             <LoadedContent loading={result.loading} error={result.error}>
               <MediaListContent
                 items={items}
+                groupedStacks={collapsed}
                 filter={effectiveFilter}
                 selectedIds={selectedIds}
                 onSelectChange={onSelectChange}

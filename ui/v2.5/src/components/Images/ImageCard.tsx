@@ -31,6 +31,7 @@ import { imageDisplayHeading } from "src/utils/imageHeadingVisible";
 
 interface IImageCardProps {
   stackSelectedIds?: Set<string>;
+  stackMatchCount?: number;
   onStackMemberSelect?: (member: StackMember, selected: boolean) => void;
   image: GQL.SlimImageDataFragment;
   cardWidth?: number;
@@ -129,6 +130,7 @@ const ImageCardPopovers = PatchComponent(
           <ButtonGroup className="card-popovers">
             <VisualStackBadge
               stack={props.image.visual_stack}
+              matchCount={props.stackMatchCount}
               selectedIds={props.stackSelectedIds}
               onSelectMember={props.onStackMemberSelect}
             />

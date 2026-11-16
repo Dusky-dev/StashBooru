@@ -13,6 +13,7 @@ import { stackPath } from "./identity";
 
 interface Props {
   stack?: GQL.VisualStackSummaryFragment | null;
+  matchCount?: number;
   selectedIds?: Set<string>;
   onSelectMember?: (member: StackMember, selected: boolean) => void;
 }
@@ -67,6 +68,7 @@ function ExpandedMembers({
 }
 export function VisualStackBadge({
   stack,
+  matchCount,
   selectedIds,
   onSelectMember,
 }: Props) {
@@ -78,6 +80,11 @@ export function VisualStackBadge({
     skip: !expanded || !stack,
   });
   if (!stack) return null;
+  const memberCount = stack.member_count;
+  const partialMatch = matchCount !== undefined && matchCount < memberCount;
+  const countLabel = partialMatch
+    ? `${matchCount}/${memberCount} match`
+    : memberCount;
   return (
     <div className="visual-stack-card" onClick={(e) => e.stopPropagation()}>
       <Button
@@ -90,7 +97,7 @@ export function VisualStackBadge({
           setExpanded(!expanded);
         }}
       >
-        Stack · {stack.member_count}
+        Stack · {countLabel}
       </Button>
       <Overlay
         show={expanded}
@@ -112,6 +119,7 @@ export function VisualStackBadge({
           onClick={(e) => e.stopPropagation()}
         >
           <small>
+            {partialMatch && "The card shows the stack representative. "}
             All members are shown here, including members outside the current
             filters. File actions target selected members only.
           </small>

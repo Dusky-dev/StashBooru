@@ -26,6 +26,7 @@ const zoomHeights = [180, 240, 320, 400];
 interface Props {
   onStackMemberSelect?: (member: StackMember, selected: boolean) => void;
   items: GQL.MediaListItemFragment[];
+  groupedStacks: boolean;
   selectedIds: Set<string>;
   zoomIndex: number;
   onSelectChange: (id: string, selected: boolean, shiftKey: boolean) => void;
@@ -34,6 +35,7 @@ interface Props {
 
 export function MediaGrid({
   items,
+  groupedStacks,
   selectedIds,
   zoomIndex,
   onSelectChange,
@@ -56,6 +58,7 @@ export function MediaGrid({
           <ImageCard
             key={item.id}
             image={item.image}
+            stackMatchCount={groupedStacks ? item.stack_match_count : undefined}
             cardWidth={cardWidth}
             zoomIndex={zoomIndex}
             stackSelectedIds={selectedIds}
@@ -78,6 +81,7 @@ export function MediaGrid({
           <SceneCard
             key={item.id}
             scene={item.scene}
+            stackMatchCount={groupedStacks ? item.stack_match_count : undefined}
             width={cardWidth}
             zoomIndex={zoomIndex}
             queue={queue}
@@ -112,6 +116,7 @@ const MixedGallery = Gallery as unknown as GalleryI<MediaPhoto>;
 
 export function MediaWall({
   items,
+  groupedStacks,
   selectedIds,
   zoomIndex,
   onSelectChange,
@@ -172,6 +177,7 @@ export function MediaWall({
   });
   function renderPhoto(props: RenderImageProps<MediaPhoto>) {
     const item = props.photo.item;
+    const matchCount = groupedStacks ? item.stack_match_count : undefined;
     const extra = {
       maxHeight:
         props.direction === "column" ? props.photo.height : rowHeight * 1.3,
@@ -191,6 +197,7 @@ export function MediaWall({
             item.image.visual_stack && (
               <VisualStackBadge
                 stack={item.image.visual_stack}
+                matchCount={matchCount}
                 selectedIds={selectedIds}
                 onSelectMember={onStackMemberSelect}
               />
@@ -213,6 +220,7 @@ export function MediaWall({
           item.scene.visual_stack && (
             <VisualStackBadge
               stack={item.scene.visual_stack}
+              matchCount={matchCount}
               selectedIds={selectedIds}
               onSelectMember={onStackMemberSelect}
             />

@@ -9,6 +9,7 @@ import { MediaGrid, MediaWall } from "./MediaCards";
 interface Props {
   onStackMemberSelect?: (member: StackMember, selected: boolean) => void;
   items: GQL.MediaListItemFragment[];
+  groupedStacks: boolean;
   filter: ListFilterModel;
   selectedIds: Set<string>;
   onSelectChange: (id: string, selected: boolean, shiftKey: boolean) => void;
@@ -18,6 +19,7 @@ interface Props {
 // renders must not feed fresh empty arrays back into the Lightbox provider.
 export function MediaListContent({
   items,
+  groupedStacks,
   filter,
   selectedIds,
   onSelectChange,
@@ -55,6 +57,7 @@ export function MediaListContent({
   );
   const props = {
     items,
+    groupedStacks,
     selectedIds,
     zoomIndex: filter.zoomIndex,
     onSelectChange,

@@ -36,9 +36,12 @@ Settings → Interface preference; it does not change any stack memberships.
 
 Native media filters execute first. A stack appears when any member matches;
 its representative can be outside the filters, including the media-type filter.
-Expanding the representative card shows all members with individual selection,
-preview and native links. A notice appears only when already-selected members
-are hidden by grouping or other filters.
+In All's Grid and Wall, **Stack · 2/4 match** means two of the stack's four
+members are in the current list scope. The card still shows the representative.
+If every member matches, or **Show individual variants** is on, the badge
+shows the total stack size instead. Expanding the card shows all members with
+individual selection, preview and native links. A notice appears only when
+already-selected members are hidden by grouping or other filters.
 
 Grouping occurs before pagination. `count` counts displayed cards;
 `image_count` and `video_count` describe representative card kinds;
@@ -129,9 +132,12 @@ STASH_BROWSER_ALLOW_STACK_WRITES=1 STASH_BROWSER_ENGINE=firefox \
 ```
 
 The explicit fixture flag permits grouping mutations; the suite cleans up its
-created stacks and intercepts native playback-activity writes. The integration
-suite separately verifies actual file bytes, gallery order, representative
-deletion, stale-write rejection, failed split/merge rollback and reviewed evidence.
+created stacks and intercepts native playback-activity writes. A Video filter
+on a four-member stack with an Image representative checks the partial-match
+badge in All's Grid and Wall and the total on each ungrouped Video. The
+integration suite separately verifies actual file bytes, gallery order,
+representative deletion, stale-write rejection, failed split/merge rollback
+and reviewed evidence.
 Before-grouping and desktop/mobile preview captures are in `docs/images/p08`.
 Exact publication SHAs and the PR are recorded in the implementation ledger.
 
