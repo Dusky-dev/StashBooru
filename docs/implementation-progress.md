@@ -116,6 +116,28 @@
 - Port upstream task-queue, dispatcher, cancellation and preview regression tests, plus a focused fork-only shared-slot test. No workflow, schema or dependency updates needed.
 - Stage as an upstream-parent merge commit on an isolated sync branch for CI/Codex review before merging into fork `develop`. GitHub CI and live scan stress testing pending.
 
+## Restore list scroll after Image details (LIB-03/LIB-04) — 2026-11-17
+
+- Baseline: `develop` `74e1a9a3b01686db92d849b1e75a930566b75ea5` after #362 (14 green checks and clean
+  Codex Review). Branch
+  [`fix/image-back-scroll-20261117`](https://github.com/Dusky-dev/StashBooru/tree/fix/image-back-scroll-20261117),
+  source `cc8dacf0966a249ad1655a88082859705be5a272`, tree `2617eba217a8a6f975d4d12adece33c5e874d8a9`.
+- A native Image detail opens at the top. Back to the active Images list or
+  All restores the same history entry's scroll offset once its filter,
+  results and card layout are ready. Keep that position through filter URL
+  normalization. New entries do not inherit an earlier position, and
+  scrolling while waiting cancels the restore. All retains its existing
+  typed selection handling.
+- Extended the real-server image-editor browser fixture to scan a second
+  page of Images at desktop and phone widths. Open a native detail from a
+  scrolled second page of Images and All, then verify the URL, offset and
+  visible card on Back with browser scroll restoration disabled in the test.
+- Parsed the browser fixture and checked the scroll hook in an isolated
+  lifecycle simulation: save before navigation, wait through Back and URL
+  replacement, restore the right entry after data load, cancel on user
+  input, and remove timers/listeners on exit. The mounted browser test
+  awaits first-library CI; no local executor was available.
+
 ## Local JPEG upload previews and refreshed import dropzone — 2026-11-13
 
 - Baseline: merged PR #354 at `develop` `8d0feca93e8a1c8e0bc95e521c357289ba6e0061`; follow-up branch `fix/media-upload-jpeg-preview-dropzone-20261113`.
