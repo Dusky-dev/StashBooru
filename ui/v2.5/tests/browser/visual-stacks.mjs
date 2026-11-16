@@ -378,6 +378,46 @@ try {
       );
       await wallBadge.click();
 
+      // Both Videos match this filtered stack, but the chosen Image
+      // representative is still the card in Grid and Wall.
+      const filtered = new URL(wallURL);
+      filtered.searchParams.append(
+        "c",
+        JSON.stringify({
+          type: "media_types",
+          modifier: "EQUALS",
+          value: ["VIDEO"],
+        })
+      );
+      await page.goto(filtered.href, { waitUntil: "domcontentloaded" });
+      const filteredWallBadge = page
+        .locator(".media-wall .visual-stack-wall-control")
+        .getByRole("button", { name: "Stack · 2/4 match", exact: true });
+      await filteredWallBadge.click();
+      const filteredMembers = page.locator(".visual-stack-expanded");
+      await filteredMembers
+        .getByText("The card shows the stack representative.", { exact: false })
+        .waitFor();
+      await filteredMembers.locator('a[href="/images/2"]').waitFor();
+      await filteredMembers.locator('a[href="/scenes/1"]').waitFor();
+      assert.equal(
+        await filteredMembers.locator(".visual-stack-expanded-member").count(),
+        4
+      );
+      filtered.searchParams.set("disp", "0"); // Grid
+      await page.goto(filtered.href, { waitUntil: "domcontentloaded" });
+      await card(page, "IMAGE", "2")
+        .getByRole("button", { name: "Stack · 2/4 match", exact: true })
+        .waitFor();
+      await viewOptions.click();
+      await individualVariants.click();
+      for (const id of ["1", "2"]) {
+        await card(page, "VIDEO", id)
+          .getByRole("button", { name: "Stack · 4", exact: true })
+          .waitFor();
+      }
+      assert.equal(await card(page, "IMAGE", "2").count(), 0);
+
       // Images-only Wall: the true Image representative must be present
       // exactly once. Opening its stack expands hidden Image/Video variants
       // without navigating away or changing the number of Wall cards.
@@ -544,7 +584,7 @@ try {
       );
       assert.deepEqual(errors, []);
       console.log(
-        `${engineName} ${width}px: default representative grouping, Grid and both Wall expansion controls, native pHash suggestion and staged Save, create, reorder, split, merge and unstack passed`
+        `${engineName} ${width}px: representative grouping and match counts, Grid and both Wall expansion controls, native pHash suggestion and staged Save, create, reorder, split, merge and unstack passed`
       );
     } catch (error) {
       if (shots)

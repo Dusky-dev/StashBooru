@@ -128,6 +128,7 @@ export const ScenePreview: React.FC<IScenePreviewProps> = React.memo(
 
 interface ISceneCardProps {
   stackSelectedIds?: Set<string>;
+  stackMatchCount?: number;
   onStackMemberSelect?: (member: StackMember, selected: boolean) => void;
   // Mixed All overrides the global Video-only preview sequence. Other
   // SceneCard callers continue using the existing native Video carousel.
@@ -338,6 +339,7 @@ const SceneCardPopovers = React.memo(
             <ButtonGroup className="card-popovers">
               <VisualStackBadge
                 stack={props.scene.visual_stack}
+                matchCount={props.stackMatchCount}
                 selectedIds={props.stackSelectedIds}
                 onSelectMember={props.onStackMemberSelect}
               />
