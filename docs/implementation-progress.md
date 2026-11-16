@@ -17,6 +17,12 @@
   executor is unavailable; the pull request runs the repository CI checks.
   No changes to query results, selection targets, files or stack membership.
   The Images list's per-view grouping override remains a separate change.
+- Original head `b36965c3c09f450c1e795fb6cef7b1687eb9f3b0` passed all 129 UI unit tests and UI lint.
+  [TypeScript CI](https://github.com/Dusky-dev/StashBooru/actions/runs/43969558741/job/133657807184)
+  reported TS18048: Apollo query variables are optional. Guard the variables
+  before reading the grouping flag, retaining the total badge if the flag
+  is unavailable. The original head's Codex Review completed without
+  findings. Fresh CI and review are needed for the guarded head.
 
 ## Copyright Characters branch filter (LIB-01) — 2026-11-16
 

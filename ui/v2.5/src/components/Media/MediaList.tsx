@@ -199,7 +199,7 @@ const FilteredMediaListComponent = ({
   const explicitCollapse = filter.criteriaFor(
     "collapse_stacks"
   ) as BooleanCriterion[];
-  const collapsed = result.variables.media_filter?.collapse_stacks === true;
+  const collapsed = result.variables?.media_filter?.collapse_stacks === true;
   const hiddenSelected = selectedItems.filter(
     (m) => !items.some((item) => item.id === m.id)
   ).length;
