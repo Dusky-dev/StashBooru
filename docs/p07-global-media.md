@@ -769,7 +769,9 @@ existing Video-only previews; entity Images/Videos tabs remain unchanged.
 Video players mount only for the selected preview item and dispose when the
 user moves back to an Image or closes the Lightbox.
 
-Regression coverage: `tests/browser/all-media.mjs` asserts Image→Video
-and Video→Image boundaries in mixed result order; the selected Character
-fixture also verifies the resulting mixed sequence. These tests need a
-real mounted isolated fixture for full browser verification.
+The [first-library browser suite](first-library-acceptance.md) checks global and
+profile grids against a scanned Image and Video, plus an unrelated fileless
+Video. It covers Copyright descendant scope, both preview navigation directions,
+type tab switches, Back and refresh on desktop and mobile.
+The separate `tests/browser/all-media.mjs` suite covers broader filters, Grid
+and Wall modes and mixed result order on an isolated populated library.

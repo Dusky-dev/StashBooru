@@ -114,6 +114,159 @@ async function mutation(page, name, action) {
   return payload.data;
 }
 
+async function graphql(page, url, query, variables = {}) {
+  const payload = await (
+    await page.request.post(`${url}/graphql`, { data: { query, variables } })
+  ).json();
+  assert.equal(payload.errors, undefined, JSON.stringify(payload.errors));
+  return payload.data;
+}
+
+async function checkProfileAll(page, url, imageID, label) {
+  const { findScenes } = await graphql(
+    page,
+    url,
+    "{ findScenes { scenes { id } } }"
+  );
+  assert.equal(findScenes.scenes.length, 1);
+  const videoID = findScenes.scenes[0].id;
+  // Independent Image and Video ID spaces can reuse the same numeric ID.
+  assert.equal(imageID, videoID);
+  const { performer, studio, tag, copyright, outside } = await graphql(
+    page,
+    url,
+    `mutation {
+      performer: performerCreate(input: { name: "Fixture Character" }) { id }
+      studio: studioCreate(input: { name: "Fixture Artist" }) { id }
+      tag: tagCreate(input: { name: "Fixture Tag" }) { id }
+      copyright: copyrightCreate(input: { name: "Fixture Copyright" }) { id }
+      outside: sceneCreate(input: { title: "Unrelated Video" }) { id }
+    }`
+  );
+  const { child } = await graphql(
+    page,
+    url,
+    `mutation ($parent: ID!) {
+      child: copyrightCreate(input: { name: "Fixture Sub-Copyright", parent_ids: [$parent] }) { id }
+    }`,
+    { parent: copyright.id }
+  );
+  const links = {
+    performer_ids: [performer.id],
+    studio_id: studio.id,
+    tag_ids: [tag.id],
+  };
+  await graphql(
+    page,
+    url,
+    `mutation (
+      $image: ImageUpdateInput!, $video: SceneUpdateInput!,
+      $imageID: ID!, $videoID: ID!, $child: ID!
+    ) {
+      imageUpdate(input: $image) { id }
+      sceneUpdate(input: $video) { id }
+      imageCopyrightsUpdate(image_id: $imageID, copyright_ids: [$child]) { id }
+      sceneCopyrightsUpdate(scene_id: $videoID, copyright_ids: [$child]) { id }
+    }`,
+    {
+      image: { id: imageID, ...links },
+      video: { id: videoID, ...links },
+      imageID,
+      videoID,
+      child: child.id,
+    }
+  );
+
+  const imagePath = `/images/${imageID}`;
+  const videoPath = `/scenes/${videoID}`;
+  const mixed = [imagePath, videoPath];
+  const global = [...mixed, `/scenes/${outside.id}`];
+  const cardLinkSelector =
+    ".media-list .grid-card :is(a.image-card-link, a.scene-card-link)";
+  async function expectGrid(paths) {
+    await page.waitForFunction(
+      ({ selector, expected }) => {
+        const rendered = Array.from(
+          document.querySelectorAll(selector),
+          (link) => new URL(link.href).pathname
+        );
+        return expected.every((path) => rendered.includes(path));
+      },
+      { selector: cardLinkSelector, expected: paths }
+    );
+    const actual = await page
+      .locator(cardLinkSelector)
+      .evaluateAll((links) =>
+        links.map((link) => new URL(link.href).pathname).sort()
+      );
+    assert.deepEqual(actual, [...paths].sort(), page.url());
+  }
+
+  await page.goto(`${url}/media`);
+  await expectGrid(global);
+  for (const [route, id] of [
+    ["performers", performer.id],
+    ["studios", studio.id],
+    ["tags", tag.id],
+    ["copyrights", copyright.id],
+  ]) {
+    await page.goto(`${url}/${route}/${id}/all`);
+    await expectGrid(mixed);
+  }
+
+  const profilePath = `/copyrights/${copyright.id}/all`;
+  const profileURL = page.url();
+  const firstLink = await page
+    .locator(cardLinkSelector)
+    .first()
+    .getAttribute("href");
+  const imageFirst = new URL(firstLink, url).pathname === imagePath;
+  const lightboxLink = (path) =>
+    page.locator(`.Lightbox-footer-center .image-link[href="${path}"]`);
+  await page
+    .locator(`.media-list .image-card-link[href="${imagePath}"]`)
+    .click();
+  await lightboxLink(imagePath).waitFor();
+  const steps = page.locator(".Lightbox-display > .Lightbox-navbutton");
+  await (imageFirst ? steps.last() : steps.first()).click();
+  await lightboxLink(videoPath).waitFor();
+  await page.locator(".unified-media-native-scene-player .video-js").waitFor();
+  await (imageFirst ? steps.first() : steps.last()).click();
+  await lightboxLink(imagePath).waitFor();
+  await page
+    .locator(".unified-media-native-scene-player")
+    .waitFor({ state: "hidden" });
+  await page.getByTitle("Close Lightbox", { exact: true }).click();
+  await page.locator(".Lightbox").waitFor({ state: "hidden" });
+  assert.equal(page.url(), profileURL);
+
+  for (const [tab, selector, path] of [
+    ["images", "a.image-card-link", imagePath],
+    ["videos", "a.scene-card-link", videoPath],
+  ]) {
+    await page.locator(`#copyright-media-tabs-tab-${tab}`).click();
+    const link = page.locator(
+      `#copyright-media-tabs-tabpane-${tab} ${selector}`
+    );
+    await link.waitFor();
+    assert.equal(new URL(await link.getAttribute("href"), url).pathname, path);
+  }
+  await page.locator("#copyright-media-tabs-tab-all").click();
+  await expectGrid(mixed);
+
+  await page.goto(`${url}/media`);
+  await expectGrid(global);
+  await page.goBack();
+  await page.waitForURL((u) => u.pathname === profilePath);
+  await expectGrid(mixed);
+  await page.reload();
+  await expectGrid(mixed);
+  await page.screenshot({
+    path: join(artifacts, `${label}-profile-all.png`),
+    fullPage: true,
+  });
+}
+
 async function check(viewport, label) {
   const directory = join(root, label);
   const media = join(directory, "media");
@@ -326,9 +479,10 @@ async function check(viewport, label) {
       await page.locator("#image-edit-details #title").inputValue(),
       title
     );
+    await checkProfileAll(page, url, imageID, label);
     assert.deepEqual(errors, []);
     console.log(
-      `${label}: fresh setup, scan, typed All cards/thumbnails, Image title save, refresh and server restart passed`
+      `${label}: setup, scan, Image title persistence, and global/profile All navigation passed`
     );
   } catch (error) {
     await page
