@@ -225,6 +225,23 @@
 - Existing thumbnail support relies on browser codecs before import and Stash's thumbnail encoder afterward. JXL/HEIC previews before import are unavailable unless the user's browser can decode them; Stash's generated thumbnails may also fail when the server cannot decode the source. This limitation is not masked as a successful preview.
 - UI type-check, Biome, and browser acceptance pending CI; live codec matrix not tested.
 
+## Make Booru visibility controls and counts agree (BOO-10) — 2026-11-17
+
+- Baseline: `develop` `04a4b6175842002522d049496dd81a70b30fd0d5` after #365 and #366 merged with 15
+  successful checks each. Branch
+  [`fix/booru-visibility-paging-20261117`](https://github.com/Dusky-dev/StashBooru/tree/fix/booru-visibility-paging-20261117),
+  source `d63805c4a4cebe68d11ac98a9c4e4e508e740895`, tree `95d5de4ece4d74ba8756852f08250a18f435b44c`.
+- Showing or hiding ignored posts or blacklisted posts now restarts the
+  filtered sequence at page one and closes the old inspection. The selected
+  source, query or favorites, and page size are preserved.
+- Describe the blacklist count as posts skipped during loading. It can
+  include posts from several provider pages, so an empty result no longer
+  attributes every missing post to the blacklist. Updated the browser guide.
+- Extended the existing browser fixture to exercise both switches from page
+  two and check page-one requests, reload, and the blacklist count with and
+  without visible posts. Parsed the fixture and checked URL state handling
+  against pinned code. Mounted tests and CI remain pending.
+
 ## Restart Booru media filters at page one (BOO-10) — 2026-11-17
 
 - Based on `develop` `0e8936f316f61227925520e5d06fe268eec6fda5` after #363. Branch
