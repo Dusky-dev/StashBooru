@@ -842,6 +842,23 @@ Updated: 2026-10-26
   Image/Video bulk-save/partial-failure acceptance. The five broad workstreams in
   the experience audit remain open; this is not completion of P01–P13.
 
+## Copyright directory count scope (LIB-02) — 2026-11-16
+
+- Baseline: `develop` `2031c970afeb0f002efc3c61b13572330fba97f3`;
+  branch [`fix/copyright-count-scope-20261116`](https://github.com/Dusky-dev/StashBooru/tree/fix/copyright-count-scope-20261116).
+  Implemented source `d8233c1016fc7efbe8894f56a6723b4684b0dd05`, tree
+  `b76cc1e92abe846775b6715039922a5a00e4be34`.
+- The directory's counts and count sorts use distinct branch totals, which
+  include the listed Copyright and its descendants. The old help text said
+  the opposite. Explain the actual scope in the English fallback message and
+  the feature guide; preserve existing counts, sorting and relationships.
+- Verified the list's GraphQL count aliases and the backend distinct-count
+  sort expressions, the new message key's English fallback, focused Biome
+  lint/format checks and `git diff --check`. This changes explanatory copy
+  only; no new backend or mounted-browser check for this branch.
+- CI and Codex Review are the merge gates. The branch Characters-tab query and
+  any direct-only count or filter controls need a separate change.
+
 ## Tag Save & New validation and hierarchy retries (E12) — 2026-10-25
 
 - Continued the interrupted Tag pass from remotely saved, tested source
