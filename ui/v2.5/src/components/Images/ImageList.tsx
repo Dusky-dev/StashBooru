@@ -547,7 +547,10 @@ export const FilteredImageList = PatchComponent(
   (props: IImageList) => {
     const intl = useIntl();
     const [{ data: localInterface }] = useInterfaceLocalForage();
-    const collapseStacks = localInterface?.hideStackVariants !== false;
+    // A stack representative can be outside the gallery's own membership.
+    const collapseStacks =
+      props.view !== View.GalleryImages &&
+      localInterface?.hideStackVariants !== false;
 
     const [slideshowRunning, setSlideshowRunning] = useState<boolean>(false);
 

@@ -101,6 +101,25 @@
   unavailable. It uses a small owned library and does not measure codec
   playback, touch hardware or production libraries.
 
+## Keep gallery Images in their reading order (LIB-06/LIB-10) — 2026-11-17
+
+- Based on `develop` `a9208ea38744d59b349acab3d36c63dbb8c5f170`, after #361 merged with 13 green checks.
+  Branch [`fix/gallery-image-stack-scope-20261117`](https://github.com/Dusky-dev/StashBooru/tree/fix/gallery-image-stack-scope-20261117),
+  source `894624d3bb4938952a93e30cef95e3432b0e75ca`, tree `85436afe744cbd46680eca5ae3bec9c97f5cdbb5`.
+- Preserve membership in the Images tab of an opened gallery. The shared
+  Images list still uses the Interface grouping preference in catalogue
+  lists, but disables collapse for the Gallery view in both image and
+  metadata queries. A representative from outside a gallery cannot replace
+  its Images. Stack membership and the native sort are unchanged.
+- Extend the existing gallery-chapters acceptance at desktop and phone
+  widths. Scan three distinct PNGs into a temporary library, group them with
+  a representative outside a two-Image gallery, and verify the catalogue
+  shows the representative while the gallery shows its two native links in
+  path order. Existing chapter validation and retry assertions still run.
+- Checked the fixture syntax, GraphQL inputs, Gallery view and native sort
+  against the pinned source. Browser execution awaits the existing
+  first-library CI job because no local executor was available.
+
 ## Upstream sync — Security policy (2026-11-16)
 
 - Fork baseline: `develop` `b170006db0988e1cfdff6983cab17a1810f907eb`; upstream `stashapp/stash/develop` `987c211ca4acf4c62c2b77850b01d97c8b987755` (upstream commits `1678ebfb`, `987c211c`).
