@@ -44,6 +44,11 @@ async function start(directory, label) {
   });
   return instance.url;
 }
+async function imageCardPaths(page) {
+  const links = page.locator(".image-list a.image-card-link");
+  await links.first().waitFor();
+  return links.evaluateAll((cards) => cards.map((card) => card.pathname));
+}
 async function check(viewport, label) {
   const directory = join(root, label);
   const media = join(directory, "media");
@@ -51,7 +56,7 @@ async function check(viewport, label) {
   const page = await browser.newPage({ viewport });
   const errors = [];
   page.on("pageerror", (error) => errors.push(String(error)));
-  for (const [index, color] of ["#243550", "#57c4c8"].entries()) {
+  for (const [index, color] of ["#243550", "#57c4c8", "#e0a27f"].entries()) {
     const png = await page.evaluate((fill) => {
       const canvas = document.createElement("canvas");
       canvas.width = 128;
@@ -95,13 +100,26 @@ async function check(viewport, label) {
       await call(
         page,
         url,
-        "{ findImages(filter: {per_page: -1}) { images { id title galleries {id} } } }"
+        '{ findImages(filter: {per_page: -1, sort: "path", direction: ASC}) { images { id } } }'
       )
     ).findImages.images;
-    if (images.length === 2) break;
+    if (images.length === 3) break;
     await new Promise((done) => setTimeout(done, 250));
   }
-  assert.equal(images.length, 2, "Scan must index both generated PNGs");
+  assert.equal(images.length, 3, "Scan must index all three generated PNGs");
+  const [first, second, outside] = images;
+  const inGallery = [first.id, second.id];
+  await call(
+    page,
+    url,
+    "mutation($input: VisualStackCreateInput!) { visualStackCreate(input: $input) { id } }",
+    {
+      input: {
+        members: images.map(({ id }) => ({ media: { kind: "IMAGE", id } })),
+        representative: { kind: "IMAGE", id: outside.id },
+      },
+    }
+  );
   const gallery = (
     await call(
       page,
@@ -113,7 +131,7 @@ async function check(viewport, label) {
     page,
     url,
     "mutation($gallery: ID!, $images: [ID!]!) { addGalleryImages(input: {gallery_id: $gallery, image_ids: $images}) }",
-    { gallery: gallery.id, images: images.map((image) => image.id) }
+    { gallery: gallery.id, images: inGallery }
   );
   const snapshot = async () =>
     await call(
@@ -123,9 +141,20 @@ async function check(viewport, label) {
       { id: gallery.id }
     );
   const before = await snapshot();
+  await page.goto(url + "/images", { waitUntil: "networkidle" });
+  assert.deepEqual(
+    await imageCardPaths(page),
+    [`/images/${outside.id}`],
+    "The regular Images list should still show the stack representative"
+  );
   await page.goto(url + "/galleries/" + gallery.id, {
     waitUntil: "networkidle",
   });
+  assert.deepEqual(
+    await imageCardPaths(page),
+    inGallery.map((id) => `/images/${id}`),
+    "The gallery must show its own Images in path order"
+  );
   await page.getByRole("tab", { name: "Chapters", exact: true }).click();
   await page
     .getByRole("button", { name: "Create Chapter", exact: true })
@@ -282,7 +311,7 @@ async function check(viewport, label) {
   console.log(
     "Gallery chapter " +
       label +
-      ": create/update/delete rejection, retained drafts, pending controls, retry, reload and native membership passed."
+      ": stack membership order, create/update/delete rejection, retained drafts, pending controls, retry and reload passed."
   );
 }
 try {

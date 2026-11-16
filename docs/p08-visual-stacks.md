@@ -48,6 +48,10 @@ first matching member under the existing global sort and native kind/ID ties,
 so changing its representative does not move it within that sort. NULL values
 remain last. Images/Videos and gallery queries retain their native ordering.
 
+The Images tab of an opened gallery shows each of its own Images in the
+configured sort order. Global representative grouping cannot hide those
+Images or substitute a stack representative from outside the gallery.
+
 ## Viewer
 
 Native details and the shared preview show an ordered bottom filmstrip with
