@@ -3337,15 +3337,23 @@ try {
     });
     await page.goto(flashPage);
     const card = (id) =>
-      page.getByRole("button", { name: `Inspect Pawchive post ${id}`, exact: true });
+      page.getByRole("button", {
+        name: `Inspect Pawchive post ${id}`,
+        exact: true,
+      });
     await card(702).waitFor();
     await page.getByRole("button", { name: "Settings", exact: true }).click();
     const hide = page.getByLabel("Pawchive: hide posts without previews", {
       exact: true,
     });
     assert.equal(await hide.isChecked(), false);
-    await hide.check();
-    await page.getByRole("button", { name: "Back to posts", exact: true }).click();
+    await page
+      .locator('label[for="booru-hide-pawchive-without-preview"]')
+      .click();
+    assert.equal(await hide.isChecked(), true);
+    await page
+      .getByRole("button", { name: "Back to posts", exact: true })
+      .click();
     await card(704).scrollIntoViewIfNeeded();
     await page
       .getByText(/Hidden without previews on this Pawchive page: 2/)
@@ -3369,13 +3377,30 @@ try {
     const save = flash.getByRole("link", { name: "Download SWF original" });
     await save.waitFor();
     assert.equal(await save.getAttribute("download"), "pawchive-702.swf");
-    assert.equal(await save.getAttribute("href"), "downloads/test/pawchive-702.swf");
+    assert.equal(
+      await save.getAttribute("href"),
+      "downloads/test/pawchive-702.swf"
+    );
     assert.deepEqual(downloadRequests.at(-1), {
       key: "e".repeat(48),
       computer: true,
       convert: false,
     });
-    assert.equal(await flash.locator("video, iframe, object, embed").count(), 0);
+    assert.equal(
+      await flash.locator("video, iframe, object, embed").count(),
+      0
+    );
+    const reviewCount = reviewWrites.length;
+    await flash
+      .getByRole("button", { name: "Ignore post (Down arrow)", exact: true })
+      .click();
+    await page
+      .getByText("Saved review state for 1 post.", { exact: true })
+      .waitFor();
+    assert.equal(reviewWrites.length, reviewCount + 1);
+    assert.deepEqual(reviewWrites.at(-1).changes, [
+      { id: "702", version: 0, ignored: true },
+    ]);
     await page.goto(flashPage);
     await card(704).scrollIntoViewIfNeeded();
     assert.equal(await card(702).count(), 0, "preference survives a reload");

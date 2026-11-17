@@ -934,6 +934,7 @@ function SourceResults({
   }, [post?.id, post?.mediaKey, source.engine, suspended]);
   const inspectedPost =
     post && details && details.key === post.mediaKey ? details.post : post;
+  const inspectedReview = review.find((state) => state.id === post?.id);
   const visibleIDs = new Set(visiblePosts.map((item) => item.id));
   const navigation = matchingPosts.filter(
     (item) =>
@@ -1047,6 +1048,7 @@ function SourceResults({
             zoom={zoom}
             source={source}
             posts={visiblePosts}
+            reviewPosts={result.posts}
             showIgnored={showIgnored}
             onStates={onReview}
             preview={({ ignore, busy }) =>
@@ -1061,8 +1063,8 @@ function SourceResults({
                   blacklistBusy={blacklistBusy}
                   blacklistError={blacklistError}
                   onHide={onClose}
-                  review={review.find((state) => state.id === post.id)}
-                  reviewBusy={busy}
+                  review={inspectedReview}
+                  reviewBusy={busy || !inspectedReview}
                   onIgnore={() => ignore(post.id)}
                   onPrevious={
                     previewIndex > 0
@@ -1538,8 +1540,8 @@ export default function BooruBrowser() {
             }
           />
           <p className="small text-muted">
-            Filter the current Pawchive page when a post has no thumbnail or
-            its thumbnails fail. This preference is saved in this browser.
+            Filter the current Pawchive page when a post has no thumbnail or its
+            thumbnails fail. This preference is saved in this browser.
           </p>
           <SourceSettings
             onSaved={() => setLoadAttempt((value) => value + 1)}

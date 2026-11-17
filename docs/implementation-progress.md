@@ -13,6 +13,11 @@
   gating and browser coverage for hidden, broken and alternate thumbnails,
   persisted settings, direct inspection and SWF download handoff.
   Full Go and mounted UI checks await CI.
+- Head `db63fcb2420b6439e54dc90b1d8f25e8295db3e0` received a valid review
+  finding: the inspector could open a hidden post without its review version.
+  Read state for the full provider page and gate Ignore on the inspected row's
+  state. The fixture clicks the native switch label and exercises Ignore on a
+  hidden SWF; apply the reported formatter layout. Fresh checks are pending.
 
 ## Explain the Booru filename rule (BOO-11) — 2026-11-17
 
