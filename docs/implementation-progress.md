@@ -231,6 +231,21 @@
 - Port upstream task-queue, dispatcher, cancellation and preview regression tests, plus a focused fork-only shared-slot test. No workflow, schema or dependency updates needed.
 - Stage as an upstream-parent merge commit on an isolated sync branch for CI/Codex review before merging into fork `develop`. GitHub CI and live scan stress testing pending.
 
+## Keep Videos browse and stack actions in sync (LIB-03/LIB-06) — 2026-11-17
+
+- Baseline: `develop` `5dfc5ea4974fd84d5f7e91a8ca2001c4460a90a2` after #367. Branch
+  [`fix/videos-back-and-stack-selection-20261117`](https://github.com/Dusky-dev/StashBooru/tree/fix/videos-back-and-stack-selection-20261117),
+  source `076f10b3683d4063f9ed0f427b3bfec009f4c3ee`, tree `de0f048c980737cf300d8c3e3bd956b5604cb873`.
+- Reuse the list scroll hook on the native Videos lists that control the URL.
+  Back from Video detail restores its previous list offset once the layout is
+  ready. Embedded lists that don't own the URL don't change the window scroll.
+- Creating a stack or accepting a reviewed proposal deselects the confirmed
+  Video members, matching Images and All. Image IDs from mixed stacks cannot
+  clear a Video with the same numeric ID.
+- Parsed the changed TSX and first-library browser script locally. Added
+  desktop/mobile regression coverage using a real Video detail and stack
+  mutation in the isolated library. Mounted application checks await CI.
+
 ## Restore list scroll after Image details (LIB-03/LIB-04) — 2026-11-17
 
 - Baseline: `develop` `74e1a9a3b01686db92d849b1e75a930566b75ea5` after #362 (14 green checks and clean
