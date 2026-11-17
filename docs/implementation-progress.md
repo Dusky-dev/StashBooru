@@ -236,6 +236,12 @@
   ends after saving. Parsed the browser check as JavaScript and checked edited
   source for trailing whitespace and conflict markers. Go, UI and mounted
   browser checks await CI.
+- The original PR #369 head `6ff7db91893a5b2842cfb81334f80685316ee5f5` received a clean
+  Codex review. CI caught a missing `WithDatabase` method on the Go test
+  double and a UI line wrap. The browser exercised the upload assertions,
+  then recorded fetch errors in Settings. Run upload acceptance after the
+  Settings unmount check, avoiding a second Settings load immediately before
+  its intentional reload. Fresh CI and review are pending.
 
 ## Upload queue-wide processing and real media previews — 2026-11-13
 

@@ -136,6 +136,10 @@ func (mediaUploadTestTxn) Rollback(context.Context) error { return nil }
 
 func (mediaUploadTestTxn) IsLocked(error) bool { return false }
 
+func (mediaUploadTestTxn) WithDatabase(ctx context.Context) (context.Context, error) {
+	return ctx, nil
+}
+
 func TestMediaUploadReportsSavedFileWhenImporterUnavailable(t *testing.T) {
 	dir, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {

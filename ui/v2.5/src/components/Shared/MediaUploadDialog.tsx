@@ -380,9 +380,7 @@ export function MediaUploadDialog({
   }, []);
 
   const active = entries.find((entry) => entry.id === selected);
-  const pending = entries.filter(
-    (entry) => !uploadIsFinal(progress[entry.id])
-  );
+  const pending = entries.filter((entry) => !uploadIsFinal(progress[entry.id]));
 
   const addFiles = useCallback(
     (files: File[]) => {

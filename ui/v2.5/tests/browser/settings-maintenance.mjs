@@ -1183,14 +1183,6 @@ try {
           change.ui?.showImageAssociationTitles === false
       )
     );
-    uploadSettings = {
-      ...uploadSettings,
-      enabled: true,
-      allowURL: true,
-      defaultDirectory: "/stash/uploads",
-    };
-    await checkUploadRecovery(page);
-    await page.goto(baseURL + "/settings?tab=processing");
     // Late retry/status responses after leaving Settings must not update an unmounted view.
     failConverterConfig = true;
     await page.reload();
@@ -1218,6 +1210,15 @@ try {
     holdStatus();
     await retryAborted;
     await page.waitForTimeout(100);
+    assert.deepEqual(errors, [], errors.join("\n"));
+
+    uploadSettings = {
+      ...uploadSettings,
+      enabled: true,
+      allowURL: true,
+      defaultDirectory: "/stash/uploads",
+    };
+    await checkUploadRecovery(page);
     await page.close();
     assert.deepEqual(errors, [], errors.join("\n"));
     console.log(
