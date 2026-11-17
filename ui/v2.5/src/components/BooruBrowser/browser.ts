@@ -257,6 +257,7 @@ export interface BrowserMemory {
   tagSource: string;
   scroll: number;
   thumbnails?: boolean;
+  hidePawchiveWithoutPreview?: boolean;
   autocomplete?: "live" | "database";
   displayMode?: "grid" | "wall";
   zoom?: number;
@@ -283,6 +284,8 @@ export function readBrowserMemory(): BrowserMemory | undefined {
       typeof value.tagSource !== "string" ||
       (value.thumbnails !== undefined &&
         typeof value.thumbnails !== "boolean") ||
+      (value.hidePawchiveWithoutPreview !== undefined &&
+        typeof value.hidePawchiveWithoutPreview !== "boolean") ||
       (value.autocomplete !== undefined &&
         !["live", "database"].includes(value.autocomplete)) ||
       (value.displayMode !== undefined &&

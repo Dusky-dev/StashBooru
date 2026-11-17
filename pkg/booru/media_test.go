@@ -34,6 +34,40 @@ func TestSevenZipRemoteMediaRequiresArchiveOptIn(t *testing.T) {
 	}
 }
 
+func TestFlashOriginalOnly(t *testing.T) {
+	const uncompressed = "FWS\x09\x10\x00\x00\x00\x08\x00\x00\x0c\x01\x00\x00\x00"
+	const compressed = "CWS\x09\x10\x00\x00\x00\x78\x01\x01\x08\x00\xf7\xff\x08\x00\x00\x0c\x01\x00\x00\x00\x00\x88\x00\x16"
+	for _, tc := range []struct {
+		name, content string
+		allow, images bool
+		want          bool
+	}{
+		{"original", uncompressed, true, false, true},
+		{"no opt-in", uncompressed, false, false, false},
+		{"image preview", uncompressed, true, true, false},
+		{"compressed original", compressed, true, false, true},
+		{"truncated header", uncompressed[:7], true, false, false},
+		{"truncated uncompressed original", uncompressed[:15], true, false, false},
+		{"fake extension", "<html>Not a SWF</html>", true, false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var out bytes.Buffer
+			info, err := readValidatedMedia(strings.NewReader(tc.content), MediaRequest{
+				Limit: 1024, AllowSWF: tc.allow, ImagesOnly: tc.images,
+			}, &out, int64(len(tc.content)))
+			if !tc.want {
+				if err == nil {
+					t.Fatalf("unexpected acceptance: %+v", info)
+				}
+				return
+			}
+			if err != nil || info.Extension != "swf" || info.ContentType != "application/octet-stream" || out.String() != tc.content {
+				t.Fatalf("original was rejected or transformed: %+v %v", info, err)
+			}
+		})
+	}
+}
+
 func TestMediaBoundaryAndChecksums(t *testing.T) {
 	data := "\xff\xd8\xff" + strings.Repeat("x", 700)
 	checksum := fmt.Sprintf("%x", md5.Sum([]byte(data))) //nolint:gosec // Test checksum.

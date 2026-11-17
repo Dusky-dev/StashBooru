@@ -103,6 +103,31 @@ function result(source, query, page) {
       },
     ],
   };
+  if (source === "pawchive" && query === "preview-filter-fixture") {
+    const first = response.posts[0];
+    const broken = {
+      ...first,
+      id: "703",
+      mediaKey: "b".repeat(48),
+    };
+    response.posts = [
+      { ...first, id: "701" },
+      {
+        ...first,
+        id: "702",
+        format: "swf",
+        mediaKey: "e".repeat(48),
+        previewURL: undefined,
+        sampleURL: undefined,
+      },
+      broken,
+      {
+        ...broken,
+        id: "704",
+        attachments: [{ ...first, id: "705" }],
+      },
+    ];
+  }
   // Full blank listings must be tall enough to exercise saved scroll position.
   if (query === "")
     response.posts = Array.from({ length: 24 }, (_, index) => ({
@@ -641,6 +666,14 @@ try {
         });
         return;
       }
+      if (
+        url.pathname.endsWith("/post-details") &&
+        url.searchParams.get("key") === "e".repeat(48)
+      ) {
+        const post = result("pawchive", "preview-filter-fixture", 1).posts[1];
+        await route.fulfill({ json: { post } });
+        return;
+      }
       if (url.pathname.endsWith("/media")) {
         if (url.searchParams.get("kind") === "motion") {
           motionRequests.push(url.href);
@@ -704,6 +737,16 @@ try {
                     },
                     filename: "danbooru-101.jxl",
                   };
+            if (payload.computer) {
+              downloadState = {
+                jobID: 71,
+                token: "c".repeat(32),
+                status: "complete",
+                converted: false,
+                url: "downloads/test/pawchive-702.swf",
+                filename: "pawchive-702.swf",
+              };
+            }
             failNextDownload = false;
             holdNextDownload = false;
           }
@@ -3286,6 +3329,56 @@ try {
       await item.route
         .fulfill({ json: result(item.source, item.query, item.number) })
         .catch(() => {});
+    const flashPage = `${baseURL}/booru?source=pawchive&q=preview-filter-fixture`;
+    await page.evaluate(() => {
+      const key = "booru-browser-state-v1";
+      const saved = JSON.parse(localStorage.getItem(key));
+      localStorage.setItem(key, JSON.stringify({ ...saved, thumbnails: true }));
+    });
+    await page.goto(flashPage);
+    const card = (id) =>
+      page.getByRole("button", { name: `Inspect Pawchive post ${id}`, exact: true });
+    await card(702).waitFor();
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    const hide = page.getByLabel("Pawchive: hide posts without previews", {
+      exact: true,
+    });
+    assert.equal(await hide.isChecked(), false);
+    await hide.check();
+    await page.getByRole("button", { name: "Back to posts", exact: true }).click();
+    await card(704).scrollIntoViewIfNeeded();
+    await page
+      .getByText(/Hidden without previews on this Pawchive page: 2/)
+      .waitFor();
+    assert.equal(await card(701).count(), 1);
+    assert.equal(await card(702).count(), 0);
+    assert.equal(await card(703).count(), 0);
+    await card(704).getByRole("img").waitFor();
+
+    // A hidden post is still reachable from its direct inspector link.
+    await page.goto(flashPage + "&inspect=pawchive%3A702");
+    const flash = page.getByRole("dialog");
+    await flash.getByText(/Flash animation/).waitFor();
+    assert.equal(
+      await flash.getByLabel("Convert using Media converter defaults").count(),
+      0
+    );
+    await flash
+      .getByRole("button", { name: "Prepare SWF download", exact: true })
+      .click();
+    const save = flash.getByRole("link", { name: "Download SWF original" });
+    await save.waitFor();
+    assert.equal(await save.getAttribute("download"), "pawchive-702.swf");
+    assert.equal(await save.getAttribute("href"), "downloads/test/pawchive-702.swf");
+    assert.deepEqual(downloadRequests.at(-1), {
+      key: "e".repeat(48),
+      computer: true,
+      convert: false,
+    });
+    assert.equal(await flash.locator("video, iframe, object, embed").count(), 0);
+    await page.goto(flashPage);
+    await card(704).scrollIntoViewIfNeeded();
+    assert.equal(await card(702).count(), 0, "preference survives a reload");
     assert.deepEqual(errors, []);
     await page.close();
     console.log(

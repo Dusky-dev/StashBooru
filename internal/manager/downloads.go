@@ -3,6 +3,8 @@ package manager
 import (
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -77,7 +79,11 @@ func (s *DownloadStore) Serve(hash string, w http.ResponseWriter, r *http.Reques
 
 	s.mutex.Unlock()
 
-	if f.contentType != "" {
+	if strings.EqualFold(filepath.Ext(f.path), ".swf") {
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Header().Set("Content-Disposition", "attachment")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+	} else if f.contentType != "" {
 		w.Header().Add("Content-Type", f.contentType)
 	}
 	w.Header().Set("Cache-Control", "no-store")

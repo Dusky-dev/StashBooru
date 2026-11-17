@@ -315,6 +315,13 @@ controls grid image loading; inspecting a post remains an explicit preview
 action.
 These controls, per-source pages and inspection persist through refresh/back.
 Autocomplete mode and thumbnail visibility are local browser preferences.
+In **Booru settings**, enable **Pawchive: hide posts without previews** to
+omit posts from the current Pawchive page when no thumbnail is listed or
+all tried thumbnails fail to load. The browser tries available attachment
+thumbnails before hiding a post. This preference is off by default and
+does not change provider pagination. Use **Refresh previews** to retry or
+turn the switch off to see previewless posts. A direct inspector link can
+still open a hidden post.
 The filter icons stay available on desktop and mobile. **Show thumbnails** and
 **Show ignored posts** are grouped as native Stash switches. Changing **Show
 ignored posts** returns to page one and closes inspection because the server
@@ -334,6 +341,14 @@ checksums, import and converter flow as the inspector. Changes saved in download
 settings refresh mounted card preferences, including when an older request ends
 late. Cards and the inspector share newly queued job identity. Downloading remains
 an explicit action, separate from manual review marks.
+
+**Flash originals (.swf)** appear with an SWF label. Choose **Prepare SWF
+download**, then **Download SWF original** when the job is ready. The original
+goes to your computer without conversion or a library import. StashBooru
+does not play Flash; open the downloaded file in a local emulator such as
+[Ruffle](https://ruffle.rs/downloads). The same download size and provider
+checks apply. An SWF without a still thumbnail can be hidden by the optional
+Pawchive filter.
 
 Inspect a post to use **Previous/Next preview** or the Left/Right arrow keys within
 that source's currently loaded page. Ignored posts are skipped unless shown;
