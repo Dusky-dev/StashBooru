@@ -231,6 +231,29 @@
 - Port upstream task-queue, dispatcher, cancellation and preview regression tests, plus a focused fork-only shared-slot test. No workflow, schema or dependency updates needed.
 - Stage as an upstream-parent merge commit on an isolated sync branch for CI/Codex review before merging into fork `develop`. GitHub CI and live scan stress testing pending.
 
+## Keep Videos browse and stack actions in sync (LIB-03/LIB-06) — 2026-11-17
+
+- Baseline: `develop` `5dfc5ea4974fd84d5f7e91a8ca2001c4460a90a2` after #367. Branch
+  [`fix/videos-back-and-stack-selection-20261117`](https://github.com/Dusky-dev/StashBooru/tree/fix/videos-back-and-stack-selection-20261117),
+  source `076f10b3683d4063f9ed0f427b3bfec009f4c3ee`, tree `de0f048c980737cf300d8c3e3bd956b5604cb873`.
+- Reuse the list scroll hook on the native Videos lists that control the URL.
+  Back from Video detail restores its previous list offset once the layout is
+  ready. Embedded lists that don't own the URL don't change the window scroll.
+- Creating a stack or accepting a reviewed proposal deselects the confirmed
+  Video members, matching Images and All. Image IDs from mixed stacks cannot
+  clear a Video with the same numeric ID.
+- Parsed the changed TSX and first-library browser script locally. Added
+  desktop/mobile regression coverage using a real Video detail and stack
+  mutation in the isolated library. Mounted application checks await CI.
+- Head `5e45520ef5d8de2c77a765bed3b0aea5a34f02d4` passed Codex Review.
+  [Generate](https://github.com/Dusky-dev/StashBooru/actions/runs/44100608348/job/134099285637)
+  requested one fixture line wrap; applied its reported layout.
+- Head `ad64f0fe327100a4f64285f2c65afa9e3420529d` passed 13 checks and Codex Review.
+  [First Library](https://github.com/Dusky-dev/StashBooru/actions/runs/44102857152/job/134114940205)
+  restored the Videos scroll offset, then could not find Select All because
+  the native operations menu is rendered outside the list. Use the menu's
+  actual container for selection and stack creation in the browser fixture.
+
 ## Restore list scroll after Image details (LIB-03/LIB-04) — 2026-11-17
 
 - Baseline: `develop` `74e1a9a3b01686db92d849b1e75a930566b75ea5` after #362 (14 green checks and clean

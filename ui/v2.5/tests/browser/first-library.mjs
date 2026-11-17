@@ -122,6 +122,64 @@ async function graphql(page, url, query, variables = {}) {
   return payload.data;
 }
 
+async function checkVideoList(page, url, videoID) {
+  await page.goto(`${url}/scenes?sortby=date`);
+  const list = page.locator(".scene-list");
+  const link = list.locator(`a.scene-card-link[href^="/scenes/${videoID}"]`);
+  await link.waitFor();
+
+  // The seeded library is small. Make its real list tall enough to scroll
+  // without scanning a second library or simulating the page contents.
+  const tallList = await page.addStyleTag({
+    content: ".scene-list { padding-top: 1500px; min-height: 3000px; }",
+  });
+  await page.evaluate(() => {
+    history.scrollRestoration = "manual";
+  });
+  await link.scrollIntoViewIfNeeded();
+  const top = await page.evaluate(() => scrollY);
+  assert.ok(top > 300, "Videos fixture must scroll before opening a detail");
+  await link.click();
+  await page.waitForURL(
+    (location) => location.pathname === `/scenes/${videoID}`
+  );
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.goBack();
+  await page.waitForURL((location) => location.pathname === "/scenes");
+  await link.waitFor();
+  await page.waitForFunction((saved) => Math.abs(scrollY - saved) < 2, top);
+  await tallList.evaluate((style) => style.remove());
+
+  const more = list.locator("#more-menu");
+  const menu = page.locator(".scene-list-operations-dropdown");
+  await more.click();
+  await menu.getByText("Select All", { exact: true }).click();
+  const checked = list.locator("input.card-check:checked");
+  assert.equal(await checked.count(), 2);
+  await more.click();
+  await menu.getByText("Create stack from selection…", { exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog
+    .getByRole("radio", {
+      name: `Representative scene:${videoID}`,
+      exact: true,
+    })
+    .check();
+  await dialog
+    .getByRole("button", { name: "Create stack", exact: true })
+    .click();
+  await dialog.waitFor({ state: "hidden" });
+  await link.waitFor();
+  assert.equal(await checked.count(), 0);
+  const result = await graphql(
+    page,
+    url,
+    "query ($media: MediaReferenceInput!) { findVisualStackForMedia(media: $media) { member_count } }",
+    { media: { kind: "VIDEO", id: videoID } }
+  );
+  assert.equal(result.findVisualStackForMedia.member_count, 2);
+}
+
 async function checkProfileAll(page, url, imageID, label) {
   const { findScenes } = await graphql(
     page,
@@ -276,6 +334,7 @@ async function checkProfileAll(page, url, imageID, label) {
     path: join(artifacts, `${label}-profile-all.png`),
     fullPage: true,
   });
+  await checkVideoList(page, url, videoID);
 }
 
 async function check(viewport, label) {
@@ -493,7 +552,7 @@ async function check(viewport, label) {
     await checkProfileAll(page, url, imageID, label);
     assert.deepEqual(errors, []);
     console.log(
-      `${label}: setup, scan, Image title persistence, and global/profile All navigation passed`
+      `${label}: setup, scan, Image title, All navigation, and Videos scroll/stack selection passed`
     );
   } catch (error) {
     await page
