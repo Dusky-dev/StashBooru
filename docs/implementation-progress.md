@@ -422,6 +422,20 @@
 
 # StashBooru implementation progress
 
+## Preserve selection after partial mixed media edits (LIB-08) — 2026-11-17
+
+- Baseline: `develop` `5dfc5ea4974fd84d5f7e91a8ca2001c4460a90a2` after #367, #369, #370 and #371.
+  Branch [`fix/mixed-edit-retry-selection-20261117`](https://github.com/Dusky-dev/StashBooru/tree/fix/mixed-edit-retry-selection-20261117),
+  source `8c23c282adac54414148f1f96bf59a912495a0e3`, tree `6628d1c9b311fff9df121c322a25192aed2e9784`.
+- All enables Apply for actual changes and explains that replacing Tags
+  or Characters with an empty list clears those links. Track confirmed
+  typed IDs from the native writes. Retry only unconfirmed items; closing
+  deselects confirmed items and leaves the rest selected.
+- Seven media selection tests passed under Node 24, including incomplete
+  replies, synchronous writer errors, and targeted retry for equal Image
+  and Video numeric IDs. Parsed both updated TSX files after rebasing with
+  the stack selection changes. Full application checks and review are pending.
+
 ## Searchable Settings and usable All filters / Video-Character terms — 2026-11-06
 
 - Baseline: `develop` `e117fa924bb73bc71995c220d337c53e5cc434fb`; branch `feat/settings-search-all-filters-terminology-20261106`.
