@@ -222,6 +222,14 @@ try {
     await page
       .getByText("Review this Artist explicitly", { exact: true })
       .waitFor();
+    // Findings link to the affected profile instead of listing bare IDs.
+    assert.equal(
+      await page
+        .locator("#tools-health")
+        .getByRole("link", { name: "Artist #7", exact: true })
+        .getAttribute("href"),
+      "/studios/7"
+    );
     assert.equal(
       requests.filter((r) => r.path.endsWith("/metadata-health")).length,
       2
