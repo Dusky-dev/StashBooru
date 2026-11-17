@@ -175,6 +175,10 @@
   cleared. The real gallery fixture now creates its initial stack through the
   Images toolbar and checks selection on both cancellation and success.
   Browser script syntax checked; mounted checks and review await CI.
+- Head `7fa272136e4e2ca4f33e12a92cfe64d44f89f392` passed Codex Review, Go lint,
+  and the hosted browser checks. Generate stopped on four Biome line wraps
+  in the stack dialog and gallery fixture. Apply the formatter's layout;
+  fresh checks are pending.
 
 ## Upstream sync — Stash develop 2026-11-13
 

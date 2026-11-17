@@ -242,7 +242,8 @@ export function VisualStackDialog({
     }
   }
   function notifyStacked(value: GQL.VisualStackDataFragment) {
-    if (mounted.current) onStacked?.(value.members.map((member) => member.media));
+    if (mounted.current)
+      onStacked?.(value.members.map((member) => member.media));
   }
   const save = () =>
     run(async () => {
@@ -917,7 +918,8 @@ export function VisualStackDialog({
                     },
                   })
                 ).data?.visualStackMerge;
-                if (!value) throw new Error("Stack merge did not return a stack.");
+                if (!value)
+                  throw new Error("Stack merge did not return a stack.");
                 notifyStacked(value);
                 await refresh();
                 if (mounted.current) adopt(value);

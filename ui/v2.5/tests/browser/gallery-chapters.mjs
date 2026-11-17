@@ -187,7 +187,9 @@ async function check(viewport, label) {
   const dialog = page.getByRole("dialog");
   const createFromSelection = async () => {
     await list.locator("#more-menu").click();
-    await list.getByText("Create stack from selection…", { exact: true }).click();
+    await list
+      .getByText("Create stack from selection…", { exact: true })
+      .click();
     await dialog
       .getByRole("radio", { name: `Representative image:${outside.id}` })
       .waitFor();
@@ -200,7 +202,9 @@ async function check(viewport, label) {
   await dialog
     .getByRole("radio", { name: `Representative image:${outside.id}` })
     .check();
-  await dialog.getByRole("button", { name: "Create stack", exact: true }).click();
+  await dialog
+    .getByRole("button", { name: "Create stack", exact: true })
+    .click();
   await dialog.waitFor({ state: "hidden" });
   assert.equal(await selected.count(), 0);
   assert.equal(await list.locator(".image-hidden-selection").count(), 0);
