@@ -165,20 +165,22 @@ const FilteredMediaListComponent = ({
     }
   }, [historyKey, selectedItems]);
 
-  const refreshed = useCallback(
-    (applied = false) => {
-      closeModal();
-      if (applied) onSelectNone();
-      void result.refetch();
-    },
-    [closeModal, onSelectNone, result]
-  );
+  const refreshed = useCallback(() => {
+    closeModal();
+    void result.refetch();
+  }, [closeModal, result]);
   const onEdit = useCallback(
     () =>
       showModal(
-        <EditMediaDialog selected={selectedItems} onClose={refreshed} />
+        <EditMediaDialog
+          selected={selectedItems}
+          onClose={(confirmed) => {
+            if (confirmed.length > 0) onDeselectIDs(confirmed);
+            refreshed();
+          }}
+        />
       ),
-    [showModal, selectedItems, refreshed]
+    [showModal, selectedItems, onDeselectIDs, refreshed]
   );
   const explicitCollapse = filter.criteriaFor(
     "collapse_stacks"

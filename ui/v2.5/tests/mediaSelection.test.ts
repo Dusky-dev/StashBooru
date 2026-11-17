@@ -4,6 +4,7 @@ import {
   dispatchMediaUpdates,
   mediaConversionTargets,
   splitMediaSelection,
+  summarizeMediaUpdates,
 } from "../src/components/Media/mediaSelection.ts";
 
 const image = { id: "image:123", image: { id: "123" } };
@@ -84,4 +85,61 @@ test("invalid typed identities cannot dispatch a native mutation", async () => {
     ),
     /Invalid media selection/
   );
+});
+
+test("retry and close retain only unconfirmed typed media", async () => {
+  const other = { id: "image:456", image: { id: "456" } };
+  const selected = [image, scene, other];
+  const edits = { title: "reviewed title" };
+  const first = await dispatchMediaUpdates(
+    selected,
+    edits,
+    async () => ["123", "999"],
+    async () => {
+      throw new Error("Video service unavailable");
+    }
+  );
+  const partial = summarizeMediaUpdates(selected, first);
+  assert.deepEqual(partial.confirmed, ["image:123"]);
+  assert.match(partial.errors[0], /Images: Stash did not confirm 1 of 2/);
+  assert.match(partial.errors[1], /Videos: Video service unavailable/);
+  const remaining = selected.filter(
+    (item) => !partial.confirmed.includes(item.id)
+  );
+  assert.deepEqual(
+    remaining.map((item) => item.id),
+    ["scene:123", "image:456"]
+  );
+
+  const second = await dispatchMediaUpdates(
+    remaining,
+    edits,
+    async (ids) => {
+      assert.deepEqual(ids, ["456"]);
+      return ids;
+    },
+    async (ids) => {
+      assert.deepEqual(ids, ["123"]);
+      return ids;
+    }
+  );
+  assert.deepEqual(summarizeMediaUpdates(remaining, second), {
+    confirmed: ["image:456", "scene:123"],
+    errors: [],
+  });
+});
+
+test("a synchronous writer error does not skip the other native type", async () => {
+  const outcomes = await dispatchMediaUpdates(
+    [image, scene],
+    {},
+    () => {
+      throw new Error("Image preparation failed");
+    },
+    async () => ["123"]
+  );
+  assert.deepEqual(summarizeMediaUpdates([image, scene], outcomes), {
+    confirmed: ["scene:123"],
+    errors: ["Images: Image preparation failed"],
+  });
 });

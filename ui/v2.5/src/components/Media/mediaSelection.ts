@@ -36,8 +36,49 @@ export async function dispatchMediaUpdates<T>(
   const { imageIDs, sceneIDs } = splitMediaSelection(items);
   // Each native mutation retains its validation, hooks and transaction rules.
   // Report both outcomes so a partial success is visible and can be retried.
+  const update = async (
+    ids: string[],
+    write: (ids: string[], input: T) => Promise<unknown>
+  ) => {
+    if (ids.length > 0) return write(ids, input);
+  };
   return Promise.allSettled([
-    imageIDs.length ? updateImages(imageIDs, input) : Promise.resolve(),
-    sceneIDs.length ? updateScenes(sceneIDs, input) : Promise.resolve(),
+    update(imageIDs, updateImages),
+    update(sceneIDs, updateScenes),
   ]);
+}
+
+export function summarizeMediaUpdates(
+  items: readonly MediaSelectionItem[],
+  outcomes: readonly PromiseSettledResult<unknown>[]
+) {
+  const { imageIDs, sceneIDs } = splitMediaSelection(items);
+  const confirmed: string[] = [];
+  const errors: string[] = [];
+  const groups = [
+    { ids: imageIDs, kind: "image", label: "Images", outcome: outcomes[0] },
+    { ids: sceneIDs, kind: "scene", label: "Videos", outcome: outcomes[1] },
+  ];
+  for (const { ids, kind, label, outcome } of groups) {
+    if (ids.length === 0) continue;
+    if (outcome?.status === "rejected") {
+      const reason = outcome.reason;
+      errors.push(
+        `${label}: ${reason instanceof Error ? reason.message : String(reason)}`
+      );
+      continue;
+    }
+    const returned = new Set<string>(
+      Array.isArray(outcome?.value) ? outcome.value : []
+    );
+    const saved = ids.filter((id) => returned.has(id));
+    confirmed.push(...saved.map((id) => `${kind}:${id}`));
+    const missing = ids.length - saved.length;
+    if (missing > 0) {
+      errors.push(
+        `${label}: Stash did not confirm ${missing} of ${ids.length}.`
+      );
+    }
+  }
+  return { confirmed, errors };
 }
