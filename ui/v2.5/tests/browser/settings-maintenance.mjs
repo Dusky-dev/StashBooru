@@ -53,6 +53,22 @@ async function chooseSection(page, tab) {
       .click();
 }
 async function checkUploadRecovery(page) {
+  // The native metadata selectors use StashService's HTTP client rather than
+  // the fixture's Apollo context. Keep their initial lookups in the fixture.
+  await page.route("**/graphql", (route) => {
+    const operation = route.request().postDataJSON().operationName;
+    const fields = {
+      FindStudiosForSelect: ["findStudios", "studios"],
+      FindGalleriesForSelect: ["findGalleries", "galleries"],
+      FindTagsForSelect: ["findTags", "tags"],
+    };
+    const field = fields[operation];
+    assert.ok(field, `Unexpected upload fixture query: ${operation}`);
+    const [name, items] = field;
+    return route.fulfill({
+      json: { data: { [name]: { [items]: [], count: 0 } } },
+    });
+  });
   const sentFiles = [];
   await page.route("**/media-upload", (route) => {
     const body = route.request().postData() ?? "";

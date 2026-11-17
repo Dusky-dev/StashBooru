@@ -245,6 +245,11 @@
   and Codex Review found that the earlier edit also dropped the navigation into
   Processing before its reload. Restore that navigation, and use the checked
   JSON writer for error responses. Rerun CI and Codex Review.
+- Head `5a0fc76c18c8212474ffb5c5925efccd67a0459b` passed review and the existing Settings assertions.
+  The upload fixture had three unmocked lookups: the native Artist, Gallery
+  and Tag selectors use the HTTP client alongside the fixture Apollo context.
+  Mock those select operations explicitly and keep the unhandled error
+  assertion intact. Fresh CI and review are pending.
 
 ## Upload queue-wide processing and real media previews — 2026-11-13
 
