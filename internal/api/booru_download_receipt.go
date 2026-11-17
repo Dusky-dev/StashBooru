@@ -45,13 +45,28 @@ func (rs booruBrowserRoutes) saveDownloadReceipt(value booruDownloadReceipt) err
 	}
 	return writeBooruAtomic(dir, receiptName(value.Source.Instance, value.Post.ID), data)
 }
+// A receipt is written as soon as the original is saved, before native scan.
+func (r *booruDownloadReceipt) fileForRetry() (string, string) {
+	if r.Library != nil {
+		if r.Library.Path != "" {
+			return r.Library.Path, r.OutputMD5
+		}
+		// Old scan failures could record an empty Library result. Only use the
+		// original when there is no evidence of a registered or converted file.
+		if r.Library.ID != "" || r.Library.Converted || r.OutputMD5 != "" {
+			return "", ""
+		}
+	}
+	return r.SavedPath, r.OriginalMD5
+}
+
 func (rs booruBrowserRoutes) reusableDownloadReceipt(destination string, source booru.Source, post booru.Post, convert bool, templates ...string) *booruDownloadReceipt {
 	data, err := os.ReadFile(filepath.Join(rs.configPath, "booru-download-history", receiptName(source.Instance(), post.ID)))
 	if err != nil || len(data) > 64<<10 {
 		return nil
 	}
 	var receipt booruDownloadReceipt
-	if json.Unmarshal(data, &receipt) != nil || receipt.Directory != destination || receipt.Source.Instance != source.Instance() || receipt.Post.ID != post.ID || receipt.Library == nil || receipt.Library.Path == "" || receipt.OutputMD5 == "" || (post.MD5 != "" && post.MD5 != receipt.OriginalMD5) {
+	if json.Unmarshal(data, &receipt) != nil || receipt.Directory != destination || receipt.Source.Instance != source.Instance() || receipt.Post.ID != post.ID || (post.MD5 != "" && post.MD5 != receipt.OriginalMD5) {
 		return nil
 	}
 	template := ""
@@ -61,15 +76,19 @@ func (rs booruBrowserRoutes) reusableDownloadReceipt(destination string, source 
 	if receipt.Template != template || (receipt.AssetHash != "" && receipt.AssetHash != fmt.Sprintf("%x", sha256.Sum256([]byte(post.OriginalURL)))) || (receipt.AssetHash == "" && post.MD5 == "") {
 		return nil
 	}
-	if dir, err := rs.destination(filepath.Dir(receipt.Library.Path)); err != nil || (dir != destination && !strings.HasPrefix(dir, destination+string(filepath.Separator))) {
+	path, expectedMD5 := receipt.fileForRetry()
+	if path == "" || expectedMD5 == "" {
 		return nil
 	}
-	stat, err := os.Lstat(receipt.Library.Path)
+	if dir, err := rs.destination(filepath.Dir(path)); err != nil || (dir != destination && !strings.HasPrefix(dir, destination+string(filepath.Separator))) {
+		return nil
+	}
+	stat, err := os.Lstat(path)
 	if err != nil || !stat.Mode().IsRegular() || stat.Size() > 256<<20 {
 		return nil
 	}
-	actual, err := mediaconvert.MD5(receipt.Library.Path)
-	if err != nil || actual != receipt.OutputMD5 {
+	actual, err := mediaconvert.MD5(path)
+	if err != nil || actual != expectedMD5 {
 		return nil
 	}
 	return &receipt

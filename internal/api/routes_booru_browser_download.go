@@ -457,12 +457,22 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 		}
 		if !input.Computer {
 			receipt := rs.reusableDownloadReceipt(destination, source, post, input.Convert, preferences.FilenameTemplate)
-			if receipt != nil && receipt.Library != nil {
-				imported, err := rs.importFile(ctx, receipt.Library.Path, source, post, input.Convert && !receipt.Library.Converted, progress)
-				if err != nil {
-					return fmt.Errorf("existing download needs native scan retry: %w", err)
+			if receipt != nil {
+				path, _ := receipt.fileForRetry()
+				converted := receipt.Library != nil && receipt.Library.Converted
+				booruDownloads.Lock()
+				state.SavedPath = path
+				state.OriginalMD5, state.OutputMD5 = receipt.OriginalMD5, receipt.OutputMD5
+				booruDownloads.Unlock()
+				set("importing")
+				if input.Convert && !converted {
+					set("importing/converting")
 				}
-				imported.Converted = imported.Converted || receipt.Library.Converted
+				imported, err := rs.importFile(ctx, path, source, post, input.Convert && !converted, progress)
+				if err != nil {
+					return fmt.Errorf("saved file still needs import or conversion: %w", err)
+				}
+				imported.Converted = imported.Converted || converted
 				if shouldAutoTag && !receipt.AutoTagged && imported.Kind == "image" {
 					set("auto-tagging")
 					receipt.AutoTagged = rs.autoTagDownloadedImage(ctx, preferences, &imported)
@@ -575,12 +585,12 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 				set("auto-tagging")
 				receipt.AutoTagged = rs.autoTagDownloadedImage(ctx, preferences, &imported)
 			}
-			receipt.Library = &imported
 			if imported.Path != "" {
+				receipt.Library = &imported
 				receipt.OutputMD5, _ = mediaconvert.MD5(imported.Path)
-			}
-			if saveErr := rs.saveDownloadReceipt(receipt); saveErr != nil {
-				return fmt.Errorf("file imported, but receipt update failed; original remains in Stash")
+				if saveErr := rs.saveDownloadReceipt(receipt); saveErr != nil {
+					return fmt.Errorf("file imported, but receipt update failed; original remains in Stash")
+				}
 			}
 			if importErr != nil {
 				return fmt.Errorf("file saved in Stash; import/conversion needs retry: %w", importErr)

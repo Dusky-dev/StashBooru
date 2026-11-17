@@ -342,6 +342,11 @@ settings refresh mounted card preferences, including when an older request ends
 late. Cards and the inspector share newly queued job identity. Downloading remains
 an explicit action, separate from manual review marks.
 
+If native import fails after a single-file download is saved, retry can use
+the saved original without fetching it again. The source, selected folder,
+filename settings, and file checksum must still match. The download status
+shows the retained path even if the scan needs another retry.
+
 **Flash originals (.swf)** appear with an SWF label. Choose **Prepare SWF
 download**, then **Download SWF original** when the job is ready. The original
 goes to your computer without conversion or a library import. StashBooru

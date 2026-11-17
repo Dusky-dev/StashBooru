@@ -81,9 +81,32 @@ func TestBooruLibraryDownloadRetainsFileAndRetriesImport(t *testing.T) {
 	if data, err := os.ReadFile(first.SavedPath); err != nil || string(data) != "fixture-original" {
 		t.Fatal("failed scan lost saved file", err)
 	}
+	// The provider is now unavailable. Failed retries must still scan the
+	// retained original and report its path.
+	client.failure = true
+	retry := start()
+	if retry.Status != "failed" || retry.SavedPath != first.SavedPath || !strings.Contains(retry.Error, "scanner unavailable") {
+		t.Fatal("retry did not reuse the saved original", retry)
+	}
+	receiptPath := filepath.Join(rs.configPath, "booru-download-history", receiptName(source.Instance(), "1"))
+	raw, err := os.ReadFile(receiptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var receipt booruDownloadReceipt
+	if err := json.Unmarshal(raw, &receipt); err != nil || receipt.Library != nil {
+		t.Fatal("failed scan must keep the pre-import receipt", err, receipt.Library)
+	}
+	// Simulate receipts written by versions that recorded an empty scan result.
+	receipt.Library = &booruLibraryResult{}
+	if err := rs.saveDownloadReceipt(receipt); err != nil {
+		t.Fatal(err)
+	}
+
 	failImport = false
 	second := start()
-	if second.Status != "complete" || second.Library == nil || second.Library.ID != "12" || len(paths) != 2 || paths[0] != paths[1] {
+	if second.Status != "complete" || second.Library == nil || second.Library.ID != "12" || len(paths) != 3 ||
+		paths[0] != paths[1] || paths[1] != paths[2] {
 		t.Fatal(second, paths)
 	}
 	entries, err := os.ReadDir(root)
@@ -91,13 +114,14 @@ func TestBooruLibraryDownloadRetainsFileAndRetriesImport(t *testing.T) {
 		t.Fatal("retry duplicated file", len(entries), err)
 	}
 	third := start()
-	if third.Status != "complete" || third.Library.ID != "12" {
+	if third.Status != "complete" || third.Library == nil || third.Library.ID != "12" {
 		t.Fatal(third)
 	}
-	if _, err := os.Stat(filepath.Join(rs.configPath, "booru-download-history", receiptName(source.Instance(), "1"))); err != nil {
+	if _, err := os.Stat(receiptPath); err != nil {
 		t.Fatal(err)
 	}
 	// A changed destination must never be overwritten, even on retry.
+	client.failure = false
 	if err := os.WriteFile(paths[0], []byte("changed"), 0600); err != nil {
 		t.Fatal(err)
 	}
