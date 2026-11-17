@@ -248,6 +248,11 @@
 - Head `5e45520ef5d8de2c77a765bed3b0aea5a34f02d4` passed Codex Review.
   [Generate](https://github.com/Dusky-dev/StashBooru/actions/runs/44100608348/job/134099285637)
   requested one fixture line wrap; applied its reported layout.
+- Head `ad64f0fe327100a4f64285f2c65afa9e3420529d` passed 13 checks and Codex Review.
+  [First Library](https://github.com/Dusky-dev/StashBooru/actions/runs/44102857152/job/134114940205)
+  restored the Videos scroll offset, then could not find Select All because
+  the native operations menu is rendered outside the list. Use the menu's
+  actual container for selection and stack creation in the browser fixture.
 
 ## Restore list scroll after Image details (LIB-03/LIB-04) — 2026-11-17
 
