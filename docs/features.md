@@ -45,6 +45,12 @@ or “direct URL”), thumbnail compression (try “AVIF”), the **Shared filen
 layout**, or the worker connection (try “remote fallback”). Opening a search
 result shows the setting; it does not enable an experiment or save a change.
 
+In the upload queue, a file that was saved but needs import or metadata
+attention stays out of Retry. The queue shows its saved path and links to
+the Image or Video if Stash registered it. These links open in a new tab so
+you can keep the queue. Check the library or run Scan on the saved file if an
+import has no media link yet. Retry or Import continues the remaining items.
+
 Tasks starts with the job queue, followed by **Update library** (including
 animation inspection beside Scan), **Review profiles & associations**,
 **Backup & maintenance** and **Plugin tasks**.

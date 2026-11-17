@@ -21,7 +21,8 @@ const server = await createServer({
       name: "settings-fixture-route",
       configureServer(vite) {
         vite.middlewares.use((req, _res, next) => {
-          if (req.url?.split("?")[0] === "/settings") {
+          const pathname = req.url?.split("?")[0];
+          if (pathname === "/settings" || pathname === "/upload-recovery") {
             req.url = `/tests/browser/fixtures/settings-maintenance.html${req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : ""}`;
           }
           next();
@@ -50,6 +51,104 @@ async function chooseSection(page, tab) {
     await page
       .locator(`#settings-menu-container a[href*="tab=${tab}"]`)
       .click();
+}
+async function checkUploadRecovery(page) {
+  // The native metadata selectors use StashService's HTTP client rather than
+  // the fixture's Apollo context. Keep their initial lookups in the fixture.
+  await page.route("**/graphql", (route) => {
+    const operation = route.request().postDataJSON().operationName;
+    const fields = {
+      FindStudiosForSelect: ["findStudios", "studios"],
+      FindGalleriesForSelect: ["findGalleries", "galleries"],
+      FindTagsForSelect: ["findTags", "tags"],
+    };
+    const field = fields[operation];
+    assert.ok(field, `Unexpected upload fixture query: ${operation}`);
+    const [name, items] = field;
+    return route.fulfill({
+      json: { data: { [name]: { [items]: [], count: 0 } } },
+    });
+  });
+  const sentFiles = [];
+  await page.route("**/media-upload", (route) => {
+    const body = route.request().postData() ?? "";
+    const name = /filename="([^"]+)"/.exec(body)?.[1];
+    sentFiles.push(name);
+    if (name === "retained.png") {
+      return route.fulfill({
+        status: 500,
+        json: {
+          error: "The file was imported, but metadata could not be applied.",
+          savedPath: "/stash/uploads/retained.png",
+          result: {
+            kind: "image",
+            id: "42",
+            path: "/stash/uploads/retained.png",
+          },
+        },
+      });
+    }
+    return route.fulfill({
+      json: {
+        kind: "image",
+        id: "43",
+        path: "/stash/uploads/pending.png",
+      },
+    });
+  });
+  const savedEvent = {
+    type: "processing",
+    savedPath: "/stash/uploads/remote.png",
+  };
+  await page.route("**/media-upload/url", (route) =>
+    route.fulfill({
+      contentType: "application/x-ndjson",
+      body: `${JSON.stringify(savedEvent)}\n`,
+    })
+  );
+
+  await page.goto(baseURL + "/upload-recovery");
+  await page.getByRole("dialog").waitFor();
+  const png = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lU8AAAAASUVORK5CYII=",
+    "base64"
+  );
+  const files = ["retained.png", "pending.png"].map((name) => ({
+    name,
+    mimeType: "image/png",
+    buffer: png,
+  }));
+  await page.locator('input[type="file"]').setInputFiles(files);
+  const importItems = (count) =>
+    page.getByRole("button", { name: `Import ${count} item(s)`, exact: true });
+  await importItems(2).click();
+
+  const saved = page.locator(".media-upload-attention").filter({
+    hasText: "Imported; needs attention",
+  });
+  await saved
+    .getByText("/stash/uploads/retained.png", { exact: true })
+    .waitFor();
+  const open = saved.getByRole("link", { name: "Open in Stash", exact: true });
+  assert.equal(await open.getAttribute("href"), "/images/42");
+  assert.equal(await open.getAttribute("target"), "_blank");
+  assert.deepEqual(sentFiles, ["retained.png"]);
+
+  await importItems(1).click();
+  await page.locator('a[href="/images/43"]').waitFor();
+  assert.deepEqual(sentFiles, ["retained.png", "pending.png"]);
+
+  await page
+    .getByLabel("Or download from a direct image/video URL")
+    .fill("https://example.org/remote.png");
+  await page.getByRole("button", { name: "Add URL", exact: true }).click();
+  await importItems(1).click();
+  const interrupted = page.locator(".media-upload-attention").filter({
+    hasText: "File saved; check import",
+  });
+  await interrupted.getByText("/stash/uploads/remote.png").waitFor();
+  assert.equal(await interrupted.getByRole("link").count(), 0);
+  assert.equal(await importItems(0).isDisabled(), true);
 }
 const formats = [
   {
@@ -1128,6 +1227,15 @@ try {
     holdStatus();
     await retryAborted;
     await page.waitForTimeout(100);
+    assert.deepEqual(errors, [], errors.join("\n"));
+
+    uploadSettings = {
+      ...uploadSettings,
+      enabled: true,
+      allowURL: true,
+      defaultDirectory: "/stash/uploads",
+    };
+    await checkUploadRecovery(page);
     await page.close();
     assert.deepEqual(errors, [], errors.join("\n"));
     console.log(
