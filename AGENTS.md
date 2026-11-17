@@ -34,7 +34,10 @@ asks for a new feature:
   CI passes on the current head and viable review findings are addressed.
   Codex Review is wanted but not a hard gate: proceed if it finished, reported
   quota exhaustion, or has not posted within 60 minutes of CI going green.
-  Documentation-only PRs may merge on green CI alone. Report each merge to
+  Documentation-only PRs may merge on green CI alone.
+  Open PRs as drafts, then mark them ready for review once the change is
+  complete and its local checks pass; the owner also accepts agent merges
+  that meet these conditions. Report each merge to
   the owner. When only review/CI remains pending, record the checkpoint and
   end the turn rather than repeatedly polling or waiting.
 - Direct pushes to `develop`, remote branch deletion, destructive data changes
