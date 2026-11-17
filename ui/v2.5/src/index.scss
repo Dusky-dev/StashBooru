@@ -903,7 +903,7 @@ div.dropdown-menu {
 }
 
 .toast-container {
-  max-width: 350px;
+  max-width: min(350px, calc(100vw - 2rem));
   opacity: 0.9;
   position: fixed;
   right: 2rem;
@@ -928,6 +928,7 @@ div.dropdown-menu {
   }
 
   .toast {
+    max-width: 100%;
     width: 350px;
   }
 
@@ -937,6 +938,15 @@ div.dropdown-menu {
     color: $text-color;
     padding: 1rem;
     white-space: pre-wrap;
+
+    // Long paths, URLs and error text wrap and scroll inside the toast
+    // instead of running past the viewport edge.
+    > span {
+      max-height: 40vh;
+      min-width: 0;
+      overflow-wrap: anywhere;
+      overflow-y: auto;
+    }
 
     .close,
     .expand-error-button {
@@ -961,6 +971,11 @@ div.dropdown-menu {
 }
 
 .toast-expanded-dialog {
+  .modal-body {
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+
   .modal-header {
     align-items: center;
     justify-content: start;
@@ -976,14 +991,14 @@ div.dropdown-menu {
   .toast-container {
     bottom: 4rem;
     left: 50%;
-    margin-left: -175px;
     right: unset;
     top: unset;
+    transform: translateX(-50%);
 
     transition: left 0.5s;
 
     &.hidden {
-      left: -350px;
+      left: -50%;
     }
   }
 }
