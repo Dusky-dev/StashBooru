@@ -17,8 +17,9 @@ asks for a new feature:
 - When a feature is confusing, first make its labels, defaults, empty states
   and errors say what it does. Propose removal or hiding to the owner rather
   than deleting user-facing features yourself.
-- Pick the next fix from reproduced defects, `docs/experience-audit-2026-10-22.md`
-  and the open items in `docs/implementation-progress.md`. Suggest follow-ups
+- Pick the next fix from reproduced defects and `docs/roadmap.md`, then
+  `docs/experience-audit-2026-10-22.md` and the open items in
+  `docs/implementation-progress.md`. Keep the roadmap rows current. Suggest follow-ups
   you notice but do not fold them into the current PR.
 
 ## Authority and delivery
