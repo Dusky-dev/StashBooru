@@ -75,7 +75,9 @@ export function summarizeMediaUpdates(
     confirmed.push(...saved.map((id) => `${kind}:${id}`));
     const missing = ids.length - saved.length;
     if (missing > 0) {
-      errors.push(`${label}: Stash did not confirm ${missing} of ${ids.length}.`);
+      errors.push(
+        `${label}: Stash did not confirm ${missing} of ${ids.length}.`
+      );
     }
   }
   return { confirmed, errors };
