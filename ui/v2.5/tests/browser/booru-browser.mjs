@@ -277,7 +277,7 @@ try {
           questionable: "Questionable",
           explicit: "Explicit",
         },
-        "Media on this page": {
+        "Media type": {
           "": "All media",
           images: "Images",
           videos: "Videos",
@@ -1812,14 +1812,16 @@ try {
         image.naturalWidth > 0
       );
     });
-    // Blacklist toggle changes server requests and survives reload.
-    await page.goto(`${baseURL}/booru?source=danbooru&q=blacklist-toggle`);
+    // Changing visibility from page two starts a fresh filtered sequence.
+    const blockedQuery = `${baseURL}/booru?source=danbooru&q=blacklist-toggle`;
+    const visibilityPageTwo = blockedQuery + "&p.danbooru=2";
+    await page.goto(visibilityPageTwo);
     const blacklistToggle = page.getByRole("button", {
       name: "Hide blacklisted posts",
       exact: true,
     });
     await dan
-      .getByRole("button", { name: "Inspect Danbooru post 102", exact: true })
+      .getByRole("button", { name: "Inspect Danbooru post 202", exact: true })
       .waitFor();
     assert.equal(await blacklistToggle.getAttribute("aria-pressed"), "true");
     assert.equal(
@@ -1837,6 +1839,7 @@ try {
     assert.equal(await blacklistToggle.getAttribute("aria-pressed"), "false");
     assert.equal(await dan.locator(".booru-post").count(), 2);
     assert.equal(requests.at(-1).blacklist, "show");
+    assert.equal(requests.at(-1).page, 1);
     await page.reload();
     await dan
       .getByRole("button", { name: "Inspect Danbooru post 101", exact: true })
@@ -1845,10 +1848,27 @@ try {
     await blacklistToggle.click();
     await page.waitForURL((url) => !url.searchParams.has("blacklist"));
     await dan
-      .getByText("Hidden 1 post(s) on this page", { exact: false })
+      .getByText("Skipped 1 blacklisted post while loading these results.", {
+        exact: true,
+      })
       .waitFor();
     assert.equal(await dan.locator(".booru-post").count(), 1);
     assert.equal(requests.at(-1).blacklist, null);
+
+    await page.goto(visibilityPageTwo);
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 202", exact: true })
+      .waitFor();
+    await setChecked(
+      page.getByLabel("Show ignored posts", { exact: true }),
+      true
+    );
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 102", exact: true })
+      .waitFor();
+    assert.equal(requests.at(-1).ignored, null);
+    assert.equal(requests.at(-1).page, 1);
+
     await page.goto(`${baseURL}/booru?source=danbooru&q=bad&blacklist=invalid`);
     await page
       .getByRole("alert")
@@ -1883,7 +1903,7 @@ try {
       .waitFor();
     assert.ok(page.url().includes("rating=safe"));
     const hideAIGenerated = page.getByRole("button", {
-      name: "Hide AI-generated posts on this page",
+      name: "Hide AI-generated posts",
       exact: true,
     });
     assert.equal(await hideAIGenerated.getAttribute("aria-pressed"), "false");
@@ -1894,6 +1914,14 @@ try {
     assert.ok(
       !(await hideAIGenerated.getAttribute("class")).includes("active")
     );
+    async function openGalleryPageTwo() {
+      await listingPagination.getByTitle("Next page").click();
+      await dan
+        .getByRole("button", { name: "Inspect Danbooru post 201", exact: true })
+        .waitFor();
+      assert.equal(new URL(page.url()).searchParams.get("p.danbooru"), "2");
+    }
+    await openGalleryPageTwo();
     const requestsBeforeAI = requests.length;
     const waitForFilteredPage = (media, ai) =>
       page.waitForResponse((response) => {
@@ -1908,7 +1936,10 @@ try {
       });
     let filteredResponse = waitForFilteredPage(null, "hide");
     await hideAIGenerated.click();
-    await filteredResponse;
+    assert.equal(
+      new URL((await filteredResponse).url()).searchParams.get("page"),
+      "1"
+    );
     await page.waitForURL((url) => url.searchParams.get("ai") === "hide");
     assert.equal(await hideAIGenerated.getAttribute("aria-pressed"), "true");
     assert.equal(
@@ -1951,10 +1982,14 @@ try {
       await hideAIGenerated.locator('svg[data-icon="slash"]').count(),
       0
     );
+    await openGalleryPageTwo();
     const searchesBeforeMedia = requests.length;
     filteredResponse = waitForFilteredPage("videos", null);
-    await pickFilter("Media on this page", "videos");
-    await filteredResponse;
+    await pickFilter("Media type", "videos");
+    assert.equal(
+      new URL((await filteredResponse).url()).searchParams.get("page"),
+      "1"
+    );
     await dan
       .getByText("Showing 4 posts after the selected filters.", {
         exact: false,
@@ -1986,13 +2021,13 @@ try {
     assert.equal(requests.at(-1).ai, null);
     assert.equal(
       await page
-        .getByRole("button", { name: "Media on this page", exact: true })
+        .getByRole("button", { name: "Media type", exact: true })
         .getAttribute("class")
         .then((c) => c.includes("active")),
       false
     );
     filteredResponse = waitForFilteredPage("images", null);
-    await pickFilter("Media on this page", "images");
+    await pickFilter("Media type", "images");
     await filteredResponse;
     await dan
       .getByText("Showing 8 posts after the selected filters.", {
@@ -2002,7 +2037,7 @@ try {
     assert.equal(await dan.locator(".booru-post").count(), 8);
     assert.equal(requests.at(-1).media, "images");
     filteredResponse = waitForFilteredPage("videos", null);
-    await pickFilter("Media on this page", "videos");
+    await pickFilter("Media type", "videos");
     await filteredResponse;
     await setChecked(
       page.getByLabel("Show thumbnails", { exact: true }),
@@ -2021,7 +2056,7 @@ try {
     );
     await setChecked(page.getByLabel("Show thumbnails", { exact: true }), true);
     filteredResponse = waitForFilteredPage(null, null);
-    await pickFilter("Media on this page", "");
+    await pickFilter("Media type", "");
     await filteredResponse;
     await dan
       .getByRole("button", { name: "Download danbooru post 102", exact: true })
@@ -3218,10 +3253,9 @@ try {
         .blacklistTags.includes("artist_a")
     );
     await dan
-      .getByText(
-        "All posts on this page were hidden by this booru’s tag blacklist."
-      )
+      .getByText(/Skipped \d+ blacklisted posts? while loading/)
       .waitFor();
+    assert.equal(await dan.locator(".booru-post").count(), 0);
     assert.equal(new URL(page.url()).searchParams.get("q"), "gallery");
     sourcesDenied = true;
     await page.goto(`${baseURL}/booru`);

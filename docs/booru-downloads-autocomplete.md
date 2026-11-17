@@ -55,9 +55,18 @@ one hour; persistent library files and receipts are retained.
 
 ## Filename templates
 
-**Download filename template** in Settings accepts Grabber's common `%token%`
-vocabulary for native Stash downloads. Leave it blank to retain the existing
-`booru-<instance>-<post>-<MD5>.<extension>` scheme. Example:
+**Download filename template** in Booru Settings accepts Grabber's common
+`%token%` vocabulary for native Stash downloads. The field shows which naming
+rule will be used when the current value is saved:
+
+- A custom Booru template overrides the shared filename layout.
+- A blank template uses the valid layout saved in **Settings → Interface →
+  Image titles → Shared filename layout**. The field shows the saved pattern
+  and links to that setting.
+- If the shared layout is empty or invalid, a blank template uses the built-in
+  `booru-<instance>-<post>-<MD5>.<extension>` scheme.
+
+Example custom template:
 
 ```text
 %artist%/%copyright%/%character%/%id%-%position%-%md5%.%ext%

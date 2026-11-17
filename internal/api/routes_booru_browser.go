@@ -29,6 +29,7 @@ type booruBrowserRoutes struct {
 	jobs         *job.Manager
 	downloads    *manager.DownloadStore
 	libraryRoots func() []string
+	uiConfig     func() map[string]interface{}
 	importFile   func(context.Context, string, booru.Source, booru.Post, bool, *job.Progress) (booruLibraryResult, error)
 	autoTagImage func(context.Context, int, bool, bool) error
 }

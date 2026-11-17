@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Form } from "react-bootstrap";
+import { Link } from "react-router-dom";
 import { type BooruSource, readBooruResponse } from "./browser";
 import { FolderPicker } from "./FolderPicker";
 import { invalidateDownloadPreferences } from "./downloadPreferences";
@@ -17,6 +18,7 @@ export function BrowserToolsSettings() {
   const [convert, setConvert] = useState(false),
     [directory, setDirectory] = useState("");
   const [filenameTemplate, setFilenameTemplate] = useState("");
+  const [sharedFilenameLayout, setSharedFilenameLayout] = useState("");
   const [importTags, setImportTags] = useState(false);
   const [autoTagImages, setAutoTagImages] = useState(false);
   const [autoTagSources, setAutoTagSources] = useState<string[]>([]);
@@ -52,6 +54,7 @@ export function BrowserToolsSettings() {
           convert: boolean;
           defaultDirectory: string;
           filenameTemplate?: string;
+          sharedFilenameLayout?: string;
           importTags?: boolean;
           autoTagImages?: boolean;
           autoTagSources?: string[];
@@ -70,6 +73,7 @@ export function BrowserToolsSettings() {
           setConvert(settings.convert);
           setDirectory(settings.defaultDirectory);
           setFilenameTemplate(settings.filenameTemplate ?? "");
+          setSharedFilenameLayout(settings.sharedFilenameLayout ?? "");
           setImportTags(settings.importTags ?? false);
           setAutoTagImages(settings.autoTagImages ?? false);
           setAutoTagSources(
@@ -225,17 +229,36 @@ export function BrowserToolsSettings() {
         <Form.Control
           className="text-input"
           value={filenameTemplate}
+          aria-describedby="booru-filename-template-help"
           disabled={busy || !loaded}
           onChange={(event) => setFilenameTemplate(event.currentTarget.value)}
           placeholder="%artist%/%copyright%/%character%/%md5%.%ext%"
         />
-        <Form.Text muted>
+        <Form.Text muted id="booru-filename-template-help">
+          {loaded && (
+            <span className="d-block mb-1">
+              When saved:{" "}
+              {filenameTemplate ? (
+                <strong>Custom Booru template.</strong>
+              ) : sharedFilenameLayout ? (
+                <>
+                  <strong>Shared filename layout:</strong>{" "}
+                  <code className="text-break">{sharedFilenameLayout}</code>
+                </>
+              ) : (
+                <strong>Built-in Booru filenames.</strong>
+              )}
+            </span>
+          )}
+          A blank template follows the{" "}
+          <Link to="/settings?tab=interface#shared-image-filename-layout">
+            shared filename layout
+          </Link>
+          . Booru uses built-in filenames if that layout is missing or invalid.
           Common Grabber tokens: %artist%, %copyright%, %character%, %id%,
           %md5%, %ext%, %filename%, %websitename%, %position%, %num%. Use / for
-          subfolders. Leave blank to use the shared filename layout in Settings
-          → Interface → Image titles. Existing custom templates remain
-          overrides. Unknown metadata becomes unknown; existing files are never
-          overwritten.
+          subfolders. Missing text metadata becomes unknown. Existing files are
+          never overwritten.
         </Form.Text>
       </Form.Group>
       <Form.Group controlId="booru-max-file-size" className="mt-3">

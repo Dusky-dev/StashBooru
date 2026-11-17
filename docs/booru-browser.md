@@ -197,17 +197,13 @@ retain the converter switch, without repeating the settings explanatory text.
 **Hide AI-generated posts** is a two-state robot-icon button inside
 `.booru-filter-icons`. The robot gets a diagonal slash when filtering is
 enabled rather than using a highlighted button state. It is off by default,
-and when pressed hides posts on
-the **currently loaded page** that have an explicit `ai_generated`,
-`ai-generated` or equivalent case/spacing variant tag. It does **not**
-classify images from pixels, and `ai_assisted` and
+and when pressed hides posts tagged `ai_generated`, `ai-generated` or an
+equivalent case/spacing variant. The server applies the filter before filling
+the result page, and toggling it returns to page one. The URL preserves
+`ai=hide` across refresh, navigation and saved searches. The filter works with
+**Media type** and does not classify images from pixels. Untagged or
+incorrectly tagged posts are not recognized, and `ai_assisted` or
 `ai_generated_background` alone do not count as fully AI-generated.
-The URL preserves the setting as `ai=hide` across refresh, navigation and
-saved searches. The button works together with the media filter, without
-refetching or changing the native provider query. Provider pagination and totals
-still include filtered-out posts; a page may look empty even when later pages
-contain untagged posts. Untagged or incorrectly tagged AI art cannot be
-automatically recognized.
 
 **Rating** offers All ratings, Safe / General, Sensitive, Questionable and Explicit.
 Sensitive is separate on Danbooru and compatible Gelbooru sites; it is disabled on
@@ -233,7 +229,8 @@ The toolbar star opens the selected site's **account favorites**. Save its API k
 and login (Danbooru/e621) or user ID (Gelbooru/DAPI) in Source settings, then choose
 **Browse account favorites**. Credentials stay on the server. These are read-only
 listings in provider order: inspection/download/review work as in search, while
-query, rating and sort filters are cleared. Loaded-page media filtering still works.
+query, rating and sort filters are cleared. **Media type** and **Hide
+AI-generated posts** apply before filling pages of favorites as well.
 
 Danbooru uses `ordfav:username` post search, e621 its authenticated favorites
 endpoint, and Gelbooru its favorite-index API followed by bounded post detail
@@ -309,21 +306,27 @@ added. Installed CSV completion remains available on these new engines.
 
 ## Display, downloads and inspection
 
-**Media on this page** filters the currently loaded page into Images or Videos.
-It does not refetch or repaginate the provider, and totals still include all media.
-When `file_ext` is absent, the adapter reads the original URL extension without
-downloading it. Missing/unrecognized formats remain unknown; GIF/APNG are images. **Show thumbnails**
-controls grid image loading; inspecting a post remains an explicit preview action.
+**Media type** selects All media, Images or Videos. Changing it returns to page
+one. The server filters posts before filling the page, including when some
+matching posts are on a later provider page. When `file_ext` is absent, an
+adapter may read the original URL extension without downloading it. GIF and
+APNG are Images; unknown formats appear under All media. **Show thumbnails**
+controls grid image loading; inspecting a post remains an explicit preview
+action.
 These controls, per-source pages and inspection persist through refresh/back.
 Autocomplete mode and thumbnail visibility are local browser preferences.
 The filter icons stay available on desktop and mobile. **Show thumbnails** and
-**Show ignored posts** are grouped as native Stash switches. Sources and settings
+**Show ignored posts** are grouped as native Stash switches. Changing **Show
+ignored posts** returns to page one and closes inspection because the server
+rebuilds the set of visible posts before paging. Sources and settings
 checkboxes use the same switch style; card selection uses Stash's card checkbox.
 
-**Posts per source page** uses Stash's page-size selector, with a maximum of 50.
-Changing it resets source pages and closes inspection; its `limit` URL parameter
-survives refresh/back. Provider filters and ignore marks may reduce the visible
-count without automatically filling the page.
+**Posts per source page** defaults to 24 and supports up to 250 displayed
+posts. Changing it resets source pages and closes inspection; its `limit` URL
+parameter survives refresh and Back. The server fills the page from bounded
+provider batches after applying media type, AI tag, blacklist and ignored
+post filters. A page can contain fewer posts if the source runs out. If the
+scan limit prevents reaching the page, try an earlier page or narrow the search.
 
 Each card exposes a **Download** icon (saved default folder/converter preference)
 and **Choose download folder** icon (choose an existing library folder). These use the same native Jobs,
@@ -449,14 +452,15 @@ using this server.
   tags on their attachments, are omitted from searches and account favorites
   for that source only. The server filters before issuing preview keys, so the
   blocked posts do not appear in the grid, preview navigation or page tags.
-  Provider page numbers, `hasMore` and totals are left unchanged: a page can
-  have fewer visible posts, or none, without being the last page. Source
-  settings and the blacklist are shared by all users of the server. The
-  **Hide blacklisted posts** icon beside the AI-generated filter is enabled by
-  default. Click it to temporarily show blacklisted posts in searches or account
-  favorites for the selected source, and click again to hide them. This state
-  is stored in the browser search URL (`blacklist=show`) and can be bookmarked
-  without changing the saved tag list.
+  The server assembles visible result pages after applying the blacklist.
+  The skip count describes posts excluded while loading the results; those
+  posts may come from several provider pages. Source settings and the
+  blacklist are shared by all users of the server. The **Hide blacklisted
+  posts** icon is enabled by default. Click it to temporarily show
+  blacklisted posts in searches or account favorites, and click again to
+  hide them. Changing it returns to page one and closes inspection. This
+  state is stored in the search URL (`blacklist=show`) and does not change
+  the saved tag list.
 - **Enable this source** controls availability in searches. Disabled definitions
   remain editable. Custom sources can be removed; presets can be reset, removing
   their overrides and saved credentials. IDs cannot be renamed in the editor.
@@ -537,9 +541,11 @@ Each API request has a 20-second overall budget, a 15-second HTTP timeout and an
 8 MiB response bound. Shared limits permit four active requests globally and one
 request at a time per host, spaced by at least a second. A valid `Retry-After`
 pauses requests to that host for up to an hour. There are no automatic retries;
-the UI reports the failure/pause. Responses are limited to 50 posts, with 24 used
-by the UI, and bounded tag counts/lengths. A provider may impose stricter limits.
-No unbounded catalogue scan, model inference or database migration is introduced.
+the UI reports the failure/pause. Individual provider batches are capped at
+50 posts and bounded tag counts/lengths; a provider may impose stricter
+limits. A filled browser result can contain up to 250 posts, assembled from
+at most 32 provider batches. API requests without filled paging retain the
+1–50 post limit.
 
 ## Validation and references
 

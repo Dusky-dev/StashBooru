@@ -1,3 +1,25 @@
+## Explain the Booru filename rule (BOO-11) — 2026-11-17
+
+- Baseline: `develop` `0e8936f316f61227925520e5d06fe268eec6fda5`, after #363 merged with 14 green
+  checks and clean Codex Review. Branch
+  [`fix/booru-filename-rule-20261117`](https://github.com/Dusky-dev/StashBooru/tree/fix/booru-filename-rule-20261117),
+  source `ce514d7197204258af0d2f0fc5fd993521e60fcc`, tree `d9e091bc6fa1129c99ffab6f74a6dbabdb5af8a2`.
+- Booru Settings shows whether the current draft uses a custom template, the
+  saved shared pattern, or built-in names when saved. The shared pattern
+  links to the existing Interface setting. Correct the guide, which
+  previously said a blank Booru override always used built-in names.
+- The download settings GET returns the shared pattern via the existing
+  server validator. The value is read-only; Save still submits the Booru
+  override, and the download naming rules and saved files are unchanged.
+- Checked the GET-to-form binding, the Interface link and source whitespace
+  against the pinned code. The existing backend and Booru browser CI are
+  pending; a local executor was unavailable.
+- On original head `4a26286d29edce0c9974a42a9ddf13f2e3a1f6e7`, both browser jobs and all 129 UI unit
+  tests passed, and Codex Review found no issues. Go lint reported a field
+  alignment issue, and UI lint rejected a semicolon after inline JSX. Align
+  the response fields and use two plain sentences in the help text. The
+  new head needs fresh CI and review.
+
 ## Stack match counts in All (LIB-05) — 2026-11-17
 
 - Based on `develop` `045683c7b9b53007d0c5aa3ea98659468ece4c60` after #360. Branch
@@ -249,12 +271,99 @@
 - Extend `ui/v2.5/tests/browser/settings-maintenance.mjs` with a routed upload-settings fixture that toggles all six switches, saves, checks persisted values, and asserts no uncaught page errors.
 - GitHub CI and browser regression are pending. No production build/browser acceptance was performed in this connected editor environment.
 
+## Keep retained files out of upload retry (UP-01/UP-03) — 2026-11-17
+
+- Baseline: `develop` `04a4b6175842002522d049496dd81a70b30fd0d5`. Branch
+  [`fix/media-upload-retained-files-20261117`](https://github.com/Dusky-dev/StashBooru/tree/fix/media-upload-retained-files-20261117),
+  source `dfbabb491de44fddebdb1dc0b5555a9584adc70d`, tree `83fae1e6668b1c3b58ecdb3dec07eb5ef090ddba`.
+- Keep the saved path and any indexed Image or Video ID when publishing succeeds
+  but importing or applying metadata fails. Direct URL downloads also confirm
+  the saved path before importing, so reaching the end of that stream without a
+  result still surfaces the retained file.
+- A saved item leaves the retry queue. Open its indexed record in a new tab, or
+  check the library or run Scan if an ID was unavailable. Other pending files
+  stay in the queue. A failure before any save acknowledgement still follows the
+  normal retry path.
+- Added a Go regression test for retained bytes after an unavailable importer
+  and browser checks for continuing a mixed queue and for a URL stream that
+  ends after saving. Parsed the browser check as JavaScript and checked edited
+  source for trailing whitespace and conflict markers. Go, UI and mounted
+  browser checks await CI.
+- The original PR #369 head `6ff7db91893a5b2842cfb81334f80685316ee5f5` received a clean
+  Codex review. CI caught a missing `WithDatabase` method on the Go test
+  double and a UI line wrap. The browser exercised the upload assertions,
+  then recorded fetch errors in Settings. Run upload acceptance after the
+  Settings unmount check, avoiding a second Settings load immediately before
+  its intentional reload. On head `596744094ed392d1afc53d93a083e8c5b7c55676`, [lint](https://github.com/Dusky-dev/StashBooru/actions/runs/43987732302/job/133720118330) and [browser](https://github.com/Dusky-dev/StashBooru/actions/runs/43987732310/job/133720118266)
+  and Codex Review found that the earlier edit also dropped the navigation into
+  Processing before its reload. Restore that navigation, and use the checked
+  JSON writer for error responses. Rerun CI and Codex Review.
+- Head `5a0fc76c18c8212474ffb5c5925efccd67a0459b` passed review and the existing Settings assertions.
+  The upload fixture had three unmocked lookups: the native Artist, Gallery
+  and Tag selectors use the HTTP client alongside the fixture Apollo context.
+  Mock those select operations explicitly and keep the unhandled error
+  assertion intact. Fresh CI and review are pending.
+
 ## Upload queue-wide processing and real media previews — 2026-11-13
 
 - Follow-up on PR #354, same branch and `develop` baseline. The owner clarified that Tag and Convert defaults must apply to **the entire import queue**, not repeat per file. Removed two per-row switches and now render one pair of queue-level switches, initialized from saved Quick upload settings. Both options are captured once at batch start and passed to local-file and URL import endpoints. Already-running items do not change if the queue switches are edited.
 - The queue now renders a 76px browser-native preview for local image files, with a larger 220px preview for the selected item. For successfully imported Images, browser-unsupported formats and direct URL items can fall back to Stash's `image/{id}/thumbnail?uploadPreview=jpeg` generated JPEG thumbnail, independent of the user's normal JXL/AVIF/animated thumbnail format. The special request never changes saved thumbnail preferences. A focused Go regression test covers the opt-in JPEG override. Unsupported/blocked previews show an explicit unavailable message rather than silently implying a real thumbnail. Remote URLs are not fetched by the browser prior to server-side SSRF validation. Per-file metadata, destination selection, remove/retry, and original preservation remain unchanged.
 - Existing thumbnail support relies on browser codecs before import and Stash's thumbnail encoder afterward. JXL/HEIC previews before import are unavailable unless the user's browser can decode them; Stash's generated thumbnails may also fail when the server cannot decode the source. This limitation is not masked as a successful preview.
 - UI type-check, Biome, and browser acceptance pending CI; live codec matrix not tested.
+
+## Make Booru visibility controls and counts agree (BOO-10) — 2026-11-17
+
+- Baseline: `develop` `04a4b6175842002522d049496dd81a70b30fd0d5` after #365 and #366 merged with 15
+  successful checks each. Branch
+  [`fix/booru-visibility-paging-20261117`](https://github.com/Dusky-dev/StashBooru/tree/fix/booru-visibility-paging-20261117),
+  source `d63805c4a4cebe68d11ac98a9c4e4e508e740895`, tree `95d5de4ece4d74ba8756852f08250a18f435b44c`.
+- Showing or hiding ignored posts or blacklisted posts now restarts the
+  filtered sequence at page one and closes the old inspection. The selected
+  source, query or favorites, and page size are preserved.
+- Describe the blacklist count as posts skipped during loading. It can
+  include posts from several provider pages, so an empty result no longer
+  attributes every missing post to the blacklist. Updated the browser guide.
+- Extended the existing browser fixture to exercise both switches from page
+  two and check page-one requests, reload, and the blacklist count with and
+  without visible posts. Parsed the fixture and checked URL state handling
+  against pinned code. Mounted tests and CI remain pending.
+
+## Restart Booru media filters at page one (BOO-10) — 2026-11-17
+
+- Based on `develop` `0e8936f316f61227925520e5d06fe268eec6fda5` after #363. Branch
+  [`fix/booru-filter-page-reset-20261117`](https://github.com/Dusky-dev/StashBooru/tree/fix/booru-filter-page-reset-20261117),
+  source `3333bcfca6fc78486846b758aa344748080738c4`, tree `675ab30bcc9f575efe9ccdcf5bdf8584d88c1764`.
+- Media type and Hide AI-generated posts filter across the selected source's
+  results before the server fills the browser page. Changing either now
+  clears the prior page and inspection while keeping the active search or
+  favorites, the selected source and the page size.
+- Updated the guide for filtered searches and favorites, the 24-post default,
+  maximum of 250 displayed posts, and the separate provider batch limit.
+- Extended the mounted fixture to open page two before each filter change
+  and assert a request for page one of the filtered results. Parsed the
+  fixture body and checked the labels and paging against the pinned
+  handlers and fill limits. The existing browser/CI runs are pending.
+
+## Open Following as a saved feed (BOO-06) — 2026-11-17
+
+- Baseline: `develop` `105562730380b9b9a678cf1303afb4de9e4751a0` after #368.
+  Branch [`feat/following-saved-feed-20261117`](https://github.com/Dusky-dev/StashBooru/tree/feat/following-saved-feed-20261117),
+  source `28c56db6ffc14caf9d04ea3c4b1d83d2ca9f63b4`, tree `0cafbb015f06afbbc0282597e4b1a9e6bd075e37`.
+- Default to the full-width saved feed. Move definitions, explicit provider
+  checks, and cache cleanup into Manage follows; keep the profile Follow draft
+  in that view. The feed can check a single selected or eligible follow.
+- Filter by provider instance and saved follow type before paging. Keep filter
+  state in the URL, and use historical match types for old revisions. Name the
+  source on cards, and open Browse / Download in a new tab so the feed stays put.
+- Parsed both updated browser scripts and checked changed source for whitespace.
+  Added SQLite/HTTP coverage of filtered pagination, shared and equal-ID posts,
+  and historical follow types. Extended desktop and mobile/prefix flows to cover
+  the new views, filters, and preview handoff. Mounted browser and Go checks
+  await CI; live providers and new feed adapters are outside this change.
+- Head `ba23bbd1904b6eb8d1304780debf19cf1f384a3a` passed the mounted Following suite, Go lint
+  and Codex Review. [Generate](https://github.com/Dusky-dev/StashBooru/actions/runs/43989419574/job/133725897419)
+  flagged three fixture line wraps after type checks. Apply the reported layout
+  and keep the fixture assertions unchanged.
 
 ## No-prompt quick upload and opt-in remote worker fallback — 2026-11-13
 

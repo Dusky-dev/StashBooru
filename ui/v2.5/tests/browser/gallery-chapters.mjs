@@ -104,7 +104,10 @@ async function checkImageStackBrowse(page, url, images, representative) {
   // entry points must open it even though it is last in the native sort.
   const groupedURL = page.url();
   await list.locator("#more-menu").click();
-  await list.getByText("View Random", { exact: true }).click();
+  await page
+    .locator(".image-list-operations-dropdown")
+    .getByText("View Random", { exact: true })
+    .click();
   await page.waitForURL(url + representativePath);
   await page.goBack();
   await page.waitForURL(groupedURL);
@@ -187,7 +190,8 @@ async function check(viewport, label) {
   const dialog = page.getByRole("dialog");
   const createFromSelection = async () => {
     await list.locator("#more-menu").click();
-    await list
+    await page
+      .locator(".image-list-operations-dropdown")
       .getByText("Create stack from selection…", { exact: true })
       .click();
     await dialog
