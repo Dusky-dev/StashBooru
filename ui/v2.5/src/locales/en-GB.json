@@ -125,6 +125,7 @@
     "select_all": "Select All",
     "select_directory": "Select directory",
     "select_entity": "Select {entityType}",
+    "hidden_image_selection": "{count, plural, one {# selected Image is} other {# selected Images are}} not on this page. Actions still target your selection.",
     "select_folders": "Select folders",
     "select_none": "Select None",
     "invert_selection": "Invert Selection",

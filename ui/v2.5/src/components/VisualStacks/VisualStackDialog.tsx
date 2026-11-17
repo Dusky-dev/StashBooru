@@ -15,6 +15,7 @@ import { useMemberDrag } from "./useMemberDrag";
 interface Props {
   stackID?: string;
   selection?: GQL.MediaReferenceInput[];
+  onStacked?: (media: GQL.MediaReferenceInput[]) => void;
   onClose: () => void;
 }
 const labels = [
@@ -29,6 +30,7 @@ const labels = [
 export function VisualStackDialog({
   stackID,
   selection: providedSelection = [],
+  onStacked,
   onClose,
 }: Props) {
   const client = useApolloClient();
@@ -239,25 +241,34 @@ export function VisualStackDialog({
       if (mounted.current) setBusy(false);
     }
   }
+  function notifyStacked(value: GQL.VisualStackDataFragment) {
+    if (mounted.current)
+      onStacked?.(value.members.map((member) => member.media));
+  }
   const save = () =>
     run(async () => {
       if (!rep) throw new Error("Choose a representative.");
-      if (snapshot)
-        await update({
-          variables: {
-            input: {
-              id: snapshot.id,
-              version: snapshot.version,
-              title,
-              members,
-              representative: rep,
-            },
-          },
-        });
-      else
-        await create({
-          variables: { input: { title, members, representative: rep } },
-        });
+      const value = snapshot
+        ? (
+            await update({
+              variables: {
+                input: {
+                  id: snapshot.id,
+                  version: snapshot.version,
+                  title,
+                  members,
+                  representative: rep,
+                },
+              },
+            })
+          ).data?.visualStackUpdate
+        : (
+            await create({
+              variables: { input: { title, members, representative: rep } },
+            })
+          ).data?.visualStackCreate;
+      if (!value) throw new Error("Stack save did not return a stack.");
+      notifyStacked(value);
       await refresh();
       if (mounted.current) onClose();
     });
@@ -403,6 +414,7 @@ export function VisualStackDialog({
         if (!mergedValue)
           throw new Error("Stack merge did not return a stack.");
         value = mergedValue;
+        notifyStacked(mergedValue);
       }
 
       const existing = new Set(
@@ -452,6 +464,7 @@ export function VisualStackDialog({
         if (!updatedValue)
           throw new Error("Adding selected media did not return a stack.");
         value = updatedValue;
+        notifyStacked(updatedValue);
       }
 
       await refresh();
@@ -864,6 +877,7 @@ export function VisualStackDialog({
                     },
                   },
                 });
+                if (mounted.current) onStacked?.(moved.map((m) => m.media));
                 await refresh();
                 if (mounted.current) onClose();
               })
@@ -904,8 +918,11 @@ export function VisualStackDialog({
                     },
                   })
                 ).data?.visualStackMerge;
+                if (!value)
+                  throw new Error("Stack merge did not return a stack.");
+                notifyStacked(value);
                 await refresh();
-                if (value) adopt(value);
+                if (mounted.current) adopt(value);
               })
             }
           >

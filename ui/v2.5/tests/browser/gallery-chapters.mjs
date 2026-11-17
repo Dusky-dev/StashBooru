@@ -49,6 +49,74 @@ async function imageCardPaths(page) {
   await links.first().waitFor();
   return links.evaluateAll((cards) => cards.map((card) => card.pathname));
 }
+async function checkImageStackBrowse(page, url, images, representative) {
+  await page.goto(url + "/images", { waitUntil: "networkidle" });
+  const representativePath = `/images/${representative}`;
+  assert.deepEqual(await imageCardPaths(page), [representativePath]);
+
+  const list = page.locator(".image-list");
+  const viewOptions = list.getByRole("button", {
+    name: "View options",
+    exact: true,
+  });
+  const variants = list.getByRole("menuitemcheckbox", {
+    name: "Show individual variants",
+    exact: true,
+  });
+  await viewOptions.click();
+  assert.equal(await variants.getAttribute("aria-checked"), "false");
+  await variants.click();
+  await page.waitForURL(
+    (location) => location.searchParams.get("variants") === "true"
+  );
+  const variantPath = `/images/${images[0].id}`;
+  const variantLink = list.locator(`a.image-card-link[href="${variantPath}"]`);
+  await variantLink.waitFor();
+  const paths = images.map(({ id }) => `/images/${id}`);
+  assert.deepEqual(await imageCardPaths(page), paths);
+
+  await page.reload({ waitUntil: "networkidle" });
+  await variantLink.waitFor();
+  assert.deepEqual(await imageCardPaths(page), paths);
+
+  const card = list.locator(".image-card").filter({
+    has: page.locator(`a.image-card-link[href="${variantPath}"]`),
+  });
+  await card.hover();
+  await card.locator("input.card-check").check();
+  await viewOptions.click();
+  assert.equal(await variants.getAttribute("aria-checked"), "true");
+  await variants.click();
+  await page.waitForURL((location) => !location.searchParams.has("variants"));
+  const notice = list.locator(".image-hidden-selection");
+  await notice.waitFor();
+  assert.match(
+    await notice.innerText(),
+    /1 selected Image is not on this page/
+  );
+  assert.deepEqual(await imageCardPaths(page), [representativePath]);
+  await notice
+    .getByRole("button", { name: "Select None", exact: true })
+    .click();
+  await notice.waitFor({ state: "hidden" });
+
+  // Only the representative matches the grouped list, so both Random
+  // entry points must open it even though it is last in the native sort.
+  const groupedURL = page.url();
+  await list.locator("#more-menu").click();
+  await page
+    .locator(".image-list-operations-dropdown")
+    .getByText("View Random", { exact: true })
+    .click();
+  await page.waitForURL(url + representativePath);
+  await page.goBack();
+  await page.waitForURL(groupedURL);
+  await viewOptions.waitFor();
+  assert.deepEqual(await imageCardPaths(page), [representativePath]);
+  await page.keyboard.press("p");
+  await page.keyboard.press("r");
+  await page.waitForURL(url + representativePath);
+}
 async function check(viewport, label) {
   const directory = join(root, label);
   const media = join(directory, "media");
@@ -109,17 +177,41 @@ async function check(viewport, label) {
   assert.equal(images.length, 3, "Scan must index all three generated PNGs");
   const [first, second, outside] = images;
   const inGallery = [first.id, second.id];
-  await call(
-    page,
-    url,
-    "mutation($input: VisualStackCreateInput!) { visualStackCreate(input: $input) { id } }",
-    {
-      input: {
-        members: images.map(({ id }) => ({ media: { kind: "IMAGE", id } })),
-        representative: { kind: "IMAGE", id: outside.id },
-      },
-    }
-  );
+  await page.goto(url + "/images", { waitUntil: "networkidle" });
+  const list = page.locator(".image-list");
+  const selected = list.locator("input.card-check:checked");
+  for (const { id } of images) {
+    const card = list.locator(".image-card").filter({
+      has: page.locator(`a.image-card-link[href="/images/${id}"]`),
+    });
+    await card.hover();
+    await card.locator("input.card-check").check();
+  }
+  const dialog = page.getByRole("dialog");
+  const createFromSelection = async () => {
+    await list.locator("#more-menu").click();
+    await page
+      .locator(".image-list-operations-dropdown")
+      .getByText("Create stack from selection…", { exact: true })
+      .click();
+    await dialog
+      .getByRole("radio", { name: `Representative image:${outside.id}` })
+      .waitFor();
+  };
+  await createFromSelection();
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  await dialog.waitFor({ state: "hidden" });
+  assert.equal(await selected.count(), images.length);
+  await createFromSelection();
+  await dialog
+    .getByRole("radio", { name: `Representative image:${outside.id}` })
+    .check();
+  await dialog
+    .getByRole("button", { name: "Create stack", exact: true })
+    .click();
+  await dialog.waitFor({ state: "hidden" });
+  assert.equal(await selected.count(), 0);
+  assert.equal(await list.locator(".image-hidden-selection").count(), 0);
   const gallery = (
     await call(
       page,
@@ -141,12 +233,7 @@ async function check(viewport, label) {
       { id: gallery.id }
     );
   const before = await snapshot();
-  await page.goto(url + "/images", { waitUntil: "networkidle" });
-  assert.deepEqual(
-    await imageCardPaths(page),
-    [`/images/${outside.id}`],
-    "The regular Images list should still show the stack representative"
-  );
+  await checkImageStackBrowse(page, url, images, outside.id);
   await page.goto(url + "/galleries/" + gallery.id, {
     waitUntil: "networkidle",
   });
@@ -154,6 +241,12 @@ async function check(viewport, label) {
     await imageCardPaths(page),
     inGallery.map((id) => `/images/${id}`),
     "The gallery must show its own Images in path order"
+  );
+  assert.equal(
+    await page
+      .getByRole("button", { name: "View options", exact: true })
+      .count(),
+    0
   );
   await page.getByRole("tab", { name: "Chapters", exact: true }).click();
   await page
@@ -311,7 +404,7 @@ async function check(viewport, label) {
   console.log(
     "Gallery chapter " +
       label +
-      ": stack membership order, create/update/delete rejection, retained drafts, pending controls, retry and reload passed."
+      ": Images variants and Random, gallery membership order, chapter rejection/retry and reload passed."
   );
 }
 try {

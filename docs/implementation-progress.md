@@ -170,6 +170,59 @@
 - The path did not previously exist in StashBooru; no fork-specific file conflict. Preserve upstream commit ancestry with an isolated merge commit; existing fork code and documentation remain unchanged except this checkpoint.
 - Validation: compared exact current upstream/fork SHAs and upstream diff; root file's blob matches upstream; no runtime tests required for doc-only sync. GitHub PR and its review/checks pending.
 
+## Make Images stack browsing and selection agree (LIB-05/LIB-06/LIB-08) — 2026-11-17
+
+- Baseline: `develop` `597f4a4e07152f27c1d7ef5bfecdc23188a1d102` after #364 merged with 14 green checks.
+  Branch [`fix/images-stack-browsing-20261117`](https://github.com/Dusky-dev/StashBooru/tree/fix/images-stack-browsing-20261117),
+  source `71a5a85fa3cb35a0e9b3d4a37e0ba3ae4921f45b`, tree `dd621b474e7934112e94ed5eb78502340c558368`.
+- Bundle three related Images fixes. **Show individual variants** lives in
+  the native View options. It starts from the Interface setting, saves an
+  override in the list link and saved view options, and starts at page one
+  when grouping changes. Gallery Images keeps its native membership/order.
+- A notice counts selected Images absent from the loaded page and offers
+  **Select None** while retaining the explicit selection. The menu and
+  keyboard Random actions now share the applied filters, grouping and
+  current result count. A late response cannot navigate from a new list.
+- Used the existing gallery-chapters fixture to exercise variants, reload,
+  hidden selection and clearing, both Random actions, and gallery member
+  order at desktop and phone widths. Parsed the fixture and checked the
+  URL/saved-view round trips and Random scope in focused source simulations.
+  Mounted execution and full validation await repository CI.
+- Original head `f47da21d58875d818f9e5e2d5db882a8b18f98c0` passed all 129 UI tests, lint and
+  TypeScript. [CI formatting](https://github.com/Dusky-dev/StashBooru/actions/runs/43981436756/job/133698626301)
+  rejected a fixture line wrap; use the formatter's layout. Codex Review
+  correctly identified that a saved view with no variant override inherited
+  the current list's override. Both saved-filter loaders use a clone; loading
+  an Images view now clears the override unless its value is an explicit
+  boolean. Checked the source for absent, false and true selections.
+  Fresh CI and review are pending.
+- Head `95e274961ac79a36e4139f1f2d7d931e18756dd0` received a clean Codex review and passed the
+  other 14 checks. [First Library](https://github.com/Dusky-dev/StashBooru/actions/runs/43982701659/job/133707230846)
+  timed out in the stack fixture because its nested Playwright card selector
+  still required the outer list ancestor. Match the link relative to the card;
+  the grouped and expanded image assertions are unchanged. Fresh CI and review
+  are pending.
+- Head `6f116e3137b10a5ad34d2016054d3499b87951e7` passed stack acceptance and Codex
+  review, but [First Library](https://github.com/Dusky-dev/StashBooru/actions/runs/43985721239/job/133718801141)
+  read the profile All grid twice during a tab transition: its wait passed and
+  the second read saw an empty grid. Poll for the exact sorted card list in
+  one browser evaluation, rejecting missing, extra and duplicate cards.
+
+## Clear successful stack members from list selection — 2026-11-17
+
+- Follow-up on PR #367, parent `0dba316cae473200f44c28547abdea29cbe37dbb`. Images and All deselect
+  typed members after a confirmed create, add or merge. Stack proposal pairs
+  use the same callback. Cancellation and rejected mutations leave selection
+  intact; separate committed steps of a merge can clear their own members.
+- Keep unrelated selection and reset the range anchor only when its item was
+  cleared. The real gallery fixture now creates its initial stack through the
+  Images toolbar and checks selection on both cancellation and success.
+  Browser script syntax checked; mounted checks and review await CI.
+- Head `7fa272136e4e2ca4f33e12a92cfe64d44f89f392` passed Codex Review, Go lint,
+  and the hosted browser checks. Generate stopped on four Biome line wraps
+  in the stack dialog and gallery fixture. Apply the formatter's layout;
+  fresh checks are pending.
+
 ## Upstream sync — Stash develop 2026-11-13
 
 - Fork baseline: `develop` `1bf776dfa56d8ee7758a73998891fc0b7bc151c9`; upstream `stashapp/stash/develop` `47057616fe9da0cf38cfa8c39ab160e5441eeafc`, two commits ahead of the common ancestor `aefc9373fe57e5cb32fbbb7215fd508ed799743f`.

@@ -591,6 +591,16 @@ export function useListSelect<T extends IHasID = IHasID>(
     setLastClickedId(undefined);
   }
 
+  function onDeselectIDs(ids: readonly string[]) {
+    const completed = new Set(ids);
+    setItemsSelected((previous) =>
+      previous.filter((item) => !completed.has(item.id))
+    );
+    setLastClickedId((previous) =>
+      previous && completed.has(previous) ? undefined : previous
+    );
+  }
+
   function onInvertSelection() {
     setItemsSelected((prevSelected) => {
       const selectedSet = new Set(prevSelected.map((item) => item.id));
@@ -617,6 +627,7 @@ export function useListSelect<T extends IHasID = IHasID>(
     onSelectChange,
     onSelectAll,
     onSelectNone,
+    onDeselectIDs,
     onInvertSelection,
     hasSelection,
   };
@@ -625,7 +636,7 @@ export function useListSelect<T extends IHasID = IHasID>(
 // Toolbars consume selection actions without replacing the typed item data.
 export type IListSelect<T extends IHasID = IHasID> = Omit<
   ReturnType<typeof useListSelect<T>>,
-  "restoreSelection"
+  "restoreSelection" | "onDeselectIDs"
 >;
 
 // returns true if the filter has changed in a way that impacts the total count

@@ -2,6 +2,7 @@ import { metadataReviewOperation } from "../Tagging/MetadataReviewDialog";
 import { VisualStackDialog } from "../VisualStacks/VisualStackDialog";
 import { StackProposalsDialog } from "../VisualStacks/StackProposalsDialog";
 import { StackMember } from "../VisualStacks/media";
+import { stackKey } from "../VisualStacks/identity";
 import { CollapseStacksOption } from "src/models/list-filter/media";
 import { BooleanCriterion } from "src/models/list-filter/criteria/criterion";
 import { useCallback, useEffect, useMemo } from "react";
@@ -143,6 +144,7 @@ const FilteredMediaListComponent = ({
     onSelectChange,
     onSelectAll,
     onSelectNone,
+    onDeselectIDs,
     onInvertSelection,
     restoreSelection,
   } = listSelect;
@@ -201,6 +203,8 @@ const FilteredMediaListComponent = ({
       });
     restoreSelection(next);
   };
+  const onStacked = (media: GQL.MediaReferenceInput[]) =>
+    onDeselectIDs(media.map(stackKey));
   const operations = (
     <ListOperations
       items={items.length}
@@ -214,7 +218,11 @@ const FilteredMediaListComponent = ({
             selectedItems.length >= 2 && selectedItems.length <= 200,
           onClick: () =>
             showModal(
-              <VisualStackDialog selection={selection} onClose={closeModal} />
+              <VisualStackDialog
+                selection={selection}
+                onStacked={onStacked}
+                onClose={closeModal}
+              />
             ),
         },
         {
@@ -225,6 +233,7 @@ const FilteredMediaListComponent = ({
             showModal(
               <StackProposalsDialog
                 selection={selection}
+                onStacked={onStacked}
                 onClose={closeModal}
               />
             ),
