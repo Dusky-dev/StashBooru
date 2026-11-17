@@ -43,6 +43,34 @@ async function mutation(page, operation, click, rejected = false) {
   assert.equal(!!payload.errors?.length, rejected, JSON.stringify(payload));
   return payload;
 }
+async function expectToastInViewport(page, label) {
+  const inside = () =>
+    page.waitForFunction(
+      () => {
+        const toast = document.querySelector(".toast-container .toast.danger");
+        const text = toast?.querySelector(".toast-header > span");
+        if (!toast || !text) return false;
+        const r = toast.getBoundingClientRect();
+        return (
+          r.left >= 0 &&
+          r.right <= window.innerWidth &&
+          r.top >= 0 &&
+          r.bottom <= window.innerHeight &&
+          text.scrollWidth <= text.clientWidth
+        );
+      },
+      undefined,
+      { timeout: 3000 }
+    );
+  await inside();
+  if (label === "mobile") {
+    // Phones narrower than the 350px toast used to clip it at the left edge.
+    const viewport = page.viewportSize();
+    await page.setViewportSize({ width: 320, height: viewport.height });
+    await inside();
+    await page.setViewportSize(viewport);
+  }
+}
 async function check(viewport, label) {
   const directory = join(root, label);
   const media = join(directory, "media");
@@ -189,6 +217,7 @@ async function check(viewport, label) {
     true
   );
   await page.locator(".toast.danger").waitFor();
+  await expectToastInViewport(page, label);
   assert.equal(await dialog.isVisible(), true);
   assert.equal(await description.inputValue(), "Middle placement");
   assert.deepEqual(await childIDs(), [a.id, b.id]);
