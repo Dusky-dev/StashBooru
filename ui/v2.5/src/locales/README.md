@@ -30,8 +30,9 @@ git push origin codeberg_weblate
 # StashBooru display names
 
 `booru-terminology.json` supplies the basic English Artist/Character/Video and
-Collection names. Fork-specific nested English labels (for example Video covers
-and Artist hierarchy/view headings) live in `en-GB.json`; `en-US.json` remains a
+Collection names. Every other English label that names a Scene, Performer, Studio
+or Group (settings descriptions, tagger, filter criteria, Sub-Collections) uses
+the fork names in `en-GB.json` itself, because the overlay is shallow; `en-US.json` remains a
 sparse spelling override and falls back to those messages. Preserve message IDs
 and native Studio/Performer/Scene API fields. Non-English messages and user custom
 locales keep their existing precedence; changing English does not translate every

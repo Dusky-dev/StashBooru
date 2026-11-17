@@ -1,3 +1,24 @@
+## Consistent Video/Character/Artist/Collection labels (E14) — 2026-11-17
+
+- Baseline: `develop` `f08cc954225c73efce098ac19125585fa87cc536` after #375. Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- The shallow `booru-terminology.json` overlay only renamed top-level labels,
+  so 156 nested or unlisted English messages still said Scene, Performer,
+  Studio or Group: Collection Sub-Groups tabs and "Remove from Group",
+  "Include subsidiary studios", Video Tagger/Identify options, stash-box
+  Character/Artist tagger, Duplicate Scenes, stats and sort/filter criteria.
+  Rename them in `en-GB.json` (and the two en-US spelling overrides). Message
+  IDs, GraphQL fields, duplicate-group wording and placeholders are unchanged.
+- The stash-box Character/Artist tagger modal headers were hard-coded English;
+  they now use the existing messages. The Collection browser fixture targets
+  the renamed Sub-Collections tab, Add and Remove titles.
+- Checked JSON round-trip, Biome 2.5.0 format/lint on changed sources and
+  `git diff --check`. No other source, test or built-in matched the old
+  label text. TypeScript, unit and browser suites were not run locally: the
+  dependency install is blocked by a policy 403 for a codeload.github.com
+  tarball, so CI is the first full run. Upstream manual pages and changelogs
+  keep upstream wording.
+
 ## Pawchive preview filter and SWF originals — 2026-11-17
 
 - Baseline: `develop` `105562730380b9b9a678cf1303afb4de9e4751a0` after #368. Branch

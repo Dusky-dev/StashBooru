@@ -154,7 +154,7 @@ async function check(viewport, label) {
     assert.deepEqual(await order(), expected);
     assert.deepEqual(await childIDs(), expected);
     await page
-      .getByRole("tab", { name: /Sub-Groups/ })
+      .getByRole("tab", { name: /Sub-Collections/ })
       .locator('.badge[data-value="' + expected.length + '"]')
       .waitFor({ timeout: 5000 });
   }
@@ -166,7 +166,7 @@ async function check(viewport, label) {
     { waitUntil: "networkidle" }
   );
   await expectOrder([a.id, b.id]);
-  const add = page.getByTitle("Add Sub-Groups", { exact: true });
+  const add = page.getByTitle("Add Sub-Collections", { exact: true });
   await add.click();
   const dialog = page.getByRole("dialog");
   const select = dialog.getByRole("combobox");
@@ -297,7 +297,7 @@ async function check(viewport, label) {
   assert.equal(page.url(), returnURL);
   await expectOrder([c.id, a.id, b.id]);
   await card(c.id).locator("input.card-check").check();
-  const remove = page.getByTitle("Remove from Group", { exact: true });
+  const remove = page.getByTitle("Remove from Collection", { exact: true });
   const beforeRemoval = await children();
   const rejectRemove = async (route) => {
     const request = route.request();

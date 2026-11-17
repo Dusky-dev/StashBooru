@@ -133,7 +133,7 @@ const StashSearchResult: React.FC<IStashSearchResultProps> = ({
           studio={modalStudio}
           handleStudioCreate={handleSave}
           icon={faTags}
-          header="Update Studio"
+          header={intl.formatMessage({ id: "studio_tagger.update_studio" })}
           excludedStudioFields={excludedStudioFields}
           endpoint={endpoint}
         />
