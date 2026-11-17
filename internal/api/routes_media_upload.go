@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -308,6 +309,29 @@ func validateUploadMetadataInsideTxn(ctx context.Context, repo models.Repository
 	return nil
 }
 
+func indexedUploadResult(result booruLibraryResult) *booruLibraryResult {
+	if result.ID == "" {
+		return nil
+	}
+	return &result
+}
+
+func writeSavedMediaUploadError(w http.ResponseWriter, status int, path string, result *booruLibraryResult, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(struct {
+		Code      string              `json:"code"`
+		Error     string              `json:"error"`
+		SavedPath string              `json:"savedPath"`
+		Result    *booruLibraryResult `json:"result,omitempty"`
+	}{
+		Code:      "import",
+		Error:     message,
+		SavedPath: path,
+		Result:    result,
+	})
+}
+
 func (rs booruBrowserRoutes) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	if !mediaUploadSameOrigin(r) {
@@ -436,7 +460,7 @@ func (rs booruBrowserRoutes) UploadMedia(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if rs.jobs == nil {
-		writeBooruError(w, http.StatusServiceUnavailable, "import", "Library import service is unavailable; the saved file remains in the selected folder.")
+		writeSavedMediaUploadError(w, http.StatusServiceUnavailable, path, nil, "Library import service is unavailable; the saved file remains in the selected folder.")
 		return
 	}
 	type importOutcome struct {
@@ -458,12 +482,12 @@ func (rs booruBrowserRoutes) UploadMedia(w http.ResponseWriter, r *http.Request)
 	case outcome := <-completed:
 		if outcome.err != nil {
 			// The fully written original remains for a later scan/repair.
-			writeBooruError(w, http.StatusInternalServerError, "import", outcome.err.Error())
+			writeSavedMediaUploadError(w, http.StatusInternalServerError, path, indexedUploadResult(outcome.result), outcome.err.Error())
 			return
 		}
 		writeVisualSimilarityJSON(w, outcome.result)
 	case <-r.Context().Done():
 		// Browser closed the upload; a fully saved original remains recoverable.
-		writeBooruError(w, http.StatusRequestTimeout, "import", "Import cancelled; the saved file is still in the library folder.")
+		writeSavedMediaUploadError(w, http.StatusRequestTimeout, path, nil, "Import cancelled; the saved file is still in the library folder.")
 	}
 }

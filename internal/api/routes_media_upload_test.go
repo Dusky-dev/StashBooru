@@ -2,6 +2,8 @@ package api
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -10,6 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/stashapp/stash/pkg/models"
 )
 
 func TestMediaUploadFileNaming(t *testing.T) {
@@ -117,5 +121,72 @@ func TestMediaUploadProcessingFlagsParseStrictly(t *testing.T) {
 		if _, err := parseMediaUploadBoolean(input); err == nil {
 			t.Errorf("accepted malformed processing flag %q", input)
 		}
+	}
+}
+
+type mediaUploadTestTxn struct{}
+
+func (mediaUploadTestTxn) Begin(ctx context.Context, _ bool) (context.Context, error) {
+	return ctx, nil
+}
+
+func (mediaUploadTestTxn) Commit(context.Context) error { return nil }
+
+func (mediaUploadTestTxn) Rollback(context.Context) error { return nil }
+
+func (mediaUploadTestTxn) IsLocked(error) bool { return false }
+
+func TestMediaUploadReportsSavedFileWhenImporterUnavailable(t *testing.T) {
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	rs := booruBrowserRoutes{
+		configPath:   t.TempDir(),
+		libraryRoots: func() []string { return []string{dir} },
+		repository:   models.Repository{TxnManager: mediaUploadTestTxn{}},
+	}
+	if err := rs.saveMediaUploadSettings(mediaUploadSettings{Enabled: true}); err != nil {
+		t.Fatal(err)
+	}
+
+	var data bytes.Buffer
+	writer := multipart.NewWriter(&data)
+	if err := writer.WriteField("destination", dir); err != nil {
+		t.Fatal(err)
+	}
+	file, err := writer.CreateFormFile("file", "retained.png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const original = "isolated upload fixture"
+	if _, err := io.WriteString(file, original); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "http://stash.test/media-upload", &data)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	w := httptest.NewRecorder()
+	rs.UploadMedia(w, req)
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected importer failure, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var problem struct {
+		Code      string              `json:"code"`
+		SavedPath string              `json:"savedPath"`
+		Result    *booruLibraryResult `json:"result"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&problem); err != nil {
+		t.Fatal(err)
+	}
+	if problem.Code != "import" || problem.SavedPath != filepath.Join(dir, "retained.png") || problem.Result != nil {
+		t.Fatalf("invalid saved-file recovery information: %+v", problem)
+	}
+	if raw, err := os.ReadFile(problem.SavedPath); err != nil || string(raw) != original {
+		t.Fatalf("saved bytes missing or changed: %q, %v", raw, err)
 	}
 }

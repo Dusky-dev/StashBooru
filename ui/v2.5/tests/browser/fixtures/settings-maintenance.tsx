@@ -14,6 +14,7 @@ import { StudioDetailsPanel } from "../../../src/components/Studios/StudioDetail
 import { CopyrightDetailsPanel } from "../../../src/components/Tags/Copyrights";
 import { IntlProvider } from "react-intl";
 import { Settings } from "../../../src/components/Settings/Settings";
+import { MediaUploadDialog } from "../../../src/components/Shared/MediaUploadDialog";
 import ImageDuplicates from "../../../src/components/ImageDuplicates/ImageDuplicates";
 import { ConfigurationProvider } from "../../../src/hooks/Config";
 import { ToastProvider } from "../../../src/hooks/Toast";
@@ -237,6 +238,12 @@ ReactDOM.render(
                   </Route>
                   <Route path="/image-duplicates">
                     <ImageDuplicates />
+                  </Route>
+                  <Route exact path="/upload-recovery">
+                    <MediaUploadDialog
+                      onHide={() => undefined}
+                      onImported={() => undefined}
+                    />
                   </Route>
                   <Route>
                     <Settings />
