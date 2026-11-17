@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Alert, Form } from "react-bootstrap";
 import { useIntl } from "react-intl";
 import { faPencilAlt } from "@fortawesome/free-solid-svg-icons";
@@ -11,7 +11,11 @@ import { MultiSet } from "../Shared/MultiSet";
 import { StudioSelect } from "../Shared/Select";
 import { RatingSystem } from "../Shared/Rating/RatingSystem";
 import { getDateError } from "src/utils/yup";
-import { dispatchMediaUpdates, splitMediaSelection } from "./mediaSelection";
+import {
+  dispatchMediaUpdates,
+  splitMediaSelection,
+  summarizeMediaUpdates,
+} from "./mediaSelection";
 
 type SharedUpdate = Pick<
   GQL.BulkImageUpdateInput,
@@ -30,7 +34,7 @@ export function EditMediaDialog({
   onClose,
 }: {
   selected: GQL.MediaListItemFragment[];
-  onClose: (applied: boolean) => void;
+  onClose: (confirmed: string[]) => void;
 }) {
   const intl = useIntl();
   const [input, setInput] = useState<SharedUpdate>({});
@@ -45,6 +49,7 @@ export function EditMediaDialog({
   const [running, setRunning] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [completed, setCompleted] = useState(new Set<string>());
+  const writing = useRef(false);
   const [updateImages] = useBulkImageUpdate();
   const [updateScenes] = useBulkSceneUpdate();
   const { imageIDs, sceneIDs } = splitMediaSelection(selected);
@@ -56,38 +61,52 @@ export function EditMediaDialog({
       ? value
       : undefined;
 
+  const common = {
+    ...input,
+    tag_ids: relationshipInput(tags),
+    performer_ids: relationshipInput(characters),
+  };
+  const hasChanges = Object.values(common).some((value) => value !== undefined);
+  const pending = selected.filter((item) => !completed.has(item.id));
+  const pendingCounts = splitMediaSelection(pending);
+  const clears = [
+    tags.mode === GQL.BulkUpdateIdMode.Set && !tags.ids?.length ? "Tags" : "",
+    characters.mode === GQL.BulkUpdateIdMode.Set && !characters.ids?.length
+      ? "Characters"
+      : "",
+  ].filter(Boolean);
+
   async function apply() {
+    if (writing.current || !hasChanges || !pending.length || dateError) return;
+    writing.current = true;
     setRunning(true);
     setErrors([]);
-    const common = {
-      ...input,
-      tag_ids: relationshipInput(tags),
-      performer_ids: relationshipInput(characters),
-    };
-    const outcomes = await dispatchMediaUpdates(
-      selected,
-      common,
-      (ids, fields) =>
-        completed.has("Images")
-          ? Promise.resolve()
-          : updateImages({ variables: { input: { ...fields, ids } } }),
-      (ids, fields) =>
-        completed.has("Videos")
-          ? Promise.resolve()
-          : updateScenes({ variables: { input: { ...fields, ids } } })
-    );
-    const next = new Set(completed);
-    const failures: string[] = [];
-    outcomes.forEach((outcome, index) => {
-      if (!(index === 0 ? imageIDs : sceneIDs).length) return;
-      const name = index === 0 ? "Images" : "Videos";
-      if (outcome.status === "fulfilled") next.add(name);
-      else failures.push(`${name}: ${String(outcome.reason)}`);
-    });
-    setCompleted(next);
-    setErrors(failures);
-    setRunning(false);
-    if (!failures.length) onClose(true);
+    try {
+      const outcomes = await dispatchMediaUpdates(
+        pending,
+        common,
+        async (ids, fields) => {
+          const result = await updateImages({
+            variables: { input: { ...fields, ids } },
+          });
+          return result.data?.bulkImageUpdate?.map((image) => image.id) ?? [];
+        },
+        async (ids, fields) => {
+          const result = await updateScenes({
+            variables: { input: { ...fields, ids } },
+          });
+          return result.data?.bulkSceneUpdate?.map((scene) => scene.id) ?? [];
+        }
+      );
+      const report = summarizeMediaUpdates(pending, outcomes);
+      const next = new Set([...completed, ...report.confirmed]);
+      setCompleted(next);
+      setErrors(report.errors);
+      if (next.size === selected.length) onClose([...next]);
+    } finally {
+      writing.current = false;
+      setRunning(false);
+    }
   }
 
   return (
@@ -98,15 +117,15 @@ export function EditMediaDialog({
       accept={{
         onClick: apply,
         text: errors.length
-          ? "Retry failed updates"
+          ? "Retry remaining updates"
           : "Apply to selected media",
       }}
       cancel={{
-        onClick: () => onClose(completed.size > 0),
-        text: "Close",
+        onClick: () => onClose([...completed]),
+        text: completed.size ? "Close and keep remaining selected" : "Close",
         variant: "secondary",
       }}
-      disabled={running || !!dateError}
+      disabled={running || !!dateError || !hasChanges || !pending.length}
       isRunning={running}
     >
       <p>
@@ -120,8 +139,18 @@ export function EditMediaDialog({
       ))}
       {!!errors.length && (
         <Alert variant="info">
-          Successful updates: {Array.from(completed).join(", ") || "none"}.
-          Retry applies only to the failed type.
+          Stash confirmed {completed.size} of {selected.length} updates. Retry
+          sends only the remaining {pendingCounts.imageIDs.length} Images and{" "}
+          {pendingCounts.sceneIDs.length} Videos. Closing keeps those items
+          selected.
+        </Alert>
+      )}
+      {!hasChanges && (
+        <p className="text-muted">Choose a field or relationship to update.</p>
+      )}
+      {!!clears.length && (
+        <Alert variant="warning">
+          This will clear all {clears.join(" and ")} on the remaining items.
         </Alert>
       )}
       <Form>

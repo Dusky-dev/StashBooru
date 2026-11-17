@@ -70,9 +70,11 @@ video as a separate Scene.
 | Upscale | Images; selected Videos are excluded, counted in the action explanation and shown inside the dialog. Disabled if no Images are selected. |
 
 Mixed edits use two native transactions with the existing hooks and validation.
-Each type's result is reported separately. If one succeeds and the other fails,
-the editor locks the submitted fields and retries only the failed type. Closing
-after partial success refreshes the list and clears the completed selection.
+Apply becomes available when you choose a change. Replacing Tags or Characters
+with an empty list shows that it will clear those associations. If Stash
+confirms only some items, the editor retains the submitted fields and retries
+only the unconfirmed items. Closing after partial success refreshes the list
+and keeps those items selected; confirmed Images and Videos are deselected.
 
 ## Verification
 
