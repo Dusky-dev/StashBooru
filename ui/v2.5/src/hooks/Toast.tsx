@@ -113,7 +113,7 @@ export const ToastProvider: React.FC<React.PropsWithChildren<unknown>> = ({
           {toast?.content}
         </ModalComponent>
       )}
-      <div className={cx("toast-container row", { hidden: !toast || hiding })}>
+      <div className={cx("toast-container", { hidden: !toast || hiding })}>
         {toastItem}
       </div>
     </ToastContext.Provider>

@@ -65,8 +65,8 @@ remain separate transactions. Its saved-profile captures exposed a separate
 Characters-tab failure: the profile sends a Copyright criterion unsupported by
 PerformerFilterType, and the server returns HTTP 400/unknown field. Fix that
 native branch-list path next; Image/Video bulk-save and partial-failure acceptance
-remain afterward. Some captured error toasts are clipped at the viewport edge;
-their positioning and animation need a separate narrow/wide review.
+remain afterward. Error toasts that were clipped at the viewport edge now fit narrow
+phones, and long unbroken messages wrap and scroll inside the toast (2026-11-17).
 The broader workstreams above remain open.
 
 ## Scope and evidence
