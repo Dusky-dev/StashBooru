@@ -70,20 +70,40 @@ async function checkUploadRecovery(page) {
     });
   });
   const sentFiles = [];
-  await page.route("**/media-upload", (route) => {
+  const sentDestinations = [];
+  const batchFolder = "/stash/uploads/batch";
+  await page.route("**/booru-browser/directories?**", (route) => {
+    const path = new URL(route.request().url()).searchParams.get("path");
+    return route.fulfill({
+      json: {
+        directories: path === batchFolder ? [] : [batchFolder],
+        parent: "",
+      },
+    });
+  });
+  let finishCurrent;
+  const held = new Promise((resolve) => {
+    finishCurrent = resolve;
+  });
+  await page.route("**/media-upload", async (route) => {
     const body = route.request().postData() ?? "";
     const name = /filename="([^"]+)"/.exec(body)?.[1];
+    const destination = /name="destination"\r\n\r\n([^\r\n]+)/.exec(body)?.[1];
+    assert.ok(name && destination, "Missing upload name or destination");
     sentFiles.push(name);
+    sentDestinations.push(destination);
+    if (name === "quick-first.png") await held;
+    const path = `${destination}/${name}`;
     if (name === "retained.png") {
       return route.fulfill({
         status: 500,
         json: {
           error: "The file was imported, but metadata could not be applied.",
-          savedPath: "/stash/uploads/retained.png",
+          savedPath: path,
           result: {
             kind: "image",
             id: "42",
-            path: "/stash/uploads/retained.png",
+            path,
           },
         },
       });
@@ -92,7 +112,7 @@ async function checkUploadRecovery(page) {
       json: {
         kind: "image",
         id: "43",
-        path: "/stash/uploads/pending.png",
+        path,
       },
     });
   });
@@ -119,6 +139,21 @@ async function checkUploadRecovery(page) {
     buffer: png,
   }));
   await page.locator('input[type="file"]').setInputFiles(files);
+  await page
+    .getByRole("button", { name: "Choose folder for 2 pending items…" })
+    .click();
+  const picker = page.getByRole("dialog");
+  await picker.getByText("Choose folder for pending uploads").waitFor();
+  const loadedFolder = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return (
+      url.pathname.endsWith("/booru-browser/directories") &&
+      url.searchParams.get("path") === batchFolder
+    );
+  });
+  await picker.getByRole("button", { name: batchFolder, exact: true }).click();
+  await loadedFolder;
+  await picker.getByRole("button", { name: "Use this folder" }).click();
   const importItems = (count) =>
     page.getByRole("button", { name: `Import ${count} item(s)`, exact: true });
   await importItems(2).click();
@@ -127,7 +162,7 @@ async function checkUploadRecovery(page) {
     hasText: "Imported; needs attention",
   });
   await saved
-    .getByText("/stash/uploads/retained.png", { exact: true })
+    .getByText(batchFolder + "/retained.png", { exact: true })
     .waitFor();
   const open = saved.getByRole("link", { name: "Open in Stash", exact: true });
   assert.equal(await open.getAttribute("href"), "/images/42");
@@ -137,6 +172,7 @@ async function checkUploadRecovery(page) {
   await importItems(1).click();
   await page.locator('a[href="/images/43"]').waitFor();
   assert.deepEqual(sentFiles, ["retained.png", "pending.png"]);
+  assert.deepEqual(sentDestinations, [batchFolder, batchFolder]);
 
   await page
     .getByLabel("Or download from a direct image/video URL")
@@ -149,6 +185,35 @@ async function checkUploadRecovery(page) {
   await interrupted.getByText("/stash/uploads/remote.png").waitFor();
   assert.equal(await interrupted.getByRole("link").count(), 0);
   assert.equal(await importItems(0).isDisabled(), true);
+
+  const firstQuick = page.waitForRequest(
+    (request) =>
+      request.url().endsWith("/media-upload") &&
+      request.postData()?.includes('filename="quick-first.png"')
+  );
+  try {
+    await page.goto(baseURL + "/upload-recovery?quick=1");
+    await firstQuick;
+    await page
+      .getByRole("button", { name: "Pause after current", exact: true })
+      .click();
+    assert.deepEqual(sentFiles.slice(2), ["quick-first.png"]);
+  } finally {
+    finishCurrent();
+  }
+  await page
+    .getByText("Upload queue paused. Pending items stay queued.")
+    .waitFor();
+  assert.deepEqual(sentFiles.slice(2), ["quick-first.png"]);
+  await page
+    .getByRole("button", { name: "Resume 1 item(s)", exact: true })
+    .click();
+  await page.getByText(/Import complete.*2\/2 complete/).waitFor();
+  assert.deepEqual(sentFiles.slice(2), ["quick-first.png", "quick-next.png"]);
+  assert.deepEqual(sentDestinations.slice(2), [
+    "/stash/uploads",
+    "/stash/uploads",
+  ]);
 }
 const formats = [
   {
@@ -1233,6 +1298,7 @@ try {
       ...uploadSettings,
       enabled: true,
       allowURL: true,
+      quickUpload: true,
       defaultDirectory: "/stash/uploads",
     };
     await checkUploadRecovery(page);

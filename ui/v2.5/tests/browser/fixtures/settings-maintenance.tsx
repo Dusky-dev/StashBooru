@@ -6,7 +6,7 @@ import {
   InMemoryCache,
   Observable,
 } from "@apollo/client";
-import { BrowserRouter, Route, Switch } from "react-router-dom";
+import { BrowserRouter, Route, Switch, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { PerformerDetailsPanel } from "../../../src/components/Performers/PerformerDetails/PerformerDetailsPanel";
 import { StudioEditPanel } from "../../../src/components/Studios/StudioDetails/StudioEditPanel";
@@ -213,6 +213,28 @@ function ProfileFixture({
   );
 }
 
+function UploadFixture() {
+  const quick = new URLSearchParams(useLocation().search).has("quick");
+  const [incomingBatch] = useState(() =>
+    quick
+      ? {
+          id: 1,
+          files: ["quick-first.png", "quick-next.png"].map(
+            (name) => new File(["fixture"], name, { type: "image/png" })
+          ),
+        }
+      : undefined
+  );
+  return (
+    <MediaUploadDialog
+      quickMode={quick}
+      incomingBatch={incomingBatch}
+      onHide={() => undefined}
+      onImported={() => undefined}
+    />
+  );
+}
+
 ReactDOM.render(
   <ApolloProvider client={client}>
     <BrowserRouter
@@ -240,10 +262,7 @@ ReactDOM.render(
                     <ImageDuplicates />
                   </Route>
                   <Route exact path="/upload-recovery">
-                    <MediaUploadDialog
-                      onHide={() => undefined}
-                      onImported={() => undefined}
-                    />
+                    <UploadFixture />
                   </Route>
                   <Route>
                     <Settings />

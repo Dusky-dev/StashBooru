@@ -325,6 +325,21 @@
   Mock those select operations explicitly and keep the unhandled error
   assertion intact. Fresh CI and review are pending.
 
+## Pause uploads and choose one folder for the queue (UP-03) — 2026-11-17
+
+- Baseline: `develop` `5dfc5ea4974fd84d5f7e91a8ca2001c4460a90a2` after #367. Branch
+  [`feat/upload-queue-pause-folders-20261117`](https://github.com/Dusky-dev/StashBooru/tree/feat/upload-queue-pause-folders-20261117),
+  source `0472891531a5e31551e9b0a77616d7ae6af5b2a8`, tree `3ee2633b63e3e0a0ef1717b0629fc563ff854fb3`.
+- Pause after current lets the active transfer and import finish, keeps
+  the remaining items queued, and blocks Quick upload from restarting
+  until an explicit Resume. Saved files remain out of retry.
+- Choose a folder for the pending items or one selected item. The picker
+  captures its target items when opened and leaves completed, retained, and
+  newly added items outside that selection unchanged.
+- Both local queue tests passed under Node 24. Parsed the changed TSX
+  and browser script. Added desktop/mobile acceptance for batch destinations
+  and pause/resume during an in-flight Quick upload, pending CI.
+
 ## Upload queue-wide processing and real media previews — 2026-11-13
 
 - Follow-up on PR #354, same branch and `develop` baseline. The owner clarified that Tag and Convert defaults must apply to **the entire import queue**, not repeat per file. Removed two per-row switches and now render one pair of queue-level switches, initialized from saved Quick upload settings. Both options are captured once at batch start and passed to local-file and URL import endpoints. Already-running items do not change if the queue switches are edited.

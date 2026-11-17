@@ -51,6 +51,11 @@ the Image or Video if Stash registered it. These links open in a new tab so
 you can keep the queue. Check the library or run Scan on the saved file if an
 import has no media link yet. Retry or Import continues the remaining items.
 
+Use **Pause after current** to let the active item finish and keep the rest
+queued. This also works in Quick upload; **Resume** starts only the pending
+items. In the detailed queue, choose a folder for all pending items at once or
+keep assigning folders one at a time. Files already saved keep their paths.
+
 Tasks starts with the job queue, followed by **Update library** (including
 animation inspection beside Scan), **Review profiles & associations**,
 **Backup & maintenance** and **Plugin tasks**.
