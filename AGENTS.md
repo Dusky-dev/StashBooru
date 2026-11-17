@@ -4,6 +4,23 @@ These instructions apply to work in `Dusky-dev/StashBooru`. Check for more
 specific instructions in the directories you edit. The user's current request
 and explicit decisions take precedence over this file.
 
+## Current priority: consolidate, don't expand
+
+The fork grew many features at once. The owner's standing goal is a cohesive,
+working product: fix bugs, finish or correct half-implemented features, make
+confusing ones usable, and make the UI consistent. Unless a task explicitly
+asks for a new feature:
+
+- Prefer fixing or completing an existing workflow over adding a parallel one.
+  Do not add new top-level pages, navbar entries, settings sections or job
+  types to solve a problem an existing surface can own.
+- When a feature is confusing, first make its labels, defaults, empty states
+  and errors say what it does. Propose removal or hiding to the owner rather
+  than deleting user-facing features yourself.
+- Pick the next fix from reproduced defects, `docs/experience-audit-2026-10-22.md`
+  and the open items in `docs/implementation-progress.md`. Suggest follow-ups
+  you notice but do not fold them into the current PR.
+
 ## Authority and delivery
 
 - The fork owner authorizes agent-assisted implementation, local commits,
@@ -11,12 +28,14 @@ and explicit decisions take precedence over this file.
   Standing authorization for this and future PRs was given on 2026-10-01.
   Do not ask again for ordinary work, branch pushes, or PR creation within an
   assigned task. PR descriptions must disclose AI assistance accurately.
+- If the agent platform assigns a working branch for the session, use it
+  for the session's PRs. Otherwise, create a descriptive feature branch.
 - The owner authorizes automatic merging of assigned task PRs after applicable
-  CI passes and Codex Review finishes, with viable findings addressed. An explicit
-  review quota-exhaustion response permits proceeding without that review; a
-  running or delayed review does not. Report each merge to the owner. When only
-  review/CI remains pending, record the checkpoint and end the turn rather than
-  repeatedly polling or waiting.
+  CI passes on the current head and Codex Review finishes, with viable
+  findings addressed. An explicit review quota-exhaustion response permits
+  proceeding without that review; a running or delayed review does not.
+  Report each merge to the owner. When only review/CI remains pending, record
+  the checkpoint and end the turn rather than repeatedly polling or waiting.
 - Direct pushes to `develop`, remote branch deletion, destructive data changes
   and production deployment still require separate authorization.
 - `docs/CONTRIBUTING.md` and `docs/AI_POLICY.md` contain inherited upstream
@@ -32,27 +51,42 @@ and explicit decisions take precedence over this file.
 
 - Inspect the working tree, current branch, relevant open PRs, and fresh
   `origin/develop`. Record the baseline SHA. Preserve unrelated local changes.
-- Use a feature branch or isolated worktree. Continue an existing task branch
-  when appropriate; do not recreate features already implemented.
-- Start with `docs/implementation-progress.md` and the relevant package notes.
-  Handoff files are checkpoints; current code, Git refs and verified runtime
-  behavior determine the actual state. Do not implement an entire roadmap when
-  the user requests one package or correction.
+- Continue an existing task branch when appropriate; do not recreate features
+  already implemented.
+- Read the newest entries of `docs/implementation-progress.md` and the
+  relevant package notes, not the whole ledger. Handoff files are
+  checkpoints; current code, Git refs and verified runtime behavior determine
+  the actual state. Do not implement an entire roadmap when the user requests
+  one package or correction.
 - Search narrowly with `rg`. Batch independent reads/checks when safe; keep
   dependent operations and publication steps sequential.
 - Prefer the connected GitHub tools for publication when shell Git credentials
   are unavailable. Publish the verified tree, check its SHA/content against the
   local result, and preserve commit ancestry. Never embed credentials in files.
-- Keep the progress ledger current with baseline, branch/PR, implemented
-  behavior, exact checks/results, remaining limitations and the next step.
-  Put dated verification SHAs in the ledger. Keep this instruction file free
-  of personal workspace paths, secrets and transient branch/commit IDs.
+
+## Progress ledger
+
+- Add one entry per PR at the top of `docs/implementation-progress.md`:
+  baseline, branch/PR, the user-visible change, exact checks and results,
+  what was not verified, and the next step. Put dated verification SHAs there.
+- Keep an entry to roughly 15 lines. Update it when review or CI changes the
+  outcome instead of appending a narrative of every iteration. Do not restate
+  earlier entries.
+- Keep this instruction file free of personal workspace paths, secrets and
+  transient branch/commit IDs.
 
 ## Product conventions
 
 - User-facing terminology: **Video** = Scene, **Character** = Performer,
-  **Artist** = Studio. Preserve native internal identifiers and typed links.
-  Copyrights are native entities, not ordinary Tags.
+  **Artist** = Studio, **Collection** = Group. Preserve native internal
+  identifiers, message IDs, GraphQL fields and typed links. Copyrights are
+  native entities, not ordinary Tags.
+- English labels: `ui/v2.5/src/locales/booru-terminology.json` is a shallow
+  overlay for top-level messages only. Nested messages must use the fork
+  names in `en-GB.json` itself (`en-US.json` only overrides spelling). New UI
+  text goes through `react-intl` messages; do not hard-code English. Before
+  renaming a label, search `builtin-source` and `tests` for selectors that
+  match its text and update them in the same PR.
 - Navbar order: All, Images, Videos, Characters, Artists, Copyrights, Tags,
   Galleries, Collections. Respect enabled-menu preferences and keep DOM,
   keyboard and visual order consistent. Use the capitalized All message.
@@ -65,9 +99,11 @@ and explicit decisions take precedence over this file.
   recursive rewriting of native React trees. Keep typed media identity, such
   as `image:123` versus `scene:123`, through selection, URLs and actions.
 - Reuse supported native extension points and UI components. Check working
-  Images/Videos pages before introducing a parallel implementation. Shared
-  viewers must retain their active caller and clean up on dismissal; Video
-  previews advance only through explicit navigation.
+  Images/Videos pages before introducing a parallel implementation. When you
+  fix a workflow that uses a DOM-moving built-in adaptation, prefer moving it
+  into the owning native component. Shared viewers must retain their active
+  caller and clean up on dismissal; Video previews advance only through
+  explicit navigation.
 - Preserve media IDs, native relationships, metadata, provenance, file activation
   and restore behavior. Inherited associations remain calculated unless the
   current task explicitly changes that contract; distinguish them from direct
@@ -83,7 +119,6 @@ and explicit decisions take precedence over this file.
   current code and requirements, and implement sound fixes with appropriate
   regression checks. Assess suggestions independently rather than applying them
   automatically. Recheck review feedback after publishing relevant changes.
-
 - Match checks to the change. Documentation-only edits need review and
   `git diff --check`; avoid full builds or artificial tests for such edits.
 - Backend changes: use focused tests first, then the applicable repository
@@ -92,6 +127,8 @@ and explicit decisions take precedence over this file.
 - GraphQL/schema changes: use `make generate-backend` and `make generate-ui`
   where applicable. Do not hand-edit generated code. Allocate the next
   migration from current source; check fresh databases and upgrades.
+  `tsc` needs the generated `src/core/generated-graphql.ts`, so generate it
+  before a local type check.
 - UI changes: use the existing scripts under `ui/v2.5` for tests, lint,
   TypeScript and formatting (`make validate-ui`). Verify production bundling
   with `make ui-only` when appropriate. Keep the locked package manager and
@@ -104,6 +141,13 @@ and explicit decisions take precedence over this file.
   Existing suites are in `ui/v2.5/tests/browser`; their documented fixture and
   environment requirements are in `docs/p07-global-media.md`. Check refreshes,
   repeated opens, selection, navigation and cleanup where relevant.
+- Restricted environments: if `pnpm install --frozen-lockfile` cannot finish
+  because the network policy denies a host (for example a GitHub tarball
+  dependency), do not route around the policy or change the lockfile.
+  Run what still works, such as the locked Biome version through
+  `pnpm dlx @biomejs/biome@<locked version>` on changed files, Go checks,
+  JSON parsing and `git diff --check`. Name the blocked host and leave the
+  remaining suites to CI, saying so in the PR and ledger.
 - Keep synthetic fixture results separate from real-media playback, codec
   checks, physical GPU inference and production behavior. State what ran and
   what remains unverified. Once relevant checks pass, rerun only for new changes
@@ -126,5 +170,6 @@ and explicit decisions take precedence over this file.
 - Give concise progress updates during sustained work. Finish the assigned
   scope and relevant verification before returning to the user.
 - Lead the final response with the result and PR link, then checks and material
-  limitations. Include runnable commands when the user needs to apply or push
+  limitations. Describe changes in user-visible terms rather than internal
+  identifiers. Include runnable commands when the user needs to apply or push
   something themselves. Avoid requiring repeated explanations or approvals.
