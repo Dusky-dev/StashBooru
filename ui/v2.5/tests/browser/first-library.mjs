@@ -189,17 +189,14 @@ async function checkProfileAll(page, url, imageID, label) {
         const rendered = Array.from(
           document.querySelectorAll(selector),
           (link) => new URL(link.href).pathname
+        ).sort();
+        return (
+          rendered.length === expected.length &&
+          expected.every((path, i) => rendered[i] === path)
         );
-        return expected.every((path) => rendered.includes(path));
       },
-      { selector: cardLinkSelector, expected: paths }
+      { selector: cardLinkSelector, expected: [...paths].sort() }
     );
-    const actual = await page
-      .locator(cardLinkSelector)
-      .evaluateAll((links) =>
-        links.map((link) => new URL(link.href).pathname).sort()
-      );
-    assert.deepEqual(actual, [...paths].sort(), page.url());
   }
 
   await page.goto(`${url}/media`);

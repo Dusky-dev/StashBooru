@@ -159,6 +159,11 @@
   still required the outer list ancestor. Match the link relative to the card;
   the grouped and expanded image assertions are unchanged. Fresh CI and review
   are pending.
+- Head `6f116e3137b10a5ad34d2016054d3499b87951e7` passed stack acceptance and Codex
+  review, but [First Library](https://github.com/Dusky-dev/StashBooru/actions/runs/43985721239/job/133718801141)
+  read the profile All grid twice during a tab transition: its wait passed and
+  the second read saw an empty grid. Poll for the exact sorted card list in
+  one browser evaluation, rejecting missing, extra and duplicate cards.
 
 ## Upstream sync — Stash develop 2026-11-13
 
