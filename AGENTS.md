@@ -30,12 +30,13 @@ asks for a new feature:
   assigned task. PR descriptions must disclose AI assistance accurately.
 - If the agent platform assigns a working branch for the session, use it
   for the session's PRs. Otherwise, create a descriptive feature branch.
-- The owner authorizes automatic merging of assigned task PRs after applicable
-  CI passes on the current head and Codex Review finishes, with viable
-  findings addressed. An explicit review quota-exhaustion response permits
-  proceeding without that review; a running or delayed review does not.
-  Report each merge to the owner. When only review/CI remains pending, record
-  the checkpoint and end the turn rather than repeatedly polling or waiting.
+- The owner authorizes automatic merging of assigned task PRs once applicable
+  CI passes on the current head and viable review findings are addressed.
+  Codex Review is wanted but not a hard gate: proceed if it finished, reported
+  quota exhaustion, or has not posted within 60 minutes of CI going green.
+  Documentation-only PRs may merge on green CI alone. Report each merge to
+  the owner. When only review/CI remains pending, record the checkpoint and
+  end the turn rather than repeatedly polling or waiting.
 - Direct pushes to `develop`, remote branch deletion, destructive data changes
   and production deployment still require separate authorization.
 - `docs/CONTRIBUTING.md` and `docs/AI_POLICY.md` contain inherited upstream
@@ -43,7 +44,9 @@ asks for a new feature:
   fork; it does not authorize contributions to `stashapp/stash` or other repos.
 - Use `.github/pull_request_template.md`. An owner-requested fix can identify
   the request and related PR instead of inventing an issue or claiming human
-  authorship/manual testing. Keep each PR focused on one coherent outcome.
+  authorship/manual testing. Keep each PR to one coherent outcome, but group
+  closely related small fixes (same area, same checks) into one PR instead of
+  opening several, to save CI and review cycles. Keep PR descriptions short.
 - If an action is blocked, finish the unaffected implementation and checks,
   identify the exact blocker, and provide a reviewable branch or patch.
 
@@ -66,7 +69,8 @@ asks for a new feature:
 
 ## Progress ledger
 
-- Add one entry per PR at the top of `docs/implementation-progress.md`:
+- Add one entry per non-trivial PR at the top of
+  `docs/implementation-progress.md` (typo, label or doc-only PRs may skip it):
   baseline, branch/PR, the user-visible change, exact checks and results,
   what was not verified, and the next step. Put dated verification SHAs there.
 - Keep an entry to roughly 15 lines. Update it when review or CI changes the
@@ -137,7 +141,9 @@ asks for a new feature:
   expected composed checksum when source changes, and check the generated
   `public/builtin/unifiedMedia.js` syntax. Edit `builtin-source`, not generated
   output. Production builds also compose the built-ins.
-- Layout/player fixes need mounted-browser checks on desktop and mobile.
+- Layout/player fixes need mounted-browser checks on desktop and mobile;
+  when a local browser run is impractical, the existing CI browser suites
+  count, provided the PR extends them to cover the change.
   Existing suites are in `ui/v2.5/tests/browser`; their documented fixture and
   environment requirements are in `docs/p07-global-media.md`. Check refreshes,
   repeated opens, selection, navigation and cleanup where relevant.
@@ -152,6 +158,22 @@ asks for a new feature:
   checks, physical GPU inference and production behavior. State what ran and
   what remains unverified. Once relevant checks pass, rerun only for new changes
   or unresolved failures; do not repeatedly rebuild unchanged code.
+
+## Working efficiently
+
+Correctness comes first; within that, minimize time and tokens.
+
+- Read only what the task needs: `rg` for the symbol, then the relevant line
+  ranges. Do not read whole large files (the ledger, locale JSON, generated
+  code) or re-read files already in context.
+- Prefer one script or batched command over many small tool calls, and run
+  independent checks in parallel.
+- Run the narrowest check that proves the change, then the required gate
+  once. Do not rebuild or rerun unchanged code, and do not wait on CI by
+  polling; end the turn and resume on the event.
+- Do not use subagents for work that a few direct searches can do.
+- Keep commit messages, PR descriptions, ledger entries and replies to the
+  user brief: what changed, what was checked, what is unverified.
 
 ## Upstream synchronization
 
