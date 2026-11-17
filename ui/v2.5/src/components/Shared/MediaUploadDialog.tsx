@@ -16,6 +16,7 @@ import {
 } from "../Galleries/GallerySelect";
 import { TagIDSelect } from "../Tags/TagSelect";
 import { MediaUploadThumbnail } from "./MediaUploadThumbnail";
+import { runUploadBatch } from "./mediaUploadQueue";
 import { Icon } from "./Icon";
 
 type UploadResult = {
@@ -329,15 +330,20 @@ export function MediaUploadDialog({
   const [taggingDefaults, setTaggingDefaults] = useState(false);
   const [conversionDefaults, setConversionDefaults] = useState(false);
   const [url, setURL] = useState("");
-  const [picker, setPicker] = useState(false);
+  const [picker, setPicker] = useState<{
+    initial: string;
+    ids: number[];
+  }>();
   const [showDetails, setShowDetails] = useState(false);
   const [working, setWorking] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
   const [progress, setProgress] = useState<Record<number, EntryProgress>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const processedBatch = useRef(0);
   const processingNow = useRef(false);
+  const pauseRequested = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -446,6 +452,20 @@ export function MediaUploadDialog({
     );
   }
 
+  function requestPause() {
+    if (!processingNow.current) return;
+    pauseRequested.current = true;
+    setPaused(true);
+  }
+
+  function chooseFolder(targets: UploadEntry[]) {
+    if (!active || working || !targets.length) return;
+    setPicker({
+      initial: active.destination,
+      ids: targets.map((entry) => entry.id),
+    });
+  }
+
   const updateProgress = useCallback((id: number, next: EntryProgress) => {
     setProgress((old) => ({ ...old, [id]: next }));
   }, []);
@@ -460,60 +480,72 @@ export function MediaUploadDialog({
       )
         return;
       processingNow.current = true;
+      pauseRequested.current = false;
+      setPaused(false);
       setWorking(true);
       setError("");
       const processing = { taggingDefaults, conversionDefaults };
-      for (const [index, entry] of batch.entries()) {
-        if (!entry.destination) {
-          setSelected(entry.id);
-          setError("Choose a library destination for " + entry.name);
-          break;
-        }
-        try {
-          const update = (state: EntryProgress) =>
-            updateProgress(entry.id, state);
-          const result = entry.file
-            ? await uploadLocal(entry, update, processing)
-            : await uploadURL(entry, update, processing);
-          updateProgress(entry.id, {
-            phase: "complete",
-            loaded: entry.file?.size ?? 0,
-            total: entry.file?.size ?? 0,
-            result,
-          });
-          onImported();
-        } catch (reason) {
-          const message =
-            reason instanceof Error ? reason.message : String(reason);
-          const saved = reason instanceof SavedUploadError ? reason : undefined;
-          updateProgress(entry.id, {
-            phase: saved ? "attention" : "failed",
-            loaded: 0,
-            total: 0,
-            message,
-            savedPath: saved?.savedPath,
-            result: saved?.result,
-          });
-          setSelected(entry.id);
-          const hasMore = index + 1 < batch.length;
-          if (saved) {
-            if (saved.result) onImported();
-            if (hasMore) {
-              setError("The other items are still queued. Import to continue.");
+      try {
+        await runUploadBatch(
+          batch,
+          () => pauseRequested.current,
+          async (entry, hasMore) => {
+            if (!entry.destination) {
+              setSelected(entry.id);
+              setError("Choose a library destination for " + entry.name);
+              return false;
             }
-          } else {
-            setError(
-              entry.name +
-                ": " +
-                message +
-                (hasMore ? ". Remaining items were not imported." : "")
-            );
+            try {
+              const update = (state: EntryProgress) =>
+                updateProgress(entry.id, state);
+              const result = entry.file
+                ? await uploadLocal(entry, update, processing)
+                : await uploadURL(entry, update, processing);
+              updateProgress(entry.id, {
+                phase: "complete",
+                loaded: entry.file?.size ?? 0,
+                total: entry.file?.size ?? 0,
+                result,
+              });
+              onImported();
+              return true;
+            } catch (reason) {
+              const message =
+                reason instanceof Error ? reason.message : String(reason);
+              const saved =
+                reason instanceof SavedUploadError ? reason : undefined;
+              updateProgress(entry.id, {
+                phase: saved ? "attention" : "failed",
+                loaded: 0,
+                total: 0,
+                message,
+                savedPath: saved?.savedPath,
+                result: saved?.result,
+              });
+              setSelected(entry.id);
+              if (saved) {
+                if (saved.result) onImported();
+                if (hasMore) {
+                  setError(
+                    "The other items are still queued. Import to continue."
+                  );
+                }
+              } else {
+                setError(
+                  entry.name +
+                    ": " +
+                    message +
+                    (hasMore ? ". Remaining items were not imported." : "")
+                );
+              }
+              return false;
+            }
           }
-          break;
-        }
+        );
+      } finally {
+        processingNow.current = false;
+        setWorking(false);
       }
-      processingNow.current = false;
-      setWorking(false);
     },
     [
       ready,
@@ -534,6 +566,8 @@ export function MediaUploadDialog({
       !ready ||
       !featureSettings?.quickUpload ||
       working ||
+      paused ||
+      pauseRequested.current ||
       processingNow.current
     )
       return;
@@ -555,6 +589,7 @@ export function MediaUploadDialog({
     entries,
     progress,
     working,
+    paused,
     submit,
   ]);
 
@@ -569,8 +604,11 @@ export function MediaUploadDialog({
     }
   }, [quickMode, ready, entries, progress]);
 
-  const actionLabel =
-    quickMode && featureSettings?.quickUpload ? "Retry / Import" : "Import";
+  const actionLabel = paused
+    ? "Resume"
+    : quickMode && featureSettings?.quickUpload
+      ? "Retry / Import"
+      : "Import";
   const buttonLabel = working
     ? "Importing…"
     : `${actionLabel} ${pending.length} item(s)`;
@@ -599,6 +637,18 @@ export function MediaUploadDialog({
         : activeStage === "processing"
           ? "Importing into Stash…"
           : "Starting imports…";
+  const pauseButton = working && !paused && pending.length > 1 && (
+    <Button size="sm" variant="secondary" onClick={requestPause}>
+      Pause after current
+    </Button>
+  );
+  const pauseNotice = paused && pending.length > 0 && (
+    <Alert variant="info">
+      {working
+        ? "Finishing the current item before pausing."
+        : "Upload queue paused. Pending items stay queued."}
+    </Alert>
+  );
 
   return (
     <>
@@ -627,7 +677,9 @@ export function MediaUploadDialog({
                   ? "Saved files need attention"
                   : completed === entries.length && completed > 0
                     ? "Import complete"
-                    : "Preparing uploads…"}
+                    : paused
+                      ? "Waiting to resume"
+                      : "Preparing uploads…"}
             {" · "}
             {completed}/{entries.length} complete
           </div>
@@ -657,6 +709,7 @@ export function MediaUploadDialog({
             </div>
           )}
           {error && <Alert variant="warning">{error}</Alert>}
+          {pauseNotice}
           {attention.map((entry) => (
             <div key={entry.id}>
               <div className="small font-weight-bold">{entry.name}</div>
@@ -671,10 +724,22 @@ export function MediaUploadDialog({
                   {entry.name}: {progress[entry.id]?.message}
                 </div>
               ))}
-          <div className="d-flex justify-content-end mt-2">
+          <div className="d-flex flex-wrap justify-content-end mt-2">
+            {pauseButton}
+            {paused && !working && pending.length > 0 && !failed && (
+              <Button
+                size="sm"
+                className="ml-2"
+                disabled={!ready}
+                onClick={() => void submit(pending)}
+              >
+                {buttonLabel}
+              </Button>
+            )}
             <Button
               size="sm"
               variant="secondary"
+              className="ml-2"
               onClick={() => setShowDetails(true)}
             >
               {pending.length ? "Details / retry" : "Details"}
@@ -704,6 +769,7 @@ export function MediaUploadDialog({
           </Modal.Header>
           <Modal.Body>
             {error && <Alert variant="warning">{error}</Alert>}
+            {pauseNotice}
             {featureSettings?.quickUpload &&
               ready &&
               entries.some(
@@ -996,11 +1062,21 @@ export function MediaUploadDialog({
                     <Button
                       variant="secondary"
                       className="ml-2"
-                      onClick={() => setPicker(true)}
+                      onClick={() => chooseFolder([active])}
                     >
                       Browse…
                     </Button>
                   </div>
+                  {pending.length > 1 && (
+                    <Button
+                      size="sm"
+                      variant="link"
+                      className="px-0"
+                      onClick={() => chooseFolder(pending)}
+                    >
+                      Choose folder for {pending.length} pending items…
+                    </Button>
+                  )}
                 </Form.Group>
                 <Form.Group>
                   <Form.Label>Artist(s)</Form.Label>
@@ -1046,6 +1122,7 @@ export function MediaUploadDialog({
             )}
           </Modal.Body>
           <Modal.Footer>
+            {pauseButton}
             <Button variant="secondary" disabled={working} onClick={onHide}>
               {pending.length === 0 ? "Close" : "Cancel"}
             </Button>
@@ -1059,14 +1136,27 @@ export function MediaUploadDialog({
           </Modal.Footer>
         </Modal>
       )}
-      {picker && active && (
+      {picker && (
         <FolderPicker
-          initial={active.destination}
+          initial={picker.initial}
           allowCreate={featureSettings?.allowFolderCreation ?? false}
-          title="Choose upload folder"
+          title={
+            picker.ids.length > 1
+              ? "Choose folder for pending uploads"
+              : "Choose upload folder"
+          }
           onClose={(value) => {
-            if (value) updateEntry({ destination: value });
-            setPicker(false);
+            if (value) {
+              const targets = new Set(picker.ids);
+              setEntries((old) =>
+                old.map((entry) =>
+                  targets.has(entry.id) && !uploadIsFinal(progress[entry.id])
+                    ? { ...entry, destination: value }
+                    : entry
+                )
+              );
+            }
+            setPicker(undefined);
           }}
         />
       )}
