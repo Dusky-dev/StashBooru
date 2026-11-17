@@ -965,19 +965,14 @@ function SourceResults({
           )}
           {result.posts.length === 0 && (
             <Alert variant="info">
-              {result.blacklistedCount
-                ? "All posts on this page were hidden by this booru’s tag blacklist."
-                : message(
-                    "empty",
-                    "No posts returned for this page and query."
-                  )}
+              {message("empty", "No posts returned for this page and query.")}
             </Alert>
           )}
           {!!result.blacklistedCount && (
             <p className="small text-muted">
-              Hidden {result.blacklistedCount} post(s) on this page by{" "}
-              {source.name}’s tag blacklist. Provider totals and pagination
-              still include these posts.
+              Skipped {result.blacklistedCount} blacklisted{" "}
+              {result.blacklistedCount === 1 ? "post" : "posts"} while loading
+              these results.
             </p>
           )}
           {(filters.media || filters.hideAI) && (
@@ -1614,6 +1609,7 @@ export default function BooruBrowser() {
                     search: browserSearchURL({
                       ...active,
                       showBlacklisted: !active.showBlacklisted,
+                      pages: {},
                       inspect: undefined,
                     }),
                   })
@@ -1675,6 +1671,8 @@ export default function BooruBrowser() {
                       search: browserSearchURL({
                         ...active,
                         showIgnored: event.currentTarget.checked || undefined,
+                        pages: {},
+                        inspect: undefined,
                       }),
                     })
                   }

@@ -1812,14 +1812,16 @@ try {
         image.naturalWidth > 0
       );
     });
-    // Blacklist toggle changes server requests and survives reload.
-    await page.goto(`${baseURL}/booru?source=danbooru&q=blacklist-toggle`);
+    // Changing visibility from page two starts a fresh filtered sequence.
+    const blockedQuery = `${baseURL}/booru?source=danbooru&q=blacklist-toggle`;
+    const visibilityPageTwo = blockedQuery + "&p.danbooru=2";
+    await page.goto(visibilityPageTwo);
     const blacklistToggle = page.getByRole("button", {
       name: "Hide blacklisted posts",
       exact: true,
     });
     await dan
-      .getByRole("button", { name: "Inspect Danbooru post 102", exact: true })
+      .getByRole("button", { name: "Inspect Danbooru post 202", exact: true })
       .waitFor();
     assert.equal(await blacklistToggle.getAttribute("aria-pressed"), "true");
     assert.equal(
@@ -1837,6 +1839,7 @@ try {
     assert.equal(await blacklistToggle.getAttribute("aria-pressed"), "false");
     assert.equal(await dan.locator(".booru-post").count(), 2);
     assert.equal(requests.at(-1).blacklist, "show");
+    assert.equal(requests.at(-1).page, 1);
     await page.reload();
     await dan
       .getByRole("button", { name: "Inspect Danbooru post 101", exact: true })
@@ -1845,10 +1848,27 @@ try {
     await blacklistToggle.click();
     await page.waitForURL((url) => !url.searchParams.has("blacklist"));
     await dan
-      .getByText("Hidden 1 post(s) on this page", { exact: false })
+      .getByText("Skipped 1 blacklisted post while loading these results.", {
+        exact: true,
+      })
       .waitFor();
     assert.equal(await dan.locator(".booru-post").count(), 1);
     assert.equal(requests.at(-1).blacklist, null);
+
+    await page.goto(visibilityPageTwo);
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 202", exact: true })
+      .waitFor();
+    await setChecked(
+      page.getByLabel("Show ignored posts", { exact: true }),
+      true
+    );
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 102", exact: true })
+      .waitFor();
+    assert.equal(requests.at(-1).ignored, null);
+    assert.equal(requests.at(-1).page, 1);
+
     await page.goto(`${baseURL}/booru?source=danbooru&q=bad&blacklist=invalid`);
     await page
       .getByRole("alert")
@@ -3233,10 +3253,9 @@ try {
         .blacklistTags.includes("artist_a")
     );
     await dan
-      .getByText(
-        "All posts on this page were hidden by this booru’s tag blacklist."
-      )
+      .getByText(/Skipped \d+ blacklisted posts? while loading/)
       .waitFor();
+    assert.equal(await dan.locator(".booru-post").count(), 0);
     assert.equal(new URL(page.url()).searchParams.get("q"), "gallery");
     sourcesDenied = true;
     await page.goto(`${baseURL}/booru`);

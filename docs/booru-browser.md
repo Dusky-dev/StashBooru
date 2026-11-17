@@ -316,7 +316,9 @@ action.
 These controls, per-source pages and inspection persist through refresh/back.
 Autocomplete mode and thumbnail visibility are local browser preferences.
 The filter icons stay available on desktop and mobile. **Show thumbnails** and
-**Show ignored posts** are grouped as native Stash switches. Sources and settings
+**Show ignored posts** are grouped as native Stash switches. Changing **Show
+ignored posts** returns to page one and closes inspection because the server
+rebuilds the set of visible posts before paging. Sources and settings
 checkboxes use the same switch style; card selection uses Stash's card checkbox.
 
 **Posts per source page** defaults to 24 and supports up to 250 displayed
@@ -450,14 +452,15 @@ using this server.
   tags on their attachments, are omitted from searches and account favorites
   for that source only. The server filters before issuing preview keys, so the
   blocked posts do not appear in the grid, preview navigation or page tags.
-  Provider page numbers, `hasMore` and totals are left unchanged: a page can
-  have fewer visible posts, or none, without being the last page. Source
-  settings and the blacklist are shared by all users of the server. The
-  **Hide blacklisted posts** icon beside the AI-generated filter is enabled by
-  default. Click it to temporarily show blacklisted posts in searches or account
-  favorites for the selected source, and click again to hide them. This state
-  is stored in the browser search URL (`blacklist=show`) and can be bookmarked
-  without changing the saved tag list.
+  The server assembles visible result pages after applying the blacklist.
+  The skip count describes posts excluded while loading the results; those
+  posts may come from several provider pages. Source settings and the
+  blacklist are shared by all users of the server. The **Hide blacklisted
+  posts** icon is enabled by default. Click it to temporarily show
+  blacklisted posts in searches or account favorites, and click again to
+  hide them. Changing it returns to page one and closes inspection. This
+  state is stored in the search URL (`blacklist=show`) and does not change
+  the saved tag list.
 - **Enable this source** controls availability in searches. Disabled definitions
   remain editable. Custom sources can be removed; presets can be reset, removing
   their overrides and saved credentials. IDs cannot be renamed in the editor.
