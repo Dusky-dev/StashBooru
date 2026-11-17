@@ -83,7 +83,7 @@ func splitBooruImportTags(sourceTags []booru.Tag) ([]booru.Tag, []camietagger.Ta
 // Called inside the native Stash write transaction. Reuse the same
 // category-aware resolver used by Image Tagging for native entity names,
 // aliases and Character/Copyright disambiguation.
-func ensureBooruImportMetadata(ctx context.Context, repository models.Repository, sourceTags []booru.Tag) (taggingResolvedEntities, error) {
+func ensureBooruImportMetadata(ctx context.Context, repository models.Repository, source booru.Source, sourceTags []booru.Tag) (taggingResolvedEntities, error) {
 	ordinary, categorized := splitBooruImportTags(sourceTags)
 	tagIDs, err := ensureBooruImportTagIDs(ctx, repository.Tag, ordinary)
 	if err != nil {
@@ -91,13 +91,34 @@ func ensureBooruImportMetadata(ctx context.Context, repository models.Repository
 	}
 	resolved := taggingResolvedEntities{}
 	if len(categorized) > 0 {
-		resolved, err = resolveTaggingEntities(ctx, repository, categorized)
+		resolved, err = resolveConnectedTaggingEntities(ctx, repository, categorized, booruImportConnection(repository, source))
 		if err != nil {
 			return taggingResolvedEntities{}, err
 		}
 	}
 	resolved.TagIDs = append(resolved.TagIDs, tagIDs...)
 	return resolved, nil
+}
+
+// booruImportConnection finds the native record connected to an exact source
+// name on this source (see Identities / Sources & aliases). The key matches the
+// one recorded while browsing; a display name match is never used here.
+func booruImportConnection(repository models.Repository, source booru.Source) taggingConnection {
+	if repository.ProviderIdentity == nil {
+		return nil
+	}
+	instance := source.Instance()
+	return func(ctx context.Context, prediction camietagger.Tag) (int, error) {
+		target := prediction.RawName
+		if !models.IdentityKind(prediction.Category) || target == "" {
+			return 0, nil
+		}
+		row, err := repository.ProviderIdentity.Lookup(ctx, instance, prediction.Category, identityForm(source, prediction.Category, target), target)
+		if err != nil || row == nil {
+			return 0, err
+		}
+		return row.EntityID, nil
+	}
 }
 
 type booruImportTagStore interface {

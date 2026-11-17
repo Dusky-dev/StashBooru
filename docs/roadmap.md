@@ -6,32 +6,23 @@ place and move finished ones to **Done**; the progress ledger keeps the detail.
 
 ## Next (agent can finish alone, in order)
 
-1. **Sources & aliases → imports.** A connected source name such as Gelbooru
-   `aki99_(artist)` or Pawchive `creator:patreon:…` still creates a separate
-   Artist on download. Look up the connection in `ensureBooruImportMetadata`
-   — integration test with Artist, Character and Copyright connections.
-2. **Sources & aliases → existing duplicates.** Media already split across
-   `aki99` and `aki99 (artist)` stays split. After a connect in Manage
-   connections, offer the existing Artist/Character/Copyright merge for a
-   native record named after the connected source name; never merge
-   automatically — check that each merge moves provider connections.
-3. **Settings → Tasks English text.** `CharacterDedupTask.tsx`,
+1. **Settings → Tasks English text.** `CharacterDedupTask.tsx`,
    `MediaBackupTask.tsx` — move to `react-intl`; `make validate-ui`, search
    `tests` and `builtin-source` for matching selectors.
-4. **Expected request errors.** Processing converter 503 with no converter;
+2. **Expected request errors.** Processing converter 503 with no converter;
    Video `thumbs.vtt` 404 before generation — page sweep with no failed requests.
-5. **Back during slow loads elsewhere.** Images, All and Booru (Booru has its
+3. **Back during slow loads elsewhere.** Images, All and Booru (Booru has its
    own scroll memory in `BooruBrowser.tsx`) — reproduce with held scripts first.
-6. **Image/Video bulk save and partial failure.** Listed as remaining in the
+4. **Image/Video bulk save and partial failure.** Listed as remaining in the
    audit — verify against the LIB ledger entries before starting.
 
 ## Plan first (propose to the owner)
 
-7. **Navbar width.** Controls overflow 120–220px at 1200–1366px —
+5. **Navbar width.** Controls overflow 120–220px at 1200–1366px —
    `MainNavbar.tsx`, `index.scss`; `checkNavbar` at 1200/1280/1366/1440.
-8. **Shared list rules (E07).** Selection, Back and Escape across All, Images,
+6. **Shared list rules (E07).** Selection, Back and Escape across All, Images,
    Videos, Following and Booru — one reproduced defect per PR.
-9. **DOM-moving built-ins (E09).** Move into the owning component only while
+7. **DOM-moving built-ins (E09).** Move into the owning component only while
    fixing that workflow.
 
 ## Owner decisions
@@ -52,4 +43,5 @@ through code or fixtures.
 
 - Copyright → Characters tab HTTP 400 (LIB-01, 2026-11-16).
 - Fork labels (#376), toasts (#377), Metadata Health (#378), navbar fork links
-  (#379), list scroll after a fast Back (#380).
+  (#379), list scroll after a fast Back (#380), Sources & aliases keeps
+  connected names together (downloads, Character merge, merge prompt).

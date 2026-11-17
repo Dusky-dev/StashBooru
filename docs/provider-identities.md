@@ -78,6 +78,19 @@ Following changes are later work.
    the entire entity, and required terms can match different connected sources.
    Character suggestions also recognize native `Name (Disambiguation)` names.
 
+Downloads honour connections. When a downloaded post's Artist, Character or
+Copyright tag is connected on that same site, the Image or Video is assigned to
+the connected native record instead of a record created from that spelling.
+For example, once Danbooru `aki99`, Gelbooru `aki99_(artist)` and Pawchive
+`creator:patreon:4534453` are connected to one Artist, downloads from all three
+land on that Artist. Unconnected names keep the existing name/alias matching.
+Media downloaded before a connection keeps the record created from that
+spelling, such as an Artist named `aki99 (artist)`. Sources & aliases on the
+connected profile lists such records and offers **Merge into …**; after an
+explicit confirmation the existing Artist, Character or Copyright merge moves
+their Images, Videos and source connections to this profile. Nothing is
+merged automatically, and a matching name alone never connects anything.
+
 Filters and keyset pages are represented in the URL. Mobile Review scrolls the
 bulk connection panel into view. Dialogs and bulk review share the same resolver.
 Stale decisions fail atomically and retain the draft and selection. **Reload

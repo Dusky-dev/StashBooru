@@ -133,7 +133,7 @@ func booruImportFile(ctx context.Context, path string, source booru.Source, post
 		resolved := taggingResolvedEntities{}
 		if post.ImportTags {
 			var err error
-			resolved, err = ensureBooruImportMetadata(ctx, mgr.Repository, post.Tags)
+			resolved, err = ensureBooruImportMetadata(ctx, mgr.Repository, source, post.Tags)
 			if err != nil {
 				return err
 			}

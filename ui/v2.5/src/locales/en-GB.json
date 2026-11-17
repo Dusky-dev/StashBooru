@@ -1923,5 +1923,15 @@
   "booru_browser": {
     "nav": "Booru",
     "title": "Booru browser"
+  },
+  "identity_sources": {
+    "split": {
+      "description": "Other {kind} records are named after a source name connected here. Merge one into {name} to bring its Images and Videos here.",
+      "merge": "Merge into {name}…",
+      "confirm_title": "Merge {source} into {destination}?",
+      "confirm_body": "{destination} is kept. {source} is removed, and its Images, Videos and source connections move to {destination}.",
+      "confirm": "Merge",
+      "merging": "Merging…"
+    }
   }
 }

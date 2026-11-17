@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { canFollowIdentity } from "../Following/followContext";
 import type { BooruSource } from "../BooruBrowser/browser";
 import { IdentityConnectionsDialog } from "./IdentityConnectionsDialog";
+import { IdentitySplitRecords } from "./IdentitySplitRecords";
 import {
   type IdentityKind,
   type IdentityPage,
@@ -140,6 +141,14 @@ export function IdentitySources({
                 </li>
               ))}
             </ul>
+            {page && (
+              <IdentitySplitRecords
+                kind={kind}
+                entity={entity}
+                items={page.items}
+                onMerged={() => setEpoch((value) => value + 1)}
+              />
+            )}
             <Button
               size="sm"
               variant="secondary"

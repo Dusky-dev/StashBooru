@@ -1,3 +1,23 @@
+## Keep connected source names together (Sources & aliases) — 2026-11-18
+
+- Baseline: `develop` after #380/#381. Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Owner report: connecting `aki99`, `aki99_(artist)` and
+  `creator:patreon:4534453` to one Artist did not gather their media. Booru
+  downloads resolved names only, so Gelbooru `aki99_(artist)` created a
+  separate "aki99 (artist)" Artist. Import now looks up the exact connection
+  (same site, kind, form, tag) in the write transaction; unconnected names keep
+  name/alias matching; several spellings of one record apply once.
+- Character merge dropped the merged record's connections; it now moves them,
+  as Artist/Copyright merges do.
+- Sources & aliases lists other records named after a connected source name
+  and offers the existing merge into the profile after a confirmation.
+- Checked: new Go integration tests failed before (extra Artist; lost
+  Character connection) and pass; `go test -tags integration ./internal/api
+  ./pkg/sqlite`, `make lint`, `make validate-ui`, `identities.mjs` desktop and
+  mobile (mocked endpoints; Artist merge path). Character/Copyright merge
+  from this list and real provider downloads were not run in a browser.
+
 ## Videos/Images list scroll restore after a fast Back — 2026-11-17
 
 - Baseline: `develop` `444de37` after #379. Branch

@@ -74,7 +74,34 @@ type taggingResolvedEntities struct {
 	CreatedTags       int
 }
 
+// taggingConnection returns the native record ID that a provider connection
+// assigns to a source name, or 0 when the name is not connected.
+type taggingConnection func(ctx context.Context, prediction camietagger.Tag) (int, error)
+
 func resolveTaggingEntities(ctx context.Context, repository models.Repository, predictions []camietagger.Tag) (taggingResolvedEntities, error) {
+	return resolveConnectedTaggingEntities(ctx, repository, predictions, nil)
+}
+
+func connectedTaggingID(ctx context.Context, connected taggingConnection, prediction camietagger.Tag) (int, error) {
+	if connected == nil {
+		return 0, nil
+	}
+	return connected(ctx, prediction)
+}
+
+func containsTaggingID(ids []int, id int) bool {
+	for _, existing := range ids {
+		if existing == id {
+			return true
+		}
+	}
+	return false
+}
+
+// resolveConnectedTaggingEntities resolves connected source names to their
+// native records first; other names use the native name/alias resolver. Several
+// spellings of one record are applied once.
+func resolveConnectedTaggingEntities(ctx context.Context, repository models.Repository, predictions []camietagger.Tag, connected taggingConnection) (taggingResolvedEntities, error) {
 	resolved := taggingResolvedEntities{
 		Characters:    []camieAppliedEntity{},
 		Artists:       []camieAppliedEntity{},
@@ -101,11 +128,25 @@ func resolveTaggingEntities(ctx context.Context, repository models.Repository, p
 	}
 
 	resolved.CharacterIDs = make([]int, 0, len(resolved.CharacterPredictions))
-	for _, prediction := range resolved.CharacterPredictions {
-		entity, created, err := findOrCreateCamiePerformerPredictionWithCopyrightContext(ctx, repository, prediction, normalized)
+	characterPredictions := resolved.CharacterPredictions
+	resolved.CharacterPredictions = make([]camietagger.Tag, 0, len(characterPredictions))
+	for _, prediction := range characterPredictions {
+		var entity *models.Performer
+		created := false
+		id, err := connectedTaggingID(ctx, connected, prediction)
+		if err == nil && id > 0 {
+			entity, err = repository.Performer.Find(ctx, id)
+		}
+		if err == nil && entity == nil {
+			entity, created, err = findOrCreateCamiePerformerPredictionWithCopyrightContext(ctx, repository, prediction, normalized)
+		}
 		if err != nil {
 			return taggingResolvedEntities{}, fmt.Errorf("resolving character %q: %w", prediction.Name, err)
 		}
+		if containsTaggingID(resolved.CharacterIDs, entity.ID) {
+			continue
+		}
+		resolved.CharacterPredictions = append(resolved.CharacterPredictions, prediction)
 		resolved.CharacterIDs = append(resolved.CharacterIDs, entity.ID)
 		resolved.Characters = append(resolved.Characters, camieAppliedEntity{
 			ID:       entity.ID,
@@ -121,9 +162,20 @@ func resolveTaggingEntities(ctx context.Context, repository models.Repository, p
 
 	resolved.ArtistIDs = make([]int, 0, len(artists))
 	for _, prediction := range artists {
-		entity, created, err := findOrCreateCamieStudioPrediction(ctx, repository, prediction)
+		var entity *models.Studio
+		created := false
+		id, err := connectedTaggingID(ctx, connected, prediction)
+		if err == nil && id > 0 {
+			entity, err = repository.Studio.Find(ctx, id)
+		}
+		if err == nil && entity == nil {
+			entity, created, err = findOrCreateCamieStudioPrediction(ctx, repository, prediction)
+		}
 		if err != nil {
 			return taggingResolvedEntities{}, fmt.Errorf("resolving artist %q: %w", prediction.Name, err)
+		}
+		if containsTaggingID(resolved.ArtistIDs, entity.ID) {
+			continue
 		}
 		resolved.ArtistIDs = append(resolved.ArtistIDs, entity.ID)
 		resolved.Artists = append(resolved.Artists, camieAppliedEntity{
@@ -140,9 +192,20 @@ func resolveTaggingEntities(ctx context.Context, repository models.Repository, p
 
 	resolved.CopyrightIDs = make([]int, 0, len(copyrights))
 	for _, prediction := range copyrights {
-		entity, created, err := findOrCreateNativeCamieCopyright(ctx, repository, prediction)
+		var entity *models.Copyright
+		created := false
+		id, err := connectedTaggingID(ctx, connected, prediction)
+		if err == nil && id > 0 {
+			entity, err = repository.Copyright.Find(ctx, id)
+		}
+		if err == nil && entity == nil {
+			entity, created, err = findOrCreateNativeCamieCopyright(ctx, repository, prediction)
+		}
 		if err != nil {
 			return taggingResolvedEntities{}, fmt.Errorf("resolving copyright %q: %w", prediction.Name, err)
+		}
+		if containsTaggingID(resolved.CopyrightIDs, entity.ID) {
+			continue
 		}
 		resolved.CopyrightIDs = append(resolved.CopyrightIDs, entity.ID)
 		resolved.Copyrights = append(resolved.Copyrights, camieAppliedEntity{

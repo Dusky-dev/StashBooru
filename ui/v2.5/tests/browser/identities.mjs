@@ -75,6 +75,17 @@ try {
     let rejected = false,
       failNext = false,
       mutations = [];
+    // A separate Artist created from the Gelbooru spelling before connecting.
+    let splitMerged = false;
+    const merges = [];
+    await page.route("**/studio/merge", (route) => {
+      merges.push(route.request().postDataJSON());
+      splitMerged = true;
+      return route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ destinationID: 7 }),
+      });
+    });
     let holdObserve = false,
       releaseObserve,
       observed;
@@ -121,10 +132,21 @@ try {
             : "Waligner";
       if (endpoint === "candidates")
         return reply(route, {
-          items:
-            rejected && !q.has("rejected")
+          items: [
+            ...(rejected && !q.has("rejected")
               ? []
-              : [{ id: 7, name: canonical, disambiguation: "", rejected }],
+              : [{ id: 7, name: canonical, disambiguation: "", rejected }]),
+            ...(q.get("q") === "waligner (artist)" && !splitMerged
+              ? [
+                  {
+                    id: 9,
+                    name: "waligner (artist)",
+                    disambiguation: "",
+                    rejected: false,
+                  },
+                ]
+              : []),
+          ],
           truncated: false,
         });
       if (endpoint === "scan") {
@@ -230,6 +252,32 @@ try {
       .first()
       .click();
     await page.getByText("Sources & aliases", { exact: true }).click();
+    await page.getByText("creator:patreon:49481727", { exact: true }).waitFor();
+    // A separate record named after a connected source name can be merged
+    // here, only after an explicit confirmation.
+    const split = page.locator(".identity-split-records");
+    await split
+      .getByRole("link", { name: "waligner (artist)", exact: true })
+      .waitFor();
+    const mergeSplit = split.getByRole("button", {
+      name: "Merge into Waligner…",
+    });
+    await mergeSplit.click();
+    const confirmMerge = page.getByRole("dialog");
+    await confirmMerge
+      .getByText(
+        "Waligner is kept. waligner (artist) is removed, and its Images, Videos and source connections move to Waligner."
+      )
+      .waitFor();
+    await confirmMerge.getByRole("button", { name: "Cancel" }).click();
+    await confirmMerge.waitFor({ state: "detached" });
+    assert.equal(merges.length, 0, "Cancel does not merge");
+    await mergeSplit.click();
+    await confirmMerge
+      .getByRole("button", { name: "Merge", exact: true })
+      .click();
+    await split.waitFor({ state: "detached" });
+    assert.deepEqual(merges, [{ sourceID: 9, destinationID: 7 }]);
     await page.getByText("creator:patreon:49481727", { exact: true }).waitFor();
     const profileURL = page.url();
     await page.getByRole("button", { name: "Manage connections" }).click();
