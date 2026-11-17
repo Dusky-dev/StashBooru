@@ -150,13 +150,16 @@ asks for a new feature:
   Existing suites are in `ui/v2.5/tests/browser`; their documented fixture and
   environment requirements are in `docs/p07-global-media.md`. Check refreshes,
   repeated opens, selection, navigation and cleanup where relevant.
-- Restricted environments: if `pnpm install --frozen-lockfile` cannot finish
-  because the network policy denies a host (for example a GitHub tarball
-  dependency), do not route around the policy or change the lockfile.
-  Run what still works, such as the locked Biome version through
-  `pnpm dlx @biomejs/biome@<locked version>` on changed files, Go checks,
-  JSON parsing and `git diff --check`. Name the blocked host and leave the
-  remaining suites to CI, saying so in the PR and ledger.
+- Cloud sessions: `codeload.github.com` tarballs of repositories outside the
+  session are refused, which breaks `pnpm install` on the locked
+  `webcomponents.js` dependency. Public repositories can still be read with
+  git: fetch the locked commit, `git archive --prefix=webcomponentsjs-<sha>/`
+  it to a scratch `.tgz`, point that lockfile `tarball:` entry at the file
+  temporarily, install with `--frozen-lockfile`, then restore
+  `pnpm-lock.yaml` and never commit the edit. If that is not possible, run
+  the checks that still work (locked Biome via `pnpm dlx`, Go checks, JSON
+  parsing, `git diff --check`), name the blocked host and leave the rest to
+  CI, saying so in the PR and ledger.
 - Keep synthetic fixture results separate from real-media playback, codec
   checks, physical GPU inference and production behavior. State what ran and
   what remains unverified. Once relevant checks pass, rerun only for new changes

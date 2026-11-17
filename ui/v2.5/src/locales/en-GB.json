@@ -746,6 +746,41 @@
         "aliases_help": "Check which native profiles or Tags match a name; ambiguous matches stay separate.",
         "developer": "Developer tools",
         "developer_help": "Open the GraphQL playground to inspect or run API operations."
+      },
+      "health": {
+        "heading": "Check metadata",
+        "description": "Looks for duplicate profiles, conflicting Tags and broken links between media and profiles. Nothing is changed; each finding links to the item to fix.",
+        "scan": "Scan metadata",
+        "scanning": "Scanning…",
+        "failed": "Metadata check failed ({status})",
+        "findings": "{count, plural, =0 {No problems found} one {# problem found} other {# problems found}}",
+        "none": "No metadata problems found.",
+        "read_only": "This check only reports problems. It never changes metadata; fixes are always made by you.",
+        "item": "Affected items",
+        "details": "Details",
+        "missing": "deleted",
+        "codes": {
+          "duplicate_canonical_name": "Duplicate names",
+          "duplicate_canonical_name_help": "Two or more profiles of the same type share a name. Open them and merge the duplicates, or give them distinct names or disambiguations.",
+          "same_name_character_context": "Characters with the same name",
+          "same_name_character_context_help": "Different Characters share a name. Check that each is linked to the right Copyrights so searches and tagging can tell them apart.",
+          "legacy_copyright_tag_collision": "Tag duplicates a Copyright",
+          "legacy_copyright_tag_collision_help": "An ordinary Tag has the same name as a Copyright. Move its media to the Copyright, then remove or rename the Tag.",
+          "legacy_tag_migration_ambiguous": "Tag matches several profiles",
+          "legacy_tag_migration_ambiguous_help": "This Tag's name or alias matches more than one Character, Artist or Copyright, so it cannot be converted automatically. Decide which profile it means.",
+          "legacy_artist_missing_native": "Artist not linked",
+          "legacy_artist_missing_native_help": "The media has an older single Artist field set but no Artist links. Open it and save the Artist.",
+          "native_artist_missing_legacy": "Primary Artist missing",
+          "native_artist_missing_legacy_help": "The media is linked to Artists but its older primary Artist field is empty. Saving the media usually fixes this.",
+          "legacy_artist_mismatch": "Primary Artist differs",
+          "legacy_artist_mismatch_help": "The media's older primary Artist field is not one of its linked Artists. Open it and check the Artists.",
+          "orphan_character_relation": "Links to deleted Characters",
+          "orphan_character_relation_help": "The media still references Characters that no longer exist. Saving the media's Characters removes the stale links.",
+          "orphan_tag_relation": "Links to deleted Tags",
+          "orphan_tag_relation_help": "The media still references Tags that no longer exist. Saving the media's Tags removes the stale links.",
+          "orphan_legacy_artist": "Link to a deleted Artist",
+          "orphan_legacy_artist_help": "The media's primary Artist field points to an Artist that no longer exists. Open the media and choose its Artist again."
+        }
       }
     },
     "ui": {
@@ -1421,6 +1456,7 @@
     "delete_help": "Deleting a Copyright removes its links, but keeps its Sub-Copyrights and media. A Sub-Copyright with no other Main Copyright becomes top-level.",
     "subtree_count_help": "Counts and count sorting include this Copyright and its Sub-Copyrights. Each Image, Video or Character is counted once."
   },
+  "copyright": "Copyright",
   "copyrights": "Copyrights",
   "new": "New",
   "none": "None",

@@ -430,22 +430,31 @@ async function check(viewport, label) {
     await mutation(page, "MetadataScan", () =>
       page.getByRole("button", { name: "Scan", exact: true }).click()
     );
-    // Observe actual indexed results, allowing the bounded scan to complete.
-    await page.waitForFunction(
-      async () => {
+    // Wait until the scan job has finished and both items are indexed.
+    // waitForFunction does not await an async predicate (its Promise is
+    // truthy), so poll with page.evaluate, which resolves the Promise.
+    const deadline = Date.now() + 30000;
+    for (;;) {
+      const ready = await page.evaluate(async () => {
         const response = await fetch("graphql", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            query: "{ findImages { count } findScenes { count } }",
+            query:
+              "{ findImages { count } findScenes { count } jobQueue { id } }",
           }),
         });
         const { data } = await response.json();
-        return data?.findImages.count === 1 && data?.findScenes.count === 1;
-      },
-      null,
-      { timeout: 30000, polling: 250 }
-    );
+        return (
+          data?.findImages.count === 1 &&
+          data?.findScenes.count === 1 &&
+          !data?.jobQueue?.length
+        );
+      });
+      if (ready) break;
+      assert.ok(Date.now() < deadline, "Scan did not index both items");
+      await page.waitForTimeout(250);
+    }
     if (viewport.width < 768) await page.locator(".nav-menu-toggle").click();
     await page.getByRole("link", { name: "All", exact: true }).click();
     const image = page.locator(".media-list .image-card");
