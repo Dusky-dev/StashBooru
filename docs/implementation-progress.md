@@ -19,6 +19,27 @@
   state. The fixture clicks the native switch label and exercises Ignore on a
   hidden SWF; apply the reported formatter layout. Fresh checks are pending.
 
+## Reuse a Booru original after an interrupted import (BOO-03) — 2026-11-17
+
+- Baseline: `develop` `4c4c21a056e6137c92bd76c51054cc8a546faaae` after #373. Branch
+  [`fix/reuse-booru-original-before-import-20261117`](https://github.com/Dusky-dev/StashBooru/tree/fix/reuse-booru-original-before-import-20261117),
+  source `1295bb23b6d506c74c2e585db5cd3fd279686302`, tree `a99490a4139eab47270c9618883ad2627b207d0d`.
+- Recover the checksum-verified saved original from a pre-import receipt
+  for the same source asset, directory and filename template. Old receipts
+  with an empty native result can recover the same way. A known native
+  output still requires its recorded output checksum; changed files
+  are not overwritten.
+- Preserve the pre-import receipt on an early scan failure and report the
+  saved path on retry even if scanning fails again. Existing conversion,
+  tagging, and attachment-scope behavior is retained.
+- Extended the Go download regression to take the provider offline after
+  the original save, fail a retry, then recover from a legacy empty receipt.
+  Checked whitespace and source scope; Go and mounted browser CI are pending.
+- Original PR head `6302469eb5fe0634948bde335db4535ffc7e43ae` passed Generate, the Browser workflow and
+  Codex Review. Go lint required a blank line before the new helper's
+  comment. Applied that formatting change; the new head needs fresh CI and
+  Codex Review.
+
 ## Explain the Booru filename rule (BOO-11) — 2026-11-17
 
 - Baseline: `develop` `0e8936f316f61227925520e5d06fe268eec6fda5`, after #363 merged with 14 green
