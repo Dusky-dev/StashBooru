@@ -351,9 +351,10 @@ try {
       () => document.querySelectorAll(".following-post").length === 1
     );
     assert.match(page.url(), /kind=copyright/);
-    assert.deepEqual(await page.locator(".following-post h3").allTextContents(), [
-      "Post 10",
-    ]);
+    assert.deepEqual(
+      await page.locator(".following-post h3").allTextContents(),
+      ["Post 10"]
+    );
     await openManage();
     await openFeed();
     assert.equal(await kindFilter.inputValue(), "copyright");
@@ -548,7 +549,9 @@ try {
     await page
       .getByLabel("Feed source", { exact: true })
       .selectOption(mirror.instance);
-    await page.getByRole("article", { name: "Post 701", exact: true }).waitFor();
+    await page
+      .getByRole("article", { name: "Post 701", exact: true })
+      .waitFor();
     await page.waitForFunction(
       () => document.querySelectorAll(".following-post").length === 1
     );
@@ -556,7 +559,9 @@ try {
     await kindFilter.selectOption("artist");
     await page.getByText(/No saved posts match/).waitFor();
     await page.goBack();
-    await page.getByRole("article", { name: "Post 701", exact: true }).waitFor();
+    await page
+      .getByRole("article", { name: "Post 701", exact: true })
+      .waitFor();
     assert.equal(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth

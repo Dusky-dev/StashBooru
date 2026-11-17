@@ -274,6 +274,10 @@
   and historical follow types. Extended desktop and mobile/prefix flows to cover
   the new views, filters, and preview handoff. Mounted browser and Go checks
   await CI; live providers and new feed adapters are outside this change.
+- Head `ba23bbd1904b6eb8d1304780debf19cf1f384a3a` passed the mounted Following suite, Go lint
+  and Codex Review. [Generate](https://github.com/Dusky-dev/StashBooru/actions/runs/43989419574/job/133725897419)
+  flagged three fixture line wraps after type checks. Apply the reported layout
+  and keep the fixture assertions unchanged.
 
 ## No-prompt quick upload and opt-in remote worker fallback — 2026-11-13
 
