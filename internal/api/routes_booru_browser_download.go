@@ -372,6 +372,11 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 			return
 		}
 	}
+	flash := input.ArchiveFile == nil && strings.EqualFold(post.Format, "swf")
+	if flash && !input.Computer {
+		writeBooruError(w, 400, "media", "SWF originals can be downloaded for a Flash emulator.")
+		return
+	}
 	destination := ""
 	if !input.Computer {
 		if input.Destination == "" {
@@ -510,7 +515,13 @@ func (rs booruBrowserRoutes) StartDownload(w http.ResponseWriter, r *http.Reques
 				}
 			}
 		} else {
-			info, err = rs.client.FetchMedia(ctx, source, booru.MediaRequest{URL: post.OriginalURL, Limit: maxFileBytes, ExpectedBytes: post.Bytes, ExpectedMD5: post.MD5}, f)
+			info, err = rs.client.FetchMedia(ctx, source, booru.MediaRequest{
+				URL: post.OriginalURL, Limit: maxFileBytes, ExpectedBytes: post.Bytes,
+				ExpectedMD5: post.MD5, AllowSWF: flash && input.Computer,
+			}, f)
+			if err == nil && flash && info.Extension != "swf" {
+				err = fmt.Errorf("provider did not return an SWF original")
+			}
 		}
 		if err == nil {
 			err = f.Sync()

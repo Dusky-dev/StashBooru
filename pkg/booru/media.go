@@ -3,6 +3,7 @@ package booru
 import (
 	"context"
 	"crypto/md5" //nolint:gosec // Provider content checksum, not authentication.
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -21,6 +22,7 @@ type MediaRequest struct {
 	ExpectedMD5   string
 	ImagesOnly    bool
 	AllowZIP      bool // Only for bounded, server-owned ZIP/CBZ/7z inspection.
+	AllowSWF      bool // Only for downloading an original as an attachment.
 }
 
 type MediaInfo struct {
@@ -148,6 +150,8 @@ func readValidatedMedia(body io.Reader, input MediaRequest, output io.Writer, co
 		ret.Extension = "webm"
 	default:
 		switch {
+		case input.AllowSWF && !input.ImagesOnly && validFlashHeader(prefix):
+			ret.ContentType, ret.Extension = "application/octet-stream", "swf"
 		case len(prefix) >= 2 && prefix[0] == 0xff && prefix[1] == 0x0a:
 			ret.ContentType, ret.Extension = "image/jxl", "jxl"
 		case len(prefix) >= 12 && string(prefix[4:12]) == "JXL \r\n\x87\n":
@@ -171,9 +175,29 @@ func readValidatedMedia(body io.Reader, input MediaRequest, output io.Writer, co
 	if err != nil || ret.Bytes > input.Limit || (contentLength >= 0 && contentLength != ret.Bytes) || (input.ExpectedBytes > 0 && input.ExpectedBytes != ret.Bytes) {
 		return ret, fmt.Errorf("media was truncated or exceeded the size limit")
 	}
+	if ret.Extension == "swf" && string(prefix[:3]) == "FWS" &&
+		ret.Bytes != int64(binary.LittleEndian.Uint32(prefix[4:8])) {
+		return ret, fmt.Errorf("uncompressed SWF length does not match its header")
+	}
 	ret.MD5 = fmt.Sprintf("%x", h.Sum(nil))
 	if input.ExpectedMD5 != "" && ret.MD5 != input.ExpectedMD5 {
 		return ret, fmt.Errorf("original checksum does not match the reviewed post; refresh the search")
 	}
 	return ret, nil
+}
+
+func validFlashHeader(prefix []byte) bool {
+	if len(prefix) < 10 || prefix[3] == 0 || binary.LittleEndian.Uint32(prefix[4:8]) < 16 {
+		return false
+	}
+	switch string(prefix[:3]) {
+	case "FWS":
+		return len(prefix) >= 16
+	case "CWS":
+		return len(prefix) >= 15
+	case "ZWS":
+		return len(prefix) > 17
+	default:
+		return false
+	}
 }

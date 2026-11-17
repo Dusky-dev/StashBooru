@@ -276,7 +276,7 @@ func mediaExtension(raw string) string {
 }
 func supportedArchiveFile(ext string) bool {
 	switch ext {
-	case "jpg", "jpeg", "png", "webp", "gif", "apng", "avif", "jxl", "bmp", "tiff", "mp4", "webm", "zip", "cbz", "7z":
+	case "jpg", "jpeg", "png", "webp", "gif", "apng", "avif", "jxl", "bmp", "tiff", "mp4", "webm", "swf", "zip", "cbz", "7z":
 		return true
 	}
 	return false
@@ -413,9 +413,9 @@ func parseArchivePost(s Source, raw object) (Post, error) {
 		}
 		asset.PreviewURL = s.postMediaURL(preview)
 		asset.SampleURL = asset.PreviewURL
-		if ext == "zip" || ext == "cbz" || ext == "7z" {
-			// Archive thumbnails are not image bytes. The inspector obtains
-			// entries from the bounded, authenticated archive route instead.
+		if ext == "zip" || ext == "cbz" || ext == "7z" || ext == "swf" {
+			// Archives use the entry inspector. Flash originals are downloads,
+			// and this attachment feed does not supply a still preview for them.
 			asset.PreviewURL, asset.SampleURL = "", ""
 		}
 		if len(seen) == 1 {

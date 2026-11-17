@@ -115,6 +115,7 @@ export function ReviewEvidence({
 export function BooruReview({
   source,
   posts,
+  reviewPosts = posts,
   showIgnored,
   onStates,
   children,
@@ -126,6 +127,8 @@ export function BooruReview({
   displayMode?: "grid" | "wall";
   zoom?: number;
   posts: BooruPost[];
+  // Deep-linked posts may have review controls even when their cards are hidden.
+  reviewPosts?: BooruPost[];
   showIgnored: boolean;
   onStates: (states: ReviewState[]) => void;
   children: (
@@ -167,8 +170,8 @@ export function BooruReview({
     setError("");
     // The review API accepts at most 50 posts per read.
     const chunks = [];
-    for (let i = 0; i < posts.length; i += 50) {
-      chunks.push(posts.slice(i, i + 50));
+    for (let i = 0; i < reviewPosts.length; i += 50) {
+      chunks.push(reviewPosts.slice(i, i + 50));
     }
     void Promise.all(
       chunks.map(async (batch) => {
@@ -203,7 +206,7 @@ export function BooruReview({
         if (!controller.signal.aborted) setBusy(false);
       });
     return () => controller.abort();
-  }, [source.id, source.instance, posts, attempt, onStates]);
+  }, [source.id, source.instance, reviewPosts, attempt, onStates]);
   useEffect(() => {
     const refresh = () => {
       if (!saving.current) setAttempt((value) => value + 1);
@@ -318,13 +321,13 @@ export function BooruReview({
     value: boolean
   ) {
     if (!states) return;
-    void apply(
-      ids.map((id) => ({
-        id,
-        version: states.find((state) => state.id === id)!.version,
-        [dimension]: value,
-      }))
-    );
+    const changes: ReviewChange[] = [];
+    for (const id of ids) {
+      const state = states.find((item) => item.id === id);
+      if (!state) return;
+      changes.push({ id, version: state.version, [dimension]: value });
+    }
+    void apply(changes);
   }
   const renderPost = (post: BooruPost) => {
     const state = states?.find((item) => item.id === post.id);

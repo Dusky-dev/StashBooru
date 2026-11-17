@@ -360,12 +360,14 @@ function PostInspection({
                       />
                     ) : (
                       <Alert variant="secondary">
-                        {asset.sourceID === "shared-links"
-                          ? "This shared file has no preview. Use Download to Stash to inspect the original."
-                          : message(
-                              "no_preview",
-                              "No supported preview is available. Open the remote post to inspect it."
-                            )}
+                        {asset.format?.toLowerCase() === "swf"
+                          ? "Flash animation · Download the original to play it in a Flash emulator."
+                          : asset.sourceID === "shared-links"
+                            ? "This shared file has no preview. Use Download to Stash to inspect the original."
+                            : message(
+                                "no_preview",
+                                "No supported preview is available. Open the remote post to inspect it."
+                              )}
                       </Alert>
                     )}
                   </MotionPreview>
@@ -625,11 +627,13 @@ function RemoteImage({
   alt,
   className,
   fallbackSrc,
+  onFailure,
 }: {
   src: string;
   alt: string;
   className?: string;
   fallbackSrc?: string;
+  onFailure?: () => void;
 }) {
   const [direct, setDirect] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -659,8 +663,12 @@ function RemoteImage({
       loading="lazy"
       referrerPolicy="no-referrer"
       onError={() => {
-        if (!direct && fallbackSrc) setDirect(true);
-        else setFailed(true);
+        if (!direct && fallbackSrc) {
+          setDirect(true);
+        } else {
+          setFailed(true);
+          onFailure?.();
+        }
       }}
     />
   );
@@ -679,6 +687,7 @@ function SourceResults({
   showIgnored,
   filters,
   thumbnails,
+  hidePawchiveWithoutPreview,
   favorites,
   displayMode,
   zoom,
@@ -699,6 +708,7 @@ function SourceResults({
     | "showBlacklisted"
   >;
   thumbnails: boolean;
+  hidePawchiveWithoutPreview: boolean;
   favorites: boolean;
   displayMode: "grid" | "wall";
   zoom: number;
@@ -716,7 +726,32 @@ function SourceResults({
   ) => void;
 }) {
   const [result, setResult] = useState<BooruResult>();
-  const visiblePosts = useMemo(
+  const [failures, setFailures] = useState<{
+    result: BooruResult;
+    urls: Set<string>;
+  }>();
+  const isPawchive = source.engine === "pawchive";
+  const hideMissingPreview = isPawchive && hidePawchiveWithoutPreview;
+  const pawchiveThumbnail = useCallback(
+    (post: BooruPost) =>
+      [post, ...(post.attachments ?? [])].find((asset) => {
+        const url = booruMediaURL(asset, "preview");
+        return (
+          url &&
+          !(failures && failures.result === result && failures.urls.has(url))
+        );
+      }),
+    [failures, result]
+  );
+  function recordThumbnailFailure(url: string) {
+    if (!result) return;
+    setFailures((previous) => {
+      if (previous?.result !== result) return { result, urls: new Set([url]) };
+      if (previous.urls.has(url)) return previous;
+      return { result, urls: new Set([...previous.urls, url]) };
+    });
+  }
+  const matchingPosts = useMemo(
     () =>
       result?.posts.filter(
         (post) =>
@@ -725,6 +760,14 @@ function SourceResults({
       ) ?? [],
     [result, filters.media, filters.hideAI]
   );
+  const visiblePosts = useMemo(
+    () =>
+      hideMissingPreview
+        ? matchingPosts.filter(pawchiveThumbnail)
+        : matchingPosts,
+    [hideMissingPreview, matchingPosts, pawchiveThumbnail]
+  );
+  const hiddenWithoutPreview = matchingPosts.length - visiblePosts.length;
   const signature = browserResultSignature(
     query,
     page,
@@ -891,11 +934,14 @@ function SourceResults({
   }, [post?.id, post?.mediaKey, source.engine, suspended]);
   const inspectedPost =
     post && details && details.key === post.mediaKey ? details.post : post;
-  const navigation = visiblePosts.filter(
+  const inspectedReview = review.find((state) => state.id === post?.id);
+  const visibleIDs = new Set(visiblePosts.map((item) => item.id));
+  const navigation = matchingPosts.filter(
     (item) =>
       item.id === inspect ||
-      showIgnored ||
-      !review.find((state) => state.id === item.id)?.ignoredAt
+      (visibleIDs.has(item.id) &&
+        (showIgnored ||
+          !review.find((state) => state.id === item.id)?.ignoredAt))
   );
   const previewIndex = navigation.findIndex((item) => item.id === inspect);
   return (
@@ -975,9 +1021,24 @@ function SourceResults({
               these results.
             </p>
           )}
+          {hiddenWithoutPreview > 0 && (
+            <p className="small text-muted" role="status">
+              Hidden without previews on this Pawchive page:{" "}
+              {hiddenWithoutPreview}.{" "}
+              <Button
+                variant="link"
+                className="p-0"
+                size="sm"
+                disabled={loading}
+                onClick={() => setRetry((value) => value + 1)}
+              >
+                Refresh previews
+              </Button>
+            </p>
+          )}
           {(filters.media || filters.hideAI) && (
             <p className="small text-muted">
-              Showing {visiblePosts.length} posts after the selected filters.
+              Showing {matchingPosts.length} posts after the selected filters.
               Hidden posts are replaced from subsequent provider pages when
               available; AI-generated detection uses explicit tags only.
             </p>
@@ -987,6 +1048,7 @@ function SourceResults({
             zoom={zoom}
             source={source}
             posts={visiblePosts}
+            reviewPosts={result.posts}
             showIgnored={showIgnored}
             onStates={onReview}
             preview={({ ignore, busy }) =>
@@ -1001,8 +1063,8 @@ function SourceResults({
                   blacklistBusy={blacklistBusy}
                   blacklistError={blacklistError}
                   onHide={onClose}
-                  review={review.find((state) => state.id === post.id)}
-                  reviewBusy={busy}
+                  review={inspectedReview}
+                  reviewBusy={busy || !inspectedReview}
                   onIgnore={() => ignore(post.id)}
                   onPrevious={
                     previewIndex > 0
@@ -1019,87 +1081,100 @@ function SourceResults({
               )
             }
           >
-            {(item, controls, isSelected, selection) => (
-              <article
-                key={`${source.id}:${item.id}`}
-                className={`booru-post ${isSelected ? "selected" : ""}`}
-                onClickCapture={(event) => {
-                  if (
-                    selection.active &&
-                    !(event.target as HTMLElement).closest(".card-check")
-                  ) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    selection.toggle();
-                  }
-                }}
-              >
-                <Button
-                  variant="link"
-                  className="booru-preview-button"
-                  onClick={() => onInspect(item.id)}
-                  aria-label={`Inspect ${source.name} post ${item.id}`}
+            {(item, controls, isSelected, selection) => {
+              const thumbnail = isPawchive ? pawchiveThumbnail(item) : item;
+              const previewURL =
+                thumbnail && booruMediaURL(thumbnail, "preview");
+              return (
+                <article
+                  key={`${source.id}:${item.id}`}
+                  className={`booru-post ${isSelected ? "selected" : ""}`}
+                  onClickCapture={(event) => {
+                    if (
+                      selection.active &&
+                      !(event.target as HTMLElement).closest(".card-check")
+                    ) {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      selection.toggle();
+                    }
+                  }}
                 >
-                  {!thumbnails ? (
-                    <span>Thumbnails hidden</span>
-                  ) : booruMediaURL(item, "preview") ? (
-                    <RemoteImage
-                      key={item.previewURL}
-                      src={booruMediaURL(item, "preview") || ""}
-                      fallbackSrc={remoteURL(item.directPreviewURL)}
-                      alt={`${source.name} #${item.id}`}
-                    />
-                  ) : (
-                    <span>
-                      {sharedLinkCount(item) > 0 ? (
-                        <>
-                          <Icon icon={faLink} /> Shared media — inspect post
-                        </>
-                      ) : (
-                        message("missing_thumbnail", "Preview unavailable")
-                      )}
-                    </span>
-                  )}
-                </Button>
-                <div className="booru-post-caption">
                   <Button
                     variant="link"
-                    className="p-0"
+                    className="booru-preview-button"
                     onClick={() => onInspect(item.id)}
+                    aria-label={`Inspect ${source.name} post ${item.id}`}
                   >
-                    #{item.remoteID ?? item.id}
+                    {!thumbnails ? (
+                      <span>Thumbnails hidden</span>
+                    ) : previewURL ? (
+                      <RemoteImage
+                        key={previewURL}
+                        src={previewURL}
+                        fallbackSrc={remoteURL(thumbnail?.directPreviewURL)}
+                        alt={`${source.name} #${item.id}`}
+                        onFailure={
+                          isPawchive
+                            ? () => recordThumbnailFailure(previewURL)
+                            : undefined
+                        }
+                      />
+                    ) : (
+                      <span>
+                        {sharedLinkCount(item) > 0 ? (
+                          <>
+                            <Icon icon={faLink} /> Shared media — inspect post
+                          </>
+                        ) : (
+                          message("missing_thumbnail", "Preview unavailable")
+                        )}
+                      </span>
+                    )}
                   </Button>
-                  {sharedLinkCount(item) > 0 && (
-                    <span
-                      className="small text-muted"
-                      title="External Dropbox/MEGA links detected; inspect post"
+                  <div className="booru-post-caption">
+                    <Button
+                      variant="link"
+                      className="p-0"
+                      onClick={() => onInspect(item.id)}
                     >
-                      <Icon icon={faLink} /> {sharedLinkCount(item)}
-                    </span>
-                  )}
-                  {item.rating && (
-                    <span
-                      className={`booru-rating rating-${normalizedRating(item.rating, source)}`}
-                    >
-                      {normalizedRating(item.rating, source)}
-                    </span>
-                  )}
-                </div>
-                <CoreTagActions post={item} onTag={onTag} />
-                <div className="booru-card-actions">
-                  {!["zip", "cbz", "7z"].includes(
-                    item.format?.toLowerCase() ?? ""
-                  ) && (
-                    <BooruDownload
-                      post={item}
-                      instance={source.instance}
-                      compact
-                    />
-                  )}
-                </div>
-                {controls}
-              </article>
-            )}
+                      #{item.remoteID ?? item.id}
+                    </Button>
+                    {sharedLinkCount(item) > 0 && (
+                      <span
+                        className="small text-muted"
+                        title="External Dropbox/MEGA links detected; inspect post"
+                      >
+                        <Icon icon={faLink} /> {sharedLinkCount(item)}
+                      </span>
+                    )}
+                    {item.format?.toLowerCase() === "swf" && (
+                      <span className="small text-muted">SWF</span>
+                    )}
+                    {item.rating && (
+                      <span
+                        className={`booru-rating rating-${normalizedRating(item.rating, source)}`}
+                      >
+                        {normalizedRating(item.rating, source)}
+                      </span>
+                    )}
+                  </div>
+                  <CoreTagActions post={item} onTag={onTag} />
+                  <div className="booru-card-actions">
+                    {!["zip", "cbz", "7z"].includes(
+                      item.format?.toLowerCase() ?? ""
+                    ) && (
+                      <BooruDownload
+                        post={item}
+                        instance={source.instance}
+                        compact
+                      />
+                    )}
+                  </div>
+                  {controls}
+                </article>
+              );
+            }}
           </BooruReview>
           <div className="pagination-footer-container booru-pagination">
             <div className="pagination-footer">
@@ -1213,6 +1288,9 @@ export default function BooruBrowser() {
     }
   }
   const [thumbnails, setThumbnails] = useState(remembered?.thumbnails ?? true);
+  const [hidePawchiveWithoutPreview, setHidePawchiveWithoutPreview] = useState(
+    remembered?.hidePawchiveWithoutPreview ?? false
+  );
   const [autocomplete, setAutocomplete] = useState<"live" | "database">(
     remembered?.autocomplete ?? "live"
   );
@@ -1258,6 +1336,7 @@ export default function BooruBrowser() {
     tagSource,
     scroll: restoreDraft ? (remembered?.scroll ?? 0) : 0,
     thumbnails,
+    hidePawchiveWithoutPreview,
     displayMode,
     zoom,
     autocomplete,
@@ -1273,6 +1352,7 @@ export default function BooruBrowser() {
       settings: showSettings,
       tagSource,
       thumbnails,
+      hidePawchiveWithoutPreview,
       displayMode,
       zoom,
       autocomplete,
@@ -1287,6 +1367,7 @@ export default function BooruBrowser() {
     showSettings,
     tagSource,
     thumbnails,
+    hidePawchiveWithoutPreview,
     displayMode,
     zoom,
     autocomplete,
@@ -1448,6 +1529,19 @@ export default function BooruBrowser() {
           <p className="small text-muted">
             Disable to only fill the search box. This preference and source
             order are saved in this browser.
+          </p>
+          <Form.Check
+            type="switch"
+            id="booru-hide-pawchive-without-preview"
+            label="Pawchive: hide posts without previews"
+            checked={hidePawchiveWithoutPreview}
+            onChange={(event) =>
+              setHidePawchiveWithoutPreview(event.currentTarget.checked)
+            }
+          />
+          <p className="small text-muted">
+            Filter the current Pawchive page when a post has no thumbnail or its
+            thumbnails fail. This preference is saved in this browser.
           </p>
           <SourceSettings
             onSaved={() => setLoadAttempt((value) => value + 1)}
@@ -1969,6 +2063,7 @@ export default function BooruBrowser() {
                     zoom={zoom}
                     filters={active}
                     thumbnails={thumbnails}
+                    hidePawchiveWithoutPreview={hidePawchiveWithoutPreview}
                     showIgnored={!!active.showIgnored}
                     onResult={onResult}
                     query={active.query}

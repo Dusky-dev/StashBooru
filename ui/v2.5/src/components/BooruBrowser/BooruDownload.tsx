@@ -18,6 +18,8 @@ interface DownloadState {
   status: string;
   error?: string;
   savedPath?: string;
+  url?: string;
+  filename?: string;
   library?: {
     kind: string;
     id: string;
@@ -60,6 +62,8 @@ export function BooruDownload({
   archiveFile?: number;
 }) {
   const identity = `booru-download:${instance}:${post.id}${archiveFile === undefined ? "" : `:archive:${archiveFile}`}`;
+  const flash =
+    archiveFile === undefined && post.format?.toLowerCase() === "swf";
   const [state, setState] = useState<DownloadState | undefined>(() =>
     rememberedJob(identity)
   );
@@ -172,8 +176,9 @@ export function BooruDownload({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           key: post.mediaKey,
-          convert,
-          destination,
+          convert: !flash && convert,
+          destination: flash ? undefined : destination,
+          computer: flash || undefined,
           archiveFile,
         }),
       }).then(readBooruResponse<{ jobID: number; token: string }>);
@@ -217,6 +222,12 @@ export function BooruDownload({
     !!post.mediaKey &&
     (archiveFile !== undefined || !!post.downloadAvailable) &&
     (post.bytes ?? 0) <= maxFileSizeMiB * 1048576;
+  const flashURL =
+    flash &&
+    state?.status === "complete" &&
+    /^downloads\/[A-Za-z0-9_-]+\/[A-Za-z0-9_.-]+\.swf$/.test(state.url ?? "")
+      ? state.url
+      : undefined;
   const libraryURL =
     state?.library && /^\d+$/.test(state.library.id)
       ? state.library.kind === "image"
@@ -230,7 +241,12 @@ export function BooruDownload({
       className={`booru-download ${compact ? "booru-download-compact" : "mb-3"}`}
       aria-label={compact ? `Download post ${post.id}` : "Download this post"}
     >
-      {!compact && (
+      {!compact && flash && (
+        <p className="small">
+          Open the downloaded SWF in a Flash emulator such as Ruffle.
+        </p>
+      )}
+      {!compact && !flash && (
         <Form.Check
           type="switch"
           id={`booru-convert-${post.sourceID}-${post.id}${archiveFile === undefined ? "" : `-${archiveFile}`}`}
@@ -246,39 +262,64 @@ export function BooruDownload({
         ref={downloadRef}
         className={compact ? "minimal booru-icon-button" : undefined}
         size="sm"
-        disabled={busy || running || !ready || !available || !directory}
+        disabled={
+          busy || running || !ready || !available || (!flash && !directory)
+        }
         aria-label={
-          compact ? `Download ${post.sourceID} post ${post.id}` : undefined
+          compact
+            ? `${flash ? "Prepare SWF download for" : "Download"} ${post.sourceID} post ${post.id}`
+            : undefined
         }
         title={
           compact
-            ? `Save to ${directory || "configured default folder"}${convert ? " using converter defaults" : ""}`
+            ? flash
+              ? "Prepare the SWF original"
+              : `Save to ${directory || "configured default folder"}${convert ? " using converter defaults" : ""}`
             : undefined
         }
         onClick={() => void start(directory)}
       >
         {compact ? (
           <Icon icon={terminal ? faRotateRight : faDownload} />
+        ) : flash ? (
+          "Prepare SWF download"
         ) : terminal ? (
           "Retry download to Stash"
         ) : (
           "Download to Stash"
         )}
       </Button>
-      <Button
-        size="sm"
-        className={compact ? "minimal booru-icon-button" : "ml-2"}
-        variant="secondary"
-        disabled={busy || running || !ready || !available}
-        aria-label={
-          compact
-            ? `Choose download folder for ${post.sourceID} post ${post.id}`
-            : undefined
-        }
-        onClick={() => setPicker(true)}
-      >
-        {compact ? <Icon icon={faFolderOpen} /> : "Download to…"}
-      </Button>
+      {flashURL && (
+        <a
+          className={
+            compact
+              ? "btn btn-success btn-sm minimal booru-icon-button"
+              : "btn btn-success btn-sm ml-2"
+          }
+          href={flashURL}
+          download={state?.filename || "original.swf"}
+          aria-label="Download SWF original"
+          title="Download SWF original"
+        >
+          {compact ? <Icon icon={faDownload} /> : "Download SWF original"}
+        </a>
+      )}
+      {!flash && (
+        <Button
+          size="sm"
+          className={compact ? "minimal booru-icon-button" : "ml-2"}
+          variant="secondary"
+          disabled={busy || running || !ready || !available}
+          aria-label={
+            compact
+              ? `Choose download folder for ${post.sourceID} post ${post.id}`
+              : undefined
+          }
+          onClick={() => setPicker(true)}
+        >
+          {compact ? <Icon icon={faFolderOpen} /> : "Download to…"}
+        </Button>
+      )}
       {running && (
         <Button
           size="sm"
