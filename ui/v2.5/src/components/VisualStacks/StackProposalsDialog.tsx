@@ -7,9 +7,11 @@ import { stackKey, stackPath } from "./identity";
 
 export function StackProposalsDialog({
   selection,
+  onStacked,
   onClose,
 }: {
   selection: GQL.MediaReferenceInput[];
+  onStacked?: (media: GQL.MediaReferenceInput[]) => void;
   onClose: () => void;
 }) {
   const valid = selection.length >= 2 && selection.length <= 100;
@@ -21,7 +23,14 @@ export function StackProposalsDialog({
   const [review, setReview] = useState<GQL.MediaReferenceInput[]>();
   const [page, setPage] = useState(0);
   const proposals = query.data?.visualStackProposals ?? [];
-  if (review) return <VisualStackDialog selection={review} onClose={onClose} />;
+  if (review)
+    return (
+      <VisualStackDialog
+        selection={review}
+        onStacked={onStacked}
+        onClose={onClose}
+      />
+    );
   return (
     <ModalComponent
       show

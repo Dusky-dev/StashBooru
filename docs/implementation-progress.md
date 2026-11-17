@@ -165,6 +165,17 @@
   the second read saw an empty grid. Poll for the exact sorted card list in
   one browser evaluation, rejecting missing, extra and duplicate cards.
 
+## Clear successful stack members from list selection — 2026-11-17
+
+- Follow-up on PR #367, parent `0dba316cae473200f44c28547abdea29cbe37dbb`. Images and All deselect
+  typed members after a confirmed create, add or merge. Stack proposal pairs
+  use the same callback. Cancellation and rejected mutations leave selection
+  intact; separate committed steps of a merge can clear their own members.
+- Keep unrelated selection and reset the range anchor only when its item was
+  cleared. The real gallery fixture now creates its initial stack through the
+  Images toolbar and checks selection on both cancellation and success.
+  Browser script syntax checked; mounted checks and review await CI.
+
 ## Upstream sync — Stash develop 2026-11-13
 
 - Fork baseline: `develop` `1bf776dfa56d8ee7758a73998891fc0b7bc151c9`; upstream `stashapp/stash/develop` `47057616fe9da0cf38cfa8c39ab160e5441eeafc`, two commits ahead of the common ancestor `aefc9373fe57e5cb32fbbb7215fd508ed799743f`.

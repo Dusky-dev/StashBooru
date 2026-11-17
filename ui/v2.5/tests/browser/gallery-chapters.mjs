@@ -174,17 +174,36 @@ async function check(viewport, label) {
   assert.equal(images.length, 3, "Scan must index all three generated PNGs");
   const [first, second, outside] = images;
   const inGallery = [first.id, second.id];
-  await call(
-    page,
-    url,
-    "mutation($input: VisualStackCreateInput!) { visualStackCreate(input: $input) { id } }",
-    {
-      input: {
-        members: images.map(({ id }) => ({ media: { kind: "IMAGE", id } })),
-        representative: { kind: "IMAGE", id: outside.id },
-      },
-    }
-  );
+  await page.goto(url + "/images", { waitUntil: "networkidle" });
+  const list = page.locator(".image-list");
+  const selected = list.locator("input.card-check:checked");
+  for (const { id } of images) {
+    const card = list.locator(".image-card").filter({
+      has: page.locator(`a.image-card-link[href="/images/${id}"]`),
+    });
+    await card.hover();
+    await card.locator("input.card-check").check();
+  }
+  const dialog = page.getByRole("dialog");
+  const createFromSelection = async () => {
+    await list.locator("#more-menu").click();
+    await list.getByText("Create stack from selection…", { exact: true }).click();
+    await dialog
+      .getByRole("radio", { name: `Representative image:${outside.id}` })
+      .waitFor();
+  };
+  await createFromSelection();
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  await dialog.waitFor({ state: "hidden" });
+  assert.equal(await selected.count(), images.length);
+  await createFromSelection();
+  await dialog
+    .getByRole("radio", { name: `Representative image:${outside.id}` })
+    .check();
+  await dialog.getByRole("button", { name: "Create stack", exact: true }).click();
+  await dialog.waitFor({ state: "hidden" });
+  assert.equal(await selected.count(), 0);
+  assert.equal(await list.locator(".image-hidden-selection").count(), 0);
   const gallery = (
     await call(
       page,

@@ -671,6 +671,7 @@ export const FilteredImageList = PatchComponent(
       onSelectChange,
       onSelectAll,
       onSelectNone,
+      onDeselectIDs,
       onInvertSelection,
       hasSelection,
     } = listSelect;
@@ -767,6 +768,13 @@ export const FilteredImageList = PatchComponent(
         },
       }));
 
+    const onStacked = (media: GQL.MediaReferenceInput[]) =>
+      onDeselectIDs(
+        media
+          .filter((member) => member.kind === GQL.MediaKind.Image)
+          .map((member) => member.id)
+      );
+
     const otherOperations: IListFilterOperation[] = [
       {
         text: "Create stack from selection…",
@@ -778,6 +786,7 @@ export const FilteredImageList = PatchComponent(
                 kind: GQL.MediaKind.Image,
                 id,
               }))}
+              onStacked={onStacked}
               onClose={closeModal}
             />
           ),
@@ -792,6 +801,7 @@ export const FilteredImageList = PatchComponent(
                 kind: GQL.MediaKind.Image,
                 id,
               }))}
+              onStacked={onStacked}
               onClose={closeModal}
             />
           ),
