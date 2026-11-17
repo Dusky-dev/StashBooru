@@ -1,3 +1,21 @@
+## Videos/Images list scroll restore after a fast Back — 2026-11-17
+
+- Baseline: `develop` `444de37` after #379. Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Going Back to a Videos/Images/All list before the detail page's lazy code
+  loaded left the list at the top. Suspense had only hidden the list, so on
+  reveal its layout effect armed the saved position but the restore effect's
+  inputs were unchanged and it never ran; `remember` then stayed blocked.
+  `useListScrollRestoration` now arms once per history entry and restarts the
+  restore when the location changes.
+- `first-library` holds JS chunks while opening a Video and goes Back before
+  they load (fails on the old hook every run), then repeats the loaded case.
+- Checked: suite failed on the old build, passed 5/5 desktop+mobile with the
+  fix; `make validate-ui` and `git diff --check` pass. Images/All lists share
+  the hook but were not separately browser-tested.
+- Next: navbar collapse at 1200–1366px (needs a plan), then Tasks
+  hard-coded English (CharacterDedupTask, MediaBackupTask).
+
 ## Consistent Video/Character/Artist/Collection labels (E14) — 2026-11-17
 
 - Baseline: `develop` `f08cc954225c73efce098ac19125585fa87cc536` after #375. Branch

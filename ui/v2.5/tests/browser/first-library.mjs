@@ -136,18 +136,32 @@ async function checkVideoList(page, url, videoID) {
   await page.evaluate(() => {
     history.scrollRestoration = "manual";
   });
-  await link.scrollIntoViewIfNeeded();
-  const top = await page.evaluate(() => scrollY);
-  assert.ok(top > 300, "Videos fixture must scroll before opening a detail");
-  await link.click();
-  await page.waitForURL(
-    (location) => location.pathname === `/scenes/${videoID}`
-  );
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await page.goBack();
-  await page.waitForURL((location) => location.pathname === "/scenes");
-  await link.waitFor();
-  await page.waitForFunction((saved) => Math.abs(scrollY - saved) < 2, top);
+  // Go Back once while the Video page's lazy code is still loading, so the
+  // list was only hidden behind Suspense, then once after the page loads.
+  for (const holdScripts of [true, false]) {
+    await link.scrollIntoViewIfNeeded();
+    const top = await page.evaluate(() => scrollY);
+    assert.ok(top > 300, "Videos fixture must scroll before opening a detail");
+    let held = [];
+    const hold = (route) => (held ? held.push(route) : route.continue());
+    if (holdScripts) await page.route("**/*.js", hold);
+    await link.click();
+    await page.waitForURL(
+      (location) => location.pathname === `/scenes/${videoID}`
+    );
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.goBack();
+    await page.waitForURL((location) => location.pathname === "/scenes");
+    if (holdScripts) {
+      const routes = held;
+      held = undefined;
+      await Promise.all(routes.map((route) => route.continue()));
+      await page.unroute("**/*.js", hold);
+    }
+    await link.waitFor();
+    await page.waitForFunction((saved) => Math.abs(scrollY - saved) < 2, top);
+    await page.evaluate(() => window.scrollTo(0, 0));
+  }
   await tallList.evaluate((style) => style.remove());
 
   const more = list.locator("#more-menu");
