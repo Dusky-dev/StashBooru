@@ -67,12 +67,22 @@ try {
       name: "Danbooru",
       url: "https://danbooru.example.org",
     };
+    const mirror = {
+      ...source,
+      id: "mirror",
+      instance: "fixture-mirror",
+      name: "Danbooru mirror",
+      url: "https://mirror.example.org",
+    };
     function discover(id, follow) {
-      let item = items.find((i) => i.postID === String(id));
+      let item = items.find(
+        (i) => i.instance === follow.instance && i.postID === String(id)
+      );
       if (!item) {
         item = {
           sequence: String(++sequence),
           postID: String(id),
+          instance: follow.instance,
           retrievedAt: "2026-10-20T10:00:00Z",
           ignoredAt: "",
           downloadedAt: "",
@@ -101,13 +111,14 @@ try {
           followID: follow.id,
           name: follow.name,
           revision: follow.queryRevision,
+          kind: follow.kind,
           target: follow.target,
         });
     }
     await page.route("**/booru-browser/**", async (route) => {
       const url = new URL(route.request().url());
       if (url.pathname.endsWith("/sources"))
-        return route.fulfill({ json: [source] });
+        return route.fulfill({ json: [source, mirror] });
       if (url.searchParams.get("id") === "429")
         return route.fulfill({ status: 404, body: "" });
       return route.fulfill({
@@ -237,9 +248,11 @@ try {
           })
           .filter(
             (item) =>
+              (!p.get("instance") || p.get("instance") === item.instance) &&
               item.matches.some(
                 (m) =>
                   (!p.get("follow") || p.get("follow") === m.followID) &&
+                  (!p.get("kind") || p.get("kind") === m.kind) &&
                   (p.get("history") === "1" || m.current)
               ) &&
               (p.get("unseen") !== "1" || !item.seenAt) &&
@@ -258,6 +271,18 @@ try {
       throw new Error(`Unexpected API path ${url.pathname}`);
     });
     await page.goto(`${origin}${prefix}/following`);
+    const openManage = () =>
+      page.getByRole("link", { name: "Manage follows", exact: true }).click();
+    const openFeed = () =>
+      page.getByRole("link", { name: "Saved feed", exact: true }).click();
+    const feed = page.getByRole("region", { name: "Following feed" });
+    const manage = page.getByRole("region", { name: "Follow management" });
+    await feed.waitFor();
+    assert.equal(await manage.count(), 0, "feed is the default view");
+    assert.equal(syncs, 0, "the feed must not check providers on open");
+    await openManage();
+    await manage.waitFor();
+    assert.equal(await feed.count(), 0);
     await page.getByLabel("Source", { exact: true }).selectOption("danbooru");
     await page.getByLabel("Follow name", { exact: true }).fill("Artist A");
     await page
@@ -269,6 +294,7 @@ try {
       exact: true,
     });
     await artist.getByRole("button", { name: "Check new posts" }).click();
+    await openFeed();
     await page.waitForFunction(
       () => document.querySelectorAll(".following-post").length === 2
     );
@@ -279,16 +305,28 @@ try {
         .getAttribute("href"),
       `${prefix}/booru?source=danbooru&q=id%3A10&inspect=danbooru%3A10`
     );
+    assert.equal(
+      await page
+        .getByRole("link", { name: "Browse / Download" })
+        .first()
+        .getAttribute("target"),
+      "_blank"
+    );
     failNext = true;
-    await artist.getByRole("button", { name: "Continue check" }).click();
+    await page
+      .getByRole("button", { name: "Continue check for Artist A", exact: true })
+      .click();
     await page.getByText(/Retry after 3 seconds/).waitFor();
     await page.reload();
+    await openManage();
     await page.getByText(/Last check failed/).waitFor();
     assert.equal(syncs, 2, "reload must not fetch the provider automatically");
     await artist.getByRole("button", { name: "Continue check" }).click();
+    await openFeed();
     await page.waitForFunction(
       () => document.querySelectorAll(".following-post").length === 3
     );
+    await openManage();
     await page.getByLabel("Follow name", { exact: true }).fill("Series S");
     await page.getByLabel("Target type").selectOption("copyright");
     await page
@@ -300,11 +338,28 @@ try {
       exact: true,
     });
     await series.getByRole("button", { name: "Check new posts" }).click();
+    await openFeed();
     await page.waitForFunction(
       () =>
         document.querySelectorAll(".following-post").length === 3 &&
         document.querySelectorAll(".following-post .following-matches button")
           .length === 4
+    );
+    const kindFilter = page.getByLabel("Follow type", { exact: true });
+    await kindFilter.selectOption("copyright");
+    await page.waitForFunction(
+      () => document.querySelectorAll(".following-post").length === 1
+    );
+    assert.match(page.url(), /kind=copyright/);
+    assert.deepEqual(await page.locator(".following-post h3").allTextContents(), [
+      "Post 10",
+    ]);
+    await openManage();
+    await openFeed();
+    assert.equal(await kindFilter.inputValue(), "copyright");
+    await kindFilter.selectOption("");
+    await page.waitForFunction(
+      () => document.querySelectorAll(".following-post").length === 3
     );
     await page.evaluate(() => window.scrollTo(0, 0));
     if (process.env.STASH_BROWSER_SCREENSHOTS) {
@@ -337,7 +392,9 @@ try {
     await page.waitForFunction(
       () => document.querySelectorAll(".following-post").length === 3
     );
+    await openManage();
     await artist.getByRole("button", { name: "Unfollow", exact: true }).click();
+    await openFeed();
     await page.waitForFunction(
       () => document.querySelectorAll(".following-post").length === 1
     );
@@ -372,6 +429,7 @@ try {
     await page.waitForFunction(
       () => document.querySelectorAll(".following-post").length === 25
     );
+    await openManage();
     await series.getByRole("button", { name: "Edit", exact: true }).click();
     follows[1].version++;
     follows[1].queryRevision++;
@@ -417,13 +475,20 @@ try {
     await page
       .getByRole("button", { name: "Save changes", exact: true })
       .click();
+    await openFeed();
     await page.getByText(/No saved posts match/).waitFor();
+    await openManage();
     await series.getByRole("button", { name: "Check new posts" }).click();
+    await openFeed();
     await post10
       .getByRole("button", { name: "Mark unseen", exact: true })
       .waitFor();
+    await openManage();
+    await page.getByText("Feed cache", { exact: true }).click();
     await page.getByRole("button", { name: "Remove seen snapshots" }).click();
+    await openFeed();
     await page.getByText(/No saved posts match/).waitFor();
+    await openManage();
     await page.getByLabel("Follow name", { exact: true }).fill("Artist C");
     await page
       .getByLabel("Exact provider tag or query", { exact: true })
@@ -446,9 +511,11 @@ try {
     discardHeld = true;
     releaseHeld();
     await third.getByRole("button", { name: "Check new posts" }).click();
+    await openFeed();
     await post10
       .getByRole("button", { name: "Mark unseen", exact: true })
       .waitFor();
+    await openManage();
     holdNext = true;
     const leavingReady = new Promise((resolve) => {
       heldReady = resolve;
@@ -465,6 +532,31 @@ try {
       .getByRole("link", { name: "Return to Following", exact: true })
       .click();
     await post10.waitFor();
+    const mirrorFollow = {
+      ...follows[1],
+      id: "D".repeat(26),
+      source: mirror.id,
+      instance: mirror.instance,
+      sourceURL: mirror.url,
+      name: "Mirror series",
+    };
+    follows.push(mirrorFollow);
+    discover(701, mirrorFollow);
+    await page
+      .getByRole("button", { name: "Reload saved feed", exact: true })
+      .click();
+    await page
+      .getByLabel("Feed source", { exact: true })
+      .selectOption(mirror.instance);
+    await page.getByRole("article", { name: "Post 701", exact: true }).waitFor();
+    await page.waitForFunction(
+      () => document.querySelectorAll(".following-post").length === 1
+    );
+    assert.match(page.url(), /instance=fixture-mirror/);
+    await kindFilter.selectOption("artist");
+    await page.getByText(/No saved posts match/).waitFor();
+    await page.goBack();
+    await page.getByRole("article", { name: "Post 701", exact: true }).waitFor();
     assert.equal(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth

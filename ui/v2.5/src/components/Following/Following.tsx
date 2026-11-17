@@ -30,6 +30,7 @@ interface Follow {
 interface FeedItem {
   sequence: string;
   postID: string;
+  instance: string;
   retrievedAt: string;
   seenAt: string;
   seenVersion: number;
@@ -58,6 +59,13 @@ interface FeedPage {
   next: string;
 }
 
+const followKinds = [
+  ["artist", "Artist"],
+  ["character", "Character"],
+  ["copyright", "Copyright / series"],
+  ["query", "Provider query"],
+];
+
 async function request<T>(path: string, signal: AbortSignal, input?: unknown) {
   const response = await fetch(new URL(path, document.baseURI), {
     signal,
@@ -83,11 +91,13 @@ async function request<T>(path: string, signal: AbortSignal, input?: unknown) {
 
 function Snapshot({
   item,
+  sourceName,
   disabled,
   seen,
   filter,
 }: {
   item: FeedItem;
+  sourceName?: string;
   disabled: boolean;
   seen: () => void;
   filter: (id: string, historic: boolean) => void;
@@ -120,6 +130,7 @@ function Snapshot({
           )}
         </h3>
         <div className="following-actions">
+          {sourceName && <Badge variant="secondary">{sourceName}</Badge>}
           {content.rating && (
             <Badge variant="secondary">{content.rating}</Badge>
           )}
@@ -136,7 +147,13 @@ function Snapshot({
             {item.seenAt ? "Mark unseen" : "Mark seen"}
           </Button>
           {content.browseURL && (
-            <Link className="btn btn-secondary btn-sm" to={content.browseURL}>
+            <Link
+              className="btn btn-secondary btn-sm"
+              to={content.browseURL}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open the post in a new tab"
+            >
               Browse / Download
             </Link>
           )}
@@ -187,6 +204,14 @@ export default function Following() {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const fromIdentity = params.get("fromIdentity") ?? "";
+  const managing =
+    !!fromIdentity ||
+    params.get("view") === "manage" ||
+    location.hash === "#following-manager";
+  const feedSource = params.get("instance") ?? "";
+  const feedKind = params.get("kind") ?? "";
+  const feedFollow = params.get("follow") ?? "";
+  const showHistory = params.get("history") === "1";
   const [identity, setIdentity] = useState<ProviderIdentity>();
   const [identityError, setIdentityError] = useState("");
   const [epoch, setEpoch] = useState(0);
@@ -287,6 +312,7 @@ export default function Following() {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: epoch explicitly reloads snapshots and preview grants after mutations.
   useEffect(() => {
+    if (managing) return;
     const controller = new AbortController();
     setPage(undefined);
     setFeedError("");
@@ -298,7 +324,7 @@ export default function Following() {
         if (!controller.signal.aborted) setFeedError(error.message);
       });
     return () => controller.abort();
-  }, [location.search, epoch]);
+  }, [location.search, epoch, managing]);
 
   async function mutate(label: string, path: string, input: unknown) {
     if (operation.current) return false;
@@ -338,9 +364,25 @@ export default function Following() {
     }
   }
 
+  function viewLink(manage: boolean) {
+    const next = new URLSearchParams(location.search);
+    next.delete("fromIdentity");
+    if (manage) next.set("view", "manage");
+    else next.delete("view");
+    return { pathname: "/following", search: next.toString() };
+  }
+
+  function checkPosts(follow: Follow) {
+    void mutate("Checking one page…", "following/sync", {
+      id: follow.id,
+      version: follow.version,
+    });
+  }
+
   function changeFilter(key: string, value: string) {
     const next = new URLSearchParams(location.search);
     next.delete("before");
+    if (key === "instance" || key === "kind") next.delete("follow");
     if (value) next.set(key, value);
     else next.delete(key);
     history.push({ pathname: "/following", search: next.toString() });
@@ -349,6 +391,8 @@ export default function Following() {
   function selectMatch(id: string, historic: boolean) {
     const next = new URLSearchParams(location.search);
     next.delete("before");
+    next.delete("instance");
+    next.delete("kind");
     next.set("follow", id);
     if (historic) next.set("history", "1");
     history.push({ pathname: "/following", search: next.toString() });
@@ -392,6 +436,7 @@ export default function Following() {
     const current = history.location;
     const next = new URLSearchParams(current.search);
     next.delete("fromIdentity");
+    next.set("view", "manage");
     history.replace({ ...current, search: next.toString() });
   }
 
@@ -407,6 +452,29 @@ export default function Following() {
   const currentEdit = follows.find((follow) => follow.id === editing?.id);
   const editChanged = !!editing && currentEdit?.version !== editing.version;
   const locked = !!busy;
+  const sourceNames = new Map<string, string>();
+  for (const follow of follows) {
+    const source = sources.find((row) => row.instance === follow.instance);
+    sourceNames.set(follow.instance, source?.name ?? follow.sourceURL);
+  }
+  const selectableFollows = follows.filter(
+    (follow) =>
+      follow.id === feedFollow ||
+      ((!feedSource || follow.instance === feedSource) &&
+        (!feedKind || follow.kind === feedKind || showHistory))
+  );
+  const checkable = selectableFollows.filter(
+    (follow) =>
+      follow.active &&
+      follow.syncSupported &&
+      (!feedSource || follow.instance === feedSource) &&
+      (!feedKind || follow.kind === feedKind)
+  );
+  const followToCheck = feedFollow
+    ? checkable.find((follow) => follow.id === feedFollow)
+    : checkable.length === 1
+      ? checkable[0]
+      : undefined;
   const next = new URLSearchParams(location.search);
   if (page?.next) next.set("before", page.next);
 
@@ -414,27 +482,30 @@ export default function Following() {
     <div className="following-page">
       <header>
         <h2>Following</h2>
-        <div className="following-actions">
-          <a className="btn btn-secondary" href="#following-manager">
+        <nav className="following-actions" aria-label="Following views">
+          <Link
+            className={managing ? "btn btn-secondary" : "btn btn-primary"}
+            aria-current={managing ? undefined : "page"}
+            to={viewLink(false)}
+            onClick={() => {
+              if (fromIdentity) resetForm();
+            }}
+          >
+            Saved feed
+          </Link>
+          <Link
+            className={managing ? "btn btn-primary" : "btn btn-secondary"}
+            aria-current={managing ? "page" : undefined}
+            to={fromIdentity ? location : viewLink(true)}
+          >
             Manage follows
-          </a>
+          </Link>
           <Link className="btn btn-secondary" to="/booru">
             Content browser
           </Link>
-          <Link className="btn btn-secondary" to="/booru/settings">
-            Source settings
-          </Link>
-          <Button onClick={() => setEpoch((value) => value + 1)}>
-            Reload saved feed
-          </Button>
-        </div>
+        </nav>
       </header>
-      <p className="text-muted">
-        Check follows on demand. Your first check saves up to 50 recent posts;
-        later checks collect newer uploads. Feed checks currently support
-        Danbooru-compatible sources.
-      </p>
-      {[listError, sourceError, feedError, actionError]
+      {[listError, sourceError, !managing && feedError, actionError]
         .filter(Boolean)
         .map((error, i) => (
           <Alert key={`${i}:${error}`} variant="danger">
@@ -450,11 +521,24 @@ export default function Following() {
           </Button>
         </Alert>
       )}
-      <div className="following-layout">
-        <aside id="following-manager">
-          <a className="btn btn-link d-md-none" href="#following-feed">
-            Back to feed
-          </a>
+      {managing ? (
+        <section id="following-manager" aria-label="Follow management">
+          <p className="text-muted">
+            Check follows on demand. Your first check saves up to 50 recent
+            posts; later checks collect newer uploads. Feed checks currently
+            support Danbooru-compatible sources.
+          </p>
+          <div className="following-actions mb-3">
+            <Button
+              variant="secondary"
+              onClick={() => setEpoch((value) => value + 1)}
+            >
+              Reload follows
+            </Button>
+            <Link className="btn btn-secondary" to="/booru/settings">
+              Source settings
+            </Link>
+          </div>
           <Form
             className="card card-body mb-3"
             onSubmit={async (event) => {
@@ -582,12 +666,7 @@ export default function Following() {
                 disabled={locked || contextBlocked}
                 onChange={(e) => setKind(e.target.value)}
               >
-                {[
-                  ["artist", "Artist"],
-                  ["character", "Character"],
-                  ["copyright", "Copyright / series"],
-                  ["query", "Provider query"],
-                ].map(([value, label]) => (
+                {followKinds.map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
                   </option>
@@ -689,12 +768,7 @@ export default function Following() {
                     !follow.syncSupported ||
                     !!listError
                   }
-                  onClick={() =>
-                    void mutate("Checking one page…", "following/sync", {
-                      id: follow.id,
-                      version: follow.version,
-                    })
-                  }
+                  onClick={() => checkPosts(follow)}
                 >
                   {follow.feed?.hasMore ? "Continue check" : "Check new posts"}
                 </Button>
@@ -732,24 +806,79 @@ export default function Following() {
               </div>
             </section>
           ))}
-        </aside>
+          <details className="mt-3">
+            <summary>Feed cache</summary>
+            <p className="mt-2">
+              Remove cached snapshots you marked seen. Seen decisions, follows,
+              and Stash files are kept.
+            </p>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={locked}
+              onClick={() =>
+                void mutate("Removing seen snapshots…", "following/prune", {
+                  action: "remove-seen-snapshots",
+                })
+              }
+            >
+              Remove seen snapshots
+            </Button>
+          </details>
+        </section>
+      ) : (
         <section id="following-feed" aria-label="Following feed">
           <div className="following-filters card card-body mb-3">
-            <Form.Group controlId="following-filter">
-              <Form.Label>Matched follow</Form.Label>
-              <Form.Control
-                as="select"
-                value={params.get("follow") ?? ""}
-                onChange={(e) => changeFilter("follow", e.target.value)}
-              >
-                <option value="">All follows</option>
-                {follows.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.name}
-                  </option>
-                ))}
-              </Form.Control>
-            </Form.Group>
+            <div className="following-filter-fields">
+              <Form.Group controlId="following-feed-source">
+                <Form.Label>Feed source</Form.Label>
+                <Form.Control
+                  as="select"
+                  value={feedSource}
+                  onChange={(e) => changeFilter("instance", e.target.value)}
+                >
+                  <option value="">All sources</option>
+                  {!!feedSource && !sourceNames.has(feedSource) && (
+                    <option value={feedSource}>Unavailable source</option>
+                  )}
+                  {[...sourceNames].map(([instance, label]) => (
+                    <option key={instance} value={instance}>
+                      {label}
+                    </option>
+                  ))}
+                </Form.Control>
+              </Form.Group>
+              <Form.Group controlId="following-feed-kind">
+                <Form.Label>Follow type</Form.Label>
+                <Form.Control
+                  as="select"
+                  value={feedKind}
+                  onChange={(e) => changeFilter("kind", e.target.value)}
+                >
+                  <option value="">All types</option>
+                  {followKinds.map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </Form.Control>
+              </Form.Group>
+              <Form.Group controlId="following-filter">
+                <Form.Label>Matched follow</Form.Label>
+                <Form.Control
+                  as="select"
+                  value={feedFollow}
+                  onChange={(e) => changeFilter("follow", e.target.value)}
+                >
+                  <option value="">All follows</option>
+                  {selectableFollows.map((follow) => (
+                    <option key={follow.id} value={follow.id}>
+                      {follow.name}
+                    </option>
+                  ))}
+                </Form.Control>
+              </Form.Group>
+            </div>
             <div className="following-actions">
               {[
                 ["unseen", "Unseen only", "1"],
@@ -770,27 +899,36 @@ export default function Following() {
               ))}
             </div>
             <div className="following-actions mt-2">
-              <span>Latest discovered · saved snapshots</span>
               <Button
                 size="sm"
                 variant="secondary"
-                disabled={locked}
-                title="Remove seen snapshots from the feed cache; retain seen decisions and Stash files."
-                onClick={() =>
-                  void mutate("Removing seen snapshots…", "following/prune", {
-                    action: "remove-seen-snapshots",
-                  })
-                }
+                onClick={() => setEpoch((value) => value + 1)}
               >
-                Remove seen snapshots
+                Reload saved feed
               </Button>
+              {followToCheck && (
+                <Button
+                  size="sm"
+                  disabled={locked || !!listError}
+                  onClick={() => checkPosts(followToCheck)}
+                >
+                  {followToCheck.feed?.hasMore
+                    ? "Continue check for "
+                    : "Check new posts for "}
+                  {followToCheck.name}
+                </Button>
+              )}
+              <span className="text-muted">
+                Latest discovered · saved snapshots
+              </span>
             </div>
           </div>
           {!page && !feedError && <p role="status">Loading saved feed…</p>}
           {page?.items.length === 0 && (
             <p>
-              No saved posts match these filters. Check a follow, continue a
-              pending check, or adjust the filters.
+              No saved posts match these filters. Adjust the filters or{" "}
+              <Link to={viewLink(true)}>manage your follows</Link> to check for
+              posts.
             </p>
           )}
           <div className="following-grid">
@@ -798,6 +936,7 @@ export default function Following() {
               <Snapshot
                 key={item.sequence}
                 item={item}
+                sourceName={sourceNames.get(item.instance)}
                 disabled={locked}
                 filter={selectMatch}
                 seen={() =>
@@ -829,7 +968,7 @@ export default function Following() {
             )}
           </nav>
         </section>
-      </div>
+      )}
     </div>
   );
 }

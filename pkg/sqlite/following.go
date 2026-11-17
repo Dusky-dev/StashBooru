@@ -98,6 +98,10 @@ func (s *FollowingStore) List(ctx context.Context, filter models.FollowingFilter
 		conditions = append(conditions, "p.sequence<?")
 		args = append(args, filter.Before)
 	}
+	if filter.Instance != "" {
+		conditions = append(conditions, "p.instance=?")
+		args = append(args, filter.Instance)
+	}
 	match := "m.sequence=p.sequence"
 	if !filter.History {
 		match += " AND f.active=1 AND f.query_revision=m.revision"
@@ -105,6 +109,10 @@ func (s *FollowingStore) List(ctx context.Context, filter models.FollowingFilter
 	if filter.FollowID != "" {
 		match += " AND m.follow_id=?"
 		args = append(args, filter.FollowID)
+	}
+	if filter.Kind != "" {
+		match += " AND m.kind=?"
+		args = append(args, filter.Kind)
 	}
 	conditions = append(conditions, `EXISTS(SELECT 1 FROM following_matches m JOIN booru_follows f ON f.id=m.follow_id WHERE `+match+`)`)
 	if filter.Unseen {
@@ -130,7 +138,8 @@ func (s *FollowingStore) List(ctx context.Context, filter models.FollowingFilter
 		rows[i].Matches = []models.FollowingMatch{}
 		err := dbWrapper.Select(ctx, &rows[i].Matches, `SELECT m.follow_id,m.revision,f.name,m.kind,m.target,
  (f.active=1 AND f.query_revision=m.revision) AS current FROM following_matches m JOIN booru_follows f ON f.id=m.follow_id
- WHERE m.sequence=? ORDER BY (m.follow_id=?) DESC,current DESC,m.follow_id,m.revision DESC LIMIT 51`, rows[i].Sequence, filter.FollowID)
+ WHERE m.sequence=? ORDER BY (m.follow_id=?) DESC,(m.kind=?) DESC,current DESC,m.follow_id,m.revision DESC LIMIT 51`,
+			rows[i].Sequence, filter.FollowID, filter.Kind)
 		if err != nil {
 			return nil, err
 		}
