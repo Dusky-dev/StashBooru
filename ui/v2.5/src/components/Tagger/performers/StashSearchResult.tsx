@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Button } from "react-bootstrap";
+import { useIntl } from "react-intl";
 
 import * as GQL from "src/core/generated-graphql";
 import { useUpdatePerformer } from "../queries";
@@ -40,6 +41,7 @@ const StashSearchResult: React.FC<IStashSearchResultProps> = ({
   excludedPerformerFields,
   endpoint,
 }) => {
+  const intl = useIntl();
   const [modalPerformer, setModalPerformer] =
     useState<GQL.ScrapedPerformerDataFragment>();
   const [saveState, setSaveState] = useState<string>("");
@@ -106,7 +108,9 @@ const StashSearchResult: React.FC<IStashSearchResultProps> = ({
           performer={modalPerformer}
           onSave={handleSave}
           icon={faTags}
-          header="Update Performer"
+          header={intl.formatMessage({
+            id: "performer_tagger.update_performer",
+          })}
           excludedPerformerFields={excludedPerformerFields}
           endpoint={endpoint}
         />
