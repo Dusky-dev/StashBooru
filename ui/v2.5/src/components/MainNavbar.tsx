@@ -27,13 +27,16 @@ import {
   faChartColumn,
   faCopyright,
   faFilm,
+  faClone,
   faGlobe,
   faHeart,
   faImage,
   faImages,
+  faLink,
   faMapMarkerAlt,
   faPlayCircle,
   faQuestionCircle,
+  faRss,
   faSignOutAlt,
   faTag,
   faTimes,
@@ -184,6 +187,50 @@ const allMenuItems: IMenuItem[] = [
   },
 ];
 
+// Fork destinations share the native utility-button styling. Their labels
+// show beside the icon on wide screens and inside the collapsed menu.
+const utilityLinks: {
+  to: string;
+  icon: IconDefinition;
+  label: MessageDescriptor;
+  title?: MessageDescriptor;
+  exact?: boolean;
+}[] = [
+  {
+    to: "/following",
+    icon: faRss,
+    label: { id: "navbar_utility.following", defaultMessage: "Following" },
+    exact: true,
+  },
+  {
+    to: "/identities",
+    icon: faLink,
+    label: { id: "navbar_utility.identities", defaultMessage: "Identities" },
+    title: {
+      id: "navbar_utility.identities_title",
+      defaultMessage:
+        "Connect source names to Characters, Artists and Copyrights",
+    },
+  },
+  {
+    to: "/image-duplicates",
+    icon: faClone,
+    label: { id: "navbar_utility.duplicates", defaultMessage: "Duplicates" },
+    title: {
+      id: "navbar_utility.duplicates_title",
+      defaultMessage: "Review similar images",
+    },
+    exact: true,
+  },
+  {
+    to: "/booru",
+    icon: faGlobe,
+    label: { id: "booru_browser.nav", defaultMessage: "Booru" },
+    title: { id: "booru_browser.title", defaultMessage: "Booru browser" },
+    exact: true,
+  },
+];
+
 const newPathsList = allMenuItems
   .filter((item) => item.userCreatable)
   .map((item) => item.href);
@@ -321,50 +368,25 @@ export const MainNavbar: React.FC = () => {
   function renderUtilityButtons() {
     return (
       <>
-        <NavLink
-          className="nav-utility"
-          exact
-          to="/following"
-          onClick={handleDismiss}
-          title="Following"
-        >
-          <Icon icon={faHeart} />
-          <span className="ml-1 d-none d-sm-inline">Following</span>
-        </NavLink>
-        <NavLink
-          to="/identities"
-          className="nav-utility"
-          title="Identities"
-          onClick={handleDismiss}
-        >
-          <Icon icon={faTag} />
-          <span className="ml-1 d-none d-sm-inline">Identities</span>
-        </NavLink>
-        <NavLink
-          className="nav-utility"
-          exact
-          to="/image-duplicates"
-          onClick={handleDismiss}
-          title="Review similar images"
-        >
-          <Icon icon={faImages} />
-          <span className="ml-1 d-none d-sm-inline">Duplicates</span>
-        </NavLink>
-        <NavLink
-          className="nav-utility"
-          exact
-          to="/booru"
-          onClick={handleDismiss}
-          title={intl.formatMessage({
-            id: "booru_browser.title",
-            defaultMessage: "Booru browser",
-          })}
-        >
-          <Icon icon={faGlobe} />
-          <span className="ml-1 d-none d-sm-inline">
-            <FormattedMessage id="booru_browser.nav" defaultMessage="Booru" />
-          </span>
-        </NavLink>
+        {utilityLinks.map(({ to, icon, label, title, exact }) => (
+          <NavLink
+            key={to}
+            className="nav-utility"
+            exact={exact}
+            to={to}
+            onClick={handleDismiss}
+          >
+            <Button
+              className="minimal d-flex align-items-center h-100"
+              title={intl.formatMessage(title ?? label)}
+            >
+              <Icon icon={icon} />
+              <span className="nav-utility-label ml-1">
+                {intl.formatMessage(label)}
+              </span>
+            </Button>
+          </NavLink>
+        ))}
         <Nav.Link
           className="nav-utility"
           href="https://opencollective.com/stashapp"
@@ -436,7 +458,7 @@ export const MainNavbar: React.FC = () => {
               className="col-4 col-sm-3 col-md-2 col-lg-auto"
             >
               <LinkContainer activeClassName="active" exact to={href}>
-                <Button className="minimal p-4 p-xl-2 d-flex d-xl-inline-block flex-column justify-content-between align-items-center">
+                <Button className="minimal p-4 px-xl-1 py-xl-2 d-flex d-xl-inline-block flex-column justify-content-between align-items-center">
                   <Icon
                     {...{ icon }}
                     className="nav-menu-icon d-block d-xl-inline mb-2 mb-xl-0"
