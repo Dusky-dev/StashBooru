@@ -755,6 +755,9 @@ and range rules; the All browser suite checks an empty-result deep link.
 
 ## Mixed-media preview navigation
 
+Images, Videos, and All with URL-based filters keep the list's scroll position
+when Back returns from a media detail. New list visits use their own position.
+
 The main **All** and each selected Copyright/Character/Artist/Tag **All** tab
 open one shared Lightbox sequence in the exact `findMedia.items` order.
 The next/previous controls traverse Images **and** Videos without skipping

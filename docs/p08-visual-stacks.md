@@ -24,7 +24,9 @@ compression base.
   and obtains a fresh version. API operations run within one write transaction.
 - Native file actions target selected individual members. Expanding a collapsed
   card does not implicitly select all members, and delete dialogs say that other
-  members/files are kept. Stack edits preserve the list's selected typed IDs.
+  members/files are kept. Creating, adding to, or merging a stack deselects
+  its successful members in the originating All, Images, or Videos selection.
+  Cancelling or rejecting a change keeps the corresponding selection.
 
 ## Filtering, counts and order
 

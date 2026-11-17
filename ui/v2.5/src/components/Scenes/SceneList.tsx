@@ -33,6 +33,7 @@ import { LoadedContent } from "../List/PagedList";
 import { useCloseEditDelete, useFilterOperations } from "../List/util";
 import { ListOperations } from "../List/ListOperationButtons";
 import { useFilteredItemList } from "../List/ItemList";
+import { useListScrollRestoration } from "../List/useListScrollRestoration";
 import {
   Sidebar,
   SidebarPane,
@@ -438,6 +439,13 @@ export const FilteredSceneList = PatchComponent(
 
     const { effectiveFilter, result, cachedResult, items, totalCount } =
       queryResult;
+    const listReady = !result.loading && !result.error && !!result.data;
+    const listRef = useListScrollRestoration({
+      view: view ?? View.Scenes,
+      filter,
+      active: alterQuery !== false,
+      ready: listReady && !sidebarStateLoading,
+    });
 
     useEffect(() => {
       const refetchAfterUpload = () => {
@@ -457,6 +465,7 @@ export const FilteredSceneList = PatchComponent(
       onSelectChange,
       onSelectAll,
       onSelectNone,
+      onDeselectIDs,
       onInvertSelection,
       hasSelection,
     } = listSelect;
@@ -605,6 +614,13 @@ export const FilteredSceneList = PatchComponent(
       );
     }
 
+    const onStacked = (media: GQL.MediaReferenceInput[]) =>
+      onDeselectIDs(
+        media
+          .filter((member) => member.kind === GQL.MediaKind.Video)
+          .map((member) => member.id)
+      );
+
     const otherOperations = [
       {
         text: "Create stack from selection…",
@@ -616,6 +632,7 @@ export const FilteredSceneList = PatchComponent(
                 kind: GQL.MediaKind.Video,
                 id,
               }))}
+              onStacked={onStacked}
               onClose={closeModal}
             />
           ),
@@ -630,6 +647,7 @@ export const FilteredSceneList = PatchComponent(
                 kind: GQL.MediaKind.Video,
                 id,
               }))}
+              onStacked={onStacked}
               onClose={closeModal}
             />
           ),
@@ -793,6 +811,7 @@ export const FilteredSceneList = PatchComponent(
     return (
       <TaggerContext>
         <div
+          ref={listRef}
           className={cx("item-list-container scene-list", {
             "hide-sidebar": !showSidebar,
           })}
