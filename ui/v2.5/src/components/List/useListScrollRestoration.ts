@@ -37,8 +37,18 @@ export function useListScrollRestoration({
   const query = filter.makeQueryParameters();
   const list = useRef<HTMLDivElement>(null);
   const pending = useRef<ScrollPosition>();
+  const handled = useRef<{ location: typeof location; active: boolean }>();
 
   useLayoutEffect(() => {
+    // Suspense hides a list while a lazy page loads and re-runs its layout
+    // effects when Back reveals it. Arm a restore once per history entry.
+    if (
+      handled.current?.location === location &&
+      handled.current.active === active
+    ) {
+      return;
+    }
+    handled.current = { location, active };
     if (active && action === "POP") {
       pending.current = positions.get(key);
     } else if (
@@ -51,8 +61,9 @@ export function useListScrollRestoration({
       // during Back. Only carry the position into that same list and filter.
       pending.current = undefined;
     }
-  }, [active, action, key, pathname, search]);
+  }, [active, action, key, location, pathname, search]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a list revealed by Back keeps its key, query and readiness; the new location restarts the restore.
   useEffect(() => {
     if (!active || !ready) return;
     const element = list.current;
@@ -114,7 +125,7 @@ export function useListScrollRestoration({
       window.removeEventListener("wheel", onInteraction);
       window.removeEventListener("touchstart", onInteraction);
     };
-  }, [active, history, key, pathname, query, ready, view]);
+  }, [active, history, key, location, pathname, query, ready, view]);
 
   return list;
 }
