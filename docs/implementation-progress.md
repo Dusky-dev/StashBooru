@@ -1,3 +1,19 @@
+## Pawchive preview filter and SWF originals — 2026-11-17
+
+- Baseline: `develop` `105562730380b9b9a678cf1303afb4de9e4751a0` after #368. Branch
+  [`feat/booru-pawchive-previews-flash-20261117`](https://github.com/Dusky-dev/StashBooru/tree/feat/booru-pawchive-previews-flash-20261117),
+  source `57ff9e14756d269c6c6ecd1dd6aeece643c80256`, tree `d2bfe7d4107c578f3dc5570650f48158e93cfb19`.
+- Store an off-by-default local Pawchive display switch. Filter the current
+  page after trying listing and attachment thumbnails, count omissions,
+  retry on refresh and keep direct inspectors reachable.
+- Recognize SWF originals in Booru attachments. The download job validates
+  the signature and applicable length/checksum, then offers the original as
+  an attachment. No inline Flash playback, conversion or library import.
+- Parsed the browser checks and verified source whitespace. Added Go format
+  gating and browser coverage for hidden, broken and alternate thumbnails,
+  persisted settings, direct inspection and SWF download handoff.
+  Full Go and mounted UI checks await CI.
+
 ## Explain the Booru filename rule (BOO-11) — 2026-11-17
 
 - Baseline: `develop` `0e8936f316f61227925520e5d06fe268eec6fda5`, after #363 merged with 14 green
