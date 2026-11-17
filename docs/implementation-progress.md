@@ -239,6 +239,39 @@
 - Extend `ui/v2.5/tests/browser/settings-maintenance.mjs` with a routed upload-settings fixture that toggles all six switches, saves, checks persisted values, and asserts no uncaught page errors.
 - GitHub CI and browser regression are pending. No production build/browser acceptance was performed in this connected editor environment.
 
+## Keep retained files out of upload retry (UP-01/UP-03) — 2026-11-17
+
+- Baseline: `develop` `04a4b6175842002522d049496dd81a70b30fd0d5`. Branch
+  [`fix/media-upload-retained-files-20261117`](https://github.com/Dusky-dev/StashBooru/tree/fix/media-upload-retained-files-20261117),
+  source `dfbabb491de44fddebdb1dc0b5555a9584adc70d`, tree `83fae1e6668b1c3b58ecdb3dec07eb5ef090ddba`.
+- Keep the saved path and any indexed Image or Video ID when publishing succeeds
+  but importing or applying metadata fails. Direct URL downloads also confirm
+  the saved path before importing, so reaching the end of that stream without a
+  result still surfaces the retained file.
+- A saved item leaves the retry queue. Open its indexed record in a new tab, or
+  check the library or run Scan if an ID was unavailable. Other pending files
+  stay in the queue. A failure before any save acknowledgement still follows the
+  normal retry path.
+- Added a Go regression test for retained bytes after an unavailable importer
+  and browser checks for continuing a mixed queue and for a URL stream that
+  ends after saving. Parsed the browser check as JavaScript and checked edited
+  source for trailing whitespace and conflict markers. Go, UI and mounted
+  browser checks await CI.
+- The original PR #369 head `6ff7db91893a5b2842cfb81334f80685316ee5f5` received a clean
+  Codex review. CI caught a missing `WithDatabase` method on the Go test
+  double and a UI line wrap. The browser exercised the upload assertions,
+  then recorded fetch errors in Settings. Run upload acceptance after the
+  Settings unmount check, avoiding a second Settings load immediately before
+  its intentional reload. On head `596744094ed392d1afc53d93a083e8c5b7c55676`, [lint](https://github.com/Dusky-dev/StashBooru/actions/runs/43987732302/job/133720118330) and [browser](https://github.com/Dusky-dev/StashBooru/actions/runs/43987732310/job/133720118266)
+  and Codex Review found that the earlier edit also dropped the navigation into
+  Processing before its reload. Restore that navigation, and use the checked
+  JSON writer for error responses. Rerun CI and Codex Review.
+- Head `5a0fc76c18c8212474ffb5c5925efccd67a0459b` passed review and the existing Settings assertions.
+  The upload fixture had three unmocked lookups: the native Artist, Gallery
+  and Tag selectors use the HTTP client alongside the fixture Apollo context.
+  Mock those select operations explicitly and keep the unhandled error
+  assertion intact. Fresh CI and review are pending.
+
 ## Upload queue-wide processing and real media previews — 2026-11-13
 
 - Follow-up on PR #354, same branch and `develop` baseline. The owner clarified that Tag and Convert defaults must apply to **the entire import queue**, not repeat per file. Removed two per-row switches and now render one pair of queue-level switches, initialized from saved Quick upload settings. Both options are captured once at batch start and passed to local-file and URL import endpoints. Already-running items do not change if the queue switches are edited.
@@ -278,6 +311,27 @@
   and assert a request for page one of the filtered results. Parsed the
   fixture body and checked the labels and paging against the pinned
   handlers and fill limits. The existing browser/CI runs are pending.
+
+## Open Following as a saved feed (BOO-06) — 2026-11-17
+
+- Baseline: `develop` `105562730380b9b9a678cf1303afb4de9e4751a0` after #368.
+  Branch [`feat/following-saved-feed-20261117`](https://github.com/Dusky-dev/StashBooru/tree/feat/following-saved-feed-20261117),
+  source `28c56db6ffc14caf9d04ea3c4b1d83d2ca9f63b4`, tree `0cafbb015f06afbbc0282597e4b1a9e6bd075e37`.
+- Default to the full-width saved feed. Move definitions, explicit provider
+  checks, and cache cleanup into Manage follows; keep the profile Follow draft
+  in that view. The feed can check a single selected or eligible follow.
+- Filter by provider instance and saved follow type before paging. Keep filter
+  state in the URL, and use historical match types for old revisions. Name the
+  source on cards, and open Browse / Download in a new tab so the feed stays put.
+- Parsed both updated browser scripts and checked changed source for whitespace.
+  Added SQLite/HTTP coverage of filtered pagination, shared and equal-ID posts,
+  and historical follow types. Extended desktop and mobile/prefix flows to cover
+  the new views, filters, and preview handoff. Mounted browser and Go checks
+  await CI; live providers and new feed adapters are outside this change.
+- Head `ba23bbd1904b6eb8d1304780debf19cf1f384a3a` passed the mounted Following suite, Go lint
+  and Codex Review. [Generate](https://github.com/Dusky-dev/StashBooru/actions/runs/43989419574/job/133725897419)
+  flagged three fixture line wraps after type checks. Apply the reported layout
+  and keep the fixture assertions unchanged.
 
 ## No-prompt quick upload and opt-in remote worker fallback — 2026-11-13
 

@@ -161,11 +161,12 @@ type mediaUploadURLRequest struct {
 }
 
 type mediaUploadStreamEvent struct {
-	Type    string              `json:"type"`
-	Loaded  int64               `json:"loaded,omitempty"`
-	Total   int64               `json:"total,omitempty"`
-	Message string              `json:"message,omitempty"`
-	Result  *booruLibraryResult `json:"result,omitempty"`
+	Type      string              `json:"type"`
+	Loaded    int64               `json:"loaded,omitempty"`
+	Total     int64               `json:"total,omitempty"`
+	Message   string              `json:"message,omitempty"`
+	SavedPath string              `json:"savedPath,omitempty"`
+	Result    *booruLibraryResult `json:"result,omitempty"`
 }
 
 func writeMediaUploadEvent(w http.ResponseWriter, e mediaUploadStreamEvent) {
@@ -305,7 +306,11 @@ func (rs booruBrowserRoutes) ImportMediaURL(w http.ResponseWriter, r *http.Reque
 		writeMediaUploadEvent(w, mediaUploadStreamEvent{Type: "error", Message: err.Error()})
 		return
 	}
-	writeMediaUploadEvent(w, mediaUploadStreamEvent{Type: "processing", Message: "Download complete; importing into Stash"})
+	writeMediaUploadEvent(w, mediaUploadStreamEvent{
+		Type:      "processing",
+		Message:   "Download complete; importing into Stash",
+		SavedPath: published,
+	})
 	type outcome struct {
 		result booruLibraryResult
 		err    error
@@ -322,7 +327,12 @@ func (rs booruBrowserRoutes) ImportMediaURL(w http.ResponseWriter, r *http.Reque
 	select {
 	case completed := <-done:
 		if completed.err != nil {
-			writeMediaUploadEvent(w, mediaUploadStreamEvent{Type: "error", Message: completed.err.Error()})
+			writeMediaUploadEvent(w, mediaUploadStreamEvent{
+				Type:      "error",
+				Message:   completed.err.Error(),
+				SavedPath: published,
+				Result:    indexedUploadResult(completed.result),
+			})
 			return
 		}
 		writeMediaUploadEvent(w, mediaUploadStreamEvent{Type: "complete", Result: &completed.result})

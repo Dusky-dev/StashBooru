@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -75,7 +76,35 @@ func (rs booruBrowserRoutes) FollowingFeed(w http.ResponseWriter, r *http.Reques
 		writeBooruError(w, 400, "following", "Invalid download-history filter.")
 		return
 	}
-	filter := models.FollowingFilter{Limit: 25, FollowID: q.Get("follow"), Unseen: q.Get("unseen") == "1", History: q.Get("history") == "1", ShowIgnored: q.Get("ignored") == "1", HideDownloaded: q.Get("downloaded") == "hide"}
+	instance := q.Get("instance")
+	if instance != "" {
+		var fingerprint [32]byte
+		if len(instance) != hex.EncodedLen(len(fingerprint)) {
+			writeBooruError(w, 400, "following", "Invalid feed source.")
+			return
+		}
+		if _, err := hex.Decode(fingerprint[:], []byte(instance)); err != nil {
+			writeBooruError(w, 400, "following", "Invalid feed source.")
+			return
+		}
+	}
+	kind := q.Get("kind")
+	switch kind {
+	case "", "artist", "character", "copyright", "query":
+	default:
+		writeBooruError(w, 400, "following", "Invalid feed follow type.")
+		return
+	}
+	filter := models.FollowingFilter{
+		Limit:          25,
+		FollowID:       q.Get("follow"),
+		Instance:       instance,
+		Kind:           kind,
+		Unseen:         q.Get("unseen") == "1",
+		History:        q.Get("history") == "1",
+		ShowIgnored:    q.Get("ignored") == "1",
+		HideDownloaded: q.Get("downloaded") == "hide",
+	}
 	var err error
 	if q.Get("before") != "" {
 		filter.Before, err = strconv.ParseInt(q.Get("before"), 10, 64)

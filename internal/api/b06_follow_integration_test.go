@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -133,6 +134,84 @@ func TestB06FollowLifecyclePersistenceAndIndependentReview(t *testing.T) {
 		sum += code
 	}
 	require.Equal(t, 200+409, sum)
+}
+
+func TestB06FeedFiltersComposeBeforePaging(t *testing.T) {
+	config.InitializeEmpty()
+	db := sqlite.NewDatabase()
+	require.NoError(t, db.Open(filepath.Join(t.TempDir(), "following.sqlite")))
+	defer db.Close()
+	repo := db.Repository()
+	rs := booruBrowserRoutes{configPath: t.TempDir(), repository: repo}
+	dan, gel := booru.Defaults()[0], booru.Defaults()[2]
+	artist := b06Mutation(t, rs, b06Create(dan, "artist", "artist_a"), 200)
+	series := b06Mutation(t, rs, b06Create(dan, "copyright", "series_s"), 200)
+	other := b06Mutation(t, rs, b06Create(gel, "artist", "artist_a"), 200)
+
+	seed := func(follow models.BooruFollow, ids ...string) {
+		t.Helper()
+		posts := make([]models.FollowingSnapshot, 0, len(ids))
+		for _, id := range ids {
+			posts = append(posts, models.FollowingSnapshot{PostID: id, Payload: []byte("{}")})
+		}
+		require.NoError(t, repo.WithTxn(context.Background(), func(ctx context.Context) error {
+			_, err := repo.Following.ApplyPage(ctx, follow, 0, "", false, posts)
+			return err
+		}))
+	}
+	seed(artist, "1", "2")
+	seed(series, "2", "3")
+	seed(other, "2")
+
+	read := func(query url.Values, status int) ([]followingPostView, string) {
+		t.Helper()
+		w := httptest.NewRecorder()
+		rs.FollowingFeed(w, httptest.NewRequest("GET", "/following/feed?"+query.Encode(), nil))
+		require.Equal(t, status, w.Code, w.Body.String())
+		var page struct {
+			Items []followingPostView
+			Next  string
+		}
+		if status == 200 {
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &page))
+		}
+		return page.Items, page.Next
+	}
+
+	query := url.Values{"instance": {artist.Instance}, "kind": {"artist"}, "limit": {"1"}}
+	first, next := read(query, 200)
+	require.Len(t, first, 1)
+	require.Equal(t, artist.Instance, first[0].Instance)
+	require.Equal(t, "2", first[0].PostID)
+	require.Len(t, first[0].Matches, 2, "retain all explanations for a shared snapshot")
+	require.NotEmpty(t, next)
+	query.Set("before", next)
+	older, next := read(query, 200)
+	require.Len(t, older, 1)
+	require.Equal(t, "1", older[0].PostID)
+	require.Empty(t, next)
+
+	rows, _ := read(url.Values{"kind": {"artist"}}, 200)
+	require.Len(t, rows, 3)
+	require.Equal(t, other.Instance, rows[0].Instance)
+	require.Equal(t, "2", rows[0].PostID)
+	require.Equal(t, "2", rows[1].PostID, "equal post IDs on other sources stay distinct")
+
+	b06Mutation(t, rs, booruFollowMutation{
+		Action: "update", ID: artist.ID, Version: artist.Version,
+		Name: artist.Name, Kind: "character", Target: artist.Target,
+	}, 200)
+	query = url.Values{"instance": {artist.Instance}, "kind": {"artist"}}
+	rows, _ = read(query, 200)
+	require.Empty(t, rows)
+	query.Set("history", "1")
+	rows, _ = read(query, 200)
+	require.Len(t, rows, 2, "history filters by the saved match type")
+	query.Set("follow", series.ID)
+	rows, _ = read(query, 200)
+	require.Empty(t, rows, "the same match must satisfy follow and type")
+	read(url.Values{"kind": {"unknown"}}, 400)
+	read(url.Values{"instance": {"not-an-instance"}}, 400)
 }
 
 func TestB06SourceBindingAndCredentials(t *testing.T) {

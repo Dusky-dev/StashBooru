@@ -26,7 +26,7 @@ Fork issues link to the StashBooru repository; upstream help/support links remai
 | --- | --- |
 | **All** | Browse Images and Videos together, with shared filters and typed selections. Individual Images and Videos pages remain available. |
 | **Booru** (navbar globe) | Browse sources, preserve page/draft state, use live/CSV autocomplete and sidebar filters, inspect previews/tags, keep review marks and download a post into Stash with a default/custom folder and optional converter defaults. |
-| **Following** | Follow a saved Danbooru tag connection from a profile’s **Sources & aliases**, or manage saved follows and explicitly check new posts. Other feed adapters remain planned. |
+| **Following** | Browse saved posts first, filter by source or follow type, and open a post in Booru without losing your place. Use **Manage follows** to check new posts or create a follow from a Danbooru tag connection. Other feed adapters remain planned. |
 | **Identities** / profile **Sources & aliases** | Review connections between exact provider identifiers and existing native Artists, Characters and Copyrights. |
 | **Settings → Library** | Media folders, scan rules and automatic ancestor/profile associations. Inheritance switches save automatically. |
 | **Settings → Processing** | Shared worker connection, links to the complete version-matched worker ZIP, similarity/tagging defaults, conversion rules and upscaling setup. Use each section's Save button. |
@@ -44,6 +44,12 @@ Use **Find a setting** to jump directly to **Media uploads** (try “quick uploa
 or “direct URL”), thumbnail compression (try “AVIF”), the **Shared filename
 layout**, or the worker connection (try “remote fallback”). Opening a search
 result shows the setting; it does not enable an experiment or save a change.
+
+In the upload queue, a file that was saved but needs import or metadata
+attention stays out of Retry. The queue shows its saved path and links to
+the Image or Video if Stash registered it. These links open in a new tab so
+you can keep the queue. Check the library or run Scan on the saved file if an
+import has no media link yet. Retry or Import continues the remaining items.
 
 Tasks starts with the job queue, followed by **Update library** (including
 animation inspection beside Scan), **Review profiles & associations**,

@@ -25,18 +25,15 @@
   }
 
   #following-manager {
+    margin: 0 auto;
+    max-width: 880px;
     scroll-margin-top: 5rem;
   }
 
-  .following-layout {
+  .following-filter-fields {
     display: grid;
-    gap: 1.25rem;
-    grid-template-columns: 320px minmax(0, 1fr);
-  }
-
-  aside,
-  section {
-    min-width: 0;
+    gap: 0 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
   }
 
   .form-control {
@@ -83,19 +80,5 @@
 
   code {
     white-space: pre-wrap;
-  }
-
-  @media (max-width: 760px) {
-    .following-layout {
-      grid-template-columns: minmax(0, 1fr);
-
-      > aside {
-        order: 2;
-      }
-
-      > section {
-        order: 1;
-      }
-    }
   }
 }

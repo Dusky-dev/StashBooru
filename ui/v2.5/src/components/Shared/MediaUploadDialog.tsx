@@ -43,11 +43,18 @@ type UploadProcessingOptions = {
 };
 
 type EntryProgress = {
-  phase: "uploading" | "downloading" | "processing" | "complete" | "failed";
+  phase:
+    | "uploading"
+    | "downloading"
+    | "processing"
+    | "complete"
+    | "attention"
+    | "failed";
   loaded: number;
   total: number;
   message?: string;
   result?: UploadResult;
+  savedPath?: string;
 };
 
 type RemoteEvent = {
@@ -56,7 +63,41 @@ type RemoteEvent = {
   total?: number;
   message?: string;
   result?: UploadResult;
+  savedPath?: string;
 };
+
+class SavedUploadError extends Error {
+  readonly savedPath: string;
+  readonly result?: UploadResult;
+
+  constructor(message: string, savedPath: string, result?: UploadResult) {
+    super(message);
+    this.savedPath = savedPath;
+    this.result = result;
+  }
+}
+
+function isUploadResult(value: unknown): value is UploadResult {
+  if (!value || typeof value !== "object") return false;
+  const { id, kind, path } = value as Partial<UploadResult>;
+  return (
+    (kind === "image" || kind === "scene") &&
+    typeof id === "string" &&
+    /^[1-9]\d*$/.test(id) &&
+    typeof path === "string" &&
+    path.length > 0
+  );
+}
+
+function uploadError(message: string, savedPath: unknown, result?: unknown) {
+  return typeof savedPath === "string" && savedPath
+    ? new SavedUploadError(
+        message,
+        savedPath,
+        isUploadResult(result) ? result : undefined
+      )
+    : new Error(message);
+}
 
 const describeSize = (bytes: number) =>
   bytes >= 1048576
@@ -104,21 +145,35 @@ function uploadLocal(
     request.onabort = () => reject(new Error("Upload cancelled"));
     request.onload = () => {
       if (request.status < 200 || request.status >= 300) {
-        let message = "Upload failed (HTTP " + request.status + ")";
+        const fallback = "Upload failed (HTTP " + request.status + ")";
+        let error = new Error(fallback);
         try {
-          const body = JSON.parse(request.responseText) as { error?: string };
-          if (typeof body.error === "string") message = body.error;
+          const body = JSON.parse(request.responseText) as {
+            error?: string;
+            savedPath?: string;
+            result?: UploadResult;
+          } | null;
+          error = uploadError(
+            typeof body?.error === "string" ? body.error : fallback,
+            body?.savedPath,
+            body?.result
+          );
         } catch {
           // Do not display HTML response bodies.
         }
-        reject(new Error(message));
+        reject(error);
         return;
       }
       try {
-        resolve(JSON.parse(request.responseText) as UploadResult);
+        const result: unknown = JSON.parse(request.responseText);
+        if (isUploadResult(result)) {
+          resolve(result);
+          return;
+        }
       } catch {
-        reject(new Error("The server did not return a valid import result"));
+        // A malformed response is not a successful import.
       }
+      reject(new Error("The server did not return a valid import result"));
     };
     progress({ phase: "uploading", loaded: 0, total: file.size });
     request.send(form);
@@ -154,11 +209,19 @@ async function uploadURL(
   const decoder = new TextDecoder();
   let remainder = "";
   let imported: UploadResult | undefined;
+  let savedPath: string | undefined;
   const handleLine = (line: string) => {
     if (!line.trim()) return;
     const event = JSON.parse(line) as RemoteEvent;
+    if (typeof event.savedPath === "string" && event.savedPath) {
+      savedPath = event.savedPath;
+    }
     if (event.type === "error") {
-      throw new Error(event.message ?? "Remote download failed");
+      throw uploadError(
+        event.message ?? "Remote download failed",
+        savedPath,
+        event.result
+      );
     }
     if (event.type === "progress") {
       progress({
@@ -173,7 +236,7 @@ async function uploadURL(
         total: 0,
         message: event.message ?? "Importing into Stash",
       });
-    } else if (event.type === "complete" && event.result) {
+    } else if (event.type === "complete" && isUploadResult(event.result)) {
       imported = event.result;
     }
   };
@@ -192,9 +255,54 @@ async function uploadURL(
     if (remainder.trim()) handleLine(remainder);
     if (!imported) throw new Error("Remote import ended without a result");
     return imported;
+  } catch (reason) {
+    if (imported) return imported;
+    if (savedPath && !(reason instanceof SavedUploadError)) {
+      throw new SavedUploadError(
+        reason instanceof Error ? reason.message : String(reason),
+        savedPath
+      );
+    }
+    throw reason;
   } finally {
     reader.releaseLock();
   }
+}
+
+function uploadIsFinal(state?: EntryProgress) {
+  return state?.phase === "complete" || state?.phase === "attention";
+}
+
+function UploadResultLink({ result }: { result: UploadResult }) {
+  return (
+    <Link
+      className="ml-2"
+      to={(result.kind === "image" ? "/images/" : "/scenes/") + result.id}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      Open in Stash
+    </Link>
+  );
+}
+
+function UploadAttention({ state }: { state: EntryProgress }) {
+  return (
+    <div className="small mb-2 media-upload-attention">
+      <strong>
+        {state.result
+          ? "Imported; needs attention"
+          : "File saved; check import"}
+      </strong>
+      <div>{state.message}</div>
+      <div className="text-break">{state.savedPath}</div>
+      {state.result ? (
+        <UploadResultLink result={state.result} />
+      ) : (
+        <span>Check the library or run Scan for the saved file.</span>
+      )}
+    </div>
+  );
 }
 
 let nextUploadId = 0;
@@ -272,9 +380,7 @@ export function MediaUploadDialog({
   }, []);
 
   const active = entries.find((entry) => entry.id === selected);
-  const pending = entries.filter(
-    (entry) => progress[entry.id]?.phase !== "complete"
-  );
+  const pending = entries.filter((entry) => !uploadIsFinal(progress[entry.id]));
 
   const addFiles = useCallback(
     (files: File[]) => {
@@ -357,7 +463,7 @@ export function MediaUploadDialog({
       setWorking(true);
       setError("");
       const processing = { taggingDefaults, conversionDefaults };
-      for (const entry of batch) {
+      for (const [index, entry] of batch.entries()) {
         if (!entry.destination) {
           setSelected(entry.id);
           setError("Choose a library destination for " + entry.name);
@@ -379,16 +485,30 @@ export function MediaUploadDialog({
         } catch (reason) {
           const message =
             reason instanceof Error ? reason.message : String(reason);
+          const saved = reason instanceof SavedUploadError ? reason : undefined;
           updateProgress(entry.id, {
-            phase: "failed",
+            phase: saved ? "attention" : "failed",
             loaded: 0,
             total: 0,
             message,
+            savedPath: saved?.savedPath,
+            result: saved?.result,
           });
           setSelected(entry.id);
-          setError(
-            entry.name + ": " + message + ". Remaining items were not imported."
-          );
+          const hasMore = index + 1 < batch.length;
+          if (saved) {
+            if (saved.result) onImported();
+            if (hasMore) {
+              setError("The other items are still queued. Import to continue.");
+            }
+          } else {
+            setError(
+              entry.name +
+                ": " +
+                message +
+                (hasMore ? ". Remaining items were not imported." : "")
+            );
+          }
           break;
         }
       }
@@ -417,7 +537,13 @@ export function MediaUploadDialog({
       processingNow.current
     )
       return;
-    if (entries.some((entry) => progress[entry.id]?.phase === "failed")) return;
+    if (
+      entries.some((entry) => {
+        const phase = progress[entry.id]?.phase;
+        return phase === "failed" || phase === "attention";
+      })
+    )
+      return;
     const queued = entries.filter((entry) => !progress[entry.id]);
     if (!queued.length || !queued.every((entry) => !!entry.destination)) return;
     void submit(queued);
@@ -455,12 +581,24 @@ export function MediaUploadDialog({
   const failed = entries.filter(
     (entry) => progress[entry.id]?.phase === "failed"
   ).length;
+  const attention = entries.filter(
+    (entry) => progress[entry.id]?.phase === "attention"
+  );
   const activeTransfer = entries.find((entry) => {
     const phase = progress[entry.id]?.phase;
     return (
       phase === "uploading" || phase === "downloading" || phase === "processing"
     );
   });
+  const activeStage = activeTransfer && progress[activeTransfer.id]?.phase;
+  const activeLabel =
+    activeStage === "uploading"
+      ? "Uploading file…"
+      : activeStage === "downloading"
+        ? "Downloading file…"
+        : activeStage === "processing"
+          ? "Importing into Stash…"
+          : "Starting imports…";
 
   return (
     <>
@@ -482,12 +620,14 @@ export function MediaUploadDialog({
           <strong>Quick upload</strong>
           <div className="small mt-1 mb-2">
             {working
-              ? "Uploading and importing…"
+              ? activeLabel
               : failed > 0
                 ? `${failed} item(s) failed`
-                : completed === entries.length && completed > 0
-                  ? "Import complete"
-                  : "Preparing uploads…"}
+                : attention.length > 0
+                  ? "Saved files need attention"
+                  : completed === entries.length && completed > 0
+                    ? "Import complete"
+                    : "Preparing uploads…"}
             {" · "}
             {completed}/{entries.length} complete
           </div>
@@ -517,6 +657,12 @@ export function MediaUploadDialog({
             </div>
           )}
           {error && <Alert variant="warning">{error}</Alert>}
+          {attention.map((entry) => (
+            <div key={entry.id}>
+              <div className="small font-weight-bold">{entry.name}</div>
+              <UploadAttention state={progress[entry.id]} />
+            </div>
+          ))}
           {failed > 0 &&
             entries
               .filter((entry) => progress[entry.id]?.phase === "failed")
@@ -531,7 +677,7 @@ export function MediaUploadDialog({
               variant="secondary"
               onClick={() => setShowDetails(true)}
             >
-              Details / retry
+              {pending.length ? "Details / retry" : "Details"}
             </Button>
             <Button
               size="sm"
@@ -725,7 +871,7 @@ export function MediaUploadDialog({
                 >
                   {entries.map((entry) => {
                     const state = progress[entry.id];
-                    const complete = state?.phase === "complete";
+                    const final = uploadIsFinal(state);
                     const percent =
                       state?.total && state.total > 0
                         ? Math.min(
@@ -755,7 +901,7 @@ export function MediaUploadDialog({
                             />
                           </Button>
                           <div className="flex-grow-1" />
-                          {!working && !complete && (
+                          {!working && !final && (
                             <Button
                               size="sm"
                               variant="outline-secondary"
@@ -772,7 +918,10 @@ export function MediaUploadDialog({
                             </Button>
                           )}
                         </div>
-                        {state && (
+                        {state?.phase === "attention" && (
+                          <UploadAttention state={state} />
+                        )}
+                        {state && state.phase !== "attention" && (
                           <div className="px-2">
                             {state.phase === "uploading" ||
                             state.phase === "downloading" ? (
@@ -813,17 +962,7 @@ export function MediaUploadDialog({
                               </small>
                             )}
                             {state.result && (
-                              <Link
-                                className="ml-2"
-                                onClick={onHide}
-                                to={
-                                  state.result.kind === "image"
-                                    ? "/images/" + state.result.id
-                                    : "/scenes/" + state.result.id
-                                }
-                              >
-                                Open in Stash
-                              </Link>
+                              <UploadResultLink result={state.result} />
                             )}
                           </div>
                         )}
@@ -835,7 +974,7 @@ export function MediaUploadDialog({
             )}
             {active && (
               <fieldset
-                disabled={working || progress[active.id]?.phase === "complete"}
+                disabled={working || uploadIsFinal(progress[active.id])}
               >
                 <legend className="h6">
                   Metadata and destination for selected item

@@ -251,7 +251,7 @@ try {
         response.url().endsWith("/booru-browser/sources")
       );
       await draft
-        .getByRole("button", { name: "Reload saved feed", exact: true })
+        .getByRole("button", { name: "Reload follows", exact: true })
         .click();
       await reloaded;
       assert.equal(
@@ -400,7 +400,7 @@ try {
     failIdentity = false;
     sources = [];
     const empty = await context.newPage();
-    await empty.goto(`${base}/following`);
+    await empty.goto(`${base}/following?view=manage`);
     await empty.getByText(/Enable a Danbooru-compatible source/).waitFor();
     assert.equal(
       await empty
