@@ -45,6 +45,7 @@ func (rs booruBrowserRoutes) saveDownloadReceipt(value booruDownloadReceipt) err
 	}
 	return writeBooruAtomic(dir, receiptName(value.Source.Instance, value.Post.ID), data)
 }
+
 // A receipt is written as soon as the original is saved, before native scan.
 func (r *booruDownloadReceipt) fileForRetry() (string, string) {
 	if r.Library != nil {

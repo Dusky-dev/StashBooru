@@ -35,6 +35,10 @@
 - Extended the Go download regression to take the provider offline after
   the original save, fail a retry, then recover from a legacy empty receipt.
   Checked whitespace and source scope; Go and mounted browser CI are pending.
+- Original PR head `6302469eb5fe0634948bde335db4535ffc7e43ae` passed Generate, the Browser workflow and
+  Codex Review. Go lint required a blank line before the new helper's
+  comment. Applied that formatting change; the new head needs fresh CI and
+  Codex Review.
 
 ## Explain the Booru filename rule (BOO-11) — 2026-11-17
 
