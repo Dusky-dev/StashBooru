@@ -1147,6 +1147,23 @@ div.dropdown-menu {
     }
   }
 
+  // Fork destination labels only fit beside the main menu on wide screens;
+  // narrower navbars show the icon with its tooltip, like Stats and Settings.
+  .nav-utility-label {
+    display: none;
+    white-space: nowrap;
+  }
+
+  .navbar-collapse .nav-utility-label {
+    display: inline;
+  }
+
+  @media (min-width: 1800px) {
+    .nav-utility-label {
+      display: inline;
+    }
+  }
+
   .nav-link {
     padding: 0;
   }

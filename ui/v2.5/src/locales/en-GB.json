@@ -1912,5 +1912,16 @@
     "inspect_name": "Inspect this name",
     "inheritance": "Review inherited associations (whole library)",
     "duplicates": "Review duplicate Characters (whole library)"
+  },
+  "navbar_utility": {
+    "following": "Following",
+    "identities": "Identities",
+    "identities_title": "Connect source names to Characters, Artists and Copyrights",
+    "duplicates": "Duplicates",
+    "duplicates_title": "Review similar images"
+  },
+  "booru_browser": {
+    "nav": "Booru",
+    "title": "Booru browser"
   }
 }

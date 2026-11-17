@@ -337,6 +337,53 @@ async function checkProfileAll(page, url, imageID, label) {
   await checkVideoList(page, url, videoID);
 }
 
+// Fork destinations use the native utility-button styling: every navbar
+// control fits the viewport, icon-only links keep a tooltip, and the phone
+// menu lists them with labels.
+async function checkNavbar(page, mobile) {
+  const paths = ["/following", "/identities", "/image-duplicates", "/booru"];
+  if (mobile) {
+    await page.locator(".nav-menu-toggle").click();
+    await page.locator(".navbar-collapse.show").waitFor();
+  }
+  const scope = mobile ? ".navbar-collapse" : ".navbar-buttons";
+  const links = await page.evaluate(
+    ({ paths, scope }) =>
+      paths.map((path) => {
+        const link = document.querySelector(
+          `${scope} a.nav-utility[href="${path}"]`
+        );
+        const bounds = link?.getBoundingClientRect();
+        const label = link?.querySelector(".nav-utility-label");
+        return {
+          path,
+          title: link?.querySelector(".btn")?.title ?? "",
+          visible: !!bounds && bounds.width > 0,
+          inside: !!bounds && bounds.left >= 0 && bounds.right <= innerWidth,
+          label: label && label.getBoundingClientRect().width > 0,
+        };
+      }),
+    { paths, scope }
+  );
+  for (const link of links) {
+    assert.ok(link.visible && link.inside, JSON.stringify(link));
+    assert.ok(link.title, `${link.path} needs a tooltip`);
+    if (mobile) assert.ok(link.label, `${link.path} needs a menu label`);
+  }
+  if (mobile) {
+    await page.locator(".nav-menu-toggle").click();
+    await page.locator(".navbar-collapse.show").waitFor({ state: "detached" });
+  } else {
+    const overflow = await page.evaluate(() =>
+      [...document.querySelectorAll(".top-nav .btn")]
+        .map((node) => node.getBoundingClientRect())
+        .filter((bounds) => bounds.width > 0 && bounds.right > innerWidth)
+        .map((bounds) => Math.round(bounds.right))
+    );
+    assert.deepEqual(overflow, [], "Navbar controls overflow the viewport");
+  }
+}
+
 async function check(viewport, label) {
   const directory = join(root, label);
   const media = join(directory, "media");
@@ -461,6 +508,7 @@ async function check(viewport, label) {
     const video = page.locator(".media-list .scene-card");
     await image.waitFor();
     await video.waitFor();
+    await checkNavbar(page, viewport.width < 768);
     for (const card of [image, video]) {
       assert.equal(await card.count(), 1);
       await card.locator("img").first().waitFor();
