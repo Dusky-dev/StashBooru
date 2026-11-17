@@ -54,6 +54,8 @@ type FollowingFilter struct {
 	Before         int64
 	Limit          int
 	FollowID       string
+	Instance       string
+	Kind           string
 	Unseen         bool
 	History        bool
 	ShowIgnored    bool

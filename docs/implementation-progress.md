@@ -291,6 +291,27 @@
   fixture body and checked the labels and paging against the pinned
   handlers and fill limits. The existing browser/CI runs are pending.
 
+## Open Following as a saved feed (BOO-06) — 2026-11-17
+
+- Baseline: `develop` `105562730380b9b9a678cf1303afb4de9e4751a0` after #368.
+  Branch [`feat/following-saved-feed-20261117`](https://github.com/Dusky-dev/StashBooru/tree/feat/following-saved-feed-20261117),
+  source `28c56db6ffc14caf9d04ea3c4b1d83d2ca9f63b4`, tree `0cafbb015f06afbbc0282597e4b1a9e6bd075e37`.
+- Default to the full-width saved feed. Move definitions, explicit provider
+  checks, and cache cleanup into Manage follows; keep the profile Follow draft
+  in that view. The feed can check a single selected or eligible follow.
+- Filter by provider instance and saved follow type before paging. Keep filter
+  state in the URL, and use historical match types for old revisions. Name the
+  source on cards, and open Browse / Download in a new tab so the feed stays put.
+- Parsed both updated browser scripts and checked changed source for whitespace.
+  Added SQLite/HTTP coverage of filtered pagination, shared and equal-ID posts,
+  and historical follow types. Extended desktop and mobile/prefix flows to cover
+  the new views, filters, and preview handoff. Mounted browser and Go checks
+  await CI; live providers and new feed adapters are outside this change.
+- Head `ba23bbd1904b6eb8d1304780debf19cf1f384a3a` passed the mounted Following suite, Go lint
+  and Codex Review. [Generate](https://github.com/Dusky-dev/StashBooru/actions/runs/43989419574/job/133725897419)
+  flagged three fixture line wraps after type checks. Apply the reported layout
+  and keep the fixture assertions unchanged.
+
 ## No-prompt quick upload and opt-in remote worker fallback — 2026-11-13
 
 - Baseline: `develop` `4cef61437405918044d3a43c9a1a4709029fbb3a`; branch `feat/quick-upload-no-prompt-remote-worker-controls-20261113`.

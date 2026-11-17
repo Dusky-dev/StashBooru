@@ -57,11 +57,13 @@ limit. This initial API retains inactive records rather than exposing deletion.
 
 ## Using the Following page (B06b)
 
-Open **Following** in the utility navigation. Choose an enabled Danbooru-compatible
-source, name the follow, select Artist/Character/Copyright or Provider query, and
-enter the exact provider tag or query. Source credentials/custom instances use
-the existing Source settings page. Existing definitions for other engines remain
-visible, with checks disabled until their feed adapter is supported.
+Open **Following** in the utility navigation to see the **Saved feed**. Use
+**Manage follows** to create or edit a follow, check for new posts, or maintain
+the feed cache. To add a follow, choose an enabled Danbooru-compatible source,
+name the follow, select Artist, Character, Copyright / series or Provider query,
+and enter the exact provider tag or query. Source credentials and custom
+instances live in Source settings. Other saved engines remain visible with
+checks disabled until their feed adapter is supported.
 
 From a native Artist, Character or Copyright profile, open **Sources & aliases**
 and choose **Follow** beside a saved Danbooru tag connection. Following opens in a
@@ -80,13 +82,14 @@ a provider connection first; names are not guessed across sites.
 
 An exact target that is already followed links to **Manage saved follow**,
 including inactive definitions. Edit or refollow it there instead of creating a
-duplicate. Reloading saved feed retains the current draft. Refresh reconstructs
+duplicate. **Reload follows** retains the current draft. Refresh reconstructs
 the explicitly linked provider connection; successful saving removes that draft
 context from the URL. Other feed filters remain in the URL.
 
-Use **Check new posts** on a follow. Its first successful check saves up to **50
-recent matching posts**, establishing a new-upload baseline; it does not crawl
-the entire historical catalogue. Every later check fetches one page of newer IDs.
+Use **Check new posts** on a follow. When the selected feed filters identify a
+single checkable follow, you can also check it from the feed. Its first
+successful check saves up to **50 recent matching posts**, establishing a
+new-upload baseline. Every later check fetches one page of newer IDs.
 If more remain, **Continue check** resumes the same run, including after a server
 restart. New uploads during a pending run are picked up by the next check. Each
 follow and query revision has its own cursor. Changing category/target starts a
@@ -101,8 +104,8 @@ edit** discards the draft.
 Checks are explicit: opening/reloading the page, filtering, opening a thumbnail
 or visiting a post never polls a provider or starts downloads. **Reload saved
 feed** reads the local snapshots and refreshes preview grants. **Browse / Download**
-opens the existing browser on the selected remote post for its usual reviewed
-download workflow. Neither a cached post nor a manual downloaded mark proves that
+opens the existing browser on the selected remote post in a new tab, leaving
+the feed in place. Neither a cached post nor a manual downloaded mark proves that
 the current original exists in Stash.
 
 Posts found through multiple follows appear once per provider instance/post ID,
@@ -112,11 +115,16 @@ are omitted. Equal IDs on different sites remain independent. Feed order is
 **latest discovered**, using stable local sequence IDs rather than provider
 timestamps. Filtering and older/newest page navigation persist in the URL,
 including back navigation, refresh and servers hosted under a path prefix.
+Filter by **Feed source**, **Follow type** or a **Matched follow**. Type refers to
+how the follow was saved, not to an inferred category of a post's tags. Source
+aliases for the same instance share one filter. Changing a filter starts at the
+newest matching page; switching to Manage follows preserves the feed filters.
 
 **Mark seen / Mark unseen** is an explicit, versioned, library-wide decision.
 **Unseen only**, **Include History**, **Show ignored** and **Hide marked downloaded**
 filter saved snapshots. Ignore/download history remains separate. Unfollowing
-does not erase it. **Remove seen snapshots** frees the bounded feed cache, retaining
+does not erase it. In **Manage follows → Feed cache**, **Remove seen snapshots**
+frees the bounded feed cache, retaining
 seen decisions, follow cursors, native media and ignore/download history. If a
 different follow rediscovers a pruned post, its seen state is retained.
 
@@ -196,6 +204,11 @@ existing same-origin checks. Responses are `Cache-Control: no-store`.
 creation order, with source availability. An empty library returns `[]`.
 It also returns `syncSupported` and current-revision `feed` diagnostics/progress.
 `/booru-browser/follows` remains a GET/POST compatibility alias.
+
+`GET /following/feed` accepts optional `instance` (the fingerprint from a saved
+follow) and `kind` (a saved follow type). Both narrow the result before the page
+limit. With `history=1`, `kind` also matches the saved type of an older revision.
+When `follow` and `kind` are both supplied, a single match must satisfy both.
 
 `POST /following/follows` accepts one action per request. For example, after
 reading Danbooru's current instance fingerprint from the sources endpoint:
