@@ -1183,6 +1183,7 @@ try {
           change.ui?.showImageAssociationTitles === false
       )
     );
+    await chooseSection(page, "processing");
     // Late retry/status responses after leaving Settings must not update an unmounted view.
     failConverterConfig = true;
     await page.reload();

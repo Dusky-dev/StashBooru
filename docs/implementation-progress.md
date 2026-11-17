@@ -241,7 +241,10 @@
   double and a UI line wrap. The browser exercised the upload assertions,
   then recorded fetch errors in Settings. Run upload acceptance after the
   Settings unmount check, avoiding a second Settings load immediately before
-  its intentional reload. Fresh CI and review are pending.
+  its intentional reload. On head `596744094ed392d1afc53d93a083e8c5b7c55676`, [lint](https://github.com/Dusky-dev/StashBooru/actions/runs/43987732302/job/133720118330) and [browser](https://github.com/Dusky-dev/StashBooru/actions/runs/43987732310/job/133720118266)
+  and Codex Review found that the earlier edit also dropped the navigation into
+  Processing before its reload. Restore that navigation, and use the checked
+  JSON writer for error responses. Rerun CI and Codex Review.
 
 ## Upload queue-wide processing and real media previews — 2026-11-13
 

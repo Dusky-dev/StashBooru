@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -319,7 +318,7 @@ func indexedUploadResult(result booruLibraryResult) *booruLibraryResult {
 func writeSavedMediaUploadError(w http.ResponseWriter, status int, path string, result *booruLibraryResult, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(struct {
+	writeVisualSimilarityJSON(w, struct {
 		Code      string              `json:"code"`
 		Error     string              `json:"error"`
 		SavedPath string              `json:"savedPath"`
