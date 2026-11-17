@@ -430,18 +430,25 @@ async function check(viewport, label) {
     await mutation(page, "MetadataScan", () =>
       page.getByRole("button", { name: "Scan", exact: true }).click()
     );
-    // Observe actual indexed results, allowing the bounded scan to complete.
+    // Observe actual indexed results and wait for the scan job to finish:
+    // counts reach 1 before the scan links files, and lists do not refresh
+    // when a scan ends, so opening All earlier can show partial results.
     await page.waitForFunction(
       async () => {
         const response = await fetch("graphql", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            query: "{ findImages { count } findScenes { count } }",
+            query:
+              "{ findImages { count } findScenes { count } jobQueue { id } }",
           }),
         });
         const { data } = await response.json();
-        return data?.findImages.count === 1 && data?.findScenes.count === 1;
+        return (
+          data?.findImages.count === 1 &&
+          data?.findScenes.count === 1 &&
+          !data?.jobQueue?.length
+        );
       },
       null,
       { timeout: 30000, polling: 250 }
