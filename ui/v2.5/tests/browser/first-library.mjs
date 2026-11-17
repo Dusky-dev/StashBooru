@@ -156,9 +156,7 @@ async function checkVideoList(page, url, videoID) {
   const checked = list.locator("input.card-check:checked");
   assert.equal(await checked.count(), 2);
   await more.click();
-  await list
-    .getByText("Create stack from selection…", { exact: true })
-    .click();
+  await list.getByText("Create stack from selection…", { exact: true }).click();
   const dialog = page.getByRole("dialog");
   await dialog
     .getByRole("radio", {
