@@ -218,6 +218,25 @@
 - Extend `ui/v2.5/tests/browser/settings-maintenance.mjs` with a routed upload-settings fixture that toggles all six switches, saves, checks persisted values, and asserts no uncaught page errors.
 - GitHub CI and browser regression are pending. No production build/browser acceptance was performed in this connected editor environment.
 
+## Keep retained files out of upload retry (UP-01/UP-03) — 2026-11-17
+
+- Baseline: `develop` `04a4b6175842002522d049496dd81a70b30fd0d5`. Branch
+  [`fix/media-upload-retained-files-20261117`](https://github.com/Dusky-dev/StashBooru/tree/fix/media-upload-retained-files-20261117),
+  source `dfbabb491de44fddebdb1dc0b5555a9584adc70d`, tree `83fae1e6668b1c3b58ecdb3dec07eb5ef090ddba`.
+- Keep the saved path and any indexed Image or Video ID when publishing succeeds
+  but importing or applying metadata fails. Direct URL downloads also confirm
+  the saved path before importing, so reaching the end of that stream without a
+  result still surfaces the retained file.
+- A saved item leaves the retry queue. Open its indexed record in a new tab, or
+  check the library or run Scan if an ID was unavailable. Other pending files
+  stay in the queue. A failure before any save acknowledgement still follows the
+  normal retry path.
+- Added a Go regression test for retained bytes after an unavailable importer
+  and browser checks for continuing a mixed queue and for a URL stream that
+  ends after saving. Parsed the browser check as JavaScript and checked edited
+  source for trailing whitespace and conflict markers. Go, UI and mounted
+  browser checks await CI.
+
 ## Upload queue-wide processing and real media previews — 2026-11-13
 
 - Follow-up on PR #354, same branch and `develop` baseline. The owner clarified that Tag and Convert defaults must apply to **the entire import queue**, not repeat per file. Removed two per-row switches and now render one pair of queue-level switches, initialized from saved Quick upload settings. Both options are captured once at batch start and passed to local-file and URL import endpoints. Already-running items do not change if the queue switches are edited.
