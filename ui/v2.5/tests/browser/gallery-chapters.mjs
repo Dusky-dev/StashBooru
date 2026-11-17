@@ -79,7 +79,9 @@ async function checkImageStackBrowse(page, url, images, representative) {
   await variantLink.waitFor();
   assert.deepEqual(await imageCardPaths(page), paths);
 
-  const card = list.locator(".image-card").filter({ has: variantLink });
+  const card = list.locator(".image-card").filter({
+    has: page.locator(`a.image-card-link[href="${variantPath}"]`),
+  });
   await card.hover();
   await card.locator("input.card-check").check();
   await viewOptions.click();

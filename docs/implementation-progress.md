@@ -153,6 +153,12 @@
   an Images view now clears the override unless its value is an explicit
   boolean. Checked the source for absent, false and true selections.
   Fresh CI and review are pending.
+- Head `95e274961ac79a36e4139f1f2d7d931e18756dd0` received a clean Codex review and passed the
+  other 14 checks. [First Library](https://github.com/Dusky-dev/StashBooru/actions/runs/43982701659/job/133707230846)
+  timed out in the stack fixture because its nested Playwright card selector
+  still required the outer list ancestor. Match the link relative to the card;
+  the grouped and expanded image assertions are unchanged. Fresh CI and review
+  are pending.
 
 ## Upstream sync — Stash develop 2026-11-13
 
