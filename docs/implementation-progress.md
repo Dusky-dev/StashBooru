@@ -1,3 +1,21 @@
+## Converter: one JPEG XL and one PNG choice, still or animated — 2026-11-18
+
+- Baseline: `develop` `aa2c2c3` (#393). Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Owner request: drop the separate "Animated JPEG XL" and "Animated PNG"
+  outputs; the converter reads the file, as WebP already does. Rule editors
+  and the conversion dialog list "JPEG XL (still or animated)" and "PNG (still
+  or animated)". The server sends AJXL/APNG for animated sources (older
+  workers keep working); the worker also promotes JXL/PNG to AJXL/APNG when the
+  decoded source has frames, so a stale frame count cannot flatten or fail it.
+  Saved rules using the old choices are migrated on read and save. Explicit
+  AJXL/APNG requests from older clients are kept. Input rules for animated
+  PNG/JPEG XL stay separate (they choose different defaults).
+- Checks: `go test ./pkg/mediaconvert` (new choice/migration test),
+  integration `TestStillChoicesFollowAnimatedSource` and existing converter
+  integration tests; worker unittest (new animated WebP → JXL/PNG case).
+- Remote workers need the updated script for the worker-side promotion.
+
 ## Settings: help icons, translated search, remembered Tasks groups — 2026-11-18
 
 - Baseline: `develop` `199bcba` (#392). Branch

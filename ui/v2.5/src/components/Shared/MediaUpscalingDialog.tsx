@@ -16,6 +16,7 @@ import {
 import { Link } from "react-router-dom";
 
 import {
+  availableForStill,
   conversionEndpoint,
   conversionResponse,
   ConversionFormat,
@@ -215,7 +216,7 @@ export const MediaUpscalingDialog: React.FC<{
   const upscalers = capabilities?.upscalers ?? [];
   const selectedUpscaler = upscalers.find((u) => u.id === options.upscaler);
   const imageFormats = (capabilities?.formats ?? []).filter(
-    (format) => format.family !== "video" && format.available
+    (format) => format.family !== "video" && availableForStill(format)
   );
   const selectedFormat =
     options.format === "auto"

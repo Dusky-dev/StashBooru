@@ -129,3 +129,38 @@ func TestAutoJXLEffortResolvesToConcreteEffort(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 2, options.Effort)
 }
+
+// JPEG XL and PNG are one choice each: the server sends the animated variant
+// for an animated source, so older remote workers keep the frames too.
+func TestStillChoicesFollowAnimatedSource(t *testing.T) {
+	repository := p07Fixture(t)
+	store := mediaconvert.Store{Root: t.TempDir(), Repository: mediaconvert.ModelRepository{Repository: repository}}
+	config, err := store.Config()
+	require.NoError(t, err)
+	file, err := store.Repository.Get(context.Background(), 1)
+	require.NoError(t, err)
+	require.Equal(t, "apng", mediaconvert.SourceFormat(file), "fixture is a three-frame PNG")
+	caps := mediaconvert.Capabilities{Formats: []mediaconvert.Format{
+		{ID: "ajxl", Extension: "jxl", Family: "animation", Available: true, Controls: []string{"quality", "effort", "decodingSpeed"}, DecodingSpeedLevels: 4},
+		{ID: "apng", Extension: "png", Family: "animation", Available: true},
+	}}
+	target := conversionTarget{Kind: "image", ID: 1}
+	for choice, want := range map[string]string{"jxl": "ajxl", "png": "apng", "ajxl": "ajxl"} {
+		options, format, err := resolveConversionOptions(context.Background(), store, config, 1, target,
+			conversionRequest{Options: mediaconvert.Options{Format: choice}}, caps)
+		require.NoError(t, err, choice)
+		require.Equal(t, want, options.Format, choice)
+		require.Equal(t, want, format.ID, choice)
+	}
+	// A saved Animated PNG rule from before the merge reads back as PNG and
+	// still produces APNG for this source.
+	config.FormatDefaults["apng"] = "apng"
+	require.NoError(t, store.Configure(config))
+	saved, err := store.Config()
+	require.NoError(t, err)
+	require.Equal(t, "png", saved.FormatDefaults["apng"])
+	options, _, err := resolveConversionOptions(context.Background(), store, saved, 1, target,
+		conversionRequest{Options: mediaconvert.Options{Format: "auto"}}, caps)
+	require.NoError(t, err)
+	require.Equal(t, "apng", options.Format)
+}

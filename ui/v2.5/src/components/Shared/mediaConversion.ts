@@ -10,7 +10,13 @@ export interface ConversionFormat {
   controls: string[];
   decodingSpeedLevels?: number;
   available: boolean;
+  /** For still-or-animated choices: whether still images can use it. */
+  stillAvailable?: boolean;
 }
+
+/** Upscaling writes still images only, so the animated encoder is optional. */
+export const availableForStill = (format: ConversionFormat) =>
+  format.stillAvailable ?? format.available;
 
 export interface ConversionEncodingDefaults {
   quality: number;
@@ -149,6 +155,12 @@ export const defaultUpscalingDefaults: UpscalingDefaults = {
   format: "auto",
 };
 
+// JPEG XL and PNG became single still-or-animated choices; earlier saved
+// preferences may still name the separate animated variants.
+export function choiceFormat(format: string): string {
+  return format === "ajxl" ? "jxl" : format === "apng" ? "png" : format;
+}
+
 export function loadUpscalingDefaults(): UpscalingDefaults {
   try {
     const saved = window.localStorage.getItem(upscalingDefaultsKey);
@@ -166,7 +178,7 @@ export function loadUpscalingDefaults(): UpscalingDefaults {
           : "auto",
       format:
         typeof value.format === "string" && value.format
-          ? value.format
+          ? choiceFormat(value.format)
           : "auto",
     };
   } catch {

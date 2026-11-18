@@ -32,14 +32,19 @@ func TestFormatDefaultsPersistAcrossUpgrade(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(c, loaded) {
 		t.Fatalf("saved defaults changed: %+v, %v", loaded, err)
 	}
-	if loaded.DefaultOutput("bmp", false) != "webp" || loaded.DefaultOutput("avi", true) != "hevc" || loaded.DefaultOutput("gif", false) != "apng" {
+	// A rule saved with the old separate Animated PNG choice becomes PNG;
+	// the worker still receives APNG for the animated GIF source.
+	if loaded.DefaultOutput("bmp", false) != "webp" || loaded.DefaultOutput("avi", true) != "hevc" || loaded.DefaultOutput("gif", false) != "png" {
 		t.Fatal("custom and fallback rules were not applied")
+	}
+	if ConcreteOutput(loaded.DefaultOutput("gif", false), "gif") != "apng" || ConcreteOutput("png", "png") != "png" {
+		t.Fatal("PNG must follow the source: animated sources need APNG")
 	}
 	// Removing a built-in rule must not resurrect it on the next read.
 	if _, exists := loaded.FormatDefaults["png"]; exists {
 		t.Fatal("removed PNG rule reappeared")
 	}
-	for _, invalid := range []map[string]string{{"mp4": "jpeg"}, {"gif": "png"}, {"image": "shell"}, {"../../file": "jxl"}} {
+	for _, invalid := range []map[string]string{{"mp4": "jpeg"}, {"gif": "jpeg"}, {"image": "shell"}, {"../../file": "jxl"}} {
 		if err := ValidateFormatDefaults(invalid); err == nil {
 			t.Fatalf("accepted invalid rule %v", invalid)
 		}
@@ -144,7 +149,7 @@ func TestMixedInputsUseIndividualDefaults(t *testing.T) {
 		{"still.webp", "webp", "jxl", webp, false},
 		{"animation.webp", "animated-webp", "webp", animatedWebp, false},
 		{"animation.gif", "gif", "webp", nil, false},
-		{"input.jxl", "ajxl", "ajxl", nil, false},
+		{"input.jxl", "ajxl", "jxl", nil, false},
 		{"video.M4V", "mp4", "av1-mp4", nil, true},
 		{"video.mkv", "mkv", "av1-mkv", nil, true},
 		{"video.webm", "webm", "av1-webm", nil, true},
@@ -296,10 +301,74 @@ func TestEncodingPreferencesPersistAndResolvePerInput(t *testing.T) {
 		}
 	}
 	legacy := Config{FormatDefaults: map[string]string{"image": "jxl"}}
-	if legacy.DefaultOutput("ajxl", false) != "ajxl" {
+	if output := legacy.DefaultOutput("ajxl", false); output != "jxl" || ConcreteOutput(output, "ajxl") != "ajxl" {
 		t.Fatal("legacy config would unnecessarily transcode AJXL")
 	}
 	if legacy.DefaultOutput("gif", false) != "webp" || legacy.DefaultOutput("animated-avif", false) != "webp" {
 		t.Fatal("legacy config should use animated WebP for animation subtypes without saved rules")
+	}
+}
+
+func TestJXLAndPNGAreOneChoiceEach(t *testing.T) {
+	choices := map[string]Format{}
+	for _, format := range ChoiceFormats(OutputFormats) {
+		choices[format.ID] = format
+	}
+	for _, hidden := range []string{"ajxl", "apng"} {
+		if _, ok := choices[hidden]; ok {
+			t.Fatalf("%s must not be a separate choice", hidden)
+		}
+	}
+	for _, id := range []string{"jxl", "png", "webp"} {
+		if choices[id].Family != "animation" {
+			t.Fatalf("%s must accept animated inputs, got %+v", id, choices[id])
+		}
+	}
+	// Worker-facing catalog still validates the concrete variants.
+	for _, id := range []string{"ajxl", "apng"} {
+		found := false
+		for _, format := range OutputFormats {
+			found = found || format.ID == id
+		}
+		if !found {
+			t.Fatalf("worker catalog lost %s", id)
+		}
+	}
+	for input, want := range map[string]string{"jpeg": "jxl", "gif": "ajxl", "animated-webp": "ajxl", "ajxl": "ajxl", "mp4": "jxl"} {
+		if got := ConcreteOutput("jxl", input); got != want {
+			t.Fatalf("jxl for %s: got %s, want %s", input, got, want)
+		}
+	}
+	saved := map[string]string{"gif": "apng", "ajxl": "ajxl", "png": "jxl"}
+	NormalizeFormatDefaults(saved)
+	if !reflect.DeepEqual(saved, map[string]string{"gif": "png", "ajxl": "jxl", "png": "jxl"}) {
+		t.Fatalf("saved animated choices were not migrated: %v", saved)
+	}
+	if err := ValidateFormatDefaults(map[string]string{"gif": "png", "animated-webp": "jxl"}); err != nil {
+		t.Fatalf("animated inputs must accept JPEG XL and PNG: %v", err)
+	}
+	if err := ValidateFormatDefaults(map[string]string{"gif": "jpeg"}); err == nil {
+		t.Fatal("still-only outputs must still be rejected for animations")
+	}
+}
+
+func TestChoiceNeedsBothStillAndAnimatedEncoders(t *testing.T) {
+	worker := []Format{
+		{ID: "png", Extension: "png", Family: "image", Available: true},
+		{ID: "apng", Extension: "png", Family: "animation", Available: false},
+		{ID: "jxl", Extension: "jxl", Family: "image", Available: true},
+		{ID: "ajxl", Extension: "jxl", Family: "animation", Available: true},
+	}
+	available, still := map[string]bool{}, map[string]bool{}
+	for _, format := range ChoiceFormats(worker) {
+		available[format.ID] = format.Available
+		still[format.ID] = format.StillAvailable != nil && *format.StillAvailable
+	}
+	if available["png"] || !available["jxl"] {
+		t.Fatalf("PNG must need APNG support too: %v", available)
+	}
+	// Still-only features (upscaling) can keep using the still encoder.
+	if !still["png"] || !still["jxl"] {
+		t.Fatalf("still availability must be reported: %v", still)
 	}
 }

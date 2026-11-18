@@ -53,6 +53,8 @@ FORMATS = {
     "tiff": ("TIFF", "tiff", "image", ["tiff"], []),
     "bmp": ("BMP", "bmp", "image", ["bmp"], []),
 }
+# Still formats whose animated variant shares the extension.
+ANIMATED_VARIANTS = {"jxl": "ajxl", "png": "apng"}
 GPU = {
     "av1": ["av1_nvenc", "av1_qsv", "av1_vaapi"],
     "h264": ["h264_nvenc", "h264_qsv", "h264_vaapi"],
@@ -975,19 +977,23 @@ def convert(source: Path, output: Path, raw: dict, cancelled=None) -> dict:
     if low_complexity_av1 and o["hardware"] == "gpu":
         raise ValueError("AV1 decode-speed mode requires the libaom CPU encoder; choose CPU or Auto")
     encoding_hardware = "cpu" if low_complexity_av1 or (o["upscaler"] and family != "video") else o["hardware"]
-    cap = next(f for f in capabilities(
-        encoding_hardware != "cpu", fmt, probe_decoding_speed=low_complexity_av1
-    )["formats"] if f["id"] == fmt)
-    if low_complexity_av1 and ("decodingSpeed" not in cap["controls"] or "libaom-av1" not in cap["cpu"]):
-        raise ValueError("this worker does not support AV1 low-complexity decode mode with libaom")
-    candidates = cap["gpu"] if encoding_hardware == "gpu" else cap["cpu"]
-    if encoding_hardware == "auto":
-        candidates = cap["gpu"] or cap["cpu"]
-    if low_complexity_av1:
-        candidates = ["libaom-av1"]
-    if not candidates:
-        raise ValueError(f"{fmt} has no working {encoding_hardware} encoder on this worker")
-    encoder = candidates[0]
+
+    def pick_encoder(fmt: str) -> tuple[dict, str]:
+        cap = next(f for f in capabilities(
+            encoding_hardware != "cpu", fmt, probe_decoding_speed=low_complexity_av1
+        )["formats"] if f["id"] == fmt)
+        if low_complexity_av1 and ("decodingSpeed" not in cap["controls"] or "libaom-av1" not in cap["cpu"]):
+            raise ValueError("this worker does not support AV1 low-complexity decode mode with libaom")
+        candidates = cap["gpu"] if encoding_hardware == "gpu" else cap["cpu"]
+        if encoding_hardware == "auto":
+            candidates = cap["gpu"] or cap["cpu"]
+        if low_complexity_av1:
+            candidates = ["libaom-av1"]
+        if not candidates:
+            raise ValueError(f"{fmt} has no working {encoding_hardware} encoder on this worker")
+        return cap, candidates[0]
+
+    cap, encoder = pick_encoder(fmt)
     started = time.monotonic()
     with tempfile.TemporaryDirectory(prefix="stash-convert-", dir=output.parent) as temporary:
         directory = Path(temporary)
@@ -995,6 +1001,12 @@ def convert(source: Path, output: Path, raw: dict, cancelled=None) -> dict:
         before = probe(decoded, cancelled)
         if before["streams"] != 1 + before["audioStreams"]:
             raise ValueError("embedded subtitles, attachments or data tracks require a separate remux; source kept")
+        if family == "image" and before["frames"] > 1 and fmt in ANIMATED_VARIANTS:
+            # JPEG XL and PNG are one choice in StashBooru, like WebP: the
+            # source decides, even when the server's frame count was stale.
+            fmt = o["format"] = ANIMATED_VARIANTS[fmt]
+            _, ext, family, _, _ = FORMATS[fmt]
+            cap, encoder = pick_encoder(fmt)
         if family == "image" and before["frames"] > 1:
             raise ValueError("choose an animated output; still-image conversion would discard frames")
         if before["audioStreams"] and family != "video" and not o["dropAudio"]:

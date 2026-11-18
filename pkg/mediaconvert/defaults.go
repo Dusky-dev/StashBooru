@@ -143,10 +143,78 @@ var OutputFormats = []Format{
 	{ID: "bmp", Label: "BMP", Extension: "bmp", Family: "image"},
 }
 
+// AnimatedVariants are the worker formats a still choice becomes when the
+// source is animated. JPEG XL and PNG are one choice each, like WebP.
+var AnimatedVariants = map[string]string{"jxl": "ajxl", "png": "apng"}
+
+// ChoiceOutput maps a worker-only animated variant to the user's choice.
+func ChoiceOutput(output string) string {
+	for still, animated := range AnimatedVariants {
+		if output == animated {
+			return still
+		}
+	}
+	return output
+}
+
+// ConcreteOutput is the format sent to the worker for this source type. An
+// explicit animated variant from an older client is kept as requested.
+func ConcreteOutput(output, input string) string {
+	if animated, ok := AnimatedVariants[output]; ok {
+		for _, format := range InputFormats {
+			if format.ID == input && format.Family == "animation" {
+				return animated
+			}
+		}
+	}
+	return output
+}
+
+// ChoiceFormats lists output formats as users choose them: without the
+// animated variants, and with JPEG XL and PNG marked as still or animated.
+//
+// A worker's choice is only available when both variants are, because an
+// animated source would otherwise be offered a format the worker cannot write.
+func ChoiceFormats(formats []Format) []Format {
+	available := map[string]bool{}
+	for _, format := range formats {
+		available[format.ID] = format.Available
+	}
+	choices := make([]Format, 0, len(formats))
+	for _, format := range formats {
+		if ChoiceOutput(format.ID) != format.ID {
+			continue
+		}
+		if _, ok := AnimatedVariants[format.ID]; ok {
+			switch format.ID {
+			case "jxl":
+				format.Label = "JPEG XL (still or animated)"
+			case "png":
+				format.Label = "PNG (still or animated)"
+			}
+			format.Family = "animation"
+			if variant, reported := available[AnimatedVariants[format.ID]]; reported {
+				still := format.Available
+				format.StillAvailable = &still
+				format.Available = format.Available && variant
+			}
+		}
+		choices = append(choices, format)
+	}
+	return choices
+}
+
+// NormalizeFormatDefaults rewrites rules saved with an animated variant.
+func NormalizeFormatDefaults(defaults map[string]string) {
+	for input, output := range defaults {
+		defaults[input] = ChoiceOutput(output)
+	}
+}
+
 func DefaultFormatDefaults() map[string]string {
 	return map[string]string{
 		"image": "jxl", "video": "av1-mp4", "jpeg": "jxl", "png": "jxl",
-		"gif": "webp", "apng": "webp", "webp": "jxl", "animated-webp": "webp", "jxl": "jxl", "ajxl": "ajxl", "animated-avif": "webp",
+		"gif": "webp", "apng": "webp", "webp": "jxl", "animated-webp": "webp", "jxl": "jxl", "ajxl": "jxl", "animated-avif": "webp",
 		"mp4": "av1-mp4", "mkv": "av1-mkv", "webm": "av1-webm",
 	}
 }
@@ -160,8 +228,8 @@ func ValidateFormatDefaults(defaults map[string]string) error {
 				source = f
 			}
 		}
-		for _, f := range OutputFormats {
-			if f.ID == output {
+		for _, f := range ChoiceFormats(OutputFormats) {
+			if f.ID == ChoiceOutput(output) {
 				target = f
 			}
 		}
@@ -201,10 +269,10 @@ func (c Config) DefaultOutput(input string, video bool) string {
 		return output
 	}
 	// New animation subtypes must remain safe with configs saved before those
-	// subtype rules existed. Existing AJXL stays AJXL; other animations use the
-	// browser-compatible animated WebP fallback.
+	// subtype rules existed. Existing JPEG XL animations stay JPEG XL; other
+	// animations use the browser-compatible animated WebP fallback.
 	if input == "ajxl" {
-		return "ajxl"
+		return "jxl"
 	}
 	for _, format := range InputFormats {
 		if format.ID == input && format.Family == "animation" {
