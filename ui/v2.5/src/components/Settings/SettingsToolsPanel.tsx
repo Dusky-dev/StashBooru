@@ -3,7 +3,6 @@ import { Button } from "react-bootstrap";
 import { defineMessages, FormattedMessage, useIntl } from "react-intl";
 import { Link } from "react-router-dom";
 import { Setting } from "./Inputs";
-import { SettingSection } from "./SettingSection";
 import { SettingsDisclosure } from "./SettingsDisclosure";
 import { MetadataHealth } from "./MetadataHealth";
 import { PatchContainerComponent } from "src/patch";
@@ -32,49 +31,45 @@ const sections = defineMessages({
   },
 });
 
-export const SettingsToolsPanel: React.FC = () => {
+/**
+ * Tools now live in a Tasks group. The plugin patch point and the
+ * #tools-health / #tools-developer bookmarks are unchanged.
+ */
+export const SettingsTools: React.FC = () => {
   const intl = useIntl();
   return (
-    <>
-      <SettingSection headingID="config.tools.heading">
-        <SettingsToolsSection>
-          <SettingsDisclosure
-            id="tools-health"
-            title={intl.formatMessage(sections.health)}
-            description={intl.formatMessage(sections.health_help)}
-          >
-            <MetadataHealth />
-          </SettingsDisclosure>
-          <SettingsDisclosure
-            id="tools-developer"
-            title={intl.formatMessage(sections.developer)}
-            description={intl.formatMessage(sections.developer_help)}
-          >
-            <Setting
-              heading={
-                <ExternalLink href="/playground">
-                  <Button>
-                    <FormattedMessage id="config.tools.graphql_playground" />
-                  </Button>
-                </ExternalLink>
-              }
-            />
-          </SettingsDisclosure>
-        </SettingsToolsSection>
-      </SettingSection>
-      <SettingSection headingID="config.tools.scene_tools">
-        <SettingsToolsSection>
-          <Setting
-            heading={
-              <Link to="/sceneDuplicateChecker">
-                <Button>
-                  <FormattedMessage id="config.tools.scene_duplicate_checker" />
-                </Button>
-              </Link>
-            }
-          />
-        </SettingsToolsSection>
-      </SettingSection>
-    </>
+    <SettingsToolsSection>
+      <SettingsDisclosure
+        id="tools-health"
+        title={intl.formatMessage(sections.health)}
+        description={intl.formatMessage(sections.health_help)}
+      >
+        <MetadataHealth />
+      </SettingsDisclosure>
+      <SettingsDisclosure
+        id="tools-developer"
+        title={intl.formatMessage(sections.developer)}
+        description={intl.formatMessage(sections.developer_help)}
+      >
+        <Setting
+          heading={
+            <ExternalLink href="/playground">
+              <Button>
+                <FormattedMessage id="config.tools.graphql_playground" />
+              </Button>
+            </ExternalLink>
+          }
+        />
+      </SettingsDisclosure>
+      <Setting
+        heading={
+          <Link to="/sceneDuplicateChecker">
+            <Button variant="secondary">
+              <FormattedMessage id="config.tools.scene_duplicate_checker" />
+            </Button>
+          </Link>
+        }
+      />
+    </SettingsToolsSection>
   );
 };

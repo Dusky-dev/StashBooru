@@ -596,7 +596,7 @@ try {
       "#settings-menu-container .nav-link:visible"
     );
     // Experimental is hidden until Advanced mode is on.
-    assert.equal(await desktopLinks.count(), name === "mobile" ? 0 : 13);
+    assert.equal(await desktopLinks.count(), name === "mobile" ? 0 : 10);
     assert.equal(await chooser.isVisible(), name === "mobile");
     assert.equal(await chooser.inputValue(), "library");
     assert.equal(
@@ -623,9 +623,6 @@ try {
         "services",
         "system",
         "plugins",
-        "logs",
-        "tools",
-        "changelog",
         "about",
       ]
     );
@@ -1058,7 +1055,7 @@ try {
     for (const width of [575, 576, 767, 768]) {
       await page.setViewportSize({ width, height: viewport.height });
       assert.equal(await chooser.isVisible(), width < 768);
-      assert.equal(await desktopLinks.count(), width < 768 ? 0 : 14);
+      assert.equal(await desktopLinks.count(), width < 768 ? 0 : 11);
       assert.equal(
         await page.locator("#settings-menu-container .nav-link.active").count(),
         1
@@ -1186,6 +1183,23 @@ try {
     await page
       .getByRole("heading", { name: "Upstream Stash version", exact: true })
       .waitFor();
+    // Logs lead About in a bounded box; the task queue stays in Tasks.
+    const about = page.locator(".tab-pane.active");
+    assert.deepEqual(
+      await about.evaluate((pane) =>
+        ["about-logs", "about-changelog"].map((id) =>
+          Boolean(pane.querySelector(`#${id}`))
+        )
+      ),
+      [true, true]
+    );
+    assert.equal(await about.locator("#job-queue").count(), 0);
+    assert.ok(
+      (await about
+        .locator(".logs-compact")
+        .evaluate((el) => el.getBoundingClientRect().height)) <=
+        22 * 16 + 4
+    );
     await page.waitForFunction(
       () =>
         getComputedStyle(document.querySelector(".tab-pane.active")).opacity ===

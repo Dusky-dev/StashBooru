@@ -28,9 +28,6 @@ const labels: Record<SettingsTab, { id: string; defaultMessage: string }> = {
   services: { id: "config.categories.services", defaultMessage: "Services" },
   system: { id: "config.categories.system", defaultMessage: "System" },
   plugins: { id: "config.categories.plugins", defaultMessage: "Plugins" },
-  logs: { id: "config.categories.logs", defaultMessage: "Logs" },
-  tools: { id: "config.categories.tools", defaultMessage: "Tools" },
-  changelog: { id: "config.categories.changelog", defaultMessage: "Changelog" },
   about: { id: "config.categories.about", defaultMessage: "About" },
 };
 

@@ -298,6 +298,7 @@
     "categories": {
       "processing": "Processing",
       "about": "About",
+      "experimental": "Experimental",
       "changelog": "Changelog",
       "interface": "Interface",
       "logs": "Logs",
@@ -675,7 +676,9 @@
         "maintenance": "Backup & maintenance",
         "maintenance_help": "Back up the database, import or export metadata, clean generated files and run migrations.",
         "plugins": "Plugin tasks",
-        "plugins_help": "Tasks from enabled plugins appear here when available."
+        "plugins_help": "Tasks from enabled plugins appear here when available.",
+        "tools": "Tools",
+        "tools_help": "Check metadata health, find duplicate Videos or open developer tools."
       }
     },
     "tools": {

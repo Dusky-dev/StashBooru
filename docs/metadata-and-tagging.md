@@ -225,7 +225,7 @@ applying the profile image. This edits profile artwork, not the source media fil
 Where no explicit artwork exists, supported entity image routes can use a related
 Image as a fallback; setting artwork gives a stable user-selected result.
 
-**Settings → Tools** offers:
+**Settings → Tasks → Tools** offers:
 
 - **Metadata Health:** read-only findings for duplicate/same-name identities,
   legacy Copyright Tags, Artist-link drift, orphaned links and ambiguous legacy

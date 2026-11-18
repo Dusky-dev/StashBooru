@@ -8,6 +8,7 @@ import { MediaBackupTask } from "./MediaBackupTask";
 import { PluginTasks } from "./PluginTasks";
 import { JobTable } from "./JobTable";
 import { SettingsDisclosure } from "../SettingsDisclosure";
+import { SettingsTools } from "../SettingsToolsPanel";
 
 const sections = defineMessages({
   library: {
@@ -35,6 +36,15 @@ const sections = defineMessages({
     id: "config.tasks.sections.maintenance_help",
     defaultMessage:
       "Back up the database, import or export metadata, clean generated files and run migrations.",
+  },
+  tools: {
+    id: "config.tasks.sections.tools",
+    defaultMessage: "Tools",
+  },
+  tools_help: {
+    id: "config.tasks.sections.tools_help",
+    defaultMessage:
+      "Check metadata health, find duplicate Videos or open developer tools.",
   },
   plugins: {
     id: "config.tasks.sections.plugins",
@@ -90,6 +100,13 @@ export const SettingsTasksPanel: React.FC = () => {
           <MediaBackupTask />
           <hr />
           <DataManagementTasks setIsAnonymiseRunning={setIsAnonymiseRunning} />
+        </SettingsDisclosure>
+        <SettingsDisclosure
+          id="tasks-tools"
+          title={intl.formatMessage(sections.tools)}
+          description={intl.formatMessage(sections.tools_help)}
+        >
+          <SettingsTools />
         </SettingsDisclosure>
         <SettingsDisclosure
           id="tasks-plugins"

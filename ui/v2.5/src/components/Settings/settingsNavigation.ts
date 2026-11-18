@@ -8,9 +8,6 @@ export const settingsTabs = [
   "services",
   "system",
   "plugins",
-  "logs",
-  "tools",
-  "changelog",
   "about",
   "experimental",
 ] as const;
@@ -50,9 +47,24 @@ const experimentalAnchors = new Set([
   "#image-consumer-audit-title",
 ]);
 
+// Tabs folded into others: Tools into Tasks; Logs and Changelog into About.
+const foldedTabs: Record<string, { tab: SettingsTab; anchor: string }> = {
+  tools: { tab: "tasks", anchor: "#tasks-tools" },
+  logs: { tab: "about", anchor: "#about-logs" },
+  changelog: { tab: "about", anchor: "#about-changelog" },
+};
+
+/** The section an old Tools, Logs or Changelog link opens when it has no hash. */
+export function foldedTabHash(search: string, hash: string): string {
+  const folded = foldedTabs[new URLSearchParams(search).get("tab") ?? ""];
+  return hash || !folded ? hash : folded.anchor;
+}
+
 // Keep bookmarks from before processing settings moved out of System.
 export function resolveSettingsTab(search: string, hash: string): SettingsTab {
   const tab = new URLSearchParams(search).get("tab");
+  const folded = tab ? foldedTabs[tab] : undefined;
+  if (folded) return folded.tab;
   if ((!tab || tab === "tasks") && experimentalAnchors.has(hash)) {
     return "experimental";
   }

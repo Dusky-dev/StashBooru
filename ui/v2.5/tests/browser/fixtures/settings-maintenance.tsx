@@ -99,7 +99,11 @@ const client = new ApolloClient({
   link: new ApolloLink(
     (operation) =>
       new Observable((observer) => {
-        if (operation.operationName === "JobsSubscribe") return () => {};
+        if (
+          operation.operationName === "JobsSubscribe" ||
+          operation.operationName === "LoggingSubscribe"
+        )
+          return () => {};
         let data: Record<string, unknown> = {};
         if (operation.operationName === "LatestVersion") {
           if (release.error) {

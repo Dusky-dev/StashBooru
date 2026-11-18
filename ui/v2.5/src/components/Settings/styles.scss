@@ -587,3 +587,11 @@
     position: static;
   }
 }
+
+.logs.logs-compact {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0.25rem;
+  margin-bottom: 1.5rem;
+  max-height: 22rem;
+  padding: 0.5rem;
+}

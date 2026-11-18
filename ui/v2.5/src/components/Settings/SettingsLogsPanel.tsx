@@ -1,10 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { useIntl } from "react-intl";
 import * as GQL from "src/core/generated-graphql";
 import { useLoggingSubscribe, queryLogs } from "src/core/StashService";
 import { SelectSetting } from "./Inputs";
 import { SettingSection } from "./SettingSection";
-import { JobTable } from "./Tasks/JobTable";
 
 function convertTime(logEntry: GQL.LogEntryDataFragment) {
   function pad(val: number) {
@@ -76,7 +74,6 @@ export const SettingsLogsPanel: React.FC = () => {
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const { data, error } = useLoggingSubscribe();
   const [logLevel, setLogLevel] = useState<string>("Info");
-  const intl = useIntl();
 
   useEffect(() => {
     async function getInitialLogs() {
@@ -91,11 +88,12 @@ export const SettingsLogsPanel: React.FC = () => {
       }
     }
 
-    getInitialLogs();
+    // About shares this page, so a failed log read must not break it.
+    getInitialLogs().catch(() => undefined);
   }, []);
 
   useEffect(() => {
-    if (!data) return;
+    if (!data?.loggingSubscribe) return;
 
     const newEntries = data.loggingSubscribe.map((e) => new LogEntry(e));
     newEntries.reverse();
@@ -128,9 +126,7 @@ export const SettingsLogsPanel: React.FC = () => {
   }
 
   return (
-    <>
-      <h2>{intl.formatMessage({ id: "config.tasks.job_queue" })}</h2>
-      <JobTable />
+    <div id="about-logs">
       <SettingSection headingID="config.categories.logs">
         <SelectSetting
           id="log-level"
@@ -146,12 +142,13 @@ export const SettingsLogsPanel: React.FC = () => {
         </SelectSetting>
       </SettingSection>
 
-      <div className="logs">
+      {/* A fixed-height box keeps About and the Changelog within reach. */}
+      <div className="logs logs-compact">
         {maybeRenderError()}
         {displayEntries.map((logEntry) => (
           <LogElement logEntry={logEntry} key={logEntry.id} />
         ))}
       </div>
-    </>
+    </div>
   );
 };
