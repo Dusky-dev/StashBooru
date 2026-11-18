@@ -871,13 +871,16 @@ def probe(source: Path, cancelled=None) -> dict:
 def packet_durations(source: Path, frames: int, cancelled=None) -> list[float] | None:
     """Per-frame display times from container timestamps, or None if unusable."""
     times = []
+    latest = -math.inf
     last_delay = 0.0
     with tempfile.TemporaryFile() as packets:
         run([FFPROBE, "-v", "error", "-protocol_whitelist", "file,pipe", "-format_whitelist", INPUT_FORMATS,
              "-select_streams", "v:0", "-show_packets", "-show_entries", "packet=pts_time,duration_time",
              "-of", "csv=p=0", str(source)], cancelled, stdout_file=packets)
         packets.seek(0)
-        for line in packets:
+        for index, line in enumerate(packets):
+            if index % 1024 == 0 and cancelled and cancelled():
+                raise RuntimeError("conversion cancelled")
             fields = line.strip().split(b",")
             try:
                 pts = float(fields[0])
@@ -886,8 +889,8 @@ def packet_durations(source: Path, frames: int, cancelled=None) -> list[float] |
                 return None
             if not math.isfinite(pts) or not math.isfinite(delay):
                 return None
-            if not times or pts > max(times):
-                last_delay = delay
+            if pts > latest:
+                latest, last_delay = pts, delay
             times.append(pts)
     if len(times) != frames:
         return None
