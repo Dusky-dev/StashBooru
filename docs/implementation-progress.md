@@ -1,3 +1,16 @@
+## Experimental settings only in Advanced mode — 2026-11-18
+
+- Baseline: `develop` (after #386). Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Owner decision: Experimental appears only in Advanced mode. The sidebar,
+  mobile chooser and Settings search hide it while Advanced mode is off. A
+  bookmark, old Tasks link or open tab shows a notice with **Turn on Advanced
+  mode** instead of landing silently elsewhere. Media uploads and thumbnail
+  compression live there too.
+- Checks: `tsc`, Biome, `pnpm run test`; browser `tasks-navigation` and
+  `settings-maintenance` desktop+mobile (hidden state, notice, enable).
+  `storage-native-packed-acceptance` now turns Advanced mode on; CI only.
+
 ## Identities: add the profile's own name — 2026-11-18
 
 - Baseline: `develop` `ef73cdb` (#385). Branch

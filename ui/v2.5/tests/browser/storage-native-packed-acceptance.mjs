@@ -434,6 +434,13 @@ try {
   await page.goto(url + "/settings?tab=library", {
     waitUntil: "domcontentloaded",
   });
+  // Experimental is listed only in Advanced mode, which the server persists.
+  const advanced = page.locator("#advanced-settings");
+  await page.locator("#inherit-character-ancestors").waitFor();
+  if (!(await advanced.isChecked())) await advanced.check({ force: true });
+  await page.waitForFunction(
+    () => document.querySelector("#advanced-settings")?.checked
+  );
   await page.getByRole("tab", { name: "Experimental", exact: true }).click();
   // Storage tools are in an Experimental <details> group; expand it before
   // using the selector to test real Settings navigation and visibility.
