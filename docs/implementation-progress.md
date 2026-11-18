@@ -1,6 +1,6 @@
 ## Settings: Tools in Tasks, Logs and Changelog in About — 2026-11-18
 
-- Baseline: `develop` (after #386), on top of the Experimental/Advanced PR.
+- Baseline: `develop` (after #387).
   Branch [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
 - Owner-approved layout: Tools, Logs and Changelog are no longer Settings
   sections. Tools is a closed **Tasks → Tools** group (Metadata Health,
