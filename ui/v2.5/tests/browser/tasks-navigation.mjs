@@ -460,6 +460,11 @@ try {
       Promise.all(groups.map((group) => isOpen(page, group)));
     const remembered = await openStates();
     assert.equal(remembered[groups.indexOf("maintenance")], true);
+    // Wait for the toggle event's save before navigating away.
+    await page.waitForFunction(
+      () =>
+        localStorage.getItem("settings-group-open:tasks-maintenance") === "1"
+    );
     await page.goto(`${origin}/settings?tab=tasks#job-queue`);
     await page.locator("#job-queue").waitFor();
     assert.deepEqual(await openStates(), remembered);
