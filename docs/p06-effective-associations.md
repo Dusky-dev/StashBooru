@@ -37,7 +37,7 @@ assignment.
 
 Library settings independently enable Character, Artist, Copyright and Tag
 ancestor inclusion; all four default to enabled. Image/Video detail reads,
-Tagging inherited-Tag previews and the existing-library review use these same
+Tagging inherited-Tag previews use these same
 defaults. Tagging settings link to the shared Library controls.
 
 A domain switch controls that domain's ancestors and their profile Tags.
@@ -69,37 +69,11 @@ null criteria, Tag-count maintenance criteria and nested `tags_filter` keep
 their existing direct-link semantics; Tag-directory count filters/sorts also
 retain their native stored-link scope.
 
-## Preview and apply for the existing library
+## Existing library
 
-Settings → Tasks → **Review library inheritance** reviews all existing Images
-and Videos against four proposed shared defaults. Library settings link to this
-task. The native Jobs queue reports progress and supports cancellation.
-
-Preview reads native rows in a SQLite read transaction using ID pagination
-with 100 items per page. It reports reviewed Image/Video totals, affected
-media, per-domain inherited membership totals and membership additions/removals.
-Up to 20 samples show current/proposed memberships and source links; each side
-is limited to 32 memberships and indicates truncation. Per-item errors are
-reported with a bounded sample and prevent apply.
-
-Apply rechecks the whole library under a native write transaction. A SHA-256
-fingerprint includes every typed media ID and its complete before/after
-provenance, including records outside the displayed samples. Changes to
-selections, profiles, hierarchy or defaults that affect that snapshot require
-a new preview. Cancellation before activation leaves defaults unchanged.
-Successful activation saves all four settings under one configuration lock
-with an atomic file replacement; a late cancellation reports the completed
-activation. Repeating an already completed apply returns its completed state.
-
-This is the P06 reviewed backfill/activation task: it reviews existing records
-and activates the reviewed live projection. Apply saves the shared defaults;
-it does not copy ancestor IDs into native relationship tables. Existing media
-uses the activated projection on its next read.
-
-Review state is in memory, limited to eight retained reviews. Terminal reviews
-expire after 30 minutes; a server restart requires another preview. The browser
-retains the current review ID for the session and can resume polling, cancel or
-discard it. Discarding a running job requires cancellation to finish first.
+The four switches in Settings → Library save directly and apply on the next
+read of every Image and Video. The former preview/apply task (Review library
+inheritance) was removed on 2026-11-18: it only gated the same four settings.
 
 ## Native workflow acceptance
 

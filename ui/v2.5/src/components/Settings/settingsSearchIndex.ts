@@ -23,9 +23,9 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
   },
   {
     tab: "tasks",
-    label: "Profiles and associations",
+    label: "Review Characters",
     anchor: "tasks-profiles",
-    keywords: "character artist copyright tagging",
+    keywords: "character duplicates merge",
   },
   {
     tab: "tasks",
@@ -307,13 +307,6 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
     label: "Metadata health",
     anchor: "tools-health",
     keywords: "diagnostics",
-  },
-  {
-    tab: "experimental",
-    label: "Alias collision inspector",
-    anchor: "experimental-alias-collisions",
-    keywords:
-      "aliases ambiguity conflicting names characters artists copyrights tags diagnostics",
   },
   {
     tab: "tools",

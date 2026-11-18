@@ -1,6 +1,4 @@
 import React from "react";
-import { useIntl } from "react-intl";
-import { Link } from "react-router-dom";
 import * as GQL from "src/core/generated-graphql";
 import { BooleanSetting } from "./Inputs";
 import { SettingSection } from "./SettingSection";
@@ -14,7 +12,6 @@ const defaultInheritance: GQL.AssociationInheritanceSettingsInput = {
 };
 
 export const AssociationInheritanceSettings: React.FC = () => {
-  const intl = useIntl();
   const { defaults, saveDefaults } = useSettings();
   const inheritance = {
     ...defaultInheritance,
@@ -39,13 +36,6 @@ export const AssociationInheritanceSettings: React.FC = () => {
       headingID="config.association_inheritance.heading"
       subHeadingID="config.association_inheritance.description"
     >
-      <p className="px-3 pt-3 mb-0">
-        <Link to="/settings?tab=tasks#association-inheritance-task">
-          {intl.formatMessage({
-            id: "config.association_inheritance.review.preview_link",
-          })}
-        </Link>
-      </p>
       <BooleanSetting
         id="inherit-character-ancestors"
         headingID="config.association_inheritance.characters.heading"

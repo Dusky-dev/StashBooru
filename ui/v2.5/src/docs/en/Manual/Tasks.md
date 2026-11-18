@@ -63,7 +63,7 @@ The scan task accepts the following options:
 
 ## Merge duplicate Characters
 
-**Settings → Tasks → Review profiles & associations → Merge duplicate Characters**
+**Settings → Tasks → Review Characters → Merge duplicate Characters**
 
 This tool proposes possible duplicates among native Character profiles. It compares normalized names (including reversed first/last names and unambiguous shortened names) and requires the **same nonempty, directly assigned Copyrights**. Characters without Copyrights, variants, ambiguous names, or conflicting profile details are skipped. Matching names alone are not proof of identity.
 
@@ -75,18 +75,6 @@ This tool proposes possible duplicates among native Character profiles. It compa
 Not-duplicate decisions are stored in the StashBooru database and survive rescans and restarts. They apply to the exact Character IDs, not globally to similar names; a rejected pair also blocks its larger suggested group, preventing an indirect merge through a third profile. If either Character is deleted, the decision is discarded. Back up your database if you need to preserve these decisions through restoration.
 
 Merging combines compatible metadata and Image, Video and Gallery links into a surviving Character; the removed Character profile records are deleted, **not the media files**. Merges are not undoable through this task. A merge job validates the preview again and runs transactionally: cancellation or failure before commit rolls back its changes. Make a database backup first, and review each group before merging.
-
-## Review library inheritance
-
-**Settings → Tasks → Review profiles & associations → Review library inheritance**
-
-Use this task to preview how the library's calculated associations would change if you include or exclude ancestor Characters, Artists, Copyrights, or Tags. These four switches control inherited associations; they **do not rewrite directly assigned Image or Video links**. The same hierarchy defaults are shared by System and Tagging settings.
-
-1. Adjust the four inheritance switches and click **Preview library**. The preview runs as a background task; no settings change until you apply.
-2. Review the counts for Images, Videos, affected media and added/removed inherited associations. Expand individual examples to see current and proposed memberships and their sources. The examples are a sample; the review covers the whole library.
-3. Choose **Apply reviewed defaults** only after checking the report. A review with errors cannot be applied. You can cancel a running job or discard a finished review to adjust the switches and preview again.
-
-The review can resume in the same browser session. While an existing review is active, its proposed settings are locked until you apply or discard it. If profiles or associations change in the meantime, preview again rather than relying on stale results.
 
 ## Animation inspection
 

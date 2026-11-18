@@ -1,3 +1,22 @@
+## Identities panel name; remove Alias Collision Inspector and inheritance review — 2026-11-18
+
+- Baseline: `develop` `5e9b903` (#381). Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Owner decisions: one name, **Identities**, for the navbar page and the
+  profile panel (was "Sources & aliases"); the panel links to the page, and the
+  page's per-row detail is now "Source details". Remove the Alias Collision
+  Inspector and Review library inheritance completely.
+- Removed their UI, endpoints (`/image/alias-collisions*`,
+  `/association-inheritance`), config apply path, tests and docs. The four
+  Library inheritance switches already saved directly and are unchanged.
+  Library review now appears only on Character profiles (duplicate review).
+- Checks: `make lint`; Go integration `internal/api`, `internal/manager/config`,
+  `pkg/sqlite`; UI tsc, Biome, unit tests 131/131; browser suites
+  profile-library-review, tools-navigation, tasks-navigation, character-dedup,
+  settings-maintenance, first-use-notes, identities, following-context.
+- Not verified: old bookmarks to the removed anchors now open their tab's top.
+- Next: implied parents on cards/lists (roadmap 1).
+
 ## Keep connected source names together (Sources & aliases) — 2026-11-18
 
 - Baseline: `develop` after #380/#381. Branch

@@ -1,4 +1,3 @@
-import { ProfileLibraryReview } from "src/components/Shared/ProfileLibraryReview";
 import { NativeMetadataMergeButton } from "src/components/Shared/NativeMetadataMergeButton";
 import { IdentitySources } from "src/components/Identities/identity";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -107,7 +106,6 @@ export const CopyrightDetailsPanel: React.FC<{
           entityID={copyright.id}
           entityName={copyright.name}
         />
-        <ProfileLibraryReview kind="copyright" name={copyright.name} />
       </div>
       {hasMain || hasSub ? (
         <Tabs

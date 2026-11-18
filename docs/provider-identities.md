@@ -38,7 +38,7 @@ candidates but never automatically joins people or characters.
 
 The **Identities** page offers linking from post identifiers, native record
 creation/selection, batch decisions, remembered rejections, original identifiers
-under Sources & aliases, and a scan of locally saved provider metadata. Native
+under Source details, and a scan of locally saved provider metadata. Native
 Artist/Character/Copyright text searches also recognize their connected provider
 identifiers while retaining native IDs, relationships and curated aliases.
 
@@ -56,7 +56,7 @@ Following changes are later work.
    opens over the current preview, keeping its search, page and position.
    Closing it returns keyboard focus to the preview. General tags retain their
    search actions. **Advanced reconciliation** opens the existing Identities
-   page for bulk work. Raw targets remain under **Sources & aliases**.
+   page for bulk work. Raw targets remain under **Source details**.
 3. Choose an existing native record, or expand **Create a new…**. Character
    creation supports native disambiguation. A matching name never links itself.
 4. Select several rows, or **Select matching labels on this page**, to connect
@@ -64,7 +64,7 @@ Following changes are later work.
    before connecting. **Different…** remembers a rejected match for one identifier.
    **Show rejected matches** lets you allow it again. **Later / deselect** leaves
    identifiers unresolved. **Remove connection** reverses a binding.
-5. Native profiles expose **Sources & aliases → Manage connections** in a dialog,
+5. Native profiles expose **Identities → Manage connections** in a dialog,
    without leaving the profile. **Add source name** takes an enabled site and
    its exact tag or creator expression, then shows a separate **Connect to…**
    decision for this profile. Merely reviewing a name creates no binding or native
@@ -85,7 +85,7 @@ For example, once Danbooru `aki99`, Gelbooru `aki99_(artist)` and Pawchive
 `creator:patreon:4534453` are connected to one Artist, downloads from all three
 land on that Artist. Unconnected names keep the existing name/alias matching.
 Media downloaded before a connection keeps the record created from that
-spelling, such as an Artist named `aki99 (artist)`. Sources & aliases on the
+spelling, such as an Artist named `aki99 (artist)`. The Identities panel on the
 connected profile lists such records and offers **Merge into …**; after an
 explicit confirmation the existing Artist, Character or Copyright merge moves
 their Images, Videos and source connections to this profile. Nothing is

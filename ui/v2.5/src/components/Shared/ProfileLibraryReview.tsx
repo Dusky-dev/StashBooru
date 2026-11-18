@@ -1,15 +1,8 @@
-import { FormattedMessage, useIntl } from "react-intl";
+import { FormattedMessage } from "react-intl";
 import { Link } from "react-router-dom";
 
-export function ProfileLibraryReview({
-  kind,
-  name,
-}: {
-  kind: "character" | "artist" | "copyright";
-  name: string;
-}) {
-  const intl = useIntl();
-  const query = new URLSearchParams({ tab: "experimental", alias: name });
+/** Character profiles link to the library-wide duplicate review. */
+export function ProfileLibraryReview() {
   return (
     <details className="profile-library-review my-3">
       <summary>
@@ -21,52 +14,22 @@ export function ProfileLibraryReview({
       <p className="small text-muted mt-2">
         <FormattedMessage
           id="profile_library_review.help"
-          defaultMessage="Inspect this name or review library-wide cleanup. Links open in a new tab; nothing runs automatically."
+          defaultMessage="Review library-wide cleanup. Links open in a new tab; nothing runs automatically."
         />
       </p>
       <ul className="pl-3 mb-0">
         <li>
           <Link
-            to={{
-              pathname: "/settings",
-              search: `?${query}`,
-              hash: "#experimental-alias-collisions",
-            }}
-            target="_blank"
-            rel="noreferrer"
-          >
-            {intl.formatMessage({
-              id: "profile_library_review.inspect_name",
-              defaultMessage: "Inspect this name",
-            })}
-          </Link>
-        </li>
-        <li>
-          <Link
-            to="/settings?tab=tasks#association-inheritance-task"
+            to="/settings?tab=tasks#character-dedup-task"
             target="_blank"
             rel="noreferrer"
           >
             <FormattedMessage
-              id="profile_library_review.inheritance"
-              defaultMessage="Review inherited associations (whole library)"
+              id="profile_library_review.duplicates"
+              defaultMessage="Review duplicate Characters (whole library)"
             />
           </Link>
         </li>
-        {kind === "character" && (
-          <li>
-            <Link
-              to="/settings?tab=tasks#character-dedup-task"
-              target="_blank"
-              rel="noreferrer"
-            >
-              <FormattedMessage
-                id="profile_library_review.duplicates"
-                defaultMessage="Review duplicate Characters (whole library)"
-              />
-            </Link>
-          </li>
-        )}
       </ul>
     </details>
   );

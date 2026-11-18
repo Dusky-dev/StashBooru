@@ -11,7 +11,6 @@ import { ImageStorageRestorePlanTask } from "./Tasks/ImageStorageRestorePlanTask
 import { ImageStorageShadowTask } from "./Tasks/ImageStorageShadowTask";
 import { ImageStorageConsumerAuditTask } from "./Tasks/ImageStorageConsumerAuditTask";
 import { VideoOverlapTask } from "./Tasks/VideoOverlapTask";
-import { SettingsAliasCollisionInspector } from "./SettingsAliasCollisionInspector";
 import { SettingsThumbnailCompression } from "./SettingsThumbnailCompression";
 import { SettingsMediaUpload } from "./SettingsMediaUpload";
 
@@ -41,7 +40,6 @@ export function SettingsExperimentalPanel() {
       </SettingsDisclosure>
       <SettingsMediaUpload />
       <SettingsThumbnailCompression />
-      <SettingsAliasCollisionInspector />
       <section id="experimental-image-storage">
         <h2>P12/P13 image storage experiments</h2>
         <Alert variant="warning">

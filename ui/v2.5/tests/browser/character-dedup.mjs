@@ -109,18 +109,6 @@ try {
       }
       await route.fulfill({ json: plan });
     });
-    await page.route("**/association-inheritance*", (route) =>
-      route.fulfill({
-        json: {
-          current: {
-            characters: true,
-            artists: true,
-            copyrights: true,
-            tags: true,
-          },
-        },
-      })
-    );
     await page.goto(url);
     await page.locator("#tasks-profiles > summary").click();
     const section = page.locator("#character-dedup-task");

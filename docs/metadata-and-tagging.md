@@ -55,11 +55,8 @@ profile, remains. Hierarchy/profile edits affect subsequent reads and supported
 hierarchical searches without rewriting every media record.
 
 Use **Association sources** on Image/Video details to inspect where a membership
-came from. **Settings → Tasks → Review library inheritance** previews proposed
-defaults across existing media, shows affected memberships and origins, and
-rechecks the preview before applying the shared defaults. It activates a live
-projection; it does not insert calculated parents as permanent direct links.
-Restarting the server requires a new review. Exact-set/null and some maintenance
+came from. Calculated parents are never inserted as permanent direct links.
+Exact-set/null and some maintenance
 filters keep direct-link semantics; see the [full contract](p06-effective-associations.md).
 
 <a id="image-tagging"></a>
@@ -231,8 +228,6 @@ Image as a fallback; setting artwork gives a stable user-selected result.
 - **Metadata Health:** read-only findings for duplicate/same-name identities,
   legacy Copyright Tags, Artist-link drift, orphaned links and ambiguous legacy
   Tag migrations. A finding does not itself repair or merge data.
-- **Alias Collision Inspector:** canonical/alias conflicts and an inspection of
-  the ambiguous value and its native candidates.
 - **Visual Similarity Triage:** EVA02 clusters and preferred-copy suggestions.
   Explicitly selecting targets can add missing Characters, Artists, Copyrights
   and Tags from the preferred Image while preserving existing target metadata.
