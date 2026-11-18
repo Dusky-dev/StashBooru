@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import test from "node:test";
-import { evictEffectiveMediaAssociations } from "../src/core/mediaCache.ts";
+import {
+  effectiveAssociationsField,
+  evictEffectiveMediaAssociations,
+} from "../src/core/mediaCache.ts";
 
 // Apollo's CommonJS entry works with the repository's Node test loader.
 const { InMemoryCache, gql } = createRequire(import.meta.url)(
@@ -78,4 +81,62 @@ test("empty and repeated invalidations leave the cache consistent", () => {
   const once = cache.extract();
   evictEffectiveMediaAssociations(cache);
   assert.deepEqual(cache.extract(), once);
+});
+
+test("a card popover's partial associations keep the detail page's fields", () => {
+  const cache = new InMemoryCache({
+    typePolicies: {
+      Image: { fields: { effective_associations: effectiveAssociationsField } },
+    },
+  });
+  const detail = gql`
+    query Detail {
+      findImage(id: "1") { id effective_associations { tags { id name } artists { id name } } }
+    }
+  `;
+  const popover = gql`
+    query Popover {
+      findImage(id: "1") { id effective_associations { tags { id name } copyrights { id name } } }
+    }
+  `;
+  const tag = (id: string) => ({ __typename: "Tag", id, name: `tag ${id}` });
+  cache.writeQuery({
+    query: detail,
+    data: {
+      findImage: {
+        __typename: "Image",
+        id: "1",
+        effective_associations: {
+          __typename: "MediaEffectiveAssociations",
+          tags: [tag("1")],
+          artists: [{ __typename: "Studio", id: "5", name: "Artist" }],
+        },
+      },
+    },
+  });
+  cache.writeQuery({
+    query: popover,
+    data: {
+      findImage: {
+        __typename: "Image",
+        id: "1",
+        effective_associations: {
+          __typename: "MediaEffectiveAssociations",
+          tags: [tag("1"), tag("2")],
+          copyrights: [],
+        },
+      },
+    },
+  });
+  const read = cache.readQuery({ query: detail });
+  assert.deepEqual(
+    read.findImage.effective_associations.artists.map(
+      (a: { id: string }) => a.id
+    ),
+    ["5"]
+  );
+  assert.deepEqual(
+    read.findImage.effective_associations.tags.map((t: { id: string }) => t.id),
+    ["1", "2"]
+  );
 });

@@ -6,39 +6,43 @@ place and move finished ones to **Done**; the progress ledger keeps the detail.
 
 ## Next (agent can finish alone, in order)
 
-1. **Implied parents everywhere (owner, 2026-11-18).** Checked: detail pages,
-   Tag search (any depth) and Copyright pages/filters (sub-Copyrights on by
-   default) already include parents. Gap fixed in this row's PR: cards gain a
-   Copyright button (owner, 2026-11-18) and both popovers list **Implied**
-   entries. Still open: an item with only profile-implied Tags has no Tag button.
-2. **Danbooru-style "Implies".** One "Implies" field on the child Tag or
-   Copyright, the reverse list read-only on the parent; the four Library
-   switches and Association sources stay out of the main path.
-3. **Settings → Tasks English text.** `CharacterDedupTask.tsx`,
+1. **Danbooru-style "Implies" (waits for owner go-ahead).** One "Implies"
+   field on the child Tag or Copyright, the reverse list read-only on the
+   parent; the four Library switches and Association sources stay out of the
+   main path.
+2. **Converter: Auto JPEG XL effort (owner, 2026-11-18).** Auto picks a
+   concrete effort per file on the server; workers still receive 1–9.
+3. **Identities: connect the creator's main name from the Booru artist page
+   (owner, 2026-11-18).** Reuse `IdentityLink`; same identity key as post tags.
+4. **Settings → Tasks English text.** `CharacterDedupTask.tsx`,
    `MediaBackupTask.tsx` — move to `react-intl`; `make validate-ui`, search
    `tests` and `builtin-source` for matching selectors.
-4. **Expected request errors.** Processing converter 503 with no converter;
+5. **Expected request errors.** Processing converter 503 with no converter;
    Video `thumbs.vtt` 404 before generation — page sweep with no failed requests.
-5. **Back during slow loads elsewhere.** Images, All and Booru (Booru has its
+6. **Back during slow loads elsewhere.** Images, All and Booru (Booru has its
    own scroll memory in `BooruBrowser.tsx`) — reproduce with held scripts first.
-6. **Image/Video bulk save and partial failure.** Listed as remaining in the
+7. **Image/Video bulk save and partial failure.** Listed as remaining in the
    audit — verify against the LIB ledger entries before starting.
 
 ## Plan first (propose to the owner)
 
-7. **Navbar width.** Controls overflow 120–220px at 1200–1366px —
+8. **Navbar width.** Controls overflow 120–220px at 1200–1366px —
    `MainNavbar.tsx`, `index.scss`; `checkNavbar` at 1200/1280/1366/1440.
-8. **Shared list rules (E07).** Selection, Back and Escape across All, Images,
+9. **Shared list rules (E07).** Selection, Back and Escape across All, Images,
    Videos, Following and Booru — one reproduced defect per PR.
-9. **DOM-moving built-ins (E09).** Move into the owning component only while
+10. **DOM-moving built-ins (E09).** Move into the owning component only while
    fixing that workflow.
 
 ## Owner decisions
 
-10. Add All to custom navbar menus saved before it existed?
-11. Refresh lists when a scan ends? (Upstream does not.)
-12. Any proposal to hide or remove a feature.
-13. Usability pass on the owner's real library (E11/E12).
+11. Add All to custom navbar menus saved before it existed?
+12. Refresh lists when a scan ends? (Upstream does not.)
+13. Any proposal to hide or remove a feature.
+14. Usability pass on the owner's real library (E11/E12).
+15. Show a Tag button (count 0) when an item has only profile-implied
+    Tags? (Codex P2 on #383, deferred.)
+16. Animated JPEG XL frame rate: which source format and symptom? Not
+    reproduced yet.
 
 ## Needs real hardware or accounts (never claim verified)
 
@@ -54,3 +58,5 @@ through code or fixtures.
   (#379), list scroll after a fast Back (#380), Identities keeps
   connected names together (downloads, Character merge, merge prompt; #381).
 - Identities panel name; alias inspector and inheritance review removed (#382).
+- Implied Tags and Copyrights on Image and Video cards (#383); detail pages,
+  Tag search and Copyright filters already included parents.
