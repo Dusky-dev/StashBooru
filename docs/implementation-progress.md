@@ -1,6 +1,6 @@
 ## Settings: Tools in Tasks, Logs and Changelog in About — 2026-11-18
 
-- Baseline: `develop` (after #387).
+- Baseline: `develop` (after #388).
   Branch [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
 - Owner-approved layout: Tools, Logs and Changelog are no longer Settings
   sections. Tools is a closed **Tasks → Tools** group (Metadata Health,
@@ -13,6 +13,24 @@
   case); browser `tools-navigation`, `tasks-navigation`,
   `settings-maintenance`, `first-use-notes` desktop+mobile.
 - Next: Processing compact PR, then Interface/System grouping proposals.
+
+## Animated JPEG XL keeps the length of AVIF and video sources — 2026-11-18
+
+- Baseline: `develop` (after #387). Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Owner report: animated JXL from uneven-rate sources (30, 29.97 fps)
+  plays choppily. Reproduced part of it: Pillow times only GIF/APNG/WebP, so
+  AVIF and video clips reached cjxl untimed and every frame was truncated to
+  33 ms (30 fps ran 1% fast, 0.400 s → 0.396 s). The worker now reads frame
+  times from container timestamps and rounds them cumulatively (33/34/33 ms),
+  as it already did for APNG. Already converted files keep their old timing
+  until reconverted; remote workers need the updated script.
+- Not shown to cause choppiness: the WebP conversion that plays smoothly also
+  alternates 33/34 ms. Exact non-millisecond rates need a JXL encoder that
+  writes other tick rates; none is available here (cjxl 0.7, FFmpeg 6.1).
+- Checks: `scripts/tests/test_media_conversion.py` 39/39 (new 30 fps clip
+  test fails on `develop` with 0.396 s); manual AVIF, 29.97 fps MP4, APNG and
+  GIF round trips with `jxlinfo`.
 
 ## Experimental settings only in Advanced mode — 2026-11-18
 

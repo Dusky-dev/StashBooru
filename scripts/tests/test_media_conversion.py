@@ -168,6 +168,35 @@ class EncodeTests(unittest.TestCase):
         self.assertEqual(result["signature"], converter.toolchain_signature())
         return result, output
 
+    @unittest.skipUnless(shutil.which("cjxl") and shutil.which("djxl"), "libjxl tools required")
+    def test_ajxl_keeps_length_of_30fps_clip_without_pillow_timing(self):
+        # Pillow cannot time video clips or AVIF; container timestamps must
+        # still round cumulatively (33/34 ms) instead of truncating to 33 ms.
+        clip = self.root / "clip.mp4"
+        converter.run(converter.ffmpeg_prefix() + ["-f", "lavfi", "-i",
+            "testsrc=size=64x64:rate=30:duration=0.4", "-pix_fmt", "yuv420p", str(clip)])
+        result, _ = self.convert("clip.mp4", "ajxl")
+        self.assertEqual(result["frames"], 12)
+        self.assertAlmostEqual(result["duration"], 0.4, delta=0.0015)
+
+    def test_packet_durations_scan_stops_when_cancelled(self):
+        # A long clip's packet list is scanned in one pass and polls cancellation.
+        def fake_run(args, cancelled=None, stdout_file=None, **_):
+            stdout_file.write(b"".join(b"%.6f,0.033333\n" % (i / 30) for i in range(5000)))
+            return ""
+
+        checks = []
+
+        def cancelled():
+            checks.append(1)
+            return len(checks) > 2
+
+        with patch.object(converter, "run", fake_run):
+            self.assertEqual(len(converter.packet_durations(Path("clip.mp4"), 5000)), 5000)
+            with self.assertRaisesRegex(RuntimeError, "cancelled"):
+                converter.packet_durations(Path("clip.mp4"), 5000, cancelled)
+        self.assertEqual(len(checks), 3)
+
     def test_mainstream_still_outputs(self):
         caps = converter.capabilities(probe_gpu=False)
         for fmt in ("jxl", "jpeg", "png", "webp", "avif", "tiff", "bmp"):
