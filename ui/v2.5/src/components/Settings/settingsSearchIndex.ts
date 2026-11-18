@@ -298,25 +298,27 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
     keywords: "install extensions update",
   },
   {
-    tab: "logs",
+    tab: "about",
     label: "Application logs",
+    anchor: "about-logs",
     keywords: "errors debug logging",
   },
   {
-    tab: "tools",
+    tab: "tasks",
     label: "Metadata health",
     anchor: "tools-health",
     keywords: "diagnostics",
   },
   {
-    tab: "tools",
+    tab: "tasks",
     label: "GraphQL and developer tools",
     anchor: "tools-developer",
     keywords: "api playground",
   },
   {
-    tab: "changelog",
+    tab: "about",
     label: "Changelog and release notes",
+    anchor: "about-changelog",
     keywords: "version updates",
   },
   {

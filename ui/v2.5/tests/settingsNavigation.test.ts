@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  foldedTabHash,
   legacySimilarityReviewDestination,
   resolveSettingsTab,
   settingsSearch,
@@ -103,4 +104,21 @@ test("old Tools visual similarity bookmarks open consolidated image review", () 
     legacySimilarityReviewDestination("?tab=experimental", "#tools-similarity"),
     undefined
   );
+});
+
+test("old Tools, Logs and Changelog links open their sections in Tasks and About", () => {
+  for (const tab of ["tools", "logs", "changelog"]) {
+    assert.ok(!(settingsTabs as readonly string[]).includes(tab));
+  }
+  assert.equal(resolveSettingsTab("?tab=tools", ""), "tasks");
+  assert.equal(foldedTabHash("?tab=tools", ""), "#tasks-tools");
+  assert.equal(
+    foldedTabHash("?tab=tools", "#tools-developer"),
+    "#tools-developer"
+  );
+  assert.equal(resolveSettingsTab("?tab=logs", ""), "about");
+  assert.equal(foldedTabHash("?tab=logs", ""), "#about-logs");
+  assert.equal(resolveSettingsTab("?tab=changelog", ""), "about");
+  assert.equal(foldedTabHash("?tab=changelog", ""), "#about-changelog");
+  assert.equal(foldedTabHash("?tab=about", ""), "");
 });

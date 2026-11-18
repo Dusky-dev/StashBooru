@@ -15,7 +15,7 @@ still opens Library settings and records the latest note as seen. Existing users
 see the new dated introduction when it is newer than their saved acknowledgement;
 closing the note keeps the existing server-owned `lastNoteSeen` behavior.
 
-Revisit the introduction in **Settings → Changelog**, above the preserved upstream
+Revisit the introduction in **Settings → About**, above the preserved upstream
 version history. The shared introduction is English, like the existing release
 notes; other UI translations and custom locale overrides retain their behavior.
 Fork issues link to the StashBooru repository; upstream help/support links remain.
@@ -32,7 +32,8 @@ Fork issues link to the StashBooru repository; upstream help/support links remai
 | **Settings → Processing** | Shared worker connection, links to the complete version-matched worker ZIP, similarity/tagging defaults, conversion rules and upscaling setup. Use each section's Save button. |
 | **Settings → Tasks** | Jobs, scanning and animation inspection, generated files/hashes, Character merging, original-media backups and database management. |
 | **Settings → Experimental** | Opt-in web uploads and thumbnail formats, Video overlap / containment, and isolated P12/P13 image storage diagnostics and recovery rehearsals. P12/P13 storage is not live storage activation. |
-| **Settings → Tools** | Metadata Health diagnostics, developer tools, and Video duplicate checker. |
+| **Settings → Tasks → Tools** | Metadata Health diagnostics, developer tools, and Video duplicate checker. |
+| **Settings → About** | Version and update check, application logs and the changelog. |
 | **Settings → System** | Application paths, FFmpeg, transcodes and other server settings. |
 
 On phones, use **Settings section** above the controls to change sections. On
@@ -64,7 +65,7 @@ review results; jobs continue normally. Existing task bookmarks open their group
 automatically. The queue scrolls with the page so it does not cover a bookmarked
 action. Save scopes and confirmation steps remain with each tool.
 
-**Settings → Tools** retains the read-only **Metadata Health** diagnostics,
+**Settings → Tasks → Tools** retains the read-only **Metadata Health** diagnostics,
 the GraphQL playground and the Video duplicate checker. The former **Visual Similarity Triage** is now
 integrated into **Review similar images**. Opening Tools does not start a scan.
 Tools disclosure contents remain mounted while you navigate Settings sections;
@@ -344,7 +345,7 @@ crop/rotate/pan/zoom editor for profile artwork. Applying artwork keeps the sour
 media unchanged. Supported entity image routes can fall back to a related Image
 when explicit artwork is absent.
 
-**Settings → Tools → Metadata Health** reports duplicate/same-name identities,
+**Settings → Tasks → Tools → Metadata Health** reports duplicate/same-name identities,
 legacy Copyright Tags, Artist-link drift, orphaned links and ambiguous migration
 candidates. It diagnoses without automatically repairing or merging records.
 

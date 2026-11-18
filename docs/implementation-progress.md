@@ -1,3 +1,19 @@
+## Settings: Tools in Tasks, Logs and Changelog in About — 2026-11-18
+
+- Baseline: `develop` (after #388).
+  Branch [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Owner-approved layout: Tools, Logs and Changelog are no longer Settings
+  sections. Tools is a closed **Tasks → Tools** group (Metadata Health,
+  developer tools, Video duplicate checker). About shows logs in a compact
+  22rem scroll box, a trimmed version/update block with compact links, then
+  the changelog. The task queue left the logs (Tasks has it). Old
+  `tab=tools|logs|changelog` links and `#tools-*` bookmarks redirect there;
+  search entries and docs follow. A failed log read no longer blanks About.
+- Checks: `tsc`, Biome, stylelint, `pnpm run test` 133/133 (new folded-tab
+  case); browser `tools-navigation`, `tasks-navigation`,
+  `settings-maintenance`, `first-use-notes` desktop+mobile.
+- Next: Processing compact PR, then Interface/System grouping proposals.
+
 ## Animated JPEG XL keeps the length of AVIF and video sources — 2026-11-18
 
 - Baseline: `develop` (after #387). Branch

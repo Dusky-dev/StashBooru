@@ -17,4 +17,4 @@ work, series or franchise.
 
 Read the [StashBooru feature guide](https://github.com/Dusky-dev/StashBooru/blob/develop/docs/features.md)
 for current workflows and limits. Revisit this introduction in Settings →
-Changelog, where upstream Stash release history also remains available.
+About, where upstream Stash release history also remains available.

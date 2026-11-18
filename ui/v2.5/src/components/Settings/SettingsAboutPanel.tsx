@@ -6,6 +6,8 @@ import { ExternalLink } from "../Shared/ExternalLink";
 import { ConstantSetting, SettingGroup } from "./Inputs";
 import { SettingSection } from "./SettingSection";
 import { compareStableVersions } from "./releaseVersion";
+import { SettingsLogsPanel } from "./SettingsLogsPanel";
+import Changelog from "../Changelog/Changelog";
 
 export const SettingsAboutPanel: React.FC = () => {
   const gitHash = import.meta.env.VITE_APP_GITHASH;
@@ -22,6 +24,7 @@ export const SettingsAboutPanel: React.FC = () => {
 
   return (
     <>
+      <SettingsLogsPanel />
       <SettingSection heading={`StashBooru ${version}`}>
         <SettingGroup settingProps={{ heading: "Installed build" }}>
           <ConstantSetting
@@ -36,19 +39,8 @@ export const SettingsAboutPanel: React.FC = () => {
             headingID="config.about.build_time"
             value={buildTime}
           />
-          <p className="px-3">
-            StashBooru releases use their own version numbers. The upstream
-            Stash version identifies the base this build was derived from.
-          </p>
         </SettingGroup>
-      </SettingSection>
-      <SettingSection heading="StashBooru updates">
         <div className="p-3">
-          <p>
-            Checks stable StashBooru releases on GitHub. Development snapshots
-            and upstream Stash releases are excluded. Updates are downloaded and
-            installed manually.
-          </p>
           {checking ? (
             <p role="status">Checking for updates…</p>
           ) : error ? (
@@ -56,8 +48,8 @@ export const SettingsAboutPanel: React.FC = () => {
               Could not check for updates: {error.message}
             </Alert>
           ) : latest ? (
-            <>
-              <p role="status">
+            <p role="status">
+              <span>
                 {comparison === undefined
                   ? "Could not compare release versions."
                   : comparison > 0
@@ -65,11 +57,11 @@ export const SettingsAboutPanel: React.FC = () => {
                     : comparison === 0
                       ? "You are running the latest stable StashBooru release."
                       : `This build is newer than the latest stable release (${latest.version}).`}
-              </p>
-              <p>
+              </span>{" "}
+              <small className="text-muted">
                 Latest release: {latest.version} · {latest.release_date}
-              </p>
-            </>
+              </small>
+            </p>
           ) : null}
           <div className="settings-actions">
             <Button
@@ -85,88 +77,79 @@ export const SettingsAboutPanel: React.FC = () => {
                 Download release
               </a>
             )}
+          </div>
+          <p className="about-links mt-3 mb-0">
+            <ExternalLink href="https://github.com/Dusky-dev/StashBooru">
+              StashBooru on GitHub
+            </ExternalLink>
+            {" · "}
             <ExternalLink href="https://github.com/Dusky-dev/StashBooru/releases">
               Release notes
             </ExternalLink>
+            {" · "}
             <ExternalLink
               href={`https://github.com/Dusky-dev/StashBooru/blob/stashbooru-v${import.meta.env.VITE_APP_STASHBOORU_VERSION}/docs/features.md`}
             >
               Feature guide
             </ExternalLink>
-          </div>
+          </p>
+          <small className="text-muted d-block mt-2">
+            {intl.formatMessage(
+              { id: "config.about.stash_home" },
+              {
+                url: (
+                  <ExternalLink href="https://github.com/stashapp/stash">
+                    GitHub
+                  </ExternalLink>
+                ),
+              }
+            )}{" "}
+            {intl.formatMessage(
+              { id: "config.about.stash_wiki" },
+              {
+                url: (
+                  <ExternalLink href="https://docs.stashapp.cc">
+                    documentation
+                  </ExternalLink>
+                ),
+              }
+            )}{" "}
+            {intl.formatMessage(
+              { id: "config.about.stash_community" },
+              {
+                forumUrl: (
+                  <ExternalLink href="https://discourse.stashapp.cc">
+                    forum
+                  </ExternalLink>
+                ),
+                discordUrl: (
+                  <ExternalLink href="https://discord.gg/2TsNFKt">
+                    Discord
+                  </ExternalLink>
+                ),
+              }
+            )}{" "}
+            {intl.formatMessage(
+              { id: "config.about.support_us" },
+              {
+                openCollectiveUrl: (
+                  <ExternalLink href="https://opencollective.com/stashapp">
+                    Open Collective
+                  </ExternalLink>
+                ),
+                githubSponsorsUrl: (
+                  <ExternalLink href="https://github.com/sponsors/stashapp">
+                    GitHub Sponsors
+                  </ExternalLink>
+                ),
+              }
+            )}
+          </small>
         </div>
       </SettingSection>
-      <SettingSection headingID="config.categories.about">
-        <div className="setting">
-          <div>
-            <p>
-              <ExternalLink href="https://github.com/Dusky-dev/StashBooru">
-                StashBooru on GitHub
-              </ExternalLink>
-            </p>
-            <p>Built on Stash. Upstream resources:</p>
-            <p>
-              {intl.formatMessage(
-                { id: "config.about.stash_home" },
-                {
-                  url: (
-                    <ExternalLink href="https://github.com/stashapp/stash">
-                      GitHub
-                    </ExternalLink>
-                  ),
-                }
-              )}
-            </p>
-            <p>
-              {intl.formatMessage(
-                { id: "config.about.stash_wiki" },
-                {
-                  url: (
-                    <ExternalLink href="https://docs.stashapp.cc">
-                      documentation
-                    </ExternalLink>
-                  ),
-                }
-              )}
-            </p>
-            <p>
-              {intl.formatMessage(
-                { id: "config.about.stash_community" },
-                {
-                  forumUrl: (
-                    <ExternalLink href="https://discourse.stashapp.cc">
-                      forum
-                    </ExternalLink>
-                  ),
-                  discordUrl: (
-                    <ExternalLink href="https://discord.gg/2TsNFKt">
-                      Discord
-                    </ExternalLink>
-                  ),
-                }
-              )}
-            </p>
-            <p>
-              {intl.formatMessage(
-                { id: "config.about.support_us" },
-                {
-                  openCollectiveUrl: (
-                    <ExternalLink href="https://opencollective.com/stashapp">
-                      Open Collective
-                    </ExternalLink>
-                  ),
-                  githubSponsorsUrl: (
-                    <ExternalLink href="https://github.com/sponsors/stashapp">
-                      GitHub Sponsors
-                    </ExternalLink>
-                  ),
-                }
-              )}
-            </p>
-          </div>
-          <div />
-        </div>
-      </SettingSection>
+      <div id="about-changelog">
+        <Changelog />
+      </div>
     </>
   );
 };

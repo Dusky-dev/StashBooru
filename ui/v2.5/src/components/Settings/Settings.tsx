@@ -7,17 +7,16 @@ import { useTitleProps } from "src/hooks/title";
 import { SettingsAboutPanel } from "./SettingsAboutPanel";
 import { SettingsConfigurationPanel } from "./SettingsSystemPanel";
 import { SettingsInterfacePanel } from "./SettingsInterfacePanel/SettingsInterfacePanel";
-import { SettingsLogsPanel } from "./SettingsLogsPanel";
 import { SettingsTasksPanel } from "./Tasks/SettingsTasksPanel";
 import { SettingsPluginsPanel } from "./SettingsPluginsPanel";
 import { SettingsScrapingPanel } from "./SettingsScrapingPanel";
-import { SettingsToolsPanel } from "./SettingsToolsPanel";
 import { SettingsServicesPanel } from "./SettingsServicesPanel";
 import { SettingsContext, useSettings } from "./context";
 import { SettingsLibraryPanel } from "./SettingsLibraryPanel";
 import { SettingsSecurityPanel } from "./SettingsSecurityPanel";
 import { SettingsProcessingPanel } from "./SettingsProcessingPanel";
 import {
+  foldedTabHash,
   legacySimilarityReviewDestination,
   resolveSettingsTab,
   settingsSearch,
@@ -26,7 +25,6 @@ import {
 import { SettingsSectionNavigation } from "./SettingsSectionNavigation";
 import { SettingsSearch } from "./SettingsSearch";
 import { SettingsExperimentalPanel } from "./SettingsExperimentalPanel";
-import Changelog from "../Changelog/Changelog";
 import { TroubleshootingModeButton } from "../TroubleshootingMode/TroubleshootingModeButton";
 import { useTroubleshootingMode } from "../TroubleshootingMode/useTroubleshootingMode";
 
@@ -135,9 +133,6 @@ const SettingTabs: React.FC<{ tab: SettingsTab }> = ({ tab }) => {
             <Tab.Pane eventKey="services" unmountOnExit>
               <SettingsServicesPanel />
             </Tab.Pane>
-            <Tab.Pane eventKey="tools">
-              <SettingsToolsPanel />
-            </Tab.Pane>
             <Tab.Pane eventKey="metadata-providers" unmountOnExit>
               <SettingsScrapingPanel />
             </Tab.Pane>
@@ -146,12 +141,6 @@ const SettingTabs: React.FC<{ tab: SettingsTab }> = ({ tab }) => {
             </Tab.Pane>
             <Tab.Pane eventKey="plugins" unmountOnExit>
               <SettingsPluginsPanel />
-            </Tab.Pane>
-            <Tab.Pane eventKey="logs" unmountOnExit>
-              <SettingsLogsPanel />
-            </Tab.Pane>
-            <Tab.Pane eventKey="changelog" unmountOnExit>
-              <Changelog />
             </Tab.Pane>
             <Tab.Pane eventKey="about" unmountOnExit>
               <SettingsAboutPanel />
@@ -180,6 +169,7 @@ export const Settings: React.FC = () => {
         to={{
           ...location,
           search: settingsSearch(location.search, tab),
+          hash: foldedTabHash(location.search, location.hash),
         }}
       />
     );

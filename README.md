@@ -131,8 +131,9 @@ Processing setup is grouped under **Settings → Processing**; hierarchy inherit
 is in **Settings → Library**. Failed jobs remain in **Tasks** until dismissed,
 with Copy error and history scoped to the current browser tab.
 
-Settings → Tools also provides **Metadata Health**, **Alias Collision Inspector**
-and **EVA02 Visual Similarity Triage**, including explicit add-only metadata copying.
+Settings → Tasks → Tools provides **Metadata Health**, developer tools and the
+Video duplicate checker; EVA02 visual similarity review lives in image duplicate
+review, including explicit add-only metadata copying.
 Profile artwork has a context-aware gallery picker and crop/rotate editor. Scans
 detect animated formats and provide an inspection task for existing Images.
 Normal HTTP installations can also use the secondary local HTTPS listener on

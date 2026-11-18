@@ -38,7 +38,7 @@ before the retained upstream notes. Its date is an acknowledgement marker, not a
 new application version or Git release tag. Existing users see entries newer than
 the server's `ui.lastNoteSeen`; explicit Close records the newest shown date.
 Welcome displays the same introduction before Finish records the latest date and
-opens Library settings. Settings → Changelog keeps the introduction available
+opens Library settings. Settings → About keeps the introduction available
 after acknowledgement alongside the original upstream version history.
 
 Keep dated entries newest first and retain older dates/content. No separate

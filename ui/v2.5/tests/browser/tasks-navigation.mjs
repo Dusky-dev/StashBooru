@@ -30,7 +30,7 @@ const browser = await chromium.launch({
 });
 const shots = process.env.STASH_BROWSER_SCREENSHOTS;
 if (shots) fs.mkdirSync(shots, { recursive: true });
-const groups = ["library", "profiles", "maintenance", "plugins"];
+const groups = ["library", "profiles", "maintenance", "tools", "plugins"];
 const summary = (page, group) => page.locator(`#tasks-${group} > summary`);
 const isOpen = (page, group) =>
   page.locator(`#tasks-${group}`).evaluate((el) => el.open);

@@ -130,13 +130,21 @@ try {
         });
       return route.fulfill({ json: data });
     });
+    // Old Tools links open the Tools group inside Tasks.
     await page.goto(`${origin}/settings?tab=tools&return=images%2F42`);
+    await page.waitForURL(/tab=tasks.*#tasks-tools$/);
+    await page.waitForFunction(
+      () => document.querySelector("#tasks-tools")?.open
+    );
     await summary(page, "health").waitFor();
     for (const group of ["health", "developer"])
       assert.equal(await isOpen(page, group), false);
-    assert.equal(
-      requests.length,
-      0,
+    // Tasks reads the original-media backup status; nothing else may start.
+    const work = () =>
+      requests.filter((r) => r.body || !r.path.endsWith("/media-backup"));
+    assert.deepEqual(
+      work(),
+      [],
       "Entering Tools must not start scans or model/provider work"
     );
     assert.equal(
@@ -171,7 +179,7 @@ try {
       });
     await summary(page, "health").focus();
     await summary(page, "health").press("Enter");
-    assert.equal(requests.length, 0);
+    assert.deepEqual(work(), []);
     await page
       .getByRole("button", { name: "Scan metadata", exact: true })
       .click();
@@ -216,13 +224,13 @@ try {
     // The Alias Collision Inspector was removed with its endpoints.
     assert.equal(await page.locator("#tools-aliases").count(), 0);
 
-    if (await page.locator("#settings-section").isVisible())
-      await page.locator("#settings-section").selectOption("tools");
-    else
+    assert.equal(
       await page
         .locator('#settings-menu-container a[href*="tab=tools"]')
-        .click();
-    await page.waitForURL(/tab=tools/);
+        .count(),
+      0,
+      "Tools is a Tasks group, not a Settings section"
+    );
     assert.equal(await page.locator("#tools-similarity").count(), 0);
     assert.equal(
       requests.filter((request) => request.path.endsWith("/clusters")).length,
@@ -245,6 +253,7 @@ try {
     await page.waitForFunction(
       () => document.querySelector("#tools-developer")?.open
     );
+    assert.equal(new URL(page.url()).searchParams.get("tab"), "tasks");
     assert.equal(new URL(page.url()).searchParams.get("return"), "images/42");
     await fit(page);
     await page.reload();
