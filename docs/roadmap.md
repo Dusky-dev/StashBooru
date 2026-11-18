@@ -47,6 +47,8 @@ place and move finished ones to **Done**; the progress ledger keeps the detail.
     fixed in #388, but existing files keep it until reconverted.
     Choppiness from GIF, APNG or WebP sources is undetermined: needs
     `jxlinfo -v` of one file, its source format and the worker's cjxl version.
+16. Settings search labels are English only: give every index entry a message
+    ID and match on the translated text (Codex P1 on #390).
 
 ## Needs real hardware or accounts (never claim verified)
 
