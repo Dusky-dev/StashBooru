@@ -237,6 +237,29 @@ func (s *ProviderIdentityStore) Candidates(ctx context.Context, kind, query stri
 	return rows, err
 }
 
+// SplitRecords lists other native records whose full name equals one of the
+// entity's connected source names with underscores as spaces, such as an
+// "aki99 (artist)" Artist created before "aki99_(artist)" was connected.
+// A disambiguated Character matches only when the source name includes it.
+func (s *ProviderIdentityStore) SplitRecords(ctx context.Context, kind string, entityID int) ([]models.IdentityCandidate, error) {
+	if !models.IdentityKind(kind) || entityID < 1 {
+		return nil, models.ErrIdentityInvalid
+	}
+	table, column, _, _ := identityNative(kind)
+	disambiguation := "''"
+	fullName := "COALESCE(n.name,'')"
+	if kind == "character" {
+		disambiguation = "COALESCE(n.disambiguation,'')"
+		fullName += "||CASE WHEN COALESCE(n.disambiguation,'')!='' THEN ' ('||n.disambiguation||')' ELSE '' END"
+	}
+	rows := []models.IdentityCandidate{}
+	err := dbWrapper.Select(ctx, &rows, fmt.Sprintf(`SELECT n.id,COALESCE(n.name,'') AS name,%s AS disambiguation,0 AS rejected
+ FROM %s n WHERE n.id!=? AND EXISTS(SELECT 1 FROM provider_identities p
+ WHERE p.%s=? AND lower(trim(replace(p.target,'_',' ')))=lower(%s))
+ ORDER BY n.name COLLATE NOCASE,n.id`, disambiguation, table, column, fullName), entityID, entityID)
+	return rows, err
+}
+
 // Explicit unlink/reject decisions and bound identifiers are never discarded.
 func (s *ProviderIdentityStore) DiscardUnresolved(ctx context.Context, kind string) (int64, error) {
 	if !models.IdentityKind(kind) {

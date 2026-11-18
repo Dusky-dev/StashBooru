@@ -17,6 +17,9 @@
   ./pkg/sqlite`, `make lint`, `make validate-ui`, `identities.mjs` desktop and
   mobile (mocked endpoints; Artist merge path). Character/Copyright merge
   from this list and real provider downloads were not run in a browser.
+- Review follow-ups: every Character spelling still reaches Copyright linking;
+  split records come from one server query (`/identities/split`) over every
+  connected name, so no name or result cap applies.
 
 ## Videos/Images list scroll restore after a fast Back — 2026-11-17
 

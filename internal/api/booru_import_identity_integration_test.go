@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stashapp/stash/pkg/booru"
@@ -89,24 +88,20 @@ func TestBooruImportUsesConnectedSourceNames(t *testing.T) {
 	require.Equal(t, 1, got.CreatedArtists)
 	require.Equal(t, 1, got.CreatedCharacters)
 
-	// Sources & aliases finds such split records by searching for the source
-	// name with spaces and comparing names (with any disambiguation).
+	// The profile lists those records as split: every connected name is
+	// compared with each record's full name, with any disambiguation.
 	require.NoError(t, rs.repository.WithReadTxn(context.Background(), func(ctx context.Context) error {
 		for _, split := range []struct {
-			kind, name string
-			id         int
-		}{{"artist", "aki99 (artist)", got.ArtistIDs[0]}, {"character", "miku (vocaloid)", got.CharacterIDs[0]}} {
-			rows, err := rs.repository.ProviderIdentity.Candidates(ctx, split.kind, split.name, 0, false)
+			kind         string
+			entity, want int
+		}{{"artist", artist, got.ArtistIDs[0]}, {"character", character, got.CharacterIDs[0]}} {
+			rows, err := rs.repository.ProviderIdentity.SplitRecords(ctx, split.kind, split.entity)
 			require.NoError(t, err)
-			found := false
+			ids := []int{}
 			for _, row := range rows {
-				name := row.Name
-				if row.Disambiguation != "" {
-					name += " (" + row.Disambiguation + ")"
-				}
-				found = found || (row.ID == split.id && strings.EqualFold(name, split.name))
+				ids = append(ids, row.ID)
 			}
-			require.True(t, found, "%s %q: %+v", split.kind, split.name, rows)
+			require.Equal(t, []int{split.want}, ids, split.kind)
 		}
 		return nil
 	}))

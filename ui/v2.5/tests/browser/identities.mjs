@@ -130,13 +130,12 @@ try {
           : q.get("kind") === "character"
             ? "Character A"
             : "Waligner";
-      if (endpoint === "candidates")
+      if (endpoint === "split")
         return reply(route, {
-          items: [
-            ...(rejected && !q.has("rejected")
-              ? []
-              : [{ id: 7, name: canonical, disambiguation: "", rejected }]),
-            ...(q.get("q") === "waligner (artist)" && !splitMerged
+          items:
+            q.get("kind") === "artist" &&
+            q.get("entity") === "7" &&
+            !splitMerged
               ? [
                   {
                     id: 9,
@@ -145,7 +144,14 @@ try {
                     rejected: false,
                   },
                 ]
-              : []),
+              : [],
+        });
+      if (endpoint === "candidates")
+        return reply(route, {
+          items: [
+            ...(rejected && !q.has("rejected")
+              ? []
+              : [{ id: 7, name: canonical, disambiguation: "", rejected }]),
           ],
           truncated: false,
         });

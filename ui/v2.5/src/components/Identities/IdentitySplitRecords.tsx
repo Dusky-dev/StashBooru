@@ -27,23 +27,6 @@ const kindMessages = {
   copyright: "copyright",
 } as const;
 
-// Downloads before a connection existed created one record per spelling, such
-// as "aki99 (artist)". Names are compared the way those records were named.
-function sourceRecordName(target: string) {
-  return target.replace(/_/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
-}
-
-// A disambiguated Character is a deliberate separate record unless the source
-// name includes its disambiguation.
-function matchesSourceName(candidate: IdentityCandidate, names: Set<string>) {
-  const name = candidate.name.toLowerCase();
-  return names.has(
-    candidate.disambiguation
-      ? `${name} (${candidate.disambiguation.toLowerCase()})`
-      : name
-  );
-}
-
 async function mergeInto(
   kind: IdentityKind,
   source: number,
@@ -71,6 +54,7 @@ async function mergeInto(
 /**
  * Lists other native records named after a connected source name and offers
  * the existing merge into this profile. Nothing is merged without a confirm.
+ * `items` only signals that connections exist or changed.
  */
 export function IdentitySplitRecords({
   kind,
@@ -89,39 +73,24 @@ export function IdentitySplitRecords({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
+  // Downloads before a connection existed created one record per spelling,
+  // such as "aki99 (artist)"; the server compares every connected name.
   useEffect(() => {
-    const names = new Set(
-      items.map((item) => sourceRecordName(item.target)).filter(Boolean)
-    );
-    if (names.size === 0) {
+    if (items.length === 0) {
       setRecords([]);
       return;
     }
     const controller = new AbortController();
-    // Candidate search accepts up to 200 characters. Names are searched in
-    // batches of 20; a failed lookup only hides its own suggestions.
-    const search = (name: string) =>
-      identityRequest<{ items: IdentityCandidate[] }>(
-        `identities/candidates?kind=${kind}&q=${encodeURIComponent(name)}`,
-        controller.signal
-      )
-        .then((page) => page.items)
-        .catch(() => [] as IdentityCandidate[]);
-    void (async () => {
-      const searchable = [...names].filter((name) => name.length <= 200);
-      const found = new Map<number, IdentityCandidate>();
-      for (let start = 0; start < searchable.length; start += 20) {
-        const pages = await Promise.all(
-          searchable.slice(start, start + 20).map(search)
-        );
-        if (controller.signal.aborted) return;
-        for (const candidate of pages.flat()) {
-          if (candidate.id !== entity.id && matchesSourceName(candidate, names))
-            found.set(candidate.id, candidate);
-        }
-      }
-      setRecords([...found.values()]);
-    })();
+    identityRequest<{ items: IdentityCandidate[] }>(
+      `identities/split?kind=${kind}&entity=${entity.id}`,
+      controller.signal
+    )
+      .then((page) => {
+        if (!controller.signal.aborted) setRecords(page.items);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setRecords([]);
+      });
     return () => controller.abort();
   }, [kind, entity.id, items]);
 
