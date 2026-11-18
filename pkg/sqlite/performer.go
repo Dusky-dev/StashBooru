@@ -1020,6 +1020,13 @@ AND NOT EXISTS(SELECT 1 FROM `+table+` o WHERE o.`+idColumn+` = `+table+`.`+idCo
 		}
 	}
 
+	// Source names connected to a merged Character stay connected to the
+	// destination, as Artist and Copyright merges already do.
+	if _, err := dbWrapper.Exec(ctx, `UPDATE provider_identities SET performer_id = ?
+WHERE performer_id IN `+inBinding, args[:len(source)+1]...); err != nil {
+		return err
+	}
+
 	for _, id := range source {
 		err := qb.Destroy(ctx, id)
 		if err != nil {

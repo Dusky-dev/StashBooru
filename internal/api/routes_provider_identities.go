@@ -113,6 +113,28 @@ func (rs booruBrowserRoutes) IdentityCandidates(w http.ResponseWriter, r *http.R
 	writeVisualSimilarityJSON(w, map[string]any{"items": rows, "truncated": more})
 }
 
+// IdentitySplitRecords lists records to offer for merging into a profile.
+func (rs booruBrowserRoutes) IdentitySplitRecords(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	q := r.URL.Query()
+	entity, err := strconv.Atoi(q.Get("entity"))
+	if rs.repository.ProviderIdentity == nil || err != nil {
+		identityError(w, models.ErrIdentityInvalid)
+		return
+	}
+	var rows []models.IdentityCandidate
+	err = rs.repository.WithReadTxn(r.Context(), func(ctx context.Context) error {
+		var err error
+		rows, err = rs.repository.ProviderIdentity.SplitRecords(ctx, q.Get("kind"), entity)
+		return err
+	})
+	if err != nil {
+		identityError(w, err)
+		return
+	}
+	writeVisualSimilarityJSON(w, map[string]any{"items": rows})
+}
+
 type identityMutation struct {
 	Action         string                    `json:"action"`
 	Kind           string                    `json:"kind"`

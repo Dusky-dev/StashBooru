@@ -240,6 +240,7 @@ func Initialize() (*Server, error) {
 	r.Post("/identities/scan", booruRoutes.IdentityScan)
 	r.Get("/identities/list", booruRoutes.IdentityList)
 	r.Get("/identities/candidates", booruRoutes.IdentityCandidates)
+	r.Get("/identities/split", booruRoutes.IdentitySplitRecords)
 	r.Post("/identities/update", booruRoutes.IdentityMutation)
 	r.Get("/following/feed", booruRoutes.FollowingFeed)
 	r.Get("/following/follows", booruRoutes.Follows)

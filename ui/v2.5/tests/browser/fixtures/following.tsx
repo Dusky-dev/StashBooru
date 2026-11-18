@@ -1,9 +1,11 @@
 import ReactDOM from "react-dom";
+import { IntlProvider } from "react-intl";
 import { BrowserRouter, Link, Route, useLocation } from "react-router-dom";
 import { IdentitySources } from "../../../src/components/Identities/identity";
 import Following from "../../../src/components/Following/Following";
 import "../../../src/index.scss";
 import "../../../src/booru-ui.scss";
+import { messages } from "./messages";
 
 function ProfileFixture() {
   const value = new URLSearchParams(useLocation().search).get("kind");
@@ -20,18 +22,20 @@ function ProfileFixture() {
 }
 
 ReactDOM.render(
-  <BrowserRouter
-    basename={new URL(document.baseURI).pathname.replace(/\/$/, "")}
-  >
-    <main className="container-fluid py-3">
-      <Route exact path="/following" component={Following} />
-      <Route exact path="/profile" component={ProfileFixture} />
-      <Route exact path="/other">
-        <p>Other fixture page</p>
-        <Link to="/following">Return to Following</Link>
-      </Route>
-      <Link to="/other">Leave Following fixture</Link>
-    </main>
-  </BrowserRouter>,
+  <IntlProvider locale="en-GB" messages={messages}>
+    <BrowserRouter
+      basename={new URL(document.baseURI).pathname.replace(/\/$/, "")}
+    >
+      <main className="container-fluid py-3">
+        <Route exact path="/following" component={Following} />
+        <Route exact path="/profile" component={ProfileFixture} />
+        <Route exact path="/other">
+          <p>Other fixture page</p>
+          <Link to="/following">Return to Following</Link>
+        </Route>
+        <Link to="/other">Leave Following fixture</Link>
+      </main>
+    </BrowserRouter>
+  </IntlProvider>,
   document.getElementById("root")
 );

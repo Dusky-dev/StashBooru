@@ -1,5 +1,6 @@
 import ReactDOM from "react-dom";
 import { Dropdown } from "react-bootstrap";
+import { IntlProvider } from "react-intl";
 import { BrowserRouter, Link, Route, useLocation } from "react-router-dom";
 import Identities from "../../../src/components/Identities/Identities";
 import {
@@ -8,6 +9,7 @@ import {
 } from "../../../src/components/Identities/identity";
 import "../../../src/index.scss";
 import "../../../src/booru-ui.scss";
+import { messages } from "./messages";
 
 function ProviderTag() {
   const params = new URLSearchParams(useLocation().search);
@@ -46,19 +48,21 @@ function ProviderTag() {
 }
 
 ReactDOM.render(
-  <BrowserRouter
-    basename={new URL(document.baseURI).pathname.replace(/\/$/, "")}
-  >
-    <main className="container-fluid py-3">
-      <Route exact path="/identities" component={Identities} />
-      <Route exact path="/studios/7">
-        <h2>Waligner</h2>
-        <IdentitySources kind="artist" entityID="7" entityName="Waligner" />
-        <Link to="/identities?kind=artist">All identities</Link>
-      </Route>
-      <Route exact path="/booru" component={ProviderTag} />
-      <Link to="/booru">Browse fixture</Link>
-    </main>
-  </BrowserRouter>,
+  <IntlProvider locale="en-GB" messages={messages}>
+    <BrowserRouter
+      basename={new URL(document.baseURI).pathname.replace(/\/$/, "")}
+    >
+      <main className="container-fluid py-3">
+        <Route exact path="/identities" component={Identities} />
+        <Route exact path="/studios/7">
+          <h2>Waligner</h2>
+          <IdentitySources kind="artist" entityID="7" entityName="Waligner" />
+          <Link to="/identities?kind=artist">All identities</Link>
+        </Route>
+        <Route exact path="/booru" component={ProviderTag} />
+        <Link to="/booru">Browse fixture</Link>
+      </main>
+    </BrowserRouter>
+  </IntlProvider>,
   document.getElementById("root")
 );
