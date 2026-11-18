@@ -1,4 +1,4 @@
-import { NativeMetadataMergeButton } from "src/components/Shared/NativeMetadataMergeButton";
+import { ProfileMergeButton } from "src/components/Shared/ProfileMergeModal";
 import { IdentitySources } from "src/components/Identities/identity";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FormattedMessage } from "react-intl";
@@ -668,9 +668,9 @@ const CopyrightDetail: React.FC = () => {
                     onDelete={destroy}
                     classNames="mb-2"
                     customButtons={
-                      <NativeMetadataMergeButton
+                      <ProfileMergeButton
                         kind="copyright"
-                        source={{ id: copyright.id, name: copyright.name }}
+                        current={{ id: copyright.id, name: copyright.name }}
                         onMerged={(id) => history.replace(`/copyrights/${id}`)}
                       />
                     }

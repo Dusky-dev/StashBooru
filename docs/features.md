@@ -370,6 +370,13 @@ remain separate acceptance work.
 
 ### Character cleanup and Copyright auto-tagging
 
+Artist and Copyright pages have the same **Merge…** dialog as Characters and
+Tags: choose one or more sources, swap source and destination if needed, then
+pick each field's value (name, aliases, description, picture). Linked media,
+Identities and aliases move to the destination in one transaction, and each
+merged name stays as an alias so later downloads and taggers find the
+destination instead of recreating the old record.
+
 In **Settings → Tasks → Merge duplicate Characters**, preview matching full names,
 reversed first/last names and unique short names such as “Miku” / “Hatsune Miku”.
 Both entries must have identical directly assigned native Copyrights. Missing

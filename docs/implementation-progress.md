@@ -1,3 +1,30 @@
+## Merges: Artist/Copyright dialog like Characters/Tags; merged Tags reused — 2026-11-18
+
+- Baseline: `develop` `385a3fa` (#394). Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Owner report 1: Artist/Copyright merge was weaker than Character/Tag. Their
+  detail pages now open the same style of dialog (several sources, swap,
+  per-field choice of name, aliases, description, picture). The merge route
+  takes `sourceIDs` and `keepDestination`, so conflicting fields give way to
+  the destination instead of failing; chosen values are saved afterwards.
+  The single-source Identities split merge is unchanged.
+- Owner report 2 (reproduced with a failing test): booru downloads only looked
+  up exact Tag names, so a Tag merged into another (its name kept as alias) was
+  recreated. Downloads now fall back to aliases and add each Tag once.
+  Characters/Artists/Copyrights already resolved aliases and Identities.
+- Checks: `pkg/sqlite` keep-destination tests (unit + integration), booru tag
+  alias test, `golangci-lint`, `tsc`, Biome, `pnpm run test`; real-binary
+  browser `copyright-save-retry` and `artist-save-new` desktop+mobile (merge
+  dialog with conflicting descriptions), `identities`.
+- Review fixes (Codex): Artist merges reject parent cycles (checked once per
+  batch); a failed value save, or a committed merge whose reply is lost, can be
+  retried without merging again; Cancel is locked while saving; only real
+  pictures are offered, read before the sources are deleted, and a copied
+  picture is never cleared by an unread one. Browser suites cover each case
+  and passed locally on `d470a66`.
+- Not changed: existing duplicates created before this fix (data repair needs
+  the owner's decision).
+
 ## Converter: one JPEG XL and one PNG choice, still or animated — 2026-11-18
 
 - Baseline: `develop` `aa2c2c3` (#393). Branch

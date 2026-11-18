@@ -146,6 +146,12 @@ func (rs tagRoutes) CopyrightImage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if len(image) == 0 && r.URL.Query().Get("fallback") == "false" {
+		// Callers that need to know whether a Copyright has its own picture
+		// (such as the merge dialog) ask for no fallback artwork.
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
 	if len(image) == 0 {
 		disableEntityFallbackCaching(w)
 		var fallbackID int

@@ -76,3 +76,26 @@ func TestCopyrightMergeRejectsConflictingDescription(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, source)
 }
+
+// The merge dialog chooses each field first; conflicting source fields then
+// give way to the destination instead of refusing the merge.
+func TestCopyrightMergeKeepingDestinationResolvesConflicts(t *testing.T) {
+	ctx, _, store := copyrightTestContext(t)
+	a, b := "Source information", "Target information"
+	sa, sb := "Source sort", "Target sort"
+	for _, input := range []models.CopyrightCreateInput{
+		{Name: "Source", Description: &a, SortName: &sa}, {Name: "Target", Description: &b, SortName: &sb},
+	} {
+		_, err := store.Create(ctx, input)
+		require.NoError(t, err)
+	}
+	require.NoError(t, store.MergeKeepingDestination(ctx, 1, 2))
+	source, err := store.Find(ctx, 1)
+	require.NoError(t, err)
+	require.Nil(t, source)
+	target, err := store.Find(ctx, 2)
+	require.NoError(t, err)
+	require.Equal(t, "Target information", target.Description)
+	require.Equal(t, "Target sort", target.SortName)
+	require.Contains(t, target.Aliases, "Source", "a merged name must keep resolving to the target")
+}

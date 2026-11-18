@@ -1230,6 +1230,7 @@
       "combined": "Combined",
       "destination": "Destination",
       "empty_results": "Destination field values will be unchanged.",
+      "values_not_saved": "Merged, but the chosen values were not saved: {error}. Change them and apply again, or cancel to keep the destination as it is.",
       "source": "Source"
     },
     "overwrite_filter_warning": "Saved filter \"{entityName}\" will be overwritten.",
@@ -1922,6 +1923,8 @@
     "merged_performers": "Merged characters",
     "merged_scenes": "Merged videos",
     "merged_tags": "Merged tags",
+    "merged_artists": "Merged Artists",
+    "merged_copyrights": "Merged Copyrights",
     "reassign_past_tense": "File reassigned",
     "removed_entity": "Removed {count, plural, one {{singularEntity}} other {{pluralEntity}}}",
     "rescanning_entity": "Rescanning {count, plural, one {{singularEntity}} other {{pluralEntity}}}…",

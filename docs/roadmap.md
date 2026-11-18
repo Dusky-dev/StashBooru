@@ -73,7 +73,9 @@ through code or fixtures.
 - Interface and System settings fold into remembered groups (#392).
 - Settings help icons, translated search labels, remembered Tasks groups
   (#393).
-- One JPEG XL and one PNG converter choice, still or animated (this PR).
+- One JPEG XL and one PNG converter choice, still or animated (#394).
+- Artist/Copyright merge dialog like Characters/Tags; merged Tags reused by
+  downloads (this PR).
 - Parent Tags/Copyrights apply automatically (calculated; "Include parent
   Tags" is on by default). No separate Implies field (owner, 2026-11-18).
 - Implied Tags and Copyrights on Image and Video cards (#383); detail pages,

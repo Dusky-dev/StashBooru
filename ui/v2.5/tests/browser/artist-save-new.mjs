@@ -368,6 +368,102 @@ async function check(viewport, label) {
   await page.goto(url + "/studios/" + first.id, { waitUntil: "networkidle" });
   assert.deepEqual(await all(), updated);
   assert.deepEqual(await artworkBytes(), savedArtwork);
+  // Artist merges work like Character/Tag merges: several sources, a value
+  // per field, and conflicting details no longer block the merge.
+  const mergeTarget = await create({
+    name: "Merge target Artist",
+    details: "Target details",
+    rating100: 80,
+  });
+  const mergeSource = await create({
+    name: "Merge source Artist",
+    details: "Source details",
+    rating100: 20,
+  });
+  await page.goto(url + "/studios/" + mergeTarget.id, {
+    waitUntil: "networkidle",
+  });
+  await page.getByRole("button", { name: "Merge...", exact: true }).click();
+  const mergeModal = page.locator(".modal-dialog").last();
+  // The picker searches after a debounce; click only once results for the
+  // typed text are in, or the list can be replaced under the click.
+  const mergeModalSearched = page.waitForResponse((response) => {
+    const body = response.request().postDataJSON?.();
+    return (
+      body?.operationName === "FindStudiosForSelect" &&
+      JSON.stringify(body.variables ?? {}).includes("Merge source Artist")
+    );
+  });
+  await mergeModal.locator("input").first().fill("Merge source Artist");
+  await mergeModalSearched;
+  await page
+    .getByRole("option", { name: "Merge source Artist" })
+    .first()
+    .click();
+  await mergeModal.getByRole("button", { name: "Merge", exact: true }).click();
+  const mergeDetails = page.locator(".profile-merge-dialog");
+  await mergeDetails.getByText("Source details").waitFor();
+  // If saving the chosen values fails after the merge, the choices stay open
+  // and Apply only retries the save (the sources are already merged).
+  let failUpdate = true;
+  let release;
+  const releaseUpdate = new Promise((resolve) => {
+    release = resolve;
+  });
+  const mergeRequests = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith("/studio/merge")) mergeRequests.push(request);
+  });
+  // The merge commits on the server but its response is lost; the dialog
+  // must see that the sources are gone and go on to save the values.
+  await page.route("**/studio/merge", async (route) => {
+    await route.fetch();
+    await route.abort();
+  });
+  await page.route("**/graphql", async (route) => {
+    const body = route.request().postDataJSON();
+    if (failUpdate && body?.operationName === "StudioUpdate") {
+      failUpdate = false;
+      await releaseUpdate;
+      return route.fulfill({
+        json: { errors: [{ message: "fixture update failure" }], data: null },
+      });
+    }
+    return route.continue();
+  });
+  await mergeDetails
+    .getByRole("button", { name: "Apply", exact: true })
+    .click();
+  // Cancel stays disabled while the chosen values save after the merge.
+  await page.waitForFunction(() =>
+    document
+      .querySelector(".profile-merge-dialog .ModalFooter .btn-secondary")
+      ?.hasAttribute("disabled")
+  );
+  release();
+  await page
+    .getByText(/chosen values were not saved/)
+    .first()
+    .waitFor();
+  assert.equal(await mergeDetails.isVisible(), true);
+  await mergeDetails
+    .getByRole("button", { name: "Apply", exact: true })
+    .click();
+  await mergeDetails.waitFor({ state: "detached" });
+  await page.unroute("**/graphql");
+  await page.unroute("**/studio/merge");
+  assert.equal(mergeRequests.length, 1, "the retry must not merge again");
+  await page.waitForFunction(() => !document.querySelector(".modal-dialog"));
+  const merged = await call(
+    page,
+    url,
+    "query($a:ID!,$b:ID!){a:findStudio(id:$a){id} b:findStudio(id:$b){details rating100 aliases}}",
+    { a: mergeSource.id, b: mergeTarget.id }
+  );
+  assert.equal(merged.a, null, "merged source Artist is removed");
+  assert.equal(merged.b.details, "Target details");
+  assert.equal(merged.b.rating100, 80);
+  assert.ok(merged.b.aliases.includes("Merge source Artist"));
   assert.deepEqual(errors, []);
   await page.close();
   await instance.stop();
@@ -375,7 +471,7 @@ async function check(viewport, label) {
   console.log(
     "Artist Save & New " +
       label +
-      ": required-name validation, duplicate create/draft retry, clean next form, rejected hierarchy cycle/retry, Cancel, Back, refresh/restart and native metadata/artwork passed."
+      ": required-name validation, duplicate create/draft retry, clean next form, rejected hierarchy cycle/retry, Cancel, Back, refresh/restart, native metadata/artwork and merge dialog passed."
   );
 }
 try {

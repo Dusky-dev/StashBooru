@@ -587,6 +587,182 @@ async function check(viewport, label) {
       ),
       false
     );
+    // Copyright merges work like Character/Tag merges: pick sources, then a
+    // value per field. Conflicting descriptions no longer block the merge.
+    const mergeTarget = await create({
+      name: "Merge target",
+      description: "Target description",
+    });
+    const mergeSource = await create({
+      name: "Merge source",
+      description: "Source description",
+    });
+    await page.goto(url + `/copyrights/${mergeTarget.id}`);
+    await page.getByRole("button", { name: "Merge...", exact: true }).click();
+    const mergeModal = page.locator(".modal-dialog").last();
+    // Click only once the debounced search for the typed text has answered.
+    const mergeModalSearched = page.waitForResponse((response) => {
+      const body = response.request().postDataJSON?.();
+      return (
+        body?.operationName === "FindCopyrightsForSelect" &&
+        JSON.stringify(body.variables ?? {}).includes("Merge source")
+      );
+    });
+    await mergeModal.locator("input").first().fill("Merge source");
+    await mergeModalSearched;
+    await page.getByRole("option", { name: "Merge source" }).first().click();
+    await mergeModal
+      .getByRole("button", { name: "Merge", exact: true })
+      .click();
+    const mergeDetails = page.locator(".profile-merge-dialog");
+    await mergeDetails.getByText("Source description").waitFor();
+    await mergeDetails
+      .getByRole("button", { name: "Apply", exact: true })
+      .click();
+    await mergeDetails.waitFor({ state: "detached" });
+    await page.waitForFunction(() => !document.querySelector(".modal-dialog"));
+    const merged = await call(
+      page,
+      url,
+      "query($a:ID!,$b:ID!){a:findCopyright(id:$a){id} b:findCopyright(id:$b){description aliases}}",
+      { a: mergeSource.id, b: mergeTarget.id }
+    );
+    assert.equal(merged.a, null, "merged source Copyright is removed");
+    assert.equal(merged.b.description, "Target description");
+    assert.ok(
+      merged.b.aliases.includes("Merge source"),
+      "the merged name stays as an alias for imports"
+    );
+    // Choosing the destination's empty description is kept, even though the
+    // merge itself fills empty fields from the source.
+    const emptyTarget = await create({ name: "Empty target" });
+    await create({ name: "Filled source", description: "Only source" });
+    await page.goto(url + `/copyrights/${emptyTarget.id}`);
+    await page.getByRole("button", { name: "Merge...", exact: true }).click();
+    const secondModal = page.locator(".modal-dialog").last();
+    // Click only once the debounced search for the typed text has answered.
+    const secondModalSearched = page.waitForResponse((response) => {
+      const body = response.request().postDataJSON?.();
+      return (
+        body?.operationName === "FindCopyrightsForSelect" &&
+        JSON.stringify(body.variables ?? {}).includes("Filled source")
+      );
+    });
+    await secondModal.locator("input").first().fill("Filled source");
+    await secondModalSearched;
+    await page.getByRole("option", { name: "Filled source" }).first().click();
+    await secondModal
+      .getByRole("button", { name: "Merge", exact: true })
+      .click();
+    const secondDetails = page.locator(".profile-merge-dialog");
+    await secondDetails
+      .locator('[data-field="description"] button')
+      .first()
+      .click();
+    await secondDetails
+      .getByRole("button", { name: "Apply", exact: true })
+      .click();
+    await secondDetails.waitFor({ state: "detached" });
+    const kept = await call(
+      page,
+      url,
+      "query($id:ID!){findCopyright(id:$id){description}}",
+      { id: emptyTarget.id }
+    );
+    assert.equal(kept.findCopyright.description, "");
+    // A source's picture still reaches a destination without one, although
+    // the source (and its image URL) is deleted before the values are saved.
+    const pictureTarget = await create({ name: "Picture target" });
+    await create({
+      name: "Picture source",
+      image: `data:image/png;base64,${artwork}`,
+    });
+    await page.goto(url + `/copyrights/${pictureTarget.id}`);
+    await page.getByRole("button", { name: "Merge...", exact: true }).click();
+    const pictureModal = page.locator(".modal-dialog").last();
+    const pictureModalSearched = page.waitForResponse((response) => {
+      const body = response.request().postDataJSON?.();
+      return (
+        body?.operationName === "FindCopyrightsForSelect" &&
+        JSON.stringify(body.variables ?? {}).includes("Picture source")
+      );
+    });
+    await pictureModal.locator("input").first().fill("Picture source");
+    await pictureModalSearched;
+    await page.getByRole("option", { name: "Picture source" }).first().click();
+    await pictureModal
+      .getByRole("button", { name: "Merge", exact: true })
+      .click();
+    const pictureDetails = page.locator(".profile-merge-dialog");
+    await pictureDetails.locator('[data-field="image"]').waitFor();
+    await pictureDetails
+      .getByRole("button", { name: "Apply", exact: true })
+      .click();
+    await pictureDetails.waitFor({ state: "detached" });
+    const pictureURL = (
+      await call(
+        page,
+        url,
+        "query($id:ID!){findCopyright(id:$id){image_path}}",
+        { id: pictureTarget.id }
+      )
+    ).findCopyright.image_path;
+    const pictureResponse = await page.request.get(
+      pictureURL + (pictureURL.includes("?") ? "&" : "?") + "fallback=false"
+    );
+    assert.equal(pictureResponse.status(), 200);
+    assert.deepEqual(
+      await pictureResponse.body(),
+      Buffer.from(artwork, "base64")
+    );
+    // If the source picture can't be read, the picture the merge copied
+    // stays instead of being cleared by the follow-up update.
+    const unreadTarget = await create({ name: "Unread target" });
+    const unreadSource = await create({
+      name: "Unread source",
+      image: `data:image/png;base64,${artwork}`,
+    });
+    const unreadImage = `**/copyright/${unreadSource.id}/image*`;
+    await page.route(unreadImage, (route) => route.abort());
+    await page.goto(url + `/copyrights/${unreadTarget.id}`);
+    await page.getByRole("button", { name: "Merge...", exact: true }).click();
+    const unreadModal = page.locator(".modal-dialog").last();
+    const unreadSearched = page.waitForResponse((response) => {
+      const body = response.request().postDataJSON?.();
+      return (
+        body?.operationName === "FindCopyrightsForSelect" &&
+        JSON.stringify(body.variables ?? {}).includes("Unread source")
+      );
+    });
+    await unreadModal.locator("input").first().fill("Unread source");
+    await unreadSearched;
+    await page.getByRole("option", { name: "Unread source" }).first().click();
+    await unreadModal
+      .getByRole("button", { name: "Merge", exact: true })
+      .click();
+    const unreadDetails = page.locator(".profile-merge-dialog");
+    await unreadDetails.locator('[data-field="name"]').waitFor();
+    await unreadDetails
+      .getByRole("button", { name: "Apply", exact: true })
+      .click();
+    await unreadDetails.waitFor({ state: "detached" });
+    await page.unroute(unreadImage);
+    const unreadURL = (
+      await call(
+        page,
+        url,
+        "query($id:ID!){findCopyright(id:$id){image_path}}",
+        { id: unreadTarget.id }
+      )
+    ).findCopyright.image_path;
+    const unreadResponse = await page.request.get(
+      unreadURL + (unreadURL.includes("?") ? "&" : "?") + "fallback=false"
+    );
+    assert.equal(unreadResponse.status(), 200);
+    assert.deepEqual(
+      await unreadResponse.body(),
+      Buffer.from(artwork, "base64")
+    );
     assert.deepEqual(errors, []);
     await page.screenshot({
       path: join(artifacts, label + "-saved.png"),
@@ -594,7 +770,7 @@ async function check(viewport, label) {
     });
     console.log(
       label +
-        ": Copyright create/edit retry, restart and branch Character list passed"
+        ": Copyright create/edit retry, restart, branch Character list and merge dialog passed"
     );
   } catch (error) {
     await page
