@@ -600,7 +600,16 @@ async function check(viewport, label) {
     await page.goto(url + `/copyrights/${mergeTarget.id}`);
     await page.getByRole("button", { name: "Merge...", exact: true }).click();
     const mergeModal = page.locator(".modal-dialog").last();
+    // Click only once the debounced search for the typed text has answered.
+    const mergeModalSearched = page.waitForResponse((response) => {
+      const body = response.request().postDataJSON?.();
+      return (
+        body?.operationName === "FindCopyrightsForSelect" &&
+        JSON.stringify(body.variables ?? {}).includes("Merge source")
+      );
+    });
     await mergeModal.locator("input").first().fill("Merge source");
+    await mergeModalSearched;
     await page.getByRole("option", { name: "Merge source" }).first().click();
     await mergeModal
       .getByRole("button", { name: "Merge", exact: true })
@@ -631,7 +640,16 @@ async function check(viewport, label) {
     await page.goto(url + `/copyrights/${emptyTarget.id}`);
     await page.getByRole("button", { name: "Merge...", exact: true }).click();
     const secondModal = page.locator(".modal-dialog").last();
+    // Click only once the debounced search for the typed text has answered.
+    const secondModalSearched = page.waitForResponse((response) => {
+      const body = response.request().postDataJSON?.();
+      return (
+        body?.operationName === "FindCopyrightsForSelect" &&
+        JSON.stringify(body.variables ?? {}).includes("Filled source")
+      );
+    });
     await secondModal.locator("input").first().fill("Filled source");
+    await secondModalSearched;
     await page.getByRole("option", { name: "Filled source" }).first().click();
     await secondModal
       .getByRole("button", { name: "Merge", exact: true })

@@ -385,7 +385,17 @@ async function check(viewport, label) {
   });
   await page.getByRole("button", { name: "Merge...", exact: true }).click();
   const mergeModal = page.locator(".modal-dialog").last();
+  // The picker searches after a debounce; click only once results for the
+  // typed text are in, or the list can be replaced under the click.
+  const mergeModalSearched = page.waitForResponse((response) => {
+    const body = response.request().postDataJSON?.();
+    return (
+      body?.operationName === "FindStudiosForSelect" &&
+      JSON.stringify(body.variables ?? {}).includes("Merge source Artist")
+    );
+  });
   await mergeModal.locator("input").first().fill("Merge source Artist");
+  await mergeModalSearched;
   await page
     .getByRole("option", { name: "Merge source Artist" })
     .first()
