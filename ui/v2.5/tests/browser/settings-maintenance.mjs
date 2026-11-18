@@ -517,6 +517,73 @@ try {
     await page.getByText("No matching settings.", { exact: true }).waitFor();
     await settingsSearch.fill("");
 
+    // Interface and System fold into groups that remember their last state.
+    // Customisation (CSS/JS) and its search results need Advanced mode;
+    // custom localisation stays available in General.
+    await settingsSearch.fill("custom css");
+    await page.getByText("No matching settings.", { exact: true }).waitFor();
+    await settingsSearch.fill("");
+    const groups = () =>
+      page
+        .locator(".tab-pane.active details.settings-disclosure")
+        .evaluateAll((els) => els.map((el) => [el.id, el.open]));
+    await chooseSection(page, "interface");
+    await page
+      .locator("#interface-group-general")
+      .waitFor({ state: "attached" });
+    // Lists was opened by the Image titles result above and stays open.
+    assert.deepEqual(await groups(), [
+      ["interface-group-general", false],
+      ["interface-group-lists", true],
+      ["interface-group-videos", false],
+      ["interface-group-images", false],
+    ]);
+    assert.equal(
+      await page
+        .locator("#interface-group-general #interface-custom-locales")
+        .count(),
+      1
+    );
+    await page.locator("#interface-group-videos > summary").click();
+    // The toggle event (and its save) fires after the click.
+    await page.waitForFunction(
+      (value) =>
+        localStorage.getItem("settings-group-open:interface-group-videos") ===
+        value,
+      "1"
+    );
+    await page.reload();
+    await page
+      .locator("#interface-group-general")
+      .waitFor({ state: "attached" });
+    assert.deepEqual(
+      (await groups()).map(([, open]) => open),
+      [false, true, true, false]
+    );
+    await page.locator("#interface-group-videos > summary").click();
+    // The toggle event (and its save) fires after the click.
+    await page.waitForFunction(
+      (value) =>
+        localStorage.getItem("settings-group-open:interface-group-videos") ===
+        value,
+      null
+    );
+    await page.reload();
+    await page
+      .locator("#interface-group-general")
+      .waitFor({ state: "attached" });
+    assert.deepEqual(
+      (await groups()).map(([, open]) => open),
+      [false, true, false, false]
+    );
+    await chooseSection(page, "system");
+    await page.locator("#system-group-storage").waitFor({ state: "attached" });
+    assert.deepEqual(await groups(), [
+      ["system-group-storage", false],
+      ["system-group-video", false],
+      ["system-group-performance", false],
+    ]);
+
     // Experimental results stay out of search until Advanced mode is on.
     await settingsSearch.fill("p12");
     await page.getByText("No matching settings.", { exact: true }).waitFor();
@@ -657,6 +724,25 @@ try {
       await chooser.locator('option[value="experimental"]').count(),
       1
     );
+    // Advanced mode adds the Customisation group (CSS/JS) and its search results.
+    await chooseSection(page, "interface");
+    await page
+      .locator("#interface-group-customisation #interface-custom-css")
+      .waitFor({ state: "attached" });
+    assert.equal(
+      await page
+        .locator("#interface-group-customisation #interface-custom-locales")
+        .count(),
+      0
+    );
+    await page
+      .getByRole("searchbox", { name: "Find a setting" })
+      .fill("custom css");
+    await page
+      .locator("#settings-search-results a")
+      .filter({ hasText: "Custom CSS" })
+      .waitFor();
+    await page.getByRole("searchbox", { name: "Find a setting" }).fill("");
     await chooseSection(page, "processing");
     assert.equal(new URL(page.url()).searchParams.get("return"), "images/42");
     await page

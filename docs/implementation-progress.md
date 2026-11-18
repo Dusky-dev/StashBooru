@@ -1,3 +1,21 @@
+## Settings: Interface and System groups — 2026-11-18
+
+- Baseline: `develop` after #391. Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Owner-approved grouping. Interface: General (incl. custom localisation),
+  Lists and pages, Videos, Images, and Customisation (CSS/JS, Advanced mode
+  only, search results too). System: Storage, Video processing, Performance
+  and logging. Every group remembers its last open/closed state in this
+  browser; hash links still open the containing group. No setting moved
+  between tabs or was renamed.
+- Height at 1440 with groups closed: Interface 6597 → 249 px, System
+  3529 → 183 px.
+- Checks: `tsc`, Biome, `pnpm run test` 133/133; browser
+  `settings-maintenance`, `tasks-navigation`, `tools-navigation`
+  desktop+mobile (group order, remembered state across reloads, Advanced-only
+  Customisation and search).
+- Next: replace long Interface/System descriptions with help icons.
+
 ## Copyright page: Main above Sub, no tabs — 2026-11-18
 
 - Baseline: `develop` `8f382b2` (#390). Branch
