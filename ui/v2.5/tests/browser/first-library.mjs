@@ -401,8 +401,14 @@ async function checkImpliedTags(page, url, imageID, videoID, directTagID) {
     ["/images", `.image-card-link[href="/images/${imageID}"]`],
     ["/scenes", `.scene-card-link[href^="/scenes/${videoID}"]`],
   ];
-  const tagButton = async ([path, card]) => {
+  // Park the pointer before reloading: a cursor left over a card button can
+  // open that button's popover on the new page after the "detached" check.
+  const parkAndGo = async (path) => {
+    await page.mouse.move(0, 0);
     await page.goto(`${url}${path}`);
+  };
+  const tagButton = async ([path, card]) => {
+    await parkAndGo(path);
     const button = page
       .locator(".grid-card", { has: page.locator(card) })
       .locator(".tag-count button");
@@ -415,7 +421,7 @@ async function checkImpliedTags(page, url, imageID, videoID, directTagID) {
     const copyrights = page
       .locator(".grid-card", { has: page.locator(entry[1]) })
       .locator(".copyright-count button");
-    await page.goto(`${url}${entry[0]}`);
+    await parkAndGo(entry[0]);
     await copyrights.waitFor();
     assert.equal((await copyrights.innerText()).trim(), "1");
     const copyrightShown = await popoverTags(copyrights);

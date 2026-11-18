@@ -104,8 +104,18 @@ try {
       });
     await page.route("**/booru-browser/sources", (route) =>
       reply(route, [
-        { id: "gelbooru", name: "Gelbooru", instance: "gel" },
-        { id: "pawchive", name: "Pawchive", instance: "paw" },
+        {
+          id: "gelbooru",
+          name: "Gelbooru",
+          instance: "gel",
+          engine: "gelbooru",
+        },
+        {
+          id: "pawchive",
+          name: "Pawchive",
+          instance: "paw",
+          engine: "pawchive",
+        },
       ])
     );
     await page.route("**/identities/*", async (route) => {
@@ -311,9 +321,26 @@ try {
     await connections
       .getByLabel("Site", { exact: true })
       .selectOption("pawchive");
+    // Artist account-key sites never match a plain name, so no shortcut there.
+    const useName = connections.getByRole("button", {
+      name: "Use “Waligner”",
+      exact: true,
+    });
+    assert.equal(await useName.count(), 0);
+    // The profile's own name can be added without retyping it on tag sites.
+    const sourceName = connections.getByLabel(
+      "Exact provider tag or creator expression"
+    );
     await connections
-      .getByLabel("Exact provider tag or creator expression")
-      .fill("creator:patreon:49481727");
+      .getByLabel("Site", { exact: true })
+      .selectOption("gelbooru");
+    await useName.click();
+    assert.equal(await sourceName.inputValue(), "Waligner");
+    await connections
+      .getByLabel("Site", { exact: true })
+      .selectOption("pawchive");
+    assert.equal(await useName.count(), 0);
+    await sourceName.fill("creator:patreon:49481727");
     holdObserve = true;
     const heldObservation = new Promise((resolve) => {
       observed = resolve;

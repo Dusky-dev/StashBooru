@@ -6,21 +6,24 @@ place and move finished ones to **Done**; the progress ledger keeps the detail.
 
 ## Next (agent can finish alone, in order)
 
-1. **Danbooru-style "Implies" (waits for owner go-ahead).** One "Implies"
-   field on the child Tag or Copyright, the reverse list read-only on the
-   parent; the four Library switches and Association sources stay out of the
-   main path.
-2. **Identities: connect the creator's main name from the Booru artist page
-   (owner, 2026-11-18).** Reuse `IdentityLink`; same identity key as post tags.
-3. **Settings → Tasks English text.** `CharacterDedupTask.tsx`,
+1. **Settings consistency (owner, 2026-11-18).** The owner means how panels
+   look, plus the measured layout fixes. Experimental behind Advanced mode:
+   next PR. Then Processing on shared `SettingSection`/`Inputs` rows with one
+   worker notice (before/after shots first), then Interface (6.7k px, 25 flat
+   groups) and System (3.8k px) as titled disclosures like Tasks.
+2. **Settings → Tasks English text.** `CharacterDedupTask.tsx`,
    `MediaBackupTask.tsx` — move to `react-intl`; `make validate-ui`, search
    `tests` and `builtin-source` for matching selectors.
-4. **Expected request errors.** Processing converter 503 with no converter;
+3. **Expected request errors.** Processing converter 503 with no converter;
    Video `thumbs.vtt` 404 before generation — page sweep with no failed requests.
-5. **Back during slow loads elsewhere.** Images, All and Booru (Booru has its
+4. **Back during slow loads elsewhere.** Images, All and Booru (Booru has its
    own scroll memory in `BooruBrowser.tsx`) — reproduce with held scripts first.
-6. **Image/Video bulk save and partial failure.** Listed as remaining in the
+   The Video list scroll-restore check in `first-library` failed once on #385
+   and passed on re-run (intermittent).
+5. **Image/Video bulk save and partial failure.** Listed as remaining in the
    audit — verify against the LIB ledger entries before starting.
+6. **Finite-loop GIF → animated JPEG XL** fails the worker's loop-count check
+   (source kept) with cjxl 0.7. Reproduce on libjxl 0.11 before changing.
 
 ## Plan first (propose to the owner)
 
@@ -39,8 +42,13 @@ place and move finished ones to **Done**; the progress ledger keeps the detail.
 13. Usability pass on the owner's real library (E11/E12).
 14. Show a Tag button (count 0) when an item has only profile-implied
     Tags? (Codex P2 on #383, deferred.)
-15. Animated JPEG XL frame rate: which source format and symptom? Not
-    reproduced yet.
+15. Animated JPEG XL plays choppily in Firefox; the file and a WebP copy play
+    fine. AVIF and video inputs lost their frame timing (every frame 33 ms);
+    fixed by the JXL timing PR, but existing files keep it until reconverted.
+    Choppiness from GIF, APNG or WebP sources is undetermined: needs
+    `jxlinfo -v` of one file, its source format and the worker's cjxl version.
+16. Fold thin Settings tabs (Tools, Logs, Changelog, About) into fewer
+    entries, keeping old links working?
 
 ## Needs real hardware or accounts (never claim verified)
 
@@ -57,6 +65,10 @@ through code or fixtures.
   connected names together (downloads, Character merge, merge prompt; #381).
 - Identities panel name; alias inspector and inheritance review removed (#382).
 - Card popovers keep detail-page associations (#384).
-- Auto JPEG XL effort on converter rules and one-off settings (this PR).
+- Auto JPEG XL effort on converter rules and one-off settings (#385).
+- Identities: add the profile's own name; display names beside keys (#386).
+- Animated JPEG XL from AVIF and video inputs keeps per-frame timing (this PR).
+- Parent Tags/Copyrights apply automatically (calculated; "Include parent
+  Tags" is on by default). No separate Implies field (owner, 2026-11-18).
 - Implied Tags and Copyrights on Image and Video cards (#383); detail pages,
   Tag search and Copyright filters already included parents.
