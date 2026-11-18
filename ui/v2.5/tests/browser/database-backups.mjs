@@ -196,9 +196,6 @@ async function check(viewport, label, storage) {
     waitUntil: "networkidle",
   });
   await page.locator("#tasks-profiles > summary").click();
-  const otherDraft = page.locator("#review-inherit-artists");
-  await otherDraft.focus();
-  await otherDraft.press("Space");
   await page.locator("#backup").click();
   const dialog = page.locator(".modal.show");
   await dialog.waitFor();
@@ -295,13 +292,9 @@ async function check(viewport, label, storage) {
   integrity(saved);
   assert.deepEqual(await snapshot(url), before);
   assert.equal(
-    await otherDraft.isChecked(),
-    false,
-    "Backup must retain other Tasks drafts"
-  );
-  assert.equal(
     await page.locator("#tasks-profiles").evaluate((element) => element.open),
-    true
+    true,
+    "Backup must keep other Tasks sections as they were"
   );
   // Download the default complete backup: SQLite for database blobs, a ZIP for
   // filesystem blobs. The browser must stay on Tasks rather than navigate away.

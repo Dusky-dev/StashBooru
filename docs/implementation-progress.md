@@ -13,7 +13,8 @@
 - Checks: `make lint`; Go integration `internal/api`, `internal/manager/config`,
   `pkg/sqlite`; UI tsc, Biome, unit tests 131/131; browser suites
   profile-library-review, tools-navigation, tasks-navigation, character-dedup,
-  settings-maintenance, first-use-notes, identities, following-context.
+  settings-maintenance, first-use-notes, identities, following-context,
+  database-backups (real server).
 - Not verified: old bookmarks to the removed anchors now open their tab's top.
 - Next: implied parents on cards/lists (roadmap 1).
 
