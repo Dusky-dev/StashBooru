@@ -46,7 +46,8 @@ interface ChosenValues {
   name?: string;
   aliases?: string[];
   description?: string;
-  image?: string;
+  /** null clears the picture. */
+  image?: string | null;
 }
 
 async function loadProfile(kind: Kind, id: string): Promise<Profile> {
@@ -139,18 +140,29 @@ const ProfileMergeDetails: React.FC<{
     void loadImages().catch(() => setLoading(false));
   }, [sources, dest]);
 
+  // Profiles without a picture report a generated placeholder path.
+  const destHasImage =
+    !!dest.image_path && !dest.image_path.includes("default=true");
+
   function createValues(): ChosenValues {
     const chosenName = name.getNewValue() ?? dest.name;
     return {
       name: chosenName,
-      aliases: aliases
-        .getNewValue()
-        ?.map((s) => s.trim())
+      aliases: (aliases.getNewValue() ?? dest.aliases)
+        .map((s) => s.trim())
         .filter(
           (s) => s.length > 0 && s.toLowerCase() !== chosenName.toLowerCase()
         ),
-      description: description.getNewValue(),
-      image: image.useNewValue ? image.getNewValue() : undefined,
+      // The merge already filled the destination's empty fields from a
+      // source, so a kept destination value is sent explicitly (even empty).
+      description: description.useNewValue
+        ? description.getNewValue()
+        : dest.description,
+      image: image.useNewValue
+        ? image.getNewValue()
+        : destHasImage
+          ? undefined
+          : null,
     };
   }
 

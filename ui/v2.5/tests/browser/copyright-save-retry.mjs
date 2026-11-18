@@ -624,6 +624,34 @@ async function check(viewport, label) {
       merged.b.aliases.includes("Merge source"),
       "the merged name stays as an alias for imports"
     );
+    // Choosing the destination's empty description is kept, even though the
+    // merge itself fills empty fields from the source.
+    const emptyTarget = await create({ name: "Empty target" });
+    await create({ name: "Filled source", description: "Only source" });
+    await page.goto(url + `/copyrights/${emptyTarget.id}`);
+    await page.getByRole("button", { name: "Merge...", exact: true }).click();
+    const secondModal = page.locator(".modal-dialog").last();
+    await secondModal.locator("input").first().fill("Filled source");
+    await page.getByRole("option", { name: "Filled source" }).first().click();
+    await secondModal
+      .getByRole("button", { name: "Merge", exact: true })
+      .click();
+    const secondDetails = page.locator(".profile-merge-dialog");
+    await secondDetails
+      .locator('[data-field="description"] button')
+      .first()
+      .click();
+    await secondDetails
+      .getByRole("button", { name: "Apply", exact: true })
+      .click();
+    await secondDetails.waitFor({ state: "detached" });
+    const kept = await call(
+      page,
+      url,
+      "query($id:ID!){findCopyright(id:$id){description}}",
+      { id: emptyTarget.id }
+    );
+    assert.equal(kept.findCopyright.description, "");
     assert.deepEqual(errors, []);
     await page.screenshot({
       path: join(artifacts, label + "-saved.png"),
