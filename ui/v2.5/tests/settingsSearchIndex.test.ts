@@ -80,3 +80,33 @@ test("retired similarity triage is not a standalone Tools search result", () => 
     false
   );
 });
+
+test("Settings search labels are translatable and match in the UI language", async () => {
+  const { settingsSearchIndex, settingsSearchLabelID } = await import(
+    "../src/components/Settings/settingsSearchIndex.ts"
+  );
+  const { readFile } = await import("node:fs/promises");
+  const messages = JSON.parse(
+    await readFile(
+      new URL("../src/locales/en-GB.json", import.meta.url),
+      "utf8"
+    )
+  );
+  const lookup = (id: string) =>
+    id.split(".").reduce((value, key) => value?.[key], messages);
+  for (const entry of settingsSearchIndex)
+    assert.equal(lookup(settingsSearchLabelID(entry)), entry.label);
+  // A translated label is both shown and searchable; English still matches.
+  const translated = (entry: { label: string }) =>
+    entry.label === "Custom CSS" ? "Benutzerdefiniertes CSS" : entry.label;
+  assert.ok(
+    searchSettings("benutzerdefiniertes", undefined, translated).some(
+      (entry) => entry.anchor === "interface-custom-css"
+    )
+  );
+  assert.ok(
+    searchSettings("custom css", undefined, translated).some(
+      (entry) => entry.anchor === "interface-custom-css"
+    )
+  );
+});

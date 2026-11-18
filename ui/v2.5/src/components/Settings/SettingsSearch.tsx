@@ -3,7 +3,11 @@ import { Form } from "react-bootstrap";
 import { Link, useLocation } from "react-router-dom";
 import { useIntl } from "react-intl";
 import { settingsSearch } from "./settingsNavigation";
-import { searchSettings } from "./settingsSearchIndex";
+import {
+  type SettingsSearchEntry,
+  searchSettings,
+  settingsSearchLabelID,
+} from "./settingsSearchIndex";
 
 export function SettingsSearch({
   showExperimental,
@@ -13,29 +17,41 @@ export function SettingsSearch({
   const [query, setQuery] = useState("");
   const location = useLocation();
   const intl = useIntl();
+  const labelOf = useMemo(
+    () => (entry: SettingsSearchEntry) =>
+      intl.formatMessage({
+        id: settingsSearchLabelID(entry),
+        defaultMessage: entry.label,
+      }),
+    [intl]
+  );
   const matches = useMemo(
     () =>
-      searchSettings(query)
+      searchSettings(query, undefined, labelOf)
         .filter(
           (entry) =>
             showExperimental ||
             (entry.tab !== "experimental" && !entry.advanced)
         )
         .slice(0, 12),
-    [query, showExperimental]
+    [query, showExperimental, labelOf]
   );
   const active = query.trim().length > 0;
 
   return (
     <div className="settings-search">
-      <Form.Label htmlFor="settings-search-input">Find a setting</Form.Label>
+      <Form.Label htmlFor="settings-search-input">
+        {intl.formatMessage({ id: "config.settings_search.find" })}
+      </Form.Label>
       <Form.Control
         id="settings-search-input"
         type="search"
         className="input-control"
         autoComplete="off"
         value={query}
-        placeholder="Search all settings…"
+        placeholder={intl.formatMessage({
+          id: "config.settings_search.placeholder",
+        })}
         aria-controls="settings-search-results"
         onChange={(event) => setQuery(event.currentTarget.value)}
         onKeyDown={(event) => {
@@ -46,7 +62,9 @@ export function SettingsSearch({
         <div
           id="settings-search-results"
           className="settings-search-results"
-          aria-label="Matching settings"
+          aria-label={intl.formatMessage({
+            id: "config.settings_search.results",
+          })}
         >
           {matches.length ? (
             matches.map((entry) => (
@@ -60,7 +78,7 @@ export function SettingsSearch({
                 className="settings-search-result"
                 onClick={() => setQuery("")}
               >
-                <span>{entry.label}</span>
+                <span>{labelOf(entry)}</span>
                 <small className="text-muted">
                   {intl.formatMessage({
                     id: `config.categories.${entry.tab.replaceAll("-", "_")}`,
@@ -74,7 +92,7 @@ export function SettingsSearch({
             ))
           ) : (
             <div className="settings-search-empty" role="status">
-              No matching settings.
+              {intl.formatMessage({ id: "config.settings_search.none" })}
             </div>
           )}
         </div>

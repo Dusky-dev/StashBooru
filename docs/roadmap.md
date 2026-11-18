@@ -47,8 +47,6 @@ place and move finished ones to **Done**; the progress ledger keeps the detail.
     fixed in #388, but existing files keep it until reconverted.
     Choppiness from GIF, APNG or WebP sources is undetermined: needs
     `jxlinfo -v` of one file, its source format and the worker's cjxl version.
-16. Settings search labels are English only: give every index entry a message
-    ID and match on the translated text (Codex P1 on #390).
 
 ## Needs real hardware or accounts (never claim verified)
 
@@ -72,7 +70,9 @@ through code or fixtures.
 - Settings: Tools is a Tasks group; Logs and Changelog are part of About (#389).
 - Processing: compact Camie/PixAI rows with manual help icon (#390).
 - Copyright pages list Main above Sub instead of tabs (#391).
-- Interface and System settings fold into remembered groups (this PR).
+- Interface and System settings fold into remembered groups (#392).
+- Settings help icons, translated search labels, remembered Tasks groups
+  (this PR).
 - Parent Tags/Copyrights apply automatically (calculated; "Include parent
   Tags" is on by default). No separate Implies field (owner, 2026-11-18).
 - Implied Tags and Copyrights on Image and Video cards (#383); detail pages,

@@ -583,6 +583,31 @@ try {
       ["system-group-video", false],
       ["system-group-performance", false],
     ]);
+    // Within these groups a description sits behind a help button beside its
+    // heading; consequence warnings (restarts, moving data) stay visible.
+    await page.locator("#system-group-storage > summary").click();
+    await page
+      .getByText(/WARNING: storing the database/)
+      .first()
+      .waitFor();
+    await page.locator("#system-group-storage > summary").click();
+    await chooseSection(page, "interface");
+    await page.locator("#interface-group-general > summary").click();
+    const sfw = page
+      .locator(".setting")
+      .filter({ has: page.locator("#sfw-content-mode") });
+    const sfwHelp = "Enable if using stash to store SFW content";
+    await sfw.waitFor();
+    assert.equal(await sfw.getByText(sfwHelp, { exact: false }).count(), 0);
+    await sfw.getByRole("button", { name: "Help", exact: true }).click();
+    await page
+      .locator(".setting-help-popover")
+      .getByText(sfwHelp, { exact: false })
+      .waitFor();
+    assert.equal(await page.locator("#sfw-content-mode").isChecked(), false);
+    await page.keyboard.press("Escape");
+    await page.locator(".setting-help-popover").waitFor({ state: "detached" });
+    await page.locator("#interface-group-general > summary").click();
 
     // Experimental results stay out of search until Advanced mode is on.
     await settingsSearch.fill("p12");

@@ -1,5 +1,6 @@
 import React, { useCallback } from "react";
 import { useSettingsOptional } from "./context";
+import { CompactHelpProvider } from "./Inputs";
 
 const storageKey = (id: string) => `settings-group-open:${id}`;
 
@@ -29,8 +30,18 @@ export const SettingsDisclosure: React.FC<{
   remember?: boolean;
   /** Show only in Advanced mode. */
   advanced?: boolean;
+  /** Show setting descriptions as help buttons beside their headings. */
+  compactHelp?: boolean;
   children?: React.ReactNode;
-}> = ({ id, title, description, remember, advanced, children }) => {
+}> = ({
+  id,
+  title,
+  description,
+  remember,
+  advanced,
+  compactHelp,
+  children,
+}) => {
   const { advancedMode } = useSettingsOptional();
   const hidden = !!advanced && !advancedMode;
   // Restore when the element mounts; a hash link may already have opened it.
@@ -67,7 +78,11 @@ export const SettingsDisclosure: React.FC<{
           </span>
         )}
       </summary>
-      <div className="settings-disclosure-content">{children}</div>
+      <div className="settings-disclosure-content">
+        <CompactHelpProvider value={!!compactHelp}>
+          {children}
+        </CompactHelpProvider>
+      </div>
     </details>
   );
 };

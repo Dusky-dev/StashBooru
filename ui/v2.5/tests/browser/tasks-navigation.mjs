@@ -455,9 +455,14 @@ try {
     await page.waitForFunction(
       () => document.querySelector("#tasks-maintenance")?.open
     );
+    // Groups keep the open/closed state they were last left in.
+    const openStates = () =>
+      Promise.all(groups.map((group) => isOpen(page, group)));
+    const remembered = await openStates();
+    assert.equal(remembered[groups.indexOf("maintenance")], true);
     await page.goto(`${origin}/settings?tab=tasks#job-queue`);
     await page.locator("#job-queue").waitFor();
-    for (const group of groups) assert.equal(await isOpen(page, group), false);
+    assert.deepEqual(await openStates(), remembered);
     await setAdvanced(page, false);
     await page.goto(`${origin}/settings?tab=tasks#path-metadata-matching`);
     await page.locator("#advanced-settings").focus();

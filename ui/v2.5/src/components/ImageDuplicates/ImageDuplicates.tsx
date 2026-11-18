@@ -321,7 +321,10 @@ export default function ImageDuplicates() {
             to keep before removing any others, like Immich's duplicate review.
           </p>
         </div>
-        <Link to="/settings?tab=system" className="btn btn-secondary">
+        <Link
+          to="/settings?tab=processing#visual-similarity"
+          className="btn btn-secondary"
+        >
           Similarity settings
         </Link>
       </div>
@@ -443,7 +446,10 @@ export default function ImageDuplicates() {
             duplicates. Approximate candidate search may miss borderline
             matches. Review carefully before deleting. Missing results? Generate
             visual embeddings in{" "}
-            <Link to="/settings?tab=system">Similarity settings</Link>.
+            <Link to="/settings?tab=processing#visual-similarity">
+              Similarity settings
+            </Link>
+            .
           </>
         )}
       </Alert>

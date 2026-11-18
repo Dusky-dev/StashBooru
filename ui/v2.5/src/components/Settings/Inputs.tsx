@@ -1,12 +1,97 @@
-import { faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons";
-import React, { PropsWithChildren, useState } from "react";
-import { Button, Collapse, Form, Modal, ModalProps } from "react-bootstrap";
+import {
+  faChevronDown,
+  faChevronUp,
+  faQuestionCircle,
+} from "@fortawesome/free-solid-svg-icons";
+import React, {
+  PropsWithChildren,
+  createContext,
+  useContext,
+  useId,
+  useState,
+} from "react";
+import {
+  Button,
+  Collapse,
+  Form,
+  Modal,
+  ModalProps,
+  OverlayTrigger,
+  Popover,
+} from "react-bootstrap";
 import { FormattedMessage, useIntl } from "react-intl";
 import { Icon } from "../Shared/Icon";
 import { StringListInput } from "../Shared/StringListInput";
 import { PatchComponent } from "src/patch";
 import { useSettings, useSettingsOptional } from "./context";
 import { NumberField } from "src/utils/form";
+
+/**
+ * Inside compact groups (Interface, System) a setting's description becomes a
+ * question-mark button beside its heading that opens the same text.
+ */
+const CompactHelpContext = createContext(false);
+export const CompactHelpProvider = CompactHelpContext.Provider;
+
+const SettingHelpButton: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const intl = useIntl();
+  const id = useId();
+  return (
+    <OverlayTrigger
+      trigger="click"
+      rootClose
+      placement="auto"
+      overlay={
+        <Popover id={`setting-help-${id}`} className="setting-help-popover">
+          <Popover.Content>{children}</Popover.Content>
+        </Popover>
+      }
+    >
+      <Button
+        variant="minimal"
+        className="setting-help-button"
+        aria-label={intl.formatMessage({ id: "help" })}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <Icon icon={faQuestionCircle} />
+      </Button>
+    </OverlayTrigger>
+  );
+};
+
+// Consequence warnings (restarts, reloads, moving data) stay visible.
+const visibleDescriptions = new Set([
+  "config.ui.custom_css.description",
+  "config.ui.custom_javascript.description",
+  "config.ui.custom_locales.description",
+  "config.general.auth.log_file_desc",
+  "config.general.auth.log_file_max_size_desc",
+  "config.general.auth.log_http_desc",
+  "config.general.auth.log_to_terminal_desc",
+  "config.general.blobs_path.description",
+  "config.general.blobs_storage.description",
+  "config.general.delete_trash_path.description",
+  "config.general.generated_file_naming_hash_desc",
+  "config.general.number_of_parallel_task_for_scan_generation_desc",
+  "config.general.sqlite_location",
+]);
+
+/** The description as a block, or as a help button when compact. */
+function useSettingDescription(content: React.ReactNode, messageID?: string) {
+  const compact = useContext(CompactHelpContext);
+  if (!content) return { inline: undefined, below: undefined };
+  if (compact && !(messageID && visibleDescriptions.has(messageID)))
+    return {
+      inline: <SettingHelpButton>{content}</SettingHelpButton>,
+      below: undefined,
+    };
+  return {
+    inline: undefined,
+    below: <div className="sub-heading">{content}</div>,
+  };
+}
 
 interface ISetting {
   id?: string;
@@ -50,18 +135,10 @@ export const Setting: React.FC<PropsWithChildren<ISetting>> = PatchComponent(
       return heading;
     }
 
-    function renderSubHeading() {
-      if (subHeadingID) {
-        return (
-          <div className="sub-heading">
-            {intl.formatMessage({ id: subHeadingID })}
-          </div>
-        );
-      }
-      if (subHeading) {
-        return <div className="sub-heading">{subHeading}</div>;
-      }
-    }
+    const description = useSettingDescription(
+      subHeadingID ? intl.formatMessage({ id: subHeadingID }) : subHeading,
+      subHeadingID
+    );
 
     const tooltip = tooltipID
       ? intl.formatMessage({ id: tooltipID })
@@ -77,8 +154,11 @@ export const Setting: React.FC<PropsWithChildren<ISetting>> = PatchComponent(
         onClick={onClick}
       >
         <div>
-          <h3 title={tooltip}>{renderHeading()}</h3>
-          {renderSubHeading()}
+          <h3 title={tooltip}>
+            {renderHeading()}
+            {description.inline}
+          </h3>
+          {description.below}
         </div>
         <div>{children}</div>
       </div>
@@ -226,6 +306,10 @@ const _ChangeButtonSetting = <T extends {}>(props: IDialogSetting<T>) => {
 
   const tooltip = tooltipID ? intl.formatMessage({ id: tooltipID }) : undefined;
   const disabledClassName = disabled ? "disabled" : "";
+  const description = useSettingDescription(
+    subHeadingID ? intl.formatMessage({ id: subHeadingID }) : subHeading,
+    subHeadingID
+  );
 
   return (
     <div className={`setting ${className ?? ""} ${disabledClassName}`} id={id}>
@@ -236,19 +320,14 @@ const _ChangeButtonSetting = <T extends {}>(props: IDialogSetting<T>) => {
             : heading
               ? heading
               : undefined}
+          {description.inline}
         </h3>
 
         <div className="value">
           {renderValue ? renderValue(value) : undefined}
         </div>
 
-        {subHeadingID ? (
-          <div className="sub-heading">
-            {intl.formatMessage({ id: subHeadingID })}
-          </div>
-        ) : subHeading ? (
-          <div className="sub-heading">{subHeading}</div>
-        ) : undefined}
+        {description.below}
       </div>
       <div>
         <Button onClick={() => onChange()} disabled={disabled}>
@@ -539,23 +618,24 @@ interface IConstantSetting<T> extends ISetting {
 export const _ConstantSetting = <T,>(props: IConstantSetting<T>) => {
   const { id, headingID, subHeading, subHeadingID, renderValue, value } = props;
   const intl = useIntl();
+  const description = useSettingDescription(
+    subHeadingID ? intl.formatMessage({ id: subHeadingID }) : subHeading,
+    subHeadingID
+  );
 
   return (
     <div className="setting" id={id}>
       <div>
-        <h3>{headingID ? intl.formatMessage({ id: headingID }) : undefined}</h3>
+        <h3>
+          {headingID ? intl.formatMessage({ id: headingID }) : undefined}
+          {description.inline}
+        </h3>
 
         <div className="value">
           {renderValue ? renderValue(value) : (value as React.ReactNode)}
         </div>
 
-        {subHeadingID ? (
-          <div className="sub-heading">
-            {intl.formatMessage({ id: subHeadingID })}
-          </div>
-        ) : subHeading ? (
-          <div className="sub-heading">{subHeading}</div>
-        ) : undefined}
+        {description.below}
       </div>
       <div />
     </div>

@@ -80,6 +80,7 @@ export const SettingsTasksPanel: React.FC = () => {
       <div className="tasks-panel-tasks">
         <SettingsDisclosure
           id="tasks-library"
+          remember
           title={intl.formatMessage(sections.library)}
           description={intl.formatMessage(sections.library_help)}
         >
@@ -87,6 +88,7 @@ export const SettingsTasksPanel: React.FC = () => {
         </SettingsDisclosure>
         <SettingsDisclosure
           id="tasks-profiles"
+          remember
           title={intl.formatMessage(sections.profiles)}
           description={intl.formatMessage(sections.profiles_help)}
         >
@@ -94,6 +96,7 @@ export const SettingsTasksPanel: React.FC = () => {
         </SettingsDisclosure>
         <SettingsDisclosure
           id="tasks-maintenance"
+          remember
           title={intl.formatMessage(sections.maintenance)}
           description={intl.formatMessage(sections.maintenance_help)}
         >
@@ -103,6 +106,7 @@ export const SettingsTasksPanel: React.FC = () => {
         </SettingsDisclosure>
         <SettingsDisclosure
           id="tasks-tools"
+          remember
           title={intl.formatMessage(sections.tools)}
           description={intl.formatMessage(sections.tools_help)}
         >
@@ -110,6 +114,7 @@ export const SettingsTasksPanel: React.FC = () => {
         </SettingsDisclosure>
         <SettingsDisclosure
           id="tasks-plugins"
+          remember
           title={intl.formatMessage(sections.plugins)}
           description={intl.formatMessage(sections.plugins_help)}
         >
