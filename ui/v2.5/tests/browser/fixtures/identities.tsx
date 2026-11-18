@@ -7,10 +7,9 @@ import {
   IdentityLink,
   IdentitySources,
 } from "../../../src/components/Identities/identity";
-import english from "../../../src/locales/en-GB.json";
-import terminology from "../../../src/locales/booru-terminology.json";
 import "../../../src/index.scss";
 import "../../../src/booru-ui.scss";
+import { messages } from "./messages";
 
 function ProviderTag() {
   const params = new URLSearchParams(useLocation().search);
@@ -47,18 +46,6 @@ function ProviderTag() {
     </Dropdown>
   );
 }
-
-// The app flattens nested locale messages and overlays fork terminology.
-function flatten(value: object, prefix = ""): Record<string, string> {
-  return Object.entries(value).reduce<Record<string, string>>(
-    (result, [key, item]) =>
-      typeof item === "string"
-        ? Object.assign(result, { [prefix + key]: item })
-        : Object.assign(result, flatten(item, `${prefix + key}.`)),
-    {}
-  );
-}
-const messages = { ...flatten(english), ...terminology };
 
 ReactDOM.render(
   <IntlProvider locale="en-GB" messages={messages}>
