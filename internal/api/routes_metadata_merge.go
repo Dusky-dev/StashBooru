@@ -17,8 +17,9 @@ type nativeMetadataMergeRequest struct {
 	KeepDestination bool `json:"keepDestination"`
 }
 
-type keepingDestinationMerger interface {
-	MergeKeepingDestination(ctx context.Context, sourceID, destinationID int) error
+// Batch merges check the hierarchy once, after every source is merged.
+type batchMerger interface {
+	MergeBatch(ctx context.Context, sourceIDs []int, destinationID int, keepDestination bool) error
 }
 
 func applyNativeMetadataMerge(w http.ResponseWriter, r *http.Request, kind string) {
@@ -45,25 +46,15 @@ func applyNativeMetadataMerge(w http.ResponseWriter, r *http.Request, kind strin
 	repository := manager.GetInstance().Repository
 	err := repository.WithTxn(r.Context(), func(ctx context.Context) error {
 		// All sources merge in one transaction: any failure keeps every record.
-		for _, sourceID := range sources {
-			var err error
-			store := interface{}(repository.Copyright)
-			merge := repository.Copyright.Merge
-			if kind == "artist" {
-				store, merge = repository.Studio, repository.Studio.Merge
-			}
-			if input.KeepDestination {
-				keeping, ok := store.(keepingDestinationMerger)
-				if !ok {
-					return fmt.Errorf("this merge cannot keep destination values")
-				}
-				merge = keeping.MergeKeepingDestination
-			}
-			if err = merge(ctx, sourceID, input.DestinationID); err != nil {
-				return err
-			}
+		store := interface{}(repository.Copyright)
+		if kind == "artist" {
+			store = repository.Studio
 		}
-		return nil
+		merger, ok := store.(batchMerger)
+		if !ok {
+			return fmt.Errorf("this repository cannot merge several records")
+		}
+		return merger.MergeBatch(ctx, sources, input.DestinationID, input.KeepDestination)
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusConflict)

@@ -25,14 +25,32 @@ func mergeConflictCount(ctx context.Context, query string, args ...interface{}) 
 }
 
 func (qb *StudioStore) Merge(ctx context.Context, sourceID, destinationID int) error {
-	return qb.merge(ctx, sourceID, destinationID, false)
+	if err := qb.merge(ctx, sourceID, destinationID, false); err != nil {
+		return err
+	}
+	return studioHierarchyAcyclic(ctx, destinationID)
 }
 
 // MergeKeepingDestination resolves conflicting profile fields in favour of
 // the destination instead of refusing, as the Character/Tag merge dialog
 // does after the user chose the values to keep.
 func (qb *StudioStore) MergeKeepingDestination(ctx context.Context, sourceID, destinationID int) error {
-	return qb.merge(ctx, sourceID, destinationID, true)
+	if err := qb.merge(ctx, sourceID, destinationID, true); err != nil {
+		return err
+	}
+	return studioHierarchyAcyclic(ctx, destinationID)
+}
+
+// MergeBatch merges several sources and checks the hierarchy once at the
+// end, so a valid batch is not refused for a cycle that only exists until a
+// later source in the same batch is merged.
+func (qb *StudioStore) MergeBatch(ctx context.Context, sourceIDs []int, destinationID int, keepDestination bool) error {
+	for _, sourceID := range sourceIDs {
+		if err := qb.merge(ctx, sourceID, destinationID, keepDestination); err != nil {
+			return err
+		}
+	}
+	return studioHierarchyAcyclic(ctx, destinationID)
 }
 
 func (qb *StudioStore) merge(ctx context.Context, sourceID, destinationID int, keepDestination bool) error {
@@ -196,12 +214,13 @@ VALUES (?,?)`, destinationID, source.Name); err != nil {
 	if err := mergeExec(ctx, "UPDATE provider_identities SET studio_id=? WHERE studio_id=?", destinationID, sourceID); err != nil {
 		return err
 	}
-	if err := qb.Destroy(ctx, sourceID); err != nil {
-		return err
-	}
-	// Moving the source's children under the destination can loop the
-	// hierarchy when the destination descends from the source. Recheck before
-	// the enclosing transaction commits, as the Copyright merge does.
+	return qb.Destroy(ctx, sourceID)
+}
+
+// Moving a source's children under the destination can loop the hierarchy
+// when the destination descends from the source. Callers check before the
+// enclosing transaction commits, as the Copyright merge does.
+func studioHierarchyAcyclic(ctx context.Context, destinationID int) error {
 	var cyclic int
 	if err := dbWrapper.Get(ctx, &cyclic, `WITH RECURSIVE ancestors(id, depth) AS (
 SELECT parent_id, 1 FROM studios WHERE id=? AND parent_id IS NOT NULL
@@ -219,13 +238,30 @@ SELECT EXISTS(SELECT 1 FROM ancestors WHERE id=?)`, destinationID, destinationID
 }
 
 func (s *CopyrightStore) Merge(ctx context.Context, sourceID, destinationID int) error {
-	return s.merge(ctx, sourceID, destinationID, false)
+	if err := s.merge(ctx, sourceID, destinationID, false); err != nil {
+		return err
+	}
+	return copyrightHierarchyAcyclic(ctx)
 }
 
 // MergeKeepingDestination resolves conflicting profile fields in favour of
 // the destination instead of refusing (see StudioStore).
 func (s *CopyrightStore) MergeKeepingDestination(ctx context.Context, sourceID, destinationID int) error {
-	return s.merge(ctx, sourceID, destinationID, true)
+	if err := s.merge(ctx, sourceID, destinationID, true); err != nil {
+		return err
+	}
+	return copyrightHierarchyAcyclic(ctx)
+}
+
+// MergeBatch merges several sources and checks the hierarchy once at the end
+// (see StudioStore.MergeBatch).
+func (s *CopyrightStore) MergeBatch(ctx context.Context, sourceIDs []int, destinationID int, keepDestination bool) error {
+	for _, sourceID := range sourceIDs {
+		if err := s.merge(ctx, sourceID, destinationID, keepDestination); err != nil {
+			return err
+		}
+	}
+	return copyrightHierarchyAcyclic(ctx)
 }
 
 func (s *CopyrightStore) merge(ctx context.Context, sourceID, destinationID int, keepDestination bool) error {
@@ -344,11 +380,12 @@ SELECT ?,alias FROM copyright_aliases WHERE copyright_id=?`, destinationID, sour
 	if err := mergeExec(ctx, "UPDATE provider_identities SET copyright_id=? WHERE copyright_id=?", destinationID, sourceID); err != nil {
 		return err
 	}
-	if err := s.Destroy(ctx, sourceID); err != nil {
-		return err
-	}
-	// The final Copyright graph must be acyclic. Recheck after the source's
-	// old edges have been removed, before the enclosing transaction commits.
+	return s.Destroy(ctx, sourceID)
+}
+
+// The final Copyright graph must be acyclic. Recheck after the sources' old
+// edges have been removed, before the enclosing transaction commits.
+func copyrightHierarchyAcyclic(ctx context.Context) error {
 	var cyclic int
 	if err := dbWrapper.Get(ctx, &cyclic, `WITH RECURSIVE reachable(id,path) AS (
 SELECT parent_id,printf('/%d/',parent_id) FROM copyright_relations

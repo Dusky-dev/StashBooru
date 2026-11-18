@@ -63,3 +63,28 @@ func TestStudioMergeRejectsHierarchyCycle(t *testing.T) {
 		})
 	}
 }
+
+// A batch that is only acyclic once every source is merged must succeed: the
+// grandparent is listed before the intermediate child it depends on.
+func TestStudioMergeBatchChecksHierarchyOnce(t *testing.T) {
+	runWithRollbackTxn(t, "artist batch merge", func(t *testing.T, ctx context.Context) {
+		create := func(name string, parent *int) *models.Studio {
+			studio := models.NewStudio()
+			studio.Name, studio.ParentID = name, parent
+			require.NoError(t, db.Studio.Create(ctx, &models.CreateStudioInput{Studio: &studio}))
+			return &studio
+		}
+		top := create("Batch top", nil)
+		middle := create("Batch middle", &top.ID)
+		bottom := create("Batch bottom", &middle.ID)
+		require.NoError(t, db.Studio.MergeBatch(ctx, []int{top.ID, middle.ID}, bottom.ID, true))
+		for _, id := range []int{top.ID, middle.ID} {
+			gone, err := db.Studio.Find(ctx, id)
+			require.NoError(t, err)
+			require.Nil(t, gone)
+		}
+		kept, err := db.Studio.Find(ctx, bottom.ID)
+		require.NoError(t, err)
+		require.Nil(t, kept.ParentID)
+	})
+}

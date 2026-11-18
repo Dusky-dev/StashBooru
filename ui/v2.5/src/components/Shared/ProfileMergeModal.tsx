@@ -39,7 +39,8 @@ interface Profile {
   name: string;
   aliases: string[];
   description: string;
-  image_path?: string | null;
+  /** Set only when the profile has its own picture, not fallback art. */
+  image_path?: string;
 }
 
 interface ChosenValues {
@@ -48,6 +49,17 @@ interface ChosenValues {
   description?: string;
   /** null clears the picture. */
   image?: string | null;
+}
+
+// Artists without a picture report a `default=true` placeholder path.
+// Copyright paths look the same either way, so ask for no fallback art.
+async function ownImage(kind: Kind, path?: string | null) {
+  if (!path) return undefined;
+  if (kind === "artist")
+    return path.includes("default=true") ? undefined : path;
+  const probe = `${path}${path.includes("?") ? "&" : "?"}fallback=false`;
+  const response = await fetch(probe).catch(() => undefined);
+  return response?.ok ? path : undefined;
 }
 
 async function loadProfile(kind: Kind, id: string): Promise<Profile> {
@@ -60,7 +72,7 @@ async function loadProfile(kind: Kind, id: string): Promise<Profile> {
       name: studio.name,
       aliases: studio.aliases ?? [],
       description: studio.details ?? "",
-      image_path: studio.image_path,
+      image_path: await ownImage(kind, studio.image_path),
     };
   }
   const { data } = await getClient().query<GQL.FindCopyrightQuery>({
@@ -75,7 +87,7 @@ async function loadProfile(kind: Kind, id: string): Promise<Profile> {
     name: copyright.name,
     aliases: copyright.aliases,
     description: copyright.description,
-    image_path: copyright.image_path,
+    image_path: await ownImage(kind, copyright.image_path),
   };
 }
 
@@ -95,9 +107,7 @@ const ProfileMergeDetails: React.FC<{
   const [description, setDescription] = useState(
     new ScrapeResult<string>(dest.description)
   );
-  const [image, setImage] = useState(
-    new ScrapeResult<string>(dest.image_path ?? undefined)
-  );
+  const [image, setImage] = useState(new ScrapeResult<string>(dest.image_path));
 
   useEffect(() => {
     setName(
@@ -106,6 +116,9 @@ const ProfileMergeDetails: React.FC<{
     // Source names stay as aliases so imports keep finding the destination.
     const allAliases = uniq(
       dest.aliases.concat(
+        // The destination's own name stays findable if a source name wins;
+        // it is dropped again when the destination keeps its name.
+        [dest.name],
         sources.map((s) => s.name),
         sources.flatMap((s) => s.aliases)
       )
@@ -128,11 +141,7 @@ const ProfileMergeDetails: React.FC<{
         setImage(new ScrapeResult(destData, srcData, false));
       } else {
         setImage(
-          new ScrapeResult(
-            dest.image_path ?? undefined,
-            src?.image_path ?? undefined,
-            !dest.image_path
-          )
+          new ScrapeResult(dest.image_path, src?.image_path, !dest.image_path)
         );
       }
       setLoading(false);
@@ -140,9 +149,8 @@ const ProfileMergeDetails: React.FC<{
     void loadImages().catch(() => setLoading(false));
   }, [sources, dest]);
 
-  // Profiles without a picture report a generated placeholder path.
-  const destHasImage =
-    !!dest.image_path && !dest.image_path.includes("default=true");
+  // image_path is only set when the destination has its own picture.
+  const destHasImage = !!dest.image_path;
 
   function createValues(): ChosenValues {
     const chosenName = name.getNewValue() ?? dest.name;
