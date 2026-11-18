@@ -172,7 +172,14 @@ func ConcreteOutput(output, input string) string {
 
 // ChoiceFormats lists output formats as users choose them: without the
 // animated variants, and with JPEG XL and PNG marked as still or animated.
+//
+// A worker's choice is only available when both variants are, because an
+// animated source would otherwise be offered a format the worker cannot write.
 func ChoiceFormats(formats []Format) []Format {
+	available := map[string]bool{}
+	for _, format := range formats {
+		available[format.ID] = format.Available
+	}
 	choices := make([]Format, 0, len(formats))
 	for _, format := range formats {
 		if ChoiceOutput(format.ID) != format.ID {
@@ -186,6 +193,9 @@ func ChoiceFormats(formats []Format) []Format {
 				format.Label = "PNG (still or animated)"
 			}
 			format.Family = "animation"
+			if variant, reported := available[AnimatedVariants[format.ID]]; reported {
+				format.Available = format.Available && variant
+			}
 		}
 		choices = append(choices, format)
 	}

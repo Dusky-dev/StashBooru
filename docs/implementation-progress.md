@@ -21,7 +21,7 @@
 
 ## Converter: one JPEG XL and one PNG choice, still or animated — 2026-11-18
 
-- Baseline: `develop` after #393. Branch
+- Baseline: `develop` `aa2c2c3` (#393). Branch
   [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
 - Owner request: drop the separate "Animated JPEG XL" and "Animated PNG"
   outputs; the converter reads the file, as WebP already does. Rule editors

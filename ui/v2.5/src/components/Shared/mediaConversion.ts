@@ -149,6 +149,12 @@ export const defaultUpscalingDefaults: UpscalingDefaults = {
   format: "auto",
 };
 
+// JPEG XL and PNG became single still-or-animated choices; earlier saved
+// preferences may still name the separate animated variants.
+export function choiceFormat(format: string): string {
+  return format === "ajxl" ? "jxl" : format === "apng" ? "png" : format;
+}
+
 export function loadUpscalingDefaults(): UpscalingDefaults {
   try {
     const saved = window.localStorage.getItem(upscalingDefaultsKey);
@@ -166,7 +172,7 @@ export function loadUpscalingDefaults(): UpscalingDefaults {
           : "auto",
       format:
         typeof value.format === "string" && value.format
-          ? value.format
+          ? choiceFormat(value.format)
           : "auto",
     };
   } catch {
