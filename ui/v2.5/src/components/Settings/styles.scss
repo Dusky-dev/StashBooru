@@ -595,3 +595,26 @@
   max-height: 22rem;
   padding: 0.5rem;
 }
+
+// Optional tagging models: name, status and one action share a wrapping row.
+.tagger-model-row {
+  .tagger-model-summary {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+
+    > .btn {
+      margin-left: auto;
+    }
+  }
+
+  .tagger-model-name {
+    font-size: 1.1rem;
+    margin: 0;
+  }
+
+  .processing-status {
+    margin: 0;
+  }
+}

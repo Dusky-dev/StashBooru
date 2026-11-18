@@ -1,3 +1,20 @@
+## Processing: compact optional tagger rows — 2026-11-18
+
+- Baseline: `develop` (after #389). Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Camie and PixAI are one row each: name, status badges, the one action that
+  applies (Install with download size, or Delete with its confirmation), a
+  question-icon link to the Processing manual, and closed **Details and
+  files**. Duplicate per-model Refresh buttons and the repeated worker note
+  left the row (one note now sits in details; Refresh status covers all).
+  Tagging toggles are switches; "Show advanced rule options" is visible.
+- Section height (fixture, one model installed): 1236 → 954 px at 1440 wide,
+  1751 → 1439 px at 390.
+- Checks: `tsc`, Biome, stylelint, `pnpm run test` 133/133; browser
+  `settings-maintenance` desktop+mobile (one action, closed details, manual
+  link per row). Not verified: real workers.
+- Next: Interface and System grouping proposals with screenshots.
+
 ## Settings: Tools in Tasks, Logs and Changelog in About — 2026-11-18
 
 - Baseline: `develop` (after #388).
