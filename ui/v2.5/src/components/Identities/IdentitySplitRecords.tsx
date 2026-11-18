@@ -98,33 +98,30 @@ export function IdentitySplitRecords({
       return;
     }
     const controller = new AbortController();
-    // Candidate search accepts up to 200 characters; a failed lookup only
-    // hides its own suggestions.
-    void Promise.all(
-      [...names]
-        .filter((name) => name.length <= 200)
-        .slice(0, 20)
-        .map((name) =>
-          identityRequest<{ items: IdentityCandidate[] }>(
-            `identities/candidates?kind=${kind}&q=${encodeURIComponent(name)}`,
-            controller.signal
-          )
-            .then((page) => page.items)
-            .catch(() => [] as IdentityCandidate[])
-        )
-    )
-      .then((pages) => {
+    // Candidate search accepts up to 200 characters. Names are searched in
+    // batches of 20; a failed lookup only hides its own suggestions.
+    const search = (name: string) =>
+      identityRequest<{ items: IdentityCandidate[] }>(
+        `identities/candidates?kind=${kind}&q=${encodeURIComponent(name)}`,
+        controller.signal
+      )
+        .then((page) => page.items)
+        .catch(() => [] as IdentityCandidate[]);
+    void (async () => {
+      const searchable = [...names].filter((name) => name.length <= 200);
+      const found = new Map<number, IdentityCandidate>();
+      for (let start = 0; start < searchable.length; start += 20) {
+        const pages = await Promise.all(
+          searchable.slice(start, start + 20).map(search)
+        );
         if (controller.signal.aborted) return;
-        const found = new Map<number, IdentityCandidate>();
         for (const candidate of pages.flat()) {
           if (candidate.id !== entity.id && matchesSourceName(candidate, names))
             found.set(candidate.id, candidate);
         }
-        setRecords([...found.values()]);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setRecords([]);
-      });
+      }
+      setRecords([...found.values()]);
+    })();
     return () => controller.abort();
   }, [kind, entity.id, items]);
 

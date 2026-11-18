@@ -66,7 +66,11 @@ type taggingResolvedEntities struct {
 	CopyrightIDs []int
 	TagIDs       []int
 
-	CharacterPredictions []camietagger.Tag
+	// CharacterPredictions and CharacterPredictionIDs are parallel: every
+	// prediction keeps its Copyright context for linking, even when several
+	// spellings resolve to one Character in CharacterIDs.
+	CharacterPredictions   []camietagger.Tag
+	CharacterPredictionIDs []int
 
 	CreatedCharacters int
 	CreatedArtists    int
@@ -128,9 +132,8 @@ func resolveConnectedTaggingEntities(ctx context.Context, repository models.Repo
 	}
 
 	resolved.CharacterIDs = make([]int, 0, len(resolved.CharacterPredictions))
-	characterPredictions := resolved.CharacterPredictions
-	resolved.CharacterPredictions = make([]camietagger.Tag, 0, len(characterPredictions))
-	for _, prediction := range characterPredictions {
+	resolved.CharacterPredictionIDs = make([]int, 0, len(resolved.CharacterPredictions))
+	for _, prediction := range resolved.CharacterPredictions {
 		var entity *models.Performer
 		created := false
 		id, err := connectedTaggingID(ctx, connected, prediction)
@@ -143,10 +146,10 @@ func resolveConnectedTaggingEntities(ctx context.Context, repository models.Repo
 		if err != nil {
 			return taggingResolvedEntities{}, fmt.Errorf("resolving character %q: %w", prediction.Name, err)
 		}
+		resolved.CharacterPredictionIDs = append(resolved.CharacterPredictionIDs, entity.ID)
 		if containsTaggingID(resolved.CharacterIDs, entity.ID) {
 			continue
 		}
-		resolved.CharacterPredictions = append(resolved.CharacterPredictions, prediction)
 		resolved.CharacterIDs = append(resolved.CharacterIDs, entity.ID)
 		resolved.Characters = append(resolved.Characters, camieAppliedEntity{
 			ID:       entity.ID,
@@ -259,7 +262,7 @@ func resolveConnectedTaggingEntities(ctx context.Context, repository models.Repo
 }
 
 func linkResolvedTaggingCharacterCopyrights(ctx context.Context, repository models.Repository, resolved taggingResolvedEntities) error {
-	if err := linkCamieCharacterCopyrights(ctx, repository, resolved.CharacterPredictions, resolved.CharacterIDs, resolved.CopyrightIDs); err != nil {
+	if err := linkCamieCharacterCopyrights(ctx, repository, resolved.CharacterPredictions, resolved.CharacterPredictionIDs, resolved.CopyrightIDs); err != nil {
 		return fmt.Errorf("linking Character Copyrights: %w", err)
 	}
 	return nil

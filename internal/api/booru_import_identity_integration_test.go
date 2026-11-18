@@ -66,9 +66,13 @@ func TestBooruImportUsesConnectedSourceNames(t *testing.T) {
 		booru.Tag{Name: "aki99_(artist)", Category: "artist"},
 		booru.Tag{Name: "aki99", Category: "artist"},
 		booru.Tag{Name: "miku_(vocaloid)", Category: "character"},
+		booru.Tag{Name: "hatsune_miku", Category: "character"},
 		booru.Tag{Name: "vocaloid_(series)", Category: "copyright"})
 	require.Equal(t, []int{artist}, got.ArtistIDs, "connected and matching names share one Artist")
 	require.Equal(t, []int{character}, got.CharacterIDs)
+	// Every spelling keeps its prediction for Character–Copyright linking.
+	require.Len(t, got.CharacterPredictions, 2)
+	require.Equal(t, []int{character, character}, got.CharacterPredictionIDs)
 	require.Equal(t, []int{copyright}, got.CopyrightIDs)
 	require.Zero(t, got.CreatedArtists+got.CreatedCharacters+got.CreatedCopyrights)
 
