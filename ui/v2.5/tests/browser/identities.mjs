@@ -321,7 +321,7 @@ try {
     await connections
       .getByLabel("Site", { exact: true })
       .selectOption("pawchive");
-    // Creator-key sites never match a plain name, so no name shortcut there.
+    // Artist account-key sites never match a plain name, so no shortcut there.
     const useName = connections.getByRole("button", {
       name: "Use “Waligner”",
       exact: true,

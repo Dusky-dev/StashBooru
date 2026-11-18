@@ -5,7 +5,7 @@
 - Owner ask: Artist profiles show auto-created keys such as
   `creator:patreon:435345` but no easy way to add the Artist's main name.
   The add form now offers **Use “Name”** (and the underscore tag form when the
-  name has spaces) on tag sites; Pawchive/Kemono only match creator keys.
+  name has spaces), except for Artists on Pixiv/Pawchive/Kemono (account keys).
   Identity lists show a provider's display name beside its stored key. The
   getting-started notes now say Identities instead of Sources & aliases.
 - Checks: `tsc`, Biome, `pnpm run test`, browser `identities` desktop+mobile.

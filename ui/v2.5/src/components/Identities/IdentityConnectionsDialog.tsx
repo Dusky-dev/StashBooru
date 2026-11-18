@@ -19,9 +19,13 @@ import {
 } from "./identityApi";
 import "./styles.scss";
 
-/** Pawchive/Kemono posts name creators only as `creator:service:id`. */
-const creatorOnlySource = (source?: BooruSource) =>
-  source?.engine === "pawchive" || source?.engine === "kemono";
+/**
+ * Artists on these sites are account keys (`user:id`, `creator:service:id`),
+ * as `identityForm` on the server stores them, so a plain name never matches.
+ */
+const accountKeyArtists = (kind: IdentityKind, source?: BooruSource) =>
+  kind === "artist" &&
+  ["pixiv", "pawchive", "kemono"].includes(source?.engine ?? "");
 
 /** The profile name as typed and, when it has spaces, as a booru tag. */
 export function nameSuggestions(name: string) {
@@ -403,7 +407,8 @@ export function IdentityConnectionsDialog({
                       }
                     />
                     {entity?.name.trim() &&
-                      !creatorOnlySource(
+                      !accountKeyArtists(
+                        kind,
                         sources.find((source) => source.id === sourceID)
                       ) && (
                         <div className="identity-name-suggestions mt-1">
