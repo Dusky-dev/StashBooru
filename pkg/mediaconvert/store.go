@@ -261,6 +261,7 @@ func (s Store) Config() (Config, error) {
 	if c.FormatDefaults == nil {
 		c.FormatDefaults = DefaultFormatDefaults()
 	}
+	NormalizeFormatDefaults(c.FormatDefaults)
 	if c.Backend == "" {
 		c.Backend = "auto"
 	}
@@ -289,6 +290,7 @@ func (s Store) Configure(c Config) error {
 	if c.FormatDefaults == nil {
 		c.FormatDefaults = DefaultFormatDefaults()
 	}
+	NormalizeFormatDefaults(c.FormatDefaults)
 	if err := ValidateFormatDefaults(c.FormatDefaults); err != nil {
 		return err
 	}

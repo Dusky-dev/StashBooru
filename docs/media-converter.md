@@ -84,14 +84,18 @@ and the loop count; total duration increases by 10 ms for each repaired frame.
 
 | Output | Controls | Processor |
 | --- | --- | --- |
-| JPEG XL / animated JPEG XL | Quality 0–100; effort 1–9; decode-speed tier 0–4 | CPU |
+| JPEG XL (still or animated) | Quality 0–100; effort 1–9; decode-speed tier 0–4 | CPU |
 | AV1 in MP4, MKV or WebM; AVIF | Quality 0–100; effort 1–9; optional low-complexity decode mode | CPU libaom; supported hardware for normal AV1 video encoding |
 | H.264 MP4/MOV, HEVC MP4, VP9 WebM | Quality; effort | CPU or supported hardware |
-| JPEG, PNG, WebP, AVIF, TIFF, BMP | Controls appropriate to the encoder; WebP lossless option | CPU |
-| GIF, animated PNG, animated WebP | Animation-preserving conversion; applicable quality/effort controls | CPU |
+| JPEG, PNG (still or animated), WebP (still or animated), AVIF, TIFF, BMP | Controls appropriate to the encoder; WebP lossless option | CPU |
+| GIF | Animation-preserving conversion | CPU |
 
-Animated JPEG XL uses the normal **`.jxl` extension**, labeled AJXL in the format
-selector. JXL quality 100 requests lossless compression. JPEG input at quality 100
+**JPEG XL** and **PNG** are each one output choice, like WebP: the source
+decides whether the result is still or animated (AJXL or APNG, using the
+normal `.jxl`/`.png` extensions). The server picks the animated variant from
+the source type and the worker checks the decoded frame count again, so an
+animation is never flattened. Rules saved with the former separate "Animated
+JPEG XL" or "Animated PNG" choice read back as JPEG XL or PNG. JXL quality 100 requests lossless compression. JPEG input at quality 100
 uses `cjxl`'s JPEG reconstruction path when installed. Higher effort trades time
 for compression.
 

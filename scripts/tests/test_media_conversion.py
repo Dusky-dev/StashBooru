@@ -169,6 +169,15 @@ class EncodeTests(unittest.TestCase):
         return result, output
 
     @unittest.skipUnless(shutil.which("cjxl") and shutil.which("djxl"), "libjxl tools required")
+    def test_still_jxl_and_png_choices_keep_animation(self):
+        # JPEG XL and PNG are one choice each, like WebP: an animated source
+        # becomes AJXL/APNG even when the request named the still format.
+        write_animated_webp(self.root / "anim.webp", [(255, 0, 0), (0, 0, 255)], [100, 200])
+        for fmt, animated in (("jxl", "ajxl"), ("png", "apng")):
+            result, _ = self.convert("anim.webp", fmt)
+            self.assertEqual(result["frames"], 2, fmt)
+            self.assertAlmostEqual(result["duration"], 0.3, delta=0.01, msg=fmt)
+
     def test_ajxl_keeps_length_of_30fps_clip_without_pillow_timing(self):
         # Pillow cannot time video clips or AVIF; container timestamps must
         # still round cumulatively (33/34 ms) instead of truncating to 33 ms.

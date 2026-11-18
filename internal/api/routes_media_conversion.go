@@ -210,7 +210,7 @@ func handleMediaConversionGet(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		writeVisualSimilarityJSON(w, map[string]interface{}{"config": config, "inputFormats": mediaconvert.InputFormats, "outputFormats": mediaconvert.OutputFormats})
+		writeVisualSimilarityJSON(w, map[string]interface{}{"config": config, "inputFormats": mediaconvert.InputFormats, "outputFormats": mediaconvert.ChoiceFormats(mediaconvert.OutputFormats)})
 		return
 	}
 	if r.URL.Query().Get("capabilities") == "1" {
@@ -219,7 +219,7 @@ func handleMediaConversionGet(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusServiceUnavailable)
 			return
 		}
-		writeVisualSimilarityJSON(w, map[string]interface{}{"formats": capabilities.Formats, "upscalers": capabilities.Upscalers, "backend": conversionBackend(client), "notice": notice})
+		writeVisualSimilarityJSON(w, map[string]interface{}{"formats": mediaconvert.ChoiceFormats(capabilities.Formats), "upscalers": capabilities.Upscalers, "backend": conversionBackend(client), "notice": notice})
 		return
 	}
 	s := conversionStore()
@@ -342,6 +342,8 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "format defaults are required", http.StatusBadRequest)
 			return
 		}
+		// Old tabs and clients may still send the separate animated choices.
+		mediaconvert.NormalizeFormatDefaults(request.FormatDefaults)
 		if err := mediaconvert.ValidateFormatDefaults(request.FormatDefaults); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -666,9 +668,11 @@ func resolveConversionOptions(ctx context.Context, s mediaconvert.Store, config 
 		if err == nil && options.Format == "" {
 			err = fmt.Errorf("automatic conversion is disabled for %s; enable its rule or choose an output format", input)
 		}
-	} else if request.UseEncodingDefaults || conversionUsesDecodingSpeedDefaults(request) {
+	} else {
+		// The source type also decides between still and animated JPEG XL/PNG.
 		_, input, err = conversionDefaultForFile(ctx, s, config, id)
 	}
+	options.Format = mediaconvert.ConcreteOutput(options.Format, input)
 	defaults := config.DefaultEncoding(input)
 	if request.UseEncodingDefaults {
 		options.Quality, options.Effort = defaults.Quality, defaults.Effort
