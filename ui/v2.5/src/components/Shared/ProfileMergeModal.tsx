@@ -134,17 +134,15 @@ const ProfileMergeDetails: React.FC<{
     );
     async function loadImages() {
       const src = sources.find((s) => s.image_path);
-      if (src?.image_path && dest.image_path) {
-        const [destData, srcData] = await Promise.all([
-          ImageUtils.imageToDataURL(dest.image_path),
-          ImageUtils.imageToDataURL(src.image_path),
-        ]);
-        setImage(new ScrapeResult(destData, srcData, false));
-      } else {
-        setImage(
-          new ScrapeResult(dest.image_path, src?.image_path, !dest.image_path)
-        );
-      }
+      // Read pictures as data now: the merge deletes the sources before
+      // the chosen values are saved, so their image URLs stop working.
+      const [destData, srcData] = await Promise.all([
+        dest.image_path
+          ? ImageUtils.imageToDataURL(dest.image_path)
+          : undefined,
+        src?.image_path ? ImageUtils.imageToDataURL(src.image_path) : undefined,
+      ]);
+      setImage(new ScrapeResult(destData, srcData, !destData && !!srcData));
       setLoading(false);
     }
     void loadImages().catch(() => setLoading(false));

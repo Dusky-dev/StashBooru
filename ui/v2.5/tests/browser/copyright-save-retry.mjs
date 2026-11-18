@@ -670,6 +670,51 @@ async function check(viewport, label) {
       { id: emptyTarget.id }
     );
     assert.equal(kept.findCopyright.description, "");
+    // A source's picture still reaches a destination without one, although
+    // the source (and its image URL) is deleted before the values are saved.
+    const pictureTarget = await create({ name: "Picture target" });
+    await create({
+      name: "Picture source",
+      image: `data:image/png;base64,${artwork}`,
+    });
+    await page.goto(url + `/copyrights/${pictureTarget.id}`);
+    await page.getByRole("button", { name: "Merge...", exact: true }).click();
+    const pictureModal = page.locator(".modal-dialog").last();
+    const pictureModalSearched = page.waitForResponse((response) => {
+      const body = response.request().postDataJSON?.();
+      return (
+        body?.operationName === "FindCopyrightsForSelect" &&
+        JSON.stringify(body.variables ?? {}).includes("Picture source")
+      );
+    });
+    await pictureModal.locator("input").first().fill("Picture source");
+    await pictureModalSearched;
+    await page.getByRole("option", { name: "Picture source" }).first().click();
+    await pictureModal
+      .getByRole("button", { name: "Merge", exact: true })
+      .click();
+    const pictureDetails = page.locator(".profile-merge-dialog");
+    await pictureDetails.locator('[data-field="image"]').waitFor();
+    await pictureDetails
+      .getByRole("button", { name: "Apply", exact: true })
+      .click();
+    await pictureDetails.waitFor({ state: "detached" });
+    const pictureURL = (
+      await call(
+        page,
+        url,
+        "query($id:ID!){findCopyright(id:$id){image_path}}",
+        { id: pictureTarget.id }
+      )
+    ).findCopyright.image_path;
+    const pictureResponse = await page.request.get(
+      pictureURL + (pictureURL.includes("?") ? "&" : "?") + "fallback=false"
+    );
+    assert.equal(pictureResponse.status(), 200);
+    assert.deepEqual(
+      await pictureResponse.body(),
+      Buffer.from(artwork, "base64")
+    );
     assert.deepEqual(errors, []);
     await page.screenshot({
       path: join(artifacts, label + "-saved.png"),
