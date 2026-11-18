@@ -54,7 +54,9 @@ memberships. An explicitly selected base, or a Tag still supplied by another
 profile, remains. Hierarchy/profile edits affect subsequent reads and supported
 hierarchical searches without rewriting every media record.
 
-Use **Association sources** on Image/Video details to inspect where a membership
+On Image and Video cards, the Tag and Copyright buttons keep the direct count;
+their popovers list the direct entries, then **Implied** ones (parent Tags and
+profile Tags, parent Copyrights), read fresh each time a popover opens. Use **Association sources** on Image/Video details to inspect where a membership
 came from. Calculated parents are never inserted as permanent direct links.
 Exact-set/null and some maintenance
 filters keep direct-link semantics; see the [full contract](p06-effective-associations.md).
