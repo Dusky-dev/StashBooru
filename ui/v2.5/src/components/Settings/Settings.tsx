@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Tab, Row, Col, Form } from "react-bootstrap";
+import { Alert, Button, Tab, Row, Col, Form } from "react-bootstrap";
 import { Redirect, useLocation } from "react-router-dom";
 import { FormattedMessage } from "react-intl";
 import { Helmet } from "react-helmet";
@@ -81,8 +81,11 @@ const SettingTabs: React.FC<{ tab: SettingsTab }> = ({ tab }) => {
       <Helmet {...titleProps} />
       <Row>
         <Col id="settings-menu-container" md={3} xl={2}>
-          <SettingsSearch />
-          <SettingsSectionNavigation tab={tab} />
+          <SettingsSearch showExperimental={advancedMode} />
+          <SettingsSectionNavigation
+            tab={tab}
+            showExperimental={advancedMode}
+          />
           <div className="settings-menu-options">
             <div className="advanced-switch">
               <Form.Label htmlFor="advanced-settings">
@@ -116,7 +119,18 @@ const SettingTabs: React.FC<{ tab: SettingsTab }> = ({ tab }) => {
               <SettingsTasksPanel />
             </Tab.Pane>
             <Tab.Pane eventKey="experimental" mountOnEnter>
-              <SettingsExperimentalPanel />
+              {advancedMode ? (
+                <SettingsExperimentalPanel />
+              ) : (
+                <Alert variant="info" className="mt-3">
+                  <p>
+                    <FormattedMessage id="config.experimental_hidden" />
+                  </p>
+                  <Button onClick={() => setAdvancedMode(true)}>
+                    <FormattedMessage id="config.experimental_enable" />
+                  </Button>
+                </Alert>
+              )}
             </Tab.Pane>
             <Tab.Pane eventKey="services" unmountOnExit>
               <SettingsServicesPanel />

@@ -289,6 +289,8 @@
       "shared_defaults": "Hierarchy inheritance defaults are shared by System and Tagging."
     },
     "advanced_mode": "Advanced mode",
+    "experimental_hidden": "Experimental features are shown only in Advanced mode.",
+    "experimental_enable": "Turn on Advanced mode",
     "settings_section": "Settings section",
     "application_paths": {
       "heading": "Application Paths"

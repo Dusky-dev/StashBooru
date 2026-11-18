@@ -34,8 +34,18 @@ const labels: Record<SettingsTab, { id: string; defaultMessage: string }> = {
   about: { id: "config.categories.about", defaultMessage: "About" },
 };
 
-export function SettingsSectionNavigation({ tab }: { tab: SettingsTab }) {
+export function SettingsSectionNavigation({
+  tab,
+  showExperimental,
+}: {
+  tab: SettingsTab;
+  showExperimental: boolean;
+}) {
   const intl = useIntl();
+  // Experimental stays listed while open so the current section is never blank.
+  const tabs = settingsTabs.filter(
+    (key) => key !== "experimental" || showExperimental || tab === key
+  );
   const history = useHistory();
   const location = useLocation();
   const destination = (next: SettingsTab) => ({
@@ -63,7 +73,7 @@ export function SettingsSectionNavigation({ tab }: { tab: SettingsTab }) {
               history.push(destination(next));
           }}
         >
-          {settingsTabs.map((key) => (
+          {tabs.map((key) => (
             <option key={key} value={key}>
               {intl.formatMessage(labels[key])}
             </option>
@@ -71,7 +81,7 @@ export function SettingsSectionNavigation({ tab }: { tab: SettingsTab }) {
         </Form.Control>
       </Form.Group>
       <Nav variant="pills" className="d-none d-md-flex flex-column">
-        {settingsTabs.map((key) => (
+        {tabs.map((key) => (
           <Nav.Item key={key}>
             <LinkContainer to={destination(key)} isActive={() => key === tab}>
               <Nav.Link eventKey={key}>

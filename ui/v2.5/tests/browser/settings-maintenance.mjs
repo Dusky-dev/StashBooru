@@ -41,6 +41,17 @@ const browser = await engines.chromium.launch({
 const shots = process.env.STASH_BROWSER_SCREENSHOTS;
 if (shots) fs.mkdirSync(shots, { recursive: true });
 const active = (page) => page.locator(".tab-pane.active");
+async function setAdvanced(page, on) {
+  const toggle = page.locator("#advanced-settings");
+  if ((await toggle.isChecked()) !== on) {
+    await toggle.focus();
+    await toggle.press("Space");
+  }
+  await page.waitForFunction(
+    (value) => document.querySelector("#advanced-settings")?.checked === value,
+    on
+  );
+}
 async function chooseSection(page, tab) {
   const chooser = page.getByRole("combobox", {
     name: "Settings section",
@@ -506,6 +517,18 @@ try {
     await page.getByText("No matching settings.", { exact: true }).waitFor();
     await settingsSearch.fill("");
 
+    // Experimental results stay out of search until Advanced mode is on.
+    await settingsSearch.fill("p12");
+    await page.getByText("No matching settings.", { exact: true }).waitFor();
+    await settingsSearch.fill("");
+    // A bookmark still opens the tab, with a way to turn Advanced mode on.
+    await page.goto(`${baseURL}/settings?tab=experimental`);
+    await page
+      .getByRole("button", { name: "Turn on Advanced mode", exact: true })
+      .click();
+    await page.locator("#experimental-storage-assess").waitFor();
+    await chooseSection(page, "interface");
+    await page.locator("#image-filename-display").waitFor();
     // P12/P13 tools are only on Experimental; direct old Task bookmarks
     // and the Settings search must both reach the same lazy-mounted page.
     await settingsSearch.fill("p12");
@@ -561,11 +584,13 @@ try {
       `${baseURL}/settings?tab=tasks&return=images%2F42#image-storage-estimate-task`
     );
     await page.waitForURL(/tab=experimental.*#image-storage-estimate-task$/);
+    await setAdvanced(page, true);
     await page.locator("#image-storage-estimate-task").waitFor();
     await page.waitForFunction(
       () => document.querySelector("#experimental-storage-assess")?.open
     );
     assert.equal(new URL(page.url()).searchParams.get("return"), "images/42");
+    await setAdvanced(page, false);
     await chooseSection(page, "library");
     await page.locator("#inherit-character-ancestors").waitFor();
 
@@ -579,7 +604,8 @@ try {
     const desktopLinks = page.locator(
       "#settings-menu-container .nav-link:visible"
     );
-    assert.equal(await desktopLinks.count(), name === "mobile" ? 0 : 14);
+    // Experimental is hidden until Advanced mode is on.
+    assert.equal(await desktopLinks.count(), name === "mobile" ? 0 : 13);
     assert.equal(await chooser.isVisible(), name === "mobile");
     assert.equal(await chooser.inputValue(), "library");
     assert.equal(
@@ -610,7 +636,6 @@ try {
         "tools",
         "changelog",
         "about",
-        "experimental",
       ]
     );
     if (name === "mobile") {
@@ -630,6 +655,10 @@ try {
       window.settingsFixture.changes.some(
         (change) => change.ui?.advancedMode === true
       )
+    );
+    assert.equal(
+      await chooser.locator('option[value="experimental"]').count(),
+      1
     );
     await chooseSection(page, "processing");
     assert.equal(new URL(page.url()).searchParams.get("return"), "images/42");
