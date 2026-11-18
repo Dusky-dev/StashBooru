@@ -311,9 +311,15 @@ try {
     await connections
       .getByLabel("Site", { exact: true })
       .selectOption("pawchive");
+    // The profile's own name can be added without retyping it.
+    const sourceName = connections.getByLabel(
+      "Exact provider tag or creator expression"
+    );
     await connections
-      .getByLabel("Exact provider tag or creator expression")
-      .fill("creator:patreon:49481727");
+      .getByRole("button", { name: "Use “Waligner”", exact: true })
+      .click();
+    assert.equal(await sourceName.inputValue(), "Waligner");
+    await sourceName.fill("creator:patreon:49481727");
     holdObserve = true;
     const heldObservation = new Promise((resolve) => {
       observed = resolve;

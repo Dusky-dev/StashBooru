@@ -19,6 +19,28 @@ import {
 } from "./identityApi";
 import "./styles.scss";
 
+/** The profile name as typed and, when it has spaces, as a booru tag. */
+export function nameSuggestions(name: string) {
+  const trimmed = name.trim();
+  const tag = trimmed.replace(/\s+/g, "_");
+  return tag === trimmed ? [trimmed] : [trimmed, tag];
+}
+
+/** Shows a provider's display name beside its stored key, such as a creator ID. */
+export function IdentityName({
+  row,
+}: {
+  row: Pick<ProviderIdentity, "label" | "target">;
+}) {
+  const label = row.label?.trim();
+  return (
+    <>
+      {label && label !== row.target && <>{label} </>}
+      <code>{row.target}</code>
+    </>
+  );
+}
+
 export interface SourceTarget {
   source: BooruSource;
   target: string;
@@ -299,7 +321,7 @@ export function IdentityConnectionsDialog({
             <ul className="identity-targets">
               {items.map((row) => (
                 <li key={row.id}>
-                  {row.sourceName}: <code>{row.target}</code>{" "}
+                  {row.sourceName}: <IdentityName row={row} />{" "}
                   <Button
                     size="sm"
                     variant="secondary"
@@ -376,6 +398,27 @@ export function IdentityConnectionsDialog({
                         setSourceName(event.currentTarget.value)
                       }
                     />
+                    {entity?.name.trim() && (
+                      <div className="identity-name-suggestions mt-1">
+                        {nameSuggestions(entity.name).map((name) => (
+                          <Button
+                            key={name}
+                            size="sm"
+                            variant="secondary"
+                            className="mr-1 mb-1"
+                            onClick={() => setSourceName(name)}
+                          >
+                            <FormattedMessage
+                              id="identity_sources.use_name"
+                              values={{ name }}
+                            />
+                          </Button>
+                        ))}
+                        <Form.Text className="text-muted">
+                          <FormattedMessage id="identity_sources.use_name_help" />
+                        </Form.Text>
+                      </div>
+                    )}
                     <Form.Text>
                       Kept exactly as entered. This adds a local name for review
                       and does not contact the provider.

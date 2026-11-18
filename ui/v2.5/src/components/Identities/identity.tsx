@@ -4,7 +4,10 @@ import { FormattedMessage } from "react-intl";
 import { Link } from "react-router-dom";
 import { canFollowIdentity } from "../Following/followContext";
 import type { BooruSource } from "../BooruBrowser/browser";
-import { IdentityConnectionsDialog } from "./IdentityConnectionsDialog";
+import {
+  IdentityConnectionsDialog,
+  IdentityName,
+} from "./IdentityConnectionsDialog";
 import { IdentitySplitRecords } from "./IdentitySplitRecords";
 import {
   type IdentityKind,
@@ -125,7 +128,7 @@ export function IdentitySources({
             <ul>
               {page?.items.map((item) => (
                 <li key={item.id}>
-                  {item.sourceName}: <code>{item.target}</code>{" "}
+                  {item.sourceName}: <IdentityName row={item} />{" "}
                   {canFollowIdentity(item) ? (
                     <Link
                       className="btn btn-secondary btn-sm"

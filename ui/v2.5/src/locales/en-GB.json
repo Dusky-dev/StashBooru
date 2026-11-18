@@ -1886,6 +1886,8 @@
     "dialog_title": "Identities — {name}",
     "open_page": "Open all identities",
     "source_details": "Source details",
+    "use_name": "Use “{name}”",
+    "use_name_help": "Fills in this profile's name. Booru tags usually use underscores instead of spaces.",
     "split": {
       "description": "Other {kind} records are named after a source name connected here. Merge one into {name} to bring its Images and Videos here.",
       "merge": "Merge into {name}…",

@@ -1,3 +1,15 @@
+## Identities: add the profile's own name — 2026-11-18
+
+- Baseline: `develop` (after #385). Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Owner ask: Artist profiles show auto-created keys such as
+  `creator:patreon:435345` but no easy way to add the Artist's main name.
+  The add form now offers **Use “Name”** (and the underscore tag form when the
+  name has spaces). Identity lists show a provider's display name beside its
+  stored key.
+- Checks: `tsc`, Biome, `pnpm run test`, browser `identities` desktop+mobile.
+- Not verified: real provider data.
+
 ## Card popovers keep detail associations — 2026-11-18
 
 - Baseline: `develop` `eab3a0b` (#383). Branch
