@@ -38,7 +38,7 @@ Conversion rules configure new jobs. Run **Estimate**, a verified **Trial**, or 
 
 Already running jobs retain the settings selected when they started. Older conversion configs without enabled flags treat all existing rules as enabled. Removing a rule is different from disabling it: removal discards its saved rule definition, while disabling preserves its settings.
 
-**Encoding settings:** Higher quality retains more detail and higher effort takes longer. JPEG XL quality 100 is lossless; higher JXL decoding-speed tiers (0–4) may reduce compression efficiency or quality. Compatible AV1/libaom encoders expose a low-complexity decode toggle. Format-specific controls, such as lossless WebP, appear only when supported by the selected output. Unsupported controls are omitted at job time, while saved preferences remain editable.
+**Encoding settings:** Higher quality retains more detail and higher effort takes longer. For JPEG XL, **Auto** effort picks a value per file from its size and frame count (up to 9 for small stills, 7 for animations and large images, 5 for very large ones). JPEG XL quality 100 is lossless; higher JXL decoding-speed tiers (0–4) may reduce compression efficiency or quality. Compatible AV1/libaom encoders expose a low-complexity decode toggle. Format-specific controls, such as lossless WebP, appear only when supported by the selected output. Unsupported controls are omitted at job time, while saved preferences remain editable.
 
 **Run on:** Automatic mode prefers the configured remote worker when available, otherwise runs locally. Explicit local-only or remote-only selections do not fall back to the other machine. Processing hardware normally prefers GPU and can fall back to CPU.
 

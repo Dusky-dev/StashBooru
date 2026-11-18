@@ -1,3 +1,21 @@
+## Auto JPEG XL effort — 2026-11-18
+
+- Baseline: `develop` `eab3a0b` (#383). Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Owner ask: "intelligent effort" for JXL, read as **Auto** picks effort per
+  file. Saved rules (JXL outputs) and the dialog's one-off settings gain an
+  Auto checkbox. The server resolves it from width × height × frames (after
+  upscaling) and lossless/lossy before dispatch, in conversion, trial, review,
+  upload, Booru import and both upscale paths; workers still get 1–9 and
+  records keep the number. Unknown size keeps the manual effort.
+- Thresholds measured with cjxl 0.7 (4 threads, two stills, one animation);
+  see `docs/media-converter.md`. Not measured on libjxl 0.11 or real libraries.
+- Checks: `go test` mediaconvert (new `effort_test.go`) and integration
+  `TestAutoJXLEffortResolvesToConcreteEffort`; `tsc`; Biome; `pnpm run test`;
+  browser `settings-maintenance` and `conversion-review` desktop+mobile.
+- Animated JXL frame rate: worker, `jxlinfo` and scanner timing were correct
+  for 10–100 ms GIF/APNG inputs; nothing changed. Open owner question.
+
 ## Implied Tags and Copyrights on Image/Video cards — 2026-11-18
 
 - Baseline: `develop` `92db904` (#382). Branch
