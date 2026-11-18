@@ -33,6 +33,13 @@ place and move finished ones to **Done**; the progress ledger keeps the detail.
 10. **DOM-moving built-ins (E09).** Move into the owning component only while
    fixing that workflow.
 
+- **Settings layout (owner, 2026-11-18; proposal awaiting choice).** Measured
+  at 1440px: Interface 6.7k px (8.7k at 390px) with 25 flat groups, System
+  3.8k, Processing 3.7k, 14 sidebar tabs. Layout-only: collapse Interface
+  and System into titled disclosures like Tasks; one worker-status notice in
+  Processing; grouped sidebar headings. Needs the owner: fold thin tabs
+  (Tools, Logs, Changelog, About) and hide P12/P13 storage experiments.
+
 ## Owner decisions
 
 11. Add All to custom navbar menus saved before it existed?
