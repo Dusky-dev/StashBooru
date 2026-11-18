@@ -351,3 +351,19 @@ func TestJXLAndPNGAreOneChoiceEach(t *testing.T) {
 		t.Fatal("still-only outputs must still be rejected for animations")
 	}
 }
+
+func TestChoiceNeedsBothStillAndAnimatedEncoders(t *testing.T) {
+	worker := []Format{
+		{ID: "png", Extension: "png", Family: "image", Available: true},
+		{ID: "apng", Extension: "png", Family: "animation", Available: false},
+		{ID: "jxl", Extension: "jxl", Family: "image", Available: true},
+		{ID: "ajxl", Extension: "jxl", Family: "animation", Available: true},
+	}
+	available := map[string]bool{}
+	for _, format := range ChoiceFormats(worker) {
+		available[format.ID] = format.Available
+	}
+	if available["png"] || !available["jxl"] {
+		t.Fatalf("PNG must need APNG support too: %v", available)
+	}
+}
