@@ -12,8 +12,8 @@ place and move finished ones to **Done**; the progress ledger keeps the detail.
    main path.
 2. **Converter: Auto JPEG XL effort (owner, 2026-11-18).** Auto picks a
    concrete effort per file on the server; workers still receive 1–9.
-3. **Identities: connect the creator's main name from the Booru artist page
-   (owner, 2026-11-18).** Reuse `IdentityLink`; same identity key as post tags.
+3. **Identities: add the profile's own name (owner, 2026-11-18).** The
+   add form offers the Artist's name; lists show display names beside keys.
 4. **Settings → Tasks English text.** `CharacterDedupTask.tsx`,
    `MediaBackupTask.tsx` — move to `react-intl`; `make validate-ui`, search
    `tests` and `builtin-source` for matching selectors.
@@ -41,8 +41,9 @@ place and move finished ones to **Done**; the progress ledger keeps the detail.
 14. Usability pass on the owner's real library (E11/E12).
 15. Show a Tag button (count 0) when an item has only profile-implied
     Tags? (Codex P2 on #383, deferred.)
-16. Animated JPEG XL frame rate: which source format and symptom? Not
-    reproduced yet.
+16. Animated JPEG XL plays choppily in the browser (file and WebP fine).
+    Images load the original, so this is browser decode cost. Raise the AJXL
+    decode-speed default, or keep animations as WebP?
 
 ## Needs real hardware or accounts (never claim verified)
 
