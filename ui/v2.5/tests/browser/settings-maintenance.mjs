@@ -236,6 +236,15 @@ const formats = [
     encoders: [{ id: "webp", label: "WebP", hardware: "cpu" }],
   },
   {
+    id: "jxl",
+    label: "JPEG XL",
+    family: "image",
+    available: true,
+    controls: ["quality", "effort", "decodingSpeed"],
+    decodingSpeedLevels: 4,
+    encoders: [{ id: "cjxl", label: "cjxl", hardware: "cpu" }],
+  },
+  {
     id: "png",
     label: "PNG",
     family: "image",
@@ -842,6 +851,24 @@ try {
     await advancedRuleToggle.click();
     assert.equal(await imageQuality.isVisible(), true);
     assert.equal(await imageQuality.inputValue(), "90");
+    // Auto effort appears only for JPEG XL rules and takes over the number.
+    const imageOutput = converter.getByLabel("Output format for Other images", {
+      exact: true,
+    });
+    const imageEffort = converter.getByLabel("effort for image", {
+      exact: true,
+    });
+    const imageAutoEffort = converter.getByLabel(
+      "Auto JPEG XL effort for image",
+      { exact: true }
+    );
+    assert.equal(await imageAutoEffort.count(), 0);
+    await imageOutput.selectOption("jxl");
+    await imageAutoEffort.check();
+    assert.equal(await imageEffort.isDisabled(), true);
+    await imageOutput.selectOption("webp");
+    assert.equal(await imageAutoEffort.count(), 0);
+    assert.equal(await imageEffort.isDisabled(), false);
     await converter
       .getByRole("button", { name: "Hide advanced rule options", exact: true })
       .click();
@@ -866,6 +893,8 @@ try {
     assert.equal(config.formatRulesEnabled.image, false);
     assert.equal(config.formatDefaults.image, "webp");
     assert.equal(config.encodingDefaults.image.quality, 90);
+    // Auto is not saved for a rule whose output is no longer JPEG XL.
+    assert.equal(config.encodingDefaults.image.autoEffort, false);
 
     // A status refresh must not discard an unsaved tagging draft.
     await page

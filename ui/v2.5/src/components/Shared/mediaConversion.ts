@@ -15,6 +15,7 @@ export interface ConversionFormat {
 export interface ConversionEncodingDefaults {
   quality: number;
   effort: number;
+  autoEffort?: boolean;
   decodingSpeed?: number;
   fasterDecoding?: number;
   allowLarger?: boolean;
@@ -189,12 +190,16 @@ export interface ConversionSettings {
   outputFormats: ConversionFormat[];
 }
 
+export const isJXLOutput = (format: string) =>
+  format === "jxl" || format === "ajxl";
+
 export interface ConversionPlan {
   input: string;
   output: string;
   count: number;
   quality: number;
   effort: number;
+  autoEffort?: boolean;
   decodingSpeed: number;
   fasterDecoding?: number;
   allowLarger?: boolean;

@@ -5,6 +5,7 @@ import {
   ProcessingJobFeedback,
 } from "./JobFeedback";
 import React, { useCallback, useEffect, useState } from "react";
+import { useIntl } from "react-intl";
 import {
   Alert,
   Button,
@@ -29,6 +30,7 @@ import {
   SavingsThresholds,
   ConversionEstimate,
   ConversionDiskReservation,
+  isJXLOutput,
 } from "./mediaConversion";
 import { ConversionReview } from "./ConversionReview";
 import { SavingsThresholdFields, validSavings } from "./SavingsThresholdFields";
@@ -180,7 +182,9 @@ export const MediaConversionDialog: React.FC<{
     mixedTargets ?? selectedIds.map((id) => ({ kind, id: Number(id) }));
   const hasVideos = targets.some((target) => target.kind === "scene");
   const selectedCount = targets.length;
+  const intl = useIntl();
   const [useEncodingDefaults, setUseEncodingDefaults] = useState(true);
+  const [autoEffort, setAutoEffort] = useState(false);
   const [useDecodingSpeedDefaults, setUseDecodingSpeedDefaults] =
     useState(true);
   const [resolvedBackend, setResolvedBackend] = useState("");
@@ -484,7 +488,13 @@ export const MediaConversionDialog: React.FC<{
           .map((v) => ` · ${v}`)
           .join("")
       : "";
-    return `${plan.count} ${plan.count === 1 ? "file" : "files"}: ${plan.input.toUpperCase()} → ${output?.label ?? plan.output} · quality ${useEncodingDefaults ? plan.quality : options.quality}, effort ${useEncodingDefaults ? plan.effort : options.effort}${decodeSpeed}${safety}${!loadingCapabilities && !output?.available ? " — unavailable on this worker" : ""}`;
+    const effortAuto = useEncodingDefaults
+      ? !!plan.autoEffort
+      : autoEffort && isJXLOutput(plan.output);
+    const effort = effortAuto
+      ? intl.formatMessage({ id: "media_conversion.effort_auto_summary" })
+      : `effort ${useEncodingDefaults ? plan.effort : options.effort}`;
+    return `${plan.count} ${plan.count === 1 ? "file" : "files"}: ${plan.input.toUpperCase()} → ${output?.label ?? plan.output} · quality ${useEncodingDefaults ? plan.quality : options.quality}, ${effort}${decodeSpeed}${safety}${!loadingCapabilities && !output?.available ? " — unavailable on this worker" : ""}`;
   };
 
   const reviewRequest = {
@@ -492,6 +502,7 @@ export const MediaConversionDialog: React.FC<{
     savings,
     useQuality: true,
     useEncodingDefaults,
+    autoEffort: !useEncodingDefaults && autoEffort,
     useDecodingSpeedDefaults,
     targets,
   };
@@ -864,6 +875,25 @@ export const MediaConversionDialog: React.FC<{
                         />
                       </Form.Group>
                     ))}
+                  {supports("effort") &&
+                    chosenFormats.some((f) => isJXLOutput(f.id)) && (
+                      <Form.Group as={Col} controlId="converter-auto-effort">
+                        <Form.Check
+                          type="checkbox"
+                          label={intl.formatMessage({
+                            id: "media_conversion.auto_effort",
+                          })}
+                          checked={autoEffort}
+                          disabled={busy}
+                          onChange={(e) => setAutoEffort(e.target.checked)}
+                        />
+                        <Form.Text className="text-muted">
+                          {intl.formatMessage({
+                            id: "media_conversion.auto_effort_help",
+                          })}
+                        </Form.Text>
+                      </Form.Group>
+                    )}
                 </Row>
               )}
               {!useDecodingSpeedDefaults &&

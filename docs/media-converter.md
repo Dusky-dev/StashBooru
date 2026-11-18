@@ -93,7 +93,26 @@ and the loop count; total duration increases by 10 ms for each repaired frame.
 Animated JPEG XL uses the normal **`.jxl` extension**, labeled AJXL in the format
 selector. JXL quality 100 requests lossless compression. JPEG input at quality 100
 uses `cjxl`'s JPEG reconstruction path when installed. Higher effort trades time
-for compression. JXL quality follows libjxl's standard quality mapping, with
+for compression.
+
+**Auto effort (JPEG XL only).** A saved rule or a one-off dialog setting can
+choose **Auto**. StashBooru then picks effort per file before sending the job,
+so workers still receive a number from 1 to 9 and the record keeps it. Work is
+width × height × frames, after upscaling:
+
+| File | Effort |
+| --- | --- |
+| Lossy still ≤ 2 MP / ≤ 8 MP / ≤ 32 MP / larger | 9 / 8 / 7 / 5 |
+| Lossless still ≤ 16 MP / larger | 7 / 5 |
+| Lossless JPEG recompression ≤ 8 MP / larger | 9 / 7 |
+| Animation ≤ 16 MP total / larger | 7 / 5 |
+
+Thresholds come from `cjxl` 0.7 on 4 threads with one 1 MP image, a 3.8 MP
+copy and a 60-frame 0.13 MP animation: lossy effort 8–9 saved 3–10% over 7 for
+5–10× the time, lossless effort 9 took 15× longer than 7 for 2%, animations
+gained nothing above 7 (0.7 crashed at 8–9), and JPEG recompression stayed
+under a second. Newer libjxl releases may differ. Other formats, and files
+whose size or frame count is unknown, use the manual effort. JXL quality follows libjxl's standard quality mapping, with
 quality 90 corresponding to its previous default distance of 1. JPEG XL also
 offers decode-speed tiers from 0 to 4. Tier 0 keeps libjxl's default density;
 higher tiers favor faster decoding at some cost to quality or file size. AJXL
