@@ -391,7 +391,7 @@ export const VisualSimilaritySettings: React.FC = () => {
               </Row>
               <Form.Check
                 className="mb-2"
-                type="checkbox"
+                type="switch"
                 id="camie-filename-enabled"
                 checked={camieConfig.filenameEnabled}
                 onChange={(event) =>
@@ -428,7 +428,7 @@ export const VisualSimilaritySettings: React.FC = () => {
               </Form.Group>
               <Form.Check
                 className="mb-2"
-                type="checkbox"
+                type="switch"
                 id="tagging-bulk-enabled"
                 checked={camieConfig.bulkTaggingEnabled ?? false}
                 onChange={(event) =>
