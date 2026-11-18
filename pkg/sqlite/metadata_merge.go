@@ -196,7 +196,26 @@ VALUES (?,?)`, destinationID, source.Name); err != nil {
 	if err := mergeExec(ctx, "UPDATE provider_identities SET studio_id=? WHERE studio_id=?", destinationID, sourceID); err != nil {
 		return err
 	}
-	return qb.Destroy(ctx, sourceID)
+	if err := qb.Destroy(ctx, sourceID); err != nil {
+		return err
+	}
+	// Moving the source's children under the destination can loop the
+	// hierarchy when the destination descends from the source. Recheck before
+	// the enclosing transaction commits, as the Copyright merge does.
+	var cyclic int
+	if err := dbWrapper.Get(ctx, &cyclic, `WITH RECURSIVE ancestors(id, depth) AS (
+SELECT parent_id, 1 FROM studios WHERE id=? AND parent_id IS NOT NULL
+UNION ALL
+SELECT s.parent_id, a.depth+1 FROM studios s JOIN ancestors a ON s.id=a.id
+WHERE s.parent_id IS NOT NULL AND a.depth < 10000
+)
+SELECT EXISTS(SELECT 1 FROM ancestors WHERE id=?)`, destinationID, destinationID); err != nil {
+		return err
+	}
+	if cyclic != 0 {
+		return fmt.Errorf("artist merge would create a hierarchy cycle; change the destination's parent first")
+	}
+	return nil
 }
 
 func (s *CopyrightStore) Merge(ctx context.Context, sourceID, destinationID int) error {

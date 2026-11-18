@@ -216,16 +216,23 @@ export const ProfileMergeModal: React.FC<{
   const [dest, setDest] = useState<Item | null>(current);
   const [loaded, setLoaded] = useState<{ sources: Profile[]; dest: Profile }>();
   const [running, setRunning] = useState(false);
+  // Set once the sources are merged: retrying then only saves the values.
+  const [merged, setMerged] = useState(false);
   const [updateStudio] = useStudioUpdate();
   const [updateCopyright] = useCopyrightUpdate();
 
+  // Reset only when the dialog opens or the profile changes: the page passes
+  // a new `current` object on every render (a toast re-renders it too).
+  const currentID = current.id;
+  const currentName = current.name;
   useEffect(() => {
     if (show) {
       setSrc([]);
-      setDest(current);
+      setDest({ id: currentID, name: currentName });
       setLoaded(undefined);
+      setMerged(false);
     }
-  }, [show, current]);
+  }, [show, currentID, currentName]);
 
   const srcIDs = useMemo(() => src.map((s) => s.id), [src]);
   const destIDs = useMemo(() => (dest ? [dest.id] : []), [dest]);
@@ -248,25 +255,28 @@ export const ProfileMergeModal: React.FC<{
   async function merge(values: ChosenValues) {
     if (!dest) return;
     setRunning(true);
-    try {
-      const response = await fetch(
-        kind === "artist" ? "/studio/merge" : "/tag/copyright/merge",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sourceIDs: srcIDs.map(Number),
-            destinationID: Number(dest.id),
-            keepDestination: true,
-          }),
-        }
-      );
-      if (!response.ok) throw new Error(await response.text());
-    } catch (e) {
-      Toast.error(e);
-      setRunning(false);
-      return;
-    }
+    if (!merged)
+      try {
+        const response = await fetch(
+          kind === "artist" ? "/studio/merge" : "/tag/copyright/merge",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sourceIDs: srcIDs.map(Number),
+              destinationID: Number(dest.id),
+              keepDestination: true,
+            }),
+          }
+        );
+        if (!response.ok) throw new Error(await response.text());
+        setMerged(true);
+      } catch (e) {
+        // Nothing changed: the dialog stays open with the same choices.
+        Toast.error(e);
+        setRunning(false);
+        return;
+      }
     // The sources are gone; apply the chosen values to the destination now
     // that a source's name can be reused.
     try {
@@ -303,11 +313,19 @@ export const ProfileMergeModal: React.FC<{
               : "toast.merged_copyrights",
         })
       );
+      setLoaded(undefined);
+      onClose(dest.id);
     } catch (e) {
-      Toast.error(e);
+      // The merge is done; keep the choices open so a rejected value (for
+      // example a name another record already uses) can be fixed and saved.
+      Toast.error(
+        intl.formatMessage(
+          { id: "dialogs.merge.values_not_saved" },
+          { error: e instanceof Error ? e.message : String(e) }
+        )
+      );
     } finally {
       setRunning(false);
-      onClose(dest.id);
     }
   }
 
@@ -318,9 +336,12 @@ export const ProfileMergeModal: React.FC<{
         sources={loaded.sources}
         dest={loaded.dest}
         onClose={(values) => {
+          if (values) {
+            void merge(values);
+            return;
+          }
           setLoaded(undefined);
-          if (values) void merge(values);
-          else onClose();
+          onClose(merged ? dest?.id : undefined);
         }}
       />
     );

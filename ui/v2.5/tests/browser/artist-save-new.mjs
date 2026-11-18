@@ -393,10 +393,37 @@ async function check(viewport, label) {
   await mergeModal.getByRole("button", { name: "Merge", exact: true }).click();
   const mergeDetails = page.locator(".profile-merge-dialog");
   await mergeDetails.getByText("Source details").waitFor();
+  // If saving the chosen values fails after the merge, the choices stay open
+  // and Apply only retries the save (the sources are already merged).
+  let failUpdate = true;
+  const mergeRequests = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith("/studio/merge")) mergeRequests.push(request);
+  });
+  await page.route("**/graphql", async (route) => {
+    const body = route.request().postDataJSON();
+    if (failUpdate && body?.operationName === "StudioUpdate") {
+      failUpdate = false;
+      return route.fulfill({
+        json: { errors: [{ message: "fixture update failure" }], data: null },
+      });
+    }
+    return route.continue();
+  });
+  await mergeDetails
+    .getByRole("button", { name: "Apply", exact: true })
+    .click();
+  await page
+    .getByText(/chosen values were not saved/)
+    .first()
+    .waitFor();
+  assert.equal(await mergeDetails.isVisible(), true);
   await mergeDetails
     .getByRole("button", { name: "Apply", exact: true })
     .click();
   await mergeDetails.waitFor({ state: "detached" });
+  await page.unroute("**/graphql");
+  assert.equal(mergeRequests.length, 1, "the retry must not merge again");
   await page.waitForFunction(() => !document.querySelector(".modal-dialog"));
   const merged = await call(
     page,

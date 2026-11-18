@@ -39,3 +39,27 @@ func TestStudioMergeKeepingDestinationResolvesConflicts(t *testing.T) {
 		require.Contains(t, aliases, "Keep merge source")
 	})
 }
+
+// Merging an Artist into its own grandchild would move the child under the
+// grandchild and loop the hierarchy; the merge must refuse. The route's
+// transaction then rolls every change back.
+func TestStudioMergeRejectsHierarchyCycle(t *testing.T) {
+	for name, keep := range map[string]bool{"default": false, "keep destination": true} {
+		runWithRollbackTxn(t, "artist merge cycle "+name, func(t *testing.T, ctx context.Context) {
+			create := func(name string, parent *int) *models.Studio {
+				studio := models.NewStudio()
+				studio.Name, studio.ParentID = name, parent
+				require.NoError(t, db.Studio.Create(ctx, &models.CreateStudioInput{Studio: &studio}))
+				return &studio
+			}
+			source := create("Cycle source", nil)
+			child := create("Cycle child", &source.ID)
+			grandchild := create("Cycle grandchild", &child.ID)
+			merge := db.Studio.Merge
+			if keep {
+				merge = db.Studio.MergeKeepingDestination
+			}
+			require.ErrorContains(t, merge(ctx, source.ID, grandchild.ID), "cycle")
+		})
+	}
+}

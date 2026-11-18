@@ -1230,6 +1230,7 @@
       "combined": "Combined",
       "destination": "Destination",
       "empty_results": "Destination field values will be unchanged.",
+      "values_not_saved": "Merged, but the chosen values were not saved: {error}. Change them and apply again, or cancel to keep the destination as it is.",
       "source": "Source"
     },
     "overwrite_filter_warning": "Saved filter \"{entityName}\" will be overwritten.",
