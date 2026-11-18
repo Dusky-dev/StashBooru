@@ -6,14 +6,12 @@ place and move finished ones to **Done**; the progress ledger keeps the detail.
 
 ## Next (agent can finish alone, in order)
 
-1. **Implied parents everywhere (owner, 2026-11-18).** Checked: detail pages,
-   Tag search (any depth) and Copyright pages/filters (sub-Copyrights on by
-   default) already include parents. Gap fixed in this row's PR: cards gain a
-   Copyright button (owner, 2026-11-18) and both popovers list **Implied**
-   entries. Still open: an item with only profile-implied Tags has no Tag button.
-2. **Danbooru-style "Implies".** One "Implies" field on the child Tag or
-   Copyright, the reverse list read-only on the parent; the four Library
-   switches and Association sources stay out of the main path.
+1. **Danbooru-style "Implies" (waits for owner go-ahead).** One "Implies"
+   field on the child Tag or Copyright, the reverse list read-only on the
+   parent; the four Library switches and Association sources stay out of the
+   main path.
+2. **Identities: connect the creator's main name from the Booru artist page
+   (owner, 2026-11-18).** Reuse `IdentityLink`; same identity key as post tags.
 3. **Settings → Tasks English text.** `CharacterDedupTask.tsx`,
    `MediaBackupTask.tsx` — move to `react-intl`; `make validate-ui`, search
    `tests` and `builtin-source` for matching selectors.
@@ -39,6 +37,10 @@ place and move finished ones to **Done**; the progress ledger keeps the detail.
 11. Refresh lists when a scan ends? (Upstream does not.)
 12. Any proposal to hide or remove a feature.
 13. Usability pass on the owner's real library (E11/E12).
+14. Show a Tag button (count 0) when an item has only profile-implied
+    Tags? (Codex P2 on #383, deferred.)
+15. Animated JPEG XL frame rate: which source format and symptom? Not
+    reproduced yet.
 
 ## Needs real hardware or accounts (never claim verified)
 
@@ -54,3 +56,7 @@ through code or fixtures.
   (#379), list scroll after a fast Back (#380), Identities keeps
   connected names together (downloads, Character merge, merge prompt; #381).
 - Identities panel name; alias inspector and inheritance review removed (#382).
+- Card popovers keep detail-page associations (#384).
+- Auto JPEG XL effort on converter rules and one-off settings (this PR).
+- Implied Tags and Copyrights on Image and Video cards (#383); detail pages,
+  Tag search and Copyright filters already included parents.

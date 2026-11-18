@@ -12,3 +12,7 @@ export function evictEffectiveMediaAssociations(
     }
   }
 }
+
+// Card popovers load only implied Tags/Copyrights. Merge partial results so
+// a detail page's Artists, Characters and sources stay in the cache.
+export const effectiveAssociationsField = { merge: true } as const;

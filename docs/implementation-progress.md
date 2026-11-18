@@ -1,6 +1,6 @@
 ## Auto JPEG XL effort — 2026-11-18
 
-- Baseline: `develop` `eab3a0b` (#383). Branch
+- Baseline: `develop` `a330af3` (#384). Branch
   [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
 - Owner ask: "intelligent effort" for JXL, read as **Auto** picks effort per
   file. Saved rules (JXL outputs) and the dialog's one-off settings gain an
@@ -15,6 +15,20 @@
   browser `settings-maintenance` and `conversion-review` desktop+mobile.
 - Animated JXL frame rate: worker, `jxlinfo` and scanner timing were correct
   for 10–100 ms GIF/APNG inputs; nothing changed. Open owner question.
+## Card popovers keep detail associations — 2026-11-18
+
+- Baseline: `develop` `eab3a0b` (#383). Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l),
+  [#384](https://github.com/Dusky-dev/StashBooru/pull/384).
+- Card popovers (#383) load only implied Tags and Copyrights. Apollo stored
+  `effective_associations` unnormalized, so that partial write replaced a
+  detail page's Artists, Characters and sources. Scene and Image policies now
+  merge partial writes.
+- Checks: `tests/mediaCache.test.ts` (new partial-write case), `tsc`, Biome
+  on changed files, `pnpm run test` 132/132.
+- Not verified locally: browser suites (CI).
+- Roadmap: #383 done; Auto JPEG XL effort and Identities main name queued;
+  implied-only Tag button and animated JXL frame rate listed as questions.
 
 ## Implied Tags and Copyrights on Image/Video cards — 2026-11-18
 

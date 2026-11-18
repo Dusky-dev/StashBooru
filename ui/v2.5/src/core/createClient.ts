@@ -12,6 +12,7 @@ import { getMainDefinition } from "@apollo/client/utilities";
 import createUploadLink from "apollo-upload-client/createUploadLink.mjs";
 import * as GQL from "src/core/generated-graphql";
 import { FieldReadFunction } from "@apollo/client/cache";
+import { effectiveAssociationsField } from "src/core/mediaCache";
 
 // A read function that returns a cache reference with the given
 // typename if no valid reference is available.
@@ -71,6 +72,7 @@ const typePolicies: TypePolicies = {
       studio: {
         read: readDanglingNull,
       },
+      effective_associations: effectiveAssociationsField,
     },
   },
   Image: {
@@ -81,6 +83,7 @@ const typePolicies: TypePolicies = {
       paths: {
         merge: false,
       },
+      effective_associations: effectiveAssociationsField,
     },
   },
   Group: {
