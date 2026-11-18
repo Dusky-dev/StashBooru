@@ -5,11 +5,21 @@ import { useIntl } from "react-intl";
 import { settingsSearch } from "./settingsNavigation";
 import { searchSettings } from "./settingsSearchIndex";
 
-export function SettingsSearch() {
+export function SettingsSearch({
+  showExperimental,
+}: {
+  showExperimental: boolean;
+}) {
   const [query, setQuery] = useState("");
   const location = useLocation();
   const intl = useIntl();
-  const matches = useMemo(() => searchSettings(query).slice(0, 12), [query]);
+  const matches = useMemo(
+    () =>
+      searchSettings(query)
+        .filter((entry) => showExperimental || entry.tab !== "experimental")
+        .slice(0, 12),
+    [query, showExperimental]
+  );
   const active = query.trim().length > 0;
 
   return (

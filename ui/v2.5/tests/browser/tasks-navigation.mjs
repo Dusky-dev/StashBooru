@@ -50,6 +50,17 @@ const fit = async (page) =>
     ),
     false
   );
+async function setAdvanced(page, on) {
+  const toggle = page.locator("#advanced-settings");
+  if ((await toggle.isChecked()) !== on) {
+    await toggle.focus();
+    await toggle.press("Space");
+  }
+  await page.waitForFunction(
+    (value) => document.querySelector("#advanced-settings")?.checked === value,
+    on
+  );
+}
 async function chooseSection(page, tab) {
   if (await page.locator("#settings-section").isVisible())
     await page.locator("#settings-section").selectOption(tab);
@@ -277,6 +288,14 @@ try {
       await page.locator(".tab-pane.active #video-overlap-task").count(),
       0
     );
+    // Experimental is listed only in Advanced mode.
+    assert.equal(
+      await page
+        .locator('#settings-menu-container a[href*="tab=experimental"]')
+        .count(),
+      0
+    );
+    await setAdvanced(page, true);
     await chooseSection(page, "experimental");
     await page.waitForURL(/tab=experimental/);
     await page.locator("#experimental-video-overlap > summary").click();
@@ -305,6 +324,8 @@ try {
     );
     await page.reload();
     await page.waitForURL(/tab=experimental/);
+    // The fixture does not persist UI settings across a reload.
+    await setAdvanced(page, true);
     if (
       !(await page
         .locator("#experimental-storage-assess")
@@ -420,6 +441,7 @@ try {
       `${origin}/settings?tab=tasks&return=images%2F42#video-overlap-task`
     );
     await page.waitForURL(/tab=experimental.*#video-overlap-task$/);
+    await setAdvanced(page, true);
     await page.waitForFunction(
       () => document.querySelector("#experimental-video-overlap")?.open
     );
@@ -436,6 +458,7 @@ try {
     await page.goto(`${origin}/settings?tab=tasks#job-queue`);
     await page.locator("#job-queue").waitFor();
     for (const group of groups) assert.equal(await isOpen(page, group), false);
+    await setAdvanced(page, false);
     await page.goto(`${origin}/settings?tab=tasks#path-metadata-matching`);
     await page.locator("#advanced-settings").focus();
     await page.locator("#advanced-settings").press("Space");
