@@ -91,6 +91,19 @@ async function loadProfile(kind: Kind, id: string): Promise<Profile> {
   };
 }
 
+/** Whether a record still exists, read from the server (not the cache). */
+async function profileExists(kind: Kind, id: string) {
+  const { data } = await getClient().query<
+    GQL.FindStudioQuery | GQL.FindCopyrightQuery
+  >({
+    query:
+      kind === "artist" ? GQL.FindStudioDocument : GQL.FindCopyrightDocument,
+    variables: { id },
+    fetchPolicy: "network-only",
+  });
+  return Object.values(data ?? {}).some(Boolean);
+}
+
 /** Field-by-field choice, as in the Character and Tag merge dialogs. */
 const ProfileMergeDetails: React.FC<{
   kind: Kind;
@@ -295,10 +308,18 @@ export const ProfileMergeModal: React.FC<{
         if (!response.ok) throw new Error(await response.text());
         setMerged(true);
       } catch (e) {
-        // Nothing changed: the dialog stays open with the same choices.
-        Toast.error(e);
-        setRunning(false);
-        return;
+        // If the merge committed but its response was lost, every source is
+        // already gone: carry on and save the chosen values.
+        const gone = await Promise.all(
+          srcIDs.map((id) => profileExists(kind, id).then((found) => !found))
+        ).catch(() => [false]);
+        if (!gone.every(Boolean)) {
+          // Nothing changed: the dialog stays open with the same choices.
+          Toast.error(e);
+          setRunning(false);
+          return;
+        }
+        setMerged(true);
       }
     // The sources are gone; apply the chosen values to the destination now
     // that a source's name can be reused.

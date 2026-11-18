@@ -414,6 +414,12 @@ async function check(viewport, label) {
   page.on("request", (request) => {
     if (request.url().endsWith("/studio/merge")) mergeRequests.push(request);
   });
+  // The merge commits on the server but its response is lost; the dialog
+  // must see that the sources are gone and go on to save the values.
+  await page.route("**/studio/merge", async (route) => {
+    await route.fetch();
+    await route.abort();
+  });
   await page.route("**/graphql", async (route) => {
     const body = route.request().postDataJSON();
     if (failUpdate && body?.operationName === "StudioUpdate") {
@@ -445,6 +451,7 @@ async function check(viewport, label) {
     .click();
   await mergeDetails.waitFor({ state: "detached" });
   await page.unroute("**/graphql");
+  await page.unroute("**/studio/merge");
   assert.equal(mergeRequests.length, 1, "the retry must not merge again");
   await page.waitForFunction(() => !document.querySelector(".modal-dialog"));
   const merged = await call(
