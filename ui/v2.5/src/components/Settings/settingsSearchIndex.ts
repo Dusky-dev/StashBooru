@@ -344,14 +344,30 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
   },
 ];
 
+/** Message ID for an entry's label; its English text is the default. */
+export function settingsSearchLabelID(entry: SettingsSearchEntry): string {
+  const key = entry.label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_|_$/g, "");
+  return `config.settings_search.entries.${key}`;
+}
+
+/**
+ * Matches the displayed (translated) label as well as the English label and
+ * keywords, so both the UI language and English terms find a setting.
+ */
 export function searchSettings(
   query: string,
-  entries = settingsSearchIndex
+  entries = settingsSearchIndex,
+  labelOf: (entry: SettingsSearchEntry) => string = (entry) => entry.label
 ): SettingsSearchEntry[] {
   const terms = query.toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
   if (!terms.length) return [];
-  return entries.filter(({ label, tab, keywords }) => {
-    const text = `${label} ${tab} ${keywords ?? ""}`.toLocaleLowerCase();
+  return entries.filter((entry) => {
+    const { label, tab, keywords } = entry;
+    const text =
+      `${labelOf(entry)} ${label} ${tab} ${keywords ?? ""}`.toLocaleLowerCase();
     return terms.every((term) => text.includes(term));
   });
 }

@@ -202,6 +202,7 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
           id="interface-group-general"
           title={intl.formatMessage({ id: "config.ui.groups.general" })}
           remember
+          compactHelp
         >
           <SettingSection
             id="interface-basic"
@@ -559,6 +560,7 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
           id="interface-group-lists"
           title={intl.formatMessage({ id: "config.ui.groups.lists" })}
           remember
+          compactHelp
         >
           <SettingSection headingID="config.ui.scene_list.heading">
             <BooleanSetting
@@ -748,6 +750,7 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
           id="interface-group-videos"
           title={intl.formatMessage({ id: "config.ui.groups.videos" })}
           remember
+          compactHelp
         >
           <SettingSection headingID="config.ui.scene_view.heading">
             <BooleanSetting
@@ -1020,6 +1023,7 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
           id="interface-group-images"
           title={intl.formatMessage({ id: "config.ui.groups.images" })}
           remember
+          compactHelp
         >
           <SettingSection headingID="config.ui.image_wall.heading">
             <NumberSetting
@@ -1149,6 +1153,7 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
           id="interface-group-customisation"
           title={intl.formatMessage({ id: "config.ui.groups.customisation" })}
           remember
+          compactHelp
           advanced
         >
           <SettingSection

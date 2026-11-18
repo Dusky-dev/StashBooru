@@ -1,3 +1,19 @@
+## Settings: help icons, translated search, remembered Tasks groups — 2026-11-18
+
+- Baseline: `develop` `199bcba` (#392). Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Interface and System settings show their descriptions behind a "?" help
+  button beside the heading (popover). Consequence warnings (restart, reload,
+  moving data, trash, parallel tasks) stay visible by message ID.
+- Settings search labels, placeholder and messages are react-intl messages;
+  search matches the translated label as well as English (roadmap item 16).
+- Tasks groups remember their last open/closed state like Interface/System.
+- Image duplicate review's "Similarity settings" links open Processing.
+- Checks: `tsc`, Biome, `pnpm run test` 134/134 (new translation case);
+  browser `settings-maintenance` (help popover, visible warnings),
+  `tasks-navigation` (remembered states), `tools-navigation`,
+  `first-use-notes` desktop+mobile.
+
 ## Settings: Interface and System groups — 2026-11-18
 
 - Baseline: `develop` after #391. Branch

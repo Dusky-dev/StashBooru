@@ -618,3 +618,28 @@
     margin: 0;
   }
 }
+
+// Compact groups show a setting's description behind a help button.
+.setting-help-button.btn {
+  font-size: 0.85em;
+  line-height: 1;
+  margin-left: 0.35rem;
+  opacity: 0.65;
+  padding: 0 0.15rem;
+  vertical-align: baseline;
+
+  &,
+  &:hover,
+  &:focus {
+    color: inherit;
+  }
+
+  &:hover,
+  &:focus {
+    opacity: 1;
+  }
+}
+
+.setting-help-popover {
+  max-width: min(22rem, calc(100vw - 2rem));
+}

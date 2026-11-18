@@ -134,6 +134,7 @@ export const SettingsConfigurationPanel: React.FC = () => {
         id="system-group-storage"
         title={intl.formatMessage({ id: "config.system.groups.storage" })}
         remember
+        compactHelp
       >
         <SettingSection headingID="config.application_paths.heading">
           <StringSetting
@@ -298,6 +299,7 @@ export const SettingsConfigurationPanel: React.FC = () => {
         id="system-group-video"
         title={intl.formatMessage({ id: "config.system.groups.video" })}
         remember
+        compactHelp
       >
         <SettingSection headingID="config.system.transcoding">
           <SelectSetting
@@ -489,6 +491,7 @@ export const SettingsConfigurationPanel: React.FC = () => {
         id="system-group-performance"
         title={intl.formatMessage({ id: "config.system.groups.performance" })}
         remember
+        compactHelp
       >
         <SettingSection headingID="config.general.parallel_scan_head">
           <NumberSetting
