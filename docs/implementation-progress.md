@@ -16,6 +16,12 @@
   alias test, `golangci-lint`, `tsc`, Biome, `pnpm run test`; real-binary
   browser `copyright-save-retry` and `artist-save-new` desktop+mobile (merge
   dialog with conflicting descriptions), `identities`.
+- Review fixes (Codex): Artist merges reject parent cycles (checked once per
+  batch); a failed value save, or a committed merge whose reply is lost, can be
+  retried without merging again; Cancel is locked while saving; only real
+  pictures are offered, read before the sources are deleted, and a copied
+  picture is never cleared by an unread one. Browser suites cover each case
+  and passed locally on `d470a66`.
 - Not changed: existing duplicates created before this fix (data repair needs
   the owner's decision).
 
