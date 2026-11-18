@@ -19,6 +19,8 @@ interface IScrapeDialogProps {
   existingLabel?: React.ReactNode;
   scrapedLabel?: React.ReactNode;
   onClose: (apply?: boolean) => void;
+  // Disables Apply and Cancel while the caller saves the chosen values.
+  isRunning?: boolean;
 }
 
 export const ScrapeDialog: React.FC<
@@ -56,6 +58,7 @@ export const ScrapeDialog: React.FC<
       show
       icon={faPencilAlt}
       header={props.title}
+      isRunning={props.isRunning}
       accept={{
         onClick: () => {
           props.onClose(true);

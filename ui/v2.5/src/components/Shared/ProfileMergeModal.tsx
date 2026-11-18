@@ -97,7 +97,8 @@ const ProfileMergeDetails: React.FC<{
   sources: Profile[];
   dest: Profile;
   onClose: (values?: ChosenValues) => void;
-}> = ({ kind, sources, dest, onClose }) => {
+  running: boolean;
+}> = ({ kind, sources, dest, onClose, running }) => {
   const intl = useIntl();
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState(new ScrapeResult<string>(dest.name));
@@ -180,6 +181,7 @@ const ProfileMergeDetails: React.FC<{
       title={intl.formatMessage({ id: "actions.merge" })}
       existingLabel={intl.formatMessage({ id: "dialogs.merge.destination" })}
       scrapedLabel={intl.formatMessage({ id: "dialogs.merge.combined" })}
+      isRunning={running}
       onClose={(apply) => onClose(apply ? createValues() : undefined)}
     >
       {loading ? (
@@ -355,7 +357,11 @@ export const ProfileMergeModal: React.FC<{
         kind={kind}
         sources={loaded.sources}
         dest={loaded.dest}
+        running={running}
         onClose={(values) => {
+          // The sources may already be merged away: keep the choices until
+          // the save finishes so a failure can be retried.
+          if (running) return;
           if (values) {
             void merge(values);
             return;

@@ -406,6 +406,10 @@ async function check(viewport, label) {
   // If saving the chosen values fails after the merge, the choices stay open
   // and Apply only retries the save (the sources are already merged).
   let failUpdate = true;
+  let release;
+  const releaseUpdate = new Promise((resolve) => {
+    release = resolve;
+  });
   const mergeRequests = [];
   page.on("request", (request) => {
     if (request.url().endsWith("/studio/merge")) mergeRequests.push(request);
@@ -414,6 +418,7 @@ async function check(viewport, label) {
     const body = route.request().postDataJSON();
     if (failUpdate && body?.operationName === "StudioUpdate") {
       failUpdate = false;
+      await releaseUpdate;
       return route.fulfill({
         json: { errors: [{ message: "fixture update failure" }], data: null },
       });
@@ -423,6 +428,13 @@ async function check(viewport, label) {
   await mergeDetails
     .getByRole("button", { name: "Apply", exact: true })
     .click();
+  // Cancel stays disabled while the chosen values save after the merge.
+  await page.waitForFunction(() =>
+    document
+      .querySelector(".profile-merge-dialog .ModalFooter .btn-secondary")
+      ?.hasAttribute("disabled")
+  );
+  release();
   await page
     .getByText(/chosen values were not saved/)
     .first()
