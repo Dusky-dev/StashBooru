@@ -8,6 +8,8 @@ import * as GQL from "src/core/generated-graphql";
 import { Icon } from "src/components/Shared/Icon";
 import { GalleryLink, TagLink } from "src/components/Shared/TagLink";
 import { HoverPopover } from "src/components/Shared/HoverPopover";
+import { ImpliedLinks } from "src/components/Shared/ImpliedLinks";
+import { CopyrightPopoverButton } from "src/components/Shared/CopyrightPopoverButton";
 import { PerformerPopoverButton } from "src/components/Shared/PerformerPopoverButton";
 import { GridCard } from "src/components/Shared/GridCard/GridCard";
 import { RatingBanner } from "src/components/Shared/RatingBanner";
@@ -48,9 +50,18 @@ const ImageCardPopovers = PatchComponent(
     function maybeRenderTagPopoverButton() {
       if (props.image.tags.length <= 0) return;
 
-      const popoverContent = props.image.tags.map((tag) => (
-        <TagLink key={tag.id} tag={tag} linkType="image" />
-      ));
+      const popoverContent = [
+        ...props.image.tags.map((tag) => (
+          <TagLink key={tag.id} tag={tag} linkType="image" />
+        )),
+        <ImpliedLinks
+          key="implied"
+          type="image"
+          id={props.image.id}
+          kind="tags"
+          directIDs={props.image.tags.map((tag) => tag.id)}
+        />,
+      ];
 
       return (
         <HoverPopover
@@ -119,6 +130,7 @@ const ImageCardPopovers = PatchComponent(
     if (
       props.image.visual_stack ||
       props.image.tags.length > 0 ||
+      (props.image.copyrights ?? []).length > 0 ||
       props.image.performers.length > 0 ||
       props.image.o_counter ||
       props.image.galleries.length > 0 ||
@@ -135,6 +147,11 @@ const ImageCardPopovers = PatchComponent(
               onSelectMember={props.onStackMemberSelect}
             />
             {maybeRenderTagPopoverButton()}
+            <CopyrightPopoverButton
+              type="image"
+              id={props.image.id}
+              copyrights={props.image.copyrights ?? []}
+            />
             {maybeRenderPerformerPopoverButton()}
             {maybeRenderOCounter()}
             {maybeRenderGallery()}

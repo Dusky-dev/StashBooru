@@ -13,6 +13,8 @@ import cx from "classnames";
 import * as GQL from "src/core/generated-graphql";
 import { Icon } from "../Shared/Icon";
 import { GalleryLink, TagLink, SceneMarkerLink } from "../Shared/TagLink";
+import { ImpliedLinks } from "../Shared/ImpliedLinks";
+import { CopyrightPopoverButton } from "../Shared/CopyrightPopoverButton";
 import { HoverPopover } from "../Shared/HoverPopover";
 import { TruncatedText } from "../Shared/TruncatedText";
 import NavUtils from "src/utils/navigation";
@@ -184,9 +186,16 @@ const SceneCardPopovers = React.memo(
     function maybeRenderTagPopoverButton() {
       if (props.scene.tags.length <= 0) return;
 
-      const popoverContent = props.scene.tags.map((tag) => (
-        <TagLink key={tag.id} tag={tag} />
-      ));
+      const popoverContent = [
+        ...props.scene.tags.map((tag) => <TagLink key={tag.id} tag={tag} />),
+        <ImpliedLinks
+          key="implied"
+          type="scene"
+          id={props.scene.id}
+          kind="tags"
+          directIDs={props.scene.tags.map((tag) => tag.id)}
+        />,
+      ];
 
       return (
         <HoverPopover
@@ -324,6 +333,7 @@ const SceneCardPopovers = React.memo(
         !props.compact &&
         (props.scene.visual_stack ||
           props.scene.tags.length > 0 ||
+          (props.scene.copyrights ?? []).length > 0 ||
           props.scene.performers.length > 0 ||
           props.scene.groups.length > 0 ||
           props.scene.scene_markers.length > 0 ||
@@ -344,6 +354,11 @@ const SceneCardPopovers = React.memo(
                 onSelectMember={props.onStackMemberSelect}
               />
               {maybeRenderTagPopoverButton()}
+              <CopyrightPopoverButton
+                type="scene"
+                id={props.scene.id}
+                copyrights={props.scene.copyrights ?? []}
+              />
               {maybeRenderPerformerPopoverButton()}
               {maybeRenderGroupPopoverButton()}
               {maybeRenderSceneMarkerPopoverButton()}

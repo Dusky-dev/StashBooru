@@ -1894,5 +1894,8 @@
       "confirm": "Merge",
       "merging": "Merging…"
     }
+  },
+  "media_card": {
+    "implied": "Implied"
   }
 }

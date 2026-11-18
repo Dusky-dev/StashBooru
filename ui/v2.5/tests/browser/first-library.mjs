@@ -349,6 +349,99 @@ async function checkProfileAll(page, url, imageID, label) {
     fullPage: true,
   });
   await checkVideoList(page, url, videoID);
+  await checkImpliedTags(page, url, imageID, videoID, tag.id);
+}
+
+// Card tag popovers list direct Tags, then the Tags they imply (parents),
+// loaded when the popover opens so a parent edit shows on the next open.
+async function checkImpliedTags(page, url, imageID, videoID, directTagID) {
+  const { franchise } = await graphql(
+    page,
+    url,
+    `mutation { franchise: tagCreate(input: { name: "My Hero Academia" }) { id } }`
+  );
+  const { series } = await graphql(
+    page,
+    url,
+    `mutation ($parent: ID!) {
+      series: tagCreate(input: { name: "Vigilantes", parent_ids: [$parent] }) { id }
+    }`,
+    { parent: franchise.id }
+  );
+  const tagIDs = [directTagID, series.id];
+  await graphql(
+    page,
+    url,
+    `mutation ($image: ImageUpdateInput!, $video: SceneUpdateInput!) {
+      imageUpdate(input: $image) { id }
+      sceneUpdate(input: $video) { id }
+    }`,
+    {
+      image: { id: imageID, tag_ids: tagIDs },
+      video: { id: videoID, tag_ids: tagIDs },
+    }
+  );
+  const popoverTags = async (button) => {
+    await page.mouse.move(0, 0);
+    await page.locator(".hover-popover-content").waitFor({ state: "detached" });
+    await button.hover();
+    const popover = page.locator(".hover-popover-content");
+    await popover.locator(".implied-links").waitFor();
+    return {
+      direct: await popover
+        .locator(".tag-item:not(.implied-links .tag-item)")
+        .allInnerTexts(),
+      implied: await popover
+        .locator(".implied-links .tag-item")
+        .allInnerTexts(),
+      heading: await popover.locator(".implied-links-heading").innerText(),
+    };
+  };
+  const cards = [
+    ["/images", `.image-card-link[href="/images/${imageID}"]`],
+    ["/scenes", `.scene-card-link[href^="/scenes/${videoID}"]`],
+  ];
+  const tagButton = async ([path, card]) => {
+    await page.goto(`${url}${path}`);
+    const button = page
+      .locator(".grid-card", { has: page.locator(card) })
+      .locator(".tag-count button");
+    await button.waitFor();
+    assert.equal((await button.innerText()).trim(), "2", "count stays direct");
+    return button;
+  };
+  for (const entry of cards) {
+    // The fixture's direct Sub-Copyright implies its parent Copyright.
+    const copyrights = page
+      .locator(".grid-card", { has: page.locator(entry[1]) })
+      .locator(".copyright-count button");
+    await page.goto(`${url}${entry[0]}`);
+    await copyrights.waitFor();
+    assert.equal((await copyrights.innerText()).trim(), "1");
+    const copyrightShown = await popoverTags(copyrights);
+    assert.deepEqual(copyrightShown.direct, ["Fixture Sub-Copyright"]);
+    assert.deepEqual(copyrightShown.implied, ["Fixture Copyright"]);
+
+    const shown = await popoverTags(await tagButton(entry));
+    assert.equal(shown.heading, "Implied");
+    assert.deepEqual(shown.implied, ["My Hero Academia"]);
+    assert.ok(shown.direct.includes("Vigilantes"), shown.direct.join());
+    assert.ok(!shown.direct.includes("My Hero Academia"));
+  }
+
+  // A new grandparent shows on the next open without reloading the list.
+  const button = await tagButton(cards[0]);
+  await popoverTags(button);
+  await graphql(
+    page,
+    url,
+    `mutation ($id: ID!) {
+      tagCreate(input: { name: "Shonen", child_ids: [$id] }) { id }
+    }`,
+    { id: franchise.id }
+  );
+  const shown = await popoverTags(button);
+  assert.deepEqual(shown.implied.sort(), ["My Hero Academia", "Shonen"]);
 }
 
 // Fork destinations use the native utility-button styling: every navbar

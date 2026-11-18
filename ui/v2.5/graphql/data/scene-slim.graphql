@@ -71,6 +71,11 @@ fragment SlimSceneData on Scene {
     scene_index
   }
 
+  copyrights {
+    id
+    name
+  }
+
   tags {
     id
     name

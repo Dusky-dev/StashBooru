@@ -1,3 +1,23 @@
+## Implied Tags and Copyrights on Image/Video cards — 2026-11-18
+
+- Baseline: `develop` `92db904` (#382). Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Owner goal: a "My Hero Academia" Tag shows for media tagged "Vigilantes"
+  (its child), as on Danbooru. Reproduced first: detail pages, Tag search and
+  Copyright pages already include parents; cards showed only direct Tags.
+- Card Tag popovers (Images, Videos, All) list direct Tags, then an
+  **Implied** section with calculated parents/profile Tags. Cards also gain a
+  Copyright button (owner request) with direct Copyrights and implied parent
+  Copyrights. Implied entries load only when a popover opens (network-only,
+  so a parent edit shows on the next open); counts stay direct. Video list
+  data now includes direct Copyrights, as Image list data already did.
+- Checks: `make validate-ui`; first-library suite desktop+mobile against a
+  real server (Image and Video cards: Copyright parent, Tag parent, then a
+  new grandparent on reopen).
+- Not verified: items whose only implied Tags come from profiles have no Tag
+  button; list-page timing with many Copyrights per Video.
+- Next: Danbooru-style "Implies" field (roadmap 2).
+
 ## Identities panel name; remove Alias Collision Inspector and inheritance review — 2026-11-18
 
 - Baseline: `develop` `5e9b903` (#381). Branch

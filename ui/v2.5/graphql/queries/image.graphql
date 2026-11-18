@@ -35,3 +35,19 @@ query FindImage($id: ID!, $checksum: String) {
     ...ImageData
   }
 }
+
+# Card popovers load calculated (implied) Tags and Copyrights only when opened.
+query FindImageImpliedAssociations($id: ID!) {
+  findImage(id: $id) {
+    id
+    effective_associations {
+      tags {
+        ...SlimTagData
+      }
+      copyrights {
+        id
+        name
+      }
+    }
+  }
+}
