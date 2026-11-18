@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Button, Card, Form, Spinner, Table } from "react-bootstrap";
+import { useIntl } from "react-intl";
 import { useToast } from "src/hooks/Toast";
 import { ProcessingBackendOptions } from "../Shared/ProcessingBackendOptions";
 import {
@@ -8,6 +9,7 @@ import {
   ConversionConfig,
   ConversionFormat,
   ConversionSettings,
+  isJXLOutput,
   SavingsThresholds,
 } from "../Shared/mediaConversion";
 import {
@@ -21,6 +23,7 @@ interface Rule {
   enabled: boolean;
   quality: number;
   effort: number;
+  autoEffort: boolean;
   decodingSpeed: number;
   allowLarger: boolean;
   lossless: boolean;
@@ -29,6 +32,7 @@ interface Rule {
 }
 
 export const MediaConversionSettings: React.FC = () => {
+  const intl = useIntl();
   const Toast = useToast();
   const [settings, setSettings] = useState<ConversionSettings>();
   const loadController = useRef<AbortController>();
@@ -87,6 +91,7 @@ export const MediaConversionSettings: React.FC = () => {
                   fallback?.quality ??
                   (f.family === "video" ? 80 : 90),
                 effort: saved?.effort ?? fallback?.effort ?? 7,
+                autoEffort: saved?.autoEffort ?? fallback?.autoEffort ?? false,
                 decodingSpeed:
                   saved?.decodingSpeed ??
                   fallback?.decodingSpeed ??
@@ -202,6 +207,7 @@ export const MediaConversionSettings: React.FC = () => {
               {
                 quality: r.quality,
                 effort: r.effort,
+                autoEffort: isJXLOutput(r.output) && r.autoEffort,
                 decodingSpeed: r.decodingSpeed,
                 allowLarger: r.allowLarger,
                 lossless: supportsSavedControl(r.output, "lossless")
@@ -498,7 +504,12 @@ export const MediaConversionSettings: React.FC = () => {
                           max={key === "quality" ? 100 : 9}
                           step={1}
                           value={rule[key]}
-                          disabled={saving}
+                          disabled={
+                            saving ||
+                            (key === "effort" &&
+                              rule.autoEffort &&
+                              isJXLOutput(rule.output))
+                          }
                           aria-label={`${key} for ${rule.input}`}
                           onChange={(e) =>
                             setRules(
@@ -510,6 +521,30 @@ export const MediaConversionSettings: React.FC = () => {
                             )
                           }
                         />
+                        {key === "effort" && isJXLOutput(rule.output) && (
+                          <Form.Check
+                            type="checkbox"
+                            id={`converter-auto-effort-${index}`}
+                            label={intl.formatMessage({
+                              id: "media_conversion.auto_effort",
+                            })}
+                            aria-label={intl.formatMessage(
+                              { id: "media_conversion.auto_effort_aria" },
+                              { input: rule.input }
+                            )}
+                            checked={rule.autoEffort}
+                            disabled={saving}
+                            onChange={(e) =>
+                              setRules(
+                                rules.map((r, i) =>
+                                  i === index
+                                    ? { ...r, autoEffort: e.target.checked }
+                                    : r
+                                )
+                              )
+                            }
+                          />
+                        )}
                       </td>
                     ))}
                     <td className={showAdvancedRules ? undefined : "d-none"}>
@@ -651,6 +686,13 @@ export const MediaConversionSettings: React.FC = () => {
                 ))}
               </tbody>
             </Table>
+            {showAdvancedRules && (
+              <Form.Text className="text-muted d-block mb-2">
+                {intl.formatMessage({
+                  id: "media_conversion.auto_effort_help",
+                })}
+              </Form.Text>
+            )}
             <div className="d-flex flex-wrap justify-content-between">
               <Button
                 variant="secondary"
@@ -670,6 +712,7 @@ export const MediaConversionSettings: React.FC = () => {
                           ? 80
                           : 90,
                       effort: 7,
+                      autoEffort: false,
                       decodingSpeed:
                         settings.inputFormats.find((f) => f.id === input)
                           ?.family === "animation" &&

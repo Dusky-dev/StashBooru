@@ -91,3 +91,41 @@ func TestBooruImportSkipsDisabledConversionWithoutFailing(t *testing.T) {
 	require.NoError(t, store.Configure(config))
 	require.Empty(t, config.DefaultOutput("mp4", true))
 }
+
+func TestAutoJXLEffortResolvesToConcreteEffort(t *testing.T) {
+	repository := p07Fixture(t)
+	store := mediaconvert.Store{Root: t.TempDir(), Repository: mediaconvert.ModelRepository{Repository: repository}}
+	config, err := store.Config()
+	require.NoError(t, err)
+	file, err := store.Repository.Get(context.Background(), 1)
+	require.NoError(t, err)
+	input := mediaconvert.SourceFormat(file)
+	config.FormatDefaults[input] = "ajxl"
+	config.EncodingDefaults[input] = mediaconvert.EncodingDefaults{Quality: 90, Effort: 3, AutoEffort: true}
+	require.NoError(t, store.Configure(config))
+	saved, err := store.Config()
+	require.NoError(t, err)
+	require.True(t, saved.EncodingDefaults[input].AutoEffort)
+	want, ok := mediaconvert.AutoJXLEffort(file, mediaconvert.JXLDistanceFromQuality(90), 0)
+	require.True(t, ok, "fixture must have a known size and frame count")
+	caps := mediaconvert.Capabilities{Formats: []mediaconvert.Format{{ID: "ajxl", Extension: "jxl", Family: "animation", Available: true, Controls: []string{"quality", "effort", "decodingSpeed"}, DecodingSpeedLevels: 4}}}
+	target := conversionTarget{Kind: "image", ID: 1}
+	options, _, err := resolveConversionOptions(context.Background(), store, saved, 1, target,
+		conversionRequest{Options: mediaconvert.Options{Format: "ajxl"}, UseEncodingDefaults: true}, caps)
+	require.NoError(t, err)
+	require.Equal(t, want, options.Effort)
+	require.NotEqual(t, 3, want, "fixture should resolve away from the manual effort")
+	require.GreaterOrEqual(t, options.Effort, 1)
+	require.LessOrEqual(t, options.Effort, 9)
+
+	// A temporary override applies Auto without saved defaults; without it the
+	// requested manual effort is sent unchanged.
+	options, _, err = resolveConversionOptions(context.Background(), store, saved, 1, target,
+		conversionRequest{Options: mediaconvert.Options{Format: "ajxl", Quality: 90, Effort: 2}, UseQuality: true, AutoEffort: true}, caps)
+	require.NoError(t, err)
+	require.Equal(t, want, options.Effort)
+	options, _, err = resolveConversionOptions(context.Background(), store, saved, 1, target,
+		conversionRequest{Options: mediaconvert.Options{Format: "ajxl", Quality: 90, Effort: 2}, UseQuality: true}, caps)
+	require.NoError(t, err)
+	require.Equal(t, 2, options.Effort)
+}

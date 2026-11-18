@@ -505,6 +505,8 @@ try {
       await dialog.locator("#converter-hardware").inputValue(),
       "cpu"
     );
+    // Auto effort is JPEG XL only, so a selection with Videos never offers it.
+    assert.equal(await dialog.locator("#converter-auto-effort").count(), 0);
     // A separate settings tab must preserve the dialog, its draft and caller URL.
     const callerURL = page.url();
     const settingsLink = dialog.getByRole("link", {
@@ -602,6 +604,7 @@ try {
     assert.equal(trialRequest.options.hardware, "cpu");
     assert.equal(trialRequest.options.quality, 87);
     assert.equal(trialRequest.options.effort, 6);
+    assert.equal(trialRequest.autoEffort, false);
     assert.equal(trialRequest.useEncodingDefaults, false);
     assert.equal(trialRequest.useDecodingSpeedDefaults, true);
     assert.deepEqual(trialRequest.targets, [

@@ -241,15 +241,22 @@ func handleImageUpscaleRestorePost(w http.ResponseWriter, r *http.Request) {
 				} else if request.UseEncodingDefaults {
 					_, input, err = conversionDefaultForFile(ctx, conversionStore(), conversionConfig, fileID)
 				}
+				autoEffort := request.AutoEffort
 				if request.UseEncodingDefaults {
 					defaults := conversionConfig.DefaultEncoding(input)
 					options.Quality, options.Effort = defaults.Quality, defaults.Effort
+					autoEffort = defaults.AutoEffort
 				}
 				if options.Hardware == "" {
 					options.Hardware = "auto"
 				}
 				if options.Format == "jxl" || options.Format == "ajxl" {
 					options.Distance = mediaconvert.JXLDistanceFromQuality(options.Quality)
+				}
+				if err == nil && autoEffort && (options.Format == "jxl" || options.Format == "ajxl") {
+					if f, getErr := conversionStore().Repository.Get(ctx, fileID); getErr == nil {
+						mediaconvert.ApplyAutoEffort(&options, f, true)
+					}
 				}
 				var format mediaconvert.Format
 				if err == nil {
