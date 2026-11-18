@@ -1891,6 +1891,8 @@
     "dialog_title": "Identities — {name}",
     "open_page": "Open all identities",
     "source_details": "Source details",
+    "use_name": "Use “{name}”",
+    "use_name_help": "Fills in this profile's name. Booru tags usually use underscores instead of spaces.",
     "split": {
       "description": "Other {kind} records are named after a source name connected here. Merge one into {name} to bring its Images and Videos here.",
       "merge": "Merge into {name}…",
@@ -1902,5 +1904,11 @@
   },
   "media_card": {
     "implied": "Implied"
+  },
+  "media_conversion": {
+    "auto_effort": "Auto",
+    "auto_effort_aria": "Auto JPEG XL effort for {input}",
+    "auto_effort_help": "Auto (JPEG XL only) picks effort per file from its size and frame count: up to 9 for small stills, 7 for animations and large images, 5 for very large ones. The number is used for other formats and when a file's size is unknown.",
+    "effort_auto_summary": "effort auto"
   }
 }

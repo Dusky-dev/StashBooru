@@ -21,6 +21,7 @@ type InputFormat struct {
 type EncodingDefaults struct {
 	Quality        float64 `json:"quality"`
 	Effort         int     `json:"effort"`
+	AutoEffort     bool    `json:"autoEffort,omitempty"` // JPEG XL: pick effort per file; Effort stays the manual value.
 	DecodingSpeed  *int    `json:"decodingSpeed,omitempty"`
 	FasterDecoding *int    `json:"fasterDecoding,omitempty"` // Legacy JXL-only key.
 	AllowLarger    bool    `json:"allowLarger,omitempty"`

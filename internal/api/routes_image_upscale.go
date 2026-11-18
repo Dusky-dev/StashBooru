@@ -111,9 +111,11 @@ func handleImageUpscalePost(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				return err
 			}
+			autoEffort := false
 			if request.UseEncodingDefaults {
 				defaults := config.DefaultEncoding(input)
 				options.Quality, options.Effort = defaults.Quality, defaults.Effort
+				autoEffort = defaults.AutoEffort
 			}
 			if options.Hardware == "" {
 				options.Hardware = "auto"
@@ -121,6 +123,7 @@ func handleImageUpscalePost(w http.ResponseWriter, r *http.Request) {
 			if options.Format == "jxl" || options.Format == "ajxl" {
 				options.Distance = mediaconvert.JXLDistanceFromQuality(options.Quality)
 			}
+			mediaconvert.ApplyAutoEffort(&options, source, autoEffort)
 			format, err := conversionOutputFormat(capabilities, options.Format, "image")
 			if err != nil {
 				return err

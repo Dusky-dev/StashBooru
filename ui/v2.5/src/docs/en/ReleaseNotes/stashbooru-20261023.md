@@ -4,7 +4,7 @@ work, series or franchise.
 
 - **Start with your library.** Add folders in Settings → Library, then scan them
   from Settings → Tasks. Browse Images and Videos together in **All**.
-- **Connect source names.** Use **Sources & aliases** on a profile to connect
+- **Connect source names.** Use **Identities** on a profile to connect
   different provider names to the same record. **Booru** browses remote posts and
   downloads them into the library. **Following** currently checks saved targets
   on Danbooru-compatible sources.
