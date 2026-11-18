@@ -44,7 +44,7 @@ place and move finished ones to **Done**; the progress ledger keeps the detail.
     Tags? (Codex P2 on #383, deferred.)
 15. Animated JPEG XL plays choppily in Firefox; the file and a WebP copy play
     fine. AVIF and video inputs lost their frame timing (every frame 33 ms);
-    fixed by the JXL timing PR, but existing files keep it until reconverted.
+    fixed in #388, but existing files keep it until reconverted.
     Choppiness from GIF, APNG or WebP sources is undetermined: needs
     `jxlinfo -v` of one file, its source format and the worker's cjxl version.
 
