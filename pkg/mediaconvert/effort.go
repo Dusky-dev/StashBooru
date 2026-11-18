@@ -2,6 +2,8 @@ package mediaconvert
 
 import (
 	"math"
+	"path/filepath"
+	"strings"
 
 	"github.com/stashapp/stash/pkg/models"
 )
@@ -25,6 +27,11 @@ func AutoJXLEffort(f models.File, distance float64, upscaleScale int) (effort in
 		if frames <= 0 && file.Duration > 0 && file.FrameRate > 0 {
 			frames = int(math.Round(file.Duration * file.FrameRate))
 		}
+	}
+	if frames <= 0 && !mayAnimate(f.Base().Path) {
+		// Files scanned before frame inspection store 0; still-only formats
+		// such as JPEG have exactly one frame.
+		frames = 1
 	}
 	if width <= 0 || height <= 0 || frames <= 0 {
 		return 0, false
@@ -74,4 +81,14 @@ func ApplyAutoEffort(options *Options, f models.File, auto bool) {
 	if effort, ok := AutoJXLEffort(f, options.Distance, options.UpscaleScale); ok {
 		options.Effort = effort
 	}
+}
+
+// mayAnimate matches the containers animation.Count inspects; any other image
+// extension is a single frame.
+func mayAnimate(path string) bool {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".gif", ".png", ".apng", ".webp", ".jxl", ".avif", ".avifs", ".heic", ".heif":
+		return true
+	}
+	return false
 }

@@ -36,7 +36,10 @@ func TestAutoJXLEffort(t *testing.T) {
 		}
 	}
 	if _, ok := AutoJXLEffort(imageFile("a.png", 1000, 1000, 0), 1, 0); ok {
-		t.Error("an uninspected frame count must keep the manual effort")
+		t.Error("an uninspected PNG may be animated and must keep the manual effort")
+	}
+	if got, ok := AutoJXLEffort(imageFile("a.jpg", 2000, 3000, 0), 0, 0); !ok || got != 9 {
+		t.Errorf("JPEG scanned before frame inspection: got %d (ok=%v), want 9", got, ok)
 	}
 }
 
