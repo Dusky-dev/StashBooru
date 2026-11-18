@@ -545,6 +545,13 @@ try {
       1
     );
     await page.locator("#interface-group-videos > summary").click();
+    // The toggle event (and its save) fires after the click.
+    await page.waitForFunction(
+      (value) =>
+        localStorage.getItem("settings-group-open:interface-group-videos") ===
+        value,
+      "1"
+    );
     await page.reload();
     await page
       .locator("#interface-group-general")
@@ -554,6 +561,13 @@ try {
       [false, true, true, false]
     );
     await page.locator("#interface-group-videos > summary").click();
+    // The toggle event (and its save) fires after the click.
+    await page.waitForFunction(
+      (value) =>
+        localStorage.getItem("settings-group-open:interface-group-videos") ===
+        value,
+      null
+    );
     await page.reload();
     await page
       .locator("#interface-group-general")
