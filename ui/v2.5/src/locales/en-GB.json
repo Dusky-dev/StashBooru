@@ -1899,5 +1899,11 @@
   },
   "media_card": {
     "implied": "Implied"
+  },
+  "media_conversion": {
+    "auto_effort": "Auto",
+    "auto_effort_aria": "Auto JPEG XL effort for {input}",
+    "auto_effort_help": "Auto (JPEG XL only) picks effort per file from its size and frame count: up to 9 for small stills, 7 for animations and large images, 5 for very large ones. The number is used for other formats and when a file's size is unknown.",
+    "effort_auto_summary": "effort auto"
   }
 }

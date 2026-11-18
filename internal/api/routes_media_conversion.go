@@ -85,6 +85,7 @@ type conversionRequest struct {
 	FormatRulesEnabled       map[string]bool                          `json:"formatRulesEnabled"`
 	UseQuality               bool                                     `json:"useQuality"`
 	UseEncodingDefaults      bool                                     `json:"useEncodingDefaults"`
+	AutoEffort               bool                                     `json:"autoEffort"` // Temporary override: Auto JPEG XL effort.
 	UseDecodingSpeedDefaults *bool                                    `json:"useDecodingSpeedDefaults,omitempty"`
 	EncodingDefaults         map[string]mediaconvert.EncodingDefaults `json:"encodingDefaults"`
 	Savings                  *mediaconvert.SavingsThresholds          `json:"savings,omitempty"`
@@ -720,6 +721,16 @@ func resolveConversionOptions(ctx context.Context, s mediaconvert.Store, config 
 			value := 1
 			options.DecodingSpeed = &value
 		}
+		auto := request.AutoEffort
+		if request.UseEncodingDefaults {
+			auto = defaults.AutoEffort
+		}
+		if auto && (options.Format == "jxl" || options.Format == "ajxl") {
+			var f models.File
+			if f, err = s.Repository.Get(ctx, id); err == nil {
+				mediaconvert.ApplyAutoEffort(&options, f, true)
+			}
+		}
 	}
 	return options, format, err
 }
@@ -813,6 +824,7 @@ func previewConversionDefaults(w http.ResponseWriter, r *http.Request, targets [
 		Error          string  `json:"error,omitempty"`
 		Quality        float64 `json:"quality"`
 		Effort         int     `json:"effort"`
+		AutoEffort     bool    `json:"autoEffort,omitempty"`
 		DecodingSpeed  int     `json:"decodingSpeed"`
 		AllowLarger    bool    `json:"allowLarger,omitempty"`
 		Lossless       bool    `json:"lossless,omitempty"`
@@ -831,6 +843,7 @@ func previewConversionDefaults(w http.ResponseWriter, r *http.Request, targets [
 			next.Output, next.Input, err = conversionDefaultForFile(r.Context(), s, config, id)
 			defaults := config.DefaultEncoding(next.Input)
 			next.Quality, next.Effort, next.DecodingSpeed = defaults.Quality, defaults.Effort, defaults.DecodingSpeedValue()
+			next.AutoEffort = defaults.AutoEffort && (next.Output == "jxl" || next.Output == "ajxl")
 			next.AllowLarger, next.Lossless = defaults.AllowLarger, defaults.Lossless
 			next.DropAudio, next.AllowAlphaLoss = defaults.DropAudio, defaults.AllowAlphaLoss
 		}
