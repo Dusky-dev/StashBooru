@@ -1,3 +1,25 @@
+## Settings: collapsible groups, clearer parent wording, terminal log console — 2026-11-18
+
+- Baseline: `develop` `1d0b583` (#395). Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Owner request: Library, Processing, Metadata Providers, Services and Plugins
+  now use remembered collapsible groups with a one-line description, like
+  Tasks/System. Library folders, installed plugins and the DLNA server group
+  start open; the others start closed. Hash links and search open the group.
+  Processing's in-page link row is replaced by the group headers.
+- "Hierarchy inheritance" is renamed **Include parents**; "Association sources"
+  on media is **Why these are attached**, with readable, translated origins.
+- Logs (About) read as a terminal: title bar, live/disconnected status, coloured
+  levels, newest line last with follow/jump-to-latest and a prompt line; motion
+  respects reduced-motion.
+- Checks: `pnpm run validate` (135 tests, lint, tsc, format); browser
+  `settings-maintenance` (extended for groups and the console) and
+  `first-use-notes`, desktop+mobile.
+- Not run locally: real-binary suites (`plugin-compatibility`,
+  `storage-native-packed-acceptance`, association suites); left to CI.
+- Next: convert-again for already converted media; site icon on connected
+  identities.
+
 ## Merges: Artist/Copyright dialog like Characters/Tags; merged Tags reused — 2026-11-18
 
 - Baseline: `develop` `385a3fa` (#394). Branch

@@ -241,10 +241,6 @@ export const MediaConversionSettings: React.FC = () => {
 
   return (
     <div className="setting-section" id="media-converter">
-      <h1>Media converter</h1>
-      <div className="sub-heading">
-        Configure conversion defaults. Start conversions from selected media.
-      </div>
       <Card className="p-3">
         {!settings && (
           <div className="mb-3">

@@ -56,7 +56,7 @@ hierarchical searches without rewriting every media record.
 
 On Image and Video cards, the Tag and Copyright buttons keep the direct count;
 their popovers list the direct entries, then **Implied** ones (parent Tags and
-profile Tags, parent Copyrights), read fresh each time a popover opens. Use **Association sources** on Image/Video details to inspect where a membership
+profile Tags, parent Copyrights), read fresh each time a popover opens. Use **Why these are attached** on Image/Video details to inspect where a membership
 came from. Calculated parents are never inserted as permanent direct links.
 Exact-set/null and some maintenance
 filters keep direct-link semantics; see the [full contract](p06-effective-associations.md).

@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { FormattedMessage } from "react-intl";
 import * as GQL from "src/core/generated-graphql";
 import { useLoggingSubscribe, queryLogs } from "src/core/StashService";
 import { SelectSetting } from "./Inputs";
@@ -29,19 +30,29 @@ function levelClass(level: string) {
   return level.toLowerCase().trim();
 }
 
+const levelLabels: Record<string, string> = {
+  Trace: "TRACE",
+  Debug: "DEBUG",
+  Info: "INFO",
+  Warning: "WARN",
+  Error: "ERROR",
+  Progress: "PROG",
+};
+
 interface ILogElementProps {
   logEntry: LogEntry;
 }
 
 const LogElement: React.FC<ILogElementProps> = ({ logEntry }) => {
-  // pad to maximum length of level enum
-  const level = logEntry.level.padEnd(GQL.LogLevel.Progress.length);
+  const level = (levelLabels[logEntry.level] ?? logEntry.level).padEnd(5);
 
   return (
-    <div className="row">
-      <span className="log-time">{logEntry.time}</span>
-      <span className={`${levelClass(logEntry.level)}`}>{level}</span>
-      <span className="col col-sm-9">{logEntry.message}</span>
+    <div className={`log-line log-line-${levelClass(logEntry.level)}`}>
+      <span className="log-time" title={logEntry.time}>
+        {logEntry.time.slice(11)}
+      </span>
+      <span className={`log-level ${levelClass(logEntry.level)}`}>{level}</span>
+      <span className="log-message">{logEntry.message}</span>
     </div>
   );
 };
@@ -102,9 +113,29 @@ export const SettingsLogsPanel: React.FC = () => {
     });
   }, [data]);
 
+  // Newest entries are kept first; a terminal prints them at the bottom.
   const displayEntries = entries
     .filter(filterByLogLevel)
-    .slice(0, MAX_DISPLAY_LOG_ENTRIES);
+    .slice(0, MAX_DISPLAY_LOG_ENTRIES)
+    .reverse();
+
+  const screen = useRef<HTMLDivElement>(null);
+  const [following, setFollowing] = useState(true);
+  const latestID = displayEntries[displayEntries.length - 1]?.id;
+
+  useLayoutEffect(() => {
+    const element = screen.current;
+    if (element && following && latestID !== undefined)
+      element.scrollTop = element.scrollHeight;
+  }, [latestID, following]);
+
+  function onScroll() {
+    const element = screen.current;
+    if (!element) return;
+    const atBottom =
+      element.scrollHeight - element.scrollTop - element.clientHeight < 24;
+    if (atBottom !== following) setFollowing(atBottom);
+  }
 
   function maybeRenderError() {
     if (error) {
@@ -143,11 +174,63 @@ export const SettingsLogsPanel: React.FC = () => {
       </SettingSection>
 
       {/* A fixed-height box keeps About and the Changelog within reach. */}
-      <div className="logs logs-compact">
-        {maybeRenderError()}
-        {displayEntries.map((logEntry) => (
-          <LogElement logEntry={logEntry} key={logEntry.id} />
-        ))}
+      <div className="log-terminal">
+        <div className="log-terminal-bar">
+          <span className="log-terminal-lights" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </span>
+          <span className="log-terminal-title">
+            <FormattedMessage id="config.logs.console_title" />
+          </span>
+          <span
+            className={`log-terminal-status ${error ? "offline" : "online"}`}
+          >
+            <FormattedMessage
+              id={error ? "config.logs.disconnected" : "config.logs.live"}
+            />
+          </span>
+          <span className="log-terminal-count">
+            <FormattedMessage
+              id="config.logs.line_count"
+              values={{ count: displayEntries.length }}
+            />
+          </span>
+        </div>
+        <div
+          className="logs logs-compact"
+          ref={screen}
+          onScroll={onScroll}
+          role="log"
+          aria-live="off"
+          tabIndex={0}
+        >
+          {maybeRenderError()}
+          {displayEntries.length === 0 && !error && (
+            <div className="log-empty">
+              <FormattedMessage id="config.logs.empty" />
+            </div>
+          )}
+          {displayEntries.map((logEntry) => (
+            <LogElement logEntry={logEntry} key={logEntry.id} />
+          ))}
+          <div className="log-prompt" aria-hidden="true">
+            <span className="log-prompt-user">stash@booru</span>
+            <span className="log-prompt-path">:~$</span> tail -f stash.log
+            --level={logLevel.toLowerCase()}
+            <span className="log-cursor" />
+          </div>
+        </div>
+        {!following && (
+          <button
+            type="button"
+            className="log-terminal-jump"
+            onClick={() => setFollowing(true)}
+          >
+            <FormattedMessage id="config.logs.jump_to_latest" />
+          </button>
+        )}
       </div>
     </div>
   );

@@ -18,7 +18,7 @@ Optional GPU runtimes, models and encoders are installed separately on the machi
 
 **Related-content index:** Install the EVA02 model if needed and generate embeddings. Unchanged Images are skipped. The index resides on the StashBooru server even when remote inference is used. Model downloads begin only after a user action, and the details panel shows the installed revision and model path.
 
-**Tagging defaults:** Image tagging and Video frame tagging share saved thresholds. Higher thresholds retain fewer proposed tags. Filename metadata can work without Camie; supported filename tokens are `%artist%`, `%copyright%`, `%character%`, `%md5%` and `%ext%`. Filename identities take precedence over inferred identities. Hierarchy-inheritance defaults are shared with System and Tagging.
+**Tagging defaults:** Image tagging and Video frame tagging share saved thresholds. Higher thresholds retain fewer proposed tags. Filename metadata can work without Camie; supported filename tokens are `%artist%`, `%copyright%`, `%character%`, `%md5%` and `%ext%`. Filename identities take precedence over inferred identities. The **Include parents** settings (Settings → Library) are shared with Tagging.
 
 **Bulk auto-tagging:** When enabled, reviewing metadata for multiple Images can start a background job after one confirmation, applying configured Camie, EVA02 and filename predictions without a separate approval for each Image. Booru and library suggestions are not included. When disabled, bulk selection offers a per-Image review path.
 

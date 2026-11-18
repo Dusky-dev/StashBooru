@@ -220,7 +220,6 @@ export const VisualSimilaritySettings: React.FC = () => {
 
   return (
     <div className="setting-section" id="visual-similarity">
-      <h1>Similarity and tagging</h1>
       <p>
         <Link to="/image-duplicates">Review similar images</Link> — compare
         visual similarity groups side by side and choose which images to keep.

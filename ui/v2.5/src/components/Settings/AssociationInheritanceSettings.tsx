@@ -11,7 +11,10 @@ const defaultInheritance: GQL.AssociationInheritanceSettingsInput = {
   tags: true,
 };
 
-export const AssociationInheritanceSettings: React.FC = () => {
+export const AssociationInheritanceSettings: React.FC<{
+  /** Omit the heading when a surrounding group already names the section. */
+  hideHeading?: boolean;
+}> = ({ hideHeading }) => {
   const { defaults, saveDefaults } = useSettings();
   const inheritance = {
     ...defaultInheritance,
@@ -33,7 +36,9 @@ export const AssociationInheritanceSettings: React.FC = () => {
   return (
     <SettingSection
       id="association-inheritance-settings"
-      headingID="config.association_inheritance.heading"
+      headingID={
+        hideHeading ? undefined : "config.association_inheritance.heading"
+      }
       subHeadingID="config.association_inheritance.description"
     >
       <BooleanSetting
