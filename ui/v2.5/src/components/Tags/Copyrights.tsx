@@ -107,43 +107,35 @@ export const CopyrightDetailsPanel: React.FC<{
           entityName={copyright.name}
         />
       </div>
-      {hasMain || hasSub ? (
-        <Tabs
-          defaultActiveKey={hasMain ? "main" : "sub"}
-          id={`copyright-hierarchy-tabs-${copyright.id}`}
-          className="copyright-hierarchy-tabs mt-3"
-        >
-          {hasMain ? (
-            <Tab eventKey="main" title={`Main (${copyright.parents.length})`}>
-              <div className="pt-3">
-                <CopyrightGrid
-                  items={copyright.parents}
-                  label="Main Copyrights"
-                />
-              </div>
-            </Tab>
-          ) : null}
-          {hasSub ? (
-            <Tab
-              eventKey="sub"
-              title={`Sub (${copyright.ordered_children.length})`}
-            >
-              <div className="pt-3">
-                <p className="text-muted small mb-2">
-                  Sub-Copyrights linked to this Copyright.
-                </p>
-                <CopyrightGrid
-                  items={copyright.ordered_children}
-                  label="Sub-Copyrights"
-                />
-                <CopyrightChildrenOrderControl
-                  parentID={copyright.id}
-                  orderedChildren={copyright.ordered_children}
-                />
-              </div>
-            </Tab>
-          ) : null}
-        </Tabs>
+      {/* Main Copyrights first, Sub-Copyrights below; no tabs to switch. */}
+      {hasMain ? (
+        <section className="copyright-hierarchy-group mt-3">
+          <h3 className="copyright-hierarchy-heading">
+            <FormattedMessage
+              id="copyright_hierarchy.main_heading"
+              values={{ count: copyright.parents.length }}
+            />
+          </h3>
+          <CopyrightGrid items={copyright.parents} label="Main Copyrights" />
+        </section>
+      ) : null}
+      {hasSub ? (
+        <section className="copyright-hierarchy-group mt-3">
+          <h3 className="copyright-hierarchy-heading">
+            <FormattedMessage
+              id="copyright_hierarchy.sub_heading"
+              values={{ count: copyright.ordered_children.length }}
+            />
+          </h3>
+          <CopyrightGrid
+            items={copyright.ordered_children}
+            label="Sub-Copyrights"
+          />
+          <CopyrightChildrenOrderControl
+            parentID={copyright.id}
+            orderedChildren={copyright.ordered_children}
+          />
+        </section>
       ) : null}
     </>
   );

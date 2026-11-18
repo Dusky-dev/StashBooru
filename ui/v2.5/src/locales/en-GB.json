@@ -1419,6 +1419,8 @@
   "name": "Name",
   "sort_name": "Sort Name",
   "copyright_hierarchy": {
+    "main_heading": "Main ({count})",
+    "sub_heading": "Sub ({count})",
     "tree_sort": "Hierarchy",
     "sort_name_label": "Sort alphabetically as (optional)",
     "sort_name_help": "Optional name used only for alphabetical sorting. For example, enter “Legend of Zelda” to sort “The Legend of Zelda” under L. Leave blank to use the displayed name.",

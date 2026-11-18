@@ -236,7 +236,7 @@ Sub-Copyright once. Search, sorting and pagination stay within that branch.
 Copyrights have their own aliases, artwork, favorites and media/Character links;
 they remain separate from ordinary Tags. Multiple Artists can be attached to an
 Image/Video. Character variants keep their own profiles, and disambiguation can
-link to a native Copyright or Artist. The hierarchy's Main/Sub tabs, branch paths
+link to a native Copyright or Artist. The hierarchy's Main and Sub lists, branch paths
 and descendant filters keep these identities separate. Artist context links do
 not imply authorship.
 
