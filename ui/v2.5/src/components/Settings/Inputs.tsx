@@ -72,6 +72,8 @@ const visibleDescriptions = new Set([
   "config.general.auth.log_to_terminal_desc",
   "config.general.blobs_path.description",
   "config.general.blobs_storage.description",
+  "config.general.calculate_md5_and_ohash_desc",
+  "config.general.funscript_heatmap_draw_range_desc",
   "config.general.delete_trash_path.description",
   "config.general.generated_file_naming_hash_desc",
   "config.general.number_of_parallel_task_for_scan_generation_desc",

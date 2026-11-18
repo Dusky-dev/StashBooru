@@ -605,7 +605,8 @@ try {
       .getByText(sfwHelp, { exact: false })
       .waitFor();
     assert.equal(await page.locator("#sfw-content-mode").isChecked(), false);
-    await page.keyboard.press("Escape");
+    // The help button toggles its popover closed again.
+    await sfw.getByRole("button", { name: "Help", exact: true }).click();
     await page.locator(".setting-help-popover").waitFor({ state: "detached" });
     await page.locator("#interface-group-general > summary").click();
 
