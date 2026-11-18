@@ -715,6 +715,54 @@ async function check(viewport, label) {
       await pictureResponse.body(),
       Buffer.from(artwork, "base64")
     );
+    // If the source picture can't be read, the picture the merge copied
+    // stays instead of being cleared by the follow-up update.
+    const unreadTarget = await create({ name: "Unread target" });
+    const unreadSource = await create({
+      name: "Unread source",
+      image: `data:image/png;base64,${artwork}`,
+    });
+    const unreadImage = `**/copyright/${unreadSource.id}/image*`;
+    await page.route(unreadImage, (route) => route.abort());
+    await page.goto(url + `/copyrights/${unreadTarget.id}`);
+    await page.getByRole("button", { name: "Merge...", exact: true }).click();
+    const unreadModal = page.locator(".modal-dialog").last();
+    const unreadSearched = page.waitForResponse((response) => {
+      const body = response.request().postDataJSON?.();
+      return (
+        body?.operationName === "FindCopyrightsForSelect" &&
+        JSON.stringify(body.variables ?? {}).includes("Unread source")
+      );
+    });
+    await unreadModal.locator("input").first().fill("Unread source");
+    await unreadSearched;
+    await page.getByRole("option", { name: "Unread source" }).first().click();
+    await unreadModal
+      .getByRole("button", { name: "Merge", exact: true })
+      .click();
+    const unreadDetails = page.locator(".profile-merge-dialog");
+    await unreadDetails.locator('[data-field="name"]').waitFor();
+    await unreadDetails
+      .getByRole("button", { name: "Apply", exact: true })
+      .click();
+    await unreadDetails.waitFor({ state: "detached" });
+    await page.unroute(unreadImage);
+    const unreadURL = (
+      await call(
+        page,
+        url,
+        "query($id:ID!){findCopyright(id:$id){image_path}}",
+        { id: unreadTarget.id }
+      )
+    ).findCopyright.image_path;
+    const unreadResponse = await page.request.get(
+      unreadURL + (unreadURL.includes("?") ? "&" : "?") + "fallback=false"
+    );
+    assert.equal(unreadResponse.status(), 200);
+    assert.deepEqual(
+      await unreadResponse.body(),
+      Buffer.from(artwork, "base64")
+    );
     assert.deepEqual(errors, []);
     await page.screenshot({
       path: join(artifacts, label + "-saved.png"),

@@ -165,11 +165,14 @@ const ProfileMergeDetails: React.FC<{
       description: description.useNewValue
         ? description.getNewValue()
         : dest.description,
+      // Clear the picture only when a source picture was offered and the
+      // user kept the empty destination. If none could be read, the update
+      // leaves the image alone, so whatever the merge copied stays.
       image: image.useNewValue
         ? image.getNewValue()
-        : destHasImage
-          ? undefined
-          : null,
+        : !destHasImage && image.newValue
+          ? null
+          : undefined,
     };
   }
 
