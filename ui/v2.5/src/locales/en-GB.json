@@ -1922,6 +1922,8 @@
     "merged_performers": "Merged characters",
     "merged_scenes": "Merged videos",
     "merged_tags": "Merged tags",
+    "merged_artists": "Merged Artists",
+    "merged_copyrights": "Merged Copyrights",
     "reassign_past_tense": "File reassigned",
     "removed_entity": "Removed {count, plural, one {{singularEntity}} other {{pluralEntity}}}",
     "rescanning_entity": "Rescanning {count, plural, one {{singularEntity}} other {{pluralEntity}}}…",

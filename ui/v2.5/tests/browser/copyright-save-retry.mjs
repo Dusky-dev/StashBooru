@@ -587,6 +587,43 @@ async function check(viewport, label) {
       ),
       false
     );
+    // Copyright merges work like Character/Tag merges: pick sources, then a
+    // value per field. Conflicting descriptions no longer block the merge.
+    const mergeTarget = await create({
+      name: "Merge target",
+      description: "Target description",
+    });
+    const mergeSource = await create({
+      name: "Merge source",
+      description: "Source description",
+    });
+    await page.goto(url + `/copyrights/${mergeTarget.id}`);
+    await page.getByRole("button", { name: "Merge...", exact: true }).click();
+    const mergeModal = page.locator(".modal-dialog").last();
+    await mergeModal.locator("input").first().fill("Merge source");
+    await page.getByRole("option", { name: "Merge source" }).first().click();
+    await mergeModal
+      .getByRole("button", { name: "Merge", exact: true })
+      .click();
+    const mergeDetails = page.locator(".profile-merge-dialog");
+    await mergeDetails.getByText("Source description").waitFor();
+    await mergeDetails
+      .getByRole("button", { name: "Apply", exact: true })
+      .click();
+    await mergeDetails.waitFor({ state: "detached" });
+    await page.waitForFunction(() => !document.querySelector(".modal-dialog"));
+    const merged = await call(
+      page,
+      url,
+      "query($a:ID!,$b:ID!){a:findCopyright(id:$a){id} b:findCopyright(id:$b){description aliases}}",
+      { a: mergeSource.id, b: mergeTarget.id }
+    );
+    assert.equal(merged.a, null, "merged source Copyright is removed");
+    assert.equal(merged.b.description, "Target description");
+    assert.ok(
+      merged.b.aliases.includes("Merge source"),
+      "the merged name stays as an alias for imports"
+    );
     assert.deepEqual(errors, []);
     await page.screenshot({
       path: join(artifacts, label + "-saved.png"),
@@ -594,7 +631,7 @@ async function check(viewport, label) {
     });
     console.log(
       label +
-        ": Copyright create/edit retry, restart and branch Character list passed"
+        ": Copyright create/edit retry, restart, branch Character list and merge dialog passed"
     );
   } catch (error) {
     await page

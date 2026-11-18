@@ -368,6 +368,46 @@ async function check(viewport, label) {
   await page.goto(url + "/studios/" + first.id, { waitUntil: "networkidle" });
   assert.deepEqual(await all(), updated);
   assert.deepEqual(await artworkBytes(), savedArtwork);
+  // Artist merges work like Character/Tag merges: several sources, a value
+  // per field, and conflicting details no longer block the merge.
+  const mergeTarget = await create({
+    name: "Merge target Artist",
+    details: "Target details",
+    rating100: 80,
+  });
+  const mergeSource = await create({
+    name: "Merge source Artist",
+    details: "Source details",
+    rating100: 20,
+  });
+  await page.goto(url + "/studios/" + mergeTarget.id, {
+    waitUntil: "networkidle",
+  });
+  await page.getByRole("button", { name: "Merge...", exact: true }).click();
+  const mergeModal = page.locator(".modal-dialog").last();
+  await mergeModal.locator("input").first().fill("Merge source Artist");
+  await page
+    .getByRole("option", { name: "Merge source Artist" })
+    .first()
+    .click();
+  await mergeModal.getByRole("button", { name: "Merge", exact: true }).click();
+  const mergeDetails = page.locator(".profile-merge-dialog");
+  await mergeDetails.getByText("Source details").waitFor();
+  await mergeDetails
+    .getByRole("button", { name: "Apply", exact: true })
+    .click();
+  await mergeDetails.waitFor({ state: "detached" });
+  await page.waitForFunction(() => !document.querySelector(".modal-dialog"));
+  const merged = await call(
+    page,
+    url,
+    "query($a:ID!,$b:ID!){a:findStudio(id:$a){id} b:findStudio(id:$b){details rating100 aliases}}",
+    { a: mergeSource.id, b: mergeTarget.id }
+  );
+  assert.equal(merged.a, null, "merged source Artist is removed");
+  assert.equal(merged.b.details, "Target details");
+  assert.equal(merged.b.rating100, 80);
+  assert.ok(merged.b.aliases.includes("Merge source Artist"));
   assert.deepEqual(errors, []);
   await page.close();
   await instance.stop();
@@ -375,7 +415,7 @@ async function check(viewport, label) {
   console.log(
     "Artist Save & New " +
       label +
-      ": required-name validation, duplicate create/draft retry, clean next form, rejected hierarchy cycle/retry, Cancel, Back, refresh/restart and native metadata/artwork passed."
+      ": required-name validation, duplicate create/draft retry, clean next form, rejected hierarchy cycle/retry, Cancel, Back, refresh/restart, native metadata/artwork and merge dialog passed."
   );
 }
 try {

@@ -25,6 +25,17 @@ func mergeConflictCount(ctx context.Context, query string, args ...interface{}) 
 }
 
 func (qb *StudioStore) Merge(ctx context.Context, sourceID, destinationID int) error {
+	return qb.merge(ctx, sourceID, destinationID, false)
+}
+
+// MergeKeepingDestination resolves conflicting profile fields in favour of
+// the destination instead of refusing, as the Character/Tag merge dialog
+// does after the user chose the values to keep.
+func (qb *StudioStore) MergeKeepingDestination(ctx context.Context, sourceID, destinationID int) error {
+	return qb.merge(ctx, sourceID, destinationID, true)
+}
+
+func (qb *StudioStore) merge(ctx context.Context, sourceID, destinationID int, keepDestination bool) error {
 	if sourceID <= 0 || destinationID <= 0 || sourceID == destinationID {
 		return fmt.Errorf("choose two distinct Artists")
 	}
@@ -39,13 +50,13 @@ func (qb *StudioStore) Merge(ctx context.Context, sourceID, destinationID int) e
 	if source == nil || dest == nil {
 		return fmt.Errorf("source or destination Artist was not found")
 	}
-	if source.Details != "" && dest.Details != "" && source.Details != dest.Details {
+	if !keepDestination && source.Details != "" && dest.Details != "" && source.Details != dest.Details {
 		return fmt.Errorf("artist descriptions conflict; edit one profile before merging")
 	}
-	if source.Rating != nil && dest.Rating != nil && *source.Rating != *dest.Rating {
+	if !keepDestination && source.Rating != nil && dest.Rating != nil && *source.Rating != *dest.Rating {
 		return fmt.Errorf("artist ratings conflict; edit one profile before merging")
 	}
-	if source.ParentID != nil && *source.ParentID != destinationID &&
+	if !keepDestination && source.ParentID != nil && *source.ParentID != destinationID &&
 		dest.ParentID != nil && *dest.ParentID != sourceID &&
 		*source.ParentID != *dest.ParentID {
 		return fmt.Errorf("artist parent relationships conflict; resolve them before merging")
@@ -56,7 +67,7 @@ WHERE src.studio_id=? AND src.value!=dst.value`, destinationID, sourceID)
 	if err != nil {
 		return err
 	}
-	if conflict {
+	if !keepDestination && conflict {
 		return fmt.Errorf("artist custom fields conflict; resolve them before merging")
 	}
 	sourceImage, err := qb.GetImage(ctx, sourceID)
@@ -67,7 +78,7 @@ WHERE src.studio_id=? AND src.value!=dst.value`, destinationID, sourceID)
 	if err != nil {
 		return err
 	}
-	if len(sourceImage) > 0 && len(destImage) > 0 && !bytes.Equal(sourceImage, destImage) {
+	if !keepDestination && len(sourceImage) > 0 && len(destImage) > 0 && !bytes.Equal(sourceImage, destImage) {
 		return fmt.Errorf("artist portraits conflict; resolve them before merging")
 	}
 	if len(sourceImage) > 0 && len(destImage) == 0 {
@@ -189,6 +200,16 @@ VALUES (?,?)`, destinationID, source.Name); err != nil {
 }
 
 func (s *CopyrightStore) Merge(ctx context.Context, sourceID, destinationID int) error {
+	return s.merge(ctx, sourceID, destinationID, false)
+}
+
+// MergeKeepingDestination resolves conflicting profile fields in favour of
+// the destination instead of refusing (see StudioStore).
+func (s *CopyrightStore) MergeKeepingDestination(ctx context.Context, sourceID, destinationID int) error {
+	return s.merge(ctx, sourceID, destinationID, true)
+}
+
+func (s *CopyrightStore) merge(ctx context.Context, sourceID, destinationID int, keepDestination bool) error {
 	if sourceID <= 0 || destinationID <= 0 || sourceID == destinationID {
 		return fmt.Errorf("choose two distinct Copyrights")
 	}
@@ -203,10 +224,10 @@ func (s *CopyrightStore) Merge(ctx context.Context, sourceID, destinationID int)
 	if src == nil || dst == nil {
 		return fmt.Errorf("source or destination Copyright was not found")
 	}
-	if src.Description != "" && dst.Description != "" && src.Description != dst.Description {
+	if !keepDestination && src.Description != "" && dst.Description != "" && src.Description != dst.Description {
 		return fmt.Errorf("copyright descriptions conflict; edit one before merging")
 	}
-	if src.SortName != "" && dst.SortName != "" && src.SortName != dst.SortName {
+	if !keepDestination && src.SortName != "" && dst.SortName != "" && src.SortName != dst.SortName {
 		return fmt.Errorf("copyright sort names conflict; edit one before merging")
 	}
 	srcImage, err := s.GetImage(ctx, sourceID)
@@ -217,7 +238,7 @@ func (s *CopyrightStore) Merge(ctx context.Context, sourceID, destinationID int)
 	if err != nil {
 		return err
 	}
-	if len(srcImage) > 0 && len(dstImage) > 0 && !bytes.Equal(srcImage, dstImage) {
+	if !keepDestination && len(srcImage) > 0 && len(dstImage) > 0 && !bytes.Equal(srcImage, dstImage) {
 		return fmt.Errorf("copyright portraits conflict; edit one before merging")
 	}
 	if len(srcImage) > 0 && len(dstImage) == 0 {
@@ -231,7 +252,7 @@ WHERE a.copyright_id=? AND a.role!='' AND b.role!='' AND a.role!=b.role`, destin
 	if err != nil {
 		return err
 	}
-	if conflict {
+	if !keepDestination && conflict {
 		return fmt.Errorf("copyright structural roles conflict")
 	}
 	if err := mergeExec(ctx, `UPDATE copyrights SET
