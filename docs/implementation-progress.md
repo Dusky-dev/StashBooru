@@ -1,3 +1,15 @@
+## Copyright page: Main above Sub, no tabs — 2026-11-18
+
+- Baseline: `develop` `8f382b2` (#390). Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Owner request: a Copyright page no longer switches between Main and Sub
+  tabs. Main Copyrights show first with a short "Main (n)" heading, then
+  Sub-Copyrights with "Sub (n)" and the existing order control. The
+  "Sub-Copyrights linked to this Copyright." sentence is gone.
+- Checks: `tsc`, Biome, `pnpm run test` 133/133. `copyright-save-retry` now
+  asserts the headings, their order and that no Main/Sub tabs remain; it
+  needs a server binary, so it runs in CI only.
+
 ## Processing: compact optional tagger rows — 2026-11-18
 
 - Baseline: `develop` (after #389). Branch

@@ -477,6 +477,26 @@ async function check(viewport, label) {
     page.on("pageerror", (error) => errors.push(String(error)));
     await page.goto(url + "/copyrights/" + first.id);
     await profile(first.id);
+    // Main Copyrights sit above Sub-Copyrights; no tabs or helper sentence.
+    const headings = page.locator(".copyright-hierarchy-heading");
+    await headings.first().waitFor();
+    assert.deepEqual(await headings.allTextContents(), ["Main (2)", "Sub (1)"]);
+    assert.equal(
+      await page.getByRole("tab", { name: /^(Main|Sub) \(/ }).count(),
+      0
+    );
+    assert.equal(
+      await page.getByText("Sub-Copyrights linked to this Copyright.").count(),
+      0
+    );
+    const [mainTop, subTop] = await Promise.all(
+      ["Main Copyrights", "Sub-Copyrights"].map((name) =>
+        page
+          .getByRole("list", { name, exact: true })
+          .evaluate((el) => el.getBoundingClientRect().top)
+      )
+    );
+    assert.ok(mainTop < subTop, "Main Copyrights render above Sub-Copyrights");
     assert.deepEqual(await all(), final);
     assert.deepEqual(await others(), originalOthers);
     const after = (
