@@ -16,7 +16,11 @@ export function SettingsSearch({
   const matches = useMemo(
     () =>
       searchSettings(query)
-        .filter((entry) => showExperimental || entry.tab !== "experimental")
+        .filter(
+          (entry) =>
+            showExperimental ||
+            (entry.tab !== "experimental" && !entry.advanced)
+        )
         .slice(0, 12),
     [query, showExperimental]
   );

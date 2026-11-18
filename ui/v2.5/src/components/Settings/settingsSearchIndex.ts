@@ -5,6 +5,8 @@ export interface SettingsSearchEntry {
   label: string;
   anchor?: string;
   keywords?: string;
+  /** Only listed in Advanced mode, like the setting itself. */
+  advanced?: boolean;
 }
 
 /** Searchable destinations, not executable settings. Keep links to stable IDs. */
@@ -222,12 +224,14 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
     tab: "interface",
     label: "Custom CSS",
     anchor: "interface-custom-css",
+    advanced: true,
     keywords: "theme style",
   },
   {
     tab: "interface",
     label: "Custom JavaScript",
     anchor: "interface-custom-javascript",
+    advanced: true,
     keywords: "script extension",
   },
   {

@@ -537,6 +537,11 @@
       "title": "Stash-box Endpoints"
     },
     "system": {
+      "groups": {
+        "storage": "Storage",
+        "video": "Video processing",
+        "performance": "Performance and logging"
+      },
       "transcoding": "Transcoding"
     },
     "tasks": {
@@ -748,6 +753,13 @@
       }
     },
     "ui": {
+      "groups": {
+        "general": "General",
+        "lists": "Lists and pages",
+        "videos": "Videos",
+        "images": "Images",
+        "customisation": "Customisation"
+      },
       "abbreviate_counters": {
         "description": "Abbreviate counters in cards and details view pages, for example \"1831\" will get formated to \"1.8K\".",
         "heading": "Abbreviate counters"
