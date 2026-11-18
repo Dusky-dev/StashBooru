@@ -194,6 +194,8 @@ func ChoiceFormats(formats []Format) []Format {
 			}
 			format.Family = "animation"
 			if variant, reported := available[AnimatedVariants[format.ID]]; reported {
+				still := format.Available
+				format.StillAvailable = &still
 				format.Available = format.Available && variant
 			}
 		}

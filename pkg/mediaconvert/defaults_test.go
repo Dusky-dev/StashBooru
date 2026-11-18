@@ -359,11 +359,16 @@ func TestChoiceNeedsBothStillAndAnimatedEncoders(t *testing.T) {
 		{ID: "jxl", Extension: "jxl", Family: "image", Available: true},
 		{ID: "ajxl", Extension: "jxl", Family: "animation", Available: true},
 	}
-	available := map[string]bool{}
+	available, still := map[string]bool{}, map[string]bool{}
 	for _, format := range ChoiceFormats(worker) {
 		available[format.ID] = format.Available
+		still[format.ID] = format.StillAvailable != nil && *format.StillAvailable
 	}
 	if available["png"] || !available["jxl"] {
 		t.Fatalf("PNG must need APNG support too: %v", available)
+	}
+	// Still-only features (upscaling) can keep using the still encoder.
+	if !still["png"] || !still["jxl"] {
+		t.Fatalf("still availability must be reported: %v", still)
 	}
 }

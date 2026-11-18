@@ -3,6 +3,7 @@ import { Alert, Button, Card, Col, Form, Row, Spinner } from "react-bootstrap";
 
 import { useToast } from "src/hooks/Toast";
 import {
+  availableForStill,
   conversionEndpoint,
   conversionResponse,
   ConversionFormat,
@@ -128,7 +129,7 @@ export const MediaUpscalingSettings: React.FC = () => {
   const upscalers = capabilities?.upscalers ?? [];
   const localUpscalers = localCapabilities?.upscalers ?? [];
   const imageFormats = (capabilities?.formats ?? []).filter(
-    (format) => format.family !== "video" && format.available
+    (format) => format.family !== "video" && availableForStill(format)
   );
   const selectedUpscaler = upscalers.find(
     (upscaler) => upscaler.id === defaults.upscaler
