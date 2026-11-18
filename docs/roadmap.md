@@ -43,9 +43,10 @@ place and move finished ones to **Done**; the progress ledger keeps the detail.
 14. Show a Tag button (count 0) when an item has only profile-implied
     Tags? (Codex P2 on #383, deferred.)
 15. Animated JPEG XL plays choppily in Firefox; the file and a WebP copy play
-    fine. Cause undetermined: per-frame delays survive conversion for GIF,
-    APNG, WebP and AVIF inputs (cjxl 0.7). Needs `jxlinfo -v` of one file,
-    its source format and the worker's cjxl version, or a decode-speed-4 retry.
+    fine. AVIF and video inputs lost their frame timing (every frame 33 ms);
+    fixed by the JXL timing PR, but existing files keep it until reconverted.
+    Choppiness from GIF, APNG or WebP sources is undetermined: needs
+    `jxlinfo -v` of one file, its source format and the worker's cjxl version.
 16. Fold thin Settings tabs (Tools, Logs, Changelog, About) into fewer
     entries, keeping old links working?
 
@@ -65,7 +66,9 @@ through code or fixtures.
 - Identities panel name; alias inspector and inheritance review removed (#382).
 - Card popovers keep detail-page associations (#384).
 - Auto JPEG XL effort on converter rules and one-off settings (#385).
-- Identities: add the profile's own name; display names beside keys (this PR).
+- Identities: add the profile's own name; display names beside keys (#386).
+- Experimental settings show only in Advanced mode (#387).
+- Animated JPEG XL from AVIF and video inputs keeps per-frame timing (this PR).
 - Parent Tags/Copyrights apply automatically (calculated; "Include parent
   Tags" is on by default). No separate Implies field (owner, 2026-11-18).
 - Implied Tags and Copyrights on Image and Video cards (#383); detail pages,
