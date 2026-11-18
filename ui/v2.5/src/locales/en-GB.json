@@ -1019,6 +1019,12 @@
         "description": "When enabled, funscripts will be served directly from Stash to your Handy device without using the third party Handy server. Requires that Stash be accessible from your Handy device, and that an API key is generated if Stash has credentials configured.",
         "heading": "Serve funscripts directly"
       }
+    },
+    "processing": {
+      "optional_model": "Optional",
+      "model_help": "{name} help",
+      "model_details": "Details and files",
+      "model_target": "Status, Install and Delete apply to the selected worker. Tagging may still fall back to this server."
     }
   },
   "configuration": "Configuration",

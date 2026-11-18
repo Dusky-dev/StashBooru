@@ -348,7 +348,7 @@ export const MediaConversionSettings: React.FC = () => {
               </div>
               <Button
                 size="sm"
-                variant="outline-secondary"
+                variant="secondary"
                 className="mb-2"
                 disabled={saving}
                 aria-expanded={showAdvancedRules}

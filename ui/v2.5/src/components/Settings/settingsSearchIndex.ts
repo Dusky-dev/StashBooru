@@ -147,6 +147,18 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
   },
   {
     tab: "processing",
+    label: "Camie Tagger model",
+    anchor: "camie-model",
+    keywords: "install delete optional tagging",
+  },
+  {
+    tab: "processing",
+    label: "PixAI Tagger model",
+    anchor: "pixai-model",
+    keywords: "install delete optional anime tagging",
+  },
+  {
+    tab: "processing",
     label: "Media converter and format rules",
     anchor: "media-converter",
     keywords: "encode mp4 jxl av1 codec defaults quality enabled",

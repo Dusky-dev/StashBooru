@@ -674,6 +674,24 @@ try {
       await page.locator("#media-upscaling details[open]").count(),
       0
     );
+    // Optional taggers are one compact row each: status, one action, help
+    // icon to the manual, and closed details. Refresh status covers all.
+    for (const model of ["#camie-model", "#pixai-model"]) {
+      const row = page.locator(model);
+      await row.locator(".processing-status").waitFor();
+      assert.equal(await row.getByRole("button").count(), 1);
+      assert.equal(await row.locator("details[open]").count(), 0);
+      assert.equal(
+        await row.locator('a[href$="/help/Processing.md"]').count(),
+        1
+      );
+    }
+    assert.equal(
+      await page
+        .getByRole("button", { name: /^Refresh (Camie|PixAI)/ })
+        .count(),
+      0
+    );
     await page.waitForFunction(
       () =>
         getComputedStyle(document.querySelector(".tab-pane.active")).opacity ===
@@ -877,7 +895,9 @@ try {
     });
     assert.equal(await imageRule.isChecked(), true);
     assert.equal(
-      await page.locator('a[href="/help/Processing.md"]').count(),
+      await page
+        .locator('.processing-settings-nav a[href="/help/Processing.md"]')
+        .count(),
       1
     );
     await imageRule.uncheck();

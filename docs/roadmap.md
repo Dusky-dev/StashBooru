@@ -47,6 +47,8 @@ place and move finished ones to **Done**; the progress ledger keeps the detail.
     fixed in #388, but existing files keep it until reconverted.
     Choppiness from GIF, APNG or WebP sources is undetermined: needs
     `jxlinfo -v` of one file, its source format and the worker's cjxl version.
+16. Settings search labels are English only: give every index entry a message
+    ID and match on the translated text (Codex P1 on #390).
 
 ## Needs real hardware or accounts (never claim verified)
 
@@ -67,7 +69,8 @@ through code or fixtures.
 - Identities: add the profile's own name; display names beside keys (#386).
 - Experimental settings show only in Advanced mode (#387).
 - Animated JPEG XL from AVIF and video inputs keeps per-frame timing (#388).
-- Settings: Tools is a Tasks group; Logs and Changelog are part of About (this PR).
+- Settings: Tools is a Tasks group; Logs and Changelog are part of About (#389).
+- Processing: compact Camie/PixAI rows with manual help icon (this PR).
 - Parent Tags/Copyrights apply automatically (calculated; "Include parent
   Tags" is on by default). No separate Implies field (owner, 2026-11-18).
 - Implied Tags and Copyrights on Image and Video cards (#383); detail pages,

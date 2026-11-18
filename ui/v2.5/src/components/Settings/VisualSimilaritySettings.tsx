@@ -3,7 +3,10 @@ import { Alert, Badge, Button, Card, Col, Form, Row } from "react-bootstrap";
 import { Link, useHistory } from "react-router-dom";
 import { useIntl } from "react-intl";
 
+import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { useToast } from "src/hooks/Toast";
+import { Icon } from "../Shared/Icon";
+import { ManualLink } from "../Help/context";
 import { Setting } from "./Inputs";
 
 interface VisualSimilarityStatus {
@@ -391,7 +394,7 @@ export const VisualSimilaritySettings: React.FC = () => {
               </Row>
               <Form.Check
                 className="mb-2"
-                type="checkbox"
+                type="switch"
                 id="camie-filename-enabled"
                 checked={camieConfig.filenameEnabled}
                 onChange={(event) =>
@@ -428,7 +431,7 @@ export const VisualSimilaritySettings: React.FC = () => {
               </Form.Group>
               <Form.Check
                 className="mb-2"
-                type="checkbox"
+                type="switch"
                 id="tagging-bulk-enabled"
                 checked={camieConfig.bulkTaggingEnabled ?? false}
                 onChange={(event) =>
@@ -455,156 +458,165 @@ export const VisualSimilaritySettings: React.FC = () => {
             </fieldset>
           </Form>
         </Setting>
-        <Setting
-          className="flex-column align-items-stretch"
-          heading="Camie Tagger v2 (optional)"
-          subHeading="Optional tagging model."
+        <TaggerModelRow
+          id="camie-model"
+          name="Camie Tagger v2"
+          status={camieStatus}
+          statusBadges={workerStatus(camieStatus)}
+          error={camieStatusError || camieStatus?.workerError}
+          busy={loading || submitting}
+          installLabel="Install Camie model (~800 MB)"
+          deleteLabel="Delete Camie model"
+          deleteConfirm="Remove Camie model files from the selected worker?"
+          onInstall={() => void startJob("camie/install")}
+          onDelete={() => void startJob("camie/delete")}
         >
-          <div className="mt-3 w-100">
-            {workerStatus(camieStatus)}
-            <small className="d-block text-muted mt-1">
-              Model status and Install/Delete target this worker. Inference may
-              use local fallback separately.
-            </small>
-            {(camieStatusError || camieStatus?.workerError) && (
-              <Alert variant="warning" className="mt-2">
-                {camieStatusError || camieStatus?.workerError}
-              </Alert>
-            )}
-            <div className="settings-actions mt-3">
-              {!camieStatus?.installed && (
-                <Button
-                  variant="secondary"
-                  disabled={loading || submitting || !camieStatus?.workerOK}
-                  onClick={() => void startJob("camie/install")}
-                >
-                  Install Camie model (~800 MB)
-                </Button>
-              )}
-              {camieStatus?.installed && (
-                <Button
-                  variant="outline-danger"
-                  disabled={loading || submitting}
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        "Remove Camie model files from the selected worker?"
-                      )
-                    )
-                      void startJob("camie/delete");
-                  }}
-                >
-                  Delete Camie model
-                </Button>
-              )}
-              <Button
-                variant="secondary"
-                disabled={loading || submitting}
-                onClick={() => void refresh()}
-              >
-                Refresh Camie status
-              </Button>
-            </div>
-            <details className="settings-details mt-3">
-              <summary>Camie model setup</summary>
-              <div className="pt-2 text-break">
-                {camieStatus?.modelPath && (
-                  <p>
-                    <strong>Model:</strong> <code>{camieStatus.modelPath}</code>
-                  </p>
-                )}
-                {camieStatus?.metadataPath && (
-                  <p>
-                    <strong>Metadata:</strong>{" "}
-                    <code>{camieStatus.metadataPath}</code>
-                  </p>
-                )}
-                <p className="mb-0">
-                  The installer fetches <code>camie-tagger-v2.onnx</code> and{" "}
-                  <code>camie-tagger-v2-metadata.json</code>
-                  {camieStatus?.backend === "remote"
-                    ? " on the remote worker"
-                    : " on this server"}
-                  ; no download occurs until requested.
-                  {camieStatus?.tagCount
-                    ? ` ${camieStatus.tagCount.toLocaleString()} model tags detected.`
-                    : ""}
-                </p>
-              </div>
-            </details>
-          </div>
-        </Setting>
-        <Setting
-          className="flex-column align-items-stretch"
-          heading="PixAI Tagger v1 (optional)"
-          subHeading="Optional anime tagging model."
+          {camieStatus?.modelPath && (
+            <p>
+              <strong>Model:</strong> <code>{camieStatus.modelPath}</code>
+            </p>
+          )}
+          {camieStatus?.metadataPath && (
+            <p>
+              <strong>Metadata:</strong> <code>{camieStatus.metadataPath}</code>
+            </p>
+          )}
+          <p className="mb-0">
+            The installer fetches <code>camie-tagger-v2.onnx</code> and{" "}
+            <code>camie-tagger-v2-metadata.json</code>
+            {camieStatus?.backend === "remote"
+              ? " on the remote worker"
+              : " on this server"}
+            ; no download occurs until requested.
+            {camieStatus?.tagCount
+              ? ` ${camieStatus.tagCount.toLocaleString()} model tags detected.`
+              : ""}
+          </p>
+        </TaggerModelRow>
+        <TaggerModelRow
+          id="pixai-model"
+          name="PixAI Tagger v1"
+          status={pixaiStatus}
+          statusBadges={workerStatus(pixaiStatus)}
+          error={pixaiStatusError || pixaiStatus?.workerError}
+          busy={loading || submitting}
+          installLabel="Install PixAI Tagger v1 (~600 MB model)"
+          deleteLabel="Delete PixAI model and runtime"
+          deleteConfirm="Remove PixAI model and isolated inference runtime from the selected worker?"
+          onInstall={() => void startJob("pixai/install")}
+          onDelete={() => void startJob("pixai/delete")}
         >
-          <div className="mt-3 w-100">
-            {workerStatus(pixaiStatus)}
-            <small className="d-block text-muted mt-1">
-              Model status and Install/Delete target this worker. Inference may
-              use local fallback separately.
-            </small>
-            {(pixaiStatusError || pixaiStatus?.workerError) && (
-              <Alert variant="warning" className="mt-2">
-                {pixaiStatusError || pixaiStatus?.workerError}
-              </Alert>
-            )}
-            <div className="settings-actions mt-3">
-              {!pixaiStatus?.installed && (
-                <Button
-                  variant="secondary"
-                  disabled={loading || submitting || !pixaiStatus?.workerOK}
-                  onClick={() => void startJob("pixai/install")}
-                >
-                  Install PixAI Tagger v1 (~600 MB model)
-                </Button>
-              )}
-              {pixaiStatus?.installed && (
-                <Button
-                  variant="outline-danger"
-                  disabled={loading || submitting}
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        "Remove PixAI model and isolated inference runtime from the selected worker?"
-                      )
-                    )
-                      void startJob("pixai/delete");
-                  }}
-                >
-                  Delete PixAI model and runtime
-                </Button>
-              )}
-              <Button
-                variant="secondary"
-                disabled={loading || submitting}
-                onClick={() => void refresh()}
-              >
-                Refresh PixAI status
-              </Button>
-            </div>
-
-            <details className="settings-details mt-3">
-              <summary>PixAI model details</summary>
-              <p className="text-break mt-2">
-                <strong>Model:</strong>{" "}
-                <code>{pixaiStatus?.model || "alpindale/PixAI-v1.0-INT8"}</code>
-              </p>
-              {pixaiStatus?.modelPath && (
-                <p className="text-break">
-                  <code>{pixaiStatus.modelPath}</code>
-                </p>
-              )}
-              <p>
-                Model weights:{" "}
-                {pixaiStatus?.modelExists ? "installed" : "missing"}; inference
-                runtime: {pixaiStatus?.runtimeExists ? "installed" : "missing"}.
-              </p>
-            </details>
-          </div>
-        </Setting>
+          <p>
+            <strong>Model:</strong>{" "}
+            <code>{pixaiStatus?.model || "alpindale/PixAI-v1.0-INT8"}</code>
+          </p>
+          {pixaiStatus?.modelPath && (
+            <p>
+              <code>{pixaiStatus.modelPath}</code>
+            </p>
+          )}
+          <p className="mb-0">
+            {`Model weights: ${pixaiStatus?.modelExists ? "installed" : "missing"}; inference runtime: ${pixaiStatus?.runtimeExists ? "installed" : "missing"}.`}
+          </p>
+        </TaggerModelRow>
       </Card>
+    </div>
+  );
+};
+
+/**
+ * One compact row per optional tagging model: name, status badges and the
+ * single action that applies; paths and setup notes stay in closed details.
+ * The section's Refresh status button refreshes every model.
+ */
+const TaggerModelRow: React.FC<{
+  id: string;
+  name: string;
+  status?: { installed: boolean; workerOK: boolean };
+  statusBadges: React.ReactNode;
+  error?: string;
+  busy: boolean;
+  installLabel: string;
+  deleteLabel: string;
+  deleteConfirm: string;
+  onInstall: () => void;
+  onDelete: () => void;
+  children: React.ReactNode;
+}> = ({
+  id,
+  name,
+  status,
+  statusBadges,
+  error,
+  busy,
+  installLabel,
+  deleteLabel,
+  deleteConfirm,
+  onInstall,
+  onDelete,
+  children,
+}) => {
+  const intl = useIntl();
+  return (
+    <div
+      className="setting tagger-model-row flex-column align-items-stretch"
+      id={id}
+    >
+      <div className="tagger-model-summary">
+        <h3 className="tagger-model-name">
+          {name}{" "}
+          <small className="text-muted">
+            {intl.formatMessage({ id: "config.processing.optional_model" })}
+          </small>{" "}
+          <ManualLink tab="Processing">
+            <Icon icon={faQuestionCircle} />
+            <span className="sr-only">
+              {intl.formatMessage(
+                { id: "config.processing.model_help" },
+                { name }
+              )}
+            </span>
+          </ManualLink>
+        </h3>
+        {statusBadges}
+        {status?.installed ? (
+          <Button
+            variant="outline-danger"
+            size="sm"
+            disabled={busy}
+            onClick={() => {
+              if (window.confirm(deleteConfirm)) onDelete();
+            }}
+          >
+            {deleteLabel}
+          </Button>
+        ) : (
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={busy || !status?.workerOK}
+            onClick={onInstall}
+          >
+            {installLabel}
+          </Button>
+        )}
+      </div>
+      {error && (
+        <Alert variant="warning" className="mt-2 mb-0">
+          {error}
+        </Alert>
+      )}
+      <details className="settings-details mt-2">
+        <summary>
+          {intl.formatMessage({ id: "config.processing.model_details" })}
+        </summary>
+        <div className="pt-2 text-break">
+          <p className="text-muted">
+            {intl.formatMessage({ id: "config.processing.model_target" })}
+          </p>
+          {children}
+        </div>
+      </details>
     </div>
   );
 };
