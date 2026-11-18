@@ -67,6 +67,7 @@ through code or fixtures.
 - Card popovers keep detail-page associations (#384).
 - Auto JPEG XL effort on converter rules and one-off settings (#385).
 - Identities: add the profile's own name; display names beside keys (#386).
+- Experimental settings show only in Advanced mode (#387).
 - Animated JPEG XL from AVIF and video inputs keeps per-frame timing (this PR).
 - Parent Tags/Copyrights apply automatically (calculated; "Include parent
   Tags" is on by default). No separate Implies field (owner, 2026-11-18).
