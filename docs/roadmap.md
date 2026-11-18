@@ -72,7 +72,8 @@ through code or fixtures.
 - Copyright pages list Main above Sub instead of tabs (#391).
 - Interface and System settings fold into remembered groups (#392).
 - Settings help icons, translated search labels, remembered Tasks groups
-  (this PR).
+  (#393).
+- One JPEG XL and one PNG converter choice, still or animated (this PR).
 - Parent Tags/Copyrights apply automatically (calculated; "Include parent
   Tags" is on by default). No separate Implies field (owner, 2026-11-18).
 - Implied Tags and Copyrights on Image and Video cards (#383); detail pages,
