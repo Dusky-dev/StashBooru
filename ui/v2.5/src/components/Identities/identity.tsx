@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Button, Dropdown } from "react-bootstrap";
+import { FormattedMessage } from "react-intl";
 import { Link } from "react-router-dom";
 import { canFollowIdentity } from "../Following/followContext";
 import type { BooruSource } from "../BooruBrowser/browser";
@@ -111,7 +112,9 @@ export function IdentitySources({
         className="identity-sources my-3"
         onToggle={(event) => setOpen(event.currentTarget.open)}
       >
-        <summary>Sources &amp; aliases</summary>
+        <summary>
+          <FormattedMessage id="identity_sources.title" />
+        </summary>
         {open && (
           <>
             {error && <Alert variant="danger">{error}</Alert>}
@@ -157,7 +160,13 @@ export function IdentitySources({
               {page?.next
                 ? "View all and manage connections"
                 : "Manage connections"}
-            </Button>
+            </Button>{" "}
+            <Link
+              className="btn btn-link btn-sm"
+              to={`/identities?kind=${kind}`}
+            >
+              <FormattedMessage id="identity_sources.open_page" />
+            </Link>
           </>
         )}
       </details>

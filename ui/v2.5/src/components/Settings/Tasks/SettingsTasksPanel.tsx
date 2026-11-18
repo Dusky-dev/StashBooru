@@ -3,7 +3,6 @@ import { defineMessages, useIntl } from "react-intl";
 import { LoadingIndicator } from "src/components/Shared/LoadingIndicator";
 import { CharacterDedupTask } from "./CharacterDedupTask";
 import { LibraryTasks } from "./LibraryTasks";
-import { AssociationInheritanceTask } from "./AssociationInheritanceTask";
 import { DataManagementTasks } from "./DataManagementTasks";
 import { MediaBackupTask } from "./MediaBackupTask";
 import { PluginTasks } from "./PluginTasks";
@@ -22,12 +21,11 @@ const sections = defineMessages({
   },
   profiles: {
     id: "config.tasks.sections.profiles",
-    defaultMessage: "Review profiles & associations",
+    defaultMessage: "Review Characters",
   },
   profiles_help: {
     id: "config.tasks.sections.profiles_help",
-    defaultMessage:
-      "Preview duplicate Character merges and changes to inherited associations before applying them.",
+    defaultMessage: "Preview duplicate Character merges before applying them.",
   },
   maintenance: {
     id: "config.tasks.sections.maintenance",
@@ -83,8 +81,6 @@ export const SettingsTasksPanel: React.FC = () => {
           description={intl.formatMessage(sections.profiles_help)}
         >
           <CharacterDedupTask />
-          <hr />
-          <AssociationInheritanceTask />
         </SettingsDisclosure>
         <SettingsDisclosure
           id="tasks-maintenance"

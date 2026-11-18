@@ -6,6 +6,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { Alert, Button, Form, Modal } from "react-bootstrap";
+import { FormattedMessage } from "react-intl";
 import { Link } from "react-router-dom";
 import type { BooruSource } from "../BooruBrowser/browser";
 import { IdentityResolution } from "./IdentityResolution";
@@ -236,9 +237,14 @@ export function IdentityConnectionsDialog({
     >
       <Modal.Header closeButton={!busy}>
         <Modal.Title id="identity-dialog-title">
-          {entity
-            ? `Sources & aliases — ${entity.name}`
-            : `Connect ${identityLabels[kind]}`}
+          {entity ? (
+            <FormattedMessage
+              id="identity_sources.dialog_title"
+              values={{ name: entity.name }}
+            />
+          ) : (
+            `Connect ${identityLabels[kind]}`
+          )}
         </Modal.Title>
       </Modal.Header>
       <Modal.Body>

@@ -257,7 +257,7 @@ try {
       .getByRole("link", { name: "Connected to Waligner", exact: true })
       .first()
       .click();
-    await page.getByText("Sources & aliases", { exact: true }).click();
+    await page.locator(".identity-sources > summary").click();
     await page.getByText("creator:patreon:49481727", { exact: true }).waitFor();
     // A separate record named after a connected source name can be merged
     // here, only after an explicit confirmation.

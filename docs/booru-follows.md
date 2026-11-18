@@ -65,7 +65,7 @@ and enter the exact provider tag or query. Source credentials and custom
 instances live in Source settings. Other saved engines remain visible with
 checks disabled until their feed adapter is supported.
 
-From a native Artist, Character or Copyright profile, open **Sources & aliases**
+From a native Artist, Character or Copyright profile, open **Identities**
 and choose **Follow** beside a saved Danbooru tag connection. Following opens in a
 new tab with the exact provider tag, category and a readable name filled in. The
 original profile stays open. Review the draft and press **Follow** to save it;

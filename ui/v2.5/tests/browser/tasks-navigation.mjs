@@ -76,15 +76,6 @@ try {
     let previewStarted;
     let previews = 0;
     const posts = [];
-    const defaults = {
-      characters: true,
-      artists: true,
-      copyrights: true,
-      tags: true,
-    };
-    await page.route("**/association-inheritance*", (route) =>
-      route.fulfill({ json: { current: defaults } })
-    );
     await page.route("**/character-dedup", async (route) => {
       if (route.request().method() !== "GET")
         throw new Error("Unexpected Character mutation");
@@ -222,11 +213,6 @@ try {
       "character-dedup-task",
       "Merge duplicate Characters"
     );
-    await checkTaskHelp(
-      page,
-      "association-inheritance-task",
-      "Review library inheritance"
-    );
     const started = new Promise((resolve) => {
       previewStarted = resolve;
     });
@@ -242,20 +228,17 @@ try {
     await summary(page, "profiles").click();
     await page.getByText("2 Characters checked", { exact: false }).waitFor();
     assert.equal(previews, 1);
-    const flag = page.locator("#review-inherit-artists");
-    await flag.focus();
-    await flag.press("Space");
-    assert.equal(await flag.isChecked(), false);
+    const checked = page.getByText("2 Characters checked", { exact: false });
     await summary(page, "profiles").focus();
     await summary(page, "profiles").press("Space");
     assert.equal(await isOpen(page, "profiles"), false);
     await summary(page, "profiles").press("Enter");
-    assert.equal(await flag.isChecked(), false);
+    assert.equal(await checked.isVisible(), true);
     await chooseSection(page, "library");
     await page.goBack();
     await page.waitForURL(/tab=tasks/);
     assert.equal(await isOpen(page, "profiles"), true);
-    assert.equal(await flag.isChecked(), false);
+    await checked.waitFor();
     assert.equal(previews, 1);
     assert.equal(new URL(page.url()).searchParams.get("return"), "images/42");
     await fit(page);

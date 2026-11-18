@@ -443,7 +443,7 @@ export const VisualSimilaritySettings: React.FC = () => {
               <p className="small">
                 <Link to="/settings?tab=library#association-inheritance-settings">
                   {intl.formatMessage({
-                    id: "config.association_inheritance.review.shared_defaults",
+                    id: "config.association_inheritance.shared_defaults",
                   })}
                 </Link>
               </p>

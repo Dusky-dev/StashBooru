@@ -277,12 +277,9 @@ func Initialize() (*Server, error) {
 	r.Post("/booru-browser/review/read", booruRoutes.ReadReview)
 	r.Post("/booru-browser/review/update", booruRoutes.UpdateReview)
 
-	inheritanceRoutes := newAssociationInheritanceRoutes(repo, cfg, mgr.JobManager)
 	dedupRoutes := characterDedupRoutes{repository: repo, jobs: mgr.JobManager}
 	r.Get("/character-dedup", dedupRoutes.Get)
 	r.Post("/character-dedup", dedupRoutes.Post)
-	r.Get("/association-inheritance", inheritanceRoutes.Get)
-	r.Post("/association-inheritance", inheritanceRoutes.Post)
 	r.Mount("/plugin", server.getPluginRoutes())
 
 	r.HandleFunc("/css", cssHandler(cfg))

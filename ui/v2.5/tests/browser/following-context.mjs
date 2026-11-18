@@ -183,9 +183,7 @@ try {
       await profile
         .getByLabel("Retained fixture input")
         .fill("Unsaved original profile draft");
-      const disclosure = profile.getByText("Sources & aliases", {
-        exact: true,
-      });
+      const disclosure = profile.locator(".identity-sources > summary");
       await disclosure.focus();
       await disclosure.press("Enter");
       const followLink = profile.getByRole("link", {
@@ -308,7 +306,7 @@ try {
       await draft.close();
     }
     await profile.goto(`${base}/profile?kind=artist`);
-    await profile.getByText("Sources & aliases", { exact: true }).click();
+    await profile.locator(".identity-sources > summary").click();
     await profile.getByRole("link", { name: /Follow waligner/ }).waitFor();
     assert.equal(
       await profile.getByRole("link", { name: /^Follow / }).count(),

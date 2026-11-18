@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Badge, Button, Form } from "react-bootstrap";
+import { FormattedMessage } from "react-intl";
 import { Link, useHistory, useLocation } from "react-router-dom";
 import {
   type IdentityKind,
@@ -318,7 +319,9 @@ export default function Identities() {
                 <p>Observed with: {row.context}</p>
               )}
               <details>
-                <summary>Sources &amp; aliases</summary>
+                <summary>
+                  <FormattedMessage id="identity_sources.source_details" />
+                </summary>
                 <p>
                   {row.sourceName} · {row.form}
                 </p>

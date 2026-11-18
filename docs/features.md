@@ -27,11 +27,11 @@ Fork issues link to the StashBooru repository; upstream help/support links remai
 | **All** | Browse Images and Videos together, with shared filters and typed selections. Individual Images and Videos pages remain available. |
 | **Booru** (navbar globe) | Browse sources, preserve page/draft state, use live/CSV autocomplete and sidebar filters, inspect previews/tags, keep review marks and download a post into Stash with a default/custom folder and optional converter defaults. |
 | **Following** | Browse saved posts first, filter by source or follow type, and open a post in Booru without losing your place. Use **Manage follows** to check new posts or create a follow from a Danbooru tag connection. Other feed adapters remain planned. |
-| **Identities** / profile **Sources & aliases** | Review connections between exact provider identifiers and existing native Artists, Characters and Copyrights. |
+| **Identities** (navbar page and profile panel) | Review connections between exact provider identifiers and existing native Artists, Characters and Copyrights. |
 | **Settings → Library** | Media folders, scan rules and automatic ancestor/profile associations. Inheritance switches save automatically. |
 | **Settings → Processing** | Shared worker connection, links to the complete version-matched worker ZIP, similarity/tagging defaults, conversion rules and upscaling setup. Use each section's Save button. |
-| **Settings → Tasks** | Jobs, scanning and animation inspection, generated files/hashes, Character merging, association review, original-media backups and database management. |
-| **Settings → Experimental** | Opt-in web uploads and thumbnail formats, Video overlap / containment, read-only Alias Collision Inspector, and isolated P12/P13 image storage diagnostics and recovery rehearsals. P12/P13 storage is not live storage activation. |
+| **Settings → Tasks** | Jobs, scanning and animation inspection, generated files/hashes, Character merging, original-media backups and database management. |
+| **Settings → Experimental** | Opt-in web uploads and thumbnail formats, Video overlap / containment, and isolated P12/P13 image storage diagnostics and recovery rehearsals. P12/P13 storage is not live storage activation. |
 | **Settings → Tools** | Metadata Health diagnostics, developer tools, and Video duplicate checker. |
 | **Settings → System** | Application paths, FFmpeg, transcodes and other server settings. |
 
@@ -65,19 +65,14 @@ automatically. The queue scrolls with the page so it does not cover a bookmarked
 action. Save scopes and confirmation steps remain with each tool.
 
 **Settings → Tools** retains the read-only **Metadata Health** diagnostics,
-the GraphQL playground and the Video duplicate checker. **Alias Collision
-Inspector** is under **Experimental**; existing profile links and older Tools
-bookmarks still reach it. The former **Visual Similarity Triage** is now
+the GraphQL playground and the Video duplicate checker. The former **Visual Similarity Triage** is now
 integrated into **Review similar images**. Opening Tools does not start a scan.
 Tools disclosure contents remain mounted while you navigate Settings sections;
 leaving Settings or refreshing begins a new review.
 
-Expanded Character, Artist and Copyright profiles include **Library review**.
-**Inspect this name** prefills the name collision inspector; press **Inspect
-value** to check matches explicitly. Association review and the Character merge
-review are labeled **whole library**. These links open the existing tools in a
-new tab, keeping the profile page in place. Opening a link does not run a scan,
-merge profiles, apply defaults or change metadata.
+Expanded Character profiles include **Library review**, which opens the
+whole-library Character merge review in a new tab, keeping the profile page in
+place. Opening it does not run a scan or merge profiles.
 
 Processing defaults apply to new jobs. Conversion/tagging defaults and model paths
 are saved on the server. Upscaling job defaults are saved in the current browser;
@@ -351,9 +346,7 @@ when explicit artwork is absent.
 
 **Settings → Tools → Metadata Health** reports duplicate/same-name identities,
 legacy Copyright Tags, Artist-link drift, orphaned links and ambiguous migration
-candidates. **Settings → Experimental → Alias Collision Inspector** shows
-conflicting canonical/alias matches. Both diagnose without automatically
-repairing or merging records.
+candidates. It diagnoses without automatically repairing or merging records.
 
 ### Character creation and saves
 
