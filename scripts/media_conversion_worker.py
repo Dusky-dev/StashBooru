@@ -868,6 +868,36 @@ def probe(source: Path, cancelled=None) -> dict:
     return result
 
 
+def packet_durations(source: Path, frames: int, cancelled=None) -> list[float] | None:
+    """Per-frame display times from container timestamps, or None if unusable."""
+    times = []
+    last_delay = 0.0
+    with tempfile.TemporaryFile() as packets:
+        run([FFPROBE, "-v", "error", "-protocol_whitelist", "file,pipe", "-format_whitelist", INPUT_FORMATS,
+             "-select_streams", "v:0", "-show_packets", "-show_entries", "packet=pts_time,duration_time",
+             "-of", "csv=p=0", str(source)], cancelled, stdout_file=packets)
+        packets.seek(0)
+        for line in packets:
+            fields = line.strip().split(b",")
+            try:
+                pts = float(fields[0])
+                delay = float(fields[1]) if len(fields) > 1 and fields[1] != b"N/A" else 0.0
+            except (ValueError, IndexError):
+                return None
+            if not math.isfinite(pts) or not math.isfinite(delay):
+                return None
+            if not times or pts > max(times):
+                last_delay = delay
+            times.append(pts)
+    if len(times) != frames:
+        return None
+    times.sort()
+    durations = [b - a for a, b in zip(times, times[1:])] + [last_delay]
+    if any(d <= 0 for d in durations):
+        return None
+    return durations
+
+
 def video_duration(source: Path, rate: float, cancelled=None) -> float:
     first = last = None
     last_delay = 0.0
@@ -1010,8 +1040,14 @@ def convert(source: Path, output: Path, raw: dict, cancelled=None) -> dict:
                     if before.get("durations"):
                         intermediate_args += ["-final_delay", str(Fraction(before["durations"][-1]).limit_denominator(100000))]
                 run(intermediate_args + [str(intermediate)], cancelled)
-            if before.get("durations") and not direct_gif:
-                intermediate = jxl_timing_input(intermediate, directory / "jxl-timed.png", before["durations"])
+            # Pillow times only GIF/APNG/WebP. For other animations (AVIF,
+            # video clips) use container timestamps, so cjxl's millisecond
+            # ticks round cumulatively (33, 34, 33 ms at 30 fps) instead of
+            # truncating every frame and speeding playback up.
+            timing = before.get("durations") or (
+                packet_durations(decoded, before["frames"], cancelled) if before["frames"] > 1 else None)
+            if timing and not direct_gif:
+                intermediate = jxl_timing_input(intermediate, directory / "jxl-timed.png", timing)
             args = jxl_encoder_args(intermediate, output, o)
             if before["videoCodec"] == "mjpeg" and o["distance"] != 0:
                 args.append("--lossless_jpeg=0")
