@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/stashapp/stash/pkg/booru"
@@ -123,6 +124,7 @@ func booruImportConnection(repository models.Repository, source booru.Source) ta
 
 type booruImportTagStore interface {
 	FindByName(context.Context, string, bool) (*models.Tag, error)
+	FindByAlias(context.Context, string, bool) (*models.Tag, error)
 	Create(context.Context, *models.CreateTagInput) error
 }
 
@@ -134,6 +136,11 @@ func ensureBooruImportTagIDs(ctx context.Context, tags booruImportTagStore, sour
 	ids := make([]int, 0, len(names))
 	for _, item := range names {
 		found, err := tags.FindByName(ctx, item.Name, true)
+		if err == nil && found == nil {
+			// A merged Tag's name lives on as an alias of the Tag it was
+			// merged into; reuse that Tag instead of recreating the old one.
+			found, err = tags.FindByAlias(ctx, item.Name, true)
+		}
 		if err != nil {
 			return nil, fmt.Errorf("looking up downloaded tag: %w", err)
 		}
@@ -145,7 +152,9 @@ func ensureBooruImportTagIDs(ctx context.Context, tags booruImportTagStore, sour
 			}
 			found = &created
 		}
-		ids = append(ids, found.ID)
+		if !slices.Contains(ids, found.ID) {
+			ids = append(ids, found.ID)
+		}
 	}
 	return ids, nil
 }

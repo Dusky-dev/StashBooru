@@ -13,8 +13,16 @@ import (
 
 type booruTagStoreFixture struct {
 	entries map[string]*models.Tag
+	aliases map[string]*models.Tag
 	created []string
 	fail    bool
+}
+
+func (s *booruTagStoreFixture) FindByAlias(_ context.Context, alias string, _ bool) (*models.Tag, error) {
+	if s.fail {
+		return nil, fmt.Errorf("tag lookup failed")
+	}
+	return s.aliases[strings.ToLower(alias)], nil
 }
 
 func (s *booruTagStoreFixture) FindByName(_ context.Context, name string, _ bool) (*models.Tag, error) {
@@ -68,6 +76,20 @@ func TestBooruDownloadTagsReuseExistingAndRetrySafely(t *testing.T) {
 	store.fail = true
 	if _, err := ensureBooruImportTagIDs(context.Background(), store, tags); err == nil {
 		t.Fatal("tag repository errors must not be ignored")
+	}
+}
+
+// A merged Tag's name becomes an alias of the Tag it was merged into. A later
+// download with the old name must reuse that Tag rather than recreate it.
+func TestBooruDownloadTagsFollowMergedTagAliases(t *testing.T) {
+	merged := &models.Tag{ID: 17, Name: "Vigilantes"}
+	store := &booruTagStoreFixture{
+		entries: map[string]*models.Tag{"vigilantes": merged},
+		aliases: map[string]*models.Tag{"vigilante": merged},
+	}
+	ids, err := ensureBooruImportTagIDs(context.Background(), store, []booru.Tag{{Name: "VIGILANTE"}, {Name: "vigilantes"}})
+	if err != nil || len(ids) != 1 || ids[0] != 17 || len(store.created) != 0 {
+		t.Fatalf("merged tag was recreated: ids=%v created=%v err=%v", ids, store.created, err)
 	}
 }
 
