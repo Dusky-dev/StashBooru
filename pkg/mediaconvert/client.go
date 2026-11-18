@@ -43,6 +43,9 @@ type Format struct {
 	Controls            []string `json:"controls"`
 	DecodingSpeedLevels int      `json:"decodingSpeedLevels,omitempty"`
 	Available           bool     `json:"available"`
+	// StillAvailable is set on a still-or-animated choice when only its still
+	// encoder works: still-only features such as upscaling can still use it.
+	StillAvailable *bool `json:"stillAvailable,omitempty"`
 }
 
 type Capabilities struct {

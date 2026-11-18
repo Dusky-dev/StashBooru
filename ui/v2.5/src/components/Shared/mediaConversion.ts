@@ -10,7 +10,13 @@ export interface ConversionFormat {
   controls: string[];
   decodingSpeedLevels?: number;
   available: boolean;
+  /** For still-or-animated choices: whether still images can use it. */
+  stillAvailable?: boolean;
 }
+
+/** Upscaling writes still images only, so the animated encoder is optional. */
+export const availableForStill = (format: ConversionFormat) =>
+  format.stillAvailable ?? format.available;
 
 export interface ConversionEncodingDefaults {
   quality: number;
