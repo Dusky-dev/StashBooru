@@ -1,6 +1,6 @@
 ## Merges: Artist/Copyright dialog like Characters/Tags; merged Tags reused — 2026-11-18
 
-- Baseline: `develop` after the converter PR. Branch
+- Baseline: `develop` `385a3fa` (#394). Branch
   [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
 - Owner report 1: Artist/Copyright merge was weaker than Character/Tag. Their
   detail pages now open the same style of dialog (several sources, swap,
