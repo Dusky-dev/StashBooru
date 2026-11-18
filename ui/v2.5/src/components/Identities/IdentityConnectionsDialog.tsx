@@ -19,6 +19,10 @@ import {
 } from "./identityApi";
 import "./styles.scss";
 
+/** Pawchive/Kemono posts name creators only as `creator:service:id`. */
+const creatorOnlySource = (source?: BooruSource) =>
+  source?.engine === "pawchive" || source?.engine === "kemono";
+
 /** The profile name as typed and, when it has spaces, as a booru tag. */
 export function nameSuggestions(name: string) {
   const trimmed = name.trim();
@@ -398,27 +402,30 @@ export function IdentityConnectionsDialog({
                         setSourceName(event.currentTarget.value)
                       }
                     />
-                    {entity?.name.trim() && (
-                      <div className="identity-name-suggestions mt-1">
-                        {nameSuggestions(entity.name).map((name) => (
-                          <Button
-                            key={name}
-                            size="sm"
-                            variant="secondary"
-                            className="mr-1 mb-1"
-                            onClick={() => setSourceName(name)}
-                          >
-                            <FormattedMessage
-                              id="identity_sources.use_name"
-                              values={{ name }}
-                            />
-                          </Button>
-                        ))}
-                        <Form.Text className="text-muted">
-                          <FormattedMessage id="identity_sources.use_name_help" />
-                        </Form.Text>
-                      </div>
-                    )}
+                    {entity?.name.trim() &&
+                      !creatorOnlySource(
+                        sources.find((source) => source.id === sourceID)
+                      ) && (
+                        <div className="identity-name-suggestions mt-1">
+                          {nameSuggestions(entity.name).map((name) => (
+                            <Button
+                              key={name}
+                              size="sm"
+                              variant="secondary"
+                              className="mr-1 mb-1"
+                              onClick={() => setSourceName(name)}
+                            >
+                              <FormattedMessage
+                                id="identity_sources.use_name"
+                                values={{ name }}
+                              />
+                            </Button>
+                          ))}
+                          <Form.Text className="text-muted">
+                            <FormattedMessage id="identity_sources.use_name_help" />
+                          </Form.Text>
+                        </div>
+                      )}
                     <Form.Text>
                       Kept exactly as entered. This adds a local name for review
                       and does not contact the provider.
