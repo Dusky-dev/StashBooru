@@ -2038,7 +2038,11 @@
     "auto_effort": "Auto",
     "auto_effort_aria": "Auto JPEG XL effort for {input}",
     "auto_effort_help": "Auto (JPEG XL only) picks effort per file from its size and frame count: up to 9 for small stills, 7 for animations and large images, 5 for very large ones. The number is used for other formats and when a file's size is unknown.",
-    "effort_auto_summary": "effort auto"
+    "effort_auto_summary": "effort auto",
+    "convert_again": "Convert again",
+    "include_converted": "Also convert files that were converted before",
+    "include_converted_help": "Each file is reverted to its original first while the original is still in the restore cache, then converted. If the original is gone, the current converted file is encoded again and kept only if the new file is smaller.",
+    "skipped_reason": "{target} skipped: {reason}"
   },
   "association_sources": {
     "title": "Why these are attached ({count})",

@@ -102,6 +102,7 @@ interface Job {
     trialID?: string;
     status?: string;
     error?: string;
+    reason?: string;
   }[];
 }
 interface State {
@@ -207,6 +208,7 @@ export const MediaConversionDialog: React.FC<{
   const [tab, setTab] = useState("convert");
   const [showAdvancedTools, setShowAdvancedTools] = useState(false);
   const [comparing, setComparing] = useState(false);
+  const [includeConverted, setIncludeConverted] = useState(false);
   const [savings, setSavings] = useState<SavingsThresholds>();
   const {
     job: liveJob,
@@ -283,6 +285,9 @@ export const MediaConversionDialog: React.FC<{
     chosenFormats.every((f) => f.available && encodersFor(f).length > 0) &&
     !gpuDecodeSpeedConflict;
   const targetsJSON = JSON.stringify(targets);
+  // Converting again is a one-off choice for the current selection.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset when the selection changes.
+  useEffect(() => setIncludeConverted(false), [targetsJSON]);
   const restoreLookupKey = `${targetsJSON}:${jobStatusKey}`;
   const defaultsJSON = JSON.stringify([
     state?.config.formatDefaults,
@@ -530,9 +535,14 @@ export const MediaConversionDialog: React.FC<{
   const allRestorable =
     allConverted &&
     targets.every((target) => restorable.has(targetKey(target)));
-  const remainingTargets = targets.filter(
-    (target) => !converted.has(targetKey(target))
-  );
+  const anyConverted =
+    statusReady && targets.some((target) => converted.has(targetKey(target)));
+  // Converting again is explicit; by default converted files are skipped.
+  const reconvert = anyConverted && includeConverted;
+  const restoreAction = allConverted && !reconvert;
+  const remainingTargets = reconvert
+    ? targets
+    : targets.filter((target) => !converted.has(targetKey(target)));
   const canConvert =
     !busy &&
     !!savings &&
@@ -595,7 +605,7 @@ export const MediaConversionDialog: React.FC<{
         >
           <Tab eventKey="convert" title="Convert">
             <p className="text-muted">
-              {allConverted
+              {restoreAction
                 ? "Restore the selected media to its original version."
                 : `Choose a format and convert ${remainingTargets.length} selected ${mixedTargets ? "media entries" : kind === "scene" ? "videos" : "images"}.`}
             </p>
@@ -671,37 +681,67 @@ export const MediaConversionDialog: React.FC<{
                 disabled={
                   busy ||
                   !statusReady ||
-                  (allConverted ? !allRestorable : !canConvert)
+                  (restoreAction ? !allRestorable : !canConvert)
                 }
-                onClick={() =>
+                onClick={() => {
+                  setIncludeConverted(false);
                   void action(
-                    allConverted
+                    restoreAction
                       ? { action: "restore-targets", targets }
                       : {
                           ...reviewRequest,
                           action: "start",
                           targets: remainingTargets,
                         }
-                  )
-                }
+                  );
+                }}
               >
                 {!statusReady
                   ? "Checking conversion state…"
-                  : allConverted
+                  : restoreAction
                     ? "Revert"
-                    : remainingTargets.length < selectedCount
-                      ? "Convert remaining"
-                      : "Convert"}
+                    : reconvert
+                      ? intl.formatMessage({
+                          id: "media_conversion.convert_again",
+                          defaultMessage: "Convert again",
+                        })
+                      : remainingTargets.length < selectedCount
+                        ? "Convert remaining"
+                        : "Convert"}
               </Button>
+              {anyConverted && (
+                <Form.Check
+                  id="converter-include-converted"
+                  className="mt-2"
+                  checked={includeConverted}
+                  disabled={busy}
+                  onChange={(e) => setIncludeConverted(e.target.checked)}
+                  label={intl.formatMessage({
+                    id: "media_conversion.include_converted",
+                    defaultMessage:
+                      "Also convert files that were converted before",
+                  })}
+                />
+              )}
+              {reconvert && (
+                <small className="d-block text-muted mt-1">
+                  {intl.formatMessage({
+                    id: "media_conversion.include_converted_help",
+                    defaultMessage:
+                      "Each file is reverted to its original first while the original is still in the restore cache, then converted. If the original is gone, the current converted file is encoded again and kept only if the new file is smaller.",
+                  })}
+                </small>
+              )}
               {statusReady &&
                 !allConverted &&
+                !reconvert &&
                 remainingTargets.length < selectedCount && (
                   <small className="d-block text-muted mt-2">
                     Already converted files will be skipped. Select converted
                     files separately to revert them.
                   </small>
                 )}
-              {allConverted && !allRestorable && (
+              {restoreAction && !allRestorable && (
                 <small className="d-block text-warning mt-2">
                   Original version is no longer available in the restore cache.
                 </small>
@@ -1089,6 +1129,35 @@ export const MediaConversionDialog: React.FC<{
                   {bytes(state.batchStats.savedBytes)} saved,{" "}
                   {state.batchStats.largerFiles} larger outputs.
                 </p>
+                {state.job.items.some((item) => item.reason) && (
+                  <ul className="small text-muted mb-2">
+                    {state.job.items
+                      .filter((item) => item.reason)
+                      .map((item) => (
+                        <li key={targetKey(item.target)}>
+                          {intl.formatMessage(
+                            {
+                              id: "media_conversion.skipped_reason",
+                              defaultMessage: "{target} skipped: {reason}",
+                            },
+                            {
+                              target: `${intl.formatMessage({
+                                id:
+                                  item.target.kind === "scene"
+                                    ? "scene"
+                                    : "image",
+                                defaultMessage:
+                                  item.target.kind === "scene"
+                                    ? "Video"
+                                    : "Image",
+                              })} ${item.target.id}`,
+                              reason: item.reason,
+                            }
+                          )}
+                        </li>
+                      ))}
+                  </ul>
+                )}
               </div>
             )}
             {state && state.latestStats.converted > 0 && !running && (

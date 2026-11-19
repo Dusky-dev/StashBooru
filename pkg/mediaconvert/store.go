@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"syscall"
@@ -49,6 +50,8 @@ func truncateFilenameBytes(value string, maxBytes int) string {
 	return value[:end]
 }
 
+var convertedTag = regexp.MustCompile(`\.converted-[0-9a-f]{8}$`)
+
 func convertedDestinationPath(sourcePath, recordID, extension string) string {
 	id := recordID
 	if len(id) > 8 {
@@ -56,6 +59,8 @@ func convertedDestinationPath(sourcePath, recordID, extension string) string {
 	}
 	suffix := ".converted-" + id + "." + extension
 	stem := strings.TrimSuffix(filepath.Base(sourcePath), filepath.Ext(sourcePath))
+	// Converting again replaces the earlier tag rather than stacking another.
+	stem = convertedTag.ReplaceAllString(stem, "")
 	stem = truncateFilenameBytes(stem, maxFilenameComponentBytes-len(suffix))
 	if stem == "" {
 		stem = "media"
@@ -833,4 +838,49 @@ func (s Store) Trim() error {
 
 func (s Store) Restore(ctx context.Context, id string) error {
 	return s.ToggleRestore(ctx, id)
+}
+
+// latestActive returns the newest completed conversion whose output is the
+// file's current version.
+func latestActive(history []*Record, current models.File) *Record {
+	for i := len(history) - 1; i >= 0; i-- {
+		r := history[i]
+		if r.Status != "complete" {
+			continue
+		}
+		after := r.After.File()
+		if after != nil && after.Base().ID == current.Base().ID && after.Base().Path == current.Base().Path {
+			return r
+		}
+	}
+	return nil
+}
+
+// RestoreCachedOriginal reverts a converted file through every conversion
+// whose original is still cached, so converting again starts from the oldest
+// available version. It stops at the first conversion without a cached
+// original and reports how many steps were reverted.
+func (s Store) RestoreCachedOriginal(ctx context.Context, fileID models.FileID) (int, error) {
+	steps := 0
+	for {
+		current, err := s.Repository.Get(ctx, fileID)
+		if err != nil {
+			return steps, err
+		}
+		if current == nil {
+			return steps, fmt.Errorf("media file not found")
+		}
+		history, err := s.History()
+		if err != nil {
+			return steps, err
+		}
+		r := latestActive(history, current)
+		if r == nil || !r.Cached {
+			return steps, nil
+		}
+		if err := s.Restore(ctx, r.ID); err != nil {
+			return steps, err
+		}
+		steps++
+	}
 }

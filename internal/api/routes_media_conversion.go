@@ -99,6 +99,8 @@ type conversionItem struct {
 	Error    string           `json:"error,omitempty"`
 	TrialID  string           `json:"trialID,omitempty"`
 	Status   string           `json:"status,omitempty"`
+	// Reason explains a skipped item, such as an output that was not smaller.
+	Reason string `json:"reason,omitempty"`
 }
 type conversionJob struct {
 	JobID       int                           `json:"jobID"`
@@ -565,6 +567,21 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
+		// Converting again starts from the original while it is still cached;
+		// only a file whose original is gone is encoded from its current version.
+		restoreErrs := map[models.FileID]error{}
+		for _, target := range request.Targets {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			id, err := conversionTargetFile(ctx, target)
+			if err != nil {
+				continue
+			}
+			if _, err := s.RestoreCachedOriginal(ctx, id); err != nil {
+				restoreErrs[id] = fmt.Errorf("could not revert to the original before converting again: %w", err)
+			}
+		}
 		var sources []models.File
 		for _, target := range request.Targets {
 			if err := ctx.Err(); err != nil {
@@ -615,6 +632,10 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 				progress.Increment()
 				continue
 			}
+			if err == nil && restoreErrs[id] != nil {
+				seen[id] = true
+				err = restoreErrs[id]
+			}
 			if err == nil {
 				seen[id] = true
 				options, format, resolveErr := resolveConversionOptions(ctx, s, config, id, target, request, capabilities)
@@ -629,6 +650,9 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 					if record != nil {
 						item.RecordID = record.ID
 						item.Status = record.Status
+						if record.Status == "skipped" {
+							item.Reason = record.Error
+						}
 						if record.Status == "complete" {
 							converted = append(converted, id)
 						}
