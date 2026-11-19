@@ -1,6 +1,6 @@
 ## Settings: switch to turn the Organized flag off (default off) — 2026-11-19
 
-- Baseline: `develop` (after the site-icon PR). Branch
+- Baseline: `develop` `81cecd7` (#399). Branch
   [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
 - Owner decision: a button to disable Organized. Settings → Interface →
   **Use the Organized flag** (`ui.organizedEnabled`, off unless turned on).
