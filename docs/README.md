@@ -12,7 +12,7 @@ the latest stable release.
 | [Feature guide](features.md) | Navigation, mixed browsing, similarity, stacks, processing, diagnostics, animation, local HTTPS and backups. |
 | [Metadata and tagging](metadata-and-tagging.md) | Native Copyrights, multiple Artists, Character variants, linked disambiguation, inheritance, filenames, booru lookups and reviewed model predictions. |
 | [Source names and aliases](provider-identities.md) | Connect provider identifiers to native Artists, Characters and Copyrights, retain exact source targets and review saved metadata. |
-| [Following](booru-follows.md) | Saved follows and an explicit on-demand feed for Danbooru-compatible sources; other feed adapters remain planned. |
+| [Following](booru-follows.md) | Saved follows and an on-demand feed for Danbooru, Gelbooru, Rule34, Paheal and Pawchive creators; other sites remain planned. |
 | [Booru browser](booru-browser.md) | Source search, engine-compatible custom instances, thumbnails/tags, paging and server-side source/credential configuration. |
 | [Booru downloads and autocomplete](booru-downloads-autocomplete.md) | Preview recovery, native Stash downloads with folder/default-converter settings, browser persistence, live completion/CSV fallback and uploaded/server-path databases. |
 | [Booru review state](booru-review-state.md) | Durable ignored/manual-download marks, bulk undo, provider-page filtering and current-file MD5 evidence. |

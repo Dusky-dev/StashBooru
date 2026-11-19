@@ -279,6 +279,13 @@ func TestB06SourceBindingAndCredentials(t *testing.T) {
 			b06Mutation(t, rs, b06Create(source, "query", "anything"), 400)
 		}
 	}
+	// Pawchive follows one creator account, never a free query.
+	for _, source := range booru.Defaults() {
+		if source.Engine == "pawchive" {
+			b06Mutation(t, rs, b06Create(source, "query", "anything"), 400)
+			b06Mutation(t, rs, b06Create(source, "artist", "creator:patreon:42"), 200)
+		}
+	}
 }
 
 func TestB06FollowCapacityAndStoreGuards(t *testing.T) {

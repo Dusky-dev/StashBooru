@@ -59,14 +59,15 @@ limit. This initial API retains inactive records rather than exposing deletion.
 
 Open **Following** in the utility navigation to see the **Saved feed**. Use
 **Manage follows** to create or edit a follow, check for new posts, or maintain
-the feed cache. To add a follow, choose an enabled Danbooru-compatible source,
-name the follow, select Artist, Character, Copyright / series or Provider query,
+the feed cache. To add a follow, choose an enabled Danbooru, Gelbooru, Rule34,
+Paheal or Pawchive source, name the follow, select Artist, Character, Copyright / series or Provider query,
 and enter the exact provider tag or query. Source credentials and custom
 instances live in Source settings. Other saved engines remain visible with
 checks disabled until their feed adapter is supported.
 
 From a native Artist, Character or Copyright profile, open **Identities**
-and choose **Follow** beside a saved Danbooru tag connection. Following opens in a
+and choose **Follow** beside a saved tag connection on one of those sites, or a
+Pawchive creator account. Following opens in a
 new tab with the exact provider tag, category and a readable name filled in. The
 original profile stays open. Review the draft and press **Follow** to save it;
 opening the draft does not contact the provider, check posts or download anything.
@@ -167,11 +168,25 @@ membership between pages; sequential IDs prevent head-insertion page shifts but
 do not provide an immutable provider snapshot. Saved metadata is labelled with
 its retrieval time and may differ from a current/edited/deleted remote post.
 
-Live provider access is separate from fixture acceptance. The 2026-10-20 public
-testbooru smoke attempt could not reach the endpoint before the deadline; live
-authentication and custom-instance acceptance remain unverified. Gelbooru,
-Moebooru, e621, Philomena, Shimmie and creator/account services need their own
-pagination and acceptance checks before feed synchronization is enabled.
+Gelbooru-compatible sites (Gelbooru, Rule34) and Shimmie (Paheal) page their
+newest-first search by page number. IDs must still descend, so a `sort:` tag is
+rejected; the checkpoint is the highest ID seen, and posts pushed onto a later
+page by new uploads are skipped as repeats and fetched by the next check.
+
+Pawchive follows one creator, as an Artist with `creator:service:id`. Its post
+IDs are not ordered, so the cursor remembers the newest post IDs of the last
+finished check and stops at the first it sees again. Posts the archive imports
+later with an older date are not picked up. Archive posts with very many
+attachments keep only the first ones in the stored feed copy; opening the post
+loads them all.
+
+One check reads at most 20 pages; beyond that it catches up to the newest posts
+and says that older new posts were skipped.
+
+Live checks (2026-11-19): Paheal and a Pawchive creator returned a 50-post first
+window and no posts on an immediate recheck. Gelbooru and Rule34 need account
+credentials and were checked with fixtures only. Moebooru, e621, Philomena,
+Kemono and Pixiv need their own adapters before feed checks are enabled.
 
 ## Source changes and credentials
 

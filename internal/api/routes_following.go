@@ -59,6 +59,20 @@ func followingDurablePost(post booru.Post) booru.Post {
 	return post
 }
 
+// followingSnapshotPayload stores a post for the feed. Archive posts can
+// carry hundreds of attachments; when the snapshot would exceed its limit,
+// later attachments are left out of the stored copy (opening the post in the
+// Booru browser loads them all) instead of failing the whole check.
+func followingSnapshotPayload(post booru.Post) ([]byte, error) {
+	for {
+		payload, err := json.Marshal(followingStoredPost{Post: post, Original: post.OriginalURL})
+		if err != nil || len(payload) <= models.MaxFollowingPayload || len(post.Attachments) == 0 {
+			return payload, err
+		}
+		post.Attachments = post.Attachments[:len(post.Attachments)/2]
+	}
+}
+
 func (rs booruBrowserRoutes) FollowingFeed(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	if rs.repository.Following == nil {
@@ -250,8 +264,8 @@ func (rs booruBrowserRoutes) SyncFollow(w http.ResponseWriter, r *http.Request) 
 	client, ok := rs.client.(interface {
 		FollowPage(context.Context, booru.Source, string, string, string) (booru.FollowPage, error)
 	})
-	if !ok || source.Engine != "danbooru" {
-		writeBooruError(w, 400, "unsupported-source", "Feed sync currently supports Danbooru-compatible sources. This follow remains saved. More sources will be supported later.")
+	if !ok || !booru.FollowSyncEngine(source.Engine) {
+		writeBooruError(w, 400, "unsupported-source", "Feed sync supports Danbooru, Gelbooru, Rule34, Paheal and Pawchive creators. This follow remains saved.")
 		return
 	}
 	page, err := client.FollowPage(r.Context(), source, follow.Kind, follow.Target, state.Cursor)
@@ -265,7 +279,7 @@ func (rs booruBrowserRoutes) SyncFollow(w http.ResponseWriter, r *http.Request) 
 	for i := len(page.Posts) - 1; i >= 0; i-- {
 		post := followingDurablePost(page.Posts[i])
 		post.SourceID = source.ID // Server-selected provenance, not provider input.
-		payload, err := json.Marshal(followingStoredPost{Post: post, Original: post.OriginalURL})
+		payload, err := followingSnapshotPayload(post)
 		if err != nil || len(payload) > models.MaxFollowingPayload {
 			fail(&booru.Error{Code: "metadata-limit", Message: "A post exceeds the 64 KiB feed metadata limit. No page or checkpoint was saved."})
 			return
@@ -297,6 +311,9 @@ func (rs booruBrowserRoutes) SyncFollow(w http.ResponseWriter, r *http.Request) 
 	notice := fmt.Sprintf("Saved %d post matches. Check complete.", len(posts))
 	if page.HasMore {
 		notice = fmt.Sprintf("Saved %d post matches. More new posts remain; use Continue check.", len(posts))
+	}
+	if page.Notice != "" {
+		notice += " " + page.Notice
 	}
 	writeVisualSimilarityJSON(w, map[string]any{"checkpoint": state, "matched": len(posts), "notice": notice})
 }

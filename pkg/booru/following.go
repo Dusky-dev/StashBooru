@@ -14,6 +14,7 @@ type FollowPage struct {
 	Posts   []Post
 	Cursor  string
 	HasMore bool
+	Notice  string
 }
 
 type followCursor struct {
@@ -48,11 +49,17 @@ func FollowQuery(kind, target string) error {
 // descending independently of the tag predicate. No tag or exclusion is added,
 // removed or rewritten. See help:common_url_parameters on Danbooru.
 func (c *Client) FollowPage(ctx context.Context, source Source, kind, target, rawCursor string) (FollowPage, error) {
-	if source.Validate() != nil || source.Engine != "danbooru" {
-		return FollowPage{}, &Error{Code: "unsupported-source", Message: "Feed sync currently supports Danbooru-compatible sources. Other sources are not supported yet."}
+	if source.Validate() != nil || !FollowSyncEngine(source.Engine) {
+		return FollowPage{}, &Error{Code: "unsupported-source", Message: unsupportedFollowSource}
 	}
-	if err := FollowQuery(kind, target); err != nil {
+	if err := FollowQueryFor(source.Engine, kind, target); err != nil {
 		return FollowPage{}, err
+	}
+	switch source.Engine {
+	case "gelbooru", "shimmie":
+		return c.followNumericPages(ctx, source, target, rawCursor)
+	case "pawchive":
+		return c.followArchiveCreator(ctx, source, target, rawCursor)
 	}
 	var state followCursor
 	if len(rawCursor) > 4096 || (rawCursor != "" && json.Unmarshal([]byte(rawCursor), &state) != nil) || state.Checkpoint >= math.MaxInt64 ||
