@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, Badge, Button, Form } from "react-bootstrap";
-import { FormattedMessage } from "react-intl";
+import { Alert, Badge, Button, ButtonGroup, Form } from "react-bootstrap";
+import { FormattedMessage, useIntl } from "react-intl";
 import { Link, useHistory, useLocation } from "react-router-dom";
 import {
   type IdentityKind,
   type IdentityPage,
   type ProviderIdentity,
-  identityLabels,
+  identityMessages,
   identityName,
   identityPaths,
   identityRequest,
@@ -24,8 +24,16 @@ interface ScanState {
   error?: string;
 }
 const kinds: IdentityKind[] = ["artist", "character", "copyright"];
+const scanStates = ["queued", "running", "completed", "cancelled", "failed"];
+
+function siteName(row: ProviderIdentity, kind: IdentityKind) {
+  return row.form === "account" && row.label === row.target
+    ? ""
+    : identityName(row.label, kind);
+}
 
 export default function Identities() {
+  const intl = useIntl();
   const location = useLocation();
   const history = useHistory();
   const params = new URLSearchParams(location.search);
@@ -44,6 +52,17 @@ export default function Identities() {
   const anchor = chosen[0];
   const search = location.search;
   const scanning = scan?.status === "queued" || scan?.status === "running";
+  const kindName = intl.formatMessage({ id: identityMessages[kind].one });
+  const kindPlural = intl.formatMessage({ id: identityMessages[kind].many });
+  const filtered = !!(
+    params.get("q") ||
+    params.get("state") ||
+    params.has("identity") ||
+    params.has("entity") ||
+    params.has("after")
+  );
+  const m = (id: string, values?: Record<string, string | number>) =>
+    intl.formatMessage({ id: `identity_sources.page.${id}` }, values);
 
   useEffect(() => () => pending.current?.abort(), []);
   useEffect(() => {
@@ -134,12 +153,7 @@ export default function Identities() {
     }
   }
   async function discard() {
-    if (
-      !window.confirm(
-        `Discard unreviewed ${identityLabels[kind]} metadata? Connections and explicit decisions are kept. A scan can restore discarded observations.`
-      )
-    )
-      return;
+    if (!window.confirm(m("collect.clear_confirm", { kind: kindName }))) return;
     const controller = new AbortController();
     pending.current = controller;
     setBusy(true);
@@ -151,7 +165,7 @@ export default function Identities() {
         { action: "discard", kind }
       );
       if (!controller.signal.aborted) {
-        setNotice(`Discarded ${data.discarded} unreviewed identifiers.`);
+        setNotice(m("collect.cleared", { count: data.discarded }));
         setEpoch((v) => v + 1);
       }
     } catch (e) {
@@ -163,11 +177,10 @@ export default function Identities() {
 
   return (
     <div className="identity-page container-fluid py-3">
-      <h2>Identities</h2>
-      <p>
-        Connect site names and accounts to one local Artist, Character or
-        Copyright. Matching names are suggestions; you decide who is the same.
-      </p>
+      <h2>
+        <FormattedMessage id="identity_sources.title" />
+      </h2>
+      <p className="identity-intro">{m("intro", { kinds: m("kinds") })}</p>
       {error && (
         <Alert variant="danger" role="alert">
           {error}
@@ -178,57 +191,68 @@ export default function Identities() {
           {notice}
         </Alert>
       )}
-      <div className="identity-toolbar mb-3">
+      <ButtonGroup
+        className="identity-kinds mb-3"
+        aria-label={m("kind_switcher")}
+      >
         {kinds.map((value) => (
           <Button
             key={value}
             variant={kind === value ? "primary" : "secondary"}
+            aria-pressed={kind === value}
             disabled={busy}
             onClick={() => navigate({ kind: value })}
           >
-            {identityLabels[value]}s
+            {intl.formatMessage({ id: identityMessages[value].many })}
           </Button>
         ))}
-        <Button
-          variant="secondary"
-          disabled={busy || scanning}
-          onClick={() => void scanAction("start")}
-        >
-          Scan saved metadata
-        </Button>
-        {scanning && (
+      </ButtonGroup>
+      <section className="identity-collect mb-3">
+        <h5>{m("collect.title")}</h5>
+        <p className="text-muted">{m("collect.help")}</p>
+        <div className="identity-toolbar">
           <Button
             variant="secondary"
-            disabled={busy}
-            onClick={() => void scanAction("cancel")}
+            size="sm"
+            disabled={busy || scanning}
+            onClick={() => void scanAction("start")}
           >
-            Cancel scan
+            {m("collect.scan")}
           </Button>
+          {scanning && (
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={busy}
+              onClick={() => void scanAction("cancel")}
+            >
+              {m("collect.cancel")}
+            </Button>
+          )}
+          <Button
+            variant="outline-danger"
+            size="sm"
+            disabled={busy || scanning}
+            onClick={() => void discard()}
+          >
+            {m("collect.clear", { kind: kindName })}
+          </Button>
+        </div>
+        {scan && scan.status !== "idle" && (
+          <p className="mt-2 mb-0" role="status">
+            {m(
+              `collect.status.${scanStates.includes(scan.status) ? scan.status : "other"}`,
+              {
+                status: scan.status,
+                scanned: scan.scanned,
+                found: scan.observations,
+                skipped: scan.skipped,
+              }
+            )}{" "}
+            {scan.error}
+          </p>
         )}
-      </div>
-      <details className="mb-3">
-        <summary>About the saved metadata scan</summary>
-        <p>
-          Reads local download receipts and cached Following posts. No remote
-          requests or automatic linking. Missing metadata is skipped. Repeat
-          scans are safe; cancellation keeps saved observations. Status resets
-          after a server restart.
-        </p>
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={busy || scanning}
-          onClick={() => void discard()}
-        >
-          Discard unreviewed {identityLabels[kind]} metadata
-        </Button>
-      </details>
-      {scan && scan.status !== "idle" && (
-        <p role="status">
-          Scan {scan.status}: {scan.scanned} records, {scan.observations}{" "}
-          observations, {scan.skipped} skipped. {scan.error}
-        </p>
-      )}
+      </section>
       <Form
         className="identity-toolbar mb-3"
         key={search}
@@ -243,107 +267,110 @@ export default function Identities() {
         }}
       >
         <Form.Control
-          aria-label="Filter identifiers"
+          aria-label={m("filter.label")}
           name="q"
           defaultValue={params.get("q") ?? ""}
           maxLength={80}
-          placeholder="Name or original provider identifier"
+          placeholder={m("filter.placeholder")}
         />
         <Form.Control
           as="select"
-          aria-label="Connection state"
+          aria-label={m("filter.state")}
           name="state"
           defaultValue={params.get("state") ?? ""}
         >
-          <option value="">All identifiers</option>
-          <option value="unresolved">Unresolved</option>
-          <option value="linked">Connected</option>
+          <option value="">{m("filter.all")}</option>
+          <option value="unresolved">{m("filter.unconnected")}</option>
+          <option value="linked">{m("filter.connected")}</option>
         </Form.Control>
         <Button type="submit" variant="secondary" disabled={busy}>
-          Filter
+          {m("filter.submit")}
         </Button>
-        {(params.has("identity") ||
-          params.has("entity") ||
-          params.has("after")) && (
+        {filtered && (
           <Button variant="secondary" onClick={() => navigate({ kind })}>
-            Show all {identityLabels[kind]}s
+            {m("filter.show_all", { kinds: kindPlural })}
           </Button>
         )}
       </Form>
       <div className="identity-layout">
-        <section aria-label="Provider identifiers">
-          {!page && !error && <p>Loading identifiers…</p>}
+        <section aria-label={m("list_label")}>
+          {!page && !error && <p>{m("loading")}</p>}
           {page?.items.length === 0 && (
             <p>
-              No identifiers found. Browse posts or scan saved metadata to
-              collect provider names.
+              {filtered ? m("empty_filtered") : m("empty", { kind: kindName })}
             </p>
           )}
-          {page?.items.map((row) => (
-            <article key={row.id} className="identity-row">
-              <div className="identity-toolbar">
-                <Form.Check
-                  type="switch"
-                  id={`identity-${row.id}`}
-                  label={`Select ${row.entityName || (row.form === "account" && row.label === row.target ? "Unresolved artist account" : identityName(row.label, kind))}`}
-                  checked={selected.includes(row.id)}
-                  disabled={busy}
-                  onChange={(event) => {
-                    if (event.currentTarget.checked && selected.length === 0)
-                      review(row, false);
-                    else
-                      setSelected((old) =>
-                        event.currentTarget.checked
-                          ? [...old, row.id]
-                          : old.filter((id) => id !== row.id)
-                      );
-                  }}
-                />
-                {row.entityID ? (
-                  <IdentitySiteLink row={row} />
-                ) : (
-                  <Badge variant="secondary">{row.sourceName}</Badge>
-                )}
-              </div>
-              <h5>
-                {row.entityName ||
-                  (row.form === "account" && row.label === row.target
-                    ? "Unresolved artist account"
-                    : identityName(row.label, kind))}
-              </h5>
-              <p>
-                {row.entityID ? (
-                  <Link to={`${identityPaths[kind]}/${row.entityID}`}>
-                    Connected to {row.entityName}
-                  </Link>
-                ) : (
-                  "Unresolved"
-                )}
-              </p>
-              {kind === "character" && row.context && (
-                <p>Observed with: {row.context}</p>
-              )}
-              <details>
-                <summary>
-                  <FormattedMessage id="identity_sources.source_details" />
-                </summary>
-                <p>
-                  {row.sourceName} · {row.form}
-                </p>
-                <code>{row.target}</code>
-                <p>Provider label: {row.label}</p>
-              </details>
-              <Button
-                className="mt-2"
-                variant="secondary"
-                size="sm"
-                disabled={busy}
-                onClick={() => review(row)}
+          {page?.items.map((row) => {
+            const name = siteName(row, kind) || m("row.unnamed_account");
+            const active = selected.includes(row.id);
+            return (
+              <article
+                key={row.id}
+                className={`identity-row${active ? " selected" : ""}`}
               >
-                Review {identityLabels[kind]}
-              </Button>
-            </article>
-          ))}
+                <div className="identity-row-head">
+                  <Form.Check
+                    id={`identity-${row.id}`}
+                    aria-label={m("row.select", {
+                      name,
+                      site: row.sourceName,
+                    })}
+                    checked={active}
+                    disabled={busy}
+                    onChange={(event) => {
+                      if (event.currentTarget.checked && selected.length === 0)
+                        review(row, false);
+                      else
+                        setSelected((old) =>
+                          event.currentTarget.checked
+                            ? [...old, row.id]
+                            : old.filter((id) => id !== row.id)
+                        );
+                    }}
+                  />
+                  <h5>{name}</h5>
+                  {row.entityID ? (
+                    <IdentitySiteLink row={row} />
+                  ) : (
+                    <Badge variant="secondary">{row.sourceName}</Badge>
+                  )}
+                  <Button
+                    className="ml-auto"
+                    variant={row.entityID ? "secondary" : "primary"}
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => review(row)}
+                  >
+                    {m(row.entityID ? "row.change" : "row.connect")}
+                  </Button>
+                </div>
+                <p className="mb-1">
+                  {row.entityID ? (
+                    <Link to={`${identityPaths[kind]}/${row.entityID}`}>
+                      {m("row.connected", { name: row.entityName })}
+                    </Link>
+                  ) : (
+                    <span className="text-muted">{m("row.unconnected")}</span>
+                  )}
+                </p>
+                {kind === "character" && row.context && (
+                  <p className="mb-1">
+                    {m("row.seen_with", { names: row.context })}
+                  </p>
+                )}
+                <details>
+                  <summary>
+                    <FormattedMessage id="identity_sources.source_details" />
+                  </summary>
+                  <p>
+                    {m("row.form", { site: row.sourceName, form: row.form })}
+                  </p>
+                  <code>{row.target}</code>
+                  <p>{m("row.label", { label: row.label })}</p>
+                </details>
+              </article>
+            );
+          })}
           {page?.next && (
             <Button
               variant="secondary"
@@ -354,50 +381,21 @@ export default function Identities() {
                 history.push(`/identities?${p}`);
               }}
             >
-              Next page
+              {m("next_page")}
             </Button>
           )}
         </section>
         <aside
           ref={resolution}
           className="identity-resolution-panel"
-          aria-label="Connect identifiers"
+          aria-label={m("panel.label")}
         >
           {!anchor ? (
-            <p>
-              Select an identifier to connect it. Select several to connect them
-              together.
+            <p className="identity-placeholder text-muted">
+              {m("panel.placeholder", { kind: kindName })}
             </p>
           ) : (
             <>
-              <div className="identity-toolbar mb-3">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={busy}
-                  onClick={() => setSelected([])}
-                >
-                  Later / deselect
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={busy}
-                  onClick={() =>
-                    setSelected(
-                      page?.items
-                        .filter(
-                          (row) =>
-                            identityName(row.label, kind).toLowerCase() ===
-                            identityName(anchor.label, kind).toLowerCase()
-                        )
-                        .map((row) => row.id) ?? []
-                    )
-                  }
-                >
-                  Select matching labels on this page
-                </Button>
-              </div>
               <IdentityResolution
                 key={chosen.map((row) => row.id).join(":")}
                 selected={chosen}
@@ -405,11 +403,40 @@ export default function Identities() {
                 onBusyChange={setBusy}
                 onSaved={() => {
                   setBusy(false);
-                  setNotice("Decision saved.");
+                  setNotice(m("saved"));
                   setSelected([]);
                   setEpoch((value) => value + 1);
                 }}
               />
+              <div className="identity-toolbar mt-2">
+                <Button
+                  variant="link"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => setSelected([])}
+                >
+                  {m("panel.clear_selection")}
+                </Button>
+                <Button
+                  variant="link"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => {
+                    const same = siteName(anchor, kind).toLowerCase();
+                    setSelected(
+                      page?.items
+                        .filter(
+                          (row) =>
+                            row.id === anchor.id ||
+                            (same && siteName(row, kind).toLowerCase() === same)
+                        )
+                        .map((row) => row.id) ?? []
+                    );
+                  }}
+                >
+                  {m("panel.select_same")}
+                </Button>
+              </div>
             </>
           )}
         </aside>

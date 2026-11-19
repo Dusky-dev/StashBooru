@@ -250,15 +250,34 @@ try {
       return reply(route, { error: "Unexpected fixture endpoint" }, 500);
     });
     await page.goto(`${origin}${prefix}/identities?kind=artist`);
+    // Each row is headed by its own site name, with one action and no
+    // duplicate "Select" switch; the empty panel says what to do.
     await page
-      .getByRole("button", { name: "Review Artist", exact: true })
+      .getByRole("heading", { name: "Waligner", exact: true })
+      .waitFor();
+    assert.equal(
+      await page
+        .getByRole("heading", { name: "waligner", exact: true })
+        .count(),
+      2
+    );
+    assert.equal(
+      await page.getByRole("button", { name: "Connect", exact: true }).count(),
+      3
+    );
+    assert.equal(await page.locator(".identity-row .custom-switch").count(), 0);
+    await page
+      .getByText("Choose Connect on a site name", { exact: false })
+      .waitFor();
+    await page
+      .getByRole("button", { name: /^(Connect|Change)$/ })
       .first()
       .click();
     await page
-      .getByRole("button", { name: "Select matching labels on this page" })
+      .getByRole("button", { name: "Also select other sites with this name" })
       .click();
     await page
-      .getByRole("heading", { name: "Connect 3 Artist identifiers" })
+      .getByRole("heading", { name: "Connect 3 site names to an Artist" })
       .waitFor();
     if (viewport.width < 500) {
       const box = await page.getByRole("complementary").boundingBox();
@@ -278,6 +297,18 @@ try {
       .getByRole("link", { name: "Connected to Waligner", exact: true })
       .first()
       .waitFor();
+    assert.equal(
+      await page.getByRole("button", { name: "Change", exact: true }).count(),
+      3,
+      "Connected rows offer Change instead of Connect"
+    );
+    assert.equal(
+      await page
+        .getByRole("heading", { name: "waligner", exact: true })
+        .count(),
+      2,
+      "Connected rows keep their own site name"
+    );
     await page
       .getByRole("link", { name: "Connected to Waligner", exact: true })
       .first()
@@ -462,7 +493,7 @@ try {
       .click();
     await page
       .getByRole("heading", {
-        name: "Connect 1 Artist identifier",
+        name: "Connect 1 site name to an Artist",
         exact: true,
       })
       .waitFor();
@@ -479,19 +510,15 @@ try {
     assert.equal(rows[1].entityID, 0);
     await page.getByRole("link", { name: "Advanced reconciliation" }).click();
     await page
-      .getByRole("button", { name: "Different Artist", exact: true })
+      .getByRole("button", { name: "Not this Artist", exact: true })
       .click();
     await page.getByText("Decision saved.", { exact: true }).waitFor();
-    await page
-      .getByRole("button", { name: "Review Artist", exact: true })
-      .click();
+    await page.getByRole("button", { name: /^(Connect|Change)$/ }).click();
     await page.getByText("No matching records.", { exact: false }).waitFor();
     await page.getByText("Show rejected matches", { exact: true }).click();
     await page.getByRole("button", { name: "Allow suggestion again" }).click();
     await page.getByText("Decision saved.", { exact: true }).waitFor();
-    await page
-      .getByRole("button", { name: "Review Artist", exact: true })
-      .click();
+    await page.getByRole("button", { name: /^(Connect|Change)$/ }).click();
     await page.getByText("Create a new Artist", { exact: true }).click();
     await page
       .getByLabel("Display name", { exact: true })
@@ -529,14 +556,14 @@ try {
       .getByRole("link", { name: "Connected to Curated display", exact: true })
       .waitFor();
     await page
-      .getByRole("button", { name: "Scan saved metadata", exact: true })
+      .getByRole("button", { name: "Scan saved downloads", exact: true })
       .click();
     await page
       .getByRole("button", { name: "Cancel scan", exact: true })
       .click();
-    await page.getByText(/Scan cancelled:/).waitFor();
+    await page.getByText(/Scan cancelled after/).waitFor();
     await page
-      .getByRole("button", { name: "Scan saved metadata", exact: true })
+      .getByRole("button", { name: "Scan saved downloads", exact: true })
       .click();
     scan = {
       ...scan,
@@ -546,17 +573,19 @@ try {
       skipped: 2,
     };
     await page
-      .getByText(/Scan completed: 10 records, 8 observations, 2 skipped/)
+      .getByText(
+        /Last scan finished: 10 records read, 8 site names found, 2 skipped/
+      )
       .waitFor();
     await page
       .getByRole("button", { name: "Show all Artists", exact: true })
       .click();
     await page
-      .getByRole("button", { name: "Review Artist", exact: true })
+      .getByRole("button", { name: /^(Connect|Change)$/ })
       .first()
       .waitFor();
     await page
-      .getByRole("button", { name: "Review Artist", exact: true })
+      .getByRole("button", { name: /^(Connect|Change)$/ })
       .first()
       .click();
     await page
@@ -581,7 +610,7 @@ try {
     await page.getByRole("link", { name: "Browse fixture" }).click();
     await page.goBack();
     await page
-      .getByRole("button", { name: "Review Artist", exact: true })
+      .getByRole("button", { name: /^(Connect|Change)$/ })
       .first()
       .waitFor();
     for (const [kind, label, id, target] of [

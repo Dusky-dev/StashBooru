@@ -50,7 +50,7 @@ Following changes are later work.
 
 ## Using identities
 
-1. Browse provider posts, or choose **Identities → Scan saved metadata**. Artist
+1. Browse provider posts, or choose **Identities → Scan saved downloads**. Artist
    directory searches also collect readable Pawchive/Kemono creator names.
 2. In a preview tag menu, choose **Connect Artist/Character/Copyright**. A dialog
    opens over the current preview, keeping its search, page and position.
@@ -59,11 +59,16 @@ Following changes are later work.
    page for bulk work. Raw targets remain under **Source details**.
 3. Choose an existing native record, or expand **Create a new…**. Character
    creation supports native disambiguation. A matching name never links itself.
-4. Select several rows, or **Select matching labels on this page**, to connect
-   them together. That button only selects candidates; review the selection
-   before connecting. **Different…** remembers a rejected match for one identifier.
-   **Show rejected matches** lets you allow it again. **Later / deselect** leaves
-   identifiers unresolved. **Remove connection** reverses a binding.
+4. On the Identities page each row is one site name, with its site and its
+   connection state (**Connected to …** or **Not connected**). Choose
+   **Connect** (or **Change** on a connected row) to open the decision panel.
+   Tick several rows, or use **Also select other sites with this name**, to
+   connect them together; that button only selects, so review the selection
+   before connecting. **Not this …** remembers a rejected match for one site
+   name. **Show rejected matches** lets you allow it again. **Clear selection**
+   leaves names unconnected. **Remove connection** reverses a binding.
+   **Clear unconnected … names** empties the list of names you have not
+   connected; browsing or scanning brings them back.
 5. Native profiles expose **Identities → Manage connections** in a dialog,
    without leaving the profile. **Add source name** takes an enabled site and
    its exact tag or creator expression, then shows a separate **Connect to…**
