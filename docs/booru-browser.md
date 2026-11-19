@@ -9,8 +9,8 @@ Copyright/tag metadata import remains separate reviewed work.
 [B02 review state](booru-review-state.md) adds durable ignored/manual-download
 marks and bounded current-file MD5 matches. Metadata entity review, batch downloads,
 pHash comparison remain later [roadmap packages](booru-browser-roadmap.md).
-[Following](booru-follows.md) supports explicit on-demand checks for
-Danbooru-compatible sources. [Source-name connections](provider-identities.md)
+[Following](booru-follows.md) supports on-demand checks for Danbooru,
+Gelbooru, Rule34, Paheal and Pawchive creators. [Source-name connections](provider-identities.md)
 link reviewed provider identifiers to native Artists, Characters and Copyrights;
 they do not automatically apply post metadata to media.
 

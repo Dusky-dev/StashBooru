@@ -81,6 +81,7 @@ through code or fixtures.
   [#405](https://github.com/Dusky-dev/StashBooru/pull/405)).
 - Pawchive/Kemono creator names on identities; account chips open the
   Booru browser; Identities checkbox crash (1.1.3).
+- Following checks Gelbooru, Rule34, Paheal and Pawchive creators (1.2.0).
 - Parent Tags/Copyrights apply automatically (calculated; "Include parent
   Tags" is on by default). No separate Implies field (owner, 2026-11-18).
 - Implied Tags and Copyrights on Image and Video cards (#383); detail pages,

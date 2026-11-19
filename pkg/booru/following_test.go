@@ -72,7 +72,7 @@ func TestFollowingRejectsCursorViolationsAndControlQueries(t *testing.T) {
 	for _, target := range []string{"artist_a other", "-artist", "~artist", "artist*", "rating:g"} {
 		require.Error(t, FollowQuery("artist", target), target)
 	}
-	for _, engine := range []string{"gelbooru", "e621", "pixiv"} {
+	for _, engine := range []string{"e621", "pixiv", "kemono", "moebooru"} {
 		_, err := client.FollowPage(context.Background(), testSource(engine), "artist", "a", "")
 		require.Error(t, err)
 	}

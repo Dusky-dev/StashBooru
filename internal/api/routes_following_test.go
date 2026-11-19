@@ -1,7 +1,13 @@
 package api
 
 import (
+	"encoding/json"
+	"fmt"
+	"strings"
 	"testing"
+
+	"github.com/stashapp/stash/pkg/booru"
+	"github.com/stashapp/stash/pkg/models"
 
 	"github.com/stretchr/testify/require"
 )
@@ -26,5 +32,20 @@ func TestFollowingDurableMediaURL(t *testing.T) {
 		"",
 	} {
 		require.Empty(t, followingDurableMediaURL(raw), raw)
+	}
+}
+
+func TestFollowingSnapshotTrimsLargeAttachmentLists(t *testing.T) {
+	post := booru.Post{ID: "a1", Title: "Large archive post"}
+	for i := range 400 {
+		post.Attachments = append(post.Attachments, booru.Post{ID: fmt.Sprintf("a1-%d", i), PreviewURL: "https://img.example.org/" + strings.Repeat("x", 200)})
+	}
+	payload, err := followingSnapshotPayload(post)
+	if err != nil || len(payload) > models.MaxFollowingPayload {
+		t.Fatalf("payload %d bytes, %v", len(payload), err)
+	}
+	var stored followingStoredPost
+	if json.Unmarshal(payload, &stored) != nil || len(stored.Post.Attachments) == 0 || len(stored.Post.Attachments) >= 400 {
+		t.Fatalf("attachments kept: %d", len(stored.Post.Attachments))
 	}
 }

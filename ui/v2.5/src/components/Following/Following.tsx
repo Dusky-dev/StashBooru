@@ -7,7 +7,11 @@ import {
   type ProviderIdentity,
   identityRequest,
 } from "../Identities/identityApi";
-import { canFollowIdentity, sourceForIdentity } from "./followContext";
+import {
+  canFollowIdentity,
+  canSyncEngine,
+  sourceForIdentity,
+} from "./followContext";
 import "./styles.scss";
 
 interface Follow {
@@ -264,7 +268,7 @@ export default function Following() {
           throw new Error("This provider connection no longer exists.");
         if (!canFollowIdentity(connection))
           throw new Error(
-            "Feed checks currently support Danbooru tag connections. Account providers and other engines are not supported yet."
+            "Feed checks support Danbooru, Gelbooru, Rule34 and Paheal tags, and Pawchive creators. This connection is from another site."
           );
         setIdentity(connection);
         setName(connection.entityName || connection.label || connection.target);
@@ -297,7 +301,7 @@ export default function Following() {
           setSourceError("");
           setSourceID(
             (current) =>
-              current || value.find((s) => s.engine === "danbooru")?.id || ""
+              current || value.find((s) => canSyncEngine(s.engine))?.id || ""
           );
         }
       })
@@ -411,7 +415,7 @@ export default function Following() {
     setName("");
     setTarget("");
     setKind("artist");
-    setSourceID(sources.find((s) => s.engine === "danbooru")?.id ?? "");
+    setSourceID(sources.find((s) => canSyncEngine(s.engine))?.id ?? "");
   }
 
   const selectedSource = fromIdentity
@@ -525,8 +529,8 @@ export default function Following() {
         <section id="following-manager" aria-label="Follow management">
           <p className="text-muted">
             Check follows on demand. Your first check saves up to 50 recent
-            posts; later checks collect newer uploads. Feed checks currently
-            support Danbooru-compatible sources.
+            posts; later checks collect newer uploads. Feed checks support
+            Danbooru, Gelbooru, Rule34, Paheal and Pawchive creators.
           </p>
           <div className="following-actions mb-3">
             <Button
@@ -564,7 +568,7 @@ export default function Following() {
                 locked ||
                 contextBlocked ||
                 duplicate ||
-                (!editing && selectedSource?.engine !== "danbooru")
+                (!editing && !canSyncEngine(selectedSource?.engine))
               )
                 return;
               if (await mutate("Saving follow…", "following/follows", input))
@@ -598,11 +602,10 @@ export default function Following() {
               !editing &&
               sourcesLoaded &&
               !sourceError &&
-              !sources.some((source) => source.engine === "danbooru") && (
+              !sources.some((source) => canSyncEngine(source.engine)) && (
                 <Alert variant="warning">
-                  Enable a Danbooru-compatible source in Source settings to
-                  check posts. Account providers and other engines are not
-                  supported yet.
+                  Enable Danbooru, Gelbooru, Rule34, Paheal or Pawchive in
+                  Source settings to check posts.
                 </Alert>
               )}
             {duplicate && (
@@ -635,7 +638,7 @@ export default function Following() {
                   <option value={sourceID}>{editing.sourceURL}</option>
                 )}
                 {sources
-                  .filter((s) => s.engine === "danbooru" || s.id === sourceID)
+                  .filter((s) => canSyncEngine(s.engine) || s.id === sourceID)
                   .map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
@@ -643,8 +646,10 @@ export default function Following() {
                   ))}
               </Form.Control>
               <Form.Text muted>
-                Feed checks use enabled Danbooru-compatible sources. Follows are
-                local to this library, separate from website favorites.
+                Feed checks work on Danbooru, Gelbooru, Rule34, Paheal and
+                Pawchive. For Pawchive, follow one creator as an Artist with
+                creator:service:id. Follows are local to this library, separate
+                from website favorites.
               </Form.Text>
             </Form.Group>
             <Form.Group controlId="following-name">
@@ -701,7 +706,7 @@ export default function Following() {
                   contextBlocked ||
                   !!duplicate ||
                   !selectedSource ||
-                  (!editing && selectedSource.engine !== "danbooru")
+                  (!editing && !canSyncEngine(selectedSource.engine))
                 }
               >
                 {editing ? "Save changes" : "Follow"}

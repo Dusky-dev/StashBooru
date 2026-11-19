@@ -1,3 +1,22 @@
+## StashBooru 1.2.0: Following on Gelbooru, Rule34, Paheal and Pawchive — 2026-11-19
+
+- Baseline: `develop` `85bc805` (#406). Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Owner decisions: keep Following and Identities separate but linked; add
+  Pawchive, Gelbooru, Rule34 and Paheal; automatic checks with counts. This is
+  step 1 of 3 (sites). Gelbooru/Shimmie page newest-first by page number with
+  a numeric checkpoint (repeats skipped, `sort:` rejected); Pawchive follows
+  one `creator:service:id` and stops at remembered newest post IDs. A check
+  reads ≤20 pages and says when older new posts were skipped. Oversized
+  archive snapshots drop later attachments instead of failing the check.
+  Pawchive targets are validated when saved.
+- Checks: `pkg/booru` follow tests (new paging tests); `internal/api` unit and
+  `B06`/Follow integration tests; `tsc`; browser `following`,
+  `following-context`, `identities` desktop+mobile. Live: Paheal and a
+  Pawchive creator (50-post window, 0 on recheck).
+- Not verified: Gelbooru/Rule34 live (need credentials).
+- Next: Follow buttons in Identities/profile/Booru browser; automatic checks.
+
 ## StashBooru 1.1.3: Pawchive creator names, account links, checkbox crash — 2026-11-19
 
 - Baseline: `develop` `b064fa7` (#405). Branch

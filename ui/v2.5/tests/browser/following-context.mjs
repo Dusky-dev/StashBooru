@@ -94,9 +94,9 @@ try {
       {
         ...identities[0],
         id: "4",
-        engine: "gelbooru",
-        instance: "gel",
-        sourceName: "Gelbooru",
+        engine: "e621",
+        instance: "e621",
+        sourceName: "e621",
       },
       {
         ...identities[0],
@@ -369,7 +369,7 @@ try {
     await unavailable.close();
     sources = [matchingSource];
     for (const [id, message] of [
-      ["4", /Account providers and other engines are not supported yet/],
+      ["4", /This connection is from another site/],
       ["0", /connection link is invalid/],
       ["999", /connection no longer exists/],
     ]) {
@@ -399,7 +399,9 @@ try {
     sources = [];
     const empty = await context.newPage();
     await empty.goto(`${base}/following?view=manage`);
-    await empty.getByText(/Enable a Danbooru-compatible source/).waitFor();
+    await empty
+      .getByText(/Enable Danbooru, Gelbooru, Rule34, Paheal or Pawchive/)
+      .waitFor();
     assert.equal(
       await empty
         .getByRole("button", { name: "Follow", exact: true })
