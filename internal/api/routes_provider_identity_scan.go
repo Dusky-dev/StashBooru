@@ -176,7 +176,9 @@ func (rs booruBrowserRoutes) scanIdentityMetadata(ctx context.Context, progress 
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		input, _ := identityPostObservations(source, []booru.Post{post})
+		// Known creator names only; the scan makes no network requests.
+		names, _ := rs.archiveCreatorNames(source, []booru.Post{post})
+		input, _ := identityPostObservations(source, []booru.Post{post}, names)
 		for i := range input {
 			input[i].PreserveSource = preserveSource
 		}

@@ -102,6 +102,7 @@ type Client struct {
 	creatorMu           sync.Mutex
 	creatorCache        map[string]creatorEntry
 	creatorPending      map[string]chan struct{}
+	creatorNames        map[string]creatorNameEntry
 	rule34CategoryMu    sync.Mutex
 	rule34CategoryCache map[string]rule34CategoryEntry
 }

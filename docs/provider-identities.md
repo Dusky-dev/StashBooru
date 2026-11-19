@@ -50,8 +50,11 @@ Following changes are later work.
 
 ## Using identities
 
-1. Browse provider posts, or choose **Identities → Scan saved downloads**. Artist
-   directory searches also collect readable Pawchive/Kemono creator names.
+1. Browse provider posts, or choose **Identities → Scan saved downloads**. Pawchive/Kemono
+   posts carry only `creator:service:id`; their display names come from the
+   Artist directory search, when loaded, or the creator's profile, fetched in
+   the background (at most 8 per page) and shown on the next load. A name is
+   a label only; the creator key stays the identity.
 2. In a preview tag menu, choose **Connect Artist/Character/Copyright**. A dialog
    opens over the current preview, keeping its search, page and position.
    Closing it returns keyboard focus to the preview. General tags retain their

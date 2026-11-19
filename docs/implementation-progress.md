@@ -1,3 +1,23 @@
+## StashBooru 1.1.3: Pawchive creator names, account links, checkbox crash — 2026-11-19
+
+- Baseline: `develop` `b064fa7` (#405). Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Owner report: Pawchive creators were not searchable and showed only
+  `creator:service:id`. Browsing Pawchive/Kemono now labels creator identities
+  with the profile name (`/api/v1/{service}/user/{id}/profile`, confirmed live
+  against pawchive.pw), using the loaded directory or a 24 h name cache first;
+  up to 8 unknown names per page are fetched after the response. Labels only:
+  no link, version or post-label change. Identities filter and native Artist
+  search match the stored label, so connected creators are found by name.
+  Account chips (Pawchive/Kemono/Pixiv) now open the Booru browser. Fixed the
+  production crash when (un)ticking a second Identities row.
+- Checks: `pkg/booru` name tests; `internal/api` identity integration tests
+  (incl. new name upgrade test); `tsc`; Biome; browser `identities`
+  desktop+mobile. The dev build does not reproduce the checkbox crash.
+- Not verified: Kemono profile endpoint; Booru browser text search by a
+  connected Artist name on Pawchive (not changed here).
+- Next: Following ↔ Identities ↔ Booru browser links (separate PR).
+
 ## StashBooru 1.1.2: clearer Identities page — 2026-11-19
 
 - Baseline: `develop` `cadcd4f` (#404, released as `stashbooru-v1.1.1`). PR

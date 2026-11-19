@@ -30,15 +30,16 @@ export function SiteIcon({ sourceID }: { sourceID: string }) {
 }
 
 /**
- * The site a connected identity came from. Tag identities open the Booru
- * browser on that site, searching the connected tag. The icon is fetched by
+ * The site an identity came from, opening the Booru browser on that site.
+ * Tags search the tag; accounts (Pawchive/Kemono creator:service:id, Pixiv
+ * user:id) open that creator's posts, which the browser accepts as a query. The icon is fetched by
  * the server from the configured site, never directly by the browser.
  */
 export function IdentitySiteLink({
   row,
   link = true,
 }: {
-  row: Pick<ProviderIdentity, "sourceID" | "sourceName" | "target" | "form">;
+  row: Pick<ProviderIdentity, "sourceID" | "sourceName" | "target">;
   /** Off inside dialogs, which can sit on top of the Booru browser. */
   link?: boolean;
 }) {
@@ -49,7 +50,7 @@ export function IdentitySiteLink({
       <span>{row.sourceName}</span>
     </>
   );
-  if (!link || row.form !== "tag" || !row.sourceID || !row.target)
+  if (!link || !row.sourceID || !row.target)
     return <span className="identity-site-link">{content}</span>;
   const label = intl.formatMessage(
     {
