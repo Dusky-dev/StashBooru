@@ -733,7 +733,7 @@ try {
       "#settings-menu-container .nav-link:visible"
     );
     // Experimental is hidden until Advanced mode is on.
-    assert.equal(await desktopLinks.count(), name === "mobile" ? 0 : 10);
+    assert.equal(await desktopLinks.count(), name === "mobile" ? 0 : 9);
     assert.equal(await chooser.isVisible(), name === "mobile");
     assert.equal(await chooser.inputValue(), "library");
     assert.equal(
@@ -1251,7 +1251,7 @@ try {
     for (const width of [575, 576, 767, 768]) {
       await page.setViewportSize({ width, height: viewport.height });
       assert.equal(await chooser.isVisible(), width < 768);
-      assert.equal(await desktopLinks.count(), width < 768 ? 0 : 11);
+      assert.equal(await desktopLinks.count(), width < 768 ? 0 : 10);
       assert.equal(
         await page.locator("#settings-menu-container .nav-link.active").count(),
         1
