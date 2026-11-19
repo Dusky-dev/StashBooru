@@ -11,7 +11,7 @@ import {
   MessageDescriptor,
   useIntl,
 } from "react-intl";
-import { Nav, Navbar, Button } from "react-bootstrap";
+import { Badge, Nav, Navbar, Button } from "react-bootstrap";
 import { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { LinkContainer } from "react-router-bootstrap";
 import { Link, NavLink, useLocation, useHistory } from "react-router-dom";
@@ -46,6 +46,7 @@ import {
 import { baseURL } from "src/core/createClient";
 import { PatchComponent } from "src/patch";
 import { GlobalMediaUpload } from "./Shared/GlobalMediaUpload";
+import { useFollowingUnseen } from "./Following/FollowAction";
 
 interface IMenuItem {
   name: string;
@@ -364,6 +365,7 @@ export const MainNavbar: React.FC = () => {
   }
 
   const handleDismiss = useCallback(() => setExpanded(false), []);
+  const followingUnseen = useFollowingUnseen();
 
   function renderUtilityButtons() {
     return (
@@ -384,6 +386,19 @@ export const MainNavbar: React.FC = () => {
               <span className="nav-utility-label ml-1">
                 {intl.formatMessage(label)}
               </span>
+              {to === "/following" && followingUnseen > 0 && (
+                <Badge
+                  pill
+                  variant="primary"
+                  className="ml-1"
+                  aria-label={intl.formatMessage(
+                    { id: "following_action.navbar_new" },
+                    { count: followingUnseen }
+                  )}
+                >
+                  {followingUnseen > 99 ? "99+" : followingUnseen}
+                </Badge>
+              )}
             </Button>
           </NavLink>
         ))}

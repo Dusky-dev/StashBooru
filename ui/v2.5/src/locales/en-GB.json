@@ -2149,6 +2149,20 @@
     "unsupported_connection": "Feed checks support Danbooru, Gelbooru, Rule34 and Paheal tags, and Pawchive creators. This connection is from another site.",
     "manager_intro": "Check follows on demand. Your first check saves up to 50 recent posts; later checks collect newer uploads. Feed checks support Danbooru, Gelbooru, Rule34, Paheal and Pawchive creators.",
     "no_supported_source": "Enable Danbooru, Gelbooru, Rule34, Paheal or Pawchive in Source settings to check posts.",
-    "source_help": "Feed checks work on Danbooru, Gelbooru, Rule34, Paheal and Pawchive. For Pawchive, follow one creator as an Artist with creator:service:id. Follows are local to this library, separate from website favorites."
+    "source_help": "Feed checks work on Danbooru, Gelbooru, Rule34, Paheal and Pawchive. For Pawchive, follow one creator as an Artist with creator:service:id. Follows are local to this library, separate from website favorites.",
+    "following_new": "Following · {count} new",
+    "new_badge": "{count} new",
+    "navbar_new": "{count, plural, one {# new post} other {# new posts}} from follows",
+    "auto": {
+      "title": "Automatic checks",
+      "help": "Checks every follow in the background and counts new posts here and in the navbar. Off until you choose an interval.",
+      "interval": "Check follows",
+      "off": "Off",
+      "every": "{hours, plural, one {Every hour} other {Every # hours}}",
+      "run_now": "Check all now",
+      "running": "Checking follows…",
+      "next": "Next check: {time}",
+      "last": "Last check {time}: {checked, plural, one {# follow} other {# follows}}, {posts, plural, one {# new post} other {# new posts}}{failed, plural, =0 {} one {, # failed} other {, # failed}}."
+    }
   }
 }

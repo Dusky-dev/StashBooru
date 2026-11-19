@@ -19,6 +19,7 @@ type booruFollowView struct {
 	SyncSupported  bool                        `json:"syncSupported"`
 	Feed           *models.FollowingCheckpoint `json:"feed,omitempty"`
 	Connection     *booruFollowConnection      `json:"connection,omitempty"`
+	Unseen         int                         `json:"unseen"`
 }
 
 // The local Artist/Character/Copyright a follow's source name is connected
@@ -59,10 +60,22 @@ func (rs booruBrowserRoutes) Follows(w http.ResponseWriter, r *http.Request) {
 		writeBooruError(w, 503, "follows", "Follow storage is unavailable.")
 		return
 	}
+	views, err := rs.followViews(r.Context())
+	if err != nil {
+		writeBooruError(w, 500, "follows", "Cannot load follows.")
+		return
+	}
+	writeVisualSimilarityJSON(w, views)
+}
+
+// followViews lists saved follows with their source binding, feed state,
+// connected record and unseen count.
+func (rs booruBrowserRoutes) followViews(parent context.Context) ([]booruFollowView, error) {
 	var rows []models.BooruFollow
 	states := map[string]models.FollowingCheckpoint{}
 	connections := map[string]*booruFollowConnection{}
-	err := rs.repository.WithReadTxn(r.Context(), func(ctx context.Context) error {
+	unseen := map[string]int{}
+	err := rs.repository.WithReadTxn(parent, func(ctx context.Context) error {
 		var err error
 		rows, err = rs.repository.BooruFollow.List(ctx)
 		if err == nil && rs.repository.Following != nil {
@@ -72,6 +85,9 @@ func (rs booruBrowserRoutes) Follows(w http.ResponseWriter, r *http.Request) {
 					return readErr
 				}
 				states[row.ID] = state
+			}
+			if err == nil {
+				unseen, _, err = rs.repository.Following.UnseenCounts(ctx)
 			}
 		}
 		if err == nil && rs.repository.ProviderIdentity != nil {
@@ -92,8 +108,7 @@ func (rs booruBrowserRoutes) Follows(w http.ResponseWriter, r *http.Request) {
 		return err
 	})
 	if err != nil {
-		writeBooruError(w, 500, "follows", "Cannot load follows.")
-		return
+		return nil, err
 	}
 	sources, sourceErr := rs.sources()
 	views := make([]booruFollowView, 0, len(rows))
@@ -104,6 +119,7 @@ func (rs booruBrowserRoutes) Follows(w http.ResponseWriter, r *http.Request) {
 			view.Feed = &state
 		}
 		view.Connection = connections[row.ID]
+		view.Unseen = unseen[row.ID]
 		if sourceErr != nil {
 			view.Status = "configuration-error"
 			view.ResolvedSource = ""
@@ -111,7 +127,7 @@ func (rs booruBrowserRoutes) Follows(w http.ResponseWriter, r *http.Request) {
 		}
 		views = append(views, view)
 	}
-	writeVisualSimilarityJSON(w, views)
+	return views, nil
 }
 
 type booruFollowMutation struct {

@@ -65,6 +65,16 @@ and enter the exact provider tag or query. Source credentials and custom
 instances live in Source settings. Other saved engines remain visible with
 checks disabled until their feed adapter is supported.
 
+**Automatic checks** (Following → Manage) are off by default. Choose every 1,
+3, 6, 12 or 24 hours and a *Check followed sites* job (Tasks queue, can be
+cancelled) checks each follow whose last check or failed check is older than
+that, catching each up across up to 25 pages. A site that answers "slow down"
+is skipped for the rest of the run; a full feed cache stops the run; other
+failures are recorded on that follow only. **Check all now** checks every
+follow at once. The setting lives in `following-schedule.json` beside the
+configuration. The navbar Following link shows the number of new (unseen, not
+ignored) posts; each follow shows its own count.
+
 **Follow** also appears on Identities page rows and in the Booru browser tag
 menu. Once a site name is followed, those places show **Following**, linking to
 that follow's feed. Each saved follow shows the local record its site name is

@@ -71,4 +71,7 @@ type FollowingReaderWriter interface {
 	SetSeen(context.Context, int64, int, bool) (int, string, error)
 	PruneSeen(context.Context) (int64, error)
 	RecordError(context.Context, BooruFollow, int, string) error
+	// UnseenCounts counts unseen, not ignored posts per active follow (current
+	// revision) and in total; a post matching two follows counts once in total.
+	UnseenCounts(context.Context) (map[string]int, int, error)
 }

@@ -84,6 +84,7 @@ through code or fixtures.
 - Following checks Gelbooru, Rule34, Paheal and Pawchive creators (1.2.0).
 - Follow / Following on Identities, profiles and the Booru browser tag menu;
   follows show their connected record (1.3.0).
+- Automatic follow checks with new-post counts in the navbar (1.4.0).
 - Parent Tags/Copyrights apply automatically (calculated; "Include parent
   Tags" is on by default). No separate Implies field (owner, 2026-11-18).
 - Implied Tags and Copyrights on Image and Video cards (#383); detail pages,

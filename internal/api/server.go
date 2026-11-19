@@ -234,6 +234,7 @@ func Initialize() (*Server, error) {
 	if cachePath := cfg.GetCachePath(); cachePath != "" {
 		booruRoutes.iconDir = filepath.Join(cachePath, "site-icons")
 	}
+	go booruRoutes.runFollowScheduler(context.Background())
 	r.Get("/booru-browser/sources", booruRoutes.Sources)
 	r.Get("/booru-browser/icon", booruRoutes.SiteIcon)
 	r.Get("/booru-browser/creators", booruRoutes.Creators)
@@ -248,6 +249,8 @@ func Initialize() (*Server, error) {
 	r.Post("/identities/update", booruRoutes.IdentityMutation)
 	r.Get("/following/feed", booruRoutes.FollowingFeed)
 	r.Get("/following/follows", booruRoutes.Follows)
+	r.Get("/following/schedule", booruRoutes.FollowScheduleRoute)
+	r.Post("/following/schedule", booruRoutes.FollowScheduleRoute)
 	r.Post("/following/follows", booruRoutes.UpdateFollow)
 	r.Post("/following/sync", booruRoutes.SyncFollow)
 	r.Post("/following/seen", booruRoutes.SetFollowingSeen)

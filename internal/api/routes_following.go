@@ -202,26 +202,45 @@ func (rs booruBrowserRoutes) SyncFollow(w http.ResponseWriter, r *http.Request) 
 		writeBooruError(w, 503, "following", "Following storage is unavailable.")
 		return
 	}
+	result, err := rs.syncFollowPage(r.Context(), input.ID, input.Version)
+	if err != nil {
+		followingError(w, err)
+		return
+	}
+	writeVisualSimilarityJSON(w, map[string]any{"checkpoint": result.Checkpoint, "matched": result.Matched, "notice": result.Notice})
+}
+
+type followSyncResult struct {
+	Checkpoint models.FollowingCheckpoint
+	Matched    int
+	HasMore    bool
+	Notice     string
+}
+
+// syncFollowPage fetches and stores one page of a follow's new posts. Manual
+// checks and automatic checks share it. A failure is recorded on the follow
+// (best effort) unless ctx was cancelled; version must be the follow's
+// current version.
+func (rs booruBrowserRoutes) syncFollowPage(parent context.Context, id string, version int) (followSyncResult, error) {
 	var follow *models.BooruFollow
 	var state models.FollowingCheckpoint
-	err := rs.repository.WithReadTxn(r.Context(), func(ctx context.Context) error {
+	err := rs.repository.WithReadTxn(parent, func(ctx context.Context) error {
 		var err error
-		follow, err = rs.repository.BooruFollow.Find(ctx, input.ID)
+		follow, err = rs.repository.BooruFollow.Find(ctx, id)
 		if err != nil {
 			return err
 		}
-		if follow == nil || !follow.Active || follow.Version != input.Version {
+		if follow == nil || !follow.Active || follow.Version != version {
 			return models.ErrBooruFollowConflict
 		}
 		state, err = rs.repository.Following.Checkpoint(ctx, follow.ID, follow.QueryRevision)
 		return err
 	})
 	if err != nil {
-		followingError(w, err)
-		return
+		return followSyncResult{}, err
 	}
-	fail := func(err error) {
-		if r.Context().Err() == nil {
+	fail := func(err error) (followSyncResult, error) {
+		if parent.Err() == nil {
 			message := "Feed check failed; retry to resume."
 			var provider *booru.Error
 			if errors.As(err, &provider) {
@@ -238,16 +257,15 @@ func (rs booruBrowserRoutes) SyncFollow(w http.ResponseWriter, r *http.Request) 
 			}
 			// Diagnostics are best effort. A stale failure must not overwrite a
 			// newer success or replace the primary request error.
-			_ = rs.repository.WithTxn(r.Context(), func(ctx context.Context) error {
+			_ = rs.repository.WithTxn(parent, func(ctx context.Context) error {
 				return rs.repository.Following.RecordError(ctx, *follow, state.Version, message)
 			})
 		}
-		followingError(w, err)
+		return followSyncResult{}, err
 	}
 	sources, err := rs.sources()
 	if err != nil {
-		fail(errBooruFollowSource)
-		return
+		return fail(errBooruFollowSource)
 	}
 	view := resolveBooruFollow(*follow, sources)
 	var source booru.Source
@@ -258,20 +276,17 @@ func (rs booruBrowserRoutes) SyncFollow(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 	if source.ID == "" {
-		fail(errBooruFollowSource)
-		return
+		return fail(errBooruFollowSource)
 	}
 	client, ok := rs.client.(interface {
 		FollowPage(context.Context, booru.Source, string, string, string) (booru.FollowPage, error)
 	})
 	if !ok || !booru.FollowSyncEngine(source.Engine) {
-		writeBooruError(w, 400, "unsupported-source", "Feed sync supports Danbooru, Gelbooru, Rule34, Paheal and Pawchive creators. This follow remains saved.")
-		return
+		return followSyncResult{}, &booru.Error{Code: "unsupported-source", Message: "Feed sync supports Danbooru, Gelbooru, Rule34, Paheal and Pawchive creators. This follow remains saved."}
 	}
-	page, err := client.FollowPage(r.Context(), source, follow.Kind, follow.Target, state.Cursor)
+	page, err := client.FollowPage(parent, source, follow.Kind, follow.Target, state.Cursor)
 	if err != nil {
-		fail(err)
-		return
+		return fail(err)
 	}
 	// Never store ephemeral preview tokens or credentials. Recreate media grants
 	// from the current source policy when a cached feed page is read.
@@ -281,8 +296,7 @@ func (rs booruBrowserRoutes) SyncFollow(w http.ResponseWriter, r *http.Request) 
 		post.SourceID = source.ID // Server-selected provenance, not provider input.
 		payload, err := followingSnapshotPayload(post)
 		if err != nil || len(payload) > models.MaxFollowingPayload {
-			fail(&booru.Error{Code: "metadata-limit", Message: "A post exceeds the 64 KiB feed metadata limit. No page or checkpoint was saved."})
-			return
+			return fail(&booru.Error{Code: "metadata-limit", Message: "A post exceeds the 64 KiB feed metadata limit. No page or checkpoint was saved."})
 		}
 		posts = append(posts, models.FollowingSnapshot{PostID: post.ID, Payload: payload})
 	}
@@ -294,10 +308,9 @@ func (rs booruBrowserRoutes) SyncFollow(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 	if err != nil || !unchanged {
-		fail(errBooruFollowSource)
-		return
+		return fail(errBooruFollowSource)
 	}
-	err = rs.repository.WithTxn(r.Context(), func(ctx context.Context) error {
+	err = rs.repository.WithTxn(parent, func(ctx context.Context) error {
 		next, err := rs.repository.Following.ApplyPage(ctx, *follow, state.Version, page.Cursor, page.HasMore, posts)
 		if err == nil {
 			state = next
@@ -305,8 +318,7 @@ func (rs booruBrowserRoutes) SyncFollow(w http.ResponseWriter, r *http.Request) 
 		return err
 	})
 	if err != nil {
-		fail(err)
-		return
+		return fail(err)
 	}
 	notice := fmt.Sprintf("Saved %d post matches. Check complete.", len(posts))
 	if page.HasMore {
@@ -315,7 +327,7 @@ func (rs booruBrowserRoutes) SyncFollow(w http.ResponseWriter, r *http.Request) 
 	if page.Notice != "" {
 		notice += " " + page.Notice
 	}
-	writeVisualSimilarityJSON(w, map[string]any{"checkpoint": state, "matched": len(posts), "notice": notice})
+	return followSyncResult{Checkpoint: state, Matched: len(posts), HasMore: page.HasMore, Notice: notice}, nil
 }
 
 func followingError(w http.ResponseWriter, err error) {

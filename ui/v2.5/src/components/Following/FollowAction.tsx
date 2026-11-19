@@ -12,6 +12,7 @@ export interface FollowSummary {
   kind: string;
   target: string;
   active: boolean;
+  unseen?: number;
 }
 
 // One shared, short-lived copy of the follow list: a post preview can show
@@ -106,7 +107,12 @@ export function FollowAction({
   let newTab = false;
   if (follow) {
     to = `/following?${new URLSearchParams({ follow: follow.id })}`;
-    label = intl.formatMessage({ id: "following_action.following" });
+    label = follow.unseen
+      ? intl.formatMessage(
+          { id: "following_action.following_new" },
+          { count: follow.unseen }
+        )
+      : intl.formatMessage({ id: "following_action.following" });
   } else if (identityID && canFollowTarget(engine, kind, target)) {
     to = `/following?fromIdentity=${encodeURIComponent(String(identityID))}#following-manager`;
     label = intl.formatMessage({ id: "following_action.follow" });
@@ -145,4 +151,49 @@ export function FollowAction({
       {label}
     </Link>
   );
+}
+
+/** Automatic check status, and new posts across all follows. */
+export interface FollowSchedule {
+  intervalHours: number;
+  unseen: number;
+  running: boolean;
+  nextRun?: string;
+  lastRun?: {
+    startedAt: string;
+    finishedAt?: string;
+    checked: number;
+    newPosts: number;
+    failed: number;
+    note?: string;
+  };
+}
+
+/**
+ * New posts across all follows, for the navbar badge. Refreshed every five
+ * minutes and when the tab regains focus; 0 if Following is unavailable.
+ */
+export function useFollowingUnseen() {
+  const [unseen, setUnseen] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    const refresh = () =>
+      void identityRequest<FollowSchedule>(
+        "following/schedule",
+        controller.signal
+      )
+        .then((value) => {
+          if (!controller.signal.aborted) setUnseen(value.unseen ?? 0);
+        })
+        .catch(() => {});
+    refresh();
+    const timer = setInterval(refresh, 5 * 60 * 1000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      controller.abort();
+      clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+    };
+  }, []);
+  return unseen;
 }
