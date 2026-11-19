@@ -207,6 +207,7 @@ export const MediaConversionDialog: React.FC<{
   const [tab, setTab] = useState("convert");
   const [showAdvancedTools, setShowAdvancedTools] = useState(false);
   const [comparing, setComparing] = useState(false);
+  const [includeConverted, setIncludeConverted] = useState(false);
   const [savings, setSavings] = useState<SavingsThresholds>();
   const {
     job: liveJob,
@@ -530,9 +531,14 @@ export const MediaConversionDialog: React.FC<{
   const allRestorable =
     allConverted &&
     targets.every((target) => restorable.has(targetKey(target)));
-  const remainingTargets = targets.filter(
-    (target) => !converted.has(targetKey(target))
-  );
+  const anyConverted =
+    statusReady && targets.some((target) => converted.has(targetKey(target)));
+  // Converting again is explicit; by default converted files are skipped.
+  const reconvert = anyConverted && includeConverted;
+  const restoreAction = allConverted && !reconvert;
+  const remainingTargets = reconvert
+    ? targets
+    : targets.filter((target) => !converted.has(targetKey(target)));
   const canConvert =
     !busy &&
     !!savings &&
@@ -595,7 +601,7 @@ export const MediaConversionDialog: React.FC<{
         >
           <Tab eventKey="convert" title="Convert">
             <p className="text-muted">
-              {allConverted
+              {restoreAction
                 ? "Restore the selected media to its original version."
                 : `Choose a format and convert ${remainingTargets.length} selected ${mixedTargets ? "media entries" : kind === "scene" ? "videos" : "images"}.`}
             </p>
@@ -671,11 +677,11 @@ export const MediaConversionDialog: React.FC<{
                 disabled={
                   busy ||
                   !statusReady ||
-                  (allConverted ? !allRestorable : !canConvert)
+                  (restoreAction ? !allRestorable : !canConvert)
                 }
                 onClick={() =>
                   void action(
-                    allConverted
+                    restoreAction
                       ? { action: "restore-targets", targets }
                       : {
                           ...reviewRequest,
@@ -687,21 +693,50 @@ export const MediaConversionDialog: React.FC<{
               >
                 {!statusReady
                   ? "Checking conversion state…"
-                  : allConverted
+                  : restoreAction
                     ? "Revert"
-                    : remainingTargets.length < selectedCount
-                      ? "Convert remaining"
-                      : "Convert"}
+                    : reconvert
+                      ? intl.formatMessage({
+                          id: "media_conversion.convert_again",
+                          defaultMessage: "Convert again",
+                        })
+                      : remainingTargets.length < selectedCount
+                        ? "Convert remaining"
+                        : "Convert"}
               </Button>
+              {anyConverted && (
+                <Form.Check
+                  id="converter-include-converted"
+                  className="mt-2"
+                  checked={includeConverted}
+                  disabled={busy}
+                  onChange={(e) => setIncludeConverted(e.target.checked)}
+                  label={intl.formatMessage({
+                    id: "media_conversion.include_converted",
+                    defaultMessage:
+                      "Also convert files that were converted before",
+                  })}
+                />
+              )}
+              {reconvert && (
+                <small className="d-block text-muted mt-1">
+                  {intl.formatMessage({
+                    id: "media_conversion.include_converted_help",
+                    defaultMessage:
+                      "The current converted file is encoded again. It is kept unless the new file is smaller. Revert steps back one conversion at a time.",
+                  })}
+                </small>
+              )}
               {statusReady &&
                 !allConverted &&
+                !reconvert &&
                 remainingTargets.length < selectedCount && (
                   <small className="d-block text-muted mt-2">
                     Already converted files will be skipped. Select converted
                     files separately to revert them.
                   </small>
                 )}
-              {allConverted && !allRestorable && (
+              {restoreAction && !allRestorable && (
                 <small className="d-block text-warning mt-2">
                   Original version is no longer available in the restore cache.
                 </small>

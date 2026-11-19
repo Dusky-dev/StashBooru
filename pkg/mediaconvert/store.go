@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"syscall"
@@ -49,6 +50,8 @@ func truncateFilenameBytes(value string, maxBytes int) string {
 	return value[:end]
 }
 
+var convertedTag = regexp.MustCompile(`\.converted-[0-9a-f]{8}$`)
+
 func convertedDestinationPath(sourcePath, recordID, extension string) string {
 	id := recordID
 	if len(id) > 8 {
@@ -56,6 +59,8 @@ func convertedDestinationPath(sourcePath, recordID, extension string) string {
 	}
 	suffix := ".converted-" + id + "." + extension
 	stem := strings.TrimSuffix(filepath.Base(sourcePath), filepath.Ext(sourcePath))
+	// Converting again replaces the earlier tag rather than stacking another.
+	stem = convertedTag.ReplaceAllString(stem, "")
 	stem = truncateFilenameBytes(stem, maxFilenameComponentBytes-len(suffix))
 	if stem == "" {
 		stem = "media"

@@ -843,6 +843,33 @@ try {
       .locator("#converter-primary-action")
       .getByText("Revert", { exact: true })
       .waitFor();
+    // Converted media can be converted again, but only when asked explicitly.
+    const includeConverted = dialog.getByLabel(
+      "Also convert files that were converted before",
+      { exact: true }
+    );
+    assert.equal(await includeConverted.isChecked(), false);
+    await includeConverted.check();
+    await dialog
+      .locator("#converter-primary-action")
+      .getByText("Convert again", { exact: true })
+      .waitFor();
+    const startsBefore = requests.filter((r) => r.action === "start").length;
+    await dialog.locator("#converter-primary-action").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#converter-primary-action:enabled")
+    );
+    const again = requests.filter((r) => r.action === "start");
+    assert.equal(again.length, startsBefore + 1);
+    assert.deepEqual(again.at(-1).targets, [
+      { kind: "image", id: 1 },
+      { kind: "scene", id: 1 },
+    ]);
+    await includeConverted.uncheck();
+    await dialog
+      .locator("#converter-primary-action")
+      .getByText("Revert", { exact: true })
+      .waitFor();
     await dialog.locator("#converter-primary-action").click();
     await dialog
       .locator("#converter-primary-action")

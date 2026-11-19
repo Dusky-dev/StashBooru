@@ -67,6 +67,13 @@ func fixture(t *testing.T, output string, corrupt bool) (Store, *memoryRepositor
 		DirEntry: models.DirEntry{ModTime: stat.ModTime()}, Fingerprints: models.Fingerprints{
 			{Type: "md5", Fingerprint: hash}, {Type: "phash", Fingerprint: int64(-9223372036854775701)},
 		}}, Width: 64, Height: 64, Format: "png"}}
+	server := fixtureWorker(t, output, corrupt)
+	return Store{Root: filepath.Join(dir, "cache"), Repository: r}, r, Client{URL: server.URL, Token: "fixture-token"}, contents
+}
+
+// fixtureWorker answers every conversion with output.
+func fixtureWorker(t *testing.T, output string, corrupt bool) *httptest.Server {
+	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if req.Header.Get("Authorization") != "Bearer fixture-token" {
 			t.Error("missing worker token")
@@ -87,7 +94,7 @@ func fixture(t *testing.T, output string, corrupt bool) (Store, *memoryRepositor
 		_, _ = w.Write([]byte(output))
 	}))
 	t.Cleanup(server.Close)
-	return Store{Root: filepath.Join(dir, "cache"), Repository: r}, r, Client{URL: server.URL, Token: "fixture-token"}, contents
+	return server
 }
 
 func convertFixture(t *testing.T, s Store, c Client) *Record {
@@ -467,5 +474,38 @@ func TestConvertedAnimationFrameRate(t *testing.T) {
 				t.Fatalf("rate %v; want %v", rate, tc.want)
 			}
 		})
+	}
+}
+
+func TestConvertAgainThenRestoreChainReturnsOriginal(t *testing.T) {
+	s, repo, client, original := fixture(t, "compressed", false)
+	sourcePath := repo.f.Base().Path
+	first := convertFixture(t, s, client)
+	firstPath := repo.f.Base().Path
+	// Converting again must produce a smaller file to pass the savings rule.
+	client.URL = fixtureWorker(t, "small", false).URL
+	second := convertFixture(t, s, client)
+	secondPath := repo.f.Base().Path
+	if first.Status != "complete" || second.Status != "complete" {
+		t.Fatalf("conversions did not complete: %+v %+v", first, second)
+	}
+	if strings.Count(filepath.Base(secondPath), ".converted-") != 1 {
+		t.Fatalf("converted suffixes stacked: %q", secondPath)
+	}
+	if err := s.Restore(context.Background(), second.ID); err != nil {
+		t.Fatal(err)
+	}
+	if repo.f.Base().Path != firstPath {
+		t.Fatalf("restoring the second conversion should return to %q, got %q", firstPath, repo.f.Base().Path)
+	}
+	if err := s.Restore(context.Background(), first.ID); err != nil {
+		t.Fatal(err)
+	}
+	actual, err := os.ReadFile(sourcePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(actual) != original || repo.f.Base().Path != sourcePath {
+		t.Fatal("restoring both conversions did not return the original file")
 	}
 }
