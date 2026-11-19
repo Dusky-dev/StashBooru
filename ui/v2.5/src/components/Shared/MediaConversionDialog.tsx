@@ -1141,7 +1141,16 @@ export const MediaConversionDialog: React.FC<{
                               defaultMessage: "{target} skipped: {reason}",
                             },
                             {
-                              target: `${item.target.kind === "scene" ? "Video" : "Image"} ${item.target.id}`,
+                              target: `${intl.formatMessage({
+                                id:
+                                  item.target.kind === "scene"
+                                    ? "scene"
+                                    : "image",
+                                defaultMessage:
+                                  item.target.kind === "scene"
+                                    ? "Video"
+                                    : "Image",
+                              })} ${item.target.id}`,
                               reason: item.reason,
                             }
                           )}
