@@ -8,9 +8,13 @@
   Identities lists and the Booru browser tag menu. The follow list is cached
   15 s per tab and refreshed on focus. Follows list returns the connected
   record (`connection`); Following shows it and **Open in Booru browser**.
+  Follow targets a feed check would reject (e.g. tags with `:`) are refused
+  when saved and not offered. Live: Safebooru (Gelbooru engine) 50-post
+  window; Gelbooru without a key reports "Provider denied access".
 - Checks: `B06` integration (new connection test); `tsc`; Biome; browser
   `identities` (tag menu Follow/Following), `following` (connection, open
-  link), `following-context` (profile shows Following), `booru-browser`,
+  link), `following-context` (profile shows Following; Pawchive creator draft and
+  save), `booru-browser`,
   desktop+mobile.
 - Next: automatic checks with new-post counts (step 3).
 

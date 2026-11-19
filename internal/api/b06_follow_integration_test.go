@@ -286,6 +286,9 @@ func TestB06SourceBindingAndCredentials(t *testing.T) {
 			b06Mutation(t, rs, b06Create(source, "artist", "creator:patreon:42"), 200)
 		}
 	}
+	// Targets a feed check would reject are refused when saved, not later.
+	b06Mutation(t, rs, b06Create(booru.Defaults()[0], "artist", "re:zero"), 400)
+	b06Mutation(t, rs, b06Create(booru.Defaults()[0], "artist", "two words"), 400)
 }
 
 func TestB06FollowCapacityAndStoreGuards(t *testing.T) {

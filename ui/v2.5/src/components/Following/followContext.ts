@@ -18,7 +18,13 @@ export function canFollowTarget(
   // Pawchive follows a creator account (creator:service:id); others a tag.
   if (engine === "pawchive")
     return kind === "artist" && target.startsWith("creator:");
-  return canSyncEngine(engine) && !target.startsWith("creator:");
+  // Same rule as the server's FollowQuery: one exact tag, no operators.
+  return (
+    canSyncEngine(engine) &&
+    target.trim() !== "" &&
+    !/[\s:*?{}|"\\]/.test(target) &&
+    !/^[-~]/.test(target)
+  );
 }
 
 export function canFollowIdentity(identity: ProviderIdentity) {

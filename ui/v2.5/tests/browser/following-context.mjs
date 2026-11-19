@@ -106,8 +106,26 @@ try {
         instance: "paw",
         sourceName: "Pawchive",
         target: "patreon_49481727",
+      },
+      {
+        ...identities[0],
+        id: "6",
+        engine: "pawchive",
+        form: "account",
+        instance: "paw",
+        sourceID: "pawchive",
+        sourceName: "Pawchive",
+        target: "creator:patreon:49481727",
+        label: "Waligner",
       }
     );
+    const pawchiveSource = {
+      id: "pawchive",
+      instance: "paw",
+      name: "Pawchive",
+      engine: "pawchive",
+      url: "https://pawchive.pw",
+    };
     await context.route(
       /\/(?:identities\/list|booru-browser\/sources|following\/(?:follows|feed|sync))/,
       async (route) => {
@@ -321,9 +339,12 @@ try {
       ),
       saved.id
     );
-    assert.equal(
-      await profile.getByRole("link", { name: /^Follow / }).count(),
-      0
+    // Only the Pawchive creator account is left to follow.
+    assert.deepEqual(
+      await profile
+        .getByRole("link", { name: /^Follow / })
+        .evaluateAll((links) => links.map((a) => a.getAttribute("aria-label"))),
+      ["Follow creator:patreon:49481727 on Pawchive"]
     );
     assert.equal(
       await profile
@@ -397,6 +418,33 @@ try {
       );
       await invalid.close();
     }
+    // A Pawchive creator account can be followed: the draft keeps its
+    // creator:service:id target and saves it as an Artist follow.
+    sources = [matchingSource, pawchiveSource];
+    const creator = await context.newPage();
+    await creator.goto(`${base}/following?fromIdentity=6`);
+    await creator.locator("#following-target:enabled").waitFor();
+    assert.equal(
+      await creator
+        .getByLabel("Exact provider tag or query", { exact: true })
+        .inputValue(),
+      "creator:patreon:49481727"
+    );
+    assert.equal(
+      await creator.getByLabel("Source", { exact: true }).inputValue(),
+      "pawchive"
+    );
+    await creator.getByRole("button", { name: "Follow", exact: true }).click();
+    await creator
+      .getByRole("region", { name: "Follow Waligner", exact: true })
+      .last()
+      .waitFor();
+    const savedCreator = follows.at(-1);
+    assert.equal(savedCreator.target, "creator:patreon:49481727");
+    assert.equal(savedCreator.kind, "artist");
+    assert.equal(savedCreator.instance, "paw");
+    await creator.close();
+    sources = [matchingSource];
     failIdentity = true;
     const failed = await context.newPage();
     await failed.goto(`${base}/following?fromIdentity=1`);
@@ -444,8 +492,8 @@ try {
     await late.getByText("Other fixture page", { exact: true }).waitFor();
     assert.equal(
       writes().length,
-      3,
-      "only the three explicit creates may write"
+      4,
+      "only the four explicit creates (three tags, one creator) may write"
     );
     assert.deepEqual(errors, []);
     assert.equal(
