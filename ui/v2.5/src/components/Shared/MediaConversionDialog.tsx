@@ -728,7 +728,7 @@ export const MediaConversionDialog: React.FC<{
                   {intl.formatMessage({
                     id: "media_conversion.include_converted_help",
                     defaultMessage:
-                      "The current converted file is encoded again. It is kept unless the new file is smaller. Revert steps back one conversion at a time.",
+                      "Each file is reverted to its original first while the original is still in the restore cache, then converted. If the original is gone, the current converted file is encoded again and kept only if the new file is smaller.",
                   })}
                 </small>
               )}

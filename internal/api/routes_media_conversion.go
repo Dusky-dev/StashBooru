@@ -567,6 +567,21 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
+		// Converting again starts from the original while it is still cached;
+		// only a file whose original is gone is encoded from its current version.
+		restoreErrs := map[models.FileID]error{}
+		for _, target := range request.Targets {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			id, err := conversionTargetFile(ctx, target)
+			if err != nil {
+				continue
+			}
+			if _, err := s.RestoreCachedOriginal(ctx, id); err != nil {
+				restoreErrs[id] = fmt.Errorf("could not revert to the original before converting again: %w", err)
+			}
+		}
 		var sources []models.File
 		for _, target := range request.Targets {
 			if err := ctx.Err(); err != nil {
@@ -616,6 +631,10 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 			if err == nil && seen[id] {
 				progress.Increment()
 				continue
+			}
+			if err == nil && restoreErrs[id] != nil {
+				seen[id] = true
+				err = restoreErrs[id]
 			}
 			if err == nil {
 				seen[id] = true

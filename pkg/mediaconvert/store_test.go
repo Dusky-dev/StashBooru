@@ -516,3 +516,42 @@ func TestConvertAgainThenRestoreChainReturnsOriginal(t *testing.T) {
 		t.Fatal("restoring both conversions did not return the original file")
 	}
 }
+
+func TestRestoreCachedOriginalUndoesEveryCachedConversion(t *testing.T) {
+	s, repo, client, original := fixture(t, "compressed", false)
+	sourcePath := repo.f.Base().Path
+	convertFixture(t, s, client)
+	client.URL = fixtureWorker(t, "small", false).URL
+	convertFixture(t, s, client)
+
+	steps, err := s.RestoreCachedOriginal(context.Background(), 12)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if steps != 2 || repo.f.Base().Path != sourcePath {
+		t.Fatalf("expected two reverts back to %q, got %d at %q", sourcePath, steps, repo.f.Base().Path)
+	}
+	actual, err := os.ReadFile(sourcePath)
+	if err != nil || string(actual) != original {
+		t.Fatal("original bytes not restored")
+	}
+	// Nothing left to revert: a second call is a no-op.
+	if steps, err := s.RestoreCachedOriginal(context.Background(), 12); err != nil || steps != 0 {
+		t.Fatalf("unexpected second revert: %d %v", steps, err)
+	}
+}
+
+func TestRestoreCachedOriginalStopsAtUncachedConversion(t *testing.T) {
+	s, repo, client, _ := fixture(t, "compressed", false)
+	first := convertFixture(t, s, client)
+	firstPath := repo.f.Base().Path
+	// The original was evicted from the restore cache.
+	first.Cached = false
+	if err := s.save(first); err != nil {
+		t.Fatal(err)
+	}
+	steps, err := s.RestoreCachedOriginal(context.Background(), 12)
+	if err != nil || steps != 0 || repo.f.Base().Path != firstPath {
+		t.Fatalf("an uncached conversion must be kept: %d %v %q", steps, err, repo.f.Base().Path)
+	}
+}

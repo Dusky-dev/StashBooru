@@ -2041,7 +2041,7 @@
     "effort_auto_summary": "effort auto",
     "convert_again": "Convert again",
     "include_converted": "Also convert files that were converted before",
-    "include_converted_help": "The current converted file is encoded again. It is kept unless the new file is smaller. Revert steps back one conversion at a time.",
+    "include_converted_help": "Each file is reverted to its original first while the original is still in the restore cache, then converted. If the original is gone, the current converted file is encoded again and kept only if the new file is smaller.",
     "skipped_reason": "{target} skipped: {reason}"
   },
   "association_sources": {
