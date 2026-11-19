@@ -1,3 +1,22 @@
+## StashBooru 1.4.0: automatic follow checks and new-post counts — 2026-11-19
+
+- Baseline: `develop` `dfd74a5` (#408, 1.3.0). Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Owner decision: automatic checks with counts (step 3 of 3); the owner asked
+  for this new *Check followed sites* job. Manual and automatic checks share
+  one sync path. A minute ticker queues the job when a follow's last attempt
+  (check or error) is older than the interval (1/3/6/12/24 h, off by
+  default, `following-schedule.json`); never two at once. Rate-limited sites
+  pause for the run, conflicts are skipped, a full cache stops the run.
+  Follows list returns `unseen`; `/following/schedule` returns setting, last
+  and next run and the distinct unseen total for the navbar badge.
+- Checks: new schedule integration test (due selection, catch-up, isolation,
+  rate-limit pause, cancellation, status); `B06`/Following tests; lint;
+  `tsc`; browser `following` (panel), `following-context`, `identities`,
+  `tasks-navigation`, `settings-maintenance`, `tools-navigation`.
+- Not verified: navbar badge in a mounted browser test; unattended runs over
+  hours against live sites. Browser/OS notifications are a possible follow-up.
+
 ## StashBooru 1.3.0: Follow / Following across Identities, profiles and Booru browser — 2026-11-19
 
 - Baseline: `develop` after #407 (1.2.0). Branch

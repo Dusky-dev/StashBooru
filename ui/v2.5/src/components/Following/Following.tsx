@@ -10,6 +10,7 @@ import {
   identityPaths,
   identityRequest,
 } from "../Identities/identityApi";
+import { FollowScheduleSettings } from "./FollowScheduleSettings";
 import {
   canFollowIdentity,
   canSyncEngine,
@@ -33,6 +34,7 @@ interface Follow {
   syncSupported: boolean;
   feed?: { hasMore: boolean; checkedAt: string; lastError: string };
   connection?: { identityID: string; entityID: number; entityName: string };
+  unseen?: number;
 }
 
 interface FeedItem {
@@ -537,6 +539,9 @@ export default function Following() {
           <p className="text-muted">
             {intl.formatMessage({ id: "following_action.manager_intro" })}
           </p>
+          <FollowScheduleSettings
+            onFinished={() => setEpoch((value) => value + 1)}
+          />
           <div className="following-actions mb-3">
             <Button
               variant="secondary"
@@ -748,6 +753,17 @@ export default function Following() {
               <h4>
                 {follow.name}{" "}
                 {!follow.active && <Badge variant="secondary">Inactive</Badge>}
+                {follow.active && !!follow.unseen && (
+                  <Link
+                    className="badge badge-primary"
+                    to={`/following?${new URLSearchParams({ follow: follow.id })}`}
+                  >
+                    {intl.formatMessage(
+                      { id: "following_action.new_badge" },
+                      { count: follow.unseen }
+                    )}
+                  </Link>
+                )}
               </h4>
               <small>
                 {follow.kind} · {follow.sourceURL}

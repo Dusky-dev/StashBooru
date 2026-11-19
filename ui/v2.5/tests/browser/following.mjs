@@ -55,6 +55,9 @@ try {
     const seen = new Map();
     let sequence = 0;
     let syncs = 0;
+    const scheduleWrites = [];
+    let schedule = { intervalHours: 0, unseen: 0, running: false };
+    let scheduleRunPending = false;
     let failNext = false;
     let holdNext = false;
     let releaseHeld;
@@ -278,6 +281,32 @@ try {
           },
         });
       }
+      if (url.pathname.endsWith("/schedule")) {
+        if (request.method() === "POST") {
+          scheduleWrites.push(body);
+          if (body.action === "set")
+            schedule = { ...schedule, intervalHours: body.intervalHours };
+          if (body.action === "run") {
+            scheduleRunPending = true;
+            return route.fulfill({ json: { ...schedule, running: true } });
+          }
+        } else if (scheduleRunPending) {
+          scheduleRunPending = false;
+          schedule = {
+            ...schedule,
+            lastRun: {
+              startedAt: "2026-11-19T10:00:00Z",
+              finishedAt: "2026-11-19T10:01:00Z",
+              checked: 2,
+              newPosts: 5,
+              failed: 1,
+              note: "Rule34 asked to slow down.",
+            },
+            nextRun: "2026-11-19T16:01:00Z",
+          };
+        }
+        return route.fulfill({ json: schedule });
+      }
       throw new Error(`Unexpected API path ${url.pathname}`);
     });
     await page.goto(`${origin}${prefix}/following`);
@@ -293,6 +322,27 @@ try {
     await openManage();
     await manage.waitFor();
     assert.equal(await feed.count(), 0);
+    // Automatic checks: off by default, saved on change, and Check all now
+    // reports the run once it finishes.
+    const auto = page.getByRole("region", { name: "Automatic checks" });
+    assert.equal(await auto.getByLabel("Check follows").inputValue(), "0");
+    await auto.getByLabel("Check follows").selectOption("6");
+    await page.waitForFunction(
+      () =>
+        document.querySelector("#following-interval")?.selectedOptions[0]
+          ?.textContent === "Every 6 hours"
+    );
+    await auto.getByRole("button", { name: "Check all now" }).click();
+    await auto
+      .getByText(
+        /2 follows, 5 new posts, 1 failed\. Rule34 asked to slow down\./
+      )
+      .waitFor();
+    await auto.getByText(/^Next check:/).waitFor();
+    assert.deepEqual(scheduleWrites, [
+      { action: "set", intervalHours: 6 },
+      { action: "run" },
+    ]);
     await page.getByLabel("Source", { exact: true }).selectOption("danbooru");
     await page.getByLabel("Follow name", { exact: true }).fill("Artist A");
     await page

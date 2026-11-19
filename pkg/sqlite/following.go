@@ -213,3 +213,29 @@ func (s *FollowingStore) RecordError(ctx context.Context, follow models.BooruFol
  ON CONFLICT(follow_id,revision) DO UPDATE SET version=excluded.version,last_error=excluded.last_error,error_at=excluded.error_at`, follow.ID, follow.QueryRevision, version+1, state.Cursor, state.HasMore, state.CheckedAt, message, time.Now().UTC().Format(time.RFC3339Nano))
 	return err
 }
+
+const followingUnseenFrom = ` FROM following_posts p
+ JOIN following_matches m ON m.sequence=p.sequence
+ JOIN booru_follows f ON f.id=m.follow_id AND f.active=1 AND f.query_revision=m.revision
+ LEFT JOIN following_seen s ON s.instance=p.instance AND s.post_id=p.post_id
+ LEFT JOIN booru_review r ON r.instance=p.instance AND r.post_id=p.post_id
+ WHERE COALESCE(s.seen_at,'')='' AND COALESCE(r.ignored_at,'')=''`
+
+func (s *FollowingStore) UnseenCounts(ctx context.Context) (map[string]int, int, error) {
+	var rows []struct {
+		FollowID string `db:"follow_id"`
+		Count    int    `db:"count"`
+	}
+	if err := dbWrapper.Select(ctx, &rows, `SELECT m.follow_id AS follow_id,COUNT(DISTINCT p.sequence) AS count`+followingUnseenFrom+` GROUP BY m.follow_id`); err != nil {
+		return nil, 0, err
+	}
+	counts := make(map[string]int, len(rows))
+	for _, row := range rows {
+		counts[row.FollowID] = row.Count
+	}
+	var total int
+	if err := dbWrapper.Get(ctx, &total, `SELECT COUNT(DISTINCT p.sequence)`+followingUnseenFrom); err != nil {
+		return nil, 0, err
+	}
+	return counts, total, nil
+}
