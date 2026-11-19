@@ -24,6 +24,7 @@ type CreatorResult struct {
 }
 type creatorEntry struct {
 	items   []Creator
+	byKey   map[string]string // "service:id" → display name
 	expires time.Time
 }
 
@@ -111,7 +112,11 @@ func (c *Client) creatorIndex(ctx context.Context, source Source) ([]Creator, er
 				}
 				delete(c.creatorCache, oldestKey)
 			}
-			c.creatorCache[key] = creatorEntry{items: items, expires: time.Now().Add(10 * time.Minute)}
+			byKey := make(map[string]string, len(items))
+			for _, creator := range items {
+				byKey[creator.Service+":"+creator.ID] = creator.Name
+			}
+			c.creatorCache[key] = creatorEntry{items: items, byKey: byKey, expires: time.Now().Add(10 * time.Minute)}
 		}
 		delete(c.creatorPending, key)
 		close(pending)

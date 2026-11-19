@@ -305,7 +305,11 @@ func (rs booruBrowserRoutes) captureIdentityPosts(parent context.Context, source
 	if rs.repository.ProviderIdentity == nil {
 		return
 	}
-	input, positions := identityPostObservations(source, posts)
+	names, missing := rs.archiveCreatorNames(source, posts)
+	input, positions := identityPostObservations(source, posts, names)
+	if len(missing) > 0 {
+		go rs.fetchArchiveCreatorNames(source, missing)
+	}
 	if len(input) == 0 {
 		return
 	}
@@ -345,7 +349,85 @@ func (rs booruBrowserRoutes) captureIdentityPosts(parent context.Context, source
 	}
 }
 
-func identityPostObservations(source booru.Source, posts []booru.Post) ([]models.IdentityObservation, []struct{ post, tag int }) {
+// creatorNamer is the booru client's archive creator name lookup.
+type creatorNamer interface {
+	CachedCreatorName(booru.Source, string, string) (string, bool)
+	LookupCreatorName(context.Context, booru.Source, string, string) (string, error)
+}
+
+// At most this many unknown creator names are fetched per browsed page.
+const archiveCreatorLookups = 8
+
+func archiveCreatorParts(target string) (service, id string, ok bool) {
+	parts := strings.Split(target, ":")
+	if len(parts) != 3 || parts[0] != "creator" || parts[1] == "" || parts[2] == "" {
+		return "", "", false
+	}
+	return parts[1], parts[2], true
+}
+
+// archiveCreatorNames returns already-known Pawchive/Kemono creator names
+// and the creator keys whose names are not known yet. It makes no requests.
+func (rs booruBrowserRoutes) archiveCreatorNames(source booru.Source, posts []booru.Post) (func(string) string, []string) {
+	namer, ok := rs.client.(creatorNamer)
+	if !ok || !booru.ArchiveCreatorEngine(source.Engine) {
+		return nil, nil
+	}
+	known := map[string]string{}
+	missing := []string{}
+	for _, post := range posts {
+		for _, tag := range post.Tags {
+			service, id, ok := archiveCreatorParts(tag.Name)
+			if !ok || tag.Category != "artist" {
+				continue
+			}
+			if _, seen := known[tag.Name]; seen {
+				continue
+			}
+			name, cached := namer.CachedCreatorName(source, service, id)
+			known[tag.Name] = name
+			if !cached && len(missing) < archiveCreatorLookups {
+				missing = append(missing, tag.Name)
+			}
+		}
+	}
+	return func(target string) string { return known[target] }, missing
+}
+
+// fetchArchiveCreatorNames runs after the browse response: it asks the
+// archive for display names and stores them as labels. A name never links
+// or renames anything; the creator key stays the identity. Failures are
+// ignored, and the next browse tries again.
+func (rs booruBrowserRoutes) fetchArchiveCreatorNames(source booru.Source, targets []string) {
+	namer, ok := rs.client.(creatorNamer)
+	if !ok || rs.repository.ProviderIdentity == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	input := []models.IdentityObservation{}
+	for _, target := range targets {
+		service, id, ok := archiveCreatorParts(target)
+		if !ok {
+			continue
+		}
+		name, err := namer.LookupCreatorName(ctx, source, service, id)
+		if err != nil || name == "" || !models.IdentityText(name, 200) {
+			continue
+		}
+		input = append(input, identityObservation(source, "artist", target, name, "", 2))
+	}
+	if len(input) == 0 {
+		return
+	}
+	_ = rs.repository.WithTxn(ctx, func(ctx context.Context) error {
+		_, err := rs.repository.ProviderIdentity.Observe(ctx, input)
+		return err
+	})
+}
+
+// names, when set, supplies archive creator display names by creator key.
+func identityPostObservations(source booru.Source, posts []booru.Post, names func(string) string) ([]models.IdentityObservation, []struct{ post, tag int }) {
 	input := []models.IdentityObservation{}
 	positions := []struct{ post, tag int }{}
 	for i, post := range posts {
@@ -360,8 +442,13 @@ func identityPostObservations(source booru.Source, posts []booru.Post) ([]models
 				continue
 			}
 			label, rank := tag.Label, 1
-			if label == "" || source.Engine == "pawchive" || source.Engine == "kemono" {
+			if label == "" || booru.ArchiveCreatorEngine(source.Engine) {
 				label, rank = tag.Name, 0
+				if names != nil {
+					if name := names(tag.Name); name != "" {
+						label, rank = name, 2
+					}
+				}
 			}
 			input = append(input, identityObservation(source, tag.Category, tag.Name, label, strings.Join(contextTags, ", "), rank))
 			positions = append(positions, struct{ post, tag int }{i, j})

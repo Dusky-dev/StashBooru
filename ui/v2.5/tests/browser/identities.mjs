@@ -269,6 +269,14 @@ try {
     await page
       .getByText("Choose Connect on a site name", { exact: false })
       .waitFor();
+    // Ticking a second row, then unticking it, must not crash the page.
+    await page.locator(".identity-row input[type=checkbox]").nth(0).check();
+    await page.locator(".identity-row input[type=checkbox]").nth(1).check();
+    await page.locator(".identity-row input[type=checkbox]").nth(1).uncheck();
+    await page
+      .getByRole("heading", { name: "Connect 1 site name to an Artist" })
+      .waitFor();
+    await page.getByRole("button", { name: "Clear selection" }).click();
     await page
       .getByRole("button", { name: /^(Connect|Change)$/ })
       .first()
@@ -339,6 +347,7 @@ try {
       [
         "/booru?source=r34&q=waligner",
         "/booru?source=gelbooru&q=waligner_%28artist%29",
+        "/booru?source=pawchive&q=creator%3Apatreon%3A49481727",
       ]
     );
     if (process.env.STASH_BROWSER_SCREENSHOTS)
@@ -355,10 +364,10 @@ try {
     if (!(await page.locator(".identity-sources").evaluate((d) => d.open)))
       await page.locator(".identity-sources > summary").click();
     await siteLinks.first().waitFor();
-    // Accounts are not tag searches: their site is shown without a link.
+    // Pawchive accounts open the creator's posts in the Booru browser too.
     assert.equal(
       await page.locator(".identity-sources span.identity-site-link").count(),
-      1
+      0
     );
     // A separate record named after a connected source name can be merged
     // here, only after an explicit confirmation.

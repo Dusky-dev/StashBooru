@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, Badge, Button, ButtonGroup, Form } from "react-bootstrap";
+import { Alert, Button, ButtonGroup, Form } from "react-bootstrap";
 import { FormattedMessage, useIntl } from "react-intl";
 import { Link, useHistory, useLocation } from "react-router-dom";
 import {
@@ -318,22 +318,20 @@ export default function Identities() {
                     checked={active}
                     disabled={busy}
                     onChange={(event) => {
-                      if (event.currentTarget.checked && selected.length === 0)
-                        review(row, false);
+                      // Read now: React clears currentTarget before the
+                      // state updater below runs.
+                      const checked = event.currentTarget.checked;
+                      if (checked && selected.length === 0) review(row, false);
                       else
                         setSelected((old) =>
-                          event.currentTarget.checked
+                          checked
                             ? [...old, row.id]
                             : old.filter((id) => id !== row.id)
                         );
                     }}
                   />
                   <h5>{name}</h5>
-                  {row.entityID ? (
-                    <IdentitySiteLink row={row} />
-                  ) : (
-                    <Badge variant="secondary">{row.sourceName}</Badge>
-                  )}
+                  <IdentitySiteLink row={row} />
                   <Button
                     className="ml-auto"
                     variant={row.entityID ? "secondary" : "primary"}
