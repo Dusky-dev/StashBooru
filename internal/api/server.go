@@ -231,7 +231,11 @@ func Initialize() (*Server, error) {
 		uiConfig:     cfg.GetUIConfiguration,
 		importFile:   booruImportFile,
 	}
+	if cachePath := cfg.GetCachePath(); cachePath != "" {
+		booruRoutes.iconDir = filepath.Join(cachePath, "site-icons")
+	}
 	r.Get("/booru-browser/sources", booruRoutes.Sources)
+	r.Get("/booru-browser/icon", booruRoutes.SiteIcon)
 	r.Get("/booru-browser/creators", booruRoutes.Creators)
 	r.Get("/booru-browser/bookmarks", booruRoutes.Bookmarks)
 	r.Get("/booru-browser/follows", booruRoutes.Follows)

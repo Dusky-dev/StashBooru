@@ -102,6 +102,21 @@ try {
         contentType: "application/json",
         body: JSON.stringify(data),
       });
+    // Only Rule34 has an icon; the others fall back to the globe.
+    const iconRequests = [];
+    await page.route("**/booru-browser/icon?*", (route) => {
+      const source = new URL(route.request().url()).searchParams.get("source");
+      iconRequests.push(source);
+      if (source !== "r34")
+        return route.fulfill({ status: 404, body: "no icon" });
+      return route.fulfill({
+        contentType: "image/png",
+        body: Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+          "base64"
+        ),
+      });
+    });
     await page.route("**/booru-browser/sources", (route) =>
       reply(route, [
         {
@@ -271,6 +286,19 @@ try {
     await page.getByText("creator:patreon:49481727", { exact: true }).waitFor();
     // Connected tag identities show their site and open the Booru browser.
     const siteLinks = page.locator(".identity-sources a.identity-site-link");
+    // The site's own icon, fetched through this server; a globe otherwise.
+    await page
+      .locator('.identity-sources img.site-icon[src*="source=r34"]')
+      .waitFor();
+    await page.waitForFunction(
+      () =>
+        document.querySelectorAll(".identity-sources .identity-site-link svg")
+          .length === 2
+    );
+    assert.ok(
+      iconRequests.every((source) => /^[a-z0-9_-]+$/.test(source)),
+      "icons are requested by source ID only"
+    );
     assert.deepEqual(
       await siteLinks.evaluateAll((links) =>
         links.map((link) =>

@@ -1,3 +1,20 @@
+## Identities: real site icons — 2026-11-19
+
+- Baseline: `develop` `73ab105` (#398). Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Owner request: connected-identity chips show the site's own icon. New route
+  `/booru-browser/icon?source=<id>`: the server resolves the configured source
+  URL (the browser never sends a host), fetches `/favicon.ico` through the
+  public-address-only dialer (10 s, 256 KiB, ≤3 same-site redirects), serves
+  only sniffed raster images with `nosniff`, and caches icons for 7 days and
+  misses for 1 day under the cache path. No icon → the globe.
+- Checks: `pkg/booru` icon tests (sniffed type, oversize, HTML, SVG, off-site
+  redirect, non-HTTP URL); `internal/api` route tests (cache, remembered miss,
+  retry after cancel, unknown/malformed IDs); browser `identities`
+  desktop+mobile (icon for one site, globe for the rest).
+- Probed real sites by hand on 2026-11-19: Danbooru, Gelbooru, Yande.re,
+  Konachan, e621, Derpibooru, Pixiv serve icons; Rule34 answers 403 (globe).
+
 ## Identities: site link on connected identities — 2026-11-19
 
 - Baseline: `develop` `84c83b4` (#397). Branch
