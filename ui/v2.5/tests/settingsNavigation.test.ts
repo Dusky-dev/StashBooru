@@ -106,8 +106,8 @@ test("old Tools visual similarity bookmarks open consolidated image review", () 
   );
 });
 
-test("old Tools, Logs and Changelog links open their sections in Tasks and About", () => {
-  for (const tab of ["tools", "logs", "changelog"]) {
+test("old Tools, Logs, Changelog and Security links open their new sections", () => {
+  for (const tab of ["tools", "logs", "changelog", "security"]) {
     assert.ok(!(settingsTabs as readonly string[]).includes(tab));
   }
   assert.equal(resolveSettingsTab("?tab=tools", ""), "tasks");
@@ -120,5 +120,8 @@ test("old Tools, Logs and Changelog links open their sections in Tasks and About
   assert.equal(foldedTabHash("?tab=logs", ""), "#about-logs");
   assert.equal(resolveSettingsTab("?tab=changelog", ""), "about");
   assert.equal(foldedTabHash("?tab=changelog", ""), "#about-changelog");
+  assert.equal(resolveSettingsTab("?tab=security", ""), "system");
+  assert.equal(foldedTabHash("?tab=security", ""), "#system-group-security");
+  assert.equal(foldedTabHash("?tab=security", "#apikey"), "#apikey");
   assert.equal(foldedTabHash("?tab=about", ""), "");
 });

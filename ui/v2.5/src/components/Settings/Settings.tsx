@@ -13,7 +13,6 @@ import { SettingsScrapingPanel } from "./SettingsScrapingPanel";
 import { SettingsServicesPanel } from "./SettingsServicesPanel";
 import { SettingsContext, useSettings } from "./context";
 import { SettingsLibraryPanel } from "./SettingsLibraryPanel";
-import { SettingsSecurityPanel } from "./SettingsSecurityPanel";
 import { SettingsProcessingPanel } from "./SettingsProcessingPanel";
 import {
   foldedTabHash,
@@ -109,9 +108,6 @@ const SettingTabs: React.FC<{ tab: SettingsTab }> = ({ tab }) => {
             </Tab.Pane>
             <Tab.Pane eventKey="interface">
               <SettingsInterfacePanel />
-            </Tab.Pane>
-            <Tab.Pane eventKey="security">
-              <SettingsSecurityPanel />
             </Tab.Pane>
             <Tab.Pane eventKey="tasks">
               <SettingsTasksPanel />

@@ -201,6 +201,9 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
         <SettingsDisclosure
           id="interface-group-general"
           title={intl.formatMessage({ id: "config.ui.groups.general" })}
+          description={intl.formatMessage({
+            id: "config.ui.groups.general_help",
+          })}
           remember
           compactHelp
         >
@@ -567,6 +570,9 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
         <SettingsDisclosure
           id="interface-group-lists"
           title={intl.formatMessage({ id: "config.ui.groups.lists" })}
+          description={intl.formatMessage({
+            id: "config.ui.groups.lists_help",
+          })}
           remember
           compactHelp
         >
@@ -757,6 +763,9 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
         <SettingsDisclosure
           id="interface-group-videos"
           title={intl.formatMessage({ id: "config.ui.groups.videos" })}
+          description={intl.formatMessage({
+            id: "config.ui.groups.videos_help",
+          })}
           remember
           compactHelp
         >
@@ -1030,6 +1039,9 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
         <SettingsDisclosure
           id="interface-group-images"
           title={intl.formatMessage({ id: "config.ui.groups.images" })}
+          description={intl.formatMessage({
+            id: "config.ui.groups.images_help",
+          })}
           remember
           compactHelp
         >
@@ -1160,6 +1172,9 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
         <SettingsDisclosure
           id="interface-group-customisation"
           title={intl.formatMessage({ id: "config.ui.groups.customisation" })}
+          description={intl.formatMessage({
+            id: "config.ui.groups.customisation_help",
+          })}
           remember
           compactHelp
           advanced

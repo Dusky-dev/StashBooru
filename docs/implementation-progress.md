@@ -1,3 +1,18 @@
+## StashBooru 1.1.1: Settings group descriptions, Security in System, plain log console — 2026-11-19
+
+- Baseline: `develop` `4fdc974` (#402, released as `stashbooru-v1.1.0`). Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Owner request: System and Interface groups get one-line descriptions like the
+  other panels. The Security tab is gone; its settings are the collapsible
+  *Security* group at the end of System, and `?tab=security` links and search
+  results open it. The log console drops the macOS window dots, gradient,
+  scanlines, glow and rounded corners for a flat console in theme colours.
+- Checks: `tsc`; `settingsNavigation`/`settingsSearchIndex`/`startupNotes`
+  unit tests (19 pass); Biome on changed files; Sass compile; static
+  screenshot of the console styles; `git diff --check`.
+- Not run locally: browser `settings-maintenance` (tab list updated for
+  Security removal; left to CI).
+
 ## StashBooru 1.1.0: introduction, versioning, update notes — 2026-11-19
 
 - Baseline: `develop` `803b31a` (#400). Branch

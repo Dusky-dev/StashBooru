@@ -635,9 +635,14 @@
     },
     "system": {
       "groups": {
+        "performance": "Performance and logging",
+        "performance_help": "How many files are processed at once, and where logs go and how much they record.",
+        "security": "Security",
+        "security_help": "Username and password for the web interface, the API key for other apps, and how long a login lasts.",
         "storage": "Storage",
+        "storage_help": "Where StashBooru keeps its database, generated files, caches and tools such as FFmpeg.",
         "video": "Video processing",
-        "performance": "Performance and logging"
+        "video_help": "Transcoding, and how Video previews, sprites and heatmaps are generated."
       },
       "transcoding": "Transcoding"
     },
@@ -855,7 +860,12 @@
         "lists": "Lists and pages",
         "videos": "Videos",
         "images": "Images",
-        "customisation": "Customisation"
+        "customisation": "Customisation",
+        "customisation_help": "Your own CSS and JavaScript, loaded on every page.",
+        "general_help": "Language, navbar items, desktop notifications, how editing works and custom translations.",
+        "images_help": "Image wall layout and how the image viewer behaves.",
+        "lists_help": "What list pages, Tag and Artist panels and detail pages show.",
+        "videos_help": "Video pages, the Video wall, the player and interactive devices."
       },
       "abbreviate_counters": {
         "description": "Abbreviate counters in cards and details view pages, for example \"1831\" will get formated to \"1.8K\".",

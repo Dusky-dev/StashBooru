@@ -754,7 +754,6 @@ try {
         "library",
         "processing",
         "interface",
-        "security",
         "metadata-providers",
         "services",
         "system",

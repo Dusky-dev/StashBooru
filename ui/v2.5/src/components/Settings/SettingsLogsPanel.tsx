@@ -176,11 +176,6 @@ export const SettingsLogsPanel: React.FC = () => {
       {/* A fixed-height box keeps About and the Changelog within reach. */}
       <div className="log-terminal">
         <div className="log-terminal-bar">
-          <span className="log-terminal-lights" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </span>
           <span className="log-terminal-title">
             <FormattedMessage id="config.logs.console_title" />
           </span>

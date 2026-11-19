@@ -3,6 +3,7 @@ import * as GQL from "src/core/generated-graphql";
 import { LoadingIndicator } from "src/components/Shared/LoadingIndicator";
 import { SettingSection } from "./SettingSection";
 import { SettingsDisclosure } from "./SettingsDisclosure";
+import { SettingsSecurityPanel } from "./SettingsSecurityPanel";
 import {
   BooleanSetting,
   ModalSetting,
@@ -133,6 +134,9 @@ export const SettingsConfigurationPanel: React.FC = () => {
       <SettingsDisclosure
         id="system-group-storage"
         title={intl.formatMessage({ id: "config.system.groups.storage" })}
+        description={intl.formatMessage({
+          id: "config.system.groups.storage_help",
+        })}
         remember
         compactHelp
       >
@@ -298,6 +302,9 @@ export const SettingsConfigurationPanel: React.FC = () => {
       <SettingsDisclosure
         id="system-group-video"
         title={intl.formatMessage({ id: "config.system.groups.video" })}
+        description={intl.formatMessage({
+          id: "config.system.groups.video_help",
+        })}
         remember
         compactHelp
       >
@@ -490,6 +497,9 @@ export const SettingsConfigurationPanel: React.FC = () => {
       <SettingsDisclosure
         id="system-group-performance"
         title={intl.formatMessage({ id: "config.system.groups.performance" })}
+        description={intl.formatMessage({
+          id: "config.system.groups.performance_help",
+        })}
         remember
         compactHelp
       >
@@ -547,6 +557,17 @@ export const SettingsConfigurationPanel: React.FC = () => {
             onChange={(v) => saveGeneral({ logFileMaxSize: v })}
           />
         </SettingSection>
+      </SettingsDisclosure>
+      <SettingsDisclosure
+        id="system-group-security"
+        title={intl.formatMessage({ id: "config.system.groups.security" })}
+        description={intl.formatMessage({
+          id: "config.system.groups.security_help",
+        })}
+        remember
+        compactHelp
+      >
+        <SettingsSecurityPanel />
       </SettingsDisclosure>
     </>
   );

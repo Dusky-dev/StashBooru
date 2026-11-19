@@ -3,7 +3,6 @@ export const settingsTabs = [
   "library",
   "processing",
   "interface",
-  "security",
   "metadata-providers",
   "services",
   "system",
@@ -47,14 +46,16 @@ const experimentalAnchors = new Set([
   "#image-consumer-audit-title",
 ]);
 
-// Tabs folded into others: Tools into Tasks; Logs and Changelog into About.
+// Tabs folded into others: Tools into Tasks; Logs and Changelog into About;
+// Security into System.
 const foldedTabs: Record<string, { tab: SettingsTab; anchor: string }> = {
   tools: { tab: "tasks", anchor: "#tasks-tools" },
   logs: { tab: "about", anchor: "#about-logs" },
   changelog: { tab: "about", anchor: "#about-changelog" },
+  security: { tab: "system", anchor: "#system-group-security" },
 };
 
-/** The section an old Tools, Logs or Changelog link opens when it has no hash. */
+/** The section an old Tools, Logs, Changelog or Security link opens when it has no hash. */
 export function foldedTabHash(search: string, hash: string): string {
   const folded = foldedTabs[new URLSearchParams(search).get("tab") ?? ""];
   return hash || !folded ? hash : folded.anchor;

@@ -20,7 +20,6 @@ const labels: Record<SettingsTab, { id: string; defaultMessage: string }> = {
     defaultMessage: "Processing",
   },
   interface: { id: "config.categories.interface", defaultMessage: "Interface" },
-  security: { id: "config.categories.security", defaultMessage: "Security" },
   "metadata-providers": {
     id: "config.categories.metadata_providers",
     defaultMessage: "Metadata Providers",
