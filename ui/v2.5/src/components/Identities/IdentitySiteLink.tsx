@@ -18,8 +18,11 @@ export function booruSearchPath(
  */
 export function IdentitySiteLink({
   row,
+  link = true,
 }: {
   row: Pick<ProviderIdentity, "sourceID" | "sourceName" | "target" | "form">;
+  /** Off inside dialogs, which can sit on top of the Booru browser. */
+  link?: boolean;
 }) {
   const intl = useIntl();
   const content = (
@@ -28,7 +31,7 @@ export function IdentitySiteLink({
       <span>{row.sourceName}</span>
     </>
   );
-  if (row.form !== "tag" || !row.sourceID || !row.target)
+  if (!link || row.form !== "tag" || !row.sourceID || !row.target)
     return <span className="identity-site-link">{content}</span>;
   const label = intl.formatMessage(
     {

@@ -330,7 +330,8 @@ export function IdentityConnectionsDialog({
             <ul className="identity-targets">
               {items.map((row) => (
                 <li key={row.id}>
-                  <IdentitySiteLink row={row} /> <IdentityName row={row} />{" "}
+                  <IdentitySiteLink row={row} link={false} />{" "}
+                  <IdentityName row={row} />{" "}
                   <Button
                     size="sm"
                     variant="secondary"

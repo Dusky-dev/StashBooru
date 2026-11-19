@@ -289,6 +289,13 @@ try {
           `identity-sites-${page.viewportSize().width}.png`
         ),
       });
+    await siteLinks.first().click();
+    await page.waitForURL(/\/booru\?source=r34&q=waligner$/);
+    await page.goBack();
+    await page.locator(".identity-sources").waitFor();
+    if (!(await page.locator(".identity-sources").evaluate((d) => d.open)))
+      await page.locator(".identity-sources > summary").click();
+    await siteLinks.first().waitFor();
     // Accounts are not tag searches: their site is shown without a link.
     assert.equal(
       await page.locator(".identity-sources span.identity-site-link").count(),
