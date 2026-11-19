@@ -2047,7 +2047,7 @@
     },
     "open_in_booru": "Search {target} on {source} in the Booru browser",
     "page": {
-      "intro": "Sites often name the same {kinds} differently, for example “waligner” on one site and “waligner_(artist)” on another. Connect each site name to one record in your library so searches, downloads and Following use it. Nothing is connected automatically: matching names are only suggestions.",
+      "intro": "Sites often name the same {kinds} differently, for example “jane_doe” on one site and “Jane Doe” on another. Connect each site name to one record in your library so searches, downloads and Following use it. Nothing is connected automatically: matching names are only suggestions.",
       "kinds": "Artist, Character or Copyright",
       "kind_switcher": "Record type",
       "collect": {
@@ -2062,8 +2062,9 @@
           "queued": "Scan waiting to start…",
           "running": "Scanning… {scanned} records read, {found} site names found, {skipped} skipped.",
           "completed": "Last scan finished: {scanned} records read, {found} site names found, {skipped} skipped.",
-          "cancelled": "Scan cancelled after {scanned} records. Site names found so far are kept.",
-          "failed": "Scan failed after {scanned} records."
+          "cancelled": "Scan cancelled after {scanned} records.",
+          "failed": "Scan failed after {scanned} records.",
+          "other": "Scan {status}."
         }
       },
       "filter": {

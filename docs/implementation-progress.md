@@ -1,6 +1,7 @@
 ## StashBooru 1.1.2: clearer Identities page — 2026-11-19
 
-- Baseline: `develop` `cadcd4f` (#404, released as `stashbooru-v1.1.1`). Branch
+- Baseline: `develop` `cadcd4f` (#404, released as `stashbooru-v1.1.1`). PR
+  [#405](https://github.com/Dusky-dev/StashBooru/pull/405), branch
   [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
 - Owner request: make Identities less confusing. Rows are headed by the site's
   own name (no more "Waligner / Connected to Waligner") with site chip, state

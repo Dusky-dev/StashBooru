@@ -238,13 +238,17 @@ export default function Identities() {
             {m("collect.clear", { kind: kindName })}
           </Button>
         </div>
-        {scan && scanStates.includes(scan.status) && (
+        {scan && scan.status !== "idle" && (
           <p className="mt-2 mb-0" role="status">
-            {m(`collect.status.${scan.status}`, {
-              scanned: scan.scanned,
-              found: scan.observations,
-              skipped: scan.skipped,
-            })}{" "}
+            {m(
+              `collect.status.${scanStates.includes(scan.status) ? scan.status : "other"}`,
+              {
+                status: scan.status,
+                scanned: scan.scanned,
+                found: scan.observations,
+                skipped: scan.skipped,
+              }
+            )}{" "}
             {scan.error}
           </p>
         )}
