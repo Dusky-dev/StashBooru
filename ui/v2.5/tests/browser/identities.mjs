@@ -117,6 +117,21 @@ try {
         ),
       });
     });
+    // One saved follow: Gelbooru Character A. Other tags offer Follow.
+    await page.route("**/following/follows", (route) =>
+      route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify([
+          {
+            id: "C".repeat(26),
+            instance: "gel",
+            kind: "character",
+            target: "character_a",
+            active: true,
+          },
+        ]),
+      })
+    );
     await page.route("**/booru-browser/sources", (route) =>
       reply(route, [
         {
@@ -497,6 +512,17 @@ try {
     await page.getByRole("link", { name: "Browse fixture" }).click();
     const browseURL = page.url();
     await page.getByRole("button", { name: "Provider tag" }).click();
+    // The Booru browser tag menu offers Follow beside Connect; it opens a
+    // prefilled follow in a new tab and saves nothing by itself.
+    const followItem = page.getByRole("menuitem", {
+      name: "Follow waligner_(artist) on Gelbooru",
+      exact: true,
+    });
+    assert.equal(
+      await followItem.getAttribute("href"),
+      `${prefix}/following?fromIdentity=2#following-manager`
+    );
+    assert.equal(await followItem.getAttribute("target"), "_blank");
     await page
       .getByRole("menuitem", { name: "Connect Artist", exact: true })
       .click();
@@ -646,6 +672,19 @@ try {
       await page
         .getByRole("button", { name: "Provider tag", exact: true })
         .click();
+      if (kind === "character")
+        assert.equal(
+          new URL(
+            await page
+              .getByRole("menuitem", {
+                name: "Following character_a on Gelbooru: show new posts",
+              })
+              .getAttribute("href"),
+            origin
+          ).searchParams.get("follow"),
+          "C".repeat(26),
+          "a followed tag links to its feed"
+        );
       await page
         .getByRole("menuitem", { name: `Connect ${label}`, exact: true })
         .click();

@@ -1,3 +1,4 @@
+import { FollowAction } from "../Following/FollowAction";
 import { IdentityLink } from "../Identities/identity";
 import {
   type ReactNode,
@@ -507,6 +508,15 @@ function PostInspection({
                         target={tag.name}
                         label={tag.label}
                         identityID={tag.identityID}
+                      />
+                      <FollowAction
+                        as="menu"
+                        instance={source.instance}
+                        engine={source.engine}
+                        kind={tag.category}
+                        target={tag.name}
+                        identityID={tag.identityID}
+                        siteName={source.name}
                       />
                     </Dropdown.Menu>
                   </Dropdown>

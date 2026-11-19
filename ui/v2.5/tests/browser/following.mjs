@@ -147,6 +147,16 @@ try {
             version: 1,
             queryRevision: 1,
             feed: { hasMore: false, checkedAt: "", lastError: "" },
+            resolvedSource: body.source,
+            ...(body.target === "artist_a"
+              ? {
+                  connection: {
+                    identityID: "9",
+                    entityID: 7,
+                    entityName: "Local Artist A",
+                  },
+                }
+              : {}),
           };
           follows.push(follow);
           return route.fulfill({ json: follow });
@@ -293,6 +303,23 @@ try {
       name: "Follow Artist A",
       exact: true,
     });
+    // A follow shows the local Artist its tag is connected to, and opens
+    // its search in the Booru browser.
+    assert.equal(
+      await artist
+        .getByRole("link", { name: "Connected to Local Artist A" })
+        .getAttribute("href"),
+      `${prefix}/studios/7`
+    );
+    assert.equal(
+      new URL(
+        await artist
+          .getByRole("link", { name: "Open in Booru browser" })
+          .getAttribute("href"),
+        "http://x"
+      ).search,
+      "?source=danbooru&q=artist_a"
+    );
     await artist.getByRole("button", { name: "Check new posts" }).click();
     await openFeed();
     await page.waitForFunction(

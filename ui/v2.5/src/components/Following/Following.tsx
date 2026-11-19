@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Badge, Button, Form } from "react-bootstrap";
+import { useIntl } from "react-intl";
 import { Link, useHistory, useLocation } from "react-router-dom";
 import type { BooruSource } from "../BooruBrowser/browser";
 import {
+  type IdentityKind,
   type IdentityPage,
   type ProviderIdentity,
+  identityPaths,
   identityRequest,
 } from "../Identities/identityApi";
 import {
@@ -29,6 +32,7 @@ interface Follow {
   resolvedSource?: string;
   syncSupported: boolean;
   feed?: { hasMore: boolean; checkedAt: string; lastError: string };
+  connection?: { identityID: string; entityID: number; entityName: string };
 }
 
 interface FeedItem {
@@ -204,6 +208,7 @@ function Snapshot({
 }
 
 export default function Following() {
+  const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
   const params = new URLSearchParams(location.search);
@@ -268,7 +273,9 @@ export default function Following() {
           throw new Error("This provider connection no longer exists.");
         if (!canFollowIdentity(connection))
           throw new Error(
-            "Feed checks support Danbooru, Gelbooru, Rule34 and Paheal tags, and Pawchive creators. This connection is from another site."
+            intl.formatMessage({
+              id: "following_action.unsupported_connection",
+            })
           );
         setIdentity(connection);
         setName(connection.entityName || connection.label || connection.target);
@@ -279,7 +286,7 @@ export default function Following() {
         if (!controller.signal.aborted) setIdentityError(error.message);
       });
     return () => controller.abort();
-  }, [fromIdentity]);
+  }, [fromIdentity, intl]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: epoch explicitly reloads definitions and source settings after mutations.
   useEffect(() => {
@@ -528,9 +535,7 @@ export default function Following() {
       {managing ? (
         <section id="following-manager" aria-label="Follow management">
           <p className="text-muted">
-            Check follows on demand. Your first check saves up to 50 recent
-            posts; later checks collect newer uploads. Feed checks support
-            Danbooru, Gelbooru, Rule34, Paheal and Pawchive creators.
+            {intl.formatMessage({ id: "following_action.manager_intro" })}
           </p>
           <div className="following-actions mb-3">
             <Button
@@ -604,8 +609,9 @@ export default function Following() {
               !sourceError &&
               !sources.some((source) => canSyncEngine(source.engine)) && (
                 <Alert variant="warning">
-                  Enable Danbooru, Gelbooru, Rule34, Paheal or Pawchive in
-                  Source settings to check posts.
+                  {intl.formatMessage({
+                    id: "following_action.no_supported_source",
+                  })}
                 </Alert>
               )}
             {duplicate && (
@@ -646,10 +652,7 @@ export default function Following() {
                   ))}
               </Form.Control>
               <Form.Text muted>
-                Feed checks work on Danbooru, Gelbooru, Rule34, Paheal and
-                Pawchive. For Pawchive, follow one creator as an Artist with
-                creator:service:id. Follows are local to this library, separate
-                from website favorites.
+                {intl.formatMessage({ id: "following_action.source_help" })}
               </Form.Text>
             </Form.Group>
             <Form.Group controlId="following-name">
@@ -750,6 +753,18 @@ export default function Following() {
                 {follow.kind} · {follow.sourceURL}
               </small>
               <code>{follow.target}</code>
+              {follow.connection && follow.connection.entityID > 0 && (
+                <small>
+                  <Link
+                    to={`${identityPaths[follow.kind as IdentityKind] ?? "/studios"}/${follow.connection.entityID}`}
+                  >
+                    {intl.formatMessage(
+                      { id: "following_action.connected_to" },
+                      { name: follow.connection.entityName }
+                    )}
+                  </Link>
+                </small>
+              )}
               <small>
                 {follow.status !== "available"
                   ? follow.status
@@ -777,6 +792,16 @@ export default function Following() {
                 >
                   {follow.feed?.hasMore ? "Continue check" : "Check new posts"}
                 </Button>
+                {follow.status === "available" && follow.resolvedSource && (
+                  <Link
+                    className="btn btn-sm btn-secondary"
+                    to={`/booru?${new URLSearchParams({ source: follow.resolvedSource, q: follow.target })}`}
+                  >
+                    {intl.formatMessage({
+                      id: "following_action.open_in_booru",
+                    })}
+                  </Link>
+                )}
                 <Button
                   size="sm"
                   variant="secondary"

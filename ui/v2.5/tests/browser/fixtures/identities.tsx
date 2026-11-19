@@ -2,6 +2,7 @@ import ReactDOM from "react-dom";
 import { Dropdown } from "react-bootstrap";
 import { IntlProvider } from "react-intl";
 import { BrowserRouter, Link, Route, useLocation } from "react-router-dom";
+import { FollowAction } from "../../../src/components/Following/FollowAction";
 import Identities from "../../../src/components/Identities/Identities";
 import {
   IdentityLink,
@@ -41,6 +42,17 @@ function ProviderTag() {
           identityID={
             params.has("observe") ? undefined : (params.get("identity") ?? "2")
           }
+        />
+        <FollowAction
+          as="menu"
+          instance="gel"
+          engine="gelbooru"
+          kind={kind}
+          target={target}
+          identityID={
+            params.has("observe") ? undefined : (params.get("identity") ?? "2")
+          }
+          siteName="Gelbooru"
         />
       </Dropdown.Menu>
     </Dropdown>

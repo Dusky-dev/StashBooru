@@ -11,6 +11,7 @@ import {
   identityPaths,
   identityRequest,
 } from "./identityApi";
+import { FollowAction } from "../Following/FollowAction";
 import { IdentityResolution } from "./IdentityResolution";
 import { IdentitySiteLink } from "./IdentitySiteLink";
 import "./styles.scss";
@@ -332,8 +333,16 @@ export default function Identities() {
                   />
                   <h5>{name}</h5>
                   <IdentitySiteLink row={row} />
+                  <span className="ml-auto" />
+                  <FollowAction
+                    instance={row.instance}
+                    engine={row.engine}
+                    kind={kind}
+                    target={row.target}
+                    identityID={row.id}
+                    siteName={row.sourceName}
+                  />
                   <Button
-                    className="ml-auto"
                     variant={row.entityID ? "secondary" : "primary"}
                     size="sm"
                     disabled={busy}

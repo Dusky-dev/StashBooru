@@ -18,6 +18,15 @@ type booruFollowView struct {
 	ResolvedSource string                      `json:"resolvedSource,omitempty"`
 	SyncSupported  bool                        `json:"syncSupported"`
 	Feed           *models.FollowingCheckpoint `json:"feed,omitempty"`
+	Connection     *booruFollowConnection      `json:"connection,omitempty"`
+}
+
+// The local Artist/Character/Copyright a follow's source name is connected
+// to, if any. Read-only; following never creates or changes a connection.
+type booruFollowConnection struct {
+	IdentityID int64  `json:"identityID,string"`
+	EntityID   int    `json:"entityID"`
+	EntityName string `json:"entityName"`
 }
 
 // Display IDs may be renamed. An enabled alias of the exact same engine/URL can
@@ -52,6 +61,7 @@ func (rs booruBrowserRoutes) Follows(w http.ResponseWriter, r *http.Request) {
 	}
 	var rows []models.BooruFollow
 	states := map[string]models.FollowingCheckpoint{}
+	connections := map[string]*booruFollowConnection{}
 	err := rs.repository.WithReadTxn(r.Context(), func(ctx context.Context) error {
 		var err error
 		rows, err = rs.repository.BooruFollow.List(ctx)
@@ -62,6 +72,21 @@ func (rs booruBrowserRoutes) Follows(w http.ResponseWriter, r *http.Request) {
 					return readErr
 				}
 				states[row.ID] = state
+			}
+		}
+		if err == nil && rs.repository.ProviderIdentity != nil {
+			for _, row := range rows {
+				if row.Kind == "query" {
+					continue
+				}
+				form := identityForm(booru.Source{Engine: row.Engine}, row.Kind, row.Target)
+				identity, lookupErr := rs.repository.ProviderIdentity.Lookup(ctx, row.Instance, row.Kind, form, row.Target)
+				if lookupErr != nil {
+					return lookupErr
+				}
+				if identity != nil {
+					connections[row.ID] = &booruFollowConnection{IdentityID: identity.ID, EntityID: identity.EntityID, EntityName: identity.EntityName}
+				}
 			}
 		}
 		return err
@@ -78,6 +103,7 @@ func (rs booruBrowserRoutes) Follows(w http.ResponseWriter, r *http.Request) {
 		if state, ok := states[row.ID]; ok {
 			view.Feed = &state
 		}
+		view.Connection = connections[row.ID]
 		if sourceErr != nil {
 			view.Status = "configuration-error"
 			view.ResolvedSource = ""
@@ -117,7 +143,10 @@ func (input booruFollowMutation) valid() bool {
 	}
 }
 
-var errPawchiveFollowTarget = errors.New("pawchive follow target")
+// followTargetError is a follow target the site's feed check would reject.
+type followTargetError struct{ message string }
+
+func (e *followTargetError) Error() string { return e.message }
 
 func supportsBooruFollow(source booru.Source) bool {
 	switch source.Engine {
@@ -169,9 +198,11 @@ func (rs booruBrowserRoutes) UpdateFollow(w http.ResponseWriter, r *http.Request
 			writeBooruError(w, 400, "unsupported-source", "Follows support booru tags and Pawchive creators. This site is not supported.")
 			return
 		}
-		if selected.Engine == "pawchive" && booru.FollowQueryFor(selected.Engine, input.Kind, input.Target) != nil {
-			writeBooruError(w, 400, "follow-input", "Pawchive follows one creator: choose Artist and use creator:service:id.")
-			return
+		if booru.FollowSyncEngine(selected.Engine) {
+			if err := booru.FollowQueryFor(selected.Engine, input.Kind, input.Target); err != nil {
+				writeBooruError(w, 400, "follow-input", err.Error())
+				return
+			}
 		}
 		provider = models.BooruReviewProvider{Instance: selected.Instance(), SourceID: selected.ID, Engine: selected.Engine, URL: selected.URL}
 	}
@@ -193,8 +224,10 @@ func (rs booruBrowserRoutes) UpdateFollow(w http.ResponseWriter, r *http.Request
 		if input.Action != "unfollow" && resolveBooruFollow(*current, sources).Status != "available" {
 			return errBooruFollowSource
 		}
-		if input.Action == "update" && current.Engine == "pawchive" && booru.FollowQueryFor(current.Engine, input.Kind, input.Target) != nil {
-			return errPawchiveFollowTarget
+		if input.Action == "update" && booru.FollowSyncEngine(current.Engine) {
+			if err := booru.FollowQueryFor(current.Engine, input.Kind, input.Target); err != nil {
+				return &followTargetError{err.Error()}
+			}
 		}
 		if input.Action == "update" {
 			row, err = rs.repository.BooruFollow.Update(ctx, input.ID, input.Version, &definition, nil)
@@ -204,9 +237,10 @@ func (rs booruBrowserRoutes) UpdateFollow(w http.ResponseWriter, r *http.Request
 		}
 		return err
 	})
+	var targetErr *followTargetError
 	switch {
-	case errors.Is(err, errPawchiveFollowTarget):
-		writeBooruError(w, 400, "follow-input", "Pawchive follows one creator: choose Artist and use creator:service:id.")
+	case errors.As(err, &targetErr):
+		writeBooruError(w, 400, "follow-input", targetErr.message)
 	case errors.Is(err, models.ErrBooruFollowConflict):
 		writeBooruError(w, 409, "conflict", "Follow changed. Reload follows and retry with the current version.")
 	case errors.Is(err, models.ErrBooruFollowDuplicate):
