@@ -8,17 +8,24 @@ export function canSyncEngine(engine: string | undefined) {
   return !!engine && syncEngines.includes(engine);
 }
 
-export function canFollowIdentity(identity: ProviderIdentity) {
-  if (!["artist", "character", "copyright"].includes(identity.kind))
-    return false;
+/** Whether a site name can be followed: a tag, or a Pawchive creator. */
+export function canFollowTarget(
+  engine: string | undefined,
+  kind: string,
+  target: string
+) {
+  if (!["artist", "character", "copyright"].includes(kind)) return false;
   // Pawchive follows a creator account (creator:service:id); others a tag.
-  if (identity.engine === "pawchive")
-    return (
-      identity.kind === "artist" &&
-      identity.form === "account" &&
-      identity.target.startsWith("creator:")
-    );
-  return canSyncEngine(identity.engine) && identity.form === "tag";
+  if (engine === "pawchive")
+    return kind === "artist" && target.startsWith("creator:");
+  return canSyncEngine(engine) && !target.startsWith("creator:");
+}
+
+export function canFollowIdentity(identity: ProviderIdentity) {
+  return (
+    canFollowTarget(identity.engine, identity.kind, identity.target) &&
+    identity.form === (identity.engine === "pawchive" ? "account" : "tag")
+  );
 }
 
 export function sourceForIdentity(

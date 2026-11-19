@@ -2138,5 +2138,13 @@
     "get_started": "Get started",
     "history": "Earlier versions are listed in",
     "history_link": "Settings → About"
+  },
+  "following_action": {
+    "follow": "Follow",
+    "following": "Following",
+    "follow_title": "Follow {target} on {site}",
+    "following_title": "Following {target} on {site}: show new posts",
+    "connected_to": "Connected to {name}",
+    "open_in_booru": "Open in Booru browser"
   }
 }

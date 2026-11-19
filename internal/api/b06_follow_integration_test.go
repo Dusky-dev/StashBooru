@@ -366,3 +366,36 @@ func TestB06MigrationUpgrades97AndPreservesCatalogueAndReview(t *testing.T) {
 		return nil
 	}))
 }
+
+func TestB06FollowShowsConnectedEntity(t *testing.T) {
+	config.InitializeEmpty()
+	db := sqlite.NewDatabase()
+	require.NoError(t, db.Open(filepath.Join(t.TempDir(), "connection.sqlite")))
+	defer db.Close()
+	rs := booruBrowserRoutes{configPath: t.TempDir(), repository: db.Repository()}
+	dan := booru.Defaults()[0]
+	follow := b06Mutation(t, rs, b06Create(dan, "artist", "artist_a"), 200)
+	query := b06Mutation(t, rs, b06Create(dan, "query", "artist_a rating:g"), 200)
+	require.Nil(t, b06List(t, rs)[0].Connection, "no stored source name yet")
+
+	var observed models.ProviderIdentity
+	require.NoError(t, rs.repository.WithTxn(context.Background(), func(ctx context.Context) error {
+		rows, err := rs.repository.ProviderIdentity.Observe(ctx, []models.IdentityObservation{identityObservation(dan, "artist", "artist_a", "", "", 0)})
+		if err == nil {
+			observed = rows[0]
+		}
+		return err
+	}))
+	linked := identityTestDecide(t, rs, "create", "artist", []models.IdentityDecision{{ID: observed.ID, Version: observed.Version}}, "Local Artist", 200)[0]
+	for _, view := range b06List(t, rs) {
+		switch view.ID {
+		case follow.ID:
+			require.NotNil(t, view.Connection)
+			require.Equal(t, observed.ID, view.Connection.IdentityID)
+			require.Equal(t, linked.EntityID, view.Connection.EntityID)
+			require.Equal(t, "Local Artist", view.Connection.EntityName)
+		case query.ID:
+			require.Nil(t, view.Connection, "queries are not source names")
+		}
+	}
+}

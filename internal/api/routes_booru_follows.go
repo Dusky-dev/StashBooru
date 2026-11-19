@@ -18,6 +18,15 @@ type booruFollowView struct {
 	ResolvedSource string                      `json:"resolvedSource,omitempty"`
 	SyncSupported  bool                        `json:"syncSupported"`
 	Feed           *models.FollowingCheckpoint `json:"feed,omitempty"`
+	Connection     *booruFollowConnection      `json:"connection,omitempty"`
+}
+
+// The local Artist/Character/Copyright a follow's source name is connected
+// to, if any. Read-only; following never creates or changes a connection.
+type booruFollowConnection struct {
+	IdentityID int64  `json:"identityID,string"`
+	EntityID   int    `json:"entityID"`
+	EntityName string `json:"entityName"`
 }
 
 // Display IDs may be renamed. An enabled alias of the exact same engine/URL can
@@ -52,6 +61,7 @@ func (rs booruBrowserRoutes) Follows(w http.ResponseWriter, r *http.Request) {
 	}
 	var rows []models.BooruFollow
 	states := map[string]models.FollowingCheckpoint{}
+	connections := map[string]*booruFollowConnection{}
 	err := rs.repository.WithReadTxn(r.Context(), func(ctx context.Context) error {
 		var err error
 		rows, err = rs.repository.BooruFollow.List(ctx)
@@ -62,6 +72,21 @@ func (rs booruBrowserRoutes) Follows(w http.ResponseWriter, r *http.Request) {
 					return readErr
 				}
 				states[row.ID] = state
+			}
+		}
+		if err == nil && rs.repository.ProviderIdentity != nil {
+			for _, row := range rows {
+				if row.Kind == "query" {
+					continue
+				}
+				form := identityForm(booru.Source{Engine: row.Engine}, row.Kind, row.Target)
+				identity, lookupErr := rs.repository.ProviderIdentity.Lookup(ctx, row.Instance, row.Kind, form, row.Target)
+				if lookupErr != nil {
+					return lookupErr
+				}
+				if identity != nil {
+					connections[row.ID] = &booruFollowConnection{IdentityID: identity.ID, EntityID: identity.EntityID, EntityName: identity.EntityName}
+				}
 			}
 		}
 		return err
@@ -78,6 +103,7 @@ func (rs booruBrowserRoutes) Follows(w http.ResponseWriter, r *http.Request) {
 		if state, ok := states[row.ID]; ok {
 			view.Feed = &state
 		}
+		view.Connection = connections[row.ID]
 		if sourceErr != nil {
 			view.Status = "configuration-error"
 			view.ResolvedSource = ""

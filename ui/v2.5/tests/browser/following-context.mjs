@@ -307,10 +307,23 @@ try {
     }
     await profile.goto(`${base}/profile?kind=artist`);
     await profile.locator(".identity-sources > summary").click();
-    await profile.getByRole("link", { name: /Follow waligner/ }).waitFor();
+    // waligner was followed above: the profile now shows Following, linking
+    // to that follow's feed instead of a new draft.
+    const following = profile.getByRole("link", {
+      name: /^Following waligner_\(artist\) on .*: show new posts$/,
+    });
+    await following.waitFor();
+    const saved = follows.find((row) => row.target === "waligner_(artist)");
+    assert.ok(saved, "the draft saved a waligner follow");
+    assert.equal(
+      new URL(await following.getAttribute("href"), base).searchParams.get(
+        "follow"
+      ),
+      saved.id
+    );
     assert.equal(
       await profile.getByRole("link", { name: /^Follow / }).count(),
-      1
+      0
     );
     assert.equal(
       await profile

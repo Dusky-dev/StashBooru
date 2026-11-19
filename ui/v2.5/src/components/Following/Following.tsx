@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Badge, Button, Form } from "react-bootstrap";
+import { useIntl } from "react-intl";
 import { Link, useHistory, useLocation } from "react-router-dom";
 import type { BooruSource } from "../BooruBrowser/browser";
 import {
+  type IdentityKind,
   type IdentityPage,
   type ProviderIdentity,
+  identityPaths,
   identityRequest,
 } from "../Identities/identityApi";
 import {
@@ -29,6 +32,7 @@ interface Follow {
   resolvedSource?: string;
   syncSupported: boolean;
   feed?: { hasMore: boolean; checkedAt: string; lastError: string };
+  connection?: { identityID: string; entityID: number; entityName: string };
 }
 
 interface FeedItem {
@@ -204,6 +208,7 @@ function Snapshot({
 }
 
 export default function Following() {
+  const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
   const params = new URLSearchParams(location.search);
@@ -750,6 +755,18 @@ export default function Following() {
                 {follow.kind} · {follow.sourceURL}
               </small>
               <code>{follow.target}</code>
+              {follow.connection && follow.connection.entityID > 0 && (
+                <small>
+                  <Link
+                    to={`${identityPaths[follow.kind as IdentityKind] ?? "/studios"}/${follow.connection.entityID}`}
+                  >
+                    {intl.formatMessage(
+                      { id: "following_action.connected_to" },
+                      { name: follow.connection.entityName }
+                    )}
+                  </Link>
+                </small>
+              )}
               <small>
                 {follow.status !== "available"
                   ? follow.status
@@ -777,6 +794,16 @@ export default function Following() {
                 >
                   {follow.feed?.hasMore ? "Continue check" : "Check new posts"}
                 </Button>
+                {follow.status === "available" && follow.resolvedSource && (
+                  <Link
+                    className="btn btn-sm btn-secondary"
+                    to={`/booru?${new URLSearchParams({ source: follow.resolvedSource, q: follow.target })}`}
+                  >
+                    {intl.formatMessage({
+                      id: "following_action.open_in_booru",
+                    })}
+                  </Link>
+                )}
                 <Button
                   size="sm"
                   variant="secondary"

@@ -65,6 +65,11 @@ and enter the exact provider tag or query. Source credentials and custom
 instances live in Source settings. Other saved engines remain visible with
 checks disabled until their feed adapter is supported.
 
+**Follow** also appears on Identities page rows and in the Booru browser tag
+menu. Once a site name is followed, those places show **Following**, linking to
+that follow's feed. Each saved follow shows the local record its site name is
+connected to and opens its search in the Booru browser.
+
 From a native Artist, Character or Copyright profile, open **Identities**
 and choose **Follow** beside a saved tag connection on one of those sites, or a
 Pawchive creator account. Following opens in a

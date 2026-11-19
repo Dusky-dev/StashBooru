@@ -1,3 +1,19 @@
+## StashBooru 1.3.0: Follow / Following across Identities, profiles and Booru browser — 2026-11-19
+
+- Baseline: `develop` after #407 (1.2.0). Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Owner decision (link, don't merge pages), step 2 of 3. One shared
+  `FollowAction` shows **Follow** (prefilled draft in a new tab, saves
+  nothing) or **Following** (that follow's feed) on Identities rows, profile
+  Identities lists and the Booru browser tag menu. The follow list is cached
+  15 s per tab and refreshed on focus. Follows list returns the connected
+  record (`connection`); Following shows it and **Open in Booru browser**.
+- Checks: `B06` integration (new connection test); `tsc`; Biome; browser
+  `identities` (tag menu Follow/Following), `following` (connection, open
+  link), `following-context` (profile shows Following), `booru-browser`,
+  desktop+mobile.
+- Next: automatic checks with new-post counts (step 3).
+
 ## StashBooru 1.2.0: Following on Gelbooru, Rule34, Paheal and Pawchive — 2026-11-19
 
 - Baseline: `develop` `85bc805` (#406). Branch
