@@ -10,6 +10,7 @@ import { FormattedMessage } from "react-intl";
 import { Link } from "react-router-dom";
 import type { BooruSource } from "../BooruBrowser/browser";
 import { IdentityResolution } from "./IdentityResolution";
+import { IdentitySiteLink } from "./IdentitySiteLink";
 import {
   type IdentityKind,
   type IdentityPage,
@@ -329,7 +330,8 @@ export function IdentityConnectionsDialog({
             <ul className="identity-targets">
               {items.map((row) => (
                 <li key={row.id}>
-                  {row.sourceName}: <IdentityName row={row} />{" "}
+                  <IdentitySiteLink row={row} link={false} />{" "}
+                  <IdentityName row={row} />{" "}
                   <Button
                     size="sm"
                     variant="secondary"

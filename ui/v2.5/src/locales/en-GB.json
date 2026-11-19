@@ -2029,7 +2029,8 @@
       "confirm_body": "{destination} is kept. {source} is removed, and its Images, Videos and source connections move to {destination}.",
       "confirm": "Merge",
       "merging": "Merging…"
-    }
+    },
+    "open_in_booru": "Search {target} on {source} in the Booru browser"
   },
   "media_card": {
     "implied": "Implied"

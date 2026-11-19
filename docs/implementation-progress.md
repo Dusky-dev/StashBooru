@@ -1,3 +1,20 @@
+## Identities: site link on connected identities — 2026-11-19
+
+- Baseline: `develop` `84c83b4` (#397). Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Owner request: after connecting an identity, show the site it came from and
+  open the Booru browser there. Connected identities (profile Identities list,
+  connections dialog, connected cards on the Identities page) show a chip with
+  the site name. Tag identities link to the Booru browser on that site,
+  searching the tag; artist accounts and the chip inside the dialog (which can
+  sit on top of the Booru browser) are not links.
+- The icon is a generic globe: no third-party favicon is requested. Real site
+  icons would need a server-side route (follow-up, owner decision).
+- Checks: browser `identities` desktop+mobile (link targets, click-through and
+  back, account chip without link), UI tests/lint/tsc.
+- Not verified: the Booru browser loading results for the linked search (only
+  the URL is checked).
+
 ## Converter: convert already converted media again — 2026-11-19
 
 - Baseline: `develop` `e4df747` (#396). Branch

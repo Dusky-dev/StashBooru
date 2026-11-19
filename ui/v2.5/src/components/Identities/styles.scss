@@ -86,3 +86,26 @@
 .modal-backdrop.identity-dialog-backdrop {
   z-index: 1055;
 }
+
+// Connected identities show their site; tag identities open the Booru browser.
+.identity-site-link {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 1rem;
+  color: inherit;
+  display: inline-flex;
+  font-size: 0.8rem;
+  gap: 0.3rem;
+  line-height: 1.4;
+  padding: 0 0.5rem;
+  vertical-align: middle;
+}
+
+a.identity-site-link:hover,
+a.identity-site-link:focus-visible {
+  background: rgba(19, 124, 189, 0.35);
+  border-color: #137cbd;
+  color: inherit;
+  text-decoration: none;
+}
