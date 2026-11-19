@@ -12,6 +12,7 @@ import {
   identityRequest,
 } from "./identityApi";
 import { IdentityResolution } from "./IdentityResolution";
+import { IdentitySiteLink } from "./IdentitySiteLink";
 import "./styles.scss";
 
 interface ScanState {
@@ -298,7 +299,11 @@ export default function Identities() {
                       );
                   }}
                 />
-                <Badge variant="secondary">{row.sourceName}</Badge>
+                {row.entityID ? (
+                  <IdentitySiteLink row={row} />
+                ) : (
+                  <Badge variant="secondary">{row.sourceName}</Badge>
+                )}
               </div>
               <h5>
                 {row.entityName ||

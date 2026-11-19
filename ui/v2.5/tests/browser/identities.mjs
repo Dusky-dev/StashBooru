@@ -269,6 +269,31 @@ try {
       .click();
     await page.locator(".identity-sources > summary").click();
     await page.getByText("creator:patreon:49481727", { exact: true }).waitFor();
+    // Connected tag identities show their site and open the Booru browser.
+    const siteLinks = page.locator(".identity-sources a.identity-site-link");
+    assert.deepEqual(
+      await siteLinks.evaluateAll((links) =>
+        links.map((link) =>
+          link.getAttribute("href").replace(/^.*(?=\/booru\?)/, "")
+        )
+      ),
+      [
+        "/booru?source=r34&q=waligner",
+        "/booru?source=gelbooru&q=waligner_%28artist%29",
+      ]
+    );
+    if (process.env.STASH_BROWSER_SCREENSHOTS)
+      await page.locator(".identity-sources").screenshot({
+        path: path.join(
+          process.env.STASH_BROWSER_SCREENSHOTS,
+          `identity-sites-${page.viewportSize().width}.png`
+        ),
+      });
+    // Accounts are not tag searches: their site is shown without a link.
+    assert.equal(
+      await page.locator(".identity-sources span.identity-site-link").count(),
+      1
+    );
     // A separate record named after a connected source name can be merged
     // here, only after an explicit confirmation.
     const split = page.locator(".identity-split-records");

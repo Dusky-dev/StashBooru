@@ -8,6 +8,7 @@ import {
   IdentityConnectionsDialog,
   IdentityName,
 } from "./IdentityConnectionsDialog";
+import { IdentitySiteLink } from "./IdentitySiteLink";
 import { IdentitySplitRecords } from "./IdentitySplitRecords";
 import {
   type IdentityKind,
@@ -128,7 +129,7 @@ export function IdentitySources({
             <ul>
               {page?.items.map((item) => (
                 <li key={item.id}>
-                  {item.sourceName}: <IdentityName row={item} />{" "}
+                  <IdentitySiteLink row={item} /> <IdentityName row={item} />{" "}
                   {canFollowIdentity(item) ? (
                     <Link
                       className="btn btn-secondary btn-sm"
