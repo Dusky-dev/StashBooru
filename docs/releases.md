@@ -9,7 +9,8 @@ For a stable release:
 
 1. Update the version file and `docs/releases/stashbooru-X.Y.Z.md` in a reviewed
    branch. Complete UI, Go, mounted browser and CI checks for that exact commit.
-2. With the owner's release authorization, create `releases/stashbooru-X.Y.Z`
+2. With the owner's release authorization (standing since 2026-11-19, see
+   `AGENTS.md`), create `releases/stashbooru-X.Y.Z`
    at that tested commit. This deliberately triggers publication; it is not a
    general-purpose review branch. It does not merge `develop`.
 3. The Build workflow validates release guards, UI and Go tests and builds every

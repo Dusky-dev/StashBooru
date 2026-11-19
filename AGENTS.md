@@ -41,6 +41,11 @@ asks for a new feature:
   that meet these conditions. Report each merge to
   the owner. When only review/CI remains pending, record the checkpoint and
   end the turn rather than repeatedly polling or waiting.
+- The owner authorizes creating StashBooru releases (granted 2026-11-19): once a
+  version's release notes are merged and CI is green on that `develop` commit,
+  push `releases/stashbooru-X.Y.Z` there so the Build workflow tags and
+  publishes `stashbooru-vX.Y.Z` (see `docs/releases.md`). Never move or
+  overwrite a published tag.
 - Direct pushes to `develop`, remote branch deletion, destructive data changes
   and production deployment still require separate authorization.
 - `docs/CONTRIBUTING.md` and `docs/AI_POLICY.md` contain inherited upstream
