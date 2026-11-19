@@ -4,18 +4,19 @@ import { CompactHelpProvider } from "./Inputs";
 
 const storageKey = (id: string) => `settings-group-open:${id}`;
 
-function readOpen(id: string): boolean {
+function readOpen(id: string, defaultOpen: boolean): boolean {
   try {
-    return window.localStorage.getItem(storageKey(id)) === "1";
+    const value = window.localStorage.getItem(storageKey(id));
+    return value === null ? defaultOpen : value === "1";
   } catch {
-    return false;
+    return defaultOpen;
   }
 }
 
-function writeOpen(id: string, open: boolean) {
+function writeOpen(id: string, open: boolean, defaultOpen: boolean) {
   try {
-    if (open) window.localStorage.setItem(storageKey(id), "1");
-    else window.localStorage.removeItem(storageKey(id));
+    if (open === defaultOpen) window.localStorage.removeItem(storageKey(id));
+    else window.localStorage.setItem(storageKey(id), open ? "1" : "0");
   } catch {
     // Private browsing or full storage: the group still works, unremembered.
   }
@@ -28,6 +29,8 @@ export const SettingsDisclosure: React.FC<{
   description?: string;
   /** Restore the group's last open/closed state in this browser. */
   remember?: boolean;
+  /** Open on first visit, before the user has toggled the group. */
+  defaultOpen?: boolean;
   /** Show only in Advanced mode. */
   advanced?: boolean;
   /** Show setting descriptions as help buttons beside their headings. */
@@ -38,6 +41,7 @@ export const SettingsDisclosure: React.FC<{
   title,
   description,
   remember,
+  defaultOpen = false,
   advanced,
   compactHelp,
   children,
@@ -47,9 +51,10 @@ export const SettingsDisclosure: React.FC<{
   // Restore when the element mounts; a hash link may already have opened it.
   const restore = useCallback(
     (details: HTMLDetailsElement | null) => {
-      if (remember && details && readOpen(id)) details.open = true;
+      if (details && (remember ? readOpen(id, defaultOpen) : defaultOpen))
+        details.open = true;
     },
-    [id, remember]
+    [id, remember, defaultOpen]
   );
 
   if (hidden) return null;
@@ -61,7 +66,7 @@ export const SettingsDisclosure: React.FC<{
       ref={restore}
       onToggle={
         remember
-          ? (event) => writeOpen(id, event.currentTarget.open)
+          ? (event) => writeOpen(id, event.currentTarget.open, defaultOpen)
           : undefined
       }
     >

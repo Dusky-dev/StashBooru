@@ -278,7 +278,7 @@
         "galleries_from_folders": "Galleries from folders",
         "image_thumbnails": "Image thumbnails",
         "delete_original_files": "Delete original files",
-        "inherited_copyright_and_character_associations": "Inherited Copyright and Character associations",
+        "include_parents_inherited_characters_artists_copyrights_and_tags": "Include parents (inherited Characters, Artists, Copyrights and Tags)",
         "worker_connection": "Worker connection",
         "similarity_and_ai_tagging": "Similarity and AI tagging",
         "camie_tagger_model": "Camie Tagger model",
@@ -332,8 +332,8 @@
       "version": "Version"
     },
     "association_inheritance": {
-      "heading": "Hierarchy inheritance",
-      "description": "Choose which ancestors are included in effective associations and tagging results. This changes calculated results without rewriting direct media links.",
+      "heading": "Include parents",
+      "description": "Choose whether a parent counts too when something is attached. For example, a variant Character also brings in its base Character. This changes calculated results only; direct links on media stay as they are.",
       "characters": {
         "heading": "Include parent Characters",
         "description": "A selected variant includes its base Character and higher ancestors, including their profile Tags."
@@ -350,7 +350,7 @@
         "heading": "Include parent Tags",
         "description": "A selected Tag or inherited profile Tag includes its parent Tags."
       },
-      "shared_defaults": "Hierarchy inheritance defaults are shared by System and Tagging."
+      "shared_defaults": "These settings are shared by Library and Tagging."
     },
     "advanced_mode": "Advanced mode",
     "experimental_hidden": "Experimental features are shown only in Advanced mode.",
@@ -398,7 +398,13 @@
       "successfully_cancelled_temporary_behaviour": "Successfully cancelled temporary behaviour",
       "until_restart": "until restart",
       "video_sort_order": "Default video sort order",
-      "video_sort_order_desc": "Order to sort videos by default."
+      "video_sort_order_desc": "Order to sort videos by default.",
+      "groups": {
+        "status": "DLNA server",
+        "status_help": "Turn DLNA on or off, and choose which devices on your network may connect.",
+        "settings": "DLNA settings",
+        "settings_help": "Server name, port, network interfaces and default Video order."
+      }
     },
     "general": {
       "auth": {
@@ -565,16 +571,36 @@
     "library": {
       "exclusions": "Exclusions",
       "gallery_and_image_options": "Gallery and Image Options",
-      "media_content_extensions": "Media Content Extensions"
+      "media_content_extensions": "Media Content Extensions",
+      "groups": {
+        "folders": "Folders and file types",
+        "folders_help": "Folders to scan, which extensions count as media, and paths to skip.",
+        "parents": "Include parents",
+        "parents_help": "Whether parent Characters, Artists, Copyrights and Tags count toward media and tagging results.",
+        "defaults": "Galleries, images and deletion",
+        "defaults_help": "How galleries are created from folders and archives, and what Delete removes by default."
+      }
     },
     "logs": {
-      "log_level": "Log level"
+      "log_level": "Log level",
+      "console_title": "Log console",
+      "live": "Live",
+      "disconnected": "Disconnected",
+      "line_count": "{count, plural, one {# line} other {# lines}}",
+      "empty": "Waiting for log output…",
+      "jump_to_latest": "Jump to latest"
     },
     "plugins": {
       "available_plugins": "Available Plugins",
       "hooks": "Hooks",
       "installed_plugins": "Installed Plugins",
-      "triggers_on": "Triggers on"
+      "triggers_on": "Triggers on",
+      "groups": {
+        "packages": "Plugin packages",
+        "packages_help": "Install, update and remove plugins from package sources.",
+        "installed": "Installed plugins",
+        "installed_help": "Turn plugins on or off and change their settings."
+      }
     },
     "scraping": {
       "available_scrapers": "Available Scrapers",
@@ -587,7 +613,13 @@
       "scrapers": "Scrapers",
       "search_by_name": "Search by name",
       "supported_types": "Supported types",
-      "supported_urls": "URLs"
+      "supported_urls": "URLs",
+      "groups": {
+        "sources": "Booru and Stash-box sources",
+        "sources_help": "Sites to browse, download from and look up tags on, and Stash-box servers used to identify Videos and Characters.",
+        "scrapers": "Scrapers",
+        "scrapers_help": "Install and update scrapers, and set the user agent, browser path and Tags to ignore when scraping."
+      }
     },
     "stashbox": {
       "add_instance": "Add stash-box instance",
@@ -1100,7 +1132,17 @@
       "optional_model": "Optional",
       "model_help": "{name} help",
       "model_details": "Details and files",
-      "model_target": "Status, Install and Delete apply to the selected worker. Tagging may still fall back to this server."
+      "model_target": "Status, Install and Delete apply to the selected worker. Tagging may still fall back to this server.",
+      "groups": {
+        "worker": "Worker",
+        "worker_help": "Connect an optional remote worker for tagging, similarity, conversion and upscaling, or run them on this server.",
+        "similarity": "Similarity and tagging",
+        "similarity_help": "Visual similarity search, duplicate detection and automatic tagging models.",
+        "conversion": "Conversion",
+        "conversion_help": "Default formats, quality and savings rules. Start conversions from selected media.",
+        "upscaling": "Upscaling",
+        "upscaling_help": "Default models and scale for upscaling Images."
+      }
     }
   },
   "configuration": "Configuration",
@@ -1997,5 +2039,17 @@
     "auto_effort_aria": "Auto JPEG XL effort for {input}",
     "auto_effort_help": "Auto (JPEG XL only) picks effort per file from its size and frame count: up to 9 for small stills, 7 for animations and large images, 5 for very large ones. The number is used for other formats and when a file's size is unknown.",
     "effort_auto_summary": "effort auto"
+  },
+  "association_sources": {
+    "title": "Why these are attached ({count})",
+    "kind": {
+      "direct": "Added directly",
+      "ancestor": "Parent of {source}",
+      "profile_tag": "Profile Tag of {source}",
+      "ancestor_profile_tag": "Profile Tag of {via}, a parent of {source}",
+      "tag_ancestor": "Parent Tag, from {source}",
+      "other": "{kind}: {source}"
+    },
+    "via": "via {via}"
   }
 }

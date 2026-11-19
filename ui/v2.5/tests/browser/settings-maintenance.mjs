@@ -63,6 +63,13 @@ async function chooseSection(page, tab) {
       .locator(`#settings-menu-container a[href*="tab=${tab}"]`)
       .click();
 }
+// Settings groups start closed; open each in the active pane as a user would.
+async function openSettingsGroups(page) {
+  const closed = page.locator(
+    ".tab-pane.active details.settings-disclosure:not([open]) > summary"
+  );
+  while ((await closed.count()) > 0) await closed.first().click();
+}
 async function checkUploadRecovery(page) {
   // The native metadata selectors use StashService's HTTP client rather than
   // the fixture's Apollo context. Keep their initial lookups in the fixture.
@@ -487,6 +494,8 @@ try {
       await page.close();
       continue;
     }
+    await page.locator("#library-group-folders").waitFor();
+    await openSettingsGroups(page);
     await page.locator("#inherit-character-ancestors").waitFor();
     assert.equal(
       requests.filter((r) => r.path.startsWith("/image/")).length,
@@ -685,6 +694,7 @@ try {
     assert.equal(new URL(page.url()).searchParams.get("return"), "images/42");
     await setAdvanced(page, false);
     await chooseSection(page, "library");
+    await openSettingsGroups(page);
     await page.locator("#inherit-character-ancestors").waitFor();
 
     const chooser = page.locator("#settings-section");
@@ -770,6 +780,7 @@ try {
       .waitFor();
     await page.getByRole("searchbox", { name: "Find a setting" }).fill("");
     await chooseSection(page, "processing");
+    await openSettingsGroups(page);
     assert.equal(new URL(page.url()).searchParams.get("return"), "images/42");
     await page
       .getByRole("button", { name: "Save tagging defaults", exact: true })
@@ -877,9 +888,9 @@ try {
       0
     );
     if (shots) {
-      await converter
-        .locator("h1")
-        .evaluate((element) => element.scrollIntoView({ block: "start" }));
+      await converter.evaluate((element) =>
+        element.scrollIntoView({ block: "start" })
+      );
       await page.screenshot({
         path: `${shots}/converter-load-error-${name}.png`,
       });
@@ -1243,6 +1254,7 @@ try {
     }
     await page.setViewportSize(viewport);
     await chooseSection(page, "processing");
+    await openSettingsGroups(page);
     assert.equal(
       await page
         .getByLabel("EVA02 tagging threshold", { exact: true })
@@ -1254,6 +1266,7 @@ try {
       .click();
     await page.waitForURL(/tab=tasks/);
     await chooseSection(page, "processing");
+    await openSettingsGroups(page);
     assert.equal(
       await page
         .getByRole("button", {
@@ -1277,7 +1290,7 @@ try {
     assert.equal(await chooser.inputValue(), "processing");
     await page.waitForFunction(() => {
       const y = document
-        .querySelector("#media-upscaling h1")
+        .querySelector("#media-upscaling")
         ?.getBoundingClientRect().y;
       const atBottom =
         window.scrollY + window.innerHeight >=
@@ -1289,6 +1302,7 @@ try {
       "4"
     );
     await chooseSection(page, "library");
+    await openSettingsGroups(page);
     assert.equal(new URL(page.url()).hash, "");
     assert.equal(new URL(page.url()).searchParams.get("return"), "images/42");
     await page.goBack();
@@ -1300,6 +1314,40 @@ try {
     await page.waitForURL(/tab=library/);
     await page.locator("#inherit-character-ancestors").waitFor();
 
+    // A bookmark into a group that was never opened must still reveal it.
+    const savedGroups = await page.evaluate(() => {
+      const saved = {};
+      for (const key of Object.keys(localStorage))
+        if (key.startsWith("settings-group-open:")) {
+          saved[key] = localStorage.getItem(key);
+          localStorage.removeItem(key);
+        }
+      return saved;
+    });
+    await page.goto(`${baseURL}/settings?tab=processing#media-upscaling`);
+    await page.locator("#upscaling-default-scale").waitFor();
+    assert.equal(
+      await page.locator("#processing-group-worker").evaluate((d) => d.open),
+      false,
+      "groups the bookmark does not target stay closed"
+    );
+    // Search results open their target group too.
+    await page
+      .getByRole("searchbox", { name: "Find a setting" })
+      .fill("Plugins and package");
+    await page
+      .locator("#settings-search-results a")
+      .filter({ hasText: "Plugins and package manager" })
+      .click();
+    await page.waitForURL(/tab=plugins.*#plugins-group-installed$/);
+    await page.waitForFunction(
+      () => document.querySelector("#plugins-group-installed")?.open
+    );
+    await page.getByRole("searchbox", { name: "Find a setting" }).fill("");
+    await page.evaluate((saved) => {
+      for (const [key, value] of Object.entries(saved))
+        localStorage.setItem(key, value);
+    }, savedGroups);
     failLocal = true;
     await page.goto(`${baseURL}/settings?tab=processing#media-upscaling`);
     await page
@@ -1330,6 +1378,27 @@ try {
     );
     assert.equal(overflow, false, `${name} page must fit the viewport`);
     // The mounted About panel separates version tracks and can retry a failed check.
+    // Logs load through the app's own GraphQL client, outside the fixture link.
+    await page.route("**/graphql", async (route) => {
+      if (route.request().postDataJSON()?.operationName !== "Logs")
+        return route.fallback();
+      const logs = [
+        ["Error", "Fixture worker refused the connection"],
+        ["Warning", "Thumbnail cache is 92% full"],
+        ["Progress", "Scanning library: 42 / 60 files"],
+        ["Info", "Scan finished: 3 new Images, 1 new Video"],
+        ["Debug", "Booru source danbooru: 120 ms"],
+      ].map(([level, message], index) => ({
+        __typename: "LogEntry",
+        time: `2026-11-18T12:00:0${5 - index}Z`,
+        level,
+        message,
+      }));
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ data: { logs } }),
+      });
+    });
     await chooseSection(page, "about");
     await page
       .getByRole("heading", { name: "StashBooru 1.0.0", exact: true })
@@ -1369,6 +1438,22 @@ try {
     await page
       .locator(".toast-container.hidden")
       .waitFor({ state: "attached" });
+    // The console reads as a terminal: status bar, level filter and prompt.
+    await about.locator(".log-terminal-bar .log-terminal-status").waitFor();
+    await about.locator(".log-prompt").waitFor({ state: "attached" });
+    await about
+      .locator(".log-line-error")
+      .filter({ hasText: "Fixture worker refused the connection" })
+      .waitFor();
+    // Newest lines print last, next to the prompt, as in a terminal.
+    assert.match(
+      await about.locator(".log-line").last().innerText(),
+      /Fixture worker refused/
+    );
+    if (shots)
+      await about
+        .locator(".log-terminal")
+        .screenshot({ path: `${shots}/logs-console-${name}.png` });
     if (shots) {
       await page
         .getByRole("heading", { name: "StashBooru 1.0.0", exact: true })
@@ -1411,6 +1496,7 @@ try {
       .getByText("You are running the latest stable StashBooru release.")
       .waitFor();
     await chooseSection(page, "processing");
+    await openSettingsGroups(page);
     await page.reload();
     await imageRule.waitFor();
     assert.equal(await imageRule.isChecked(), false);
@@ -1454,6 +1540,7 @@ try {
       )
     );
     await chooseSection(page, "library");
+    await openSettingsGroups(page);
     await chooseSection(page, "interface");
     assert.equal(await associationTitles.isChecked(), true);
     assert.equal(await formattedFallback.isChecked(), true);
@@ -1469,6 +1556,7 @@ try {
       )
     );
     await chooseSection(page, "processing");
+    await openSettingsGroups(page);
     // Late retry/status responses after leaving Settings must not update an unmounted view.
     failConverterConfig = true;
     await page.reload();

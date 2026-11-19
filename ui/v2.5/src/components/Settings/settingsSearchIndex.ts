@@ -131,9 +131,10 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
   },
   {
     tab: "library",
-    label: "Inherited Copyright and Character associations",
+    label:
+      "Include parents (inherited Characters, Artists, Copyrights and Tags)",
     anchor: "association-inheritance-settings",
-    keywords: "metadata artist link",
+    keywords: "metadata artist link hierarchy inheritance parents",
   },
   {
     tab: "processing",
@@ -260,6 +261,7 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
   },
   {
     tab: "metadata-providers",
+    anchor: "metadata-group-scrapers",
     label: "Scrapers",
     keywords: "metadata scraping plugin",
   },
@@ -310,6 +312,7 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
   },
   {
     tab: "plugins",
+    anchor: "plugins-group-installed",
     label: "Plugins and package manager",
     keywords: "install extensions update",
   },

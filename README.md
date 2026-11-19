@@ -127,7 +127,7 @@ The visual-similarity model is opt-in and is never downloaded silently.
 - **Mask restoration** previews a generated still-image derivative while preserving the source; it requires a configured inpainting model.
 - **Image delta / Gallery sharing** are non-destructive offline storage prototypes. Production activation and original eviction remain gated.
 
-Processing setup is grouped under **Settings → Processing**; hierarchy inheritance
+Processing setup is grouped under **Settings → Processing**; **Include parents**
 is in **Settings → Library**. Failed jobs remain in **Tasks** until dismissed,
 with Copy error and history scoped to the current browser tab.
 

@@ -14,6 +14,7 @@ import { Icon } from "../Shared/Icon";
 import { LoadingIndicator } from "../Shared/LoadingIndicator";
 import { ModalComponent } from "../Shared/Modal";
 import { SettingSection } from "./SettingSection";
+import { SettingsDisclosure } from "./SettingsDisclosure";
 import {
   BooleanSetting,
   StringListSetting,
@@ -408,7 +409,7 @@ export const SettingsServicesPanel: React.FC = () => {
 
   const DLNASettingsForm: React.FC = () => {
     return (
-      <SettingSection headingID="settings">
+      <SettingSection>
         <StringSetting
           headingID="config.dlna.server_display_name"
           subHeading={intl.formatMessage(
@@ -479,36 +480,56 @@ export const SettingsServicesPanel: React.FC = () => {
       {renderTempEnableDialog()}
       {renderTempWhitelistDialog()}
 
-      <h4>DLNA</h4>
-
-      <Form.Group>
-        <h5>
-          {intl.formatMessage({ id: "status" }, { statusText: renderStatus() })}
-        </h5>
-      </Form.Group>
-
-      <SettingSection headingID="actions_name">
-        <Form.Group className="content">
-          {renderEnableButton()}
-          {renderTempCancelButton()}
+      <SettingsDisclosure
+        id="services-group-dlna"
+        remember
+        defaultOpen
+        title={intl.formatMessage({ id: "config.dlna.groups.status" })}
+        description={intl.formatMessage({
+          id: "config.dlna.groups.status_help",
+        })}
+      >
+        <Form.Group>
+          <h5>
+            {intl.formatMessage(
+              { id: "status" },
+              { statusText: renderStatus() }
+            )}
+          </h5>
         </Form.Group>
 
-        {renderAllowedIPs()}
-
-        <Form.Group className="content">
-          <h6>
-            {intl.formatMessage({ id: "config.dlna.recent_ip_addresses" })}
-          </h6>
-          <Form.Group>{renderRecentIPs()}</Form.Group>
-          <Form.Group>
-            <Button onClick={() => statusRefetch()}>
-              <FormattedMessage id="actions.refresh" />
-            </Button>
+        <SettingSection headingID="actions_name">
+          <Form.Group className="content">
+            {renderEnableButton()}
+            {renderTempCancelButton()}
           </Form.Group>
-        </Form.Group>
-      </SettingSection>
 
-      <DLNASettingsForm />
+          {renderAllowedIPs()}
+
+          <Form.Group className="content">
+            <h6>
+              {intl.formatMessage({ id: "config.dlna.recent_ip_addresses" })}
+            </h6>
+            <Form.Group>{renderRecentIPs()}</Form.Group>
+            <Form.Group>
+              <Button onClick={() => statusRefetch()}>
+                <FormattedMessage id="actions.refresh" />
+              </Button>
+            </Form.Group>
+          </Form.Group>
+        </SettingSection>
+      </SettingsDisclosure>
+
+      <SettingsDisclosure
+        id="services-group-dlna-settings"
+        remember
+        title={intl.formatMessage({ id: "config.dlna.groups.settings" })}
+        description={intl.formatMessage({
+          id: "config.dlna.groups.settings_help",
+        })}
+      >
+        <DLNASettingsForm />
+      </SettingsDisclosure>
     </div>
   );
 };

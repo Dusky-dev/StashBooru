@@ -20,6 +20,7 @@ import { SettingSection } from "./SettingSection";
 import { BooleanSetting, StringListSetting, StringSetting } from "./Inputs";
 import { useSettings } from "./context";
 import { StashBoxSetting } from "./StashBoxConfiguration";
+import { SettingsDisclosure } from "./SettingsDisclosure";
 import { faSyncAlt } from "@fortawesome/free-solid-svg-icons";
 import {
   AvailableScraperPackages,
@@ -344,6 +345,7 @@ const ScrapersSection: React.FC = () => {
 };
 
 export const SettingsScrapingPanel: React.FC = () => {
+  const intl = useIntl();
   const { general, scraping, loading, error, saveGeneral, saveScraping } =
     useSettings();
 
@@ -352,53 +354,71 @@ export const SettingsScrapingPanel: React.FC = () => {
 
   return (
     <>
-      <section className="setting-section" id="booru-sources">
-        <h1>Booru sources</h1>
-        <SourceSettings />
-      </section>
-      <StashBoxSetting
-        value={general.stashBoxes ?? []}
-        onChange={(v) => saveGeneral({ stashBoxes: v })}
-      />
-
-      <SettingSection headingID="config.general.scraping">
-        <StringSetting
-          id="scraperUserAgent"
-          headingID="config.general.scraper_user_agent"
-          subHeadingID="config.general.scraper_user_agent_desc"
-          value={scraping.scraperUserAgent ?? undefined}
-          onChange={(v) => saveScraping({ scraperUserAgent: v })}
+      <SettingsDisclosure
+        id="metadata-group-sources"
+        remember
+        title={intl.formatMessage({ id: "config.scraping.groups.sources" })}
+        description={intl.formatMessage({
+          id: "config.scraping.groups.sources_help",
+        })}
+      >
+        <section className="setting-section" id="booru-sources">
+          <h1>Booru sources</h1>
+          <SourceSettings />
+        </section>
+        <StashBoxSetting
+          value={general.stashBoxes ?? []}
+          onChange={(v) => saveGeneral({ stashBoxes: v })}
         />
+      </SettingsDisclosure>
 
-        <StringSetting
-          id="scraperCDPPath"
-          headingID="config.general.chrome_cdp_path"
-          subHeadingID="config.general.chrome_cdp_path_desc"
-          value={scraping.scraperCDPPath ?? undefined}
-          onChange={(v) => saveScraping({ scraperCDPPath: v })}
-        />
+      <SettingsDisclosure
+        id="metadata-group-scrapers"
+        remember
+        title={intl.formatMessage({ id: "config.scraping.groups.scrapers" })}
+        description={intl.formatMessage({
+          id: "config.scraping.groups.scrapers_help",
+        })}
+      >
+        <SettingSection headingID="config.general.scraping">
+          <StringSetting
+            id="scraperUserAgent"
+            headingID="config.general.scraper_user_agent"
+            subHeadingID="config.general.scraper_user_agent_desc"
+            value={scraping.scraperUserAgent ?? undefined}
+            onChange={(v) => saveScraping({ scraperUserAgent: v })}
+          />
 
-        <BooleanSetting
-          id="scraper-cert-check"
-          headingID="config.general.check_for_insecure_certificates"
-          subHeadingID="config.general.check_for_insecure_certificates_desc"
-          checked={scraping.scraperCertCheck ?? undefined}
-          onChange={(v) => saveScraping({ scraperCertCheck: v })}
-        />
+          <StringSetting
+            id="scraperCDPPath"
+            headingID="config.general.chrome_cdp_path"
+            subHeadingID="config.general.chrome_cdp_path_desc"
+            value={scraping.scraperCDPPath ?? undefined}
+            onChange={(v) => saveScraping({ scraperCDPPath: v })}
+          />
 
-        <StringListSetting
-          id="excluded-tag-patterns"
-          headingID="config.scraping.excluded_tag_patterns_head"
-          subHeadingID="config.scraping.excluded_tag_patterns_desc"
-          value={scraping.excludeTagPatterns ?? undefined}
-          onChange={(v) => saveScraping({ excludeTagPatterns: v })}
-        />
-      </SettingSection>
+          <BooleanSetting
+            id="scraper-cert-check"
+            headingID="config.general.check_for_insecure_certificates"
+            subHeadingID="config.general.check_for_insecure_certificates_desc"
+            checked={scraping.scraperCertCheck ?? undefined}
+            onChange={(v) => saveScraping({ scraperCertCheck: v })}
+          />
 
-      <InstalledScraperPackages />
-      <AvailableScraperPackages />
+          <StringListSetting
+            id="excluded-tag-patterns"
+            headingID="config.scraping.excluded_tag_patterns_head"
+            subHeadingID="config.scraping.excluded_tag_patterns_desc"
+            value={scraping.excludeTagPatterns ?? undefined}
+            onChange={(v) => saveScraping({ excludeTagPatterns: v })}
+          />
+        </SettingSection>
 
-      <ScrapersSection />
+        <InstalledScraperPackages />
+        <AvailableScraperPackages />
+
+        <ScrapersSection />
+      </SettingsDisclosure>
     </>
   );
 };

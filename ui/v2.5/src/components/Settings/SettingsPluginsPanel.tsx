@@ -13,6 +13,7 @@ import { CollapseButton } from "../Shared/CollapseButton";
 import { Icon } from "../Shared/Icon";
 import { LoadingIndicator } from "../Shared/LoadingIndicator";
 import { SettingSection } from "./SettingSection";
+import { SettingsDisclosure } from "./SettingsDisclosure";
 import {
   BooleanSetting,
   NumberSetting,
@@ -257,27 +258,45 @@ export const SettingsPluginsPanel: React.FC = () => {
 
   return (
     <>
-      <InstalledPluginPackages />
-      <AvailablePluginPackages />
-
-      <SettingSection headingID="config.categories.plugins">
-        <div className="content d-flex justify-content-between">
-          <ClearableInput
-            placeholder={`${intl.formatMessage({ id: "filter" })}...`}
-            value={filter}
-            setValue={(v) => setFilter(v)}
-          />
-          <Button onClick={() => onReloadPlugins()}>
-            <span className="fa-icon">
-              <Icon icon={faSyncAlt} />
-            </span>
-            <span>
-              <FormattedMessage id="actions.reload_plugins" />
-            </span>
-          </Button>
-        </div>
-        {pluginElements}
-      </SettingSection>
+      <SettingsDisclosure
+        id="plugins-group-installed"
+        remember
+        defaultOpen
+        title={intl.formatMessage({ id: "config.plugins.groups.installed" })}
+        description={intl.formatMessage({
+          id: "config.plugins.groups.installed_help",
+        })}
+      >
+        <SettingSection>
+          <div className="content d-flex justify-content-between">
+            <ClearableInput
+              placeholder={`${intl.formatMessage({ id: "filter" })}...`}
+              value={filter}
+              setValue={(v) => setFilter(v)}
+            />
+            <Button onClick={() => onReloadPlugins()}>
+              <span className="fa-icon">
+                <Icon icon={faSyncAlt} />
+              </span>
+              <span>
+                <FormattedMessage id="actions.reload_plugins" />
+              </span>
+            </Button>
+          </div>
+          {pluginElements}
+        </SettingSection>
+      </SettingsDisclosure>
+      <SettingsDisclosure
+        id="plugins-group-packages"
+        remember
+        title={intl.formatMessage({ id: "config.plugins.groups.packages" })}
+        description={intl.formatMessage({
+          id: "config.plugins.groups.packages_help",
+        })}
+      >
+        <InstalledPluginPackages />
+        <AvailablePluginPackages />
+      </SettingsDisclosure>
     </>
   );
 };

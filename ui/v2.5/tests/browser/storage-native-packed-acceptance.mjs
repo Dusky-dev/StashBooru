@@ -431,9 +431,12 @@ try {
   await verifyBrowserFallback(url, members[0], stackID);
   // Exercise persisted non-activating trial selection through the real
   // Settings interface; normal media routes must still return originals.
-  await page.goto(url + "/settings?tab=library", {
-    waitUntil: "domcontentloaded",
-  });
+  await page.goto(
+    url + "/settings?tab=library#association-inheritance-settings",
+    {
+      waitUntil: "domcontentloaded",
+    }
+  );
   // Experimental is listed only in Advanced mode, which the server persists.
   const advanced = page.locator("#advanced-settings");
   await page.locator("#inherit-character-ancestors").waitFor();

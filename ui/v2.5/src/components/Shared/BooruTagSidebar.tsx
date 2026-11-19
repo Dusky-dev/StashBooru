@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { FormattedMessage } from "react-intl";
 import { Link } from "react-router-dom";
 import * as GQL from "src/core/generated-graphql";
 import { CopyrightGrid } from "src/components/Copyrights/CopyrightGrid";
@@ -190,6 +191,14 @@ function associationName(
   return names.get(`${type}:${id}`) ?? `${type} #${id}`;
 }
 
+const knownOriginKinds = new Set([
+  "direct",
+  "ancestor",
+  "profile_tag",
+  "ancestor_profile_tag",
+  "tag_ancestor",
+]);
+
 const AssociationSources: React.FC<{
   provenance: GQL.MediaAssociationProvenance[];
   names: Map<string, string>;
@@ -208,7 +217,12 @@ const AssociationSources: React.FC<{
 
   return (
     <details className="booru-association-sources mt-2">
-      <summary>Association sources ({provenance.length})</summary>
+      <summary>
+        <FormattedMessage
+          id="association_sources.title"
+          values={{ count: provenance.length }}
+        />
+      </summary>
       <ul className="small mb-0 pl-3">
         {provenance.map((association) => (
           <li
@@ -225,13 +239,30 @@ const AssociationSources: React.FC<{
                 <li
                   key={`${origin.kind}:${origin.source_type}:${origin.source_id}:${origin.via_id ?? 0}:${index}`}
                 >
-                  {origin.kind.replaceAll("_", " ")}:{" "}
-                  {entityLink(origin.source_type, origin.source_id)}
-                  {origin.via_type && origin.via_id ? (
-                    <> via {entityLink(origin.via_type, origin.via_id)}</>
-                  ) : null}
-                  {origin.source_tag_id && origin.kind === "tag_ancestor" ? (
-                    <> from Tag #{origin.source_tag_id}</>
+                  <FormattedMessage
+                    id={`association_sources.kind.${knownOriginKinds.has(origin.kind) ? origin.kind : "other"}`}
+                    values={{
+                      kind: origin.kind.replaceAll("_", " "),
+                      source: entityLink(origin.source_type, origin.source_id),
+                      via: entityLink(origin.via_type, origin.via_id),
+                    }}
+                  />
+                  {origin.kind !== "ancestor_profile_tag" &&
+                  origin.via_type &&
+                  origin.via_id &&
+                  !(
+                    origin.via_type === origin.source_type &&
+                    origin.via_id === origin.source_id
+                  ) ? (
+                    <>
+                      {" "}
+                      <FormattedMessage
+                        id="association_sources.via"
+                        values={{
+                          via: entityLink(origin.via_type, origin.via_id),
+                        }}
+                      />
+                    </>
                   ) : null}
                 </li>
               ))}

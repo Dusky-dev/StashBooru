@@ -180,11 +180,6 @@ export const MediaUpscalingSettings: React.FC = () => {
 
   return (
     <div className="setting-section" id="media-upscaling">
-      <h1>Image upscaling</h1>
-      <div className="sub-heading">
-        Configure image upscaling defaults and models.
-      </div>
-
       {error && <Alert variant="danger">{error}</Alert>}
       {loading && <Spinner animation="border" role="status" />}
       {!loading && (
