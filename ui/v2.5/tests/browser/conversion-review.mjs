@@ -231,6 +231,14 @@ try {
             total: 2,
             items: [],
           };
+          if (body.action === "start" && body.targets.length === 2)
+            job.items = [
+              {
+                target: body.targets[0],
+                status: "skipped",
+                reason: "output was not smaller; source kept",
+              },
+            ];
           if (body.action === "estimate")
             job.estimate = {
               total: 200,
@@ -865,7 +873,13 @@ try {
       { kind: "image", id: 1 },
       { kind: "scene", id: 1 },
     ]);
-    await includeConverted.uncheck();
+    await dialog
+      .getByText("Image 1 skipped: output was not smaller; source kept", {
+        exact: true,
+      })
+      .waitFor();
+    // The choice applies to one run; it does not stay on for the next one.
+    assert.equal(await includeConverted.isChecked(), false);
     await dialog
       .locator("#converter-primary-action")
       .getByText("Revert", { exact: true })

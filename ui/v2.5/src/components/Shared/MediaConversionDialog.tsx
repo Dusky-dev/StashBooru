@@ -102,6 +102,7 @@ interface Job {
     trialID?: string;
     status?: string;
     error?: string;
+    reason?: string;
   }[];
 }
 interface State {
@@ -284,6 +285,9 @@ export const MediaConversionDialog: React.FC<{
     chosenFormats.every((f) => f.available && encodersFor(f).length > 0) &&
     !gpuDecodeSpeedConflict;
   const targetsJSON = JSON.stringify(targets);
+  // Converting again is a one-off choice for the current selection.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset when the selection changes.
+  useEffect(() => setIncludeConverted(false), [targetsJSON]);
   const restoreLookupKey = `${targetsJSON}:${jobStatusKey}`;
   const defaultsJSON = JSON.stringify([
     state?.config.formatDefaults,
@@ -679,7 +683,8 @@ export const MediaConversionDialog: React.FC<{
                   !statusReady ||
                   (restoreAction ? !allRestorable : !canConvert)
                 }
-                onClick={() =>
+                onClick={() => {
+                  setIncludeConverted(false);
                   void action(
                     restoreAction
                       ? { action: "restore-targets", targets }
@@ -688,8 +693,8 @@ export const MediaConversionDialog: React.FC<{
                           action: "start",
                           targets: remainingTargets,
                         }
-                  )
-                }
+                  );
+                }}
               >
                 {!statusReady
                   ? "Checking conversion state…"
@@ -1124,6 +1129,26 @@ export const MediaConversionDialog: React.FC<{
                   {bytes(state.batchStats.savedBytes)} saved,{" "}
                   {state.batchStats.largerFiles} larger outputs.
                 </p>
+                {state.job.items.some((item) => item.reason) && (
+                  <ul className="small text-muted mb-2">
+                    {state.job.items
+                      .filter((item) => item.reason)
+                      .map((item) => (
+                        <li key={targetKey(item.target)}>
+                          {intl.formatMessage(
+                            {
+                              id: "media_conversion.skipped_reason",
+                              defaultMessage: "{target} skipped: {reason}",
+                            },
+                            {
+                              target: `${item.target.kind === "scene" ? "Video" : "Image"} ${item.target.id}`,
+                              reason: item.reason,
+                            }
+                          )}
+                        </li>
+                      ))}
+                  </ul>
+                )}
               </div>
             )}
             {state && state.latestStats.converted > 0 && !running && (

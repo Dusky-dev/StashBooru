@@ -2041,7 +2041,8 @@
     "effort_auto_summary": "effort auto",
     "convert_again": "Convert again",
     "include_converted": "Also convert files that were converted before",
-    "include_converted_help": "The current converted file is encoded again. It is kept unless the new file is smaller. Revert steps back one conversion at a time."
+    "include_converted_help": "The current converted file is encoded again. It is kept unless the new file is smaller. Revert steps back one conversion at a time.",
+    "skipped_reason": "{target} skipped: {reason}"
   },
   "association_sources": {
     "title": "Why these are attached ({count})",

@@ -482,6 +482,10 @@ func TestConvertAgainThenRestoreChainReturnsOriginal(t *testing.T) {
 	sourcePath := repo.f.Base().Path
 	first := convertFixture(t, s, client)
 	firstPath := repo.f.Base().Path
+	// A restart between conversions must not disturb the chain.
+	if err := s.Recover(context.Background()); err != nil {
+		t.Fatal(err)
+	}
 	// Converting again must produce a smaller file to pass the savings rule.
 	client.URL = fixtureWorker(t, "small", false).URL
 	second := convertFixture(t, s, client)
@@ -491,6 +495,9 @@ func TestConvertAgainThenRestoreChainReturnsOriginal(t *testing.T) {
 	}
 	if strings.Count(filepath.Base(secondPath), ".converted-") != 1 {
 		t.Fatalf("converted suffixes stacked: %q", secondPath)
+	}
+	if err := s.Recover(context.Background()); err != nil {
+		t.Fatal(err)
 	}
 	if err := s.Restore(context.Background(), second.ID); err != nil {
 		t.Fatal(err)

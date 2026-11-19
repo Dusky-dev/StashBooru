@@ -99,6 +99,8 @@ type conversionItem struct {
 	Error    string           `json:"error,omitempty"`
 	TrialID  string           `json:"trialID,omitempty"`
 	Status   string           `json:"status,omitempty"`
+	// Reason explains a skipped item, such as an output that was not smaller.
+	Reason string `json:"reason,omitempty"`
 }
 type conversionJob struct {
 	JobID       int                           `json:"jobID"`
@@ -629,6 +631,9 @@ func handleMediaConversionPost(w http.ResponseWriter, r *http.Request) {
 					if record != nil {
 						item.RecordID = record.ID
 						item.Status = record.Status
+						if record.Status == "skipped" {
+							item.Reason = record.Error
+						}
 						if record.Status == "complete" {
 							converted = append(converted, id)
 						}
