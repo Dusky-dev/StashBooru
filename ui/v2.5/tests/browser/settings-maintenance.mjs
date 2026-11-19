@@ -600,6 +600,7 @@ try {
       ["system-group-storage", false],
       ["system-group-video", false],
       ["system-group-performance", false],
+      ["system-group-security", false],
     ]);
     // Within these groups a description sits behind a help button beside its
     // heading; consequence warnings (restarts, moving data) stay visible.
