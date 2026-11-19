@@ -32,6 +32,9 @@ type booruBrowserRoutes struct {
 	uiConfig     func() map[string]interface{}
 	importFile   func(context.Context, string, booru.Source, booru.Post, bool, *job.Progress) (booruLibraryResult, error)
 	autoTagImage func(context.Context, int, bool, bool) error
+	// iconDir caches site icons; fetchIcon replaces the network in tests.
+	iconDir   string
+	fetchIcon func(context.Context, booru.Source) ([]byte, string, error)
 }
 
 func (rs booruBrowserRoutes) sources() ([]booru.Source, error) {

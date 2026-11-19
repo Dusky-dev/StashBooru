@@ -109,3 +109,11 @@ a.identity-site-link:focus-visible {
   color: inherit;
   text-decoration: none;
 }
+
+.site-icon {
+  border-radius: 2px;
+  flex: 0 0 auto;
+  height: 1rem;
+  object-fit: contain;
+  width: 1rem;
+}

@@ -1,4 +1,5 @@
 import { faGlobe } from "@fortawesome/free-solid-svg-icons";
+import { useState } from "react";
 import { useIntl } from "react-intl";
 import { Link } from "react-router-dom";
 import { Icon } from "../Shared/Icon";
@@ -11,10 +12,27 @@ export function booruSearchPath(
   return `/booru?${params}`;
 }
 
+/** The site's own icon, served through this server; a globe if it has none. */
+export function SiteIcon({ sourceID }: { sourceID: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed || !sourceID) return <Icon icon={faGlobe} />;
+  return (
+    <img
+      className="site-icon"
+      src={`booru-browser/icon?${new URLSearchParams({ source: sourceID })}`}
+      alt=""
+      width={16}
+      height={16}
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 /**
  * The site a connected identity came from. Tag identities open the Booru
- * browser on that site, searching the connected tag. A generic icon is used
- * so no third-party favicon is requested.
+ * browser on that site, searching the connected tag. The icon is fetched by
+ * the server from the configured site, never directly by the browser.
  */
 export function IdentitySiteLink({
   row,
@@ -27,7 +45,7 @@ export function IdentitySiteLink({
   const intl = useIntl();
   const content = (
     <>
-      <Icon icon={faGlobe} />
+      <SiteIcon sourceID={row.sourceID} />
       <span>{row.sourceName}</span>
     </>
   );
