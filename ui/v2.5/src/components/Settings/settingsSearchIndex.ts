@@ -236,19 +236,19 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
     keywords: "script extension",
   },
   {
-    tab: "security",
+    tab: "system",
     label: "Authentication credentials",
     anchor: "authentication-settings",
     keywords: "login username password",
   },
   {
-    tab: "security",
+    tab: "system",
     label: "API key",
     anchor: "apikey",
     keywords: "token authorization",
   },
   {
-    tab: "security",
+    tab: "system",
     label: "Session expiry",
     anchor: "maxSessionAge",
     keywords: "timeout",

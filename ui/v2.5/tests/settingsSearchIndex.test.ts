@@ -16,7 +16,7 @@ test("Settings search finds options across tabs and their synonyms", () => {
   );
   assert.ok(
     searchSettings("api key").some(
-      (entry) => entry.tab === "security" && entry.anchor === "apikey"
+      (entry) => entry.tab === "system" && entry.anchor === "apikey"
     )
   );
   assert.ok(
