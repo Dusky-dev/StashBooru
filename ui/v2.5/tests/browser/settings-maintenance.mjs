@@ -1314,6 +1314,40 @@ try {
     await page.waitForURL(/tab=library/);
     await page.locator("#inherit-character-ancestors").waitFor();
 
+    // A bookmark into a group that was never opened must still reveal it.
+    const savedGroups = await page.evaluate(() => {
+      const saved = {};
+      for (const key of Object.keys(localStorage))
+        if (key.startsWith("settings-group-open:")) {
+          saved[key] = localStorage.getItem(key);
+          localStorage.removeItem(key);
+        }
+      return saved;
+    });
+    await page.goto(`${baseURL}/settings?tab=processing#media-upscaling`);
+    await page.locator("#upscaling-default-scale").waitFor();
+    assert.equal(
+      await page.locator("#processing-group-worker").evaluate((d) => d.open),
+      false,
+      "groups the bookmark does not target stay closed"
+    );
+    // Search results open their target group too.
+    await page
+      .getByRole("searchbox", { name: "Find a setting" })
+      .fill("Plugins and package");
+    await page
+      .locator("#settings-search-results a")
+      .filter({ hasText: "Plugins and package manager" })
+      .click();
+    await page.waitForURL(/tab=plugins.*#plugins-group-installed$/);
+    await page.waitForFunction(
+      () => document.querySelector("#plugins-group-installed")?.open
+    );
+    await page.getByRole("searchbox", { name: "Find a setting" }).fill("");
+    await page.evaluate((saved) => {
+      for (const [key, value] of Object.entries(saved))
+        localStorage.setItem(key, value);
+    }, savedGroups);
     failLocal = true;
     await page.goto(`${baseURL}/settings?tab=processing#media-upscaling`);
     await page

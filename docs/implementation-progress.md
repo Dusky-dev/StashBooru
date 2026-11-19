@@ -13,10 +13,12 @@
   levels, newest line last with follow/jump-to-latest and a prompt line; motion
   respects reduced-motion.
 - Checks: `pnpm run validate` (135 tests, lint, tsc, format); browser
-  `settings-maintenance` (extended for groups and the console) and
-  `first-use-notes`, desktop+mobile.
-- Not run locally: real-binary suites (`plugin-compatibility`,
-  `storage-native-packed-acceptance`, association suites); left to CI.
+  `settings-maintenance` (extended: groups, a fresh-storage bookmark, a search
+  result opening its group, the console) and `first-use-notes`, desktop+mobile;
+  real-binary `plugin-compatibility`; real-binary screenshots of Metadata
+  Providers and Services (desktop+mobile).
+- Not run: `storage-native-packed-acceptance` (one bookmark updated) and the
+  association suites (need a prepared server; selectors unchanged).
 - Next: convert-again for already converted media; site icon on connected
   identities.
 

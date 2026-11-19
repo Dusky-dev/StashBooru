@@ -244,9 +244,11 @@ const AssociationSources: React.FC<{
                     values={{
                       kind: origin.kind.replaceAll("_", " "),
                       source: entityLink(origin.source_type, origin.source_id),
+                      via: entityLink(origin.via_type, origin.via_id),
                     }}
                   />
-                  {origin.via_type &&
+                  {origin.kind !== "ancestor_profile_tag" &&
+                  origin.via_type &&
                   origin.via_id &&
                   !(
                     origin.via_type === origin.source_type &&

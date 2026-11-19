@@ -2046,7 +2046,7 @@
       "direct": "Added directly",
       "ancestor": "Parent of {source}",
       "profile_tag": "Profile Tag of {source}",
-      "ancestor_profile_tag": "Profile Tag of {source}, a parent",
+      "ancestor_profile_tag": "Profile Tag of {via}, a parent of {source}",
       "tag_ancestor": "Parent Tag, from {source}",
       "other": "{kind}: {source}"
     },
