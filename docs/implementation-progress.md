@@ -1,3 +1,22 @@
+## StashBooru 1.1.2: clearer Identities page — 2026-11-19
+
+- Baseline: `develop` `cadcd4f` (#404, released as `stashbooru-v1.1.1`). Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Owner request: make Identities less confusing. Rows are headed by the site's
+  own name (no more "Waligner / Connected to Waligner") with site chip, state
+  (**Connected to …** / **Not connected**) and one **Connect**/**Change**
+  button; the duplicate "Select" switch is a plain checkbox. Record type is a
+  segmented switcher; the scan has its own explained section with readable
+  status, and Clear unconnected names moved out of the "About" disclosure.
+  "Site name" replaces identifier/observation/provider wording; empty states
+  separate "nothing collected" from "no match". Decision panel: "Connect N site
+  names to an Artist", **Not this Artist** (was Different Artist). Page strings
+  now go through react-intl.
+- Checks: `tsc`, Biome, browser `identities` desktop+mobile (extended for row
+  headings, single action, placeholder), `git diff --check`.
+- Not verified: real provider data. Follow-up idea: default the list to
+  Not connected.
+
 ## StashBooru 1.1.1: Settings group descriptions, Security in System, plain log console — 2026-11-19
 
 - Baseline: `develop` `4fdc974` (#402, released as `stashbooru-v1.1.0`). Branch

@@ -76,6 +76,8 @@ through code or fixtures.
 - One JPEG XL and one PNG converter choice, still or animated (#394).
 - Artist/Copyright merge dialog like Characters/Tags; merged Tags reused by
   downloads ([#395](https://github.com/Dusky-dev/StashBooru/pull/395)).
+- Identities page: site names as row headings, one Connect/Change action,
+  scan section with plain status (1.1.2).
 - Parent Tags/Copyrights apply automatically (calculated; "Include parent
   Tags" is on by default). No separate Implies field (owner, 2026-11-18).
 - Implied Tags and Copyrights on Image and Video cards (#383); detail pages,

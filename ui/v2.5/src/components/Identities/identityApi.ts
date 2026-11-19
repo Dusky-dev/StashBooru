@@ -4,6 +4,12 @@ export const identityLabels = {
   character: "Character",
   copyright: "Copyright",
 };
+// Native message IDs carry the fork names (Artist, Character, Copyright).
+export const identityMessages = {
+  artist: { one: "studio", many: "studios" },
+  character: { one: "performer", many: "performers" },
+  copyright: { one: "copyright", many: "copyrights" },
+};
 export const identityPaths = {
   artist: "/studios",
   character: "/performers",

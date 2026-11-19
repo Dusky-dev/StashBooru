@@ -2045,7 +2045,66 @@
       "confirm": "Merge",
       "merging": "Merging…"
     },
-    "open_in_booru": "Search {target} on {source} in the Booru browser"
+    "open_in_booru": "Search {target} on {source} in the Booru browser",
+    "page": {
+      "intro": "Sites often name the same {kinds} differently, for example “waligner” on one site and “waligner_(artist)” on another. Connect each site name to one record in your library so searches, downloads and Following use it. Nothing is connected automatically: matching names are only suggestions.",
+      "kinds": "Artist, Character or Copyright",
+      "kind_switcher": "Record type",
+      "collect": {
+        "title": "Collect site names",
+        "help": "Site names are collected while you browse posts in the Booru browser. Scanning also reads your saved download records and cached Following posts. It makes no network requests and connects nothing.",
+        "scan": "Scan saved downloads",
+        "cancel": "Cancel scan",
+        "clear": "Clear unconnected {kind} names",
+        "clear_confirm": "Remove every unconnected {kind} site name from this list? Connected names and “Not this” choices are kept. Browsing or scanning again brings them back.",
+        "cleared": "Removed {count, plural, one {# unconnected site name} other {# unconnected site names}}.",
+        "status": {
+          "queued": "Scan waiting to start…",
+          "running": "Scanning… {scanned} records read, {found} site names found, {skipped} skipped.",
+          "completed": "Last scan finished: {scanned} records read, {found} site names found, {skipped} skipped.",
+          "cancelled": "Scan cancelled after {scanned} records. Site names found so far are kept.",
+          "failed": "Scan failed after {scanned} records."
+        }
+      },
+      "filter": {
+        "label": "Search site names",
+        "placeholder": "Search site names",
+        "state": "Connection",
+        "all": "All site names",
+        "unconnected": "Not connected",
+        "connected": "Connected",
+        "submit": "Search",
+        "show_all": "Show all {kinds}"
+      },
+      "list_label": "Site names",
+      "loading": "Loading site names…",
+      "empty": "No {kind} site names yet. Browse posts in the Booru browser, or scan saved downloads above.",
+      "empty_filtered": "No site names match this search.",
+      "next_page": "Next page",
+      "row": {
+        "select": "Select {name} on {site}",
+        "unnamed_account": "Unnamed artist account",
+        "connected": "Connected to {name}",
+        "unconnected": "Not connected",
+        "seen_with": "Seen with: {names}",
+        "form": "{site} · {form}",
+        "label": "Site label: {label}",
+        "connect": "Connect",
+        "change": "Change"
+      },
+      "panel": {
+        "label": "Connect site names",
+        "placeholder": "Choose Connect on a site name to pick or create the {kind} it belongs to. Tick several names first to connect them all to the same {kind}.",
+        "clear_selection": "Clear selection",
+        "select_same": "Also select other sites with this name"
+      },
+      "saved": "Decision saved."
+    },
+    "resolution": {
+      "heading": "Connect {count, plural, one {# site name} other {# site names}} to {kind, select, artist {an Artist} character {a Character} other {a Copyright}}",
+      "reject": "Not this {kind}",
+      "reject_help": "Hides this suggestion for the selected site name. Show rejected matches to undo."
+    }
   },
   "media_card": {
     "implied": "Implied"

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Form } from "react-bootstrap";
+import { useIntl } from "react-intl";
 import { Link } from "react-router-dom";
 import {
   type IdentityCandidate,
@@ -8,6 +9,7 @@ import {
   type ProviderIdentity,
   IdentityRequestError,
   identityLabels,
+  identityMessages,
   identityName,
   identityPaths,
   identityRequest,
@@ -26,6 +28,7 @@ export function IdentityResolution({
   onSaved: (rows: ProviderIdentity[]) => void;
   onBusyChange?: (busy: boolean) => void;
 }) {
+  const intl = useIntl();
   const [chosen, setChosen] = useState(selected);
   const anchor = chosen[0];
   const anchorID = anchor.id;
@@ -175,8 +178,10 @@ export function IdentityResolution({
   return (
     <section className="identity-resolution" aria-label="Connection decision">
       <h4>
-        Connect {chosen.length} {identityLabels[kind]} identifier
-        {chosen.length === 1 ? "" : "s"}
+        {intl.formatMessage(
+          { id: "identity_sources.resolution.heading" },
+          { count: chosen.length, kind }
+        )}
       </h4>
       <ul className="identity-targets">
         {chosen.map((row) => (
@@ -215,8 +220,8 @@ export function IdentityResolution({
         </Button>
       )}
       <fieldset disabled={busy || needsReload}>
-        <div className="identity-toolbar mb-3">
-          {chosen.some((row) => row.entityID) && (
+        {chosen.some((row) => row.entityID) && (
+          <div className="identity-toolbar mb-3">
             <Button
               variant="secondary"
               size="sm"
@@ -225,8 +230,8 @@ export function IdentityResolution({
             >
               Remove connection
             </Button>
-          )}
-        </div>
+          </div>
+        )}
         {entity ? (
           <>
             {chosen.some(
@@ -309,10 +314,20 @@ export function IdentityResolution({
                         <Button
                           variant="secondary"
                           size="sm"
+                          title={intl.formatMessage({
+                            id: "identity_sources.resolution.reject_help",
+                          })}
                           disabled={busy || needsReload}
                           onClick={() => void mutate("reject", candidate.id)}
                         >
-                          Different {identityLabels[kind]}
+                          {intl.formatMessage(
+                            { id: "identity_sources.resolution.reject" },
+                            {
+                              kind: intl.formatMessage({
+                                id: identityMessages[kind].one,
+                              }),
+                            }
+                          )}
                         </Button>
                       )}
                     </>

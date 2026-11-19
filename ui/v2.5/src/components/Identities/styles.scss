@@ -34,7 +34,53 @@
   }
 
   .identity-row {
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
+
+    &.selected {
+      border-color: #137cbd;
+      box-shadow: inset 3px 0 0 #137cbd;
+    }
+
+    details {
+      font-size: 0.875rem;
+    }
+  }
+
+  // Checkbox, site name, site chip and the row's single action on one line.
+  .identity-row-head {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+
+    h5 {
+      margin: 0;
+    }
+
+    .form-check {
+      padding-left: 1.25rem;
+    }
+  }
+
+  .identity-intro {
+    max-width: 60rem;
+  }
+
+  .identity-collect {
+    border: 1px solid #5c7080;
+    border-radius: 0.25rem;
+    padding: 0.75rem 1rem;
+
+    h5 {
+      margin-bottom: 0.25rem;
+    }
+  }
+
+  .identity-placeholder {
+    border: 1px dashed #5c7080;
+    border-radius: 0.25rem;
+    padding: 1rem;
   }
 
   .identity-resolution {
