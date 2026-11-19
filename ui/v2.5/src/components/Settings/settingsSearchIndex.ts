@@ -131,7 +131,8 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
   },
   {
     tab: "library",
-    label: "Include parents (inherited Characters, Artists, Copyrights and Tags)",
+    label:
+      "Include parents (inherited Characters, Artists, Copyrights and Tags)",
     anchor: "association-inheritance-settings",
     keywords: "metadata artist link hierarchy inheritance parents",
   },

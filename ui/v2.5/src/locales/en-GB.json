@@ -278,7 +278,7 @@
         "galleries_from_folders": "Galleries from folders",
         "image_thumbnails": "Image thumbnails",
         "delete_original_files": "Delete original files",
-        "inherited_copyright_and_character_associations": "Inherited Copyright and Character associations",
+        "include_parents_inherited_characters_artists_copyrights_and_tags": "Include parents (inherited Characters, Artists, Copyrights and Tags)",
         "worker_connection": "Worker connection",
         "similarity_and_ai_tagging": "Similarity and AI tagging",
         "camie_tagger_model": "Camie Tagger model",
