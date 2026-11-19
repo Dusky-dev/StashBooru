@@ -31,15 +31,29 @@ The default is `Dusky-dev/StashBooru`. The update checker rejects prereleases,
 drafts and upstream tag names, compares numeric stable versions, and retains
 Stash's platform asset selection with a release-page fallback.
 
-## In-app introduction and acknowledgement
+## Versions, introduction and update notes
 
-The release-note catalogue includes a dated StashBooru getting-started entry
-before the retained upstream notes. Its date is an acknowledgement marker, not a
-new application version or Git release tag. Existing users see entries newer than
-the server's `ui.lastNoteSeen`; explicit Close records the newest shown date.
-Welcome displays the same introduction before Finish records the latest date and
-opens Library settings. Settings → About keeps the introduction available
-after acknowledgement alongside the original upstream version history.
+Owner decision (2026-11-19): every user-visible change is an update. Each such
+PR bumps `internal/build/stashbooru-version.txt` (minor for features, patch for
+fixes) and adds a newest-first entry under
+`ui/v2.5/src/docs/en/Changelog/StashBooru/` (a `X.Y.Z.md` file plus its line in
+`index.ts`). Settings → About lists every StashBooru version above the
+retained upstream history.
 
-Keep dated entries newest first and retain older dates/content. No separate
-onboarding flag or acknowledgement store is introduced.
+On start the app decides what to show from two UI settings:
+
+- **Nothing acknowledged yet** (`lastNoteSeen` and `lastVersionSeen` both
+  unset: a fresh install, including a pre-written configuration): the
+  StashBooru introduction, titled "Welcome to StashBooru". The setup wizard
+  shows the same introduction on Welcome, and Finish acknowledges it.
+- **Otherwise**: the changelog entries newer than `lastVersionSeen`, up to the
+  running version. A missing or unreadable `lastVersionSeen` counts as 1.0.0,
+  the version before notes were versioned.
+
+Get started / Close records `lastVersionSeen` (running version) and
+`lastNoteSeen` (newest dated note); Escape does not. If saving fails the dialog
+closes for that session and returns on the next load. Upstream release notes
+no longer open as a prompt; they stay in Settings → About.
+
+Publishing a stable release still needs `docs/releases/stashbooru-X.Y.Z.md`
+(the GitHub release text); copy it from the in-app entry.

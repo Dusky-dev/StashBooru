@@ -37,6 +37,15 @@ const browser = await chromium.launch({
 const shots = process.env.STASH_BROWSER_SCREENSHOTS;
 if (shots) fs.mkdirSync(shots, { recursive: true });
 const introduction = "StashBooru: getting started";
+const version = fs
+  .readFileSync(
+    path.resolve(
+      import.meta.dirname,
+      "../../../../internal/build/stashbooru-version.txt"
+    ),
+    "utf8"
+  )
+  .trim();
 const guide =
   "https://github.com/Dusky-dev/StashBooru/blob/develop/docs/features.md";
 try {
@@ -55,17 +64,16 @@ try {
         )
       );
     await page.goto(`${origin}${prefix}/notes`);
+    // A fresh install opens with the introduction only, not upstream notes.
     const dialog = page.getByRole("dialog");
-    await dialog
-      .getByRole("heading", { name: introduction, exact: true })
-      .waitFor();
+    await dialog.getByText("Welcome to StashBooru", { exact: true }).waitFor();
     await dialog
       .getByRole("link", { name: "StashBooru feature guide", exact: true })
       .waitFor();
-    assert.equal(await dialog.locator("h3").first().innerText(), introduction);
-    await dialog
-      .getByRole("heading", { name: "v0.29.0", exact: true })
-      .waitFor();
+    assert.equal(
+      await dialog.getByRole("heading", { name: "v0.29.0" }).count(),
+      0
+    );
     assert.equal(
       await dialog
         .getByRole("link", { name: "StashBooru feature guide", exact: true })
@@ -79,19 +87,19 @@ try {
       0,
       "Opening or Escape cannot acknowledge notes"
     );
-    await dialog
-      .getByRole("heading", { name: introduction, exact: true })
-      .scrollIntoViewIfNeeded();
     if (shots)
       await page.screenshot({
         path: path.join(shots, `first-use-notes-${name}.png`),
       });
-    await dialog.getByRole("button", { name: "Close", exact: true }).click();
+    await dialog
+      .getByRole("button", { name: "Get started", exact: true })
+      .click();
     await page
       .getByRole("heading", { name: "All notes acknowledged", exact: true })
       .waitFor();
     const acknowledged = (await writes()).at(-1).input;
     assert.equal(acknowledged.lastNoteSeen, 20261023);
+    assert.equal(acknowledged.lastVersionSeen, version);
     assert.equal(acknowledged.title, "Retained title");
     assert.equal(acknowledged.customCSS, "retained preference");
     await page.reload();
@@ -163,6 +171,7 @@ try {
       })
       .waitFor();
     assert.equal((await writes()).at(-1).input.lastNoteSeen, 20261023);
+    assert.equal((await writes()).at(-1).input.lastVersionSeen, version);
     assert.equal(
       await page.evaluate(() =>
         window.firstUseFixture.calls.some(
@@ -180,23 +189,37 @@ try {
     assert.deepEqual(errors, []);
     await context.close();
 
-    // Existing users who saw upstream notes receive only the newer fork entry.
+    // Existing users from before versioned notes see what changed since 1.0.0.
     const upgrade = await browser.newContext({ viewport });
-    await upgrade.addInitScript(() =>
-      localStorage.setItem(
-        "first-use-fixture-ui",
-        JSON.stringify({ title: "Existing title", lastNoteSeen: 20251026 })
-      )
-    );
+    // Seed once; a reload must keep what Close saved.
+    await upgrade.addInitScript(() => {
+      if (!localStorage.getItem("first-use-fixture-ui"))
+        localStorage.setItem(
+          "first-use-fixture-ui",
+          JSON.stringify({ title: "Existing title", lastNoteSeen: 20261023 })
+        );
+    });
     const upgradePage = await upgrade.newPage();
     await upgradePage.goto(`${origin}${prefix}/notes`);
-    await upgradePage
-      .getByRole("heading", { name: introduction, exact: true })
+    const changes = upgradePage.getByRole("dialog");
+    await changes
+      .getByText(`What's new in StashBooru ${version}`, { exact: true })
       .waitFor();
-    assert.equal(
-      await upgradePage.getByRole("dialog").locator("h3").count(),
-      1
-    );
+    await changes
+      .getByRole("heading", { name: new RegExp(`^StashBooru ${version}`) })
+      .waitFor();
+    if (shots)
+      await upgradePage.screenshot({
+        path: path.join(shots, `update-notes-${name}.png`),
+      });
+    await changes.getByRole("button", { name: "Close", exact: true }).click();
+    await upgradePage
+      .getByRole("heading", { name: "All notes acknowledged", exact: true })
+      .waitFor();
+    await upgradePage.reload();
+    await upgradePage
+      .getByRole("heading", { name: "All notes acknowledged", exact: true })
+      .waitFor();
     await upgrade.close();
     console.log(
       `${name}: fork-first notes, explicit acknowledgement/refresh, retained UI settings, upstream history, Welcome and Finish destination passed`

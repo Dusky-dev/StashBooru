@@ -2,6 +2,15 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { createServer } from "vite";
+const stashBooruVersion = fs
+  .readFileSync(
+    path.resolve(
+      import.meta.dirname,
+      "../../../../internal/build/stashbooru-version.txt"
+    ),
+    "utf8"
+  )
+  .trim();
 
 const engines = await import(process.env.PLAYWRIGHT_MODULE ?? "playwright");
 const root = path.resolve(import.meta.dirname, "../..");
@@ -1416,7 +1425,10 @@ try {
     });
     await chooseSection(page, "about");
     await page
-      .getByRole("heading", { name: "StashBooru 1.0.0", exact: true })
+      .getByRole("heading", {
+        name: `StashBooru ${stashBooruVersion}`,
+        exact: true,
+      })
       .waitFor();
     await page
       .getByText("You are running the latest stable StashBooru release.")
@@ -1471,7 +1483,10 @@ try {
         .screenshot({ path: `${shots}/logs-console-${name}.png` });
     if (shots) {
       await page
-        .getByRole("heading", { name: "StashBooru 1.0.0", exact: true })
+        .getByRole("heading", {
+          name: `StashBooru ${stashBooruVersion}`,
+          exact: true,
+        })
         .evaluate((element) => element.scrollIntoView({ block: "start" }));
       await page.screenshot({
         path: `${shots}/about-${name}.png`,
@@ -1502,10 +1517,10 @@ try {
         .count(),
       0
     );
-    await page.evaluate(() => {
+    await page.evaluate((version) => {
       window.settingsFixture.release.error = "";
-      window.settingsFixture.release.version = "1.0.0";
-    });
+      window.settingsFixture.release.version = version;
+    }, stashBooruVersion);
     await page.getByRole("button", { name: "Check for updates" }).click();
     await page
       .getByText("You are running the latest stable StashBooru release.")

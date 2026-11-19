@@ -58,9 +58,3 @@ export const releaseNotes: IReleaseNotes[] = [
     content: v0170,
   },
 ];
-
-export function unseenReleaseNotes(lastNoteSeen?: number | null) {
-  return releaseNotes.filter(
-    (note) => !lastNoteSeen || note.date > lastNoteSeen
-  );
-}

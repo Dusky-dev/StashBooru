@@ -9,6 +9,7 @@ import { Icon } from "../Shared/Icon";
 import { LoadingIndicator } from "../Shared/LoadingIndicator";
 import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { releaseNotes, stashBooruIntroduction } from "src/docs/en/ReleaseNotes";
+import { acknowledgement } from "../Dialogs/startupNotes";
 import { MarkdownPage } from "../Shared/MarkdownPage";
 import { ExternalLink } from "../Shared/ExternalLink";
 
@@ -42,7 +43,11 @@ const SuccessStep: React.FC<{
         variables: {
           input: {
             ...configuration?.ui,
-            lastNoteSeen: releaseNotes[0].date,
+            // The introduction was shown here; later updates show their notes.
+            ...acknowledgement(
+              import.meta.env.VITE_APP_STASHBOORU_VERSION,
+              releaseNotes[0].date
+            ),
           },
         },
       });

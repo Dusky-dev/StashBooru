@@ -1,5 +1,6 @@
 import React from "react";
 import { stashBooruIntroduction } from "src/docs/en/ReleaseNotes";
+import { stashBooruChangelog } from "src/docs/en/Changelog/StashBooru";
 import { useChangelogStorage } from "src/hooks/LocalForage";
 import Version from "./Version";
 import V010 from "src/docs/en/Changelog/v010.md";
@@ -277,6 +278,21 @@ const Changelog: React.FC = () => {
         <h2>{stashBooruIntroduction.version}</h2>
         <MarkdownPage page={stashBooruIntroduction.content} />
       </section>
+      {stashBooruChangelog.map((entry, index) => (
+        <Version
+          key={`stashbooru-${entry.version}`}
+          version={`StashBooru ${entry.version}`}
+          date={entry.date}
+          openState={openState}
+          setOpenState={setVersionOpenState}
+          defaultOpen={index === 0}
+        >
+          <MarkdownPage page={entry.content} />
+        </Version>
+      ))}
+      <h2 className="mt-4 mb-3">
+        <FormattedMessage id="config.changelog.upstream_heading" />
+      </h2>
       {releases.map((r) => (
         <Version
           key={r.version}

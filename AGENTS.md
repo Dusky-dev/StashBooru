@@ -46,6 +46,10 @@ asks for a new feature:
 - `docs/CONTRIBUTING.md` and `docs/AI_POLICY.md` contain inherited upstream
   policy. The owner's explicit authorization above governs agent work in this
   fork; it does not authorize contributions to `stashapp/stash` or other repos.
+- Every user-visible PR bumps `internal/build/stashbooru-version.txt` (minor
+  for features, patch for fixes) and adds a short entry to the in-app
+  changelog in `ui/v2.5/src/docs/en/Changelog/StashBooru/`; the app shows it
+  once after the update. See `docs/releases.md`.
 - Use `.github/pull_request_template.md`. An owner-requested fix can identify
   the request and related PR instead of inventing an issue or claiming human
   authorship/manual testing. Keep each PR to one coherent outcome, but group

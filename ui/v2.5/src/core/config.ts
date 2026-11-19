@@ -130,6 +130,8 @@ export interface IUIConfig {
   imageWallOptions?: ImageWallOptions;
 
   lastNoteSeen?: number;
+  /** StashBooru version whose update notes were last acknowledged. */
+  lastVersionSeen?: string;
 
   vrTag?: string;
 
