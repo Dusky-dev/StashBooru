@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useOrganizedEnabled } from "src/hooks/Config";
 import {
   Button,
   ButtonGroup,
@@ -63,6 +64,7 @@ function getGroupTotalSize(group: GQL.SlimSceneDataFragment[]) {
 
 export const SceneDuplicateChecker: React.FC = () => {
   const intl = useIntl();
+  const organizedEnabled = useOrganizedEnabled();
   const history = useHistory();
   const query = new URLSearchParams(history.location.search);
   const currentPage = Number.parseInt(query.get("page") ?? "1", 10);
@@ -543,7 +545,7 @@ export const SceneDuplicateChecker: React.FC = () => {
   }
 
   function maybeRenderOrganized(scene: GQL.SlimSceneDataFragment) {
-    if (scene.organized) {
+    if (organizedEnabled && scene.organized) {
       return (
         <div>
           <Button className="minimal">
@@ -563,7 +565,7 @@ export const SceneDuplicateChecker: React.FC = () => {
       scene?.o_counter ||
       scene.galleries.length > 0 ||
       scene.files.length > 1 ||
-      scene.organized
+      (organizedEnabled && scene.organized)
     ) {
       return (
         <ButtonGroup className="flex-wrap">

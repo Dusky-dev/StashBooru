@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useOrganizedEnabled } from "src/hooks/Config";
 import { Button, Form, Table } from "react-bootstrap";
 import { countParserAssociationReplacements } from "./parserReviewSafety";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -39,6 +40,7 @@ export const SceneFilenameParser: React.FC<{
   onApplied?: () => Promise<unknown>;
 }> = ({ onApplied }) => {
   const intl = useIntl();
+  const organizedEnabled = useOrganizedEnabled();
   const Toast = useToast();
   const [parserResult, setParserResult] = useState<SceneParserResult[]>([]);
   const [parserInput, setParserInput] =
@@ -128,7 +130,8 @@ export const SceneFilenameParser: React.FC<{
       ignoreWords: parserInput.ignoreWords,
       whitespaceCharacters: parserInput.whitespaceCharacters,
       capitalizeTitle: parserInput.capitalizeTitle,
-      ignoreOrganized: parserInput.ignoreOrganized,
+      // Organized media are only skipped while the flag is in use.
+      ignoreOrganized: organizedEnabled && parserInput.ignoreOrganized,
     };
 
     queryParseSceneFilenames(parserFilter, parserInputData)
@@ -141,7 +144,7 @@ export const SceneFilenameParser: React.FC<{
       })
       .catch((err) => Toast.error(err))
       .finally(() => setIsLoading(false));
-  }, [parserInput, parseResults, Toast]);
+  }, [parserInput, parseResults, Toast, organizedEnabled]);
 
   useEffect(() => {
     // only refresh if parserInput actually changed

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useOrganizedEnabled } from "src/hooks/Config";
 import { Form } from "react-bootstrap";
 import { useIntl } from "react-intl";
 import { useBulkSceneUpdate } from "src/core/StashService";
@@ -41,6 +42,7 @@ export const EditScenesDialog: React.FC<IListOperationProps> = (
   props: IListOperationProps
 ) => {
   const intl = useIntl();
+  const organizedEnabled = useOrganizedEnabled();
   const Toast = useToast();
 
   const [updateInput, setUpdateInput] = useState<GQL.BulkSceneUpdateInput>({
@@ -294,13 +296,15 @@ export const EditScenesDialog: React.FC<IListOperationProps> = (
             />
           </BulkUpdateFormGroup>
 
-          <Form.Group controlId="organized">
-            <IndeterminateCheckbox
-              label={intl.formatMessage({ id: "organized" })}
-              setChecked={(checked) => setUpdateField({ organized: checked })}
-              checked={updateInput.organized ?? undefined}
-            />
-          </Form.Group>
+          {organizedEnabled && (
+            <Form.Group controlId="organized">
+              <IndeterminateCheckbox
+                label={intl.formatMessage({ id: "organized" })}
+                setChecked={(checked) => setUpdateField({ organized: checked })}
+                checked={updateInput.organized ?? undefined}
+              />
+            </Form.Group>
+          )}
         </Form>
       </ModalComponent>
     );

@@ -1,4 +1,5 @@
 import React from "react";
+import { useOrganizedEnabled } from "src/hooks/Config";
 import { Col, Form, Row } from "react-bootstrap";
 import * as GQL from "src/core/generated-graphql";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -24,6 +25,7 @@ export const OptionsEditor: React.FC<IOptionsEditor> = ({
   defaultOptions,
 }) => {
   const intl = useIntl();
+  const organizedEnabled = useOrganizedEnabled();
 
   function setOptions(v: Partial<GQL.IdentifyMetadataOptionsInput>) {
     setOptionsState({ ...options, ...v });
@@ -187,22 +189,24 @@ export const OptionsEditor: React.FC<IOptionsEditor> = ({
           defaultValue={defaultOptions?.setCoverImage ?? undefined}
           {...checkboxProps}
         />
-        <ThreeStateBoolean
-          id="set-organized"
-          value={
-            options.setOrganized === null ? undefined : options.setOrganized
-          }
-          setValue={(v) =>
-            setOptions({
-              setOrganized: v,
-            })
-          }
-          label={intl.formatMessage({
-            id: "config.tasks.identify.set_organized",
-          })}
-          defaultValue={defaultOptions?.setOrganized ?? undefined}
-          {...checkboxProps}
-        />
+        {organizedEnabled && (
+          <ThreeStateBoolean
+            id="set-organized"
+            value={
+              options.setOrganized === null ? undefined : options.setOrganized
+            }
+            setValue={(v) =>
+              setOptions({
+                setOrganized: v,
+              })
+            }
+            label={intl.formatMessage({
+              id: "config.tasks.identify.set_organized",
+            })}
+            defaultValue={defaultOptions?.setOrganized ?? undefined}
+            {...checkboxProps}
+          />
+        )}
       </Form.Group>
       <ThreeStateBoolean
         id="skip-multiple-match"

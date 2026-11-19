@@ -1,4 +1,5 @@
 import { Form, Col, Row, Button, FormControl } from "react-bootstrap";
+import { useOrganizedEnabled } from "src/hooks/Config";
 import React, { useEffect, useMemo, useState } from "react";
 import * as GQL from "src/core/generated-graphql";
 import { Icon } from "../Shared/Icon";
@@ -74,6 +75,7 @@ const SceneMergeDetails: React.FC<ISceneMergeDetailsProps> = ({
   onClose,
 }) => {
   const intl = useIntl();
+  const organizedEnabled = useOrganizedEnabled();
 
   const [loading, setLoading] = useState(true);
 
@@ -580,28 +582,30 @@ const SceneMergeDetails: React.FC<ISceneMergeDetailsProps> = ({
           result={details}
           onChange={(value) => setDetails(value)}
         />
-        <ScrapeDialogRow
-          field="organized"
-          title={intl.formatMessage({ id: "organized" })}
-          result={organized}
-          originalField={
-            <FormControl
-              value={organized.originalValue ? trueString : falseString}
-              readOnly
-              onChange={() => {}}
-              className="bg-secondary text-white border-secondary"
-            />
-          }
-          newField={
-            <FormControl
-              value={organized.newValue ? trueString : falseString}
-              readOnly
-              onChange={() => {}}
-              className="bg-secondary text-white border-secondary"
-            />
-          }
-          onChange={(value) => setOrganized(value)}
-        />
+        {organizedEnabled && (
+          <ScrapeDialogRow
+            field="organized"
+            title={intl.formatMessage({ id: "organized" })}
+            result={organized}
+            originalField={
+              <FormControl
+                value={organized.originalValue ? trueString : falseString}
+                readOnly
+                onChange={() => {}}
+                className="bg-secondary text-white border-secondary"
+              />
+            }
+            newField={
+              <FormControl
+                value={organized.newValue ? trueString : falseString}
+                readOnly
+                onChange={() => {}}
+                className="bg-secondary text-white border-secondary"
+              />
+            }
+            onChange={(value) => setOrganized(value)}
+          />
+        )}
         <ScrapeDialogRow
           field="stash_ids"
           title={intl.formatMessage({ id: "stash_id" })}

@@ -41,6 +41,8 @@ export const defaultMaxOptionsShown = 200;
 export const defaultPreviewVolume = 25;
 
 export interface IUIConfig {
+  /** Show and use the upstream Organized flag. Off by default. */
+  organizedEnabled?: boolean;
   // unknown to prevent direct access - use getFrontPageContent
   frontPageContent?: unknown;
 

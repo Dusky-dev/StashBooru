@@ -446,6 +446,9 @@ type autoTagFilesTask struct {
 func (t *autoTagFilesTask) makeSceneFilter() *models.SceneFilterType {
 	ret := scene.FilterFromPaths(t.paths)
 
+	if !instance.Config.OrganizedEnabled() {
+		return ret
+	}
 	organized := false
 	ret.Organized = &organized
 
@@ -476,6 +479,9 @@ func (t *autoTagFilesTask) makeImageFilter() *models.ImageFilterType {
 		}
 	}
 
+	if !instance.Config.OrganizedEnabled() {
+		return ret
+	}
 	organized := false
 	ret.Organized = &organized
 
@@ -513,6 +519,9 @@ func (t *autoTagFilesTask) makeGalleryFilter() *models.GalleryFilterType {
 		}
 	}
 
+	if !instance.Config.OrganizedEnabled() {
+		return ret
+	}
 	organized := false
 	ret.Organized = &organized
 

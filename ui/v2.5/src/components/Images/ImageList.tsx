@@ -1,4 +1,5 @@
 import { metadataReviewOperation } from "../Tagging/MetadataReviewDialog";
+import { OrganizedOnly } from "src/hooks/Config";
 import { VisualStackDialog } from "../VisualStacks/VisualStackDialog";
 import { StackProposalsDialog } from "../VisualStacks/StackProposalsDialog";
 import React, {
@@ -466,14 +467,16 @@ const SidebarContent: React.FC<{
           setFilter={setFilter}
           sectionID="folder"
         />
-        <SidebarBooleanFilter
-          title={<FormattedMessage id="organized" />}
-          data-type={OrganizedCriterionOption.type}
-          option={OrganizedCriterionOption}
-          filter={filter}
-          setFilter={setFilter}
-          sectionID="organized"
-        />
+        <OrganizedOnly>
+          <SidebarBooleanFilter
+            title={<FormattedMessage id="organized" />}
+            data-type={OrganizedCriterionOption.type}
+            option={OrganizedCriterionOption}
+            filter={filter}
+            setFilter={setFilter}
+            sectionID="organized"
+          />
+        </OrganizedOnly>
         <SidebarAgeFilter
           title={<FormattedMessage id="performer_age" />}
           option={PerformerAgeCriterionOption}

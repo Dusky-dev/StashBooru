@@ -21,6 +21,7 @@ import (
 	"github.com/stashapp/stash/pkg/image"
 	"github.com/stashapp/stash/pkg/job"
 	"github.com/stashapp/stash/pkg/logger"
+	"github.com/stashapp/stash/pkg/match"
 	"github.com/stashapp/stash/pkg/models/paths"
 	"github.com/stashapp/stash/pkg/plugin"
 	"github.com/stashapp/stash/pkg/scene"
@@ -134,6 +135,7 @@ func Initialize(cfg *config.Config, l *log.Logger) (*Manager, error) {
 	}
 
 	instance = mgr
+	match.SkipOrganized = cfg.OrganizedEnabled
 	return mgr, nil
 }
 

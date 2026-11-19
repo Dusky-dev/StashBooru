@@ -280,15 +280,27 @@ func PathToTags(ctx context.Context, path string, reader models.TagAutoTagQuerye
 	return ret, nil
 }
 
+// SkipOrganized reports whether path matching should leave organized media
+// alone. The server replaces it with its Organized setting.
+var SkipOrganized = func() bool { return true }
+
+// organizedFilter is the Organized criterion to apply, or nil to include all.
+func organizedFilter() *bool {
+	if !SkipOrganized() {
+		return nil
+	}
+	organized := false
+	return &organized
+}
+
 func PathToScenesFn(ctx context.Context, name string, paths []string, sceneReader models.SceneQueryer, fn func(ctx context.Context, scene *models.Scene) error) error {
 	regex := getPathQueryRegex(name)
-	organized := false
 	filter := models.SceneFilterType{
 		Path: &models.StringCriterionInput{
 			Value:    "(?i)" + regex,
 			Modifier: models.CriterionModifierMatchesRegex,
 		},
-		Organized: &organized,
+		Organized: organizedFilter(),
 	}
 
 	filter.And = scene.PathsFilter(paths)
@@ -341,13 +353,12 @@ func PathToScenesFn(ctx context.Context, name string, paths []string, sceneReade
 
 func PathToImagesFn(ctx context.Context, name string, paths []string, imageReader models.ImageQueryer, fn func(ctx context.Context, scene *models.Image) error) error {
 	regex := getPathQueryRegex(name)
-	organized := false
 	filter := models.ImageFilterType{
 		Path: &models.StringCriterionInput{
 			Value:    "(?i)" + regex,
 			Modifier: models.CriterionModifierMatchesRegex,
 		},
-		Organized: &organized,
+		Organized: organizedFilter(),
 	}
 
 	filter.And = image.PathsFilter(paths)
@@ -400,13 +411,12 @@ func PathToImagesFn(ctx context.Context, name string, paths []string, imageReade
 
 func PathToGalleriesFn(ctx context.Context, name string, paths []string, galleryReader models.GalleryQueryer, fn func(ctx context.Context, scene *models.Gallery) error) error {
 	regex := getPathQueryRegex(name)
-	organized := false
 	filter := models.GalleryFilterType{
 		Path: &models.StringCriterionInput{
 			Value:    "(?i)" + regex,
 			Modifier: models.CriterionModifierMatchesRegex,
 		},
-		Organized: &organized,
+		Organized: organizedFilter(),
 	}
 
 	filter.And = gallery.PathsFilter(paths)

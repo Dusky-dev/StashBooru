@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useOrganizedEnabled } from "src/hooks/Config";
 import { Form } from "react-bootstrap";
 import { useIntl } from "react-intl";
 import { useBulkImageUpdate } from "src/core/StashService";
@@ -40,6 +41,7 @@ export const EditImagesDialog: React.FC<IListOperationProps> = (
   props: IListOperationProps
 ) => {
   const intl = useIntl();
+  const organizedEnabled = useOrganizedEnabled();
   const Toast = useToast();
 
   const [updateInput, setUpdateInput] = useState<GQL.BulkImageUpdateInput>({
@@ -272,13 +274,15 @@ export const EditImagesDialog: React.FC<IListOperationProps> = (
             />
           </BulkUpdateFormGroup>
 
-          <Form.Group controlId="organized">
-            <IndeterminateCheckbox
-              label={intl.formatMessage({ id: "organized" })}
-              setChecked={(checked) => setUpdateField({ organized: checked })}
-              checked={updateInput.organized ?? undefined}
-            />
-          </Form.Group>
+          {organizedEnabled && (
+            <Form.Group controlId="organized">
+              <IndeterminateCheckbox
+                label={intl.formatMessage({ id: "organized" })}
+                setChecked={(checked) => setUpdateField({ organized: checked })}
+                checked={updateInput.organized ?? undefined}
+              />
+            </Form.Group>
+          )}
         </Form>
       </ModalComponent>
     );

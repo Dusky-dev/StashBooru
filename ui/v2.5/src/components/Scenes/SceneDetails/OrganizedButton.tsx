@@ -1,4 +1,5 @@
 import React from "react";
+import { useOrganizedEnabled } from "src/hooks/Config";
 import cx from "classnames";
 import { Button, Spinner } from "react-bootstrap";
 import { Icon } from "src/components/Shared/Icon";
@@ -14,6 +15,7 @@ export interface IOrganizedButtonProps {
 export const OrganizedButton: React.FC<IOrganizedButtonProps> = (
   props: IOrganizedButtonProps
 ) => {
+  const organizedEnabled = useOrganizedEnabled();
   const intl = useIntl();
   const messages = defineMessages({
     organized: {
@@ -22,6 +24,7 @@ export const OrganizedButton: React.FC<IOrganizedButtonProps> = (
     },
   });
 
+  if (!organizedEnabled) return null;
   if (props.loading) return <Spinner animation="border" role="status" />;
 
   return (

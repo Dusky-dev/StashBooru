@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useOrganizedEnabled } from "src/hooks/Config";
 import { Alert, Form } from "react-bootstrap";
 import { useIntl } from "react-intl";
 import { faPencilAlt } from "@fortawesome/free-solid-svg-icons";
@@ -37,6 +38,7 @@ export function EditMediaDialog({
   onClose: (confirmed: string[]) => void;
 }) {
   const intl = useIntl();
+  const organizedEnabled = useOrganizedEnabled();
   const [input, setInput] = useState<SharedUpdate>({});
   const [tags, setTags] = useState<GQL.BulkUpdateIds>({
     ids: [],
@@ -185,26 +187,28 @@ export function EditMediaDialog({
               }
             />
           </BulkUpdateFormGroup>
-          <Form.Group>
-            <Form.Label>Organized</Form.Label>
-            <Form.Control
-              as="select"
-              className="input-control"
-              value={input.organized == null ? "" : String(input.organized)}
-              onChange={(e) =>
-                update({
-                  organized:
-                    e.target.value === ""
-                      ? undefined
-                      : e.target.value === "true",
-                })
-              }
-            >
-              <option value="">Keep current value</option>
-              <option value="true">Yes</option>
-              <option value="false">No</option>
-            </Form.Control>
-          </Form.Group>
+          {organizedEnabled && (
+            <Form.Group>
+              <Form.Label>Organized</Form.Label>
+              <Form.Control
+                as="select"
+                className="input-control"
+                value={input.organized == null ? "" : String(input.organized)}
+                onChange={(e) =>
+                  update({
+                    organized:
+                      e.target.value === ""
+                        ? undefined
+                        : e.target.value === "true",
+                  })
+                }
+              >
+                <option value="">Keep current value</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </Form.Control>
+            </Form.Group>
+          )}
           <BulkUpdateFormGroup name="studios">
             <StudioSelect
               ids={input.studio_id ? [input.studio_id] : []}

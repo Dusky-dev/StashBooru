@@ -1,4 +1,5 @@
 import { metadataReviewOperation } from "../Tagging/MetadataReviewDialog";
+import { OrganizedOnly } from "src/hooks/Config";
 import { VisualStackDialog } from "../VisualStacks/VisualStackDialog";
 import { StackProposalsDialog } from "../VisualStacks/StackProposalsDialog";
 import { StackMember } from "../VisualStacks/media";
@@ -317,13 +318,15 @@ const FilteredMediaListComponent = ({
             <SidebarCopyrightsFilter filter={filter} setFilter={setFilter} />
             <SidebarRatingFilter filter={filter} setFilter={setFilter} />
             <SidebarDurationFilter filter={filter} setFilter={setFilter} />
-            <SidebarBooleanFilter
-              title={<FormattedMessage id="organized" />}
-              option={OrganizedCriterionOption}
-              filter={filter}
-              setFilter={setFilter}
-              sectionID="organized"
-            />
+            <OrganizedOnly>
+              <SidebarBooleanFilter
+                title={<FormattedMessage id="organized" />}
+                option={OrganizedCriterionOption}
+                filter={filter}
+                setFilter={setFilter}
+                sectionID="organized"
+              />
+            </OrganizedOnly>
             <div className="sidebar-footer">
               <Button
                 className="sidebar-close-button"

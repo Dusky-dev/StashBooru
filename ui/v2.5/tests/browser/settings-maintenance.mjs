@@ -617,6 +617,21 @@ try {
     // The help button toggles its popover closed again.
     await sfw.getByRole("button", { name: "Help", exact: true }).click();
     await page.locator(".setting-help-popover").waitFor({ state: "detached" });
+    // The Organized flag is off until turned on here, and the choice saves.
+    const organized = page.locator("#organized-enabled");
+    assert.equal(await organized.isChecked(), false);
+    await organized.check({ force: true });
+    await page.waitForFunction(() =>
+      window.settingsFixture.changes.some(
+        (change) => change.ui?.organizedEnabled === true
+      )
+    );
+    await organized.uncheck({ force: true });
+    await page.waitForFunction(() =>
+      window.settingsFixture.changes.some(
+        (change) => change.ui?.organizedEnabled === false
+      )
+    );
     await page.locator("#interface-group-general > summary").click();
 
     // Experimental results stay out of search until Advanced mode is on.

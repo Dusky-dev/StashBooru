@@ -23,6 +23,20 @@ export const useConfigurationContextOptional = () => {
   return React.useContext(ConfigurationContext);
 };
 
+/**
+ * Whether the upstream Organized flag is shown and used (Settings → Interface).
+ * Off unless turned on; saved filters and data keep working either way.
+ */
+export function useOrganizedEnabled(): boolean {
+  const context = React.useContext(ConfigurationContext);
+  return !!context?.configuration.ui?.organizedEnabled;
+}
+
+/** Renders its children only while the Organized flag is in use. */
+export const OrganizedOnly: React.FC<React.PropsWithChildren> = ({
+  children,
+}) => (useOrganizedEnabled() ? children : null);
+
 export const ConfigurationProvider: React.FC<
   React.PropsWithChildren<IContext>
 > = ({ configuration, children }) => {

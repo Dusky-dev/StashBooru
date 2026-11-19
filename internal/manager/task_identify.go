@@ -44,6 +44,20 @@ func (j *IdentifyJob) Execute(ctx context.Context, progress *job.Progress) error
 		return nil
 	}
 
+	// With the Organized flag turned off, Identify never sets it, even from
+	// options saved before it was hidden.
+	if !instance.Config.OrganizedEnabled() {
+		off := false
+		if j.input.Options != nil {
+			j.input.Options.SetOrganized = &off
+		}
+		for _, source := range j.input.Sources {
+			if source.Options != nil {
+				source.Options.SetOrganized = &off
+			}
+		}
+	}
+
 	sources, err := j.getSources()
 	if err != nil {
 		return err
@@ -94,10 +108,12 @@ func (j *IdentifyJob) Execute(ctx context.Context, progress *job.Progress) error
 func (j *IdentifyJob) identifyAllScenes(ctx context.Context, sources []identify.ScraperSource) error {
 	r := instance.Repository
 
-	// exclude organised
-	organised := false
+	// exclude organised, while the Organized flag is in use
 	sceneFilter := scene.FilterFromPaths(j.input.Paths)
-	sceneFilter.Organized = &organised
+	if instance.Config.OrganizedEnabled() {
+		organised := false
+		sceneFilter.Organized = &organised
+	}
 
 	sort := "path"
 	findFilter := &models.FindFilterType{
