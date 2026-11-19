@@ -284,7 +284,7 @@ func (t *stashBoxBatchStudioTagTask) getName() string {
 
 func (t *stashBoxBatchStudioTagTask) Start(ctx context.Context) {
 	// Skip organized studios
-	if t.studio != nil && t.studio.Organized {
+	if t.studio != nil && t.studio.Organized && instance.Config.OrganizedEnabled() {
 		logger.Infof("Skipping organized studio %s", t.studio.Name)
 		return
 	}

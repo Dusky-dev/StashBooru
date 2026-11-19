@@ -248,6 +248,7 @@ export const EditFilterDialog: React.FC<IEditFilterProps> = ({
 
   const { configuration } = useConfigurationContext();
   const { sfwContentMode } = configuration.interface;
+  const organizedEnabled = !!configuration.ui?.organizedEnabled;
 
   const [searchValue, setSearchValue] = useState("");
   const [currentFilter, setCurrentFilter] = useState<ListFilterModel>(
@@ -275,22 +276,28 @@ export const EditFilterDialog: React.FC<IEditFilterProps> = ({
   }, [currentFilter.mode]);
 
   const criterionOptions = useMemo(() => {
-    return [...filterOptions.criterionOptions]
-      .filter((c) => !c.hidden)
-      .sort((a, b) => {
-        return intl
-          .formatMessage({
-            id: !sfwContentMode ? a.messageID : (a.sfwMessageID ?? a.messageID),
-          })
-          .localeCompare(
-            intl.formatMessage({
+    return (
+      [...filterOptions.criterionOptions]
+        .filter((c) => !c.hidden)
+        // Saved filters using Organized still load; it is only not offered.
+        .filter((c) => organizedEnabled || c.type !== "organized")
+        .sort((a, b) => {
+          return intl
+            .formatMessage({
               id: !sfwContentMode
-                ? b.messageID
-                : (b.sfwMessageID ?? b.messageID),
+                ? a.messageID
+                : (a.sfwMessageID ?? a.messageID),
             })
-          );
-      });
-  }, [intl, sfwContentMode, filterOptions.criterionOptions]);
+            .localeCompare(
+              intl.formatMessage({
+                id: !sfwContentMode
+                  ? b.messageID
+                  : (b.sfwMessageID ?? b.messageID),
+              })
+            );
+        })
+    );
+  }, [intl, sfwContentMode, filterOptions.criterionOptions, organizedEnabled]);
 
   const optionSelected = useCallback(
     (option?: CriterionOption) => {

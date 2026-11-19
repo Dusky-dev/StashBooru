@@ -1,4 +1,5 @@
 import { Button, ButtonGroup, OverlayTrigger, Tooltip } from "react-bootstrap";
+import { useOrganizedEnabled } from "src/hooks/Config";
 import React, { MouseEvent, useMemo, useState } from "react";
 import * as GQL from "src/core/generated-graphql";
 import { GridCard } from "../Shared/GridCard/GridCard";
@@ -79,6 +80,7 @@ interface IGalleryCardProps {
 
 const GalleryCardPopovers = React.memo(
   PatchComponent("GalleryCard.Popovers", (props: IGalleryCardProps) => {
+    const organizedEnabled = useOrganizedEnabled();
     function maybeRenderScenePopoverButton() {
       if (props.gallery.scenes.length === 0) return;
 
@@ -146,7 +148,7 @@ const GalleryCardPopovers = React.memo(
     }
 
     function maybeRenderOrganized() {
-      if (props.gallery.organized) {
+      if (organizedEnabled && props.gallery.organized) {
         return (
           <OverlayTrigger
             overlay={<Tooltip id="organised-tooltip">{"Organized"}</Tooltip>}
@@ -167,7 +169,7 @@ const GalleryCardPopovers = React.memo(
         props.gallery.scenes.length > 0 ||
         props.gallery.performers.length > 0 ||
         props.gallery.tags.length > 0 ||
-        props.gallery.organized ||
+        (organizedEnabled && props.gallery.organized) ||
         props.gallery.image_count > 0
       ) {
         return (

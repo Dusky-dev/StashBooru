@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useOrganizedEnabled } from "src/hooks/Config";
 import {
   Button,
   Dropdown,
@@ -86,6 +87,7 @@ export const ParserInput: React.FC<IParserInputProps> = (
   props: IParserInputProps
 ) => {
   const intl = useIntl();
+  const organizedEnabled = useOrganizedEnabled();
   const [pattern, setPattern] = useState<string>(props.input.pattern);
   const [ignoreWords, setIgnoreWords] = useState<string>(
     props.input.ignoreWords.join(" ")
@@ -231,20 +233,22 @@ export const ParserInput: React.FC<IParserInputProps> = (
           })}
         </Form.Label>
       </Form.Group>
-      <Form.Group>
-        <Form.Check
-          inline
-          className="m-0"
-          id="ignore-organized"
-          checked={ignoreOrganized}
-          onChange={() => setIgnoreOrganized(!ignoreOrganized)}
-        />
-        <Form.Label htmlFor="ignore-organized">
-          {intl.formatMessage({
-            id: "config.tools.scene_filename_parser.ignore_organized",
-          })}
-        </Form.Label>
-      </Form.Group>
+      {organizedEnabled && (
+        <Form.Group>
+          <Form.Check
+            inline
+            className="m-0"
+            id="ignore-organized"
+            checked={ignoreOrganized}
+            onChange={() => setIgnoreOrganized(!ignoreOrganized)}
+          />
+          <Form.Label htmlFor="ignore-organized">
+            {intl.formatMessage({
+              id: "config.tools.scene_filename_parser.ignore_organized",
+            })}
+          </Form.Label>
+        </Form.Group>
+      )}
 
       {/* TODO - mapping stuff will go here */}
 

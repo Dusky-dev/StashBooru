@@ -1,3 +1,21 @@
+## Settings: switch to turn the Organized flag off (default off) — 2026-11-19
+
+- Baseline: `develop` (after the site-icon PR). Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Owner decision: a button to disable Organized. Settings → Interface →
+  **Use the Organized flag** (`ui.organizedEnabled`, off unless turned on).
+  Off: the Organized button, card badge, bulk-edit field, sidebar filter and
+  filter-picker entry, Identify/Tagger options, merge row, duplicate-checker
+  badge and filename-parser option are hidden; Auto Tag, path matching,
+  Identify, Stash-box Artist tagging and the filename parser no longer skip
+  organized items; Identify never sets the flag. Saved filters, stored flags,
+  GraphQL and import/export are unchanged.
+- Checks: `pkg/match` organized-filter test, `pkg/match`/`internal/autotag`/
+  `internal/identify` tests, UI tests/lint/tsc, browser `settings-maintenance`
+  desktop+mobile (setting saves both ways), real-binary check (Artist page
+  hides the button by default and shows it once enabled).
+- Not verified: an Identify or Auto Tag run against organized media on the
+  real binary.
 ## Identities: real site icons — 2026-11-19
 
 - Baseline: `develop` `73ab105` (#398). Branch

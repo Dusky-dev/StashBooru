@@ -1126,6 +1126,10 @@
       "use_stash_hosted_funscript": {
         "description": "When enabled, funscripts will be served directly from Stash to your Handy device without using the third party Handy server. Requires that Stash be accessible from your Handy device, and that an API key is generated if Stash has credentials configured.",
         "heading": "Serve funscripts directly"
+      },
+      "organized_enabled": {
+        "heading": "Use the Organized flag",
+        "description": "Shows the Organized button, filter and bulk-edit option, and lets Auto Tag, Identify, path matching and Stash-box tagging skip items marked Organized. Off: the flag is hidden, nothing is skipped because of it, and Identify never sets it. Existing flags are kept."
       }
     },
     "processing": {

@@ -1,4 +1,5 @@
 import { VisualStackBadge } from "../VisualStacks/VisualStackBadge";
+import { useOrganizedEnabled } from "src/hooks/Config";
 import { StackMember } from "../VisualStacks/media";
 import React, { MouseEvent, useMemo } from "react";
 import { Link } from "react-router-dom";
@@ -47,6 +48,7 @@ interface IImageCardProps {
 const ImageCardPopovers = PatchComponent(
   "ImageCard.Popovers",
   (props: IImageCardProps) => {
+    const organizedEnabled = useOrganizedEnabled();
     function maybeRenderTagPopoverButton() {
       if (props.image.tags.length <= 0) return;
 
@@ -116,7 +118,7 @@ const ImageCardPopovers = PatchComponent(
     }
 
     function maybeRenderOrganized() {
-      if (props.image.organized) {
+      if (organizedEnabled && props.image.organized) {
         return (
           <div className="organized">
             <Button className="minimal">
@@ -134,7 +136,7 @@ const ImageCardPopovers = PatchComponent(
       props.image.performers.length > 0 ||
       props.image.o_counter ||
       props.image.galleries.length > 0 ||
-      props.image.organized
+      (organizedEnabled && props.image.organized)
     ) {
       return (
         <>

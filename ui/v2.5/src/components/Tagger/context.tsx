@@ -496,7 +496,10 @@ export const TaggerContext: React.FC<React.PropsWithChildren<unknown>> = ({
           input: {
             ...sceneCreateInput,
             // only set organized if it is enabled in the config
-            organized: config?.markSceneAsOrganizedOnSave || undefined,
+            organized:
+              (stashConfig?.ui?.organizedEnabled &&
+                config?.markSceneAsOrganizedOnSave) ||
+              undefined,
           },
         },
       });

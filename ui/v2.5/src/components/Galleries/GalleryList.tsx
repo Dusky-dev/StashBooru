@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect } from "react";
+import { OrganizedOnly } from "src/hooks/Config";
 import { FormattedMessage, useIntl } from "react-intl";
 import cloneDeep from "lodash-es/cloneDeep";
 import { useHistory } from "react-router-dom";
@@ -193,14 +194,16 @@ const SidebarContent: React.FC<{
           setFilter={setFilter}
           sectionID="parent_folder"
         />
-        <SidebarBooleanFilter
-          title={<FormattedMessage id="organized" />}
-          data-type={OrganizedCriterionOption.type}
-          option={OrganizedCriterionOption}
-          filter={filter}
-          setFilter={setFilter}
-          sectionID="organized"
-        />
+        <OrganizedOnly>
+          <SidebarBooleanFilter
+            title={<FormattedMessage id="organized" />}
+            data-type={OrganizedCriterionOption.type}
+            option={OrganizedCriterionOption}
+            filter={filter}
+            setFilter={setFilter}
+            sectionID="organized"
+          />
+        </OrganizedOnly>
         <SidebarAgeFilter
           title={<FormattedMessage id="performer_age" />}
           option={PerformerAgeCriterionOption}

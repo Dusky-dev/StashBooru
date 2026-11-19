@@ -1,4 +1,5 @@
 import { metadataReviewOperation } from "../Tagging/MetadataReviewDialog";
+import { OrganizedOnly } from "src/hooks/Config";
 import { VisualStackDialog } from "../VisualStacks/VisualStackDialog";
 import { StackProposalsDialog } from "../VisualStacks/StackProposalsDialog";
 import React, { useCallback, useEffect, useMemo } from "react";
@@ -337,14 +338,16 @@ const SidebarContent: React.FC<{
           setFilter={setFilter}
           sectionID="hasMarkers"
         />
-        <SidebarBooleanFilter
-          title={<FormattedMessage id="organized" />}
-          data-type={OrganizedCriterionOption.type}
-          option={OrganizedCriterionOption}
-          filter={filter}
-          setFilter={setFilter}
-          sectionID="organized"
-        />
+        <OrganizedOnly>
+          <SidebarBooleanFilter
+            title={<FormattedMessage id="organized" />}
+            data-type={OrganizedCriterionOption.type}
+            option={OrganizedCriterionOption}
+            filter={filter}
+            setFilter={setFilter}
+            sectionID="organized"
+          />
+        </OrganizedOnly>
         <SidebarDuplicateFilter
           title={<FormattedMessage id="duplicated" />}
           filter={filter}

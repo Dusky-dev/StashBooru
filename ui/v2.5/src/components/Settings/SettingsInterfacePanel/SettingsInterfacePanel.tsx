@@ -264,6 +264,14 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
               onChange={(v) => saveInterface({ sfwContentMode: v })}
             />
 
+            <BooleanSetting
+              id="organized-enabled"
+              headingID="config.ui.organized_enabled.heading"
+              subHeadingID="config.ui.organized_enabled.description"
+              checked={ui.organizedEnabled ?? false}
+              onChange={(v) => saveUI({ organizedEnabled: v })}
+            />
+
             <StringSetting
               id="custom-title"
               headingID="config.ui.custom_title.heading"

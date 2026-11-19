@@ -1466,6 +1466,14 @@ func (i *Config) GetUIConfiguration() map[string]interface{} {
 	return i.forKey(UI).Cut(UI).Raw()
 }
 
+// OrganizedEnabled reports whether the upstream Organized flag is in use
+// (Settings → Interface). It is off unless the user turns it on; while off,
+// organized items are not skipped and Identify does not set the flag.
+func (i *Config) OrganizedEnabled() bool {
+	enabled, _ := i.GetUIConfiguration()["organizedEnabled"].(bool)
+	return enabled
+}
+
 // GetMinimumPlayPercent returns the minimum percentage of a video that must be
 // watched before incrementing the play count. Returns 0 if not configured.
 func (i *Config) GetMinimumPlayPercent() int {

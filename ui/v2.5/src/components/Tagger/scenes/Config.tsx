@@ -1,4 +1,5 @@
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
+import { useOrganizedEnabled } from "src/hooks/Config";
 import React, { useContext, useState } from "react";
 import {
   Badge,
@@ -119,6 +120,7 @@ interface IConfigProps {
 const Config: React.FC<IConfigProps> = ({ show }) => {
   const { config, setConfig } = useContext(TaggerStateContext);
   const intl = useIntl();
+  const organizedEnabled = useOrganizedEnabled();
 
   function renderGenderCheckbox(gender: GenderEnum) {
     const performerGenders = config.performerGenders || genderList.slice();
@@ -269,23 +271,25 @@ const Config: React.FC<IConfigProps> = ({ show }) => {
                 })}
               </Form.Text>
             </Form.Group>
-            <Form.Group controlId="toggle-organized">
-              <Form.Check
-                label={
-                  <FormattedMessage id="component_tagger.config.mark_organized_label" />
-                }
-                checked={config.markSceneAsOrganizedOnSave}
-                onChange={(e) =>
-                  setConfig({
-                    ...config,
-                    markSceneAsOrganizedOnSave: e.currentTarget.checked,
-                  })
-                }
-              />
-              <Form.Text>
-                <FormattedMessage id="component_tagger.config.mark_organized_desc" />
-              </Form.Text>
-            </Form.Group>
+            {organizedEnabled && (
+              <Form.Group controlId="toggle-organized">
+                <Form.Check
+                  label={
+                    <FormattedMessage id="component_tagger.config.mark_organized_label" />
+                  }
+                  checked={config.markSceneAsOrganizedOnSave}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      markSceneAsOrganizedOnSave: e.currentTarget.checked,
+                    })
+                  }
+                />
+                <Form.Text>
+                  <FormattedMessage id="component_tagger.config.mark_organized_desc" />
+                </Form.Text>
+              </Form.Group>
+            )}
           </Form>
           <div className="col-md-6">
             <Blacklist

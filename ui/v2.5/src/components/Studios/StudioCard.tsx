@@ -85,6 +85,7 @@ export const StudioCard: React.FC<IProps> = PatchComponent(
   }) => {
     const [updateStudio] = useStudioUpdate();
     const { configuration } = useConfigurationContext();
+    const organizedEnabled = !!configuration?.ui?.organizedEnabled;
     const showChildContent = configuration?.ui?.showChildStudioContent ?? false;
 
     const sceneCount = showChildContent
@@ -197,7 +198,7 @@ export const StudioCard: React.FC<IProps> = PatchComponent(
     }
 
     function maybeRenderOrganized() {
-      if (studio.organized) {
+      if (organizedEnabled && studio.organized) {
         return (
           <OverlayTrigger
             overlay={
@@ -226,7 +227,7 @@ export const StudioCard: React.FC<IProps> = PatchComponent(
         performerCount ||
         oCounter ||
         studio.tags.length > 0 ||
-        studio.organized
+        (organizedEnabled && studio.organized)
       ) {
         return (
           <>

@@ -1,4 +1,5 @@
 import { VisualStackBadge } from "../VisualStacks/VisualStackBadge";
+import { useOrganizedEnabled } from "src/hooks/Config";
 import { StackMember } from "../VisualStacks/media";
 import React, {
   useCallback,
@@ -167,6 +168,7 @@ const Description: React.FC<{
 
 const SceneCardPopovers = React.memo(
   PatchComponent("SceneCard.Popovers", (props: ISceneCardProps) => {
+    const organizedEnabled = useOrganizedEnabled();
     const file = useMemo(
       () => (props.scene.files.length > 0 ? props.scene.files[0] : undefined),
       [props.scene]
@@ -293,7 +295,7 @@ const SceneCardPopovers = React.memo(
     }
 
     function maybeRenderOrganized() {
-      if (props.scene.organized) {
+      if (organizedEnabled && props.scene.organized) {
         return (
           <OverlayTrigger
             overlay={<Tooltip id="organised-tooltip">{"Organized"}</Tooltip>}
@@ -339,7 +341,7 @@ const SceneCardPopovers = React.memo(
           props.scene.scene_markers.length > 0 ||
           props.scene?.o_counter ||
           props.scene.galleries.length > 0 ||
-          props.scene.organized ||
+          (organizedEnabled && props.scene.organized) ||
           sceneNumber !== undefined)
       ) {
         return (
