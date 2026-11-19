@@ -376,7 +376,8 @@
       "tools": "Tools"
     },
     "changelog": {
-      "header": "Changelog"
+      "header": "Changelog",
+      "upstream_heading": "Upstream Stash versions"
     },
     "dlna": {
       "allow_temp_ip": "Allow {tempIP}",
@@ -2060,5 +2061,12 @@
       "other": "{kind}: {source}"
     },
     "via": "via {via}"
+  },
+  "startup_notes": {
+    "introduction_title": "Welcome to StashBooru",
+    "changes_title": "What's new in StashBooru {version}",
+    "get_started": "Get started",
+    "history": "Earlier versions are listed in",
+    "history_link": "Settings → About"
   }
 }

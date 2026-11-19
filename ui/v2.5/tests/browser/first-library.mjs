@@ -566,6 +566,8 @@ async function check(viewport, label) {
       Number.isInteger(saved.configureUI.lastNoteSeen) &&
         saved.configureUI.lastNoteSeen > 0
     );
+    // Finishing setup counts as having seen this version's notes.
+    assert.match(saved.configureUI.lastVersionSeen ?? "", /^\d+\.\d+\.\d+$/);
     await page.waitForURL(`${url}/settings?tab=library`);
     await page.locator("#stash-table").waitFor();
     assert.ok((await page.locator("#stash-table").innerText()).includes(media));

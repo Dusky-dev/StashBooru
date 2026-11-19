@@ -11,9 +11,14 @@ import { BrowserRouter, Link, Route, Switch } from "react-router-dom";
 import { IntlProvider } from "react-intl";
 import { ConfigurationProvider } from "../../../src/hooks/Config";
 import { Welcome } from "../../../src/components/Setup/Welcome";
-import { ReleaseNotesDialog } from "../../../src/components/Dialogs/ReleaseNotesDialog";
+import { StartupNotesDialog } from "../../../src/components/Dialogs/StartupNotesDialog";
+import {
+  acknowledgement,
+  startupNotes,
+} from "../../../src/components/Dialogs/startupNotes";
+import { stashBooruChangelog } from "../../../src/docs/en/Changelog/StashBooru";
 import Changelog from "../../../src/components/Changelog/Changelog";
-import { unseenReleaseNotes } from "../../../src/docs/en/ReleaseNotes";
+import { releaseNotes } from "../../../src/docs/en/ReleaseNotes";
 import { useConfigureUI } from "../../../src/core/StashService";
 import * as GQL from "../../../src/core/generated-graphql";
 import messages from "../../../src/locales/en-GB.json";
@@ -23,15 +28,22 @@ import "../../../src/index.scss";
 const calls: { name: string; input?: Record<string, unknown> }[] = [];
 Object.assign(window, { firstUseFixture: { calls } });
 
+// The same selection and dialog as App, with the running StashBooru version.
 function Notes({ ui }: { ui: Record<string, unknown> }) {
   const [saveUI] = useConfigureUI();
-  const notes = unseenReleaseNotes(ui.lastNoteSeen as number | undefined);
-  return notes.length ? (
-    <ReleaseNotesDialog
+  const version = import.meta.env.VITE_APP_STASHBOORU_VERSION;
+  const notes = startupNotes(ui, version, stashBooruChangelog);
+  return notes ? (
+    <StartupNotesDialog
       notes={notes}
       onClose={() => {
         void saveUI({
-          variables: { input: { ...ui, lastNoteSeen: notes[0].date } },
+          variables: {
+            input: {
+              ...ui,
+              ...acknowledgement(version, releaseNotes[0].date),
+            },
+          },
         });
       }}
     />

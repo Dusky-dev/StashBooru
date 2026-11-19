@@ -1,3 +1,23 @@
+## StashBooru 1.1.0: introduction, versioning, update notes — 2026-11-19
+
+- Baseline: `develop` `803b31a` (#400). Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Owner request + decision (every merged change is an update): version bumped
+  to 1.1.0 with an in-app changelog (`src/docs/en/Changelog/StashBooru`).
+  Fresh installs, including pre-written configs, open with "Welcome to
+  StashBooru" (introduction only, no upstream notes). After an update the app
+  shows "What's new in StashBooru X" for versions newer than
+  `ui.lastVersionSeen` (missing counts as 1.0.0). About lists every StashBooru
+  version. AGENTS.md and `docs/releases.md` now require a bump + entry per
+  user-visible PR. The old upstream release-note prompt is removed.
+- Checks: `startupNotes` unit tests; `pnpm test` (140), lint, tsc, stylelint;
+  browser `first-use-notes` and `settings-maintenance` desktop+mobile;
+  real binary: fresh pre-configured server → introduction, existing user →
+  1.1.0 notes, both stay acknowledged after reload; real-binary
+  `plugin-compatibility`, `copyright-save-retry`.
+- Not run locally: `first-library` (wizard, needs ffmpeg), `visual-stacks`.
+- Not done: no release branch or tag (publishing needs separate approval).
+
 ## Settings: switch to turn the Organized flag off (default off) — 2026-11-19
 
 - Baseline: `develop` `81cecd7` (#399). Branch

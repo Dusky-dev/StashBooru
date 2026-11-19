@@ -76,7 +76,10 @@ function flatten(
   );
 }
 const changes: unknown[] = [];
-const release = { version: "1.0.0", error: "" };
+const release = {
+  version: import.meta.env.VITE_APP_STASHBOORU_VERSION,
+  error: "",
+};
 
 Object.assign(window, {
   settingsFixture: {
@@ -115,7 +118,7 @@ const client = new ApolloClient({
               version: release.version,
               shorthash: "different",
               release_date: "2026-10-05",
-              url: "https://github.com/Dusky-dev/StashBooru/releases/tag/stashbooru-v1.0.0",
+              url: `https://github.com/Dusky-dev/StashBooru/releases/tag/stashbooru-v${release.version}`,
             },
           };
         } else if (operation.operationName === "Configuration")

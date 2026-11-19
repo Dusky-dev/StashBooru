@@ -39,8 +39,13 @@ import {
 } from "./hooks/Config";
 import { ManualProvider } from "./components/Help/context";
 import { InteractiveProvider } from "./hooks/Interactive/context";
-import { ReleaseNotesDialog } from "./components/Dialogs/ReleaseNotesDialog";
-import { unseenReleaseNotes } from "./docs/en/ReleaseNotes";
+import { stashBooruChangelog } from "./docs/en/Changelog/StashBooru";
+import { releaseNotes } from "./docs/en/ReleaseNotes";
+import { StartupNotesDialog } from "./components/Dialogs/StartupNotesDialog";
+import {
+  acknowledgement,
+  startupNotes,
+} from "./components/Dialogs/startupNotes";
 import { getPlatformURL } from "./core/createClient";
 import { lazyComponent } from "./utils/lazyComponent";
 import { isPlatformUniquelyRenderedByApple } from "./utils/apple";
@@ -155,9 +160,12 @@ function translateLanguageLocale(l: string) {
   }
 }
 
+const stashBooruVersion = import.meta.env.VITE_APP_STASHBOORU_VERSION;
+
 export const App: React.FC = () => {
   const config = useConfiguration();
   const [saveUI] = useConfigureUI();
+  const [startupNotesClosed, setStartupNotesClosed] = useState(false);
 
   const { data: systemStatusData } = useSystemStatus();
 
@@ -316,27 +324,34 @@ export const App: React.FC = () => {
   }
 
   function maybeRenderReleaseNotes() {
-    if (setupMatch || !systemStatusData || config.loading || config.error) {
+    if (
+      setupMatch ||
+      !systemStatusData ||
+      config.loading ||
+      config.error ||
+      startupNotesClosed
+    ) {
       return;
     }
 
-    const lastNoteSeen = config.data?.configuration.ui.lastNoteSeen;
-    const notes = unseenReleaseNotes(lastNoteSeen);
-
-    if (notes.length === 0) return;
+    const ui = config.data?.configuration.ui ?? {};
+    const notes = startupNotes(ui, stashBooruVersion, stashBooruChangelog);
+    if (!notes) return;
 
     return (
-      <ReleaseNotesDialog
+      <StartupNotesDialog
         notes={notes}
         onClose={() => {
+          // Close for this session even if saving fails; it returns next load.
+          setStartupNotesClosed(true);
           saveUI({
             variables: {
               input: {
-                ...config.data?.configuration.ui,
-                lastNoteSeen: notes[0].date,
+                ...ui,
+                ...acknowledgement(stashBooruVersion, releaseNotes[0].date),
               },
             },
-          });
+          }).catch(() => undefined);
         }}
       />
     );

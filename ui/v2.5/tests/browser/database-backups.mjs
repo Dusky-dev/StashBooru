@@ -111,7 +111,7 @@ async function check(viewport, label, storage) {
   await call(
     page,
     url,
-    "mutation { configureUI(input: {lastNoteSeen: 99999999}) }"
+    'mutation { configureUI(input: {lastNoteSeen: 99999999, lastVersionSeen: "999.0.0"}) }'
   );
   const artist = (
     await call(

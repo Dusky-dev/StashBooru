@@ -161,15 +161,13 @@ try {
       const before = await snapshot();
       await page.goto(`${baseURL}/media`, { waitUntil: "domcontentloaded" });
       await page.locator(".media-list .image-card").first().waitFor();
-      if (
-        await modal(page)
-          .getByText("Release Notes", { exact: true })
-          .isVisible()
-      ) {
-        await modal(page)
-          .getByRole("button", { name: "Close", exact: true })
+      // A fresh server opens with the introduction or update notes.
+      const notes = page.locator(".startup-notes-dialog");
+      if (await notes.isVisible()) {
+        await notes
+          .getByRole("button", { name: /^(Get started|Close)$/ })
           .click();
-        await modal(page).waitFor({ state: "hidden" });
+        await notes.waitFor({ state: "hidden" });
       }
       const viewOptions = page
         .locator(".media-list")

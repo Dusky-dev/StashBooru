@@ -59,7 +59,7 @@ async function check(viewport, label) {
   await call(
     page,
     url,
-    "mutation { configureUI(input: {lastNoteSeen: 99999999}) }"
+    'mutation { configureUI(input: {lastNoteSeen: 99999999, lastVersionSeen: "999.0.0"}) }'
   );
   const createGroup = async (name) =>
     (
