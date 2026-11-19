@@ -1,3 +1,20 @@
+## Converter: convert already converted media again — 2026-11-19
+
+- Baseline: `develop` `e4df747` (#396). Branch
+  [`claude/dreamy-heisenberg-1bsb0l`](https://github.com/Dusky-dev/StashBooru/tree/claude/dreamy-heisenberg-1bsb0l).
+- Owner report: media converted before had no way to convert again. The dialog
+  now offers "Also convert files that were converted before" (off by default,
+  cleared after a run or a new selection). It re-encodes the current converted
+  file; the savings rule still applies, and skipped files now show why.
+- A repeat conversion replaces the earlier `.converted-<id>` name tag instead of
+  stacking it; Revert steps back one conversion at a time.
+- Checks: `pkg/mediaconvert` chain test (convert, restart, convert, restart,
+  restore twice: original bytes return), `internal/api` conversion tests, UI
+  tests/lint/tsc, browser `conversion-review` desktop+mobile.
+- Not verified: real encoders (fixture worker only).
+- Next: identity site link; ask the owner whether convert-again should start
+  from the original instead.
+
 ## Settings: collapsible groups, clearer parent wording, terminal log console — 2026-11-18
 
 - Baseline: `develop` `1d0b583` (#395). Branch
