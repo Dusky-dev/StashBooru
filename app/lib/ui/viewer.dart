@@ -9,6 +9,7 @@ import '../api/models.dart';
 import 'detail_panel.dart';
 import 'paging.dart';
 import 'session.dart';
+import 'theme.dart';
 
 /// Full-screen Image/Video viewer over a list. Swipe or use the arrow keys to
 /// move; nothing advances on its own.
@@ -96,6 +97,47 @@ class _ViewerPageState extends State<ViewerPage> {
 
   void _showInfo() {
     final item = _list.items[_index];
+    if (MediaQuery.sizeOf(context).width >= 700) {
+      // A side panel on desktop, like the web UI's details pane.
+      showGeneralDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        barrierLabel: 'Close details',
+        barrierColor: Colors.black38,
+        transitionDuration: const Duration(milliseconds: 150),
+        pageBuilder: (context, _, _) => Align(
+          alignment: Alignment.centerRight,
+          child: Material(
+            color: StashColors.card,
+            child: SizedBox(
+              width: 380,
+              height: double.infinity,
+              child: SafeArea(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    IconButton(
+                      tooltip: 'Close details',
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    Expanded(child: DetailPanel(item: item)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        transitionBuilder: (context, animation, _, child) => SlideTransition(
+          position: Tween(
+            begin: const Offset(1, 0),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
+          child: child,
+        ),
+      );
+      return;
+    }
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,

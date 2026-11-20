@@ -5,6 +5,7 @@ import '../api/models.dart';
 import 'entity_browser.dart';
 import 'media_browser.dart';
 import 'session.dart';
+import 'theme.dart';
 
 class _Section {
   const _Section(this.label, this.icon, this.build);
@@ -33,7 +34,7 @@ class _HomeShellState extends State<HomeShell> {
     if (s.caps.mixedMedia)
       _Section(
         'All',
-        Icons.dashboard,
+        Icons.grid_view,
         (_) => MediaBrowser(sources: [AllMediaSource(s.client)]),
       ),
     _Section(
@@ -43,7 +44,7 @@ class _HomeShellState extends State<HomeShell> {
     ),
     _Section(
       'Videos',
-      Icons.movie,
+      Icons.play_circle,
       (_) => MediaBrowser(sources: [VideoSource(s.client)]),
     ),
     for (final type in EntityType.values)
@@ -95,43 +96,6 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
-  Widget _navList(
-    Session s,
-    List<_Section> sections, {
-    required bool closeDrawer,
-  }) {
-    return ListView(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text(
-            'StashBooru',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-        ),
-        for (var i = 0; i < sections.length; i++)
-          ListTile(
-            leading: Icon(sections[i].icon),
-            title: Text(sections[i].label),
-            selected: i == _selected,
-            onTap: () {
-              _select(i);
-              if (closeDrawer) Navigator.of(context).pop();
-            },
-          ),
-        const Divider(),
-        ListTile(
-          leading: const Icon(Icons.dns),
-          title: const Text('Server'),
-          onTap: () {
-            if (closeDrawer) Navigator.of(context).pop();
-            _showServer(s);
-          },
-        ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final session = Session.of(context);
@@ -150,31 +114,168 @@ class _HomeShellState extends State<HomeShell> {
       ],
     );
 
-    final wide = MediaQuery.sizeOf(context).width >= 840;
+    // The web UI keeps the navbar on top on wide screens and moves it to the
+    // bottom, collapsed behind a menu button, on phones.
+    final wide = MediaQuery.sizeOf(context).width >= 768;
     if (wide) {
       return Scaffold(
-        body: Row(
+        body: Column(
           children: [
-            SizedBox(
-              width: 220,
-              child: Material(
-                color: Theme.of(context).colorScheme.surfaceContainerLow,
-                child: SafeArea(
-                  child: _navList(session, sections, closeDrawer: false),
+            _Navbar(
+              children: [
+                const _Brand(),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (var i = 0; i < sections.length; i++)
+                          _NavItem(
+                            section: sections[i],
+                            active: i == _selected,
+                            onTap: () => _select(i),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+                IconButton(
+                  tooltip: 'Server',
+                  icon: const Icon(Icons.settings, size: 20),
+                  onPressed: () => _showServer(session),
+                ),
+              ],
             ),
-            Expanded(child: SafeArea(child: body)),
+            Expanded(child: body),
           ],
         ),
       );
     }
     return Scaffold(
-      appBar: AppBar(title: Text(sections[_selected].label)),
-      drawer: Drawer(
-        child: SafeArea(child: _navList(session, sections, closeDrawer: true)),
+      body: SafeArea(bottom: false, child: body),
+      bottomNavigationBar: _Navbar(
+        bottom: true,
+        children: [
+          const _Brand(),
+          Expanded(
+            child: Text(
+              sections[_selected].label,
+              key: const Key('current-section'),
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: StashColors.muted, fontSize: 15),
+            ),
+          ),
+          OutlinedButton(
+            key: const Key('nav-menu'),
+            onPressed: () => _showMenu(session, sections),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(52, 38),
+              side: const BorderSide(color: Color(0x33FFFFFF)),
+            ),
+            child: const Icon(Icons.menu, semanticLabel: 'Menu'),
+          ),
+        ],
       ),
-      body: body,
     );
   }
+
+  void _showMenu(Session session, List<_Section> sections) {
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(),
+      builder: (context) => ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        children: [
+          for (var i = 0; i < sections.length; i++)
+            ListTile(
+              leading: Icon(sections[i].icon, size: 20),
+              title: Text(sections[i].label),
+              selected: i == _selected,
+              onTap: () {
+                Navigator.of(context).pop();
+                _select(i);
+              },
+            ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.settings, size: 20),
+            title: const Text('Server'),
+            onTap: () {
+              Navigator.of(context).pop();
+              _showServer(session);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Navbar extends StatelessWidget {
+  const _Navbar({required this.children, this.bottom = false});
+  final List<Widget> children;
+  final bool bottom;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: StashColors.navbar,
+    child: SafeArea(
+      top: !bottom,
+      bottom: bottom,
+      child: SizedBox(
+        height: bottom ? 54 : 49,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(children: children),
+        ),
+      ),
+    ),
+  );
+}
+
+class _Brand extends StatelessWidget {
+  const _Brand();
+
+  @override
+  Widget build(BuildContext context) => const Padding(
+    padding: EdgeInsets.only(left: 8, right: 16),
+    child: Text(
+      'StashBooru',
+      style: TextStyle(fontSize: 16, color: StashColors.text),
+    ),
+  );
+}
+
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    required this.section,
+    required this.active,
+    required this.onTap,
+  });
+
+  final _Section section;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 2),
+    child: TextButton.icon(
+      key: Key('nav-${section.label}'),
+      onPressed: onTap,
+      icon: Icon(section.icon, size: 16),
+      label: Text(section.label),
+      style: TextButton.styleFrom(
+        foregroundColor: StashColors.text,
+        backgroundColor: active ? const Color(0x26FFFFFF) : null,
+        minimumSize: const Size(0, 34),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        textStyle: const TextStyle(fontSize: 15),
+      ),
+    ),
+  );
 }

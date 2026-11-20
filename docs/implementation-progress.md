@@ -1,3 +1,18 @@
+## StashBooru 1.5.1: native app restyled to match the web UI — 2026-11-20
+
+- Baseline: `develop` `fdeba9c` (1.5.0 released from it). Owner feedback: the
+  app looked nothing like Stash, Material looked wrong on PC.
+- `app/lib/ui/theme.dart`: explicit Blueprint-dark scheme from `_theme.scss`,
+  4px/3px radii, no splash, compact density and visible scrollbars on desktop.
+  Top navbar on wide screens, bottom bar + menu on phones; shared web-style
+  toolbar (`toolbar.dart`); web card layout and column counts; entity page
+  header; desktop details side panel; Escape leaves entity pages.
+- Checks: `dart format`, `flutter analyze`, `flutter test` (21 pass, 4 live
+  tests skipped; nav tests rewritten for navbar order and the phone menu);
+  Linux release build run under Xvfb against a local server at 1280×720 and
+  390×844, compared with the web UI's screenshots.
+- Not verified: Windows and Android at runtime.
+
 ## StashBooru 1.5.0 release: attach the native app — 2026-11-20
 
 - Baseline: `develop` `7848f47`. Owner request: release with the app builds.

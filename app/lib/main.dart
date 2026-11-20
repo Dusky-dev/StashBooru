@@ -5,6 +5,7 @@ import 'api/client.dart';
 import 'state/credentials.dart';
 import 'ui/connect_page.dart';
 import 'ui/home_shell.dart';
+import 'ui/theme.dart';
 import 'ui/session.dart';
 
 void main() {
@@ -122,16 +123,7 @@ class _StashBooruAppState extends State<StashBooruApp> {
       debugShowCheckedModeBanner: false,
       scaffoldMessengerKey: _messenger,
       navigatorKey: _navigator,
-      themeMode: ThemeMode.dark,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5B8DEF)),
-      ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF5B8DEF),
-          brightness: Brightness.dark,
-        ),
-      ),
+      theme: buildStashTheme(),
       // Session sits above the navigator so pushed pages (viewer, entity
       // media) can reach the connection too.
       builder: (context, child) => _client == null

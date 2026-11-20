@@ -72,15 +72,19 @@ class PagedGrid<T> extends StatefulWidget {
     super.key,
     required this.controller,
     required this.itemBuilder,
-    required this.maxExtent,
-    required this.aspectRatio,
+    required this.minTileWidth,
+    required this.tileHeight,
     required this.emptyText,
   });
 
   final PagedController<T> controller;
   final Widget Function(BuildContext, int index, T item) itemBuilder;
-  final double maxExtent;
-  final double aspectRatio;
+
+  /// Columns are as many as fit at this width, like the web UI's card grid.
+  final double minTileWidth;
+
+  /// The height of a tile of the given width (image plus caption).
+  final double Function(double width) tileHeight;
   final String emptyText;
 
   @override
@@ -153,45 +157,70 @@ class _PagedGridState<T> extends State<PagedGrid<T>> {
     }
     return RefreshIndicator(
       onRefresh: () async => c.reset(),
-      child: CustomScrollView(
+      child: Scrollbar(
         controller: _scroll,
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          SliverPadding(
-            padding: const EdgeInsets.all(8),
-            sliver: SliverGrid(
-              gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: widget.maxExtent,
-                childAspectRatio: widget.aspectRatio,
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-              ),
-              delegate: SliverChildBuilderDelegate(
-                (context, i) => widget.itemBuilder(context, i, c.items[i]),
-                childCount: c.items.length,
-              ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Center(
-                child: c.error != null
-                    ? _ErrorState(message: c.error!, onRetry: c.retry)
-                    : c.loading
-                    ? const CircularProgressIndicator()
-                    : Text(
-                        '${c.items.length} of ${c.total ?? c.items.length}',
-                        style: theme.textTheme.bodySmall,
-                      ),
+        child: CustomScrollView(
+          controller: _scroll,
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 4, bottom: 8),
+                child: Text(
+                  '1-${c.items.length} of ${c.total ?? '${c.items.length}+'}',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
               ),
             ),
-          ),
-        ],
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: _gap),
+              sliver: SliverLayoutBuilder(
+                builder: (context, constraints) {
+                  final width = constraints.crossAxisExtent;
+                  final columns =
+                      ((width + _gap) / (widget.minTileWidth + _gap))
+                          .floor()
+                          .clamp(1, 12);
+                  final tileWidth = (width - _gap * (columns - 1)) / columns;
+                  return SliverGrid(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: columns,
+                      mainAxisExtent: widget.tileHeight(tileWidth),
+                      mainAxisSpacing: _gap,
+                      crossAxisSpacing: _gap,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, i) =>
+                          widget.itemBuilder(context, i, c.items[i]),
+                      childCount: c.items.length,
+                    ),
+                  );
+                },
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Center(
+                  child: c.error != null
+                      ? _ErrorState(message: c.error!, onRetry: c.retry)
+                      : c.loading
+                      ? const CircularProgressIndicator()
+                      : const SizedBox(height: 24),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
+
+const double _gap = 16;
 
 class _ErrorState extends StatelessWidget {
   const _ErrorState({required this.message, required this.onRetry});
@@ -213,10 +242,7 @@ class _ErrorState extends StatelessWidget {
           const SizedBox(height: 12),
           Text(message, textAlign: TextAlign.center),
           const SizedBox(height: 12),
-          FilledButton.tonal(
-            onPressed: onRetry,
-            child: const Text('Try again'),
-          ),
+          FilledButton(onPressed: onRetry, child: const Text('Try again')),
         ],
       ),
     ),

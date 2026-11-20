@@ -64,11 +64,8 @@ void main() {
     await tester.pumpAndSettle();
     await connect(tester);
 
-    final labels = tester
-        .widgetList<ListTile>(find.byType(ListTile))
-        .map((t) => ((t.title as Text).data!))
-        .toList();
-    expect(labels, [
+    // The navbar keeps the web UI's order, left to right.
+    const order = [
       'All',
       'Images',
       'Videos',
@@ -78,8 +75,13 @@ void main() {
       'Tags',
       'Galleries',
       'Collections',
-      'Server',
-    ]);
+    ];
+    final xs = [
+      for (final label in order)
+        tester.getTopLeft(find.byKey(Key('nav-$label'))).dx,
+    ];
+    expect(xs, [...xs]..sort());
+    expect(find.byTooltip('Server'), findsOneWidget);
     expect(find.text('Nothing here yet.'), findsOneWidget);
     expect((await store.load())!.url, 'http://nas:9999');
   });
@@ -142,7 +144,9 @@ void main() {
     expect(find.text('All'), findsWidgets);
   });
 
-  testWidgets('phones get a drawer with the same sections', (tester) async {
+  testWidgets('phones get a bottom bar menu with the same sections', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(400, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -158,12 +162,14 @@ void main() {
     );
     await tester.pumpAndSettle();
     await connect(tester);
-    expect(find.widgetWithText(AppBar, 'All'), findsOneWidget);
-    await tester.tap(find.byTooltip('Open navigation menu'));
+    Text current() =>
+        tester.widget<Text>(find.byKey(const Key('current-section')));
+    expect(current().data, 'All');
+    await tester.tap(find.byKey(const Key('nav-menu')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Images'));
+    await tester.tap(find.widgetWithText(ListTile, 'Images'));
     await tester.pumpAndSettle();
-    expect(find.widgetWithText(AppBar, 'Images'), findsOneWidget);
+    expect(current().data, 'Images');
     expect(tester.takeException(), isNull);
   });
 }
