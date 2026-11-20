@@ -1,0 +1,100 @@
+name: Native app
+
+on:
+  push:
+    branches: [develop]
+    paths: ['app/**', '.github/workflows/native-app.yml']
+  pull_request:
+    paths: ['app/**', '.github/workflows/native-app.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-app-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: 3.50.1
+
+defaults:
+  run:
+    working-directory: app
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Flutter
+        working-directory: ${{ runner.temp }}
+        run: |
+          git clone --depth 1 --branch "$FLUTTER_VERSION" https://github.com/flutter/flutter.git
+          echo "${{ runner.temp }}/flutter/bin" >> "$GITHUB_PATH"
+      - run: flutter --disable-analytics && flutter pub get
+      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: flutter analyze
+      - run: flutter test
+
+  linux:
+    needs: check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev libsecret-1-dev libmpv-dev
+      - name: Install Flutter
+        working-directory: ${{ runner.temp }}
+        run: |
+          git clone --depth 1 --branch "$FLUTTER_VERSION" https://github.com/flutter/flutter.git
+          echo "${{ runner.temp }}/flutter/bin" >> "$GITHUB_PATH"
+      - run: flutter --disable-analytics && flutter build linux --release
+      - run: tar -C build/linux/x64/release/bundle -czf stashbooru-linux-x64.tar.gz .
+      - uses: actions/upload-artifact@v7
+        with:
+          name: stashbooru-linux-x64
+          path: app/stashbooru-linux-x64.tar.gz
+
+  windows:
+    needs: check
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Flutter
+        shell: bash
+        working-directory: ${{ runner.temp }}
+        run: |
+          git clone --depth 1 --branch "$FLUTTER_VERSION" https://github.com/flutter/flutter.git
+          echo "${{ runner.temp }}/flutter/bin" >> "$GITHUB_PATH"
+      - run: flutter --disable-analytics; flutter build windows --release
+      - run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath stashbooru-windows-x64.zip
+      - uses: actions/upload-artifact@v7
+        with:
+          name: stashbooru-windows-x64
+          path: app/stashbooru-windows-x64.zip
+
+  android:
+    needs: check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install Flutter
+        working-directory: ${{ runner.temp }}
+        run: |
+          git clone --depth 1 --branch "$FLUTTER_VERSION" https://github.com/flutter/flutter.git
+          echo "${{ runner.temp }}/flutter/bin" >> "$GITHUB_PATH"
+      # Release APKs are signed with the debug key until a release keystore
+      # is configured as a repository secret.
+      - run: flutter --disable-analytics && flutter build apk --release --split-per-abi
+      - uses: actions/upload-artifact@v7
+        with:
+          name: stashbooru-android
+          path: app/build/app/outputs/flutter-apk/*.apk
