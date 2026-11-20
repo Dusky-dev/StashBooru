@@ -10,10 +10,12 @@ import v150 from "./1.5.0.md";
 import v151 from "./1.5.1.md";
 import v160 from "./1.6.0.md";
 import v161 from "./1.6.1.md";
+import v170 from "./1.7.0.md";
 
 // Newest first. Every user-visible change bumps
 // internal/build/stashbooru-version.txt and adds an entry here.
 export const stashBooruChangelog: IStashBooruChange[] = [
+  { version: "1.7.0", date: "2026-11-21", content: v170 },
   { version: "1.6.1", date: "2026-11-20", content: v161 },
   { version: "1.6.0", date: "2026-11-20", content: v160 },
   { version: "1.5.1", date: "2026-11-20", content: v151 },

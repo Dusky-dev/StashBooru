@@ -1,3 +1,23 @@
+## StashBooru 1.7.0: Image/Video dates for "On this day" — 2026-11-21
+
+- Baseline: `develop` `a438679` (1.6.1). Owner choice: date = photo's
+  capture date if the file has it, else site post date, else date added.
+- `booru.PostDate` (tolerant parser: RFC 3339, Ruby date, zone-less ISO, Unix
+  seconds; site's own day, no zone conversion) and `image.CaptureDate` (EXIF
+  DateTimeOriginal only). `fillMissingMediaDate` never overwrites a Date.
+  Videos use post date only (embedded creation time is usually encode time).
+- New downloads set the Date during library import; Tasks → Library →
+  **Fill missing dates** (`/media-dates`, cancellable job) reads EXIF for
+  undated Images, then download receipts (matched by post URL on the item).
+- Checks: unit tests for both parsers (formats from site API docs, no
+  recorded fixtures exist); integration `TestFillMissingMediaDates…`;
+  golangci-lint 0; `tsc`, Biome, `pnpm run test` 141; `tasks-navigation.mjs`
+  (extended) and `settings-maintenance.mjs` pass at desktop/mobile.
+- Not verified: EXIF on real photos (goexif reads JPEG/TIFF; converted JPEG XL
+  originals are read before conversion), real sites' date strings, large
+  libraries' run time.
+- Next: "On this day" main-page row.
+
 ## StashBooru 1.6.0: Followed posts tabs, bulk seen — 2026-11-20
 
 - Baseline: `develop` `089be9e` (1.5.1). Owner feedback: Following had no
