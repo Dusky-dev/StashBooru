@@ -1458,7 +1458,8 @@
     "types": {
       "premade_filter": "Premade Filter",
       "saved_filter": "Saved Filter"
-    }
+    },
+    "edit": "Edit main page"
   },
   "galleries": "Galleries",
   "gallery": "Gallery",

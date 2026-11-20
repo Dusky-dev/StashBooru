@@ -1,4 +1,8 @@
 import { IntlShape } from "react-intl";
+export {
+  FilterModeToMessageID,
+  customFilterTitle,
+} from "./frontPageTitles";
 import { ITypename } from "src/utils/data";
 import { ImageWallOptions } from "src/utils/imageWall";
 import { RatingSystemOptions } from "src/utils/rating";

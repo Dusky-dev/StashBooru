@@ -70,15 +70,15 @@ const FrontPage: React.FC = PatchComponent("FrontPage", () => {
 
   return (
     <div className="recommendations-container">
+      <div className="recommendations-header">
+        <Button variant="secondary" onClick={() => setIsEditing(true)}>
+          <FormattedMessage id="front_page.edit" />
+        </Button>
+      </div>
       <div>
         {frontPageContent?.map((content, i) => (
           <Control key={i} content={content} />
         ))}
-      </div>
-      <div className="recommendations-footer">
-        <Button onClick={() => setIsEditing(true)}>
-          <FormattedMessage id={"actions.customise"} />
-        </Button>
       </div>
     </div>
   );
