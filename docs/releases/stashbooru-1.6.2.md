@@ -1,6 +1,6 @@
-# StashBooru 1.6.1
+# StashBooru 1.6.2
 
-Fixes for the native app. The server is unchanged from 1.6.0 apart from this
+Fixes for the native app. The server is unchanged from 1.6.1 apart from this
 release's note.
 
 ## Fixed

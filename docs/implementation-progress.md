@@ -1,6 +1,6 @@
-## StashBooru 1.6.1: app crash on LuaJIT mpv, JPEG XL in the app — 2026-11-20
+## StashBooru 1.6.2: app crash on LuaJIT mpv, JPEG XL in the app — 2026-11-20
 
-- Baseline: `develop` `089be9e` (1.5.1), merged with 1.6.0. Owner reports: Linux app core dump
+- Baseline: `develop` `089be9e` (1.5.1), merged with 1.6.0 and 1.6.1. Owner reports: Linux app core dump
   (LuaJIT `lua_pcall` → `_Unwind_RaiseException` in `libflutter_linux_gtk.so`)
   and Android "failed to initialize a decoder for codec 'jpegxl'".
 - Linux runner links `libgcc_s` before the Flutter engine, whose exported
