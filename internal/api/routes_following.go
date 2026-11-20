@@ -123,6 +123,17 @@ func (rs booruBrowserRoutes) FollowingFeed(w http.ResponseWriter, r *http.Reques
 	if q.Get("before") != "" {
 		filter.Before, err = strconv.ParseInt(q.Get("before"), 10, 64)
 	}
+	if follows := q["follow"]; len(follows) > 1 {
+		filter.FollowID, filter.FollowIDs = "", follows
+		for _, id := range follows {
+			if !booruFollowID.MatchString(id) {
+				err = models.ErrFollowingInvalid
+			}
+		}
+		if len(follows) > models.MaxBooruFollows {
+			err = models.ErrFollowingInvalid
+		}
+	}
 	if err != nil || filter.Before < 0 || (filter.FollowID != "" && !booruFollowID.MatchString(filter.FollowID)) {
 		writeBooruError(w, 400, "following", "Invalid feed cursor or follow ID.")
 		return

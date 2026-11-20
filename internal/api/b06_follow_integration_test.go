@@ -448,6 +448,17 @@ func TestB06MarkSeenBatchAndSeenEviction(t *testing.T) {
 		}))
 		return counts, total
 	}
+	feed := func(query string) int {
+		t.Helper()
+		w := httptest.NewRecorder()
+		rs.FollowingFeed(w, httptest.NewRequest("GET", "/following/feed?"+query, nil))
+		require.Equal(t, 200, w.Code, w.Body.String())
+		var page struct{ Items []followingPostView }
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &page))
+		return len(page.Items)
+	}
+	require.Equal(t, 2, feed("follow="+a.ID))
+	require.Equal(t, 3, feed("follow="+a.ID+"&follow="+b.ID), "one Artist followed on several sites")
 	post(`{"seen":true}`, 400)
 	post(`{"seen":false,"upTo":"9"}`, 400)
 	post(`{"seen":true,"sequences":["1"],"upTo":"9"}`, 400)

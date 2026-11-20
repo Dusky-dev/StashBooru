@@ -117,9 +117,18 @@ func (s *FollowingStore) List(ctx context.Context, filter models.FollowingFilter
 	if !filter.History {
 		match += " AND f.active=1 AND f.query_revision=m.revision"
 	}
+	if filter.FollowID != "" && len(filter.FollowIDs) > 0 || len(filter.FollowIDs) > models.MaxBooruFollows {
+		return nil, models.ErrFollowingInvalid
+	}
 	if filter.FollowID != "" {
 		match += " AND m.follow_id=?"
 		args = append(args, filter.FollowID)
+	}
+	if len(filter.FollowIDs) > 0 {
+		match += " AND m.follow_id IN (" + strings.TrimSuffix(strings.Repeat("?,", len(filter.FollowIDs)), ",") + ")"
+		for _, id := range filter.FollowIDs {
+			args = append(args, id)
+		}
 	}
 	if filter.Kind != "" {
 		match += " AND m.kind=?"

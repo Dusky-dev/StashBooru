@@ -51,9 +51,12 @@ type FollowingPost struct {
 }
 
 type FollowingFilter struct {
-	Before         int64
-	Limit          int
-	FollowID       string
+	Before   int64
+	Limit    int
+	FollowID string
+	// FollowIDs lists posts matching any of several follows (for example
+	// every site followed for one Artist). Not combined with FollowID.
+	FollowIDs      []string
 	Instance       string
 	Kind           string
 	Unseen         bool
