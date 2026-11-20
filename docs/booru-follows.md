@@ -57,9 +57,14 @@ limit. This initial API retains inactive records rather than exposing deletion.
 
 ## Using the Following page (B06b)
 
-Open **Following** in the utility navigation to see the **Saved feed**. Use
-**Manage follows** to create or edit a follow, check for new posts, or maintain
-the feed cache. To add a follow, choose an enabled Danbooru, Gelbooru, Rule34,
+Open **Following** in the utility navigation for **Follows & settings**:
+create or edit a follow, check for new posts, the automatic-check and
+mark-seen settings, and the feed cache. **Posts from follows** lists saved posts
+from every follow. To review one Artist, Character or Copyright, open its
+**Followed posts** tab: **Check new posts** checks every site whose followed
+name is connected to that record (up to 10 pages each) and lists the posts,
+each with its site's icon. Without a connected follow, the tab explains how to
+add one (Identities → connect a site name → Follow). To add a follow, choose an enabled Danbooru, Gelbooru, Rule34,
 Paheal or Pawchive source, name the follow, select Artist, Character, Copyright / series or Provider query,
 and enter the exact provider tag or query. Source credentials and custom
 instances live in Source settings. Other saved engines remain visible with
@@ -137,6 +142,13 @@ aliases for the same instance share one filter. Changing a filter starts at the
 newest matching page; switching to Manage follows preserves the feed filters.
 
 **Mark seen / Mark unseen** is an explicit, versioned, library-wide decision.
+Tick posts to **Mark selected seen/unseen**, or use **Mark all seen** for every
+new post in the current view up to the newest one shown (posts found after the
+page loaded stay new). **Mark followed posts seen once shown** (Follows &
+settings or Booru settings, off by default) marks posts seen as a list shows
+them; they keep their New badge until the list reloads. In the Booru browser
+it marks shown posts that a follow check already saved; posts not yet saved
+are unaffected.
 **Unseen only**, **Include History**, **Show ignored** and **Hide marked downloaded**
 filter saved snapshots. Ignore/download history remains separate. Unfollowing
 does not erase it. In **Manage follows → Feed cache**, **Remove seen snapshots**
@@ -153,9 +165,12 @@ The same rule applies to attachment previews.
 
 The snapshot cache holds at most **5000 posts**, with at most **64 KiB** of metadata
 per post. A page that exceeds capacity or metadata limits fails atomically;
-its posts/matches and cursor do not partially commit. Review and mark items seen,
-remove seen snapshots, then retry. History can reveal snapshots retained from
-inactive or changed follows. No unseen post is automatically evicted.
+its posts/matches and cursor do not partially commit. When the cache is full, a
+new post replaces the oldest snapshot already marked seen (its seen decision is
+kept). Only a cache full of unseen posts stops checks: mark posts seen, then
+retry. History can reveal snapshots retained from inactive or changed follows.
+No unseen post is automatically evicted. Previews are not downloaded: the
+browser loads each thumbnail from the site when a post is shown.
 
 Failures retain the resume cursor and last successful check time. Sanitized
 failure diagnostics are saved separately, guarded against stale requests, and
@@ -303,9 +318,10 @@ no-store responses:
 
 | Endpoint | Contract |
 | --- | --- |
-| `GET /following/feed` | `limit=1..50` (default 25), `before` local sequence cursor, optional `follow` ID, `unseen=1`, `history=1`, `ignored=1`, `downloaded=hide`. Returns `items` and `next`; no remote requests. |
+| `GET /following/feed` | `limit=1..50` (default 25), `before` local sequence cursor, optional `follow` ID (repeat for several), `unseen=1`, `history=1`, `ignored=1`, `downloaded=hide`. Returns `items` and `next`; no remote requests. |
 | `POST /following/sync` | `{ "id": "<follow ID>", "version": 1 }`; saves one bounded page plus its checkpoint atomically. Returns progress, matched count and notice. |
 | `POST /following/seen` | `{ "sequence": "<feed sequence>", "version": 0, "seen": true }`; stale decisions return 409. |
+| `POST /following/seen-batch` | `{ "sequences": ["<seq>", …], "seen": true\|false }` (at most 500), `{ "instance": "<fingerprint>", "postIDs": ["<site post ID>", …], "seen": … }` (saved posts only), or `{ "upTo": "<seq>", "followIDs": [ … ], "seen": true }` for every unseen post of those active follows (all when omitted) up to that sequence. Returns `{ "changed": n }`. |
 | `POST /following/prune` | `{ "action": "remove-seen-snapshots" }`; removes only seen snapshots/matches, retaining decisions, cursors and native media/history. |
 
 Next is adapter coverage beyond Danbooru, then stable account/profile targets for

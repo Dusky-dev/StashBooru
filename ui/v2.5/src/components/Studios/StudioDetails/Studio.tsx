@@ -55,6 +55,10 @@ import { OCounterButton } from "src/components/Shared/CountButton";
 import { OrganizedButton } from "src/components/Scenes/SceneDetails/OrganizedButton";
 import { runEntityAutoTag } from "src/utils/entityAutoTag";
 import { ProfileMergeButton } from "src/components/Shared/ProfileMergeModal";
+import {
+  FollowedPosts,
+  useFollowedUnseen,
+} from "src/components/Following/FollowedPosts";
 
 interface IProps {
   studio: GQL.StudioDataFragment;
@@ -75,6 +79,7 @@ const validTabs = [
   "performers",
   "groups",
   "childstudios",
+  "followed",
 ] as const;
 type TabKey = (typeof validTabs)[number];
 
@@ -155,6 +160,7 @@ const StudioTabs: React.FC<{
   }, [showAllDetails, studio.child_studios.length]);
 
   const mediaFilterHook = useStudioFilterHook(studio, showAllDetails);
+  const followedUnseen = useFollowedUnseen("artist", studio.id);
 
   return (
     <Tabs
@@ -280,6 +286,18 @@ const StudioTabs: React.FC<{
           active={activeTabKey === "childstudios"}
           studio={studio}
         />
+      </Tab>
+      <Tab
+        eventKey="followed"
+        title={
+          <TabTitleCounter
+            messageID="following_action.followed.tab"
+            count={followedUnseen}
+            abbreviateCounter={abbreviateCounter}
+          />
+        }
+      >
+        <FollowedPosts kind="artist" entityID={studio.id} />
       </Tab>
     </Tabs>
   );

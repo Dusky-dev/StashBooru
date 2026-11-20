@@ -2162,7 +2162,51 @@
       "run_now": "Check all now",
       "running": "Checking follows…",
       "next": "Next check: {time}",
-      "last": "Last check {time}: {checked, plural, one {# follow} other {# follows}}, {posts, plural, one {# new post} other {# new posts}}{failed, plural, =0 {} one {, # failed} other {, # failed}}."
+      "last": "Last check {time}: {checked, plural, one {# follow} other {# follows}}, {posts, plural, one {# new post} other {# new posts}}{failed, plural, =0 {} one {, # failed} other {, # failed}}.",
+      "mark_on_view": "Mark followed posts seen once shown",
+      "mark_on_view_help": "Off: posts stay new until you mark them seen. On: followed posts are marked seen when a list or the Booru browser shows them (the whole loaded page). They keep their New badge until the list reloads, and next time only newer posts are new."
+    },
+    "view_posts": "Posts from follows",
+    "view_manage": "Follows & settings",
+    "posts": {
+      "select": "Select {title}",
+      "select_page": "Select all on this page",
+      "clear_selection": "Clear selection",
+      "selected": "{count} selected",
+      "mark_selected_seen": "Mark selected seen",
+      "mark_selected_unseen": "Mark selected unseen",
+      "mark_all_seen": "Mark all seen",
+      "mark_all_title": "Marks every new post in this view seen, up to the newest one shown. Posts found after this page loaded stay new.",
+      "updated": "{count, plural, =0 {Nothing to change.} one {# post updated.} other {# posts updated.}}",
+      "new": "New",
+      "mark_seen": "Mark seen",
+      "mark_unseen": "Mark unseen",
+      "ignored": "Ignored",
+      "downloaded": "Marked downloaded",
+      "browse": "Browse / Download",
+      "browse_title": "Open the post in a new tab",
+      "matched": "Matched follows:",
+      "history": "history",
+      "matches_truncated": "Additional matches omitted (50 shown).",
+      "tags": "Tags ({count})",
+      "no_preview": "No preview saved",
+      "preview_failed": "Preview unavailable"
+    },
+    "followed": {
+      "tab": "Followed posts",
+      "intro": "Posts from {count, plural, one {the site} other {the # sites}} where this {kind, select, artist {Artist} character {Character} other {Copyright}} is followed:",
+      "check": "Check new posts",
+      "checking": "Checking {site}…",
+      "checked": "{count, plural, =0 {No new posts.} one {# new post found.} other {# new posts found.}}",
+      "failed": "{site}: {error}",
+      "new_only": "New only",
+      "empty_new": "No new posts. Press Check new posts, or turn off New only to see earlier posts.",
+      "empty": "No saved posts yet. Press Check new posts to fetch recent posts from every followed site.",
+      "older": "Older posts",
+      "newest": "Newest posts",
+      "manage": "Follows & settings",
+      "none": "This {kind, select, artist {Artist} character {Character} other {Copyright}} isn't followed on any site yet. Open Identities in the details above, connect a site name, then press Follow next to it.",
+      "open_identities": "Open the Identities page"
     }
   }
 }

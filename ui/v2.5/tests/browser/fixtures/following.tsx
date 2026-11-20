@@ -3,6 +3,7 @@ import { IntlProvider } from "react-intl";
 import { BrowserRouter, Link, Route, useLocation } from "react-router-dom";
 import { IdentitySources } from "../../../src/components/Identities/identity";
 import Following from "../../../src/components/Following/Following";
+import { FollowedPosts } from "../../../src/components/Following/FollowedPosts";
 import "../../../src/index.scss";
 import "../../../src/booru-ui.scss";
 import { messages } from "./messages";
@@ -29,9 +30,15 @@ ReactDOM.render(
       <main className="container-fluid py-3">
         <Route exact path="/following" component={Following} />
         <Route exact path="/profile" component={ProfileFixture} />
+        <Route exact path="/artist">
+          <h2>Artist fixture</h2>
+          <FollowedPosts kind="artist" entityID="7" />
+          <h2>Character fixture</h2>
+          <FollowedPosts kind="character" entityID="7" />
+        </Route>
         <Route exact path="/other">
           <p>Other fixture page</p>
-          <Link to="/following">Return to Following</Link>
+          <Link to="/following?view=posts">Return to Following</Link>
         </Route>
         <Link to="/other">Leave Following fixture</Link>
       </main>

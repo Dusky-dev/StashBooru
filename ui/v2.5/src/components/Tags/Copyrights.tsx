@@ -42,6 +42,10 @@ import {
   TabTitleCounter,
   useTabKey,
 } from "src/components/Shared/DetailsPage/Tabs";
+import {
+  FollowedPosts,
+  useFollowedUnseen,
+} from "src/components/Following/FollowedPosts";
 import { ExpandCollapseButton } from "src/components/Shared/CollapseButton";
 import {
   Performer,
@@ -423,12 +427,13 @@ const CopyrightMediaTabs: React.FC<{
         : "characters";
   const { activeTabKey, setTabKey } = useTabKey({
     tabKey: initialTab,
-    validTabs: ["all", "images", "videos", "characters"],
+    validTabs: ["all", "images", "videos", "characters", "followed"],
     defaultTabKey: populatedDefaultTab,
     baseURL: `/copyrights/${copyright.id}`,
   });
 
   const imageFilterHook = useCopyrightFilterHook(copyright);
+  const followedUnseen = useFollowedUnseen("copyright", copyright.id);
 
   const renderImages = () => (
     <FilteredImageList
@@ -511,6 +516,18 @@ const CopyrightMediaTabs: React.FC<{
           alterQuery
           view={View.CopyrightPerformers}
         />
+      </Tab>
+      <Tab
+        eventKey="followed"
+        title={
+          <TabTitleCounter
+            messageID="following_action.followed.tab"
+            count={followedUnseen}
+            abbreviateCounter={abbreviateCounter}
+          />
+        }
+      >
+        <FollowedPosts kind="copyright" entityID={copyright.id} />
       </Tab>
     </Tabs>
   );

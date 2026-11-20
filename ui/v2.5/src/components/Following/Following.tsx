@@ -10,6 +10,16 @@ import {
   identityPaths,
   identityRequest,
 } from "../Identities/identityApi";
+import {
+  notifyFollowingChanged,
+  useFollowingUnseen,
+  useMarkSeenOnView,
+} from "./FollowAction";
+import {
+  type FeedPage,
+  FollowingPostGrid,
+  followingRequest as request,
+} from "./FollowingPosts";
 import { FollowScheduleSettings } from "./FollowScheduleSettings";
 import {
   canFollowIdentity,
@@ -37,37 +47,16 @@ interface Follow {
   unseen?: number;
 }
 
-interface FeedItem {
-  sequence: string;
-  postID: string;
-  instance: string;
-  retrievedAt: string;
-  seenAt: string;
-  seenVersion: number;
-  ignoredAt: string;
-  downloadedAt: string;
-  matchesTruncated: boolean;
-  matches: {
-    followID: string;
-    name: string;
-    revision: number;
-    target: string;
-    current: boolean;
-  }[];
-  content: {
-    title: string;
-    url?: string;
-    thumbnail?: string;
-    browseURL?: string;
-    rating?: string;
-    tags?: { name: string; category: string }[];
-  };
-}
-
-interface FeedPage {
-  items: FeedItem[];
-  next: string;
-}
+const feedParams = [
+  "follow",
+  "instance",
+  "kind",
+  "unseen",
+  "history",
+  "ignored",
+  "downloaded",
+  "before",
+];
 
 const followKinds = [
   ["artist", "Artist"],
@@ -76,149 +65,20 @@ const followKinds = [
   ["query", "Provider query"],
 ];
 
-async function request<T>(path: string, signal: AbortSignal, input?: unknown) {
-  const response = await fetch(new URL(path, document.baseURI), {
-    signal,
-    credentials: "same-origin",
-    ...(input === undefined
-      ? {}
-      : {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(input),
-        }),
-  });
-  const value = await response.json();
-  if (!response.ok) {
-    const retry = response.headers.get("Retry-After");
-    throw new Error(
-      (typeof value.error === "string" ? value.error : "Request failed.") +
-        (retry ? ` Retry after ${retry} seconds.` : "")
-    );
-  }
-  return value as T;
-}
-
-function Snapshot({
-  item,
-  sourceName,
-  disabled,
-  seen,
-  filter,
-}: {
-  item: FeedItem;
-  sourceName?: string;
-  disabled: boolean;
-  seen: () => void;
-  filter: (id: string, historic: boolean) => void;
-}) {
-  const [failedThumbnail, setFailedThumbnail] = useState<string>();
-  const content = item.content;
-  const failed = !!content.thumbnail && failedThumbnail === content.thumbnail;
-  return (
-    <article className="following-post card" aria-label={content.title}>
-      <div className="following-thumbnail">
-        {content.thumbnail && !failed ? (
-          <img
-            src={new URL(content.thumbnail, document.baseURI).toString()}
-            alt=""
-            loading="lazy"
-            onError={() => setFailedThumbnail(content.thumbnail)}
-          />
-        ) : (
-          <span>{failed ? "Preview unavailable" : "No cached preview"}</span>
-        )}
-      </div>
-      <div className="card-body">
-        <h3>
-          {content.url ? (
-            <a href={content.url} target="_blank" rel="noreferrer">
-              {content.title}
-            </a>
-          ) : (
-            content.title
-          )}
-        </h3>
-        <div className="following-actions">
-          {sourceName && <Badge variant="secondary">{sourceName}</Badge>}
-          {content.rating && (
-            <Badge variant="secondary">{content.rating}</Badge>
-          )}
-          {item.ignoredAt && <Badge variant="secondary">Ignored</Badge>}
-          {item.downloadedAt && (
-            <Badge variant="secondary">Marked downloaded</Badge>
-          )}
-          <Button
-            size="sm"
-            variant={item.seenAt ? "outline-secondary" : "secondary"}
-            disabled={disabled}
-            onClick={seen}
-          >
-            {item.seenAt ? "Mark unseen" : "Mark seen"}
-          </Button>
-          {content.browseURL && (
-            <Link
-              className="btn btn-secondary btn-sm"
-              to={content.browseURL}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Open the post in a new tab"
-            >
-              Browse / Download
-            </Link>
-          )}
-        </div>
-        <div className="following-matches">
-          Matched follows:
-          {item.matches.map((match) => (
-            <Button
-              key={`${match.followID}:${match.revision}`}
-              variant="link"
-              size="sm"
-              title={match.target}
-              onClick={() => filter(match.followID, !match.current)}
-            >
-              {match.name}
-              {!match.current && " (history)"}
-            </Button>
-          ))}
-          {item.matchesTruncated && (
-            <small>Additional matches omitted (50 shown).</small>
-          )}
-        </div>
-        {!!content.tags?.length && (
-          <details>
-            <summary>Tags ({content.tags.length})</summary>
-            <div className="following-tags">
-              {content.tags.map((tag) => (
-                <span key={`${tag.category}:${tag.name}`}>
-                  {tag.name} <small>({tag.category})</small>
-                </span>
-              ))}
-            </div>
-          </details>
-        )}
-        <small className="text-muted">
-          Saved snapshot ·{" "}
-          <time dateTime={item.retrievedAt}>
-            {new Date(item.retrievedAt).toLocaleString()}
-          </time>
-        </small>
-      </div>
-    </article>
-  );
-}
-
 export default function Following() {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const fromIdentity = params.get("fromIdentity") ?? "";
+  // Follows and settings are the default view; the post list opens with
+  // view=posts, or any feed filter from an older or shared link.
+  const view = params.get("view");
   const managing =
     !!fromIdentity ||
-    params.get("view") === "manage" ||
-    location.hash === "#following-manager";
+    view === "manage" ||
+    location.hash === "#following-manager" ||
+    (view !== "posts" && !feedParams.some((key) => params.has(key)));
   const feedSource = params.get("instance") ?? "";
   const feedKind = params.get("kind") ?? "";
   const feedFollow = params.get("follow") ?? "";
@@ -246,6 +106,8 @@ export default function Following() {
   }>();
   const active = useRef(true);
   const operation = useRef<AbortController>();
+  const markSeenOnView = !!useMarkSeenOnView();
+  const totalUnseen = useFollowingUnseen();
 
   useEffect(() => {
     active.current = true;
@@ -373,6 +235,7 @@ export default function Following() {
       if (active.current) {
         setBusy(undefined);
         setEpoch((value) => value + 1);
+        notifyFollowingChanged();
       }
     }
   }
@@ -380,8 +243,7 @@ export default function Following() {
   function viewLink(manage: boolean) {
     const next = new URLSearchParams(location.search);
     next.delete("fromIdentity");
-    if (manage) next.set("view", "manage");
-    else next.delete("view");
+    next.set("view", manage ? "manage" : "posts");
     return { pathname: "/following", search: next.toString() };
   }
 
@@ -398,6 +260,7 @@ export default function Following() {
     if (key === "instance" || key === "kind") next.delete("follow");
     if (value) next.set(key, value);
     else next.delete(key);
+    next.set("view", "posts");
     history.push({ pathname: "/following", search: next.toString() });
   }
 
@@ -408,6 +271,7 @@ export default function Following() {
     next.delete("kind");
     next.set("follow", id);
     if (historic) next.set("history", "1");
+    next.set("view", "posts");
     history.push({ pathname: "/following", search: next.toString() });
   }
 
@@ -488,6 +352,18 @@ export default function Following() {
     : checkable.length === 1
       ? checkable[0]
       : undefined;
+  // "Mark all seen" covers the follows this view is filtered to.
+  const feedScope =
+    feedFollow || feedSource || feedKind
+      ? selectableFollows
+          .filter(
+            (follow) =>
+              (!feedFollow || follow.id === feedFollow) &&
+              (!feedSource || follow.instance === feedSource) &&
+              (!feedKind || follow.kind === feedKind)
+          )
+          .map((follow) => follow.id)
+      : undefined;
   const next = new URLSearchParams(location.search);
   if (page?.next) next.set("before", page.next);
 
@@ -504,14 +380,14 @@ export default function Following() {
               if (fromIdentity) resetForm();
             }}
           >
-            Saved feed
+            {intl.formatMessage({ id: "following_action.view_posts" })}
           </Link>
           <Link
             className={managing ? "btn btn-primary" : "btn btn-secondary"}
             aria-current={managing ? "page" : undefined}
             to={fromIdentity ? location : viewLink(true)}
           >
-            Manage follows
+            {intl.formatMessage({ id: "following_action.view_manage" })}
           </Link>
           <Link className="btn btn-secondary" to="/booru">
             Content browser
@@ -539,6 +415,25 @@ export default function Following() {
           <p className="text-muted">
             {intl.formatMessage({ id: "following_action.manager_intro" })}
           </p>
+          {totalUnseen > 0 && (
+            <p>
+              <Link
+                className="btn btn-primary"
+                to={{
+                  pathname: "/following",
+                  search: new URLSearchParams({
+                    view: "posts",
+                    unseen: "1",
+                  }).toString(),
+                }}
+              >
+                {intl.formatMessage(
+                  { id: "following_action.navbar_new" },
+                  { count: totalUnseen }
+                )}
+              </Link>
+            </p>
+          )}
           <FollowScheduleSettings
             onFinished={() => setEpoch((value) => value + 1)}
           />
@@ -756,7 +651,7 @@ export default function Following() {
                 {follow.active && !!follow.unseen && (
                   <Link
                     className="badge badge-primary"
-                    to={`/following?${new URLSearchParams({ follow: follow.id })}`}
+                    to={`/following?${new URLSearchParams({ view: "posts", follow: follow.id })}`}
                   >
                     {intl.formatMessage(
                       { id: "following_action.new_badge" },
@@ -977,24 +872,15 @@ export default function Following() {
               posts.
             </p>
           )}
-          <div className="following-grid">
-            {page?.items.map((item) => (
-              <Snapshot
-                key={item.sequence}
-                item={item}
-                sourceName={sourceNames.get(item.instance)}
-                disabled={locked}
-                filter={selectMatch}
-                seen={() =>
-                  void mutate("Saving seen decision…", "following/seen", {
-                    sequence: item.sequence,
-                    version: item.seenVersion,
-                    seen: !item.seenAt,
-                  })
-                }
-              />
-            ))}
-          </div>
+          <FollowingPostGrid
+            items={page?.items ?? []}
+            sources={sources}
+            scope={feedScope}
+            markSeenOnView={markSeenOnView}
+            disabled={locked}
+            onChanged={() => setEpoch((value) => value + 1)}
+            onFilter={selectMatch}
+          />
           <nav aria-label="Feed pages" className="following-actions my-3">
             {params.has("before") && (
               <Button

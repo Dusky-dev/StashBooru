@@ -1,6 +1,6 @@
-## StashBooru 1.5.2: app crash on LuaJIT mpv, JPEG XL in the app — 2026-11-20
+## StashBooru 1.6.1: app crash on LuaJIT mpv, JPEG XL in the app — 2026-11-20
 
-- Baseline: `develop` `089be9e` (1.5.1). Owner reports: Linux app core dump
+- Baseline: `develop` `089be9e` (1.5.1), merged with 1.6.0. Owner reports: Linux app core dump
   (LuaJIT `lua_pcall` → `_Unwind_RaiseException` in `libflutter_linux_gtk.so`)
   and Android "failed to initialize a decoder for codec 'jpegxl'".
 - Linux runner links `libgcc_s` before the Flutter engine, whose exported
@@ -14,7 +14,33 @@
 - Checks: `flutter analyze`, `flutter test` (23 pass, 4 live skipped, incl. a
   JXL provider test), Linux release build.
 - Not verified: the owner's Arch PC, Android and Windows at runtime.
-- Next: 1.6.0 app features (settings, booru browser) in a separate PR.
+- Next: 1.7.0 app features (settings, booru browser) in a separate PR.
+
+## StashBooru 1.6.0: Followed posts tabs, bulk seen — 2026-11-20
+
+- Baseline: `develop` `089be9e` (1.5.1). Owner feedback: Following had no
+  post selection, no Mark all seen, no settings; wanted Artist → Check new
+  posts across all sites with site icons, Following as the settings page.
+- Backend: `POST /following/seen-batch` (selection ≤500, or every unseen post
+  of some/all active follows up to a shown sequence, one transaction, versions
+  bumped); repeated `follow` feed filter; `markSeenOnView` in
+  `following-schedule.json`; a full cache now evicts the oldest seen snapshot.
+- UI: shared `FollowingPostGrid` (selection, Mark selected seen/unseen, Mark
+  all seen, site icon, New badge); **Followed posts** tab on Artist, Character
+  and Copyright pages (`FollowedPosts`, always shown, explains how to follow
+  when empty); the setting is also in Booru settings and marks saved posts
+  the browser shows (seen-batch by instance + post IDs); Following defaults
+  to Follows & settings (`view=posts` or any feed filter opens the list).
+- Checks: Go integration tests for `internal/api`, `pkg/sqlite`,
+  `pkg/models` pass; golangci-lint 0 issues on those; `tsc`, Biome
+  lint/format, stylelint, `pnpm run test` (140 pass); browser `following.mjs`
+  (extended: selection, mark-on-view, Artist tab, mark all, filter-clear stays
+  on posts, empty Character tab), `following-context.mjs`, `identities.mjs`,
+  `booru-browser.mjs` (setting off by default, on → shown posts sent) pass at
+  1440/390 px.
+- Not verified: the tab inside the real Studio page in a browser (fixture
+  mounts the component), live sites, `make it` in full.
+- Next: owner review of the tab on real profile pages.
 
 ## StashBooru 1.5.1: native app restyled to match the web UI — 2026-11-20
 

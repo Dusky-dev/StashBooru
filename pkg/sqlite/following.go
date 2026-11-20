@@ -63,7 +63,18 @@ func (s *FollowingStore) ApplyPage(ctx context.Context, follow models.BooruFollo
 		}
 		if existing == 0 {
 			if count >= models.MaxFollowingPosts {
-				return empty, models.ErrFollowingLimit
+				// Make room by dropping the oldest snapshot already marked
+				// seen; the seen decision itself is kept. Only unseen posts
+				// can fill the cache.
+				result, err := dbWrapper.Exec(ctx, `DELETE FROM following_posts WHERE sequence=(SELECT p.sequence FROM following_posts p
+ JOIN following_seen s ON s.instance=p.instance AND s.post_id=p.post_id AND s.seen_at<>'' ORDER BY p.sequence LIMIT 1)`)
+				if err != nil {
+					return empty, err
+				}
+				if n, err := result.RowsAffected(); err != nil || n == 0 {
+					return empty, models.ErrFollowingLimit
+				}
+				count--
 			}
 			count++
 		}
@@ -106,9 +117,18 @@ func (s *FollowingStore) List(ctx context.Context, filter models.FollowingFilter
 	if !filter.History {
 		match += " AND f.active=1 AND f.query_revision=m.revision"
 	}
+	if filter.FollowID != "" && len(filter.FollowIDs) > 0 || len(filter.FollowIDs) > models.MaxBooruFollows {
+		return nil, models.ErrFollowingInvalid
+	}
 	if filter.FollowID != "" {
 		match += " AND m.follow_id=?"
 		args = append(args, filter.FollowID)
+	}
+	if len(filter.FollowIDs) > 0 {
+		match += " AND m.follow_id IN (" + strings.TrimSuffix(strings.Repeat("?,", len(filter.FollowIDs)), ",") + ")"
+		for _, id := range filter.FollowIDs {
+			args = append(args, id)
+		}
 	}
 	if filter.Kind != "" {
 		match += " AND m.kind=?"
@@ -178,6 +198,70 @@ func (s *FollowingStore) SetSeen(ctx context.Context, sequence int64, version in
 	_, err = dbWrapper.Exec(ctx, `INSERT INTO following_seen(instance,post_id,version,seen_at) VALUES(?,?,?,?)
  ON CONFLICT(instance,post_id) DO UPDATE SET version=excluded.version,seen_at=excluded.seen_at`, identity.Instance, identity.PostID, version+1, at)
 	return version + 1, at, err
+}
+
+func (s *FollowingStore) MarkSeen(ctx context.Context, batch models.FollowingSeenBatch) (int64, error) {
+	conditions, args := []string{}, []any{}
+	switch {
+	case len(batch.PostIDs) > 0:
+		if len(batch.PostIDs) > models.MaxFollowingSeenBatch || batch.Instance == "" || len(batch.Sequences) > 0 || len(batch.FollowIDs) > 0 || batch.UpTo != 0 {
+			return 0, models.ErrFollowingInvalid
+		}
+		args = append(args, batch.Instance)
+		for _, id := range batch.PostIDs {
+			if id == "" || len(id) > 256 {
+				return 0, models.ErrFollowingInvalid
+			}
+			args = append(args, id)
+		}
+		conditions = append(conditions, "p.instance=? AND p.post_id IN ("+strings.TrimSuffix(strings.Repeat("?,", len(batch.PostIDs)), ",")+")")
+	case len(batch.Sequences) > 0:
+		if len(batch.Sequences) > models.MaxFollowingSeenBatch || batch.Instance != "" || len(batch.FollowIDs) > 0 || batch.UpTo != 0 {
+			return 0, models.ErrFollowingInvalid
+		}
+		marks := make([]string, len(batch.Sequences))
+		for i, sequence := range batch.Sequences {
+			if sequence < 1 {
+				return 0, models.ErrFollowingInvalid
+			}
+			marks[i] = "?"
+			args = append(args, sequence)
+		}
+		conditions = append(conditions, "p.sequence IN ("+strings.Join(marks, ",")+")")
+	case batch.UpTo > 0 && batch.Seen && len(batch.FollowIDs) <= models.MaxBooruFollows:
+		conditions = append(conditions, "p.sequence<=?")
+		args = append(args, batch.UpTo)
+		match := "m.sequence=p.sequence AND f.active=1 AND f.query_revision=m.revision"
+		if len(batch.FollowIDs) > 0 {
+			marks := make([]string, len(batch.FollowIDs))
+			for i, id := range batch.FollowIDs {
+				marks[i] = "?"
+				args = append(args, id)
+			}
+			match += " AND m.follow_id IN (" + strings.Join(marks, ",") + ")"
+		}
+		conditions = append(conditions, `EXISTS(SELECT 1 FROM following_matches m JOIN booru_follows f ON f.id=m.follow_id WHERE `+match+`)`)
+	default:
+		return 0, models.ErrFollowingInvalid
+	}
+	at := ""
+	if batch.Seen {
+		at = time.Now().UTC().Format(time.RFC3339Nano)
+		conditions = append(conditions, "COALESCE(s.seen_at,'')=''")
+	} else {
+		conditions = append(conditions, "COALESCE(s.seen_at,'')<>''")
+	}
+	// Each changed decision gets a new version, so an open page holding the
+	// old version cannot silently overwrite it.
+	result, err := dbWrapper.Exec(ctx, `INSERT INTO following_seen(instance,post_id,version,seen_at)
+ SELECT p.instance,p.post_id,COALESCE(s.version,0)+1,? FROM following_posts p
+ LEFT JOIN following_seen s ON s.instance=p.instance AND s.post_id=p.post_id
+ WHERE `+strings.Join(conditions, " AND ")+`
+ ON CONFLICT(instance,post_id) DO UPDATE SET version=excluded.version,seen_at=excluded.seen_at`, append([]any{at}, args...)...)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 func (s *FollowingStore) PruneSeen(ctx context.Context) (int64, error) {

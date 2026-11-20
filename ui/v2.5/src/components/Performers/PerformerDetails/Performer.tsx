@@ -42,6 +42,10 @@ import {
   TabTitleCounter,
   useTabKey,
 } from "src/components/Shared/DetailsPage/Tabs";
+import {
+  FollowedPosts,
+  useFollowedUnseen,
+} from "src/components/Following/FollowedPosts";
 import { DetailTitle } from "src/components/Shared/DetailsPage/DetailTitle";
 import { ExpandCollapseButton } from "src/components/Shared/CollapseButton";
 import { FavoriteIcon } from "src/components/Shared/FavoriteIcon";
@@ -73,6 +77,7 @@ const validTabs = [
   "images",
   "groups",
   "appearswith",
+  "followed",
 ] as const;
 type TabKey = (typeof validTabs)[number];
 
@@ -120,6 +125,7 @@ const PerformerTabs: React.FC<{
   });
 
   const mediaFilterHook = usePerformerFilterHook(performer);
+  const followedUnseen = useFollowedUnseen("character", performer.id);
 
   return (
     <Tabs
@@ -223,6 +229,18 @@ const PerformerTabs: React.FC<{
           active={activeTabKey === "appearswith"}
           performer={performer}
         />
+      </Tab>
+      <Tab
+        eventKey="followed"
+        title={
+          <TabTitleCounter
+            messageID="following_action.followed.tab"
+            count={followedUnseen}
+            abbreviateCounter={abbreviateCounter}
+          />
+        }
+      >
+        <FollowedPosts kind="character" entityID={performer.id} />
       </Tab>
     </Tabs>
   );

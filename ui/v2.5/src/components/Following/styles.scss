@@ -1,4 +1,6 @@
-.following-page {
+.following-page,
+.following-posts,
+.artist-followed-posts {
   margin: 0 auto;
   max-width: 1700px;
   overflow-wrap: anywhere;
@@ -80,5 +82,80 @@
 
   code {
     white-space: pre-wrap;
+  }
+}
+
+.following-posts {
+  .following-post {
+    position: relative;
+
+    &.unseen {
+      border-color: #137cbd;
+    }
+
+    &.selected {
+      outline: 2px solid #137cbd;
+    }
+  }
+
+  .following-thumbnail {
+    position: relative;
+  }
+
+  .following-select {
+    left: 0.5rem;
+    position: absolute;
+    top: 0.5rem;
+    z-index: 1;
+
+    input {
+      cursor: pointer;
+      height: 1.25rem;
+      width: 1.25rem;
+    }
+  }
+
+  .following-site {
+    align-items: center;
+    display: inline-flex;
+    gap: 0.3rem;
+  }
+
+  .following-selection .ml-auto {
+    margin-left: auto;
+  }
+}
+
+.artist-followed-posts {
+  padding: 0.5rem 0;
+
+  .following-site-chip {
+    align-items: center;
+    background: #30404d;
+    border-radius: 1rem;
+    display: inline-flex;
+    gap: 0.3rem;
+    padding: 0.1rem 0.6rem;
+  }
+}
+
+// SourceIcon outside the Booru browser (whose stylesheet may not be loaded).
+.following-posts,
+.artist-followed-posts {
+  .booru-source-icon {
+    border-radius: 2px;
+    display: inline-block;
+    height: 16px;
+    object-fit: contain;
+    vertical-align: -2px;
+    width: 16px;
+  }
+
+  .booru-source-monogram {
+    background: #5c7080;
+    color: #fff;
+    font-size: 11px;
+    line-height: 16px;
+    text-align: center;
   }
 }
