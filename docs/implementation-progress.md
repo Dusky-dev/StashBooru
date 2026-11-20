@@ -11,6 +11,8 @@
   tests skipped; nav tests rewritten for navbar order and the phone menu);
   Linux release build run under Xvfb against a local server at 1280×720 and
   390×844, compared with the web UI's screenshots.
+- CI: the Android build caches Gradle downloads, retries them with longer
+  backoff and retries the build twice, after repeated Maven Central 429s.
 - Not verified: Windows and Android at runtime.
 
 ## StashBooru 1.5.0 release: attach the native app — 2026-11-20
