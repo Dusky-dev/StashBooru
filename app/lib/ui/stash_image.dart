@@ -47,8 +47,9 @@ class StashNetworkImage extends ImageProvider<StashNetworkImage> {
 
   Future<ui.Codec> _load(ImageDecoderCallback decode) async {
     final uri = Uri.parse(url);
-    final response = await (client?.get(uri, headers: headers) ??
-        http.get(uri, headers: headers));
+    final response =
+        await (client?.get(uri, headers: headers) ??
+            http.get(uri, headers: headers));
     if (response.statusCode != 200) {
       throw NetworkImageLoadException(
         statusCode: response.statusCode,
