@@ -94,8 +94,8 @@ through code or fixtures.
   (1.6.0).
 - Main page shows current names; Edit main page at the top (1.6.1, #416).
 - Image/Video Date from EXIF capture date, else site post date, on download
-  and via Tasks → Fill missing dates (1.7.0). Next: "On this day" main-page
-  row (owner-requested) using Date, else date added.
+  and via Tasks → Fill missing dates; "On this day" main-page row using
+  Date, else date added (1.7.0).
 - Parent Tags/Copyrights apply automatically (calculated; "Include parent
   Tags" is on by default). No separate Implies field (owner, 2026-11-18).
 - Implied Tags and Copyrights on Image and Video cards (#383); detail pages,

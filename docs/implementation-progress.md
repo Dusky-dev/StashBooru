@@ -1,4 +1,4 @@
-## StashBooru 1.7.0: Image/Video dates for "On this day" — 2026-11-21
+## StashBooru 1.7.0: "On this day" and Image/Video dates — 2026-11-21
 
 - Baseline: `develop` `a438679` (1.6.1). Owner choice: date = photo's
   capture date if the file has it, else site post date, else date added.
@@ -16,7 +16,12 @@
 - Not verified: EXIF on real photos (goexif reads JPEG/TIFF; converted JPEG XL
   originals are read before conversion), real sites' date strings, large
   libraries' run time.
-- Next: "On this day" main-page row.
+- Row: `GET /on-this-day` (kind, viewer's year/month/day; day-precision
+  Date else `created_at`; current year excluded; newest first) feeds native
+  cards via `findImages`/`findScenes` ids; new `OnThisDay` row type in the
+  editor and the default layout; no "View all" in v1. Mounted
+  `on-this-day.mjs` (order, viewer date, empty day hidden) desktop/mobile.
+- Next: owner tries both rows; "View all" needs a native filter criterion.
 
 ## StashBooru 1.6.0: Followed posts tabs, bulk seen — 2026-11-20
 
