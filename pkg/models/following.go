@@ -62,6 +62,20 @@ type FollowingFilter struct {
 	HideDownloaded bool
 }
 
+// FollowingSeenBatch marks several feed posts seen or unseen at once. Either
+// Sequences names the posts (a selection), or UpTo bounds "everything unseen"
+// for the active follows in FollowIDs (all active follows when empty). UpTo
+// keeps posts saved by a check that finishes meanwhile unseen.
+type FollowingSeenBatch struct {
+	Sequences []int64
+	FollowIDs []string
+	UpTo      int64
+	Seen      bool
+}
+
+// MaxFollowingSeenBatch bounds an explicit selection.
+const MaxFollowingSeenBatch = 500
+
 type FollowingReaderWriter interface {
 	Checkpoint(context.Context, string, int) (FollowingCheckpoint, error)
 	// ApplyPage must share one write transaction with its capacity, follow-version
@@ -70,6 +84,7 @@ type FollowingReaderWriter interface {
 	List(context.Context, FollowingFilter) ([]FollowingPost, error)
 	SetSeen(context.Context, int64, int, bool) (int, string, error)
 	PruneSeen(context.Context) (int64, error)
+	MarkSeen(context.Context, FollowingSeenBatch) (int64, error)
 	RecordError(context.Context, BooruFollow, int, string) error
 	// UnseenCounts counts unseen, not ignored posts per active follow (current
 	// revision) and in total; a post matching two follows counts once in total.

@@ -402,3 +402,121 @@ func TestB06FollowShowsConnectedEntity(t *testing.T) {
 		}
 	}
 }
+
+func TestB06MarkSeenBatchAndSeenEviction(t *testing.T) {
+	config.InitializeEmpty()
+	db := sqlite.NewDatabase()
+	require.NoError(t, db.Open(filepath.Join(t.TempDir(), "seen.sqlite")))
+	defer db.Close()
+	repo := db.Repository()
+	rs := booruBrowserRoutes{configPath: t.TempDir(), repository: repo}
+	dan := booru.Defaults()[0]
+	a := b06Mutation(t, rs, b06Create(dan, "artist", "artist_a"), 200)
+	b := b06Mutation(t, rs, b06Create(dan, "artist", "artist_b"), 200)
+	seed := func(follow models.BooruFollow, version int, ids ...string) {
+		t.Helper()
+		posts := make([]models.FollowingSnapshot, 0, len(ids))
+		for _, id := range ids {
+			posts = append(posts, models.FollowingSnapshot{PostID: id, Payload: []byte("{}")})
+		}
+		require.NoError(t, repo.WithTxn(context.Background(), func(ctx context.Context) error {
+			_, err := repo.Following.ApplyPage(ctx, follow, version, "", false, posts)
+			return err
+		}))
+	}
+	seed(a, 0, "1", "2")
+	seed(b, 0, "3")
+	post := func(body string, status int) int {
+		t.Helper()
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "/following/seen-batch", strings.NewReader(body))
+		r.Header.Set("Content-Type", "application/json")
+		rs.MarkFollowingSeen(w, r)
+		require.Equal(t, status, w.Code, w.Body.String())
+		var out struct{ Changed int }
+		_ = json.Unmarshal(w.Body.Bytes(), &out)
+		return out.Changed
+	}
+	unseen := func() (map[string]int, int) {
+		t.Helper()
+		var counts map[string]int
+		var total int
+		require.NoError(t, repo.WithReadTxn(context.Background(), func(ctx context.Context) error {
+			var err error
+			counts, total, err = repo.Following.UnseenCounts(ctx)
+			return err
+		}))
+		return counts, total
+	}
+	post(`{"seen":true}`, 400)
+	post(`{"seen":false,"upTo":"9"}`, 400)
+	post(`{"seen":true,"sequences":["1"],"upTo":"9"}`, 400)
+	// Mark all for one follow, bounded by what the page showed (sequence 1).
+	require.Equal(t, 1, post(`{"seen":true,"followIDs":["`+a.ID+`"],"upTo":"1"}`, 200))
+	counts, total := unseen()
+	require.Equal(t, 1, counts[a.ID], "a post saved after the page loaded stays unseen")
+	require.Equal(t, 2, total)
+	// Selection: mark seen, then unseen again; repeats change nothing.
+	require.Equal(t, 2, post(`{"seen":true,"sequences":["2","3"]}`, 200))
+	require.Equal(t, 0, post(`{"seen":true,"sequences":["2","3"]}`, 200))
+	_, total = unseen()
+	require.Zero(t, total)
+	require.Equal(t, 1, post(`{"seen":false,"sequences":["3"]}`, 200))
+	_, total = unseen()
+	require.Equal(t, 1, total)
+	// Single-post decisions see the batch's new version.
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("POST", "/following/seen", strings.NewReader(`{"sequence":"3","version":0,"seen":true}`))
+	r.Header.Set("Content-Type", "application/json")
+	rs.SetFollowingSeen(w, r)
+	require.Equal(t, 409, w.Code, "a stale per-post version must not overwrite a batch decision")
+	// All follows, everything shown.
+	require.Equal(t, 1, post(`{"seen":true,"upTo":"3"}`, 200))
+	_, total = unseen()
+	require.Zero(t, total)
+
+	// A full cache replaces the oldest seen snapshot instead of failing.
+	require.NoError(t, repo.WithTxn(context.Background(), func(ctx context.Context) error {
+		for i := 3; i < models.MaxFollowingPosts; i += 50 {
+			posts := []models.FollowingSnapshot{}
+			for j := i; j < i+50 && j < models.MaxFollowingPosts; j++ {
+				posts = append(posts, models.FollowingSnapshot{PostID: fmt.Sprintf("fill-%d", j), Payload: []byte("{}")})
+			}
+			state, err := repo.Following.Checkpoint(ctx, b.ID, b.QueryRevision)
+			if err != nil {
+				return err
+			}
+			if _, err := repo.Following.ApplyPage(ctx, b, state.Version, "", false, posts); err != nil {
+				return err
+			}
+		}
+		return nil
+	}))
+	version := func() int {
+		var state models.FollowingCheckpoint
+		require.NoError(t, repo.WithReadTxn(context.Background(), func(ctx context.Context) error {
+			var err error
+			state, err = repo.Following.Checkpoint(ctx, b.ID, b.QueryRevision)
+			return err
+		}))
+		return state.Version
+	}
+	seed(b, version(), "new-1")
+	_, total = unseen()
+	require.Equal(t, models.MaxFollowingPosts-3+1, total)
+	require.NoError(t, repo.WithTxn(context.Background(), func(ctx context.Context) error {
+		_, _, err := repo.Following.SetSeen(ctx, 1, 1, false)
+		require.ErrorIs(t, err, models.ErrBooruFollowConflict, "the oldest seen snapshot made room")
+		return nil
+	}))
+	// Once only unseen posts remain, the limit applies again.
+	for _, id := range []string{"extra-1", "extra-2"} {
+		seed(b, version(), id)
+	}
+	current := version()
+	err := repo.WithTxn(context.Background(), func(ctx context.Context) error {
+		_, err := repo.Following.ApplyPage(ctx, b, current, "", false, []models.FollowingSnapshot{{PostID: "overflow", Payload: []byte("{}")}})
+		return err
+	})
+	require.ErrorIs(t, err, models.ErrFollowingLimit)
+}

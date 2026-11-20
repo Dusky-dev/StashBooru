@@ -254,6 +254,7 @@ func Initialize() (*Server, error) {
 	r.Post("/following/follows", booruRoutes.UpdateFollow)
 	r.Post("/following/sync", booruRoutes.SyncFollow)
 	r.Post("/following/seen", booruRoutes.SetFollowingSeen)
+	r.Post("/following/seen-batch", booruRoutes.MarkFollowingSeen)
 	r.Post("/following/prune", booruRoutes.PruneFollowingSeen)
 	r.Post("/booru-browser/bookmarks", booruRoutes.UpdateBookmarks)
 	r.Get("/booru-browser/favorites", booruRoutes.Favorites)
