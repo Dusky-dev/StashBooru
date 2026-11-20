@@ -12,10 +12,13 @@
   library and an API key (every query and sort, entity counts equal their
   media, thumbnail/stream fetches). The Linux release bundle was driven under
   Xvfb: connect, saved-server restart, All, viewer, details, Copyright
-  subtree, H.264 and VP9 playback. The probe APK built locally.
-- Not verified: Windows build/runtime (CI only), any physical Android device,
-  stock Stash at runtime (mocked only), VP9 4:4:4 RGB playback (fails in
-  headless GL), audio output, real libraries.
+  subtree, H.264/VP9 playback, keys/buttons leaving a Video, and AVIF/JXL
+  originals (Flutter cannot decode them; mpv fallback). The app's APKs built
+  locally; the manifest has INTERNET and cleartext HTTP.
+- Not verified: Windows build/runtime and CI's Flutter install (CI only); any
+  physical Android device; stock Stash at runtime (mocked only); VP9 4:4:4 RGB
+  (fails in headless GL); audio output; real libraries. JXL/AVIF thumbnail
+  settings show placeholders in grids.
 
 ## StashBooru 1.4.0: automatic follow checks and new-post counts — 2026-11-19
 

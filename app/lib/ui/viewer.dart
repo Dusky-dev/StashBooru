@@ -41,10 +41,12 @@ class _ViewerPageState extends State<ViewerPage> {
   void initState() {
     super.initState();
     _list.addListener(_changed);
+    HardwareKeyboard.instance.addHandler(_onKey);
   }
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_onKey);
     _list.removeListener(_changed);
     _pages.dispose();
     _focus.dispose();
@@ -53,6 +55,33 @@ class _ViewerPageState extends State<ViewerPage> {
 
   void _changed() {
     if (mounted) setState(() {});
+  }
+
+  /// Viewer keys, handled before focus so a Video's controls cannot swallow
+  /// them. ←/→ are left to a Video's controls for seeking.
+  bool _onKey(KeyEvent event) {
+    if (event is! KeyDownEvent || !mounted) return false;
+    // Not while the details sheet or another page is on top.
+    if (ModalRoute.of(context)?.isCurrent != true) return false;
+    final items = _list.items;
+    final onVideo =
+        items.isNotEmpty &&
+        items[_index.clamp(0, items.length - 1)].playsAsVideo;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.escape) {
+      Navigator.of(context).maybePop();
+    } else if (key == LogicalKeyboardKey.pageUp ||
+        (!onVideo && key == LogicalKeyboardKey.arrowLeft)) {
+      _go(-1);
+    } else if (key == LogicalKeyboardKey.pageDown ||
+        (!onVideo && key == LogicalKeyboardKey.arrowRight)) {
+      _go(1);
+    } else if (key == LogicalKeyboardKey.keyI) {
+      _showInfo();
+    } else {
+      return false;
+    }
+    return true;
   }
 
   void _go(int delta) {
@@ -90,88 +119,80 @@ class _ViewerPageState extends State<ViewerPage> {
     final wide = MediaQuery.sizeOf(context).width >= 700;
     final total = _list.total ?? items.length;
 
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.arrowLeft): () => _go(-1),
-        const SingleActivator(LogicalKeyboardKey.arrowRight): () => _go(1),
-        const SingleActivator(LogicalKeyboardKey.pageUp): () => _go(-1),
-        const SingleActivator(LogicalKeyboardKey.pageDown): () => _go(1),
-        const SingleActivator(LogicalKeyboardKey.escape): () =>
-            Navigator.of(context).maybePop(),
-        const SingleActivator(LogicalKeyboardKey.keyI): _showInfo,
-      },
-      child: Focus(
-        focusNode: _focus,
-        autofocus: true,
-        child: Scaffold(
-          backgroundColor: Colors.black,
-          body: Stack(
-            children: [
-              PageView.builder(
-                controller: _pages,
-                physics: _zoomed
-                    ? const NeverScrollableScrollPhysics()
-                    : const PageScrollPhysics(),
-                itemCount: items.length,
-                onPageChanged: (i) {
-                  setState(() {
-                    _index = i;
-                    _zoomed = false;
-                  });
-                  if (i >= items.length - 5) _list.loadMore();
-                },
-                itemBuilder: (context, i) {
-                  final item = items[i];
-                  return item.playsAsVideo
-                      ? VideoPane(
-                          key: ValueKey(item.key),
-                          item: item,
-                          active: i == _index,
-                          loop: item.kind == MediaKind.image,
-                        )
-                      : ImagePane(
-                          key: ValueKey(item.key),
-                          item: item,
-                          onTap: () => setState(() => _chrome = !_chrome),
-                          onZoomChanged: (z) {
-                            if (z != _zoomed) setState(() => _zoomed = z);
-                          },
-                        );
-                },
+    return Focus(
+      focusNode: _focus,
+      autofocus: true,
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            PageView.builder(
+              controller: _pages,
+              physics: _zoomed
+                  ? const NeverScrollableScrollPhysics()
+                  : const PageScrollPhysics(),
+              itemCount: items.length,
+              onPageChanged: (i) {
+                _focus.requestFocus();
+                setState(() {
+                  _index = i;
+                  _zoomed = false;
+                });
+                if (i >= items.length - 5) _list.loadMore();
+              },
+              itemBuilder: (context, i) {
+                final item = items[i];
+                return item.playsAsVideo
+                    ? VideoPane(
+                        key: ValueKey(item.key),
+                        item: item,
+                        active: i == _index,
+                        loop: item.kind == MediaKind.image,
+                      )
+                    : ImagePane(
+                        key: ValueKey(item.key),
+                        item: item,
+                        onTap: () => setState(() => _chrome = !_chrome),
+                        onZoomChanged: (z) {
+                          if (z != _zoomed) setState(() => _zoomed = z);
+                        },
+                      );
+              },
+            ),
+            if (_chrome || current.playsAsVideo)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: _TopBar(
+                  title: current.title,
+                  position: '${_index + 1} / $total',
+                  onInfo: _showInfo,
+                ),
               ),
-              if (_chrome || current.playsAsVideo)
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: _TopBar(
-                    title: current.title,
-                    position: '${_index + 1} / $total',
-                    onInfo: _showInfo,
+            // Shown for Videos too: on desktop the media_kit controls take
+            // ←/→ for seeking, and a mouse cannot swipe the page.
+            if (wide && (_chrome || current.playsAsVideo)) ...[
+              if (_index > 0)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: _NavButton(
+                    icon: Icons.chevron_left,
+                    tooltip: 'Previous (Page Up)',
+                    onTap: () => _go(-1),
                   ),
                 ),
-              if (wide && _chrome && !current.playsAsVideo) ...[
-                if (_index > 0)
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: _NavButton(
-                      icon: Icons.chevron_left,
-                      tooltip: 'Previous',
-                      onTap: () => _go(-1),
-                    ),
+              if (_index < items.length - 1)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: _NavButton(
+                    icon: Icons.chevron_right,
+                    tooltip: 'Next (Page Down)',
+                    onTap: () => _go(1),
                   ),
-                if (_index < items.length - 1)
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: _NavButton(
-                      icon: Icons.chevron_right,
-                      tooltip: 'Next',
-                      onTap: () => _go(1),
-                    ),
-                  ),
-              ],
+                ),
             ],
-          ),
+          ],
         ),
       ),
     );
@@ -266,6 +287,10 @@ class _ImagePaneState extends State<ImagePane> {
   final _transform = TransformationController();
   TapDownDetails? _doubleTapAt;
 
+  /// Flutter cannot decode every format StashBooru stores (JPEG XL, and AVIF
+  /// on some platforms); those are shown through mpv instead.
+  bool _useMpv = false;
+
   @override
   void initState() {
     super.initState();
@@ -292,8 +317,36 @@ class _ImagePaneState extends State<ImagePane> {
       ..scaleByDouble(s, s, 1, 1);
   }
 
+  Widget _full(BuildContext context) {
+    final source = widget.item.source;
+    if (source == null) return const SizedBox();
+    return Image.network(
+      source,
+      headers: Session.of(context).client.authHeaders,
+      fit: BoxFit.contain,
+      gaplessPlayback: true,
+      // Transparent while loading so the thumbnail underneath stays visible.
+      frameBuilder: (context, child, frame, sync) =>
+          frame == null && !sync ? const SizedBox() : child,
+      errorBuilder: (context, error, stack) {
+        if (!_useMpv) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) setState(() => _useMpv = true);
+          });
+        }
+        return const SizedBox();
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_useMpv) {
+      return GestureDetector(
+        onTap: widget.onTap,
+        child: VideoPane(item: widget.item, active: true, still: true),
+      );
+    }
     return GestureDetector(
       onTap: widget.onTap,
       onDoubleTapDown: (d) => _doubleTapAt = d,
@@ -305,9 +358,8 @@ class _ImagePaneState extends State<ImagePane> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Thumbnail first, then the full image over it once loaded.
               NetImage(widget.item.thumbnail, fit: BoxFit.contain),
-              NetImage(widget.item.source, fit: BoxFit.contain),
+              _full(context),
             ],
           ),
         ),
@@ -322,10 +374,14 @@ class VideoPane extends StatefulWidget {
     required this.item,
     required this.active,
     this.loop = false,
+    this.still = false,
   });
   final MediaRef item;
   final bool active;
   final bool loop;
+
+  /// A still image decoded by mpv: shown indefinitely, without controls.
+  final bool still;
 
   @override
   State<VideoPane> createState() => _VideoPaneState();
@@ -377,6 +433,10 @@ class _VideoPaneState extends State<VideoPane> {
       if (playing && _error != null && mounted) setState(() => _error = null);
     });
     if (widget.loop) player.setPlaylistMode(PlaylistMode.single);
+    final platform = player.platform;
+    if (widget.still && platform is NativePlayer) {
+      platform.setProperty('image-display-duration', 'inf');
+    }
     player.open(
       Media(source, httpHeaders: Session.of(context).client.authHeaders),
       play: true,
@@ -432,7 +492,15 @@ class _VideoPaneState extends State<VideoPane> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Video(controller: video),
+          // A still image takes no keys, so the viewer's shortcuts keep
+          // working; a Video's controls use ←/→ to seek.
+          ExcludeFocus(
+            excluding: widget.still,
+            child: Video(
+              controller: video,
+              controls: widget.still ? NoVideoControls : AdaptiveVideoControls,
+            ),
+          ),
           if (notice != null) IgnorePointer(child: notice),
         ],
       ),
