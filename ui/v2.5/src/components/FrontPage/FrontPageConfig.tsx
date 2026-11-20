@@ -9,6 +9,8 @@ import {
   ISavedFilterRow,
   ICustomFilter,
   FrontPageContent,
+  FilterModeToMessageID,
+  customFilterTitle,
   generatePremadeFrontPageContent,
   getFrontPageContent,
 } from "src/core/config";
@@ -18,20 +20,6 @@ interface IAddSavedFilterModalProps {
   existingSavedFilterIDs: string[];
   candidates: GQL.FindSavedFiltersQuery;
 }
-
-const FilterModeToMessageID = {
-  [GQL.FilterMode.Media]: "media",
-  [GQL.FilterMode.Galleries]: "galleries",
-  [GQL.FilterMode.Images]: "images",
-  [GQL.FilterMode.Movies]: "groups",
-  [GQL.FilterMode.Groups]: "groups",
-  [GQL.FilterMode.Performers]: "performers",
-  [GQL.FilterMode.SceneMarkers]: "markers",
-  [GQL.FilterMode.Scenes]: "scenes",
-  [GQL.FilterMode.Studios]: "studios",
-  [GQL.FilterMode.Tags]: "tags",
-  [GQL.FilterMode.Copyrights]: "copyrights",
-};
 
 type SavedFilter = Pick<GQL.SavedFilter, "id" | "mode" | "name">;
 
@@ -159,7 +147,7 @@ const AddContentModal: React.FC<IAddSavedFilterModalProps> = ({
         >
           {premadeFilterOptions.map((c, i) => (
             <option key={i} value={i}>
-              {intl.formatMessage({ id: c.message!.id }, c.message!.values)}
+              {customFilterTitle(intl, c)}
             </option>
           ))}
         </Form.Control>
@@ -250,13 +238,7 @@ const ContentRow: React.FC<IFilterRowProps> = (props: IFilterRowProps) => {
         return filterTitle(intl, savedFilter);
       }
       case "CustomFilter": {
-        const asCustomFilter = props.content as ICustomFilter;
-        if (asCustomFilter.message)
-          return intl.formatMessage(
-            { id: asCustomFilter.message.id },
-            asCustomFilter.message.values
-          );
-        return asCustomFilter.title ?? "";
+        return customFilterTitle(intl, props.content as ICustomFilter);
       }
     }
   }

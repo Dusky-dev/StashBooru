@@ -1,6 +1,10 @@
 import React, { useMemo } from "react";
 import { useIntl } from "react-intl";
-import { FrontPageContent, ICustomFilter } from "src/core/config";
+import {
+  FrontPageContent,
+  ICustomFilter,
+  customFilterTitle,
+} from "src/core/config";
 import * as GQL from "src/core/generated-graphql";
 import { useFindSavedFilter } from "src/core/StashService";
 import { useConfigurationContext } from "src/hooks/Config";
@@ -150,12 +154,7 @@ const CustomFilterResults: React.FC<ICustomFilterProps> = ({
     return ret;
   }, [customFilter, config]);
 
-  const header = customFilter.message
-    ? intl.formatMessage(
-        { id: customFilter.message.id },
-        customFilter.message.values
-      )
-    : (customFilter.title ?? "");
+  const header = customFilterTitle(intl, customFilter);
 
   return (
     <RecommendationRow
