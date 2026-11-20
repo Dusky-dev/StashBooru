@@ -30,6 +30,9 @@ const followRunPages = 25
 
 type followScheduleSettings struct {
 	IntervalHours int `json:"intervalHours"`
+	// MarkSeenOnView marks posts seen once they have been shown, so the
+	// next visit only lists newer posts. Off by default.
+	MarkSeenOnView bool `json:"markSeenOnView,omitempty"`
 }
 
 type followScheduleRun struct {
@@ -256,19 +259,29 @@ func (rs booruBrowserRoutes) FollowScheduleRoute(w http.ResponseWriter, r *http.
 	}
 	if r.Method == http.MethodPost {
 		var input struct {
-			Action        string `json:"action"`
-			IntervalHours int    `json:"intervalHours"`
+			Action         string `json:"action"`
+			IntervalHours  int    `json:"intervalHours"`
+			MarkSeenOnView bool   `json:"markSeenOnView"`
 		}
 		if !readBooruReviewJSON(w, r, &input) {
 			return
 		}
 		switch input.Action {
-		case "set":
-			if !slices.Contains(followIntervals, input.IntervalHours) {
-				writeBooruError(w, 400, "following", "Choose Off, or every 1, 3, 6, 12 or 24 hours.")
-				return
+		case "set", "set-mark-seen":
+			settings, err := rs.followSchedule()
+			if err != nil {
+				settings = followScheduleSettings{}
 			}
-			data, err := json.Marshal(followScheduleSettings{IntervalHours: input.IntervalHours})
+			if input.Action == "set" {
+				if !slices.Contains(followIntervals, input.IntervalHours) {
+					writeBooruError(w, 400, "following", "Choose Off, or every 1, 3, 6, 12 or 24 hours.")
+					return
+				}
+				settings.IntervalHours = input.IntervalHours
+			} else {
+				settings.MarkSeenOnView = input.MarkSeenOnView
+			}
+			data, err := json.Marshal(settings)
 			if err == nil {
 				err = os.WriteFile(rs.followSchedulePath(), data, 0o600)
 			}
@@ -307,7 +320,7 @@ func (rs booruBrowserRoutes) FollowScheduleRoute(w http.ResponseWriter, r *http.
 		writeBooruError(w, 500, "following", "Cannot count new posts.")
 		return
 	}
-	response := map[string]any{"intervalHours": settings.IntervalHours, "unseen": unseen, "running": false}
+	response := map[string]any{"intervalHours": settings.IntervalHours, "markSeenOnView": settings.MarkSeenOnView, "unseen": unseen, "running": false}
 	followSchedules.Lock()
 	if state := followSchedules.states[rs.configPath]; state != nil {
 		response["running"] = state.running

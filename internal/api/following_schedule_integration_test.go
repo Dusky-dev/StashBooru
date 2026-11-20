@@ -53,7 +53,11 @@ func TestFollowScheduleChecksDueFollowsAndIsolatesFailures(t *testing.T) {
 	// Off by default: a tick starts nothing.
 	require.False(t, rs.followSchedulerTick(context.Background(), time.Now()))
 	feedRequest(t, rs.FollowScheduleRoute, map[string]any{"action": "set", "intervalHours": 2}, 400)
+	feedRequest(t, rs.FollowScheduleRoute, map[string]any{"action": "set-mark-seen", "markSeenOnView": true}, 200)
 	feedRequest(t, rs.FollowScheduleRoute, map[string]any{"action": "set", "intervalHours": 1}, 200)
+	saved, err := rs.followSchedule()
+	require.NoError(t, err)
+	require.Equal(t, followScheduleSettings{IntervalHours: 1, MarkSeenOnView: true}, saved, "each setting keeps the other")
 
 	require.True(t, rs.followSchedulerTick(context.Background(), time.Now()))
 	var run followScheduleRun

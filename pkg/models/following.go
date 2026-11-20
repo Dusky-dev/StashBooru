@@ -51,9 +51,12 @@ type FollowingPost struct {
 }
 
 type FollowingFilter struct {
-	Before         int64
-	Limit          int
-	FollowID       string
+	Before   int64
+	Limit    int
+	FollowID string
+	// FollowIDs lists posts matching any of several follows (for example
+	// every site followed for one Artist). Not combined with FollowID.
+	FollowIDs      []string
 	Instance       string
 	Kind           string
 	Unseen         bool
@@ -61,6 +64,25 @@ type FollowingFilter struct {
 	ShowIgnored    bool
 	HideDownloaded bool
 }
+
+// FollowingSeenBatch marks several feed posts seen or unseen at once.
+// Sequences names the posts (a selection), Instance+PostIDs names them by
+// site ID, or UpTo bounds "everything unseen"
+// for the active follows in FollowIDs (all active follows when empty). UpTo
+// keeps posts saved by a check that finishes meanwhile unseen.
+type FollowingSeenBatch struct {
+	Sequences []int64
+	// Instance and PostIDs name posts by their site ID (posts shown in the
+	// Booru browser). Only posts already saved by a follow check change.
+	Instance  string
+	PostIDs   []string
+	FollowIDs []string
+	UpTo      int64
+	Seen      bool
+}
+
+// MaxFollowingSeenBatch bounds an explicit selection.
+const MaxFollowingSeenBatch = 500
 
 type FollowingReaderWriter interface {
 	Checkpoint(context.Context, string, int) (FollowingCheckpoint, error)
@@ -70,6 +92,7 @@ type FollowingReaderWriter interface {
 	List(context.Context, FollowingFilter) ([]FollowingPost, error)
 	SetSeen(context.Context, int64, int, bool) (int, string, error)
 	PruneSeen(context.Context) (int64, error)
+	MarkSeen(context.Context, FollowingSeenBatch) (int64, error)
 	RecordError(context.Context, BooruFollow, int, string) error
 	// UnseenCounts counts unseen, not ignored posts per active follow (current
 	// revision) and in total; a post matching two follows counts once in total.

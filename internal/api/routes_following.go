@@ -123,6 +123,17 @@ func (rs booruBrowserRoutes) FollowingFeed(w http.ResponseWriter, r *http.Reques
 	if q.Get("before") != "" {
 		filter.Before, err = strconv.ParseInt(q.Get("before"), 10, 64)
 	}
+	if follows := q["follow"]; len(follows) > 1 {
+		filter.FollowID, filter.FollowIDs = "", follows
+		for _, id := range follows {
+			if !booruFollowID.MatchString(id) {
+				err = models.ErrFollowingInvalid
+			}
+		}
+		if len(follows) > models.MaxBooruFollows {
+			err = models.ErrFollowingInvalid
+		}
+	}
 	if err != nil || filter.Before < 0 || (filter.FollowID != "" && !booruFollowID.MatchString(filter.FollowID)) {
 		writeBooruError(w, 400, "following", "Invalid feed cursor or follow ID.")
 		return
@@ -247,7 +258,7 @@ func (rs booruBrowserRoutes) syncFollowPage(parent context.Context, id string, v
 				message = provider.Message
 			}
 			if errors.Is(err, models.ErrFollowingLimit) {
-				message = "Snapshot cache is full. Remove seen snapshots and retry to resume."
+				message = "Saved-post cache is full of unseen posts. Mark posts seen and retry to resume."
 			}
 			if errors.Is(err, errBooruFollowSource) {
 				message = "Source changed or is unavailable. Restore it and retry to resume."
@@ -338,7 +349,7 @@ func followingError(w http.ResponseWriter, err error) {
 	case errors.Is(err, errBooruFollowSource):
 		writeBooruError(w, 409, "source-changed", "Source changed or is unavailable. No checkpoint was advanced.")
 	case errors.Is(err, models.ErrFollowingLimit):
-		writeBooruError(w, 409, "feed-limit", "The 5000-post snapshot cache is full. Mark reviewed posts seen and remove seen snapshots, then retry. No checkpoint was advanced.")
+		writeBooruError(w, 409, "feed-limit", "The 5000-post snapshot cache is full of unseen posts. Mark posts seen (seen snapshots are replaced automatically), then retry. No checkpoint was advanced.")
 	case errors.Is(err, models.ErrFollowingInvalid):
 		writeBooruError(w, 400, "following", "Invalid feed page or seen decision.")
 	case errors.As(err, &provider):
@@ -386,6 +397,58 @@ func (rs booruBrowserRoutes) SetFollowingSeen(w http.ResponseWriter, r *http.Req
 		return
 	}
 	writeVisualSimilarityJSON(w, map[string]any{"version": version, "seenAt": at})
+}
+
+// MarkFollowingSeen marks a selection seen/unseen, or every unseen post of
+// some (or all) active follows up to a sequence the page has shown.
+func (rs booruBrowserRoutes) MarkFollowingSeen(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Sequences []string `json:"sequences"`
+		Instance  string   `json:"instance"`
+		PostIDs   []string `json:"postIDs"`
+		FollowIDs []string `json:"followIDs"`
+		UpTo      string   `json:"upTo"`
+		Seen      *bool    `json:"seen"`
+	}
+	if !readBooruReviewJSON(w, r, &input) {
+		return
+	}
+	if input.Seen == nil || len(input.Sequences) > models.MaxFollowingSeenBatch || len(input.PostIDs) > models.MaxFollowingSeenBatch {
+		followingError(w, models.ErrFollowingInvalid)
+		return
+	}
+	batch := models.FollowingSeenBatch{FollowIDs: input.FollowIDs, Instance: input.Instance, PostIDs: input.PostIDs, Seen: *input.Seen}
+	for _, raw := range input.Sequences {
+		sequence, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil {
+			followingError(w, models.ErrFollowingInvalid)
+			return
+		}
+		batch.Sequences = append(batch.Sequences, sequence)
+	}
+	if input.UpTo != "" {
+		upTo, err := strconv.ParseInt(input.UpTo, 10, 64)
+		if err != nil {
+			followingError(w, models.ErrFollowingInvalid)
+			return
+		}
+		batch.UpTo = upTo
+	}
+	if rs.repository.Following == nil {
+		writeBooruError(w, 503, "following", "Following storage is unavailable.")
+		return
+	}
+	var count int64
+	err := rs.repository.WithTxn(r.Context(), func(ctx context.Context) error {
+		var err error
+		count, err = rs.repository.Following.MarkSeen(ctx, batch)
+		return err
+	})
+	if err != nil {
+		followingError(w, err)
+		return
+	}
+	writeVisualSimilarityJSON(w, map[string]any{"changed": count})
 }
 
 func (rs booruBrowserRoutes) PruneFollowingSeen(w http.ResponseWriter, r *http.Request) {
