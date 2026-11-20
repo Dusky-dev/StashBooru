@@ -94,7 +94,7 @@ export function FollowedPosts({
   const [epoch, setEpoch] = useState(0);
   const loaded = useEntityFollows(kind, entityID, epoch);
   const follows = loaded ?? [];
-  const markSeenOnView = useMarkSeenOnView();
+  const markSeenOnView = !!useMarkSeenOnView();
   const [sources, setSources] = useState<BooruSource[]>([]);
   const [newOnly, setNewOnly] = useState(true);
   const [before, setBefore] = useState("");

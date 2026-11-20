@@ -209,9 +209,10 @@ export function useFollowingUnseen() {
   return unseen;
 }
 
-/** The "Mark posts seen when shown" setting; false until loaded. */
+/** The "Mark followed posts seen once shown" setting; undefined until
+ * loaded (callers treat that as off). */
 export function useMarkSeenOnView() {
-  const [value, setValue] = useState(false);
+  const [value, setValue] = useState<boolean>();
   useEffect(() => {
     const controller = new AbortController();
     const refresh = () =>

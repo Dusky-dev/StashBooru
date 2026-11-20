@@ -106,7 +106,7 @@ export default function Following() {
   }>();
   const active = useRef(true);
   const operation = useRef<AbortController>();
-  const markSeenOnView = useMarkSeenOnView();
+  const markSeenOnView = !!useMarkSeenOnView();
   const totalUnseen = useFollowingUnseen();
 
   useEffect(() => {

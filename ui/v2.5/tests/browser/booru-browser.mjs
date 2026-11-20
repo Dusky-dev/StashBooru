@@ -2914,6 +2914,10 @@ try {
     const markSeen = page.getByLabel("Mark followed posts seen once shown", {
       exact: true,
     });
+    await page.waitForFunction(
+      () =>
+        document.querySelector("#booru-mark-seen-on-view")?.disabled === false
+    );
     assert.equal(await markSeen.isChecked(), false);
     assert.equal(seenBatches.length, 0, "nothing is marked while it is off");
     await setChecked(markSeen, true);
@@ -2931,6 +2935,10 @@ try {
     assert.ok(seenBatches.at(-1).postIDs.length > 0);
     // Turn it back off for the rest of the run.
     await page.getByRole("button", { name: "Settings", exact: true }).click();
+    // The switch waits for the saved setting before it can be changed.
+    await page.waitForFunction(
+      () => document.querySelector("#booru-mark-seen-on-view")?.checked === true
+    );
     await setChecked(markSeen, false);
     await page.waitForFunction(
       () =>

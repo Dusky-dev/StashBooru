@@ -1329,7 +1329,7 @@ export default function BooruBrowser() {
     }
   }
   const [thumbnails, setThumbnails] = useState(remembered?.thumbnails ?? true);
-  const markSeenOnView = useMarkSeenOnView();
+  const markSeenOnView = !!useMarkSeenOnView();
   const [hidePawchiveWithoutPreview, setHidePawchiveWithoutPreview] = useState(
     remembered?.hidePawchiveWithoutPreview ?? false
   );

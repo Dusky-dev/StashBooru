@@ -151,8 +151,8 @@ export function MarkSeenOnViewSwitch({ id }: { id: string }) {
         type="switch"
         id={id}
         label={m("mark_on_view")}
-        checked={choice ?? saved}
-        disabled={busy}
+        checked={choice ?? !!saved}
+        disabled={busy || saved === undefined}
         onChange={async (e) => {
           const checked = e.currentTarget.checked;
           setChoice(checked);
