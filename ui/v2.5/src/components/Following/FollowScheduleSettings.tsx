@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Form } from "react-bootstrap";
 import { useIntl } from "react-intl";
 import { identityRequest } from "../Identities/identityApi";
-import type { FollowSchedule } from "./FollowAction";
+import { type FollowSchedule, notifyFollowingChanged } from "./FollowAction";
 
 const intervals = [0, 1, 3, 6, 12, 24];
 
@@ -104,6 +104,24 @@ export function FollowScheduleSettings({
           {m("run_now")}
         </Button>
       </div>
+      <Form.Check
+        type="switch"
+        className="mt-2"
+        id="following-mark-seen-on-view"
+        label={m("mark_on_view")}
+        checked={!!schedule?.markSeenOnView}
+        disabled={!schedule || busy}
+        onChange={async (e) => {
+          setBusy(true);
+          await send({
+            action: "set-mark-seen",
+            markSeenOnView: e.currentTarget.checked,
+          });
+          setBusy(false);
+          notifyFollowingChanged();
+        }}
+      />
+      <Form.Text muted>{m("mark_on_view_help")}</Form.Text>
       <div role="status" className="mt-2">
         {schedule?.running && <div>{m("running")}</div>}
         {last?.finishedAt && (

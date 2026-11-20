@@ -17,7 +17,9 @@ const server = await createServer({
             pathname === "/following" ||
             pathname === "/stash/following" ||
             pathname === "/other" ||
-            pathname === "/stash/other"
+            pathname === "/stash/other" ||
+            pathname === "/artist" ||
+            pathname === "/stash/artist"
           ) {
             req.url = `/tests/browser/fixtures/following${pathname.startsWith("/stash/") ? "-prefix" : ""}.html`;
           }
@@ -56,6 +58,7 @@ try {
     let sequence = 0;
     let syncs = 0;
     const scheduleWrites = [];
+    const seenBatches = [];
     let schedule = { intervalHours: 0, unseen: 0, running: false };
     let scheduleRunPending = false;
     let failNext = false;
@@ -225,6 +228,30 @@ try {
           },
         });
       }
+      if (url.pathname.endsWith("/seen-batch")) {
+        seenBatches.push(body);
+        const followIDs = body.followIDs;
+        const chosen = body.sequences
+          ? items.filter((i) => body.sequences.includes(i.sequence))
+          : items.filter(
+              (i) =>
+                Number(i.sequence) <= Number(body.upTo) &&
+                i.matches.some(
+                  (m) => !followIDs || followIDs.includes(m.followID)
+                )
+            );
+        let changed = 0;
+        for (const item of chosen) {
+          const previous = seen.get(item.postID) ?? { version: 0, at: "" };
+          if (!!previous.at === body.seen) continue;
+          changed++;
+          seen.set(item.postID, {
+            version: previous.version + 1,
+            at: body.seen ? "2026-10-20T10:01:00Z" : "",
+          });
+        }
+        return route.fulfill({ json: { changed } });
+      }
       if (url.pathname.endsWith("/seen")) {
         const item = items.find((i) => i.sequence === body.sequence);
         const previous = seen.get(item.postID) ?? { version: 0, at: "" };
@@ -264,7 +291,8 @@ try {
               (!p.get("instance") || p.get("instance") === item.instance) &&
               item.matches.some(
                 (m) =>
-                  (!p.get("follow") || p.get("follow") === m.followID) &&
+                  (!p.getAll("follow").length ||
+                    p.getAll("follow").includes(m.followID)) &&
                   (!p.get("kind") || p.get("kind") === m.kind) &&
                   (p.get("history") === "1" || m.current)
               ) &&
@@ -286,6 +314,8 @@ try {
           scheduleWrites.push(body);
           if (body.action === "set")
             schedule = { ...schedule, intervalHours: body.intervalHours };
+          if (body.action === "set-mark-seen")
+            schedule = { ...schedule, markSeenOnView: body.markSeenOnView };
           if (body.action === "run") {
             scheduleRunPending = true;
             return route.fulfill({ json: { ...schedule, running: true } });
@@ -311,13 +341,20 @@ try {
     });
     await page.goto(`${origin}${prefix}/following`);
     const openManage = () =>
-      page.getByRole("link", { name: "Manage follows", exact: true }).click();
+      page
+        .getByRole("link", { name: "Follows & settings", exact: true })
+        .click();
     const openFeed = () =>
-      page.getByRole("link", { name: "Saved feed", exact: true }).click();
+      page
+        .getByRole("link", { name: "Posts from follows", exact: true })
+        .click();
     const feed = page.getByRole("region", { name: "Following feed" });
     const manage = page.getByRole("region", { name: "Follow management" });
+    await manage.waitFor();
+    assert.equal(await feed.count(), 0, "follows and settings are the default");
+    assert.equal(syncs, 0, "opening Following must not check providers");
+    await openFeed();
     await feed.waitFor();
-    assert.equal(await manage.count(), 0, "feed is the default view");
     assert.equal(syncs, 0, "the feed must not check providers on open");
     await openManage();
     await manage.waitFor();
@@ -462,6 +499,29 @@ try {
       () => document.querySelectorAll(".following-post").length === 2
     );
     assert.match(page.url(), /unseen=1/);
+    // Select posts and mark them seen together, then undo with unseen.
+    await page
+      .getByRole("checkbox", { name: "Select Post 9", exact: true })
+      .check();
+    await page.getByText("1 selected", { exact: true }).waitFor();
+    await page
+      .getByRole("button", { name: "Mark selected seen", exact: true })
+      .click();
+    await page.waitForFunction(
+      () => document.querySelectorAll(".following-post").length === 1
+    );
+    await page.getByText("1 post updated.", { exact: true }).waitFor();
+    assert.deepEqual(seenBatches.at(-1), {
+      sequences: [items.find((i) => i.postID === "9").sequence],
+      seen: true,
+    });
+    seen.delete("9");
+    await page
+      .getByRole("button", { name: "Reload saved feed", exact: true })
+      .click();
+    await page.waitForFunction(
+      () => document.querySelectorAll(".following-post").length === 2
+    );
     await page.reload();
     await page.waitForFunction(
       () => document.querySelectorAll(".following-post").length === 2
@@ -481,7 +541,7 @@ try {
       () => document.querySelectorAll(".following-post").length === 3
     );
     for (let id = 400; id < 430; id++) discover(id, follows[1]);
-    await page.goto(`${origin}${prefix}/following`);
+    await page.goto(`${origin}${prefix}/following?view=posts`);
     await page.waitForFunction(
       () => document.querySelectorAll(".following-post").length === 25
     );
@@ -639,6 +699,58 @@ try {
     await page
       .getByRole("article", { name: "Post 701", exact: true })
       .waitFor();
+    // An Artist followed on two sites: its tab checks both, shows each
+    // post's site and marks everything seen in one step.
+    follows[0].active = true;
+    const artistMirror = {
+      ...follows[0],
+      id: "E".repeat(26),
+      source: mirror.id,
+      instance: mirror.instance,
+      sourceURL: mirror.url,
+      name: "Artist A mirror",
+      feed: { hasMore: false, checkedAt: "", lastError: "" },
+    };
+    follows.push(artistMirror);
+    discover(801, artistMirror);
+    discover(802, artistMirror);
+    schedule = { ...schedule, markSeenOnView: true };
+    const syncsBefore = syncs;
+    await page.goto(`${origin}${prefix}/artist`);
+    const artistTab = page.getByRole("region", { name: "Followed posts" });
+    await artistTab.getByText("Danbooru mirror", { exact: true }).waitFor();
+    const post801 = artistTab.getByRole("article", {
+      name: "Post 801",
+      exact: true,
+    });
+    await post801.waitFor();
+    assert.ok(
+      (await post801.locator(".following-site .booru-source-icon").count()) > 0,
+      "each post shows its site icon"
+    );
+    // Mark seen once shown: posts are marked, but keep New for this visit.
+    await page.waitForFunction(
+      () => document.querySelectorAll(".following-post").length > 0
+    );
+    for (let i = 0; i < 50 && !seen.get("801")?.at; i++)
+      await page.waitForTimeout(100);
+    assert.ok(seen.get("801")?.at, "shown posts are marked seen");
+    await post801.getByText("New", { exact: true }).waitFor();
+    assert.equal(syncs, syncsBefore, "opening the tab must not check sites");
+    await artistTab
+      .getByRole("button", { name: "Mark all seen", exact: true })
+      .click();
+    await artistTab.getByText(/updated\.|Nothing to change\./).waitFor();
+    const markAll = seenBatches.at(-1);
+    assert.deepEqual(markAll.followIDs, [follows[0].id, artistMirror.id]);
+    assert.equal(markAll.seen, true);
+    assert.ok(Number(markAll.upTo) >= Number(items.at(-1).sequence));
+    await artistTab.getByText(/^No new posts\. Press/).waitFor();
+    await artistTab
+      .getByRole("button", { name: "Check new posts", exact: true })
+      .click();
+    await artistTab.getByText(/new posts? found\.$|^No new posts\.$/).waitFor();
+    assert.equal(syncs, syncsBefore + 2, "one check per followed site");
     assert.equal(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth

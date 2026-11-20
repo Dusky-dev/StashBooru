@@ -1,3 +1,24 @@
+## StashBooru 1.6.0: Followed posts on Artists, bulk seen — 2026-11-20
+
+- Baseline: `develop` `089be9e` (1.5.1). Owner feedback: Following had no
+  post selection, no Mark all seen, no settings; wanted Artist → Check new
+  posts across all sites with site icons, Following as the settings page.
+- Backend: `POST /following/seen-batch` (selection ≤500, or every unseen post
+  of some/all active follows up to a shown sequence, one transaction, versions
+  bumped); repeated `follow` feed filter; `markSeenOnView` in
+  `following-schedule.json`; a full cache now evicts the oldest seen snapshot.
+- UI: shared `FollowingPostGrid` (selection, Mark selected seen/unseen, Mark
+  all seen, site icon, New badge); Artist **Followed posts** tab
+  (`ArtistFollowedPosts`); Following defaults to Follows & settings
+  (`view=posts` or any feed filter opens the list).
+- Checks: Go integration `TestB06*`, schedule tests pass; `tsc`, Biome
+  lint/format, stylelint, `pnpm run test` (140 pass); browser `following.mjs`
+  (extended: selection, mark-on-view, Artist tab, mark all), `following-context.mjs`,
+  `identities.mjs` pass at 1440 and 390 px.
+- Not verified: the tab inside the real Studio page in a browser (fixture
+  mounts the component), live sites, `make it` in full.
+- Next: offer the same tab for Characters and Copyrights if wanted.
+
 ## StashBooru 1.5.1: native app restyled to match the web UI — 2026-11-20
 
 - Baseline: `develop` `fdeba9c` (1.5.0 released from it). Owner feedback: the

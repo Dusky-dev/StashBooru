@@ -32,11 +32,19 @@ function loadFollows() {
   return cache.value;
 }
 
+const changedEvent = "stashbooru-following-changed";
+
+/** Call after seen decisions or follows change, so counts refresh at once. */
+export function notifyFollowingChanged() {
+  window.dispatchEvent(new Event(changedEvent));
+}
+
 if (typeof window !== "undefined")
-  window.addEventListener("focus", () => {
-    cache = undefined;
-    for (const listener of listeners) listener();
-  });
+  for (const name of ["focus", changedEvent])
+    window.addEventListener(name, () => {
+      cache = undefined;
+      for (const listener of listeners) listener();
+    });
 
 export function useFollows() {
   const [follows, setFollows] = useState<FollowSummary[]>();
@@ -156,6 +164,7 @@ export function FollowAction({
 /** Automatic check status, and new posts across all follows. */
 export interface FollowSchedule {
   intervalHours: number;
+  markSeenOnView?: boolean;
   unseen: number;
   running: boolean;
   nextRun?: string;
@@ -189,11 +198,37 @@ export function useFollowingUnseen() {
     refresh();
     const timer = setInterval(refresh, 5 * 60 * 1000);
     window.addEventListener("focus", refresh);
+    window.addEventListener(changedEvent, refresh);
     return () => {
       controller.abort();
       clearInterval(timer);
       window.removeEventListener("focus", refresh);
+      window.removeEventListener(changedEvent, refresh);
     };
   }, []);
   return unseen;
+}
+
+/** The "Mark posts seen when shown" setting; false until loaded. */
+export function useMarkSeenOnView() {
+  const [value, setValue] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    const refresh = () =>
+      void identityRequest<FollowSchedule>(
+        "following/schedule",
+        controller.signal
+      )
+        .then((schedule) => {
+          if (!controller.signal.aborted) setValue(!!schedule.markSeenOnView);
+        })
+        .catch(() => {});
+    refresh();
+    window.addEventListener(changedEvent, refresh);
+    return () => {
+      controller.abort();
+      window.removeEventListener(changedEvent, refresh);
+    };
+  }, []);
+  return value;
 }

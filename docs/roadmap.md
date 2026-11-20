@@ -88,6 +88,9 @@ through code or fixtures.
 - Follow / Following on Identities, profiles and the Booru browser tag menu;
   follows show their connected record (1.3.0).
 - Automatic follow checks with new-post counts in the navbar (1.4.0).
+- Artist **Followed posts** tab with per-site icons; post selection, Mark all
+  seen and an optional mark-seen-once-shown setting; Following opens on
+  follows & settings (1.6.0).
 - Parent Tags/Copyrights apply automatically (calculated; "Include parent
   Tags" is on by default). No separate Implies field (owner, 2026-11-18).
 - Implied Tags and Copyrights on Image and Video cards (#383); detail pages,
