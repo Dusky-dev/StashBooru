@@ -9,6 +9,7 @@ import '../api/models.dart';
 import 'detail_panel.dart';
 import 'paging.dart';
 import 'session.dart';
+import 'stash_image.dart';
 import 'theme.dart';
 
 /// Full-screen Image/Video viewer over a list. Swipe or use the arrow keys to
@@ -329,8 +330,9 @@ class _ImagePaneState extends State<ImagePane> {
   final _transform = TransformationController();
   TapDownDetails? _doubleTapAt;
 
-  /// Flutter cannot decode every format StashBooru stores (JPEG XL, and AVIF
-  /// on some platforms); those are shown through mpv instead.
+  /// Flutter cannot decode every format StashBooru stores (AVIF on some
+  /// platforms, for one); those are shown through mpv instead. JPEG XL is
+  /// decoded in Dart by [StashNetworkImage].
   bool _useMpv = false;
 
   @override
@@ -362,9 +364,11 @@ class _ImagePaneState extends State<ImagePane> {
   Widget _full(BuildContext context) {
     final source = widget.item.source;
     if (source == null) return const SizedBox();
-    return Image.network(
-      source,
-      headers: Session.of(context).client.authHeaders,
+    return Image(
+      image: StashNetworkImage(
+        source,
+        headers: Session.of(context).client.authHeaders,
+      ),
       fit: BoxFit.contain,
       gaplessPlayback: true,
       // Transparent while loading so the thumbnail underneath stays visible.

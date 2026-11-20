@@ -19,6 +19,15 @@ apply_standard_settings(${BINARY_NAME})
 # Add preprocessor definitions for the application ID.
 add_definitions(-DAPPLICATION_ID="${APPLICATION_ID}")
 
+# libflutter_linux_gtk.so exports its own _Unwind_* functions. If it comes
+# before libgcc_s in the global symbol lookup order, an error raised inside a
+# LuaJIT-built libmpv's scripts (osc, ytdl_hook, ...) unwinds through the
+# wrong unwinder and the app crashes. Linking libgcc_s first, ahead of every
+# other library, keeps the system unwinder in charge.
+# scripts/check-linux-app-link-order.sh checks the result.
+target_link_options(${BINARY_NAME} BEFORE PRIVATE
+  "LINKER:--push-state,--no-as-needed" "-lgcc_s" "LINKER:--pop-state")
+
 # Add dependency libraries. Add any application-specific dependencies here.
 target_link_libraries(${BINARY_NAME} PRIVATE flutter)
 target_link_libraries(${BINARY_NAME} PRIVATE PkgConfig::GTK)
