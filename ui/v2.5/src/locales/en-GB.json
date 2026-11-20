@@ -1467,7 +1467,10 @@
       "premade_filter": "Premade Filter",
       "saved_filter": "Saved Filter"
     },
-    "edit": "Edit main page"
+    "edit": "Edit main page",
+    "on_this_day": {
+      "title": "On this day: {kind, select, image {Images} other {Videos}}"
+    }
   },
   "galleries": "Galleries",
   "gallery": "Gallery",

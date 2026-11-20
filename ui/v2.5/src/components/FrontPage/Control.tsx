@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { useIntl } from "react-intl";
+import { OnThisDayRow } from "./OnThisDayRow";
 import {
   FrontPageContent,
   ICustomFilter,
@@ -181,6 +182,8 @@ export const Control: React.FC<IProps> = ({ content }) => {
       );
     case "CustomFilter":
       return <CustomFilterResults customFilter={content} />;
+    case "OnThisDay":
+      return <OnThisDayRow kind={content.kind} />;
     default:
       return null;
   }

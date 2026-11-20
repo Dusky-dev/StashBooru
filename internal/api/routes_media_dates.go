@@ -239,3 +239,40 @@ func (rs booruBrowserRoutes) eachDownloadReceipt(ctx context.Context, visit func
 		}
 	}
 }
+
+// OnThisDay lists Images or Videos from this calendar day in earlier years.
+// The browser sends its own date, so "today" follows the viewer's clock.
+func (rs booruBrowserRoutes) OnThisDay(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	q := r.URL.Query()
+	number := func(key string) int {
+		value, err := strconv.Atoi(q.Get(key))
+		if err != nil {
+			return -1
+		}
+		return value
+	}
+	kind, month, day, year, limit := q.Get("kind"), number("month"), number("day"), number("year"), number("limit")
+	if q.Get("limit") == "" {
+		limit = 25
+	}
+	if rs.repository.OnThisDay == nil {
+		writeBooruError(w, 503, "on-this-day", "On this day is unavailable.")
+		return
+	}
+	var items []models.OnThisDayItem
+	err := rs.repository.WithReadTxn(r.Context(), func(ctx context.Context) error {
+		var err error
+		items, err = rs.repository.OnThisDay.OnThisDay(ctx, kind, month, day, year, limit)
+		return err
+	})
+	if errors.Is(err, models.ErrFollowingInvalid) {
+		writeBooruError(w, 400, "on-this-day", "Choose image or scene, a valid month and day, and a limit of 1–200.")
+		return
+	}
+	if err != nil {
+		writeBooruError(w, 500, "on-this-day", "Cannot read dates.")
+		return
+	}
+	writeVisualSimilarityJSON(w, map[string]any{"items": items})
+}

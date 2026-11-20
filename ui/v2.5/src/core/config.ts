@@ -39,7 +39,13 @@ export type DefaultFilters = {
   [P in View]?: SavedFilterDataFragment;
 };
 
-export type FrontPageContent = ISavedFilterRow | ICustomFilter;
+/** Main page "On this day" row (Images or Videos). */
+export interface IOnThisDayRow extends ITypename {
+  __typename: "OnThisDay";
+  kind: "image" | "scene";
+}
+
+export type FrontPageContent = ISavedFilterRow | ICustomFilter | IOnThisDayRow;
 
 export const defaultMaxOptionsShown = 200;
 export const defaultPreviewVolume = 25;
@@ -197,8 +203,11 @@ function recentlyAdded(
   };
 }
 
-export function generateDefaultFrontPageContent(intl: IntlShape) {
+export function generateDefaultFrontPageContent(
+  intl: IntlShape
+): FrontPageContent[] {
   return [
+    { __typename: "OnThisDay", kind: "image" },
     recentlyReleased(intl, FilterMode.Scenes, "scenes"),
     recentlyAdded(intl, FilterMode.Studios, "studios"),
     recentlyReleased(intl, FilterMode.Groups, "groups"),
@@ -207,8 +216,12 @@ export function generateDefaultFrontPageContent(intl: IntlShape) {
   ];
 }
 
-export function generatePremadeFrontPageContent(intl: IntlShape) {
+export function generatePremadeFrontPageContent(
+  intl: IntlShape
+): (ICustomFilter | IOnThisDayRow)[] {
   return [
+    { __typename: "OnThisDay", kind: "image" },
+    { __typename: "OnThisDay", kind: "scene" },
     recentlyReleased(intl, FilterMode.Scenes, "scenes"),
     recentlyAdded(intl, FilterMode.Scenes, "scenes"),
     recentlyReleased(intl, FilterMode.Galleries, "galleries"),

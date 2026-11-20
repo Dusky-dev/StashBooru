@@ -8,6 +8,7 @@ import { useConfigurationContext } from "src/hooks/Config";
 import {
   ISavedFilterRow,
   ICustomFilter,
+  IOnThisDayRow,
   FrontPageContent,
   FilterModeToMessageID,
   customFilterTitle,
@@ -19,6 +20,13 @@ interface IAddSavedFilterModalProps {
   onClose: (content?: FrontPageContent) => void;
   existingSavedFilterIDs: string[];
   candidates: GQL.FindSavedFiltersQuery;
+}
+
+function onThisDayTitle(intl: IntlShape, row: IOnThisDayRow) {
+  return intl.formatMessage(
+    { id: "front_page.on_this_day.title" },
+    { kind: row.kind }
+  );
 }
 
 type SavedFilter = Pick<GQL.SavedFilter, "id" | "mode" | "name">;
@@ -147,7 +155,9 @@ const AddContentModal: React.FC<IAddSavedFilterModalProps> = ({
         >
           {premadeFilterOptions.map((c, i) => (
             <option key={i} value={i}>
-              {customFilterTitle(intl, c)}
+              {c.__typename === "OnThisDay"
+                ? onThisDayTitle(intl, c)
+                : customFilterTitle(intl, c)}
             </option>
           ))}
         </Form.Control>
@@ -240,6 +250,8 @@ const ContentRow: React.FC<IFilterRowProps> = (props: IFilterRowProps) => {
       case "CustomFilter": {
         return customFilterTitle(intl, props.content as ICustomFilter);
       }
+      case "OnThisDay":
+        return onThisDayTitle(intl, props.content as IOnThisDayRow);
     }
   }
 

@@ -26,6 +26,7 @@ type Repository struct {
 	BooruReview      BooruReviewReaderWriter
 	BooruFollow      BooruFollowReaderWriter
 	Following        FollowingReaderWriter
+	OnThisDay        OnThisDayReader
 	ProviderIdentity ProviderIdentityReaderWriter
 	ImageArtist      ImageArtistReaderWriter
 	Group            GroupReaderWriter
