@@ -2164,7 +2164,7 @@
       "next": "Next check: {time}",
       "last": "Last check {time}: {checked, plural, one {# follow} other {# follows}}, {posts, plural, one {# new post} other {# new posts}}{failed, plural, =0 {} one {, # failed} other {, # failed}}.",
       "mark_on_view": "Mark posts seen once shown",
-      "mark_on_view_help": "Off: posts stay new until you mark them seen. On: posts you open in a list are marked seen; they keep their New badge until you leave, and next time only newer posts are new."
+      "mark_on_view_help": "Off: posts stay new until you mark them seen. On: posts are marked seen when a list shows them (the whole loaded page). They keep their New badge until the list reloads, and next time only newer posts are new."
     },
     "view_posts": "Posts from follows",
     "view_manage": "Follows & settings",

@@ -71,6 +71,7 @@ function PostCard({
   source,
   sourceName,
   isNew,
+  seen,
   selected,
   disabled,
   onSelect,
@@ -81,6 +82,7 @@ function PostCard({
   source?: BooruSource;
   sourceName?: string;
   isNew: boolean;
+  seen: boolean;
   selected: boolean;
   disabled: boolean;
   onSelect: (selected: boolean) => void;
@@ -145,11 +147,11 @@ function PostCard({
           )}
           <Button
             size="sm"
-            variant={item.seenAt ? "outline-secondary" : "secondary"}
+            variant={seen ? "outline-secondary" : "secondary"}
             disabled={disabled}
             onClick={onSeen}
           >
-            {m(item.seenAt ? "mark_unseen" : "mark_seen")}
+            {m(seen ? "mark_unseen" : "mark_seen")}
           </Button>
           {content.browseURL && (
             <Link
@@ -239,6 +241,8 @@ export function FollowingPostGrid({
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const viewed = useRef(new Set<string>());
+  // Posts explicitly marked unseen are not marked seen again on view.
+  const kept = useRef(new Set<string>());
 
   // A new page starts with nothing selected.
   const shown = items.map((item) => item.sequence).join(",");
@@ -252,7 +256,12 @@ export function FollowingPostGrid({
   useEffect(() => {
     if (!markSeenOnView) return;
     const sequences = items
-      .filter((item) => !item.seenAt && !viewed.current.has(item.sequence))
+      .filter(
+        (item) =>
+          !item.seenAt &&
+          !viewed.current.has(item.sequence) &&
+          !kept.current.has(item.sequence)
+      )
       .map((item) => item.sequence);
     if (!sequences.length) return;
     for (const sequence of sequences) viewed.current.add(sequence);
@@ -287,11 +296,13 @@ export function FollowingPostGrid({
     }
   }
 
+  // Marked seen on view: seen on the server, not yet in this copy.
+  const isSeen = (item: FeedItem) =>
+    !!item.seenAt || viewed.current.has(item.sequence);
   const sourceByInstance = new Map(sources.map((s) => [s.instance, s]));
   const chosen = items.filter((item) => selected.has(item.sequence));
   const newest = Math.max(0, ...items.map((item) => Number(item.sequence)));
   const locked = disabled || busy;
-  const anyUnseen = items.some((item) => !item.seenAt);
   return (
     <div className="following-posts">
       {items.length > 0 && (
@@ -331,12 +342,16 @@ export function FollowingPostGrid({
                 size="sm"
                 variant="secondary"
                 disabled={locked}
-                onClick={() =>
+                onClick={() => {
+                  for (const item of chosen) {
+                    viewed.current.delete(item.sequence);
+                    kept.current.add(item.sequence);
+                  }
                   void mark({
                     sequences: chosen.map((item) => item.sequence),
                     seen: false,
-                  })
-                }
+                  });
+                }}
               >
                 {m("mark_selected_unseen")}
               </Button>
@@ -346,11 +361,7 @@ export function FollowingPostGrid({
             size="sm"
             variant="secondary"
             className="ml-auto"
-            disabled={
-              locked ||
-              (!!scope && !scope.length) ||
-              (!anyUnseen && !markSeenOnView)
-            }
+            disabled={locked || (!!scope && !scope.length)}
             title={m("mark_all_title")}
             onClick={() =>
               void mark({
@@ -380,6 +391,7 @@ export function FollowingPostGrid({
               source={source}
               sourceName={source?.name}
               isNew={!item.seenAt || viewed.current.has(item.sequence)}
+              seen={isSeen(item)}
               selected={selected.has(item.sequence)}
               disabled={locked}
               onSelect={(value) =>
@@ -390,9 +402,14 @@ export function FollowingPostGrid({
                   return next;
                 })
               }
-              onSeen={() =>
-                void mark({ sequences: [item.sequence], seen: !item.seenAt })
-              }
+              onSeen={() => {
+                // An explicit choice ends the "shown this visit" highlight.
+                const seen = !isSeen(item);
+                viewed.current.delete(item.sequence);
+                if (seen) kept.current.delete(item.sequence);
+                else kept.current.add(item.sequence);
+                void mark({ sequences: [item.sequence], seen });
+              }}
               onFilter={onFilter}
             />
           );

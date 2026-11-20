@@ -114,7 +114,7 @@ export function FollowAction({
   let label: string;
   let newTab = false;
   if (follow) {
-    to = `/following?${new URLSearchParams({ follow: follow.id })}`;
+    to = `/following?${new URLSearchParams({ view: "posts", follow: follow.id })}`;
     label = follow.unseen
       ? intl.formatMessage(
           { id: "following_action.following_new" },

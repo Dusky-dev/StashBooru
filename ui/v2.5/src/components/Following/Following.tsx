@@ -260,6 +260,7 @@ export default function Following() {
     if (key === "instance" || key === "kind") next.delete("follow");
     if (value) next.set(key, value);
     else next.delete(key);
+    next.set("view", "posts");
     history.push({ pathname: "/following", search: next.toString() });
   }
 
@@ -270,6 +271,7 @@ export default function Following() {
     next.delete("kind");
     next.set("follow", id);
     if (historic) next.set("history", "1");
+    next.set("view", "posts");
     history.push({ pathname: "/following", search: next.toString() });
   }
 

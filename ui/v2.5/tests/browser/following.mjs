@@ -699,6 +699,15 @@ try {
     await page
       .getByRole("article", { name: "Post 701", exact: true })
       .waitFor();
+    // A shared feed link without view=posts keeps the list when its last
+    // filter is cleared.
+    await page.goto(`${origin}${prefix}/following?follow=${follows[1].id}`);
+    await feed.waitFor();
+    await page.getByLabel("Matched follow", { exact: true }).selectOption("");
+    await page.waitForFunction(() => !/follow=/.test(location.search));
+    await feed.waitFor();
+    assert.match(page.url(), /view=posts/);
+    assert.equal(await manage.count(), 0);
     // An Artist followed on two sites: its tab checks both, shows each
     // post's site and marks everything seen in one step.
     follows[0].active = true;
@@ -736,6 +745,9 @@ try {
       await page.waitForTimeout(100);
     assert.ok(seen.get("801")?.at, "shown posts are marked seen");
     await post801.getByText("New", { exact: true }).waitFor();
+    await post801
+      .getByRole("button", { name: "Mark unseen", exact: true })
+      .waitFor();
     assert.equal(syncs, syncsBefore, "opening the tab must not check sites");
     await artistTab
       .getByRole("button", { name: "Mark all seen", exact: true })

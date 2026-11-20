@@ -11,10 +11,11 @@
   all seen, site icon, New badge); Artist **Followed posts** tab
   (`ArtistFollowedPosts`); Following defaults to Follows & settings
   (`view=posts` or any feed filter opens the list).
-- Checks: Go integration `TestB06*`, schedule tests pass; `tsc`, Biome
+- Checks: Go integration tests for `internal/api`, `pkg/sqlite`,
+  `pkg/models` pass; golangci-lint 0 issues on those; `tsc`, Biome
   lint/format, stylelint, `pnpm run test` (140 pass); browser `following.mjs`
-  (extended: selection, mark-on-view, Artist tab, mark all), `following-context.mjs`,
-  `identities.mjs` pass at 1440 and 390 px.
+  (extended: selection, mark-on-view, Artist tab, mark all, filter-clear stays
+  on posts), `following-context.mjs`, `identities.mjs` pass at 1440/390 px.
 - Not verified: the tab inside the real Studio page in a browser (fixture
   mounts the component), live sites, `make it` in full.
 - Next: offer the same tab for Characters and Copyrights if wanted.
