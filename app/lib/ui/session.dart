@@ -43,7 +43,7 @@ class NetImage extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final placeholder = ColoredBox(
-      color: scheme.surfaceContainerHighest,
+      color: scheme.surfaceContainer,
       child: Center(child: Icon(icon, color: scheme.onSurfaceVariant)),
     );
     if (url == null) return placeholder;

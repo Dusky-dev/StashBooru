@@ -84,10 +84,17 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
+      # Cached Gradle downloads keep most builds off Maven Central, which
+      # rate-limits (HTTP 429) shared CI runners.
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
+          cache: gradle
+          cache-dependency-path: |
+            app/android/**/*.gradle*
+            app/android/gradle/wrapper/gradle-wrapper.properties
+            app/pubspec.lock
       - name: Install Flutter
         working-directory: ${{ runner.temp }}
         run: |
@@ -106,7 +113,15 @@ jobs:
           exit 1
       # Release APKs are signed with the debug key until a release keystore
       # is configured as a repository secret.
-      - run: flutter --disable-analytics && flutter build apk --release --split-per-abi
+      - name: Build APKs
+        run: |
+          flutter --disable-analytics
+          # A rate-limited download fails the whole build; wait and try again.
+          for attempt in 1 2 3; do
+            flutter build apk --release --split-per-abi && exit 0
+            [ "$attempt" = 3 ] || sleep 90
+          done
+          exit 1
       - uses: actions/upload-artifact@v7
         with:
           name: stashbooru-android

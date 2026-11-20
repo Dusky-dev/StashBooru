@@ -1,5 +1,4 @@
-import 'dart:async';
-
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../api/entities.dart';
@@ -7,6 +6,8 @@ import '../api/models.dart';
 import 'media_browser.dart';
 import 'paging.dart';
 import 'session.dart';
+import 'theme.dart';
+import 'toolbar.dart';
 
 /// A searchable grid of Characters, Artists, Copyrights, Tags, Galleries or
 /// Collections.
@@ -22,7 +23,6 @@ class _EntityBrowserState extends State<EntityBrowser> {
   String _query = '';
   EntitySort _sort = EntitySort.name;
   int _seed = newSeed();
-  Timer? _debounce;
   PagedController<Entity>? _controller;
 
   PageFetcher<Entity> _fetcher() {
@@ -50,7 +50,6 @@ class _EntityBrowserState extends State<EntityBrowser> {
 
   @override
   void dispose() {
-    _debounce?.cancel();
     _controller?.dispose();
     super.dispose();
   }
@@ -60,61 +59,36 @@ class _EntityBrowserState extends State<EntityBrowser> {
   @override
   Widget build(BuildContext context) {
     final type = widget.type;
-    // Leave room under the image for the name and counts.
-    const textHeight = 52.0;
-    const width = 170.0;
-    final aspect = width / (width / type.imageAspect + textHeight);
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              SizedBox(
-                width: 280,
-                child: TextField(
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search),
-                    hintText: 'Search ${type.plural.toLowerCase()}',
-                    isDense: true,
-                    border: const OutlineInputBorder(),
-                  ),
-                  onChanged: (text) {
-                    _debounce?.cancel();
-                    _debounce = Timer(const Duration(milliseconds: 400), () {
-                      _query = text;
-                      _reload();
-                    });
-                  },
-                ),
-              ),
-              DropdownButton<EntitySort>(
-                value: _sort,
-                underline: const SizedBox(),
-                items: [
-                  for (final s in EntitySort.values)
-                    DropdownMenuItem(value: s, child: Text('Sort: ${s.label}')),
-                ],
-                onChanged: (s) {
-                  if (s == null) return;
-                  setState(() {
-                    _sort = s;
-                    _seed = newSeed();
-                  });
-                  _reload();
-                },
-              ),
-            ],
-          ),
+        ListToolbar(
+          children: [
+            SearchField(
+              onChanged: (text) {
+                _query = text;
+                _reload();
+              },
+            ),
+            ChoiceButton<EntitySort>(
+              tooltip: 'Sort',
+              value: _sort,
+              values: EntitySort.values,
+              label: (s) => s.label,
+              onSelected: (s) {
+                setState(() {
+                  _sort = s;
+                  _seed = newSeed();
+                });
+                _reload();
+              },
+            ),
+          ],
         ),
         Expanded(
           child: PagedGrid<Entity>(
             controller: _controller!,
-            maxExtent: width + 30,
-            aspectRatio: aspect,
+            minTileWidth: EntityCard.minWidth(type),
+            tileHeight: (w) => EntityCard.heightFor(type, w),
             emptyText: _query.isEmpty
                 ? 'No ${type.plural.toLowerCase()} yet.'
                 : 'No ${type.plural.toLowerCase()} match “$_query”.',
@@ -126,20 +100,32 @@ class _EntityBrowserState extends State<EntityBrowser> {
   }
 }
 
+/// A web UI entity card: image, name, then a divider and the media counts.
 class EntityCard extends StatelessWidget {
   const EntityCard({super.key, required this.entity});
   final Entity entity;
+
+  static const _captionHeight = 46.0;
+  static const _footerHeight = 38.0;
+
+  static double minWidth(EntityType type) => switch (type) {
+    EntityType.character || EntityType.collection => 200,
+    _ => 260,
+  };
+
+  static double heightFor(EntityType type, double width) =>
+      width / type.imageAspect + _captionHeight + 1 + _footerHeight;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     // Artist logos are often transparent and not square: show them whole.
-    final fit = entity.type == EntityType.artist
-        ? BoxFit.contain
-        : BoxFit.cover;
+    final fit = switch (entity.type) {
+      EntityType.artist || EntityType.tag => BoxFit.contain,
+      _ => BoxFit.cover,
+    };
     return Card(
       clipBehavior: Clip.antiAlias,
-      margin: EdgeInsets.zero,
       child: InkWell(
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => EntityMediaPage(entity: entity)),
@@ -151,44 +137,36 @@ class EntityCard extends StatelessWidget {
               child: NetImage(
                 entity.imagePath,
                 fit: fit,
-                cacheWidth: 200,
+                cacheWidth: 300,
                 icon: _icon(entity.type),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          entity.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleSmall,
-                        ),
+            SizedBox(
+              height: _captionHeight,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        entity.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleMedium,
                       ),
-                      if (entity.favorite)
-                        Icon(
-                          Icons.favorite,
-                          size: 14,
-                          color: theme.colorScheme.primary,
-                        ),
-                    ],
-                  ),
-                  Text(
-                    entity.countLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
                     ),
-                  ),
-                ],
+                    if (entity.favorite)
+                      const Icon(
+                        Icons.favorite,
+                        size: 16,
+                        color: Color(0xFFFF7373),
+                      ),
+                  ],
+                ),
               ),
             ),
+            const Divider(indent: 10, endIndent: 10),
+            SizedBox(height: _footerHeight, child: EntityCounts(entity)),
           ],
         ),
       ),
@@ -196,18 +174,54 @@ class EntityCard extends StatelessWidget {
   }
 }
 
+/// The icon-and-number counts under a web UI card.
+class EntityCounts extends StatelessWidget {
+  const EntityCounts(this.entity, {super.key});
+  final Entity entity;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      if (entity.videoCount != null)
+        (Icons.play_circle, entity.videoCount!, 'Videos'),
+      if (entity.imageCount != null)
+        (Icons.image, entity.imageCount!, 'Images'),
+    ];
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (final (icon, count, label) in items)
+          Tooltip(
+            message: '$count $label',
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Row(
+                children: [
+                  Icon(icon, size: 15, color: StashColors.text),
+                  const SizedBox(width: 6),
+                  Text('$count', style: const TextStyle(fontSize: 14)),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 IconData _icon(EntityType type) => switch (type) {
   EntityType.character => Icons.person,
-  EntityType.artist => Icons.brush,
+  EntityType.artist => Icons.videocam,
   EntityType.copyright => Icons.copyright,
   EntityType.tag => Icons.sell,
   EntityType.gallery => Icons.photo_library,
-  EntityType.collection => Icons.video_library,
+  EntityType.collection => Icons.movie,
 };
 
 IconData entityIcon(EntityType type) => _icon(type);
 
-/// The Images and Videos belonging to one entity.
+/// The Images and Videos belonging to one entity, under a header like the
+/// web detail page.
 class EntityMediaPage extends StatelessWidget {
   const EntityMediaPage({super.key, required this.entity});
   final Entity entity;
@@ -216,23 +230,84 @@ class EntityMediaPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final session = Session.of(context);
     final sources = sourcesFor(session.client, session.caps, entity.scope);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(entity.name),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(20),
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Text(
-              entity.type.singular,
-              style: Theme.of(context).textTheme.labelMedium,
+    final theme = Theme.of(context);
+    final imageHeight = MediaQuery.sizeOf(context).width >= 600 ? 120.0 : 84.0;
+    // Escape goes back on desktop, as it closes the viewer.
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.escape): () =>
+            Navigator.of(context).maybePop(),
+      },
+      child: Focus(
+        autofocus: true,
+        child: Scaffold(
+          appBar: AppBar(title: Text(entity.type.plural)),
+          body: MediaBrowser(
+            sources: sources,
+            emptyText: 'Nothing is linked to this ${entity.type.singular} yet.',
+            header: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Row(
+                children: [
+                  if (entity.imagePath != null)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 16),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(kCardRadius),
+                        child: SizedBox(
+                          height: imageHeight,
+                          width: imageHeight * entity.type.imageAspect,
+                          child: NetImage(
+                            entity.imagePath,
+                            fit: BoxFit.cover,
+                            cacheWidth: 240,
+                            icon: _icon(entity.type),
+                          ),
+                        ),
+                      ),
+                    ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                entity.name,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.headlineSmall,
+                              ),
+                            ),
+                            if (entity.favorite)
+                              const Padding(
+                                padding: EdgeInsets.only(left: 8),
+                                child: Icon(
+                                  Icons.favorite,
+                                  size: 18,
+                                  color: Color(0xFFFF7373),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          entity.countLabel.isEmpty
+                              ? entity.type.singular
+                              : '${entity.type.singular} · ${entity.countLabel}',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
-      ),
-      body: MediaBrowser(
-        sources: sources,
-        emptyText: 'Nothing is linked to this ${entity.type.singular} yet.',
       ),
     );
   }
