@@ -57,7 +57,8 @@ flutter test
   configured, so a later build may not install over an earlier one.
 
 CI builds all three on every change under `app/` and uploads them as workflow
-artifacts.
+artifacts. Each stable StashBooru release attaches them as
+`stashbooru-app-*` downloads.
 
 ### Testing against a real server
 

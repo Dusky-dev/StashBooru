@@ -7,12 +7,14 @@ on:
   pull_request:
     paths: ['app/**', '.github/workflows/native-app.yml']
   workflow_dispatch:
+  # The Build workflow calls this on a release branch to attach the app.
+  workflow_call:
 
 permissions:
   contents: read
 
 concurrency:
-  group: native-app-${{ github.ref }}
+  group: ${{ github.workflow }}-native-app-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -91,6 +93,17 @@ jobs:
         run: |
           git clone --depth 1 --branch "$FLUTTER_VERSION" https://github.com/flutter/flutter.git
           echo "${{ runner.temp }}/flutter/bin" >> "$GITHUB_PATH"
+      # Gradle downloads the NDK once with no retry; a corrupt download fails
+      # the build. Must match flutter.ndkVersion of FLUTTER_VERSION.
+      - name: Install Android NDK
+        run: |
+          ndk="28.2.13676358"
+          for attempt in 1 2 3; do
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$ndk" > /dev/null \
+              && [ -f "$ANDROID_HOME/ndk/$ndk/source.properties" ] && exit 0
+            rm -rf "$ANDROID_HOME/ndk/$ndk"; sleep 20
+          done
+          exit 1
       # Release APKs are signed with the debug key until a release keystore
       # is configured as a repository secret.
       - run: flutter --disable-analytics && flutter build apk --release --split-per-abi

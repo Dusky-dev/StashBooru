@@ -19,6 +19,8 @@ else
   [[ "$status" == 2 ]] || { echo "Could not verify release tag absence" >&2; exit "$status"; }
 fi
 assets=(Stash.app.zip stash-macos stash-win.exe stash-linux stash-linux-arm64v8 stash-linux-arm32v7 stash-linux-arm32v6 stash-freebsd stash-ui.zip stash-remote-worker.zip)
+# The native app, built by the native-app job of the same run.
+assets+=(stashbooru-app-android-arm64-v8a.apk stashbooru-app-android-armeabi-v7a.apk stashbooru-app-android-x86_64.apk stashbooru-app-linux-x64.tar.gz stashbooru-app-windows-x64.zip)
 for asset in "${assets[@]}"; do
   [[ -s "dist/$asset" ]] || { echo "Missing asset: $asset" >&2; exit 1; }
 done
