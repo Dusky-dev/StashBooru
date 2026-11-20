@@ -16,7 +16,8 @@ For a stable release:
 3. The Build workflow validates release guards, UI and Go tests and builds every
    platform. Its release job verifies the branch/version/repository, commit and
    required assets, then creates `stashbooru-vX.Y.Z` at the exact commit.
-4. The GitHub release stays a draft until all nine downloads and checksum files
+4. The GitHub release stays a draft until every server download, the native
+   app builds (from the `native-app` job of the same run) and the checksum files
    have uploaded, then becomes the latest stable release. Verify its commit,
    assets and `/releases/latest` response before announcing completion.
 

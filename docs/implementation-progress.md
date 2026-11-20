@@ -1,3 +1,15 @@
+## StashBooru 1.5.0 release: attach the native app — 2026-11-20
+
+- Baseline: `develop` `7848f47`. Owner request: release with the app builds.
+- The Build workflow calls `native-app.yml` on `releases/stashbooru-*` only;
+  its release job copies the Android APKs and Linux/Windows archives into
+  `dist/` as `stashbooru-app-*`, and `release-stashbooru.sh` requires them, so
+  the release stays a draft (no tag) unless all are present.
+- Checks: YAML parse, `bash -n`, a dry run of the script with a stubbed `gh`
+  (15 assets listed and checksummed; a missing app asset exits before
+  `gh release create`). The release path only runs on the release push.
+- Next: merge, push `releases/stashbooru-1.5.0`, verify assets.
+
 ## StashBooru 1.5.0: native app for Android, Linux and Windows — 2026-11-20
 
 - Baseline: `develop` `95719f7` (#410). Branch
