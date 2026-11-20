@@ -87,9 +87,14 @@ class MediaRef {
 }
 
 class PageResult<T> {
-  PageResult(this.items, this.total);
+  PageResult(this.items, this.total) : hasMore = null;
+
+  /// For sources that only say whether another page exists.
+  PageResult.open(this.items, {required bool this.hasMore}) : total = null;
+
   final List<T> items;
-  final int total;
+  final int? total;
+  final bool? hasMore;
 }
 
 enum SortOption {

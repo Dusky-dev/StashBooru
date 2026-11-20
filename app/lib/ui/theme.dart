@@ -205,6 +205,18 @@ ThemeData buildStashTheme() {
       ),
       surfaceTintColor: Colors.transparent,
     ),
+    // A Bootstrap button group: the active button is primary.
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: SegmentedButton.styleFrom(
+        backgroundColor: StashColors.secondary,
+        foregroundColor: StashColors.text,
+        selectedBackgroundColor: StashColors.primary,
+        selectedForegroundColor: Colors.white,
+        side: const BorderSide(color: StashColors.border),
+        shape: shape,
+        visualDensity: VisualDensity.compact,
+      ),
+    ),
     chipTheme: ChipThemeData(
       backgroundColor: StashColors.secondary,
       labelStyle: const TextStyle(color: StashColors.text, fontSize: 13),

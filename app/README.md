@@ -16,7 +16,7 @@ Windows Credential Manager. On Linux it is kept in an owner-only file
 (`~/.local/share/dev.stashbooru.stashbooru/api-key`), because the system
 keyring library aborts the app when no keyring service is running.
 
-What it does (read-only for now):
+What it does:
 
 - **All, Images, Videos.** Search, sort (Newest, Oldest, Date, Title, Rating,
   Random), infinite scrolling.
@@ -26,10 +26,16 @@ What it does (read-only for now):
   side buttons to move. Pinch or double-tap to zoom, `I` for details, Escape
   to close. Chips in the details panel open the related Character, Artist,
   Copyright, Tag, Gallery or Collection. Videos, and Images that are video
-  clips, play in the built-in player. Images Flutter cannot decode (JPEG XL,
-  and AVIF on some platforms) are shown by the same player, without zoom.
-  Grid thumbnails need a format Flutter can decode: keep *Settings → Thumbnail
-  compression* on JPEG or WebP.
+  clips, play in the built-in player. JPEG XL (still and animated) is decoded
+  by the app itself; images Flutter cannot decode (AVIF on some platforms)
+  are shown by the player, without zoom.
+- **Booru** (StashBooru servers). Search the booru sites set up on the server,
+  open a post to see its tags (tap one to search it) and download it into the
+  library. Sites, accounts and the download folder are set up in the web UI.
+- **Settings** (gear icon, or the menu on phones): card size, full-size
+  images, autoplay/mute/loop for videos, clearing the image cache, the
+  server's address and version, and Disconnect. These are kept on the device;
+  the server's own settings stay in the web UI.
 
 On a stock Stash server, All and Copyrights should be hidden and everything
 else should work, because the app only uses upstream queries there. This has

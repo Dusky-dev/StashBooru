@@ -1,3 +1,22 @@
+## StashBooru 1.7.0: Booru browser and Settings in the native app — 2026-11-21
+
+- Baseline: `develop` `1ea1054` (1.6.2). Owner feedback: the app is barebones,
+  "no settings, no booru browser".
+- Booru: `app/lib/api/booru.dart` uses the server's `booru-browser/*` routes
+  (sources, search, media proxy, download-settings, download + status);
+  `booru_browser.dart` has the grid, a post page with grouped tags (tap to
+  search) and Download to library. Shown as a utility link beside the gear.
+- Settings (`settings_page.dart`, `state/app_settings.dart`, shared
+  preferences): card size, full-size images, autoplay/mute/loop, clear
+  image cache, server and Disconnect. App version is 1.7.0 (pubspec and a
+  test tie it to `stashbooru-version.txt`).
+- Checks: `flutter analyze`, `flutter test` (26 pass, 4 live skipped; new
+  booru/settings/version tests), Linux build under Xvfb against a local
+  1.5.1 server: live Danbooru search, post page, download landed in library,
+  JXL opened in the zoomable viewer.
+- Not verified: Android, Windows. Next: owner to rank remaining web-only
+  features (Following, Identities, Duplicates, editing, booru bookmarks).
+
 ## StashBooru 1.6.2: app crash on LuaJIT mpv, JPEG XL in the app — 2026-11-20
 
 - Baseline: `develop` `089be9e` (1.5.1), merged with 1.6.0 and 1.6.1. Owner reports: Linux app core dump

@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:media_kit/media_kit.dart';
 
 import 'api/client.dart';
+import 'state/app_settings.dart';
 import 'state/credentials.dart';
 import 'ui/connect_page.dart';
 import 'ui/home_shell.dart';
@@ -17,10 +18,18 @@ void main() {
 typedef ClientFactory = StashClient Function(Uri url, String apiKey);
 
 class StashBooruApp extends StatefulWidget {
-  const StashBooruApp({super.key, required this.store, this.clientFactory});
+  const StashBooruApp({
+    super.key,
+    required this.store,
+    this.clientFactory,
+    this.settings,
+  });
 
   final CredentialStore store;
   final ClientFactory? clientFactory;
+
+  /// Device preferences; loaded from storage when not given (tests pass one).
+  final AppSettings? settings;
 
   @override
   State<StashBooruApp> createState() => _StashBooruAppState();
@@ -28,6 +37,7 @@ class StashBooruApp extends StatefulWidget {
 
 class _StashBooruAppState extends State<StashBooruApp> {
   bool _loading = true;
+  late AppSettings _settings = widget.settings ?? AppSettings.defaults();
   StashClient? _client;
   ServerCapabilities? _caps;
   SavedServer? _saved;
@@ -44,6 +54,7 @@ class _StashBooruAppState extends State<StashBooruApp> {
       StashClient(baseUrl: url, apiKey: key);
 
   Future<void> _restore() async {
+    _settings = widget.settings ?? await AppSettings.load();
     final saved = await widget.store.load();
     _saved = saved;
     final url = saved == null ? null : parseServerUrl(saved.url);
@@ -126,14 +137,17 @@ class _StashBooruAppState extends State<StashBooruApp> {
       theme: buildStashTheme(),
       // Session sits above the navigator so pushed pages (viewer, entity
       // media) can reach the connection too.
-      builder: (context, child) => _client == null
-          ? child!
-          : Session(
-              client: _client!,
-              caps: _caps!,
-              onDisconnect: _disconnect,
-              child: child!,
-            ),
+      builder: (context, child) => AppSettingsScope(
+        settings: _settings,
+        child: _client == null
+            ? child!
+            : Session(
+                client: _client!,
+                caps: _caps!,
+                onDisconnect: _disconnect,
+                child: child!,
+              ),
+      ),
       home: home,
     );
   }

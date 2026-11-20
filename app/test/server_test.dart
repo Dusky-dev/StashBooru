@@ -46,7 +46,7 @@ void main() {
         final page = await source.fetch(1, 40, '', sort, 7);
         expect(
           page.items.length,
-          lessThanOrEqualTo(page.total),
+          lessThanOrEqualTo(page.total!),
           reason: '${source.label} $sort',
         );
       }
@@ -86,7 +86,7 @@ void main() {
               '',
               SortOption.newest,
               0,
-            )).total;
+            )).total!;
           }
           final expected = (entity.imageCount ?? 0) + (entity.videoCount ?? 0);
           expect(found, expected, reason: '${type.singular} ${entity.name}');
