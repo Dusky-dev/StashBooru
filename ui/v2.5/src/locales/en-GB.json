@@ -786,6 +786,14 @@
         "plugins_help": "Tasks from enabled plugins appear here when available.",
         "tools": "Tools",
         "tools_help": "Check metadata health, find duplicate Videos or open developer tools."
+      },
+      "media_dates": {
+        "title": "Fill missing dates",
+        "help": "Gives Images and Videos that have no Date one: when the photo was taken (from the file's EXIF data, Images only), otherwise when it was posted on the site (from saved Booru downloads). A Date you already set is kept. Items with neither keep using the date they were added. New Booru downloads get their date automatically.",
+        "run": "Fill missing dates",
+        "running": "Filling missing dates… (you can cancel it in the job queue)",
+        "last": "Last run: {checked, plural, one {# item} other {# items}} checked; {file} dated from the file, {posted} from the site's post date{failed, plural, =0 {} other {; # failed}}.",
+        "cancelled": "Last run was cancelled after {checked, plural, one {# item} other {# items}}; {file} dated from the file, {posted} from the site's post date."
       }
     },
     "tools": {

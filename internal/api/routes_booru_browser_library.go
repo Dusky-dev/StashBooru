@@ -144,6 +144,9 @@ func booruImportFile(ctx context.Context, path string, source booru.Source, post
 			}
 			return &models.UpdateIDs{IDs: ids, Mode: models.RelationshipUpdateModeAdd}
 		}
+		if _, err := fillMissingMediaDate(ctx, mgr.Repository, target.Kind, target.ID, path, post.CreatedAt); err != nil {
+			return err
+		}
 		urls := &models.UpdateStrings{Values: []string{post.PostURL}, Mode: models.RelationshipUpdateModeAdd}
 		if target.Kind == "image" {
 			_, err := mgr.Repository.Image.UpdatePartial(ctx, target.ID, models.ImagePartial{
