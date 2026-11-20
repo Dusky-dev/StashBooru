@@ -1,3 +1,22 @@
+## StashBooru 1.5.0: native app for Android, Linux and Windows — 2026-11-20
+
+- Baseline: `develop` `95719f7` (#410). Branch
+  [`claude/hopeful-bardeen-qejphi`](https://github.com/Dusky-dev/StashBooru/tree/claude/hopeful-bardeen-qejphi).
+- Owner request: a real native app, not a web wrapper; stock Stash support
+  optional. Flutter + media_kit (libmpv) in `app/`, with no server changes.
+  It is read-only. A `__type` probe hides All (`findMedia`) and Copyrights on
+  stock Stash. Typed `image:`/`scene:` keys, fork terminology and navbar order.
+  Native workflow `native-app.yml` builds Linux, Windows and Android.
+- Checks: `flutter analyze`; `flutter test` (19 unit/widget tests); the
+  `server_test.dart` suite against a local StashBooru build with a synthetic
+  library and an API key (every query and sort, entity counts equal their
+  media, thumbnail/stream fetches). The Linux release bundle was driven under
+  Xvfb: connect, saved-server restart, All, viewer, details, Copyright
+  subtree, H.264 and VP9 playback. The probe APK built locally.
+- Not verified: Windows build/runtime (CI only), any physical Android device,
+  stock Stash at runtime (mocked only), VP9 4:4:4 RGB playback (fails in
+  headless GL), audio output, real libraries.
+
 ## StashBooru 1.4.0: automatic follow checks and new-post counts — 2026-11-19
 
 - Baseline: `develop` `dfd74a5` (#408, 1.3.0). Branch
