@@ -57,6 +57,9 @@ through code or fixtures.
 
 ## Done
 
+- Native app for Android, Linux and Windows in `app/` (owner request,
+  2026-11-20, 1.5.0). Read-only v1. Follow-ups to propose: editing,
+  release keystore for signed APKs, attaching app builds to releases.
 - Copyright → Characters tab HTTP 400 (LIB-01, 2026-11-16).
 - Fork labels (#376), toasts (#377), Metadata Health (#378), navbar fork links
   (#379), list scroll after a fast Back (#380), Identities keeps
