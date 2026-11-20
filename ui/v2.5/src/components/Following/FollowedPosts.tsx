@@ -11,7 +11,7 @@ import {
   followingRequest,
 } from "./FollowingPosts";
 
-interface ArtistFollow {
+interface EntityFollow {
   id: string;
   version: number;
   name: string;
@@ -27,14 +27,22 @@ interface ArtistFollow {
 // One check stops after this many pages per site; the next press continues.
 const maxPagesPerSite = 10;
 
-/** Active follows whose Artist tag is connected to this Artist. */
-export function useArtistFollows(studioID: string, epoch = 0) {
-  const [follows, setFollows] = useState<ArtistFollow[]>([]);
+export type FollowedKind = "artist" | "character" | "copyright";
+
+/** Active follows whose site name is connected to this Artist, Character
+ * or Copyright. */
+export function useEntityFollows(
+  kind: FollowedKind,
+  entityID: string,
+  epoch = 0
+) {
+  // undefined until loaded, so the tab doesn't flash its empty state.
+  const [follows, setFollows] = useState<EntityFollow[]>();
   // biome-ignore lint/correctness/useExhaustiveDependencies: epoch reloads the list.
   useEffect(() => {
     const controller = new AbortController();
     const load = () =>
-      void followingRequest<ArtistFollow[]>(
+      void followingRequest<EntityFollow[]>(
         "following/follows",
         controller.signal
       )
@@ -44,8 +52,8 @@ export function useArtistFollows(studioID: string, epoch = 0) {
             rows.filter(
               (row) =>
                 row.active &&
-                row.kind === "artist" &&
-                String(row.connection?.entityID ?? "") === studioID
+                row.kind === kind &&
+                String(row.connection?.entityID ?? "") === entityID
             )
           );
         })
@@ -56,20 +64,36 @@ export function useArtistFollows(studioID: string, epoch = 0) {
       controller.abort();
       window.removeEventListener("stashbooru-following-changed", load);
     };
-  }, [studioID, epoch]);
+  }, [kind, entityID, epoch]);
   return follows;
 }
 
+/** New posts across this record's follows, for its tab counter. */
+export function useFollowedUnseen(kind: FollowedKind, entityID: string) {
+  return (useEntityFollows(kind, entityID) ?? []).reduce(
+    (count, follow) => count + (follow.unseen ?? 0),
+    0
+  );
+}
+
 /**
- * An Artist's Followed posts tab: check every site this Artist is followed
- * on, and review the saved posts with an icon for each site.
+ * A profile's Followed posts tab: check every site the Artist, Character or
+ * Copyright is followed on, and review the saved posts with an icon for each
+ * site. Without follows it explains how to add one.
  */
-export function ArtistFollowedPosts({ studioID }: { studioID: string }) {
+export function FollowedPosts({
+  kind,
+  entityID,
+}: {
+  kind: FollowedKind;
+  entityID: string;
+}) {
   const intl = useIntl();
   const m = (id: string, values?: Record<string, string | number>) =>
-    intl.formatMessage({ id: `following_action.artist.${id}` }, values);
+    intl.formatMessage({ id: `following_action.followed.${id}` }, values);
   const [epoch, setEpoch] = useState(0);
-  const follows = useArtistFollows(studioID, epoch);
+  const loaded = useEntityFollows(kind, entityID, epoch);
+  const follows = loaded ?? [];
   const markSeenOnView = useMarkSeenOnView();
   const [sources, setSources] = useState<BooruSource[]>([]);
   const [newOnly, setNewOnly] = useState(true);
@@ -112,7 +136,7 @@ export function ArtistFollowedPosts({ studioID }: { studioID: string }) {
     return () => c.abort();
   }, [ids, newOnly, before, epoch]);
 
-  const siteName = (follow: ArtistFollow) =>
+  const siteName = (follow: EntityFollow) =>
     sources.find((s) => s.instance === follow.instance)?.name ??
     follow.sourceURL;
 
@@ -143,10 +167,10 @@ export function ArtistFollowedPosts({ studioID }: { studioID: string }) {
     }
     setChecking("");
     // Count what the check added from the refreshed follow list.
-    const rows = await followingRequest<ArtistFollow[]>(
+    const rows = await followingRequest<EntityFollow[]>(
       "following/follows",
       c.signal
-    ).catch(() => [] as ArtistFollow[]);
+    ).catch(() => [] as EntityFollow[]);
     const unseenAfter = rows
       .filter((row) => follows.some((f) => f.id === row.id))
       .reduce((n, f) => n + (f.unseen ?? 0), 0);
@@ -159,12 +183,24 @@ export function ArtistFollowedPosts({ studioID }: { studioID: string }) {
     notifyFollowingChanged();
   }
 
-  if (!follows.length) return null;
+  if (!loaded) return null;
+  if (!follows.length)
+    return (
+      <section className="artist-followed-posts" aria-label={m("tab")}>
+        <p>{m("none", { kind })}</p>
+        <Link
+          className="btn btn-secondary btn-sm"
+          to={`/identities?${new URLSearchParams({ kind })}`}
+        >
+          {m("open_identities")}
+        </Link>
+      </section>
+    );
   const items = page?.items ?? [];
   return (
     <section className="artist-followed-posts" aria-label={m("tab")}>
       <div className="following-actions mb-2">
-        <span>{m("intro", { count: follows.length })}</span>
+        <span>{m("intro", { count: follows.length, kind })}</span>
         {follows.map((follow) => {
           const source = sources.find((s) => s.instance === follow.instance);
           return (

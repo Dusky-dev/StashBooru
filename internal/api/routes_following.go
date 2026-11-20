@@ -404,6 +404,8 @@ func (rs booruBrowserRoutes) SetFollowingSeen(w http.ResponseWriter, r *http.Req
 func (rs booruBrowserRoutes) MarkFollowingSeen(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Sequences []string `json:"sequences"`
+		Instance  string   `json:"instance"`
+		PostIDs   []string `json:"postIDs"`
 		FollowIDs []string `json:"followIDs"`
 		UpTo      string   `json:"upTo"`
 		Seen      *bool    `json:"seen"`
@@ -411,11 +413,11 @@ func (rs booruBrowserRoutes) MarkFollowingSeen(w http.ResponseWriter, r *http.Re
 	if !readBooruReviewJSON(w, r, &input) {
 		return
 	}
-	if input.Seen == nil || len(input.Sequences) > models.MaxFollowingSeenBatch {
+	if input.Seen == nil || len(input.Sequences) > models.MaxFollowingSeenBatch || len(input.PostIDs) > models.MaxFollowingSeenBatch {
 		followingError(w, models.ErrFollowingInvalid)
 		return
 	}
-	batch := models.FollowingSeenBatch{FollowIDs: input.FollowIDs, Seen: *input.Seen}
+	batch := models.FollowingSeenBatch{FollowIDs: input.FollowIDs, Instance: input.Instance, PostIDs: input.PostIDs, Seen: *input.Seen}
 	for _, raw := range input.Sequences {
 		sequence, err := strconv.ParseInt(raw, 10, 64)
 		if err != nil {

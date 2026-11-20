@@ -4,11 +4,13 @@ import { BrowserRouter, Link, Route } from "react-router-dom";
 import BooruBrowser from "../../../src/components/BooruBrowser/BooruBrowser";
 import "../../../src/index.scss";
 import "../../../src/booru-ui.scss";
+import { messages } from "./messages";
 
 ReactDOM.render(
   <IntlProvider
     locale="en"
     messages={{
+      ...messages,
       "pagination.first": "First page",
       "pagination.previous": "Previous page",
       "pagination.next": "Next page",

@@ -726,8 +726,18 @@ try {
     schedule = { ...schedule, markSeenOnView: true };
     const syncsBefore = syncs;
     await page.goto(`${origin}${prefix}/artist`);
-    const artistTab = page.getByRole("region", { name: "Followed posts" });
-    await artistTab.getByText("Danbooru mirror", { exact: true }).waitFor();
+    const artistTab = page
+      .getByRole("region", { name: "Followed posts" })
+      .first();
+    // A Character with no follows explains how to add one.
+    await page
+      .getByRole("region", { name: "Followed posts" })
+      .nth(1)
+      .getByText(/This Character isn't followed on any site yet/)
+      .waitFor();
+    await artistTab
+      .locator(".following-site-chip", { hasText: "Danbooru mirror" })
+      .waitFor();
     const post801 = artistTab.getByRole("article", {
       name: "Post 801",
       exact: true,

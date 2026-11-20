@@ -2163,8 +2163,8 @@
       "running": "Checking follows…",
       "next": "Next check: {time}",
       "last": "Last check {time}: {checked, plural, one {# follow} other {# follows}}, {posts, plural, one {# new post} other {# new posts}}{failed, plural, =0 {} one {, # failed} other {, # failed}}.",
-      "mark_on_view": "Mark posts seen once shown",
-      "mark_on_view_help": "Off: posts stay new until you mark them seen. On: posts are marked seen when a list shows them (the whole loaded page). They keep their New badge until the list reloads, and next time only newer posts are new."
+      "mark_on_view": "Mark followed posts seen once shown",
+      "mark_on_view_help": "Off: posts stay new until you mark them seen. On: followed posts are marked seen when a list or the Booru browser shows them (the whole loaded page). They keep their New badge until the list reloads, and next time only newer posts are new."
     },
     "view_posts": "Posts from follows",
     "view_manage": "Follows & settings",
@@ -2192,9 +2192,9 @@
       "no_preview": "No preview saved",
       "preview_failed": "Preview unavailable"
     },
-    "artist": {
+    "followed": {
       "tab": "Followed posts",
-      "intro": "Posts from {count, plural, one {the site} other {the # sites}} where this Artist is followed:",
+      "intro": "Posts from {count, plural, one {the site} other {the # sites}} where this {kind, select, artist {Artist} character {Character} other {Copyright}} is followed:",
       "check": "Check new posts",
       "checking": "Checking {site}…",
       "checked": "{count, plural, =0 {No new posts.} one {# new post found.} other {# new posts found.}}",
@@ -2204,7 +2204,9 @@
       "empty": "No saved posts yet. Press Check new posts to fetch recent posts from every followed site.",
       "older": "Older posts",
       "newest": "Newest posts",
-      "manage": "Follows & settings"
+      "manage": "Follows & settings",
+      "none": "This {kind, select, artist {Artist} character {Character} other {Copyright}} isn't followed on any site yet. Open Identities in the details above, connect a site name, then press Follow next to it.",
+      "open_identities": "Open the Identities page"
     }
   }
 }

@@ -65,12 +65,17 @@ type FollowingFilter struct {
 	HideDownloaded bool
 }
 
-// FollowingSeenBatch marks several feed posts seen or unseen at once. Either
-// Sequences names the posts (a selection), or UpTo bounds "everything unseen"
+// FollowingSeenBatch marks several feed posts seen or unseen at once.
+// Sequences names the posts (a selection), Instance+PostIDs names them by
+// site ID, or UpTo bounds "everything unseen"
 // for the active follows in FollowIDs (all active follows when empty). UpTo
 // keeps posts saved by a check that finishes meanwhile unseen.
 type FollowingSeenBatch struct {
 	Sequences []int64
+	// Instance and PostIDs name posts by their site ID (posts shown in the
+	// Booru browser). Only posts already saved by a follow check change.
+	Instance  string
+	PostIDs   []string
 	FollowIDs []string
 	UpTo      int64
 	Seen      bool

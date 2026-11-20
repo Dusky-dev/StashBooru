@@ -1,4 +1,9 @@
-import { FollowAction } from "../Following/FollowAction";
+import {
+  FollowAction,
+  notifyFollowingChanged,
+  useMarkSeenOnView,
+} from "../Following/FollowAction";
+import { MarkSeenOnViewSwitch } from "../Following/FollowScheduleSettings";
 import { IdentityLink } from "../Identities/identity";
 import {
   type ReactNode,
@@ -698,6 +703,7 @@ function SourceResults({
   filters,
   thumbnails,
   hidePawchiveWithoutPreview,
+  markSeenOnView,
   favorites,
   displayMode,
   zoom,
@@ -719,6 +725,7 @@ function SourceResults({
   >;
   thumbnails: boolean;
   hidePawchiveWithoutPreview: boolean;
+  markSeenOnView: boolean;
   favorites: boolean;
   displayMode: "grid" | "wall";
   zoom: number;
@@ -778,6 +785,30 @@ function SourceResults({
     [hideMissingPreview, matchingPosts, pawchiveThumbnail]
   );
   const hiddenWithoutPreview = matchingPosts.length - visiblePosts.length;
+  // "Mark followed posts seen once shown": posts on this page that a follow
+  // check already saved count as seen in Following. Others are unaffected.
+  const shownIDs = visiblePosts.map((post) => post.id).join("\n");
+  useEffect(() => {
+    if (!markSeenOnView || suspended || !shownIDs) return;
+    const controller = new AbortController();
+    void fetch(new URL("following/seen-batch", document.baseURI), {
+      method: "POST",
+      credentials: "same-origin",
+      signal: controller.signal,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        instance: source.instance,
+        postIDs: shownIDs.split("\n").slice(0, 500),
+        seen: true,
+      }),
+    })
+      .then(async (response) => {
+        const value = (await response.json()) as { changed?: number };
+        if (response.ok && value.changed) notifyFollowingChanged();
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [markSeenOnView, suspended, shownIDs, source.instance]);
   const signature = browserResultSignature(
     query,
     page,
@@ -1298,6 +1329,7 @@ export default function BooruBrowser() {
     }
   }
   const [thumbnails, setThumbnails] = useState(remembered?.thumbnails ?? true);
+  const markSeenOnView = useMarkSeenOnView();
   const [hidePawchiveWithoutPreview, setHidePawchiveWithoutPreview] = useState(
     remembered?.hidePawchiveWithoutPreview ?? false
   );
@@ -1553,6 +1585,7 @@ export default function BooruBrowser() {
             Filter the current Pawchive page when a post has no thumbnail or its
             thumbnails fail. This preference is saved in this browser.
           </p>
+          <MarkSeenOnViewSwitch id="booru-mark-seen-on-view" />
           <SourceSettings
             onSaved={() => setLoadAttempt((value) => value + 1)}
           />
@@ -2066,6 +2099,7 @@ export default function BooruBrowser() {
                   <SourceResults
                     key={`${id}:${active.favorites}:${active.query}:${active.pages[id]}:${loadAttempt}:${active.sort}:${active.rating}:${active.pageSize}:${active.showBlacklisted}`}
                     source={source}
+                    markSeenOnView={markSeenOnView}
                     suspended={showSettings}
                     favorites={!!active.favorites}
                     onTag={searchTag}

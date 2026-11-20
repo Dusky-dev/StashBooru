@@ -481,6 +481,13 @@ func TestB06MarkSeenBatchAndSeenEviction(t *testing.T) {
 	r.Header.Set("Content-Type", "application/json")
 	rs.SetFollowingSeen(w, r)
 	require.Equal(t, 409, w.Code, "a stale per-post version must not overwrite a batch decision")
+	// Posts shown in the Booru browser, named by site ID: only saved ones
+	// change, and unknown IDs are ignored.
+	require.Equal(t, 1, post(`{"seen":true,"instance":"`+a.Instance+`","postIDs":["3","not-saved"]}`, 200))
+	require.Equal(t, 0, post(`{"seen":true,"instance":"other","postIDs":["1"]}`, 200))
+	post(`{"seen":true,"postIDs":["1"]}`, 400)
+	post(`{"seen":true,"instance":"`+a.Instance+`","postIDs":["1"],"sequences":["1"]}`, 400)
+	require.Equal(t, 1, post(`{"seen":false,"sequences":["3"]}`, 200))
 	// All follows, everything shown.
 	require.Equal(t, 1, post(`{"seen":true,"upTo":"3"}`, 200))
 	_, total = unseen()

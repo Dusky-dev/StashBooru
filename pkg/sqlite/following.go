@@ -203,8 +203,20 @@ func (s *FollowingStore) SetSeen(ctx context.Context, sequence int64, version in
 func (s *FollowingStore) MarkSeen(ctx context.Context, batch models.FollowingSeenBatch) (int64, error) {
 	conditions, args := []string{}, []any{}
 	switch {
+	case len(batch.PostIDs) > 0:
+		if len(batch.PostIDs) > models.MaxFollowingSeenBatch || batch.Instance == "" || len(batch.Sequences) > 0 || len(batch.FollowIDs) > 0 || batch.UpTo != 0 {
+			return 0, models.ErrFollowingInvalid
+		}
+		args = append(args, batch.Instance)
+		for _, id := range batch.PostIDs {
+			if id == "" || len(id) > 256 {
+				return 0, models.ErrFollowingInvalid
+			}
+			args = append(args, id)
+		}
+		conditions = append(conditions, "p.instance=? AND p.post_id IN ("+strings.TrimSuffix(strings.Repeat("?,", len(batch.PostIDs)), ",")+")")
 	case len(batch.Sequences) > 0:
-		if len(batch.Sequences) > models.MaxFollowingSeenBatch || len(batch.FollowIDs) > 0 || batch.UpTo != 0 {
+		if len(batch.Sequences) > models.MaxFollowingSeenBatch || batch.Instance != "" || len(batch.FollowIDs) > 0 || batch.UpTo != 0 {
 			return 0, models.ErrFollowingInvalid
 		}
 		marks := make([]string, len(batch.Sequences))

@@ -56,9 +56,9 @@ import { OrganizedButton } from "src/components/Scenes/SceneDetails/OrganizedBut
 import { runEntityAutoTag } from "src/utils/entityAutoTag";
 import { ProfileMergeButton } from "src/components/Shared/ProfileMergeModal";
 import {
-  ArtistFollowedPosts,
-  useArtistFollows,
-} from "src/components/Following/ArtistFollowedPosts";
+  FollowedPosts,
+  useFollowedUnseen,
+} from "src/components/Following/FollowedPosts";
 
 interface IProps {
   studio: GQL.StudioDataFragment;
@@ -160,12 +160,7 @@ const StudioTabs: React.FC<{
   }, [showAllDetails, studio.child_studios.length]);
 
   const mediaFilterHook = useStudioFilterHook(studio, showAllDetails);
-  // Shown when this Artist is followed on at least one site.
-  const artistFollows = useArtistFollows(studio.id);
-  const followedUnseen = artistFollows.reduce(
-    (count, follow) => count + (follow.unseen ?? 0),
-    0
-  );
+  const followedUnseen = useFollowedUnseen("artist", studio.id);
 
   return (
     <Tabs
@@ -292,20 +287,18 @@ const StudioTabs: React.FC<{
           studio={studio}
         />
       </Tab>
-      {artistFollows.length > 0 && (
-        <Tab
-          eventKey="followed"
-          title={
-            <TabTitleCounter
-              messageID="following_action.artist.tab"
-              count={followedUnseen}
-              abbreviateCounter={abbreviateCounter}
-            />
-          }
-        >
-          <ArtistFollowedPosts studioID={studio.id} />
-        </Tab>
-      )}
+      <Tab
+        eventKey="followed"
+        title={
+          <TabTitleCounter
+            messageID="following_action.followed.tab"
+            count={followedUnseen}
+            abbreviateCounter={abbreviateCounter}
+          />
+        }
+      >
+        <FollowedPosts kind="artist" entityID={studio.id} />
+      </Tab>
     </Tabs>
   );
 };

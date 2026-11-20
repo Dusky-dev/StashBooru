@@ -387,6 +387,26 @@ try {
           ...source,
           credentialsConfigured: source.apiKeyConfigured,
         }));
+    // Following: only the shared "mark seen once shown" setting is used here.
+    let markSeenOnView = false;
+    const seenBatches = [];
+    await page.route("**/following/**", async (route) => {
+      const request = route.request();
+      const endpoint = new URL(request.url()).pathname.split("/").pop();
+      if (endpoint === "schedule") {
+        const body = request.method() === "POST" ? request.postDataJSON() : {};
+        if (body.action === "set-mark-seen")
+          markSeenOnView = body.markSeenOnView;
+        return route.fulfill({
+          json: { intervalHours: 0, unseen: 0, running: false, markSeenOnView },
+        });
+      }
+      if (endpoint === "seen-batch") {
+        seenBatches.push(request.postDataJSON());
+        return route.fulfill({ json: { changed: 0 } });
+      }
+      return route.fulfill({ json: [] });
+    });
     const identityWrites = [];
     await page.route("**/identities/**", async (route) => {
       const endpoint = new URL(route.request().url()).pathname.split("/").pop();
@@ -2890,9 +2910,34 @@ try {
     await page
       .getByRole("region", { name: "Booru settings", exact: true })
       .waitFor();
+    // The Following setting is offered here too and is off by default.
+    const markSeen = page.getByLabel("Mark followed posts seen once shown", {
+      exact: true,
+    });
+    assert.equal(await markSeen.isChecked(), false);
+    assert.equal(seenBatches.length, 0, "nothing is marked while it is off");
+    await setChecked(markSeen, true);
+    await page.waitForFunction(
+      () => document.querySelector("#booru-mark-seen-on-view")?.checked === true
+    );
+    assert.equal(markSeenOnView, true);
     await page.goBack();
     await dan.locator(".booru-post").first().waitFor();
     assert.equal(page.url(), beforeSettingsURL);
+    for (let i = 0; i < 50 && !seenBatches.length; i++)
+      await page.waitForTimeout(100);
+    assert.equal(seenBatches.at(-1)?.seen, true);
+    assert.ok(seenBatches.at(-1).instance, "posts are named by their site");
+    assert.ok(seenBatches.at(-1).postIDs.length > 0);
+    // Turn it back off for the rest of the run.
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await setChecked(markSeen, false);
+    await page.waitForFunction(
+      () =>
+        document.querySelector("#booru-mark-seen-on-view")?.checked === false
+    );
+    await page.goBack();
+    await dan.locator(".booru-post").first().waitFor();
     const refinedInput = page.getByLabel("Search tags (native source syntax)", {
       exact: true,
     });

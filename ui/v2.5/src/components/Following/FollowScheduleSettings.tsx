@@ -2,7 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Form } from "react-bootstrap";
 import { useIntl } from "react-intl";
 import { identityRequest } from "../Identities/identityApi";
-import { type FollowSchedule, notifyFollowingChanged } from "./FollowAction";
+import {
+  type FollowSchedule,
+  notifyFollowingChanged,
+  useMarkSeenOnView,
+} from "./FollowAction";
 
 const intervals = [0, 1, 3, 6, 12, 24];
 
@@ -104,24 +108,7 @@ export function FollowScheduleSettings({
           {m("run_now")}
         </Button>
       </div>
-      <Form.Check
-        type="switch"
-        className="mt-2"
-        id="following-mark-seen-on-view"
-        label={m("mark_on_view")}
-        checked={!!schedule?.markSeenOnView}
-        disabled={!schedule || busy}
-        onChange={async (e) => {
-          setBusy(true);
-          await send({
-            action: "set-mark-seen",
-            markSeenOnView: e.currentTarget.checked,
-          });
-          setBusy(false);
-          notifyFollowingChanged();
-        }}
-      />
-      <Form.Text muted>{m("mark_on_view_help")}</Form.Text>
+      <MarkSeenOnViewSwitch id="following-mark-seen-on-view" />
       <div role="status" className="mt-2">
         {schedule?.running && <div>{m("running")}</div>}
         {last?.finishedAt && (
@@ -142,5 +129,52 @@ export function FollowScheduleSettings({
         )}
       </div>
     </section>
+  );
+}
+
+/**
+ * "Mark followed posts seen once shown": one library-wide setting, offered
+ * in Following and in Booru settings.
+ */
+export function MarkSeenOnViewSwitch({ id }: { id: string }) {
+  const intl = useIntl();
+  const saved = useMarkSeenOnView();
+  // Shows the choice at once; cleared if saving fails.
+  const [choice, setChoice] = useState<boolean>();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const m = (key: string) =>
+    intl.formatMessage({ id: `following_action.auto.${key}` });
+  return (
+    <div className="mt-2">
+      <Form.Check
+        type="switch"
+        id={id}
+        label={m("mark_on_view")}
+        checked={choice ?? saved}
+        disabled={busy}
+        onChange={async (e) => {
+          const checked = e.currentTarget.checked;
+          setChoice(checked);
+          setBusy(true);
+          setError("");
+          try {
+            await identityRequest<FollowSchedule>(
+              "following/schedule",
+              new AbortController().signal,
+              { action: "set-mark-seen", markSeenOnView: checked }
+            );
+            notifyFollowingChanged();
+          } catch (err) {
+            setChoice(undefined);
+            setError(err instanceof Error ? err.message : String(err));
+          } finally {
+            setBusy(false);
+          }
+        }}
+      />
+      <Form.Text muted>{m("mark_on_view_help")}</Form.Text>
+      {error && <Alert variant="danger">{error}</Alert>}
+    </div>
   );
 }
