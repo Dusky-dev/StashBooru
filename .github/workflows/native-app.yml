@@ -55,6 +55,9 @@ jobs:
           git clone --depth 1 --branch "$FLUTTER_VERSION" https://github.com/flutter/flutter.git
           echo "${{ runner.temp }}/flutter/bin" >> "$GITHUB_PATH"
       - run: flutter --disable-analytics && flutter build linux --release
+      - name: Check unwinder link order
+        working-directory: .
+        run: scripts/check-linux-app-link-order.sh
       - run: tar -C build/linux/x64/release/bundle -czf stashbooru-linux-x64.tar.gz .
       - uses: actions/upload-artifact@v7
         with:
