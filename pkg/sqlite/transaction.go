@@ -138,6 +138,7 @@ func (db *Database) Repository() models.Repository {
 		BooruReview:      &BooruReviewStore{},
 		BooruFollow:      &BooruFollowStore{},
 		Following:        &FollowingStore{},
+		OnThisDay:        &OnThisDayStore{},
 		ProviderIdentity: &ProviderIdentityStore{},
 		ImageArtist:      NewImageArtistStore(db.Studio),
 		Group:            db.Group,

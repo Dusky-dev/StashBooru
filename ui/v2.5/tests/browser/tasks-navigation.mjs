@@ -87,6 +87,29 @@ try {
     let previewStarted;
     let previews = 0;
     const posts = [];
+    const mediaDateWrites = [];
+    let mediaDates = { running: false };
+    await page.route("**/media-dates", async (route) => {
+      if (route.request().method() === "POST") {
+        mediaDateWrites.push(route.request().postDataJSON());
+        mediaDates = { running: true };
+        return route.fulfill({ json: mediaDates });
+      }
+      const value = mediaDates;
+      if (value.running)
+        mediaDates = {
+          running: false,
+          lastRun: {
+            startedAt: "2026-11-20T10:00:00Z",
+            finishedAt: "2026-11-20T10:01:00Z",
+            checked: 12,
+            fromFile: 2,
+            fromPosted: 7,
+            failed: 0,
+          },
+        };
+      return route.fulfill({ json: value });
+    });
     await page.route("**/character-dedup", async (route) => {
       if (route.request().method() !== "GET")
         throw new Error("Unexpected Character mutation");
@@ -264,6 +287,17 @@ try {
     // Storage experiments move out of Tasks, but read-only P12/P13 reports
     // must continue working after navigation and reload.
     await summary(page, "library").click();
+    // Fill missing dates starts one job and reports where dates came from.
+    const dates = page.getByRole("region", { name: "Fill missing dates" });
+    await dates
+      .getByRole("button", { name: "Fill missing dates", exact: true })
+      .click();
+    await dates
+      .getByText(
+        "Last run: 12 items checked; 2 dated from the file, 7 from the site's post date."
+      )
+      .waitFor();
+    assert.deepEqual(mediaDateWrites, [{ action: "run" }]);
     // Animation inspection shares the same row layout and indentation as
     // other Scan options rather than rendering a disconnected task card.
     const animationSetting = page.locator(

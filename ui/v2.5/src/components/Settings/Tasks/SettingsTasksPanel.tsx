@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { defineMessages, useIntl } from "react-intl";
 import { LoadingIndicator } from "src/components/Shared/LoadingIndicator";
 import { CharacterDedupTask } from "./CharacterDedupTask";
+import { MediaDatesTask } from "./MediaDatesTask";
 import { LibraryTasks } from "./LibraryTasks";
 import { DataManagementTasks } from "./DataManagementTasks";
 import { MediaBackupTask } from "./MediaBackupTask";
@@ -85,6 +86,8 @@ export const SettingsTasksPanel: React.FC = () => {
           description={intl.formatMessage(sections.library_help)}
         >
           <LibraryTasks />
+          <hr />
+          <MediaDatesTask />
         </SettingsDisclosure>
         <SettingsDisclosure
           id="tasks-profiles"

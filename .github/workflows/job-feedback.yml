@@ -25,6 +25,9 @@ on:
       - 'ui/v2.5/tests/browser/fixtures/job-feedback*'
       - 'ui/v2.5/tests/browser/fixtures/jobs-stacks*'
       - 'ui/v2.5/tests/browser/fixtures/conversion-review*'
+      - 'ui/v2.5/src/components/FrontPage/**'
+      - 'ui/v2.5/tests/browser/on-this-day.mjs'
+      - 'ui/v2.5/tests/browser/fixtures/on-this-day*'
       - 'ui/v2.5/pnpm-lock.yaml'
 
 permissions:
@@ -67,6 +70,7 @@ jobs:
           node tests/browser/job-feedback.mjs
           node tests/browser/conversion-review.mjs
           node tests/browser/jobs-stacks.mjs
+          node tests/browser/on-this-day.mjs
       - uses: actions/upload-artifact@v7
         if: always()
         with:

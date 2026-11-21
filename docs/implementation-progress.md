@@ -1,3 +1,28 @@
+## StashBooru 1.8.0: "On this day" and Image/Video dates — 2026-11-21
+
+- Baseline: `develop` `a438679` (1.6.1), merged with 1.6.2 and 1.7.0 (app).
+  Owner choice: date = photo's capture date if the file has it, else site post date, else date added.
+- `booru.PostDate` (tolerant parser: RFC 3339, Ruby date, zone-less ISO, Unix
+  seconds; site's own day, no zone conversion) and `image.CaptureDate` (EXIF
+  DateTimeOriginal only). `fillMissingMediaDate` never overwrites a Date.
+  Videos use post date only (embedded creation time is usually encode time).
+- New downloads set the Date during library import; Tasks → Library →
+  **Fill missing dates** (`/media-dates`, cancellable job) reads EXIF for
+  undated Images, then download receipts (matched by post URL on the item).
+- Checks: unit tests for both parsers (formats from site API docs, no
+  recorded fixtures exist); integration `TestFillMissingMediaDates…`;
+  golangci-lint 0; `tsc`, Biome, `pnpm run test` 141; `tasks-navigation.mjs`
+  (extended) and `settings-maintenance.mjs` pass at desktop/mobile.
+- Not verified: EXIF on real photos (goexif reads JPEG/TIFF; converted JPEG XL
+  originals are read before conversion), real sites' date strings, large
+  libraries' run time.
+- Row: `GET /on-this-day` (kind, viewer's year/month/day; day-precision
+  Date else `created_at`; current year excluded; newest first) feeds native
+  cards via `findImages`/`findScenes` ids; new `OnThisDay` row type in the
+  editor and the default layout; no "View all" in v1. Mounted
+  `on-this-day.mjs` (order, viewer date, empty day hidden) desktop/mobile.
+- Next: owner tries both rows; "View all" needs a native filter criterion.
+
 ## StashBooru 1.7.0: Booru browser and Settings in the native app — 2026-11-21
 
 - Baseline: `develop` `1ea1054` (1.6.2). Owner feedback: the app is barebones,
