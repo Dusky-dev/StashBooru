@@ -81,38 +81,19 @@ class StashClient {
     String document, [
     Map<String, dynamic> variables = const {},
   ]) async {
-    final http.Response response;
-    try {
-      response = await _http
-          .post(
-            graphqlUrl,
-            headers: {
-              ...authHeaders,
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-            body: jsonEncode({'query': document, 'variables': variables}),
-          )
-          .timeout(const Duration(seconds: 30));
-    } on TimeoutException {
-      throw StashException('The server did not answer within 30 seconds.');
-    } on SocketException catch (e) {
-      throw StashException('Cannot reach the server: ${e.message}');
-    } on http.ClientException catch (e) {
-      throw StashException('Cannot reach the server: ${e.message}');
-    } on HandshakeException {
-      throw StashException(
-        'The secure connection failed. Check http:// versus https://.',
-      );
-    }
+    final response = await _send(
+      () => _http.post(
+        graphqlUrl,
+        headers: {
+          ...authHeaders,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'query': document, 'variables': variables}),
+      ),
+    );
 
-    if (response.statusCode == 401 || response.statusCode == 403) {
-      throw StashException(
-        apiKey.isEmpty
-            ? 'This server needs an API key (Settings → Security in the web UI).'
-            : 'The server rejected this API key.',
-      );
-    }
+    _checkAuth(response);
 
     Map<String, dynamic> body;
     try {
@@ -144,6 +125,79 @@ class StashClient {
       throw StashException('The server returned no data.');
     }
     return data;
+  }
+
+  /// A URL for one of the server's REST routes, such as
+  /// `booru-browser/search`, keeping any reverse-proxy path prefix.
+  Uri restUrl(String path, [Map<String, String>? query]) => baseUrl.replace(
+    path: '${baseUrl.path}/$path',
+    queryParameters: query == null || query.isEmpty ? null : query,
+  );
+
+  /// Calls a JSON REST route. StashBooru routes report failures as
+  /// `{"code": ..., "error": "message"}`; that message is shown as is.
+  Future<dynamic> rest(
+    String path, {
+    Map<String, String>? query,
+    Object? body,
+  }) async {
+    final url = restUrl(path, query);
+    final headers = {...authHeaders, 'Accept': 'application/json'};
+    final response = await _send(
+      () => body == null
+          ? _http.get(url, headers: headers)
+          : _http.post(
+              url,
+              headers: {...headers, 'Content-Type': 'application/json'},
+              body: jsonEncode(body),
+            ),
+    );
+    dynamic decoded;
+    try {
+      decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    } on FormatException {
+      _checkAuth(response);
+      if (response.statusCode == 404) {
+        throw StashException('This server does not offer that feature.');
+      }
+      throw StashException('Unexpected reply (HTTP ${response.statusCode}).');
+    }
+    if (response.statusCode >= 400) {
+      final message = decoded is Map ? decoded['error'] : null;
+      if (message is! String) _checkAuth(response);
+      throw StashException(
+        message is String && message.isNotEmpty
+            ? message
+            : 'Server error (HTTP ${response.statusCode}).',
+      );
+    }
+    return decoded;
+  }
+
+  Future<http.Response> _send(Future<http.Response> Function() request) async {
+    try {
+      return await request().timeout(const Duration(seconds: 30));
+    } on TimeoutException {
+      throw StashException('The server did not answer within 30 seconds.');
+    } on SocketException catch (e) {
+      throw StashException('Cannot reach the server: ${e.message}');
+    } on http.ClientException catch (e) {
+      throw StashException('Cannot reach the server: ${e.message}');
+    } on HandshakeException {
+      throw StashException(
+        'The secure connection failed. Check http:// versus https://.',
+      );
+    }
+  }
+
+  void _checkAuth(http.Response response) {
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      throw StashException(
+        apiKey.isEmpty
+            ? 'This server needs an API key (Settings → Security in the web UI).'
+            : 'The server rejected this API key.',
+      );
+    }
   }
 
   Future<ServerCapabilities> probe() async {

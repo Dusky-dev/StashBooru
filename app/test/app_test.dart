@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:stashbooru/api/client.dart';
 import 'package:stashbooru/main.dart';
@@ -44,6 +45,8 @@ Future<void> connect(WidgetTester tester, {String key = ''}) async {
 }
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   testWidgets('StashBooru server shows All and Copyrights in navbar order', (
     tester,
   ) async {
@@ -81,7 +84,15 @@ void main() {
         tester.getTopLeft(find.byKey(Key('nav-$label'))).dx,
     ];
     expect(xs, [...xs]..sort());
-    expect(find.byTooltip('Server'), findsOneWidget);
+    // Booru sits apart, pinned right of the (scrollable) library sections
+    // and before Settings, like the web UI's utility links.
+    final booru = tester.getTopLeft(find.byKey(const Key('nav-Booru'))).dx;
+    expect(booru, greaterThan(xs.first));
+    expect(
+      booru,
+      lessThan(tester.getTopLeft(find.byKey(const Key('nav-settings'))).dx),
+    );
+    expect(find.byTooltip('Settings'), findsOneWidget);
     expect(find.text('Nothing here yet.'), findsOneWidget);
     expect((await store.load())!.url, 'http://nas:9999');
   });
@@ -104,6 +115,7 @@ void main() {
     await connect(tester);
     expect(find.text('All'), findsNothing);
     expect(find.text('Copyrights'), findsNothing);
+    expect(find.text('Booru'), findsNothing);
     expect(find.text('Images'), findsOneWidget);
   });
 

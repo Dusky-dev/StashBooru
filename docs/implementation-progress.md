@@ -1,7 +1,7 @@
-## StashBooru 1.7.0: "On this day" and Image/Video dates — 2026-11-21
+## StashBooru 1.8.0: "On this day" and Image/Video dates — 2026-11-21
 
-- Baseline: `develop` `a438679` (1.6.1), merged with 1.6.2. Owner choice: date = photo's
-  capture date if the file has it, else site post date, else date added.
+- Baseline: `develop` `a438679` (1.6.1), merged with 1.6.2 and 1.7.0 (app).
+  Owner choice: date = photo's capture date if the file has it, else site post date, else date added.
 - `booru.PostDate` (tolerant parser: RFC 3339, Ruby date, zone-less ISO, Unix
   seconds; site's own day, no zone conversion) and `image.CaptureDate` (EXIF
   DateTimeOriginal only). `fillMissingMediaDate` never overwrites a Date.
@@ -22,6 +22,25 @@
   editor and the default layout; no "View all" in v1. Mounted
   `on-this-day.mjs` (order, viewer date, empty day hidden) desktop/mobile.
 - Next: owner tries both rows; "View all" needs a native filter criterion.
+
+## StashBooru 1.7.0: Booru browser and Settings in the native app — 2026-11-21
+
+- Baseline: `develop` `1ea1054` (1.6.2). Owner feedback: the app is barebones,
+  "no settings, no booru browser".
+- Booru: `app/lib/api/booru.dart` uses the server's `booru-browser/*` routes
+  (sources, search, media proxy, download-settings, download + status);
+  `booru_browser.dart` has the grid, a post page with grouped tags (tap to
+  search) and Download to library. Shown as a utility link beside the gear.
+- Settings (`settings_page.dart`, `state/app_settings.dart`, shared
+  preferences): card size, full-size images, autoplay/mute/loop, clear
+  image cache, server and Disconnect. App version is 1.7.0 (pubspec and a
+  test tie it to `stashbooru-version.txt`).
+- Checks: `flutter analyze`, `flutter test` (26 pass, 4 live skipped; new
+  booru/settings/version tests), Linux build under Xvfb against a local
+  1.5.1 server: live Danbooru search, post page, download landed in library,
+  JXL opened in the zoomable viewer.
+- Not verified: Android, Windows. Next: owner to rank remaining web-only
+  features (Following, Identities, Duplicates, editing, booru bookmarks).
 
 ## StashBooru 1.6.2: app crash on LuaJIT mpv, JPEG XL in the app — 2026-11-20
 

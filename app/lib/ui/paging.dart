@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../api/client.dart';
 import '../api/models.dart';
+import '../state/app_settings.dart';
 
 typedef PageFetcher<T> = Future<PageResult<T>> Function(int page, int perPage);
 
@@ -44,9 +45,14 @@ class PagedController<T> extends ChangeNotifier {
       if (generation != _generation) return;
       _page++;
       items.addAll(result.items);
-      total = result.total;
-      // A short page means the server has nothing more, whatever the count.
-      if (result.items.length < perPage) total = items.length;
+      if (result.hasMore != null) {
+        // Filtered sources can return short pages that still continue.
+        if (!result.hasMore!) total = items.length;
+      } else {
+        total = result.total;
+        // A short page means the server has nothing more, whatever the count.
+        if (result.items.length < perPage) total = items.length;
+      }
     } on StashException catch (e) {
       if (generation == _generation) error = e.message;
     } catch (e) {
@@ -180,10 +186,12 @@ class _PagedGridState<T> extends State<PagedGrid<T>> {
               sliver: SliverLayoutBuilder(
                 builder: (context, constraints) {
                   final width = constraints.crossAxisExtent;
-                  final columns =
-                      ((width + _gap) / (widget.minTileWidth + _gap))
-                          .floor()
-                          .clamp(1, 12);
+                  final minWidth =
+                      widget.minTileWidth *
+                      AppSettingsScope.of(context).cardSize.factor;
+                  final columns = ((width + _gap) / (minWidth + _gap))
+                      .floor()
+                      .clamp(1, 12);
                   final tileWidth = (width - _gap * (columns - 1)) / columns;
                   return SliverGrid(
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
