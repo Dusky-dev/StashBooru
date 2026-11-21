@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../api/client.dart';
+import 'stash_image.dart';
 
 /// The connected server, available to every page below the home shell.
 class Session extends InheritedWidget {
@@ -48,11 +49,13 @@ class NetImage extends StatelessWidget {
     );
     if (url == null) return placeholder;
     final dpr = MediaQuery.devicePixelRatioOf(context);
-    return Image.network(
-      url!,
-      headers: Session.of(context).client.authHeaders,
+    return Image(
+      image: StashNetworkImage(
+        url!,
+        headers: Session.of(context).client.authHeaders,
+        cacheWidth: cacheWidth == null ? null : (cacheWidth! * dpr).round(),
+      ),
       fit: fit,
-      cacheWidth: cacheWidth == null ? null : (cacheWidth! * dpr).round(),
       gaplessPlayback: true,
       errorBuilder: (_, _, _) => placeholder,
       frameBuilder: (context, child, frame, sync) =>

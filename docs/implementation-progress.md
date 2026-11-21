@@ -1,6 +1,6 @@
 ## StashBooru 1.7.0: "On this day" and Image/Video dates — 2026-11-21
 
-- Baseline: `develop` `a438679` (1.6.1). Owner choice: date = photo's
+- Baseline: `develop` `a438679` (1.6.1), merged with 1.6.2. Owner choice: date = photo's
   capture date if the file has it, else site post date, else date added.
 - `booru.PostDate` (tolerant parser: RFC 3339, Ruby date, zone-less ISO, Unix
   seconds; site's own day, no zone conversion) and `image.CaptureDate` (EXIF
@@ -22,6 +22,24 @@
   editor and the default layout; no "View all" in v1. Mounted
   `on-this-day.mjs` (order, viewer date, empty day hidden) desktop/mobile.
 - Next: owner tries both rows; "View all" needs a native filter criterion.
+
+## StashBooru 1.6.2: app crash on LuaJIT mpv, JPEG XL in the app — 2026-11-20
+
+- Baseline: `develop` `089be9e` (1.5.1), merged with 1.6.0 and 1.6.1. Owner reports: Linux app core dump
+  (LuaJIT `lua_pcall` → `_Unwind_RaiseException` in `libflutter_linux_gtk.so`)
+  and Android "failed to initialize a decoder for codec 'jpegxl'".
+- Linux runner links `libgcc_s` before the Flutter engine, whose exported
+  `_Unwind_*` otherwise win lookup; `scripts/check-linux-app-link-order.sh`
+  runs in `native-app.yml`. Reproduced with a LuaJIT harness: segfault with
+  the old order, clean with the new; `LD_DEBUG=bindings` on the built app
+  shows every `_Unwind_RaiseException` binding to `libgcc_s`.
+- `StashNetworkImage` decodes JPEG XL with `koni_jxl_flutter` (pure Dart, on
+  an isolate) for thumbnails and the viewer; other formats use the engine.
+  Decoder checked against `djxl`: lossless bit-exact, lossy ~51 dB PSNR.
+- Checks: `flutter analyze`, `flutter test` (23 pass, 4 live skipped, incl. a
+  JXL provider test), Linux release build.
+- Not verified: the owner's Arch PC, Android and Windows at runtime.
+- Next: 1.7.0 app features (settings, booru browser) in a separate PR.
 
 ## StashBooru 1.6.0: Followed posts tabs, bulk seen — 2026-11-20
 
