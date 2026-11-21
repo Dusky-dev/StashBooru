@@ -37,7 +37,9 @@ Stash's platform asset selection with a release-page fallback.
 
 Owner decision (2026-11-19): every user-visible change is an update. Each such
 PR bumps `internal/build/stashbooru-version.txt` (minor for features, patch for
-fixes) and adds a newest-first entry under
+fixes) and the native app's matching version (`app/pubspec.yaml`
+`version:` and `kAppVersion` in `app/lib/state/app_settings.dart`; the app
+tests check they match) and adds a newest-first entry under
 `ui/v2.5/src/docs/en/Changelog/StashBooru/` (a `X.Y.Z.md` file plus its line in
 `index.ts`). Settings → About lists every StashBooru version above the
 retained upstream history.
