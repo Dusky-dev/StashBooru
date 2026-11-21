@@ -6,6 +6,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
 import '../api/models.dart';
+import '../state/app_settings.dart';
 import 'detail_panel.dart';
 import 'paging.dart';
 import 'session.dart';
@@ -405,7 +406,7 @@ class _ImagePaneState extends State<ImagePane> {
             fit: StackFit.expand,
             children: [
               NetImage(widget.item.thumbnail, fit: BoxFit.contain),
-              _full(context),
+              if (AppSettingsScope.of(context).fullSizeImages) _full(context),
             ],
           ),
         ),
@@ -478,14 +479,18 @@ class _VideoPaneState extends State<VideoPane> {
     player.stream.playing.listen((playing) {
       if (playing && _error != null && mounted) setState(() => _error = null);
     });
-    if (widget.loop) player.setPlaylistMode(PlaylistMode.single);
+    final settings = AppSettingsScope.of(context);
+    if (widget.loop || (settings.loopVideos && !widget.still)) {
+      player.setPlaylistMode(PlaylistMode.single);
+    }
+    if (settings.startMuted && !widget.still) player.setVolume(0);
     final platform = player.platform;
     if (widget.still && platform is NativePlayer) {
       platform.setProperty('image-display-duration', 'inf');
     }
     player.open(
       Media(source, httpHeaders: Session.of(context).client.authHeaders),
-      play: true,
+      play: widget.still || settings.autoplay,
     );
   }
 

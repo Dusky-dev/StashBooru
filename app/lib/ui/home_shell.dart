@@ -2,16 +2,21 @@ import 'package:material_ui/material_ui.dart';
 
 import '../api/entities.dart';
 import '../api/models.dart';
+import 'booru_browser.dart';
 import 'entity_browser.dart';
 import 'media_browser.dart';
 import 'session.dart';
+import 'settings_page.dart';
 import 'theme.dart';
 
 class _Section {
-  const _Section(this.label, this.icon, this.build);
+  const _Section(this.label, this.icon, this.build, {this.utility = false});
   final String label;
   final IconData icon;
   final Widget Function(BuildContext) build;
+
+  /// Shown apart from the library sections, like the web UI's utility links.
+  final bool utility;
 }
 
 /// Navigation in the web UI's navbar order: All, Images, Videos, Characters,
@@ -54,47 +59,20 @@ class _HomeShellState extends State<HomeShell> {
           entityIcon(type),
           (_) => EntityBrowser(type: type),
         ),
+    if (s.caps.isStashBooru)
+      _Section(
+        'Booru',
+        Icons.public,
+        (_) => const BooruBrowser(),
+        utility: true,
+      ),
   ];
 
   void _select(int i) => setState(() => _selected = i);
 
-  void _showServer(Session s) {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Server'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SelectableText(s.client.baseUrl.toString()),
-            const SizedBox(height: 8),
-            Text(
-              '${s.caps.isStashBooru ? 'StashBooru' : 'Stash'} ${s.caps.version}',
-            ),
-            if (!s.caps.isStashBooru)
-              const Padding(
-                padding: EdgeInsets.only(top: 8),
-                child: Text('All and Copyrights need a StashBooru server.'),
-              ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              s.onDisconnect();
-            },
-            child: const Text('Disconnect'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
+  void _openSettings() =>
+      Navigator.of(context)
+          .push(MaterialPageRoute<void>(builder: (_) => const SettingsPage()));
 
   @override
   Widget build(BuildContext context) {
@@ -131,19 +109,28 @@ class _HomeShellState extends State<HomeShell> {
                     child: Row(
                       children: [
                         for (var i = 0; i < sections.length; i++)
-                          _NavItem(
-                            section: sections[i],
-                            active: i == _selected,
-                            onTap: () => _select(i),
-                          ),
+                          if (!sections[i].utility)
+                            _NavItem(
+                              section: sections[i],
+                              active: i == _selected,
+                              onTap: () => _select(i),
+                            ),
                       ],
                     ),
                   ),
                 ),
+                for (var i = 0; i < sections.length; i++)
+                  if (sections[i].utility)
+                    _NavItem(
+                      section: sections[i],
+                      active: i == _selected,
+                      onTap: () => _select(i),
+                    ),
                 IconButton(
-                  tooltip: 'Server',
+                  key: const Key('nav-settings'),
+                  tooltip: 'Settings',
                   icon: const Icon(Icons.settings, size: 20),
-                  onPressed: () => _showServer(session),
+                  onPressed: _openSettings,
                 ),
               ],
             ),
@@ -190,23 +177,26 @@ class _HomeShellState extends State<HomeShell> {
         shrinkWrap: true,
         padding: const EdgeInsets.symmetric(vertical: 8),
         children: [
-          for (var i = 0; i < sections.length; i++)
-            ListTile(
-              leading: Icon(sections[i].icon, size: 20),
-              title: Text(sections[i].label),
-              selected: i == _selected,
-              onTap: () {
-                Navigator.of(context).pop();
-                _select(i);
-              },
-            ),
+          for (final utility in [false, true])
+            for (var i = 0; i < sections.length; i++)
+              if (sections[i].utility == utility)
+                ListTile(
+                  leading: Icon(sections[i].icon, size: 20),
+                  title: Text(sections[i].label),
+                  selected: i == _selected,
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _select(i);
+                  },
+                ),
           const Divider(),
           ListTile(
+            key: const Key('menu-settings'),
             leading: const Icon(Icons.settings, size: 20),
-            title: const Text('Server'),
+            title: const Text('Settings'),
             onTap: () {
               Navigator.of(context).pop();
-              _showServer(session);
+              _openSettings();
             },
           ),
         ],
