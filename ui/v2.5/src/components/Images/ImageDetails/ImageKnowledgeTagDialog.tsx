@@ -307,6 +307,13 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   const [loadingSource, setLoadingSource] = useState<MetadataSourceKind>();
   const [applying, setApplying] = useState(false);
   const [replaceArtist, setReplaceArtist] = useState(false);
+  // A matched Booru post is added to the Image's URLs on Apply.
+  const [addPostLink, setAddPostLink] = useState(true);
+  const postURL = booruMetadata?.postURL;
+  const postLinks = useMemo(
+    () => (addPostLink && postURL ? [postURL] : []),
+    [addPostLink, postURL]
+  );
   const [error, setError] = useState<string>();
   const [pendingCharacterResolution, setPendingCharacterResolution] =
     useState<PendingCharacterResolution>();
@@ -513,7 +520,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ tags, replaceArtist }),
+            body: JSON.stringify({ tags, replaceArtist, urls: postLinks }),
           }
         );
         const result = await readResponse<ImageTaggingApplyResponse>(response);
@@ -545,7 +552,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
       }
       if (complete) onHide();
     },
-    [Toast, imageId, onApplied, onHide, replaceArtist]
+    [Toast, imageId, onApplied, onHide, replaceArtist, postLinks]
   );
 
   const previewTags = useCallback(
@@ -558,7 +565,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ tags, replaceArtist }),
+            body: JSON.stringify({ tags, replaceArtist, urls: postLinks }),
           }
         );
         const plan = await readResponse<TaggingChangePlan>(response);
@@ -571,7 +578,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         setApplying(false);
       }
     },
-    [Toast, imageId, replaceArtist]
+    [Toast, imageId, replaceArtist, postLinks]
   );
 
   const continueCharacterResolution = useCallback(
@@ -867,6 +874,20 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                       </a>
                     ) : null}
                   </div>
+                  {booruMetadata.postURL ? (
+                    <Form.Check
+                      className="mt-1"
+                      type="checkbox"
+                      id="image-tagging-add-post-link"
+                      checked={addPostLink}
+                      onChange={(event) =>
+                        setAddPostLink(event.currentTarget.checked)
+                      }
+                      label={intl.formatMessage({
+                        id: "media_tagging.add_post_link_image",
+                      })}
+                    />
+                  ) : null}
                 </div>
               ) : null}
 

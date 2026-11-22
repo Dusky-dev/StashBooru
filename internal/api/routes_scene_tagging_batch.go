@@ -284,8 +284,9 @@ func processSceneTaggingBatchItem(ctx context.Context, sceneID int, config camie
 	}
 
 	booru := []camietagger.Tag{}
+	postURL := ""
 	if request.IncludeBooru {
-		booru, result.BooruMatched, err = loadSceneTaggingBatchBooru(ctx, path)
+		booru, postURL, result.BooruMatched, err = loadSceneTaggingBatchBooru(ctx, path)
 		if err != nil {
 			result.Error = err.Error()
 			return result
@@ -301,6 +302,16 @@ func processSceneTaggingBatchItem(ctx context.Context, sceneID int, config camie
 		if applyErr != nil {
 			result.Error = fmt.Sprintf("auto-applying metadata: %v", applyErr)
 			return result
+		}
+		// Only a match whose metadata was applied adds its post link.
+		if result.BooruMatched && postURL != "" && taggingPlanUsesSource(plan.AutoApply, "booru") {
+			urls, urlErr := validateTaggingSourceURLs([]string{postURL})
+			if urlErr == nil {
+				applied.AddedURLs, urlErr = addSceneTaggingURLs(ctx, sceneID, urls)
+			}
+			if urlErr != nil {
+				result.Error = fmt.Sprintf("adding the post link: %v", urlErr)
+			}
 		}
 		result.Applied = &applied
 	}
@@ -329,13 +340,13 @@ func loadSceneTaggingBatchPath(ctx context.Context, sceneID int) (string, error)
 	return path, nil
 }
 
-func loadSceneTaggingBatchBooru(ctx context.Context, path string) ([]camietagger.Tag, bool, error) {
+func loadSceneTaggingBatchBooru(ctx context.Context, path string) ([]camietagger.Tag, string, bool, error) {
 	provider, post, _, _, err := lookupConvertedMediaBooruMetadata(ctx, path)
 	if errors.Is(err, errBooruNoMatch) {
-		return []camietagger.Tag{}, false, nil
+		return []camietagger.Tag{}, "", false, nil
 	}
 	if err != nil {
-		return nil, false, fmt.Errorf("looking up booru metadata: %w", err)
+		return nil, "", false, fmt.Errorf("looking up booru metadata: %w", err)
 	}
 
 	categoryCtx, cancel := context.WithTimeout(ctx, booruRequestTimeout)
@@ -348,7 +359,18 @@ func loadSceneTaggingBatchBooru(ctx context.Context, path string) ([]camietagger
 	}
 	predictions, err = enrichNativeCamiePredictionTargets(ctx, predictions)
 	if err != nil {
-		return nil, false, fmt.Errorf("enriching booru batch Video Tagging targets: %w", err)
+		return nil, "", false, fmt.Errorf("enriching booru batch Video Tagging targets: %w", err)
 	}
-	return predictions, true, nil
+	return predictions, booruPostURL(provider, post), true, nil
+}
+
+// taggingPlanUsesSource reports whether any applied prediction came from the
+// given source kind (its Source is "<kind>" or "<kind>:<detail>").
+func taggingPlanUsesSource(predictions []camietagger.Tag, kind string) bool {
+	for _, prediction := range predictions {
+		if prediction.Source == kind || strings.HasPrefix(prediction.Source, kind+":") {
+			return true
+		}
+	}
+	return false
 }

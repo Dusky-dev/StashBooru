@@ -29,6 +29,10 @@ type camieConfig struct {
 	FilenameEnabled    bool    `json:"filenameEnabled"`
 	FilenameLayout     string  `json:"filenameLayout"`
 	BulkTaggingEnabled bool    `json:"bulkTaggingEnabled"`
+	// BooruLookupSources lists Booru browser source IDs for MD5 lookup, in
+	// priority order. Absent or null means defaultBooruLookupSources; an empty
+	// list turns MD5 lookup off.
+	BooruLookupSources []string `json:"booruLookupSources"`
 }
 
 func defaultCamieConfig() camieConfig {
@@ -97,7 +101,7 @@ func validateCamieConfig(config camieConfig) error {
 			return err
 		}
 	}
-	return nil
+	return validateBooruLookupSources(config.BooruLookupSources)
 }
 
 func saveCamieConfig(config camieConfig) error {

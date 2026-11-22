@@ -29,6 +29,8 @@ try {
       optionalReads = [];
     let failApply = true;
     let bulkEnabled = false;
+    let booruMatch = false;
+    const appliedURLs = [];
     const bulkRequests = [];
     page.on("pageerror", (error) => errors.push(error.message));
     page.on("console", (message) => {
@@ -89,6 +91,7 @@ try {
           return reply({ error: "Fixture save failure" }, 500);
         }
         writes.push(`${kind}:${id}`);
+        appliedURLs.push(data.urls);
         return reply({
           imageID: Number(id),
           sceneID: Number(id),
@@ -97,7 +100,16 @@ try {
       }
       optionalReads.push(`${kind}:${id}:${endpoint}`);
       if (endpoint === "booru-metadata")
-        return reply({ error: "Provider unavailable in this fixture" }, 503);
+        return booruMatch
+          ? reply({
+              source: "e621",
+              postID: "42",
+              postURL: "https://e621.net/posts/42",
+              md5: "0".repeat(32),
+              md5Source: "file",
+              tags: [{ ...tag, source: "booru:e621" }],
+            })
+          : reply({ error: "Provider unavailable in this fixture" }, 503);
       if (["camie-tags", "eva02-tags", "frame-metadata"].includes(endpoint))
         return reply({ error: "Model is not installed" }, 503);
       throw new Error(`Unexpected metadata request ${url.pathname}`);
@@ -453,6 +465,30 @@ try {
     assert.equal(bulkRequests[1].applyCharacters, false);
     assert.equal(bulkRequests[1].applyArtist, false);
     assert.equal(bulkRequests[1].applyCopyright, false);
+    // An MD5 match adds its post link to the media's URLs on Apply, unless
+    // the reviewer unticks it.
+    booruMatch = true;
+    for (const [button, kind, keep] of [
+      ["Single image", "image", true],
+      ["Single video", "video", false],
+    ]) {
+      await page.getByRole("button", { name: button, exact: true }).click();
+      await main()
+        .getByRole("button", { name: "Look up by MD5", exact: true })
+        .click();
+      const postLink = main().locator(`#${kind}-tagging-add-post-link`);
+      await postLink.waitFor();
+      assert.equal(await postLink.isChecked(), true, "post link starts ticked");
+      if (!keep) await postLink.uncheck();
+      await apply();
+      await page.getByRole("dialog").waitFor({ state: "detached" });
+      assert.deepEqual(
+        appliedURLs.at(-1),
+        keep ? ["https://e621.net/posts/42"] : [],
+        `${kind} apply sends the post link only while ticked`
+      );
+    }
+    booruMatch = false;
     assert.equal(page.url(), retainedURL);
     assert.deepEqual(errors, []);
     assert.ok(

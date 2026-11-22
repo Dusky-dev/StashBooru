@@ -228,6 +228,13 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
   const [frameMetadata, setFrameMetadata] = useState<FrameMetadataResponse>();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [replaceArtists, setReplaceArtists] = useState(false);
+  // A matched Booru post is added to the Video's URLs on Apply.
+  const [addPostLink, setAddPostLink] = useState(true);
+  const postURL = booruMetadata?.postURL;
+  const postLinks = useMemo(
+    () => (addPostLink && postURL ? [postURL] : []),
+    [addPostLink, postURL]
+  );
   const [loading, setLoading] = useState(true);
   const [loadingBooru, setLoadingBooru] = useState(false);
   const [loadingFrames, setLoadingFrames] = useState(false);
@@ -368,7 +375,11 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
         const response = await fetch(`scene/${sceneId}/knowledge-tags`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tags, replaceArtist: replaceArtists }),
+          body: JSON.stringify({
+            tags,
+            replaceArtist: replaceArtists,
+            urls: postLinks,
+          }),
         });
         const result = await readResponse<VideoTaggingApplyResponse>(response);
         const characters = result.characters ?? [];
@@ -398,7 +409,7 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
       }
       if (complete) onHide();
     },
-    [Toast, onApplied, onHide, replaceArtists, sceneId]
+    [Toast, onApplied, onHide, replaceArtists, sceneId, postLinks]
   );
 
   const previewTags = useCallback(
@@ -411,7 +422,11 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ tags, replaceArtist: replaceArtists }),
+            body: JSON.stringify({
+              tags,
+              replaceArtist: replaceArtists,
+              urls: postLinks,
+            }),
           }
         );
         const plan = await readResponse<TaggingChangePlan>(response);
@@ -424,7 +439,7 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
         setApplying(false);
       }
     },
-    [Toast, replaceArtists, sceneId]
+    [Toast, replaceArtists, sceneId, postLinks]
   );
 
   const continueCharacterResolution = useCallback(
@@ -643,6 +658,20 @@ export const VideoTaggingDialog: React.FC<IProps> = ({
                       </a>
                     ) : null}
                   </div>
+                  {booruMetadata.postURL ? (
+                    <Form.Check
+                      className="mt-1"
+                      type="checkbox"
+                      id="video-tagging-add-post-link"
+                      checked={addPostLink}
+                      onChange={(event) =>
+                        setAddPostLink(event.currentTarget.checked)
+                      }
+                      label={intl.formatMessage({
+                        id: "media_tagging.add_post_link_video",
+                      })}
+                    />
+                  ) : null}
                 </div>
               ) : null}
 

@@ -36,6 +36,9 @@ type camieTagsResponse struct {
 type camieApplyRequest struct {
 	Tags          []camietagger.Tag `json:"tags"`
 	ReplaceArtist bool              `json:"replaceArtist"`
+	// URLs are post links to add with the metadata, such as the matched
+	// Booru post. Existing links are kept.
+	URLs []string `json:"urls,omitempty"`
 }
 
 type camieAppliedEntity struct {

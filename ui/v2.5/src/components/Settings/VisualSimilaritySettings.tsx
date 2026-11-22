@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Badge, Button, Card, Col, Form, Row } from "react-bootstrap";
 import { Link, useHistory } from "react-router-dom";
 import { useIntl } from "react-intl";
+import { BooruLookupSites } from "./BooruLookupSites";
 
 import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { useToast } from "src/hooks/Toast";
@@ -58,6 +59,7 @@ interface CamieConfig {
   filenameEnabled: boolean;
   filenameLayout: string;
   bulkTaggingEnabled: boolean;
+  booruLookupSources?: string[] | null;
 }
 
 interface VisualSimilarityJobResponse {
@@ -428,6 +430,12 @@ export const VisualSimilaritySettings: React.FC = () => {
                   filename patterns on a Video.
                 </Form.Text>
               </Form.Group>
+              <BooruLookupSites
+                value={camieConfig.booruLookupSources}
+                onChange={(booruLookupSources) =>
+                  setCamieConfig({ ...camieConfig, booruLookupSources })
+                }
+              />
               <Form.Check
                 className="mb-2"
                 type="switch"

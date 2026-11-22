@@ -15,6 +15,7 @@ import (
 
 type sceneTaggingApplyResponse struct {
 	SceneID           int                   `json:"sceneID"`
+	AddedURLs         []string              `json:"addedURLs,omitempty"`
 	Characters        []camieAppliedEntity  `json:"characters"`
 	Artists           []camieAppliedEntity  `json:"artists"`
 	Copyrights        []camieAppliedEntity  `json:"copyrights"`
@@ -132,6 +133,11 @@ func (rs sceneRoutes) SceneKnowledgeTags(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	urls, err := validateTaggingSourceURLs(request.URLs)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	prioritized, suppressed := partitionCamieFilenameAuthoritativeSelections(request.Tags)
 	selected, err := validateSceneTaggingPredictions(prioritized)
 	if err != nil {
@@ -160,6 +166,11 @@ func (rs sceneRoutes) SceneKnowledgeTags(w http.ResponseWriter, r *http.Request)
 	response, err := applySceneTaggingMetadata(r.Context(), scene.ID, taggingChangePlanPredictions(plan), request.ReplaceArtist)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("applying Video Tagging metadata to video %d: %v", scene.ID, err), http.StatusInternalServerError)
+		return
+	}
+	response.AddedURLs, err = addSceneTaggingURLs(r.Context(), scene.ID, urls)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("metadata was applied, but adding the post link to video %d failed: %v", scene.ID, err), http.StatusInternalServerError)
 		return
 	}
 	writeVisualSimilarityJSON(w, response)
