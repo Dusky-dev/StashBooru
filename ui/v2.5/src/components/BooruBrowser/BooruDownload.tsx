@@ -260,7 +260,7 @@ export function BooruDownload({
       {state?.error && <Alert variant="warning">{state.error}</Alert>}
       <Button
         ref={downloadRef}
-        className={compact ? "minimal booru-icon-button" : undefined}
+        className={`booru-download-button${compact ? " minimal booru-icon-button" : ""}`}
         size="sm"
         disabled={
           busy || running || !ready || !available || (!flash && !directory)

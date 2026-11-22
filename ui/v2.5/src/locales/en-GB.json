@@ -2040,7 +2040,10 @@
   },
   "booru_browser": {
     "nav": "Booru",
-    "title": "Booru browser"
+    "title": "Booru browser",
+    "inspection_keys": "← / → Browse · Shift+↑ / Shift+↓ Select media · ↑ Download selected · ↓ Ignore",
+    "archive_toggle": "{format} archive · {count, plural, one {# media file} other {# media files}}",
+    "media_toggle": "{count, plural, one {# media file} other {# media files}}"
   },
   "identity_sources": {
     "title": "Identities",
