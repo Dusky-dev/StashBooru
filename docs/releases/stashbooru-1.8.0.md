@@ -3,7 +3,7 @@
 Web UI: "On this day" on the main page and dates for Images and Videos. These
 notes also cover the Following and main-page changes that were already in the
 1.6.2 and 1.7.0 downloads but missing from their notes. The native app is
-unchanged from 1.7.0.
+unchanged from 1.7.0 apart from its version number.
 
 ## Added
 

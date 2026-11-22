@@ -3,9 +3,9 @@ name: Native app
 on:
   push:
     branches: [develop]
-    paths: ['app/**', '.github/workflows/native-app.yml']
+    paths: ['app/**', '.github/workflows/native-app.yml', 'internal/build/stashbooru-version.txt']
   pull_request:
-    paths: ['app/**', '.github/workflows/native-app.yml']
+    paths: ['app/**', '.github/workflows/native-app.yml', 'internal/build/stashbooru-version.txt']
   workflow_dispatch:
   # The Build workflow calls this on a release branch to attach the app.
   workflow_call:
