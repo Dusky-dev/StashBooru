@@ -2244,7 +2244,7 @@
     "category_artists": "Artists",
     "category_copyrights": "Copyrights",
     "category_tags": "General and meta Tags",
-    "bulk_warning": "This writes metadata to every selected Image with no per-image review, and it cannot be undone in one step. Missing Characters, Artists, Copyrights and Tags are created; existing Artist links are kept. Images whose filename does not match the layout are left unchanged. Cancelling a running job keeps the Images already tagged.",
+    "bulk_warning": "This writes metadata to every selected Image with no per-image review, and it cannot be undone in one step. Missing Characters, Artists, Copyrights and Tags are created; existing Artist links are kept. A Character name shared by several existing Characters is skipped (review those Images individually). Images whose filename does not match the layout are left unchanged. Cancelling a running job keeps the Images already tagged.",
     "manual_only": "Booru lookup, PixAI and library suggestions are available in individual review.",
     "no_bulk_source": "No source can tag several Images at once with the current settings. Use Review individually, or turn a source on in tagging setup.",
     "setup_link": "Tagging setup (new tab)",

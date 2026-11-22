@@ -126,6 +126,9 @@ thumbnail-assisted review of each Image, and **Cancel** starts no job.
   filenames** is on. It needs no other opt-in, so a selection can be tagged
   from its filenames in one confirmed job. Images whose filename does not match
   the layout are left unchanged.
+- A Character name that matches several existing Characters is skipped and
+  logged, because a job cannot ask which one you mean; review those Images
+  individually.
 - **Camie v2** and **EVA02** stay opt-in: in **Settings → Processing →
   Similarity and tagging → Tagging defaults**, turn on **Allow Camie and EVA02
   to tag several selected Images in one job** and save. It is off by default.

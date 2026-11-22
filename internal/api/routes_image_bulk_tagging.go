@@ -101,6 +101,18 @@ func (rs imageRoutes) BulkTagImages(w http.ResponseWriter, r *http.Request) {
 				predictions = filterCamieBulkPredictionsV2(predictions, request.camieBulkRequestV2)
 				predictions, tagErr = validateCamiePredictionsV2(predictions)
 			}
+			if tagErr == nil && len(predictions) > 0 && request.ApplyCharacters {
+				// Without a reviewer, never guess between same-name Characters.
+				var enriched []camietagger.Tag
+				enriched, tagErr = enrichNativeCamiePredictionTargets(ctx, predictions)
+				if tagErr == nil {
+					var ambiguous []string
+					predictions, ambiguous = withoutAmbiguousBulkCharacters(predictions, enriched)
+					if len(ambiguous) > 0 {
+						logger.Warnf("Image Tagging: Image %d: skipped Character(s) %s because several existing Characters share the name; use individual review", imageID, strings.Join(ambiguous, ", "))
+					}
+				}
+			}
 			if tagErr == nil && len(predictions) > 0 {
 				_, tagErr = applyCamieMetadataV2(ctx, imageID, predictions, false)
 				if tagErr == nil {
@@ -123,6 +135,25 @@ func (rs imageRoutes) BulkTagImages(w http.ResponseWriter, r *http.Request) {
 		return nil
 	}))
 	writeVisualSimilarityJSON(w, visualSimilarityJobResponse{JobID: jobID})
+}
+
+// withoutAmbiguousBulkCharacters drops bare Character predictions that match
+// several existing Characters. enriched is the target-enriched copy of
+// predictions, in the same order.
+func withoutAmbiguousBulkCharacters(predictions, enriched []camietagger.Tag) ([]camietagger.Tag, []string) {
+	if len(enriched) != len(predictions) {
+		return predictions, nil
+	}
+	kept := make([]camietagger.Tag, 0, len(predictions))
+	var ambiguous []string
+	for index, prediction := range predictions {
+		if enriched[index].Category == "character" && len(enriched[index].TargetCandidates) > 1 {
+			ambiguous = append(ambiguous, prediction.Name)
+			continue
+		}
+		kept = append(kept, prediction)
+	}
+	return kept, ambiguous
 }
 
 // validateBulkImageTagRequest checks an explicit bulk selection and fills

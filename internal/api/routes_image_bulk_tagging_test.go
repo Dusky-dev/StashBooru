@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -114,5 +115,66 @@ func TestBulkRequestFilenameOnlyNeedsNoModelOptIn(t *testing.T) {
 	config.FilenameEnabled = true
 	if _, err := validateBulkImageTagRequest(&single, config); err == nil {
 		t.Fatal("a single Image must use individual review")
+	}
+}
+
+func TestBulkFilenameOnlyJobPathNeedsNoWorkers(t *testing.T) {
+	config := defaultCamieConfig()
+	config.FilenameEnabled = true
+	var request bulkImageTagRequest
+	request.Confirmed = true
+	request.ImageIDs = []int{1, 2}
+	request.UseFilename = true
+	request.ApplyCharacters = true
+	request.ApplyArtist = true
+	request.ApplyCopyright = true
+	if _, err := validateBulkImageTagRequest(&request, config); err != nil {
+		t.Fatal(err)
+	}
+
+	run := func(path string) []camietagger.Tag {
+		t.Helper()
+		// No Camie or EVA02 client is started for a filename-only job.
+		predictions, err := inferBulkImageTags(context.Background(), path, config, request, nil, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		predictions = filterCamieBulkPredictionsV2(predictions, request.camieBulkRequestV2)
+		predictions, err = validateCamiePredictionsV2(predictions)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return predictions
+	}
+
+	matched := run("/library/[artist_a](series_b).hero_(series_b)_0123456789abcdef0123456789abcdef.png")
+	got := map[string]bool{}
+	for _, prediction := range matched {
+		got[prediction.Category+":"+prediction.Name] = true
+	}
+	for _, want := range []string{"artist:artist a", "copyright:Series B", "character:Hero (Series B)"} {
+		if !got[want] {
+			t.Fatalf("missing %q in %+v", want, matched)
+		}
+	}
+	if unmatched := run("/library/holiday.png"); len(unmatched) != 0 {
+		t.Fatalf("a non-matching filename must apply nothing, got %+v", unmatched)
+	}
+}
+
+func TestBulkSkipsAmbiguousCharacters(t *testing.T) {
+	predictions := []camietagger.Tag{
+		{Name: "Hero", Category: "character"},
+		{Name: "Sidekick", Category: "character"},
+		{Name: "smile", Category: "general"},
+	}
+	enriched := []camietagger.Tag{
+		{Name: "Hero", Category: "character", TargetCandidates: []camietagger.TargetCandidate{{ID: 1}, {ID: 2}}},
+		{Name: "Sidekick", Category: "character"},
+		{Name: "smile", Category: "general"},
+	}
+	kept, ambiguous := withoutAmbiguousBulkCharacters(predictions, enriched)
+	if len(kept) != 2 || kept[0].Name != "Sidekick" || len(ambiguous) != 1 || ambiguous[0] != "Hero" {
+		t.Fatalf("kept %+v, ambiguous %v", kept, ambiguous)
 	}
 }
