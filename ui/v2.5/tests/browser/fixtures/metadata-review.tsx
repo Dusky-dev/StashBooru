@@ -2,7 +2,8 @@ import { cloneElement, useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import { BrowserRouter } from "react-router-dom";
 import { ApolloClient, ApolloProvider, InMemoryCache } from "@apollo/client";
-import { IntlProvider } from "react-intl";
+import { IntlProvider, useIntl } from "react-intl";
+import { messages } from "./messages";
 import { Button, Form } from "react-bootstrap";
 import { MediaKind } from "../../../src/core/generated-graphql";
 import { ToastProvider } from "../../../src/hooks/Toast";
@@ -26,6 +27,7 @@ const original = [
   { kind: MediaKind.Image, id: "2" },
 ];
 function Fixture() {
+  const intl = useIntl();
   const [view, setView] = useState("All");
   const [selected, setSelected] = useState(false);
   const [reverse, setReverse] = useState(false);
@@ -79,7 +81,7 @@ function Fixture() {
         hasSelection={selected}
         operations={[
           { text: "Other action", onClick: () => {} },
-          metadataReviewOperation(selection, setModal, close),
+          metadataReviewOperation(selection, setModal, close, intl),
         ]}
       />
       <Button
@@ -142,7 +144,7 @@ function Fixture() {
 ReactDOM.render(
   <BrowserRouter>
     <ApolloProvider client={apolloClient}>
-      <IntlProvider locale="en" messages={{ "actions.more": "More" }}>
+      <IntlProvider locale="en-GB" messages={messages}>
         <ToastProvider>
           <Fixture />
         </ToastProvider>

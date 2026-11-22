@@ -256,7 +256,7 @@ const FilteredMediaListComponent = ({
           onClick: onInvertSelection,
           isDisplayed: () => items.length > 0,
         },
-        metadataReviewOperation(selection, showModal, () => refreshed()),
+        metadataReviewOperation(selection, showModal, () => refreshed(), intl),
         {
           text: "Convert selected media…",
           onClick: () =>

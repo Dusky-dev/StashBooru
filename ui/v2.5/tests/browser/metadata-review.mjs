@@ -147,9 +147,11 @@ try {
         .last()
         .click();
     }
+    // The action is named after the selected media (All mixes both kinds).
+    const taggingAction = /^(Image|Video|Image & Video) Tagging…$/;
     async function open() {
       await more().click();
-      await page.getByText("Review metadata…", { exact: true }).click();
+      await page.getByText(taggingAction, { exact: true }).click();
     }
     async function apply() {
       await main()
@@ -161,7 +163,7 @@ try {
     }
     await more().click();
     assert.equal(
-      await page.getByText("Review metadata…", { exact: true }).count(),
+      await page.getByText(taggingAction, { exact: true }).count(),
       0,
       "Empty selection has no review action"
     );
@@ -244,33 +246,51 @@ try {
     await page
       .getByText("Selected items: 3. Refreshes: 1", { exact: true })
       .waitFor();
+    // Model bulk tagging is off, but local filename metadata can still tag
+    // an Image-only selection in one confirmed job.
     await page
       .getByRole("button", { name: "Generate shortcut", exact: true })
       .click();
-    const advisory = page
+    const chooser = page
       .getByRole("dialog")
-      .filter({ hasText: "Bulk tagging uses individual review" });
-    await advisory.getByRole("button", { name: "OK", exact: true }).waitFor();
+      .filter({ has: page.locator(".bulk-tagging-chooser") });
+    await chooser
+      .getByText("Image Tagging: 2 selected Images", { exact: true })
+      .waitFor();
     assert.equal(
-      await advisory
-        .getByRole("button", { name: "Cancel", exact: true })
-        .count(),
-      1
+      await chooser.locator("#bulk-tagging-use-filename").isChecked(),
+      true
     );
-    await advisory.getByRole("button", { name: "Cancel", exact: true }).click();
+    assert.equal(
+      await chooser.locator("#bulk-tagging-use-camie").isDisabled(),
+      true,
+      "Models stay behind the bulk opt-in"
+    );
+    assert.equal(
+      await chooser.locator("#bulk-tagging-use-eva02").isDisabled(),
+      true
+    );
+    await chooser.getByRole("button", { name: "Cancel", exact: true }).click();
     await page.getByRole("dialog").waitFor({ state: "detached" });
+    assert.equal(bulkRequests.length, 0, "Cancel starts no job");
     await page
       .getByRole("button", { name: "Generate shortcut", exact: true })
       .click();
-    await advisory.getByRole("button", { name: "Don't show again" }).click();
-    assert.equal(
-      await page.evaluate(() =>
-        localStorage.getItem(
-          "stashbooru:manual-bulk-tagging-warning-dismissed:v1"
-        )
-      ),
-      "1"
-    );
+    await chooser
+      .getByRole("button", { name: "Tag 2 Images", exact: true })
+      .click();
+    await page.getByRole("dialog").waitFor({ state: "detached" });
+    assert.equal(bulkRequests.length, 1);
+    assert.deepEqual(bulkRequests[0].imageIDs, [1, 2]);
+    assert.equal(bulkRequests[0].useFilename, true);
+    assert.equal(bulkRequests[0].useCamie, false);
+    assert.equal(bulkRequests[0].useEva02, false);
+    await page
+      .getByRole("button", { name: "Generate shortcut", exact: true })
+      .click();
+    await chooser
+      .getByRole("button", { name: "Review individually", exact: true })
+      .click();
     await main().getByText("Image #1", { exact: true }).waitFor();
     await main()
       .getByRole("button", { name: "Skip item", exact: true })
@@ -280,6 +300,12 @@ try {
     for (const view of ["Images", "Videos"]) {
       await page.getByLabel("View", { exact: true }).selectOption(view);
       await open();
+      if (view === "Images") {
+        // Two selected Images offer the one-job chooser first.
+        await chooser
+          .getByRole("button", { name: "Review individually", exact: true })
+          .click();
+      }
       await main()
         .getByText(view === "Images" ? "Image #1" : "Video #1", { exact: true })
         .waitFor();
@@ -355,8 +381,8 @@ try {
       }
     }
     for (const [button, title, identity] of [
-      ["Single image", "Review image metadata", "Image #1"],
-      ["Single video", "Review video metadata", "Video #1"],
+      ["Single image", "Image Tagging", "Image #1"],
+      ["Single video", "Video Tagging", "Video #1"],
     ]) {
       await page.getByRole("button", { name: button, exact: true }).click();
       await main().getByText(identity, { exact: true }).waitFor();
@@ -376,7 +402,8 @@ try {
     await open();
     const bulk = page
       .getByRole("dialog")
-      .filter({ hasText: "Confirm bulk Image tagging" });
+      .filter({ has: page.locator(".bulk-tagging-chooser") });
+    const filename = bulk.locator("#bulk-tagging-use-filename");
     const camie = bulk.locator("#bulk-tagging-use-camie");
     const eva02 = bulk.locator("#bulk-tagging-use-eva02");
     const characters = bulk.locator("#bulk-tagging-applyCharacters");
@@ -384,8 +411,10 @@ try {
     const copyright = bulk.locator("#bulk-tagging-applyCopyright");
     const tags = bulk.locator("#bulk-tagging-applyTags");
     const confirm = bulk.getByRole("button", {
-      name: /Confirm and tag 2 Images/,
+      name: "Tag 2 Images",
+      exact: true,
     });
+    await filename.uncheck();
     await camie.uncheck();
     await eva02.uncheck();
     assert.equal(
@@ -413,16 +442,17 @@ try {
     assert.equal(await tags.isChecked(), true);
     await confirm.click();
     await page.getByRole("dialog").waitFor({ state: "detached" });
-    assert.equal(bulkRequests.length, 1);
-    assert.deepEqual(bulkRequests[0].imageIDs, [1, 2]);
-    assert.equal(bulkRequests[0].confirmed, true);
-    assert.equal(bulkRequests[0].all, false);
-    assert.equal(bulkRequests[0].useCamie, false);
-    assert.equal(bulkRequests[0].useEva02, true);
-    assert.equal(bulkRequests[0].applyTags, true);
-    assert.equal(bulkRequests[0].applyCharacters, false);
-    assert.equal(bulkRequests[0].applyArtist, false);
-    assert.equal(bulkRequests[0].applyCopyright, false);
+    assert.equal(bulkRequests.length, 2);
+    assert.equal(bulkRequests[1].useFilename, false);
+    assert.deepEqual(bulkRequests[1].imageIDs, [1, 2]);
+    assert.equal(bulkRequests[1].confirmed, true);
+    assert.equal(bulkRequests[1].all, false);
+    assert.equal(bulkRequests[1].useCamie, false);
+    assert.equal(bulkRequests[1].useEva02, true);
+    assert.equal(bulkRequests[1].applyTags, true);
+    assert.equal(bulkRequests[1].applyCharacters, false);
+    assert.equal(bulkRequests[1].applyArtist, false);
+    assert.equal(bulkRequests[1].applyCopyright, false);
     assert.equal(page.url(), retainedURL);
     assert.deepEqual(errors, []);
     assert.ok(

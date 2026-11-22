@@ -63,11 +63,12 @@ filters keep direct-link semantics; see the [full contract](p06-effective-associ
 
 <a id="image-tagging"></a>
 
-## Review metadata
+## Image and Video Tagging
 
-Choose **Review metadata…** from an Image or Video's operations, or select items
-in **All**, **Images** or **Videos** and choose the same action from the operations
-menu. The dialog identifies the current native Image or Video and its position
+Choose **Image Tagging…** or **Video Tagging…** from an Image or Video's
+operations, or select items in **All**, **Images** or **Videos** and choose the
+same action from the operations menu (a mixed selection shows **Image & Video
+Tagging…**). The dialog identifies the current native Image or Video and its position
 in the selection. A snapshot preserves the review order across list refreshes.
 
 Each item requires a reviewed change plan. Apply continues through the selection;
@@ -110,37 +111,35 @@ option is separate from add-only association changes. Calculated Tags are shown
 with origins and remain inherited rather than being written as direct Tags.
 Applying metadata preserves the media's native ID and file bytes.
 
-The existing **Generate → Review Image Metadata…** shortcut opens the same
-per-item Image review. Bulk Image model tagging is also available through the
-Images **Generate** workflow
-and runs as a job. It is not a batch version of every optional single-Image source;
-inspect the chosen action and selected scope before starting it.
+The **Generate → Image Tagging…** shortcut opens the same workflow for the
+selected Images.
 
-### Bulk Image tagging (opt-in)
+### Tagging several Images in one job
 
-In **Settings → Processing → Similarity and tagging → Tagging defaults**, enable
-**Bulk auto-tagging for multiple selected Images** and save. It is disabled by
-default, including for existing installations. Each multi-Image selection has two
-distinct workflows:
+Selecting two or more Images (and no Videos) opens a chooser with the exact
+count. Choose the sources and the Character, Artist, Copyright and Tag
+categories, then **Tag N Images** to queue one cancellable job for those
+explicit Image IDs with no per-image review. **Review individually** keeps the
+thumbnail-assisted review of each Image, and **Cancel** starts no job.
 
-- **Bulk disabled**: before starting two or more selected Images, a warning
-  explains that tagging will still require one approval **per Image**. **OK**
-  continues to the thumbnail-assisted review, **Cancel** aborts, and **Don't
-  show again** proceeds to review and suppresses only this advisory for the
-  current browser. It never enables automatic tagging.
-- **Bulk enabled**: the same Image-only selection displays **one** warning
-  with its exact count and what will be applied. Choose Camie, EVA02, or both
-  (both checked initially), and the Character, Artist, Copyright and Tag
-  categories. **Confirm and tag** queues a cancellable job for those explicit
-  Image IDs, with no per-image review. **Review individually** retains the
-  standard thumbnail-assisted review, and **Cancel** starts no job.
+- **Local filename metadata** is available whenever **Read metadata from
+  filenames** is on. It needs no other opt-in, so a selection can be tagged
+  from its filenames in one confirmed job. Images whose filename does not match
+  the layout are left unchanged.
+- A Character name that matches several existing Characters is skipped and
+  logged, because a job cannot ask which one you mean; review those Images
+  individually.
+- **Camie v2** and **EVA02** stay opt-in: in **Settings → Processing →
+  Similarity and tagging → Tagging defaults**, turn on **Allow Camie and EVA02
+  to tag several selected Images in one job** and save. It is off by default.
+
+When no source is available the chooser says so and offers individual review.
 
 A single Image or mixed Image/Video selection always uses normal per-item
 review. The selected Image's thumbnail appears at the left of its metadata
 review so users can verify which media receives each proposed tag set.
 
-Bulk automatic tagging supports local filename metadata and optionally Camie
-v2 and EVA02, using each model's configured threshold and the per-category
+The job applies the chosen sources: local filename metadata, Camie v2 and EVA02, using each model's configured threshold and the per-category
 limit. Filename identities remain authoritative over conflicting inferred
 identities, and duplicate predictions preserve the earlier source's choice.
 Only general/rating/Character predictions supported by EVA02's tagging model
@@ -190,9 +189,9 @@ Camie weights are not bundled or downloaded silently. See [worker setup](../scri
 
 ## Video sources and native Auto Tag
 
-**Advanced filename patterns** are now available inside a Video's **Review metadata…** dialog. The normal **Filename layout** in Processing continues to supply local Artist/Character/Copyright predictions for both Images and Videos. Choose **Advanced filename patterns…** for legacy-style patterns containing title, date, rating, Character (`{performer}`), Artist (`{studio}`) or Tag (`{tag}`) fields. This opens a library-wide search; review the suggested edits and apply only the current page's selected fields. Changes that would remove existing Characters or Tags require an explicit replacement confirmation. The former standalone Tools button was removed; old `/sceneFilenameParser` bookmarks redirect to Videos. The legacy GraphQL parser remains available for compatibility.
+**Advanced filename patterns** are now available inside a Video's **Video Tagging…** dialog. The normal **Filename layout** in Processing continues to supply local Artist/Character/Copyright predictions for both Images and Videos. Choose **Advanced filename patterns…** for legacy-style patterns containing title, date, rating, Character (`{performer}`), Artist (`{studio}`) or Tag (`{tag}`) fields. This opens a library-wide search; review the suggested edits and apply only the current page's selected fields. Changes that would remove existing Characters or Tags require an explicit replacement confirmation. The former standalone Tools button was removed; old `/sceneFilenameParser` bookmarks redirect to Videos. The legacy GraphQL parser remains available for compatibility.
 
-**Review video metadata** loads Local metadata on opening. Booru lookup and frame analysis
+**Video Tagging** loads Local metadata on opening. Booru lookup and frame analysis
 are explicit actions, with **Local → Booru → Frames** priority. Frame analysis
 samples timestamps and aggregates model results with frame support; it does not
 prove that a Character appears throughout a Video. Single and batch review show
@@ -213,7 +212,7 @@ reviewed tagging. Native Auto Tag matches existing names against file/folder
 paths; it does not look up a provider.
 
 Videos' **Batch tagging job…** remains the existing advanced job workflow,
-separate from per-item **Review metadata…**. Inspect its own apply options before
+separate from per-item **Video Tagging…**. Inspect its own apply options before
 starting the batch job.
 
 ## Profile artwork and cleanup

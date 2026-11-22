@@ -840,7 +840,8 @@ export const FilteredImageList = PatchComponent(
         () => {
           closeModal();
           void result.refetch();
-        }
+        },
+        intl
       ),
       {
         text: `${intl.formatMessage({ id: "actions.generate" })}…`,

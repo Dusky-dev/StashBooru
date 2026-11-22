@@ -229,17 +229,15 @@ export const GenerateDialog: React.FC<IGenerateDialog> = ({
           </SettingSection>
           {type === "image" && imageIDs?.length ? (
             <SettingSection>
-              <h4>Image metadata</h4>
+              <h4>{intl.formatMessage({ id: "media_tagging.title_image" })}</h4>
               <p className="text-muted">
-                Review metadata is also available directly from the selection's
-                actions. It reviews one selected image at a time; each change
-                needs your approval.
+                {intl.formatMessage({ id: "media_tagging.generate_hint" })}
               </p>
               <Button
                 variant="primary"
                 onClick={() => setShowImageMetadata(true)}
               >
-                Review Image Metadata…
+                {intl.formatMessage({ id: "media_tagging.action_image" })}
               </Button>
             </SettingSection>
           ) : null}
