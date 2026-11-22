@@ -1,6 +1,6 @@
 ## StashBooru 1.9.0: Image Tagging and filename-only bulk tagging — 2026-11-22
 
-- Baseline: `develop` `9204333` (1.8.0). Owner: local filename metadata could
+- Baseline: `develop` `9204333` (1.8.0); PR #421. Owner: local filename metadata could
   only be applied one Image at a time; rename "Review metadata" to Image Tagging.
 - Cause: `/image/visual-similarity/bulk-tag` required Camie or EVA02 and the
   bulk opt-in; filename metadata only rode along. A dismissible advisory then
