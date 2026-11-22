@@ -302,7 +302,7 @@ export const App: React.FC = () => {
             <Route path="/groups" component={Groups} />
             <Route path="/stats" component={Stats} />
             <Route path="/settings" component={Settings} />
-            {/* Old bookmarks lead to Videos; filename review now lives in Review metadata. */}
+            {/* Old bookmarks lead to Videos; filename review now lives in Video Tagging. */}
             <Route
               exact
               path="/sceneFilenameParser"

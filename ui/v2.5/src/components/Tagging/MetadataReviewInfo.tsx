@@ -19,10 +19,7 @@ export function MetadataReviewInfo({
   busy: boolean;
 }) {
   return (
-    <section
-      className="metadata-review-info mb-3"
-      aria-label="Metadata review scope"
-    >
+    <section className="metadata-review-info mb-3" aria-label="Tagging scope">
       <div className="d-flex flex-wrap align-items-center mb-2">
         <strong className="mr-3">
           {kind} #{id}

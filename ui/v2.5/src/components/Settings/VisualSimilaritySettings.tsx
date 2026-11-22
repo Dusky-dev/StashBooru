@@ -424,7 +424,7 @@ export const VisualSimilaritySettings: React.FC = () => {
                   <code>%md5%</code>, <code>%ext%</code>. Matched filename
                   identities take priority over inferred identities. For more
                   flexible Video filename rules (title, date, rating,
-                  Characters, Artists or Tags), use Review metadata → Advanced
+                  Characters, Artists or Tags), use Video Tagging → Advanced
                   filename patterns on a Video.
                 </Form.Text>
               </Form.Group>
@@ -439,8 +439,15 @@ export const VisualSimilaritySettings: React.FC = () => {
                     bulkTaggingEnabled: event.currentTarget.checked,
                   })
                 }
-                label="Enable bulk auto-tagging for multiple selected Images"
+                label={intl.formatMessage({
+                  id: "media_tagging.settings_bulk_models",
+                })}
               />
+              <Form.Text className="text-muted mb-2">
+                {intl.formatMessage({
+                  id: "media_tagging.settings_bulk_models_help",
+                })}
+              </Form.Text>
 
               <p className="small">
                 <Link to="/settings?tab=library#association-inheritance-settings">

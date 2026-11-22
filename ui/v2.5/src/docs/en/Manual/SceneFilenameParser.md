@@ -1,6 +1,6 @@
 # Advanced Video filename patterns
 
-From a Video, choose **Review metadata… → Advanced filename patterns…** to search the library for matching Video filenames and review metadata changes. The standalone Tools link was retired; bookmarks to `/sceneFilenameParser` redirect to Videos. The basic **Filename layout** in Processing remains the recommended way to read Booru-style Artist/Character/Copyright identities. The advanced pattern tool preserves legacy title/date/rating and Tag/Character/Artist extraction.
+From a Video, choose **Video Tagging… → Advanced filename patterns…** to search the library for matching Video filenames and review metadata changes. The standalone Tools link was retired; bookmarks to `/sceneFilenameParser` redirect to Videos. The basic **Filename layout** in Processing remains the recommended way to read Booru-style Artist/Character/Copyright identities. The advanced pattern tool preserves legacy title/date/rating and Tag/Character/Artist extraction.
 
 ## Parser options
 

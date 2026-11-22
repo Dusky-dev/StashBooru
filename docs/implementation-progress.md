@@ -1,3 +1,23 @@
+## StashBooru 1.9.0: Image Tagging and filename-only bulk tagging — 2026-11-22
+
+- Baseline: `develop` `9204333` (1.8.0). Owner: local filename metadata could
+  only be applied one Image at a time; rename "Review metadata" to Image Tagging.
+- Cause: `/image/visual-similarity/bulk-tag` required Camie or EVA02 and the
+  bulk opt-in; filename metadata only rode along. A dismissible advisory then
+  silently sent every multi-selection to per-image review.
+- Now: `useFilename` source; filename-only jobs need just the explicit
+  confirmation (and **Read metadata from filenames**); models still need the
+  opt-in. Non-matching filenames count as unchanged, not failed. One chooser
+  replaces the advisory/confirm screens. Actions/titles are Image Tagging… /
+  Video Tagging… / Image & Video Tagging… (react-intl); the Local badge shows
+  the found count.
+- Checks: Go `TestBulkRequest…`/`TestMergeBulk…`; `pnpm run test`, `tsc`,
+  Biome lint/format; `metadata-review.mjs` (extended: chooser, filename-only
+  job, model job) passes at 1440px and 390px.
+- Not verified: a real filename-only job on a library; Flutter app tests.
+- Next: owner tries a filename-only selection; follow-ups: per-Image job
+  results in the UI, Video bulk tagging.
+
 ## StashBooru 1.8.0: "On this day" and Image/Video dates — 2026-11-21
 
 - Baseline: `develop` `a438679` (1.6.1), merged with 1.6.2 and 1.7.0 (app).

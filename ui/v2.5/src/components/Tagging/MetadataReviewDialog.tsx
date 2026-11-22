@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Button, Form, Modal, Spinner } from "react-bootstrap";
+import { type IntlShape, useIntl } from "react-intl";
+import { Link } from "react-router-dom";
 import { MediaKind } from "src/core/generated-graphql";
 import { useToast } from "src/hooks/Toast";
 import { ImageKnowledgeTagDialog } from "../Images/ImageDetails/ImageKnowledgeTagDialog";
 import { VideoTaggingDialog } from "../Scenes/SceneDetails/VideoTaggingDialog";
 import {
+  allowedBulkTaggingSources,
+  availableBulkTaggingSources,
   bulkSelectedImageIDs,
   bulkTaggingRequest,
   defaultBulkTaggingCategories,
-  defaultBulkTaggingSources,
-  manualBulkWarningDismissed,
-  MANUAL_BULK_WARNING_KEY,
+  taggingActionKind,
   type BulkTaggingCategories,
   type BulkTaggingConfig,
   type BulkTaggingSources,
@@ -35,6 +37,7 @@ export function MetadataReviewDialog({
   onHide: () => void;
   onApplied?: () => Promise<unknown>;
 }) {
+  const intl = useIntl();
   const Toast = useToast();
   const toastRef = useRef(Toast);
   toastRef.current = Toast;
@@ -50,17 +53,10 @@ export function MetadataReviewDialog({
   const [bulkChecking, setBulkChecking] = useState(Boolean(bulkIDs));
   const [bulkConfig, setBulkConfig] = useState<BulkTaggingConfig>();
   const [manualReview, setManualReview] = useState(false);
-  const [skipManualWarning, setSkipManualWarning] = useState(() => {
-    try {
-      return manualBulkWarningDismissed(
-        typeof window === "undefined" ? undefined : window.localStorage
-      );
-    } catch {
-      return false;
-    }
-  });
   const [sources, setSources] = useState<BulkTaggingSources>({
-    ...defaultBulkTaggingSources,
+    useFilename: false,
+    useCamie: false,
+    useEva02: false,
   });
   const [categories, setCategories] = useState<BulkTaggingCategories>({
     ...defaultBulkTaggingCategories,
@@ -87,7 +83,10 @@ export function MetadataReviewDialog({
           throw new Error((await response.text()) || response.statusText);
         }
         const config = (await response.json()) as BulkTaggingConfig;
-        if (!controller.signal.aborted) setBulkConfig(config);
+        if (!controller.signal.aborted) {
+          setBulkConfig(config);
+          setSources(availableBulkTaggingSources(config));
+        }
       } catch (error) {
         if (!controller.signal.aborted) {
           toastRef.current.error(error);
@@ -104,11 +103,17 @@ export function MetadataReviewDialog({
   async function startBulkTagging() {
     if (!bulkIDs || !bulkConfig || starting) return;
     if (!Object.values(categories).some(Boolean)) {
-      setBulkError("Choose at least one metadata category.");
+      setBulkError(
+        intl.formatMessage({ id: "media_tagging.error_no_category" })
+      );
       return;
     }
-    if (!Object.values(sources).some(Boolean)) {
-      setBulkError("Choose Camie, EVA02 or both.");
+    if (
+      !Object.values(allowedBulkTaggingSources(sources, bulkConfig)).some(
+        Boolean
+      )
+    ) {
+      setBulkError(intl.formatMessage({ id: "media_tagging.error_no_source" }));
       return;
     }
 
@@ -127,7 +132,10 @@ export function MetadataReviewDialog({
       }
       const result = (await response.json()) as BulkTaggingJobResponse;
       Toast.success(
-        `Started bulk tagging for ${bulkIDs.length} Images (job #${result.jobID}).`
+        intl.formatMessage(
+          { id: "media_tagging.started" },
+          { count: bulkIDs.length, job: result.jobID }
+        )
       );
     } catch (error) {
       setBulkError(error instanceof Error ? error.message : String(error));
@@ -152,155 +160,142 @@ export function MetadataReviewDialog({
     else onHide();
   }
 
-  function dismissManualWarning() {
-    try {
-      window.localStorage.setItem(MANUAL_BULK_WARNING_KEY, "1");
-      setSkipManualWarning(true);
-    } catch {
-      // The current review can still proceed when browser storage is blocked.
-    }
-    setManualReview(true);
-  }
-
   if (bulkChecking) {
     return (
       <Modal show centered onHide={onHide}>
         <Modal.Body className="text-center">
-          <Spinner animation="border" size="sm" role="status" /> Checking
-          tagging settings…
+          <Spinner animation="border" size="sm" role="status" />{" "}
+          {intl.formatMessage({ id: "media_tagging.checking" })}
         </Modal.Body>
       </Modal>
     );
   }
 
-  // With auto-apply disabled, explain the distinction once. The user can
-  // suppress this advisory per browser without ever enabling auto writes.
-  if (
-    bulkIDs &&
-    bulkConfig &&
-    !bulkConfig.bulkTaggingEnabled &&
-    !manualReview &&
-    !skipManualWarning
-  ) {
-    return (
-      <Modal show centered onHide={onHide}>
-        <Modal.Header>
-          <Modal.Title>Bulk tagging uses individual review</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Alert variant="warning">
-            You selected {bulkIDs.length.toLocaleString()} Images, but automatic
-            bulk tagging is disabled in Settings → Processing → Similarity and
-            tagging. Continuing opens each Image for separate tag approval;
-            nothing will be auto-applied.
-          </Alert>
-          <p className="small text-muted mb-0">
-            To process the entire selection with one approval, enable bulk
-            auto-tagging in the tagging settings.
-          </p>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={dismissManualWarning}>
-            Don't show again
-          </Button>
-          <Button variant="secondary" onClick={onHide}>
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={() => setManualReview(true)}>
-            OK
-          </Button>
-        </Modal.Footer>
-      </Modal>
-    );
-  }
-
-  // Multi-image auto-apply is strictly opt-in and still needs one explicit
-  // confirmation per selection. Never auto-apply a lone Image or mixed media.
-  if (bulkIDs && bulkConfig?.bulkTaggingEnabled && !manualReview) {
+  // One chooser for every Image-only multi-selection: tag the selection in
+  // one confirmed job with the sources the settings allow, or review each
+  // Image. A lone Image or mixed media always uses individual review.
+  if (bulkIDs && bulkConfig && !manualReview) {
+    const available = availableBulkTaggingSources(bulkConfig);
+    const chosen = allowedBulkTaggingSources(sources, bulkConfig);
+    const anyAvailable = Object.values(available).some(Boolean);
+    const usesModels = chosen.useCamie || chosen.useEva02;
+    const message = (id: string, values?: Record<string, unknown>) =>
+      intl.formatMessage({ id: `media_tagging.${id}` }, values as never);
+    const sourceOptions: {
+      key: keyof BulkTaggingSources;
+      id: string;
+      label: string;
+    }[] = [
+      {
+        key: "useFilename",
+        id: "bulk-tagging-use-filename",
+        label: message("source_filename"),
+      },
+      {
+        key: "useCamie",
+        id: "bulk-tagging-use-camie",
+        label: message("source_camie"),
+      },
+      {
+        key: "useEva02",
+        id: "bulk-tagging-use-eva02",
+        label: message("source_eva02"),
+      },
+    ];
     const categoryOptions: {
       key: keyof BulkTaggingCategories;
       label: string;
     }[] = [
-      { key: "applyCharacters", label: "Characters" },
-      { key: "applyArtist", label: "Artists" },
-      { key: "applyCopyright", label: "Copyrights" },
-      { key: "applyTags", label: "General and meta Tags" },
+      { key: "applyCharacters", label: message("category_characters") },
+      { key: "applyArtist", label: message("category_artists") },
+      { key: "applyCopyright", label: message("category_copyrights") },
+      { key: "applyTags", label: message("category_tags") },
     ];
+    const count = bulkIDs.length;
     return (
       <Modal show centered onHide={starting ? () => {} : onHide}>
         <Modal.Header>
-          <Modal.Title>Confirm bulk Image tagging</Modal.Title>
+          <Modal.Title>{message("bulk_title", { count })}</Modal.Title>
         </Modal.Header>
-        <Modal.Body>
-          <Alert variant="warning">
-            <strong>
-              You are about to tag {bulkIDs.length.toLocaleString()} selected
-              Images.
-            </strong>{" "}
-            One approval starts a background job that applies the selected
-            inference models and configured filename predictions to every
-            selected Image, with no per-image review. This can create metadata
-            and cannot be undone with one action. Cancelling a running job does
-            not reverse work already applied.
-          </Alert>
-          <p className="small text-muted">
-            Booru lookup and library suggestions are not part of this bulk job.
-            Existing Artist links will not be replaced. Camie threshold:{" "}
-            {bulkConfig.threshold}. EVA02 threshold: {bulkConfig.eva02Threshold}
-            . Per-category limit: {bulkConfig.limit}.
-          </p>
+        <Modal.Body className="bulk-tagging-chooser">
+          <p>{message("bulk_intro")}</p>
           <p className="mb-2">
-            <strong>Inference sources:</strong>
+            <strong>{message("sources")}</strong>
           </p>
-          <Form.Check
-            type="checkbox"
-            id="bulk-tagging-use-camie"
-            label="Camie v2 (Characters, Artists, Copyrights and Tags)"
-            checked={sources.useCamie}
-            disabled={starting}
-            onChange={(event) => {
-              const checked = event.currentTarget.checked;
-              setSources((current) => ({
-                ...current,
-                useCamie: checked,
-              }));
-            }}
-          />
-          <Form.Check
-            className="mb-3"
-            type="checkbox"
-            id="bulk-tagging-use-eva02"
-            label="EVA02 (general, rating and Character predictions)"
-            checked={sources.useEva02}
-            disabled={starting}
-            onChange={(event) => {
-              const checked = event.currentTarget.checked;
-              setSources((current) => ({
-                ...current,
-                useEva02: checked,
-              }));
-            }}
-          />
-          <p className="mb-2">
-            <strong>Apply these categories:</strong>
-          </p>
-          {categoryOptions.map(({ key, label }) => (
+          {sourceOptions.map(({ key, id, label }) => (
             <Form.Check
               key={key}
               type="checkbox"
-              id={`bulk-tagging-${key}`}
+              id={id}
               label={label}
-              checked={categories[key]}
-              disabled={starting}
+              checked={chosen[key]}
+              disabled={starting || !available[key]}
               onChange={(event) => {
                 const checked = event.currentTarget.checked;
-                setCategories((current) => ({
-                  ...current,
-                  [key]: checked,
-                }));
+                setSources((current) => ({ ...current, [key]: checked }));
               }}
             />
           ))}
+          {!available.useFilename && (
+            <p className="small text-muted mb-1">
+              {message("source_filename_off")}
+            </p>
+          )}
+          {!bulkConfig.bulkTaggingEnabled && (
+            <p className="small text-muted mb-1">{message("models_off")}</p>
+          )}
+          {usesModels && (
+            <p className="small text-muted mb-1">
+              {message("model_settings", {
+                camie: bulkConfig.threshold,
+                eva02: bulkConfig.eva02Threshold,
+                limit: bulkConfig.limit,
+              })}
+            </p>
+          )}
+          <p className="small mb-3">
+            <Link
+              target="_blank"
+              rel="noreferrer"
+              to="/settings?tab=processing#visual-similarity"
+            >
+              {message("setup_link")}
+            </Link>
+          </p>
+          {anyAvailable ? (
+            <>
+              <p className="mb-2">
+                <strong>{message("categories")}</strong>
+              </p>
+              {categoryOptions.map(({ key, label }) => (
+                <Form.Check
+                  key={key}
+                  type="checkbox"
+                  id={`bulk-tagging-${key}`}
+                  label={label}
+                  checked={categories[key]}
+                  disabled={starting}
+                  onChange={(event) => {
+                    const checked = event.currentTarget.checked;
+                    setCategories((current) => ({
+                      ...current,
+                      [key]: checked,
+                    }));
+                  }}
+                />
+              ))}
+              <Alert className="mt-3 mb-0" variant="warning">
+                {message("bulk_warning")}
+              </Alert>
+              <p className="small text-muted mt-2 mb-0">
+                {message("manual_only")}
+              </p>
+            </>
+          ) : (
+            <Alert variant="info" className="mb-0">
+              {message("no_bulk_source")}
+            </Alert>
+          )}
           {bulkError && (
             <Alert className="mt-3" variant="danger">
               {bulkError}
@@ -309,28 +304,28 @@ export function MetadataReviewDialog({
         </Modal.Body>
         <Modal.Footer>
           <Button
-            variant="secondary"
+            variant={anyAvailable ? "secondary" : "primary"}
             disabled={starting}
             onClick={() => setManualReview(true)}
           >
-            Review individually
+            {message("review_individually")}
           </Button>
           <Button variant="secondary" disabled={starting} onClick={onHide}>
-            Cancel
+            {intl.formatMessage({ id: "actions.cancel" })}
           </Button>
-          <Button
-            variant="warning"
-            disabled={
-              starting ||
-              !Object.values(categories).some(Boolean) ||
-              !Object.values(sources).some(Boolean)
-            }
-            onClick={() => void startBulkTagging()}
-          >
-            {starting
-              ? "Starting…"
-              : `Confirm and tag ${bulkIDs.length.toLocaleString()} Images`}
-          </Button>
+          {anyAvailable && (
+            <Button
+              variant="warning"
+              disabled={
+                starting ||
+                !Object.values(categories).some(Boolean) ||
+                !Object.values(chosen).some(Boolean)
+              }
+              onClick={() => void startBulkTagging()}
+            >
+              {starting ? message("starting") : message("confirm", { count })}
+            </Button>
+          )}
         </Modal.Footer>
       </Modal>
     );
@@ -356,10 +351,13 @@ export function MetadataReviewDialog({
 export function metadataReviewOperation(
   items: readonly MetadataReviewItem[],
   showModal: (dialog: JSX.Element) => void,
-  onHide: () => void
+  onHide: () => void,
+  intl: IntlShape
 ) {
   return {
-    text: "Review metadata…",
+    text: intl.formatMessage({
+      id: `media_tagging.action_${taggingActionKind(items, MediaKind.Image)}`,
+    }),
     isDisplayed: () => items.length > 0,
     onClick: () =>
       showModal(<MetadataReviewDialog items={items} onHide={onHide} />),

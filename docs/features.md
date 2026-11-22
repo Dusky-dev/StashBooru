@@ -240,8 +240,10 @@ link to a native Copyright or Artist. The hierarchy's Main and Sub lists, branch
 and descendant filters keep these identities separate. Artist context links do
 not imply authorship.
 
-**Review metadata…** is available on Image/Video details and selected items in
-All, Images and Videos. Mixed selections retain typed native IDs and are reviewed
+**Image Tagging…** / **Video Tagging…** is available on Image/Video details and
+selected items in All, Images and Videos. Two or more selected Images can be
+tagged in one confirmed job from local filename metadata (and Camie/EVA02 when
+bulk model tagging is on). Mixed selections retain typed native IDs and are reviewed
 one item at a time, with Skip and selection progress. The Image review dialog
 shows a larger, full-height image preview beside independently scrollable controls
 on desktop, with a stacked layout on narrow screens. Ordinary Tag links

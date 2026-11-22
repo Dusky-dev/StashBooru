@@ -5,6 +5,7 @@ import {
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge, Button, Form, Modal, Spinner } from "react-bootstrap";
 import { faExternalLinkAlt, faSearch } from "@fortawesome/free-solid-svg-icons";
+import { useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
 
 import { Icon } from "src/components/Shared/Icon";
@@ -280,6 +281,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
   onApplied,
   reviewContext,
 }) => {
+  const intl = useIntl();
   const Toast = useToast();
   const history = useHistory();
   const [camieThreshold, setCamieThreshold] = useState("0.492");
@@ -670,7 +672,9 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
         dialogClassName="image-tagging-dialog"
       >
         <Modal.Header closeButton={!applying}>
-          <Modal.Title>Review image metadata</Modal.Title>
+          <Modal.Title>
+            {intl.formatMessage({ id: "media_tagging.title_image" })}
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <div className="image-tagging-review-layout">
@@ -801,8 +805,16 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
               </div>
 
               <div className="d-flex flex-wrap align-items-center mb-3">
-                <Badge className="mr-2 mb-1" variant="success">
-                  Local loaded
+                <Badge
+                  className="mr-2 mb-1"
+                  variant={localPredictions.length ? "success" : "secondary"}
+                >
+                  {localPredictions.length
+                    ? intl.formatMessage(
+                        { id: "media_tagging.local_found" },
+                        { count: localPredictions.length }
+                      )
+                    : intl.formatMessage({ id: "media_tagging.local_none" })}
                 </Badge>
                 {booruMetadata ? (
                   <Badge className="mr-2 mb-1" variant="info">
@@ -1042,7 +1054,7 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
 
       <TaggingChangePlanModal
         show={!!changePlan}
-        title="Review Image Metadata changes"
+        title={intl.formatMessage({ id: "media_tagging.plan_title_image" })}
         plan={changePlan}
         busy={applying}
         onBack={() => {

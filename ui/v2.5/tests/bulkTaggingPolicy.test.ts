@@ -2,12 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  availableBulkTaggingSources,
   bulkSelectedImageIDs,
   bulkTaggingRequest,
   defaultBulkTaggingCategories,
-  defaultBulkTaggingSources,
-  MANUAL_BULK_WARNING_KEY,
-  manualBulkWarningDismissed,
+  taggingActionKind,
 } from "../src/components/Tagging/bulkTaggingPolicy.ts";
 
 test("bulk tagging is only offered for two or more selected Images", () => {
@@ -63,12 +62,13 @@ test("bulk request is scoped to selected IDs and never replaces Artists", () => 
       [9, 10],
       {
         bulkTaggingEnabled: true,
+        filenameEnabled: true,
         threshold: 0.492,
         eva02Threshold: 0.35,
         limit: 50,
       },
       { ...defaultBulkTaggingCategories, applyArtist: false },
-      { ...defaultBulkTaggingSources, useCamie: false }
+      { useFilename: true, useCamie: false, useEva02: true }
     ),
     {
       imageIDs: [9, 10],
@@ -76,6 +76,7 @@ test("bulk request is scoped to selected IDs and never replaces Artists", () => 
       confirmed: true,
       threshold: 0.492,
       eva02Threshold: 0.35,
+      useFilename: true,
       useCamie: false,
       useEva02: true,
       limit: 50,
@@ -88,20 +89,43 @@ test("bulk request is scoped to selected IDs and never replaces Artists", () => 
   );
 });
 
-test("manual bulk warning is dismissible per browser and fails safe", () => {
-  assert.equal(manualBulkWarningDismissed(), false);
-  assert.equal(
-    manualBulkWarningDismissed({
-      getItem: (key) => (key === MANUAL_BULK_WARNING_KEY ? "1" : null),
-    }),
-    true
+test("local filename metadata can tag a selection without the model opt-in", () => {
+  const config = {
+    bulkTaggingEnabled: false,
+    filenameEnabled: true,
+    threshold: 0.492,
+    eva02Threshold: 0.35,
+    limit: 50,
+  };
+  assert.deepEqual(availableBulkTaggingSources(config), {
+    useFilename: true,
+    useCamie: false,
+    useEva02: false,
+  });
+  // A stale model choice is never sent while the model opt-in is off.
+  const request = bulkTaggingRequest(
+    [1, 2],
+    config,
+    defaultBulkTaggingCategories,
+    {
+      useFilename: true,
+      useCamie: true,
+      useEva02: true,
+    }
   );
-  assert.equal(
-    manualBulkWarningDismissed({
-      getItem: () => {
-        throw new Error("storage blocked");
-      },
-    }),
-    false
+  assert.equal(request.useFilename, true);
+  assert.equal(request.useCamie, false);
+  assert.equal(request.useEva02, false);
+  assert.deepEqual(
+    availableBulkTaggingSources({ ...config, filenameEnabled: false }),
+    { useFilename: false, useCamie: false, useEva02: false }
   );
+});
+
+test("the tagging action is named after the selected media", () => {
+  const image = { kind: "IMAGE", id: "1" };
+  const video = { kind: "VIDEO", id: "1" };
+  assert.equal(taggingActionKind([image], "IMAGE"), "image");
+  assert.equal(taggingActionKind([video], "IMAGE"), "video");
+  assert.equal(taggingActionKind([image, video], "IMAGE"), "mixed");
 });

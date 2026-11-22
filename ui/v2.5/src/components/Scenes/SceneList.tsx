@@ -712,7 +712,8 @@ export const FilteredSceneList = PatchComponent(
         () => {
           closeModal();
           void result.refetch();
-        }
+        },
+        intl
       ),
       {
         text: "Batch tagging job…",

@@ -19,6 +19,7 @@ import (
 type bulkImageTagRequest struct {
 	camieBulkRequestV2
 	Confirmed      bool    `json:"confirmed"`
+	UseFilename    bool    `json:"useFilename"`
 	UseCamie       bool    `json:"useCamie"`
 	UseEva02       bool    `json:"useEva02"`
 	Eva02Threshold float64 `json:"eva02Threshold"`
@@ -32,46 +33,13 @@ func (rs imageRoutes) BulkTagImages(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("decoding Image bulk tagging request: %v", err), http.StatusBadRequest)
 		return
 	}
-	if !request.Confirmed {
-		http.Error(w, "confirm this bulk tagging selection before starting", http.StatusBadRequest)
-		return
-	}
-	if request.All || len(request.ImageIDs) < 2 || len(request.ImageIDs) > 20000 {
-		http.Error(w, "select between 2 and 20000 explicit Image IDs for bulk tagging", http.StatusBadRequest)
-		return
-	}
-	if !request.UseCamie && !request.UseEva02 {
-		http.Error(w, "enable Camie, EVA02 or both for bulk tagging", http.StatusBadRequest)
-		return
-	}
-	if !request.ApplyCharacters && !request.ApplyArtist && !request.ApplyCopyright && !request.ApplyTags {
-		http.Error(w, "select at least one Image metadata category", http.StatusBadRequest)
-		return
-	}
 	config, err := loadCamieConfig()
 	if err != nil {
-		http.Error(w, fmt.Sprintf("loading Image tagging settings: %v", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("loading Image Tagging settings: %v", err), http.StatusInternalServerError)
 		return
 	}
-	if !config.BulkTaggingEnabled {
-		http.Error(w, "bulk auto-tagging is disabled in tagging settings", http.StatusConflict)
-		return
-	}
-	if request.Threshold == 0 {
-		request.Threshold = config.Threshold
-	}
-	if request.Eva02Threshold == 0 {
-		request.Eva02Threshold = config.Eva02Threshold
-	}
-	if request.Limit == 0 {
-		request.Limit = config.Limit
-	}
-	if request.Threshold <= 0 || request.Threshold >= 1 || request.Eva02Threshold <= 0 || request.Eva02Threshold >= 1 {
-		http.Error(w, "Camie and EVA02 thresholds must be greater than 0 and less than 1", http.StatusBadRequest)
-		return
-	}
-	if request.Limit < 1 || request.Limit > camietagger.MaxLimit {
-		http.Error(w, fmt.Sprintf("per-category limit must be between 1 and %d", camietagger.MaxLimit), http.StatusBadRequest)
+	if status, err := validateBulkImageTagRequest(&request, config); err != nil {
+		http.Error(w, err.Error(), status)
 		return
 	}
 
@@ -115,7 +83,7 @@ func (rs imageRoutes) BulkTagImages(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		failures := 0
+		failures, applied, empty := 0, 0, 0
 		for _, imageID := range ids {
 			if job.IsCancelled(ctx) {
 				return nil
@@ -135,6 +103,12 @@ func (rs imageRoutes) BulkTagImages(w http.ResponseWriter, r *http.Request) {
 			}
 			if tagErr == nil && len(predictions) > 0 {
 				_, tagErr = applyCamieMetadataV2(ctx, imageID, predictions, false)
+				if tagErr == nil {
+					applied++
+				}
+			} else if tagErr == nil {
+				// A filename that does not match the layout is not an error.
+				empty++
 			}
 			if tagErr != nil {
 				failures++
@@ -142,12 +116,57 @@ func (rs imageRoutes) BulkTagImages(w http.ResponseWriter, r *http.Request) {
 			}
 			progress.Increment()
 		}
+		logger.Infof("Image Tagging: tagged %d Image(s), %d had no matching metadata, %d failed", applied, empty, failures)
 		if failures > 0 {
 			return fmt.Errorf("bulk tagging failed for %d Image(s); see logs for Image IDs", failures)
 		}
 		return nil
 	}))
 	writeVisualSimilarityJSON(w, visualSimilarityJobResponse{JobID: jobID})
+}
+
+// validateBulkImageTagRequest checks an explicit bulk selection and fills
+// default model options. Local filename metadata needs only the one explicit
+// confirmation; model inference stays behind the bulk auto-tagging opt-in.
+func validateBulkImageTagRequest(request *bulkImageTagRequest, config camieConfig) (int, error) {
+	if !request.Confirmed {
+		return http.StatusBadRequest, fmt.Errorf("confirm this bulk tagging selection before starting")
+	}
+	if request.All || len(request.ImageIDs) < 2 || len(request.ImageIDs) > 20000 {
+		return http.StatusBadRequest, fmt.Errorf("select between 2 and 20000 explicit Image IDs for bulk tagging")
+	}
+	useModels := request.UseCamie || request.UseEva02
+	if !request.UseFilename && !useModels {
+		return http.StatusBadRequest, fmt.Errorf("choose filename metadata, Camie, EVA02 or a combination for bulk tagging")
+	}
+	if !request.ApplyCharacters && !request.ApplyArtist && !request.ApplyCopyright && !request.ApplyTags {
+		return http.StatusBadRequest, fmt.Errorf("select at least one Image metadata category")
+	}
+	if request.UseFilename && !config.FilenameEnabled {
+		return http.StatusConflict, fmt.Errorf("reading metadata from filenames is off in tagging settings")
+	}
+	if useModels && !config.BulkTaggingEnabled {
+		return http.StatusConflict, fmt.Errorf("bulk model tagging is disabled in tagging settings")
+	}
+	if !useModels {
+		return 0, nil
+	}
+	if request.Threshold == 0 {
+		request.Threshold = config.Threshold
+	}
+	if request.Eva02Threshold == 0 {
+		request.Eva02Threshold = config.Eva02Threshold
+	}
+	if request.Limit == 0 {
+		request.Limit = config.Limit
+	}
+	if request.Threshold <= 0 || request.Threshold >= 1 || request.Eva02Threshold <= 0 || request.Eva02Threshold >= 1 {
+		return http.StatusBadRequest, fmt.Errorf("camie and EVA02 thresholds must be greater than 0 and less than 1")
+	}
+	if request.Limit < 1 || request.Limit > camietagger.MaxLimit {
+		return http.StatusBadRequest, fmt.Errorf("per-category limit must be between 1 and %d", camietagger.MaxLimit)
+	}
+	return 0, nil
 }
 
 func inferBulkImageTags(
@@ -163,7 +182,7 @@ func inferBulkImageTags(
 	var evaTags []camietagger.Tag
 	var err error
 
-	if config.FilenameEnabled {
+	if request.UseFilename {
 		filenameTags, err = parseCamieFilename(path, config.FilenameLayout)
 		if err != nil {
 			return nil, fmt.Errorf("parsing local filename metadata: %w", err)

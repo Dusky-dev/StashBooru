@@ -9,6 +9,7 @@ export interface BulkReviewItem {
 
 export interface BulkTaggingConfig {
   bulkTaggingEnabled: boolean;
+  filenameEnabled: boolean;
   threshold: number;
   eva02Threshold: number;
   limit: number;
@@ -22,25 +23,48 @@ export interface BulkTaggingCategories {
 }
 
 export interface BulkTaggingSources {
+  useFilename: boolean;
   useCamie: boolean;
   useEva02: boolean;
 }
 
-export const defaultBulkTaggingSources: BulkTaggingSources = {
-  useCamie: true,
-  useEva02: true,
-};
+// Every allowed source starts checked. Local filename metadata needs only
+// the job confirmation; Camie and EVA02
+// stay behind the bulk model-tagging opt-in in tagging setup.
+export function availableBulkTaggingSources(
+  config: Pick<BulkTaggingConfig, "bulkTaggingEnabled" | "filenameEnabled">
+): BulkTaggingSources {
+  return {
+    useFilename: config.filenameEnabled,
+    useCamie: config.bulkTaggingEnabled,
+    useEva02: config.bulkTaggingEnabled,
+  };
+}
 
-export const MANUAL_BULK_WARNING_KEY =
-  "stashbooru:manual-bulk-tagging-warning-dismissed:v1";
+/** Keep only the sources the settings allow, so a stale choice is never sent. */
+export function allowedBulkTaggingSources(
+  sources: BulkTaggingSources,
+  config: Pick<BulkTaggingConfig, "bulkTaggingEnabled" | "filenameEnabled">
+): BulkTaggingSources {
+  const available = availableBulkTaggingSources(config);
+  return {
+    useFilename: sources.useFilename && available.useFilename,
+    useCamie: sources.useCamie && available.useCamie,
+    useEva02: sources.useEva02 && available.useEva02,
+  };
+}
 
-export function manualBulkWarningDismissed(storage?: Pick<Storage, "getItem">) {
-  try {
-    return storage?.getItem(MANUAL_BULK_WARNING_KEY) === "1";
-  } catch {
-    // Private browsing can block storage; fail safely by showing the warning.
-    return false;
-  }
+export type TaggingActionKind = "image" | "video" | "mixed";
+
+/** Name the tagging action after the media it will tag. */
+export function taggingActionKind(
+  items: readonly BulkReviewItem[],
+  imageKind: string
+): TaggingActionKind {
+  const images = items.filter((item) => item.kind === imageKind).length;
+  if (images === items.length) return "image";
+  if (images === 0) return "video";
+  return "mixed";
 }
 
 export const defaultBulkTaggingCategories: BulkTaggingCategories = {
@@ -82,7 +106,7 @@ export function bulkTaggingRequest(
     threshold: config.threshold,
     eva02Threshold: config.eva02Threshold,
     limit: config.limit,
-    ...sources,
+    ...allowedBulkTaggingSources(sources, config),
     ...categories,
     // Keep existing Artist links; never replace them as a bulk default.
     replaceArtist: false,
