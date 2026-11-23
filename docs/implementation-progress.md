@@ -1,6 +1,6 @@
 ## StashBooru 1.12.0: MD5 lookup and PixAI in Image Tagging jobs — 2026-11-23
 
-- Baseline: 1.11.0 (PR #423). Owner: bulk image tagging should start with
+- Baseline: `develop` `cd66333` (1.11.0). Owner: bulk image tagging should start with
   Camie and EVA02 off; it had no MD5 lookup (without burdening hosts) or PixAI.
 - Now: only filename metadata starts checked. **MD5 lookup** needs no model
   opt-in: sites asked one at a time in priority order, stop at first exact
@@ -17,7 +17,8 @@
 
 ## StashBooru 1.11.0: MD5 lookup sites and post links — 2026-11-23
 
-- Baseline: `develop` `90e4845` (1.10.0). Owner: MD5 lookup "only searches
+- Baseline: `develop` `90e4845` (1.10.0); PR #423, merged 2026-11-23 on green CI
+  (head `c48ddcb`). Owner: MD5 lookup "only searches
   specific sites and doesn't find a lot of images"; a match should add the
   post link as a URL.
 - Cause: lookup was hard-wired to five sites, with no credentials.
