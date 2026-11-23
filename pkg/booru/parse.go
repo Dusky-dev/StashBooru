@@ -244,8 +244,13 @@ func applyTagInfo(value json.RawMessage, post *Post) {
 			name = text(row["name"])
 		}
 		rawType := strings.ToLower(strings.TrimSpace(text(row["type"])))
-		if rawType == "metadata" {
+		// Accept the names Rule34 uses elsewhere: its sidebar's "metadata"
+		// and Gelbooru's "tag" for general tags; numbers map as type codes.
+		switch rawType {
+		case "metadata":
 			rawType = "meta"
+		case "tag":
+			rawType = "general"
 		}
 		if name == "" || len(rawType) > 32 {
 			continue

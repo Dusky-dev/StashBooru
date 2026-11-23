@@ -1555,8 +1555,8 @@
       "character": "Character",
       "md5": "MD5",
       "ext": "Type",
-      "setting": "Show what the filename layout reads",
-      "setting_description": "In an Image's details, list the Artist, Copyright and Character names the tagging filename layout reads from its file name."
+      "setting": "Show what the tagging filename layout reads",
+      "setting_description": "In an Image's details, list the Artist, Copyright and Character names that the filename layout in tagging setup reads from its file name."
     }
   },
   "media_info": {

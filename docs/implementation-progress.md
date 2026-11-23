@@ -13,7 +13,9 @@
 - Checks: `pkg/booru` and focused `internal/api` (integration tag) Go tests,
   `tsc`, Biome, UI unit tests (146), `image-details-panel.mjs` desktop+mobile.
 - Not verified: a live authenticated Rule34 `tag_info` response (the field is
-  documented on api.rule34.xxx; its row shape `tag`/`type` is assumed).
+  documented on api.rule34.xxx; its row shape `tag`/`type` and type words are
+  assumed; `tag`/`metadata`/numeric codes are accepted, unknown words stay
+  untyped and fall back to the old lookups).
 
 ## StashBooru 1.23.0: Twitter / X source — 2026-11-23
 

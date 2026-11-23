@@ -235,6 +235,18 @@ async function check(viewport, label) {
   }
   await show.click();
   await tabs.waitFor();
+  if (viewport.width >= 1200) {
+    // Keyboard focus moves between Hide and Details instead of being lost.
+    await page.waitForFunction(() =>
+      document.activeElement?.classList.contains("image-details-hide")
+    );
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(() =>
+      document.activeElement?.classList.contains("image-details-show")
+    );
+    await page.keyboard.press("Enter");
+    await tabs.waitFor();
+  }
 
   // A filename outside the layout shows no tokens.
   await page.goto(url + "/images/" + plain.id, { waitUntil: "networkidle" });

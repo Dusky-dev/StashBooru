@@ -69,6 +69,13 @@ export function useImageDetailsLayout() {
   return { width, setWidth, collapsed, setCollapsed };
 }
 
+// Hide and Details replace each other; keep keyboard focus on the one shown.
+function focusAfterRender(selector: string) {
+  requestAnimationFrame(() =>
+    document.querySelector<HTMLElement>(selector)?.focus()
+  );
+}
+
 /** The Hide details button at the end of the Details / Edit tab row. */
 export const ImageDetailsHideButton: React.FC<{
   setCollapsed: (collapsed: boolean) => void;
@@ -80,7 +87,10 @@ export const ImageDetailsHideButton: React.FC<{
       variant="secondary"
       size="sm"
       className="image-details-hide"
-      onClick={() => setCollapsed(true)}
+      onClick={() => {
+        setCollapsed(true);
+        focusAfterRender(".image-details-show");
+      }}
       aria-expanded
       aria-label={label}
       title={`${label} (,)`}
@@ -158,7 +168,10 @@ export const ImageDetailsDivider: React.FC<{
           variant="secondary"
           size="sm"
           className="image-details-show d-none d-xl-inline-flex"
-          onClick={() => setCollapsed(false)}
+          onClick={() => {
+            setCollapsed(false);
+            focusAfterRender(".image-details-hide");
+          }}
           aria-expanded={false}
           aria-label={label}
           title={`${label} (,)`}

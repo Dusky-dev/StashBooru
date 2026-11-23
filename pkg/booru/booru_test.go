@@ -380,7 +380,7 @@ func TestRule34TagInfoTypesPostTags(t *testing.T) {
 		}
 		return response(200, `[{"id":7,"md5":"abc","tags":"artist_a pikachu pokemon solo tagme",
 			"tag_info":[{"tag":"artist_a","count":3,"type":"artist"},{"tag":"pikachu","count":9,"type":"character"},
-			{"tag":"pokemon","count":9,"type":"copyright"},{"tag":"solo","count":9,"type":"general"},
+			{"tag":"pokemon","count":9,"type":"copyright"},{"tag":"solo","count":9,"type":"tag"},
 			{"tag":"tagme","count":1,"type":"metadata"}],"preview_url":"https://api-cdn.rule34.xxx/a.jpg"}]`), nil
 	})
 	got, err := client.Search(context.Background(), source, "md5:abc", 1, 1)
