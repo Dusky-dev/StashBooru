@@ -118,6 +118,8 @@ type bulkBooruLookup struct {
 	failures   map[string]int
 	results    map[string]bulkBooruResult
 	categories map[string]map[string]string
+	// uncategorized counts tags skipped because the site gave no category.
+	uncategorized int
 }
 
 func newBulkBooruLookup(providers []booruProvider) *bulkBooruLookup {
@@ -276,6 +278,7 @@ func (l *bulkBooruLookup) bulkBooruPredictions(ctx context.Context, provider boo
 		}
 		kept = append(kept, normalizeCamiePrediction(prediction))
 	}
+	l.uncategorized += skipped
 	if skipped > 0 {
 		logger.Debugf("Image Tagging: %s gave no category for %d tag(s) of post %s; they were not applied", provider.name, skipped, post.ID)
 	}

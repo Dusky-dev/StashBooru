@@ -105,12 +105,13 @@ type bulkImageTagSummary struct {
 	applied, empty, failures              int
 	booruMatched, booruMissing, booruSkip int
 	booruUnchecked, linksAdded            int
+	booruUncategorized                    int
 }
 
 func (s bulkImageTagSummary) log(useBooru bool) {
 	logger.Infof("Image Tagging: tagged %d Image(s), %d had no matching metadata, %d failed", s.applied, s.empty, s.failures)
 	if useBooru {
-		logger.Infof("Image Tagging: MD5 lookup matched %d Image(s) and added %d post link(s); %d not found, %d not checked because a site failed or rate limited, %d skipped because they already link to a chosen site", s.booruMatched, s.linksAdded, s.booruMissing, s.booruUnchecked, s.booruSkip)
+		logger.Infof("Image Tagging: MD5 lookup matched %d Image(s) and added %d post link(s); %d not found, %d not checked because a site failed or rate limited, %d skipped because they already link to a chosen site; %d matched tag(s) were not applied because the site gave no category", s.booruMatched, s.linksAdded, s.booruMissing, s.booruUnchecked, s.booruSkip, s.booruUncategorized)
 	}
 }
 
@@ -217,6 +218,9 @@ func (rs imageRoutes) BulkTagImages(w http.ResponseWriter, r *http.Request) {
 				logger.Warnf("bulk tagging: Image %d failed: %v", imageID, tagErr)
 			}
 			progress.Increment()
+		}
+		if lookup != nil {
+			summary.booruUncategorized = lookup.uncategorized
 		}
 		summary.log(request.UseBooru)
 		if summary.failures > 0 {

@@ -6,7 +6,9 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -149,10 +151,13 @@ func TestBooruHostGatesSpaceRequestsAndBlockRateLimitedHosts(t *testing.T) {
 }
 
 func TestBulkBooruLookupRemembersTagCategories(t *testing.T) {
+	var mu sync.Mutex
 	var asked []string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		name := r.URL.Query().Get("name")
+		mu.Lock()
 		asked = append(asked, name)
+		mu.Unlock()
 		category := "0"
 		if name == "hero" {
 			category = "4"
@@ -170,7 +175,11 @@ func TestBulkBooruLookupRemembersTagCategories(t *testing.T) {
 	if first["hero"] != "character" || second["hero"] != "character" {
 		t.Fatalf("categories: %v %v", first, second)
 	}
-	if strings.Join(asked, ",") != "hero,smile,blush" && strings.Join(asked, ",") != "smile,hero,blush" {
+	mu.Lock()
+	sort.Strings(asked)
+	got := strings.Join(asked, ",")
+	mu.Unlock()
+	if got != "blush,hero,smile" {
 		t.Fatalf("a tag seen earlier in the job must not be asked again: %v", asked)
 	}
 }
