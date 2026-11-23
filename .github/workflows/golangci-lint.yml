@@ -23,6 +23,13 @@ jobs:
 
       - name: Install SQLite CGO headers
         run: |
+          # Avoid the Azure mirror that can hang apt-get update (as in build.yml).
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            printf '%s\n' 'https://archive.ubuntu.com/ubuntu/' | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
+          fi
+          if [ -f /etc/apt/apt-security-mirrors.txt ]; then
+            printf '%s\n' 'https://security.ubuntu.com/ubuntu/' | sudo tee /etc/apt/apt-security-mirrors.txt > /dev/null
+          fi
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libsqlite3-dev
 

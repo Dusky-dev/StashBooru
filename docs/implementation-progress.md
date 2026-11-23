@@ -1,6 +1,30 @@
+## StashBooru 1.15.0: sort and filter labels, Copyright sidebar filter — 2026-11-23
+
+- Baseline: `develop` `2a29d84` (1.14.0). Owner: filters/sorts that don't
+  match their page or what they do (e.g. pHash sort that also uses EVA02).
+- Inventory (all list pages via `getFilterOptions`, labels after the overlay,
+  sorts vs `pkg/sqlite` sortOptions, criteria vs GraphQL filter inputs): every
+  sort value and criterion is accepted by the backend; mismatches were labels.
+- Now: Image similarity sort "Similarity (pHash or EVA02)", Video "Similarity
+  (pHash)" (value `perceptual_similarity` unchanged, so saved filters/URLs
+  keep working); pHash filter "Perceptual Hash (pHash)"; `scene_code` "Code"
+  (was "Artist Code") everywhere; Copyrights no longer list Created/Updated
+  At twice; Images and Videos sidebars get the Copyrights filter.
+- Kept as is (real fields on the Character edit page): Character body/career
+  filters and sorts. Not changed: Copyrights still have no filters beyond
+  this list (no backend filter type).
+- Also (owner: Zelda Image showed Voltron etc.): details merged every shown
+  Character's own Copyrights client-side (`55ed2f9`); now only effective
+  (direct + ancestor) Copyrights. `image-editor-save.mjs` asserts a
+  Character-only Copyright is absent: failed on old UI, passes both sizes.
+- Lint CI hung in `apt-get update`; ported `build.yml`'s mirror workaround.
+- Checks: `tsc`, Biome, UI unit tests; `tools-navigation.mjs`. Live-server
+  suites (`all-media`, `visual-stacks`) left to CI.
+
 ## StashBooru 1.14.0: duplicate detection settings, fewer false positives — 2026-11-23
 
-- Baseline: `develop` `62f7f26` (1.13.0 notes). Owner: make sure the
+- Baseline: `develop` `62f7f26` (1.13.0 notes); PR #427, merged 2026-11-23 on
+  green CI (head `4223d2a`). 1.13.0 released from `62f7f26`. Owner: make sure the
   one-person check has no false positives; add a setting with an option per
   detection mode.
 - Now: `duplicateDetection` {enabled, reversedNames, onePerson} in the

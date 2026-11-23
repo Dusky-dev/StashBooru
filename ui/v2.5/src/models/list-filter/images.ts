@@ -34,12 +34,13 @@ const sortByOptions = [
   "format",
   "date",
   "resolution",
-  "perceptual_similarity",
   "performer_age",
   ...MediaSortByOptions,
 ]
   .map(ListFilterOptions.createSortBy)
   .concat([
+    // Find similar ranks Images by pHash or by EVA02 embeddings.
+    { messageID: "visual_similarity", value: "perceptual_similarity" },
     {
       messageID: "files_size",
       value: "filesize",

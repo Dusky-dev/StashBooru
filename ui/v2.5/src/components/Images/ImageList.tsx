@@ -65,6 +65,7 @@ import cx from "classnames";
 import { SidebarStudiosFilter } from "../List/Filters/StudiosFilter";
 import { SidebarPerformersFilter } from "../List/Filters/PerformersFilter";
 import { SidebarTagsFilter } from "../List/Filters/TagsFilter";
+import { SidebarCopyrightsFilter } from "../List/Filters/CopyrightsFilter";
 import { SidebarRatingFilter } from "../List/Filters/RatingFilter";
 import { SidebarBooleanFilter } from "../List/Filters/BooleanFilter";
 import { Alert, Button } from "react-bootstrap";
@@ -460,6 +461,7 @@ const SidebarContent: React.FC<{
           setFilter={setFilter}
           filterHook={filterHook}
         />
+        <SidebarCopyrightsFilter filter={filter} setFilter={setFilter} />
         <SidebarRatingFilter filter={filter} setFilter={setFilter} />
         <SidebarFolderFilter
           text={<FormattedMessage id="folder" />}

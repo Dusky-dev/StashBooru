@@ -252,6 +252,20 @@ async function check(viewport, label) {
     "mutation($id: ID!, $ids: [ID!]!) {imageCopyrightsUpdate(image_id: $id, copyright_ids: $ids) {id}}",
     { id, ids: [copyright.id] }
   );
+  // A Character's own Copyright must not appear on the Image's details.
+  const characterOnly = (
+    await call(
+      page,
+      url,
+      'mutation {copyrightCreate(input: {name: "Character-only Copyright"}) {id}}'
+    )
+  ).copyrightCreate;
+  await call(
+    page,
+    url,
+    "mutation($id: ID!, $ids: [ID!]!) {performerCopyrightsUpdate(performer_id: $id, copyright_ids: $ids) {id}}",
+    { id: character.id, ids: [characterOnly.id] }
+  );
   const snapshot = async () =>
     (
       await call(
@@ -379,6 +393,18 @@ async function check(viewport, label) {
   const returnURL = page.url();
   // Exercise the native detail deep link; thumbnail/title clicks open the viewer.
   await page.goto(url + "/images/" + id, { waitUntil: "networkidle" });
+  const copyrightSection = page.locator(".booru-tag-section-copyright");
+  await copyrightSection
+    .locator(`a[href="/copyrights/${copyright.id}"]`)
+    .first()
+    .waitFor();
+  assert.equal(
+    await copyrightSection
+      .locator(`a[href="/copyrights/${characterOnly.id}"]`)
+      .count(),
+    0,
+    "a Character's Copyright must not be shown as the Image's"
+  );
   await open();
   await saveTitle("First save", false, true);
   await expandCustomFields();
