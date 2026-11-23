@@ -3080,7 +3080,7 @@ try {
     page.on("request", countIgnore);
     await page.keyboard.press("q");
     await page.keyboard.press("q");
-    for (let wait = 0; wait < 40 && ignoreWrites.length < 2; wait++)
+    for (let wait = 0; wait < 120 && ignoreWrites.length < 2; wait++)
       await page.waitForTimeout(50);
     page.off("request", countIgnore);
     assert.equal(ignoreWrites.length, 2, "both Q presses ignore a post");

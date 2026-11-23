@@ -307,6 +307,26 @@ function PostInspection({
   // review write. A press is dropped if the post changes meanwhile.
   const currentIdentity = useRef(identity);
   currentIdentity.current = identity;
+  // Q pressed again while the previous ignore is still moving to the next
+  // post is meant for that next post: carry it over once the post changes.
+  const lastIgnore = useRef(0);
+  const queuedIgnores = useRef(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs once per shown post; pressWhenReady reads refs.
+  useEffect(() => {
+    if (queuedIgnores.current < 1) return;
+    queuedIgnores.current -= 1;
+    lastIgnore.current = Date.now();
+    pressWhenReady(() => ignore.current);
+  }, [identity]);
+  function ignorePost() {
+    const button = ignore.current;
+    if (button && !button.disabled) {
+      lastIgnore.current = Date.now();
+      button.click();
+    } else if (Date.now() - lastIgnore.current < 3000) {
+      queuedIgnores.current += 1;
+    } else pressWhenReady(() => ignore.current);
+  }
   function pressWhenReady(
     button: () => HTMLButtonElement | null | undefined,
     tries = 60
@@ -387,7 +407,7 @@ function PostInspection({
         if (key === "ArrowRight") onNext?.();
         if (event.repeat) return;
         if (key === "e") downloadSelected();
-        if (key === "q") pressWhenReady(() => ignore.current);
+        if (key === "q") ignorePost();
       }}
     >
       <Modal.Header closeButton>
