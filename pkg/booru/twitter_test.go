@@ -2,6 +2,7 @@ package booru
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -137,7 +138,7 @@ func TestTwitterSearchAndErrors(t *testing.T) {
 	if got, err := client.CreatorIcon(ctx, s, "user:42"); err != nil || got != "https://pbs.twimg.com/profile_images/1/abc_400x400.jpg" {
 		t.Fatalf("icon %q %v", got, err)
 	}
-	if _, err := client.CreatorIcon(ctx, s, "user:43"); err != ErrNoCreatorPicture {
+	if _, err := client.CreatorIcon(ctx, s, "user:43"); !errors.Is(err, ErrNoCreatorPicture) {
 		t.Fatalf("default avatar: %v", err)
 	}
 	s.APIKey = ""
