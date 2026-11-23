@@ -1,6 +1,9 @@
 package api
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 func TestFilenameLayoutTokens(t *testing.T) {
 	layout := "[%artist%](%copyright%).%character%_%md5%.%ext%"
@@ -9,17 +12,17 @@ func TestFilenameLayoutTokens(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []filenameLayoutToken{
-		{"artist", "afrobull"},
-		{"copyright", "hyrule_warriors+the_legend_of_zelda"},
-		{"character", "link+linkle"},
-		{"md5", "0123456789abcdef0123456789abcdef"},
-		{"ext", "png"},
+		{"artist", "afrobull", []string{"afrobull"}},
+		{"copyright", "hyrule_warriors+the_legend_of_zelda", []string{"hyrule_warriors", "the_legend_of_zelda"}},
+		{"character", "link+linkle", []string{"link", "linkle"}},
+		{"md5", "0123456789abcdef0123456789abcdef", []string{"0123456789abcdef0123456789abcdef"}},
+		{"ext", "png", []string{"png"}},
 	}
 	if len(tokens) != len(want) {
 		t.Fatalf("tokens: %+v", tokens)
 	}
 	for i := range want {
-		if tokens[i] != want[i] {
+		if tokens[i].Token != want[i].Token || tokens[i].Value != want[i].Value || !slices.Equal(tokens[i].Values, want[i].Values) {
 			t.Fatalf("token %d: %+v, want %+v", i, tokens[i], want[i])
 		}
 	}

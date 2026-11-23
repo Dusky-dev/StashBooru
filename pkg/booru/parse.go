@@ -222,7 +222,51 @@ func parsePost(source Source, raw object) (Post, error) {
 	if err := parseTags(raw, &post); err != nil {
 		return Post{}, err
 	}
+	applyTagInfo(raw["tag_info"], &post)
 	return post, nil
+}
+
+// applyTagInfo types a post's flat tags from Rule34's documented
+// fields=tag_info list. Only tags still "unknown" change, and only to a
+// category the list names for that exact tag.
+func applyTagInfo(value json.RawMessage, post *Post) {
+	if len(value) == 0 || string(value) == "null" {
+		return
+	}
+	var rows []object
+	if json.Unmarshal(value, &rows) != nil || len(rows) > 2000 {
+		return
+	}
+	types := make(map[string]string, len(rows))
+	for _, row := range rows {
+		name := text(row["tag"])
+		if name == "" {
+			name = text(row["name"])
+		}
+		rawType := strings.ToLower(strings.TrimSpace(text(row["type"])))
+		// Accept the names Rule34 uses elsewhere: its sidebar's "metadata"
+		// and Gelbooru's "tag" for general tags; numbers map as type codes.
+		switch rawType {
+		case "metadata":
+			rawType = "meta"
+		case "tag":
+			rawType = "general"
+		}
+		if name == "" || len(rawType) > 32 {
+			continue
+		}
+		if category := suggestionCategory("gelbooru", rawType, name); category != "unknown" {
+			types[strings.ToLower(name)] = category
+		}
+	}
+	for i := range post.Tags {
+		if post.Tags[i].Category != "unknown" {
+			continue
+		}
+		if category := types[strings.ToLower(post.Tags[i].Name)]; category != "" {
+			post.Tags[i].Category = category
+		}
+	}
 }
 
 func parseTags(raw object, post *Post) error {

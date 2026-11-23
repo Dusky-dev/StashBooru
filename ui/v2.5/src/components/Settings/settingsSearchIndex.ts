@@ -195,7 +195,7 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
     label: "Image titles",
     anchor: "image-filename-display",
     keywords:
-      "filename filenames character copyright artist formatted fallback hide",
+      "filename filenames character copyright artist formatted fallback hide tokens layout details panel",
   },
   {
     tab: "interface",

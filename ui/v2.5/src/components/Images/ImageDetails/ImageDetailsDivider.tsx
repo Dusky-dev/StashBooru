@@ -69,10 +69,42 @@ export function useImageDetailsLayout() {
   return { width, setWidth, collapsed, setCollapsed };
 }
 
+// Hide and Details replace each other; keep keyboard focus on the one shown.
+function focusAfterRender(selector: string) {
+  requestAnimationFrame(() =>
+    document.querySelector<HTMLElement>(selector)?.focus()
+  );
+}
+
+/** The Hide details button at the end of the Details / Edit tab row. */
+export const ImageDetailsHideButton: React.FC<{
+  setCollapsed: (collapsed: boolean) => void;
+}> = ({ setCollapsed }) => {
+  const intl = useIntl();
+  const label = intl.formatMessage({ id: "image_details.hide" });
+  return (
+    <Button
+      variant="secondary"
+      size="sm"
+      className="image-details-hide"
+      onClick={() => {
+        setCollapsed(true);
+        focusAfterRender(".image-details-show");
+      }}
+      aria-expanded
+      aria-label={label}
+      title={`${label} (,)`}
+    >
+      <Icon icon={faChevronLeft} />
+    </Button>
+  );
+};
+
 /**
- * Between the details panel and the Image on wide screens: drag (or use the
- * arrow keys) to resize the panel, or use the button to hide it. On small
- * screens, where the panel sits below the Image, only hiding is offered.
+ * Between the details panel and the Image. On wide screens: a handle to drag
+ * (or move with the arrow keys) to resize the panel; the panel hides from its
+ * tab row, and a Details button brings it back. On small screens, where the
+ * panel sits below the Image, a full-width button hides and shows it.
  */
 export const ImageDetailsDivider: React.FC<{
   width: number;
@@ -83,32 +115,19 @@ export const ImageDetailsDivider: React.FC<{
 }> = ({ width, setWidth, collapsed, setCollapsed, panelRef }) => {
   const intl = useIntl();
   const drag = useRef<{ start: number; width: number }>();
+  const [dragging, setDragging] = useState(false);
   const label = intl.formatMessage({
     id: collapsed ? "image_details.show" : "image_details.hide",
   });
-  const toggle = (
-    <Button
-      variant="minimal"
-      className="image-details-toggle"
-      onClick={() => setCollapsed(!collapsed)}
-      aria-expanded={!collapsed}
-      aria-label={label}
-      title={`${label} (,)`}
-    >
-      <span className="d-none d-xl-inline">
-        <Icon icon={collapsed ? faChevronRight : faChevronLeft} fixedWidth />
-      </span>
-      <span className="d-xl-none">
-        <Icon icon={collapsed ? faChevronDown : faChevronUp} fixedWidth />{" "}
-        {label}
-      </span>
-    </Button>
-  );
+  const stop = () => {
+    drag.current = undefined;
+    setDragging(false);
+  };
   return (
-    <div className="image-details-divider">
+    <div className={`image-details-divider${collapsed ? " collapsed" : ""}`}>
       {!collapsed && (
         <div
-          className="image-details-resize d-none d-xl-block"
+          className={`image-details-resize d-none d-xl-block${dragging ? " dragging" : ""}`}
           role="separator"
           aria-orientation="vertical"
           aria-label={intl.formatMessage({ id: "image_details.resize" })}
@@ -123,17 +142,15 @@ export const ImageDetailsDivider: React.FC<{
               start: event.clientX,
               width: panelRef.current?.getBoundingClientRect().width ?? width,
             };
+            setDragging(true);
           }}
           onPointerMove={(event) => {
             if (!drag.current) return;
             setWidth(drag.current.width + event.clientX - drag.current.start);
           }}
-          onPointerUp={() => {
-            drag.current = undefined;
-          }}
-          onPointerCancel={() => {
-            drag.current = undefined;
-          }}
+          onPointerUp={stop}
+          onPointerCancel={stop}
+          onLostPointerCapture={stop}
           onDoubleClick={() => setWidth(defaultDetailsWidth)}
           onKeyDown={(event) => {
             const step = event.shiftKey ? 80 : 20;
@@ -146,7 +163,34 @@ export const ImageDetailsDivider: React.FC<{
           }}
         />
       )}
-      {toggle}
+      {collapsed && (
+        <Button
+          variant="secondary"
+          size="sm"
+          className="image-details-show d-none d-xl-inline-flex"
+          onClick={() => {
+            setCollapsed(false);
+            focusAfterRender(".image-details-hide");
+          }}
+          aria-expanded={false}
+          aria-label={label}
+          title={`${label} (,)`}
+        >
+          <Icon icon={faChevronRight} />
+          <span>{intl.formatMessage({ id: "image_details.show_short" })}</span>
+        </Button>
+      )}
+      <Button
+        variant="minimal"
+        className="image-details-toggle d-xl-none"
+        onClick={() => setCollapsed(!collapsed)}
+        aria-expanded={!collapsed}
+        aria-label={label}
+        title={`${label} (,)`}
+      >
+        <Icon icon={collapsed ? faChevronDown : faChevronUp} fixedWidth />{" "}
+        {label}
+      </Button>
     </div>
   );
 };

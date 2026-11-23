@@ -369,3 +369,33 @@ func TestRule34AutocompleteAndHTTPDenial(t *testing.T) {
 		t.Fatalf("HTTP 403 lacks safe Rule34 explanation: %v", err)
 	}
 }
+
+func TestRule34TagInfoTypesPostTags(t *testing.T) {
+	source := Source{ID: "rule34", Name: "Rule34", Engine: "gelbooru", URL: "https://rule34.xxx", APIKey: "k", UserID: "1"}
+	calls := 0
+	client := testClient(func(r *http.Request) (*http.Response, error) {
+		calls++
+		if r.URL.Query().Get("s") != "post" || r.URL.Query().Get("fields") != "tag_info" {
+			t.Fatalf("unexpected request %s", r.URL)
+		}
+		return response(200, `[{"id":7,"md5":"abc","tags":"artist_a pikachu pokemon solo tagme",
+			"tag_info":[{"tag":"artist_a","count":3,"type":"artist"},{"tag":"pikachu","count":9,"type":"character"},
+			{"tag":"pokemon","count":9,"type":"copyright"},{"tag":"solo","count":9,"type":"tag"},
+			{"tag":"tagme","count":1,"type":"metadata"}],"preview_url":"https://api-cdn.rule34.xxx/a.jpg"}]`), nil
+	})
+	got, err := client.Search(context.Background(), source, "md5:abc", 1, 1)
+	if err != nil || len(got.Posts) != 1 {
+		t.Fatalf("search failed: %v", err)
+	}
+	want := map[string]string{"artist_a": "artist", "pikachu": "character", "pokemon": "copyright", "solo": "general", "tagme": "meta"}
+	for _, tag := range got.Posts[0].Tags {
+		if want[tag.Name] != tag.Category {
+			t.Fatalf("%s typed %q, want %q", tag.Name, tag.Category, want[tag.Name])
+		}
+	}
+	// Typed tags need no further tag lookups.
+	client.CategorizeRule34Tags(context.Background(), source, got.Posts)
+	if calls != 1 {
+		t.Fatalf("typed tags triggered %d extra request(s)", calls-1)
+	}
+}

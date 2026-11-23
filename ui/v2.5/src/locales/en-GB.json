@@ -1546,7 +1546,18 @@
   "image_details": {
     "hide": "Hide details",
     "show": "Show details",
-    "resize": "Resize details panel"
+    "show_short": "Details",
+    "resize": "Resize details panel",
+    "filename_tokens": {
+      "heading": "From filename",
+      "artist": "Artist",
+      "copyright": "Copyright",
+      "character": "Character",
+      "md5": "MD5",
+      "ext": "Type",
+      "setting": "Show what the tagging filename layout reads",
+      "setting_description": "In an Image's details, list the Artist, Copyright and Character names that the filename layout in tagging setup reads from its file name."
+    }
   },
   "media_info": {
     "audio_codec": "Audio Codec",

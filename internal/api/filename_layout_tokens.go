@@ -11,6 +11,9 @@ import (
 type filenameLayoutToken struct {
 	Token string `json:"token"`
 	Value string `json:"value"`
+	// Values are the names the filename tagging source reads from Value:
+	// Artist, Copyright and Character values joined by "+" are split.
+	Values []string `json:"values"`
 }
 
 type filenameLayoutTokensResponse struct {
@@ -34,7 +37,8 @@ func filenameLayoutTokens(path, layout string) ([]filenameLayoutToken, error) {
 	for index := 1; index < len(match); index++ {
 		for token, group := range compiled.groups {
 			if group == index {
-				tokens = append(tokens, filenameLayoutToken{Token: token, Value: strings.TrimSpace(match[index])})
+				value := strings.TrimSpace(match[index])
+				tokens = append(tokens, filenameLayoutToken{Token: token, Value: value, Values: splitCamieFilenameValue(token, value)})
 			}
 		}
 	}

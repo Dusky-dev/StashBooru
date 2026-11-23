@@ -11,6 +11,7 @@ import TextUtils from "src/utils/text";
 import { TextField, URLField, URLsField } from "src/utils/field";
 import { FileSize } from "src/components/Shared/FileSize";
 import NavUtils from "src/utils/navigation";
+import { useConfigurationContext } from "src/hooks/Config";
 
 interface IFileInfoPanelProps {
   file: GQL.ImageFileDataFragment | GQL.VideoFileDataFragment;
@@ -25,15 +26,32 @@ interface IFileInfoPanelProps {
 interface FilenameToken {
   token: string;
   value: string;
+  values?: string[];
 }
 
-// The tagging filename layout's tokens as read from the primary file's name,
-// by the same parser as the filename tagging source. Nothing when it does not
-// match the layout.
+const tokenLabels: Record<string, string> = {
+  artist: "image_details.filename_tokens.artist",
+  copyright: "image_details.filename_tokens.copyright",
+  character: "image_details.filename_tokens.character",
+  md5: "image_details.filename_tokens.md5",
+  ext: "image_details.filename_tokens.ext",
+};
+
+// Names as the filename tagging source reads them: underscores are spaces.
+function displayName(token: string, value: string) {
+  if (token === "ext") return value.toUpperCase();
+  if (token === "md5") return value;
+  return value.replace(/_/g, " ");
+}
+
+// What the tagging filename layout reads from the primary file's name, by
+// the same parser as the filename tagging source: one chip per name. Nothing
+// when the name does not match the layout.
 const FilenameTokens: React.FC<{ imageId: string; path: string }> = ({
   imageId,
   path,
 }) => {
+  const intl = useIntl();
   const [tokens, setTokens] = useState<FilenameToken[]>([]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: a renamed or moved file is read again.
   useEffect(() => {
@@ -51,14 +69,34 @@ const FilenameTokens: React.FC<{ imageId: string; path: string }> = ({
       .catch(() => {});
     return () => controller.abort();
   }, [imageId, path]);
+  if (tokens.length === 0) return null;
   return (
     <>
-      {tokens.map(({ token, value }) => (
-        <React.Fragment key={token}>
-          <dt className="filename-token-name">%{token}%</dt>
-          <dd className="filename-token-value">{value}</dd>
-        </React.Fragment>
-      ))}
+      <dt>
+        <FormattedMessage id="image_details.filename_tokens.heading" />:
+      </dt>
+      <dd className="filename-tokens">
+        {tokens.map(({ token, value, values }) => (
+          <div className="filename-token" key={token}>
+            <span className="filename-token-name">
+              {tokenLabels[token]
+                ? intl.formatMessage({ id: tokenLabels[token] })
+                : token}
+            </span>
+            <span className="filename-token-values">
+              {(values?.length ? values : [value]).map((item) => (
+                <span
+                  className={`filename-token-value filename-token-${token}`}
+                  key={item}
+                  title={item}
+                >
+                  {displayName(token, item)}
+                </span>
+              ))}
+            </span>
+          </div>
+        ))}
+      </dd>
     </>
   );
 };
@@ -67,6 +105,8 @@ const FileInfoPanel: React.FC<IFileInfoPanelProps> = (
   props: IFileInfoPanelProps
 ) => {
   const intl = useIntl();
+  const { configuration } = useConfigurationContext();
+  const showTokens = configuration?.ui?.showImageFilenameTokens ?? false;
   const checksum = props.file.fingerprints.find((f) => f.type === "md5");
   const phash = props.file.fingerprints.find((f) => f.type === "phash");
 
@@ -81,6 +121,12 @@ const FileInfoPanel: React.FC<IFileInfoPanelProps> = (
             </dd>
           </>
         )}
+        <TextField id="path">
+          <span className="d-flex align-items-center">
+            <span className="image-file-path">{props.file.path}</span>
+            <RevealInFilesystemButton fileId={props.file.id} />
+          </span>
+        </TextField>
         <TextField id="media_info.md5" value={checksum?.value} />
         <URLField
           id="media_info.phash"
@@ -90,15 +136,9 @@ const FileInfoPanel: React.FC<IFileInfoPanelProps> = (
           target="_self"
           internal
         />
-        {props.image && (props.primary || !props.ofMany) && (
+        {showTokens && props.image && (props.primary || !props.ofMany) && (
           <FilenameTokens imageId={props.image.id} path={props.file.path} />
         )}
-        <TextField id="path">
-          <span className="d-flex align-items-center">
-            <span className="image-file-path">{props.file.path}</span>
-            <RevealInFilesystemButton fileId={props.file.id} />
-          </span>
-        </TextField>
         <TextField id="filesize">
           <span className="text-truncate">
             <FileSize size={props.file.size} />

@@ -102,15 +102,33 @@ async function check(viewport, label) {
   const plain = images.find((image) => image !== tagged);
 
   await page.goto(url + "/images/" + tagged.id, { waitUntil: "networkidle" });
-  // Tokens from the default layout appear with the file details.
+  // The path leads the file details; filename tokens are off by default.
+  await page.locator(".image-file-info dt").first().waitFor();
+  assert.equal(
+    (await page.locator(".image-file-info dt").first().innerText()).trim(),
+    "Path:"
+  );
+  assert.ok(
+    (await page.locator(".image-file-path").innerText()).endsWith(name),
+    "the media path is shown"
+  );
+  assert.equal(await page.locator(".filename-token").count(), 0);
+  await call(
+    page,
+    url,
+    'mutation { configureUISetting(key: "showImageFilenameTokens", value: true) }'
+  );
+  await page.reload({ waitUntil: "networkidle" });
+  // With the setting on: one row per token, one chip per name as the
+  // filename tagging source reads it.
   const tokens = page.locator(".image-file-info .filename-token-name");
   await tokens.first().waitFor();
   assert.deepEqual(await tokens.allInnerTexts(), [
-    "%artist%",
-    "%copyright%",
-    "%character%",
-    "%md5%",
-    "%ext%",
+    "Artist",
+    "Copyright",
+    "Character",
+    "MD5",
+    "Type",
   ]);
   assert.deepEqual(
     await page
@@ -118,10 +136,12 @@ async function check(viewport, label) {
       .allInnerTexts(),
     [
       "afrobull",
-      "hyrule_warriors+the_legend_of_zelda",
-      "link+linkle",
+      "hyrule warriors",
+      "the legend of zelda",
+      "link",
+      "linkle",
       "0123456789abcdef0123456789abcdef",
-      "png",
+      "PNG",
     ]
   );
   // Long values wrap instead of being cut off.
@@ -140,7 +160,6 @@ async function check(viewport, label) {
   });
 
   const tabs = page.locator(".image-tabs");
-  const toggle = page.locator(".image-details-toggle");
   const separator = page.getByRole("separator", {
     name: "Resize details panel",
   });
@@ -151,11 +170,23 @@ async function check(viewport, label) {
     await page.keyboard.press("Shift+ArrowRight");
     const wider = (await tabs.boundingBox()).width;
     assert.ok(wider >= before + 95, `resized from ${before} to ${wider}`);
+    await separator.blur();
     const box = await separator.boundingBox();
     await page.mouse.move(box.x + box.width / 2, box.y + 40);
     await page.mouse.down();
     await page.mouse.move(box.x + box.width / 2 - 60, box.y + 40, {
       steps: 4,
+    });
+    // Dragging does not tint the strip or select text.
+    assert.equal(
+      await separator.evaluate(
+        (node) => getComputedStyle(node).backgroundColor
+      ),
+      "rgba(0, 0, 0, 0)"
+    );
+    assert.equal(await page.evaluate(() => String(getSelection())), "");
+    await page.screenshot({
+      path: join(artifacts, `image-details-${label}-dragging.png`),
     });
     await page.mouse.up();
     const dragged = (await tabs.boundingBox()).width;
@@ -168,18 +199,54 @@ async function check(viewport, label) {
       Math.abs((await tabs.boundingBox()).width - dragged) <= 2,
       "the width is remembered"
     );
+    // Hide sits at the end of the Details / Edit tab row.
+    const hide = page.getByRole("button", { name: "Hide details" });
+    const hideBox = await hide.boundingBox();
+    const navBox = await page.locator(".image-tabs .nav-tabs").boundingBox();
+    assert.ok(hideBox.width >= 24 && hideBox.height >= 24, "a usable size");
+    assert.ok(
+      hideBox.y >= navBox.y - 1 &&
+        hideBox.y + hideBox.height <= navBox.y + navBox.height + 1,
+      "in the tab row"
+    );
+    await hide.click();
   } else {
     assert.equal(await separator.isVisible(), false, "no resize on mobile");
+    await page.locator(".image-details-toggle").click();
   }
-  await toggle.click();
   assert.equal(await tabs.isVisible(), false, "Hide details hides the panel");
   await page.screenshot({
     path: join(artifacts, `image-details-${label}-hidden.png`),
   });
   await page.reload({ waitUntil: "networkidle" });
   assert.equal(await tabs.isVisible(), false, "hidden stays hidden");
-  await page.getByRole("button", { name: "Show details" }).click();
+  const show = page.getByRole("button", { name: "Show details" });
+  const showBox = await show.boundingBox();
+  assert.ok(showBox.width >= 24 && showBox.height >= 24, "a usable size");
+  if (viewport.width >= 1200) {
+    // A compact button beside the Image, not a bar across the page.
+    const image = await page.locator(".image-container").boundingBox();
+    assert.ok(showBox.width <= 160, `Show details is ${showBox.width}px wide`);
+    assert.ok(
+      image.x >= showBox.x + showBox.width - 1,
+      "the Image is beside it"
+    );
+    assert.ok(image.y <= showBox.y + 40, "the Image is not pushed below it");
+  }
+  await show.click();
   await tabs.waitFor();
+  if (viewport.width >= 1200) {
+    // Keyboard focus moves between Hide and Details instead of being lost.
+    await page.waitForFunction(() =>
+      document.activeElement?.classList.contains("image-details-hide")
+    );
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(() =>
+      document.activeElement?.classList.contains("image-details-show")
+    );
+    await page.keyboard.press("Enter");
+    await tabs.waitFor();
+  }
 
   // A filename outside the layout shows no tokens.
   await page.goto(url + "/images/" + plain.id, { waitUntil: "networkidle" });
@@ -193,7 +260,7 @@ async function check(viewport, label) {
   await instance.stop();
   instance = undefined;
   console.log(
-    `Image details ${label}: filename tokens, no cut-off values, resize, hide and remembered layout passed.`
+    `Image details ${label}: path first, filename tokens setting, no cut-off values, resize without tint, hide and remembered layout passed.`
   );
 }
 try {
