@@ -25,10 +25,12 @@ import v1170 from "./1.17.0.md";
 import v1180 from "./1.18.0.md";
 import v1190 from "./1.19.0.md";
 import v1200 from "./1.20.0.md";
+import v1210 from "./1.21.0.md";
 
 // Newest first. Every user-visible change bumps
 // internal/build/stashbooru-version.txt and adds an entry here.
 export const stashBooruChangelog: IStashBooruChange[] = [
+  { version: "1.21.0", date: "2026-11-23", content: v1210 },
   { version: "1.20.0", date: "2026-11-23", content: v1200 },
   { version: "1.19.0", date: "2026-11-23", content: v1190 },
   { version: "1.18.0", date: "2026-11-23", content: v1180 },

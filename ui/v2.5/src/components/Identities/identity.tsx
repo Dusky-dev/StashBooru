@@ -11,6 +11,7 @@ import {
 } from "./IdentityConnectionsDialog";
 import { IdentitySiteLink } from "./IdentitySiteLink";
 import { IdentitySplitRecords } from "./IdentitySplitRecords";
+import { UseCreatorPicture, hasCreatorPicture } from "./UseCreatorPicture";
 import {
   type IdentityKind,
   type IdentityPage,
@@ -130,10 +131,13 @@ export function IdentitySources({
   kind,
   entityID,
   entityName,
+  hasImage,
 }: {
   kind: IdentityKind;
   entityID: string;
   entityName: string;
+  /** Artist pages only: whether the Artist already has an image. */
+  hasImage?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [manage, setManage] = useState(false);
@@ -182,6 +186,15 @@ export function IdentitySources({
               {page?.items.map((item) => (
                 <li key={item.id}>
                   <IdentitySiteLink row={item} /> <IdentityName row={item} />{" "}
+                  {kind === "artist" &&
+                    hasImage !== undefined &&
+                    hasCreatorPicture(item) && (
+                      <UseCreatorPicture
+                        row={item}
+                        artistID={entityID}
+                        hasImage={hasImage}
+                      />
+                    )}{" "}
                   {canFollowIdentity(item) ? (
                     <FollowAction
                       instance={item.instance}

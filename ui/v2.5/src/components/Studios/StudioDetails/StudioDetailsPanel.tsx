@@ -94,6 +94,7 @@ export const StudioDetailsPanel: React.FC<IStudioDetailsPanel> = PatchComponent(
           kind="artist"
           entityID={studio.id}
           entityName={studio.name}
+          hasImage={!studio.image_path?.includes("default=true")}
         />
       </div>
     );
