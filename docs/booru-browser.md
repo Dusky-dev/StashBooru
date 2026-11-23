@@ -294,7 +294,7 @@ Pixiv/archive APIs use fixed upstream blocks of 30/50 posts. The browser slices
 aligned blocks for the selected page size without skipping records. A gallery is
 one card: choose **Media file** in inspection to preview/download a particular
 attachment. Moving to another post resets the selector to its primary file while
-keeping keyboard navigation active. Keyboard Up downloads the selected attachment. Ignore applies
+keeping keyboard navigation active. Keyboard E downloads the selected attachment. Ignore applies
 to the post; alternate files do not inherit first-file MD5 evidence. Up to 200
 additional attachments per archive post are accepted, and pages containing
 more than 256 total media files are no longer rejected. The preview inspector
@@ -357,11 +357,13 @@ Pawchive filter.
 
 Inspect a post to use **Previous/Next preview** or the Left/Right arrow keys within
 that source's currently loaded page. Ignored posts are skipped unless shown;
-navigation stops at page boundaries. Up arrow starts the same guarded default
-library download; Down arrow marks the current post ignored. Keys do not repeat
-download/ignore writes when held, and text fields, nested folder dialogs and native
-video controls keep their normal keyboard behavior. Ignoring does not close the
-inspector; the next navigation skips hidden ignored posts.
+navigation stops at page boundaries. Up/Down move the highlighted media file
+(Shift+Up/Down still work). **E** starts the same guarded default library
+download for the highlighted file; **Q** marks the current post ignored and
+moves straight to the next post (or the previous one, or closes at the end),
+so ignored posts disappear at once. Keys do not repeat download/ignore writes
+when held, and text fields, nested folder dialogs and native video controls
+keep their normal keyboard behavior.
 
 For MP4/WebM videos and GIF/APNG images, **Play animated preview** explicitly loads
 the original through the protected preview route, up to 24 MiB. Video starts muted
@@ -399,14 +401,17 @@ can be saved individually using **Download to Stash** or **Download to…**. Eac
 The post inspector displays every supported file in a **vertical media stream**,
 rather than the old `Media file` dropdown (`btn-secondary form-control`).
 Each media entry has its own preview, format, resolution, hash when supplied,
-and download controls. As you scroll the modal, more entries are mounted
+and download controls. Only one entry is expanded at a time (the first when
+the post opens); the others are one-line rows that mount no preview until
+chosen, and moving the highlight expands the next one. The convert toggle is
+the icon button beside **Download to…**. As you scroll the modal, more entries are mounted
 three at a time; previews stay lazy and animated/video playback remains
 on-demand. The stream stops at the supported media files the provider already
 returned; it does not crawl additional posts or invent unavailable attachments.
 
-**Up arrow** downloads the focused attachment even if focusing it scrolls
+**E** downloads the focused attachment even if focusing it scrolls
 while part of the previous file remains visible. With focus elsewhere in the
-preview, Up uses the file nearest its top. The other existing post-navigation/
+preview, E uses the file nearest its top. The other existing post-navigation/
 ignore shortcuts are unchanged. Switching posts
 resets to the first media file and releases preview playback. The media list
 uses the modal's scroll area on desktop and mobile, with metadata/tags below

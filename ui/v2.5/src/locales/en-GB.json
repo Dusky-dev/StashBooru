@@ -2050,7 +2050,7 @@
   "booru_browser": {
     "nav": "Booru",
     "title": "Booru browser",
-    "inspection_keys": "← / → Browse · Shift+↑ / Shift+↓ Select media · ↑ Download selected · ↓ Ignore",
+    "inspection_keys": "← / → Browse posts · ↑ / ↓ Select media · E Download selected · Q Ignore post",
     "archive_toggle": "{format} archive · {count, plural, one {# media file} other {# media files}}",
     "media_toggle": "{count, plural, one {# media file} other {# media files}}"
   },

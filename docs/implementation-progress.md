@@ -1,3 +1,25 @@
+## StashBooru 1.20.0: Booru preview keys, one open file, highlight — 2026-11-23
+
+- Baseline: `develop` `f327c1a` (1.19.0, Dusky-dev/StashBooru#433). Owner: E to
+  download, Q to ignore (hiding at once), arrows to navigate; files should
+  collapse, all but one by default; better highlight; convert as an icon.
+- Now: ↑/↓ (Shift optional) move the highlight, ←/→ change post, E downloads,
+  Q ignores the post and moves to the next (prev, or closes). E/Q keydown is
+  prevented so page shortcuts never see them. One post file is expanded
+  (`openAsset`, set only by explicit choices, not scroll tracking); collapsed
+  rows mount no media; the first file's MD5/library evidence stays visible.
+  Download controls stay mounted (hidden) so collapsing never cancels or
+  loses a download; E/Q wait up to 3 s for a disabled button (dropped if the
+  post changes), so ↓-then-E and Q-Q are not lost.
+  Highlight: tinted background + accent bar. Convert is a `role=switch` icon
+  button beside Download to….
+- Reading: Ignore stays per post (no per-file ignore).
+- "Media files don't collapse": the 12-file group toggle already worked in
+  the suite; the change is per-file collapse.
+- Checks: `booru-browser.mjs` desktop and mobile, twice (new collapse, E-then-↓
+  without cancel, ↓-then-E, Q-Q steps),
+  `tsc`, Biome, stylelint, UI unit tests; before/after screenshots.
+
 ## StashBooru 1.19.0: Image details panel, selection after tagging — 2026-11-23
 
 - Baseline: `develop` `5270e8c` (1.18.0, Dusky-dev/StashBooru#432). Owner: dismiss the

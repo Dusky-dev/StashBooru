@@ -1,5 +1,5 @@
 import { type Ref, useEffect, useRef, useState } from "react";
-import { Alert, Button, Form } from "react-bootstrap";
+import { Alert, Button } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import { type BooruPost, readBooruResponse } from "./browser";
 import {
@@ -8,6 +8,7 @@ import {
   faRotateRight,
   faXmark,
   faArrowUpRightFromSquare,
+  faArrowRightArrowLeft,
 } from "@fortawesome/free-solid-svg-icons";
 import { Icon } from "../Shared/Icon";
 import { FolderPicker } from "./FolderPicker";
@@ -246,16 +247,6 @@ export function BooruDownload({
           Open the downloaded SWF in a Flash emulator such as Ruffle.
         </p>
       )}
-      {!compact && !flash && (
-        <Form.Check
-          type="switch"
-          id={`booru-convert-${post.sourceID}-${post.id}${archiveFile === undefined ? "" : `-${archiveFile}`}`}
-          label="Convert using Media converter defaults"
-          checked={convert}
-          disabled={busy || running || !ready}
-          onChange={(event) => setConvert(event.currentTarget.checked)}
-        />
-      )}
       {error && <Alert variant="warning">{error}</Alert>}
       {state?.error && <Alert variant="warning">{state.error}</Alert>}
       <Button
@@ -318,6 +309,25 @@ export function BooruDownload({
           onClick={() => setPicker(true)}
         >
           {compact ? <Icon icon={faFolderOpen} /> : "Download to…"}
+        </Button>
+      )}
+      {!compact && !flash && (
+        <Button
+          size="sm"
+          role="switch"
+          aria-checked={convert}
+          variant={convert ? "primary" : "secondary"}
+          className="ml-2 booru-convert-toggle"
+          aria-label="Convert using Media converter defaults"
+          title={
+            convert
+              ? "Converting with Media converter defaults (click to save the original)"
+              : "Saving the original (click to convert with Media converter defaults)"
+          }
+          disabled={busy || running || !ready}
+          onClick={() => setConvert(!convert)}
+        >
+          <Icon icon={faArrowRightArrowLeft} />
         </Button>
       )}
       {running && (

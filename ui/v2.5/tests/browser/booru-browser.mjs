@@ -2438,6 +2438,24 @@ try {
     );
     const mediaSections = attachmentPreview.locator(".booru-inspection-asset");
     assert.equal(await mediaSections.count(), 2);
+    // Only one file is expanded at a time; the others are one-line rows.
+    assert.equal(
+      await mediaSections.nth(1).getAttribute("aria-expanded"),
+      "false"
+    );
+    assert.equal(await mediaSections.nth(1).locator("img").count(), 0);
+    await mediaSections
+      .nth(1)
+      .getByRole("button", { name: /Media 2 of 2/ })
+      .click();
+    assert.equal(
+      await mediaSections.nth(1).getAttribute("aria-expanded"),
+      "true"
+    );
+    assert.equal(
+      await mediaSections.nth(0).getAttribute("aria-expanded"),
+      "false"
+    );
     await attachmentPreview
       .getByRole("region", { name: "Media 2 of 2" })
       .getByRole("button", { name: "Download to Stash", exact: true })
@@ -2466,7 +2484,7 @@ try {
         .nth(1)
         .evaluate((element) => element === document.activeElement)
     );
-    await page.keyboard.press("ArrowUp");
+    await page.keyboard.press("e");
     assert.equal((await attachmentRequest).postDataJSON().key, "e".repeat(48));
     await mediaSections.nth(1).focus();
     await page.keyboard.press("ArrowRight");
@@ -2493,7 +2511,7 @@ try {
     await attachmentPreview
       .getByRole("button", { name: "Refresh previews", exact: true })
       .focus();
-    await page.keyboard.press("ArrowUp");
+    await page.keyboard.press("e");
     assert.equal((await nextPrimaryRequest).postDataJSON().key, "f".repeat(48));
     await attachmentPreview
       .getByRole("button", {
@@ -2553,16 +2571,16 @@ try {
           name: /^(?:Retry download|Download) to Stash$/,
         })
         .count(),
-      12,
-      "each file needs its own download action"
+      1,
+      "only the expanded file shows its controls"
     );
     await longPreview
       .locator(".modal-footer")
       .getByRole("button", { name: "Close", exact: true })
       .click();
-    // Keyboard selection: Shift+Up/Down move one highlighted target through
-    // the group header and every media file, mounting more as it goes; Up
-    // downloads the highlighted file. The large group can be collapsed.
+    // Keyboard selection: Up/Down move one highlighted target through the
+    // group header and every media file, expanding it and mounting more as it
+    // goes; E downloads the highlighted file. The large group can be collapsed.
     await page.goto(`${baseURL}/booru?source=danbooru&q=many-attachments`);
     await dan
       .getByRole("button", { name: "Inspect Danbooru post 101", exact: true })
@@ -2601,32 +2619,98 @@ try {
     await page.waitForFunction(() =>
       document.activeElement?.classList.contains("modal-content")
     );
-    await page.keyboard.press("Shift+ArrowDown");
+    await page.keyboard.press("ArrowDown");
     await expectTarget("asset:0", "keys work as soon as the post opens");
-    await page.keyboard.press("Shift+ArrowDown");
+    await page.keyboard.press("ArrowDown");
     await expectTarget("asset:1");
+    // Moving on expands the new file and collapses the previous one.
+    assert.equal(await keyedMedia.nth(1).getAttribute("aria-expanded"), "true");
+    assert.equal(
+      await keyedMedia.nth(0).getAttribute("aria-expanded"),
+      "false"
+    );
+    assert.equal(
+      await keyed
+        .locator(".booru-inspection-asset[aria-expanded=true]")
+        .count(),
+      1
+    );
+    if (process.env.STASH_BROWSER_SCREENSHOTS)
+      await page.screenshot({
+        path: path.join(
+          process.env.STASH_BROWSER_SCREENSHOTS,
+          `booru-keyboard-${viewport.width}.png`
+        ),
+      });
     const keyedDownload = page.waitForRequest(
       (request) =>
         request.method() === "POST" &&
         new URL(request.url()).pathname.endsWith("/booru-browser/download")
     );
-    await page.keyboard.press("ArrowUp");
+    await page.keyboard.press("e");
     assert.equal(
       (await keyedDownload).postDataJSON().key,
       (1).toString(16).padStart(48, "b"),
-      "Up downloads the highlighted media"
+      "E downloads the highlighted media"
     );
-    await page.keyboard.press("Shift+ArrowUp");
-    await expectTarget("asset:0");
+    // E then Down at once: collapsing the file must not cancel its download,
+    // and the result shows again when the file is reopened.
+    const cancels = [];
+    const countCancel = (request) => {
+      if (
+        request.method() === "POST" &&
+        new URL(request.url()).pathname.endsWith("/booru-browser/download") &&
+        request.postDataJSON()?.cancel
+      )
+        cancels.push(request);
+    };
+    page.on("request", countCancel);
+    delayNextDownload = true;
+    const inFlight = page.waitForRequest(
+      (request) =>
+        request.method() === "POST" &&
+        new URL(request.url()).pathname.endsWith("/booru-browser/download")
+    );
+    await page.keyboard.press("e");
+    await page.keyboard.press("ArrowDown");
+    await inFlight;
+    await expectTarget("asset:2");
+    await page.keyboard.press("ArrowUp");
+    await expectTarget("asset:1");
+    await keyedMedia
+      .nth(1)
+      .getByRole("link", { name: "Open in Stash", exact: true })
+      .waitFor();
+    // Down then E with no wait downloads the newly opened file.
+    const immediate = page.waitForRequest(
+      (request) =>
+        request.method() === "POST" &&
+        new URL(request.url()).pathname.endsWith("/booru-browser/download") &&
+        !request.postDataJSON()?.cancel
+    );
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("e");
+    assert.equal(
+      (await immediate).postDataJSON().key,
+      (2).toString(16).padStart(48, "b"),
+      "E right after Down downloads the newly opened file"
+    );
+    page.off("request", countCancel);
+    assert.equal(cancels.length, 0, "collapsing never cancels a download");
+    for (let press = 0; press < 5; press++) {
+      if ((await selectedTarget()) === "asset:0") break;
+      await page.keyboard.press("Shift+ArrowUp");
+    }
+    await expectTarget("asset:0", "Shift still moves the selection");
     for (let press = 0; press < 40; press++) {
       if ((await selectedTarget()) === "asset:11") break;
-      await page.keyboard.press("Shift+ArrowDown");
+      await page.keyboard.press("ArrowDown");
       await page.waitForTimeout(50);
     }
     assert.equal(
       await selectedTarget(),
       "asset:11",
-      "Shift+Down must reach media that was not mounted yet"
+      "Down must reach media that was not mounted yet"
     );
     assert.equal(await keyedMedia.count(), 12);
     await mediaToggle.click();
@@ -2683,25 +2767,25 @@ try {
     });
     assert.equal(await archiveToggle.getAttribute("aria-expanded"), "true");
     await archiveToggle.focus();
-    await page.keyboard.press("Shift+ArrowDown");
+    await page.keyboard.press("ArrowDown");
     assert.ok(
       await archiveFiles
         .nth(0)
         .evaluate((element) =>
           element.classList.contains("booru-target-selected")
         ),
-      "Shift+Down selects the first extracted file"
+      "Down selects the first extracted file"
     );
     const archiveDownload = page.waitForRequest(
       (request) =>
         request.method() === "POST" &&
         new URL(request.url()).pathname.endsWith("/booru-browser/download")
     );
-    await page.keyboard.press("ArrowUp");
+    await page.keyboard.press("e");
     assert.equal(
       (await archiveDownload).postDataJSON().archiveFile,
       0,
-      "Up downloads the highlighted archive file"
+      "E downloads the highlighted archive file"
     );
     let archiveListings = 0;
     const countListing = (request) => {
@@ -2955,7 +3039,7 @@ try {
     await preview
       .getByRole("button", { name: "Next preview (Right arrow)", exact: true })
       .focus();
-    await page.keyboard.press("ArrowUp");
+    await page.keyboard.press("e");
     const keyboardPayload = (await keyboardDownload).postDataJSON();
     assert.equal(keyboardPayload.destination, defaultDirectory);
     assert.equal(keyboardPayload.key, "103".padStart(48, "a"));
@@ -2965,16 +3049,17 @@ try {
         new URL(request.url()).pathname.endsWith("/booru-browser/review/update")
     );
     await preview
-      .getByRole("button", { name: "Ignore post (Down arrow)", exact: true })
+      .getByRole("button", { name: "Ignore post (Q)", exact: true })
       .click({ trial: true });
     await preview
       .getByRole("button", { name: "Next preview (Right arrow)", exact: true })
       .focus();
-    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("q");
     const ignored = (await keyboardIgnore).postDataJSON().changes[0];
     assert.equal(ignored.ignored, true);
     assert.equal(ignored.id, "103");
-    await preview.getByText("Ignored", { exact: true }).waitFor();
+    // Ignoring hides the post at once and moves to the next one.
+    await preview.getByText("Danbooru #104", { exact: true }).waitFor();
     await preview
       .getByRole("button", { name: "Next preview (Right arrow)", exact: true })
       .focus();
@@ -2982,6 +3067,30 @@ try {
     await preview.getByText("Danbooru #102", { exact: true }).waitFor();
     await page.keyboard.press("ArrowRight");
     await preview.getByText("Danbooru #104", { exact: true }).waitFor();
+    // Q twice in a row ignores two posts: the second press waits for the
+    // first review write instead of being dropped.
+    const ignoreWrites = [];
+    const countIgnore = (request) => {
+      if (
+        request.method() === "POST" &&
+        new URL(request.url()).pathname.endsWith("/booru-browser/review/update")
+      )
+        ignoreWrites.push(request.postDataJSON().changes[0]);
+    };
+    page.on("request", countIgnore);
+    await page.keyboard.press("q");
+    await page.keyboard.press("q");
+    for (let wait = 0; wait < 40 && ignoreWrites.length < 2; wait++)
+      await page.waitForTimeout(50);
+    page.off("request", countIgnore);
+    assert.equal(ignoreWrites.length, 2, "both Q presses ignore a post");
+    assert.equal(ignoreWrites[0].id, "104");
+    assert.notEqual(ignoreWrites[1].id, "104");
+    assert.ok(ignoreWrites.every((change) => change.ignored === true));
+    // Later steps use these posts unignored.
+    for (const key of [...review.keys()])
+      if (ignoreWrites.some((change) => key.endsWith(`:${change.id}`)))
+        review.delete(key);
     await page.keyboard.press("Escape");
     await preview.waitFor({ state: "hidden" });
     motionKind = "webm";
@@ -3609,7 +3718,7 @@ try {
     );
     const reviewCount = reviewWrites.length;
     await flash
-      .getByRole("button", { name: "Ignore post (Down arrow)", exact: true })
+      .getByRole("button", { name: "Ignore post (Q)", exact: true })
       .click();
     await page
       .getByText("Saved review state for 1 post.", { exact: true })
