@@ -1147,6 +1147,20 @@ try {
       .first()
       .waitFor();
     assert.deepEqual(tagging.booruLookupSources, ["danbooru", "e621"]);
+    // The numbered order is the lookup priority and can be changed.
+    await sites.getByRole("button", { name: /^Ask e621 earlier$/i }).click();
+    assert.match(
+      await sites.locator(".booru-lookup-site").first().innerText(),
+      /^1\. e621/i
+    );
+    await page
+      .getByRole("button", { name: "Save tagging defaults", exact: true })
+      .click();
+    await page
+      .getByText("Saved tagging defaults.", { exact: true })
+      .first()
+      .waitFor();
+    assert.deepEqual(tagging.booruLookupSources, ["e621", "danbooru"]);
     // Duplicate detection: on by default with every mode; the modes follow
     // the main switch and each saves on its own.
     const reversedNames = page.locator("#tagging-duplicates-reversed");

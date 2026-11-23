@@ -1,3 +1,20 @@
+## StashBooru 1.18.0: Rule34 MD5 lookup, MD5 site order — 2026-11-23
+
+- Baseline: `develop` `8411462` (1.17.0 released). Owner: Rule34 MD5 lookup
+  says "unsupported or invalid JSON" though the site finds the image; wants
+  to order Sites for MD5 lookup.
+- Cause (verified on Safebooru, same Gelbooru 0.2 DAPI; Rule34 itself needs
+  the owner's key): the checksum is `hash`, not `md5`; no match is an empty
+  body; a rejection is a bare JSON string. Now: `hash` is read, an empty
+  body (and gelbooru.com's count-only envelope) is zero posts, and a bare
+  string becomes the provider's own message (`authentication` when it says
+  so, which drops the site for the job).
+- MD5 sites: ticked sites are numbered in stored order (the order the server
+  already asks) with up/down buttons; unknown or key-less IDs are dropped.
+- Checks: `pkg/booru` and `internal/api` tests (new DAPI shape test), lint,
+  `tsc`, `settings-maintenance.mjs` desktop and mobile (reorder saves).
+- Not verified: a live Rule34 lookup with real credentials.
+
 ## StashBooru 1.17.0: Ignored Tags, Characters, Artists and Copyrights — 2026-11-23
 
 - Baseline: `develop` `3e90d25` (1.16.0, Dusky-dev/StashBooru#429). Owner: an

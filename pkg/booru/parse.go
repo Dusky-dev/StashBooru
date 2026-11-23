@@ -47,7 +47,17 @@ func parse(source Source, data []byte, page, limit int) (Result, error) {
 	var records []object
 	data = bytes.TrimSpace(data)
 	if len(data) == 0 {
-		return result, fmt.Errorf("empty response")
+		// Gelbooru 0.2 DAPI (Rule34, Safebooru) answers a search with no
+		// posts with an empty body.
+		return result, nil
+	}
+	if data[0] == '"' {
+		// The same APIs answer a rejected request with a bare JSON string.
+		var message string
+		if err := json.Unmarshal(data, &message); err != nil {
+			return result, err
+		}
+		return result, providerMessageError(message)
 	}
 	if data[0] == '[' {
 		if err := json.Unmarshal(data, &records); err != nil {
@@ -69,6 +79,10 @@ func parse(source Source, data []byte, page, limit int) (Result, error) {
 			key = "images"
 		}
 		raw, exists := envelope[key]
+		if _, counted := envelope["@attributes"]; !exists && counted && source.Engine == "gelbooru" {
+			// gelbooru.com omits the post array when nothing matches.
+			return result, nil
+		}
 		if !exists || bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
 			return result, fmt.Errorf("missing post array")
 		}
@@ -110,7 +124,7 @@ func parsePost(source Source, raw object) (Post, error) {
 		return Post{}, fmt.Errorf("invalid remote post identity")
 	}
 	post := Post{ID: id, SourceID: source.ID, Width: number(raw["width"]), Height: number(raw["height"]),
-		Bytes: number(raw["file_size"]), MD5: text(raw["md5"]), Rating: text(raw["rating"]),
+		Bytes: number(raw["file_size"]), MD5: firstText(raw["md5"], raw["hash"]), Rating: text(raw["rating"]),
 		Format: text(raw["file_ext"]), Tags: []Tag{}, RemoteID: id, Title: text(raw["title"]), Author: text(raw["author"]), AuthorID: text(raw["creator_id"]), Filename: text(raw["file_name"]), CreatedAt: text(raw["created_at"]), Score: number(raw["score"])}
 	preview, sample := text(raw["preview_file_url"]), text(raw["large_file_url"])
 	original := text(raw["file_url"])
@@ -295,4 +309,27 @@ func (s Source) postMediaURL(raw string) string {
 		raw = u.String()
 	}
 	return s.mediaURL(raw)
+}
+
+func firstText(values ...json.RawMessage) string {
+	for _, value := range values {
+		if text := text(value); text != "" {
+			return text
+		}
+	}
+	return ""
+}
+
+// providerMessageError reports a provider's own explanation for a rejected
+// request instead of calling it an invalid response.
+func providerMessageError(message string) *Error {
+	message = strings.TrimSpace(message)
+	if len(message) > 300 {
+		message = message[:300]
+	}
+	code := "provider-error"
+	if strings.Contains(strings.ToLower(message), "authentication") || strings.Contains(strings.ToLower(message), "api key") {
+		code = "authentication"
+	}
+	return &Error{Code: code, Message: "Provider said: " + message}
 }

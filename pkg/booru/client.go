@@ -234,6 +234,10 @@ func (c *Client) SearchFiltered(ctx context.Context, source Source, query string
 		return Result{}, err
 	}
 	result, err := parse(source, data, page, limit)
+	var providerErr *Error
+	if errors.As(err, &providerErr) {
+		return Result{}, providerErr
+	}
 	if err != nil {
 		return Result{}, &Error{Code: "invalid-response", Message: "Provider returned an unsupported or invalid JSON response. Its API may have changed or rejected the search."}
 	}
