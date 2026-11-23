@@ -375,6 +375,13 @@ jobs:
         PLAYWRIGHT_MODULE: ${{ runner.temp }}/first-library-tools/node_modules/playwright/index.mjs
         STASH_BROWSER_SCREENSHOTS: ${{ runner.temp }}/first-library-artifacts/image-editor
       run: node tests/browser/image-editor-save.mjs
+    - name: Image details panel tokens, resize and hide
+      working-directory: ui/v2.5
+      env:
+        STASH_BROWSER_BINARY: ${{ runner.temp }}/first-library-binary/stash-linux
+        PLAYWRIGHT_MODULE: ${{ runner.temp }}/first-library-tools/node_modules/playwright/index.mjs
+        STASH_BROWSER_SCREENSHOTS: ${{ runner.temp }}/first-library-artifacts/image-details
+      run: node tests/browser/image-details-panel.mjs
     - name: Database backup rejection, retry and restore
       working-directory: ui/v2.5
       env:

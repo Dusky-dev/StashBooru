@@ -138,19 +138,81 @@
   word-wrap: break-word;
 }
 
-$imageTabWidth: 450px;
+.image-details-collapsed .image-tabs {
+  display: none;
+}
+
+.image-details-divider {
+  display: flex;
+  justify-content: center;
+  order: 1;
+  padding: 0.25rem 15px;
+  width: 100%;
+
+  .image-details-toggle {
+    color: $link-color;
+  }
+}
+
+.image-tabs {
+  order: 2;
+}
+
+// Checksums, paths and URLs wrap rather than being cut off.
+.image-file-info dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+
+  a {
+    overflow-wrap: anywhere;
+  }
+}
 
 @media (min-width: 1200px) {
   .image-tabs {
-    flex: 0 0 $imageTabWidth;
+    flex: 0 0 var(--image-details-width, 450px);
     max-height: calc(100vh - 4rem);
-    max-width: $imageTabWidth;
+    max-width: var(--image-details-width, 450px);
+    order: 1;
     overflow: auto;
   }
 
+  .image-details-divider {
+    flex: 0 0 15px;
+    flex-direction: column;
+    max-height: calc(100vh - 4rem);
+    max-width: 15px;
+    order: 2;
+    padding: 0;
+    position: relative;
+
+    .image-details-resize {
+      cursor: col-resize;
+      flex: 1 1 auto;
+      touch-action: none;
+      width: 100%;
+
+      &:hover,
+      &:focus-visible {
+        background-color: rgba($link-color, 0.35);
+        outline: none;
+      }
+    }
+
+    .image-details-toggle {
+      flex: 0 0 auto;
+      font-size: 10px;
+      order: -1;
+      padding: 0.5rem 0;
+      width: 100%;
+    }
+  }
+
   .image-container {
-    flex: 0 0 calc(100% - #{$imageTabWidth});
-    max-width: calc(100% - #{$imageTabWidth});
+    flex: 1 1 0;
+    max-width: none;
+    min-width: 0;
+    order: 3;
   }
 }
 

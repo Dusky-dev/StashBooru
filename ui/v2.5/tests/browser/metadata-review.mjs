@@ -424,6 +424,9 @@ try {
     // synthetic-event currentTarget from React's queued state updater.
     bulkEnabled = true;
     await page.getByLabel("View", { exact: true }).selectOption("Images");
+    // Finishing a review with an applied item dismissed the selection.
+    assert.equal(await page.locator("#fixture-selected").isChecked(), false);
+    await page.locator("label[for=fixture-selected]").click();
     await open();
     const bulk = page
       .getByRole("dialog")
@@ -500,6 +503,12 @@ try {
     assert.equal(bulkRequests[1].applyCharacters, false);
     assert.equal(bulkRequests[1].applyArtist, false);
     assert.equal(bulkRequests[1].applyCopyright, false);
+    // An accepted job dismisses the selection; Cancel (above) kept it.
+    assert.equal(
+      await page.locator("#fixture-selected").isChecked(),
+      false,
+      "starting the job clears the selection"
+    );
     // An MD5 match adds its post link to the media's URLs on Apply, unless
     // the reviewer unticks it.
     booruMatch = true;

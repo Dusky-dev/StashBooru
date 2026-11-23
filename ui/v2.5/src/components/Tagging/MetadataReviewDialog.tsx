@@ -34,10 +34,14 @@ export function MetadataReviewDialog({
   items,
   onHide,
   onApplied,
+  onFinished,
 }: {
   items: readonly MetadataReviewItem[];
   onHide: () => void;
   onApplied?: () => Promise<unknown>;
+  /** The selection was tagged: a bulk job was accepted, or every item was
+   * reviewed with at least one applied. Not called on cancel or failure. */
+  onFinished?: () => void;
 }) {
   const intl = useIntl();
   const Toast = useToast();
@@ -70,6 +74,7 @@ export function MetadataReviewDialog({
   const [bulkError, setBulkError] = useState<string>();
   const [index, setIndex] = useState(0);
   const applied = useRef(false);
+  const anyApplied = useRef(false);
   const item = selection[index];
 
   useEffect(() => {
@@ -154,17 +159,22 @@ export function MetadataReviewDialog({
       return;
     }
     // Closing unmounts this dialog; never reset its state after onHide().
+    onFinished?.();
     onHide();
   }
 
   function advance() {
     applied.current = false;
     if (index + 1 < selection.length) setIndex((value) => value + 1);
-    else onHide();
+    else {
+      if (anyApplied.current) onFinished?.();
+      onHide();
+    }
   }
   async function didApply() {
     await onApplied?.();
     applied.current = true;
+    anyApplied.current = true;
   }
   function hide() {
     if (applied.current) advance();
@@ -395,7 +405,8 @@ export function metadataReviewOperation(
   items: readonly MetadataReviewItem[],
   showModal: (dialog: JSX.Element) => void,
   onHide: () => void,
-  intl: IntlShape
+  intl: IntlShape,
+  onFinished?: () => void
 ) {
   return {
     text: intl.formatMessage({
@@ -403,6 +414,12 @@ export function metadataReviewOperation(
     }),
     isDisplayed: () => items.length > 0,
     onClick: () =>
-      showModal(<MetadataReviewDialog items={items} onHide={onHide} />),
+      showModal(
+        <MetadataReviewDialog
+          items={items}
+          onHide={onHide}
+          onFinished={onFinished}
+        />
+      ),
   };
 }

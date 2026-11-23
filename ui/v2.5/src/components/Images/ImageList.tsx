@@ -843,7 +843,8 @@ export const FilteredImageList = PatchComponent(
           closeModal();
           void result.refetch();
         },
-        intl
+        intl,
+        onSelectNone
       ),
       {
         text: `${intl.formatMessage({ id: "actions.generate" })}…`,
