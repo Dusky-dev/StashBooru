@@ -1,6 +1,24 @@
+## StashBooru 1.14.0: duplicate detection settings, fewer false positives — 2026-11-23
+
+- Baseline: `develop` `62f7f26` (1.13.0 notes). Owner: make sure the
+  one-person check has no false positives; add a setting with an option per
+  detection mode.
+- Now: `duplicateDetection` {enabled, reversedNames, onePerson} in the
+  tagging config (defaults on; missing keys keep defaults; the update handler
+  decodes onto defaults). Gates: resolver reversed-name fallback, bulk merge
+  key, job and download auto-tag drop, review warnings. One-person rule needs
+  `solo`, no group count and none of cosplay/solo_focus/multiple_views/
+  multiple_persona/… (Danbooru names, not checked against model vocab); it
+  runs after target resolution so aliases of one Character count once, and
+  sees general tags even when Tags are not applied.
+- Checks: Go `internal/api`, `golangci-lint`; UI unit tests; settings and
+  metadata-review browser suites at both sizes.
+- Not verified: false-positive rate on real libraries (heuristic; switchable).
+
 ## StashBooru 1.13.0: duplicate Character detection in tagging — 2026-11-23
 
-- Baseline: `develop` `98a9d31` (1.12.0). Owner: basic duplicate tag detection (reversed names,
+- Baseline: `develop` `98a9d31` (1.12.0); PR #425, merged 2026-11-23 on green
+  CI (head `68cfb7e`); released with notes PR #426. Owner: basic duplicate tag detection (reversed names,
   `1girl` with 2 Characters). Scoped to tagging suggestions, not a
   library-wide duplicate finder.
 - Now: after exact/alias matching fails, a two-part Character name resolves
