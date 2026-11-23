@@ -1,3 +1,18 @@
+## StashBooru 1.16.0: connect plain Booru tags — 2026-11-23
+
+- Baseline: `develop` `4fc85a0` (1.15.0, Dusky-dev/StashBooru#428 merged).
+  Owner: Paheal tags have no Connect option, so they stay in Tags.
+- Now: tags with category `unknown` offer Connect as Character/Artist/
+  Copyright in the Booru browser (meta/general tags still don't). Connected
+  plain tags are re-categorised per source on browse (one batched lookup per
+  page, `ConnectedTags`) and on download, so they join the record instead of
+  creating a Tag. A target connected as more than one kind is left alone.
+- Not covered: Images downloaded before connecting keep the Tag; Image
+  Tagging's MD5 lookup does not use these connections yet.
+- Checks: integration test (Paheal source), Go lint, `booru-browser.mjs`
+  desktop and mobile (no Connect on meta tags; three on the unknown tag).
+- Next: Ignored Tags/Characters/Artists/Copyrights (1.17.0).
+
 ## StashBooru 1.15.0: sort and filter labels, Copyright sidebar filter — 2026-11-23
 
 - Baseline: `develop` `2a29d84` (1.14.0). Owner: filters/sorts that don't
