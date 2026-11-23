@@ -1,6 +1,6 @@
 import { DetailStackFilmstrip } from "src/components/VisualStacks/StackFilmstrip";
 import { Tab, Nav, Dropdown } from "react-bootstrap";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory, useLocation, RouteComponentProps } from "react-router-dom";
 import { Helmet } from "react-helmet";
@@ -24,6 +24,10 @@ import { OCounterButton } from "src/components/Scenes/SceneDetails/OCounterButto
 import { OrganizedButton } from "src/components/Scenes/SceneDetails/OrganizedButton";
 import { ImageEditPanel } from "./ImageEditPanel";
 import { ImageDetailPanel } from "./ImageDetailPanel";
+import {
+  ImageDetailsDivider,
+  useImageDetailsLayout,
+} from "./ImageDetailsDivider";
 import { ImageKnowledgeTagDialog } from "./ImageKnowledgeTagDialog";
 import { DeleteImagesDialog } from "../DeleteImagesDialog";
 import { faEllipsisV, faFilm } from "@fortawesome/free-solid-svg-icons";
@@ -65,6 +69,10 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
   const [resetO] = useImageResetO(image.id);
   const [updateImage] = useImageUpdate();
   const [organizedLoading, setOrganizedLoading] = useState(false);
+  const detailsLayout = useImageDetailsLayout();
+  const { collapsed: detailsCollapsed, setCollapsed: setDetailsCollapsed } =
+    detailsLayout;
+  const detailsPanel = useRef<HTMLDivElement>(null);
   const [activeTabKey, setActiveTabKey] = useState("image-details-panel");
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState<boolean>(false);
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
@@ -309,6 +317,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
 
   useEffect(() => {
     Mousetrap.bind("a", () => setActiveTabKey("image-details-panel"));
+    Mousetrap.bind(",", () => setDetailsCollapsed(!detailsCollapsed));
     Mousetrap.bind("e", () => setActiveTabKey("image-edit-panel"));
     Mousetrap.bind("o", () => {
       onIncrementClick();
@@ -316,6 +325,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
 
     return () => {
       Mousetrap.unbind("a");
+      Mousetrap.unbind(",");
       Mousetrap.unbind("e");
       Mousetrap.unbind("o");
     };
@@ -386,7 +396,14 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
   }, [file?.path]);
 
   return (
-    <div className="row">
+    <div
+      className={`row image-page${detailsLayout.collapsed ? " image-details-collapsed" : ""}`}
+      style={
+        {
+          "--image-details-width": `${detailsLayout.width}px`,
+        } as React.CSSProperties
+      }
+    >
       <Helmet>
         <title>{displayTitle ?? title}</title>
       </Helmet>
@@ -422,7 +439,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
           }}
         />
       )}
-      <div className="image-tabs order-xl-first order-last">
+      <div className="image-tabs" ref={detailsPanel}>
         <div>
           {showImageHeading && (
             <div className="image-header-container">
@@ -505,6 +522,7 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
         </div>
         {renderTabs()}
       </div>
+      <ImageDetailsDivider {...detailsLayout} panelRef={detailsPanel} />
       <div className="image-container visual-stack-detail-viewer">
         {shadowPreviewRequested && (
           <div className="alert alert-warning" role="status">

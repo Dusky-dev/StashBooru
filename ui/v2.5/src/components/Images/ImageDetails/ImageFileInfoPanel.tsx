@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Accordion, Button, Card } from "react-bootstrap";
 import { FormattedMessage, FormattedTime, useIntl } from "react-intl";
 import { TruncatedText } from "src/components/Shared/TruncatedText";
@@ -22,6 +22,47 @@ interface IFileInfoPanelProps {
   loading?: boolean;
 }
 
+interface FilenameToken {
+  token: string;
+  value: string;
+}
+
+// The tagging filename layout's tokens as read from the primary file's name,
+// by the same parser as the filename tagging source. Nothing when it does not
+// match the layout.
+const FilenameTokens: React.FC<{ imageId: string; path: string }> = ({
+  imageId,
+  path,
+}) => {
+  const [tokens, setTokens] = useState<FilenameToken[]>([]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a renamed or moved file is read again.
+  useEffect(() => {
+    const controller = new AbortController();
+    setTokens([]);
+    void fetch(`image/${imageId}/filename-tokens`, {
+      signal: controller.signal,
+    })
+      .then((response) =>
+        response.ok ? response.json() : { tokens: [] as FilenameToken[] }
+      )
+      .then((result: { tokens?: FilenameToken[] }) => {
+        if (!controller.signal.aborted) setTokens(result.tokens ?? []);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [imageId, path]);
+  return (
+    <>
+      {tokens.map(({ token, value }) => (
+        <React.Fragment key={token}>
+          <dt className="filename-token-name">%{token}%</dt>
+          <dd className="filename-token-value">{value}</dd>
+        </React.Fragment>
+      ))}
+    </>
+  );
+};
+
 const FileInfoPanel: React.FC<IFileInfoPanelProps> = (
   props: IFileInfoPanelProps
 ) => {
@@ -40,19 +81,21 @@ const FileInfoPanel: React.FC<IFileInfoPanelProps> = (
             </dd>
           </>
         )}
-        <TextField id="media_info.md5" value={checksum?.value} truncate />
+        <TextField id="media_info.md5" value={checksum?.value} />
         <URLField
           id="media_info.phash"
           abbr={intl.formatMessage({ id: "media_info.phash_meaning" })}
           value={phash?.value}
           url={NavUtils.makeImagesPHashMatchUrl(phash?.value)}
           target="_self"
-          truncate
           internal
         />
+        {props.image && (props.primary || !props.ofMany) && (
+          <FilenameTokens imageId={props.image.id} path={props.file.path} />
+        )}
         <TextField id="path">
           <span className="d-flex align-items-center">
-            <TruncatedText text={props.file.path} />
+            <span className="image-file-path">{props.file.path}</span>
             <RevealInFilesystemButton fileId={props.file.id} />
           </span>
         </TextField>
@@ -63,7 +106,7 @@ const FileInfoPanel: React.FC<IFileInfoPanelProps> = (
         </TextField>
         {props.image ? (
           <>
-            <URLsField id="urls" urls={props.image.urls} truncate />
+            <URLsField id="urls" urls={props.image.urls} />
             <TextField
               id="created_at"
               value={TextUtils.formatDateTime(intl, props.image.created_at)}
@@ -126,7 +169,7 @@ export const ImageFileInfoPanel: React.FC<IImageFileInfoPanelProps> = (
   if (props.image.visual_files.length === 0) {
     return (
       <dl className="container image-file-info details-list">
-        <URLsField id="urls" urls={props.image.urls} truncate />
+        <URLsField id="urls" urls={props.image.urls} />
         <TextField
           id="created_at"
           value={TextUtils.formatDateTime(intl, props.image.created_at)}

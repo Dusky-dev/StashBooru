@@ -1,3 +1,20 @@
+## StashBooru 1.19.0: Image details panel, selection after tagging — 2026-11-23
+
+- Baseline: `develop` `5270e8c` (1.18.0, Dusky-dev/StashBooru#432). Owner: dismiss the
+  selection after tagging; show filename-layout tokens near the MD5; make the
+  details panel resizable and hideable; text in it is cut off.
+- Now: `MetadataReviewDialog` `onFinished` (bulk job accepted, or every item
+  reviewed with one applied) clears the selection on Images, Videos and All.
+  `GET image/{id}/filename-tokens` reads the primary file's name with the
+  same layout parser as the filename source; rows show under MD5. Panel width
+  (320px–60vw, drag/arrow keys) and hidden state persist in localStorage;
+  `,` toggles; phones get Hide/Show only. MD5, pHash, path and URLs wrap.
+- Cut-off reproduced: MD5 and Path were line-clamped (check now catches it).
+- Checks: Go test for tokens; `metadata-review.mjs`, new binary suite
+  `image-details-panel.mjs` (in CI), `image-editor-save.mjs` desktop and
+  mobile; `tsc`, Biome, UI unit tests.
+- Not changed: the title heading still clamps to two lines (by design).
+
 ## StashBooru 1.18.0: Rule34 MD5 lookup, MD5 site order — 2026-11-23
 
 - Baseline: `develop` `8411462` (1.17.0 released). Owner: Rule34 MD5 lookup

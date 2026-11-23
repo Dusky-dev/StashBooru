@@ -1543,6 +1543,11 @@
   "marker_count": "Marker Count",
   "markers": "Markers",
   "measurements": "Measurements",
+  "image_details": {
+    "hide": "Hide details",
+    "show": "Show details",
+    "resize": "Resize details panel"
+  },
   "media_info": {
     "audio_codec": "Audio Codec",
     "downloaded_from": "Downloaded From",

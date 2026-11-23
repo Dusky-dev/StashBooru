@@ -81,7 +81,9 @@ function Fixture() {
         hasSelection={selected}
         operations={[
           { text: "Other action", onClick: () => {} },
-          metadataReviewOperation(selection, setModal, close, intl),
+          metadataReviewOperation(selection, setModal, close, intl, () =>
+            setSelected(false)
+          ),
         ]}
       />
       <Button
