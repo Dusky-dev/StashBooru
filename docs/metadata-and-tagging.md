@@ -81,9 +81,10 @@ Only local filename metadata loads on opening. Provider lookup, inference and
 library suggestions are separate explicit actions. Missing provider/model
 resources do not prevent local review.
 
-Image Tagging warns when the selection holds the same Character with the name
-in the other order, or several Characters while the selected tags say the Image
-shows one person. Both are warnings only; nothing is merged or deleted.
+Image Tagging warns, following the same settings, when the selection holds the
+same Character with the name in the other order, or several different
+Characters while the selected tags say the Image shows one person. Both are
+warnings only; nothing is merged or deleted.
 
 ### Image sources
 
@@ -143,15 +144,22 @@ thumbnail-assisted review of each Image, and **Cancel** starts no job.
 - A Character name that matches several existing Characters is skipped and
   logged, because a job cannot ask which one you mean; review those Images
   individually.
-- Two-part Character names match in either order ("Miku Hatsune" finds an
-  existing "Hatsune Miku") when exactly one existing Character has the
-  reversed name, and sources that disagree on the order count as one
-  Character. When the tags say the Image shows one person (`solo`, or one of
-  `1girl`/`1boy`/`1other` without a group count such as `2girls`) but the
-  models suggest several Characters, those model Characters are skipped and
-  logged. Characters from the filename or an MD5 match are always kept.
-  Automatic Camie/EVA02 tagging after a Booru download follows the same
-  rule.
+- **Duplicate Character detection** (tagging setup → **Detect duplicate
+  Characters**, on by default) has two modes, each with its own checkbox:
+  - **Reversed names:** a two-part Character name matches in either order
+    ("Miku Hatsune" finds an existing "Hatsune Miku") when exactly one
+    existing Character has the reversed name, and sources that disagree on
+    the order count as one Character.
+  - **Several Characters on a solo Image:** when the tags say `solo`, with no
+    group count such as `2girls` and no tag that lets one person carry
+    several Characters (`cosplay`, `solo_focus`, `multiple_views`,
+    `multiple_persona` and similar), and the models still suggest two or more
+    different Characters, a job skips those model Characters and logs it.
+    Names that resolve to the same existing Character count once. A count
+    tag such as `1girl` alone is not enough. Characters from the filename or
+    an MD5 match are always kept. Automatic tagging after a Booru download
+    follows the same rule. This is a heuristic, and an untagged second
+    person can still trip it; turn the mode off if it skips real Characters.
 - Only **Local filename metadata** starts checked. Every other source is an
   explicit choice for each job.
 - **MD5 lookup** asks the sites chosen in **Sites for MD5 lookup** (see

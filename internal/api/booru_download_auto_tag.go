@@ -96,8 +96,13 @@ func runBooruAutomaticImageTagging(ctx context.Context, imageID int, useCamie, u
 	if err != nil {
 		return err
 	}
+	all := predictions
 	predictions = filterCamieBulkPredictionsV2(predictions, request.camieBulkRequestV2)
 	predictions, err = validateCamiePredictionsV2(predictions)
+	if err != nil || len(predictions) == 0 {
+		return err
+	}
+	predictions, err = skipSoloConflictCharacters(ctx, imageID, all, predictions, config.DuplicateDetection)
 	if err != nil || len(predictions) == 0 {
 		return err
 	}

@@ -110,9 +110,10 @@ try {
               md5Source: "file",
               tags: booruDuplicates
                 ? [
-                    ["1girl", "general"],
+                    ["solo", "general"],
                     ["hatsune_miku", "character"],
                     ["miku_hatsune", "character"],
+                    ["saber", "character"],
                   ].map(([name, category]) => ({
                     name,
                     category,

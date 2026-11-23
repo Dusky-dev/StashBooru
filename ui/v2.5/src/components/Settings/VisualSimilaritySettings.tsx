@@ -3,6 +3,10 @@ import { Alert, Badge, Button, Card, Col, Form, Row } from "react-bootstrap";
 import { Link, useHistory } from "react-router-dom";
 import { useIntl } from "react-intl";
 import { BooruLookupSites } from "./BooruLookupSites";
+import {
+  defaultDuplicateDetection,
+  type DuplicateDetectionSettings,
+} from "src/components/Tagging/taggingReviewPolicy";
 
 import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { useToast } from "src/hooks/Toast";
@@ -60,6 +64,7 @@ interface CamieConfig {
   filenameLayout: string;
   bulkTaggingEnabled: boolean;
   booruLookupSources?: string[] | null;
+  duplicateDetection?: DuplicateDetectionSettings;
 }
 
 interface VisualSimilarityJobResponse {
@@ -456,6 +461,63 @@ export const VisualSimilaritySettings: React.FC = () => {
                   id: "media_tagging.settings_bulk_models_help",
                 })}
               </Form.Text>
+
+              {(() => {
+                const duplicates =
+                  camieConfig.duplicateDetection ?? defaultDuplicateDetection;
+                const setDuplicates = (
+                  change: Partial<DuplicateDetectionSettings>
+                ) =>
+                  setCamieConfig({
+                    ...camieConfig,
+                    duplicateDetection: { ...duplicates, ...change },
+                  });
+                return (
+                  <div className="mb-3" id="duplicate-detection-settings">
+                    <Form.Check
+                      type="switch"
+                      id="tagging-duplicates-enabled"
+                      checked={duplicates.enabled}
+                      onChange={(event) =>
+                        setDuplicates({ enabled: event.currentTarget.checked })
+                      }
+                      label={intl.formatMessage({
+                        id: "media_tagging.duplicates_enabled",
+                      })}
+                    />
+                    <div className="ml-4">
+                      <Form.Check
+                        type="checkbox"
+                        id="tagging-duplicates-reversed"
+                        checked={duplicates.reversedNames}
+                        disabled={!duplicates.enabled}
+                        onChange={(event) =>
+                          setDuplicates({
+                            reversedNames: event.currentTarget.checked,
+                          })
+                        }
+                        label={intl.formatMessage({
+                          id: "media_tagging.duplicates_reversed",
+                        })}
+                      />
+                      <Form.Check
+                        type="checkbox"
+                        id="tagging-duplicates-one-person"
+                        checked={duplicates.onePerson}
+                        disabled={!duplicates.enabled}
+                        onChange={(event) =>
+                          setDuplicates({
+                            onePerson: event.currentTarget.checked,
+                          })
+                        }
+                        label={intl.formatMessage({
+                          id: "media_tagging.duplicates_one_person",
+                        })}
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
 
               <p className="small">
                 <Link to="/settings?tab=library#association-inheritance-settings">
