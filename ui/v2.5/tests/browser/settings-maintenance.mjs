@@ -1147,6 +1147,31 @@ try {
       .first()
       .waitFor();
     assert.deepEqual(tagging.booruLookupSources, ["danbooru", "e621"]);
+    // Duplicate detection: on by default with every mode; the modes follow
+    // the main switch and each saves on its own.
+    const reversedNames = page.locator("#tagging-duplicates-reversed");
+    const onePerson = page.locator("#tagging-duplicates-one-person");
+    assert.equal(await reversedNames.isChecked(), true);
+    assert.equal(await onePerson.isChecked(), true);
+    await onePerson.uncheck();
+    await page.locator('label[for="tagging-duplicates-enabled"]').click();
+    assert.equal(
+      await page.locator("#tagging-duplicates-enabled").isChecked(),
+      false
+    );
+    assert.equal(await reversedNames.isDisabled(), true);
+    await page
+      .getByRole("button", { name: "Save tagging defaults", exact: true })
+      .click();
+    await page
+      .getByText("Saved tagging defaults.", { exact: true })
+      .first()
+      .waitFor();
+    assert.deepEqual(tagging.duplicateDetection, {
+      enabled: false,
+      reversedNames: true,
+      onePerson: false,
+    });
     await page.getByLabel("Per-category limit", { exact: true }).fill("0");
     assert.equal(
       await page

@@ -213,11 +213,71 @@ test("duplicate warnings catch reversed names and solo conflicts", () => {
   );
   assert.deepEqual(
     duplicateCharacterWarnings([
-      general("1girl"),
+      general("solo"),
       character("Saber"),
       character("Artoria Pendragon"),
     ]),
     { reversed: [], soloConflict: 2 }
+  );
+  // A count tag alone, or a tag that allows several Characters on one
+  // person, is not a conflict.
+  for (const tags of [["1girl"], ["solo", "cosplay"], ["solo", "solo_focus"]])
+    assert.equal(
+      duplicateCharacterWarnings([
+        ...tags.map(general),
+        character("Saber"),
+        character("Artoria Pendragon"),
+      ]).soloConflict,
+      0,
+      tags.join(" ")
+    );
+  // Two names for one existing Character are not a conflict.
+  assert.equal(
+    duplicateCharacterWarnings([
+      general("solo"),
+      {
+        ...character("Saber"),
+        targetExists: true,
+        targetPath: "/performers/4",
+      },
+      {
+        ...character("Artoria Pendragon"),
+        targetExists: true,
+        targetPath: "/performers/4",
+      },
+    ]).soloConflict,
+    0
+  );
+  // Each mode follows its setting.
+  const both = [
+    general("solo"),
+    character("Hatsune Miku"),
+    character("miku_hatsune"),
+    character("Saber"),
+  ];
+  assert.deepEqual(
+    duplicateCharacterWarnings(both, {
+      enabled: false,
+      reversedNames: true,
+      onePerson: true,
+    }),
+    { reversed: [], soloConflict: 0 }
+  );
+  assert.deepEqual(
+    duplicateCharacterWarnings(both, {
+      enabled: true,
+      reversedNames: false,
+      onePerson: true,
+    }),
+    { reversed: [], soloConflict: 3 }
+  );
+  assert.deepEqual(
+    duplicateCharacterWarnings(both, {
+      enabled: true,
+      reversedNames: true,
+      onePerson: false,
+    }).soloConflict,
+    0
   );
   assert.deepEqual(
     duplicateCharacterWarnings([

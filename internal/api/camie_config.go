@@ -33,7 +33,27 @@ type camieConfig struct {
 	// priority order. Absent or null means defaultBooruLookupSources; an empty
 	// list turns MD5 lookup off.
 	BooruLookupSources []string `json:"booruLookupSources"`
+	// DuplicateDetection turns the duplicate Character checks on or off.
+	DuplicateDetection duplicateDetectionConfig `json:"duplicateDetection"`
 }
+
+// duplicateDetectionConfig gates each duplicate Character check. Every
+// field defaults to on, and a saved file without them keeps the defaults.
+type duplicateDetectionConfig struct {
+	Enabled bool `json:"enabled"`
+	// ReversedNames matches a two-part Character name in either order.
+	ReversedNames bool `json:"reversedNames"`
+	// OnePerson skips model Characters in jobs, and warns in review, when
+	// the tags say the Image shows one person.
+	OnePerson bool `json:"onePerson"`
+}
+
+func defaultDuplicateDetectionConfig() duplicateDetectionConfig {
+	return duplicateDetectionConfig{Enabled: true, ReversedNames: true, OnePerson: true}
+}
+
+func (c duplicateDetectionConfig) reversedNames() bool { return c.Enabled && c.ReversedNames }
+func (c duplicateDetectionConfig) onePerson() bool     { return c.Enabled && c.OnePerson }
 
 func defaultCamieConfig() camieConfig {
 	return camieConfig{
@@ -43,6 +63,7 @@ func defaultCamieConfig() camieConfig {
 		FilenameEnabled:    true,
 		FilenameLayout:     defaultCamieFilenameLayout,
 		BulkTaggingEnabled: false,
+		DuplicateDetection: defaultDuplicateDetectionConfig(),
 	}
 }
 
@@ -167,7 +188,8 @@ func (rs imageRoutes) CamieConfig(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (rs imageRoutes) CamieConfigUpdate(w http.ResponseWriter, r *http.Request) {
-	var config camieConfig
+	// Settings a client does not send keep their defaults.
+	config := defaultCamieConfig()
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64*1024))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&config); err != nil {

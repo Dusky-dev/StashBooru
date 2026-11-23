@@ -16,6 +16,8 @@ import {
   characterCandidateLabel,
   mergeMetadataPredictions as mergeTaggingMetadataPredictions,
   nextCharacterResolutionIndex,
+  defaultDuplicateDetection,
+  type DuplicateDetectionSettings,
   duplicateCharacterWarnings,
   possibleBareCharacterMatch,
   predictionKey,
@@ -504,14 +506,31 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
     () => selectedPredictionCount(predictions, selected),
     [predictions, selected]
   );
+  const [duplicateSettings, setDuplicateSettings] =
+    useState<DuplicateDetectionSettings>(defaultDuplicateDetection);
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch("image/visual-similarity/camie/config", {
+      signal: controller.signal,
+    })
+      .then((response) => (response.ok ? response.json() : undefined))
+      .then((config?: { duplicateDetection?: DuplicateDetectionSettings }) => {
+        if (config?.duplicateDetection && !controller.signal.aborted)
+          setDuplicateSettings(config.duplicateDetection);
+      })
+      // The warnings keep their defaults if the settings cannot be read.
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
   const duplicates = useMemo(
     () =>
       duplicateCharacterWarnings(
         predictions.filter((prediction) =>
           selected.has(predictionKey(prediction))
-        )
+        ),
+        duplicateSettings
       ),
-    [predictions, selected]
+    [predictions, selected, duplicateSettings]
   );
   const busy = loading || loadingSource !== undefined;
 

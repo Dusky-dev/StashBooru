@@ -236,7 +236,7 @@ func TestMergeBulkImageTagsMD5MatchOutranksModels(t *testing.T) {
 		{Name: "smile", Category: "general", Score: .5, Source: "pixai"},
 		{Name: "blush", Category: "general", Score: .5, Source: "pixai"},
 	}
-	merged := mergeBulkImageTags(nil, booruTags, pixai)
+	merged := mergeBulkImageTags(true, nil, booruTags, pixai)
 	var got []string
 	for _, prediction := range merged {
 		got = append(got, prediction.Category+":"+prediction.Source)
@@ -246,7 +246,7 @@ func TestMergeBulkImageTagsMD5MatchOutranksModels(t *testing.T) {
 	}
 
 	filename := []camietagger.Tag{{Name: "file_hero", Category: "character", Score: 1, Source: "filename"}}
-	merged = mergeBulkImageTags(filename, booruTags)
+	merged = mergeBulkImageTags(true, filename, booruTags)
 	for _, prediction := range merged {
 		if prediction.Category == "character" && prediction.Source != "filename" {
 			t.Fatalf("filename identity must outrank the MD5 match: %+v", merged)

@@ -181,9 +181,13 @@ func (rs imageRoutes) BulkTagImages(w http.ResponseWriter, r *http.Request) {
 			}
 
 			predictions, tagErr := inferBulkImageTags(ctx, imageID, source.Path, config, request, clients, booruPredictions)
+			all := predictions
 			if tagErr == nil {
 				predictions = filterCamieBulkPredictionsV2(predictions, request.camieBulkRequestV2)
 				predictions, tagErr = validateCamiePredictionsV2(predictions)
+			}
+			if tagErr == nil && len(predictions) > 0 && request.ApplyCharacters {
+				predictions, tagErr = skipSoloConflictCharacters(ctx, imageID, all, predictions, config.DuplicateDetection)
 			}
 			if tagErr == nil && len(predictions) > 0 && request.ApplyCharacters {
 				// Without a reviewer, never guess between same-name Characters.
@@ -373,19 +377,33 @@ func inferBulkImageTags(
 			}
 		}
 	}
-	merged := mergeBulkImageTags(filenameTags, booruPredictions, pixaiTags, camieTags, evaTags)
-	merged, dropped := withoutSoloConflictCharacters(merged, filenameTags, booruPredictions)
-	if len(dropped) > 0 {
-		logger.Warnf("Image Tagging: Image %d is tagged as showing one person, but the models suggested %d Characters (%s); they were skipped, review the Image individually", imageID, len(dropped), strings.Join(dropped, ", "))
+	return mergeBulkImageTags(config.DuplicateDetection.reversedNames(), filenameTags, booruPredictions, pixaiTags, camieTags, evaTags), nil
+}
+
+// skipSoloConflictCharacters applies the one-person duplicate check to the
+// Characters about to be applied. all is every merged prediction, so a solo
+// tag counts even when Tags are not applied.
+func skipSoloConflictCharacters(ctx context.Context, imageID int, all, predictions []camietagger.Tag, settings duplicateDetectionConfig) ([]camietagger.Tag, error) {
+	if !settings.onePerson() || !camieDepictsOneCharacter(all) {
+		return predictions, nil
 	}
-	return merged, nil
+	enriched, err := enrichNativeCamiePredictionTargets(ctx, predictions)
+	if err != nil {
+		return nil, err
+	}
+	kept, dropped := withoutSoloConflictCharacters(predictions, enriched, true)
+	if len(dropped) > 0 {
+		logger.Warnf("Image Tagging: Image %d is tagged solo, but the models suggested %d different Characters (%s); they were skipped, review the Image individually", imageID, len(dropped), strings.Join(dropped, ", "))
+	}
+	return kept, nil
 }
 
 // Source priority follows Image Tagging: filename → MD5 match → PixAI →
 // Camie → EVA02. Filename and an exact MD5 match are authoritative: their
 // identities block conflicting inferred identities in the same category. An
 // already-selected higher-priority prediction keeps its score and provenance.
-func mergeBulkImageTags(filename, booru []camietagger.Tag, models ...[]camietagger.Tag) []camietagger.Tag {
+// With reversedNames, a Character in the other name order is a duplicate.
+func mergeBulkImageTags(reversedNames bool, filename, booru []camietagger.Tag, models ...[]camietagger.Tag) []camietagger.Tag {
 	var merged []camietagger.Tag
 	seen := map[string]bool{}
 	authoritative := map[string]bool{}
@@ -397,8 +415,7 @@ func mergeBulkImageTags(filename, booru []camietagger.Tag, models ...[]camietagg
 				continue
 			}
 			key := prediction.Category + "\x00" + strings.ToLower(prediction.Name)
-			if prediction.Category == "character" {
-				// The same Character in the other name order is a duplicate.
+			if reversedNames && prediction.Category == "character" {
 				key = "character\x00" + camieCharacterDuplicateKey(prediction)
 			}
 			if seen[key] || authoritative[prediction.Category] {

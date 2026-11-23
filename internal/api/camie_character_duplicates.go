@@ -10,6 +10,13 @@ import (
 	"github.com/stashapp/stash/pkg/models"
 )
 
+// loadDuplicateDetectionConfig reads the saved duplicate detection settings.
+// Tests replace it, since they run without a configuration directory.
+var loadDuplicateDetectionConfig = func() (duplicateDetectionConfig, error) {
+	config, err := loadCamieConfig()
+	return config.DuplicateDetection, err
+}
+
 // reversedCamieCharacterName returns a two-part name in the other order
 // ("Hatsune Miku" ↔ "Miku Hatsune"): sites and models disagree on
 // given/family name order. Other names return "".
@@ -56,6 +63,9 @@ func findCamiePerformerFallback(ctx context.Context, repository models.Repositor
 	if err != nil || performer != nil {
 		return performer, err
 	}
+	if settings, err := loadDuplicateDetectionConfig(); err != nil || !settings.reversedNames() {
+		return nil, err
+	}
 	characterName, disambiguation := camieCharacterIdentity(prediction)
 	return findCamieReversedNamePerformer(ctx, repository, characterName, disambiguation)
 }
@@ -71,60 +81,91 @@ func camieCharacterDuplicateKey(prediction camietagger.Tag) string {
 	return strings.Join(parts, " ") + "\x00" + strings.ToLower(strings.TrimSpace(disambiguation))
 }
 
-var (
-	camieSoloCountTags  = map[string]bool{"1girl": true, "1boy": true, "1other": true}
-	camieGroupCountTags = regexp.MustCompile(`^(?:\d+\+?(?:girls|boys|others)|multiple_(?:girls|boys|others))$`)
-)
+// camieSeveralFigureTags are Danbooru tags that mean a solo Image can still
+// carry several Character tags: one person cosplaying another Character,
+// several versions of one person, or a focus on one of several people.
+var camieSeveralFigureTags = map[string]bool{
+	"solo_focus":       true,
+	"cosplay":          true,
+	"multiple_views":   true,
+	"multiple_persona": true,
+	"dual_persona":     true,
+	"character_doll":   true,
+	"crossover":        true,
+	"costume_switch":   true,
+	"split_screen":     true,
+	"reference_sheet":  true,
+	"character_sheet":  true,
+	"fusion":           true,
+	"genderswap":       true,
+	"alternate_form":   true,
+	"doppelganger":     true,
+	"clone":            true,
+}
 
-// camieDepictsOneCharacter reports whether the general tags say the Image
-// shows a single person: solo, or exactly one of 1girl/1boy/1other without a
-// group count such as 2girls.
+var camieGroupCountTags = regexp.MustCompile(`^(?:\d+\+?(?:girls|boys|others)|multiple_(?:girls|boys|others))$`)
+
+func camieGeneralTagKey(name string) string {
+	return strings.ToLower(strings.Join(strings.Fields(strings.ReplaceAll(name, "_", " ")), "_"))
+}
+
+// camieDepictsOneCharacter reports whether the general tags clearly say the
+// Image shows a single person: `solo`, with no group count (2girls, …) and no
+// tag that allows several Characters on one person (cosplay, solo_focus, …).
+// A count tag such as 1girl alone is not enough: other people may be untagged.
 func camieDepictsOneCharacter(predictions []camietagger.Tag) bool {
-	solo, singles := false, 0
+	solo := false
 	for _, prediction := range predictions {
 		if prediction.Category != "general" {
 			continue
 		}
-		name := strings.ToLower(strings.Join(strings.Fields(strings.ReplaceAll(prediction.Name, "_", " ")), "_"))
+		name := camieGeneralTagKey(prediction.Name)
 		switch {
 		case name == "solo":
 			solo = true
-		case camieSoloCountTags[name]:
-			singles++
-		case camieGroupCountTags.MatchString(name):
+		case camieGroupCountTags.MatchString(name), camieSeveralFigureTags[name]:
 			return false
 		}
 	}
-	return solo || singles == 1
+	return solo
 }
 
-// withoutSoloConflictCharacters drops model-inferred Characters when the tags
-// say the Image shows one person but the models suggest several: they are
-// usually the same Character under different names. Characters from
-// authoritative sources (filename, MD5 match) are kept; a solo Image can show
-// a cosplayed Character as well.
-func withoutSoloConflictCharacters(merged []camietagger.Tag, authoritative ...[]camietagger.Tag) ([]camietagger.Tag, []string) {
-	trusted := map[string]bool{}
-	for _, predictions := range authoritative {
-		for _, prediction := range predictions {
-			prediction = normalizeCamiePrediction(prediction)
-			if prediction.Category == "character" {
-				trusted[camieCharacterDuplicateKey(prediction)] = true
-			}
-		}
+// camieTrustedCharacterSource reports whether a prediction came from an
+// authoritative source (filename or an exact MD5 match).
+func camieTrustedCharacterSource(source string) bool {
+	return source == "filename" || strings.HasPrefix(source, "booru:")
+}
+
+// withoutSoloConflictCharacters drops model-suggested Characters when the
+// tags say the Image shows one person but the models suggest several
+// different Characters. enriched is predictions with targets resolved, in the
+// same order: names that resolve to one existing Character count once.
+// Characters from authoritative sources are always kept.
+// onePerson is camieDepictsOneCharacter of every merged prediction, including
+// general tags the job does not apply.
+func withoutSoloConflictCharacters(predictions, enriched []camietagger.Tag, onePerson bool) ([]camietagger.Tag, []string) {
+	if !onePerson || len(enriched) != len(predictions) {
+		return predictions, nil
 	}
+	distinct := map[string]bool{}
 	var inferred []string
-	for _, prediction := range merged {
-		if prediction.Category == "character" && !trusted[camieCharacterDuplicateKey(prediction)] {
-			inferred = append(inferred, prediction.Name)
+	for index, prediction := range predictions {
+		if prediction.Category != "character" || camieTrustedCharacterSource(prediction.Source) {
+			continue
 		}
+		key := "name:" + camieCharacterDuplicateKey(prediction)
+		if target := enriched[index]; target.TargetExists && target.TargetPath != "" {
+			key = "target:" + target.TargetPath
+		}
+		distinct[key] = true
+		inferred = append(inferred, prediction.Name)
 	}
-	if len(inferred) < 2 || !camieDepictsOneCharacter(merged) {
-		return merged, nil
+	if len(distinct) < 2 {
+		return predictions, nil
 	}
-	kept := make([]camietagger.Tag, 0, len(merged))
-	for _, prediction := range merged {
-		if prediction.Category == "character" && !trusted[camieCharacterDuplicateKey(prediction)] {
+	kept := make([]camietagger.Tag, 0, len(predictions))
+	for _, prediction := range predictions {
+		if prediction.Category == "character" && !camieTrustedCharacterSource(prediction.Source) {
 			continue
 		}
 		kept = append(kept, prediction)

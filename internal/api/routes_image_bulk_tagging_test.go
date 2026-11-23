@@ -24,7 +24,7 @@ func TestMergeBulkImageTagsKeepsFilenameIdentitiesAndSourceOrder(t *testing.T) {
 		{Name: "safe", Category: "rating", Score: .9, Source: "eva02"},
 	}
 
-	merged := mergeBulkImageTags(filename, nil, camie, eva)
+	merged := mergeBulkImageTags(true, filename, nil, camie, eva)
 	if len(merged) != 5 {
 		t.Fatalf("expected 5 tags after filename priority and duplicates, got %d: %+v", len(merged), merged)
 	}
@@ -48,7 +48,7 @@ func TestMergeBulkImageTagsKeepsFilenameIdentitiesAndSourceOrder(t *testing.T) {
 func TestMergeBulkImageTagsAllowsEvaCharactersWithoutFilenameIdentity(t *testing.T) {
 	camie := []camietagger.Tag{{Name: "first", Category: "character", Score: .8}}
 	eva := []camietagger.Tag{{Name: "second", Category: "character", Score: .7, Source: "eva02"}}
-	result := mergeBulkImageTags(nil, nil, camie, eva)
+	result := mergeBulkImageTags(true, nil, nil, camie, eva)
 	if len(result) != 2 {
 		t.Fatalf("expected both inferred Characters without authoritative filename, got %d", len(result))
 	}

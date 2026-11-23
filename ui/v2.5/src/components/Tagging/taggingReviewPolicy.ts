@@ -272,9 +272,40 @@ export function nextCharacterResolutionIndex(
   );
 }
 
-const SOLO_COUNT_TAGS = new Set(["1girl", "1boy", "1other"]);
+export interface DuplicateDetectionSettings {
+  enabled: boolean;
+  reversedNames: boolean;
+  onePerson: boolean;
+}
+
+export const defaultDuplicateDetection: DuplicateDetectionSettings = {
+  enabled: true,
+  reversedNames: true,
+  onePerson: true,
+};
+
 const GROUP_COUNT_TAG =
   /^(?:\d+\+?(?:girls|boys|others)|multiple_(?:girls|boys|others))$/;
+// Danbooru tags that let one person carry several Character tags. Keep in
+// step with camieSeveralFigureTags on the server.
+const SEVERAL_FIGURE_TAGS = new Set([
+  "solo_focus",
+  "cosplay",
+  "multiple_views",
+  "multiple_persona",
+  "dual_persona",
+  "character_doll",
+  "crossover",
+  "costume_switch",
+  "split_screen",
+  "reference_sheet",
+  "character_sheet",
+  "fusion",
+  "genderswap",
+  "alternate_form",
+  "doppelganger",
+  "clone",
+]);
 
 /** A two-part Character name in either order gives the same key. */
 export function characterNameOrderKey(name: string) {
@@ -286,47 +317,72 @@ export function characterNameOrderKey(name: string) {
   return `${parts.join(" ")}\u0000${qualifier}`;
 }
 
-/** The general tags say the Image shows one person. */
+/**
+ * The general tags clearly say the Image shows one person: `solo`, with no
+ * group count and no tag that lets one person carry several Characters.
+ */
 export function depictsOneCharacter(predictions: readonly TagPrediction[]) {
   let solo = false;
-  let singles = 0;
   for (const prediction of predictions) {
     if (prediction.category !== "general") continue;
     const name = normalizePredictionValue(prediction.name).replaceAll(" ", "_");
     if (name === "solo") solo = true;
-    else if (SOLO_COUNT_TAGS.has(name)) singles++;
-    else if (GROUP_COUNT_TAG.test(name)) return false;
+    else if (GROUP_COUNT_TAG.test(name) || SEVERAL_FIGURE_TAGS.has(name))
+      return false;
   }
-  return solo || singles === 1;
+  return solo;
 }
 
 export interface DuplicateCharacterWarnings {
   /** Selected Characters that are the same name in another order. */
   reversed: [string, string][];
-  /** Selected Characters when the tags say one person; else 0. */
+  /** Different selected Characters when the tags say one person; else 0. */
   soloConflict: number;
+}
+
+function characterIdentityKey(
+  prediction: TagPrediction,
+  reversedNames: boolean
+) {
+  if (prediction.targetExists && prediction.targetPath)
+    return `target:${prediction.targetPath}`;
+  return reversedNames
+    ? `name:${characterNameOrderKey(prediction.name)}`
+    : `name:${normalizePredictionValue(prediction.name)}`;
 }
 
 /** Warn about likely duplicate Characters in a selection. */
 export function duplicateCharacterWarnings(
-  selected: readonly TagPrediction[]
+  selected: readonly TagPrediction[],
+  settings: DuplicateDetectionSettings = defaultDuplicateDetection
 ): DuplicateCharacterWarnings {
+  const none = { reversed: [], soloConflict: 0 };
+  if (!settings.enabled) return none;
   const characters = selected.filter(
     (prediction) => prediction.category === "character"
   );
-  const firstByKey = new Map<string, TagPrediction>();
   const reversed: [string, string][] = [];
-  for (const character of characters) {
-    const key = characterNameOrderKey(character.name);
-    const first = firstByKey.get(key);
-    if (!first) firstByKey.set(key, character);
-    else reversed.push([first.name, character.name]);
+  if (settings.reversedNames) {
+    const firstByKey = new Map<string, TagPrediction>();
+    for (const character of characters) {
+      const key = characterNameOrderKey(character.name);
+      const first = firstByKey.get(key);
+      if (!first) firstByKey.set(key, character);
+      else if (
+        normalizePredictionValue(first.name) !==
+        normalizePredictionValue(character.name)
+      )
+        reversed.push([first.name, character.name]);
+    }
   }
-  return {
-    reversed,
-    soloConflict:
-      characters.length > 1 && depictsOneCharacter(selected)
-        ? characters.length
-        : 0,
-  };
+  let soloConflict = 0;
+  if (settings.onePerson && depictsOneCharacter(selected)) {
+    const distinct = new Set(
+      characters.map((character) =>
+        characterIdentityKey(character, settings.reversedNames)
+      )
+    );
+    if (distinct.size > 1) soloConflict = distinct.size;
+  }
+  return { reversed, soloConflict };
 }

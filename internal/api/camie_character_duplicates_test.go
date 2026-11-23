@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/stashapp/stash/pkg/camietagger"
@@ -62,39 +63,70 @@ func TestFindCamieReversedNamePerformerNeedsOneMatch(t *testing.T) {
 func TestMergeBulkImageTagsTreatsReversedCharacterNamesAsOne(t *testing.T) {
 	pixai := []camietagger.Tag{{Name: "hatsune_miku", Category: "character", Score: .9, Source: "pixai"}}
 	camie := []camietagger.Tag{{Name: "miku_hatsune", Category: "character", Score: .95, Source: "model"}}
-	merged := mergeBulkImageTags(nil, nil, pixai, camie)
+	merged := mergeBulkImageTags(true, nil, nil, pixai, camie)
 	if len(merged) != 1 || merged[0].Source != "pixai" {
 		t.Fatalf("reversed names must merge into the earlier source's prediction: %+v", merged)
 	}
 }
 
+func TestCamieDepictsOneCharacterAvoidsFalsePositives(t *testing.T) {
+	general := func(names ...string) []camietagger.Tag {
+		var tags []camietagger.Tag
+		for _, name := range names {
+			tags = append(tags, camietagger.Tag{Name: name, Category: "general"})
+		}
+		return tags
+	}
+	for _, tags := range [][]camietagger.Tag{
+		general("1girl"),                    // count alone: others may be untagged
+		general("solo", "2girls"),           // contradictory tags
+		general("solo", "solo_focus"),       // one of several people
+		general("solo", "cosplay"),          // one person as another Character
+		general("solo", "multiple_views"),   // one Character drawn twice
+		general("solo", "Multiple Persona"), // normalised spelling
+		general("solo", "multiple_boys"),
+	} {
+		if camieDepictsOneCharacter(tags) {
+			t.Errorf("%v must not count as one person", tags)
+		}
+	}
+	if !camieDepictsOneCharacter(general("solo", "1girl", "smile")) {
+		t.Error("solo with a single count is one person")
+	}
+}
+
 func TestWithoutSoloConflictCharacters(t *testing.T) {
-	tag := func(name, category, source string) camietagger.Tag {
-		return normalizeCamiePrediction(camietagger.Tag{Name: name, Category: category, Source: source, Score: 0.9})
+	character := func(name, source string) camietagger.Tag {
+		return camietagger.Tag{Name: name, Category: "character", Source: source, Score: 0.9}
 	}
-	models := []camietagger.Tag{
-		tag("1girl", "general", "model"),
-		tag("saber", "character", "model"),
-		tag("artoria_pendragon", "character", "pixai"),
+	predictions := []camietagger.Tag{
+		{Name: "solo", Category: "general"},
+		character("Saber", "model"),
+		character("Artoria Pendragon", "pixai"),
 	}
-	kept, dropped := withoutSoloConflictCharacters(models)
+	kept, dropped := withoutSoloConflictCharacters(predictions, predictions, true)
 	if len(dropped) != 2 || len(kept) != 1 {
-		t.Fatalf("1girl with two inferred Characters must drop them: kept %+v dropped %v", kept, dropped)
+		t.Fatalf("two different model Characters on a solo Image must be skipped: kept %+v dropped %v", kept, dropped)
+	}
+	if _, dropped := withoutSoloConflictCharacters(predictions, predictions, false); len(dropped) != 0 {
+		t.Fatal("nothing is skipped when the Image is not one person or the check is off")
 	}
 
-	group := append([]camietagger.Tag{tag("2girls", "general", "model")}, models...)
-	if _, dropped := withoutSoloConflictCharacters(group); len(dropped) != 0 {
-		t.Fatalf("a group count allows several Characters: %v", dropped)
+	// Two names for one existing Character are not a conflict.
+	enriched := append([]camietagger.Tag(nil), predictions...)
+	enriched[1].TargetExists, enriched[1].TargetPath = true, "/performers/4"
+	enriched[2].TargetExists, enriched[2].TargetPath = true, "/performers/4"
+	if _, dropped := withoutSoloConflictCharacters(predictions, enriched, true); len(dropped) != 0 {
+		t.Fatalf("aliases of one Character must be kept: %v", dropped)
 	}
-	mixed := append([]camietagger.Tag{tag("1boy", "general", "model")}, models...)
-	if _, dropped := withoutSoloConflictCharacters(mixed); len(dropped) != 0 {
-		t.Fatalf("1girl and 1boy show two people: %v", dropped)
+	reversed := []camietagger.Tag{character("Hatsune Miku", "model"), character("miku_hatsune", "pixai")}
+	if _, dropped := withoutSoloConflictCharacters(reversed, reversed, true); len(dropped) != 0 {
+		t.Fatalf("one Character in both name orders must be kept: %v", dropped)
 	}
 
-	// An MD5 match may name a cosplayed Character next to the original.
-	booruTags := []camietagger.Tag{tag("saber", "character", "danbooru"), tag("artoria_pendragon", "character", "danbooru")}
-	trusted := []camietagger.Tag{tag("solo", "general", "danbooru"), booruTags[0], booruTags[1]}
-	if _, dropped := withoutSoloConflictCharacters(trusted, booruTags); len(dropped) != 0 {
+	// Filename and MD5-match Characters are always kept and not counted.
+	trusted := []camietagger.Tag{character("Saber", "filename"), character("Archer", "booru:danbooru"), character("Rin", "model")}
+	if kept, dropped := withoutSoloConflictCharacters(trusted, trusted, true); len(dropped) != 0 || len(kept) != 3 {
 		t.Fatalf("authoritative Characters must be kept: %v", dropped)
 	}
 }
@@ -111,22 +143,43 @@ func (f fakeCamieTagger) Tag(context.Context, string, float64, int) ([]camietagg
 
 func (f fakeCamieTagger) Close() error { return nil }
 
-// Bulk jobs and automatic tagging after a Booru download share this path.
-func TestInferBulkImageTagsSkipsModelCharactersOnSoloImages(t *testing.T) {
+func TestDuplicateDetectionSettingsGateReversedMerge(t *testing.T) {
 	config := defaultCamieConfig()
 	var request bulkImageTagRequest
 	request.UseCamie = true
 	camie := fakeCamieTagger{tags: []camietagger.Tag{
-		{Name: "1girl", Category: "general", Score: .9},
-		{Name: "saber", Category: "character", Score: .9},
-		{Name: "artoria_pendragon", Category: "character", Score: .8},
+		{Name: "hatsune_miku", Category: "character", Score: .9},
+		{Name: "miku_hatsune", Category: "character", Score: .8},
 	}}
-	predictions, err := inferBulkImageTags(context.Background(), 1, "/library/a.png", config, request, bulkImageTagClients{camie: camie}, nil)
-	if err != nil {
+	run := func() int {
+		t.Helper()
+		predictions, err := inferBulkImageTags(context.Background(), 1, "/library/a.png", config, request, bulkImageTagClients{camie: camie}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return len(predictions)
+	}
+	if got := run(); got != 1 {
+		t.Fatalf("reversed names must merge by default, got %d", got)
+	}
+	config.DuplicateDetection.ReversedNames = false
+	if got := run(); got != 2 {
+		t.Fatalf("reversed-name merging must follow its setting, got %d", got)
+	}
+	config.DuplicateDetection = defaultDuplicateDetectionConfig()
+	config.DuplicateDetection.Enabled = false
+	if got := run(); got != 2 {
+		t.Fatalf("the main switch must turn every mode off, got %d", got)
+	}
+}
+
+func TestDuplicateDetectionDefaultsSurviveOldConfigFiles(t *testing.T) {
+	config := defaultCamieConfig()
+	if err := json.Unmarshal([]byte(`{"threshold":0.5,"duplicateDetection":{"onePerson":false}}`), &config); err != nil {
 		t.Fatal(err)
 	}
-	if len(predictions) != 1 || predictions[0].Category != "general" {
-		t.Fatalf("model Characters on a solo Image must be skipped: %+v", predictions)
+	if !config.DuplicateDetection.Enabled || !config.DuplicateDetection.ReversedNames || config.DuplicateDetection.OnePerson {
+		t.Fatalf("missing settings must keep their defaults: %+v", config.DuplicateDetection)
 	}
 }
 
