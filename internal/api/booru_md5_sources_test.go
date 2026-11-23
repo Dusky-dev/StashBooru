@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stashapp/stash/pkg/booru"
@@ -156,5 +158,30 @@ func TestTaggingSourceURLsAreValidatedAndAddOnly(t *testing.T) {
 	)
 	if len(missing) != 1 || missing[0] != "https://e621.net/posts/2" {
 		t.Fatalf("missing = %v", missing)
+	}
+}
+
+// An MD5 match types its tags like the Booru browser: the installed tag CSV
+// fills what the site left untyped, so they are not all General.
+func TestBooruMD5LookupUsesInstalledTagCSV(t *testing.T) {
+	dir := t.TempDir()
+	source := booru.Source{ID: "gb", Name: "Board", Engine: "gelbooru", URL: "https://board.example.org"}
+	if err := os.MkdirAll(filepath.Join(dir, "booru-tags"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	csv := "type,count,name,ambiguous,id\n1,5,artist_a,False,1\n4,3,char_b,False,2\n3,3,series_c,False,3\n"
+	if err := os.WriteFile(filepath.Join(dir, "booru-tags", source.Instance()+".csv"), []byte(csv), 0600); err != nil {
+		t.Fatal(err)
+	}
+	posts := []booru.Post{{ID: "1", MD5: "abc", Tags: []booru.Tag{
+		{Name: "artist_a", Category: "unknown"}, {Name: "char_b", Category: "unknown"},
+		{Name: "series_c", Category: "unknown"}, {Name: "solo", Category: "unknown"},
+	}}}
+	booruBrowserRoutes{configPath: dir}.categorizeBooruPostsWith(context.Background(), source, posts, true)
+	post := booruPostFromBrowser(posts[0])
+	if post.TagStringArtist != "artist_a" || post.TagStringCharacter != "char_b" ||
+		post.TagStringCopyright != "series_c" || post.TagStringGeneral != "solo" ||
+		!post.Uncategorized["solo"] || post.Uncategorized["artist_a"] {
+		t.Fatalf("tags not typed from the CSV: %#v", post)
 	}
 }

@@ -691,6 +691,13 @@ export const SettingsInterfacePanel: React.FC = PatchComponent(
                 saveUI({ showFormattedImageFilenameFallback: v })
               }
             />
+            <BooleanSetting
+              id="show-image-filename-tokens"
+              headingID="image_details.filename_tokens.setting"
+              subHeadingID="image_details.filename_tokens.setting_description"
+              checked={ui.showImageFilenameTokens ?? false}
+              onChange={(v) => saveUI({ showImageFilenameTokens: v })}
+            />
           </SettingSection>
           <SettingSection
             id="interface-detail"

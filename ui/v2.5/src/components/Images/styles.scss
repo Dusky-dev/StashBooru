@@ -158,6 +158,48 @@
   order: 2;
 }
 
+// What the filename layout reads: one row per token, one chip per name.
+.image-file-info .filename-tokens {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.5rem;
+}
+
+.filename-token {
+  align-items: baseline;
+  display: flex;
+  gap: 0.5rem;
+  min-width: 0;
+
+  .filename-token-name {
+    color: $text-muted;
+    flex: 0 0 5.5rem;
+    font-size: 0.8rem;
+  }
+
+  .filename-token-values {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+
+  .filename-token-value {
+    background-color: rgba($text-color, 0.1);
+    border-radius: 0.25rem;
+    font-size: 0.85rem;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    padding: 0.05rem 0.45rem;
+  }
+
+  .filename-token-md5 {
+    font-family: $font-family-monospace;
+    font-size: 0.75rem;
+  }
+}
+
 // Checksums, paths and URLs wrap rather than being cut off.
 .image-file-info dd {
   min-width: 0;
@@ -186,26 +228,63 @@
     padding: 0;
     position: relative;
 
+    // A thin line marks the handle; it brightens on hover and while
+    // dragging, without tinting the whole strip.
     .image-details-resize {
       cursor: col-resize;
       flex: 1 1 auto;
+      position: relative;
       touch-action: none;
       width: 100%;
 
-      &:hover,
-      &:focus-visible {
-        background-color: rgba($link-color, 0.35);
+      &::after {
+        background-color: rgba($text-color, 0.12);
+        bottom: 0;
+        content: "";
+        left: 50%;
+        position: absolute;
+        top: 0;
+        transform: translateX(-50%);
+        transition: background-color 0.15s;
+        width: 1px;
+      }
+
+      &:hover::after,
+      &.dragging::after {
+        background-color: rgba($text-color, 0.4);
+      }
+
+      &:focus {
         outline: none;
+      }
+
+      &:focus-visible::after {
+        background-color: $link-color;
+        width: 3px;
       }
     }
 
-    .image-details-toggle {
+    // Hidden: a Details button at the top of the Image takes the strip's
+    // place.
+    &.collapsed {
+      align-items: flex-start;
       flex: 0 0 auto;
-      font-size: 10px;
-      order: -1;
-      padding: 0.5rem 0;
-      width: 100%;
+      justify-content: flex-start;
+      max-width: none;
+      padding: 0.5rem 0.5rem 0 0;
+      width: auto;
     }
+
+    .image-details-show {
+      align-items: center;
+      gap: 0.35rem;
+      white-space: nowrap;
+    }
+  }
+
+  .image-details-hide-item {
+    align-items: center;
+    margin-left: auto;
   }
 
   .image-container {

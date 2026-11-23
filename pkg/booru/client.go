@@ -172,6 +172,10 @@ func (s Source) request(ctx context.Context, query string, page, limit int, opti
 			values.Set("api_key", s.APIKey)
 			values.Set("user_id", s.UserID)
 		}
+		if s.isRule34() {
+			// Documented on api.rule34.xxx: each post lists its tags' types.
+			values.Set("fields", "tag_info")
+		}
 	case "moebooru":
 		path = "/post.json"
 	case "philomena":

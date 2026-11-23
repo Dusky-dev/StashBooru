@@ -184,6 +184,17 @@ func (rs booruBrowserRoutes) Search(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rs booruBrowserRoutes) categorizeBooruPosts(ctx context.Context, source booru.Source, posts []booru.Post) string {
+	// Other Gelbooru-family APIs expose the same category data through a
+	// bulk tag DAPI, despite returning flat/unknown post tags. Do this only
+	// for opt-in native imports so ordinary browsing remains fast.
+	prefs, err := rs.downloadSettings()
+	return rs.categorizeBooruPostsWith(ctx, source, posts, err == nil && prefs.ImportTags)
+}
+
+// categorizeBooruPostsWith types provider tags: live Rule34 lookups (and,
+// with enrichGelbooru, other Gelbooru-family tag lookups), then the installed
+// tag CSV, then the Rule34 auto-catalog. The MD5 lookup uses it too.
+func (rs booruBrowserRoutes) categorizeBooruPostsWith(ctx context.Context, source booru.Source, posts []booru.Post, enrichGelbooru bool) string {
 	// Load the CSV for lookup prioritization, but DO NOT apply its types
 	// until after live Rule34 classification. Older CSV-known tags must
 	// not starve CSV-missing tags in the live 100-name lookup budget.
@@ -206,37 +217,24 @@ func (rs booruBrowserRoutes) categorizeBooruPosts(ctx context.Context, source bo
 		}
 	}
 
-	// Other Gelbooru-family APIs expose the same category data through a
-	// bulk tag DAPI, despite returning flat/unknown post tags. Do this only
-	// for opt-in native imports so ordinary browsing remains fast.
-	if source.Engine == "gelbooru" && !source.IsRule34() {
-		if prefs, err := rs.downloadSettings(); err == nil && prefs.ImportTags {
-			if categorizer, ok := rs.client.(interface {
-				CategorizeGelbooruTagsPrioritized(context.Context, booru.Source, []booru.Post, func(string) bool)
-			}); ok {
-				categorizer.CategorizeGelbooruTagsPrioritized(ctx, source, posts, func(name string) bool {
-					if dbErr != nil || db.index == nil {
-						return true
-					}
-					category := db.index.Category(name)
-					return category == "" || category == "unknown"
-				})
-			}
+	if source.Engine == "gelbooru" && !source.IsRule34() && enrichGelbooru {
+		if categorizer, ok := rs.client.(interface {
+			CategorizeGelbooruTagsPrioritized(context.Context, booru.Source, []booru.Post, func(string) bool)
+		}); ok {
+			categorizer.CategorizeGelbooruTagsPrioritized(ctx, source, posts, func(name string) bool {
+				if dbErr != nil || db.index == nil {
+					return true
+				}
+				category := db.index.Category(name)
+				return category == "" || category == "unknown"
+			})
 		}
 	}
 
 	// Confirmed live categories and provider types win. User-installed
 	// CSV fills in only unresolved names, even when live API is blocked.
-	if dbErr == nil && db.index != nil {
-		for i := range posts {
-			for j, tag := range posts[i].Tags {
-				if tag.Category == "unknown" {
-					if category := db.index.Category(tag.Name); category != "" && category != "unknown" {
-						posts[i].Tags[j].Category = category
-					}
-				}
-			}
-		}
+	if dbErr == nil {
+		applyBooruTagCSV(db, posts)
 	}
 	if !source.IsRule34() {
 		return ""
@@ -273,4 +271,21 @@ func writeBooruError(w http.ResponseWriter, status int, code, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	writeVisualSimilarityJSON(w, &booru.Error{Code: code, Message: message})
+}
+
+// applyBooruTagCSV fills tags still "unknown" from the source's installed tag
+// CSV, if one is installed.
+func applyBooruTagCSV(db booruTagDatabase, posts []booru.Post) {
+	if db.index == nil {
+		return
+	}
+	for i := range posts {
+		for j, tag := range posts[i].Tags {
+			if tag.Category == "unknown" {
+				if category := db.index.Category(tag.Name); category != "" && category != "unknown" {
+					posts[i].Tags[j].Category = category
+				}
+			}
+		}
+	}
 }

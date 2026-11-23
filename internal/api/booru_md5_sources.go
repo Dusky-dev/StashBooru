@@ -117,12 +117,14 @@ func searchBooruSourceMD5(ctx context.Context, source booru.Source, hash string)
 		return nil, err
 	}
 	posts := result.Posts
-	if source.IsRule34() {
-		booruLookupClient.CategorizeRule34Tags(ctx, source, posts)
-	} else if source.Engine == "gelbooru" {
-		booruLookupClient.CategorizeGelbooruTagsPrioritized(ctx, source, posts, func(string) bool { return true })
-	}
+	// The same typing as the Booru browser: live provider lookups, then the
+	// installed tag CSV and the Rule34 tag catalog.
+	booruLookupRoutes().categorizeBooruPostsWith(ctx, source, posts, true)
 	return posts, nil
+}
+
+var booruLookupRoutes = func() booruBrowserRoutes {
+	return booruBrowserRoutes{configPath: manager.GetInstance().Config.GetConfigPath(), client: booruLookupClient}
 }
 
 func clientBooruProvider(source booru.Source, search booruSourceSearch) booruProvider {

@@ -26,6 +26,7 @@ import { ImageEditPanel } from "./ImageEditPanel";
 import { ImageDetailPanel } from "./ImageDetailPanel";
 import {
   ImageDetailsDivider,
+  ImageDetailsHideButton,
   useImageDetailsLayout,
 } from "./ImageDetailsDivider";
 import { ImageKnowledgeTagDialog } from "./ImageKnowledgeTagDialog";
@@ -287,6 +288,9 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
               <Nav.Link eventKey="image-edit-panel">
                 <FormattedMessage id="actions.edit" />
               </Nav.Link>
+            </Nav.Item>
+            <Nav.Item className="image-details-hide-item d-none d-xl-flex">
+              <ImageDetailsHideButton setCollapsed={setDetailsCollapsed} />
             </Nav.Item>
           </Nav>
         </div>

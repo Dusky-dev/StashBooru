@@ -1,3 +1,20 @@
+## StashBooru 1.24.0: Rule34 MD5 tag types, Image details panel — 2026-11-23
+
+- Baseline: `develop` `8605c0a` (1.23.0). Owner: Rule34 MD5 lookup puts every
+  tag in General; filename tokens should be a setting and look good, path
+  shown by default; resize highlight and the hide arrow are awkward.
+- Now: Rule34 post searches send the documented `fields=tag_info` and type
+  flat tags from it. MD5 lookups run the Booru browser's typing
+  (`categorizeBooruPostsWith`: live lookups, installed CSV, Rule34 catalog).
+  Path leads the file details; tokens are behind `showImageFilenameTokens`
+  (off) and render as labelled chips, split as the tagger reads them. Resize
+  handle is a thin line; Hide sits in the Details/Edit tab row, a Details
+  button shows the panel again; mobile keeps its full-width toggle.
+- Checks: `pkg/booru` and focused `internal/api` (integration tag) Go tests,
+  `tsc`, Biome, UI unit tests (146), `image-details-panel.mjs` desktop+mobile.
+- Not verified: a live authenticated Rule34 `tag_info` response (the field is
+  documented on api.rule34.xxx; its row shape `tag`/`type` is assumed).
+
 ## StashBooru 1.23.0: Twitter / X source — 2026-11-23
 
 - Baseline: 1.22.0 (Set image creator pictures). Owner: add Twitter to the
