@@ -30,6 +30,9 @@ CREATE TABLE tags (id INTEGER PRIMARY KEY);`)
 		_, err = db.Exec(string(schema))
 		require.NoError(t, err)
 	}
+	// Migration 104 also alters the stub tables above; add only its column here.
+	_, err = db.Exec("ALTER TABLE copyrights ADD COLUMN ignored BOOLEAN NOT NULL DEFAULT 0")
+	require.NoError(t, err)
 	tx, err := db.Beginx()
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, tx.Rollback()) })

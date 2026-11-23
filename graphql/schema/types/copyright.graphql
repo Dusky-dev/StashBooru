@@ -4,6 +4,8 @@ type Copyright {
   sort_name: String!
   description: String!
   favorite: Boolean!
+  "Hidden from lists and never added again by downloads or tagging"
+  ignored: Boolean!
   aliases: [String!]!
   image_path: String!
   created_at: Time!
@@ -42,6 +44,7 @@ input CopyrightCreateInput {
   sort_name: String
   description: String
   favorite: Boolean
+  ignored: Boolean
   aliases: [String!]
   parent_ids: [ID!]
   child_ids: [ID!]
@@ -54,6 +57,7 @@ input CopyrightUpdateInput {
   sort_name: String
   description: String
   favorite: Boolean
+  ignored: Boolean
   aliases: [String!]
   parent_ids: [ID!]
   child_ids: [ID!]
@@ -71,7 +75,8 @@ type FindCopyrightsResultType {
 
 extend type Query {
   findCopyright(id: ID!): Copyright
-  findCopyrights(filter: FindFilterType, ids: [ID!]): FindCopyrightsResultType!
+  "Ignored Copyrights are hidden unless ignored is true"
+  findCopyrights(filter: FindFilterType, ids: [ID!], ignored: Boolean): FindCopyrightsResultType!
 }
 
 extend type Mutation {

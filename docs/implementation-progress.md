@@ -1,3 +1,22 @@
+## StashBooru 1.17.0: Ignored Tags, Characters, Artists and Copyrights — 2026-11-23
+
+- Baseline: `develop` `3e90d25` (1.16.0, Dusky-dev/StashBooru#429). Owner: an
+  ignored flag that hides useless tags so they aren't created over and over.
+- Now: migration 104 adds `ignored` to tags, performers, studios and
+  copyrights; edit pages, Copyright form and bulk dialogs set it; lists and
+  selectors hide ignored records unless the Ignored filter asks for them.
+  Booru import, Image/Video and bulk tagging, Auto Tag and review skip them;
+  creating a Tag/Artist with an ignored name says it is ignored.
+- Not covered: media that already has an ignored record keeps it; the Booru
+  browser still lists ignored tags on posts; scrapers/Identify; Character
+  name-clash message stays generic; Tags inherited through a Character,
+  Artist or Copyright; deprecated `allTags`/`allPerformers`/`allStudios`.
+- Checks: Go unit + integration (incl. migration 104 and
+  `ignored_metadata_integration_test.go`), golangci-lint, `tsc`, UI unit
+  tests; binary suites `ignored-metadata.mjs` (new, in CI),
+  `copyright-save-retry`, `character-save-new`, `artist-save-new`,
+  `database-upgrade.mjs`.
+
 ## StashBooru 1.16.0: connect plain Booru tags — 2026-11-23
 
 - Baseline: `develop` `4fc85a0` (1.15.0, Dusky-dev/StashBooru#428 merged).

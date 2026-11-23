@@ -16,6 +16,7 @@ type Studio struct {
 	Favorite      bool   `json:"favorite"`
 	Details       string `json:"details"`
 	IgnoreAutoTag bool   `json:"ignore_auto_tag"`
+	Ignored       bool   `json:"ignored"`
 	Organized     bool   `json:"organized"`
 
 	Aliases  RelatedStrings  `json:"aliases"`
@@ -63,6 +64,7 @@ type StudioPartial struct {
 	CreatedAt     OptionalTime
 	UpdatedAt     OptionalTime
 	IgnoreAutoTag OptionalBool
+	Ignored       OptionalBool
 	Organized     OptionalBool
 
 	Aliases  *UpdateStrings

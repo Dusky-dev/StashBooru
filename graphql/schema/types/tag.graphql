@@ -6,6 +6,8 @@ type Tag {
   description: String
   aliases: [String!]!
   ignore_auto_tag: Boolean!
+  "Hidden from lists and never added again by downloads or tagging"
+  ignored: Boolean!
   "Hide this tag's stored image in card and detail previews without deleting it"
   hide_thumbnail: Boolean!
   created_at: Time!
@@ -37,6 +39,7 @@ input TagCreateInput {
   "Duplicate aliases and those equal to name will be ignored (case-insensitive)"
   aliases: [String!]
   ignore_auto_tag: Boolean
+  ignored: Boolean
   hide_thumbnail: Boolean
   favorite: Boolean
   "This should be a URL or a base64 encoded data URL"
@@ -58,6 +61,7 @@ input TagUpdateInput {
   "Duplicate aliases and those equal to name will be ignored (case-insensitive)"
   aliases: [String!]
   ignore_auto_tag: Boolean
+  ignored: Boolean
   hide_thumbnail: Boolean
   favorite: Boolean
   "This should be a URL or a base64 encoded data URL"
@@ -92,6 +96,7 @@ input BulkTagUpdateInput {
   "Duplicate aliases and those equal to name will result in an error (case-insensitive)"
   aliases: BulkUpdateStrings
   ignore_auto_tag: Boolean
+  ignored: Boolean
   hide_thumbnail: Boolean
   favorite: Boolean
 

@@ -44,7 +44,8 @@ func (j *autoTagJob) findAutoTagCopyrights(ctx context.Context) ([]*models.Copyr
 	}); err != nil {
 		return nil, err
 	}
-	return copyrights, nil
+	// Ignored Copyrights are never added to media again.
+	return slices.DeleteFunc(copyrights, func(copyright *models.Copyright) bool { return copyright.Ignored }), nil
 }
 
 func (j *autoTagJob) autoTagCopyrights(ctx context.Context, progress *job.Progress, copyrights []*models.Copyright) error {

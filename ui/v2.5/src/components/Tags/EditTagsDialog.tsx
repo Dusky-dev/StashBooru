@@ -59,7 +59,7 @@ interface IListOperationProps {
   onClose: (applied: boolean) => void;
 }
 
-const tagFields = ["favorite", "description", "ignore_auto_tag"];
+const tagFields = ["favorite", "description", "ignore_auto_tag", "ignored"];
 
 export const EditTagsDialog: React.FC<IListOperationProps> = (
   props: IListOperationProps
@@ -224,6 +224,13 @@ export const EditTagsDialog: React.FC<IListOperationProps> = (
               setUpdateField({ ignore_auto_tag: checked })
             }
             checked={updateInput.ignore_auto_tag ?? undefined}
+          />
+        </Form.Group>
+        <Form.Group controlId="ignored-metadata">
+          <IndeterminateCheckbox
+            label={intl.formatMessage({ id: "ignored" })}
+            setChecked={(checked) => setUpdateField({ ignored: checked })}
+            checked={updateInput.ignored ?? undefined}
           />
         </Form.Group>
       </Form>

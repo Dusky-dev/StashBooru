@@ -44,6 +44,7 @@ type studioRow struct {
 	Favorite      bool        `db:"favorite"`
 	Details       zero.String `db:"details"`
 	IgnoreAutoTag bool        `db:"ignore_auto_tag"`
+	Ignored       bool        `db:"ignored"`
 	Organized     bool        `db:"organized"`
 
 	// not used in resolutions or updates
@@ -60,6 +61,7 @@ func (r *studioRow) fromStudio(o models.Studio) {
 	r.Favorite = o.Favorite
 	r.Details = zero.StringFrom(o.Details)
 	r.IgnoreAutoTag = o.IgnoreAutoTag
+	r.Ignored = o.Ignored
 	r.Organized = o.Organized
 }
 
@@ -74,6 +76,7 @@ func (r *studioRow) resolve() *models.Studio {
 		Favorite:      r.Favorite,
 		Details:       r.Details.String,
 		IgnoreAutoTag: r.IgnoreAutoTag,
+		Ignored:       r.Ignored,
 		Organized:     r.Organized,
 	}
 
@@ -93,6 +96,7 @@ func (r *studioRowRecord) fromPartial(o models.StudioPartial) {
 	r.setBool("favorite", o.Favorite)
 	r.setNullString("details", o.Details)
 	r.setBool("ignore_auto_tag", o.IgnoreAutoTag)
+	r.setBool("ignored", o.Ignored)
 	r.setBool("organized", o.Organized)
 }
 
@@ -545,6 +549,7 @@ func (qb *StudioStore) QueryForAutoTag(ctx context.Context, words []string) ([]*
 	sq = sq.Where(
 		goqu.Or(whereClauses...),
 		table.Col("ignore_auto_tag").Eq(0),
+		table.Col("ignored").Eq(0),
 	)
 
 	ret, err := qb.findBySubquery(ctx, sq)

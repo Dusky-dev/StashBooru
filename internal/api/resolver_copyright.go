@@ -42,7 +42,7 @@ func (r *queryResolver) FindCopyright(ctx context.Context, id string) (ret *mode
 	return ret, nil
 }
 
-func (r *queryResolver) FindCopyrights(ctx context.Context, filter *models.FindFilterType, ids []string) (ret *models.FindCopyrightsResultType, err error) {
+func (r *queryResolver) FindCopyrights(ctx context.Context, filter *models.FindFilterType, ids []string, ignored *bool) (ret *models.FindCopyrightsResultType, err error) {
 	idInts, err := copyrightIDsToInts(ids)
 	if err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func (r *queryResolver) FindCopyrights(ctx context.Context, filter *models.FindF
 			items, err = r.repository.Copyright.FindMany(ctx, idInts)
 			count = len(items)
 		} else {
-			items, count, err = r.repository.Copyright.Query(ctx, filter)
+			items, count, err = r.repository.Copyright.QueryListed(ctx, filter, ignored)
 		}
 		if err != nil {
 			return err

@@ -46,7 +46,7 @@ func TestValidateName(t *testing.T) {
 	}{
 		{"missing name", "", ErrNameMissing},
 		{"new name", newName, nil},
-		{"existing name", name1, &NameExistsError{name1}},
+		{"existing name", name1, &NameExistsError{Name: name1}},
 	}
 
 	for _, tt := range tests {
@@ -158,7 +158,7 @@ func TestValidateUpdateAliases(t *testing.T) {
 		want    error
 	}{
 		{"valid alias", existing1, []string{alias1}, nil},
-		{"alias duplicates other name", existing1, []string{name2}, &NameExistsError{name2}},
+		{"alias duplicates other name", existing1, []string{name2}, &NameExistsError{Name: name2}},
 		{"alias duplicates other alias", existing1, []string{newAlias}, &NameUsedByAliasError{newAlias, existing2.Name}},
 		{"valid new alias", existing1, []string{"valid"}, nil},
 		{"empty alias", existing1, []string{""}, ErrEmptyAlias},

@@ -13,6 +13,8 @@ export interface TagPrediction {
   targetPath?: string;
   targetExists?: boolean;
   targetCandidates?: TargetCandidate[];
+  /** The target is an ignored Tag, Character, Artist or Copyright. */
+  ignored?: boolean;
   libraryVotes?: number;
   libraryMeanSimilarity?: number;
 }
@@ -127,6 +129,7 @@ export function mergeMetadataPredictions(
         targetCandidates: current.targetCandidates?.length
           ? current.targetCandidates
           : prediction.targetCandidates,
+        ignored: current.ignored || prediction.ignored,
         provenance: mergeSources(current.provenance, provenance),
       };
       merged[existingIndex] = next;
@@ -141,7 +144,8 @@ export function mergeMetadataPredictions(
     }
   }
 
-  return merged;
+  // Ignored records are hidden from review and never applied.
+  return merged.filter((prediction) => !prediction.ignored);
 }
 
 export function filterBooruPredictionsForLocalPriority(

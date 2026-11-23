@@ -65,6 +65,7 @@ interface CopyrightFormValues {
   name: string;
   sort_name: string;
   description: string;
+  ignored: boolean;
   aliases: string;
   parents: Copyright[];
   children: Copyright[];
@@ -75,6 +76,7 @@ const emptyValues: CopyrightFormValues = {
   name: "",
   sort_name: "",
   description: "",
+  ignored: false,
   aliases: "",
   parents: [],
   children: [],
@@ -176,6 +178,7 @@ const CopyrightEditPanel: React.FC<{
           name: copyright.name,
           sort_name: copyright.sort_name,
           description: copyright.description,
+          ignored: copyright.ignored,
           aliases: copyright.aliases.join("\n"),
           parents: copyright.parents,
           children: copyright.ordered_children,
@@ -222,6 +225,7 @@ const CopyrightEditPanel: React.FC<{
         name,
         sort_name: values.sort_name.trim(),
         description: values.description,
+        ignored: values.ignored,
         aliases: aliasesFromText(values.aliases),
         parent_ids: values.parents.map((item) => item.id),
         child_ids: values.children.map((item) => item.id),
@@ -350,6 +354,16 @@ const CopyrightEditPanel: React.FC<{
             }
           />
         )}
+        <Form.Check
+          className="mb-3"
+          type="checkbox"
+          id="copyright-ignored"
+          checked={values.ignored}
+          onChange={(event) =>
+            setValues({ ...values, ignored: event.currentTarget.checked })
+          }
+          label={<FormattedMessage id="ignored" />}
+        />
         {field(
           "Main Copyrights",
           <>

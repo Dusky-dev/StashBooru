@@ -90,6 +90,7 @@ with sqlite3.connect(pathlib.Path(sys.argv[1]).as_uri() + '?mode=ro', uri=True) 
     assert any(col[1] == 'hide_thumbnail' for col in db.execute('PRAGMA table_info(tags)')) == (int(sys.argv[2]) >= 101)
     assert bool(db.execute("SELECT name FROM sqlite_master WHERE type='trigger' AND name='image_visual_embedding_cleanup'").fetchall()) == (int(sys.argv[2]) >= 102)
     assert bool(db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='character_dedup_exclusions'").fetchall()) == (int(sys.argv[2]) >= 103)
+    assert any(col[1] == 'ignored' for col in db.execute('PRAGMA table_info(copyrights)')) == (int(sys.argv[2]) >= 104)
 `,
     file,
     String(version),
@@ -222,7 +223,7 @@ async function check(viewport, label) {
   assert.deepEqual(await status(page, url), {
     status: "NEEDS_MIGRATION",
     databaseSchema: 99,
-    appSchema: 103,
+    appSchema: 104,
   });
   await page.goto(url, { waitUntil: "networkidle" });
   await page
@@ -264,8 +265,8 @@ async function check(viewport, label) {
   }
   assert.deepEqual(await status(page, url), {
     status: "OK",
-    databaseSchema: 103,
-    appSchema: 103,
+    databaseSchema: 104,
+    appSchema: 104,
   });
   await page.waitForURL(
     (location) =>
@@ -275,7 +276,7 @@ async function check(viewport, label) {
     .getByRole("heading", { name: "Migration required", exact: true })
     .waitFor({ state: "detached" });
   assert.deepEqual(await call(page, url, snapshotQuery, ids), before);
-  schema(join(directory, "library.sqlite"), 103, true);
+  schema(join(directory, "library.sqlite"), 104, true);
   schema(selected, 99, false);
   assert.equal(
     await readFile(blocked, "utf8"),
@@ -323,8 +324,8 @@ async function check(viewport, label) {
   track();
   assert.deepEqual(await status(page, url), {
     status: "OK",
-    databaseSchema: 103,
-    appSchema: 103,
+    databaseSchema: 104,
+    appSchema: 104,
   });
   assert.deepEqual(await call(page, url, snapshotQuery, ids), before);
   await page.close();
@@ -332,7 +333,7 @@ async function check(viewport, label) {
   assert.deepEqual(errors, []);
   console.log(
     label +
-      ": actual 99→103 upgrade, failed backup/draft, custom-path retry, old-schema backup/old-app restore, metadata/aliases/blob bytes, refresh and restart passed."
+      ": actual 99→104 upgrade, failed backup/draft, custom-path retry, old-schema backup/old-app restore, metadata/aliases/blob bytes, refresh and restart passed."
   );
 }
 try {

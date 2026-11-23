@@ -37,6 +37,7 @@ type tagRow struct {
 	Favorite      bool        `db:"favorite"`
 	Description   zero.String `db:"description"`
 	IgnoreAutoTag bool        `db:"ignore_auto_tag"`
+	Ignored       bool        `db:"ignored"`
 	HideThumbnail bool        `db:"hide_thumbnail"`
 	CreatedAt     Timestamp   `db:"created_at"`
 	UpdatedAt     Timestamp   `db:"updated_at"`
@@ -52,6 +53,7 @@ func (r *tagRow) fromTag(o models.Tag) {
 	r.Favorite = o.Favorite
 	r.Description = zero.StringFrom(o.Description)
 	r.IgnoreAutoTag = o.IgnoreAutoTag
+	r.Ignored = o.Ignored
 	r.HideThumbnail = o.HideThumbnail
 	r.CreatedAt = Timestamp{Timestamp: o.CreatedAt}
 	r.UpdatedAt = Timestamp{Timestamp: o.UpdatedAt}
@@ -65,6 +67,7 @@ func (r *tagRow) resolve() *models.Tag {
 		Favorite:      r.Favorite,
 		Description:   r.Description.String,
 		IgnoreAutoTag: r.IgnoreAutoTag,
+		Ignored:       r.Ignored,
 		HideThumbnail: r.HideThumbnail,
 		CreatedAt:     r.CreatedAt.Timestamp,
 		UpdatedAt:     r.UpdatedAt.Timestamp,
@@ -97,6 +100,7 @@ func (r *tagRowRecord) fromPartial(o models.TagPartial) {
 	r.setNullString("description", o.Description)
 	r.setBool("favorite", o.Favorite)
 	r.setBool("ignore_auto_tag", o.IgnoreAutoTag)
+	r.setBool("ignored", o.Ignored)
 	r.setBool("hide_thumbnail", o.HideThumbnail)
 	r.setTimestamp("created_at", o.CreatedAt)
 	r.setTimestamp("updated_at", o.UpdatedAt)
@@ -744,6 +748,7 @@ func (qb *TagStore) QueryForAutoTag(ctx context.Context, words []string) ([]*mod
 	whereOr := "(" + strings.Join(whereClauses, " OR ") + ")"
 	where := strings.Join([]string{
 		"tags.ignore_auto_tag = 0",
+		"tags.ignored = 0",
 		whereOr,
 	}, " AND ")
 	return qb.queryTags(ctx, query+" WHERE "+where, args)

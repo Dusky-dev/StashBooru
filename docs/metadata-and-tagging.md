@@ -40,6 +40,19 @@ An Artist used as disambiguation does not automatically become the Artist of
 every media item. Ambiguous name/alias matches require resolution instead of
 silently picking the first record.
 
+## Ignored Tags, Characters, Artists and Copyrights
+
+Tick **Ignored** on a Tag, Character, Artist or Copyright (its edit page, or
+the bulk edit dialog for Tags, Characters and Artists) for metadata you don't
+care about, such as `highres`:
+
+- It is hidden from lists and selectors. Add the **Ignored** filter to a list
+  to see ignored records again and untick them.
+- Downloads, Image and Video Tagging and bulk tagging never add it to media
+  again, and never create it again under the same name or alias. Tagging
+  review does not show it.
+- Media that already has it keeps it; nothing is removed.
+
 ## Direct and calculated associations
 
 In **Settings → Library**, four independent switches control Character, Artist,

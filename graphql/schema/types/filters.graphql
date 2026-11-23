@@ -212,6 +212,7 @@ input PerformerFilterType {
   performers: MultiCriterionInput
   "Filter by autotag ignore value"
   ignore_auto_tag: Boolean
+  ignored: Boolean
   "Filter by birthdate"
   birthdate: DateCriterionInput
   "Filter by death date"
@@ -515,6 +516,7 @@ input StudioFilterType {
   child_count: IntCriterionInput
   "Filter by autotag ignore value"
   ignore_auto_tag: Boolean
+  ignored: Boolean
   "Filter by organized"
   organized: Boolean
   "Filter by related scenes that meet this criteria"
@@ -674,6 +676,7 @@ input TagFilterType {
 
   "Filter by autotag ignore value"
   ignore_auto_tag: Boolean
+  ignored: Boolean
 
   "Filter by StashID"
   stash_id_endpoint: StashIDCriterionInput

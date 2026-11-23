@@ -8,10 +8,14 @@ import (
 )
 
 type NameExistsError struct {
-	Name string
+	Name    string
+	Ignored bool
 }
 
 func (e *NameExistsError) Error() string {
+	if e.Ignored {
+		return fmt.Sprintf("tag with name '%s' already exists and is ignored; add the Ignored filter to the list to find it", e.Name)
+	}
 	return fmt.Sprintf("tag with name '%s' already exists", e.Name)
 }
 
@@ -51,7 +55,8 @@ func EnsureTagNameUnique(ctx context.Context, id int, name string, qb models.Tag
 
 	if sameNameTag != nil && id != sameNameTag.ID {
 		return &NameExistsError{
-			Name: name,
+			Name:    name,
+			Ignored: sameNameTag.Ignored,
 		}
 	}
 

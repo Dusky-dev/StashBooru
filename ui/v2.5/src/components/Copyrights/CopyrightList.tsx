@@ -5,6 +5,7 @@ import { Link, useHistory } from "react-router-dom";
 import { FormattedMessage, useIntl } from "react-intl";
 
 import * as GQL from "src/core/generated-graphql";
+import { BooleanCriterion } from "src/models/list-filter/criteria/criterion";
 import { ListFilterModel } from "src/models/list-filter/filter";
 import { DisplayMode } from "src/models/list-filter/types";
 import { useFilteredItemList } from "src/components/List/ItemList";
@@ -27,9 +28,22 @@ import { useToast } from "src/hooks/Toast";
 const zoomWidths = [280, 340, 480, 640];
 const COPYRIGHT_LIST_ZOOM_PREFERENCE_KEY = "copyrights-list";
 
+// The Ignored filter shows ignored Copyrights; without it they are hidden.
+function copyrightIgnoredFilter(filter: ListFilterModel) {
+  const criterion = filter.criteria.find(
+    (item) => item.criterionOption.type === "ignored"
+  );
+  return criterion instanceof BooleanCriterion
+    ? criterion.toCriterionInput()
+    : undefined;
+}
+
 function useFindCopyrightsForList(filter: ListFilterModel) {
   return GQL.useFindCopyrightsQuery({
-    variables: { filter: filter.makeFindFilter() },
+    variables: {
+      filter: filter.makeFindFilter(),
+      ignored: copyrightIgnoredFilter(filter),
+    },
     fetchPolicy: "network-only",
   });
 }
@@ -170,7 +184,10 @@ const CopyrightList: React.FC = () => {
     try {
       const { data } = await client.query<GQL.FindCopyrightsQuery>({
         query: GQL.FindCopyrightsDocument,
-        variables: { filter: randomFilter.makeFindFilter() },
+        variables: {
+          filter: randomFilter.makeFindFilter(),
+          ignored: copyrightIgnoredFilter(randomFilter),
+        },
         fetchPolicy: "network-only",
       });
       const selected = data.findCopyrights.copyrights[0];

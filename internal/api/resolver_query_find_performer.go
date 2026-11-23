@@ -24,6 +24,10 @@ func (r *queryResolver) FindPerformer(ctx context.Context, id string) (ret *mode
 }
 
 func (r *queryResolver) FindPerformers(ctx context.Context, performerFilter *models.PerformerFilterType, filter *models.FindFilterType, performerIDs []int, ids []string) (ret *FindPerformersResultType, err error) {
+	if performerFilter == nil {
+		performerFilter = &models.PerformerFilterType{}
+	}
+	performerFilter.Ignored = listedIgnored(performerFilter.Ignored)
 	if len(ids) > 0 {
 		performerIDs, err = handleIDList(ids, "ids")
 		if err != nil {

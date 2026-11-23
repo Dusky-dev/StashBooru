@@ -58,6 +58,7 @@ const performerFields = [
   "tattoos",
   "piercings",
   "ignore_auto_tag",
+  "ignored",
 ];
 
 export const EditPerformersDialog: React.FC<IListOperationProps> = (
@@ -484,6 +485,13 @@ export const EditPerformersDialog: React.FC<IListOperationProps> = (
                 setUpdateField({ ignore_auto_tag: checked })
               }
               checked={updateInput.ignore_auto_tag ?? undefined}
+            />
+          </Form.Group>
+          <Form.Group controlId="ignored-metadata">
+            <IndeterminateCheckbox
+              label={intl.formatMessage({ id: "ignored" })}
+              setChecked={(checked) => setUpdateField({ ignored: checked })}
+              checked={updateInput.ignored ?? undefined}
             />
           </Form.Group>
         </Form>
