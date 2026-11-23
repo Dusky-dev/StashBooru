@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// The app's version; kept equal to `pubspec.yaml` and the server's
 /// `internal/build/stashbooru-version.txt` (a test checks both).
-const kAppVersion = '1.21.0';
+const kAppVersion = '1.23.0';
 
 enum CardSize {
   small('Small', 0.75),

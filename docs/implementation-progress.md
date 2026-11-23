@@ -1,3 +1,37 @@
+## StashBooru 1.23.0: Twitter / X source — 2026-11-23
+
+- Baseline: 1.22.0 (Set image creator pictures). Owner: add Twitter to the
+  Booru browser.
+- Now: `twitter` engine (default source **Twitter / X**, `https://api.x.com`,
+  media `twimg.com`) on the official X API v2 with the user's bearer token.
+  `@handle`/`user:<id>` timeline (no retweets/replies), `id:<id>`, recent
+  search (`has:media -is:retweet`, 7 days). Cursor pages remembered per query
+  (walk ≤5 pages). Photos `name=orig`, videos best MP4; extra images are
+  attachments. `user:<id>` is an account identity with a profile picture
+  (`/2/users/<id>`, `_400x400`). `post.fields` with one `tweet.fields` retry.
+- Checks: Go unit tests with fixture responses (timeline, cursors, search,
+  402/auth, icon), `internal/api` + `pkg/booru` with the integration tag,
+  `tsc`, Biome lint/format.
+- Not verified: any live X API call (no token); `has:media`/`-is:retweet`
+  operators, variant/hashtag field names and `/2/users/<id>` are from
+  memory/docs summaries, not a live response. No browser suite change.
+
+## StashBooru 1.22.0: Artist picture in Set image, Pixiv avatars — 2026-11-23
+
+- Baseline: `develop` `59754ea` (1.21.0, Dusky-dev/StashBooru#435). Owner: the
+  profile-picture option belongs only in edit mode's Set image; cover Pixiv.
+- Now: `useCreatorPictureActions` lists one Set image entry per connected
+  Pixiv/Pawchive/Kemono account (paged identities list, up to 200 rows) on an
+  existing Artist; choosing one loads it into the form, Save persists it. The
+  Identities buttons, direct `studioUpdate` and replace prompt are gone.
+  `Client.CreatorIcon` resolves Pixiv `user:<id>` via `/v1/user/detail`
+  (`profile_image_urls.medium`, `no_profile` = no picture, pximg allowlist);
+  route errors now surface the server message (`error` key).
+- Checks: Go unit tests (Pixiv fixture, route), `tsc`, Biome lint/format;
+  `artist-save-new.mjs` extended and passed desktop/mobile on a local build;
+  `identities.mjs` passed.
+- Not verified: a real Pixiv token (fixture responses only).
+
 ## StashBooru 1.21.0: Artist picture from a creator identity — 2026-11-23
 
 - Baseline: `develop` `54f3bc1` (1.20.0, Dusky-dev/StashBooru#434). Owner: fetch the

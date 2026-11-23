@@ -2131,9 +2131,9 @@
       "reject": "Not this {kind}",
       "reject_help": "Hides this suggestion for the selected site name. Show rejected matches to undo."
     },
-    "picture_use": "Use {site} profile picture",
-    "picture_replace": "Replace this Artist's image with the {site} profile picture?",
-    "picture_saved": "Artist image set from the {site} profile picture."
+    "picture_use": "From {site} profile picture",
+    "picture_use_named": "From {site} profile picture ({name})",
+    "picture_loaded": "Loaded the {site} profile picture. Save to keep it."
   },
   "media_card": {
     "implied": "Implied"

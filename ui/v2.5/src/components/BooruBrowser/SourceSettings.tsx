@@ -301,6 +301,7 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
                       <option value="philomena">Philomena</option>
                       <option value="shimmie">Shimmie / Paheal</option>
                       <option value="pixiv">Pixiv App API</option>
+                      <option value="twitter">X (Twitter) API v2</option>
                       <option value="pawchive">Pawchive</option>
                       <option value="kemono">Kemono</option>
                     </Form.Control>
@@ -401,9 +402,11 @@ export function SourceSettings({ onSaved }: { onSaved?: () => void }) {
                         <Form.Label>
                           {draft.engine === "pixiv"
                             ? "Pixiv OAuth access token"
-                            : draft.engine === "pawchive"
-                              ? "File-host session cookie value (optional)"
-                              : "API key"}
+                            : draft.engine === "twitter"
+                              ? "X API bearer token"
+                              : draft.engine === "pawchive"
+                                ? "File-host session cookie value (optional)"
+                                : "API key"}
                         </Form.Label>
                         <Form.Control
                           className="text-input"

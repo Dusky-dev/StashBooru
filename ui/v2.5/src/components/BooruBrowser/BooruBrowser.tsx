@@ -1737,7 +1737,7 @@ export default function BooruBrowser() {
   const unsupportedRating =
     !!active.favorites ||
     selected.some((id) =>
-      ["shimmie", "pixiv", "pawchive", "kemono"].includes(
+      ["shimmie", "pixiv", "pawchive", "kemono", "twitter"].includes(
         sources?.find((source) => source.id === id)?.engine ?? ""
       )
     );
@@ -2142,36 +2142,52 @@ export default function BooruBrowser() {
                   label: "Oldest",
                   disabled:
                     !!active.favorites ||
-                    ["shimmie", "pixiv", "pawchive", "kemono"].includes(
-                      selectedSource?.engine ?? ""
-                    ),
+                    [
+                      "shimmie",
+                      "pixiv",
+                      "pawchive",
+                      "kemono",
+                      "twitter",
+                    ].includes(selectedSource?.engine ?? ""),
                 },
                 {
                   value: "popular",
                   label: "Popular",
                   disabled:
                     !!active.favorites ||
-                    ["shimmie", "pixiv", "pawchive", "kemono"].includes(
-                      selectedSource?.engine ?? ""
-                    ),
+                    [
+                      "shimmie",
+                      "pixiv",
+                      "pawchive",
+                      "kemono",
+                      "twitter",
+                    ].includes(selectedSource?.engine ?? ""),
                 },
                 {
                   value: "score_desc",
                   label: "Score: high to low",
                   disabled:
                     !!active.favorites ||
-                    ["shimmie", "pixiv", "pawchive", "kemono"].includes(
-                      selectedSource?.engine ?? ""
-                    ),
+                    [
+                      "shimmie",
+                      "pixiv",
+                      "pawchive",
+                      "kemono",
+                      "twitter",
+                    ].includes(selectedSource?.engine ?? ""),
                 },
                 {
                   value: "score_asc",
                   label: "Score: low to high",
                   disabled:
                     !!active.favorites ||
-                    ["shimmie", "pixiv", "pawchive", "kemono"].includes(
-                      selectedSource?.engine ?? ""
-                    ),
+                    [
+                      "shimmie",
+                      "pixiv",
+                      "pawchive",
+                      "kemono",
+                      "twitter",
+                    ].includes(selectedSource?.engine ?? ""),
                 },
                 {
                   value: "updated",

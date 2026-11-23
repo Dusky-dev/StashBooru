@@ -26,7 +26,7 @@ import "./styles.scss";
  */
 const accountKeyArtists = (kind: IdentityKind, source?: BooruSource) =>
   kind === "artist" &&
-  ["pixiv", "pawchive", "kemono"].includes(source?.engine ?? "");
+  ["pixiv", "twitter", "pawchive", "kemono"].includes(source?.engine ?? "");
 
 /** The profile name as typed and, when it has spaces, as a booru tag. */
 export function nameSuggestions(name: string) {

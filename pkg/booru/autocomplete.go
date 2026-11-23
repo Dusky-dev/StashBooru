@@ -37,7 +37,7 @@ func (c *Client) Autocomplete(ctx context.Context, source Source, prefix string)
 	if source.isRule34() && (source.APIKey == "" || source.UserID == "") {
 		return nil, &Error{Code: "authentication", Message: "Rule34.xxx requires an API key and user ID. Save both in Booru Settings > Sources."}
 	}
-	if source.Engine == "pixiv" || source.Engine == "pawchive" || source.Engine == "kemono" || source.Engine == "shimmie" {
+	if source.Engine == "pixiv" || source.Engine == "twitter" || source.Engine == "pawchive" || source.Engine == "kemono" || source.Engine == "shimmie" {
 		return nil, &Error{Code: "autocomplete", Message: "Live completion unavailable for this engine; install an optional CSV database."}
 	}
 	prefix = strings.ToLower(strings.TrimSpace(prefix))

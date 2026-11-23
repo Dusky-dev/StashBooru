@@ -2,6 +2,8 @@ package api
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -9,9 +11,10 @@ import (
 	"github.com/stashapp/stash/pkg/booru"
 )
 
-// CreatorIcon serves the profile picture of a connected Pawchive or Kemono
-// creator account, fetched through the source's media allowlist and size
-// limit. The Artist page offers it as the Artist image; nothing is saved here.
+// CreatorIcon serves the profile picture of a connected Pixiv, Pawchive or
+// Kemono creator account, fetched through the source's media allowlist and
+// size limit. The Artist edit page offers it under Set image; nothing is saved
+// here.
 func (rs booruBrowserRoutes) CreatorIcon(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "private, no-store")
 	instance, target := r.URL.Query().Get("instance"), r.URL.Query().Get("target")
@@ -23,17 +26,32 @@ func (rs booruBrowserRoutes) CreatorIcon(w http.ResponseWriter, r *http.Request)
 	var source booru.Source
 	found := false
 	for _, candidate := range sources {
-		if candidate.Instance() == instance && booru.ArchiveCreatorEngine(candidate.Engine) && !candidate.Disabled {
+		if candidate.Instance() == instance && booru.CreatorPictureEngine(candidate.Engine) && !candidate.Disabled {
 			source, found = candidate, true
 			break
 		}
 	}
 	if !found {
-		writeBooruError(w, 404, "source", "That Pawchive or Kemono source is no longer configured or is disabled.")
+		writeBooruError(w, 404, "source", "That Pixiv, Pawchive or Kemono source is no longer configured or is disabled.")
 		return
 	}
-	icon, err := booru.CreatorIconURL(source, target)
-	if err != nil {
+	var icon string
+	if resolver, ok := rs.client.(interface {
+		CreatorIcon(context.Context, booru.Source, string) (string, error)
+	}); ok {
+		icon, err = resolver.CreatorIcon(r.Context(), source, target)
+	} else {
+		icon, err = booru.CreatorIconURL(source, target)
+	}
+	var providerErr *booru.Error
+	switch {
+	case errors.Is(err, booru.ErrNoCreatorPicture):
+		writeBooruError(w, 404, "no-picture", source.Name+" has no profile picture for this creator.")
+		return
+	case errors.As(err, &providerErr):
+		writeBooruError(w, 502, providerErr.Code, providerErr.Message)
+		return
+	case err != nil:
 		writeBooruError(w, 400, "invalid-query", err.Error())
 		return
 	}

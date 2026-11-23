@@ -257,7 +257,8 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
     tab: "metadata-providers",
     label: "Booru sources and downloads",
     anchor: "booru-sources",
-    keywords: "danbooru rule34 paheal pixiv pawchive kemono autocomplete",
+    keywords:
+      "danbooru rule34 paheal pixiv twitter x pawchive kemono autocomplete",
   },
   {
     tab: "metadata-providers",
