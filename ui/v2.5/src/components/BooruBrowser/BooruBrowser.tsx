@@ -19,6 +19,7 @@ import {
   Alert,
   Button,
   ButtonGroup,
+  Collapse,
   Dropdown,
   Form,
   Modal,
@@ -29,6 +30,8 @@ import { useHistory, useLocation } from "react-router-dom";
 import {
   faArrowLeft,
   faArrowRight,
+  faChevronDown,
+  faChevronRight,
   faBan,
   faGear,
   faStar,
@@ -98,6 +101,12 @@ const tagCategoryLabels: Record<string, string> = {
   species: "Species",
 };
 
+// Posts with more media than this get a collapsible media group header.
+const LARGE_MEDIA_GROUP = 4;
+
+const isArchiveFormat = (format?: string) =>
+  ["zip", "cbz", "7z"].includes(format?.toLowerCase() ?? "");
+
 const message = (id: string, defaultMessage: string) => (
   <FormattedMessage
     id={`booru_browser.${id}`}
@@ -160,13 +169,105 @@ function PostInspection({
   const visibleCount = stream.identity === identity ? stream.count : 3;
   const scrollBody = useRef<HTMLDivElement>(null);
   const loadMore = useRef<HTMLDivElement>(null);
-  const activeIndex = useRef(0);
-  const downloads = useRef(new Map<string, HTMLButtonElement>());
+  // One explicit, highlighted keyboard selection over every visible media
+  // target: post media, archive headers and extracted files, and the media
+  // group header. Shift+Up/Down move it; Up downloads it.
+  const [selection, setSelection] = useState<{
+    identity: string;
+    target: string;
+  }>();
+  const [mediaOpen, setMediaOpen] = useState({ identity, open: true });
+  const groupMedia = assets.length > LARGE_MEDIA_GROUP;
+  const mediaExpanded = mediaOpen.identity !== identity || mediaOpen.open;
+  const firstTarget = groupMedia
+    ? "media"
+    : isArchiveFormat(assets[0]?.format)
+      ? "archive:0"
+      : "asset:0";
+  const selected =
+    selection?.identity === identity ? selection.target : firstTarget;
+  const select = useCallback(
+    (target: string) => setSelection({ identity, target }),
+    [identity]
+  );
   useLayoutEffect(() => {
     setStream({ identity, count: 3 });
-    activeIndex.current = 0;
     if (scrollBody.current) scrollBody.current.scrollTop = 0;
   }, [identity]);
+  function visibleTargets() {
+    const body = scrollBody.current;
+    if (!body) return [];
+    return [
+      ...body.querySelectorAll<HTMLElement>("[data-booru-target]"),
+    ].filter((element) => element.getClientRects().length > 0);
+  }
+  function targetElement(target: string) {
+    return visibleTargets().find(
+      (element) => element.dataset.booruTarget === target
+    );
+  }
+  function focusTarget(element: HTMLElement) {
+    select(element.dataset.booruTarget ?? firstTarget);
+    element.focus({ preventScroll: true });
+    element.scrollIntoView({ block: "nearest" });
+  }
+  function moveSelection(delta: 1 | -1) {
+    const body = scrollBody.current;
+    if (!body) return;
+    const targets = visibleTargets();
+    const current = targets.findIndex(
+      (element) => element.dataset.booruTarget === selected
+    );
+    const next = current < 0 ? 0 : current + delta;
+    if (delta > 0 && current >= 0) {
+      // Media that is not mounted yet comes before the next mounted target:
+      // reveal the load-more marker so the next press reaches it.
+      const pending = [
+        ...body.querySelectorAll<HTMLElement>(".booru-media-load-more"),
+      ].find(
+        (marker) =>
+          marker.getClientRects().length > 0 &&
+          targets[current].compareDocumentPosition(marker) &
+            Node.DOCUMENT_POSITION_FOLLOWING &&
+          (!targets[next] ||
+            marker.compareDocumentPosition(targets[next]) &
+              Node.DOCUMENT_POSITION_FOLLOWING)
+      );
+      if (pending) {
+        pending.scrollIntoView({ block: "end" });
+        return;
+      }
+    }
+    if (targets[next]) focusTarget(targets[next]);
+  }
+  function keepSelectionVisible() {
+    const body = scrollBody.current;
+    if (!body) return;
+    const view = body.getBoundingClientRect();
+    const current = targetElement(selected);
+    if (current) {
+      const bounds = current.getBoundingClientRect();
+      if (bounds.bottom > view.top && bounds.top < view.bottom) return;
+    }
+    // The selection scrolled out of view: select the target nearest the top.
+    const top = view.top + 24;
+    let closest = Number.POSITIVE_INFINITY;
+    let nearest: string | undefined;
+    for (const item of visibleTargets()) {
+      const bounds = item.getBoundingClientRect();
+      const distance =
+        bounds.bottom < top
+          ? top - bounds.bottom
+          : bounds.top > top
+            ? bounds.top - top
+            : 0;
+      if (distance < closest) {
+        closest = distance;
+        nearest = item.dataset.booruTarget;
+      }
+    }
+    if (nearest) select(nearest);
+  }
   useEffect(() => {
     if (visibleCount >= assets.length) return;
     const root = scrollBody.current;
@@ -186,28 +287,6 @@ function PostInspection({
     observer.observe(target);
     return () => observer.disconnect();
   }, [identity, visibleCount, assets.length]);
-  function updateActiveAsset() {
-    const body = scrollBody.current;
-    if (!body) return;
-    const top = body.getBoundingClientRect().top + 24;
-    const items = body.querySelectorAll<HTMLElement>(".booru-inspection-asset");
-    let closest = Number.POSITIVE_INFINITY;
-    for (const item of items) {
-      const bounds = item.getBoundingClientRect();
-      // Prefer the entry crossing the top of the viewport; otherwise select
-      // the nearest entry across a heading/gap between two media files.
-      const distance =
-        bounds.bottom < top
-          ? top - bounds.bottom
-          : bounds.top > top
-            ? bounds.top - top
-            : 0;
-      if (distance < closest) {
-        closest = distance;
-        activeIndex.current = Number(item.dataset.assetIndex) || 0;
-      }
-    }
-  }
   const ignore = useRef<HTMLButtonElement>(null);
   return (
     <Modal
@@ -230,7 +309,6 @@ function PostInspection({
           event.altKey ||
           event.ctrlKey ||
           event.metaKey ||
-          event.shiftKey ||
           !event.currentTarget.contains(target) ||
           target.closest(
             'input, textarea, select, video, audio, .dropdown, [contenteditable="true"], [role="combobox"], [role="menu"]'
@@ -243,20 +321,21 @@ function PostInspection({
           )
         )
           return;
+        if (event.shiftKey && !["ArrowUp", "ArrowDown"].includes(event.key))
+          return;
         event.preventDefault();
         event.stopPropagation();
+        if (event.shiftKey) {
+          moveSelection(event.key === "ArrowDown" ? 1 : -1);
+          return;
+        }
         if (event.key === "ArrowLeft") onPrevious?.();
         if (event.key === "ArrowRight") onNext?.();
         if (!event.repeat && event.key === "ArrowUp") {
-          // Explicit focus wins over a scroll event from focusing an attachment.
-          // Otherwise use the entry nearest the top of the media viewport.
-          const focusedAsset = target.closest<HTMLElement>(
-            ".booru-inspection-asset"
-          );
-          const index = focusedAsset
-            ? Number(focusedAsset.dataset.assetIndex)
-            : activeIndex.current;
-          downloads.current.get(assets[index]?.id)?.click();
+          // Download the highlighted media; a group header has no download.
+          targetElement(selected)
+            ?.querySelector<HTMLButtonElement>(".booru-download-button")
+            ?.click();
         }
         if (!event.repeat && event.key === "ArrowDown") ignore.current?.click();
       }}
@@ -266,7 +345,22 @@ function PostInspection({
           {source.name} #{post.remoteID ?? post.id}
         </Modal.Title>
       </Modal.Header>
-      <Modal.Body ref={scrollBody} onScroll={updateActiveAsset}>
+      <Modal.Body
+        ref={scrollBody}
+        onScroll={keepSelectionVisible}
+        onFocusCapture={(event) => {
+          const target = (event.target as HTMLElement).closest<HTMLElement>(
+            "[data-booru-target]"
+          );
+          if (target?.dataset.booruTarget) select(target.dataset.booruTarget);
+        }}
+        onMouseDown={(event) => {
+          const target = (event.target as HTMLElement).closest<HTMLElement>(
+            "[data-booru-target]"
+          );
+          if (target?.dataset.booruTarget) select(target.dataset.booruTarget);
+        }}
+      >
         <nav
           className="booru-preview-navigation"
           aria-label="Preview navigation"
@@ -278,7 +372,10 @@ function PostInspection({
             onClick={onPrevious}
           />
           <span className="small text-muted">
-            ← / → Browse · ↑ Download · ↓ Ignore
+            {message(
+              "inspection_keys",
+              "← / → Browse · Shift+↑ / Shift+↓ Select media · ↑ Download selected · ↓ Ignore"
+            )}
           </span>
           <BooruIconButton
             icon={faArrowRight}
@@ -299,159 +396,181 @@ function PostInspection({
           </Alert>
         )}
         {post.mediaNotice && <Alert variant="info">{post.mediaNotice}</Alert>}
-        <div className="booru-inspection-media" aria-label="Post media">
-          {assets.slice(0, visibleCount).map((asset, index) => {
-            const sample = booruMediaURL(asset, "sample");
-            return (
-              <section
-                key={asset.id}
-                className="booru-inspection-asset"
-                data-asset-index={index}
-                tabIndex={-1}
-                aria-label={`Media ${index + 1} of ${assets.length}`}
-                onFocusCapture={() => {
-                  activeIndex.current = index;
-                }}
-                onMouseDown={() => {
-                  activeIndex.current = index;
-                }}
-              >
-                {assets.length > 1 && (
-                  <h6 className="booru-asset-heading">
-                    {asset.sourceID === "shared-links"
-                      ? "Linked media"
-                      : "Media"}{" "}
-                    {index + 1} of {assets.length}
-                    {asset.format && ` · ${asset.format.toUpperCase()}`}
-                  </h6>
-                )}
-                {asset.format === "folder" ? (
-                  <div className="booru-shared-folder">
-                    {post.previewURL ? (
-                      <>
+        {groupMedia && (
+          <Button
+            className={`minimal booru-group-toggle mb-2${selected === "media" ? " booru-target-selected" : ""}`}
+            data-booru-target="media"
+            aria-expanded={mediaExpanded}
+            onClick={() => {
+              setMediaOpen({ identity, open: !mediaExpanded });
+              // Hidden media cannot stay selected; select the header instead.
+              if (mediaExpanded) select("media");
+            }}
+          >
+            <Icon
+              icon={mediaExpanded ? faChevronDown : faChevronRight}
+              fixedWidth
+            />{" "}
+            <FormattedMessage
+              id="booru_browser.media_toggle"
+              defaultMessage="{count, plural, one {# media file} other {# media files}}"
+              values={{ count: assets.length }}
+            />
+          </Button>
+        )}
+        <Collapse in={mediaExpanded}>
+          <div className="booru-inspection-media" aria-label="Post media">
+            {assets.slice(0, visibleCount).map((asset, index) => {
+              const sample = booruMediaURL(asset, "sample");
+              const archive = isArchiveFormat(asset.format);
+              const assetTarget = `asset:${index}`;
+              return (
+                <section
+                  key={asset.id}
+                  className={`booru-inspection-asset${!archive && selected === assetTarget ? " booru-target-selected" : ""}`}
+                  data-asset-index={index}
+                  data-booru-target={archive ? undefined : assetTarget}
+                  tabIndex={-1}
+                  aria-label={`Media ${index + 1} of ${assets.length}`}
+                >
+                  {assets.length > 1 && (
+                    <h6 className="booru-asset-heading">
+                      {asset.sourceID === "shared-links"
+                        ? "Linked media"
+                        : "Media"}{" "}
+                      {index + 1} of {assets.length}
+                      {asset.format && ` · ${asset.format.toUpperCase()}`}
+                    </h6>
+                  )}
+                  {asset.format === "folder" ? (
+                    <div className="booru-shared-folder">
+                      {post.previewURL ? (
+                        <>
+                          <RemoteImage
+                            src={booruMediaURL(post, "preview") || ""}
+                            className="booru-sample"
+                            alt="Pawchive post cover (not a folder file preview)"
+                          />
+                          <p className="small text-muted">
+                            Pawchive post cover — folder thumbnails are
+                            available on MEGA.
+                          </p>
+                        </>
+                      ) : (
+                        <Alert variant="secondary">
+                          MEGA folder — open the provider to browse image/video
+                          thumbnails.
+                        </Alert>
+                      )}
+                    </div>
+                  ) : archive ? (
+                    <BooruArchive
+                      post={asset}
+                      scrollBody={scrollBody}
+                      instance={source.instance}
+                      target={`archive:${index}`}
+                      selected={selected}
+                      onSelect={select}
+                    />
+                  ) : (
+                    <MotionPreview post={asset}>
+                      {sample ? (
                         <RemoteImage
-                          src={booruMediaURL(post, "preview") || ""}
+                          key={sample}
                           className="booru-sample"
-                          alt="Pawchive post cover (not a folder file preview)"
+                          src={sample}
+                          fallbackSrc={remoteURL(asset.directSampleURL)}
+                          alt={`${source.name} #${post.id} media ${index + 1}`}
                         />
-                        <p className="small text-muted">
-                          Pawchive post cover — folder thumbnails are available
-                          on MEGA.
-                        </p>
-                      </>
-                    ) : (
-                      <Alert variant="secondary">
-                        MEGA folder — open the provider to browse image/video
-                        thumbnails.
-                      </Alert>
+                      ) : (
+                        <Alert variant="secondary">
+                          {asset.format?.toLowerCase() === "swf"
+                            ? "Flash animation · Download the original to play it in a Flash emulator."
+                            : asset.sourceID === "shared-links"
+                              ? "This shared file has no preview. Use Download to Stash to inspect the original."
+                              : message(
+                                  "no_preview",
+                                  "No supported preview is available. Open the remote post to inspect it."
+                                )}
+                        </Alert>
+                      )}
+                    </MotionPreview>
+                  )}
+                  {asset.sourceID === "shared-links" && (
+                    <p className="small mb-1">
+                      <Icon icon={faLink} />{" "}
+                      {asset.title || "External shared media"}
+                    </p>
+                  )}
+                  {asset.sourceID === "shared-links" &&
+                    /^[a-f0-9]{48}$/.test(asset.mediaKey ?? "") && (
+                      <ExternalLink
+                        className="btn btn-outline-secondary btn-sm mb-2"
+                        href={`booru-browser/shared-open?key=${asset.mediaKey}`}
+                      >
+                        <Icon icon={faLink} />{" "}
+                        {asset.format === "folder"
+                          ? "Browse thumbnails and download on MEGA"
+                          : "Open original on Dropbox / MEGA"}
+                      </ExternalLink>
+                    )}
+                  {asset.mediaNotice &&
+                    asset.mediaNotice !== post.mediaNotice && (
+                      <Alert variant="info">{asset.mediaNotice}</Alert>
+                    )}
+                  <div className="booru-file-details mt-2">
+                    {!!asset.width && !!asset.height && (
+                      <span>
+                        {TextUtils.resolution(asset.width, asset.height)} (
+                        {asset.width} × {asset.height})
+                      </span>
+                    )}
+                    {!!asset.bytes && (
+                      <span>
+                        <FileSize size={asset.bytes} />
+                      </span>
+                    )}
+                    {asset.format && <span>{asset.format.toUpperCase()}</span>}
+                    {post.rating && (
+                      <span
+                        className={`booru-rating-label rating-${normalizedRating(post.rating, source)}`}
+                      >
+                        {normalizedRating(post.rating, source)}
+                      </span>
                     )}
                   </div>
-                ) : ["zip", "cbz", "7z"].includes(
+                  {!["zip", "cbz", "7z", "folder"].includes(
                     asset.format?.toLowerCase() ?? ""
-                  ) ? (
-                  <BooruArchive
-                    post={asset}
-                    scrollBody={scrollBody}
-                    instance={source.instance}
-                  />
-                ) : (
-                  <MotionPreview post={asset}>
-                    {sample ? (
-                      <RemoteImage
-                        key={sample}
-                        className="booru-sample"
-                        src={sample}
-                        fallbackSrc={remoteURL(asset.directSampleURL)}
-                        alt={`${source.name} #${post.id} media ${index + 1}`}
-                      />
-                    ) : (
-                      <Alert variant="secondary">
-                        {asset.format?.toLowerCase() === "swf"
-                          ? "Flash animation · Download the original to play it in a Flash emulator."
-                          : asset.sourceID === "shared-links"
-                            ? "This shared file has no preview. Use Download to Stash to inspect the original."
-                            : message(
-                                "no_preview",
-                                "No supported preview is available. Open the remote post to inspect it."
-                              )}
-                      </Alert>
+                  ) && (
+                    <BooruDownload
+                      key={`download:${asset.id}:${asset.mediaKey}`}
+                      post={asset}
+                      instance={source.instance}
+                    />
+                  )}
+                  <div className="booru-hash">
+                    {asset.md5 && (
+                      <span>
+                        MD5: <code>{asset.md5}</code>
+                      </span>
                     )}
-                  </MotionPreview>
-                )}
-                {asset.sourceID === "shared-links" && (
-                  <p className="small mb-1">
-                    <Icon icon={faLink} />{" "}
-                    {asset.title || "External shared media"}
-                  </p>
-                )}
-                {asset.sourceID === "shared-links" &&
-                  /^[a-f0-9]{48}$/.test(asset.mediaKey ?? "") && (
-                    <ExternalLink
-                      className="btn btn-outline-secondary btn-sm mb-2"
-                      href={`booru-browser/shared-open?key=${asset.mediaKey}`}
-                    >
-                      <Icon icon={faLink} />{" "}
-                      {asset.format === "folder"
-                        ? "Browse thumbnails and download on MEGA"
-                        : "Open original on Dropbox / MEGA"}
-                    </ExternalLink>
-                  )}
-                {asset.mediaNotice &&
-                  asset.mediaNotice !== post.mediaNotice && (
-                    <Alert variant="info">{asset.mediaNotice}</Alert>
-                  )}
-                <div className="booru-file-details mt-2">
-                  {!!asset.width && !!asset.height && (
-                    <span>
-                      {TextUtils.resolution(asset.width, asset.height)} (
-                      {asset.width} × {asset.height})
-                    </span>
-                  )}
-                  {!!asset.bytes && (
-                    <span>
-                      <FileSize size={asset.bytes} />
-                    </span>
-                  )}
-                  {asset.format && <span>{asset.format.toUpperCase()}</span>}
-                  {post.rating && (
-                    <span
-                      className={`booru-rating-label rating-${normalizedRating(post.rating, source)}`}
-                    >
-                      {normalizedRating(post.rating, source)}
-                    </span>
-                  )}
-                </div>
-                {!["zip", "cbz", "7z", "folder"].includes(
-                  asset.format?.toLowerCase() ?? ""
-                ) && (
-                  <BooruDownload
-                    key={`download:${asset.id}:${asset.mediaKey}`}
-                    post={asset}
-                    instance={source.instance}
-                    downloadRef={(button) => {
-                      if (button) downloads.current.set(asset.id, button);
-                      else downloads.current.delete(asset.id);
-                    }}
-                  />
-                )}
-                <div className="booru-hash">
-                  {asset.md5 && (
-                    <span>
-                      MD5: <code>{asset.md5}</code>
-                    </span>
-                  )}
-                  {index === 0 && <ReviewEvidence state={review} />}
-                </div>
-              </section>
-            );
-          })}
-          {visibleCount < assets.length && (
-            <div ref={loadMore} className="booru-media-load-more" role="status">
-              Loading more media ({Math.min(visibleCount, assets.length)} of{" "}
-              {assets.length})…
-            </div>
-          )}
-        </div>
+                    {index === 0 && <ReviewEvidence state={review} />}
+                  </div>
+                </section>
+              );
+            })}
+            {visibleCount < assets.length && (
+              <div
+                ref={loadMore}
+                className="booru-media-load-more"
+                role="status"
+              >
+                Loading more media ({Math.min(visibleCount, assets.length)} of{" "}
+                {assets.length})…
+              </div>
+            )}
+          </div>
+        </Collapse>
         {blacklistError && (
           <Alert variant="danger" role="alert">
             {blacklistError}

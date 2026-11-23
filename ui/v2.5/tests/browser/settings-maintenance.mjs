@@ -1493,8 +1493,10 @@ try {
         fullPage: name === "mobile",
       });
     }
+    // A release newer than this build, whatever version this build is.
+    const newerVersion = `${Number(stashBooruVersion.split(".")[0]) + 1}.0.0`;
     for (const [version, expected] of [
-      ["1.10.0", "StashBooru 1.10.0 is available."],
+      [newerVersion, `StashBooru ${newerVersion} is available.`],
       ["0.9.0", "This build is newer than the latest stable release (0.9.0)."],
       ["v0.30.0", "Could not compare release versions."],
     ]) {

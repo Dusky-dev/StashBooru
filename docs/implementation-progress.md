@@ -1,3 +1,20 @@
+## StashBooru 1.10.0: Booru post view collapse and keyboard selection — 2026-11-22
+
+- Baseline: `develop` `82126ba` (1.9.0). Owner: collapsible ZIP "folder" and
+  big media groups; keyboard navigation broke when all media became one list.
+- Cause: ↑ targeted an unmarked, scroll-guessed item; ZIP entries never had a
+  key target; Up/Down could not reach unmounted media.
+- Now: one highlighted selection over visible targets (media, ZIP header and
+  files, media-group header). Shift+↑/↓ move it and mount more; ↑ downloads
+  it; ←/→ and ↓ unchanged. ZIP header always collapses (listing stays
+  mounted); posts with more than 4 media get a collapsible group header.
+  Collapsing moves the selection to the header.
+- Checks: `tsc`, Biome; `booru-browser.mjs` extended (selection keys from
+  open, mount-through, download of highlighted media and ZIP file, collapse,
+  no refetch) passes at 1440px and 390px.
+- Not verified: real providers/large real ZIPs; Flutter app tests.
+- Next: tagging MD5 lookup sources setting + post URL (separate PR).
+
 ## StashBooru 1.9.0: Image Tagging and filename-only bulk tagging — 2026-11-22
 
 - Baseline: `develop` `9204333` (1.8.0); PR #421. Owner: local filename metadata could

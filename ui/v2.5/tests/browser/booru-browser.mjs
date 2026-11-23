@@ -2557,6 +2557,91 @@ try {
       .locator(".modal-footer")
       .getByRole("button", { name: "Close", exact: true })
       .click();
+    // Keyboard selection: Shift+Up/Down move one highlighted target through
+    // the group header and every media file, mounting more as it goes; Up
+    // downloads the highlighted file. The large group can be collapsed.
+    await page.goto(`${baseURL}/booru?source=danbooru&q=many-attachments`);
+    await dan
+      .getByRole("button", { name: "Inspect Danbooru post 101", exact: true })
+      .click();
+    const keyed = page.getByRole("dialog");
+    const keyedMedia = keyed.locator(".booru-inspection-asset");
+    const mediaToggle = keyed.getByRole("button", {
+      name: "12 media files",
+      exact: true,
+    });
+    await mediaToggle.waitFor();
+    assert.equal(await mediaToggle.getAttribute("aria-expanded"), "true");
+    assert.ok(
+      await mediaToggle.evaluate((element) =>
+        element.classList.contains("booru-target-selected")
+      ),
+      "the group header starts selected"
+    );
+    const selectedTarget = () =>
+      keyed
+        .locator(".booru-target-selected")
+        .evaluate((element) => element.dataset.booruTarget);
+    const expectTarget = async (target, why) => {
+      await page
+        .waitForFunction(
+          (expected) =>
+            document.querySelector(".booru-target-selected")?.dataset
+              .booruTarget === expected,
+          target,
+          { timeout: 3000 }
+        )
+        .catch(() => {});
+      assert.equal(await selectedTarget(), target, why);
+    };
+    // Keys work straight after opening, before anything is clicked.
+    await page.waitForFunction(() =>
+      document.activeElement?.classList.contains("modal-content")
+    );
+    await page.keyboard.press("Shift+ArrowDown");
+    await expectTarget("asset:0", "keys work as soon as the post opens");
+    await page.keyboard.press("Shift+ArrowDown");
+    await expectTarget("asset:1");
+    const keyedDownload = page.waitForRequest(
+      (request) =>
+        request.method() === "POST" &&
+        new URL(request.url()).pathname.endsWith("/booru-browser/download")
+    );
+    await page.keyboard.press("ArrowUp");
+    assert.equal(
+      (await keyedDownload).postDataJSON().key,
+      (1).toString(16).padStart(48, "b"),
+      "Up downloads the highlighted media"
+    );
+    await page.keyboard.press("Shift+ArrowUp");
+    await expectTarget("asset:0");
+    for (let press = 0; press < 40; press++) {
+      if ((await selectedTarget()) === "asset:11") break;
+      await page.keyboard.press("Shift+ArrowDown");
+      await page.waitForTimeout(50);
+    }
+    assert.equal(
+      await selectedTarget(),
+      "asset:11",
+      "Shift+Down must reach media that was not mounted yet"
+    );
+    assert.equal(await keyedMedia.count(), 12);
+    await mediaToggle.click();
+    assert.equal(await mediaToggle.getAttribute("aria-expanded"), "false");
+    assert.equal(
+      await selectedTarget(),
+      "media",
+      "collapsing moves the selection to the header"
+    );
+    await keyed.locator(".booru-inspection-media").waitFor({ state: "hidden" });
+    await mediaToggle.click();
+    await keyed
+      .locator(".booru-inspection-media")
+      .waitFor({ state: "visible" });
+    await keyed
+      .locator(".modal-footer")
+      .getByRole("button", { name: "Close", exact: true })
+      .click();
     await page.goto(`${baseURL}/booru?source=danbooru&q=zip-archive`);
     await dan
       .getByRole("button", { name: "Inspect Danbooru post 101", exact: true })
@@ -2589,6 +2674,52 @@ try {
       8,
       "each extracted media file needs its own save action"
     );
+    const archiveToggle = archiveDialog.getByRole("button", {
+      name: "ZIP archive · 8 media files",
+      exact: true,
+    });
+    assert.equal(await archiveToggle.getAttribute("aria-expanded"), "true");
+    await archiveToggle.focus();
+    await page.keyboard.press("Shift+ArrowDown");
+    assert.ok(
+      await archiveFiles
+        .nth(0)
+        .evaluate((element) =>
+          element.classList.contains("booru-target-selected")
+        ),
+      "Shift+Down selects the first extracted file"
+    );
+    const archiveDownload = page.waitForRequest(
+      (request) =>
+        request.method() === "POST" &&
+        new URL(request.url()).pathname.endsWith("/booru-browser/download")
+    );
+    await page.keyboard.press("ArrowUp");
+    assert.equal(
+      (await archiveDownload).postDataJSON().archiveFile,
+      0,
+      "Up downloads the highlighted archive file"
+    );
+    let archiveListings = 0;
+    const countListing = (request) => {
+      const url = new URL(request.url());
+      if (url.pathname.endsWith("/archive") && !url.searchParams.has("file"))
+        archiveListings++;
+    };
+    page.on("request", countListing);
+    await archiveToggle.click();
+    assert.equal(await archiveToggle.getAttribute("aria-expanded"), "false");
+    await archiveFiles.first().waitFor({ state: "hidden" });
+    assert.ok(
+      await archiveToggle.evaluate((element) =>
+        element.classList.contains("booru-target-selected")
+      ),
+      "collapsing the archive selects its header"
+    );
+    await archiveToggle.click();
+    await archiveFiles.first().waitFor({ state: "visible" });
+    page.off("request", countListing);
+    assert.equal(archiveListings, 0, "collapsing must not refetch the archive");
     await archiveDialog
       .locator(".modal-footer")
       .getByRole("button", { name: "Close", exact: true })
