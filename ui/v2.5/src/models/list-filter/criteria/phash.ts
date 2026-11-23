@@ -25,7 +25,7 @@ export const DUPLICATION_FIELD_IDS: DuplicationFieldId[] = [
 ];
 
 export const PhashCriterionOption = new ModifierCriterionOption({
-  messageID: "media_info.phash",
+  messageID: "phash_filter",
   type: "phash_distance",
   inputType: "text",
   modifierOptions: [

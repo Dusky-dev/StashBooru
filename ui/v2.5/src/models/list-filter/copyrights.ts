@@ -4,15 +4,9 @@ import { DisplayMode } from "./types";
 const defaultSortBy = "hierarchy";
 const sortByOptions = [
   { messageID: "copyright_hierarchy.tree_sort", value: "hierarchy" },
-  ...[
-    "name",
-    "sort_name",
-    "created_at",
-    "updated_at",
-    "image_count",
-    "scene_count",
-    "performer_count",
-  ].map(ListFilterOptions.createSortBy),
+  ...["name", "sort_name", "image_count", "scene_count", "performer_count"].map(
+    ListFilterOptions.createSortBy
+  ),
 ];
 const displayModeOptions = [DisplayMode.Grid, DisplayMode.List];
 

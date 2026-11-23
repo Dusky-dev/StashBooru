@@ -45,6 +45,7 @@ import {
 import { SidebarPerformersFilter } from "../List/Filters/PerformersFilter";
 import { SidebarStudiosFilter } from "../List/Filters/StudiosFilter";
 import { SidebarTagsFilter } from "../List/Filters/TagsFilter";
+import { SidebarCopyrightsFilter } from "../List/Filters/CopyrightsFilter";
 import cx from "classnames";
 import { SidebarRatingFilter } from "../List/Filters/RatingFilter";
 import { OrganizedCriterionOption } from "src/models/list-filter/criteria/organized";
@@ -322,6 +323,7 @@ const SidebarContent: React.FC<{
           setFilter={setFilter}
           filterHook={filterHook}
         />
+        <SidebarCopyrightsFilter filter={filter} setFilter={setFilter} />
         <SidebarRatingFilter filter={filter} setFilter={setFilter} />
         <SidebarDurationFilter filter={filter} setFilter={setFilter} />
         <SidebarFolderFilter
