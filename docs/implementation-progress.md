@@ -1,3 +1,20 @@
+## StashBooru 1.12.0: MD5 lookup and PixAI in Image Tagging jobs — 2026-11-23
+
+- Baseline: 1.11.0 (PR #423). Owner: bulk image tagging should start with
+  Camie and EVA02 off; it had no MD5 lookup (without burdening hosts) or PixAI.
+- Now: only filename metadata starts checked. **MD5 lookup** needs no model
+  opt-in: sites asked one at a time in priority order, stop at first exact
+  match, ~1 request/s per host (shared Booru browser client), results and tag
+  categories reused within the job, Images already linked to a chosen site
+  skipped; a site is dropped for the job on 429, rejected credentials or 3
+  failures in a row, and those Images count as not checked. Uncategorized
+  tags are not applied. Post links are added (option, default on). **PixAI**
+  joins the model opt-in (threshold 0.35). Merge order: filename → MD5 →
+  PixAI → Camie → EVA02; filename and MD5 identities are authoritative.
+- Checks: Go `internal/api` suite + `golangci-lint`; `tsc`, Biome, unit tests;
+  `metadata-review.mjs` extended, passes at 1440/390px.
+- Not verified: real providers, PixAI worker. MD5 counts are only in the log.
+
 ## StashBooru 1.11.0: MD5 lookup sites and post links — 2026-11-23
 
 - Baseline: `develop` `90e4845` (1.10.0). Owner: MD5 lookup "only searches
