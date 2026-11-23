@@ -2048,6 +2048,7 @@
     "media_toggle": "{count, plural, one {# media file} other {# media files}}"
   },
   "identity_sources": {
+    "connect_as": "Connect as {kind}",
     "title": "Identities",
     "dialog_title": "Identities — {name}",
     "open_page": "Open all identities",

@@ -85,6 +85,11 @@ func splitBooruImportTags(sourceTags []booru.Tag) ([]booru.Tag, []camietagger.Ta
 // category-aware resolver used by Image Tagging for native entity names,
 // aliases and Character/Copyright disambiguation.
 func ensureBooruImportMetadata(ctx context.Context, repository models.Repository, source booru.Source, sourceTags []booru.Tag) (taggingResolvedEntities, error) {
+	// Plain tags connected to a Character, Artist or Copyright join it.
+	sourceTags = append([]booru.Tag(nil), sourceTags...)
+	if err := connectPlainBooruTags(ctx, repository.ProviderIdentity, source, sourceTags); err != nil {
+		return taggingResolvedEntities{}, err
+	}
 	ordinary, categorized := splitBooruImportTags(sourceTags)
 	tagIDs, err := ensureBooruImportTagIDs(ctx, repository.Tag, ordinary)
 	if err != nil {

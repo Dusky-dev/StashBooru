@@ -76,6 +76,9 @@ type ProviderIdentityReaderWriter interface {
 	Observe(context.Context, []IdentityObservation) ([]ProviderIdentity, error)
 	Find(context.Context, int64) (*ProviderIdentity, error)
 	Lookup(context.Context, string, string, string, string) (*ProviderIdentity, error)
+	// ConnectedTags returns the tag identities on an instance that are
+	// connected to a native record, for any of the given targets.
+	ConnectedTags(context.Context, string, []string) ([]ProviderIdentity, error)
 	List(context.Context, IdentityFilter) ([]ProviderIdentity, error)
 	Decide(context.Context, string, IdentityDecision) (*ProviderIdentity, error)
 	Candidates(context.Context, string, string, int64, bool) ([]IdentityCandidate, error)

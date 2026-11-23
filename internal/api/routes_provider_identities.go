@@ -305,6 +305,8 @@ func (rs booruBrowserRoutes) captureIdentityPosts(parent context.Context, source
 	if rs.repository.ProviderIdentity == nil {
 		return
 	}
+	// Runs on every path, including posts with only plain tags (Paheal).
+	defer rs.connectPlainPostTags(parent, source, posts)
 	names, missing := rs.archiveCreatorNames(source, posts)
 	input, positions := identityPostObservations(source, posts, names)
 	if len(missing) > 0 {
@@ -347,6 +349,19 @@ func (rs booruBrowserRoutes) captureIdentityPosts(parent context.Context, source
 		posts[p.post].Tags[p.tag].CanonicalName = row.EntityName
 		posts[p.post].Tags[p.tag].IdentityID = strconv.FormatInt(row.ID, 10)
 	}
+}
+
+// connectPlainPostTags lists connected plain tags in their connected section.
+func (rs booruBrowserRoutes) connectPlainPostTags(parent context.Context, source booru.Source, posts []booru.Post) {
+	ctx, cancel := context.WithTimeout(parent, 2*time.Second)
+	defer cancel()
+	tagLists := make([][]booru.Tag, len(posts))
+	for i := range posts {
+		tagLists[i] = posts[i].Tags
+	}
+	_ = rs.repository.WithReadTxn(ctx, func(ctx context.Context) error {
+		return connectPlainBooruTags(ctx, rs.repository.ProviderIdentity, source, tagLists...)
+	})
 }
 
 // creatorNamer is the booru client's archive creator name lookup.
