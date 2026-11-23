@@ -1,6 +1,6 @@
 ## StashBooru 1.13.0: duplicate Character detection in tagging — 2026-11-23
 
-- Baseline: 1.12.0. Owner: basic duplicate tag detection (reversed names,
+- Baseline: `develop` `98a9d31` (1.12.0). Owner: basic duplicate tag detection (reversed names,
   `1girl` with 2 Characters). Scoped to tagging suggestions, not a
   library-wide duplicate finder.
 - Now: after exact/alias matching fails, a two-part Character name resolves
@@ -17,7 +17,8 @@
 
 ## StashBooru 1.12.0: MD5 lookup and PixAI in Image Tagging jobs — 2026-11-23
 
-- Baseline: `develop` `cd66333` (1.11.0). Owner: bulk image tagging should start with
+- Baseline: `develop` `cd66333` (1.11.0); PR #424, merged 2026-11-23 on green
+  CI (head `21982cc`). Owner: bulk image tagging should start with
   Camie and EVA02 off; it had no MD5 lookup (without burdening hosts) or PixAI.
 - Now: only filename metadata starts checked. **MD5 lookup** needs no model
   opt-in: sites asked one at a time in priority order, stop at first exact
