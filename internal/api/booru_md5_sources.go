@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -94,11 +95,16 @@ func booruLookupProviders(chosen []string, sources []booru.Source, search booruS
 		if source.IsRule34() && (source.APIKey == "" || source.UserID == "") {
 			continue
 		}
+		var provider booruProvider
 		if index, legacy := legacyBooruLookupProviders[id]; legacy && source.APIKey == "" {
-			providers = append(providers, booruProviders[index])
-			continue
+			provider = booruProviders[index]
+		} else {
+			provider = clientBooruProvider(source, search)
 		}
-		providers = append(providers, clientBooruProvider(source, search))
+		if parsed, err := url.Parse(source.URL); err == nil && parsed.Hostname() != "" {
+			provider.hosts = []string{booruHostKey(parsed.Hostname())}
+		}
+		providers = append(providers, provider)
 	}
 	return providers
 }
@@ -141,6 +147,7 @@ func clientBooruProvider(source booru.Source, search booruSourceSearch) booruPro
 
 func booruPostFromBrowser(post booru.Post) *booruPost {
 	fields := map[string][]string{}
+	uncategorized := map[string]bool{}
 	for _, tag := range post.Tags {
 		name := strings.ReplaceAll(strings.TrimSpace(tag.Name), " ", "_")
 		if name == "" {
@@ -149,6 +156,9 @@ func booruPostFromBrowser(post booru.Post) *booruPost {
 		category := tag.Category
 		switch category {
 		case "artist", "copyright", "character", "meta":
+		case "", "unknown":
+			uncategorized[strings.ToLower(name)] = true
+			category = "general"
 		default:
 			category = "general"
 		}
@@ -163,6 +173,7 @@ func booruPostFromBrowser(post booru.Post) *booruPost {
 		TagStringCharacter: strings.Join(fields["character"], " "),
 		TagStringMeta:      strings.Join(fields["meta"], " "),
 		TagStringGeneral:   strings.Join(fields["general"], " "),
+		Uncategorized:      uncategorized,
 	}
 }
 

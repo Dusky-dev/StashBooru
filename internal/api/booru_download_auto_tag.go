@@ -92,7 +92,7 @@ func runBooruAutomaticImageTagging(ctx context.Context, imageID int, useCamie, u
 		UseCamie: useCamie, UseEva02: useEva02,
 		Eva02Threshold: config.Eva02Threshold,
 	}
-	predictions, err := inferBulkImageTags(ctx, image.Path, config, request, camieClient, evaClient)
+	predictions, err := inferBulkImageTags(ctx, image.Path, config, request, bulkImageTagClients{camie: camieClient, eva02: evaClient}, nil)
 	if err != nil {
 		return err
 	}

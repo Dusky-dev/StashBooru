@@ -13,6 +13,8 @@ export interface BulkTaggingConfig {
   threshold: number;
   eva02Threshold: number;
   limit: number;
+  /** null or absent: the default sites; []: MD5 lookup is off. */
+  booruLookupSources?: string[] | null;
 }
 
 export interface BulkTaggingCategories {
@@ -24,31 +26,61 @@ export interface BulkTaggingCategories {
 
 export interface BulkTaggingSources {
   useFilename: boolean;
+  useBooru: boolean;
+  usePixai: boolean;
   useCamie: boolean;
   useEva02: boolean;
 }
 
-// Every allowed source starts checked. Local filename metadata needs only
-// the job confirmation; Camie and EVA02
-// stay behind the bulk model-tagging opt-in in tagging setup.
+/** PixAI has no saved threshold; bulk uses Image Tagging's default. */
+export const bulkPixaiThreshold = 0.35;
+
+type SourceConfig = Pick<
+  BulkTaggingConfig,
+  "bulkTaggingEnabled" | "filenameEnabled" | "booruLookupSources"
+>;
+
+// Local filename metadata and MD5 lookup need only the job confirmation;
+// PixAI, Camie and EVA02 stay behind the bulk model-tagging opt-in.
 export function availableBulkTaggingSources(
-  config: Pick<BulkTaggingConfig, "bulkTaggingEnabled" | "filenameEnabled">
+  config: SourceConfig
+): BulkTaggingSources {
+  const lookupSites = config.booruLookupSources;
+  return {
+    useFilename: config.filenameEnabled,
+    useBooru: lookupSites == null || lookupSites.length > 0,
+    usePixai: config.bulkTaggingEnabled,
+    useCamie: config.bulkTaggingEnabled,
+    useEva02: config.bulkTaggingEnabled,
+  };
+}
+
+/**
+ * Only local filename metadata starts checked. MD5 lookup asks other sites
+ * and the models are slow, so each is an explicit choice.
+ */
+export function initialBulkTaggingSources(
+  config: SourceConfig
 ): BulkTaggingSources {
   return {
     useFilename: config.filenameEnabled,
-    useCamie: config.bulkTaggingEnabled,
-    useEva02: config.bulkTaggingEnabled,
+    useBooru: false,
+    usePixai: false,
+    useCamie: false,
+    useEva02: false,
   };
 }
 
 /** Keep only the sources the settings allow, so a stale choice is never sent. */
 export function allowedBulkTaggingSources(
   sources: BulkTaggingSources,
-  config: Pick<BulkTaggingConfig, "bulkTaggingEnabled" | "filenameEnabled">
+  config: SourceConfig
 ): BulkTaggingSources {
   const available = availableBulkTaggingSources(config);
   return {
     useFilename: sources.useFilename && available.useFilename,
+    useBooru: sources.useBooru && available.useBooru,
+    usePixai: sources.usePixai && available.usePixai,
     useCamie: sources.useCamie && available.useCamie,
     useEva02: sources.useEva02 && available.useEva02,
   };
@@ -97,16 +129,20 @@ export function bulkTaggingRequest(
   imageIDs: number[],
   config: BulkTaggingConfig,
   categories: BulkTaggingCategories,
-  sources: BulkTaggingSources
+  sources: BulkTaggingSources,
+  addPostLinks = true
 ) {
+  const allowed = allowedBulkTaggingSources(sources, config);
   return {
     imageIDs,
     all: false,
     confirmed: true,
     threshold: config.threshold,
     eva02Threshold: config.eva02Threshold,
+    pixaiThreshold: bulkPixaiThreshold,
     limit: config.limit,
-    ...allowedBulkTaggingSources(sources, config),
+    ...allowed,
+    addPostLinks: allowed.useBooru && addPostLinks,
     ...categories,
     // Keep existing Artist links; never replace them as a bulk default.
     replaceArtist: false,

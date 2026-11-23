@@ -17,6 +17,7 @@ type camieBulkSelection struct {
 type camieBulkImageSource struct {
 	ID   int
 	Path string
+	URLs []string
 }
 
 func resolveCamieBulkImageIDs(ctx context.Context, mgr *manager.Manager, selection camieBulkSelection) ([]int, error) {
@@ -70,7 +71,10 @@ func loadCamieBulkImageSource(ctx context.Context, mgr *manager.Manager, imageID
 		if primary == nil || strings.TrimSpace(primary.Base().Path) == "" {
 			return fmt.Errorf("image %d has no primary file", imageID)
 		}
-		source = camieBulkImageSource{ID: imageID, Path: primary.Base().Path}
+		if err := image.LoadURLs(ctx, mgr.Repository.Image); err != nil {
+			return err
+		}
+		source = camieBulkImageSource{ID: imageID, Path: primary.Base().Path, URLs: image.URLs.List()}
 		return nil
 	})
 	return source, err

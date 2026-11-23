@@ -20,7 +20,7 @@ Optional GPU runtimes, models and encoders are installed separately on the machi
 
 **Tagging defaults:** Image tagging and Video frame tagging share saved thresholds. Higher thresholds retain fewer proposed tags. Filename metadata can work without Camie; supported filename tokens are `%artist%`, `%copyright%`, `%character%`, `%md5%` and `%ext%`. Filename identities take precedence over inferred identities. The **Include parents** settings (Settings → Library) are shared with Tagging.
 
-**Bulk model tagging:** Image Tagging on two or more selected Images can always start one confirmed job from local filename metadata (while **Read metadata from filenames** is on). Turning on **Allow Camie and EVA02 to tag several selected Images in one job** adds those models to that job. Booru and library suggestions are not included; **Review individually** stays available.
+**Bulk model tagging:** Image Tagging on two or more selected Images can always start one confirmed job from local filename metadata (while **Read metadata from filenames** is on) and, when you tick it, MD5 lookup on the chosen sites. Turning on **Allow PixAI, Camie and EVA02 to tag several selected Images in one job** lets you add those models to that job. Only filename metadata starts ticked. Library suggestions are not included; **Review individually** stays available.
 
 **Camie Tagger v2:** Optional Character, Copyright, Artist and general Tag predictions. Install downloads the model and metadata to the selected worker when requested.
 

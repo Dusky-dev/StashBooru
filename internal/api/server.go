@@ -34,7 +34,6 @@ import (
 	"github.com/stashapp/stash/internal/build"
 	"github.com/stashapp/stash/internal/manager"
 	"github.com/stashapp/stash/internal/manager/config"
-	"github.com/stashapp/stash/pkg/booru"
 	"github.com/stashapp/stash/pkg/fsutil"
 	"github.com/stashapp/stash/pkg/logger"
 	"github.com/stashapp/stash/pkg/plugin"
@@ -222,8 +221,9 @@ func Initialize() (*Server, error) {
 	r.Mount("/tag", server.getTagRoutes())
 	r.Mount("/downloads", server.getDownloadsRoutes())
 	booruRoutes := booruBrowserRoutes{
-		configPath:   cfg.GetConfigPath(),
-		client:       booru.NewClient(),
+		configPath: cfg.GetConfigPath(),
+		// Shared with Tagging's MD5 lookup, so both obey one set of host limits.
+		client:       booruLookupClient,
 		repository:   repo,
 		jobs:         mgr.JobManager,
 		downloads:    mgr.DownloadStore,

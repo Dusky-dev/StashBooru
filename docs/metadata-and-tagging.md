@@ -139,9 +139,25 @@ thumbnail-assisted review of each Image, and **Cancel** starts no job.
 - A Character name that matches several existing Characters is skipped and
   logged, because a job cannot ask which one you mean; review those Images
   individually.
-- **Camie v2** and **EVA02** stay opt-in: in **Settings → Processing →
-  Similarity and tagging → Tagging defaults**, turn on **Allow Camie and EVA02
-  to tag several selected Images in one job** and save. It is off by default.
+- Only **Local filename metadata** starts checked. Every other source is an
+  explicit choice for each job.
+- **MD5 lookup** asks the sites chosen in **Sites for MD5 lookup** (see
+  above) and needs no model opt-in. To spare those sites, a job asks one site
+  at a time in their order, stops at the first exact match, spaces requests to
+  each site to about one a second, reuses results for repeated hashes and tag
+  categories it already resolved, and skips Images that already link to a
+  chosen site. A site that rate limits, rejects the saved credentials or
+  fails three times in a row is skipped for the rest of the job; Images it
+  could not check are counted as not checked, not as not found. Tags the site
+  gives no category for are not applied, so a Character or Artist name is
+  never written as an ordinary Tag; review such Images individually. The
+  counts are written to the log.
+  **Add each matched post's link** (on by default) adds the post to the
+  Image's URLs.
+- **PixAI**, **Camie v2** and **EVA02** stay opt-in: in **Settings →
+  Processing → Similarity and tagging → Tagging defaults**, turn on **Allow
+  PixAI, Camie and EVA02 to tag several selected Images in one job** and save.
+  It is off by default.
 
 When no source is available the chooser says so and offers individual review.
 
@@ -149,15 +165,16 @@ A single Image or mixed Image/Video selection always uses normal per-item
 review. The selected Image's thumbnail appears at the left of its metadata
 review so users can verify which media receives each proposed tag set.
 
-The job applies the chosen sources: local filename metadata, Camie v2 and EVA02, using each model's configured threshold and the per-category
-limit. Filename identities remain authoritative over conflicting inferred
-identities, and duplicate predictions preserve the earlier source's choice.
-Only general/rating/Character predictions supported by EVA02's tagging model
-are applied. Booru lookup and similar-library suggestions remain manual-only.
-The chosen worker(s) must have the selected model(s) installed. Existing Artist
-links are not replaced; categories can be disabled before confirming. Cancelled
-jobs cannot roll back previously applied Images. Failed Image IDs are recorded
-in logs.
+Sources are merged in Image Tagging's order: filename, MD5 match, PixAI, Camie
+and EVA02. Filename and MD5-match identities are authoritative over
+conflicting inferred identities, and duplicate predictions keep the earlier
+source's choice. Models use their configured thresholds (PixAI uses 0.35) and
+the per-category limit; only general/rating/Character predictions supported by
+EVA02's tagging model are applied. Similar-library suggestions remain
+manual-only. The chosen worker(s) must have the selected model(s) installed.
+Existing Artist links are not replaced; categories can be disabled before
+confirming. Cancelled jobs cannot roll back previously applied Images. Failed
+Image IDs and the MD5 lookup counts are recorded in logs.
 
 ### Filename layout and MD5 provenance
 

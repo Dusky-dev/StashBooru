@@ -9,6 +9,8 @@ import { VideoTaggingDialog } from "../Scenes/SceneDetails/VideoTaggingDialog";
 import {
   allowedBulkTaggingSources,
   availableBulkTaggingSources,
+  bulkPixaiThreshold,
+  initialBulkTaggingSources,
   bulkSelectedImageIDs,
   bulkTaggingRequest,
   defaultBulkTaggingCategories,
@@ -55,9 +57,12 @@ export function MetadataReviewDialog({
   const [manualReview, setManualReview] = useState(false);
   const [sources, setSources] = useState<BulkTaggingSources>({
     useFilename: false,
+    useBooru: false,
+    usePixai: false,
     useCamie: false,
     useEva02: false,
   });
+  const [addPostLinks, setAddPostLinks] = useState(true);
   const [categories, setCategories] = useState<BulkTaggingCategories>({
     ...defaultBulkTaggingCategories,
   });
@@ -85,7 +90,7 @@ export function MetadataReviewDialog({
         const config = (await response.json()) as BulkTaggingConfig;
         if (!controller.signal.aborted) {
           setBulkConfig(config);
-          setSources(availableBulkTaggingSources(config));
+          setSources(initialBulkTaggingSources(config));
         }
       } catch (error) {
         if (!controller.signal.aborted) {
@@ -124,7 +129,13 @@ export function MetadataReviewDialog({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
-          bulkTaggingRequest(bulkIDs, bulkConfig, categories, sources)
+          bulkTaggingRequest(
+            bulkIDs,
+            bulkConfig,
+            categories,
+            sources,
+            addPostLinks
+          )
         ),
       });
       if (!response.ok) {
@@ -178,7 +189,7 @@ export function MetadataReviewDialog({
     const available = availableBulkTaggingSources(bulkConfig);
     const chosen = allowedBulkTaggingSources(sources, bulkConfig);
     const anyAvailable = Object.values(available).some(Boolean);
-    const usesModels = chosen.useCamie || chosen.useEva02;
+    const usesModels = chosen.usePixai || chosen.useCamie || chosen.useEva02;
     const message = (id: string, values?: Record<string, unknown>) =>
       intl.formatMessage({ id: `media_tagging.${id}` }, values as never);
     const sourceOptions: {
@@ -190,6 +201,16 @@ export function MetadataReviewDialog({
         key: "useFilename",
         id: "bulk-tagging-use-filename",
         label: message("source_filename"),
+      },
+      {
+        key: "useBooru",
+        id: "bulk-tagging-use-booru",
+        label: message("source_booru"),
+      },
+      {
+        key: "usePixai",
+        id: "bulk-tagging-use-pixai",
+        label: message("source_pixai"),
       },
       {
         key: "useCamie",
@@ -236,6 +257,27 @@ export function MetadataReviewDialog({
               }}
             />
           ))}
+          {chosen.useBooru && (
+            <>
+              <Form.Check
+                type="checkbox"
+                id="bulk-tagging-add-post-links"
+                className="ml-4"
+                label={message("add_post_links")}
+                checked={addPostLinks}
+                disabled={starting}
+                onChange={(event) =>
+                  setAddPostLinks(event.currentTarget.checked)
+                }
+              />
+              <p className="small text-muted mb-1">{message("booru_pacing")}</p>
+            </>
+          )}
+          {!available.useBooru && (
+            <p className="small text-muted mb-1">
+              {message("source_booru_off")}
+            </p>
+          )}
           {!available.useFilename && (
             <p className="small text-muted mb-1">
               {message("source_filename_off")}
@@ -247,6 +289,7 @@ export function MetadataReviewDialog({
           {usesModels && (
             <p className="small text-muted mb-1">
               {message("model_settings", {
+                pixai: bulkPixaiThreshold,
                 camie: bulkConfig.threshold,
                 eva02: bulkConfig.eva02Threshold,
                 limit: bulkConfig.limit,
