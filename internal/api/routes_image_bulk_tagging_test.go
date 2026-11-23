@@ -135,7 +135,7 @@ func TestBulkFilenameOnlyJobPathNeedsNoWorkers(t *testing.T) {
 	run := func(path string) []camietagger.Tag {
 		t.Helper()
 		// No Camie or EVA02 client is started for a filename-only job.
-		predictions, err := inferBulkImageTags(context.Background(), path, config, request, bulkImageTagClients{}, nil)
+		predictions, err := inferBulkImageTags(context.Background(), 1, path, config, request, bulkImageTagClients{}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}

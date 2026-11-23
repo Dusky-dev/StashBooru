@@ -2238,6 +2238,8 @@
     "sources": "Sources",
     "source_filename": "Local filename metadata (Artists, Copyrights and Characters)",
     "source_filename_off": "Reading metadata from filenames is off in tagging setup.",
+    "duplicate_reversed": "{first} and {second} look like the same Character with the name in the other order. Keep one of them.",
+    "duplicate_solo": "The tags say this Image shows one person, but {count} Characters are selected. Check for the same Character under different names.",
     "source_booru": "MD5 lookup on the sites chosen in tagging setup (post metadata)",
     "source_booru_off": "MD5 lookup is off: no sites are chosen in tagging setup.",
     "add_post_links": "Add each matched post's link to the Image's URLs",

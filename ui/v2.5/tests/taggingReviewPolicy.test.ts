@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   addPredictionSelection,
   ambiguousCharacterCandidates,
+  duplicateCharacterWarnings,
   filterBooruPredictionsForLocalPriority,
   mergeMetadataPredictions,
   possibleBareCharacterMatch,
@@ -193,4 +194,46 @@ test("selection helpers add, toggle, and count exact prediction identities", () 
   assert.equal(selectedPredictionCount([first, second], selected), 1);
   assert.equal(selectedPredictionCount([first], selected), 0);
   assert.equal(selectedPredictionCount([second], selected), 1);
+});
+
+test("duplicate warnings catch reversed names and solo conflicts", () => {
+  const character = (name: string) => ({
+    name,
+    category: "character",
+    score: 1,
+  });
+  const general = (name: string) => ({ name, category: "general", score: 1 });
+  assert.deepEqual(
+    duplicateCharacterWarnings([
+      character("Hatsune Miku"),
+      character("miku_hatsune"),
+      general("2girls"),
+    ]),
+    { reversed: [["Hatsune Miku", "miku_hatsune"]], soloConflict: 0 }
+  );
+  assert.deepEqual(
+    duplicateCharacterWarnings([
+      general("1girl"),
+      character("Saber"),
+      character("Artoria Pendragon"),
+    ]),
+    { reversed: [], soloConflict: 2 }
+  );
+  assert.deepEqual(
+    duplicateCharacterWarnings([
+      general("1girl"),
+      general("1boy"),
+      character("Saber"),
+      character("Archer"),
+    ]),
+    { reversed: [], soloConflict: 0 }
+  );
+  // A different qualifier is a different Character.
+  assert.deepEqual(
+    duplicateCharacterWarnings([
+      character("Miku Hatsune (Vocaloid)"),
+      character("Hatsune Miku (Other)"),
+    ]).reversed,
+    []
+  );
 });

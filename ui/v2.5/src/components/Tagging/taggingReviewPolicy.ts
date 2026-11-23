@@ -271,3 +271,62 @@ export function nextCharacterResolutionIndex(
         ambiguousCharacterCandidates(prediction).length > 1)
   );
 }
+
+const SOLO_COUNT_TAGS = new Set(["1girl", "1boy", "1other"]);
+const GROUP_COUNT_TAG =
+  /^(?:\d+\+?(?:girls|boys|others)|multiple_(?:girls|boys|others))$/;
+
+/** A two-part Character name in either order gives the same key. */
+export function characterNameOrderKey(name: string) {
+  const match = name.match(CHARACTER_IDENTITY_PATTERN);
+  const bare = normalizePredictionValue(match ? match[1] : name);
+  const qualifier = match ? normalizePredictionValue(match[2]) : "";
+  const parts = bare.split(" ");
+  if (parts.length === 2) parts.sort();
+  return `${parts.join(" ")}\u0000${qualifier}`;
+}
+
+/** The general tags say the Image shows one person. */
+export function depictsOneCharacter(predictions: readonly TagPrediction[]) {
+  let solo = false;
+  let singles = 0;
+  for (const prediction of predictions) {
+    if (prediction.category !== "general") continue;
+    const name = normalizePredictionValue(prediction.name).replaceAll(" ", "_");
+    if (name === "solo") solo = true;
+    else if (SOLO_COUNT_TAGS.has(name)) singles++;
+    else if (GROUP_COUNT_TAG.test(name)) return false;
+  }
+  return solo || singles === 1;
+}
+
+export interface DuplicateCharacterWarnings {
+  /** Selected Characters that are the same name in another order. */
+  reversed: [string, string][];
+  /** Selected Characters when the tags say one person; else 0. */
+  soloConflict: number;
+}
+
+/** Warn about likely duplicate Characters in a selection. */
+export function duplicateCharacterWarnings(
+  selected: readonly TagPrediction[]
+): DuplicateCharacterWarnings {
+  const characters = selected.filter(
+    (prediction) => prediction.category === "character"
+  );
+  const firstByKey = new Map<string, TagPrediction>();
+  const reversed: [string, string][] = [];
+  for (const character of characters) {
+    const key = characterNameOrderKey(character.name);
+    const first = firstByKey.get(key);
+    if (!first) firstByKey.set(key, character);
+    else reversed.push([first.name, character.name]);
+  }
+  return {
+    reversed,
+    soloConflict:
+      characters.length > 1 && depictsOneCharacter(selected)
+        ? characters.length
+        : 0,
+  };
+}
