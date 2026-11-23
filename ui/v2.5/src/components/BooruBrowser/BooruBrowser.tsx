@@ -309,24 +309,32 @@ function PostInspection({
   currentIdentity.current = identity;
   // Q pressed again while the previous ignore is still moving to the next
   // post is meant for that next post: carry it over once the post changes.
-  const lastIgnore = useRef(0);
+  const lastIgnore = useRef({ identity: "", at: 0 });
   const queuedIgnores = useRef(0);
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs once per shown post; pressWhenReady reads refs.
   useEffect(() => {
     if (queuedIgnores.current < 1) return;
     queuedIgnores.current -= 1;
-    lastIgnore.current = Date.now();
+    lastIgnore.current = { identity, at: Date.now() };
     pressWhenReady(() => ignore.current);
   }, [identity]);
   function ignorePost() {
     const button = ignore.current;
+    const justIgnored =
+      lastIgnore.current.identity === identity &&
+      Date.now() - lastIgnore.current.at < 3000;
     if (button && !button.disabled) {
-      lastIgnore.current = Date.now();
+      lastIgnore.current = { identity, at: Date.now() };
       button.click();
-    } else if (Date.now() - lastIgnore.current < 3000) {
+    } else if (justIgnored) {
+      // Still showing the post just ignored: the press is for the next one.
       queuedIgnores.current += 1;
-    } else pressWhenReady(() => ignore.current);
+    } else {
+      lastIgnore.current = { identity, at: Date.now() };
+      pressWhenReady(() => ignore.current);
+    }
   }
+
   function pressWhenReady(
     button: () => HTMLButtonElement | null | undefined,
     tries = 60
@@ -1163,6 +1171,15 @@ function SourceResults({
   const post = result?.posts.find((item) => item.id === inspect);
   const [details, setDetails] = useState<{ key: string; post: BooruPost }>();
   const [detailsLoading, setDetailsLoading] = useState(false);
+  // Posts ignored from the preview leave navigation at once, before the
+  // review write returns, so a quick ← does not land back on them.
+  const [ignoredHere, setIgnoredHere] = useState<ReadonlySet<string>>(
+    () => new Set()
+  );
+  // Once the review state changes (the write's result arrived), it is the
+  // source of truth again; a failed write lets the post come back.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset on each review update.
+  useEffect(() => setIgnoredHere(new Set()), [review]);
   const [detailsError, setDetailsError] = useState("");
   useEffect(() => {
     setDetails(undefined);
@@ -1203,7 +1220,8 @@ function SourceResults({
       item.id === inspect ||
       (visibleIDs.has(item.id) &&
         (showIgnored ||
-          !review.find((state) => state.id === item.id)?.ignoredAt))
+          (!ignoredHere.has(item.id) &&
+            !review.find((state) => state.id === item.id)?.ignoredAt)))
   );
   const previewIndex = navigation.findIndex((item) => item.id === inspect);
   return (
@@ -1330,6 +1348,7 @@ function SourceResults({
                   onIgnore={() => {
                     // Ignoring hides the post at once: move to the next one.
                     ignore(post.id);
+                    setIgnoredHere((current) => new Set(current).add(post.id));
                     if (
                       previewIndex >= 0 &&
                       previewIndex < navigation.length - 1

@@ -368,6 +368,7 @@ try {
     let failNextDownload = false;
     let holdNextDownload = false;
     let delayNextDownload = false;
+    let slowReviewWrites = false;
     const writes = [];
     const review = new Map();
     let reviewConflict = false;
@@ -811,6 +812,9 @@ try {
       }
       if (url.pathname.endsWith("/review/update")) {
         const payload = route.request().postDataJSON();
+        // A slow write reproduces keys pressed before the server answers.
+        if (slowReviewWrites)
+          await new Promise((resolve) => setTimeout(resolve, 800));
         reviewWrites.push(payload);
         if (
           reviewConflict ||
@@ -3054,6 +3058,7 @@ try {
     await preview
       .getByRole("button", { name: "Next preview (Right arrow)", exact: true })
       .focus();
+    slowReviewWrites = true;
     await page.keyboard.press("q");
     const ignored = (await keyboardIgnore).postDataJSON().changes[0];
     assert.equal(ignored.ignored, true);
@@ -3063,12 +3068,16 @@ try {
     await preview
       .getByRole("button", { name: "Next preview (Right arrow)", exact: true })
       .focus();
+    // ← right away (the write is still pending) skips the ignored post.
     await page.keyboard.press("ArrowLeft");
     await preview.getByText("Danbooru #102", { exact: true }).waitFor();
+    slowReviewWrites = false;
     await page.keyboard.press("ArrowRight");
     await preview.getByText("Danbooru #104", { exact: true }).waitFor();
     // Q twice in a row ignores two posts: the second press waits for the
-    // first review write instead of being dropped.
+    // first review write instead of being dropped. Writes are counted once
+    // answered, so the later reset sees their final state.
+    await (await (await keyboardIgnore).response())?.finished();
     const ignoreWrites = [];
     const countIgnore = (request) => {
       if (
@@ -3077,12 +3086,14 @@ try {
       )
         ignoreWrites.push(request.postDataJSON().changes[0]);
     };
-    page.on("request", countIgnore);
+    page.on("requestfinished", countIgnore);
+    slowReviewWrites = true;
     await page.keyboard.press("q");
     await page.keyboard.press("q");
     for (let wait = 0; wait < 120 && ignoreWrites.length < 2; wait++)
       await page.waitForTimeout(50);
-    page.off("request", countIgnore);
+    page.off("requestfinished", countIgnore);
+    slowReviewWrites = false;
     assert.equal(ignoreWrites.length, 2, "both Q presses ignore a post");
     assert.equal(ignoreWrites[0].id, "104");
     assert.notEqual(ignoreWrites[1].id, "104");
