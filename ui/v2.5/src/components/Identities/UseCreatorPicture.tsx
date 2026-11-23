@@ -9,10 +9,11 @@ import {
   type ProviderIdentity,
 } from "./identityApi";
 
-/** Pixiv, Pawchive and Kemono creator accounts have a profile picture. */
+/** Pixiv, X, Pawchive and Kemono creator accounts have a profile picture. */
 export function hasCreatorPicture(row: ProviderIdentity) {
   if (row.kind !== "artist" || row.form !== "account") return false;
-  if (row.engine === "pixiv") return /^user:\d+$/.test(row.target);
+  if (row.engine === "pixiv" || row.engine === "twitter")
+    return /^user:\d+$/.test(row.target);
   return (
     (row.engine === "pawchive" || row.engine === "kemono") &&
     /^creator:[^:/\\\s]+:[^:/\\\s]+$/.test(row.target)

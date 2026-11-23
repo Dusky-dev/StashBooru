@@ -1,3 +1,21 @@
+## StashBooru 1.23.0: Twitter / X source — 2026-11-23
+
+- Baseline: 1.22.0 (Set image creator pictures). Owner: add Twitter to the
+  Booru browser.
+- Now: `twitter` engine (default source **Twitter / X**, `https://api.x.com`,
+  media `twimg.com`) on the official X API v2 with the user's bearer token.
+  `@handle`/`user:<id>` timeline (no retweets/replies), `id:<id>`, recent
+  search (`has:media -is:retweet`, 7 days). Cursor pages remembered per query
+  (walk ≤5 pages). Photos `name=orig`, videos best MP4; extra images are
+  attachments. `user:<id>` is an account identity with a profile picture
+  (`/2/users/<id>`, `_400x400`). `post.fields` with one `tweet.fields` retry.
+- Checks: Go unit tests with fixture responses (timeline, cursors, search,
+  402/auth, icon), `internal/api` + `pkg/booru` with the integration tag,
+  `tsc`, Biome lint/format.
+- Not verified: any live X API call (no token); `has:media`/`-is:retweet`
+  operators, variant/hashtag field names and `/2/users/<id>` are from
+  memory/docs summaries, not a live response. No browser suite change.
+
 ## StashBooru 1.22.0: Artist picture in Set image, Pixiv avatars — 2026-11-23
 
 - Baseline: `develop` `59754ea` (1.21.0, Dusky-dev/StashBooru#435). Owner: the

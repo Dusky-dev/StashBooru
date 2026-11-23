@@ -105,6 +105,7 @@ type Client struct {
 	creatorNames        map[string]creatorNameEntry
 	rule34CategoryMu    sync.Mutex
 	rule34CategoryCache map[string]rule34CategoryEntry
+	twitter             twitterCursors
 }
 
 func NewClient() *Client {
@@ -214,6 +215,9 @@ func (c *Client) SearchFiltered(ctx context.Context, source Source, query string
 	}
 	if source.isRule34() && (source.APIKey == "" || source.UserID == "") {
 		return Result{}, &Error{Code: "authentication", Message: "Rule34.xxx requires an API key and user ID. Sign in at rule34.xxx, open Account > Options > API Access Credentials, generate a key if needed, then save both values in Booru Settings > Sources."}
+	}
+	if source.Engine == "twitter" {
+		return c.searchTwitter(ctx, source, query, page, limit, options)
 	}
 	if source.Engine == "pixiv" || source.Engine == "kemono" || source.Engine == "pawchive" || source.Engine == "shimmie" {
 		return c.searchExtended(ctx, source, query, page, limit, options)

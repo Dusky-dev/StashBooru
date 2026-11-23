@@ -65,6 +65,7 @@ func Defaults() []Source {
 		{ID: "pixiv", Name: "Pixiv", Engine: "pixiv", URL: "https://app-api.pixiv.net", MediaHosts: []string{"pximg.net"}},
 		{ID: "pawchive", Name: "Pawchive", Engine: "pawchive", URL: "https://pawchive.pw", MediaHosts: []string{"file.pawchive.pw", "img.pawchive.pw"}},
 		{ID: "kemono", Name: "Kemono", Engine: "kemono", URL: "https://kemono.cr", MediaHosts: []string{"kemono.su"}},
+		{ID: "twitter", Name: "Twitter / X", Engine: "twitter", URL: "https://api.x.com", MediaHosts: []string{"twimg.com"}},
 	}
 }
 
@@ -109,7 +110,7 @@ func (s Source) Validate() error {
 	if !sourceID.MatchString(s.ID) || strings.TrimSpace(s.Name) == "" || len(s.Name) > 120 {
 		return fmt.Errorf("invalid source ID or name")
 	}
-	if !slices.Contains([]string{"danbooru", "gelbooru", "moebooru", "e621", "philomena", "shimmie", "pixiv", "pawchive", "kemono"}, s.Engine) {
+	if !slices.Contains([]string{"danbooru", "gelbooru", "moebooru", "e621", "philomena", "shimmie", "pixiv", "pawchive", "kemono", "twitter"}, s.Engine) {
 		return fmt.Errorf("unsupported API engine")
 	}
 	if err := validateBlacklistTags(s.BlacklistTags); err != nil {
@@ -138,7 +139,7 @@ func (s Source) Validate() error {
 	if slices.Contains([]string{"shimmie", "kemono"}, s.Engine) && (s.APIKey != "" || s.Login != "" || s.UserID != "") {
 		return fmt.Errorf("this engine supports anonymous API access only")
 	}
-	if slices.Contains([]string{"pixiv", "pawchive"}, s.Engine) && s.Login != "" {
+	if slices.Contains([]string{"pixiv", "pawchive", "twitter"}, s.Engine) && s.Login != "" {
 		return fmt.Errorf("this engine does not use a login field")
 	}
 	if s.Engine == "pawchive" && s.APIKey != "" && (&http.Cookie{Name: "session", Value: s.APIKey}).Valid() != nil {
@@ -205,6 +206,9 @@ func (s Source) Public() PublicSource {
 	case "pixiv":
 		help = "Pixiv tag/title search; user:123 for an artist, id:123 for one work. Account restrictions apply."
 		auth = "Pixiv OAuth access token required in API key. Expired tokens must be replaced; this browser does not perform account login."
+	case "twitter":
+		help = "@handle or user:123 for an account's posts with images or videos, id:123 for one post, or words for a recent search (X only searches the last 7 days). Retweets and replies are left out."
+		auth = "Your own X API bearer token is required in API key. X API access is paid or credit-based; this browser does not sign in to X."
 	case "pawchive":
 		help = "Search Pawchive posts with at least three characters using native q= search, or * for recent posts; Find an artist browses a creator. Append keywords after creator:service:id to search that creator's posts only. Pawchive may rate limit API access and some deployments may ignore q filters. StashBooru caches repeated global searches briefly and links to the site when an API request fails."
 		auth = "Public API; site access restrictions apply. Optional file-host session cookie value in API key."

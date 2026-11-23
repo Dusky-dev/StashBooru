@@ -6,7 +6,9 @@ export function SourceIcon({ source }: { source: BooruSource }) {
   const origin =
     source.engine === "pixiv"
       ? "https://www.pixiv.net"
-      : new URL(source.url).origin;
+      : source.engine === "twitter"
+        ? "https://x.com"
+        : new URL(source.url).origin;
   return failed ? (
     <span
       className="booru-source-icon booru-source-monogram"

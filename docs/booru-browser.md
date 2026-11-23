@@ -265,6 +265,7 @@ Downloaded history. No remote follow or automated download is created.
 | Pixiv | OAuth **access token** in source API key; text search, `user:123` for artist works, `id:123` for a work | Static illustration/manga pages selectable in the inspector. Ugoira frame ZIPs are explicitly unavailable. No login/token refresh is implemented; replace expired tokens in Settings. |
 | Pawchive | Post-text search using provider-wide `q=` and offset paging, `*` for recent posts, or artist-name directory; anonymous API. Older API releases may ignore `q=` and are detected before unrelated results are shown. | Optional API key is the `session` cookie value, sent only to `file.pawchive.pw`. Preview-only/deferred/unavailable originals cannot be downloaded. |
 | Kemono | Artist-name directory search, `*` for recent posts, or text of at least three bytes; anonymous API | Supported image/video attachments and bounded ZIP/CBZ/7z previews; documents and unsupported archives are omitted. |
+| Twitter / X | Official X API v2 with your own **bearer token** in source API key (X API access is paid or credit-based). `@handle` or `user:123` browse an account's posts (retweets and replies left out), `id:123` one post, other text a recent search (X covers only the last 7 days; `has:media -is:retweet` is appended). | Photos at original size and videos/GIFs as the highest-bitrate MP4 from `twimg.com`; a post's images are its media files. Posts without media are skipped. X pages by cursor: page numbers map to remembered cursors, and a page more than five past the last one opened is refused. No sort or rating filters; possibly-sensitive posts are rated explicit. The post-fields parameter is sent as `post.fields` (current docs) and retried once as `tweet.fields` on HTTP 400. Verified with fixtures only. |
 
 Paheal may return old `rule34.paheal.net/_images/` links in its XML
 even though its originals are served from `r34i.paheal-cdn.net`.
@@ -441,6 +442,7 @@ every tag as general or guessing Artist/Character/Copyright identity.
 | Pixiv App API | Pixiv | OAuth access token; no automatic refresh/login. |
 | Pawchive | Pawchive | Anonymous API; optional file-host session cookie value. |
 | Kemono | Kemono | Anonymous API. |
+| X API v2 | Twitter / X | Your own bearer token; no sign-in to X. |
 
 These are API adapters and presets, not a claim of complete Grabber site/login
 parity. Szurubooru, Sankaku, HTML scraping, executable source plugins and

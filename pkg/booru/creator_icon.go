@@ -16,7 +16,7 @@ var ErrNoCreatorPicture = errors.New("no profile picture")
 // CreatorPictureEngine reports whether connected accounts on the engine can
 // supply a profile picture.
 func CreatorPictureEngine(engine string) bool {
-	return engine == "pixiv" || ArchiveCreatorEngine(engine)
+	return engine == "pixiv" || engine == "twitter" || ArchiveCreatorEngine(engine)
 }
 
 // CreatorIconURL is the profile picture of a Pawchive or Kemono creator
@@ -40,6 +40,9 @@ func CreatorIconURL(source Source, target string) (string, error) {
 // account. Pixiv ("user:<id>") needs the source's OAuth token for a user
 // detail lookup; Pawchive and Kemono use a fixed address.
 func (c *Client) CreatorIcon(ctx context.Context, source Source, target string) (string, error) {
+	if source.Engine == "twitter" {
+		return c.twitterIcon(ctx, source, target)
+	}
 	if source.Engine != "pixiv" {
 		return CreatorIconURL(source, target)
 	}

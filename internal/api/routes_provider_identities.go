@@ -15,7 +15,7 @@ import (
 )
 
 func identityForm(source booru.Source, kind, target string) string {
-	if kind == "artist" && ((source.Engine == "pixiv" && strings.HasPrefix(target, "user:")) ||
+	if kind == "artist" && (((source.Engine == "pixiv" || source.Engine == "twitter") && strings.HasPrefix(target, "user:")) ||
 		((source.Engine == "pawchive" || source.Engine == "kemono") && strings.HasPrefix(target, "creator:"))) {
 		return "account"
 	}
