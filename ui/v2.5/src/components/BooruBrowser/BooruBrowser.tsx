@@ -190,6 +190,20 @@ function PostInspection({
     (target: string) => setSelection({ identity, target }),
     [identity]
   );
+  // Only one post media file is expanded at a time; the rest are one-line
+  // rows that mount no image or player. It follows explicit choices (keys,
+  // clicks, focus), never the scroll tracking below, so expanding a row
+  // cannot scroll the highlight away and reselect in a loop.
+  const [openAsset, setOpenAsset] = useState({ identity, index: 0 });
+  const openIndex = openAsset.identity === identity ? openAsset.index : 0;
+  const choose = useCallback(
+    (target: string) => {
+      setSelection({ identity, target });
+      const match = /^asset:(\d+)$/.exec(target);
+      if (match) setOpenAsset({ identity, index: Number(match[1]) });
+    },
+    [identity]
+  );
   useLayoutEffect(() => {
     setStream({ identity, count: 3 });
     if (scrollBody.current) scrollBody.current.scrollTop = 0;
@@ -207,7 +221,7 @@ function PostInspection({
     );
   }
   function focusTarget(element: HTMLElement) {
-    select(element.dataset.booruTarget ?? firstTarget);
+    choose(element.dataset.booruTarget ?? firstTarget);
     element.focus({ preventScroll: true });
     element.scrollIntoView({ block: "nearest" });
   }
@@ -288,6 +302,66 @@ function PostInspection({
     return () => observer.disconnect();
   }, [identity, visibleCount, assets.length]);
   const ignore = useRef<HTMLButtonElement>(null);
+  // E and Q act once their button is usable: a file that was just opened
+  // is still loading its download settings, and Ignore waits for a previous
+  // review write. A press is dropped if the post changes meanwhile.
+  const currentIdentity = useRef(identity);
+  currentIdentity.current = identity;
+  // Q pressed again while the previous ignore is still moving to the next
+  // post is meant for that next post: carry it over once the post changes.
+  const lastIgnore = useRef({ identity: "", at: 0 });
+  const queuedIgnores = useRef(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs once per shown post; pressWhenReady reads refs.
+  useEffect(() => {
+    if (queuedIgnores.current < 1) return;
+    queuedIgnores.current -= 1;
+    lastIgnore.current = { identity, at: Date.now() };
+    pressWhenReady(() => ignore.current);
+  }, [identity]);
+  function ignorePost() {
+    const button = ignore.current;
+    const justIgnored =
+      lastIgnore.current.identity === identity &&
+      Date.now() - lastIgnore.current.at < 3000;
+    if (button && !button.disabled) {
+      lastIgnore.current = { identity, at: Date.now() };
+      button.click();
+    } else if (justIgnored) {
+      // Still showing the post just ignored: the press is for the next one.
+      queuedIgnores.current += 1;
+    } else {
+      lastIgnore.current = { identity, at: Date.now() };
+      pressWhenReady(() => ignore.current);
+    }
+  }
+
+  function pressWhenReady(
+    button: () => HTMLButtonElement | null | undefined,
+    tries = 60
+  ) {
+    const pressedOn = identity;
+    const attempt = (left: number) => {
+      if (currentIdentity.current !== pressedOn) return;
+      const target = button();
+      if (target && !target.disabled) {
+        target.click();
+        return;
+      }
+      if (left > 0) window.setTimeout(() => attempt(left - 1), 50);
+    };
+    attempt(tries);
+  }
+  function downloadSelected() {
+    const target = selected;
+    // Open a collapsed row so the download's progress is visible.
+    if (targetElement(target)?.classList.contains("booru-asset-collapsed"))
+      choose(target);
+    pressWhenReady(() =>
+      targetElement(target)?.querySelector<HTMLButtonElement>(
+        ".booru-download-button"
+      )
+    );
+  }
   return (
     <Modal
       show
@@ -315,29 +389,33 @@ function PostInspection({
           )
         )
           return;
+        const key =
+          event.key.length === 1 ? event.key.toLowerCase() : event.key;
         if (
-          !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(
-            event.key
-          )
+          ![
+            "ArrowLeft",
+            "ArrowRight",
+            "ArrowUp",
+            "ArrowDown",
+            "e",
+            "q",
+          ].includes(key) ||
+          (event.shiftKey && !["ArrowUp", "ArrowDown"].includes(key))
         )
           return;
-        if (event.shiftKey && !["ArrowUp", "ArrowDown"].includes(event.key))
-          return;
+        // Also stops the matching keypress, so page-wide single-key shortcuts
+        // never see E or Q.
         event.preventDefault();
         event.stopPropagation();
-        if (event.shiftKey) {
-          moveSelection(event.key === "ArrowDown" ? 1 : -1);
+        if (key === "ArrowUp" || key === "ArrowDown") {
+          moveSelection(key === "ArrowDown" ? 1 : -1);
           return;
         }
-        if (event.key === "ArrowLeft") onPrevious?.();
-        if (event.key === "ArrowRight") onNext?.();
-        if (!event.repeat && event.key === "ArrowUp") {
-          // Download the highlighted media; a group header has no download.
-          targetElement(selected)
-            ?.querySelector<HTMLButtonElement>(".booru-download-button")
-            ?.click();
-        }
-        if (!event.repeat && event.key === "ArrowDown") ignore.current?.click();
+        if (key === "ArrowLeft") onPrevious?.();
+        if (key === "ArrowRight") onNext?.();
+        if (event.repeat) return;
+        if (key === "e") downloadSelected();
+        if (key === "q") ignorePost();
       }}
     >
       <Modal.Header closeButton>
@@ -358,7 +436,7 @@ function PostInspection({
           const target = (event.target as HTMLElement).closest<HTMLElement>(
             "[data-booru-target]"
           );
-          if (target?.dataset.booruTarget) select(target.dataset.booruTarget);
+          if (target?.dataset.booruTarget) choose(target.dataset.booruTarget);
         }}
       >
         <nav
@@ -374,7 +452,7 @@ function PostInspection({
           <span className="small text-muted">
             {message(
               "inspection_keys",
-              "← / → Browse · Shift+↑ / Shift+↓ Select media · ↑ Download selected · ↓ Ignore"
+              "← / → Browse posts · ↑ / ↓ Select media · E Download selected · Q Ignore post"
             )}
           </span>
           <BooruIconButton
@@ -424,138 +502,170 @@ function PostInspection({
               const sample = booruMediaURL(asset, "sample");
               const archive = isArchiveFormat(asset.format);
               const assetTarget = `asset:${index}`;
+              const open =
+                archive || assets.length === 1 || index === openIndex;
+              const heading = (
+                <>
+                  {asset.sourceID === "shared-links" ? "Linked media" : "Media"}{" "}
+                  {index + 1} of {assets.length}
+                  {asset.format && ` · ${asset.format.toUpperCase()}`}
+                </>
+              );
               return (
                 <section
                   key={asset.id}
-                  className={`booru-inspection-asset${!archive && selected === assetTarget ? " booru-target-selected" : ""}`}
+                  className={`booru-inspection-asset${!archive && selected === assetTarget ? " booru-target-selected" : ""}${open ? "" : " booru-asset-collapsed"}`}
                   data-asset-index={index}
                   data-booru-target={archive ? undefined : assetTarget}
                   tabIndex={-1}
                   aria-label={`Media ${index + 1} of ${assets.length}`}
+                  aria-expanded={archive ? undefined : open}
                 >
-                  {assets.length > 1 && (
-                    <h6 className="booru-asset-heading">
-                      {asset.sourceID === "shared-links"
-                        ? "Linked media"
-                        : "Media"}{" "}
-                      {index + 1} of {assets.length}
-                      {asset.format && ` · ${asset.format.toUpperCase()}`}
-                    </h6>
-                  )}
-                  {asset.format === "folder" ? (
-                    <div className="booru-shared-folder">
-                      {post.previewURL ? (
-                        <>
-                          <RemoteImage
-                            src={booruMediaURL(post, "preview") || ""}
-                            className="booru-sample"
-                            alt="Pawchive post cover (not a folder file preview)"
-                          />
-                          <p className="small text-muted">
-                            Pawchive post cover — folder thumbnails are
-                            available on MEGA.
-                          </p>
-                        </>
-                      ) : (
-                        <Alert variant="secondary">
-                          MEGA folder — open the provider to browse image/video
-                          thumbnails.
-                        </Alert>
-                      )}
-                    </div>
-                  ) : archive ? (
-                    <BooruArchive
-                      post={asset}
-                      scrollBody={scrollBody}
-                      instance={source.instance}
-                      target={`archive:${index}`}
-                      selected={selected}
-                      onSelect={select}
-                    />
+                  {!open ? (
+                    <Button
+                      variant="minimal"
+                      className="booru-asset-heading booru-asset-expand"
+                      onClick={() => choose(assetTarget)}
+                    >
+                      <Icon icon={faChevronRight} fixedWidth /> {heading}
+                    </Button>
                   ) : (
-                    <MotionPreview post={asset}>
-                      {sample ? (
-                        <RemoteImage
-                          key={sample}
-                          className="booru-sample"
-                          src={sample}
-                          fallbackSrc={remoteURL(asset.directSampleURL)}
-                          alt={`${source.name} #${post.id} media ${index + 1}`}
+                    assets.length > 1 && (
+                      <h6 className="booru-asset-heading">
+                        {!archive && <Icon icon={faChevronDown} fixedWidth />}{" "}
+                        {heading}
+                      </h6>
+                    )
+                  )}
+                  {open && (
+                    <>
+                      {asset.format === "folder" ? (
+                        <div className="booru-shared-folder">
+                          {post.previewURL ? (
+                            <>
+                              <RemoteImage
+                                src={booruMediaURL(post, "preview") || ""}
+                                className="booru-sample"
+                                alt="Pawchive post cover (not a folder file preview)"
+                              />
+                              <p className="small text-muted">
+                                Pawchive post cover — folder thumbnails are
+                                available on MEGA.
+                              </p>
+                            </>
+                          ) : (
+                            <Alert variant="secondary">
+                              MEGA folder — open the provider to browse
+                              image/video thumbnails.
+                            </Alert>
+                          )}
+                        </div>
+                      ) : archive ? (
+                        <BooruArchive
+                          post={asset}
+                          scrollBody={scrollBody}
+                          instance={source.instance}
+                          target={`archive:${index}`}
+                          selected={selected}
+                          onSelect={select}
                         />
                       ) : (
-                        <Alert variant="secondary">
-                          {asset.format?.toLowerCase() === "swf"
-                            ? "Flash animation · Download the original to play it in a Flash emulator."
-                            : asset.sourceID === "shared-links"
-                              ? "This shared file has no preview. Use Download to Stash to inspect the original."
-                              : message(
-                                  "no_preview",
-                                  "No supported preview is available. Open the remote post to inspect it."
-                                )}
-                        </Alert>
+                        <MotionPreview post={asset}>
+                          {sample ? (
+                            <RemoteImage
+                              key={sample}
+                              className="booru-sample"
+                              src={sample}
+                              fallbackSrc={remoteURL(asset.directSampleURL)}
+                              alt={`${source.name} #${post.id} media ${index + 1}`}
+                            />
+                          ) : (
+                            <Alert variant="secondary">
+                              {asset.format?.toLowerCase() === "swf"
+                                ? "Flash animation · Download the original to play it in a Flash emulator."
+                                : asset.sourceID === "shared-links"
+                                  ? "This shared file has no preview. Use Download to Stash to inspect the original."
+                                  : message(
+                                      "no_preview",
+                                      "No supported preview is available. Open the remote post to inspect it."
+                                    )}
+                            </Alert>
+                          )}
+                        </MotionPreview>
                       )}
-                    </MotionPreview>
+                      {asset.sourceID === "shared-links" && (
+                        <p className="small mb-1">
+                          <Icon icon={faLink} />{" "}
+                          {asset.title || "External shared media"}
+                        </p>
+                      )}
+                      {asset.sourceID === "shared-links" &&
+                        /^[a-f0-9]{48}$/.test(asset.mediaKey ?? "") && (
+                          <ExternalLink
+                            className="btn btn-outline-secondary btn-sm mb-2"
+                            href={`booru-browser/shared-open?key=${asset.mediaKey}`}
+                          >
+                            <Icon icon={faLink} />{" "}
+                            {asset.format === "folder"
+                              ? "Browse thumbnails and download on MEGA"
+                              : "Open original on Dropbox / MEGA"}
+                          </ExternalLink>
+                        )}
+                      {asset.mediaNotice &&
+                        asset.mediaNotice !== post.mediaNotice && (
+                          <Alert variant="info">{asset.mediaNotice}</Alert>
+                        )}
+                      <div className="booru-file-details mt-2">
+                        {!!asset.width && !!asset.height && (
+                          <span>
+                            {TextUtils.resolution(asset.width, asset.height)} (
+                            {asset.width} × {asset.height})
+                          </span>
+                        )}
+                        {!!asset.bytes && (
+                          <span>
+                            <FileSize size={asset.bytes} />
+                          </span>
+                        )}
+                        {asset.format && (
+                          <span>{asset.format.toUpperCase()}</span>
+                        )}
+                        {post.rating && (
+                          <span
+                            className={`booru-rating-label rating-${normalizedRating(post.rating, source)}`}
+                          >
+                            {normalizedRating(post.rating, source)}
+                          </span>
+                        )}
+                      </div>
+                    </>
                   )}
-                  {asset.sourceID === "shared-links" && (
-                    <p className="small mb-1">
-                      <Icon icon={faLink} />{" "}
-                      {asset.title || "External shared media"}
-                    </p>
-                  )}
-                  {asset.sourceID === "shared-links" &&
-                    /^[a-f0-9]{48}$/.test(asset.mediaKey ?? "") && (
-                      <ExternalLink
-                        className="btn btn-outline-secondary btn-sm mb-2"
-                        href={`booru-browser/shared-open?key=${asset.mediaKey}`}
-                      >
-                        <Icon icon={faLink} />{" "}
-                        {asset.format === "folder"
-                          ? "Browse thumbnails and download on MEGA"
-                          : "Open original on Dropbox / MEGA"}
-                      </ExternalLink>
-                    )}
-                  {asset.mediaNotice &&
-                    asset.mediaNotice !== post.mediaNotice && (
-                      <Alert variant="info">{asset.mediaNotice}</Alert>
-                    )}
-                  <div className="booru-file-details mt-2">
-                    {!!asset.width && !!asset.height && (
-                      <span>
-                        {TextUtils.resolution(asset.width, asset.height)} (
-                        {asset.width} × {asset.height})
-                      </span>
-                    )}
-                    {!!asset.bytes && (
-                      <span>
-                        <FileSize size={asset.bytes} />
-                      </span>
-                    )}
-                    {asset.format && <span>{asset.format.toUpperCase()}</span>}
-                    {post.rating && (
-                      <span
-                        className={`booru-rating-label rating-${normalizedRating(post.rating, source)}`}
-                      >
-                        {normalizedRating(post.rating, source)}
-                      </span>
-                    )}
-                  </div>
+                  {/* Download controls stay mounted (hidden) when the file is
+                      collapsed, so a started download keeps its progress and
+                      a queued E press still reaches its button. */}
                   {!["zip", "cbz", "7z", "folder"].includes(
                     asset.format?.toLowerCase() ?? ""
                   ) && (
-                    <BooruDownload
-                      key={`download:${asset.id}:${asset.mediaKey}`}
-                      post={asset}
-                      instance={source.instance}
-                    />
+                    <div className={open ? undefined : "d-none"}>
+                      <BooruDownload
+                        key={`download:${asset.id}:${asset.mediaKey}`}
+                        post={asset}
+                        instance={source.instance}
+                      />
+                    </div>
                   )}
-                  <div className="booru-hash">
-                    {asset.md5 && (
-                      <span>
-                        MD5: <code>{asset.md5}</code>
-                      </span>
-                    )}
-                    {index === 0 && <ReviewEvidence state={review} />}
-                  </div>
+                  {/* The post's library evidence stays visible when its
+                      first file is collapsed. */}
+                  {(open || index === 0) && (
+                    <div className="booru-hash">
+                      {asset.md5 && (
+                        <span>
+                          MD5: <code>{asset.md5}</code>
+                        </span>
+                      )}
+                      {index === 0 && <ReviewEvidence state={review} />}
+                    </div>
+                  )}
                 </section>
               );
             })}
@@ -654,8 +764,8 @@ function PostInspection({
           ref={ignore}
           variant="secondary"
           className="minimal booru-icon-button"
-          aria-label="Ignore post (Down arrow)"
-          title="Ignore post (Down arrow)"
+          aria-label="Ignore post (Q)"
+          title="Ignore post (Q)"
           disabled={reviewBusy || !!review?.ignoredAt}
           onClick={onIgnore}
         >
@@ -1061,6 +1171,15 @@ function SourceResults({
   const post = result?.posts.find((item) => item.id === inspect);
   const [details, setDetails] = useState<{ key: string; post: BooruPost }>();
   const [detailsLoading, setDetailsLoading] = useState(false);
+  // Posts ignored from the preview leave navigation at once, before the
+  // review write returns, so a quick ← does not land back on them.
+  const [ignoredHere, setIgnoredHere] = useState<ReadonlySet<string>>(
+    () => new Set()
+  );
+  // Once the review state changes (the write's result arrived), it is the
+  // source of truth again; a failed write lets the post come back.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset on each review update.
+  useEffect(() => setIgnoredHere(new Set()), [review]);
   const [detailsError, setDetailsError] = useState("");
   useEffect(() => {
     setDetails(undefined);
@@ -1101,7 +1220,8 @@ function SourceResults({
       item.id === inspect ||
       (visibleIDs.has(item.id) &&
         (showIgnored ||
-          !review.find((state) => state.id === item.id)?.ignoredAt))
+          (!ignoredHere.has(item.id) &&
+            !review.find((state) => state.id === item.id)?.ignoredAt)))
   );
   const previewIndex = navigation.findIndex((item) => item.id === inspect);
   return (
@@ -1225,7 +1345,19 @@ function SourceResults({
                   onHide={onClose}
                   review={inspectedReview}
                   reviewBusy={busy || !inspectedReview}
-                  onIgnore={() => ignore(post.id)}
+                  onIgnore={() => {
+                    // Ignoring hides the post at once: move to the next one.
+                    ignore(post.id);
+                    setIgnoredHere((current) => new Set(current).add(post.id));
+                    if (
+                      previewIndex >= 0 &&
+                      previewIndex < navigation.length - 1
+                    )
+                      onInspect(navigation[previewIndex + 1].id);
+                    else if (previewIndex > 0)
+                      onInspect(navigation[previewIndex - 1].id);
+                    else onClose();
+                  }}
                   onPrevious={
                     previewIndex > 0
                       ? () => onInspect(navigation[previewIndex - 1].id)
