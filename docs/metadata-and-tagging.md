@@ -81,6 +81,10 @@ Only local filename metadata loads on opening. Provider lookup, inference and
 library suggestions are separate explicit actions. Missing provider/model
 resources do not prevent local review.
 
+Image Tagging warns when the selection holds the same Character with the name
+in the other order, or several Characters while the selected tags say the Image
+shows one person. Both are warnings only; nothing is merged or deleted.
+
 ### Image sources
 
 | Source | What it supplies | Requirement |
@@ -139,6 +143,15 @@ thumbnail-assisted review of each Image, and **Cancel** starts no job.
 - A Character name that matches several existing Characters is skipped and
   logged, because a job cannot ask which one you mean; review those Images
   individually.
+- Two-part Character names match in either order ("Miku Hatsune" finds an
+  existing "Hatsune Miku") when exactly one existing Character has the
+  reversed name, and sources that disagree on the order count as one
+  Character. When the tags say the Image shows one person (`solo`, or one of
+  `1girl`/`1boy`/`1other` without a group count such as `2girls`) but the
+  models suggest several Characters, those model Characters are skipped and
+  logged. Characters from the filename or an MD5 match are always kept.
+  Automatic Camie/EVA02 tagging after a Booru download follows the same
+  rule.
 - Only **Local filename metadata** starts checked. Every other source is an
   explicit choice for each job.
 - **MD5 lookup** asks the sites chosen in **Sites for MD5 lookup** (see

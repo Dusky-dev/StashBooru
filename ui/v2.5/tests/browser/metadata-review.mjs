@@ -30,6 +30,7 @@ try {
     let failApply = true;
     let bulkEnabled = false;
     let booruMatch = false;
+    let booruDuplicates = false;
     const appliedURLs = [];
     const bulkRequests = [];
     page.on("pageerror", (error) => errors.push(error.message));
@@ -107,7 +108,18 @@ try {
               postURL: "https://e621.net/posts/42",
               md5: "0".repeat(32),
               md5Source: "file",
-              tags: [{ ...tag, source: "booru:e621" }],
+              tags: booruDuplicates
+                ? [
+                    ["1girl", "general"],
+                    ["hatsune_miku", "character"],
+                    ["miku_hatsune", "character"],
+                  ].map(([name, category]) => ({
+                    name,
+                    category,
+                    score: 1,
+                    source: "booru:e621",
+                  }))
+                : [{ ...tag, source: "booru:e621" }],
             })
           : reply({ error: "Provider unavailable in this fixture" }, 503);
       if (["camie-tags", "eva02-tags", "frame-metadata"].includes(endpoint))
@@ -510,6 +522,21 @@ try {
         `${kind} apply sends the post link only while ticked`
       );
     }
+    // Likely duplicate Characters are flagged, not merged.
+    booruDuplicates = true;
+    await page
+      .getByRole("button", { name: "Single image", exact: true })
+      .click();
+    await main()
+      .getByRole("button", { name: "Look up by MD5", exact: true })
+      .click();
+    const duplicates = main().locator(".image-tagging-duplicates");
+    await duplicates.waitFor();
+    const warning = await duplicates.innerText();
+    assert.match(warning, /hatsune_miku and miku_hatsune look like the same/i);
+    assert.match(warning, /shows one person, but 2 Characters are selected/);
+    await close();
+    booruDuplicates = false;
     booruMatch = false;
     assert.equal(page.url(), retainedURL);
     assert.deepEqual(errors, []);

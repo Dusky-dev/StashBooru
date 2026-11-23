@@ -180,7 +180,7 @@ func (rs imageRoutes) BulkTagImages(w http.ResponseWriter, r *http.Request) {
 				booruPredictions, postURL = lookupBulkImageBooru(ctx, lookup, source, &summary)
 			}
 
-			predictions, tagErr := inferBulkImageTags(ctx, source.Path, config, request, clients, booruPredictions)
+			predictions, tagErr := inferBulkImageTags(ctx, imageID, source.Path, config, request, clients, booruPredictions)
 			if tagErr == nil {
 				predictions = filterCamieBulkPredictionsV2(predictions, request.camieBulkRequestV2)
 				predictions, tagErr = validateCamiePredictionsV2(predictions)
@@ -330,6 +330,7 @@ func validateBulkImageTagRequest(request *bulkImageTagRequest, config camieConfi
 
 func inferBulkImageTags(
 	ctx context.Context,
+	imageID int,
 	path string,
 	config camieConfig,
 	request bulkImageTagRequest,
@@ -372,7 +373,12 @@ func inferBulkImageTags(
 			}
 		}
 	}
-	return mergeBulkImageTags(filenameTags, booruPredictions, pixaiTags, camieTags, evaTags), nil
+	merged := mergeBulkImageTags(filenameTags, booruPredictions, pixaiTags, camieTags, evaTags)
+	merged, dropped := withoutSoloConflictCharacters(merged, filenameTags, booruPredictions)
+	if len(dropped) > 0 {
+		logger.Warnf("Image Tagging: Image %d is tagged as showing one person, but the models suggested %d Characters (%s); they were skipped, review the Image individually", imageID, len(dropped), strings.Join(dropped, ", "))
+	}
+	return merged, nil
 }
 
 // Source priority follows Image Tagging: filename → MD5 match → PixAI →
@@ -391,6 +397,10 @@ func mergeBulkImageTags(filename, booru []camietagger.Tag, models ...[]camietagg
 				continue
 			}
 			key := prediction.Category + "\x00" + strings.ToLower(prediction.Name)
+			if prediction.Category == "character" {
+				// The same Character in the other name order is a duplicate.
+				key = "character\x00" + camieCharacterDuplicateKey(prediction)
+			}
 			if seen[key] || authoritative[prediction.Category] {
 				continue
 			}

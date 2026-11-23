@@ -3,7 +3,7 @@ import {
   type MetadataReviewContext,
 } from "src/components/Tagging/MetadataReviewInfo";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Badge, Button, Form, Modal, Spinner } from "react-bootstrap";
+import { Alert, Badge, Button, Form, Modal, Spinner } from "react-bootstrap";
 import { faExternalLinkAlt, faSearch } from "@fortawesome/free-solid-svg-icons";
 import { useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
@@ -16,6 +16,7 @@ import {
   characterCandidateLabel,
   mergeMetadataPredictions as mergeTaggingMetadataPredictions,
   nextCharacterResolutionIndex,
+  duplicateCharacterWarnings,
   possibleBareCharacterMatch,
   predictionKey,
   reuseCharacterCandidate,
@@ -503,6 +504,15 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
     () => selectedPredictionCount(predictions, selected),
     [predictions, selected]
   );
+  const duplicates = useMemo(
+    () =>
+      duplicateCharacterWarnings(
+        predictions.filter((prediction) =>
+          selected.has(predictionKey(prediction))
+        )
+      ),
+    [predictions, selected]
+  );
   const busy = loading || loadingSource !== undefined;
 
   const togglePrediction = useCallback((prediction: TagPrediction) => {
@@ -954,6 +964,31 @@ export const ImageKnowledgeTagDialog: React.FC<IProps> = ({
                       {visibleSelectedCount} / {predictions.length} selected
                     </span>
                   </div>
+
+                  {(duplicates.reversed.length > 0 ||
+                    duplicates.soloConflict > 0) && (
+                    <Alert
+                      variant="warning"
+                      className="image-tagging-duplicates"
+                    >
+                      {duplicates.reversed.map(([first, second]) => (
+                        <div key={`${first}\u0000${second}`}>
+                          {intl.formatMessage(
+                            { id: "media_tagging.duplicate_reversed" },
+                            { first, second }
+                          )}
+                        </div>
+                      ))}
+                      {duplicates.soloConflict > 0 && (
+                        <div>
+                          {intl.formatMessage(
+                            { id: "media_tagging.duplicate_solo" },
+                            { count: duplicates.soloConflict }
+                          )}
+                        </div>
+                      )}
+                    </Alert>
+                  )}
 
                   <div className="image-tagging-review-predictions">
                     {grouped.map(([category, items]) => (
