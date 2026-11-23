@@ -60,6 +60,15 @@ Following changes are later work.
    Closing it returns keyboard focus to the preview. General tags retain their
    search actions. **Advanced reconciliation** opens the existing Identities
    page for bulk work. Raw targets remain under **Source details**.
+   Sources that send no tag categories (Paheal and other Shimmie sites) list
+   every tag as uncategorised; those tags' menus offer **Connect as Character**,
+   **Connect as Artist** and **Connect as Copyright**. Once connected, the tag
+   is listed in that section on every post from the site, and downloads join
+   the connected record instead of creating a Tag. Images downloaded before
+   the connection keep their Tag; nothing is changed retroactively. A tag
+   connected as two different kinds is left uncategorised. Categorised plain
+   tags (general, meta…) keep their menu unchanged. Tagging's MD5 lookup does
+   not re-categorise connected tags.
 3. Choose an existing native record, or expand **Create a new…**. Character
    creation supports native disambiguation. A matching name never links itself.
 4. On the Identities page each row is one site name, with its site and its

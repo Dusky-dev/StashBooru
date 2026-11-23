@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Button, Dropdown } from "react-bootstrap";
 import { FormattedMessage } from "react-intl";
 import { Link } from "react-router-dom";
@@ -33,14 +33,65 @@ export function IdentityLink({
   label?: string;
   identityID?: string;
 }) {
+  if (kind === "artist" || kind === "character" || kind === "copyright")
+    return (
+      <IdentityConnectItem
+        source={source}
+        kind={kind}
+        target={target}
+        label={label}
+        identityID={identityID}
+        text={`Connect ${identityLabels[kind]}`}
+      />
+    );
+  // Some sources (Paheal and other Shimmie sites) send no tag categories, so
+  // every tag arrives as "unknown": let such a tag be connected as the kind
+  // it really is. Once connected it is listed in that section and joins the
+  // record on download. Categorised plain tags (general, meta…) keep their
+  // menu as it was.
+  if (kind !== "unknown") return null;
+  return (
+    <>
+      {(["character", "artist", "copyright"] as const).map((as) => (
+        <IdentityConnectItem
+          key={as}
+          source={source}
+          kind={as}
+          target={target}
+          label={label}
+          text={
+            <FormattedMessage
+              id="identity_sources.connect_as"
+              values={{ kind: identityLabels[as] }}
+            />
+          }
+        />
+      ))}
+    </>
+  );
+}
+
+function IdentityConnectItem({
+  source,
+  kind,
+  target,
+  label,
+  identityID,
+  text,
+}: {
+  source: BooruSource;
+  kind: IdentityKind;
+  target: string;
+  label?: string;
+  identityID?: string;
+  text: React.ReactNode;
+}) {
   const [open, setOpen] = useState(false);
   const returnFocus = useRef<HTMLElement | null>(null);
   const sourceTarget = useMemo(
     () => ({ source, target, label, identityID }),
     [source, target, label, identityID]
   );
-  if (kind !== "artist" && kind !== "character" && kind !== "copyright")
-    return null;
   function close() {
     setOpen(false);
     requestAnimationFrame(() => {
@@ -61,7 +112,7 @@ export function IdentityLink({
           setOpen(true);
         }}
       >
-        Connect {identityLabels[kind]}
+        {text}
       </Dropdown.Item>
       {open && (
         <IdentityConnectionsDialog

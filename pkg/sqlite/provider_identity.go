@@ -53,6 +53,27 @@ func (s *ProviderIdentityStore) Lookup(ctx context.Context, instance, kind, form
 	return &row, err
 }
 
+func (s *ProviderIdentityStore) ConnectedTags(ctx context.Context, instance string, targets []string) ([]models.ProviderIdentity, error) {
+	var rows []models.ProviderIdentity
+	for start := 0; start < len(targets); start += 500 {
+		chunk := targets[start:min(start+500, len(targets))]
+		args := make([]interface{}, 0, len(chunk)+1)
+		args = append(args, instance)
+		for _, target := range chunk {
+			args = append(args, target)
+		}
+		var found []models.ProviderIdentity
+		query := identitySelect + " WHERE p.instance=? AND p.form='tag'" +
+			" AND COALESCE(p.studio_id,p.performer_id,p.copyright_id) IS NOT NULL" +
+			" AND p.target IN (?" + strings.Repeat(",?", len(chunk)-1) + ")"
+		if err := dbWrapper.Select(ctx, &found, query, args...); err != nil {
+			return nil, err
+		}
+		rows = append(rows, found...)
+	}
+	return rows, nil
+}
+
 func (s *ProviderIdentityStore) Observe(ctx context.Context, input []models.IdentityObservation) ([]models.ProviderIdentity, error) {
 	if len(input) > 2000 {
 		return nil, models.ErrIdentityInvalid

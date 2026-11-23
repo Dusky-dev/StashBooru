@@ -158,7 +158,10 @@ function result(source, query, page) {
         { name: "character_a", category: "character" },
         { name: "character_b", category: "character" },
         ...(index === 0
-          ? [{ name: "ai_generated", category: "meta" }]
+          ? [
+              { name: "ai_generated", category: "meta" },
+              { name: "untyped_tag", category: "unknown" },
+            ]
           : index === 5
             ? [{ name: "ai-generated", category: "meta" }]
             : index === 11
@@ -2844,6 +2847,36 @@ try {
       0,
       "Cancel creates no entity or connection"
     );
+    // An uncategorised tag (Paheal sends no categories) can be connected as
+    // any kind; a categorised plain tag keeps its menu.
+    const metaTag = preview.getByRole("button", {
+      name: "Tag ai_generated",
+      exact: true,
+    });
+    await metaTag.click();
+    await preview
+      .getByRole("menuitem", { name: "Add to search", exact: true })
+      .waitFor();
+    assert.equal(
+      await preview.getByRole("menuitem", { name: /^Connect/ }).count(),
+      0,
+      "a meta tag offers no Connect"
+    );
+    await metaTag.click();
+    const plainTag = preview.getByRole("button", {
+      name: "Tag untyped_tag",
+      exact: true,
+    });
+    await plainTag.click();
+    for (const kind of ["Character", "Artist", "Copyright"])
+      await preview
+        .getByRole("menuitem", { name: `Connect as ${kind}`, exact: true })
+        .waitFor();
+    await plainTag.click();
+    await preview
+      .getByRole("menuitem", { name: "Connect as Character", exact: true })
+      .waitFor({ state: "hidden" });
+    await page.locator(".booru-browser-inspection .modal-content").focus();
     await page.keyboard.press("ArrowRight");
     await preview.getByText("Danbooru #102", { exact: true }).waitFor();
     await page.keyboard.press("ArrowLeft");
