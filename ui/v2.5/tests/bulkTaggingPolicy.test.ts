@@ -5,7 +5,9 @@ import {
   availableBulkTaggingSources,
   bulkSelectedImageIDs,
   bulkTaggingRequest,
+  bulkPixaiThreshold,
   defaultBulkTaggingCategories,
+  initialBulkTaggingSources,
   taggingActionKind,
 } from "../src/components/Tagging/bulkTaggingPolicy.ts";
 
@@ -68,7 +70,13 @@ test("bulk request is scoped to selected IDs and never replaces Artists", () => 
         limit: 50,
       },
       { ...defaultBulkTaggingCategories, applyArtist: false },
-      { useFilename: true, useCamie: false, useEva02: true }
+      {
+        useFilename: true,
+        useBooru: true,
+        usePixai: true,
+        useCamie: false,
+        useEva02: true,
+      }
     ),
     {
       imageIDs: [9, 10],
@@ -76,9 +84,13 @@ test("bulk request is scoped to selected IDs and never replaces Artists", () => 
       confirmed: true,
       threshold: 0.492,
       eva02Threshold: 0.35,
+      pixaiThreshold: bulkPixaiThreshold,
       useFilename: true,
+      useBooru: true,
+      usePixai: true,
       useCamie: false,
       useEva02: true,
+      addPostLinks: true,
       limit: 50,
       applyCharacters: true,
       applyArtist: false,
@@ -99,6 +111,8 @@ test("local filename metadata can tag a selection without the model opt-in", () 
   };
   assert.deepEqual(availableBulkTaggingSources(config), {
     useFilename: true,
+    useBooru: true,
+    usePixai: false,
     useCamie: false,
     useEva02: false,
   });
@@ -109,17 +123,75 @@ test("local filename metadata can tag a selection without the model opt-in", () 
     defaultBulkTaggingCategories,
     {
       useFilename: true,
+      useBooru: false,
+      usePixai: true,
       useCamie: true,
       useEva02: true,
     }
   );
   assert.equal(request.useFilename, true);
+  assert.equal(request.usePixai, false);
   assert.equal(request.useCamie, false);
   assert.equal(request.useEva02, false);
   assert.deepEqual(
-    availableBulkTaggingSources({ ...config, filenameEnabled: false }),
-    { useFilename: false, useCamie: false, useEva02: false }
+    availableBulkTaggingSources({
+      ...config,
+      filenameEnabled: false,
+      booruLookupSources: [],
+    }),
+    {
+      useFilename: false,
+      useBooru: false,
+      usePixai: false,
+      useCamie: false,
+      useEva02: false,
+    }
   );
+});
+
+test("only filename metadata starts checked", () => {
+  const config = {
+    bulkTaggingEnabled: true,
+    filenameEnabled: true,
+    booruLookupSources: null,
+  };
+  assert.deepEqual(initialBulkTaggingSources(config), {
+    useFilename: true,
+    useBooru: false,
+    usePixai: false,
+    useCamie: false,
+    useEva02: false,
+  });
+  assert.equal(
+    initialBulkTaggingSources({ ...config, filenameEnabled: false })
+      .useFilename,
+    false
+  );
+});
+
+test("post links are only requested with MD5 lookup", () => {
+  const config = {
+    bulkTaggingEnabled: false,
+    filenameEnabled: true,
+    threshold: 0.5,
+    eva02Threshold: 0.35,
+    limit: 50,
+    booruLookupSources: [],
+  };
+  const request = bulkTaggingRequest(
+    [1, 2],
+    config,
+    defaultBulkTaggingCategories,
+    {
+      useFilename: true,
+      useBooru: true,
+      usePixai: false,
+      useCamie: false,
+      useEva02: false,
+    }
+  );
+  assert.equal(request.useBooru, false);
+  assert.equal(request.addPostLinks, false);
 });
 
 test("the tagging action is named after the selected media", () => {

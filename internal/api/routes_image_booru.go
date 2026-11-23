@@ -56,14 +56,19 @@ type booruPost struct {
 	TagStringCopyright string
 	TagStringArtist    string
 	TagStringMeta      string
+	// Uncategorized holds lowercase tag names the site gave no category
+	// for. They are listed as general Tags, but a bulk job skips them.
+	Uncategorized map[string]bool
 }
 
 type booruProvider struct {
 	name string
 	// fetch replaces lookupURL/parse for Booru browser sources.
-	fetch              func(ctx context.Context, hash string) (*booruPost, error)
-	lookupURL          func(md5 string) string
-	postURL            func(id string) string
+	fetch     func(ctx context.Context, hash string) (*booruPost, error)
+	lookupURL func(md5 string) string
+	postURL   func(id string) string
+	// hosts are the site's hosts, for recognising its post links.
+	hosts              []string
 	parse              func([]byte) (*booruPost, error)
 	batchTagInfoURL    func([]string) string
 	singleTagInfoURL   func(string) string
@@ -377,6 +382,11 @@ func fetchBooruURL(ctx context.Context, address string) ([]byte, error) {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "StashBooru/1.0 (+https://github.com/Dusky-dev/StashBooru)")
 
+	gates := booruHostGatesFrom(ctx)
+	host := booruHostKey(req.URL.Hostname())
+	if err := gates.wait(ctx, host); err != nil {
+		return nil, err
+	}
 	response, err := booruHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -384,6 +394,10 @@ func fetchBooruURL(ctx context.Context, address string) ([]byte, error) {
 	defer response.Body.Close()
 	if response.StatusCode == http.StatusNotFound {
 		return nil, errBooruNoMatch
+	}
+	if response.StatusCode == http.StatusTooManyRequests {
+		gates.block(host)
+		return nil, errBooruRateLimited
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return nil, fmt.Errorf("HTTP %d", response.StatusCode)
@@ -533,7 +547,10 @@ func flatBooruTagNames(post *booruPost) []string {
 }
 
 func resolveBooruTagCategories(ctx context.Context, provider booruProvider, post *booruPost) map[string]string {
-	names := flatBooruTagNames(post)
+	return resolveBooruTagCategoryNames(ctx, provider, flatBooruTagNames(post))
+}
+
+func resolveBooruTagCategoryNames(ctx context.Context, provider booruProvider, names []string) map[string]string {
 	if len(names) == 0 || provider.parseTagCategories == nil {
 		return nil
 	}

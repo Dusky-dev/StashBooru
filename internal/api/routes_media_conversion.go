@@ -22,6 +22,12 @@ func conversionStore() mediaconvert.Store {
 
 // Booru identity survives re-encoding even after its original bytes are evicted.
 func lookupConvertedMediaBooruMetadata(ctx context.Context, path string) (booruProvider, *booruPost, string, string, error) {
+	return lookupConvertedMediaBooruMetadataWith(ctx, path, lookupBooruPost)
+}
+
+// lookupConvertedMediaBooruMetadataWith looks up a converted file by its
+// original's MD5, otherwise by the filename's and then the file's MD5.
+func lookupConvertedMediaBooruMetadataWith(ctx context.Context, path string, lookup booruLookupFunc) (booruProvider, *booruPost, string, string, error) {
 	mgr := manager.GetInstance()
 	var sourceMD5 string
 	err := txn.WithReadTxn(ctx, mgr.Repository.TxnManager, func(ctx context.Context) error {
@@ -35,10 +41,10 @@ func lookupConvertedMediaBooruMetadata(ctx context.Context, path string) (booruP
 		return booruProvider{}, nil, "", "", err
 	}
 	if sourceMD5 != "" {
-		provider, post, err := lookupBooruPost(ctx, sourceMD5)
+		provider, post, err := lookup(ctx, sourceMD5)
 		return provider, post, sourceMD5, "original", err
 	}
-	return lookupImageBooruMetadata(ctx, path, lookupBooruPost)
+	return lookupImageBooruMetadata(ctx, path, lookup)
 }
 
 func conversionClient(ctx context.Context, backend string) (mediaconvert.Client, mediaconvert.Capabilities, string, error) {

@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -11,18 +12,107 @@ import (
 	"github.com/stashapp/stash/pkg/camietagger"
 	"github.com/stashapp/stash/pkg/job"
 	"github.com/stashapp/stash/pkg/logger"
+	"github.com/stashapp/stash/pkg/pixaitagger"
 	"github.com/stashapp/stash/pkg/visualembedding"
 )
 
 // Keep the legacy Camie-only endpoint intact for existing callers. The new
-// image-only job is opt-in and requires explicit IDs and one confirmation.
+// image-only job requires explicit IDs and one confirmation.
 type bulkImageTagRequest struct {
 	camieBulkRequestV2
 	Confirmed      bool    `json:"confirmed"`
 	UseFilename    bool    `json:"useFilename"`
+	UseBooru       bool    `json:"useBooru"`
+	AddPostLinks   bool    `json:"addPostLinks"`
+	UsePixai       bool    `json:"usePixai"`
 	UseCamie       bool    `json:"useCamie"`
 	UseEva02       bool    `json:"useEva02"`
+	PixaiThreshold float64 `json:"pixaiThreshold"`
 	Eva02Threshold float64 `json:"eva02Threshold"`
+}
+
+// PixAI has no saved threshold; bulk uses Image Tagging's default.
+const defaultPixaiThreshold = 0.35
+
+// bulkImageTagClients are the model workers a job started.
+type bulkImageTagClients struct {
+	pixai pixaitagger.Tagger
+	camie camietagger.Tagger
+	eva02 visualembedding.Embedder
+}
+
+func (c bulkImageTagClients) close() {
+	if c.pixai != nil {
+		c.pixai.Close()
+	}
+	if c.camie != nil {
+		c.camie.Close()
+	}
+	if c.eva02 != nil {
+		c.eva02.Close()
+	}
+}
+
+func startBulkImageTagClients(ctx context.Context, request bulkImageTagRequest) (bulkImageTagClients, error) {
+	var clients bulkImageTagClients
+	if request.UsePixai {
+		client, _, _, err := newPixaiTagger()
+		if err != nil {
+			return clients, fmt.Errorf("starting PixAI tagging worker: %w", err)
+		}
+		clients.pixai = client
+		status, err := client.Status(ctx)
+		if err != nil {
+			return clients, fmt.Errorf("checking PixAI tagging worker: %w", err)
+		}
+		if !status.Installed {
+			return clients, fmt.Errorf("PixAI is not installed on the selected worker")
+		}
+	}
+	if request.UseCamie {
+		client, _, _, err := newCamieTagger()
+		if err != nil {
+			return clients, fmt.Errorf("starting Camie tagging worker: %w", err)
+		}
+		clients.camie = client
+		status, err := client.Status(ctx)
+		if err != nil {
+			return clients, fmt.Errorf("checking Camie tagging worker: %w", err)
+		}
+		if !status.Installed {
+			return clients, fmt.Errorf("camie v2 model is not installed on the selected worker")
+		}
+	}
+	if request.UseEva02 {
+		client, _, _, err := newVisualSimilarityEmbedder()
+		if err != nil {
+			return clients, fmt.Errorf("starting EVA02 tagging worker: %w", err)
+		}
+		clients.eva02 = client
+		status, err := client.Status(ctx)
+		if err != nil {
+			return clients, fmt.Errorf("checking EVA02 tagging worker: %w", err)
+		}
+		if !status.Installed {
+			return clients, fmt.Errorf("EVA02 model is not installed on the selected worker")
+		}
+	}
+	return clients, nil
+}
+
+// bulkImageTagSummary counts what a job did, for its closing log line.
+type bulkImageTagSummary struct {
+	applied, empty, failures              int
+	booruMatched, booruMissing, booruSkip int
+	booruUnchecked, linksAdded            int
+	booruUncategorized                    int
+}
+
+func (s bulkImageTagSummary) log(useBooru bool) {
+	logger.Infof("Image Tagging: tagged %d Image(s), %d had no matching metadata, %d failed", s.applied, s.empty, s.failures)
+	if useBooru {
+		logger.Infof("Image Tagging: MD5 lookup matched %d Image(s) and added %d post link(s); %d not found, %d not checked because a site failed or rate limited, %d skipped because they already link to a chosen site; %d matched tag(s) were not applied because the site gave no category", s.booruMatched, s.linksAdded, s.booruMissing, s.booruUnchecked, s.booruSkip, s.booruUncategorized)
+	}
 }
 
 func (rs imageRoutes) BulkTagImages(w http.ResponseWriter, r *http.Request) {
@@ -38,7 +128,16 @@ func (rs imageRoutes) BulkTagImages(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("loading Image Tagging settings: %v", err), http.StatusInternalServerError)
 		return
 	}
-	if status, err := validateBulkImageTagRequest(&request, config); err != nil {
+	var providers []booruProvider
+	if request.UseBooru {
+		sources, err := loadBooruLookupBrowserSources()
+		if err != nil {
+			http.Error(w, fmt.Sprintf("loading Booru browser sources: %v", err), http.StatusInternalServerError)
+			return
+		}
+		providers = booruLookupProviders(config.BooruLookupSources, sources, searchBooruSourceMD5)
+	}
+	if status, err := validateBulkImageTagRequest(&request, config, len(providers)); err != nil {
 		http.Error(w, err.Error(), status)
 		return
 	}
@@ -52,51 +151,36 @@ func (rs imageRoutes) BulkTagImages(w http.ResponseWriter, r *http.Request) {
 		}
 		progress.SetTotal(len(ids))
 
-		var camieClient camietagger.Tagger
-		var evaClient visualembedding.Embedder
-		if request.UseCamie {
-			camieClient, _, _, err = newCamieTagger()
-			if err != nil {
-				return fmt.Errorf("starting Camie tagging worker: %w", err)
-			}
-			defer camieClient.Close()
-			status, statusErr := camieClient.Status(ctx)
-			if statusErr != nil {
-				return fmt.Errorf("checking Camie tagging worker: %w", statusErr)
-			}
-			if !status.Installed {
-				return fmt.Errorf("camie v2 model is not installed on the selected worker")
-			}
+		clients, err := startBulkImageTagClients(ctx, request)
+		defer clients.close()
+		if err != nil {
+			return err
 		}
-		if request.UseEva02 {
-			evaClient, _, _, err = newVisualSimilarityEmbedder()
-			if err != nil {
-				return fmt.Errorf("starting EVA02 tagging worker: %w", err)
-			}
-			defer evaClient.Close()
-			status, statusErr := evaClient.Status(ctx)
-			if statusErr != nil {
-				return fmt.Errorf("checking EVA02 tagging worker: %w", statusErr)
-			}
-			if !status.Installed {
-				return fmt.Errorf("EVA02 model is not installed on the selected worker")
-			}
+		var lookup *bulkBooruLookup
+		if request.UseBooru {
+			lookup = newBulkBooruLookup(providers)
 		}
 
-		failures, applied, empty := 0, 0, 0
+		var summary bulkImageTagSummary
 		for _, imageID := range ids {
 			if job.IsCancelled(ctx) {
 				return nil
 			}
 			source, sourceErr := loadCamieBulkImageSource(ctx, mgr, imageID)
 			if sourceErr != nil {
-				failures++
+				summary.failures++
 				logger.Warnf("bulk tagging: loading Image %d: %v", imageID, sourceErr)
 				progress.Increment()
 				continue
 			}
 
-			predictions, tagErr := inferBulkImageTags(ctx, source.Path, config, request, camieClient, evaClient)
+			var booruPredictions []camietagger.Tag
+			var postURL string
+			if lookup != nil {
+				booruPredictions, postURL = lookupBulkImageBooru(ctx, lookup, source, &summary)
+			}
+
+			predictions, tagErr := inferBulkImageTags(ctx, source.Path, config, request, clients, booruPredictions)
 			if tagErr == nil {
 				predictions = filterCamieBulkPredictionsV2(predictions, request.camieBulkRequestV2)
 				predictions, tagErr = validateCamiePredictionsV2(predictions)
@@ -116,25 +200,60 @@ func (rs imageRoutes) BulkTagImages(w http.ResponseWriter, r *http.Request) {
 			if tagErr == nil && len(predictions) > 0 {
 				_, tagErr = applyCamieMetadataV2(ctx, imageID, predictions, false)
 				if tagErr == nil {
-					applied++
+					summary.applied++
 				}
 			} else if tagErr == nil {
 				// A filename that does not match the layout is not an error.
-				empty++
+				summary.empty++
+			}
+			if tagErr == nil && postURL != "" && request.AddPostLinks {
+				added, linkErr := addImageTaggingURLs(ctx, imageID, []string{postURL})
+				if linkErr != nil {
+					tagErr = fmt.Errorf("adding post link: %w", linkErr)
+				}
+				summary.linksAdded += len(added)
 			}
 			if tagErr != nil {
-				failures++
+				summary.failures++
 				logger.Warnf("bulk tagging: Image %d failed: %v", imageID, tagErr)
 			}
 			progress.Increment()
 		}
-		logger.Infof("Image Tagging: tagged %d Image(s), %d had no matching metadata, %d failed", applied, empty, failures)
-		if failures > 0 {
-			return fmt.Errorf("bulk tagging failed for %d Image(s); see logs for Image IDs", failures)
+		if lookup != nil {
+			summary.booruUncategorized = lookup.uncategorized
+		}
+		summary.log(request.UseBooru)
+		if summary.failures > 0 {
+			return fmt.Errorf("bulk tagging failed for %d Image(s); see logs for Image IDs", summary.failures)
 		}
 		return nil
 	}))
 	writeVisualSimilarityJSON(w, visualSimilarityJobResponse{JobID: jobID})
+}
+
+// lookupBulkImageBooru returns the matched post's metadata and link. A site
+// failure is counted, never treated as an Image failure.
+func lookupBulkImageBooru(ctx context.Context, lookup *bulkBooruLookup, source camieBulkImageSource, summary *bulkImageTagSummary) ([]camietagger.Tag, string) {
+	if lookup.hasPostLink(source.URLs) {
+		// Images downloaded from a chosen site already carry its metadata.
+		summary.booruSkip++
+		return nil, ""
+	}
+	provider, post, _, _, err := lookupConvertedMediaBooruMetadataWith(ctx, source.Path, lookup.lookup)
+	switch {
+	case err == nil:
+		summary.booruMatched++
+	case errors.Is(err, errBooruNoMatch):
+		summary.booruMissing++
+		return nil, ""
+	default:
+		summary.booruUnchecked++
+		if !errors.Is(err, errBooruNotChecked) && ctx.Err() == nil {
+			logger.Debugf("Image Tagging: MD5 lookup for Image %d: %v", source.ID, err)
+		}
+		return nil, ""
+	}
+	return lookup.bulkBooruPredictions(ctx, provider, post), booruPostURL(provider, post)
 }
 
 // withoutAmbiguousBulkCharacters drops bare Character predictions that match
@@ -157,24 +276,28 @@ func withoutAmbiguousBulkCharacters(predictions, enriched []camietagger.Tag) ([]
 }
 
 // validateBulkImageTagRequest checks an explicit bulk selection and fills
-// default model options. Local filename metadata needs only the one explicit
-// confirmation; model inference stays behind the bulk auto-tagging opt-in.
-func validateBulkImageTagRequest(request *bulkImageTagRequest, config camieConfig) (int, error) {
+// default model options. Local filename metadata and MD5 lookup need only the
+// one explicit confirmation; model inference stays behind the bulk model
+// opt-in. lookupSites is the number of usable MD5 lookup sites.
+func validateBulkImageTagRequest(request *bulkImageTagRequest, config camieConfig, lookupSites int) (int, error) {
 	if !request.Confirmed {
 		return http.StatusBadRequest, fmt.Errorf("confirm this bulk tagging selection before starting")
 	}
 	if request.All || len(request.ImageIDs) < 2 || len(request.ImageIDs) > 20000 {
 		return http.StatusBadRequest, fmt.Errorf("select between 2 and 20000 explicit Image IDs for bulk tagging")
 	}
-	useModels := request.UseCamie || request.UseEva02
-	if !request.UseFilename && !useModels {
-		return http.StatusBadRequest, fmt.Errorf("choose filename metadata, Camie, EVA02 or a combination for bulk tagging")
+	useModels := request.UsePixai || request.UseCamie || request.UseEva02
+	if !request.UseFilename && !request.UseBooru && !useModels {
+		return http.StatusBadRequest, fmt.Errorf("choose at least one source for bulk tagging")
 	}
 	if !request.ApplyCharacters && !request.ApplyArtist && !request.ApplyCopyright && !request.ApplyTags {
 		return http.StatusBadRequest, fmt.Errorf("select at least one Image metadata category")
 	}
 	if request.UseFilename && !config.FilenameEnabled {
 		return http.StatusConflict, fmt.Errorf("reading metadata from filenames is off in tagging settings")
+	}
+	if request.UseBooru && lookupSites == 0 {
+		return http.StatusConflict, fmt.Errorf("no MD5 lookup sites are available; choose them in tagging setup")
 	}
 	if useModels && !config.BulkTaggingEnabled {
 		return http.StatusConflict, fmt.Errorf("bulk model tagging is disabled in tagging settings")
@@ -188,11 +311,16 @@ func validateBulkImageTagRequest(request *bulkImageTagRequest, config camieConfi
 	if request.Eva02Threshold == 0 {
 		request.Eva02Threshold = config.Eva02Threshold
 	}
+	if request.PixaiThreshold == 0 {
+		request.PixaiThreshold = defaultPixaiThreshold
+	}
 	if request.Limit == 0 {
 		request.Limit = config.Limit
 	}
-	if request.Threshold <= 0 || request.Threshold >= 1 || request.Eva02Threshold <= 0 || request.Eva02Threshold >= 1 {
-		return http.StatusBadRequest, fmt.Errorf("camie and EVA02 thresholds must be greater than 0 and less than 1")
+	for _, threshold := range []float64{request.Threshold, request.Eva02Threshold, request.PixaiThreshold} {
+		if threshold <= 0 || threshold >= 1 {
+			return http.StatusBadRequest, fmt.Errorf("model thresholds must be greater than 0 and less than 1")
+		}
 	}
 	if request.Limit < 1 || request.Limit > camietagger.MaxLimit {
 		return http.StatusBadRequest, fmt.Errorf("per-category limit must be between 1 and %d", camietagger.MaxLimit)
@@ -205,12 +333,10 @@ func inferBulkImageTags(
 	path string,
 	config camieConfig,
 	request bulkImageTagRequest,
-	camieClient camietagger.Tagger,
-	evaClient visualembedding.Embedder,
+	clients bulkImageTagClients,
+	booruPredictions []camietagger.Tag,
 ) ([]camietagger.Tag, error) {
-	var filenameTags []camietagger.Tag
-	var camieTags []camietagger.Tag
-	var evaTags []camietagger.Tag
+	var filenameTags, pixaiTags, camieTags, evaTags []camietagger.Tag
 	var err error
 
 	if request.UseFilename {
@@ -219,14 +345,23 @@ func inferBulkImageTags(
 			return nil, fmt.Errorf("parsing local filename metadata: %w", err)
 		}
 	}
+	if request.UsePixai {
+		predicted, pixaiErr := clients.pixai.Tag(ctx, path, request.PixaiThreshold, request.Limit)
+		if pixaiErr != nil {
+			return nil, fmt.Errorf("PixAI inference: %w", pixaiErr)
+		}
+		for _, item := range predicted {
+			pixaiTags = append(pixaiTags, camietagger.Tag{Name: item.Name, Category: item.Category, Score: item.Score, Source: "pixai"})
+		}
+	}
 	if request.UseCamie {
-		camieTags, err = camieClient.Tag(ctx, path, request.Threshold, request.Limit)
+		camieTags, err = clients.camie.Tag(ctx, path, request.Threshold, request.Limit)
 		if err != nil {
 			return nil, fmt.Errorf("camie inference: %w", err)
 		}
 	}
 	if request.UseEva02 {
-		tagPredictions, evaErr := evaClient.Tag(ctx, path, request.Eva02Threshold, request.Limit)
+		tagPredictions, evaErr := clients.eva02.Tag(ctx, path, request.Eva02Threshold, request.Limit)
 		if evaErr != nil {
 			return nil, fmt.Errorf("EVA02 inference: %w", evaErr)
 		}
@@ -237,37 +372,42 @@ func inferBulkImageTags(
 			}
 		}
 	}
-	return mergeBulkImageTags(filenameTags, camieTags, evaTags), nil
+	return mergeBulkImageTags(filenameTags, booruPredictions, pixaiTags, camieTags, evaTags), nil
 }
 
-// Source priority is filename → Camie → EVA02. An authoritative filename
-// identity blocks conflicting inferred identities in the same category; an
+// Source priority follows Image Tagging: filename → MD5 match → PixAI →
+// Camie → EVA02. Filename and an exact MD5 match are authoritative: their
+// identities block conflicting inferred identities in the same category. An
 // already-selected higher-priority prediction keeps its score and provenance.
-func mergeBulkImageTags(filename, camie, eva []camietagger.Tag) []camietagger.Tag {
-	merged := mergeCamiePredictions(camie, filename)
-	seen := make(map[string]bool, len(merged))
-	authoritative := make(map[string]bool, 3)
-	for _, prediction := range filename {
-		prediction = normalizeCamiePrediction(prediction)
-		if prediction.Name != "" && camieFilenameAuthoritativeCategory(prediction.Category) {
-			authoritative[prediction.Category] = true
+func mergeBulkImageTags(filename, booru []camietagger.Tag, models ...[]camietagger.Tag) []camietagger.Tag {
+	var merged []camietagger.Tag
+	seen := map[string]bool{}
+	authoritative := map[string]bool{}
+	layer := func(predictions []camietagger.Tag, claimsIdentity bool) {
+		claimed := map[string]bool{}
+		for _, prediction := range predictions {
+			prediction = normalizeCamiePrediction(prediction)
+			if prediction.Name == "" {
+				continue
+			}
+			key := prediction.Category + "\x00" + strings.ToLower(prediction.Name)
+			if seen[key] || authoritative[prediction.Category] {
+				continue
+			}
+			seen[key] = true
+			merged = append(merged, prediction)
+			if claimsIdentity && camieFilenameAuthoritativeCategory(prediction.Category) {
+				claimed[prediction.Category] = true
+			}
+		}
+		for category := range claimed {
+			authoritative[category] = true
 		}
 	}
-	for _, prediction := range merged {
-		prediction = normalizeCamiePrediction(prediction)
-		seen[prediction.Category+"\x00"+strings.ToLower(prediction.Name)] = true
-	}
-	for _, prediction := range eva {
-		prediction = normalizeCamiePrediction(prediction)
-		if prediction.Name == "" {
-			continue
-		}
-		key := prediction.Category + "\x00" + strings.ToLower(prediction.Name)
-		if seen[key] || authoritative[prediction.Category] {
-			continue
-		}
-		seen[key] = true
-		merged = append(merged, prediction)
+	layer(filename, true)
+	layer(booru, true)
+	for _, predictions := range models {
+		layer(predictions, false)
 	}
 	return merged
 }

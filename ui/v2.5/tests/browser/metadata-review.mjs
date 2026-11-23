@@ -418,6 +418,24 @@ try {
     const filename = bulk.locator("#bulk-tagging-use-filename");
     const camie = bulk.locator("#bulk-tagging-use-camie");
     const eva02 = bulk.locator("#bulk-tagging-use-eva02");
+    const pixai = bulk.locator("#bulk-tagging-use-pixai");
+    const booru = bulk.locator("#bulk-tagging-use-booru");
+    // With the model opt-in on, only filename metadata starts checked.
+    for (const [source, name] of [
+      [camie, "Camie"],
+      [eva02, "EVA02"],
+      [pixai, "PixAI"],
+      [booru, "MD5 lookup"],
+    ]) {
+      assert.equal(await source.isChecked(), false, `${name} starts unchecked`);
+      assert.equal(await source.isEnabled(), true, `${name} can be chosen`);
+    }
+    const postLinks = bulk.locator("#bulk-tagging-add-post-links");
+    assert.equal(await postLinks.count(), 0, "Post links need MD5 lookup");
+    await booru.check();
+    assert.equal(await postLinks.isChecked(), true);
+    await postLinks.uncheck();
+    await booru.uncheck();
     const characters = bulk.locator("#bulk-tagging-applyCharacters");
     const artists = bulk.locator("#bulk-tagging-applyArtist");
     const copyright = bulk.locator("#bulk-tagging-applyCopyright");
@@ -435,6 +453,7 @@ try {
       "No inference source selected"
     );
     await eva02.check();
+    await booru.check();
     await characters.uncheck();
     await artists.uncheck();
     await copyright.uncheck();
@@ -461,6 +480,9 @@ try {
     assert.equal(bulkRequests[1].all, false);
     assert.equal(bulkRequests[1].useCamie, false);
     assert.equal(bulkRequests[1].useEva02, true);
+    assert.equal(bulkRequests[1].usePixai, false);
+    assert.equal(bulkRequests[1].useBooru, true);
+    assert.equal(bulkRequests[1].addPostLinks, false);
     assert.equal(bulkRequests[1].applyTags, true);
     assert.equal(bulkRequests[1].applyCharacters, false);
     assert.equal(bulkRequests[1].applyArtist, false);
