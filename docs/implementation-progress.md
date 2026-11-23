@@ -1,6 +1,25 @@
+## StashBooru 1.11.0: MD5 lookup sites and post links — 2026-11-23
+
+- Baseline: `develop` `90e4845` (1.10.0). Owner: MD5 lookup "only searches
+  specific sites and doesn't find a lot of images"; a match should add the
+  post link as a URL.
+- Cause: lookup was hard-wired to five sites, with no credentials.
+- Now: **Sites for MD5 lookup** in tagging setup lists every Booru browser
+  source whose engine searches by MD5 (Danbooru, Gelbooru, Moebooru, e621),
+  in source order; saved credentials are used, Rule34 without them is
+  disabled. Unsaved = the old five; none ticked = lookup off. A match needs
+  the exact MD5; one failing site no longer hides other sites' no-match.
+  Image/Video Tagging add the matched post link to URLs on Apply (add-only,
+  untick to skip); Video batch auto-apply does too when it uses the match.
+- Checks: focused Go tests + `golangci-lint`; `tsc`, Biome, unit tests;
+  `metadata-review.mjs` and `settings-maintenance.mjs` extended, pass.
+- Not verified: real provider lookups.
+- Next: bulk MD5/PixAI job sources (1.12.0), duplicate Characters (1.13.0).
+
 ## StashBooru 1.10.0: Booru post view collapse and keyboard selection — 2026-11-22
 
-- Baseline: `develop` `82126ba` (1.9.0). Owner: collapsible ZIP "folder" and
+- Baseline: `develop` `82126ba` (1.9.0); PR #422, merged 2026-11-23 on green CI
+  (head `8162b16`). Owner: collapsible ZIP "folder" and
   big media groups; keyboard navigation broke when all media became one list.
 - Cause: ↑ targeted an unmarked, scroll-guessed item; ZIP entries never had a
   key target; Up/Down could not reach unmounted media.
