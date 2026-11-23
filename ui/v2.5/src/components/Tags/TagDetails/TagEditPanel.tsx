@@ -72,6 +72,7 @@ export const TagEditPanel: React.FC<ITagEditPanel> = ({
     parent_ids: yup.array(yup.string().required()).defined(),
     child_ids: yup.array(yup.string().required()).defined(),
     ignore_auto_tag: yup.boolean().defined(),
+    ignored: yup.boolean().defined(),
     hide_thumbnail: yup.boolean().defined(),
     stash_ids: yup.mixed<GQL.StashIdInput[]>().defined(),
     image: yup.string().nullable().optional(),
@@ -86,6 +87,7 @@ export const TagEditPanel: React.FC<ITagEditPanel> = ({
     parent_ids: (tag?.parents ?? []).map((t) => t.id),
     child_ids: (tag?.children ?? []).map((t) => t.id),
     ignore_auto_tag: tag?.ignore_auto_tag ?? false,
+    ignored: tag?.ignored ?? false,
     hide_thumbnail: tag?.hide_thumbnail ?? false,
     stash_ids: getStashIDs(tag?.stash_ids),
     custom_fields: cloneDeep(tag?.custom_fields ?? {}),
@@ -311,6 +313,7 @@ export const TagEditPanel: React.FC<ITagEditPanel> = ({
 
           <hr />
           {renderInputField("ignore_auto_tag", "checkbox")}
+          {renderInputField("ignored", "checkbox")}
           <Form.Check
             id="tag-hide-thumbnail"
             type="checkbox"

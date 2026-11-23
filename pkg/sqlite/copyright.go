@@ -26,6 +26,7 @@ type copyrightRow struct {
 	SortName    string    `db:"sort_name"`
 	Description string    `db:"description"`
 	Favorite    bool      `db:"favorite"`
+	Ignored     bool      `db:"ignored"`
 	CreatedAt   time.Time `db:"created_at"`
 	UpdatedAt   time.Time `db:"updated_at"`
 }
@@ -37,6 +38,7 @@ func (r copyrightRow) model() *models.Copyright {
 		SortName:    r.SortName,
 		Description: r.Description,
 		Favorite:    r.Favorite,
+		Ignored:     r.Ignored,
 		CreatedAt:   r.CreatedAt,
 		UpdatedAt:   r.UpdatedAt,
 	}
@@ -59,7 +61,7 @@ func (s *CopyrightStore) loadAliases(ctx context.Context, item *models.Copyright
 func (s *CopyrightStore) Find(ctx context.Context, id int) (*models.Copyright, error) {
 	var row copyrightRow
 	if err := dbWrapper.Get(ctx, &row,
-		"SELECT id, name, sort_name, description, favorite, created_at, updated_at FROM copyrights WHERE id = ?", id); err != nil {
+		"SELECT id, name, sort_name, description, favorite, ignored, created_at, updated_at FROM copyrights WHERE id = ?", id); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
@@ -80,7 +82,7 @@ func (s *CopyrightStore) FindMany(ctx context.Context, ids []int) ([]*models.Cop
 	for i, id := range ids {
 		args[i] = id
 	}
-	query := fmt.Sprintf("SELECT id, name, sort_name, description, favorite, created_at, updated_at FROM copyrights WHERE id IN %s ORDER BY COALESCE(NULLIF(sort_name, ''), name) COLLATE NOCASE, id ASC", getInBinding(len(ids)))
+	query := fmt.Sprintf("SELECT id, name, sort_name, description, favorite, ignored, created_at, updated_at FROM copyrights WHERE id IN %s ORDER BY COALESCE(NULLIF(sort_name, ''), name) COLLATE NOCASE, id ASC", getInBinding(len(ids)))
 	var rows []copyrightRow
 	if err := dbWrapper.Select(ctx, &rows, query, args...); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
@@ -102,7 +104,7 @@ func (s *CopyrightStore) FindByName(ctx context.Context, name string, nocase boo
 		operator += " COLLATE NOCASE"
 	}
 	var row copyrightRow
-	query := "SELECT id, name, sort_name, description, favorite, created_at, updated_at FROM copyrights WHERE name " + operator + " LIMIT 1"
+	query := "SELECT id, name, sort_name, description, favorite, ignored, created_at, updated_at FROM copyrights WHERE name " + operator + " LIMIT 1"
 	if err := dbWrapper.Get(ctx, &row, query, name); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -122,7 +124,7 @@ func (s *CopyrightStore) FindByAlias(ctx context.Context, alias string, nocase b
 		collation = " COLLATE NOCASE"
 	}
 	var row copyrightRow
-	query := `SELECT c.id, c.name, c.sort_name, c.description, c.favorite, c.created_at, c.updated_at
+	query := `SELECT c.id, c.name, c.sort_name, c.description, c.favorite, c.ignored, c.created_at, c.updated_at
 FROM copyrights c INNER JOIN copyright_aliases a ON a.copyright_id = c.id
 WHERE a.alias = ?` + collation + ` LIMIT 1`
 	if err := dbWrapper.Get(ctx, &row, query, alias); err != nil {
@@ -139,18 +141,36 @@ WHERE a.alias = ?` + collation + ` LIMIT 1`
 }
 
 func (s *CopyrightStore) Query(ctx context.Context, filter *models.FindFilterType) ([]*models.Copyright, int, error) {
+	return s.query(ctx, filter, nil, false)
+}
+
+// QueryListed is the Copyright list: without ignored it hides ignored
+// Copyrights; with it, it returns only those that match.
+func (s *CopyrightStore) QueryListed(ctx context.Context, filter *models.FindFilterType, ignored *bool) ([]*models.Copyright, int, error) {
+	return s.query(ctx, filter, ignored, true)
+}
+
+func (s *CopyrightStore) query(ctx context.Context, filter *models.FindFilterType, ignored *bool, listed bool) ([]*models.Copyright, int, error) {
 	ff := models.FindFilterType{}
 	if filter != nil {
 		ff = *filter
 	}
-	where := ""
+	var conditions []string
 	args := []interface{}{}
 	if ff.Q != nil && strings.TrimSpace(*ff.Q) != "" {
 		q := "%" + strings.TrimSpace(*ff.Q) + "%"
-		where = ` WHERE c.name LIKE ? COLLATE NOCASE OR c.sort_name LIKE ? COLLATE NOCASE OR EXISTS (
+		conditions = append(conditions, `(c.name LIKE ? COLLATE NOCASE OR c.sort_name LIKE ? COLLATE NOCASE OR EXISTS (
 SELECT 1 FROM copyright_aliases a WHERE a.copyright_id = c.id AND a.alias LIKE ? COLLATE NOCASE) OR EXISTS (
-SELECT 1 FROM provider_identities p WHERE p.copyright_id=c.id AND (p.target LIKE ? COLLATE NOCASE OR p.label LIKE ? COLLATE NOCASE))`
+SELECT 1 FROM provider_identities p WHERE p.copyright_id=c.id AND (p.target LIKE ? COLLATE NOCASE OR p.label LIKE ? COLLATE NOCASE)))`)
 		args = append(args, q, q, q, q, q)
+	}
+	if listed {
+		conditions = append(conditions, "c.ignored = ?")
+		args = append(args, ignored != nil && *ignored)
+	}
+	where := ""
+	if len(conditions) > 0 {
+		where = " WHERE " + strings.Join(conditions, " AND ")
 	}
 
 	var count int
@@ -186,7 +206,7 @@ SELECT id, MIN(root_key) AS root_key, MIN(path_key) AS path_key
 FROM copyright_paths
 GROUP BY id
 )
-SELECT c.id, c.name, c.sort_name, c.description, c.favorite, c.created_at, c.updated_at
+SELECT c.id, c.name, c.sort_name, c.description, c.favorite, c.ignored, c.created_at, c.updated_at
 FROM copyrights c
 LEFT JOIN copyright_hierarchy_order hierarchy_order ON hierarchy_order.id = c.id` + where +
 			" ORDER BY hierarchy_order.root_key COLLATE NOCASE ASC, hierarchy_order.path_key COLLATE NOCASE ASC, c.id ASC"
@@ -232,7 +252,7 @@ LEFT JOIN copyright_hierarchy_order hierarchy_order ON hierarchy_order.id = c.id
 	if direction != "DESC" {
 		direction = "ASC"
 	}
-	query := `SELECT c.id, c.name, c.sort_name, c.description, c.favorite, c.created_at, c.updated_at FROM copyrights c` + where +
+	query := `SELECT c.id, c.name, c.sort_name, c.description, c.favorite, c.ignored, c.created_at, c.updated_at FROM copyrights c` + where +
 		" ORDER BY " + sortColumn + " COLLATE NOCASE " + direction + ", c.id ASC"
 	queryArgs := append([]interface{}{}, args...)
 	if !ff.IsGetAll() {
@@ -349,10 +369,11 @@ func (s *CopyrightStore) Create(ctx context.Context, input models.CopyrightCreat
 	if input.Favorite != nil {
 		favorite = *input.Favorite
 	}
+	ignored := input.Ignored != nil && *input.Ignored
 	now := time.Now()
 	result, err := dbWrapper.Exec(ctx,
-		"INSERT INTO copyrights (name, sort_name, description, favorite, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
-		name, sortName, description, favorite, now, now)
+		"INSERT INTO copyrights (name, sort_name, description, favorite, ignored, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		name, sortName, description, favorite, ignored, now, now)
 	if err != nil {
 		return nil, err
 	}
@@ -444,6 +465,10 @@ func (s *CopyrightStore) Update(ctx context.Context, input models.CopyrightUpdat
 		sets = append(sets, "favorite = ?")
 		args = append(args, *input.Favorite)
 	}
+	if input.Ignored != nil {
+		sets = append(sets, "ignored = ?")
+		args = append(args, *input.Ignored)
+	}
 	if len(sets) > 0 || input.Aliases != nil || input.ParentIDs != nil || input.ChildIDs != nil {
 		sets = append(sets, "updated_at = ?")
 		args = append(args, time.Now(), id)
@@ -480,7 +505,7 @@ func (s *CopyrightStore) findRelated(ctx context.Context, id int, parents bool) 
 	if !parents {
 		joinColumn, whereColumn = "child_id", "parent_id"
 	}
-	query := `SELECT c.id, c.name, c.sort_name, c.description, c.favorite, c.created_at, c.updated_at
+	query := `SELECT c.id, c.name, c.sort_name, c.description, c.favorite, c.ignored, c.created_at, c.updated_at
 FROM copyrights c INNER JOIN copyright_relations r ON c.id = r.` + joinColumn + `
 WHERE r.` + whereColumn + ` = ? ORDER BY COALESCE(NULLIF(c.sort_name, ''), c.name) COLLATE NOCASE, c.id ASC`
 	var rows []copyrightRow
@@ -521,7 +546,7 @@ func (s *CopyrightStore) SceneCount(ctx context.Context, id int) (int, error) {
 }
 
 func (s *CopyrightStore) findForMedia(ctx context.Context, table, mediaColumn string, mediaID int) ([]*models.Copyright, error) {
-	query := `SELECT c.id, c.name, c.sort_name, c.description, c.favorite, c.created_at, c.updated_at
+	query := `SELECT c.id, c.name, c.sort_name, c.description, c.favorite, c.ignored, c.created_at, c.updated_at
 FROM copyrights c INNER JOIN ` + table + ` j ON j.copyright_id = c.id
 WHERE j.` + mediaColumn + ` = ? ORDER BY COALESCE(NULLIF(c.sort_name, ''), c.name) COLLATE NOCASE, c.id ASC`
 	var rows []copyrightRow

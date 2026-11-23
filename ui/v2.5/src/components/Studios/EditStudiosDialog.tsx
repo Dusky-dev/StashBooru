@@ -28,6 +28,7 @@ const studioFields = [
   "rating100",
   "details",
   "ignore_auto_tag",
+  "ignored",
   "organized",
 ];
 
@@ -218,6 +219,13 @@ export const EditStudiosDialog: React.FC<IListOperationProps> = (
                 setUpdateField({ ignore_auto_tag: checked })
               }
               checked={updateInput.ignore_auto_tag ?? undefined}
+            />
+          </Form.Group>
+          <Form.Group controlId="ignored-metadata">
+            <IndeterminateCheckbox
+              label={intl.formatMessage({ id: "ignored" })}
+              setChecked={(checked) => setUpdateField({ ignored: checked })}
+              checked={updateInput.ignored ?? undefined}
             />
           </Form.Group>
 

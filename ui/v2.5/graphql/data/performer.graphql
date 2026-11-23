@@ -38,6 +38,7 @@ fragment PerformerData on Performer {
   alias_list
   favorite
   ignore_auto_tag
+  ignored
   image_path
   scene_count
   image_count

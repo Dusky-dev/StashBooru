@@ -43,3 +43,9 @@ func TestStashBooruSchemaIncludesImageEmbeddingCleanupMigration(t *testing.T) {
 		t.Fatalf("schema version %d does not include image embedding cleanup migration 102", appSchemaVersion)
 	}
 }
+
+func TestStashBooruSchemaIncludesIgnoredMetadata(t *testing.T) {
+	if appSchemaVersion < 104 {
+		t.Fatalf("schema version %d does not include ignored metadata migration 104", appSchemaVersion)
+	}
+}

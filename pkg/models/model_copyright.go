@@ -10,6 +10,7 @@ type Copyright struct {
 	SortName       string       `json:"sort_name"`
 	Description    string       `json:"description"`
 	Favorite       bool         `json:"favorite"`
+	Ignored        bool         `json:"ignored"`
 	CreatedAt      time.Time    `json:"created_at"`
 	UpdatedAt      time.Time    `json:"updated_at"`
 	Aliases        []string     `json:"aliases"`
@@ -25,6 +26,7 @@ type CopyrightCreateInput struct {
 	SortName    *string  `json:"sort_name"`
 	Description *string  `json:"description"`
 	Favorite    *bool    `json:"favorite"`
+	Ignored     *bool    `json:"ignored"`
 	Aliases     []string `json:"aliases"`
 	ParentIDs   []string `json:"parent_ids"`
 	ChildIDs    []string `json:"child_ids"`
@@ -38,6 +40,7 @@ type CopyrightUpdateInput struct {
 	SortName    *string  `json:"sort_name"`
 	Description *string  `json:"description"`
 	Favorite    *bool    `json:"favorite"`
+	Ignored     *bool    `json:"ignored"`
 	Aliases     []string `json:"aliases"`
 	ParentIDs   []string `json:"parent_ids"`
 	ChildIDs    []string `json:"child_ids"`

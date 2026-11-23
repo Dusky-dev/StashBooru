@@ -209,6 +209,7 @@ export type CriterionType =
   | "performer_age"
   | "duplicated"
   | "ignore_auto_tag"
+  | "ignored"
   | "file_count"
   | "format"
   | "stash_id_endpoint"

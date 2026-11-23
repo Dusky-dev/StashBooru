@@ -25,6 +25,10 @@ func (r *queryResolver) FindStudio(ctx context.Context, id string) (ret *models.
 }
 
 func (r *queryResolver) FindStudios(ctx context.Context, studioFilter *models.StudioFilterType, filter *models.FindFilterType, ids []string) (ret *FindStudiosResultType, err error) {
+	if studioFilter == nil {
+		studioFilter = &models.StudioFilterType{}
+	}
+	studioFilter.Ignored = listedIgnored(studioFilter.Ignored)
 	idInts, err := handleIDList(ids, "ids")
 	if err != nil {
 		return nil, err

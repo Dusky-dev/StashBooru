@@ -131,9 +131,12 @@ func resolveConnectedTaggingEntities(ctx context.Context, repository models.Repo
 		}
 	}
 
-	resolved.CharacterIDs = make([]int, 0, len(resolved.CharacterPredictions))
-	resolved.CharacterPredictionIDs = make([]int, 0, len(resolved.CharacterPredictions))
-	for _, prediction := range resolved.CharacterPredictions {
+	characterPredictions := resolved.CharacterPredictions
+	// Predictions and their IDs stay aligned; ignored Characters drop both.
+	resolved.CharacterPredictions = make([]camietagger.Tag, 0, len(characterPredictions))
+	resolved.CharacterIDs = make([]int, 0, len(characterPredictions))
+	resolved.CharacterPredictionIDs = make([]int, 0, len(characterPredictions))
+	for _, prediction := range characterPredictions {
 		var entity *models.Performer
 		created := false
 		id, err := connectedTaggingID(ctx, connected, prediction)
@@ -146,6 +149,10 @@ func resolveConnectedTaggingEntities(ctx context.Context, repository models.Repo
 		if err != nil {
 			return taggingResolvedEntities{}, fmt.Errorf("resolving character %q: %w", prediction.Name, err)
 		}
+		if entity.Ignored {
+			continue
+		}
+		resolved.CharacterPredictions = append(resolved.CharacterPredictions, prediction)
 		resolved.CharacterPredictionIDs = append(resolved.CharacterPredictionIDs, entity.ID)
 		if containsTaggingID(resolved.CharacterIDs, entity.ID) {
 			continue
@@ -177,7 +184,7 @@ func resolveConnectedTaggingEntities(ctx context.Context, repository models.Repo
 		if err != nil {
 			return taggingResolvedEntities{}, fmt.Errorf("resolving artist %q: %w", prediction.Name, err)
 		}
-		if containsTaggingID(resolved.ArtistIDs, entity.ID) {
+		if entity.Ignored || containsTaggingID(resolved.ArtistIDs, entity.ID) {
 			continue
 		}
 		resolved.ArtistIDs = append(resolved.ArtistIDs, entity.ID)
@@ -207,7 +214,7 @@ func resolveConnectedTaggingEntities(ctx context.Context, repository models.Repo
 		if err != nil {
 			return taggingResolvedEntities{}, fmt.Errorf("resolving copyright %q: %w", prediction.Name, err)
 		}
-		if containsTaggingID(resolved.CopyrightIDs, entity.ID) {
+		if entity.Ignored || containsTaggingID(resolved.CopyrightIDs, entity.ID) {
 			continue
 		}
 		resolved.CopyrightIDs = append(resolved.CopyrightIDs, entity.ID)
@@ -228,6 +235,9 @@ func resolveConnectedTaggingEntities(ctx context.Context, repository models.Repo
 		entity, created, err := findOrCreateCamieTagPrediction(ctx, repository, prediction)
 		if err != nil {
 			return taggingResolvedEntities{}, fmt.Errorf("resolving %s tag %q: %w", prediction.Category, prediction.Name, err)
+		}
+		if entity.Ignored {
+			continue
 		}
 		if prediction.Category == "rating" {
 			if err := ensureContentRatingHierarchy(ctx, repository, entity); err != nil {

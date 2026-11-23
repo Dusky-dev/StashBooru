@@ -79,6 +79,7 @@ const criterionOptions = [
   TagsCriterionOption,
   RatingCriterionOption,
   createBooleanCriterionOption("ignore_auto_tag"),
+  createBooleanCriterionOption("ignored", "ignored_filter"),
   createBooleanCriterionOption("organized"),
   createMandatoryNumberCriterionOption("tag_count"),
   createMandatoryNumberCriterionOption("scene_count"),

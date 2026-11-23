@@ -10,6 +10,7 @@ type CopyrightReaderWriter interface {
 	FindByName(ctx context.Context, name string, nocase bool) (*Copyright, error)
 	FindByAlias(ctx context.Context, alias string, nocase bool) (*Copyright, error)
 	Query(ctx context.Context, filter *FindFilterType) ([]*Copyright, int, error)
+	QueryListed(ctx context.Context, filter *FindFilterType, ignored *bool) ([]*Copyright, int, error)
 
 	Create(ctx context.Context, input CopyrightCreateInput) (*Copyright, error)
 	Update(ctx context.Context, input CopyrightUpdateInput) (*Copyright, error)

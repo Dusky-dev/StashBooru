@@ -4,8 +4,8 @@ query FindCopyright($id: ID!) {
   }
 }
 
-query FindCopyrights($filter: FindFilterType, $ids: [ID!]) {
-  findCopyrights(filter: $filter, ids: $ids) {
+query FindCopyrights($filter: FindFilterType, $ids: [ID!], $ignored: Boolean) {
+  findCopyrights(filter: $filter, ids: $ids, ignored: $ignored) {
     count
     copyrights {
       ...CopyrightListData

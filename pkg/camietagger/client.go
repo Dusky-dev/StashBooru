@@ -49,6 +49,9 @@ type Tag struct {
 	TargetPath       string            `json:"targetPath,omitempty"`
 	TargetExists     bool              `json:"targetExists,omitempty"`
 	TargetCandidates []TargetCandidate `json:"targetCandidates,omitempty"`
+	// Ignored marks a target the user ignored: review hides it and apply
+	// skips it.
+	Ignored bool `json:"ignored,omitempty"`
 }
 
 type Tagger interface {

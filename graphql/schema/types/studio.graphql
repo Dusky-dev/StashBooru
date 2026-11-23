@@ -8,6 +8,8 @@ type Studio {
   aliases: [String!]!
   tags: [Tag!]!
   ignore_auto_tag: Boolean!
+  "Hidden from lists and never added again by downloads or tagging"
+  ignored: Boolean!
   organized: Boolean!
 
   image_path: String # Resolver
@@ -50,6 +52,7 @@ input StudioCreateInput {
   aliases: [String!]
   tag_ids: [ID!]
   ignore_auto_tag: Boolean
+  ignored: Boolean
   organized: Boolean
 
   custom_fields: Map
@@ -73,6 +76,7 @@ input StudioUpdateInput {
   aliases: [String!]
   tag_ids: [ID!]
   ignore_auto_tag: Boolean
+  ignored: Boolean
   organized: Boolean
 
   custom_fields: CustomFieldsInput
@@ -89,6 +93,7 @@ input BulkStudioUpdateInput {
   details: String
   tag_ids: BulkUpdateIds
   ignore_auto_tag: Boolean
+  ignored: Boolean
   organized: Boolean
 }
 

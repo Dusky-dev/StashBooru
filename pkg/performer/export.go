@@ -36,6 +36,7 @@ func ToJSON(ctx context.Context, reader ImageAliasStashIDGetter, performer *mode
 		Details:        performer.Details,
 		HairColor:      performer.HairColor,
 		IgnoreAutoTag:  performer.IgnoreAutoTag,
+		Ignored:        performer.Ignored,
 		CreatedAt:      json.JSONTime{Time: performer.CreatedAt},
 		UpdatedAt:      json.JSONTime{Time: performer.UpdatedAt},
 	}

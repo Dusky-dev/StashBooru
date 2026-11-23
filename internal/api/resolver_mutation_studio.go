@@ -95,6 +95,7 @@ func (r *mutationResolver) StudioCreate(ctx context.Context, input models.Studio
 	newStudio.Favorite = translator.bool(input.Favorite)
 	newStudio.Details = translator.string(input.Details)
 	newStudio.IgnoreAutoTag = translator.bool(input.IgnoreAutoTag)
+	newStudio.Ignored = translator.bool(input.Ignored)
 	newStudio.Organized = translator.bool(input.Organized)
 	newStudio.Aliases = models.NewRelatedStrings(stringslice.UniqueExcludeFold(stringslice.TrimSpace(input.Aliases), newStudio.Name))
 	newStudio.StashIDs = models.NewRelatedStashIDs(models.StashIDInputs(input.StashIds).ToStashIDs())
@@ -189,6 +190,7 @@ func (r *mutationResolver) StudioUpdate(ctx context.Context, input models.Studio
 	updatedStudio.Rating = translator.optionalInt(input.Rating100, "rating100")
 	updatedStudio.Favorite = translator.optionalBool(input.Favorite, "favorite")
 	updatedStudio.IgnoreAutoTag = translator.optionalBool(input.IgnoreAutoTag, "ignore_auto_tag")
+	updatedStudio.Ignored = translator.optionalBool(input.Ignored, "ignored")
 	updatedStudio.Organized = translator.optionalBool(input.Organized, "organized")
 	updatedStudio.Aliases = translator.updateStrings(input.Aliases, "aliases")
 	updatedStudio.StashIDs = translator.updateStashIDs(input.StashIds, "stash_ids")
@@ -348,6 +350,7 @@ func (r *mutationResolver) BulkStudioUpdate(ctx context.Context, input BulkStudi
 	partial.Rating = translator.optionalInt(input.Rating100, "rating100")
 	partial.Details = translator.optionalString(input.Details, "details")
 	partial.IgnoreAutoTag = translator.optionalBool(input.IgnoreAutoTag, "ignore_auto_tag")
+	partial.Ignored = translator.optionalBool(input.Ignored, "ignored")
 	partial.Organized = translator.optionalBool(input.Organized, "organized")
 
 	partial.TagIDs, err = translator.updateIdsBulk(input.TagIds, "tag_ids")

@@ -69,6 +69,7 @@ func (qb *tagFilterHandler) criterionHandler() criterionHandler {
 		boolCriterionHandler(tagFilter.Favorite, tagTable+".favorite", nil),
 		stringCriterionHandler(tagFilter.Description, tagTable+".description"),
 		boolCriterionHandler(tagFilter.IgnoreAutoTag, tagTable+".ignore_auto_tag", nil),
+		boolCriterionHandler(tagFilter.Ignored, tagTable+".ignored", nil),
 
 		qb.isMissingCriterionHandler(tagFilter.IsMissing),
 		qb.sceneCountCriterionHandler(tagFilter.SceneCount),

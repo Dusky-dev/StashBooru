@@ -15,10 +15,14 @@ var (
 )
 
 type NameExistsError struct {
-	Name string
+	Name    string
+	Ignored bool
 }
 
 func (e *NameExistsError) Error() string {
+	if e.Ignored {
+		return fmt.Sprintf("studio with name '%s' already exists and is ignored; add the Ignored filter to the list to find it", e.Name)
+	}
 	return fmt.Sprintf("studio with name '%s' already exists", e.Name)
 }
 
@@ -42,7 +46,8 @@ func EnsureStudioNameUnique(ctx context.Context, id int, name string, qb models.
 
 	if sameNameStudio != nil && id != sameNameStudio.ID {
 		return &NameExistsError{
-			Name: name,
+			Name:    name,
+			Ignored: sameNameStudio.Ignored,
 		}
 	}
 

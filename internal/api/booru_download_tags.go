@@ -149,6 +149,10 @@ func ensureBooruImportTagIDs(ctx context.Context, tags booruImportTagStore, sour
 		if err != nil {
 			return nil, fmt.Errorf("looking up downloaded tag: %w", err)
 		}
+		if found != nil && found.Ignored {
+			// An ignored Tag is never added again.
+			continue
+		}
 		if found == nil {
 			created := models.NewTag()
 			created.Name = item.Name

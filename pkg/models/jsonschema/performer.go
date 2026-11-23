@@ -66,6 +66,7 @@ type Performer struct {
 	Weight        int                `json:"weight,omitempty"`
 	StashIDs      []models.StashID   `json:"stash_ids,omitempty"`
 	IgnoreAutoTag bool               `json:"ignore_auto_tag,omitempty"`
+	Ignored       bool               `json:"ignored,omitempty"`
 
 	CustomFields map[string]interface{} `json:"custom_fields,omitempty"`
 

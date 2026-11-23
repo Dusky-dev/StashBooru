@@ -76,6 +76,7 @@ type performerRow struct {
 	HairColor          zero.String `db:"hair_color"`
 	Weight             null.Int    `db:"weight"`
 	IgnoreAutoTag      bool        `db:"ignore_auto_tag"`
+	Ignored            bool        `db:"ignored"`
 
 	// not used in resolution or updates
 	ImageBlob zero.String `db:"image_blob"`
@@ -119,6 +120,7 @@ func (r *performerRow) fromPerformer(o models.Performer) {
 	r.HairColor = zero.StringFrom(o.HairColor)
 	r.Weight = intFromPtr(o.Weight)
 	r.IgnoreAutoTag = o.IgnoreAutoTag
+	r.Ignored = o.Ignored
 }
 
 func (r *performerRow) resolve() *models.Performer {
@@ -151,6 +153,7 @@ func (r *performerRow) resolve() *models.Performer {
 		HairColor:     r.HairColor.String,
 		Weight:        nullIntPtr(r.Weight),
 		IgnoreAutoTag: r.IgnoreAutoTag,
+		Ignored:       r.Ignored,
 	}
 
 	if r.Gender.ValueOrZero() != "" {
@@ -199,6 +202,7 @@ func (r *performerRowRecord) fromPartial(o models.PerformerPartial) {
 	r.setNullString("hair_color", o.HairColor)
 	r.setNullInt("weight", o.Weight)
 	r.setBool("ignore_auto_tag", o.IgnoreAutoTag)
+	r.setBool("ignored", o.Ignored)
 }
 
 type performerRepositoryType struct {
@@ -630,6 +634,7 @@ func (qb *PerformerStore) QueryForAutoTag(ctx context.Context, words []string) (
 	sq = sq.Where(
 		goqu.Or(whereClauses...),
 		table.Col("ignore_auto_tag").Eq(0),
+		table.Col("ignored").Eq(0),
 	)
 
 	ret, err := qb.findBySubquery(ctx, sq)

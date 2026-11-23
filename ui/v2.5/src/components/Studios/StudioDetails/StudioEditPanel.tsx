@@ -68,6 +68,7 @@ export const StudioEditPanel: React.FC<IStudioEditPanel> = ({
     aliases: yupRequiredStringArray(intl).defined(),
     tag_ids: yup.array(yup.string().required()).defined(),
     ignore_auto_tag: yup.boolean().defined(),
+    ignored: yup.boolean().defined(),
     stash_ids: yup.mixed<GQL.StashIdInput[]>().defined(),
     image: yup.string().nullable().optional(),
     custom_fields: yup.object().required().defined(),
@@ -83,6 +84,7 @@ export const StudioEditPanel: React.FC<IStudioEditPanel> = ({
     aliases: studio.aliases ?? [],
     tag_ids: (studio.tags ?? []).map((t) => t.id),
     ignore_auto_tag: studio.ignore_auto_tag ?? false,
+    ignored: studio.ignored ?? false,
     stash_ids: getStashIDs(studio.stash_ids),
     custom_fields: cloneDeep(studio.custom_fields ?? {}),
   };
@@ -336,6 +338,7 @@ export const StudioEditPanel: React.FC<IStudioEditPanel> = ({
 
         <hr />
         {renderInputField("ignore_auto_tag", "checkbox")}
+        {renderInputField("ignored", "checkbox")}
       </Form>
 
       <DetailsEditNavbar

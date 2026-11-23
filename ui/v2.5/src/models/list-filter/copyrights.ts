@@ -1,3 +1,4 @@
+import { createBooleanCriterionOption } from "./criteria/criterion";
 import { ListFilterOptions } from "./filter-options";
 import { DisplayMode } from "./types";
 
@@ -14,5 +15,5 @@ export const CopyrightListFilterOptions = new ListFilterOptions(
   defaultSortBy,
   sortByOptions,
   displayModeOptions,
-  []
+  [createBooleanCriterionOption("ignored", "ignored_filter")]
 );

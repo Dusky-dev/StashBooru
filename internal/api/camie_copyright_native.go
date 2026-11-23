@@ -93,6 +93,7 @@ func enrichNativeCamiePredictionTargetsInTxn(ctx context.Context, repository mod
 			}
 			if performerEntity != nil {
 				targetID = performerEntity.ID
+				prediction.Ignored = performerEntity.Ignored
 			}
 			if targetID > 0 {
 				prediction.TargetPath = fmt.Sprintf("/performers/%d", targetID)
@@ -131,6 +132,7 @@ func enrichNativeCamiePredictionTargetsInTxn(ctx context.Context, repository mod
 			}
 			if studioEntity != nil {
 				targetID = studioEntity.ID
+				prediction.Ignored = studioEntity.Ignored
 				// Display the canonical Artist while keeping the source value as
 				// an alias beside it in the review row. Exact case-insensitive
 				// name matches do not need a redundant alias label.
@@ -151,6 +153,7 @@ func enrichNativeCamiePredictionTargetsInTxn(ctx context.Context, repository mod
 			}
 			if copyrightEntity != nil {
 				targetID = copyrightEntity.ID
+				prediction.Ignored = copyrightEntity.Ignored
 			}
 			if targetID > 0 {
 				prediction.TargetPath = fmt.Sprintf("/copyrights/%d", targetID)
@@ -164,6 +167,7 @@ func enrichNativeCamiePredictionTargetsInTxn(ctx context.Context, repository mod
 			}
 			if tagEntity != nil {
 				targetID = tagEntity.ID
+				prediction.Ignored = tagEntity.Ignored
 			}
 			if targetID > 0 {
 				prediction.TargetPath = fmt.Sprintf("/tags/%d", targetID)

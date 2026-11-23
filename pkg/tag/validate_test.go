@@ -62,7 +62,7 @@ func TestEnsureAliasesUnique(t *testing.T) {
 		want    error
 	}{
 		{"valid alias", 1, []string{alias1}, nil},
-		{"alias duplicates other name", 1, []string{name2}, &NameExistsError{name2}},
+		{"alias duplicates other name", 1, []string{name2}, &NameExistsError{Name: name2}},
 		{"alias duplicates other alias", 1, []string{newAlias}, &NameUsedByAliasError{newAlias, tagMock.existingTags[2].Name}},
 	}
 

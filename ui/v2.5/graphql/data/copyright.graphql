@@ -4,6 +4,7 @@ fragment SlimCopyrightData on Copyright {
   sort_name
   aliases
   favorite
+  ignored
   image_path
 }
 
@@ -28,6 +29,7 @@ fragment CopyrightData on Copyright {
   description
   aliases
   favorite
+  ignored
   image_path
   created_at
   updated_at

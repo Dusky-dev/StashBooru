@@ -297,3 +297,25 @@ test("duplicate warnings catch reversed names and solo conflicts", () => {
     []
   );
 });
+
+test("ignored targets are hidden from review", () => {
+  const source = { kind: "booru", label: "Booru", priority: 1 };
+  const merged = mergeMetadataPredictions([
+    {
+      predictions: [
+        { name: "highres", category: "general", score: 1, ignored: true },
+        { name: "smile", category: "general", score: 1 },
+      ],
+      source: () => source,
+    },
+    {
+      // Another source's copy of an ignored Tag stays hidden too.
+      predictions: [{ name: "highres", category: "general", score: 0.5 }],
+      source: () => ({ ...source, kind: "camie", priority: 2 }),
+    },
+  ]);
+  assert.deepEqual(
+    merged.map((prediction) => prediction.name),
+    ["smile"]
+  );
+});

@@ -64,6 +64,7 @@ const criterionOptions = [
   createStringCriterionOption("aliases"),
   createStringCriterionOption("description"),
   createBooleanCriterionOption("ignore_auto_tag"),
+  createBooleanCriterionOption("ignored", "ignored_filter"),
   StashIDCriterionOption,
   createMandatoryNumberCriterionOption("scene_count"),
   createMandatoryNumberCriterionOption("image_count"),
