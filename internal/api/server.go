@@ -238,6 +238,7 @@ func Initialize() (*Server, error) {
 	r.Get("/booru-browser/sources", booruRoutes.Sources)
 	r.Get("/booru-browser/icon", booruRoutes.SiteIcon)
 	r.Get("/booru-browser/creators", booruRoutes.Creators)
+	r.Get("/booru-browser/creator-icon", booruRoutes.CreatorIcon)
 	r.Get("/booru-browser/bookmarks", booruRoutes.Bookmarks)
 	r.Get("/booru-browser/follows", booruRoutes.Follows)
 	r.Post("/booru-browser/follows", booruRoutes.UpdateFollow)

@@ -1,3 +1,19 @@
+## StashBooru 1.21.0: Artist picture from a creator identity — 2026-11-23
+
+- Baseline: `develop` `54f3bc1` (1.20.0, Dusky-dev/StashBooru#434). Owner: fetch the
+  profile picture from an identity.
+- Verified live: Kemono `/icons/<service>/<id>` redirects to `img.kemono.cr`
+  (404 when absent); Pawchive serves it directly (204 when absent). The
+  profile JSON has no avatar field.
+- Now: `booru.CreatorIconURL` (archive creator accounts only) and
+  `GET booru-browser/creator-icon?instance&target` fetch it through
+  `FetchMedia` (allowlisted redirects, images only, 4 MiB). The Artist page's
+  Identities list offers **Use <site> profile picture** on such accounts; it
+  sets the image via `studioUpdate` and confirms before replacing one.
+- Checks: Go unit tests (URL rules, route incl. no-picture 404), lint, `tsc`,
+  Biome; one-off live run against kemono.cr on a local build (image set,
+  replace prompt). Not in CI: the live fetch.
+
 ## StashBooru 1.20.0: Booru preview keys, one open file, highlight — 2026-11-23
 
 - Baseline: `develop` `f327c1a` (1.19.0, Dusky-dev/StashBooru#433). Owner: E to
