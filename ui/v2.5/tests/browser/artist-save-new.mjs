@@ -464,6 +464,111 @@ async function check(viewport, label) {
   assert.equal(merged.b.details, "Target details");
   assert.equal(merged.b.rating100, 80);
   assert.ok(merged.b.aliases.includes("Merge source Artist"));
+
+  // Set image (edit mode only) offers each connected creator account's
+  // profile picture; the Identities section has no button of its own. The
+  // provider endpoints are fixtures: no network is reached.
+  const pictured = await create({ name: "Pictured Artist" });
+  const identity = (id, engine, sourceName, target, label, form) => ({
+    id,
+    kind: "artist",
+    instance: engine + "-instance",
+    sourceID: engine,
+    sourceName,
+    engine,
+    sourceURL: "https://" + engine + ".example",
+    form,
+    target,
+    label,
+    context: "",
+    version: 1,
+    entityID: Number(pictured.id),
+    entityName: "Pictured Artist",
+  });
+  await page.route("**/identities/list?*", (route) =>
+    route.fulfill({
+      json: {
+        items: [
+          identity("31", "pixiv", "Pixiv", "user:11", "Pixiv Name", "account"),
+          identity(
+            "32",
+            "kemono",
+            "Kemono",
+            "creator:patreon:7",
+            "creator:patreon:7",
+            "account"
+          ),
+          identity(
+            "33",
+            "danbooru",
+            "Danbooru",
+            "pictured_artist",
+            "pictured_artist",
+            "tag"
+          ),
+        ],
+        next: "",
+      },
+    })
+  );
+  const iconTargets = [];
+  await page.route("**/booru-browser/creator-icon?*", (route) => {
+    iconTargets.push(new URL(route.request().url()).searchParams.get("target"));
+    return route.fulfill({
+      contentType: "image/png",
+      body: Buffer.from(png, "base64"),
+    });
+  });
+  await page.goto(url + "/studios/" + pictured.id, {
+    waitUntil: "networkidle",
+  });
+  await page.locator("details.identity-sources > summary").click();
+  await page.getByText("Pixiv Name").first().waitFor();
+  assert.equal(
+    await page.getByText(/profile picture/).count(),
+    0,
+    "the Identities section must not offer profile pictures"
+  );
+  await page.locator("#studio-page button.edit").first().click();
+  await actions()
+    .getByRole("button", { name: /^Set image/ })
+    .click();
+  const popover = page.locator("#set-image-popover");
+  await popover.getByText("From Pixiv profile picture (Pixiv Name)").waitFor();
+  await popover
+    .getByText("From Kemono profile picture", { exact: true })
+    .waitFor();
+  assert.equal(
+    await popover.getByText(/Danbooru/).count(),
+    0,
+    "tag identities have no profile picture"
+  );
+  await popover.getByText("From Pixiv profile picture (Pixiv Name)").click();
+  await page
+    .getByText(/Loaded the Pixiv profile picture/)
+    .first()
+    .waitFor();
+  assert.deepEqual(iconTargets, ["user:11"]);
+  const pictureSave = await action("StudioUpdate", () =>
+    actions().getByRole("button", { name: "Save", exact: true }).click()
+  );
+  assert.ok(pictureSave);
+  await form().waitFor({ state: "detached" });
+  const picturedImage = await call(
+    page,
+    url,
+    "query($id:ID!){findStudio(id:$id){image_path}}",
+    { id: pictured.id }
+  );
+  assert.doesNotMatch(picturedImage.findStudio.image_path, /default=true/);
+  assert.deepEqual(
+    Buffer.from(
+      await (await page.request.get(picturedImage.findStudio.image_path)).body()
+    ),
+    Buffer.from(png, "base64")
+  );
+  await page.unroute("**/identities/list?*");
+  await page.unroute("**/booru-browser/creator-icon?*");
   assert.deepEqual(errors, []);
   await page.close();
   await instance.stop();
@@ -471,7 +576,7 @@ async function check(viewport, label) {
   console.log(
     "Artist Save & New " +
       label +
-      ": required-name validation, duplicate create/draft retry, clean next form, rejected hierarchy cycle/retry, Cancel, Back, refresh/restart, native metadata/artwork and merge dialog passed."
+      ": required-name validation, duplicate create/draft retry, clean next form, rejected hierarchy cycle/retry, Cancel, Back, refresh/restart, native metadata/artwork, merge dialog and creator profile picture passed."
   );
 }
 try {

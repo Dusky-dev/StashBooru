@@ -2,7 +2,7 @@ import { Button, Dropdown, Modal, SplitButton } from "react-bootstrap";
 import React, { useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useAutoTagTrigger } from "src/hooks/useAutoTagTrigger";
-import { ImageInput } from "./ImageInput";
+import { ImageInput, type IImageInputExtraAction } from "./ImageInput";
 import { AutoTagConfirmDialog } from "./AutoTagConfirmDialog";
 import cx from "classnames";
 
@@ -23,6 +23,8 @@ interface IProps {
   onBackImageChangeURL?: (url: string) => void;
   onClearImage?: () => void;
   onClearBackImage?: () => void;
+  /** Extra Set image menu entries for the front image. */
+  imageExtraActions?: IImageInputExtraAction[];
   acceptSVG?: boolean;
   customButtons?: JSX.Element;
   classNames?: string;
@@ -176,6 +178,7 @@ export const DetailsEditNavbar: React.FC<IProps> = (props: IProps) => {
         onImageChange={props.onImageChange}
         onImageURL={props.onImageChangeURL}
         acceptSVG={props.acceptSVG ?? false}
+        extraActions={props.imageExtraActions}
       />
       {props.isEditing && props.onClearImage ? (
         <div>

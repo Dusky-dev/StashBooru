@@ -1,3 +1,19 @@
+## StashBooru 1.22.0: Artist picture in Set image, Pixiv avatars — 2026-11-23
+
+- Baseline: `develop` `59754ea` (1.21.0, Dusky-dev/StashBooru#435). Owner: the
+  profile-picture option belongs only in edit mode's Set image; cover Pixiv.
+- Now: `useCreatorPictureActions` lists one Set image entry per connected
+  Pixiv/Pawchive/Kemono account (paged identities list, up to 200 rows) on an
+  existing Artist; choosing one loads it into the form, Save persists it. The
+  Identities buttons, direct `studioUpdate` and replace prompt are gone.
+  `Client.CreatorIcon` resolves Pixiv `user:<id>` via `/v1/user/detail`
+  (`profile_image_urls.medium`, `no_profile` = no picture, pximg allowlist);
+  route errors now surface the server message (`error` key).
+- Checks: Go unit tests (Pixiv fixture, route), `tsc`, Biome lint/format;
+  `artist-save-new.mjs` extended and passed desktop/mobile on a local build;
+  `identities.mjs` passed.
+- Not verified: a real Pixiv token (fixture responses only).
+
 ## StashBooru 1.21.0: Artist picture from a creator identity — 2026-11-23
 
 - Baseline: `develop` `54f3bc1` (1.20.0, Dusky-dev/StashBooru#434). Owner: fetch the

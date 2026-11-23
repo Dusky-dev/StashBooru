@@ -26,6 +26,8 @@ import { ImageGalleryPicker } from "./ImageGalleryPicker";
 export interface IImageInputExtraAction {
   icon: IconDefinition;
   labelId: string;
+  /** Already formatted text, for labels that need values; overrides labelId. */
+  label?: string;
   onClick: () => void | Promise<void>;
 }
 
@@ -206,7 +208,7 @@ export const ImageInput: React.FC<IImageInput> = PatchComponent(
               <Button className="minimal" onClick={action.onClick}>
                 <Icon icon={action.icon} className="fa-fw" />
                 <span>
-                  <FormattedMessage id={action.labelId} />
+                  {action.label ?? <FormattedMessage id={action.labelId} />}
                 </span>
               </Button>
             </div>

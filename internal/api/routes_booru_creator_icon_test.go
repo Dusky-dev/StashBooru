@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/stashapp/stash/pkg/booru"
@@ -31,6 +32,19 @@ func (c *creatorIconClient) FetchMedia(_ context.Context, _ booru.Source, input 
 	}
 	_, _ = output.Write([]byte("RIFF....WEBP"))
 	return booru.MediaInfo{ContentType: "image/webp"}, nil
+}
+
+func (c *creatorIconClient) CreatorIcon(_ context.Context, source booru.Source, target string) (string, error) {
+	if source.Engine != "pixiv" {
+		return booru.CreatorIconURL(source, target)
+	}
+	switch target {
+	case "user:11":
+		return "https://i.pximg.net/user-profile/img/11_170.jpg", nil
+	case "user:12":
+		return "", booru.ErrNoCreatorPicture
+	}
+	return "", &booru.Error{Code: "authentication", Message: "Pixiv requires an OAuth access token."}
 }
 
 func TestCreatorIconRoute(t *testing.T) {
@@ -64,5 +78,22 @@ func TestCreatorIconRoute(t *testing.T) {
 	client.err = errors.New("media provider returned HTTP 404")
 	if w := get(kemono.Instance(), "creator:patreon:2"); w.Code != 404 {
 		t.Fatalf("a creator without a picture is reported plainly: %d %s", w.Code, w.Body.String())
+	}
+
+	var pixiv booru.Source
+	for _, source := range booru.Defaults() {
+		if source.Engine == "pixiv" {
+			pixiv = source
+		}
+	}
+	client.err, client.asked = nil, nil
+	if w := get(pixiv.Instance(), "user:11"); w.Code != 200 || len(client.asked) != 1 || client.asked[0] != "https://i.pximg.net/user-profile/img/11_170.jpg" {
+		t.Fatalf("Pixiv avatar: %d %s %v", w.Code, w.Body.String(), client.asked)
+	}
+	if w := get(pixiv.Instance(), "user:12"); w.Code != 404 {
+		t.Fatalf("Pixiv default avatar: %d", w.Code)
+	}
+	if w := get(pixiv.Instance(), "user:13"); w.Code != 502 || !strings.Contains(w.Body.String(), "OAuth") {
+		t.Fatalf("Pixiv provider errors are shown: %d %s", w.Code, w.Body.String())
 	}
 }

@@ -26,6 +26,7 @@ import {
   formatCustomFieldInput,
 } from "src/components/Shared/CustomFields";
 import cloneDeep from "lodash-es/cloneDeep";
+import { useCreatorPictureActions } from "src/components/Identities/UseCreatorPicture";
 
 interface IStudioEditPanel {
   studio: Partial<GQL.StudioDataFragment>;
@@ -214,6 +215,11 @@ export const StudioEditPanel: React.FC<IStudioEditPanel> = ({
     formik.setFieldValue("image", imageData);
   }
 
+  const creatorPictureActions = useCreatorPictureActions(
+    isNew ? undefined : studio?.id,
+    onImageLoad
+  );
+
   function onImageChange(event: React.FormEvent<HTMLInputElement>) {
     ImageUtils.onImageChange(event, onImageLoad);
   }
@@ -357,6 +363,7 @@ export const StudioEditPanel: React.FC<IStudioEditPanel> = ({
         onImageChange={onImageChange}
         onImageChangeURL={onImageLoad}
         onClearImage={() => onImageLoad(null)}
+        imageExtraActions={creatorPictureActions}
         onDelete={onDelete}
         acceptSVG
       />
