@@ -2261,6 +2261,13 @@
     "local_none": "No local filename metadata",
     "generate_hint": "Image Tagging is also in the selection's actions. With two or more Images selected you can tag them in one job from local filenames, or review each Image in turn.",
     "settings_bulk_models": "Allow Camie and EVA02 to tag several selected Images in one job",
+    "add_post_link_image": "Add the post link to this Image's URLs",
+    "add_post_link_video": "Add the post link to this Video's URLs",
+    "md5_sites": "Sites for MD5 lookup",
+    "md5_sites_help": "Look up by MD5 asks these Booru browser sources at once; the first site in this list with a match wins. Sources use the API keys saved in Booru settings. Sites that cannot search by MD5 are not listed.",
+    "md5_site_needs_key": "{name} (needs an API key in Booru settings)",
+    "md5_sites_none": "No site is chosen, so Look up by MD5 is off.",
+    "md5_sites_error": "Booru sources could not be loaded: {error}",
     "settings_bulk_models_help": "With Read metadata from filenames on, local filename metadata can tag a selection in one confirmed job without this switch. Turning it on adds the inference models to that job."
   }
 }

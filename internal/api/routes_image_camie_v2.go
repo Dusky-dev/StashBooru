@@ -18,6 +18,7 @@ import (
 
 type camieApplyResponseV2 struct {
 	ImageID           int                   `json:"imageID"`
+	AddedURLs         []string              `json:"addedURLs,omitempty"`
 	Characters        []camieAppliedEntity  `json:"characters"`
 	Artists           []camieAppliedEntity  `json:"artists"`
 	Copyrights        []camieAppliedEntity  `json:"copyrights"`

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/stashapp/stash/pkg/camietagger"
+	"github.com/stashapp/stash/pkg/logger"
 	"github.com/stashapp/stash/pkg/models"
 )
 
@@ -47,6 +48,7 @@ type booruMetadataResponse struct {
 type booruPost struct {
 	ID                 string
 	MD5                string
+	PostURL            string
 	Tags               string
 	TagString          string
 	TagStringGeneral   string
@@ -57,7 +59,9 @@ type booruPost struct {
 }
 
 type booruProvider struct {
-	name               string
+	name string
+	// fetch replaces lookupURL/parse for Booru browser sources.
+	fetch              func(ctx context.Context, hash string) (*booruPost, error)
 	lookupURL          func(md5 string) string
 	postURL            func(id string) string
 	parse              func([]byte) (*booruPost, error)
@@ -396,6 +400,9 @@ func fetchBooruURL(ctx context.Context, address string) ([]byte, error) {
 }
 
 func fetchBooruProvider(ctx context.Context, provider booruProvider, hash string) (*booruPost, error) {
+	if provider.fetch != nil {
+		return provider.fetch(ctx, hash)
+	}
 	data, err := fetchBooruURL(ctx, provider.lookupURL(hash))
 	if err != nil {
 		return nil, err
@@ -418,6 +425,25 @@ type booruLookupResult struct {
 }
 
 func lookupBooruPost(ctx context.Context, hash string) (booruProvider, *booruPost, error) {
+	config, err := loadCamieConfig()
+	if err != nil {
+		return booruProvider{}, nil, fmt.Errorf("loading MD5 lookup sites: %w", err)
+	}
+	sources, err := loadBooruLookupBrowserSources()
+	if err != nil {
+		return booruProvider{}, nil, fmt.Errorf("loading Booru browser sources: %w", err)
+	}
+	providers := booruLookupProviders(config.BooruLookupSources, sources, searchBooruSourceMD5)
+	if len(providers) == 0 {
+		return booruProvider{}, nil, fmt.Errorf("no MD5 lookup sites are available; choose them in tagging setup")
+	}
+	return lookupBooruPostWith(ctx, providers, hash)
+}
+
+// lookupBooruPostWith asks every provider at once and returns the match from
+// the highest-priority provider. Providers that fail do not hide a no-match
+// from the others: the lookup reports an error only if every provider failed.
+func lookupBooruPostWith(ctx context.Context, booruProviders []booruProvider, hash string) (booruProvider, *booruPost, error) {
 	ctx, cancel := context.WithTimeout(ctx, booruLookupTimeout)
 	defer cancel()
 
@@ -476,7 +502,10 @@ func lookupBooruPost(ctx context.Context, hash string) (booruProvider, *booruPos
 		}
 	}
 
-	if noMatchCount == len(booruProviders) {
+	if noMatchCount > 0 {
+		if len(providerErrors) > 0 {
+			logger.Debugf("Booru MD5 lookup: no match; some sites failed: %s", strings.Join(providerErrors, "; "))
+		}
 		return booruProvider{}, nil, errBooruNoMatch
 	}
 	if len(providerErrors) > 0 {
@@ -642,10 +671,7 @@ func (rs imageRoutes) ImageBooruMetadata(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	postURL := ""
-	if post.ID != "" && provider.postURL != nil {
-		postURL = provider.postURL(post.ID)
-	}
+	postURL := booruPostURL(provider, post)
 	writeVisualSimilarityJSON(w, booruMetadataResponse{
 		Source:    provider.name,
 		PostID:    post.ID,

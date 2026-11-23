@@ -389,6 +389,47 @@ try {
       }
       return route.fulfill({ json: uploadSettings });
     });
+    await page.route("**/booru-browser/sources", (route) =>
+      route.fulfill({
+        json: [
+          {
+            id: "danbooru",
+            name: "Danbooru",
+            engine: "danbooru",
+            url: "https://danbooru.donmai.us",
+            credentialsConfigured: false,
+          },
+          {
+            id: "gelbooru",
+            name: "Gelbooru",
+            engine: "gelbooru",
+            url: "https://gelbooru.com",
+            credentialsConfigured: false,
+          },
+          {
+            id: "rule34",
+            name: "Rule34",
+            engine: "gelbooru",
+            url: "https://rule34.xxx",
+            credentialsConfigured: false,
+          },
+          {
+            id: "e621",
+            name: "e621",
+            engine: "e621",
+            url: "https://e621.net",
+            credentialsConfigured: true,
+          },
+          {
+            id: "pixiv",
+            name: "Pixiv",
+            engine: "pixiv",
+            url: "https://app-api.pixiv.net",
+            credentialsConfigured: false,
+          },
+        ],
+      })
+    );
     await page.route(/\/(image|metadata)\//, async (route) => {
       const url = new URL(route.request().url());
       const method = route.request().method();
@@ -1083,6 +1124,29 @@ try {
     await page.getByText("Saved tagging defaults.", { exact: true }).waitFor();
     assert.equal(tagging.eva02Threshold, 0.6);
     assert.equal(tagging.filenameLayout, "%character%_%md5%.%ext%");
+    // MD5 lookup sites: MD5-capable Booru sources only, the original sites
+    // ticked by default, Rule34 unavailable without its API key.
+    const sites = page.locator(".booru-lookup-sites");
+    await sites.locator("#booru-lookup-site-e621").waitFor();
+    assert.equal(await sites.locator("#booru-lookup-site-pixiv").count(), 0);
+    assert.equal(
+      await sites.locator("#booru-lookup-site-danbooru").isChecked(),
+      true
+    );
+    assert.equal(
+      await sites.locator("#booru-lookup-site-rule34").isDisabled(),
+      true
+    );
+    await sites.locator("#booru-lookup-site-gelbooru").uncheck();
+    await sites.locator("#booru-lookup-site-e621").check();
+    await page
+      .getByRole("button", { name: "Save tagging defaults", exact: true })
+      .click();
+    await page
+      .getByText("Saved tagging defaults.", { exact: true })
+      .first()
+      .waitFor();
+    assert.deepEqual(tagging.booruLookupSources, ["danbooru", "e621"]);
     await page.getByLabel("Per-category limit", { exact: true }).fill("0");
     assert.equal(
       await page

@@ -93,10 +93,20 @@ resources do not prevent local review.
 | Library | Suggestions drawn from visually similar indexed local Images. | Existing visual index and local catalogue metadata. Suggestions need review. |
 
 The displayed merge priority is **Local → Booru → PixAI → Camie → EVA02 → Library**.
-**Look up by MD5** supports
-Danbooru, Gelbooru, Yande.re, Konachan and Safebooru in that priority order. The
-returned provider badge/post link identifies the actual source. This action looks
-up metadata for an existing local file; it is not a remote-post search or downloader.
+**Look up by MD5** asks the sites chosen in **Settings → Processing →
+Similarity and tagging → Sites for MD5 lookup**, all at once; the first site in
+that list with a match wins. The choices are the Booru browser sources that can
+search by MD5 (Danbooru, Gelbooru-family, Moebooru and e621 engines), and they use
+the API keys saved in Booru settings (Rule34 needs one). Until you change it, the
+list is Danbooru, Gelbooru, Yande.re, Konachan and Safebooru. A match must have
+exactly the same MD5. A site that fails does not hide a "no match" from the
+others. The returned provider badge/post link identifies the actual source.
+
+When a match has a post link, **Add the post link to this Image's URLs** (or
+Video's) is ticked; Apply adds it to the media's URLs, keeping existing links.
+The Video batch tagging job adds the link when it auto-applies Booru metadata.
+This action looks up metadata for an existing local file; it is not a
+remote-post search or downloader.
 
 Predictions retain their source badges even when several sources agree. Earlier
 sources retain the displayed value/score for overlapping predictions. Local

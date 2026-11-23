@@ -33,6 +33,11 @@ func (rs imageRoutes) ImageKnowledgeTagsWithLocalPriorityV2(w http.ResponseWrite
 		return
 	}
 
+	urls, err := validateTaggingSourceURLs(request.URLs)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	prioritized, suppressed := partitionCamieFilenameAuthoritativeSelections(request.Tags)
 	selected, err := validateCamiePredictionsV2(prioritized)
 	if err != nil {
@@ -61,6 +66,11 @@ func (rs imageRoutes) ImageKnowledgeTagsWithLocalPriorityV2(w http.ResponseWrite
 	response, err := applyCamieMetadataV2(r.Context(), image.ID, taggingChangePlanPredictions(plan), request.ReplaceArtist)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("applying Image Tagging metadata to image %d: %v", image.ID, err), http.StatusInternalServerError)
+		return
+	}
+	response.AddedURLs, err = addImageTaggingURLs(r.Context(), image.ID, urls)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("metadata was applied, but adding the post link to image %d failed: %v", image.ID, err), http.StatusInternalServerError)
 		return
 	}
 	writeVisualSimilarityJSON(w, response)
