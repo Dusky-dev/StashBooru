@@ -377,12 +377,12 @@ export const BooruTagSidebar: React.FC<BooruTagSidebarProps> = ({
   const sortedTags = useMemo(() => sortByName(tags), [tags]);
   const sortedArtists = useMemo(() => sortByName(artists), [artists]);
   const sortedCharacters = useMemo(() => sortByName(characters), [characters]);
-  const sortedCopyrights = useMemo(() => {
-    const inherited = (characters ?? []).flatMap(
-      (character) => character.copyrights ?? []
-    );
-    return sortByName(uniqueByID([...(copyrights ?? []), ...inherited]));
-  }, [characters, copyrights]);
+  // Only the media's own Copyrights and their parents. A Character's
+  // Copyrights describe the Character, not this Image or Video.
+  const sortedCopyrights = useMemo(
+    () => sortByName(uniqueByID(copyrights ?? [])),
+    [copyrights]
+  );
 
   const names = useMemo(() => {
     const result = new Map<string, string>();

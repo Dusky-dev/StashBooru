@@ -13,6 +13,11 @@
 - Kept as is (real fields on the Character edit page): Character body/career
   filters and sorts. Not changed: Copyrights still have no filters beyond
   this list (no backend filter type).
+- Also (owner: Zelda Image showed Voltron etc.): details merged every shown
+  Character's own Copyrights client-side (`55ed2f9`); now only effective
+  (direct + ancestor) Copyrights. `image-editor-save.mjs` asserts a
+  Character-only Copyright is absent: failed on old UI, passes both sizes.
+- Lint CI hung in `apt-get update`; ported `build.yml`'s mirror workaround.
 - Checks: `tsc`, Biome, UI unit tests; `tools-navigation.mjs`. Live-server
   suites (`all-media`, `visual-stacks`) left to CI.
 
