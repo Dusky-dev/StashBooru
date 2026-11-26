@@ -27,10 +27,15 @@ jobs:
     runs-on: [self-hosted, stashbooru]
     steps:
       - uses: actions/checkout@v6
+      # The self-hosted runner refuses sudo; install Pillow with pip as the
+      # image-storage workflows do.
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
       - name: Install image decoder
-        run: sudo apt-get update && sudo apt-get install -y python3-pil
+        run: python -m pip install --disable-pip-version-check pillow
       - name: Check mask, adapter and authenticated remote contract
-        run: python3 -m unittest discover -s scripts/tests -p test_image_restoration.py -v
+        run: python -m unittest discover -s scripts/tests -p test_image_restoration.py -v
 
   browser:
     runs-on: [self-hosted, stashbooru]
@@ -56,7 +61,10 @@ jobs:
       - name: Install isolated browser test tools
         run: |
           npm install --prefix "$RUNNER_TEMP/restoration-tools" playwright@1.57.0
-          node "$RUNNER_TEMP/restoration-tools/node_modules/playwright/cli.js" install --with-deps chromium
+          # System packages need sudo, which some runners refuse; their
+          # libraries are already present there.
+          node "$RUNNER_TEMP/restoration-tools/node_modules/playwright/cli.js" install --with-deps chromium ||
+            node "$RUNNER_TEMP/restoration-tools/node_modules/playwright/cli.js" install chromium
       - name: Mounted desktop and mobile restoration workflow
         working-directory: ui/v2.5
         env:
