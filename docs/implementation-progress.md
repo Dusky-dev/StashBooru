@@ -6,7 +6,7 @@
   dependency bumps). Merge commit, not squash, to keep upstream ancestry.
 - Conflicts: upstream migration 87 renumbered to 105 (fork 87 is visual
   embeddings; override raised to 105). Purge keeps the fork's media
-  conversion recovery. Lightbox takes upstream's `d d` / `r` bindings on the
+  conversion recovery; Verify now runs it too before marking files missing. Lightbox takes upstream's `d d` / `r` bindings on the
   fork's typed display image; ratings keys are off for Video previews.
   Locale, Tasks help, file rows/scan, config test kept both sides.
 - Checks: `go build ./...`, `go mod tidy`, generate backend/UI; Go tests
@@ -14,8 +14,9 @@
   (integration + Makefile tags); `tsc`, Biome lint/format, stylelint, UI unit
   tests (146); golangci-lint.
   Upgrade tests (95–99 → 105) now also roll back and re-add `missing_since`.
-- Not verified: the new tasks against a real library; `restoration-contract`
-  CI fails before tests (runner refuses `sudo apt-get`).
+- Not verified: the new tasks against a real library. Image restoration CI
+  (triggered by the lockfile) fails in setup: the runner refuses `sudo`;
+  its unittest (9) and browser suite pass locally.
 
 ## StashBooru 1.24.0: Rule34 MD5 tag types, Image details panel — 2026-11-23
 

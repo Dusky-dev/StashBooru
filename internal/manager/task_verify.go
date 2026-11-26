@@ -31,6 +31,11 @@ type verifyJob struct {
 }
 
 func (j *verifyJob) Execute(ctx context.Context, progress *job.Progress) error {
+	// An interrupted conversion can leave a file briefly away from its path;
+	// put it back before it is judged missing, as scan and purge do.
+	if err := GetInstance().RecoverMediaConversions(ctx); err != nil {
+		return err
+	}
 	logger.Infof("Starting verification of tracked files")
 	start := time.Now()
 	if j.options.DryRun {
