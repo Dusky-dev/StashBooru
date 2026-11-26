@@ -38,7 +38,9 @@ jobs:
         run: python -m unittest discover -s scripts/tests -p test_image_restoration.py -v
 
   browser:
-    runs-on: [self-hosted, stashbooru]
+    # Chromium needs system libraries the self-hosted runner lacks and cannot
+    # install without sudo; the other browser suites run here too.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: read
@@ -61,10 +63,7 @@ jobs:
       - name: Install isolated browser test tools
         run: |
           npm install --prefix "$RUNNER_TEMP/restoration-tools" playwright@1.57.0
-          # System packages need sudo, which some runners refuse; their
-          # libraries are already present there.
-          node "$RUNNER_TEMP/restoration-tools/node_modules/playwright/cli.js" install --with-deps chromium ||
-            node "$RUNNER_TEMP/restoration-tools/node_modules/playwright/cli.js" install chromium
+          node "$RUNNER_TEMP/restoration-tools/node_modules/playwright/cli.js" install --with-deps chromium
       - name: Mounted desktop and mobile restoration workflow
         working-directory: ui/v2.5
         env:
