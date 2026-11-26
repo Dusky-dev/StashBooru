@@ -1,5 +1,6 @@
 import { type Ref, useEffect, useRef, useState } from "react";
 import { Alert, Button } from "react-bootstrap";
+import { FormattedMessage } from "react-intl";
 import { Link } from "react-router-dom";
 import { type BooruPost, readBooruResponse } from "./browser";
 import {
@@ -8,7 +9,8 @@ import {
   faRotateRight,
   faXmark,
   faArrowUpRightFromSquare,
-  faArrowRightArrowLeft,
+  faToggleOff,
+  faToggleOn,
 } from "@fortawesome/free-solid-svg-icons";
 import { Icon } from "../Shared/Icon";
 import { FolderPicker } from "./FolderPicker";
@@ -247,6 +249,46 @@ export function BooruDownload({
           Open the downloaded SWF in a Flash emulator such as Ruffle.
         </p>
       )}
+      {/* On its own line, labelled, away from the download buttons so it
+          is not switched off by a near miss. */}
+      {!compact && !flash && (
+        <div className="booru-convert-row mb-2">
+          <Button
+            size="sm"
+            role="switch"
+            aria-checked={convert}
+            variant="link"
+            className="booru-convert-toggle"
+            aria-label="Convert using Media converter defaults"
+            title={
+              convert
+                ? "Converted with Media converter defaults. Click to save the original instead."
+                : "The original is saved. Click to convert with Media converter defaults."
+            }
+            disabled={busy || running || !ready}
+            onClick={() => setConvert(!convert)}
+          >
+            <Icon icon={convert ? faToggleOn : faToggleOff} />{" "}
+            <FormattedMessage
+              id="booru_browser.convert_switch"
+              defaultMessage="Convert with Media converter defaults"
+            />
+          </Button>
+          <span className="small text-muted">
+            {convert ? (
+              <FormattedMessage
+                id="booru_browser.convert_on"
+                defaultMessage="On"
+              />
+            ) : (
+              <FormattedMessage
+                id="booru_browser.convert_off"
+                defaultMessage="Off — saves the original"
+              />
+            )}
+          </span>
+        </div>
+      )}
       {error && <Alert variant="warning">{error}</Alert>}
       {state?.error && <Alert variant="warning">{state.error}</Alert>}
       <Button
@@ -309,25 +351,6 @@ export function BooruDownload({
           onClick={() => setPicker(true)}
         >
           {compact ? <Icon icon={faFolderOpen} /> : "Download to…"}
-        </Button>
-      )}
-      {!compact && !flash && (
-        <Button
-          size="sm"
-          role="switch"
-          aria-checked={convert}
-          variant={convert ? "primary" : "secondary"}
-          className="ml-2 booru-convert-toggle"
-          aria-label="Convert using Media converter defaults"
-          title={
-            convert
-              ? "Converting with Media converter defaults (click to save the original)"
-              : "Saving the original (click to convert with Media converter defaults)"
-          }
-          disabled={busy || running || !ready}
-          onClick={() => setConvert(!convert)}
-        >
-          <Icon icon={faArrowRightArrowLeft} />
         </Button>
       )}
       {running && (

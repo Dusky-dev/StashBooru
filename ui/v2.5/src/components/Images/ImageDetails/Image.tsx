@@ -1,6 +1,12 @@
 import { DetailStackFilmstrip } from "src/components/VisualStacks/StackFilmstrip";
-import { Tab, Nav, Dropdown } from "react-bootstrap";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Button, Tab, Nav, Dropdown } from "react-bootstrap";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory, useLocation, RouteComponentProps } from "react-router-dom";
 import { Helmet } from "react-helmet";
@@ -26,12 +32,21 @@ import { ImageEditPanel } from "./ImageEditPanel";
 import { ImageDetailPanel } from "./ImageDetailPanel";
 import {
   ImageDetailsDivider,
-  ImageDetailsHideButton,
   useImageDetailsLayout,
 } from "./ImageDetailsDivider";
+import {
+  DetailsItem,
+  ImageDetailsCustomizeBar,
+  ImageDetailsCustomizeProvider,
+  useImageDetailsCustomize,
+} from "./ImageDetailsCustomize";
 import { ImageKnowledgeTagDialog } from "./ImageKnowledgeTagDialog";
 import { DeleteImagesDialog } from "../DeleteImagesDialog";
-import { faEllipsisV, faFilm } from "@fortawesome/free-solid-svg-icons";
+import {
+  faEllipsisV,
+  faFilm,
+  faSlidersH,
+} from "@fortawesome/free-solid-svg-icons";
 import { imagePath, imageTitle } from "src/core/files";
 import { isVideo } from "src/utils/visualFile";
 import NavUtils from "src/utils/navigation";
@@ -71,8 +86,18 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
   const [updateImage] = useImageUpdate();
   const [organizedLoading, setOrganizedLoading] = useState(false);
   const detailsLayout = useImageDetailsLayout();
-  const { collapsed: detailsCollapsed, setCollapsed: setDetailsCollapsed } =
+  const customize = useImageDetailsCustomize();
+  const { setEditing: setCustomizing } = customize;
+  const { collapsed: detailsCollapsed, setCollapsed: setLayoutCollapsed } =
     detailsLayout;
+  // Hiding the panel ends customizing; the panel comes back as normal.
+  const setDetailsCollapsed = useCallback(
+    (next: boolean) => {
+      if (next) setCustomizing(false);
+      setLayoutCollapsed(next);
+    },
+    [setCustomizing, setLayoutCollapsed]
+  );
   const detailsPanel = useRef<HTMLDivElement>(null);
   const [activeTabKey, setActiveTabKey] = useState("image-details-panel");
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState<boolean>(false);
@@ -289,14 +314,38 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
                 <FormattedMessage id="actions.edit" />
               </Nav.Link>
             </Nav.Item>
-            <Nav.Item className="image-details-hide-item d-none d-xl-flex">
-              <ImageDetailsHideButton setCollapsed={setDetailsCollapsed} />
+            <Nav.Item className="image-details-customize-item">
+              <Button
+                variant={customize.editing ? "primary" : "secondary"}
+                size="sm"
+                className="image-details-customize"
+                aria-pressed={customize.editing}
+                aria-label={intl.formatMessage({
+                  id: "image_details.customize.button",
+                })}
+                title={intl.formatMessage({
+                  id: "image_details.customize.button",
+                })}
+                onClick={() => {
+                  setActiveTabKey("image-details-panel");
+                  setCustomizing(!customize.editing);
+                }}
+              >
+                <Icon icon={faSlidersH} />
+              </Button>
             </Nav.Item>
           </Nav>
         </div>
 
         <Tab.Content>
           <Tab.Pane eventKey="image-details-panel">
+            {customize.editing && (
+              <ImageDetailsCustomizeBar
+                hiddenCount={customize.hidden.size}
+                onReset={customize.reset}
+                onDone={() => setCustomizing(false)}
+              />
+            )}
             <BooruTagSidebar
               tags={image.effective_associations.tags}
               artists={image.effective_associations.artists}
@@ -400,173 +449,202 @@ const ImagePage: React.FC<IProps> = ({ image, onMetadataApplied }) => {
   }, [file?.path]);
 
   return (
-    <div
-      className={`row image-page${detailsLayout.collapsed ? " image-details-collapsed" : ""}`}
-      style={
-        {
-          "--image-details-width": `${detailsLayout.width}px`,
-        } as React.CSSProperties
-      }
-    >
-      <Helmet>
-        <title>{displayTitle ?? title}</title>
-      </Helmet>
+    <ImageDetailsCustomizeProvider value={customize.context}>
+      <div
+        className={`row image-page${detailsLayout.collapsed ? " image-details-collapsed" : ""}`}
+        style={
+          {
+            "--image-details-width": `${detailsLayout.width}px`,
+          } as React.CSSProperties
+        }
+      >
+        <Helmet>
+          <title>{displayTitle ?? title}</title>
+        </Helmet>
 
-      {maybeRenderDeleteDialog()}
-      {maybeRenderSceneGenerateDialog()}
-      {maybeRenderKnowledgeTagDialog()}
-      {isUpscalerOpen && (
-        <MediaUpscalingDialog
-          selectedIds={[image.id]}
-          onHide={() => {
-            setIsUpscalerOpen(false);
-            void onMetadataApplied();
-          }}
-        />
-      )}
-      {isRestorationOpen && (
-        <ImageRestorationDialog
-          imageID={image.id}
-          onHide={() => {
-            setIsRestorationOpen(false);
-            void onMetadataApplied();
-          }}
-        />
-      )}
-      {isConverterOpen && (
-        <MediaConversionDialog
-          kind="image"
-          selectedIds={[image.id]}
-          onHide={() => {
-            setIsConverterOpen(false);
-            void onMetadataApplied();
-          }}
-        />
-      )}
-      <div className="image-tabs" ref={detailsPanel}>
-        <div>
-          {showImageHeading && (
-            <div className="image-header-container">
-              <h3 className="image-header">
-                <TruncatedText lineCount={2} text={displayTitle ?? ""} />
-              </h3>
-            </div>
-          )}
-
-          <div className="image-subheader">
-            <span className="date" data-value={image.date}>
-              {!!image.date && <FormattedDate value={image.date} />}
-            </span>
-            <span className="image-subheader-media">
-              {resolution || showFrameRate ? (
-                <span className="resolution" data-value={resolution}>
-                  {showFrameRate && (
-                    <>
-                      <span className="frame-rate" data-value={frameRate}>
-                        <FormattedMessage
-                          id="frames_per_second"
-                          values={{ value: intl.formatNumber(frameRate!) }}
-                        />
-                      </span>
-                      {resolution && <span className="divider"> | </span>}
-                    </>
-                  )}
-                  {resolution}
-                  {dimensions ? ` (${dimensions})` : ""}
-                </span>
-              ) : null}
-              {file ? (
-                <span className="image-file-summary">
-                  <FileSize size={file.size} />
-                  {fileFormat ? (
-                    <span className="image-file-format">{fileFormat}</span>
-                  ) : null}
-                  {isAnimated ? (
-                    <span
-                      className="image-file-animated"
-                      title="Animated"
-                      aria-label="Animated"
-                    >
-                      <Icon icon={faFilm} />
-                    </span>
-                  ) : null}
-                </span>
-              ) : null}
-            </span>
-          </div>
-        </div>
-
-        <div className="image-toolbar">
-          <span className="image-toolbar-group">
-            <RatingSystem
-              value={image.rating100}
-              onSetRating={setRating}
-              clickToRate
-              withoutContext
-            />
-          </span>
-          <span className="image-toolbar-group">
-            <span>
-              <OCounterButton
-                value={image.o_counter || 0}
-                onIncrement={onIncrementClick}
-                onDecrement={onDecrementClick}
-                onReset={onResetClick}
-              />
-            </span>
-            <span>
-              <OrganizedButton
-                loading={organizedLoading}
-                organized={image.organized}
-                onClick={onOrganizedClick}
-              />
-            </span>
-            <span>{renderOperations()}</span>
-          </span>
-        </div>
-        {renderTabs()}
-      </div>
-      <ImageDetailsDivider {...detailsLayout} panelRef={detailsPanel} />
-      <div className="image-container visual-stack-detail-viewer">
-        {shadowPreviewRequested && (
-          <div className="alert alert-warning" role="status">
-            <strong>Experimental packed-image preview.</strong>{" "}
-            {shadowPreviewFailed
-              ? "The verified reconstruction failed to load. Showing the unchanged original."
-              : "Displaying verified packed bytes through an isolated read-only endpoint. No original files or native routes were changed."}{" "}
-            <button
-              type="button"
-              className="btn btn-link"
-              onClick={() => history.replace("/images/" + image.id)}
-            >
-              Return to original image
-            </button>
-          </div>
-        )}
-        {image.visual_files.length > 0 && (
-          <ImageView
-            loop={image.visual_files[0].__typename === "VideoFile"}
-            autoPlay={image.visual_files[0].__typename === "VideoFile"}
-            playsInline={image.visual_files[0].__typename === "VideoFile"}
-            controls={image.visual_files[0].__typename === "VideoFile"}
-            className="m-sm-auto no-gutter image-image"
-            style={
-              image.visual_files[0].__typename === "VideoFile"
-                ? { width: "100%", height: "100%" }
-                : {}
-            }
-            alt={title}
-            src={
-              useShadowPreview ? shadowPreviewURL : (image.paths.image ?? "")
-            }
-            onError={() => {
-              if (useShadowPreview) setFailedShadowURL(shadowPreviewURL);
+        {maybeRenderDeleteDialog()}
+        {maybeRenderSceneGenerateDialog()}
+        {maybeRenderKnowledgeTagDialog()}
+        {isUpscalerOpen && (
+          <MediaUpscalingDialog
+            selectedIds={[image.id]}
+            onHide={() => {
+              setIsUpscalerOpen(false);
+              void onMetadataApplied();
             }}
           />
         )}
-        <DetailStackFilmstrip kind={GQL.MediaKind.Image} id={image.id} />
+        {isRestorationOpen && (
+          <ImageRestorationDialog
+            imageID={image.id}
+            onHide={() => {
+              setIsRestorationOpen(false);
+              void onMetadataApplied();
+            }}
+          />
+        )}
+        {isConverterOpen && (
+          <MediaConversionDialog
+            kind="image"
+            selectedIds={[image.id]}
+            onHide={() => {
+              setIsConverterOpen(false);
+              void onMetadataApplied();
+            }}
+          />
+        )}
+        <div
+          className={`image-tabs${customize.editing ? " image-details-customizing" : ""}`}
+          ref={detailsPanel}
+        >
+          <div>
+            {showImageHeading && (
+              <DetailsItem
+                id="heading"
+                label={intl.formatMessage({ id: "title" })}
+              >
+                <div className="image-header-container">
+                  <h3 className="image-header">
+                    <TruncatedText lineCount={2} text={displayTitle ?? ""} />
+                  </h3>
+                </div>
+              </DetailsItem>
+            )}
+
+            <DetailsItem
+              id="subheader"
+              label={intl.formatMessage({
+                id: "image_details.customize.items.summary",
+              })}
+            >
+              <div className="image-subheader">
+                <span className="date" data-value={image.date}>
+                  {!!image.date && <FormattedDate value={image.date} />}
+                </span>
+                <span className="image-subheader-media">
+                  {resolution || showFrameRate ? (
+                    <span className="resolution" data-value={resolution}>
+                      {showFrameRate && (
+                        <>
+                          <span className="frame-rate" data-value={frameRate}>
+                            <FormattedMessage
+                              id="frames_per_second"
+                              values={{ value: intl.formatNumber(frameRate!) }}
+                            />
+                          </span>
+                          {resolution && <span className="divider"> | </span>}
+                        </>
+                      )}
+                      {resolution}
+                      {dimensions ? ` (${dimensions})` : ""}
+                    </span>
+                  ) : null}
+                  {file ? (
+                    <span className="image-file-summary">
+                      <FileSize size={file.size} />
+                      {fileFormat ? (
+                        <span className="image-file-format">{fileFormat}</span>
+                      ) : null}
+                      {isAnimated ? (
+                        <span
+                          className="image-file-animated"
+                          title="Animated"
+                          aria-label="Animated"
+                        >
+                          <Icon icon={faFilm} />
+                        </span>
+                      ) : null}
+                    </span>
+                  ) : null}
+                </span>
+              </div>
+            </DetailsItem>
+          </div>
+
+          <DetailsItem
+            id="toolbar"
+            label={intl.formatMessage({
+              id: "image_details.customize.items.toolbar",
+            })}
+          >
+            <div className="image-toolbar">
+              <span className="image-toolbar-group">
+                <RatingSystem
+                  value={image.rating100}
+                  onSetRating={setRating}
+                  clickToRate
+                  withoutContext
+                />
+              </span>
+              <span className="image-toolbar-group">
+                <span>
+                  <OCounterButton
+                    value={image.o_counter || 0}
+                    onIncrement={onIncrementClick}
+                    onDecrement={onDecrementClick}
+                    onReset={onResetClick}
+                  />
+                </span>
+                <span>
+                  <OrganizedButton
+                    loading={organizedLoading}
+                    organized={image.organized}
+                    onClick={onOrganizedClick}
+                  />
+                </span>
+                <span>{renderOperations()}</span>
+              </span>
+            </div>
+          </DetailsItem>
+          {renderTabs()}
+        </div>
+        <ImageDetailsDivider
+          {...detailsLayout}
+          setCollapsed={setDetailsCollapsed}
+          panelRef={detailsPanel}
+          resizable={customize.editing}
+        />
+        <div className="image-container visual-stack-detail-viewer">
+          {shadowPreviewRequested && (
+            <div className="alert alert-warning" role="status">
+              <strong>Experimental packed-image preview.</strong>{" "}
+              {shadowPreviewFailed
+                ? "The verified reconstruction failed to load. Showing the unchanged original."
+                : "Displaying verified packed bytes through an isolated read-only endpoint. No original files or native routes were changed."}{" "}
+              <button
+                type="button"
+                className="btn btn-link"
+                onClick={() => history.replace("/images/" + image.id)}
+              >
+                Return to original image
+              </button>
+            </div>
+          )}
+          {image.visual_files.length > 0 && (
+            <ImageView
+              loop={image.visual_files[0].__typename === "VideoFile"}
+              autoPlay={image.visual_files[0].__typename === "VideoFile"}
+              playsInline={image.visual_files[0].__typename === "VideoFile"}
+              controls={image.visual_files[0].__typename === "VideoFile"}
+              className="m-sm-auto no-gutter image-image"
+              style={
+                image.visual_files[0].__typename === "VideoFile"
+                  ? { width: "100%", height: "100%" }
+                  : {}
+              }
+              alt={title}
+              src={
+                useShadowPreview ? shadowPreviewURL : (image.paths.image ?? "")
+              }
+              onError={() => {
+                if (useShadowPreview) setFailedShadowURL(shadowPreviewURL);
+              }}
+            />
+          )}
+          <DetailStackFilmstrip kind={GQL.MediaKind.Image} id={image.id} />
+        </div>
       </div>
-    </div>
+    </ImageDetailsCustomizeProvider>
   );
 };
 

@@ -58,7 +58,7 @@ import {
 import { PageSizeSelector } from "../List/ListFilter";
 import { Pagination } from "../List/Pagination";
 import { BooruIconButton, BooruIconMenu } from "./BooruControls";
-import { motionPreviewURL } from "./browser";
+import { mediaReviewIDs, motionPreviewURL } from "./browser";
 import { ExternalLink } from "../Shared/ExternalLink";
 import {
   type BooruPost,
@@ -114,6 +114,20 @@ const message = (id: string, defaultMessage: string) => (
   />
 );
 
+// The inspection dialog's focusable content, and whether keyboard focus has
+// left it (dropped to the page, or onto a control that became disabled).
+const dialogContent = (body: HTMLElement | null) =>
+  body?.closest<HTMLElement>(".modal-content") ?? null;
+function lostFocus(content: HTMLElement) {
+  const active = document.activeElement as HTMLElement | null;
+  return (
+    !active ||
+    active === document.body ||
+    !content.contains(active) ||
+    (active as HTMLButtonElement).disabled === true
+  );
+}
+
 function PostInspection({
   post,
   source,
@@ -162,7 +176,108 @@ function PostInspection({
     }
   );
   const identity = `${source.instance}:${post.id}`;
-  const assets = inspectionMedia(post);
+  const assets = useMemo(() => inspectionMedia(post), [post]);
+  const multiMedia = assets.length > 1;
+  // Each media of a post with several can be ignored on its own; its
+  // review key is the attachment ID, or a derived key for the post's own
+  // file (the post ID means the whole post).
+  const mediaKeys = useMemo(() => mediaReviewIDs(post, assets), [post, assets]);
+  const [mediaIgnored, setMediaIgnored] = useState<{
+    identity: string;
+    ignored: ReadonlySet<string>;
+  }>({ identity, ignored: new Set() });
+  const ignoredKeys =
+    mediaIgnored.identity === identity
+      ? mediaIgnored.ignored
+      : new Set<string>();
+  const ignoredKeysRef = useRef(ignoredKeys);
+  ignoredKeysRef.current = ignoredKeys;
+  const [mediaError, setMediaError] = useState("");
+  const isMediaIgnored = (index: number) =>
+    ignoredKeys.has(mediaKeys[index] ?? "");
+  useEffect(() => {
+    setMediaError("");
+    if (!multiMedia) return;
+    const controller = new AbortController();
+    const chunks: string[][] = [];
+    for (let i = 0; i < mediaKeys.length; i += 50)
+      chunks.push(mediaKeys.slice(i, i + 50));
+    void Promise.all(
+      chunks.map((ids) =>
+        fetch("booru-browser/review/read", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            source: source.id,
+            instance: source.instance,
+            posts: ids.map((id) => ({ id, md5: "" })),
+          }),
+        }).then(readBooruResponse<ReviewState[]>)
+      )
+    )
+      .then((values) => {
+        if (controller.signal.aborted) return;
+        setMediaIgnored({
+          identity,
+          ignored: new Set(
+            values
+              .flat()
+              .filter((state) => state.ignoredAt)
+              .map((state) => state.id)
+          ),
+        });
+      })
+      .catch((cause: unknown) => {
+        if (!controller.signal.aborted)
+          setMediaError(cause instanceof Error ? cause.message : String(cause));
+      });
+    return () => controller.abort();
+  }, [identity, multiMedia, mediaKeys, source.id, source.instance]);
+  // Writes run one after another, each reading the current version first,
+  // so quick repeated presses neither race nor conflict.
+  const mediaWrites = useRef(Promise.resolve());
+  function writeMediaIgnored(index: number, ignored: boolean) {
+    const key = mediaKeys[index];
+    if (!key) return;
+    const update = (apply: (next: Set<string>) => void) =>
+      setMediaIgnored((current) => {
+        const next = new Set(
+          current.identity === identity ? current.ignored : []
+        );
+        apply(next);
+        return { identity, ignored: next };
+      });
+    update((next) => (ignored ? next.add(key) : next.delete(key)));
+    setMediaError("");
+    const body = (extra: object) =>
+      JSON.stringify({
+        source: source.id,
+        instance: source.instance,
+        ...extra,
+      });
+    mediaWrites.current = mediaWrites.current
+      .then(async () => {
+        const [state] = await fetch("booru-browser/review/read", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: body({ posts: [{ id: key, md5: "" }] }),
+        }).then(readBooruResponse<ReviewState[]>);
+        await fetch("booru-browser/review/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: body({
+            changes: [{ id: key, version: state?.version ?? 0, ignored }],
+          }),
+        }).then(readBooruResponse<ReviewState[]>);
+      })
+      .catch((cause: unknown) => {
+        update((next) => (ignored ? next.delete(key) : next.add(key)));
+        setMediaError(
+          `Could not save the media's ignore mark: ${cause instanceof Error ? cause.message : String(cause)}`
+        );
+      });
+  }
   // Incremental rendering prevents posts with many attachments from creating
   // hundreds of image/player/download components at once.
   const [stream, setStream] = useState({ identity, count: 3 });
@@ -208,6 +323,39 @@ function PostInspection({
     setStream({ identity, count: 3 });
     if (scrollBody.current) scrollBody.current.scrollTop = 0;
   }, [identity]);
+  const selectedIndex = (() => {
+    const match = /^(?:asset|archive):(\d+)/.exec(selected);
+    return match ? Number(match[1]) : undefined;
+  })();
+  // The gallery (and Q) open a media file: mount it, open its group, select
+  // it, then scroll it into view once rendered.
+  const [reveal, setReveal] = useState<{ identity: string; index: number }>();
+  function showMedia(index: number) {
+    if (!assets[index]) return;
+    if (!mediaExpanded) setMediaOpen({ identity, open: true });
+    setStream((current) => ({
+      identity,
+      count: Math.max(
+        current.identity === identity ? current.count : 3,
+        index + 1
+      ),
+    }));
+    choose(
+      isArchiveFormat(assets[index].format)
+        ? `archive:${index}`
+        : `asset:${index}`
+    );
+    setReveal({ identity, index });
+  }
+  useEffect(() => {
+    if (!reveal || reveal.identity !== identity) return;
+    const frame = requestAnimationFrame(() =>
+      scrollBody.current
+        ?.querySelector(`[data-asset-index="${reveal.index}"]`)
+        ?.scrollIntoView({ block: "start" })
+    );
+    return () => cancelAnimationFrame(frame);
+  }, [reveal, identity]);
   function visibleTargets() {
     const body = scrollBody.current;
     if (!body) return [];
@@ -315,9 +463,36 @@ function PostInspection({
   useEffect(() => {
     if (queuedIgnores.current < 1) return;
     queuedIgnores.current -= 1;
+    if (multiMedia) {
+      ignoreSelectedMedia();
+      return;
+    }
     lastIgnore.current = { identity, at: Date.now() };
     pressWhenReady(() => ignore.current);
   }, [identity]);
+  // Q on a post with several media ignores the selected one and moves to
+  // the next media not ignored; ignoring the last one ignores the post.
+  function ignoreSelectedMedia() {
+    if (!multiMedia) {
+      ignorePost();
+      return;
+    }
+    const ignoredNow = new Set(ignoredKeysRef.current);
+    const open = (index: number) => !ignoredNow.has(mediaKeys[index]);
+    const index = selectedIndex ?? assets.findIndex((_, item) => open(item));
+    if (index >= 0 && open(index)) {
+      writeMediaIgnored(index, true);
+      ignoredNow.add(mediaKeys[index]);
+    }
+    const remaining = assets
+      .map((_, item) => item)
+      .filter((item) => open(item));
+    if (remaining.length === 0) {
+      ignorePost();
+      return;
+    }
+    showMedia(remaining.find((item) => item > index) ?? remaining[0]);
+  }
   function ignorePost() {
     const button = ignore.current;
     const justIgnored =
@@ -362,6 +537,76 @@ function PostInspection({
       )
     );
   }
+  function handleKey(
+    event: Pick<
+      globalThis.KeyboardEvent,
+      | "key"
+      | "altKey"
+      | "ctrlKey"
+      | "metaKey"
+      | "shiftKey"
+      | "repeat"
+      | "defaultPrevented"
+      | "preventDefault"
+      | "stopPropagation"
+    >,
+    target: HTMLElement
+  ) {
+    if (
+      event.defaultPrevented ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.metaKey ||
+      target.closest(
+        'input, textarea, select, video, audio, .dropdown, [contenteditable="true"], [role="combobox"], [role="menu"]'
+      )
+    )
+      return;
+    const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+    if (
+      !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "e", "q"].includes(
+        key
+      ) ||
+      (event.shiftKey && !["ArrowUp", "ArrowDown"].includes(key))
+    )
+      return;
+    // Also stops the matching keypress, so page-wide single-key shortcuts
+    // never see E or Q.
+    event.preventDefault();
+    event.stopPropagation();
+    if (key === "ArrowUp" || key === "ArrowDown") {
+      moveSelection(key === "ArrowDown" ? 1 : -1);
+      return;
+    }
+    if (key === "ArrowLeft") onPrevious?.();
+    if (key === "ArrowRight") onNext?.();
+    if (event.repeat) return;
+    if (key === "e") downloadSelected();
+    if (key === "q") ignoreSelectedMedia();
+  }
+  // Switching posts can remove or disable the focused control, which drops
+  // focus to the page and the dialog's keys stop working. Bring focus back
+  // to the dialog, and handle a key pressed while focus was lost.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: checks once per shown post and media list.
+  useEffect(() => {
+    const content = dialogContent(scrollBody.current);
+    if (content && lostFocus(content)) content.focus({ preventScroll: true });
+  }, [identity, assets.length]);
+  const handleKeyRef = useRef(handleKey);
+  handleKeyRef.current = handleKey;
+  useEffect(() => {
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      const content = dialogContent(scrollBody.current);
+      if (!content || !lostFocus(content)) return;
+      // Another dialog above this one owns its keys.
+      const open = [...document.querySelectorAll(".modal.show")];
+      if (open.length && !open.at(-1)?.contains(content)) return;
+      content.focus({ preventScroll: true });
+      handleKeyRef.current(event, content);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
   return (
     <Modal
       show
@@ -378,44 +623,7 @@ function PostInspection({
       }}
       onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
         const target = event.target as HTMLElement;
-        if (
-          event.defaultPrevented ||
-          event.altKey ||
-          event.ctrlKey ||
-          event.metaKey ||
-          !event.currentTarget.contains(target) ||
-          target.closest(
-            'input, textarea, select, video, audio, .dropdown, [contenteditable="true"], [role="combobox"], [role="menu"]'
-          )
-        )
-          return;
-        const key =
-          event.key.length === 1 ? event.key.toLowerCase() : event.key;
-        if (
-          ![
-            "ArrowLeft",
-            "ArrowRight",
-            "ArrowUp",
-            "ArrowDown",
-            "e",
-            "q",
-          ].includes(key) ||
-          (event.shiftKey && !["ArrowUp", "ArrowDown"].includes(key))
-        )
-          return;
-        // Also stops the matching keypress, so page-wide single-key shortcuts
-        // never see E or Q.
-        event.preventDefault();
-        event.stopPropagation();
-        if (key === "ArrowUp" || key === "ArrowDown") {
-          moveSelection(key === "ArrowDown" ? 1 : -1);
-          return;
-        }
-        if (key === "ArrowLeft") onPrevious?.();
-        if (key === "ArrowRight") onNext?.();
-        if (event.repeat) return;
-        if (key === "e") downloadSelected();
-        if (key === "q") ignorePost();
+        if (event.currentTarget.contains(target)) handleKey(event, target);
       }}
     >
       <Modal.Header closeButton>
@@ -452,7 +660,7 @@ function PostInspection({
           <span className="small text-muted">
             {message(
               "inspection_keys",
-              "← / → Browse posts · ↑ / ↓ Select media · E Download selected · Q Ignore post"
+              "← / → Browse posts · ↑ / ↓ Select media · E Download selected · Q Ignore selected media"
             )}
           </span>
           <BooruIconButton
@@ -474,6 +682,19 @@ function PostInspection({
           </Alert>
         )}
         {post.mediaNotice && <Alert variant="info">{post.mediaNotice}</Alert>}
+        {mediaError && (
+          <Alert variant="warning" role="alert">
+            {mediaError}
+          </Alert>
+        )}
+        {multiMedia && (
+          <MediaGallery
+            assets={assets}
+            selectedIndex={selectedIndex}
+            isIgnored={isMediaIgnored}
+            onShow={showMedia}
+          />
+        )}
         {groupMedia && (
           <Button
             className={`minimal booru-group-toggle mb-2${selected === "media" ? " booru-target-selected" : ""}`}
@@ -509,12 +730,13 @@ function PostInspection({
                   {asset.sourceID === "shared-links" ? "Linked media" : "Media"}{" "}
                   {index + 1} of {assets.length}
                   {asset.format && ` · ${asset.format.toUpperCase()}`}
+                  {multiMedia && isMediaIgnored(index) && " · Ignored"}
                 </>
               );
               return (
                 <section
                   key={asset.id}
-                  className={`booru-inspection-asset${!archive && selected === assetTarget ? " booru-target-selected" : ""}${open ? "" : " booru-asset-collapsed"}`}
+                  className={`booru-inspection-asset${!archive && selected === assetTarget ? " booru-target-selected" : ""}${open ? "" : " booru-asset-collapsed"}${multiMedia && isMediaIgnored(index) ? " booru-media-ignored" : ""}`}
                   data-asset-index={index}
                   data-booru-target={archive ? undefined : assetTarget}
                   tabIndex={-1}
@@ -615,6 +837,22 @@ function PostInspection({
                         asset.mediaNotice !== post.mediaNotice && (
                           <Alert variant="info">{asset.mediaNotice}</Alert>
                         )}
+                      {multiMedia && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="booru-media-ignore mt-2"
+                          aria-pressed={isMediaIgnored(index)}
+                          onClick={() =>
+                            writeMediaIgnored(index, !isMediaIgnored(index))
+                          }
+                        >
+                          <Icon icon={faBan} />{" "}
+                          {isMediaIgnored(index)
+                            ? message("unignore_media", "Unignore this media")
+                            : message("ignore_media", "Ignore this media (Q)")}
+                        </Button>
+                      )}
                       <div className="booru-file-details mt-2">
                         {!!asset.width && !!asset.height && (
                           <span>
@@ -764,8 +1002,12 @@ function PostInspection({
           ref={ignore}
           variant="secondary"
           className="minimal booru-icon-button"
-          aria-label="Ignore post (Q)"
-          title="Ignore post (Q)"
+          aria-label={multiMedia ? "Ignore post" : "Ignore post (Q)"}
+          title={
+            multiMedia
+              ? "Ignore post (Q ignores the selected media; the last one ignores the post)"
+              : "Ignore post (Q)"
+          }
           disabled={reviewBusy || !!review?.ignoredAt}
           onClick={onIgnore}
         >
@@ -787,6 +1029,77 @@ function PostInspection({
         </Button>
       </Modal.Footer>
     </Modal>
+  );
+}
+
+// A strip of small thumbnails for a post with several media: another way to
+// move through them. Not keyboard targets (↑ / ↓ keep walking the list).
+function MediaGallery({
+  assets,
+  selectedIndex,
+  isIgnored,
+  onShow,
+}: {
+  assets: BooruPost[];
+  selectedIndex?: number;
+  isIgnored: (index: number) => boolean;
+  onShow: (index: number) => void;
+}) {
+  const strip = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const container = strip.current;
+    const thumb = container?.querySelector<HTMLElement>(
+      `[data-gallery-index="${selectedIndex}"]`
+    );
+    if (!container || !thumb) return;
+    // Scroll the strip sideways only: scrollIntoView would also scroll the
+    // dialog back up to the strip and pull the selection away.
+    const start = thumb.offsetLeft;
+    const end = start + thumb.offsetWidth;
+    if (start < container.scrollLeft) container.scrollLeft = start;
+    else if (end > container.scrollLeft + container.clientWidth)
+      container.scrollLeft = end - container.clientWidth;
+  }, [selectedIndex]);
+  return (
+    <div
+      ref={strip}
+      className="booru-media-gallery mb-2"
+      role="group"
+      aria-label={`Post media gallery, ${assets.length} files`}
+    >
+      {assets.map((asset, index) => {
+        const thumbnail =
+          booruMediaURL(asset, "preview") ?? booruMediaURL(asset, "sample");
+        const ignored = isIgnored(index);
+        const active = index === selectedIndex;
+        return (
+          <button
+            type="button"
+            key={asset.id}
+            data-gallery-index={index}
+            className={`booru-media-thumb${active ? " active" : ""}${ignored ? " ignored" : ""}`}
+            aria-current={active || undefined}
+            aria-label={`Show media ${index + 1} of ${assets.length}${ignored ? " (ignored)" : ""}`}
+            title={`Media ${index + 1}${asset.format ? ` · ${asset.format.toUpperCase()}` : ""}${ignored ? " · Ignored" : ""}`}
+            onClick={() => onShow(index)}
+          >
+            {thumbnail ? (
+              <img src={thumbnail} alt="" loading="lazy" decoding="async" />
+            ) : (
+              <span className="booru-media-thumb-placeholder">
+                {asset.format?.toUpperCase() ?? "?"}
+              </span>
+            )}
+            <span className="booru-media-thumb-index">{index + 1}</span>
+            {ignored && (
+              <span className="booru-media-thumb-ignored">
+                <Icon icon={faBan} />
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 

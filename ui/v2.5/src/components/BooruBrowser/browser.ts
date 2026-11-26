@@ -373,3 +373,35 @@ export function browserResultSignature(
     !!showBlacklisted,
   ]);
 }
+
+// Review key for a post's own file when it is one media among several. The
+// post ID itself means the whole post, so the file needs its own key in the
+// format the review store accepts ("p" + 32 hex). Not a security boundary:
+// four FNV-1a passes give a stable, collision-unlikely key without
+// crypto.subtle, which plain-HTTP pages lack.
+export function postFileReviewID(postID: string): string {
+  const input = `post-file:${postID}`;
+  let out = "p";
+  for (const seed of [0x811c9dc5, 0x01000193, 0x9e3779b9, 0x85ebca6b]) {
+    let hash = seed >>> 0;
+    for (let i = 0; i < input.length; i++) {
+      hash ^= input.charCodeAt(i);
+      hash = Math.imul(hash, 0x01000193) >>> 0;
+    }
+    out += hash.toString(16).padStart(8, "0");
+  }
+  return out;
+}
+
+/** Review keys for each media of an inspected post, in display order. */
+export function mediaReviewIDs(post: BooruPost, assets: BooruPost[]): string[] {
+  // A numeric ID could name another post on the provider, so only the
+  // hashed attachment IDs are used as they are.
+  return assets.map((asset) =>
+    asset.id === post.id
+      ? postFileReviewID(post.id)
+      : /^\d+$/.test(asset.id)
+        ? postFileReviewID(`${post.id}/${asset.id}`)
+        : asset.id
+  );
+}

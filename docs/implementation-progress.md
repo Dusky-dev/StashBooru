@@ -1,3 +1,22 @@
+## StashBooru 1.25.0: details customize, Booru media gallery, per-media Q — 2026-11-26
+
+- Baseline: upstream sync (#440) on `develop` `bc9de68`. Owner: edit mode to
+  remove anything from the details panel, resize only while editing, hide
+  button where the shown button sits; Booru preview gallery for multi-media
+  posts, convert toggle too easy to switch off, keys lost on post switch, Q
+  should ignore the selected media.
+- Now: Image Details tab has Customize (sliders); `DetailsItem` wraps header,
+  tag sections, details and file rows; removals in localStorage, reset in the
+  bar. One Hide/Details toggle at the divider top; resize handle only while
+  customizing; hiding ends customizing. Preview: thumbnail strip (≥2 media),
+  per-media ignore via review store (attachment ID; post's own file gets a
+  derived `p…` key), Q ignores the selected media, last one ignores the post;
+  focus returns to the dialog when lost. Convert is a labelled switch row.
+- Checks: `tsc`, Biome, stylelint, UI unit tests, `image-details-panel.mjs`
+  and `booru-browser.mjs` desktop+mobile (one flaky step each, passed on rerun).
+- Not verified: real providers' multi-media posts; per-media ignore marks make
+  `HasIgnored` true for the source (deep-jump optimisation only).
+
 ## Upstream sync: stashapp/stash develop `4c327b4` — 2026-11-26
 
 - Baseline: `develop` `bc9de68` (1.24.0); upstream `4c327b4` (18 commits:
