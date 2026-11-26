@@ -138,6 +138,61 @@
   word-wrap: break-word;
 }
 
+.image-tabs .nav-tabs .image-details-customize-item {
+  align-items: center;
+  display: flex;
+  margin-left: auto;
+}
+
+.image-details-customize-bar {
+  border: 1px solid rgba($text-color, 0.2);
+  border-radius: 0.25rem;
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.75rem;
+}
+
+// Customizing: every removable part gets a remove / bring back button.
+.image-details-item {
+  align-items: flex-start;
+  border: 1px dashed rgba($text-color, 0.2);
+  border-radius: 0.25rem;
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.25rem;
+  padding: 0.15rem 0.15rem 0.15rem 0.35rem;
+
+  .image-details-item-content {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .image-details-item-toggle {
+    flex: 0 0 auto;
+    line-height: 1;
+    padding: 0.2rem 0.4rem;
+  }
+
+  &.removed .image-details-item-content {
+    opacity: 0.35;
+  }
+
+  // Parts with nothing to show for this Image are not offered.
+  &:has(> .image-details-item-content:empty) {
+    display: none;
+  }
+}
+
+// A label/value pair spans the details list and keeps its two columns.
+dl.details-list > .image-details-item-row {
+  grid-column: 1 / -1;
+
+  > .image-details-item-content {
+    display: grid;
+    grid-column-gap: 10px;
+    grid-template-columns: minmax(16.67%, auto) 1fr;
+  }
+}
+
 .image-details-collapsed .image-tabs {
   display: none;
 }
@@ -219,15 +274,38 @@
     overflow: auto;
   }
 
+  // Hide and Details are one button at the same spot: the page's top-left,
+  // above the panel's title when shown, beside the Image when hidden. The
+  // resize handle (customizing only) fills the strip between panel and Image.
+  .image-page {
+    position: relative;
+  }
+
+  .image-page:not(.image-details-collapsed) .image-tabs {
+    padding-top: 2.75rem;
+  }
+
   .image-details-divider {
     flex: 0 0 15px;
     flex-direction: column;
+    justify-content: flex-start;
     max-height: calc(100vh - 4rem);
     max-width: 15px;
     order: 2;
     padding: 0;
-    position: relative;
 
+    .image-details-collapse {
+      align-items: center;
+      gap: 0.35rem;
+      justify-content: center;
+      left: 15px;
+      min-height: 2rem;
+      min-width: 2rem;
+      position: absolute;
+      top: 0.5rem;
+      white-space: nowrap;
+      z-index: 2;
+    }
     // A thin line marks the handle; it brightens on hover and while
     // dragging, without tinting the whole strip.
     .image-details-resize {
@@ -235,7 +313,6 @@
       flex: 1 1 auto;
       position: relative;
       touch-action: none;
-      width: 100%;
 
       &::after {
         background-color: rgba($text-color, 0.12);
@@ -264,27 +341,17 @@
       }
     }
 
-    // Hidden: a Details button at the top of the Image takes the strip's
-    // place.
     &.collapsed {
       align-items: flex-start;
       flex: 0 0 auto;
-      justify-content: flex-start;
       max-width: none;
-      padding: 0.5rem 0.5rem 0 0;
+      padding: 0.5rem 0.5rem 0 15px;
       width: auto;
-    }
 
-    .image-details-show {
-      align-items: center;
-      gap: 0.35rem;
-      white-space: nowrap;
+      .image-details-collapse {
+        position: static;
+      }
     }
-  }
-
-  .image-details-hide-item {
-    align-items: center;
-    margin-left: auto;
   }
 
   .image-container {

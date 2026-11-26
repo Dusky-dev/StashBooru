@@ -69,42 +69,12 @@ export function useImageDetailsLayout() {
   return { width, setWidth, collapsed, setCollapsed };
 }
 
-// Hide and Details replace each other; keep keyboard focus on the one shown.
-function focusAfterRender(selector: string) {
-  requestAnimationFrame(() =>
-    document.querySelector<HTMLElement>(selector)?.focus()
-  );
-}
-
-/** The Hide details button at the end of the Details / Edit tab row. */
-export const ImageDetailsHideButton: React.FC<{
-  setCollapsed: (collapsed: boolean) => void;
-}> = ({ setCollapsed }) => {
-  const intl = useIntl();
-  const label = intl.formatMessage({ id: "image_details.hide" });
-  return (
-    <Button
-      variant="secondary"
-      size="sm"
-      className="image-details-hide"
-      onClick={() => {
-        setCollapsed(true);
-        focusAfterRender(".image-details-show");
-      }}
-      aria-expanded
-      aria-label={label}
-      title={`${label} (,)`}
-    >
-      <Icon icon={faChevronLeft} />
-    </Button>
-  );
-};
-
 /**
- * Between the details panel and the Image. On wide screens: a handle to drag
- * (or move with the arrow keys) to resize the panel; the panel hides from its
- * tab row, and a Details button brings it back. On small screens, where the
- * panel sits below the Image, a full-width button hides and shows it.
+ * Between the details panel and the Image. On wide screens one button at the
+ * top hides the panel and, in the same place, brings it back; while the panel
+ * is customized a handle below it resizes the panel (drag, or the arrow keys).
+ * On small screens, where the panel sits below the Image, a full-width button
+ * hides and shows it.
  */
 export const ImageDetailsDivider: React.FC<{
   width: number;
@@ -112,7 +82,8 @@ export const ImageDetailsDivider: React.FC<{
   collapsed: boolean;
   setCollapsed: (collapsed: boolean) => void;
   panelRef: React.RefObject<HTMLElement>;
-}> = ({ width, setWidth, collapsed, setCollapsed, panelRef }) => {
+  resizable: boolean;
+}> = ({ width, setWidth, collapsed, setCollapsed, panelRef, resizable }) => {
   const intl = useIntl();
   const drag = useRef<{ start: number; width: number }>();
   const [dragging, setDragging] = useState(false);
@@ -125,7 +96,22 @@ export const ImageDetailsDivider: React.FC<{
   };
   return (
     <div className={`image-details-divider${collapsed ? " collapsed" : ""}`}>
-      {!collapsed && (
+      {/* One element for both states, so focus stays on it. */}
+      <Button
+        variant="secondary"
+        size="sm"
+        className={`image-details-collapse d-none d-xl-inline-flex ${collapsed ? "image-details-show" : "image-details-hide"}`}
+        onClick={() => setCollapsed(!collapsed)}
+        aria-expanded={!collapsed}
+        aria-label={label}
+        title={`${label} (,)`}
+      >
+        <Icon icon={collapsed ? faChevronRight : faChevronLeft} />
+        {collapsed && (
+          <span>{intl.formatMessage({ id: "image_details.show_short" })}</span>
+        )}
+      </Button>
+      {!collapsed && resizable && (
         <div
           className={`image-details-resize d-none d-xl-block${dragging ? " dragging" : ""}`}
           role="separator"
@@ -162,23 +148,6 @@ export const ImageDetailsDivider: React.FC<{
             event.preventDefault();
           }}
         />
-      )}
-      {collapsed && (
-        <Button
-          variant="secondary"
-          size="sm"
-          className="image-details-show d-none d-xl-inline-flex"
-          onClick={() => {
-            setCollapsed(false);
-            focusAfterRender(".image-details-hide");
-          }}
-          aria-expanded={false}
-          aria-label={label}
-          title={`${label} (,)`}
-        >
-          <Icon icon={faChevronRight} />
-          <span>{intl.formatMessage({ id: "image_details.show_short" })}</span>
-        </Button>
       )}
       <Button
         variant="minimal"

@@ -163,7 +163,29 @@ async function check(viewport, label) {
   const separator = page.getByRole("separator", {
     name: "Resize details panel",
   });
+  const customize = page.getByRole("button", { name: "Customize details" });
+  const done = page.locator(".image-details-customize-done");
+  const md5Label = page.locator(".image-file-info dt", { hasText: "MD5" });
+  // Resizing is only offered while customizing.
+  assert.equal(await separator.count(), 0, "no resize outside customizing");
+  // Any part can be removed while customizing, and brought back.
+  await customize.click();
+  await page.getByRole("button", { name: "Remove MD5" }).click();
+  await page.screenshot({
+    path: join(artifacts, `image-details-${label}-customizing.png`),
+  });
+  await done.click();
+  assert.equal(await md5Label.count(), 0, "a removed part is gone");
+  await page.reload({ waitUntil: "networkidle" });
+  await page.locator(".image-file-info dt").first().waitFor();
+  assert.equal(await md5Label.count(), 0, "removals are remembered");
+  await customize.click();
+  await page.getByRole("button", { name: "Bring back MD5" }).click();
+  await done.click();
+  assert.equal(await md5Label.count(), 1, "a removed part comes back");
+
   if (viewport.width >= 1200) {
+    await customize.click();
     const before = (await tabs.boundingBox()).width;
     await separator.focus();
     await page.keyboard.press("ArrowRight");
@@ -199,18 +221,32 @@ async function check(viewport, label) {
       Math.abs((await tabs.boundingBox()).width - dragged) <= 2,
       "the width is remembered"
     );
-    // Hide sits at the end of the Details / Edit tab row.
+    assert.equal(await separator.count(), 0, "customizing ends on reload");
+    // Hide sits where Details appears once hidden: the Image's top-left.
     const hide = page.getByRole("button", { name: "Hide details" });
     const hideBox = await hide.boundingBox();
-    const navBox = await page.locator(".image-tabs .nav-tabs").boundingBox();
+    const title = await page.locator(".image-tabs .image-header").boundingBox();
     assert.ok(hideBox.width >= 24 && hideBox.height >= 24, "a usable size");
     assert.ok(
-      hideBox.y >= navBox.y - 1 &&
-        hideBox.y + hideBox.height <= navBox.y + navBox.height + 1,
-      "in the tab row"
+      hideBox.y + hideBox.height <= title.y + 1,
+      "above the title, not over it"
     );
+    // Hiding while customizing ends customizing.
+    await customize.click();
     await hide.click();
+    await page.waitForFunction(() =>
+      document.activeElement?.classList.contains("image-details-show")
+    );
+    const showBox = await page
+      .getByRole("button", { name: "Show details" })
+      .boundingBox();
+    assert.ok(
+      Math.abs(showBox.y - hideBox.y) <= 2 &&
+        Math.abs(showBox.x - hideBox.x) <= 2,
+      `Details appears where Hide was (${showBox.x},${showBox.y} vs ${hideBox.x},${hideBox.y})`
+    );
   } else {
+    await customize.click();
     assert.equal(await separator.isVisible(), false, "no resize on mobile");
     await page.locator(".image-details-toggle").click();
   }
@@ -235,8 +271,9 @@ async function check(viewport, label) {
   }
   await show.click();
   await tabs.waitFor();
+  assert.equal(await separator.count(), 0, "shown again, not customizing");
   if (viewport.width >= 1200) {
-    // Keyboard focus moves between Hide and Details instead of being lost.
+    // One button for both states: keyboard focus stays on it.
     await page.waitForFunction(() =>
       document.activeElement?.classList.contains("image-details-hide")
     );
@@ -260,7 +297,7 @@ async function check(viewport, label) {
   await instance.stop();
   instance = undefined;
   console.log(
-    `Image details ${label}: path first, filename tokens setting, no cut-off values, resize without tint, hide and remembered layout passed.`
+    `Image details ${label}: path first, filename tokens setting, no cut-off values, customize (remove, bring back, resize only while customizing), hide in place and remembered layout passed.`
   );
 }
 try {

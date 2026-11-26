@@ -2729,6 +2729,81 @@ try {
     await keyed
       .locator(".booru-inspection-media")
       .waitFor({ state: "visible" });
+    // The gallery shows every media as a thumbnail; choosing one opens,
+    // selects and scrolls to it, mounting it first if needed.
+    const thumbs = keyed.locator(".booru-media-gallery .booru-media-thumb");
+    assert.equal(await thumbs.count(), 12);
+    await mediaToggle.click();
+    await keyed
+      .getByRole("button", { name: "Show media 7 of 12", exact: true })
+      .click();
+    await expectTarget("asset:6", "a thumbnail selects its media");
+    assert.equal(await mediaToggle.getAttribute("aria-expanded"), "true");
+    assert.equal(await keyedMedia.nth(6).getAttribute("aria-expanded"), "true");
+    await page.waitForFunction(() => {
+      const body = document.querySelector(
+        ".booru-browser-inspection .modal-body"
+      );
+      const media = document.querySelector('[data-asset-index="6"]');
+      if (!body || !media) return false;
+      const view = body.getBoundingClientRect();
+      const box = media.getBoundingClientRect();
+      return box.top < view.bottom && box.bottom > view.top;
+    });
+    // Q ignores the selected media, not the post, and moves to the next.
+    const mediaWrites = [];
+    const countMediaWrite = (request) => {
+      if (
+        request.method() === "POST" &&
+        new URL(request.url()).pathname.endsWith("/booru-browser/review/update")
+      )
+        mediaWrites.push(request.postDataJSON().changes[0]);
+    };
+    page.on("requestfinished", countMediaWrite);
+    await page.keyboard.press("q");
+    await expectTarget("asset:7", "Q moves on to the next media");
+    for (let wait = 0; wait < 60 && mediaWrites.length < 1; wait++)
+      await page.waitForTimeout(50);
+    assert.deepEqual(
+      mediaWrites.map(({ id, ignored }) => ({ id, ignored })),
+      [{ id: `p${(6).toString(16).padStart(32, "a")}`, ignored: true }],
+      "only the selected media is ignored"
+    );
+    assert.ok(
+      await thumbs
+        .nth(6)
+        .evaluate((element) => element.classList.contains("ignored")),
+      "the gallery marks ignored media"
+    );
+    // The post's own file has its own key: ignoring it keeps the post.
+    await keyed
+      .getByRole("button", { name: "Show media 1 of 12", exact: true })
+      .click();
+    await expectTarget("asset:0");
+    await page.keyboard.press("q");
+    for (let wait = 0; wait < 60 && mediaWrites.length < 2; wait++)
+      await page.waitForTimeout(50);
+    page.off("requestfinished", countMediaWrite);
+    assert.match(mediaWrites[1].id, /^p[a-f0-9]{32}$/);
+    assert.notEqual(mediaWrites[1].id, "101", "the post is not ignored");
+    assert.ok(await keyed.isVisible(), "the post stays open");
+    // Keys still work after focus drops to the page.
+    await page.evaluate(() => document.activeElement?.blur());
+    await page.keyboard.press("ArrowDown");
+    await page.waitForFunction(
+      () =>
+        document.querySelector(".booru-target-selected")?.dataset
+          .booruTarget !== "asset:1"
+    );
+    assert.ok(
+      await page.evaluate(() =>
+        document.activeElement?.closest(".booru-browser-inspection")
+      ),
+      "focus returns to the preview"
+    );
+    for (const key of [...review.keys()])
+      if (mediaWrites.some((change) => key.endsWith(`:${change.id}`)))
+        review.delete(key);
     await keyed
       .locator(".modal-footer")
       .getByRole("button", { name: "Close", exact: true })
@@ -3029,6 +3104,19 @@ try {
       .focus();
     await page.keyboard.press("ArrowRight");
     await preview.getByText("Danbooru #103", { exact: true }).waitFor();
+    // Focus on the post's media is removed with the post: keys keep working
+    // across post switches without refocusing anything.
+    await preview.locator(".booru-inspection-asset").first().focus();
+    await page.keyboard.press("ArrowLeft");
+    await preview.getByText("Danbooru #102", { exact: true }).waitFor();
+    await page.keyboard.press("ArrowRight");
+    await preview.getByText("Danbooru #103", { exact: true }).waitFor();
+    assert.ok(
+      await page.evaluate(() =>
+        document.activeElement?.closest(".booru-browser-inspection")
+      ),
+      "focus stays in the preview after switching posts"
+    );
     const keyboardDownload = page.waitForRequest(
       (request) =>
         request.method() === "POST" &&

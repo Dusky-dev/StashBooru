@@ -1,10 +1,11 @@
 import React, { useMemo } from "react";
-import { FormattedMessage } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import { Link } from "react-router-dom";
 import * as GQL from "src/core/generated-graphql";
 import { CopyrightGrid } from "src/components/Copyrights/CopyrightGrid";
 import { PerformerCard } from "../Performers/PerformerCard";
 import { BooruEntityStats } from "./BooruEntityStats";
+import { DetailsItem } from "../Images/ImageDetails/ImageDetailsCustomize";
 
 interface BooruEntity {
   id: string;
@@ -374,6 +375,7 @@ export const BooruTagSidebar: React.FC<BooruTagSidebarProps> = ({
   copyrights,
   provenance,
 }) => {
+  const intl = useIntl();
   const sortedTags = useMemo(() => sortByName(tags), [tags]);
   const sortedArtists = useMemo(() => sortByName(artists), [artists]);
   const sortedCharacters = useMemo(() => sortByName(characters), [characters]);
@@ -406,6 +408,7 @@ export const BooruTagSidebar: React.FC<BooruTagSidebarProps> = ({
     return null;
   }
 
+  const label = (id: string) => intl.formatMessage({ id });
   const hasEntityCards =
     sortedArtists.length > 0 ||
     sortedCharacters.length > 0 ||
@@ -415,23 +418,36 @@ export const BooruTagSidebar: React.FC<BooruTagSidebarProps> = ({
     <div className="booru-metadata" aria-label="Booru metadata">
       {hasEntityCards ? (
         <div className="booru-entity-metadata">
-          <CardSection
-            kind="artist"
-            singularTitle="Artist"
-            pluralTitle="Artists"
-            items={sortedArtists}
-            route={(id) => `/studios/${id}`}
-          />
-          <CharacterSection items={sortedCharacters} />
-          <CopyrightBranchSection items={sortedCopyrights} />
+          <DetailsItem id="artists" label={label("studios")}>
+            <CardSection
+              kind="artist"
+              singularTitle="Artist"
+              pluralTitle="Artists"
+              items={sortedArtists}
+              route={(id) => `/studios/${id}`}
+            />
+          </DetailsItem>
+          <DetailsItem id="characters" label={label("performers")}>
+            <CharacterSection items={sortedCharacters} />
+          </DetailsItem>
+          <DetailsItem id="copyrights" label={label("copyrights")}>
+            <CopyrightBranchSection items={sortedCopyrights} />
+          </DetailsItem>
         </div>
       ) : null}
       {sortedTags.length > 0 ? (
         <aside className="booru-metadata-sidebar">
-          <GeneralTags items={sortedTags} />
+          <DetailsItem id="tags" label={label("tags")}>
+            <GeneralTags items={sortedTags} />
+          </DetailsItem>
         </aside>
       ) : null}
-      <AssociationSources provenance={provenance ?? []} names={names} />
+      <DetailsItem
+        id="association_sources"
+        label={label("image_details.customize.items.sources")}
+      >
+        <AssociationSources provenance={provenance ?? []} names={names} />
+      </DetailsItem>
     </div>
   );
 };

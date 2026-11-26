@@ -12,6 +12,7 @@ import { TextField, URLField, URLsField } from "src/utils/field";
 import { FileSize } from "src/components/Shared/FileSize";
 import NavUtils from "src/utils/navigation";
 import { useConfigurationContext } from "src/hooks/Config";
+import { DetailsItem } from "./ImageDetailsCustomize";
 
 interface IFileInfoPanelProps {
   file: GQL.ImageFileDataFragment | GQL.VideoFileDataFragment;
@@ -121,54 +122,112 @@ const FileInfoPanel: React.FC<IFileInfoPanelProps> = (
             </dd>
           </>
         )}
-        <TextField id="path">
-          <span className="d-flex align-items-center">
-            <span className="image-file-path">{props.file.path}</span>
-            <RevealInFilesystemButton fileId={props.file.id} />
-          </span>
-        </TextField>
-        <TextField id="media_info.md5" value={checksum?.value} />
-        <URLField
+        <DetailsItem row id="path" label={intl.formatMessage({ id: "path" })}>
+          <TextField id="path">
+            <span className="d-flex align-items-center">
+              <span className="image-file-path">{props.file.path}</span>
+              <RevealInFilesystemButton fileId={props.file.id} />
+            </span>
+          </TextField>
+        </DetailsItem>
+        <DetailsItem
+          row
+          id="media_info.md5"
+          label={intl.formatMessage({ id: "media_info.md5" })}
+        >
+          <TextField id="media_info.md5" value={checksum?.value} />
+        </DetailsItem>
+        <DetailsItem
+          row
           id="media_info.phash"
-          abbr={intl.formatMessage({ id: "media_info.phash_meaning" })}
-          value={phash?.value}
-          url={NavUtils.makeImagesPHashMatchUrl(phash?.value)}
-          target="_self"
-          internal
-        />
+          label={intl.formatMessage({ id: "media_info.phash" })}
+        >
+          <URLField
+            id="media_info.phash"
+            abbr={intl.formatMessage({ id: "media_info.phash_meaning" })}
+            value={phash?.value}
+            url={NavUtils.makeImagesPHashMatchUrl(phash?.value)}
+            target="_self"
+            internal
+          />
+        </DetailsItem>
         {showTokens && props.image && (props.primary || !props.ofMany) && (
-          <FilenameTokens imageId={props.image.id} path={props.file.path} />
+          <DetailsItem
+            row
+            id="filename_tokens"
+            label={intl.formatMessage({
+              id: "image_details.filename_tokens.heading",
+            })}
+          >
+            <FilenameTokens imageId={props.image.id} path={props.file.path} />
+          </DetailsItem>
         )}
-        <TextField id="filesize">
-          <span className="text-truncate">
-            <FileSize size={props.file.size} />
-          </span>
-        </TextField>
+        <DetailsItem
+          row
+          id="filesize"
+          label={intl.formatMessage({ id: "filesize" })}
+        >
+          <TextField id="filesize">
+            <span className="text-truncate">
+              <FileSize size={props.file.size} />
+            </span>
+          </TextField>
+        </DetailsItem>
         {props.image ? (
           <>
-            <URLsField id="urls" urls={props.image.urls} />
-            <TextField
+            <DetailsItem
+              row
+              id="urls"
+              label={intl.formatMessage({ id: "urls" })}
+            >
+              <URLsField id="urls" urls={props.image.urls} />
+            </DetailsItem>
+            <DetailsItem
+              row
               id="created_at"
-              value={TextUtils.formatDateTime(intl, props.image.created_at)}
-            />
-            <TextField
+              label={intl.formatMessage({ id: "created_at" })}
+            >
+              <TextField
+                id="created_at"
+                value={TextUtils.formatDateTime(intl, props.image.created_at)}
+              />
+            </DetailsItem>
+            <DetailsItem
+              row
               id="updated_at"
-              value={TextUtils.formatDateTime(intl, props.image.updated_at)}
-            />
+              label={intl.formatMessage({ id: "updated_at" })}
+            >
+              <TextField
+                id="updated_at"
+                value={TextUtils.formatDateTime(intl, props.image.updated_at)}
+              />
+            </DetailsItem>
           </>
         ) : null}
-        <TextField id="file_mod_time">
-          <FormattedTime
-            dateStyle="medium"
-            timeStyle="medium"
-            value={props.file.mod_time ?? 0}
-          />
-        </TextField>
-        <TextField
+        <DetailsItem
+          row
+          id="file_mod_time"
+          label={intl.formatMessage({ id: "file_mod_time" })}
+        >
+          <TextField id="file_mod_time">
+            <FormattedTime
+              dateStyle="medium"
+              timeStyle="medium"
+              value={props.file.mod_time ?? 0}
+            />
+          </TextField>
+        </DetailsItem>
+        <DetailsItem
+          row
           id="dimensions"
-          value={`${props.file.width} x ${props.file.height}`}
-          truncate
-        />
+          label={intl.formatMessage({ id: "dimensions" })}
+        >
+          <TextField
+            id="dimensions"
+            value={`${props.file.width} x ${props.file.height}`}
+            truncate
+          />
+        </DetailsItem>
       </dl>
       {props.ofMany && props.onSetPrimaryFile && !props.primary && (
         <div>
@@ -209,15 +268,29 @@ export const ImageFileInfoPanel: React.FC<IImageFileInfoPanelProps> = (
   if (props.image.visual_files.length === 0) {
     return (
       <dl className="container image-file-info details-list">
-        <URLsField id="urls" urls={props.image.urls} />
-        <TextField
+        <DetailsItem row id="urls" label={intl.formatMessage({ id: "urls" })}>
+          <URLsField id="urls" urls={props.image.urls} />
+        </DetailsItem>
+        <DetailsItem
+          row
           id="created_at"
-          value={TextUtils.formatDateTime(intl, props.image.created_at)}
-        />
-        <TextField
+          label={intl.formatMessage({ id: "created_at" })}
+        >
+          <TextField
+            id="created_at"
+            value={TextUtils.formatDateTime(intl, props.image.created_at)}
+          />
+        </DetailsItem>
+        <DetailsItem
+          row
           id="updated_at"
-          value={TextUtils.formatDateTime(intl, props.image.updated_at)}
-        />
+          label={intl.formatMessage({ id: "updated_at" })}
+        >
+          <TextField
+            id="updated_at"
+            value={TextUtils.formatDateTime(intl, props.image.updated_at)}
+          />
+        </DetailsItem>
       </dl>
     );
   }
