@@ -19,6 +19,9 @@ type Folder {
   "Returns direct sub-folders"
   sub_folders: [Folder!]!
 
+  "If not null, indicates when the folder was detected as missing. Set by the verifyPaths task"
+  missing_since: Time
+
   mod_time: Time!
 
   created_at: Time!
@@ -35,6 +38,9 @@ interface BaseFile {
 
   parent_folder: Folder!
   zip_file: BasicFile
+
+  "If not null, indicates when the file was detected as missing. Set by the verifyPaths task"
+  missing_since: Time
 
   mod_time: Time!
   size: Int64!
@@ -58,6 +64,9 @@ type BasicFile implements BaseFile {
   parent_folder: Folder!
   zip_file: BasicFile
 
+  "If not null, indicates when the file was detected as missing. Set by the verifyPaths task"
+  missing_since: Time
+
   mod_time: Time!
   size: Int64!
   frame_count: Int!
@@ -79,6 +88,9 @@ type VideoFile implements BaseFile {
 
   parent_folder: Folder!
   zip_file: BasicFile
+
+  "If not null, indicates when the file was detected as missing. Set by the verifyPaths task"
+  missing_since: Time
 
   mod_time: Time!
   size: Int64!
@@ -113,6 +125,9 @@ type ImageFile implements BaseFile {
   parent_folder: Folder!
   zip_file: BasicFile
 
+  "If not null, indicates when the file was detected as missing. Set by the verifyPaths task"
+  missing_since: Time
+
   mod_time: Time!
   size: Int64!
   frame_count: Int!
@@ -145,6 +160,9 @@ type GalleryFile implements BaseFile {
   parent_folder: Folder!
   zip_file: BasicFile
 
+  "If not null, indicates when the file was detected as missing. Set by the verifyPaths task"
+  missing_since: Time
+  
   mod_time: Time!
   size: Int64!
   frame_count: Int!

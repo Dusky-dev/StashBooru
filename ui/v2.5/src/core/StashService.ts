@@ -2590,6 +2590,8 @@ export const useListGalleryScrapers = () => GQL.useListGalleryScrapersQuery();
 
 export const useListImageScrapers = () => GQL.useListImageScrapersQuery();
 
+export const useScraperURLConflicts = () => GQL.useScraperUrlConflictsQuery();
+
 export const queryScrapeGallery = (scraperId: string, galleryId: string) =>
   client.query<GQL.ScrapeSingleGalleryQuery>({
     query: GQL.ScrapeSingleGalleryDocument,
@@ -2706,6 +2708,7 @@ export const scraperMutationImpactedQueries = [
   GQL.ListImageScrapersDocument,
   GQL.InstalledScraperPackagesDocument,
   GQL.InstalledScraperPackagesStatusDocument,
+  GQL.ScraperUrlConflictsDocument,
 ];
 
 export const mutateReloadScrapers = () =>
@@ -3056,9 +3059,15 @@ export const mutateMetadataGenerate = (input: GQL.GenerateMetadataInput) =>
     variables: { input },
   });
 
-export const mutateMetadataClean = (input: GQL.CleanMetadataInput) =>
-  client.mutate<GQL.MetadataCleanMutation>({
-    mutation: GQL.MetadataCleanDocument,
+export const mutateVerifyPaths = (input: GQL.VerifyPathsInput) =>
+  client.mutate<GQL.VerifyPathsMutation>({
+    mutation: GQL.VerifyPathsDocument,
+    variables: { input },
+  });
+
+export const mutatePurgeMissing = (input: GQL.PurgeMissingInput) =>
+  client.mutate<GQL.PurgeMissingMutation>({
+    mutation: GQL.PurgeMissingDocument,
     variables: { input },
   });
 

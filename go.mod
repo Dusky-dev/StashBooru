@@ -20,7 +20,7 @@ require (
 	github.com/enetx/g v1.0.224
 	github.com/enetx/surf v1.0.199
 	github.com/feederbox826/gosx-notifier v0.2.2
-	github.com/go-chi/chi/v5 v5.2.4
+	github.com/go-chi/chi/v5 v5.4.0
 	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/httplog v0.3.1
 	github.com/go-toast/toast v0.0.0-20190211030409-01e6764cf0a4
@@ -29,7 +29,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/securecookie v1.1.1
 	github.com/gorilla/sessions v1.2.1
-	github.com/gorilla/websocket v1.5.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/hasura/go-graphql-client v0.13.1
 	github.com/jinzhu/copier v0.4.0
