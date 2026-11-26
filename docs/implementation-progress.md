@@ -13,8 +13,9 @@
   `internal/manager/...`, `pkg/file/...`, `pkg/scraper/...`, `pkg/sqlite`
   (integration + Makefile tags); `tsc`, Biome lint/format, stylelint, UI unit
   tests (146); golangci-lint.
-- Not verified: an upgrade of a real 104 database (the migration only adds
-  columns and indexes); the new tasks against a real library.
+  Upgrade tests (95–99 → 105) now also roll back and re-add `missing_since`.
+- Not verified: the new tasks against a real library; `restoration-contract`
+  CI fails before tests (runner refuses `sudo apt-get`).
 
 ## StashBooru 1.24.0: Rule34 MD5 tag types, Image details panel — 2026-11-23
 
