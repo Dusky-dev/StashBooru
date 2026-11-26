@@ -56,6 +56,8 @@ The scraping types and their required fields are outlined in the following table
 
 URL-based scraping accepts multiple scrape configurations, and each configuration requires a `url` field. stash iterates through these configurations, attempting to match the entered URL against the `url` fields in the configuration. It executes the first scraping configuration where the entered URL contains the value of the `url` field. 
 
+If another installed scraper declares a `url` value that is a substring of (or identical to) one of yours, Stash cannot reliably determine which scraper to use, and users will see a URL conflict warning in `Settings > Metadata Providers`. Because matching is by substring, a short pattern can match unrelated domains: `rk.com` also matches every `digitalplaygroundnetwork.com` URL. Avoid declaring broader `url` patterns than necessary, and prefer a single consolidated scraper over multiple scrapers covering overlapping domains.
+
 ## Actions
 
 ### Script
@@ -215,8 +217,19 @@ For `sceneByFragment` and `sceneByQueryFragment`, the `queryURL` field must also
 - `{oshash}` - the oshash of the scene
 - `{phash}` - the phash of the scene
 - `{filename}` - the base filename of the scene
+- `{path}` - the full path of the scene file. Note that this sends the full local path (including folder names) to the scraped site.
 - `{title}` - the title of the scene
 - `{url}` - the url of the scene
+
+`galleryByFragment` and `imageByFragment` support the same `queryURL` and `queryURLReplace` fields, with the following placeholder fields:
+
+- `{checksum}` - the checksum of the gallery or image
+- `{filename}` - the base filename of the gallery or image (empty for galleries without a file or folder)
+- `{path}` - the full path of the gallery or image file. Note that this sends the full local path (including folder names) to the scraped site.
+- `{title}` - the title of the gallery or image
+- `{url}` - the url of the gallery or image
+
+Placeholder values are inserted into the URL as-is, without URL encoding. Use `queryURLReplace` to escape or strip characters (such as spaces) if the site requires it.
 
 These placeholder field values may be manipulated with regex replacements by adding a `queryURLReplace` section, containing a map of placeholder field to regex configuration which uses the same format as the `replace` post-process action covered below. For example:
 

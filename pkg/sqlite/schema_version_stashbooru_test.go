@@ -49,3 +49,9 @@ func TestStashBooruSchemaIncludesIgnoredMetadata(t *testing.T) {
 		t.Fatalf("schema version %d does not include ignored metadata migration 104", appSchemaVersion)
 	}
 }
+
+func TestSchemaVersionIncludesMissingSince(t *testing.T) {
+	if appSchemaVersion < 105 {
+		t.Fatalf("schema version %d does not include missing_since migration 105", appSchemaVersion)
+	}
+}

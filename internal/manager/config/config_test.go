@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,6 +17,26 @@ func TestConfig_GetMenuItemsIncludesMediaByDefaultAndPreservesCustomMenus(t *tes
 
 	i.SetInterface(MenuItems, []string{})
 	assert.Empty(t, i.GetMenuItems())
+}
+
+func TestConfig_SetPassword(t *testing.T) {
+	i := InitializeEmpty()
+
+	pw := strings.Repeat("a", maxPasswordBytes)
+	assert.NoError(t, i.SetPassword(pw))
+	assert.NotEmpty(t, i.GetPasswordHash())
+
+	// error must not overwrite the existing hash
+	before := i.GetPasswordHash()
+	assert.Error(t, i.SetPassword(pw+"a"))
+	assert.Equal(t, before, i.GetPasswordHash())
+
+	// 36 two-byte runes = 72 bytes ok; 37 = 74 bytes rejected
+	assert.NoError(t, i.SetPassword(strings.Repeat("é", 36)))
+	assert.Error(t, i.SetPassword(strings.Repeat("é", 37)))
+
+	assert.NoError(t, i.SetPassword(""))
+	assert.Empty(t, i.GetPasswordHash())
 }
 
 func TestConfig_GetAllPluginConfiguration(t *testing.T) {

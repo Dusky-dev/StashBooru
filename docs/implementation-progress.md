@@ -1,3 +1,21 @@
+## Upstream sync: stashapp/stash develop `4c327b4` — 2026-11-26
+
+- Baseline: `develop` `bc9de68` (1.24.0); upstream `4c327b4` (18 commits:
+  missing_since with Verify / Purge missing tasks replacing Clean, Image
+  rating keys in the Lightbox, scraper URL conflicts, bcrypt length check,
+  dependency bumps). Merge commit, not squash, to keep upstream ancestry.
+- Conflicts: upstream migration 87 renumbered to 105 (fork 87 is visual
+  embeddings; override raised to 105). Purge keeps the fork's media
+  conversion recovery. Lightbox takes upstream's `d d` / `r` bindings on the
+  fork's typed display image; ratings keys are off for Video previews.
+  Locale, Tasks help, file rows/scan, config test kept both sides.
+- Checks: `go build ./...`, `go mod tidy`, generate backend/UI; Go tests
+  `internal/manager/...`, `pkg/file/...`, `pkg/scraper/...`, `pkg/sqlite`
+  (integration + Makefile tags); `tsc`, Biome lint/format, stylelint, UI unit
+  tests (146); golangci-lint.
+- Not verified: an upgrade of a real 104 database (the migration only adds
+  columns and indexes); the new tasks against a real library.
+
 ## StashBooru 1.24.0: Rule34 MD5 tag types, Image details panel — 2026-11-23
 
 - Baseline: `develop` `8605c0a` (1.23.0). Owner: Rule34 MD5 lookup puts every
