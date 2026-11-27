@@ -339,6 +339,32 @@ try {
       }
       throw new Error(`Unexpected API path ${url.pathname}`);
     });
+    // Following is experimental and off by default: an old link explains
+    // where to turn it on, and nothing is fetched.
+    const offRequests = [];
+    const countOff = (request) => {
+      if (new URL(request.url()).pathname.includes("/following/"))
+        offRequests.push(request.url());
+    };
+    page.on("request", countOff);
+    await page.goto(`${origin}${prefix}/following?fixtureFollowing=off`);
+    await page.locator("#following-disabled").waitFor();
+    assert.ok(
+      await page
+        .getByRole("link", { name: "Open Experimental settings", exact: true })
+        .isVisible()
+    );
+    for (const path of ["/profile", "/artist"]) {
+      await page.goto(`${origin}${prefix}${path}?fixtureFollowing=off`);
+      await page.waitForLoadState("networkidle");
+    }
+    assert.equal(
+      await page.getByRole("link", { name: /^Follow / }).count(),
+      0,
+      "no Follow buttons while Following is off"
+    );
+    page.off("request", countOff);
+    assert.deepEqual(offRequests, [], "Following off fetches nothing");
     await page.goto(`${origin}${prefix}/following`);
     const openManage = () =>
       page

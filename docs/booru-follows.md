@@ -1,5 +1,10 @@
 # Following: definitions and on-demand feed
 
+> **Experimental, off by default (1.26.0).** Turn on Advanced mode, then
+> Settings › Experimental › Following › Enable Following. While it is off, the
+> Following page, Follow buttons, Followed posts tabs and new-post counts are
+> hidden and automatic checks do not run; saved follows and settings are kept.
+
 B06a adds library-wide follow definitions for provider Artists, Characters,
 Copyrights/series and exact provider-native queries. B06b adds the independent
 **Following** page and an on-demand saved feed, initially for Danbooru-compatible

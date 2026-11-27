@@ -356,10 +356,15 @@ function PostInspection({
     },
     [identity]
   );
-  const [galleryView, setGalleryViewState] = useState(readGalleryView);
+  // The List / Gallery switch is remembered; choosing a thumbnail (or E)
+  // shows that post's list without changing the remembered choice.
+  const [galleryPreferred, setGalleryPreferred] = useState(readGalleryView);
+  const [listShown, setListShown] = useState<string>();
+  const galleryView = galleryPreferred && listShown !== identity;
   function setGalleryView(gallery: boolean) {
-    setGalleryViewState(gallery);
+    setGalleryPreferred(gallery);
     saveGalleryView(gallery);
+    setListShown(undefined);
   }
   // Long lists hide the files away from the open one behind "…".
   const [allMedia, setAllMedia] = useState({ identity, all: false });
@@ -580,7 +585,8 @@ function PostInspection({
     const target = selected;
     // A thumbnail has no download button: show the file in the list.
     if (galleryView && multiMedia) {
-      setGalleryView(false);
+      if (!/^(?:asset|archive):/.test(target)) return;
+      setListShown(identity);
       if (target.startsWith("asset:")) choose(target);
     }
     // Open a collapsed row so the download's progress is visible.
@@ -802,7 +808,7 @@ function PostInspection({
                 selected={selected}
                 isIgnored={isMediaIgnored}
                 onShow={(index) => {
-                  setGalleryView(false);
+                  setListShown(identity);
                   showMedia(index);
                 }}
               />

@@ -2857,6 +2857,17 @@ try {
     page.off("requestfinished", countMediaWrite);
     assert.match(mediaWrites[2].id, /^p[a-f0-9]{32}$/);
     assert.notEqual(mediaWrites[2].id, "101", "the post is not ignored");
+    // Choosing a thumbnail shows the list for this post only: Gallery stays
+    // the remembered view until the switch says otherwise.
+    assert.equal(
+      await page.evaluate(() => localStorage.getItem("booru-media-view")),
+      "gallery"
+    );
+    await viewButton("List").click();
+    assert.equal(
+      await page.evaluate(() => localStorage.getItem("booru-media-view")),
+      null
+    );
     assert.ok(await keyed.isVisible(), "the post stays open");
     // Keys still work after focus drops to the page.
     await page.evaluate(() => document.activeElement?.blur());

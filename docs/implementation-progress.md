@@ -9,11 +9,12 @@
   scheduler tick skips. Preview: List/Gallery switch (remembered), grid of
   thumbnails as keyboard targets, E in gallery downloads via the list; list
   shows first, previous, open, next, last, CSS-hiding the rest behind "…".
-- Checks: Go `FollowSchedule|B06` integration tests, `tsc`, Biome, stylelint,
-  UI unit tests, `following`, `following-context`, `identities` and
+- Checks: Go `FollowSchedule|B06` integration tests, `pnpm run validate`
+  (147 unit tests), `following` (incl. off state: notice, no Follow buttons,
+  no `following/**` requests), `following-context`, `identities` and
   `booru-browser.mjs` desktop+mobile.
-- Not verified: live booru posts; first-library CI (navbar asserts Following
-  hidden by default).
+- Not verified: live booru posts; the real Settings switch → navbar path
+  (fixtures fake the config); first-library CI (Following hidden by default).
 - Next: owner to pick which other raw features move to Experimental.
 
 ## StashBooru 1.25.0: details customize, Booru media gallery, per-media Q — 2026-11-26
