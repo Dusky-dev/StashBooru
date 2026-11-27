@@ -2547,6 +2547,17 @@ try {
       (await streamedMedia.count()) < 12,
       "gallery mounted every media file instead of loading incrementally"
     );
+    // A long list shows the open file, the next and the last; "…" stands
+    // for the rest and shows them all.
+    assert.deepEqual(
+      await longPreview
+        .locator(".booru-inspection-asset:not(.d-none)")
+        .evaluateAll((rows) => rows.map((row) => row.dataset.assetIndex)),
+      ["0", "1", "11"]
+    );
+    await longPreview
+      .getByRole("button", { name: "… 9 more files", exact: true })
+      .click();
     for (const target of [6, 9, 12]) {
       await scrollingBody.evaluate((element) => {
         element.scrollTop = element.scrollHeight;
@@ -2729,17 +2740,51 @@ try {
     await keyed
       .locator(".booru-inspection-media")
       .waitFor({ state: "visible" });
-    // The gallery shows every media as a thumbnail; choosing one opens,
-    // selects and scrolls to it, mounting it first if needed.
+    // Gallery view shows every media as wrapping rows of thumbnails in
+    // place of the list; choosing one shows it in the list, opened,
+    // selected and scrolled to, mounting it first if needed.
+    const viewButton = (name) =>
+      keyed
+        .getByRole("group", { name: "Media view", exact: true })
+        .getByRole("button", { name, exact: true });
     const thumbs = keyed.locator(".booru-media-gallery .booru-media-thumb");
+    await viewButton("Gallery").click();
+    assert.equal(
+      await viewButton("Gallery").getAttribute("aria-pressed"),
+      "true"
+    );
     assert.equal(await thumbs.count(), 12);
-    await mediaToggle.click();
+    await keyed.locator(".booru-inspection-media").waitFor({ state: "hidden" });
+    const grid = await keyed
+      .locator(".booru-media-gallery")
+      .evaluate((element) => ({
+        rows: new Set(
+          [...element.children].map((child) =>
+            Math.round(child.getBoundingClientRect().top)
+          )
+        ).size,
+        overflow: element.scrollWidth - element.clientWidth,
+        right: element.getBoundingClientRect().right,
+      }));
+    assert.ok(grid.rows > 1, "the gallery wraps into rows");
+    assert.ok(grid.overflow <= 1, "the gallery never scrolls sideways");
+    assert.ok(grid.right <= viewport.width, "the gallery fits the viewport");
     await keyed
       .getByRole("button", { name: "Show media 7 of 12", exact: true })
       .click();
     await expectTarget("asset:6", "a thumbnail selects its media");
+    assert.equal(await thumbs.count(), 0, "a thumbnail switches to the list");
+    assert.equal(await viewButton("List").getAttribute("aria-pressed"), "true");
     assert.equal(await mediaToggle.getAttribute("aria-expanded"), "true");
     assert.equal(await keyedMedia.nth(6).getAttribute("aria-expanded"), "true");
+    // In the middle of a long list: first, previous, open, next, last.
+    assert.deepEqual(
+      await keyed
+        .locator(".booru-inspection-asset:not(.d-none)")
+        .evaluateAll((rows) => rows.map((row) => row.dataset.assetIndex)),
+      ["0", "5", "6", "7", "11"]
+    );
+    assert.equal(await keyed.locator(".booru-media-gap").count(), 2);
     await page.waitForFunction(() => {
       const body = document.querySelector(
         ".booru-browser-inspection .modal-body"
@@ -2769,23 +2814,49 @@ try {
       [{ id: `p${(6).toString(16).padStart(32, "a")}`, ignored: true }],
       "only the selected media is ignored"
     );
+    await viewButton("Gallery").click();
     assert.ok(
       await thumbs
         .nth(6)
         .evaluate((element) => element.classList.contains("ignored")),
       "the gallery marks ignored media"
     );
+    // In gallery view the thumbnails are the keyboard targets: Q ignores
+    // the selected one and stays in the gallery.
+    await expectTarget("asset:7");
+    await page.keyboard.press("q");
+    await expectTarget("asset:8", "Q in the gallery moves to the next media");
+    for (let wait = 0; wait < 60 && mediaWrites.length < 2; wait++)
+      await page.waitForTimeout(50);
+    assert.equal(mediaWrites[1].id, `p${(7).toString(16).padStart(32, "a")}`);
+    assert.equal(await thumbs.count(), 12, "Q keeps the gallery open");
+    // E has no button to press on a thumbnail: it shows the file in the
+    // list and downloads it there.
+    const galleryDownload = page.waitForRequest(
+      (request) =>
+        request.method() === "POST" &&
+        new URL(request.url()).pathname.endsWith("/booru-browser/download") &&
+        !request.postDataJSON()?.cancel
+    );
+    await page.keyboard.press("e");
+    assert.equal(
+      (await galleryDownload).postDataJSON().key,
+      (8).toString(16).padStart(48, "b"),
+      "E in the gallery downloads the selected media"
+    );
+    assert.equal(await viewButton("List").getAttribute("aria-pressed"), "true");
     // The post's own file has its own key: ignoring it keeps the post.
+    await viewButton("Gallery").click();
     await keyed
       .getByRole("button", { name: "Show media 1 of 12", exact: true })
       .click();
     await expectTarget("asset:0");
     await page.keyboard.press("q");
-    for (let wait = 0; wait < 60 && mediaWrites.length < 2; wait++)
+    for (let wait = 0; wait < 60 && mediaWrites.length < 3; wait++)
       await page.waitForTimeout(50);
     page.off("requestfinished", countMediaWrite);
-    assert.match(mediaWrites[1].id, /^p[a-f0-9]{32}$/);
-    assert.notEqual(mediaWrites[1].id, "101", "the post is not ignored");
+    assert.match(mediaWrites[2].id, /^p[a-f0-9]{32}$/);
+    assert.notEqual(mediaWrites[2].id, "101", "the post is not ignored");
     assert.ok(await keyed.isVisible(), "the post stays open");
     // Keys still work after focus drops to the page.
     await page.evaluate(() => document.activeElement?.blur());

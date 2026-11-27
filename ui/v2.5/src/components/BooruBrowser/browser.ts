@@ -405,3 +405,28 @@ export function mediaReviewIDs(post: BooruPost, assets: BooruPost[]): string[] {
         : asset.id
   );
 }
+
+/**
+ * Which media rows the list shows: the first, the one before the open file,
+ * the open file, the next and the last. A run of two or more other rows
+ * becomes one "…" that shows them all; a single row is shown instead.
+ */
+export function mediaListWindow(count: number, open: number): boolean[] {
+  const keep = new Set(
+    [0, open - 1, open, open + 1, count - 1].filter(
+      (index) => index >= 0 && index < count
+    )
+  );
+  return Array.from(
+    { length: count },
+    (_, index) =>
+      keep.has(index) || (keep.has(index - 1) && keep.has(index + 1))
+  );
+}
+
+/** How many rows a "…" starting at this index stands for. */
+export function hiddenRun(shown: boolean[], start: number) {
+  let end = start;
+  while (end < shown.length && !shown[end]) end++;
+  return end - start;
+}

@@ -2088,6 +2088,10 @@
     "duplicates_title": "Review similar images"
   },
   "booru_browser": {
+    "media_gap": "… {count, plural, one {# more file} other {# more files}}",
+    "media_view": "Media view",
+    "media_view_list": "List",
+    "media_view_gallery": "Gallery",
     "nav": "Booru",
     "title": "Booru browser",
     "inspection_keys": "← / → Browse posts · ↑ / ↓ Select media · E Download selected · Q Ignore selected media",

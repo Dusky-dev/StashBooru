@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   browserSearchURL,
+  hiddenRun,
+  mediaListWindow,
   readBooruResponse,
   readBrowserSearch,
   remoteURL,
@@ -354,4 +356,21 @@ test("Pawchive shared folders appear as linked assets, not invisible counters", 
   };
   assert.equal(sharedLinkCount(parent), 1);
   assert.deepEqual(inspectionMedia(parent), [folder]);
+});
+
+test("Long media lists show first, previous, open, next and last", () => {
+  const rows = (count: number, open: number) =>
+    mediaListWindow(count, open)
+      .map((shown, index) => (shown ? index : -1))
+      .filter((index) => index >= 0);
+  assert.deepEqual(rows(12, 0), [0, 1, 11]);
+  assert.deepEqual(rows(12, 6), [0, 5, 6, 7, 11]);
+  assert.deepEqual(rows(12, 11), [0, 10, 11]);
+  assert.deepEqual(rows(12, 10), [0, 9, 10, 11]);
+  // A single hidden row is shown rather than hidden behind "…".
+  assert.deepEqual(rows(4, 0), [0, 1, 2, 3]);
+  assert.deepEqual(rows(12, 3), [0, 1, 2, 3, 4, 11]);
+  assert.deepEqual(rows(2, 1), [0, 1]);
+  assert.equal(hiddenRun(mediaListWindow(12, 0), 2), 9);
+  assert.equal(hiddenRun(mediaListWindow(12, 6), 1), 4);
 });
