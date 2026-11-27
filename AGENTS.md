@@ -45,7 +45,8 @@ asks for a new feature:
   version's release notes are merged and CI is green on that `develop` commit,
   push `releases/stashbooru-X.Y.Z` there so the Build workflow tags and
   publishes `stashbooru-vX.Y.Z` (see `docs/releases.md`). Never move or
-  overwrite a published tag.
+  overwrite a published tag. Do this without asking (owner, 2026-11-27): after
+  a version bump merges, add its release notes and publish the release.
 - Direct pushes to `develop`, remote branch deletion, destructive data changes
   and production deployment still require separate authorization.
 - `docs/CONTRIBUTING.md` and `docs/AI_POLICY.md` contain inherited upstream
