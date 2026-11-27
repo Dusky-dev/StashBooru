@@ -46,6 +46,7 @@ import {
   FollowedPosts,
   useFollowedUnseen,
 } from "src/components/Following/FollowedPosts";
+import { useFollowingEnabled } from "src/components/Following/enabled";
 import { ExpandCollapseButton } from "src/components/Shared/CollapseButton";
 import {
   Performer,
@@ -439,9 +440,16 @@ const CopyrightMediaTabs: React.FC<{
       : copyright.subtree_scene_count > 0
         ? "videos"
         : "characters";
+  const followingEnabled = useFollowingEnabled();
   const { activeTabKey, setTabKey } = useTabKey({
     tabKey: initialTab,
-    validTabs: ["all", "images", "videos", "characters", "followed"],
+    validTabs: [
+      "all",
+      "images",
+      "videos",
+      "characters",
+      ...(followingEnabled ? ["followed"] : []),
+    ],
     defaultTabKey: populatedDefaultTab,
     baseURL: `/copyrights/${copyright.id}`,
   });
@@ -531,18 +539,20 @@ const CopyrightMediaTabs: React.FC<{
           view={View.CopyrightPerformers}
         />
       </Tab>
-      <Tab
-        eventKey="followed"
-        title={
-          <TabTitleCounter
-            messageID="following_action.followed.tab"
-            count={followedUnseen}
-            abbreviateCounter={abbreviateCounter}
-          />
-        }
-      >
-        <FollowedPosts kind="copyright" entityID={copyright.id} />
-      </Tab>
+      {followingEnabled && (
+        <Tab
+          eventKey="followed"
+          title={
+            <TabTitleCounter
+              messageID="following_action.followed.tab"
+              count={followedUnseen}
+              abbreviateCounter={abbreviateCounter}
+            />
+          }
+        >
+          <FollowedPosts kind="copyright" entityID={copyright.id} />
+        </Tab>
+      )}
     </Tabs>
   );
 };

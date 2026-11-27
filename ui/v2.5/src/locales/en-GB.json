@@ -2213,6 +2213,16 @@
     "history_link": "Settings → About"
   },
   "following_action": {
+    "disabled": {
+      "body": "Following is experimental and turned off. Your follows are kept. To use it, turn on Advanced mode in Settings, then enable Following under Experimental.",
+      "link": "Open Experimental settings"
+    },
+    "experimental": {
+      "title": "Following",
+      "description": "Follow tags and creators on booru sites and collect their new posts. Off by default while unfinished.",
+      "enable": "Enable Following",
+      "enable_help": "Shows the Following page, Follow buttons, Followed posts tabs and new-post counts, and runs automatic checks if you set an interval. While off, follows and settings are kept but nothing is checked."
+    },
     "follow": "Follow",
     "following": "Following",
     "follow_title": "Follow {target} on {site}",

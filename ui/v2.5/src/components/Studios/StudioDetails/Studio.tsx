@@ -59,6 +59,7 @@ import {
   FollowedPosts,
   useFollowedUnseen,
 } from "src/components/Following/FollowedPosts";
+import { useFollowingEnabled } from "src/components/Following/enabled";
 
 interface IProps {
   studio: GQL.StudioDataFragment;
@@ -82,6 +83,8 @@ const validTabs = [
   "followed",
 ] as const;
 type TabKey = (typeof validTabs)[number];
+// Followed posts is part of the experimental Following feature.
+const tabsWithoutFollowed = validTabs.filter((tab) => tab !== "followed");
 
 function isTabKey(tab: string): tab is TabKey {
   return validTabs.includes(tab as TabKey);
@@ -134,9 +137,10 @@ const StudioTabs: React.FC<{
     studio,
   ]);
 
+  const followingEnabled = useFollowingEnabled();
   const { activeTabKey, setTabKey } = useTabKey({
     tabKey,
-    validTabs,
+    validTabs: followingEnabled ? validTabs : tabsWithoutFollowed,
     defaultTabKey: populatedDefaultTab,
     baseURL: `/studios/${studio.id}`,
   });
@@ -287,18 +291,20 @@ const StudioTabs: React.FC<{
           studio={studio}
         />
       </Tab>
-      <Tab
-        eventKey="followed"
-        title={
-          <TabTitleCounter
-            messageID="following_action.followed.tab"
-            count={followedUnseen}
-            abbreviateCounter={abbreviateCounter}
-          />
-        }
-      >
-        <FollowedPosts kind="artist" entityID={studio.id} />
-      </Tab>
+      {followingEnabled && (
+        <Tab
+          eventKey="followed"
+          title={
+            <TabTitleCounter
+              messageID="following_action.followed.tab"
+              count={followedUnseen}
+              abbreviateCounter={abbreviateCounter}
+            />
+          }
+        >
+          <FollowedPosts kind="artist" entityID={studio.id} />
+        </Tab>
+      )}
     </Tabs>
   );
 };

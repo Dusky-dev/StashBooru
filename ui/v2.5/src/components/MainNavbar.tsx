@@ -47,6 +47,7 @@ import { baseURL } from "src/core/createClient";
 import { PatchComponent } from "src/patch";
 import { GlobalMediaUpload } from "./Shared/GlobalMediaUpload";
 import { useFollowingUnseen } from "./Following/FollowAction";
+import { useFollowingEnabled } from "./Following/enabled";
 
 interface IMenuItem {
   name: string;
@@ -366,42 +367,45 @@ export const MainNavbar: React.FC = () => {
 
   const handleDismiss = useCallback(() => setExpanded(false), []);
   const followingUnseen = useFollowingUnseen();
+  const followingEnabled = useFollowingEnabled();
 
   function renderUtilityButtons() {
     return (
       <>
-        {utilityLinks.map(({ to, icon, label, title, exact }) => (
-          <NavLink
-            key={to}
-            className="nav-utility"
-            exact={exact}
-            to={to}
-            onClick={handleDismiss}
-          >
-            <Button
-              className="minimal d-flex align-items-center h-100"
-              title={intl.formatMessage(title ?? label)}
+        {utilityLinks
+          .filter(({ to }) => followingEnabled || to !== "/following")
+          .map(({ to, icon, label, title, exact }) => (
+            <NavLink
+              key={to}
+              className="nav-utility"
+              exact={exact}
+              to={to}
+              onClick={handleDismiss}
             >
-              <Icon icon={icon} />
-              <span className="nav-utility-label ml-1">
-                {intl.formatMessage(label)}
-              </span>
-              {to === "/following" && followingUnseen > 0 && (
-                <Badge
-                  pill
-                  variant="primary"
-                  className="ml-1"
-                  aria-label={intl.formatMessage(
-                    { id: "following_action.navbar_new" },
-                    { count: followingUnseen }
-                  )}
-                >
-                  {followingUnseen > 99 ? "99+" : followingUnseen}
-                </Badge>
-              )}
-            </Button>
-          </NavLink>
-        ))}
+              <Button
+                className="minimal d-flex align-items-center h-100"
+                title={intl.formatMessage(title ?? label)}
+              >
+                <Icon icon={icon} />
+                <span className="nav-utility-label ml-1">
+                  {intl.formatMessage(label)}
+                </span>
+                {to === "/following" && followingUnseen > 0 && (
+                  <Badge
+                    pill
+                    variant="primary"
+                    className="ml-1"
+                    aria-label={intl.formatMessage(
+                      { id: "following_action.navbar_new" },
+                      { count: followingUnseen }
+                    )}
+                  >
+                    {followingUnseen > 99 ? "99+" : followingUnseen}
+                  </Badge>
+                )}
+              </Button>
+            </NavLink>
+          ))}
         <Nav.Link
           className="nav-utility"
           href="https://opencollective.com/stashapp"

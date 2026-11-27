@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import type { BooruSource } from "../BooruBrowser/browser";
 import { SourceIcon } from "../BooruBrowser/SourceIcon";
 import { notifyFollowingChanged, useMarkSeenOnView } from "./FollowAction";
+import { useFollowingEnabled } from "./enabled";
 import {
   type FeedPage,
   FollowingPostGrid,
@@ -36,10 +37,12 @@ export function useEntityFollows(
   entityID: string,
   epoch = 0
 ) {
+  const enabled = useFollowingEnabled();
   // undefined until loaded, so the tab doesn't flash its empty state.
   const [follows, setFollows] = useState<EntityFollow[]>();
   // biome-ignore lint/correctness/useExhaustiveDependencies: epoch reloads the list.
   useEffect(() => {
+    if (!enabled) return;
     const controller = new AbortController();
     const load = () =>
       void followingRequest<EntityFollow[]>(
@@ -64,8 +67,8 @@ export function useEntityFollows(
       controller.abort();
       window.removeEventListener("stashbooru-following-changed", load);
     };
-  }, [kind, entityID, epoch]);
-  return follows;
+  }, [kind, entityID, epoch, enabled]);
+  return enabled ? follows : undefined;
 }
 
 /** New posts across this record's follows, for its tab counter. */

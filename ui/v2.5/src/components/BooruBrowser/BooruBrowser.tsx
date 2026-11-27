@@ -4,6 +4,7 @@ import {
   useMarkSeenOnView,
 } from "../Following/FollowAction";
 import { MarkSeenOnViewSwitch } from "../Following/FollowScheduleSettings";
+import { useFollowingEnabled } from "../Following/enabled";
 import { IdentityLink } from "../Identities/identity";
 import {
   type ReactNode,
@@ -1830,6 +1831,7 @@ function SourceResults({
 export default function BooruBrowser() {
   const location = useLocation();
   const history = useHistory();
+  const followingEnabled = useFollowingEnabled();
   const remembered = useMemo(() => readBrowserMemory(), []);
   const effectiveSearch = location.search || remembered?.search || "";
   const restoreDraft = !!remembered && effectiveSearch === remembered.search;
@@ -2149,7 +2151,9 @@ export default function BooruBrowser() {
             Filter the current Pawchive page when a post has no thumbnail or its
             thumbnails fail. This preference is saved in this browser.
           </p>
-          <MarkSeenOnViewSwitch id="booru-mark-seen-on-view" />
+          {followingEnabled && (
+            <MarkSeenOnViewSwitch id="booru-mark-seen-on-view" />
+          )}
           <SourceSettings
             onSaved={() => setLoadAttempt((value) => value + 1)}
           />

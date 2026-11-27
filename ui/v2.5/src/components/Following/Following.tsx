@@ -21,6 +21,7 @@ import {
   followingRequest as request,
 } from "./FollowingPosts";
 import { FollowScheduleSettings } from "./FollowScheduleSettings";
+import { useFollowingEnabled } from "./enabled";
 import {
   canFollowIdentity,
   canSyncEngine,
@@ -66,6 +67,29 @@ const followKinds = [
 ];
 
 export default function Following() {
+  return useFollowingEnabled() ? <FollowingPage /> : <FollowingDisabled />;
+}
+
+// Following is experimental: an old link or bookmark explains where to
+// turn it on instead of showing an empty page.
+function FollowingDisabled() {
+  const intl = useIntl();
+  return (
+    <div className="following-page" id="following-disabled">
+      <header>
+        <h2>{intl.formatMessage({ id: "navbar_utility.following" })}</h2>
+      </header>
+      <Alert variant="info">
+        {intl.formatMessage({ id: "following_action.disabled.body" })}{" "}
+        <Link to="/settings?tab=experimental#experimental-following">
+          {intl.formatMessage({ id: "following_action.disabled.link" })}
+        </Link>
+      </Alert>
+    </div>
+  );
+}
+
+function FollowingPage() {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();

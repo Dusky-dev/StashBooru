@@ -48,6 +48,12 @@ export const settingsSearchIndex: SettingsSearchEntry[] = [
   },
   {
     tab: "experimental",
+    label: "Following",
+    anchor: "experimental-following",
+    keywords: "follow followed posts feed new posts automatic checks rss",
+  },
+  {
+    tab: "experimental",
     label: "Video overlap / containment",
     anchor: "experimental-video-overlap",
     keywords:

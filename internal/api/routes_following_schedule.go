@@ -237,7 +237,21 @@ func (rs booruBrowserRoutes) runFollowScheduler(ctx context.Context) {
 	}
 }
 
+// followingEnabled reports the experimental Following toggle (off by
+// default). While off, saved follows and the schedule are kept but automatic
+// checks do not run.
+func (rs booruBrowserRoutes) followingEnabled() bool {
+	if rs.uiConfig == nil {
+		return false
+	}
+	enabled, _ := rs.uiConfig()["followingEnabled"].(bool)
+	return enabled
+}
+
 func (rs booruBrowserRoutes) followSchedulerTick(ctx context.Context, now time.Time) bool {
+	if !rs.followingEnabled() {
+		return false
+	}
 	settings, err := rs.followSchedule()
 	if err != nil || settings.IntervalHours == 0 || rs.repository.BooruFollow == nil || rs.repository.Following == nil {
 		return false

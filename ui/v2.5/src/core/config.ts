@@ -77,6 +77,9 @@ export interface IUIConfig {
   showStudioText?: boolean;
 
   previewVolume?: number;
+  // Experimental Following (off by default). The server's automatic
+  // follow checks read this key too.
+  followingEnabled?: boolean;
   // Experimental server-side compression (saved through ConfigureUI).
   thumbnailImageEnabled?: boolean;
   thumbnailVideoEnabled?: boolean;

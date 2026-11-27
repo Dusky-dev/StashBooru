@@ -4,6 +4,7 @@ import { BrowserRouter, Link, Route } from "react-router-dom";
 import BooruBrowser from "../../../src/components/BooruBrowser/BooruBrowser";
 import "../../../src/index.scss";
 import "../../../src/booru-ui.scss";
+import { FollowingEnabled } from "./followingEnabled";
 import { messages } from "./messages";
 
 ReactDOM.render(
@@ -18,12 +19,14 @@ ReactDOM.render(
       "pagination.page_number": "Page {page}",
     }}
   >
-    <BrowserRouter>
-      <main className="container-fluid py-3">
-        <Route path="/booru" component={BooruBrowser} />
-        <Link to="/other">Leave browser fixture</Link>
-      </main>
-    </BrowserRouter>
+    <FollowingEnabled>
+      <BrowserRouter>
+        <main className="container-fluid py-3">
+          <Route path="/booru" component={BooruBrowser} />
+          <Link to="/other">Leave browser fixture</Link>
+        </main>
+      </BrowserRouter>
+    </FollowingEnabled>
   </IntlProvider>,
   document.getElementById("root")
 );

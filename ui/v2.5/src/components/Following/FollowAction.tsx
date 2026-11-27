@@ -3,6 +3,7 @@ import { Dropdown } from "react-bootstrap";
 import { useIntl } from "react-intl";
 import { Link } from "react-router-dom";
 import { identityRequest } from "../Identities/identityApi";
+import { useFollowingEnabled } from "./enabled";
 import { canFollowTarget } from "./followContext";
 
 /** The part of a saved follow needed to show Follow / Following. */
@@ -47,8 +48,13 @@ if (typeof window !== "undefined")
     });
 
 export function useFollows() {
+  const enabled = useFollowingEnabled();
   const [follows, setFollows] = useState<FollowSummary[]>();
   useEffect(() => {
+    if (!enabled) {
+      setFollows(undefined);
+      return;
+    }
     let live = true;
     const refresh = () =>
       void loadFollows().then((value) => {
@@ -60,8 +66,8 @@ export function useFollows() {
       live = false;
       listeners.delete(refresh);
     };
-  }, []);
-  return follows;
+  }, [enabled]);
+  return enabled ? follows : undefined;
 }
 
 export function findFollow(
@@ -183,8 +189,10 @@ export interface FollowSchedule {
  * minutes and when the tab regains focus; 0 if Following is unavailable.
  */
 export function useFollowingUnseen() {
+  const enabled = useFollowingEnabled();
   const [unseen, setUnseen] = useState(0);
   useEffect(() => {
+    if (!enabled) return;
     const controller = new AbortController();
     const refresh = () =>
       void identityRequest<FollowSchedule>(
@@ -205,15 +213,17 @@ export function useFollowingUnseen() {
       window.removeEventListener("focus", refresh);
       window.removeEventListener(changedEvent, refresh);
     };
-  }, []);
-  return unseen;
+  }, [enabled]);
+  return enabled ? unseen : 0;
 }
 
 /** The "Mark followed posts seen once shown" setting; undefined until
  * loaded (callers treat that as off). */
 export function useMarkSeenOnView() {
+  const enabled = useFollowingEnabled();
   const [value, setValue] = useState<boolean>();
   useEffect(() => {
+    if (!enabled) return;
     const controller = new AbortController();
     const refresh = () =>
       void identityRequest<FollowSchedule>(
@@ -230,6 +240,6 @@ export function useMarkSeenOnView() {
       controller.abort();
       window.removeEventListener(changedEvent, refresh);
     };
-  }, []);
-  return value;
+  }, [enabled]);
+  return enabled ? value : undefined;
 }
