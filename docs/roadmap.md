@@ -39,6 +39,9 @@ place and move finished ones to **Done**; the progress ledger keeps the detail.
 10. Add All to custom navbar menus saved before it existed?
 11. Refresh lists when a scan ends? (Upstream does not.)
 12. Any proposal to hide or remove a feature.
+    Following moved to Experimental, off by default (owner, 2026-11-27).
+    Candidates to propose next: Twitter / X and Pixiv sources, duplicate
+    Character detection in tagging, upscaling/restoration.
 13. Usability pass on the owner's real library (E11/E12).
 14. Show a Tag button (count 0) when an item has only profile-implied
     Tags? (Codex P2 on #383, deferred.)

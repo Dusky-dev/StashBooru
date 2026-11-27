@@ -46,6 +46,7 @@ import {
   FollowedPosts,
   useFollowedUnseen,
 } from "src/components/Following/FollowedPosts";
+import { useFollowingEnabled } from "src/components/Following/enabled";
 import { DetailTitle } from "src/components/Shared/DetailsPage/DetailTitle";
 import { ExpandCollapseButton } from "src/components/Shared/CollapseButton";
 import { FavoriteIcon } from "src/components/Shared/FavoriteIcon";
@@ -80,6 +81,8 @@ const validTabs = [
   "followed",
 ] as const;
 type TabKey = (typeof validTabs)[number];
+// Followed posts is part of the experimental Following feature.
+const tabsWithoutFollowed = validTabs.filter((tab) => tab !== "followed");
 
 function isTabKey(tab: string): tab is TabKey {
   return validTabs.includes(tab as TabKey);
@@ -105,9 +108,10 @@ const PerformerTabs: React.FC<{
     return ret;
   }, [performer]);
 
+  const followingEnabled = useFollowingEnabled();
   const { activeTabKey, setTabKey } = useTabKey({
     tabKey,
-    validTabs,
+    validTabs: followingEnabled ? validTabs : tabsWithoutFollowed,
     defaultTabKey: populatedDefaultTab,
     baseURL: `/performers/${performer.id}`,
   });
@@ -230,18 +234,20 @@ const PerformerTabs: React.FC<{
           performer={performer}
         />
       </Tab>
-      <Tab
-        eventKey="followed"
-        title={
-          <TabTitleCounter
-            messageID="following_action.followed.tab"
-            count={followedUnseen}
-            abbreviateCounter={abbreviateCounter}
-          />
-        }
-      >
-        <FollowedPosts kind="character" entityID={performer.id} />
-      </Tab>
+      {followingEnabled && (
+        <Tab
+          eventKey="followed"
+          title={
+            <TabTitleCounter
+              messageID="following_action.followed.tab"
+              count={followedUnseen}
+              abbreviateCounter={abbreviateCounter}
+            />
+          }
+        >
+          <FollowedPosts kind="character" entityID={performer.id} />
+        </Tab>
+      )}
     </Tabs>
   );
 };

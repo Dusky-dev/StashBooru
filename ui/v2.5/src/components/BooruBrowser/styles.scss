@@ -895,25 +895,41 @@
 }
 
 // Thumbnails of every media in a post, to pick one at a glance.
-.booru-media-gallery {
+.booru-browser-inspection .booru-media-header {
+  align-items: center;
   display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+
+  .booru-group-toggle {
+    flex: 1 1 auto;
+    width: auto;
+  }
+}
+
+.booru-media-gap {
+  color: var(--text-muted, #adb5bd);
+  display: block;
+  margin-bottom: 0.5rem;
+  text-align: left;
+  width: 100%;
+}
+
+// Wrapping rows and columns of thumbnails that fit the dialog's width.
+.booru-media-gallery {
+  display: grid;
   gap: 0.35rem;
-  overflow-x: auto;
-  padding-bottom: 0.25rem;
-  // Thumbnail offsets are measured from the strip.
-  position: relative;
-  scrollbar-width: thin;
+  grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
 
   .booru-media-thumb {
+    aspect-ratio: 1;
     background: rgba(255, 255, 255, 0.08);
     border: 2px solid transparent;
     border-radius: 0.25rem;
-    flex: 0 0 auto;
-    height: 4.5rem;
     overflow: hidden;
     padding: 0;
     position: relative;
-    width: 4.5rem;
+    width: 100%;
 
     img {
       height: 100%;
@@ -927,7 +943,8 @@
     }
 
     &.active {
-      border-color: var(--primary);
+      border: 2px solid var(--primary);
+      box-shadow: 0 0 0 2px var(--primary);
     }
 
     &.ignored img,

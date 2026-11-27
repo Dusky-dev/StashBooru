@@ -10,6 +10,7 @@ import {
 } from "../../../src/components/Identities/identity";
 import "../../../src/index.scss";
 import "../../../src/booru-ui.scss";
+import { FollowingEnabled } from "./followingEnabled";
 import { messages } from "./messages";
 
 function ProviderTag() {
@@ -61,20 +62,22 @@ function ProviderTag() {
 
 ReactDOM.render(
   <IntlProvider locale="en-GB" messages={messages}>
-    <BrowserRouter
-      basename={new URL(document.baseURI).pathname.replace(/\/$/, "")}
-    >
-      <main className="container-fluid py-3">
-        <Route exact path="/identities" component={Identities} />
-        <Route exact path="/studios/7">
-          <h2>Waligner</h2>
-          <IdentitySources kind="artist" entityID="7" entityName="Waligner" />
-          <Link to="/identities?kind=artist">All identities</Link>
-        </Route>
-        <Route exact path="/booru" component={ProviderTag} />
-        <Link to="/booru">Browse fixture</Link>
-      </main>
-    </BrowserRouter>
+    <FollowingEnabled>
+      <BrowserRouter
+        basename={new URL(document.baseURI).pathname.replace(/\/$/, "")}
+      >
+        <main className="container-fluid py-3">
+          <Route exact path="/identities" component={Identities} />
+          <Route exact path="/studios/7">
+            <h2>Waligner</h2>
+            <IdentitySources kind="artist" entityID="7" entityName="Waligner" />
+            <Link to="/identities?kind=artist">All identities</Link>
+          </Route>
+          <Route exact path="/booru" component={ProviderTag} />
+          <Link to="/booru">Browse fixture</Link>
+        </main>
+      </BrowserRouter>
+    </FollowingEnabled>
   </IntlProvider>,
   document.getElementById("root")
 );

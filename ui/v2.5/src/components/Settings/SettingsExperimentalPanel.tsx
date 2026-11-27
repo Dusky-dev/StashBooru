@@ -1,4 +1,5 @@
 import { Alert } from "react-bootstrap";
+import { useIntl } from "react-intl";
 import { Link, useLocation } from "react-router-dom";
 import { SettingsDisclosure } from "./SettingsDisclosure";
 import { settingsSearch } from "./settingsNavigation";
@@ -13,6 +14,33 @@ import { ImageStorageConsumerAuditTask } from "./Tasks/ImageStorageConsumerAudit
 import { VideoOverlapTask } from "./Tasks/VideoOverlapTask";
 import { SettingsThumbnailCompression } from "./SettingsThumbnailCompression";
 import { SettingsMediaUpload } from "./SettingsMediaUpload";
+import { useSettings } from "./context";
+import { BooleanSetting } from "./Inputs";
+
+// Following is not finished: off by default, and its automatic checks stop
+// while off. Follows and the check schedule are kept.
+function SettingsFollowing() {
+  const intl = useIntl();
+  const { ui, saveUI, loading } = useSettings();
+  return (
+    <SettingsDisclosure
+      id="experimental-following"
+      title={intl.formatMessage({ id: "following_action.experimental.title" })}
+      description={intl.formatMessage({
+        id: "following_action.experimental.description",
+      })}
+    >
+      <BooleanSetting
+        id="experimental-following-enabled"
+        headingID="following_action.experimental.enable"
+        subHeadingID="following_action.experimental.enable_help"
+        checked={ui.followingEnabled ?? false}
+        disabled={loading}
+        onChange={(value) => saveUI({ followingEnabled: value })}
+      />
+    </SettingsDisclosure>
+  );
+}
 
 export function SettingsExperimentalPanel() {
   const location = useLocation();
@@ -30,6 +58,7 @@ export function SettingsExperimentalPanel() {
         Settings. Enable experimental features individually; opening this page
         does not start a job or activate any feature.
       </p>
+      <SettingsFollowing />
       <SettingsDisclosure
         id="experimental-video-overlap"
         title="Video overlap / containment"

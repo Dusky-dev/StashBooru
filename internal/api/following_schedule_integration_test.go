@@ -24,7 +24,8 @@ func TestFollowScheduleChecksDueFollowsAndIsolatesFailures(t *testing.T) {
 	db := sqlite.NewDatabase()
 	require.NoError(t, db.Open(filepath.Join(t.TempDir(), "schedule.sqlite")))
 	defer db.Close()
-	rs := booruBrowserRoutes{configPath: t.TempDir(), repository: db.Repository()}
+	following := map[string]interface{}{"followingEnabled": true}
+	rs := booruBrowserRoutes{configPath: t.TempDir(), repository: db.Repository(), uiConfig: func() map[string]interface{} { return following }}
 	dan, gel := booru.Defaults()[0], booru.Defaults()[2]
 	a := b06Mutation(t, rs, b06Create(dan, "artist", "artist_a"), 200)
 	b06Mutation(t, rs, b06Create(dan, "copyright", "series_s"), 200)
@@ -58,6 +59,11 @@ func TestFollowScheduleChecksDueFollowsAndIsolatesFailures(t *testing.T) {
 	saved, err := rs.followSchedule()
 	require.NoError(t, err)
 	require.Equal(t, followScheduleSettings{IntervalHours: 1, MarkSeenOnView: true}, saved, "each setting keeps the other")
+
+	// The experimental Following toggle off: due follows are kept, not checked.
+	following["followingEnabled"] = false
+	require.False(t, rs.followSchedulerTick(context.Background(), time.Now()))
+	following["followingEnabled"] = true
 
 	require.True(t, rs.followSchedulerTick(context.Background(), time.Now()))
 	var run followScheduleRun

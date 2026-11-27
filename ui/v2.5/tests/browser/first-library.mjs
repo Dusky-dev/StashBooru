@@ -454,12 +454,18 @@ async function checkImpliedTags(page, url, imageID, videoID, directTagID) {
 // control fits the viewport, icon-only links keep a tooltip, and the phone
 // menu lists them with labels.
 async function checkNavbar(page, mobile) {
-  const paths = ["/following", "/identities", "/image-duplicates", "/booru"];
+  // Following is experimental and off by default: no navbar link.
+  const paths = ["/identities", "/image-duplicates", "/booru"];
   if (mobile) {
     await page.locator(".nav-menu-toggle").click();
     await page.locator(".navbar-collapse.show").waitFor();
   }
   const scope = mobile ? ".navbar-collapse" : ".navbar-buttons";
+  assert.equal(
+    await page.locator(`${scope} a.nav-utility[href="/following"]`).count(),
+    0,
+    "Following is hidden until enabled in Experimental settings"
+  );
   const links = await page.evaluate(
     ({ paths, scope }) =>
       paths.map((path) => {

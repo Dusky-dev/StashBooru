@@ -265,6 +265,7 @@
         "animation_inspection": "Animation inspection",
         "maintenance_and_database_backups": "Maintenance and database backups",
         "plugin_tasks": "Plugin tasks",
+        "following": "Following",
         "video_overlap_containment": "Video overlap / containment",
         "media_uploads": "Media uploads",
         "opt_in_thumbnail_compression": "Opt-in thumbnail compression",
@@ -2088,6 +2089,10 @@
     "duplicates_title": "Review similar images"
   },
   "booru_browser": {
+    "media_gap": "… {count, plural, one {# more file} other {# more files}}",
+    "media_view": "Media view",
+    "media_view_list": "List",
+    "media_view_gallery": "Gallery",
     "nav": "Booru",
     "title": "Booru browser",
     "inspection_keys": "← / → Browse posts · ↑ / ↓ Select media · E Download selected · Q Ignore selected media",
@@ -2213,6 +2218,16 @@
     "history_link": "Settings → About"
   },
   "following_action": {
+    "disabled": {
+      "body": "Following is experimental and turned off. Your follows are kept. To use it, turn on Advanced mode in Settings, then enable Following under Experimental.",
+      "link": "Open Experimental settings"
+    },
+    "experimental": {
+      "title": "Following",
+      "description": "Follow tags and creators on booru sites and collect their new posts. Off by default while unfinished.",
+      "enable": "Enable Following",
+      "enable_help": "Shows the Following page, Follow buttons, Followed posts tabs and new-post counts, and runs automatic checks if you set an interval. While off, follows and settings are kept but nothing is checked."
+    },
     "follow": "Follow",
     "following": "Following",
     "follow_title": "Follow {target} on {site}",
