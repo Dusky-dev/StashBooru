@@ -1,6 +1,6 @@
 ## StashBooru 1.26.0: Following experimental, Booru media gallery/list — 2026-11-27
 
-- Baseline: `develop` `c84f7e0a1` (1.25.0 released). Owner: Following off by
+- Baseline: `develop` `c84f7e0a1` (1.25.0 released); #443. Owner: Following off by
   default behind an Experimental toggle; post gallery as a toggle with a
   wrapping grid, thumb opens the list; long lists show next/last with "…".
 - Now: UI key `followingEnabled` (Settings › Experimental › Following). Off:
